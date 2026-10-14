@@ -28,8 +28,7 @@ pub(super) fn open_url(url: &str) -> Option<Msg> {
 }
 
 pub(super) fn open_terminal(dir: &Path) -> Option<Msg> {
-    crate::platform::open_terminal(dir);
-    None
+    crate::platform::open_terminal(dir).err().and_then(|e| failed(format!("Could not open a terminal: {e}")))
 }
 
 pub(super) fn open_folder(dir: &Path) -> Option<Msg> {

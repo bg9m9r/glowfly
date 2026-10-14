@@ -3,6 +3,9 @@
 
 use std::path::{Path, PathBuf};
 
+mod terminal;
+pub use terminal::open_terminal;
+
 fn recent_file() -> Option<PathBuf> {
     trellis_core::settings::config_dir().map(|d| d.join("recent.txt"))
 }
@@ -54,18 +57,6 @@ pub fn save_tabs(paths: &[PathBuf], active: usize) -> std::io::Result<()> {
         text.push_str(&p.display().to_string());
     }
     trellis_core::persist::atomic_write(&f, text.as_bytes())
-}
-
-pub fn open_terminal(dir: &Path) {
-    #[cfg(windows)]
-    let r = std::process::Command::new("cmd").args(["/C", "start", "cmd"]).current_dir(dir).spawn();
-    #[cfg(target_os = "macos")]
-    let r = std::process::Command::new("open").args(["-a", "Terminal"]).arg(dir).spawn();
-    #[cfg(all(unix, not(target_os = "macos")))]
-    let r = std::process::Command::new("x-terminal-emulator").current_dir(dir).spawn();
-    if let Err(e) = r {
-        tracing::warn!("could not open a terminal: {e}");
-    }
 }
 
 pub fn open_in_file_manager(dir: &Path) {
