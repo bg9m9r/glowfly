@@ -9,6 +9,7 @@ pub mod dates;
 pub mod diff_rows;
 pub mod error;
 pub mod forge;
+pub mod fuzzy;
 pub mod gitcli;
 pub mod graph;
 pub mod highlight;

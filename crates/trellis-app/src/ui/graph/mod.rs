@@ -48,6 +48,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 if !r.has_focus() && st.view.search.is_empty() && !st.askpass.showing() {
                     r.request_focus();
                 }
+                // Search commits from the command palette focuses the field even with text in it.
+                if std::mem::take(&mut st.view.focus_search) && !st.askpass.showing() {
+                    r.request_focus();
+                }
                 if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
                     msgs.push(Msg::SearchNext);
                     r.request_focus();

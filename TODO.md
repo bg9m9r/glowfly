@@ -378,8 +378,22 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 ## P1: power features
 
 - [ ] **Command palette (fuzzy finder)**
-  Ctrl+P: checkout, create branch/tag, open repo, stage/unstage all, blame/history for a file,
-  open settings, switch theme, search commits.
+  Exists: Ctrl+P / Ctrl+Shift+P opens a fuzzy-searched list (hidden keywords match synonyms):
+  fetch all, pull, push, stage/unstage all, create branch (at HEAD or the selected commit),
+  search commits, open a repository or a recent one, close tab, Preferences, theme, and
+  checkout of local branches.
+  - [ ] File finder: pick any tracked file to open its history or blame
+  - [ ] Create tag and annotated tag
+  - [ ] Shortcut hints next to entries (Ctrl+F, Ctrl+, F5, Ctrl+W …)
+  - [ ] Two-step entries: pick a command, then a sub-list with its own prompt (branches,
+    themes, repositories)
+  - [ ] Check out remote branches (creating a tracking branch) and tags
+  - [ ] A toolbar button that opens the palette, with the shortcut in its tooltip
+  - [ ] Rank recently run commands first
+  - [ ] More commands: stash and pop, rename branch, undo and redo, new tab and reopen closed
+    tab, diff layout and whitespace toggles, toolbar labels, open in terminal and file manager
+  - [ ] Create, delete and edit files
+  - [ ] PageUp/PageDown/Home/End in the list, and the selection following the mouse
 - [ ] **Keyboard shortcuts**
   Exist: tabs, undo/redo, F5, Ctrl+F, Ctrl+, and diff navigation. Missing: stage/unstage the
   file or selected lines (S/U), stage all, commit (Ctrl+Enter), focus the message, topological

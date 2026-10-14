@@ -11,7 +11,7 @@ use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
 use trellis_core::rebase::{Outcome, RebaseAction, RebaseBase, RebasePlan};
 use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, RestoredFrom, Side, Snapshot};
-use trellis_core::settings::{DiffLayout, DiffMode, FilterOp, TrackerChoice};
+use trellis_core::settings::{DiffLayout, DiffMode, FilterOp, ThemeChoice, TrackerChoice};
 
 /// What a folder picker was opened for.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -343,6 +343,16 @@ pub enum Msg {
     GenerateGpgKey,
     CopyPublicKey,
     PickFile(FilePurpose),
+    /// Switch the colour theme (saved in settings).
+    SetTheme(ThemeChoice),
+
+    // ---- command palette
+    TogglePalette,
+    ClosePalette,
+    /// Move the palette selection by this many rows, wrapping.
+    PaletteMove(isize),
+    /// Close the palette and run this command.
+    RunPaletteCommand(crate::state::palette::PaletteCommand),
 
     // ---- credential prompts (state/askpass.rs)
     /// git or ssh asks for input through the askpass helper (from the listener; unscoped).

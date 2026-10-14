@@ -43,6 +43,8 @@ crates/
     undo.rs               undo/redo of Trellis's own operations: records state around a job,
                           plans the git commands that reverse it (checked against the repo)
     graph.rs              lane layout for the commit graph
+    fuzzy.rs              fuzzy matching and ranking for the command palette (word starts,
+                          runs, hidden keywords)
     diff_rows.rs          inline and side-by-side row layout of a diff
     whole_file.rs         whole-file view: change blocks mapped onto hunks, folds of long
                           unchanged runs (folds.rs), and their rows
@@ -71,7 +73,8 @@ crates/
                           prompts waiting for the user; global, not parked with a tab),
                           diff_nav (next/previous change across files: the file list a
                           diff came from, where a step lands), commit (the commit draft, its
-                          readiness rules, button label and command line)
+                          readiness rules, button label and command line), palette (the
+                          command palette: open state, the commands available now)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
@@ -89,7 +92,8 @@ crates/
                           askpass (queueing, answering and cancelling credential prompts; what a
                           finished job clears), files (restoring a file from a commit, opening
                           or showing a working-tree file), commit (committing,
-                          stage-all-and-commit, push after committing, the template prefill)
+                          stage-all-and-commit, push after committing, the template prefill),
+                          palette (opening the command palette, moving, running a command)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
@@ -102,12 +106,14 @@ crates/
                           ref_visibility (hide/solo menu items, row markers and banner),
                           file_menu (file actions in file rows' menus: restore, open, show),
                           askpass (the credential prompt, drawn above every other dialog),
+                          palette (the Ctrl+P command palette overlay),
                           status, prefs/ (editor: the Editor page), theme, widgets
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
                           snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
                           snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
-                          snapshot_tests_file_menu.rs, snapshot_tests_commit.rs)
+                          snapshot_tests_file_menu.rs, snapshot_tests_commit.rs,
+                          snapshot_tests_palette.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

@@ -17,6 +17,7 @@ mod graph;
 mod history;
 mod menus;
 mod modals;
+mod palette;
 mod prefs;
 mod publish;
 mod rebase;
@@ -43,6 +44,8 @@ mod snapshot_tests_diff;
 mod snapshot_tests_editor;
 #[cfg(test)]
 mod snapshot_tests_file_menu;
+#[cfg(test)]
+mod snapshot_tests_palette;
 #[cfg(test)]
 mod snapshot_tests_rebase;
 #[cfg(test)]
@@ -136,6 +139,9 @@ impl TrellisApp {
 
     /// Keyboard shortcuts and window events, turned into messages or view-state changes.
     fn input(&mut self, ctx: &egui::Context, msgs: &mut Vec<Msg>) {
+        palette::shortcut(ctx, &self.st, msgs);
+        // The open palette keeps the keyboard: no other shortcut reaches what is under it.
+        let palette = self.st.palette.is_some();
         let focused = ctx.input(|i| i.focused);
         if focused && !self.st.view.was_focused {
             msgs.push(Msg::WindowFocused);
@@ -144,11 +150,11 @@ impl TrellisApp {
         let (f5, find, prefs) = ctx.input(|i| {
             (i.key_pressed(Key::F5), i.modifiers.command && i.key_pressed(Key::F), i.modifiers.command && i.key_pressed(Key::Comma))
         });
-        if self.st.prefs.is_none() {
+        if self.st.prefs.is_none() && !palette {
             tab_shortcuts(ctx, self.st.tabs.len(), msgs);
         }
         // Text fields keep Ctrl+Z for their own undo; nothing reaches the views under a dialog.
-        let dialog = self.st.modal.is_some() || self.st.askpass.showing();
+        let dialog = self.st.modal.is_some() || self.st.askpass.showing() || palette;
         if self.st.prefs.is_none() && !dialog && !ctx.wants_keyboard_input() {
             undo_shortcuts(ctx, msgs);
         }
@@ -165,10 +171,10 @@ impl TrellisApp {
         if f5 {
             msgs.push(Msg::Refresh);
         }
-        if find {
+        if find && !palette {
             self.st.view.show_search = !self.st.view.show_search;
         }
-        if prefs && self.st.prefs.is_none() {
+        if prefs && self.st.prefs.is_none() && !palette {
             msgs.push(Msg::OpenPrefs(crate::state::PrefPage::General));
         }
         escape_key(ctx, &mut self.st, msgs);
@@ -177,10 +183,10 @@ impl TrellisApp {
 
 /// Esc closes the innermost thing open: Preferences, the conflict view, the file history, the
 /// diff (a line selection first), the interactive rebase panel (its message editor first), then
-/// a multi-selection, and finally the search bar. Dialogs (a credential prompt included) handle
-/// Esc themselves.
+/// a multi-selection, and finally the search bar. Dialogs (a credential prompt included) and the
+/// command palette handle Esc themselves.
 fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    if !ctx.input(|i| i.key_pressed(Key::Escape)) || st.modal.is_some() || st.askpass.showing() {
+    if !ctx.input(|i| i.key_pressed(Key::Escape)) || st.modal.is_some() || st.askpass.showing() || st.palette.is_some() {
         return;
     }
     if st.prefs.is_some() {
@@ -290,6 +296,8 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
             }
         });
     }
+    // Before the dialogs, so a dialog or credential prompt opened over it stacks on top.
+    palette::show(ctx, st, msgs);
     modals::show(ctx, st, msgs);
     // After the other dialogs, so a credential prompt stacks on top of them.
     askpass::show(ctx, st, msgs);

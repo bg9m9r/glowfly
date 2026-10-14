@@ -45,6 +45,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 super::watch::sync(st, fx);
             }
         }
+        Msg::SetTheme(t) => {
+            if st.settings.theme != t {
+                st.settings.theme = t;
+                fx.push(save_settings(st));
+            }
+        }
         Msg::GitConfigLoaded(values) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.git = Some(values);

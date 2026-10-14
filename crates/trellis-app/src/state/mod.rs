@@ -9,6 +9,7 @@ pub mod diff_nav;
 mod forge;
 pub mod history;
 pub mod lines;
+pub mod palette;
 pub mod prefs;
 pub mod publish;
 pub mod rebase;
@@ -163,6 +164,8 @@ pub struct ViewState {
     pub conflict_scroll_to: Option<usize>,
     /// Scroll the file history list to this entry on the next frame (set by `update`).
     pub history_scroll_to: Option<usize>,
+    /// Focus the graph search field on the next frame (set by update).
+    pub focus_search: bool,
 }
 
 impl Default for ViewState {
@@ -195,6 +198,7 @@ impl Default for ViewState {
             diff_lines: lines::LineSelection::default(),
             conflict_scroll_to: None,
             history_scroll_to: None,
+            focus_search: false,
         }
     }
 }
@@ -257,6 +261,8 @@ pub struct AppState {
     pub watch: watch::WatchState,
     /// Credential prompts from git (global, not per tab).
     pub askpass: askpass::CredentialPrompts,
+    /// The command palette, while open (global, not per tab).
+    pub palette: Option<palette::Palette>,
     pub view: ViewState,
 }
 
@@ -299,6 +305,7 @@ impl AppState {
             last_fetch: now,
             watch,
             askpass: Default::default(),
+            palette: None,
             view: ViewState::default(),
         }
     }
