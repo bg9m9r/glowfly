@@ -9,6 +9,8 @@ before structural changes. `TODO.md` is the feature backlog.
 - `cargo run --release -- <repo path>`: run the app. With no path it reopens the last repo.
 - `UPDATE_SNAPSHOTS=1 cargo test -p trellis snapshot`: re-render UI snapshots into
   `crates/trellis-app/tests/snapshots/`. Open the PNGs and check them before committing.
+- `UPDATE_NOTICES=1 cargo test -p trellis-core notice`: regenerate the syntax-definition licenses
+  in `THIRD-PARTY-NOTICES.md` after updating the `two-face` crate.
 - `RUST_LOG=trellis=debug`: log background effects as they run.
 - `TRELLIS_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture`: read-only check
   against a real hosting service.
