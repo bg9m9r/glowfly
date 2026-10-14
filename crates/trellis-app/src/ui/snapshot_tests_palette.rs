@@ -122,3 +122,21 @@ fn shortcut_toggles() {
     h.run();
     assert!(h.state().1.is_empty(), "not under Preferences");
 }
+
+/// With the commit search bar open and empty, typed text still lands in the palette's field
+/// rather than being lost to the two fields taking focus from each other.
+#[test]
+fn palette_takes_typing_over_an_empty_search_bar() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-search-bar");
+    st.view.show_search = true;
+    st.palette = Some(Palette::default());
+    let mut h = harness(st, true);
+    h.run();
+    h.run();
+    h.input_mut().events.push(eframe::egui::Event::Text("push".into()));
+    h.run();
+    assert_eq!(h.state().0.palette.as_ref().map(|p| p.query.as_str()), Some("push"));
+    assert_eq!(h.state().0.view.search, "");
+    drop(h);
+    remove_fixture(&dir);
+}

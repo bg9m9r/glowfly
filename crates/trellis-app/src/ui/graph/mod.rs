@@ -44,12 +44,13 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         .hint_text("Search commit messages, authors and SHAs, then press Enter")
                         .desired_width(420.0),
                 );
-                // A credential prompt above keeps the keyboard.
-                if !r.has_focus() && st.view.search.is_empty() && !st.askpass.showing() {
+                // A credential prompt or the command palette above keeps the keyboard.
+                let covered = st.askpass.showing() || st.palette.is_some();
+                if !r.has_focus() && st.view.search.is_empty() && !covered {
                     r.request_focus();
                 }
                 // Search commits from the command palette focuses the field even with text in it.
-                if std::mem::take(&mut st.view.focus_search) && !st.askpass.showing() {
+                if !covered && std::mem::take(&mut st.view.focus_search) {
                     r.request_focus();
                 }
                 if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
