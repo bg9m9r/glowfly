@@ -368,10 +368,11 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Create, delete and rename a file (WIP panel: New file… in the Unstaged Files header,
     Rename… and Delete… in working-tree file rows' menus)
   - [ ] Create, rename and delete from the command palette
-  - [ ] New file in this folder… on file rows and folder rows, prefilled with the folder
+  - [x] New file in this folder… on file rows (WIP and commit file menus), prefilled with the folder
+  - [ ] New file in this folder… on folder rows (folder rows wait for a tree view in file lists)
   - [ ] Delete several selected files at once (needs multi-select in file lists)
   - [ ] Move deleted files to the OS trash or recycle bin, or make Delete undoable with Ctrl+Z
-  - [ ] Rename tracked files with `git mv` so the rename is staged (option in the rename dialog)
+  - [x] Rename tracked files with git mv so the rename is staged (option in the rename dialog, remembered)
   - [ ] Unstage and delete a staged new file in one step
   - [ ] Open the newly created file in the editor or default app after creating it
   - [ ] Create a file from a template, or with initial contents

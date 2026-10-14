@@ -1,10 +1,12 @@
 //! File actions added to file rows' context menus: restore a file from a commit, open it in its
-//! default program, show it in the file manager, and (working-tree rows) rename or delete it.
+//! default program, show it in the file manager, start a new file in its folder, and
+//! (working-tree rows) rename or delete it.
 //! Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
 //! opening a popup.
 
 use super::common::{menu_item, menu_item_if};
 use crate::msg::Msg;
+use crate::state::files::folder_prefill;
 use eframe::egui;
 use git2::Oid;
 use trellis_core::repo::FileEntry;
@@ -21,6 +23,7 @@ pub(super) const OPEN_DEFAULT: &str = "Open with default app";
 const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
 const DELETED_IN_WORKDIR: &str = "Not in your working tree (deleted)";
 const CONFLICTED: &str = "Resolve the conflict first";
+pub(super) const NEW_FILE_HERE: &str = "New file in this folder…";
 pub(super) const RENAME: &str = "Rename…";
 pub(super) const DELETE: &str = "Delete…";
 
@@ -37,20 +40,31 @@ pub(super) fn open_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str, mis
     menu_item_if(msgs, ui, SHOW_IN_FOLDER, missing, Msg::ShowWorkingFile(path.to_owned()));
 }
 
-/// Extra items for a commit's file row: separator, restore, open items.
+/// Opens the New file dialog prefilled with `path`'s folder. Always enabled: a sibling never
+/// touches the row's file, and missing folders are created.
+fn new_file_here(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str) {
+    menu_item(msgs, ui, NEW_FILE_HERE, Msg::NewFileDialog(folder_prefill(path)));
+}
+
+/// Extra items for a commit's file row: separator, restore, open items, then separator and new
+/// file in this folder.
 pub(super) fn commit_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, oid: Oid, f: &FileEntry, in_workdir: bool) {
     ui.separator();
     restore_item(ui, msgs, oid, &f.path, f.status);
     open_items(ui, msgs, &f.path, (!in_workdir).then_some(NOT_IN_WORKDIR));
+    ui.separator();
+    new_file_here(ui, msgs, &f.path);
 }
 
 /// Extra items for a working-tree row: separator, open items (disabled when `missing`), then
-/// separator, rename and delete (also disabled while the row is conflicted).
+/// separator, new file in this folder, rename and delete (the last two also disabled while the
+/// row is conflicted).
 pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEntry, missing: bool) {
     ui.separator();
     let gone = missing.then_some(DELETED_IN_WORKDIR);
     open_items(ui, msgs, &f.path, gone);
     ui.separator();
+    new_file_here(ui, msgs, &f.path);
     let blocked = gone.or((f.status == '!').then_some(CONFLICTED));
     menu_item_if(msgs, ui, RENAME, blocked, Msg::RenameFileDialog(f.path.clone()));
     menu_item_if(msgs, ui, DELETE, blocked, Msg::DeleteFile { path: f.path.clone(), confirmed: false });

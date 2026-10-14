@@ -173,6 +173,8 @@ pub struct Settings {
 
     /// Push the branch after each successful commit (commit box checkbox).
     pub push_after_commit: bool,
+    /// Rename tracked files with git mv so the rename is staged (rename dialog checkbox).
+    pub stage_renames: bool,
 
     /// Connected services. Secrets live in the OS credential store or Git Credential
     /// Manager, never here.
@@ -217,6 +219,7 @@ impl Default for Settings {
             diff_line_numbers: true,
             diff_word_highlights: true,
             push_after_commit: false,
+            stage_renames: true,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),

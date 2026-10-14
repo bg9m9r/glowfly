@@ -109,7 +109,7 @@ pub struct WatchTarget {
 #[derive(Clone, Debug, PartialEq)]
 pub enum FileOp {
     Create(String),
-    Rename { from: String, to: String },
+    Rename { from: String, to: String, stage: bool },
     Delete(String),
 }
 

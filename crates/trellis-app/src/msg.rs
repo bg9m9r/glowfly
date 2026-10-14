@@ -219,11 +219,15 @@ pub enum Msg {
     CreateFile(String),
     /// Open the rename dialog for the working-tree file `.0`.
     RenameFileDialog(String),
-    /// Move the working-tree file `from` to the typed path `to`; the index is untouched.
+    /// Move the working-tree file `from` to the typed path `to`; the index is untouched, or with
+    /// `stage`, through git mv so the index records the rename.
     RenameFile {
         from: String,
         to: String,
+        stage: bool,
     },
+    /// The rename dialog's "Stage the rename" checkbox (saved in settings).
+    SetRenameStages(bool),
     /// Delete the working-tree file `path`; `confirmed: false` opens the confirmation first.
     DeleteFile {
         path: String,

@@ -19,6 +19,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let snap = st.snap.as_ref();
     let fs = st.forge.as_ref();
     let idle = st.job.is_none();
+    let stage_renames = st.settings.stage_renames;
     let mut close = false;
     let resp = egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
         ui.set_width(460.0);
@@ -156,7 +157,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             }
             Modal::RenameFile { old, form } => {
-                if super::file_dialogs::rename_file(ui, old, form, snap, !prompting, msgs) {
+                if super::file_dialogs::rename_file(ui, old, form, snap, stage_renames, !prompting, msgs) {
                     close = true;
                 }
             }

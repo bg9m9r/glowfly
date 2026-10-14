@@ -23,6 +23,20 @@ impl PathForm {
     }
 }
 
+/// The New file dialog's text for a sibling of `path`: its folder with a trailing '/', or ""
+/// for a file at the repository root.
+pub fn folder_prefill(path: &str) -> String {
+    path.rfind('/').map(|i| path[..=i].to_owned()).unwrap_or_default()
+}
+
+/// Whether `path` has a stage-0 index entry as status shows it: staged with anything but a
+/// deletion, or unstaged as modified, type-changed or renamed. Untracked files, and files
+/// removed from the index (`rm --cached`: staged 'D' plus untracked), don't count.
+pub fn tracked(snap: &trellis_core::repo::Snapshot, path: &str) -> bool {
+    snap.staged.iter().any(|f| f.path == path && f.status != 'D')
+        || snap.unstaged.iter().any(|f| f.path == path && matches!(f.status, 'M' | 'T' | 'R'))
+}
+
 /// Whether status lists `path` (unstaged or staged) as a file that is still in the working tree,
 /// so a new file can't take its place. A path equal to `except` ignoring case (a rename's source)
 /// doesn't count. Core checks the disk again; this only catches what the snapshot shows.

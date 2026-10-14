@@ -9,7 +9,7 @@ use crate::testutil::*;
 use git2::{Oid, Repository};
 use std::path::Path;
 
-fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) {
+pub(super) fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) {
     for (f, t) in files {
         if let Some(parent) = dir.join(f).parent() {
             std::fs::create_dir_all(parent).unwrap();
@@ -20,20 +20,20 @@ fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) {
     git(dir, &["commit", "-q", "-m", msg]);
 }
 
-fn status(dir: &Path) -> String {
+pub(super) fn status(dir: &Path) -> String {
     run(dir, &args(&["status", "--porcelain"])).1
 }
 
 /// The index's stage-0 blob id for `path`.
-fn index_id(dir: &Path, path: &str) -> Option<Oid> {
+pub(super) fn index_id(dir: &Path, path: &str) -> Option<Oid> {
     Some(Repository::open(dir).unwrap().index().unwrap().get_path(Path::new(path), 0)?.id)
 }
 
-fn text(dir: &Path, path: &str) -> String {
+pub(super) fn text(dir: &Path, path: &str) -> String {
     std::fs::read_to_string(dir.join(path)).unwrap()
 }
 
-fn names(dir: &Path) -> Vec<String> {
+pub(super) fn names(dir: &Path) -> Vec<String> {
     let mut v: Vec<String> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
     v.sort();
     v
@@ -221,7 +221,7 @@ fn rename_refusals_change_nothing() {
 }
 
 /// A merge leaves f.txt conflicted.
-fn conflicted_repo(name: &str) -> std::path::PathBuf {
+pub(super) fn conflicted_repo(name: &str) -> std::path::PathBuf {
     let dir = scratch_repo(name);
     commit(&dir, &[("f.txt", "base\n")], "base");
     git(&dir, &["checkout", "-q", "-b", "side"]);

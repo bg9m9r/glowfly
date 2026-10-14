@@ -122,3 +122,13 @@ fn push_after_commit_defaults_off() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
     assert!(back.push_after_commit);
 }
+
+#[test]
+fn stage_renames_defaults_on() {
+    // Files written before the checkbox existed stage renames of tracked files.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.stage_renames);
+    let off = Settings { stage_renames: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.stage_renames);
+}

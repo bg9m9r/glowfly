@@ -4,7 +4,7 @@
 
 use crate::effect::{Effect, FileOp};
 use crate::msg::Msg;
-use crate::state::files::{PathForm, listed};
+use crate::state::files::{PathForm, listed, tracked};
 use crate::state::{AppState, Modal};
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, PathProblem, check_new_path};
@@ -18,7 +18,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         }
         Msg::CreateFile(text) => create(st, text, fx),
         Msg::RenameFileDialog(path) => rename_dialog(st, path),
-        Msg::RenameFile { from, to } => rename(st, from, to, fx),
+        Msg::RenameFile { from, to, stage } => rename(st, from, to, stage, fx),
+        Msg::SetRenameStages(on) if st.settings.stage_renames != on => {
+            st.settings.stage_renames = on;
+            fx.push(super::prefs::save_settings(st));
+        }
         Msg::DeleteFile { path, confirmed: false } => ask_delete(st, path),
         Msg::DeleteFile { path, confirmed: true } => {
             if let Some(workdir) = st.workdir() {
@@ -67,7 +71,9 @@ fn form_for<'a>(modal: &'a mut Option<Modal>, op: &FileOp) -> Option<&'a mut Pat
 fn success_text(op: &FileOp, ignored: bool) -> String {
     let mut text = match op {
         FileOp::Create(p) => format!("Created {p}."),
-        FileOp::Rename { from, to } => format!("Renamed {from} to {to}."),
+        // The new path stays tracked, so the result is never "ignored".
+        FileOp::Rename { from, to, stage: true } => return format!("Renamed {from} to {to} and staged the rename."),
+        FileOp::Rename { from, to, stage: false } => format!("Renamed {from} to {to}."),
         FileOp::Delete(p) => format!("Deleted {p}."),
     };
     if ignored {
@@ -158,11 +164,13 @@ fn rename_dialog(st: &mut AppState, path: String) {
     st.log(false, why);
 }
 
-fn rename(st: &mut AppState, from: String, to: String, fx: &mut Vec<Effect>) {
+fn rename(st: &mut AppState, from: String, to: String, stage: bool, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let checked = check_new_path(&to);
     let exists = checked.as_ref().is_ok_and(|p| listed(snap, p, Some(&from)));
-    let op = FileOp::Rename { from: from.clone(), to: checked.clone().unwrap_or_else(|_| to.trim().to_owned()) };
+    // Only a tracked file can be moved in the index; anything else is a plain rename.
+    let stage = stage && tracked(snap, &from);
+    let op = FileOp::Rename { from: from.clone(), to: checked.clone().unwrap_or_else(|_| to.trim().to_owned()), stage };
     let path = match checked {
         Ok(p) if p == from => return,
         Ok(p) => p,

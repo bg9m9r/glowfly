@@ -5,7 +5,7 @@
 
 use super::theme::color;
 use crate::msg::Msg;
-use crate::state::files::{PathForm, listed};
+use crate::state::files::{PathForm, listed, tracked};
 use eframe::egui::{self, Key, RichText};
 use trellis_core::repo::{PathProblem, Snapshot, check_new_path};
 
@@ -19,17 +19,38 @@ pub fn new_file(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>,
     buttons(ui, form, "Create", submit, valid, || Msg::CreateFile(form.text.clone()), msgs)
 }
 
-/// The rename dialog for the working-tree file `old`; returns true when it should close.
-pub fn rename_file(ui: &mut egui::Ui, old: &str, form: &mut PathForm, snap: Option<&Snapshot>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
+const STAGE_HINT: &str = "Moves the file in the index too, so the old and new paths show as one staged rename. The file's other staged and unstaged changes are kept.";
+
+/// The rename dialog for the working-tree file `old`; returns true when it should close. A
+/// tracked file gets the "Stage the rename" checkbox, starting from `stage_renames`; toggling it
+/// sends a `Msg` (update saves the setting).
+pub fn rename_file(
+    ui: &mut egui::Ui,
+    old: &str,
+    form: &mut PathForm,
+    snap: Option<&Snapshot>,
+    stage_renames: bool,
+    focus: bool,
+    msgs: &mut Vec<Msg>,
+) -> bool {
     ui.heading(format!("Rename {old}"));
     ui.add_space(6.0);
     let (submit, valid) = path_field(ui, form, snap, Some(old), focus);
-    let tracked = snap.is_some_and(|s| s.unstaged.iter().chain(&s.staged).any(|f| f.path == old && f.status != '?'));
+    let tracked = snap.is_some_and(|s| tracked(s, old));
     if tracked {
         ui.add_space(4.0);
-        ui.label(RichText::new("Git will show the old path deleted and the new one untracked until you stage both.").color(color::weak()));
+        let mut on = stage_renames;
+        if ui.checkbox(&mut on, "Stage the rename (git mv)").on_hover_text(STAGE_HINT).changed() {
+            msgs.push(Msg::SetRenameStages(on));
+        }
+        let note = if stage_renames {
+            "The rename is staged; changes to the file stay as they are."
+        } else {
+            "Git will show the old path deleted and the new one untracked until you stage both."
+        };
+        ui.label(RichText::new(note).color(color::weak()));
     }
-    let msg = || Msg::RenameFile { from: old.to_owned(), to: form.text.clone() };
+    let msg = || Msg::RenameFile { from: old.to_owned(), to: form.text.clone(), stage: tracked && stage_renames };
     buttons(ui, form, "Rename", submit, valid, msg, msgs)
 }
 
@@ -39,6 +60,14 @@ fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, o
     let r = ui.add(egui::TextEdit::singleline(&mut form.text).hint_text("folder/name.ext").desired_width(f32::INFINITY));
     if focus {
         r.request_focus();
+    }
+    if r.gained_focus() {
+        // The field's id is reused between openings, so a cursor left from the last dialog would
+        // put typing in the middle of the prefill.
+        let mut state = egui::text_edit::TextEditState::load(ui.ctx(), r.id).unwrap_or_default();
+        let end = egui::text::CCursor::new(form.text.chars().count());
+        state.cursor.set_char_range(Some(egui::text::CCursorRange::one(end)));
+        state.store(ui.ctx(), r.id);
     }
     let checked = check_new_path(&form.text);
     let unchanged = old.is_some_and(|o| checked.as_deref() == Ok(o));
@@ -57,10 +86,11 @@ fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, o
 }
 
 /// What is wrong with `text` as a new path, from the text and the snapshot alone. Empty input
-/// has no message (the button is just off).
+/// or a bare folder ("docs/", often a prefill still to be completed) has no message; the button
+/// is just off.
 fn problem(text: &str, snap: Option<&Snapshot>, old: Option<&str>) -> Option<String> {
     match check_new_path(text) {
-        Err(PathProblem::Empty) => None,
+        Err(PathProblem::Empty | PathProblem::Folder) => None,
         Err(p) => Some(p.message()),
         Ok(path) => snap.filter(|s| listed(s, &path, old)).map(|_| format!("{path} already exists.")),
     }

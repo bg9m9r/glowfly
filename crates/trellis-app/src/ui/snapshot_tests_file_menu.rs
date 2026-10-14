@@ -1,9 +1,9 @@
 //! The file actions in file rows' context menus, drawn as menu bodies in a small window: a
 //! commit's modified file, a file the commit deleted (not in the working tree), and working-tree
-//! rows (a modified file, one whose file is gone, a conflicted one). Clicks check the messages
-//! the items send.
+//! rows (a modified file, one whose file is gone, a conflicted one). New file in this folder is
+//! enabled on every row. Clicks check the messages the items send.
 
-use super::file_menu::{DELETE, OPEN_DEFAULT, RENAME, SHOW_IN_FOLDER, commit_file_items, wip_file_items};
+use super::file_menu::{DELETE, NEW_FILE_HERE, OPEN_DEFAULT, RENAME, SHOW_IN_FOLDER, commit_file_items, wip_file_items};
 use super::theme::{apply_theme, color};
 use crate::msg::Msg;
 use eframe::egui;
@@ -69,6 +69,7 @@ fn file_menu_commit() {
     h.snapshot("file_menu_commit");
     assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(!h.get_by_label(SHOW_IN_FOLDER).is_disabled());
+    assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
 }
 
 #[test]
@@ -79,6 +80,7 @@ fn file_menu_commit_deleted_light() {
     assert!(h.query_by_label("Restore the deleted file…").is_some());
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
+    assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled(), "a sibling can still be created");
 }
 
 #[test]
@@ -86,7 +88,7 @@ fn file_menu_wip() {
     let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false }, true);
     h.run();
     h.snapshot("file_menu_wip");
-    for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME, DELETE] {
+    for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, NEW_FILE_HERE, RENAME, DELETE] {
         assert!(!h.get_by_label(label).is_disabled(), "{label}");
     }
 }
@@ -99,6 +101,7 @@ fn file_menu_wip_missing() {
     for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME, DELETE] {
         assert!(h.get_by_label(label).is_disabled(), "{label}");
     }
+    assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
 }
 
 #[test]
@@ -106,6 +109,7 @@ fn file_menu_wip_conflicted() {
     let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false }, true);
     h.run();
     assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
+    assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
     assert!(h.get_by_label(RENAME).is_disabled());
     assert!(h.get_by_label(DELETE).is_disabled());
 }
@@ -141,6 +145,21 @@ fn file_menu_clicks_send_msgs() {
     h.run();
     assert!(matches!(&h.state()[..], [Msg::DeleteFile { path, confirmed: false }] if path == "src/app.txt"));
     drop(h);
+
+    // New file in this folder: the row's folder, "" at the root, and a folder the commit
+    // deleted from the working tree.
+    for (path, status, menu, want) in [
+        ("src/app.txt", 'M', Menu::Wip { missing: false }, "src/"),
+        ("README.md", 'M', Menu::Commit { in_workdir: true }, ""),
+        ("old/notes.txt", 'D', Menu::Commit { in_workdir: false }, "old/"),
+    ] {
+        let mut h = harness(entry(path, status), menu, true);
+        h.run();
+        h.get_by_label(NEW_FILE_HERE).click();
+        h.run();
+        assert!(matches!(&h.state()[..], [Msg::NewFileDialog(p)] if p == want), "{path}");
+        drop(h);
+    }
 
     // A disabled item sends nothing.
     let mut h = harness(entry("src/gone.txt", 'D'), Menu::Wip { missing: true }, true);

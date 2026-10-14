@@ -60,6 +60,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         | Msg::CreateFile(_)
         | Msg::RenameFileDialog(_)
         | Msg::RenameFile { .. }
+        | Msg::SetRenameStages(_)
         | Msg::DeleteFile { .. }
         | Msg::WorkFileDone { .. } => super::work_files::handle(st, msg, now, fx),
         Msg::OpenWorkingFile(p) => {

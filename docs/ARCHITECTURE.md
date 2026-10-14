@@ -29,8 +29,9 @@ crates/
                           (reading an index conflict into chunks), resolve (picks, output, write
                           and stage), template (commit.template: the prefill and its comment char),
                           workfile (creating, renaming and deleting a working-tree file; path
-                          checks), noclobber (a move that never replaces an existing file),
-                          tracked (the paths in the index, for the palette's file finder)
+                          checks), workfile_mv (a rename staged through git mv), noclobber (a
+                          move that never replaces an existing file), tracked (the paths in
+                          the index, for the palette's file finder)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -115,7 +116,8 @@ crates/
                           branch_menu (local branch menu), branch_dialogs (rename, upstream),
                           ref_visibility (hide/solo menu items, row markers and banner),
                           file_menu (file actions in file rows' menus: restore, open, show,
-                          rename, delete), file_dialogs (new file, rename file),
+                          new file in this folder, rename, delete), file_dialogs (new file,
+                          rename file),
                           askpass (the credential prompt, drawn above every other dialog),
                           palette (the Ctrl+P command palette overlay),
                           status, prefs/ (editor: the Editor page), theme, widgets

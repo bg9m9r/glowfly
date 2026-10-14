@@ -12,30 +12,30 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::repo::{self, DiffTarget, FileDiff, FileEntry, LoadOptions};
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
 /// A loaded scratch repository (one commit; a.txt modified in the working tree).
-fn loaded(name: &str) -> (AppState, PathBuf) {
+pub(super) fn loaded(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     (st, dir)
 }
 
-fn entry(path: &str, status: char) -> FileEntry {
+pub(super) fn entry(path: &str, status: char) -> FileEntry {
     FileEntry { path: path.into(), status }
 }
 
-fn new_form(st: &AppState) -> &PathForm {
+pub(super) fn new_form(st: &AppState) -> &PathForm {
     match &st.modal {
         Some(Modal::NewFile(f)) => f,
         _ => panic!("expected the New file dialog"),
     }
 }
 
-fn rename_form(st: &AppState) -> &PathForm {
+pub(super) fn rename_form(st: &AppState) -> &PathForm {
     match &st.modal {
         Some(Modal::RenameFile { form, .. }) => form,
         _ => panic!("expected the rename dialog"),
@@ -46,7 +46,7 @@ fn last_log(st: &AppState) -> &str {
     st.log.last().map(|l| l.text.as_str()).unwrap_or_default()
 }
 
-fn work_ops(fx: &[Effect]) -> Vec<FileOp> {
+pub(super) fn work_ops(fx: &[Effect]) -> Vec<FileOp> {
     fx.iter().filter_map(|e| if let Effect::WorkFile { op, .. } = e { Some(op.clone()) } else { None }).collect()
 }
 
@@ -119,14 +119,14 @@ fn rename_checks_the_target() {
     st.snap.as_mut().unwrap().unstaged = vec![entry("a.txt", 'M'), entry("b.txt", '?')];
     run(&mut st, Msg::RenameFileDialog("a.txt".into()));
 
-    assert!(run(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "a.txt".into() }).is_empty(), "unchanged");
+    assert!(run(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "a.txt".into(), stage: false }).is_empty(), "unchanged");
     assert!(rename_form(&st).error.is_none());
 
-    assert!(run(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "b.txt".into() }).is_empty());
+    assert!(run(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "b.txt".into(), stage: false }).is_empty());
     assert_eq!(rename_form(&st).error, Some(("b.txt".into(), "b.txt already exists.".into())));
 
-    let fx = run(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "A.txt".into() });
-    assert_eq!(work_ops(&fx), [FileOp::Rename { from: "a.txt".into(), to: "A.txt".into() }]);
+    let fx = run(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "A.txt".into(), stage: false });
+    assert_eq!(work_ops(&fx), [FileOp::Rename { from: "a.txt".into(), to: "A.txt".into(), stage: false }]);
     assert!(rename_form(&st).busy);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -195,14 +195,14 @@ fn create_result_closes_or_shows_the_error() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-fn empty_diff() -> FileDiff {
+pub(super) fn empty_diff() -> FileDiff {
     FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
 }
 
 #[test]
 fn rename_or_delete_closes_the_old_paths_diff() {
     let (mut st, dir) = loaded("wf-close-diff");
-    for op in [FileOp::Delete("a.txt".into()), FileOp::Rename { from: "a.txt".into(), to: "b.txt".into() }] {
+    for op in [FileOp::Delete("a.txt".into()), FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: false }] {
         st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff()));
         run(&mut st, Msg::WorkFileDone { op: op.clone(), result: Ok(false) });
         assert!(st.diff.is_none(), "{op:?}");
@@ -245,7 +245,7 @@ fn end_to_end_create_delete_rename() {
     assert!(!dir.join("notes").exists());
     assert!(st.toasts.last().is_some_and(|t| t.text == "Deleted notes/todo.txt."));
 
-    drive(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "b.txt".into() });
+    drive(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "b.txt".into(), stage: false });
     let unstaged = &st.snap.as_ref().unwrap().unstaged;
     assert!(unstaged.contains(&entry("a.txt", 'D')) && unstaged.contains(&entry("b.txt", '?')), "{unstaged:?}");
     assert!(st.snap.as_ref().unwrap().staged.is_empty(), "nothing staged");

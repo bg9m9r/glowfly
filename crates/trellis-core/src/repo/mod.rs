@@ -20,6 +20,7 @@ mod revert;
 mod template;
 mod tracked;
 mod workfile;
+mod workfile_mv;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{commit_detail, commit_stats, compare_files, load_diff, load_diff_with};
@@ -34,6 +35,7 @@ pub use revert::revert_hunk;
 pub use template::{CommitTemplate, commit_template};
 pub use tracked::tracked_paths;
 pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
+pub use workfile_mv::rename_file_staged;
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -321,5 +323,7 @@ mod tracked_tests;
 mod whole_tests;
 #[cfg(test)]
 mod workfile_exact_tests;
+#[cfg(test)]
+mod workfile_mv_tests;
 #[cfg(test)]
 mod workfile_tests;

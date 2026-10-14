@@ -3,8 +3,8 @@
 //! Working tree only: nothing here touches the index or HEAD, so a renamed or deleted tracked
 //! file shows up as an unstaged change. The file operations use plain `std::fs`, because no git
 //! config, hooks or filters apply to creating, moving or removing a working copy; libgit2 is
-//! used only to ask whether a path is ignored and whether it has unresolved conflicts, and the
-//! git CLI is not involved.
+//! used only to ask whether a path is ignored and whether it has unresolved conflicts. A rename
+//! that is also staged lives in `workfile_mv`, which shares the checks here.
 //!
 //! Every path is checked before anything is written: it must stay inside the working tree, never
 //! enter `.git`, and never go through a symbolic link or junction in its parent folders, so the
@@ -151,7 +151,7 @@ fn check_parents(root: &Path, rel: &str) -> Result<()> {
 }
 
 /// Guards against a folder swapped for a link between the checks and the write.
-fn ensure_inside(root: &Path, dir: &Path) -> Result<()> {
+pub(super) fn ensure_inside(root: &Path, dir: &Path) -> Result<()> {
     if dir.canonicalize()?.starts_with(root.canonicalize()?) {
         Ok(())
     } else {
@@ -160,7 +160,7 @@ fn ensure_inside(root: &Path, dir: &Path) -> Result<()> {
 }
 
 /// Creates the missing parent folders of `rel`, returning the ones it made (outermost first).
-fn create_parents(root: &Path, rel: &str) -> Result<Vec<PathBuf>> {
+pub(super) fn create_parents(root: &Path, rel: &str) -> Result<Vec<PathBuf>> {
     let mut created = Vec::new();
     let mut dir = root.to_path_buf();
     let parts: Vec<&str> = rel.split('/').collect();
@@ -178,7 +178,7 @@ fn create_parents(root: &Path, rel: &str) -> Result<Vec<PathBuf>> {
 }
 
 /// Removes folders `create_parents` made, innermost first, ignoring errors.
-fn remove_dirs(created: &[PathBuf]) {
+pub(super) fn remove_dirs(created: &[PathBuf]) {
     for d in created.iter().rev() {
         let _ = std::fs::remove_dir(d);
     }
@@ -186,7 +186,7 @@ fn remove_dirs(created: &[PathBuf]) {
 
 /// Removes the parent folders of `rel` left empty, stopping at the first that isn't (or at the
 /// repository root), as `git rm` does.
-fn prune_empty_parents(root: &Path, rel: &str) {
+pub(super) fn prune_empty_parents(root: &Path, rel: &str) {
     let parts: Vec<&str> = rel.split('/').collect();
     for depth in (1..parts.len()).rev() {
         if std::fs::remove_dir(root.join(parts[..depth].join("/"))).is_err() {
@@ -242,11 +242,19 @@ pub fn create_file(workdir: &Path, path: &str) -> Result<bool> {
     Ok(repo.status_should_ignore(Path::new(&rel))?)
 }
 
-/// Moves the working-tree file `from` to the typed path `to`, creating missing folders and
-/// removing the ones `from` leaves empty. Never overwrites a file; only a change of case is
-/// allowed onto a path that exists, when both name the same file on a case-insensitive file
-/// system. Returns whether git ignores the new path.
-pub fn rename_file(workdir: &Path, from: &str, to: &str) -> Result<bool> {
+/// A rename that passed every check, ready to move.
+pub(super) struct RenamePlan {
+    pub root: PathBuf,
+    pub from: String,
+    pub to: String,
+    pub full_from: PathBuf,
+    pub full_to: PathBuf,
+    pub case_only: bool,
+}
+
+/// The checks shared by both renames: path rules, links in parent folders, an existing,
+/// unconflicted source, and nothing at the target except the same file under another case.
+pub(super) fn plan_rename(workdir: &Path, from: &str, to: &str) -> Result<(Repository, RenamePlan)> {
     let from = contained(from)?;
     let to = check_new_path(to).map_err(problem)?;
     if from == to {
@@ -264,13 +272,23 @@ pub fn rename_file(workdir: &Path, from: &str, to: &str) -> Result<bool> {
     {
         return Err(already_exists(&to, m.is_dir()));
     }
-    let created = create_parents(&root, &to)?;
-    let moved = ensure_inside(&root, full_to.parent().unwrap_or(&root)).and_then(|()| {
+    let plan = RenamePlan { root, from: from.to_owned(), to, full_from, full_to, case_only };
+    Ok((repo, plan))
+}
+
+/// Moves the working-tree file `from` to the typed path `to`, creating missing folders and
+/// removing the ones `from` leaves empty. Never overwrites a file; only a change of case is
+/// allowed onto a path that exists, when both name the same file on a case-insensitive file
+/// system. Returns whether git ignores the new path.
+pub fn rename_file(workdir: &Path, from: &str, to: &str) -> Result<bool> {
+    let (repo, p) = plan_rename(workdir, from, to)?;
+    let created = create_parents(&p.root, &p.to)?;
+    let moved = ensure_inside(&p.root, p.full_to.parent().unwrap_or(&p.root)).and_then(|()| {
         // The check above gives a clear message; the move itself still refuses a file that
         // appeared since, rather than replacing it.
-        let r = if case_only { rename_via_temp(&full_from, &full_to) } else { rename_noclobber(&full_from, &full_to) };
+        let r = if p.case_only { rename_via_temp(&p.full_from, &p.full_to) } else { rename_noclobber(&p.full_from, &p.full_to) };
         r.map_err(|e| match e.kind() {
-            ErrorKind::AlreadyExists => already_exists(&to, full_to.is_dir()),
+            ErrorKind::AlreadyExists => already_exists(&p.to, p.full_to.is_dir()),
             _ => e.into(),
         })
     });
@@ -278,8 +296,8 @@ pub fn rename_file(workdir: &Path, from: &str, to: &str) -> Result<bool> {
         remove_dirs(&created);
         return Err(e);
     }
-    prune_empty_parents(&root, from);
-    Ok(repo.status_should_ignore(Path::new(&to))?)
+    prune_empty_parents(&p.root, &p.from);
+    Ok(repo.status_should_ignore(Path::new(&p.to))?)
 }
 
 /// Whether `to` is `from` under another case on a case-insensitive file system: both resolve to

@@ -77,6 +77,8 @@ mod whitespace_tests;
 #[cfg(test)]
 mod whole_file_tests;
 #[cfg(test)]
+mod work_files_stage_tests;
+#[cfg(test)]
 mod work_files_tests;
 
 pub use repo::commit_matches;
@@ -209,6 +211,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::CreateFile(_)
         | Msg::RenameFileDialog(_)
         | Msg::RenameFile { .. }
+        | Msg::SetRenameStages(_)
         | Msg::DeleteFile { .. }
         | Msg::WorkFileDone { .. } => files::handle(st, msg, now, &mut fx),
         Msg::RenameBranchDialog(_)
