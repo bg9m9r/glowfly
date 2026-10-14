@@ -480,6 +480,16 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       working tree
     - [ ] Name the file in the show-in-folder tooltip and the open failure message
     - [ ] Painted icons for Open and Show in the diff header to save room (split widgets.rs first)
+- [ ] **Repository trust**
+  A repository's `.git/config` (`core.sshCommand`, `credential.helper`, `core.fsmonitor`) and its
+  hooks can run arbitrary commands as soon as git touches it. Before Trellis runs git in a
+  repository it didn't clone or create (auto-fetch, hooks), ask whether to trust it.
+  - [ ] Ask on first open of an untrusted repository, naming the config keys and hooks that
+    would run commands; repositories Trellis cloned or initialised are trusted automatically
+  - [ ] Remember the decision per repository, with a Preferences list to review and revoke it
+  - [ ] Hold background fetch (and anything else that runs git on its own) until the user decides
+  - [ ] While untrusted, browse read-only through libgit2 and say in the toolbar why fetch,
+    pull and commit hooks are paused
 
 ## P1: power features
 
