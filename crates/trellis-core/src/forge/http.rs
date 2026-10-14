@@ -78,11 +78,10 @@ pub(super) fn request(method: &str, auth: &Auth, url: &str) -> ureq::Request {
         .set("X-GitHub-Api-Version", "2022-11-28")
 }
 
-fn read_error(code: u16, resp: ureq::Response) -> Error {
-    let mut body = Vec::new();
-    let _ = resp.into_reader().take(MAX_ERROR).read_to_end(&mut body);
-    let body = String::from_utf8_lossy(&body);
-    let msg = serde_json::from_str::<serde_json::Value>(&body)
+/// The error message in a failed response's body, cleaned of control and bidi characters,
+/// shortened, and labelled as the server's words. Empty when the body says nothing.
+fn server_message(body: &str) -> String {
+    let msg = serde_json::from_str::<serde_json::Value>(body)
         .ok()
         .and_then(|v| {
             v["message"]
@@ -97,7 +96,20 @@ fn read_error(code: u16, resp: ureq::Response) -> Error {
                     _ => m.to_owned(),
                 })
         })
-        .unwrap_or_else(|| body.chars().take(200).collect());
+        .unwrap_or_else(|| body.to_owned());
+    let msg = crate::text::printable(&msg);
+    if msg.is_empty() {
+        return msg;
+    }
+    let short: String = msg.chars().take(200).collect();
+    let more = if short.len() < msg.len() { "…" } else { "" };
+    format!("the server said \u{201c}{short}{more}\u{201d}")
+}
+
+fn read_error(code: u16, resp: ureq::Response) -> Error {
+    let mut body = Vec::new();
+    let _ = resp.into_reader().take(MAX_ERROR).read_to_end(&mut body);
+    let msg = server_message(&String::from_utf8_lossy(&body));
     match code {
         401 => Error::Auth(if msg.is_empty() { "401".into() } else { msg }),
         403 => Error::Forbidden(msg),
@@ -145,5 +157,15 @@ mod tests {
         assert_eq!(read_capped(&b"12345"[..], 5).unwrap(), b"12345");
         let err = read_capped(std::io::repeat(b'x'), 2 * 1024 * 1024).unwrap_err();
         assert!(err.to_string().contains("larger than 2 MB"), "{err}");
+    }
+
+    #[test]
+    fn server_messages_are_cleaned_and_labelled() {
+        assert_eq!(server_message(r#"{"message":"Bad credentials"}"#), "the server said \u{201c}Bad credentials\u{201d}");
+        let sneaky = "{\"message\":\"ok\\u001b[2J\\u202e evil\\nline\"}";
+        assert_eq!(server_message(sneaky), "the server said \u{201c}ok[2J evil line\u{201d}");
+        let long = server_message(&"x".repeat(500));
+        assert!(long.contains(&"x".repeat(200)) && !long.contains(&"x".repeat(201)) && long.contains('…'), "{long}");
+        assert_eq!(server_message("  \r\n "), "");
     }
 }
