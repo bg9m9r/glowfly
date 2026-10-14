@@ -15,8 +15,9 @@ fn with_form(theme: ThemeChoice, form: CloneForm) -> AppState {
 }
 
 fn form() -> CloneForm {
-    // "." is the test's working folder, so the folder check passes.
-    CloneForm { url: "https://example.com/team/app.git".into(), shallow: true, ..CloneForm::new(".".into()) }
+    // The folder check has answered that "." is a folder.
+    let checked = Some((".".into(), true));
+    CloneForm { url: "https://example.com/team/app.git".into(), shallow: true, parent_checked: checked, ..CloneForm::new(".".into()) }
 }
 
 #[test]

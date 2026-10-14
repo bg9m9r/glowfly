@@ -28,6 +28,9 @@ pub struct CloneForm {
     pub depth: String,
     pub since: String,
     pub branch: String,
+    /// The parent folder text last checked on disk (trimmed) and whether it is a folder. Set
+    /// by `update` from `Msg::CloneParentChecked`; views never look at the disk.
+    pub parent_checked: Option<(String, bool)>,
 }
 
 /// What is wrong with the form: each field's red line (None when it is fine or empty in a way
@@ -62,6 +65,22 @@ impl CloneForm {
             depth: "1".into(),
             since: String::new(),
             branch: String::new(),
+            parent_checked: None,
+        }
+    }
+
+    /// Whether the parent folder exists, by the last check of the text now in the field; None
+    /// until that text has been checked.
+    pub fn parent_is_dir(&self) -> Option<bool> {
+        self.parent_checked.as_ref().filter(|(text, _)| text == self.parent.trim()).map(|&(_, is_dir)| is_dir)
+    }
+
+    /// `problems` with the last check of the parent folder. Until the text in the field has
+    /// been checked, Clone is blocked without a message.
+    pub fn problems_now(&self, today: NaiveDate) -> CloneProblems {
+        match self.parent_is_dir() {
+            Some(is_dir) => self.problems(today, is_dir),
+            None => CloneProblems { blocked: true, ..self.problems(today, true) },
         }
     }
 

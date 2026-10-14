@@ -212,3 +212,43 @@ fn shallow_clone_end_to_end_opens_the_new_repository() {
     let _ = std::fs::remove_dir_all(&parent);
     let _ = std::fs::remove_dir_all(&src);
 }
+
+#[test]
+fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
+    let dir = scratch_repo("clone-parent");
+    let now = Instant::now();
+    let mut st = AppState::new(Settings::default(), vec![dir.join("app")], now);
+    // Opening the dialog checks its prefilled folder at once.
+    let fx = update(&mut st, Msg::CloneDialog, now);
+    assert!(matches!(&fx[..], [Effect::CheckCloneParent { delay, .. }] if delay.is_zero()), "{fx:?}");
+    form(&mut st).url = URL.into();
+    form(&mut st).parent = format!(" {} ", dir.display());
+    let p = form(&mut st).problems_now(today());
+    assert!(p.blocked && p.folder.is_none(), "unchecked text blocks Clone, without a message");
+
+    // An edit asks again after a pause.
+    let fx = update(&mut st, Msg::CloneParentEdited, now);
+    let [Effect::CheckCloneParent { parent, delay }] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
+    assert_eq!((parent.clone(), *delay), (dir.display().to_string(), super::clone::PARENT_CHECK_DELAY));
+    let answer = crate::runner::execute(Effect::CheckCloneParent { parent: parent.clone(), delay: Default::default() }).unwrap();
+    // An answer for text that has changed since is dropped.
+    update(&mut st, Msg::CloneParentChecked { parent: "elsewhere".into(), is_dir: true }, now);
+    assert_eq!(form(&mut st).parent_is_dir(), None);
+    update(&mut st, answer, now);
+    assert_eq!(form(&mut st).parent_is_dir(), Some(true));
+    assert!(!form(&mut st).problems_now(today()).blocked);
+
+    // A folder that isn't there gets its red line once checked.
+    let gone = dir.join("missing");
+    form(&mut st).parent = gone.display().to_string();
+    let fx = update(&mut st, Msg::CloneParentEdited, now);
+    let [Effect::CheckCloneParent { parent, .. }] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
+    let answer = crate::runner::execute(Effect::CheckCloneParent { parent: parent.clone(), delay: Default::default() }).unwrap();
+    update(&mut st, answer, now);
+    assert_eq!(form(&mut st).problems_now(today()).folder.as_deref(), Some("That folder doesn't exist."));
+
+    // A picked folder is checked at once.
+    let fx = update(&mut st, Msg::FolderPicked { purpose: FolderPurpose::CloneParent, path: Some(dir.clone()) }, now);
+    assert!(matches!(&fx[..], [Effect::CheckCloneParent { delay, .. }] if delay.is_zero()), "{fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

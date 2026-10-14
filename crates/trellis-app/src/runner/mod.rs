@@ -182,6 +182,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
         Effect::CheckSubmodule { workdir, path } => Some(submodules::check(&workdir, path)),
         Effect::CheckWorktreeFolder(r) => Some(worktrees::check(r)),
+        Effect::CheckCloneParent { parent, delay } => Some(files::check_clone_parent(parent, delay)),
         Effect::DetectLfs { cwd } => Some(Msg::Lfs(LfsMsg::Detected(trellis_core::lfs::installed(&cwd)))),
         Effect::RemoveWorktree(r) => Some(worktrees::remove(r)),
         Effect::LoadLfs { workdir, generation } => {

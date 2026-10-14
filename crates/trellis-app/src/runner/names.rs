@@ -19,6 +19,7 @@ pub(super) fn effect_name(e: &Effect) -> &'static str {
         Effect::LoadTrackedPaths { .. } => "tracked-paths",
         Effect::CheckSubmodule { .. } => "check-submodule",
         Effect::CheckWorktreeFolder(_) => "check-worktree-folder",
+        Effect::CheckCloneParent { .. } => "check-clone-parent",
         Effect::DetectLfs { .. } => "lfs-detect",
         Effect::RemoveWorktree(_) => "remove-worktree",
         Effect::LoadLfs { .. } => "lfs-status",

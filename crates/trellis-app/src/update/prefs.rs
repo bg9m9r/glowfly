@@ -189,6 +189,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 if let Some(Modal::Clone(form)) = st.modal.as_mut() {
                     form.parent = path.display().to_string();
                 }
+                super::clone::check_parent(st, std::time::Duration::ZERO, fx);
             }
             FolderPurpose::HooksPath => {
                 let value = path.display().to_string();

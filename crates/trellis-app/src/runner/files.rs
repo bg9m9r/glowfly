@@ -1,5 +1,6 @@
 //! Creating, renaming, deleting and discarding (untracked) a working-tree file
-//! (`Effect::WorkFile`), and listing the tracked files (`Effect::LoadTrackedPaths`).
+//! (`Effect::WorkFile`), listing the tracked files (`Effect::LoadTrackedPaths`), and checking the
+//! Clone dialog's parent folder (`Effect::CheckCloneParent`).
 
 use crate::effect::{DeleteMode, FileOp, WorkFileOk};
 use crate::msg::Msg;
@@ -66,4 +67,14 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
 pub(super) fn tracked_paths(workdir: &Path, generation: u64) -> Msg {
     let result = repo::tracked_paths(workdir).map_err(|e| format!("Could not list the repository's files: {e}"));
     Msg::TrackedPathsLoaded { generation, result }
+}
+
+/// Whether `parent` is a folder, looked at after `delay` (`update` drops answers for text the
+/// user has changed since).
+pub(super) fn check_clone_parent(parent: String, delay: std::time::Duration) -> Msg {
+    if !delay.is_zero() {
+        std::thread::sleep(delay);
+    }
+    let is_dir = Path::new(&parent).is_dir();
+    Msg::CloneParentChecked { parent, is_dir }
 }

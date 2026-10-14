@@ -5,6 +5,7 @@
 mod askpass;
 mod avatars;
 mod branches;
+mod clone;
 mod commit;
 mod conflict;
 mod diff;
@@ -371,10 +372,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::CloseModal => st.modal = None,
         Msg::NewBranch { start, name } => st.modal = Some(crate::state::Modal::NewBranch { start, name, checkout: true }),
         Msg::NewTag { .. } | Msg::CreateTag { .. } | Msg::SetPushNewTags(_) => tags::handle(st, msg, &mut fx),
-        Msg::CloneDialog => {
-            let parent = st.recent.first().and_then(|p| p.parent()).map(|p| p.display().to_string()).unwrap_or_default();
-            st.modal = Some(crate::state::Modal::Clone(crate::state::clone::CloneForm::new(parent)));
-        }
+        Msg::CloneDialog | Msg::CloneParentEdited | Msg::CloneParentChecked { .. } => clone::handle(st, msg, &mut fx),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),
         Msg::OpenTerminal => {

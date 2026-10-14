@@ -58,18 +58,20 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, msgs: &mu
     // The folder check doesn't affect the URL's line.
     problem(ui, form.problems(today, true).url.as_ref());
     ui.horizontal(|ui| {
-        ui.add(
+        let edit = ui.add(
             egui::TextEdit::singleline(&mut form.parent)
                 .id(Id::new("trellis-clone-parent"))
                 .hint_text("Clone into folder")
                 .desired_width(340.0),
         );
+        if edit.changed() {
+            msgs.push(Msg::CloneParentEdited);
+        }
         if ui.button("Browse…").clicked() {
             msgs.push(Msg::PickFolder(FolderPurpose::CloneParent));
         }
     });
-    let parent_is_dir = Path::new(form.parent.trim()).is_dir();
-    problem(ui, form.problems(today, parent_is_dir).folder.as_ref());
+    problem(ui, form.problems_now(today).folder.as_ref());
     let name = form.name();
     if !name.is_empty() && !form.parent.trim().is_empty() {
         destination(ui, &Path::new(form.parent.trim()).join(&name).display().to_string());
@@ -86,23 +88,23 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, msgs: &mu
             match form.limit {
                 LimitKind::Depth => {
                     row(ui, "Commits", &mut form.depth, "trellis-clone-depth", "", 70.0);
-                    problem(ui, form.problems(today, parent_is_dir).depth.as_ref());
+                    problem(ui, form.problems_now(today).depth.as_ref());
                     note(ui, "How many of the newest commits on the branch to download.");
                 }
                 LimitKind::Since => {
                     row(ui, "Since", &mut form.since, "trellis-clone-since", "YYYY-MM-DD", 110.0);
-                    problem(ui, form.problems(today, parent_is_dir).since.as_ref());
+                    problem(ui, form.problems_now(today).since.as_ref());
                     note(ui, "Commits made before this day are left out.");
                 }
             }
             ui.add_space(4.0);
             row(ui, "Branch", &mut form.branch, "trellis-clone-branch", "Remote's default branch", 220.0);
-            problem(ui, form.problems(today, parent_is_dir).branch.as_ref());
+            problem(ui, form.problems_now(today).branch.as_ref());
             note(ui, "Only this branch is downloaded. Leave it empty for the remote's default branch.");
         });
     }
     ui.add_space(8.0);
-    let p = form.problems(today, parent_is_dir);
+    let p = form.problems_now(today);
     ui.horizontal(|ui| {
         if ui.add_enabled(!p.blocked, egui::Button::new("Clone")).clicked()
             && let Some(req) = form.request(today)

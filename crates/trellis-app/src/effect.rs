@@ -196,6 +196,12 @@ pub enum Effect {
     /// Checks the folder of a worktree about to be created (missing, or an empty folder) before
     /// `git worktree add` runs. Unscoped: the dialog waits for the answer even if tabs change.
     CheckWorktreeFolder(crate::worktree::NewWorktree),
+    /// Whether the Clone dialog's parent folder `parent` exists, checked after `delay` so typing
+    /// doesn't wait on the disk. Reported as `Msg::CloneParentChecked`.
+    CheckCloneParent {
+        parent: String,
+        delay: std::time::Duration,
+    },
     /// Whether git-lfs is installed (`git lfs version`). Unscoped: the answer is global.
     DetectLfs {
         cwd: PathBuf,

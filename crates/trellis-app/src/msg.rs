@@ -346,6 +346,13 @@ pub enum Msg {
     /// The New tag dialog's push checkbox, saved in settings.
     SetPushNewTags(bool),
     CloneDialog,
+    /// The Clone dialog's parent folder text changed: check it on disk after a short pause.
+    CloneParentEdited,
+    /// Whether the Clone dialog's parent folder (the trimmed text `parent`) is a folder.
+    CloneParentChecked {
+        parent: String,
+        is_dir: bool,
+    },
     PickFolder(FolderPurpose),
 
     // ---- outside the app
