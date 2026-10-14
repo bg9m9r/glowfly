@@ -13,6 +13,7 @@ mod history;
 mod index;
 mod lines;
 mod load;
+mod noclobber;
 mod resolve;
 mod restore;
 mod revert;
@@ -314,5 +315,7 @@ mod template_tests;
 mod tests;
 #[cfg(test)]
 mod whole_tests;
+#[cfg(test)]
+mod workfile_exact_tests;
 #[cfg(test)]
 mod workfile_tests;

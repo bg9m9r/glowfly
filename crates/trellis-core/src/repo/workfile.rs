@@ -11,6 +11,7 @@
 //! repository can't be escaped. New names must also be valid on Windows, so the repository stays
 //! checkout-able there.
 
+use super::noclobber::rename_noclobber;
 use crate::error::{Error, Result};
 use git2::Repository;
 use std::fs::{Metadata, OpenOptions};
@@ -48,10 +49,6 @@ const DEVICE_NAMES: &[&str] = &["CON", "PRN", "AUX", "NUL"];
 /// Checks a typed repo-relative path for a new file and returns it normalized: '/' separators,
 /// no empty or '.' components. Pure; looks at the text only.
 pub fn check_new_path(input: &str) -> Result<String, PathProblem> {
-    normalize(input, true)
-}
-
-fn normalize(input: &str, new_name: bool) -> Result<String, PathProblem> {
     let text = input.trim().replace('\\', "/");
     let b = text.as_bytes();
     let drive = b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':' && (b.len() == 2 || b[2] == b'/');
@@ -69,13 +66,11 @@ fn normalize(input: &str, new_name: bool) -> Result<String, PathProblem> {
     if parts.iter().any(|p| is_git_dir(p)) {
         return Err(PathProblem::InsideGitDir);
     }
-    if new_name {
-        if text.ends_with('/') {
-            return Err(PathProblem::Folder);
-        }
-        if let Some(bad) = parts.iter().find(|p| !valid_name(p)) {
-            return Err(PathProblem::BadName((*bad).to_owned()));
-        }
+    if text.ends_with('/') {
+        return Err(PathProblem::Folder);
+    }
+    if let Some(bad) = parts.iter().find(|p| !valid_name(p)) {
+        return Err(PathProblem::BadName((*bad).to_owned()));
     }
     Ok(parts.join("/"))
 }
@@ -99,10 +94,30 @@ fn valid_name(part: &str) -> bool {
     !(numbered || DEVICE_NAMES.iter().any(|d| stem.eq_ignore_ascii_case(d)))
 }
 
-/// An existing path to rename or delete: the containment rules only, so a file with an odd name
-/// can still be removed.
-fn contained(path: &str) -> Result<String> {
-    normalize(path, false).map_err(problem)
+/// An existing path to rename or delete, exactly as status lists it ('/' separators). Only the
+/// containment rules apply, so a file with an odd name can still be removed, and nothing is
+/// trimmed or rewritten: " a.txt" or (outside Windows) "a\b" is that file, never "a.txt" or
+/// "a/b". A path the system would read as another file is refused instead.
+fn contained(path: &str) -> Result<&str> {
+    let parts: Vec<&str> = path.split('/').collect();
+    if path.starts_with('/') {
+        return Err(problem(PathProblem::Absolute));
+    }
+    if parts.iter().any(|p| p.is_empty() || *p == ".") {
+        return Err(Error::Other(format!("{path:?} isn't a working-tree file path")));
+    }
+    if parts.contains(&"..") {
+        return Err(problem(PathProblem::OutsideRepo));
+    }
+    if parts.iter().any(|p| is_git_dir(p)) {
+        return Err(problem(PathProblem::InsideGitDir));
+    }
+    // Windows reads '\' as a separator, ':' as a drive or stream, and drops trailing dots and
+    // spaces, so such a path would reach a different file from the one listed.
+    if cfg!(windows) && (path.contains(['\\', ':']) || parts.iter().any(|p| p.ends_with(['.', ' ']))) {
+        return Err(Error::Unsupported(format!("{path:?} can't be reached by that name on Windows")));
+    }
+    Ok(path)
 }
 
 fn problem(p: PathProblem) -> Error {
@@ -238,14 +253,12 @@ pub fn rename_file(workdir: &Path, from: &str, to: &str) -> Result<bool> {
         return Err(Error::Other("the new path is the same".into()));
     }
     let (repo, root) = open_root(workdir)?;
-    check_parents(&root, &from)?;
+    check_parents(&root, from)?;
     check_parents(&root, &to)?;
-    let (full_from, full_to) = (root.join(&from), root.join(&to));
-    existing(&root, &from)?;
-    conflicted(&repo, &from)?;
+    let (full_from, full_to) = (root.join(from), root.join(&to));
+    existing(&root, from)?;
+    conflicted(&repo, from)?;
     let case_only = from.eq_ignore_ascii_case(&to);
-    // std::fs::rename replaces an existing target on every system, so check first. A file that
-    // appears between this check and the rename would still be replaced; that window is tiny.
     if let Ok(m) = full_to.symlink_metadata()
         && !(case_only && same_file_by_case(&full_from, &full_to))
     {
@@ -253,13 +266,19 @@ pub fn rename_file(workdir: &Path, from: &str, to: &str) -> Result<bool> {
     }
     let created = create_parents(&root, &to)?;
     let moved = ensure_inside(&root, full_to.parent().unwrap_or(&root)).and_then(|()| {
-        if case_only { rename_via_temp(&full_from, &full_to) } else { std::fs::rename(&full_from, &full_to).map_err(Error::from) }
+        // The check above gives a clear message; the move itself still refuses a file that
+        // appeared since, rather than replacing it.
+        let r = if case_only { rename_via_temp(&full_from, &full_to) } else { rename_noclobber(&full_from, &full_to) };
+        r.map_err(|e| match e.kind() {
+            ErrorKind::AlreadyExists => already_exists(&to, full_to.is_dir()),
+            _ => e.into(),
+        })
     });
     if let Err(e) = moved {
         remove_dirs(&created);
         return Err(e);
     }
-    prune_empty_parents(&root, &from);
+    prune_empty_parents(&root, from);
     Ok(repo.status_should_ignore(Path::new(&to))?)
 }
 
@@ -277,13 +296,14 @@ fn same_file_by_case(from: &Path, to: &Path) -> bool {
 
 /// A change of case only: some file systems treat a direct rename as a no-op, so go through a
 /// temporary name in the same folder.
-fn rename_via_temp(from: &Path, to: &Path) -> Result<()> {
+/// Neither step replaces an existing file.
+fn rename_via_temp(from: &Path, to: &Path) -> std::io::Result<()> {
     let name = from.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let temp = from.with_file_name(format!(".{name}.trellis-rename-{}", std::process::id()));
-    std::fs::rename(from, &temp)?;
-    if let Err(e) = std::fs::rename(&temp, to) {
-        let _ = std::fs::rename(&temp, from);
-        return Err(e.into());
+    rename_noclobber(from, &temp)?;
+    if let Err(e) = rename_noclobber(&temp, to) {
+        let _ = rename_noclobber(&temp, from);
+        return Err(e);
     }
     Ok(())
 }
@@ -293,11 +313,11 @@ fn rename_via_temp(from: &Path, to: &Path) -> Result<()> {
 pub fn delete_file(workdir: &Path, path: &str) -> Result<()> {
     let rel = contained(path)?;
     let (repo, root) = open_root(workdir)?;
-    check_parents(&root, &rel)?;
-    let m = existing(&root, &rel)?;
-    conflicted(&repo, &rel)?;
-    remove(&root.join(&rel), &m)?;
-    prune_empty_parents(&root, &rel);
+    check_parents(&root, rel)?;
+    let m = existing(&root, rel)?;
+    conflicted(&repo, rel)?;
+    remove(&root.join(rel), &m)?;
+    prune_empty_parents(&root, rel);
     Ok(())
 }
 

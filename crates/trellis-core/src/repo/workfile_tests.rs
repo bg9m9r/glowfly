@@ -294,8 +294,13 @@ fn deletes_an_oddly_named_file() {
     // Names check_new_path refuses can still exist (made elsewhere) and be deleted.
     let dir = scratch_repo("wf-delete-odd");
     write(&dir, "ends with dot.", "x\n");
-    if dir.join("ends with dot.").exists() {
+    if cfg!(windows) {
+        // Windows saved it as "ends with dot", so that name would reach another file: refused.
+        assert!(delete_file(&dir, "ends with dot.").is_err());
+        assert_eq!(text(&dir, "ends with dot"), "x\n");
+    } else {
         delete_file(&dir, "ends with dot.").unwrap();
+        assert!(dir.join("ends with dot.").symlink_metadata().is_err());
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

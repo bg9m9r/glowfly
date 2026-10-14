@@ -29,7 +29,7 @@ crates/
                           (reading an index conflict into chunks), resolve (picks, output, write
                           and stage), template (commit.template: the prefill and its comment char),
                           workfile (creating, renaming and deleting a working-tree file; path
-                          checks)
+                          checks), noclobber (a move that never replaces an existing file)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
