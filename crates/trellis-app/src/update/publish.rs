@@ -5,6 +5,7 @@ use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::state::publish::PublishForm;
+use crate::state::tabs::same_path;
 use crate::state::{AppState, Modal};
 use trellis_core::forge::{self, Account, NewRepo, Provider};
 use trellis_core::gitcli::args;
@@ -53,7 +54,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
         }
         Msg::Published { workdir, branch, result } => match result {
             Ok(repo) => {
-                if form(st).is_some_and(|f| f.workdir == workdir) {
+                if form(st).is_some_and(|f| same_path(&f.workdir, &workdir)) {
                     st.modal = None;
                 }
                 st.log(true, format!("Created {} ({}).", repo.full_name, repo.html_url));
@@ -64,7 +65,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                     job.workdir = Some(workdir);
                 }
             }
-            Err(e) => match form(st).filter(|f| f.workdir == workdir) {
+            Err(e) => match form(st).filter(|f| same_path(&f.workdir, &workdir)) {
                 Some(f) => {
                     f.creating = false;
                     f.error = Some(e);

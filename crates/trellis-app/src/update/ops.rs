@@ -210,7 +210,10 @@ fn job_done(st: &mut AppState, ok: bool, output: String, undo: Option<UndoResult
         st.log(ok, text);
     }
     // The user may have switched tabs while the job ran.
-    let here = job.workdir == st.workdir();
+    let here = match (job.workdir.as_deref(), st.workdir()) {
+        (Some(a), Some(b)) => crate::state::tabs::same_path(a, &b),
+        (a, b) => a.is_none() && b.is_none(),
+    };
     super::undo::finished(st, &job, ok, undo, here);
     if ok {
         if job.clear_commit {

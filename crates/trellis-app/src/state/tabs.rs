@@ -59,8 +59,12 @@ pub struct Parked {
 }
 
 /// Whether two paths name the same folder, ignoring separator style, trailing separators and
-/// (on Windows) case.
+/// (on Windows) case. Folders that exist are compared by their real location, so a short (8.3)
+/// name, a junction or a symlink matches the path libgit2 reports for the same repository.
 pub fn same_path(a: &Path, b: &Path) -> bool {
+    if let (Ok(a), Ok(b)) = (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        return a == b;
+    }
     if cfg!(windows) {
         let norm = |p: &Path| p.components().map(|c| c.as_os_str().to_string_lossy().to_lowercase()).collect::<Vec<_>>();
         norm(a) == norm(b)

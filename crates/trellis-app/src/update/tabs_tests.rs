@@ -139,3 +139,28 @@ fn restored_tabs_load_when_first_selected() {
     }
     cleanup(&[&a, &b]);
 }
+
+#[test]
+fn a_repository_opened_through_a_link_is_the_same_tab() {
+    // CI's temp folder has a short (8.3) name; a junction or symlink exercises the same thing:
+    // the path the user opened differs from the one libgit2 reports.
+    let a = scratch_repo("tabs-link");
+    let link = a.with_extension("link");
+    let _ = std::fs::remove_dir_all(&link);
+    #[cfg(windows)]
+    let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(&link).arg(&a).output().is_ok_and(|o| o.status.success());
+    #[cfg(not(windows))]
+    let made = std::os::unix::fs::symlink(&a, &link).is_ok();
+    assert!(made, "could not link {}", link.display());
+
+    let mut st = state();
+    drive(&mut st, Msg::Open(link.clone()));
+    assert!(active_is(&st, &a) && active_is(&st, &link));
+    drive(&mut st, Msg::Open(a.clone()));
+    assert_eq!(st.tabs.len(), 1, "opening the real folder switches to the same tab");
+    #[cfg(windows)]
+    let _ = std::fs::remove_dir(&link);
+    #[cfg(not(windows))]
+    let _ = std::fs::remove_file(&link);
+    cleanup(&[&a]);
+}
