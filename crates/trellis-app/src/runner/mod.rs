@@ -150,6 +150,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
         Effect::CheckSubmodule { workdir, path } => Some(submodules::check(&workdir, path)),
         Effect::CheckWorktreeFolder(r) => Some(worktrees::check(r)),
         Effect::DetectLfs { cwd } => Some(Msg::Lfs(LfsMsg::Detected(trellis_core::lfs::installed(&cwd)))),
+        Effect::RemoveWorktree(r) => Some(worktrees::remove(r)),
         Effect::LoadLfs { workdir, generation } => {
             Some(Msg::Lfs(LfsMsg::Loaded { generation, result: trellis_core::lfs::status(&workdir).map_err(err) }))
         }

@@ -196,6 +196,9 @@ pub enum Effect {
     DetectLfs {
         cwd: PathBuf,
     },
+    /// Runs `git worktree remove` then, if asked, `git branch -d`. Unscoped like RunGit: it ends
+    /// the active job.
+    RemoveWorktree(crate::worktree::RemoveRequest),
     /// Git LFS status for the preferences page: installed version, set up or not, tracked patterns.
     LoadLfs {
         workdir: PathBuf,

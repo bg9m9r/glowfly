@@ -39,6 +39,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 }
 
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
+    let open_tabs: Vec<std::path::PathBuf> = st.tabs.iter().filter_map(|t| t.path.clone()).collect();
     let Some(snap) = &st.snap else { return };
     let filter = st.view.ref_filter.to_lowercase();
     let shown = |name: &str| filter.is_empty() || name.to_lowercase().contains(&filter);
@@ -171,7 +172,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         }
     }
     if crate::state::worktrees::section_shown(snap) {
-        super::worktrees::section(ui, snap, &mut sections.worktrees, &shown, &sel, hover_next, msgs);
+        let rows = super::worktrees::Rows { shown: &shown, sel: &sel, open_tabs: &open_tabs };
+        super::worktrees::section(ui, snap, &mut sections.worktrees, rows, hover_next, msgs);
     }
     if !snap.submodules.is_empty() {
         super::submodules::section(ui, snap, &mut sections.submodules, &shown, msgs);

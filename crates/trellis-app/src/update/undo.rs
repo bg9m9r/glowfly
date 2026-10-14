@@ -50,6 +50,7 @@ pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
             ["submodule", "update", ..] => true,
             // A plain add touches no ref of this repository; -b creates a branch.
             ["worktree", "add", rest @ ..] => !rest.contains(&"-b"),
+            ["worktree", "remove" | "lock" | "unlock" | "prune", ..] => true,
             ["lfs", "install" | "fetch" | "push" | "prune", ..] => true,
             ["branch", flag, ..] => flag.starts_with("--set-upstream-to"),
             _ => false,

@@ -613,11 +613,11 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     worktree, or Browse…), optional new branch, open in a new tab; live checks (registered
     folder, folder inside a worktree, branch name, branch checked out elsewhere) and a disk check
     of the folder before `git worktree add` runs. Worktree changes made outside reload the tab.
-  - [ ] Remove a worktree from its row menu (`git worktree remove`, with a confirmation; offer
+  - [x] Remove a worktree from its row menu (`git worktree remove`, with a confirmation; offer
     `--force` when it has changes or is locked), optionally deleting its branch afterwards; report
     separately when the folder couldn't be fully deleted or the branch delete failed
-  - [ ] Lock / unlock a worktree with an optional reason (`git worktree lock --reason` / `unlock`)
-  - [ ] Prune worktree records whose folders are gone (`git worktree prune`), from the section
+  - [x] Lock / unlock a worktree with an optional reason (`git worktree lock --reason` / `unlock`)
+  - [x] Prune worktree records whose folders are gone (`git worktree prune`), from the section
     header menu or a missing row
   - [ ] Show worktree WIP nodes in the graph: a WIP row per worktree with uncommitted changes, at
     its HEAD commit
@@ -626,7 +626,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Create a worktree from a remote branch or a pull request (creating the tracking branch)
   - [ ] Watch the common git dir (refs, packed-refs) when a linked worktree is the open tab, so ref
     changes made elsewhere reload it
-  - [ ] Palette commands: open a worktree, Create worktree…
+  - [ ] Palette commands: open a worktree, Create worktree…, Remove / Lock / Prune worktree
+  - [ ] Remove a worktree and also delete its branch on the remote
+  - [ ] Offer to close the other tab showing a worktree, instead of only refusing Remove
+  - [ ] Move a worktree (`git worktree move`)
+  - [ ] An Open folder button in the "folder couldn't be fully deleted" report, and a retry of
+    the folder delete
   - [ ] A context-menu entry to show or hide the WORKTREES section; optionally group worktree tabs
     next to their main repository's tab
 - [ ] **Git LFS**

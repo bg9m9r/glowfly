@@ -26,6 +26,7 @@ pub mod terminal;
 pub mod undo;
 mod view;
 pub mod watch;
+pub mod worktree_manage;
 pub mod worktrees;
 
 pub use commit::CommitDraft;
@@ -110,6 +111,8 @@ pub enum Modal {
     NewBranch { start: Option<String>, name: String, checkout: bool },
     NewTag(tags::TagForm),
     NewWorktree(worktrees::WorktreeForm),
+    RemoveWorktree(worktree_manage::RemoveForm),
+    LockWorktree(worktree_manage::LockForm),
     Confirm { title: String, body: String, button: String, then: Box<Msg> },
     Clone { url: String, parent: String },
     CreatePr { source: String, target: String, targets: Vec<String>, title: String, description: String, draft: bool, items: String },

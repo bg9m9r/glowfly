@@ -1,8 +1,12 @@
 //! Creating a worktree: the `git worktree add` command lines, the default folder's name, and
 //! checks of the folder it goes in. Everything here is pure except `check_folder`; the app runs
-//! the command through `gitcli` so hooks, config and credential prompts apply.
+//! the command through `gitcli` so hooks, config and credential prompts apply. Removing,
+//! locking, unlocking and pruning worktrees are in `manage`.
 
 use std::path::{Component, Path, PathBuf};
+
+mod manage;
+pub use manage::*;
 
 /// What a new worktree checks out.
 #[derive(Clone, Debug, PartialEq)]

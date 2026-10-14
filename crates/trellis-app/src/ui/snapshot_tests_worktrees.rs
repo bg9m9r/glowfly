@@ -20,10 +20,10 @@ use trellis_core::repo::WorktreeInfo;
 use trellis_core::settings::ThemeChoice;
 use trellis_core::worktree_ops::{FolderProblem, WorktreeBase};
 
-type H = Harness<'static, (AppState, Vec<Msg>)>;
+pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// `s` with the platform's separators, as libgit2's paths are after loading.
-fn p(s: &str) -> PathBuf {
+pub(super) fn p(s: &str) -> PathBuf {
     Path::new(s).components().collect()
 }
 
@@ -41,7 +41,7 @@ fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>
 }
 
 /// The shared fixture with a main worktree at C:/work/app and four linked ones.
-fn with_worktrees(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_worktrees(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_mut().unwrap();
     let head = snap.head_oid;
@@ -59,12 +59,12 @@ fn with_worktrees(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn center(h: &H, label: &str) -> Pos2 {
+pub(super) fn center(h: &H, label: &str) -> Pos2 {
     let rect = h.get_by_label(label).bounding_box().expect("the row");
     pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32)
 }
 
-fn pushed(h: &H, want: &dyn Fn(&Msg) -> bool) -> bool {
+pub(super) fn pushed(h: &H, want: &dyn Fn(&Msg) -> bool) -> bool {
     h.state().1.iter().any(want)
 }
 

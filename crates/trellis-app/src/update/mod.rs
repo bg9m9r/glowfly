@@ -31,6 +31,7 @@ mod undo;
 mod watch;
 mod work_files;
 mod work_files_delete;
+mod worktree_manage;
 mod worktrees;
 
 #[cfg(test)]
@@ -123,6 +124,8 @@ mod work_files_tests;
 mod work_files_trash_tests;
 #[cfg(test)]
 mod work_files_unstage_tests;
+#[cfg(test)]
+mod worktree_manage_tests;
 #[cfg(test)]
 mod worktree_tests;
 
@@ -352,7 +355,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
-        Msg::Worktree(m) => worktrees::handle(st, m, &mut fx),
+        Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
         Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
         Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
     }

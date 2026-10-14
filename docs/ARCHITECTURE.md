@@ -52,8 +52,12 @@ crates/
                           fast-forward state
     tag_ops.rs            tag name checks (ref-format rules with a reason, existing and
                           clashing tags) and the tag and tag-push command lines
-    worktree_ops.rs       creating a worktree: `git worktree add` command lines, the folder
-                          slug, folder checks (typed text, the disk, inside another worktree)
+    worktree_ops.rs       creating, removing, locking and pruning worktrees: `git worktree add`
+                          command lines, the folder slug, folder checks (typed text, the disk,
+                          inside another worktree); worktree_ops/manage (remove/lock/unlock/
+                          prune command lines, git's refusal read without relying on English,
+                          the uncommitted-file count, and `remove`: lock and changes checked
+                          before git runs, the result judged by listing the worktrees again)
     lfs.rs                Git LFS: installed version, whether a repository is set up (hooks and
                           filters, read without running git-lfs commands that write), tracked
                           patterns parsed from .gitattributes, pattern checks and the LFS
@@ -137,7 +141,9 @@ crates/
                           gitflow (the Git Flow page's form, filled from the snapshot; the
                           Start dialog's form),
                           worktrees (the WORKTREES section's text, why opening is blocked, the
-                          Create worktree form and its folder and branch checks), view (which
+                          Create worktree form and its folder and branch checks),
+                          worktree_manage (the Remove and Lock dialogs' forms, why removing,
+                          locking or pruning is blocked, the outcome messages), view (which
                           left-panel sections are open)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
@@ -152,8 +158,9 @@ crates/
     terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
                           and its shells' effects (one Msg and one Effect variant each)
     submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
-    worktree.rs           WorktreeMsg and NewWorktree: the WORKTREES section's and Create
-                          worktree dialog's messages (one Msg variant) and a create request
+    worktree.rs           WorktreeMsg, NewWorktree and RemoveRequest: the WORKTREES section's,
+                          Create worktree dialog's and Remove/Lock dialogs' messages (one Msg
+                          variant), a create request and a remove request
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
                           names (each effect's short name for threads and logs);
                           config (reading git config), rebase (loading and running an
@@ -166,7 +173,8 @@ crates/
                           shell session owning its PTY; Effect::Terminal is handled by
                           Runner::run itself), submodules (reading one submodule again before
                           its update is confirmed), worktrees (checking a new worktree's folder
-                          on disk)
+                          on disk; removing one, then `git branch -d` when asked, recorded for
+                          undo)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
@@ -198,11 +206,14 @@ crates/
                           gitflow (filling the Git Flow form and refilling it on new snapshots,
                           Initialize/Save and Start as git jobs, the Start dialog's prefill),
                           worktrees (open in a tab; Create worktree: the form checked again,
-                          the folder checked on disk, then `git worktree add` as a job)
+                          the folder checked on disk, then `git worktree add` as a job),
+                          worktree_manage (Remove: checked again, run as Effect::RemoveWorktree,
+                          its outcome reported and the dialog reopened in force mode when
+                          needed; Lock, Unlock and Prune as git jobs)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
                           update/terminal_tests.rs, update/submodule_tests.rs,
                           update/lfs_tests.rs, update/lfs_track_tests.rs, update/gitflow_tests.rs,
-                          update/worktree_tests.rs)
+                          update/worktree_tests.rs, update/worktree_manage_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -224,7 +235,8 @@ crates/
                           Ctrl+/ shortcut sheet), terminal/ (the built-in terminal panel:
                           header, grid painting, egui input mapping, colours), submodules
                           (the SUBMODULES section: rows, status markers, menu), worktrees (the
-                          WORKTREES section: rows, tooltip, menu), worktree_dialog (Create
+                          WORKTREES section: rows, tooltip, row and header menus), worktree_dialog
+                          (Create worktree), worktree_manage_dialog (Remove worktree, Lock
                           worktree), gitflow_dialog (the Git Flow Start dialog),
                           status, prefs/ (editor: the Editor page; lfs: the Git LFS page;
                           gitflow: the Git Flow page),
@@ -239,7 +251,8 @@ crates/
                           snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
                           snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,
                           snapshot_tests_submodules.rs, snapshot_tests_lfs.rs,
-                          snapshot_tests_gitflow.rs, snapshot_tests_worktrees.rs)
+                          snapshot_tests_gitflow.rs, snapshot_tests_worktrees.rs,
+                          snapshot_tests_worktree_manage.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

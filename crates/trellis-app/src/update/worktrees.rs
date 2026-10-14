@@ -1,19 +1,22 @@
 //! The WORKTREES section and the Create worktree dialog: opening a worktree in a tab, and
 //! creating one. Creating checks the form again, then the folder on disk
-//! (`Effect::CheckWorktreeFolder`), then runs `git worktree add` as a job.
+//! (`Effect::CheckWorktreeFolder`), then runs `git worktree add` as a job. Removing, locking,
+//! unlocking and pruning are in `worktree_manage.rs`.
 
 use super::ops::{self, JobSpec};
+use super::worktree_manage as manage;
 use crate::effect::Effect;
 use crate::state::worktrees::{WorktreeForm, find, open_blocked, recheck, request};
 use crate::state::{AppState, Modal};
 use crate::worktree::{NewWorktree, WorktreeMsg};
 use std::path::PathBuf;
+use std::time::Instant;
 use trellis_core::worktree_ops::add_cmd;
 
 /// Logged when the folder check comes back for a tab that is no longer active.
 const TAB_GONE: &str = "The worktree was not created: its repository's tab is no longer active.";
 
-pub(super) fn handle(st: &mut AppState, msg: WorktreeMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: WorktreeMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         WorktreeMsg::Open(path) => open(st, path, fx),
         WorktreeMsg::CreateDialog(base) => {
@@ -22,6 +25,15 @@ pub(super) fn handle(st: &mut AppState, msg: WorktreeMsg, fx: &mut Vec<Effect>) 
         }
         WorktreeMsg::Submit => submit(st, fx),
         WorktreeMsg::FolderChecked { request, result } => folder_checked(st, request, result, fx),
+        WorktreeMsg::RemoveDialog(path) => manage::remove_dialog(st, path),
+        WorktreeMsg::Remove => manage::remove(st, fx),
+        WorktreeMsg::Removed { request, outcome, output, branch, undo } => {
+            manage::removed(st, manage::Removed { request, outcome, output, branch, undo }, now, fx)
+        }
+        WorktreeMsg::LockDialog(path) => manage::lock_dialog(st, path),
+        WorktreeMsg::Lock => manage::lock(st, fx),
+        WorktreeMsg::Unlock(path) => manage::unlock(st, path, fx),
+        WorktreeMsg::Prune => manage::prune(st, fx),
     }
 }
 

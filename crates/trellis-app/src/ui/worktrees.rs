@@ -1,29 +1,34 @@
 //! The WORKTREES section of the left panel: one row per worktree (the main one first) with what
 //! it has checked out, whether it is locked or missing, and a tooltip. A click jumps to its HEAD
-//! commit, a double-click opens it in a tab, and the row menu opens it, shows its folder or
-//! copies its path.
+//! commit, a double-click opens it in a tab, and the row menu opens it, shows its folder, copies
+//! its path, locks or unlocks it, removes it, and prunes missing records (also from the header's
+//! menu).
 
 use super::common::{menu_item, menu_item_if};
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
 use crate::state::Selection;
+use crate::state::worktree_manage::{manage_blocked, prune_blocked, remove_blocked, row_prune_blocked};
 use crate::state::worktrees::{open_blocked, right_text, tooltip};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
+use std::path::PathBuf;
 use trellis_core::repo::{Snapshot, WorktreeInfo};
 
-pub(super) fn section(
-    ui: &mut egui::Ui,
-    snap: &Snapshot,
-    open: &mut bool,
-    shown: &dyn Fn(&str) -> bool,
-    sel: &Selection,
-    hover_next: &mut Option<Oid>,
-    msgs: &mut Vec<Msg>,
-) {
-    widgets::section_header(ui, "WORKTREES", Some(snap.worktrees.len()), open);
+/// What the rows are drawn against: the left-panel filter, the selection, and the folders open
+/// in tabs (Remove… is disabled for those).
+pub(super) struct Rows<'a> {
+    pub shown: &'a dyn Fn(&str) -> bool,
+    pub sel: &'a Selection,
+    pub open_tabs: &'a [PathBuf],
+}
+
+pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows: Rows, hover_next: &mut Option<Oid>, msgs: &mut Vec<Msg>) {
+    let Rows { shown, sel, open_tabs } = rows;
+    let h = widgets::section_header(ui, "WORKTREES", Some(snap.worktrees.len()), open);
+    h.context_menu(|ui| menu_item_if(msgs, ui, "Prune missing worktrees", prune_blocked(snap), Msg::Worktree(WorktreeMsg::Prune)));
     if !*open {
         return;
     }
@@ -54,13 +59,28 @@ pub(super) fn section(
         {
             msgs.push(Msg::JumpTo(o));
         }
-        r.context_menu(|ui| menu(ui, wt, msgs));
+        r.context_menu(|ui| menu(ui, wt, open_tabs, msgs));
     }
 }
 
-fn menu(ui: &mut egui::Ui, wt: &WorktreeInfo, msgs: &mut Vec<Msg>) {
+fn menu(ui: &mut egui::Ui, wt: &WorktreeInfo, open_tabs: &[PathBuf], msgs: &mut Vec<Msg>) {
     menu_item_if(msgs, ui, "Open in new tab", open_blocked(wt), Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
     let gone = wt.missing.then_some("Its folder is missing.");
     menu_item_if(msgs, ui, "Open folder", gone, Msg::OpenFolder(wt.path.clone()));
     menu_item(msgs, ui, "Copy path", Msg::Copy(wt.path.display().to_string()));
+    // git refuses all of these for the main worktree.
+    if wt.is_main() {
+        return;
+    }
+    ui.separator();
+    let path = wt.path.clone();
+    if wt.locked.is_some() {
+        menu_item_if(msgs, ui, "Unlock", manage_blocked(wt), Msg::Worktree(WorktreeMsg::Unlock(path.clone())));
+    } else {
+        menu_item_if(msgs, ui, "Lock…", manage_blocked(wt), Msg::Worktree(WorktreeMsg::LockDialog(path.clone())));
+    }
+    menu_item_if(msgs, ui, "Remove…", remove_blocked(wt, open_tabs), Msg::Worktree(WorktreeMsg::RemoveDialog(path)));
+    if wt.missing {
+        menu_item_if(msgs, ui, "Prune missing worktrees", row_prune_blocked(wt), Msg::Worktree(WorktreeMsg::Prune));
+    }
 }

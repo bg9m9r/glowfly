@@ -1,8 +1,9 @@
 //! Dialogs: confirmation, new branch, new tag (drawn by `tag_dialog.rs`), create worktree (drawn
-//! by `worktree_dialog.rs`), clone, create pull request, publish (drawn by `publish.rs`),
-//! renaming a branch or setting its upstream (drawn by `branch_dialogs.rs`), creating or renaming
-//! a working-tree file (drawn by `file_dialogs.rs`), starting a Git Flow branch (drawn by
-//! `gitflow_dialog.rs`) and the keyboard shortcut sheet (drawn by `shortcuts/sheet.rs`).
+//! by `worktree_dialog.rs`), remove and lock worktree (drawn by `worktree_manage_dialog.rs`),
+//! clone, create pull request, publish (drawn by `publish.rs`), renaming a branch or setting its
+//! upstream (drawn by `branch_dialogs.rs`), creating or renaming a working-tree file (drawn by
+//! `file_dialogs.rs`), starting a Git Flow branch (drawn by `gitflow_dialog.rs`) and the keyboard
+//! shortcut sheet (drawn by `shortcuts/sheet.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys, repo_name_from_url};
 use super::theme::color;
@@ -79,6 +80,16 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::NewWorktree(form) => {
                 if super::worktree_dialog::new_worktree(ui, form, snap, !prompting, msgs) {
+                    close = true;
+                }
+            }
+            Modal::RemoveWorktree(form) => {
+                if super::worktree_manage_dialog::remove(ui, form, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::LockWorktree(form) => {
+                if super::worktree_manage_dialog::lock(ui, form, !prompting, idle, msgs) {
                     close = true;
                 }
             }

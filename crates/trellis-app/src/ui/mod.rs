@@ -38,6 +38,7 @@ pub mod theme;
 mod toolbar;
 pub mod widgets;
 mod worktree_dialog;
+mod worktree_manage_dialog;
 mod worktrees;
 
 #[cfg(test)]
@@ -84,6 +85,8 @@ mod snapshot_tests_tag;
 mod snapshot_tests_terminal;
 #[cfg(test)]
 mod snapshot_tests_whole;
+#[cfg(test)]
+mod snapshot_tests_worktree_manage;
 #[cfg(test)]
 mod snapshot_tests_worktrees;
 #[cfg(test)]
