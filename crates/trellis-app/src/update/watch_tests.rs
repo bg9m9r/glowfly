@@ -1,7 +1,7 @@
 //! Headless tests for live working-tree updates: what a watcher report refreshes, when it is
 //! ignored, and which repository the watcher follows.
 
-use super::tests::{drive, scratch_repo, state};
+use super::tests::{drive, finish, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind, WatchTarget};
 use crate::msg::Msg;
@@ -81,18 +81,22 @@ fn own_job_suppresses_watch_events() {
     st.job = Some(job(Some(std::env::temp_dir().join("trellis-watch-some-other-repo"))));
     let fx = update(&mut st, changed(&workdir, false, Instant::now()), Instant::now());
     assert!(is_status(&fx, &st, &workdir), "a job elsewhere doesn't suppress: {fx:?}");
+    finish(&mut st, fx);
 
     // Events from before the job finished (plus a grace period) were the job's own.
     st.job = Some(job(Some(workdir.clone())));
     let t = Instant::now();
-    update(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None }, t);
+    let fx = update(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None }, t);
+    finish(&mut st, fx);
     assert!(update(&mut st, changed(&workdir, false, t + Duration::from_millis(100)), t).is_empty());
     let fx = update(&mut st, changed(&workdir, false, t + Duration::from_millis(300)), t);
     assert!(is_status(&fx, &st, &workdir), "{fx:?}");
+    finish(&mut st, fx);
 
     // The same after a local operation (staging).
     let t = Instant::now() + Duration::from_secs(5);
-    update(&mut st, Msg::Scoped { workdir: workdir.clone(), msg: Box::new(Msg::LocalOpDone(Ok(None))) }, t);
+    let fx = update(&mut st, Msg::Scoped { workdir: workdir.clone(), msg: Box::new(Msg::LocalOpDone(Ok(None))) }, t);
+    finish(&mut st, fx);
     assert!(update(&mut st, changed(&workdir, false, t + Duration::from_millis(100)), t).is_empty());
     let fx = update(&mut st, changed(&workdir, false, t + Duration::from_millis(300)), t);
     assert!(is_status(&fx, &st, &workdir), "{fx:?}");

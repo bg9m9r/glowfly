@@ -22,6 +22,7 @@ mod index;
 mod lines;
 mod load;
 mod noclobber;
+mod refs_key;
 mod remotes;
 mod removal;
 mod resolve;
@@ -39,10 +40,12 @@ mod worktrees;
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{Comparison, ViewDiff, commit_detail, commit_stats, compare, compare_files, load_diff, load_diff_for_view, load_diff_with};
 use diff::{head_tree, path_opts, workdir_opts};
+pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
-pub use load::{load, messages_between, status_at};
+pub use load::{load, load_cached, messages_between, status_at};
+pub use refs_key::refs_key;
 pub use remotes::RemoteInfo;
 pub use removal::{Deleted, Removal, Trasher, os_trash};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
@@ -183,6 +186,10 @@ pub struct Snapshot {
     /// The main worktree first, then linked ones by path; refreshed by full loads only.
     pub worktrees: Vec<WorktreeInfo>,
     pub graph: Layout,
+    /// `refs_key` when the load started: a later equal key means only the status can differ.
+    pub refs_key: u64,
+    /// The options the snapshot was loaded with.
+    pub loaded_with: LoadOptions,
 }
 
 impl Snapshot {
@@ -316,7 +323,7 @@ pub enum HunkOp {
 }
 
 /// Which history the graph shows.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct LoadOptions {
     pub max_commits: usize,
     /// Only the checked-out branch, its upstream, the default branch(es) and `extra_tips`.
@@ -353,6 +360,8 @@ mod history_tests;
 mod lines_tests;
 #[cfg(test)]
 mod load_filter_tests;
+#[cfg(test)]
+mod refs_key_tests;
 #[cfg(test)]
 mod remotes_tests;
 #[cfg(test)]

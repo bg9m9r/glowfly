@@ -1,6 +1,6 @@
 //! Loading a repository: history, refs, stashes and working-tree status.
 
-use super::graph_cache;
+use super::graph_cache::GraphCache;
 use super::*;
 use crate::error::{Error, Result};
 use crate::graph;
@@ -10,12 +10,20 @@ use std::path::Path;
 
 /// Loads the repository at (or above) `path`.
 pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
+    load_cached(path, opts, &GraphCache::default())
+}
+
+/// `load`, reusing (and adding to) the ahead/behind and containment answers in `cache`.
+pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Result<Snapshot> {
+    let loaded_with = opts.clone();
     let max_commits = opts.max_commits.max(1);
     let mut repo = Repository::discover(path).map_err(|_| Error::NotARepository(path.display().to_string()))?;
     if repo.is_bare() {
         return Err(Error::Unsupported("bare repositories are not supported".into()));
     }
 
+    // Taken first, so a change made while loading shows up in the next comparison.
+    let refs_key = super::refs_key::key_of(&repo)?;
     // stash_foreach needs &mut, so collect stashes before taking shared borrows.
     let mut stashes = Vec::new();
     repo.stash_foreach(|index, message, oid| {
@@ -99,7 +107,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         let (upstream, upstream_ref, ahead, behind) = match b.upstream() {
             Ok(u) => {
                 let (a, bh) = match (oid, u.get().target()) {
-                    (Some(x), Some(y)) => graph_cache::ahead_behind(&repo, x, y),
+                    (Some(x), Some(y)) => cache.ahead_behind(&repo, x, y),
                     _ => (0, 0),
                 };
                 (u.name().ok().flatten().map(str::to_owned), u.get().name().map(str::to_owned), a, bh)
@@ -109,7 +117,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         // Only deleting a branch together with its remote branch asks, and the walk can be long.
         let remote_upstream = upstream_ref.as_deref().is_some_and(|r| r.starts_with("refs/remotes/"));
         let merged = match (oid, head_oid) {
-            (Some(tip), Some(head)) => tip == head || (remote_upstream && graph_cache::contains(&repo, head, tip)),
+            (Some(tip), Some(head)) => tip == head || (remote_upstream && cache.contains(&repo, head, tip)),
             _ => false,
         };
         locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref, merged });
@@ -211,6 +219,8 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         submodules,
         worktrees,
         graph,
+        refs_key,
+        loaded_with,
     })
 }
 

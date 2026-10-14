@@ -99,6 +99,14 @@ pub struct ForgeReply {
     pub results: Vec<ForgeResult>,
 }
 
+/// What a refresh compares against before loading everything again.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct KnownRepo {
+    pub refs_key: u64,
+    /// The snapshot has submodules: read them again even without a .gitmodules.
+    pub submodules: bool,
+}
+
 /// A repository for the file watcher.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WatchTarget {
@@ -113,6 +121,9 @@ pub enum Effect {
         opts: LoadOptions,
         generation: u64,
         kind: LoadKind,
+        /// The snapshot on screen: when its `refs_key` still matches, only the status is read
+        /// (`Msg::RepoUnchanged`).
+        known: Option<KnownRepo>,
     },
     LoadStatus {
         workdir: PathBuf,

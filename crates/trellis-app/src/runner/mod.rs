@@ -64,6 +64,8 @@ pub struct Runner<W: Waker + Clone> {
     saves: saves::Saves,
     /// Effects that change a repository run one at a time per repository.
     queues: Arc<queue::RepoQueues>,
+    /// Ahead/behind and containment answers, kept between repository loads.
+    graph_cache: Arc<repo::GraphCache>,
 }
 
 impl<W: Waker + Clone> Runner<W> {
@@ -77,6 +79,7 @@ impl<W: Waker + Clone> Runner<W> {
             terminals: Default::default(),
             saves: Default::default(),
             queues: Default::default(),
+            graph_cache: Default::default(),
         }
     }
 
@@ -100,10 +103,11 @@ impl<W: Waker + Clone> Runner<W> {
         let ticket = matches!(effect, Effect::HighlightDiff { .. }).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
         let repo = queue::repo_of(&effect).map(Path::to_owned);
         let recovery = guard::Recovery::of(&effect, name);
+        let graph_cache = Arc::clone(&self.graph_cache);
         let job: queue::Job = Box::new(move || {
             let _span = tracing::debug_span!("effect", name).entered();
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
-            if let Some(msg) = guard::guarded(recovery, || execute_with(effect, &cancelled))
+            if let Some(msg) = guard::guarded(recovery, || execute_with(effect, &cancelled, &graph_cache))
                 && tx.send(msg).is_ok()
             {
                 waker.wake();
@@ -130,23 +134,32 @@ fn err(e: trellis_core::error::Error) -> String {
 /// Results that belong to one repository come back as `Msg::Scoped`.
 #[cfg(test)]
 pub fn execute(effect: Effect) -> Option<Msg> {
-    execute_with(effect, &|| false)
+    execute_with(effect, &|| false, &repo::GraphCache::default())
 }
 
-/// `execute`, stopping early when `cancelled` returns true (only HighlightDiff checks it).
-fn execute_with(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg> {
+/// `execute`, stopping early when `cancelled` returns true (only HighlightDiff checks it), with
+/// the answers repository loads share.
+fn execute_with(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &repo::GraphCache) -> Option<Msg> {
     let scope = effect.scope().cloned();
-    let msg = execute_unscoped(effect, cancelled)?;
+    let msg = execute_unscoped(effect, cancelled, graph_cache)?;
     Some(match scope {
         Some(workdir) => Msg::Scoped { workdir, msg: Box::new(msg) },
         None => msg,
     })
 }
 
-fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg> {
+fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &repo::GraphCache) -> Option<Msg> {
     match effect {
-        Effect::LoadRepo { path, opts, generation, kind } => {
-            let result = repo::load(&path, &opts).map(Box::new).map_err(|e| format!("Could not open {}: {e}", path.display()));
+        Effect::LoadRepo { path, opts, generation, kind, known } => {
+            if let Some(k) = known
+                && repo::refs_key(&path).is_ok_and(|key| key == k.refs_key)
+            {
+                let result = repo::status_at(&path).map_err(err);
+                let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
+                return Some(Msg::RepoUnchanged { generation, result, submodules });
+            }
+            let result =
+                repo::load_cached(&path, &opts, graph_cache).map(Box::new).map_err(|e| format!("Could not open {}: {e}", path.display()));
             Some(Msg::RepoLoaded { generation, kind, result })
         }
         Effect::LoadStatus { workdir, generation, submodules } => {

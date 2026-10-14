@@ -1,7 +1,7 @@
 //! Headless tests for Revert Hunk on commit and comparison diffs: which diffs it applies to,
 //! refusals (stale, whitespace hidden), the whole-file view, and the result handling.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -154,6 +154,7 @@ fn hunk_reverted_results() {
     let (mut st, dir) = with_diff("revert-results", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     let fx = run(&mut st, Msg::HunkReverted { path: "a.txt".into(), result: Ok(()) });
     assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "{fx:?}");
+    finish(&mut st, fx);
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text.contains("Reverted the hunk in a.txt")));
     let fx = run(&mut st, Msg::HunkReverted { path: "a.txt".into(), result: Err("x".into()) });
     assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "{fx:?}");

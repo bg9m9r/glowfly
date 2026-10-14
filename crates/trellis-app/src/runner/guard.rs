@@ -1,7 +1,7 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
-use crate::effect::{Effect, UndoResult};
+use crate::effect::{Effect, LoadKind, UndoResult};
 use crate::msg::Msg;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
@@ -18,6 +18,9 @@ enum Kind {
     Job(Option<UndoResult>),
     Rebase,
     LocalOp,
+    /// A repository load or status read: the UI waits for it before starting another.
+    Load(u64, LoadKind),
+    Status(u64),
     Log,
 }
 
@@ -29,6 +32,8 @@ impl Recovery {
             Effect::RemoveWorktree(_) => Kind::Job(None),
             Effect::InteractiveRebase { .. } => Kind::Rebase,
             Effect::LocalOp { .. } => Kind::LocalOp,
+            Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
+            Effect::LoadStatus { generation, .. } => Kind::Status(*generation),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -40,6 +45,8 @@ impl Recovery {
             Kind::Job(undo) => Msg::JobDone { ok: false, output: text, undo },
             Kind::Rebase => Msg::RebaseFinished { result: Err(text) },
             Kind::LocalOp => Msg::LocalOpDone(Err(text)),
+            Kind::Load(generation, kind) => Msg::RepoLoaded { generation, kind, result: Err(text) },
+            Kind::Status(generation) => Msg::StatusLoaded { generation, result: Err(text), submodules: None },
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {
@@ -109,5 +116,23 @@ mod tests {
         let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
         assert!(matches!(*msg, Msg::LocalOpDone(Err(ref e)) if e.contains("static")));
         assert!(guarded(Recovery::of(&effect, "local-op"), || None).is_none(), "no panic, no message");
+    }
+
+    #[test]
+    fn a_panicking_load_ends_the_load() {
+        let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+        st.load_gen = 3;
+        st.loading = true;
+        let effect =
+            Effect::LoadRepo { path: "C:/r".into(), opts: Default::default(), generation: 3, kind: LoadKind::Refresh, known: None };
+        let msg = guarded(Recovery::of(&effect, "load-repo"), || panic!("boom")).unwrap();
+        assert!(matches!(&msg, Msg::RepoLoaded { generation: 3, result: Err(e), .. } if e.contains("boom")));
+        update(&mut st, msg, Instant::now());
+        assert!(!st.loading, "the next refresh isn't left waiting for it");
+
+        let effect = Effect::LoadStatus { workdir: "C:/r".into(), generation: 3, submodules: false };
+        let msg = guarded(Recovery::of(&effect, "load-status"), || panic!("boom")).unwrap();
+        let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
+        assert!(matches!(*msg, Msg::StatusLoaded { generation: 3, result: Err(_), .. }));
     }
 }

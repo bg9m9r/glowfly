@@ -76,10 +76,11 @@ fn containment_is_remembered_between_loads() {
     write(&work, "b.txt", "two\n");
     git(&work, &["add", "."]);
     git(&work, &["commit", "-q", "-m", "second"]);
-    let s = load(&work, &LoadOptions::all(10)).unwrap();
+    let cache = GraphCache::default();
+    let s = load_cached(&work, &LoadOptions::all(10), &cache).unwrap();
     let old = s.locals.iter().find(|b| b.name == "old").unwrap();
     assert!(old.merged);
-    assert!(super::graph_cache::cached(s.head_oid.unwrap(), old.oid.unwrap()), "asked once per pair of commits");
+    assert!(cache.has(s.head_oid.unwrap(), old.oid.unwrap()), "asked once per pair of commits");
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }

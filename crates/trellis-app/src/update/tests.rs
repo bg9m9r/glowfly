@@ -48,9 +48,16 @@ pub(super) fn same_place(a: &Path, b: &Path) -> bool {
 
 /// Runs `msg` and every resulting effect to completion, as the app would (minus the window).
 pub(super) fn drive(st: &mut AppState, msg: Msg) {
-    let mut queue = vec![msg];
-    while let Some(m) = queue.pop() {
-        for effect in update(st, m, Instant::now()) {
+    let fx = update(st, msg, Instant::now());
+    finish(st, fx);
+}
+
+/// Runs effects `update` returned, and everything they lead to, to completion (as `drive`).
+pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
+    let mut queue = Vec::new();
+    let mut fx = fx;
+    loop {
+        for effect in fx {
             match effect {
                 // These need a user or the network; tests don't exercise them here.
                 Effect::Ui(_) | Effect::PickFolder { .. } | Effect::OpenUrl(_) | Effect::OpenTerminal(_) | Effect::OpenFolder(_) => {}
@@ -64,6 +71,8 @@ pub(super) fn drive(st: &mut AppState, msg: Msg) {
                 other => queue.extend(runner::execute(other)),
             }
         }
+        let Some(m) = queue.pop() else { return };
+        fx = update(st, m, Instant::now());
     }
 }
 

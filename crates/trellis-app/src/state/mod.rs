@@ -20,6 +20,7 @@ pub mod prefs;
 pub mod publish;
 pub mod rebase;
 pub mod ref_rows;
+pub mod refresh;
 pub mod remotes;
 pub mod selection;
 pub mod submodules;
@@ -250,6 +251,7 @@ pub struct AppState {
     /// Incremented for every repository load; stale results are ignored.
     pub load_gen: u64,
     pub loading: bool,
+    pub refresh: refresh::RefreshState,
     pub selection: Selection,
     pub detail: Option<CommitDetail>,
     /// Shared with effects that read it (a reload, a highlight) instead of copied for them.
@@ -322,6 +324,7 @@ impl AppState {
             snap: None,
             load_gen: 0,
             loading: false,
+            refresh: Default::default(),
             selection: Selection::None,
             detail: None,
             diff: None,

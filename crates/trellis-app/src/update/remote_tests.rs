@@ -65,7 +65,7 @@ fn cleanup(dirs: &[&Path]) {
 
 /// Ends the running job as failed, without running it.
 fn drop_job(st: &mut AppState) {
-    update(st, Msg::JobDone { ok: false, output: String::new(), undo: None }, Instant::now());
+    drive(st, Msg::JobDone { ok: false, output: String::new(), undo: None });
 }
 
 /// Submits the open dialog and runs the job to completion.

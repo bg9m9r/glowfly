@@ -140,6 +140,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     // Results still in flight for the previous tab are now stale.
     st.load_gen += 1;
     st.loading = false;
+    st.refresh = Default::default();
     let title = match &st.tabs[i].path {
         Some(_) => format!("{} - Trellis", st.tabs[i].name),
         None => "Trellis".to_owned(),

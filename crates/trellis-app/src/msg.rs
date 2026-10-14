@@ -464,6 +464,13 @@ pub enum Msg {
         kind: LoadKind,
         result: Result<Box<Snapshot>, String>,
     },
+    /// A refresh found refs, HEAD, config and worktrees as the snapshot has them: only the
+    /// status was read (as for `StatusLoaded`).
+    RepoUnchanged {
+        generation: u64,
+        result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
+        submodules: Option<Vec<trellis_core::repo::SubmoduleInfo>>,
+    },
     StatusLoaded {
         generation: u64,
         result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,

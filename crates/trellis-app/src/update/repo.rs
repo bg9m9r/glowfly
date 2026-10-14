@@ -1,10 +1,10 @@
 //! Opening and refreshing the repository, selection, diffs and search.
 
+pub(super) use super::refresh::{load, refresh, refresh_status};
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
-use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, Snapshot};
 use trellis_core::settings::DiffMode;
@@ -14,7 +14,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         Msg::PickRepo => fx.push(Effect::PickFolder { title: "Open a Git repository".into(), purpose: FolderPurpose::OpenRepo }),
         Msg::Open(path) => super::tabs::open(st, path, fx),
         Msg::Refresh => {
-            refresh(st, fx);
+            super::refresh::reload(st, fx);
             super::forge::refresh(st, true, false, now, fx);
         }
         Msg::WindowFocused => {
@@ -37,36 +37,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     }
                 }
             }
-        }
-        Msg::StatusLoaded { generation, result, submodules } => {
-            if generation != st.load_gen {
-                return;
-            }
-            match result {
-                Ok((unstaged, staged, state)) => {
-                    let Some(snap) = st.snap.as_mut() else { return };
-                    let was_dirty = snap.is_dirty();
-                    snap.unstaged = unstaged;
-                    snap.staged = staged;
-                    snap.state = state;
-                    // A commit or checkout inside a submodule changes its row, not the history.
-                    if let Some(list) = submodules {
-                        snap.submodules = list;
-                    }
-                    // Clean <-> dirty changes the graph (the WIP row): reload fully.
-                    if was_dirty != snap.is_dirty() {
-                        refresh(st, fx);
-                    } else {
-                        reload_diff(st, fx);
-                    }
-                    super::conflict::status_changed(st, now);
-                }
-                Err(e) => {
-                    st.log(false, e);
-                    // Re-read the open diff anyway, so it doesn't stay stale after a hunk operation.
-                    reload_diff(st, fx);
-                }
-            }
+            super::refresh::load_finished(st, fx);
         }
         Msg::SelectWip => {
             st.selection = Selection::Wip;
@@ -178,28 +149,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
         }
         _ => {}
-    }
-}
-
-/// Loads the repository at `path` into the active tab.
-pub(super) fn load(st: &mut AppState, path: PathBuf, kind: LoadKind, fx: &mut Vec<Effect>) {
-    st.load_gen += 1;
-    st.loading = true;
-    let opts = st.load_options(&path);
-    fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind });
-}
-
-pub(super) fn refresh(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if let Some(path) = st.workdir() {
-        load(st, path, LoadKind::Refresh, fx);
-    }
-}
-
-/// Re-reads only the working-tree status (after staging, discarding…).
-pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if let Some(workdir) = st.workdir() {
-        let submodules = st.snap.as_ref().is_some_and(|s| !s.submodules.is_empty());
-        fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules });
     }
 }
 
@@ -338,7 +287,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     reload_diff(st, fx);
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
     if reload {
-        refresh(st, fx);
+        super::refresh::reload_after(st, fx);
     }
 }
 

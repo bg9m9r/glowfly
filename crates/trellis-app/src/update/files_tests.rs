@@ -1,7 +1,7 @@
 //! Headless tests for the file actions: the restore confirmation and its refusals, the effect
 //! and result handling, and opening or showing working-tree files.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -117,8 +117,10 @@ fn restored_toasts_and_refreshes() {
     assert!(toast.ok && toast.text.contains("a.txt") && toast.text.contains(&short(oid)), "{}", toast.text);
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     assert!(st.detail.as_ref().unwrap().in_workdir("a.txt"), "Open and Show become available");
+    finish(&mut st, fx);
 
-    run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Parent(oid)) });
+    let fx = run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Parent(oid)) });
+    finish(&mut st, fx);
     assert!(st.toasts.last().unwrap().text.contains("before"));
 
     let fx = run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) });

@@ -22,6 +22,7 @@ mod palette;
 mod prefs;
 mod publish;
 mod rebase;
+mod refresh;
 mod remotes;
 mod repo;
 mod selection;
@@ -107,6 +108,8 @@ mod rebase_e2e_tests;
 #[cfg(test)]
 mod rebase_tests;
 #[cfg(test)]
+mod refresh_tests;
+#[cfg(test)]
 mod remote_tests;
 #[cfg(test)]
 mod revert_tests;
@@ -174,10 +177,10 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::SearchNext
         | Msg::WantStats(_)
         | Msg::RepoLoaded { .. }
-        | Msg::StatusLoaded { .. }
         | Msg::DetailLoaded { .. }
         | Msg::DiffLoaded { .. }
         | Msg::StatsLoaded(_) => repo::handle(st, msg, now, &mut fx),
+        Msg::StatusLoaded { .. } | Msg::RepoUnchanged { .. } => refresh::handle(st, msg, now, &mut fx),
         Msg::DiffHighlighted { .. } => highlight::handle(st, msg),
         Msg::SetDiffLayout(_)
         | Msg::SetDiffMode(_)

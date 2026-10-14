@@ -2,7 +2,7 @@
 //! checks, the delete confirmations (plain, and unstage-and-delete for a staged new file), the
 //! results, results for an inactive tab, and end to end against a scratch repository.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
@@ -222,8 +222,10 @@ fn create_result_closes_or_shows_the_error() {
     assert!(st.modal.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Created docs/a.md."));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    finish(&mut st, fx);
 
-    run(&mut st, Msg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: true }) });
+    let fx = run(&mut st, Msg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: true }) });
+    finish(&mut st, fx);
     assert!(st.toasts.last().unwrap().text.contains("Git ignores it"));
 
     run(&mut st, Msg::NewFileDialog("docs/a.md".into()));
