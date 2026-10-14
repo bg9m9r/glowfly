@@ -193,7 +193,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::KeyboardShortcuts => Msg::Shortcut(crate::keymap::KeyAction::ToggleSheet),
         C::ToolbarLabels(on) => Msg::SetToolbarLabels(on),
         C::Theme(t) => Msg::SetTheme(t),
-        C::Checkout(name) => Msg::git("Checkout", &["checkout", &name]),
+        C::Checkout(name) => Msg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&name)] },
         C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
         C::OpenRecent(path) => Msg::Open(path),

@@ -3,6 +3,7 @@
 
 use git2::RepositoryState;
 use trellis_core::branch_ops::{FastForward, fast_forward_state};
+use trellis_core::gitcli::args;
 use trellis_core::repo::{BranchInfo, Snapshot, Tracking};
 
 pub const NO_REMOTES: &str = "This repository has no remotes.";
@@ -121,4 +122,28 @@ pub fn delete_with_remote_body(b: &BranchInfo, t: &Tracking) -> String {
         ));
     }
     body
+}
+
+/// `git checkout` of the local branch `name`. The trailing `--` keeps a branch named like a
+/// file (e.g. `src`) from being read as a path whose changes git would discard.
+pub fn checkout_local(name: &str) -> Vec<String> {
+    args(&["checkout", name, "--"])
+}
+
+/// How to check out a pull request's source branch `source`: the local branch of that name, or
+/// a new one tracking `<remote>/<source>`. The name comes from the code host (a fork's author
+/// picks it), so one git would read as an option is refused, and so is one this repository
+/// doesn't have (a fork's branch that was never fetched), rather than letting git guess.
+pub fn pr_checkout(snap: &Snapshot, remote: &str, source: &str) -> Result<Vec<String>, String> {
+    if source.is_empty() || source.starts_with('-') {
+        return Err(format!("\"{source}\" isn't a branch name Trellis can check out."));
+    }
+    if snap.locals.iter().any(|b| b.name == source) {
+        return Ok(checkout_local(source));
+    }
+    let on_remote = snap.remotes.iter().any(|(r, bs)| r == remote && bs.iter().any(|(n, _)| n == source));
+    if on_remote {
+        return Ok(args(&["checkout", "--track", &format!("{remote}/{source}"), "--"]));
+    }
+    Err(format!("{source} isn't a local branch or on {remote} (it may be on a fork). Fetch it first."))
 }

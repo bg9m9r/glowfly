@@ -93,6 +93,8 @@ mod palette_stash_tests;
 #[cfg(test)]
 mod palette_tests;
 #[cfg(test)]
+mod pr_checkout_tests;
+#[cfg(test)]
 mod publish_tests;
 #[cfg(test)]
 mod rebase_e2e_tests;

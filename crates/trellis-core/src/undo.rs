@@ -105,9 +105,11 @@ impl UndoKind {
         match a.as_slice() {
             ["checkout", rest @ ..] => {
                 let mut targets = 0;
-                for arg in rest {
+                for (i, arg) in rest.iter().enumerate() {
                     match *arg {
                         "--track" | "--detach" => {}
+                        // A trailing `--` only stops the target being read as a path.
+                        "--" if i + 1 == rest.len() => {}
                         s if s.starts_with('-') => return None,
                         _ => targets += 1,
                     }

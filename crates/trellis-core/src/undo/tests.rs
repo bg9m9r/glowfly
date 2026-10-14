@@ -48,6 +48,9 @@ fn classify_recognises_trellis_commands() {
     let sha = "0123456789abcdef0123456789abcdef01234567";
     let table: &[(&[&str], Option<UndoKind>)] = &[
         (&["checkout", "main"], Some(UndoKind::Checkout)),
+        (&["checkout", "main", "--"], Some(UndoKind::Checkout)),
+        (&["checkout", "--track", "origin/x", "--"], Some(UndoKind::Checkout)),
+        (&["checkout", "main", "--", "a.txt"], None),
         (&["checkout", "--track", "origin/x"], Some(UndoKind::Checkout)),
         (&["checkout", sha], Some(UndoKind::Checkout)),
         (&["checkout", "-b", "x"], None),

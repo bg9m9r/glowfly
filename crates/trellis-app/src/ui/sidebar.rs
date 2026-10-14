@@ -2,7 +2,7 @@
 //! submodules.
 
 use super::branch_menu::local_branch_menu;
-use super::common::{forge_error_rows, hint_row, menu_item, state_color};
+use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_color};
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use eframe::egui;
 use trellis_core::forge;
+use trellis_core::repo::Snapshot;
 use trellis_core::settings::GraphFilter;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -74,7 +75,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 (None, None) => r,
             };
             if r.double_clicked() {
-                msgs.push(Msg::git("Checkout", &["checkout", &b.name]));
+                msgs.push(Msg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&b.name)] });
             } else if r.clicked()
                 && let Some(o) = b.oid
             {
@@ -92,7 +93,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let title = if f.pr_noun() == "merge request" { "MERGE REQUESTS" } else { "PULL REQUESTS" };
         widgets::section_header(ui, title, Some(f.prs.len()), &mut sections.prs);
         if sections.prs {
-            pull_requests(ui, f, &sel, &shown, msgs);
+            pull_requests(ui, snap, f, &sel, &shown, msgs);
         }
     }
     if let Some(f) = fs.filter(|f| f.tracker.is_some()) {
@@ -140,7 +141,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     ui.add_space(12.0);
 }
 
-fn pull_requests(ui: &mut egui::Ui, f: &ForgeState, sel: &Selection, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
+fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selection, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
     if let Status::Error(e) = &f.host_status {
         forge_error_rows(ui, e, msgs);
     } else if f.prs.is_empty() {
@@ -175,7 +176,13 @@ fn pull_requests(ui: &mut egui::Ui, f: &ForgeState, sel: &Selection, shown: &dyn
         }
         r.context_menu(|ui| {
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));
-            menu_item(msgs, ui, format!("Checkout {}", pr.source), Msg::git("Checkout", &["checkout", &pr.source]));
+            let checkout = crate::state::branches::pr_checkout(snap, &f.remote, &pr.source);
+            let (blocked, cmds) = match checkout {
+                Ok(cmd) => (None, vec![cmd]),
+                Err(why) => (Some(why), Vec::new()),
+            };
+            let m = Msg::Git { label: "Checkout".into(), cmds };
+            menu_item_if(msgs, ui, format!("Checkout {}", pr.source), blocked.as_deref(), m);
             menu_item(msgs, ui, "Copy link", Msg::Copy(pr.url.clone()));
         });
     }

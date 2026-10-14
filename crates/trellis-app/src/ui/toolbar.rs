@@ -42,7 +42,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         for b in &snap.locals {
                             let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
                             if ui.add_enabled(!b.is_head, egui::Button::new(text)).clicked() {
-                                msgs.push(Msg::git("Checkout", &["checkout", &b.name]));
+                                msgs.push(Msg::Git {
+                                    label: "Checkout".into(),
+                                    cmds: vec![crate::state::branches::checkout_local(&b.name)],
+                                });
                                 ui.close_menu();
                             }
                         }

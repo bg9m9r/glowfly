@@ -26,7 +26,12 @@ pub fn local_branch_menu(
     let name = b.name.as_str();
     let current = snap.head_branch.as_deref().unwrap_or_default();
     if !b.is_head {
-        menu_item(msgs, ui, format!("Checkout {name}"), Msg::git("Checkout", &["checkout", name]));
+        menu_item(
+            msgs,
+            ui,
+            format!("Checkout {name}"),
+            Msg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(name)] },
+        );
         if !current.is_empty() {
             menu_item(msgs, ui, format!("Merge {name} into {current}"), Msg::git("Merge", &["merge", name]));
             menu_item(msgs, ui, format!("Rebase {current} onto {name}"), Msg::git("Rebase", &["rebase", name]));
