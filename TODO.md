@@ -239,8 +239,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   file and links to the graph. Searches back in batches of the commit limit.
   - [ ] Blame gutter with author, date and commit, opened from file history or the file context
     menu
-  - [ ] Open file history or blame for any file from the command palette (a file finder), not
-    only from a changed-file list
+  - [x] Open file history or blame for any file from the command palette (a file finder), not
+    only from a changed-file list. History done; blame waits for the blame gutter
   - [ ] Start from HEAD when the file was renamed after the chosen commit (track renames
     forwards)
   - [ ] Refresh an open file history when HEAD moves (commit, checkout, pull, fetch)
@@ -393,8 +393,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Exists: Ctrl+P / Ctrl+Shift+P opens a fuzzy-searched list (hidden keywords match synonyms):
   fetch all, pull, push, stage/unstage all, create branch (at HEAD or the selected commit),
   search commits, open a repository or a recent one, close tab, Preferences, theme, and
-  checkout of local branches.
-  - [ ] File finder: pick any tracked file to open its history or blame
+  checkout of local branches, and a file finder for file history.
+  - [x] File finder: pick any tracked file to open its history (blame waits for the blame gutter)
   - [ ] Create tag and annotated tag
   - [ ] Shortcut hints next to entries (Ctrl+F, Ctrl+, F5, Ctrl+W …)
   - [ ] Two-step entries: pick a command, then a sub-list with its own prompt (branches,

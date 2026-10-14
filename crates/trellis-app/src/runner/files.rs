@@ -1,4 +1,5 @@
-//! Creating, renaming and deleting a working-tree file (`Effect::WorkFile`).
+//! Creating, renaming and deleting a working-tree file (`Effect::WorkFile`), and listing the
+//! tracked files (`Effect::LoadTrackedPaths`).
 
 use crate::effect::FileOp;
 use crate::msg::Msg;
@@ -13,4 +14,10 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
         FileOp::Delete(p) => repo::delete_file(workdir, p).map(|()| false),
     };
     Msg::WorkFileDone { op, result: r.map_err(|e| e.to_string()) }
+}
+
+/// The paths in the index, for the palette's file finder.
+pub(super) fn tracked_paths(workdir: &Path, generation: u64) -> Msg {
+    let result = repo::tracked_paths(workdir).map_err(|e| format!("Could not list the repository's files: {e}"));
+    Msg::TrackedPathsLoaded { generation, result }
 }

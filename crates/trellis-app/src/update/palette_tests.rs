@@ -29,7 +29,7 @@ fn open_palette(st: &mut AppState) {
 }
 
 /// A scratch repository (a.txt modified) with a second branch `topic`, opened in `st`.
-fn repo_with_topic(name: &str) -> (AppState, std::path::PathBuf) {
+pub(super) fn repo_with_topic(name: &str) -> (AppState, std::path::PathBuf) {
     let dir = scratch_repo(name);
     git(&dir, &["branch", "topic"]);
     let mut st = state();

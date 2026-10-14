@@ -81,6 +81,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::RevertHunk { .. } => "revert-hunk",
         Effect::RestoreFile { .. } => "restore-file",
         Effect::WorkFile { .. } => "work-file",
+        Effect::LoadTrackedPaths { .. } => "tracked-paths",
         Effect::RunGit { .. } => "git",
         Effect::UndoRedo { .. } => "undo-redo",
         Effect::LoadRebasePlan { .. } => "rebase-plan",
@@ -176,6 +177,7 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             result => Msg::FileRestored { result: result.map_err(err), path, oid },
         }),
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
+        Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
         Effect::RunGit { cwd, cmds, write_file, record, prompts } => {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             let (ok, output) = run_git(&cwd, &cmds, write_file, prompts);

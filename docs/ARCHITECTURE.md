@@ -29,7 +29,8 @@ crates/
                           (reading an index conflict into chunks), resolve (picks, output, write
                           and stage), template (commit.template: the prefill and its comment char),
                           workfile (creating, renaming and deleting a working-tree file; path
-                          checks), noclobber (a move that never replaces an existing file)
+                          checks), noclobber (a move that never replaces an existing file),
+                          tracked (the paths in the index, for the palette's file finder)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -76,7 +77,9 @@ crates/
                           diff_nav (next/previous change across files: the file list a
                           diff came from, where a step lands), commit (the commit draft, its
                           readiness rules, button label and command line), palette (the
-                          command palette: open state, the commands available now), files (the
+                          command palette: open state, the commands available now, and its
+                          modes: the command list or a command's sub-list, such as tracked
+                          files, ranked per query), files (the
                           New file and Rename file dialogs' path form)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
@@ -85,7 +88,8 @@ crates/
                           interactive rebase, with Trellis as the sequence editor), askpass
                           (starting the credential-prompt listener, answering prompts), os
                           (URLs, terminals, opening files and showing them in the file manager),
-                          files (creating, renaming and deleting a working-tree file)
+                          files (creating, renaming and deleting a working-tree file; listing
+                          the tracked files)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
@@ -98,7 +102,8 @@ crates/
                           or showing a working-tree file; work_files: create, rename, delete),
                           commit (committing, stage-all-and-commit, push after committing, the
                           template prefill), palette (opening the command palette, moving,
-                          running a command)
+                          running a command, entering and leaving a sub-list and loading its
+                          items)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,

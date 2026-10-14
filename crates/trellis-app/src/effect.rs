@@ -177,6 +177,11 @@ pub enum Effect {
         workdir: PathBuf,
         op: FileOp,
     },
+    /// The files in the index, for the palette's file finder.
+    LoadTrackedPaths {
+        workdir: PathBuf,
+        generation: u64,
+    },
     /// The commits that changed `path`, examining at most `limit` commits.
     LoadFileHistory {
         workdir: PathBuf,
@@ -327,6 +332,7 @@ impl Effect {
             | Effect::LoadDiff { workdir, .. }
             | Effect::LoadConflict { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }
+            | Effect::LoadTrackedPaths { workdir, .. }
             | Effect::LoadRebasePlan { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::RevertHunk { workdir, .. }

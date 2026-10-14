@@ -33,12 +33,37 @@ fn word_start(text: &[char], j: usize) -> bool {
     !prev.is_alphanumeric() || (prev.is_lowercase() && cur.is_uppercase())
 }
 
+/// Whether the (lowercased) query chars appear in order in `text`, ignoring case.
+fn is_subsequence(q: &[char], text: &str) -> bool {
+    let mut want = q.iter().peekable();
+    for c in text.chars() {
+        match want.peek() {
+            Some(&&w) if lower(c) == w => {
+                want.next();
+            }
+            Some(_) => {}
+            None => break,
+        }
+    }
+    want.peek().is_none()
+}
+
 /// Case-insensitive subsequence match of `query` (whitespace in the query is ignored) in `text`.
 pub fn fuzzy_match(query: &str, text: &str) -> Option<Match> {
     let q: Vec<char> = query.chars().filter(|c| !c.is_whitespace()).map(lower).take(MAX_QUERY).collect();
     if q.is_empty() {
         return Some(Match { score: 0, positions: Vec::new() });
     }
+    // Most texts in a long list don't contain the query at all: rule them out in one pass
+    // before allocating the score tables.
+    if !is_subsequence(&q, text) {
+        return None;
+    }
+    best_match(&q, text)
+}
+
+/// The best-scoring placement of the lowercased, non-empty query `q` in `text`, if any.
+fn best_match(q: &[char], text: &str) -> Option<Match> {
     let orig: Vec<char> = text.chars().collect();
     let t: Vec<char> = orig.iter().map(|&c| lower(c)).collect();
     let (m, n) = (q.len(), t.len());
@@ -116,6 +141,9 @@ pub fn rank(query: &str, items: &[(&str, &str)]) -> Vec<(usize, Match)> {
         .filter_map(|(i, (label, keywords))| {
             let len = label.chars().count();
             let m = fuzzy_match(query, label).or_else(|| {
+                if keywords.is_empty() {
+                    return None;
+                }
                 let mut m = fuzzy_match(query, &format!("{label} {keywords}"))?;
                 m.score -= KEYWORD_PENALTY;
                 m.positions.retain(|&p| p < len);
@@ -196,6 +224,27 @@ mod tests {
         let len = "Open Preferences".chars().count();
         assert!(ranked[0].1.positions.iter().all(|&p| p < len));
         assert!(rank("zebra", &[("Open Preferences", "settings options")]).is_empty());
+    }
+
+    #[test]
+    fn precheck_keeps_results() {
+        let pairs = [
+            ("co main", "Checkout main", true),
+            ("hsup", "Push", false),
+            ("FET", "Fetch all remotes", true),
+            ("ffn", "Öffnen", true),
+            ("file42.r", "src/mod42/file42.rs", true),
+            ("file42", "src/mod41/file4.rs", false),
+            ("xyz", "Fetch all remotes", false),
+            ("ss", "s", false),
+        ];
+        for (query, text, matches) in pairs {
+            let q: Vec<char> = query.chars().filter(|c| !c.is_whitespace()).map(lower).collect();
+            let got = fuzzy_match(query, text);
+            assert_eq!(got.is_some(), matches, "{query:?} in {text:?}");
+            // The same result, score and positions as the full matcher without the precheck.
+            assert_eq!(got, best_match(&q, text), "{query:?} in {text:?}");
+        }
     }
 
     #[test]

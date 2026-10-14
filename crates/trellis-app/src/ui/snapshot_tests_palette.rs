@@ -1,14 +1,16 @@
 //! The command palette over the main window: the full list, a filtered list with matched
-//! characters highlighted, no matches, and the keys and clicks it turns into messages. Shares
-//! the fixture repository and renderer with `snapshot_tests`.
+//! characters highlighted, no matches, the file finder (its rows, loading and error states),
+//! and the keys and clicks it turns into messages. Shares the fixture repository and renderer
+//! with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::palette::{Palette, PaletteCommand};
+use crate::state::palette::{Items, Mode, Palette, PaletteCommand, Pick, PickKind};
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
+use trellis_core::repo;
 use trellis_core::settings::ThemeChoice;
 
 fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Msg) -> bool) -> bool {
@@ -26,7 +28,7 @@ fn palette_dark() {
 #[test]
 fn palette_filtered_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "palette-light");
-    st.palette = Some(Palette { query: "ch".into(), selected: 1, scroll_to_selected: false });
+    st.palette = Some(Palette { query: "ch".into(), selected: 1, scroll_to_selected: false, ..Default::default() });
     render("palette_filtered_light", st, false);
     remove_fixture(&dir);
 }
@@ -139,4 +141,112 @@ fn palette_takes_typing_over_an_empty_search_bar() {
     assert_eq!(h.state().0.view.search, "");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// A palette in the file finder over `items`, with `query` typed.
+fn finder(items: Items, query: &str, selected: usize) -> Palette {
+    let mut pk = Pick::new(PickKind::FileHistory);
+    pk.set_items(items);
+    Palette { query: query.into(), selected, mode: Mode::Pick(pk), ..Default::default() }
+}
+
+fn queue_prompt(st: &mut AppState) {
+    let prompt = trellis_core::askpass::Prompt::new("Password for 'https://example.com': ", None);
+    st.askpass.queue.push_back(crate::state::askpass::PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
+}
+
+#[test]
+fn palette_files() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-files");
+    let paths = repo::tracked_paths(&dir).unwrap();
+    assert_eq!(paths, ["README.md", "app.txt", "login.txt"]);
+    st.palette = Some(finder(Items::Ready(paths), "", 1));
+    render("palette_files", st, true);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn palette_files_filtered_light() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "palette-files-light");
+    let mut paths: Vec<String> = (0..250).map(|i| format!("src/ui/panel{i}.rs")).collect();
+    paths.push("docs/guide.md".into());
+    st.palette = Some(finder(Items::Ready(paths), "pan", 0));
+    let mut h = harness(st, false);
+    h.run();
+    assert!(h.query_by_label_contains("Showing 200 of 250 files").is_some());
+    h.snapshot("palette_files_filtered_light");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn palette_file_keys() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-file-keys");
+    let paths = repo::tracked_paths(&dir).unwrap();
+    st.palette = Some(finder(Items::Ready(paths), "", 0));
+    let mut h = harness(st, true);
+    h.run();
+    let opens = |want: &'static str| move |m: &Msg| matches!(m, Msg::RunPaletteCommand(PaletteCommand::OpenFileHistory(p)) if p == want);
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(pushed(&h, opens("README.md")));
+
+    h.state_mut().1.clear();
+    h.get_by_label("app.txt").click();
+    h.run();
+    assert!(pushed(&h, opens("app.txt")));
+
+    h.state_mut().1.clear();
+    h.press_key(Key::Backspace);
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::PaletteBack)));
+
+    h.state_mut().1.clear();
+    h.press_key(Key::Escape);
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::PaletteBack)));
+    assert!(!pushed(&h, |m| matches!(m, Msg::ClosePalette)), "Esc goes back rather than closing");
+
+    // Backspace with text in the field edits the text.
+    h.state_mut().0.palette.as_mut().unwrap().query = "x".into();
+    h.run();
+    h.state_mut().1.clear();
+    h.press_key(Key::Backspace);
+    h.run();
+    assert!(!pushed(&h, |m| matches!(m, Msg::PaletteBack)));
+
+    // Under a credential prompt the finder takes no keys.
+    h.state_mut().0.palette.as_mut().unwrap().query.clear();
+    queue_prompt(&mut h.state_mut().0);
+    h.run();
+    h.state_mut().1.clear();
+    h.press_key(Key::Escape);
+    h.press_key(Key::Backspace);
+    h.run();
+    assert!(!pushed(&h, |m| matches!(m, Msg::PaletteBack | Msg::ClosePalette | Msg::RunPaletteCommand(_))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn palette_files_loading_and_error() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-files-states");
+    st.palette = Some(finder(Items::Loading, "", 0));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label_contains("Loading files").is_some());
+    set_items(&mut h, Items::Failed("bad index".into()));
+    h.run();
+    assert!(h.query_by_label_contains("bad index").is_some());
+    set_items(&mut h, Items::Ready(Vec::new()));
+    h.run();
+    assert!(h.query_by_label_contains("no tracked files").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+fn set_items(h: &mut Harness<'_, (AppState, Vec<Msg>)>, items: Items) {
+    if let Some(Palette { mode: Mode::Pick(pk), .. }) = h.state_mut().0.palette.as_mut() {
+        pk.set_items(items);
+    }
 }

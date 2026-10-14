@@ -367,8 +367,14 @@ pub enum Msg {
     ClosePalette,
     /// Move the palette selection by this many rows, wrapping.
     PaletteMove(isize),
-    /// Close the palette and run this command.
+    /// Close the palette and run this command (or, for a two-step command, open its sub-list).
     RunPaletteCommand(crate::state::palette::PaletteCommand),
+    /// Leave a palette sub-list for the command list.
+    PaletteBack,
+    TrackedPathsLoaded {
+        generation: u64,
+        result: Result<Vec<String>, String>,
+    },
 
     // ---- credential prompts (state/askpass.rs)
     /// git or ssh asks for input through the askpass helper (from the listener; unscoped).

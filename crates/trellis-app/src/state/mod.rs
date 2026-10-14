@@ -266,6 +266,9 @@ pub struct AppState {
     pub askpass: askpass::CredentialPrompts,
     /// The command palette, while open (global, not per tab).
     pub palette: Option<palette::Palette>,
+    /// Incremented for every palette list request; older `TrackedPathsLoaded` results are
+    /// ignored.
+    pub palette_gen: u64,
     pub view: ViewState,
 }
 
@@ -309,6 +312,7 @@ impl AppState {
             watch,
             askpass: Default::default(),
             palette: None,
+            palette_gen: 0,
             view: ViewState::default(),
         }
     }

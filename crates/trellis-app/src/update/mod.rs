@@ -51,6 +51,8 @@ mod history_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
+mod palette_pick_tests;
+#[cfg(test)]
 mod palette_tests;
 #[cfg(test)]
 mod publish_tests;
@@ -259,7 +261,12 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::SetTheme(_) => prefs::handle(st, msg, now, &mut fx),
 
         // command palette
-        Msg::TogglePalette | Msg::ClosePalette | Msg::PaletteMove(_) | Msg::RunPaletteCommand(_) => palette::handle(st, msg, now, &mut fx),
+        Msg::TogglePalette
+        | Msg::ClosePalette
+        | Msg::PaletteMove(_)
+        | Msg::RunPaletteCommand(_)
+        | Msg::PaletteBack
+        | Msg::TrackedPathsLoaded { .. } => palette::handle(st, msg, now, &mut fx),
 
         // dialogs and the outside world
         Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then }),
