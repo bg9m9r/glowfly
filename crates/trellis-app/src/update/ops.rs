@@ -37,6 +37,15 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             local(st, LocalOp::Hunk { op, path, index }, fx);
         }
         Msg::ApplyLines(op) => apply_lines(st, op, fx),
+        Msg::RevertHunk { index, generation } => revert_hunk(st, index, generation, fx),
+        Msg::HunkReverted { path, result } => {
+            match result {
+                Ok(()) => st.toast(true, format!("Reverted the hunk in {path}. The change is in your working tree."), now),
+                Err(e) => st.log(false, format!("Could not revert the hunk in {path}: {e}")),
+            }
+            super::watch::settled(st, now);
+            super::repo::refresh_status(st, fx);
+        }
         Msg::LocalOpDone(result) => {
             if let Err(e) = result {
                 st.log(false, e);
@@ -154,6 +163,29 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     st.diff_gen += 1;
     let lines = sel.lines.into_iter().collect();
     local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines }, fx);
+}
+
+/// Reverts a hunk of the open commit or comparison diff into the working tree. Unlike
+/// `Msg::Hunk` this leaves `diff_gen` alone: a commit diff's hunks can't change, so the other
+/// buttons stay valid (the status refresh that follows reloads the diff anyway).
+fn revert_hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Vec<Effect>) {
+    if st.diff.as_ref().is_none_or(|(target, _)| target.is_working_tree()) {
+        return;
+    }
+    if let Some(why) = st.hunk_ops_blocked() {
+        st.log(false, why);
+        return;
+    }
+    if st.hunk_ops_gen() != Some(generation) {
+        st.log(false, "The diff changed before the revert ran, so nothing was changed. Try again on the updated diff.");
+        return;
+    }
+    // Always the normal hunks, also in the whole-file view: core counts those.
+    let Some((target, diff)) = &st.diff else { return };
+    let Some(expected) = diff.hunks.get(index).cloned() else { return };
+    let target = target.clone();
+    let Some(workdir) = st.workdir() else { return };
+    fx.push(Effect::RevertHunk { workdir, target, index, expected });
 }
 
 pub(super) fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) {

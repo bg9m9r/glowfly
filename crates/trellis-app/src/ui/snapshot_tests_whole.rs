@@ -2,8 +2,10 @@
 //! change block, in both layouts, for a commit and with whitespace hidden. Shares the fixture
 //! repository and renderer with `snapshot_tests`.
 
-use super::snapshot_tests::{git, remove_fixture, render, with_repo};
+use super::snapshot_tests::{git, harness, remove_fixture, render, with_repo};
+use crate::msg::Msg;
 use crate::state::AppState;
+use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use trellis_core::repo::{self, DiffTarget, LoadDiffOptions, LoadOptions};
 use trellis_core::settings::{DiffLayout, DiffMode, ThemeChoice};
@@ -87,5 +89,26 @@ fn diff_whole_ignore_whitespace() {
     assert!(lines.iter().any(|l| l.origin == ' ' && l.text.contains("self.w  *  self.h")), "the re-spaced line is context");
     assert!(st.hunk_ops_blocked().is_some());
     render("diff_whole_ignore_whitespace", st, true);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn whole_file_revert_targets_the_blocks_hunk() {
+    let (st, dir) = with_whole("whole-revert", ThemeChoice::Dark, DiffLayout::Inline, true, false);
+    let generation = st.hunk_ops_gen().expect("buttons enabled");
+    let mut h = harness(st, true);
+    h.run();
+    let buttons: Vec<_> = h.get_all_by_label("Revert Hunk").collect();
+    assert_eq!(buttons.len(), 2, "one per change block");
+    buttons[1].click();
+    h.run();
+    let sent: Vec<(usize, u64)> = h
+        .state()
+        .1
+        .iter()
+        .filter_map(|m| if let Msg::RevertHunk { index, generation } = m { Some((*index, *generation)) } else { None })
+        .collect();
+    assert_eq!(sent, [(1, generation)]);
+    drop(h);
     remove_fixture(&dir);
 }

@@ -139,8 +139,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Pair removed and added lines by similarity instead of by position
   - [x] Ignore leading/trailing whitespace (diff header toggle, saved in settings; hunk and line
     operations are off while it is on, since `apply_hunk` counts the unfiltered hunks)
-    - [ ] Map hunk and line stage/unstage/discard from the filtered diff back to the unfiltered
-      one, instead of disabling them while whitespace is hidden
+    - [ ] Map hunk and line stage/unstage/discard, and Revert Hunk on commit diffs, from the
+      filtered diff back to the unfiltered one, instead of disabling them while whitespace is
+      hidden
     - [ ] Also ignore whitespace inserted where there was none (indenting from column 0, which
       git's `-b` still shows): ignore-all-whitespace or a leading/trailing line filter
     - [ ] An ignore-whitespace choice on the Editor preferences page, and a command or shortcut
@@ -163,7 +164,20 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Syntax colors for whole files over the highlight size limit (see the background
       highlighting item above)
   - [ ] Diff view vs file view toggle (plain file, or a rendered preview for Markdown/images)
-  - [ ] Revert a hunk or selected lines of a commit diff into the working tree
+  - [x] Revert a hunk of a commit diff into the working tree (Revert Hunk on commit, compare and
+    File history diffs, Hunks and Whole-file views; off while whitespace is hidden)
+    - [ ] Revert selected lines of a commit diff (line selection on commit diffs, then the
+      partial patch with only those lines, reversed)
+    - [ ] Revert single lines in the whole-file view (needs whole-file line selection first)
+    - [ ] Follow renames when reverting from File history: map a commit's older path to the
+      file's current name instead of refusing with "not in the working tree"
+    - [ ] Remove the file, rather than leaving it empty, when reverting the hunk of a commit
+      that added it
+    - [ ] Fall back to a three-way merge (conflict markers) when the working file has moved on,
+      instead of refusing
+    - [ ] Record a hunk revert in Trellis's undo history
+    - [ ] Revert a whole file of a commit into the working tree (file-list context menu), and a
+      keyboard shortcut for Revert Hunk
   - [ ] Next/previous change continues to the next/previous changed file at either end
   - [ ] Cache the computed diff rows instead of rebuilding them every frame
 - [x] **Line-level staging**

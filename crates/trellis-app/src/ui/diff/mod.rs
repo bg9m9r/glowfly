@@ -1,6 +1,6 @@
 //! The diff viewer: one column (inline) or old and new side by side (split), showing the hunks
-//! or the whole file, with hunk- and line-level stage, unstage and discard, and next/previous
-//! change navigation.
+//! or the whole file, with hunk- and line-level stage, unstage and discard, and Revert Hunk on
+//! commit diffs, and next/previous change navigation.
 
 mod header;
 mod inline;
@@ -37,8 +37,8 @@ pub(super) struct DiffView<'a> {
     /// The line selection; `None` when lines can't be selected (commit diffs, the whole-file
     /// view, or while hunk and line operations are blocked).
     pub sel: Option<&'a LineSelection>,
-    /// Why hunk and line operations are off for reasons other than a pending reload (e.g.
-    /// whitespace hidden).
+    /// Why hunk and line operations (including Revert Hunk) are off for reasons other than a
+    /// pending reload (e.g. whitespace hidden).
     pub blocked: Option<&'static str>,
 }
 
@@ -100,34 +100,48 @@ fn rows(ui: &mut Ui, st: &AppState, blocked: Option<&'static str>, scroll_to: Op
     })
 }
 
-/// A hunk header row: the `@@` line, plus Stage / Unstage / Discard Hunk buttons pinned to the
-/// visible right edge so they stay in view when scrolled sideways. A hunk with selected lines
-/// shows Stage / Unstage / Discard N lines instead. The buttons are disabled while a reload is
-/// on its way (`hunk_gen` is `None`), since the hunk indexes may no longer match the file, and
-/// while `blocked` (whitespace hidden: the shown hunks aren't the ones staging works on).
+/// A hunk's action button.
+#[derive(Clone, Copy)]
+enum HunkButton {
+    Op(HunkOp),
+    /// Apply the hunk's inverse to the working tree (commit and comparison diffs).
+    Revert,
+}
+
+/// A hunk header row: the `@@` line, plus its buttons pinned to the visible right edge so they
+/// stay in view when scrolled sideways: Stage / Unstage / Discard Hunk on working-tree diffs (or
+/// Stage / Unstage / Discard N lines when the hunk has selected lines), Revert Hunk on commit
+/// and comparison diffs. The buttons are disabled while a reload is on its way (`hunk_gen` is
+/// `None`), since the hunk indexes may no longer match the file, and while `blocked`
+/// (whitespace hidden: the shown hunks aren't the ones the operations count).
 pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs: &mut Vec<Msg>) {
     let p = ui.painter();
     p.rect_filled(rect, 0.0, color::hunk_bg());
     p.text(pos2(rect.left() + 8.0, rect.center().y), Align2::LEFT_CENTER, &v.diff.hunks[h].header, mono(), color::hunk_fg());
     let path = v.target.path();
     let selected = v.sel.map_or(0, |s| s.count_in(v.target, h));
-    let ops: &[HunkOp] = match v.target {
-        DiffTarget::Unstaged(_) => &[HunkOp::Discard, HunkOp::Stage],
-        DiffTarget::Staged(_) => &[HunkOp::Unstage],
-        DiffTarget::Commit(..) | DiffTarget::Between(..) => &[],
+    let buttons: &[HunkButton] = match v.target {
+        DiffTarget::Unstaged(_) => &[HunkButton::Op(HunkOp::Discard), HunkButton::Op(HunkOp::Stage)],
+        DiffTarget::Staged(_) => &[HunkButton::Op(HunkOp::Unstage)],
+        DiffTarget::Commit(..) | DiffTarget::Between(..) => &[HunkButton::Revert],
     };
     let small = TextStyle::Small.resolve(ui.style());
     let mut x = ui.clip_rect().right() - 8.0;
-    for &op in ops {
-        let verb = match op {
-            HunkOp::Stage => "Stage",
-            HunkOp::Unstage => "Unstage",
-            HunkOp::Discard => "Discard",
-        };
-        let label = match selected {
-            0 => format!("{verb} Hunk"),
-            1 => format!("{verb} 1 line"),
-            n => format!("{verb} {n} lines"),
+    for &b in buttons {
+        let label = match b {
+            HunkButton::Revert => "Revert Hunk".to_owned(),
+            HunkButton::Op(op) => {
+                let verb = match op {
+                    HunkOp::Stage => "Stage",
+                    HunkOp::Unstage => "Unstage",
+                    HunkOp::Discard => "Discard",
+                };
+                match selected {
+                    0 => format!("{verb} Hunk"),
+                    1 => format!("{verb} 1 line"),
+                    n => format!("{verb} {n} lines"),
+                }
+            }
         };
         let text_w = ui.fonts(|f| f.layout_no_wrap(label.clone(), small.clone(), color::text()).size().x);
         let w = (text_w + 16.0).max(96.0);
@@ -138,11 +152,21 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         if reason.is_some() {
             builder = builder.disabled();
         }
-        let button = ui
+        let mut button = ui
             .allocate_new_ui(builder, |ui| ui.add(egui::Button::new(RichText::new(label).small())))
             .inner
             .on_disabled_hover_text(reason.unwrap_or_default());
+        if let HunkButton::Revert = b {
+            button = button.on_hover_text(format!("Undo this change in your working copy of {path}. The commit itself is not changed."));
+        }
         let (true, Some(generation)) = (button.clicked(), v.hunk_gen) else { continue };
+        let op = match b {
+            HunkButton::Revert => {
+                msgs.push(Msg::RevertHunk { index: h, generation });
+                continue;
+            }
+            HunkButton::Op(op) => op,
+        };
         let m = if selected > 0 { Msg::ApplyLines(op) } else { Msg::Hunk { op, path: path.to_owned(), index: h, generation } };
         msgs.push(match (op, selected) {
             (HunkOp::Discard, 0) => {
@@ -213,7 +237,8 @@ pub(super) fn scroll(ui: &mut Ui, rows: usize, scroll_to: Option<usize>, mut add
 }
 
 /// The diff's rows without the header bar, for views that embed a commit's diff of a file (the
-/// file history). Commit diffs have no hunk buttons or line selection.
+/// file history). Commit diffs have Revert Hunk buttons (off while whitespace is hidden) and no
+/// line selection.
 pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
     {
@@ -227,7 +252,8 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             return;
         }
     }
-    if let Some(top) = rows(ui, st, None, scroll_to, msgs) {
+    let blocked = st.hunk_ops_blocked();
+    if let Some(top) = rows(ui, st, blocked, scroll_to, msgs) {
         st.view.diff_top_row = top;
     }
 }

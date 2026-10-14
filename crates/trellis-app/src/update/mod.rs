@@ -29,6 +29,8 @@ mod lines_tests;
 #[cfg(test)]
 mod publish_tests;
 #[cfg(test)]
+mod revert_tests;
+#[cfg(test)]
 mod selection_tests;
 #[cfg(test)]
 mod tabs_tests;
@@ -116,6 +118,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 fx.extend(update(st, *msg, now));
             } else if let Msg::LocalOpDone(Err(e)) = *msg {
                 st.log(false, e);
+            } else if let Msg::HunkReverted { path, result: Err(e) } = *msg {
+                st.log(false, format!("Could not revert the hunk in {path}: {e}"));
             } else {
                 tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display());
             }
@@ -130,6 +134,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::DiscardFile(..)
         | Msg::Hunk { .. }
         | Msg::ApplyLines(_)
+        | Msg::RevertHunk { .. }
         | Msg::Commit
         | Msg::PrefillAmend
         | Msg::AppendToDescription(_)
@@ -138,6 +143,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::InitRepo
         | Msg::CloneRepo { .. }
         | Msg::LocalOpDone(_)
+        | Msg::HunkReverted { .. }
         | Msg::JobDone { .. } => ops::handle(st, msg, now, &mut fx),
         Msg::Undo | Msg::Redo => undo::handle(st, msg, now, &mut fx),
         Msg::RepoChanged { .. } | Msg::WatchFailed { .. } => watch::handle(st, msg, now, &mut fx),

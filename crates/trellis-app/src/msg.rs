@@ -158,6 +158,12 @@ pub enum Msg {
     /// Stage, unstage or discard the selected diff lines. Reads the selection when handled,
     /// so a confirmation whose diff changed meanwhile does nothing.
     ApplyLines(HunkOp),
+    /// Revert hunk `index` of the commit or comparison diff shown at `generation`
+    /// (AppState::hunk_ops_gen) into the working tree. Refused if the diff changed since.
+    RevertHunk {
+        index: usize,
+        generation: u64,
+    },
     Commit,
     PrefillAmend,
     AppendToDescription(String),
@@ -278,6 +284,11 @@ pub enum Msg {
         result: Result<FileDiff, String>,
     },
     LocalOpDone(Result<(), String>),
+    /// A RevertHunk finished; `path` is the file it was for.
+    HunkReverted {
+        path: String,
+        result: Result<(), String>,
+    },
     JobDone {
         ok: bool,
         output: String,

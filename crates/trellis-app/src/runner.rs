@@ -70,6 +70,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::LoadConflict { .. } => "load-conflict",
         Effect::LoadFileHistory { .. } => "file-history",
         Effect::LocalOp { .. } => "local-op",
+        Effect::RevertHunk { .. } => "revert-hunk",
         Effect::RunGit { .. } => "git",
         Effect::UndoRedo { .. } => "undo-redo",
         Effect::Forge { .. } => "forge",
@@ -151,6 +152,10 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             Some(Msg::FileHistoryLoaded { path, generation, result })
         }
         Effect::LocalOp { workdir, op } => Some(Msg::LocalOpDone(local_op(&workdir, op).map_err(err))),
+        Effect::RevertHunk { workdir, target, index, expected } => {
+            let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
+            Some(Msg::HunkReverted { path: target.path().to_owned(), result })
+        }
         Effect::RunGit { cwd, cmds, write_file, record } => {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             let (ok, output) = run_git(&cwd, &cmds, write_file);

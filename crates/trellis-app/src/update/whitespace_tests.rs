@@ -156,7 +156,7 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
 }
 
 #[test]
-fn commit_diffs_are_filtered_but_have_nothing_to_block() {
+fn commit_diffs_block_revert_while_whitespace_is_hidden() {
     let dir = scratch_repo("ws-commit");
     let mut st = state();
     drive(&mut st, Msg::Open(dir.clone()));
@@ -164,7 +164,7 @@ fn commit_diffs_are_filtered_but_have_nothing_to_block() {
     drive(&mut st, Msg::OpenDiff(DiffTarget::Commit(head, "a.txt".into())));
     let fx = run(&mut st, Msg::SetIgnoreWhitespace(true));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, target: DiffTarget::Commit(..), .. })));
-    assert_eq!(st.hunk_ops_blocked(), None);
+    assert_eq!(st.hunk_ops_blocked(), Some(crate::state::WHITESPACE_BLOCKS_REVERT));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

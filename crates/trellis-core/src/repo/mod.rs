@@ -14,6 +14,7 @@ mod index;
 mod lines;
 mod load;
 mod resolve;
+mod revert;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{commit_detail, commit_stats, compare_files, load_diff, load_diff_with};
@@ -23,6 +24,7 @@ pub use index::{apply_hunk, discard_file, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
 pub use load::{load, messages_between, status_at};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
+pub use revert::revert_hunk;
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -196,7 +198,7 @@ pub struct FileDiff {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LoadDiffOptions {
     /// Hide changes in the amount of whitespace and at line ends (git `-b --ignore-space-at-eol`).
-    /// Hunk indexes then no longer match `apply_hunk` / `apply_lines`.
+    /// Hunk indexes then no longer match `apply_hunk`, `apply_lines` or `revert_hunk`.
     pub ignore_whitespace: bool,
     /// Also load the file with unlimited context into FileDiff::whole (the whole-file view).
     /// The normal hunks are loaded as always, so hunk indexes still match apply_hunk.
@@ -242,6 +244,8 @@ mod history_tests;
 mod lines_tests;
 #[cfg(test)]
 mod resolve_tests;
+#[cfg(test)]
+mod revert_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

@@ -27,6 +27,8 @@ mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_diff;
 #[cfg(test)]
+mod snapshot_tests_revert;
+#[cfg(test)]
 mod snapshot_tests_select;
 #[cfg(test)]
 mod snapshot_tests_whole;

@@ -146,7 +146,7 @@ pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions
 
 /// The diff behind `target`, with `context` lines around each change when set (and hunks
 /// never merged because of nearby changes, so one hunk spans the file).
-fn target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: LoadDiffOptions, context: Option<u32>) -> Result<Diff<'r>> {
+pub(super) fn target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: LoadDiffOptions, context: Option<u32>) -> Result<Diff<'r>> {
     let mut o = match target {
         DiffTarget::Commit(..) | DiffTarget::Between(..) => DiffOptions::new(),
         DiffTarget::Unstaged(p) => workdir_opts(p),

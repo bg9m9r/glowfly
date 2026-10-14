@@ -146,6 +146,14 @@ pub enum Effect {
         workdir: PathBuf,
         op: LocalOp,
     },
+    /// Applies the inverse of hunk `index` of `target` (a commit or comparison diff) to the
+    /// working tree only; refused if git's hunk is no longer `expected`.
+    RevertHunk {
+        workdir: PathBuf,
+        target: DiffTarget,
+        index: usize,
+        expected: Hunk,
+    },
     /// The commits that changed `path`, examining at most `limit` commits.
     LoadFileHistory {
         workdir: PathBuf,
@@ -273,6 +281,7 @@ impl Effect {
             | Effect::LoadConflict { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }
             | Effect::LocalOp { workdir, .. }
+            | Effect::RevertHunk { workdir, .. }
             | Effect::Stats { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             _ => None,

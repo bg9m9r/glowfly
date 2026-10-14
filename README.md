@@ -36,7 +36,8 @@ With no path it reopens the last repository. See [TODO.md](TODO.md) for the road
   commit, double-click checks out, and right-click opens merge, rebase, delete, push-tag,
   apply/pop/drop.
 - **Staging**: stage or unstage single files, whole lists, or individual hunks. You can discard a
-  file or hunk. "Discard all" moves changes into a stash so they can be recovered.
+  file or hunk. "Discard all" moves changes into a stash so they can be recovered. In a commit's
+  diff, Revert Hunk undoes that hunk in your working tree.
 - **Commit**: summary with a 72-char counter, description, and amend. Runs through `git commit`,
   so hooks and GPG signing apply.
 - **Commit context menu**: create branch/tag here, checkout (detached), cherry-pick, revert,
