@@ -43,6 +43,8 @@ mod branch_tests;
 #[cfg(test)]
 mod cherry_pick_tests;
 #[cfg(test)]
+mod clone_tests;
+#[cfg(test)]
 mod commit_tests;
 #[cfg(test)]
 mod conflict_tests;
@@ -256,7 +258,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::Git { .. }
         | Msg::Push { .. }
         | Msg::InitRepo
-        | Msg::CloneRepo { .. }
+        | Msg::CloneRepo(_)
         | Msg::LocalOpDone(_)
         | Msg::HunkReverted { .. }
         | Msg::JobDone { .. } => ops::handle(st, msg, now, &mut fx),
@@ -350,7 +352,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::NewTag { .. } | Msg::CreateTag { .. } | Msg::SetPushNewTags(_) => tags::handle(st, msg, &mut fx),
         Msg::CloneDialog => {
             let parent = st.recent.first().and_then(|p| p.parent()).map(|p| p.display().to_string()).unwrap_or_default();
-            st.modal = Some(crate::state::Modal::Clone { url: String::new(), parent });
+            st.modal = Some(crate::state::Modal::Clone(crate::state::clone::CloneForm::new(parent)));
         }
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),

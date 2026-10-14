@@ -3,6 +3,7 @@
 
 pub mod askpass;
 pub mod branches;
+pub mod clone;
 pub mod commit;
 pub mod conflict;
 pub mod diff_nav;
@@ -115,7 +116,7 @@ pub enum Modal {
     RemoveWorktree(worktree_manage::RemoveForm),
     LockWorktree(worktree_manage::LockForm),
     Confirm { title: String, body: String, button: String, then: Box<Msg> },
-    Clone { url: String, parent: String },
+    Clone(clone::CloneForm),
     CreatePr { source: String, target: String, targets: Vec<String>, title: String, description: String, draft: bool, items: String },
     Publish(Box<publish::PublishForm>),
     RenameBranch { old: String, name: String },

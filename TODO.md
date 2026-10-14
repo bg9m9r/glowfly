@@ -731,6 +731,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Clone and init options**
   Shallow and sparse clone; init with a `.gitignore` template and a license; create the hosting-service repo and push on init; clone from a list of
   your repos on a connected service.
+  - [x] Shallow clone from the Clone dialog: by commit count or since a date, optionally one branch
+  - [ ] Sparse clone (choose folders to check out when cloning)
+  - [ ] Init with a .gitignore template and a license
+  - [ ] Create the hosting-service repository and push on init
+  - [ ] Clone from a list of your repositories on a connected hosting service
+  - [ ] Fetch the full history of a shallow clone later (unshallow, or deepen by more commits)
 - [ ] **Sparse checkout**
   Enable/disable, set/edit patterns, reapply.
 - [ ] **Repository management**

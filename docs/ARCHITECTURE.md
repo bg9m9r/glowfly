@@ -66,6 +66,9 @@ crates/
                           prune command lines, git's refusal read without relying on English,
                           the uncommitted-file count, and `remove`: lock and changes checked
                           before git runs, the result judged by listing the worktrees again)
+    clone_ops.rs          clone command lines (full, or shallow by commit count or since a date,
+                          one branch, `--no-local` for folder sources), depth/date/branch checks
+                          and the folder name from a URL
     lfs.rs                Git LFS: installed version, whether a repository is set up (hooks and
                           filters, read without running git-lfs commands that write), tracked
                           patterns parsed from .gitattributes, pattern checks and the LFS
@@ -158,7 +161,8 @@ crates/
                           locking or pruning is blocked, the outcome messages), remotes (the
                           Add/Edit remote form and its checks, the job for a submitted form, the
                           Remove confirmation's text, row tooltips, why Fetch is blocked, the
-                          palette's Add remote… and Fetch <remote> entries), view (which
+                          palette's Add remote… and Fetch <remote> entries), clone (the Clone
+                          dialog's form, its checks and the request it builds), view (which
                           left-panel sections are open)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
@@ -241,7 +245,8 @@ crates/
                           update/lfs_tests.rs, update/lfs_track_tests.rs, update/gitflow_tests.rs,
                           update/gitflow_finish_tests.rs,
                           update/worktree_tests.rs, update/worktree_manage_tests.rs,
-                          update/remote_tests.rs, update/tag_remote_tests.rs)
+                          update/remote_tests.rs, update/tag_remote_tests.rs,
+                          update/clone_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -269,7 +274,8 @@ crates/
                           gitflow_finish_dialog (the Git Flow Finish dialog), remotes/ (the
                           REMOTE section: remote group rows, tooltips, header and row menus;
                           dialog: Add/Edit remote),
-                          tags (the TAGS section: rows and row menu),
+                          tags (the TAGS section: rows and row menu), clone_dialog (the Clone
+                          dialog with its shallow options),
                           status, prefs/ (editor: the Editor page; lfs: the Git LFS page;
                           gitflow: the Git Flow page),
                           theme, widgets, icons (painting of the newer icons)
@@ -284,7 +290,8 @@ crates/
                           snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,
                           snapshot_tests_submodules.rs, snapshot_tests_lfs.rs,
                           snapshot_tests_gitflow.rs, snapshot_tests_worktrees.rs,
-                          snapshot_tests_worktree_manage.rs, snapshot_tests_remotes.rs)
+                          snapshot_tests_worktree_manage.rs, snapshot_tests_remotes.rs,
+                          snapshot_tests_clone.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

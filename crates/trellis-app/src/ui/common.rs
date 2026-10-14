@@ -155,11 +155,6 @@ pub fn capitalize(s: &str) -> String {
     c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }
 
-/// The folder name `git clone <url>` would create.
-pub fn repo_name_from_url(url: &str) -> String {
-    url.trim().trim_end_matches('/').rsplit(['/', ':', '\\']).next().unwrap_or_default().trim_end_matches(".git").to_owned()
-}
-
 pub type StateAction = (&'static str, &'static [&'static str]);
 
 const REBASE_ACTIONS: &[StateAction] =
@@ -222,8 +217,6 @@ mod tests {
     #[test]
     fn parses_issue_key_lists() {
         assert_eq!(parse_keys("12, #13 AB#14  PROJ-5,12"), ["12", "13", "14", "PROJ-5"]);
-        assert_eq!(repo_name_from_url("https://github.com/o/repo.git"), "repo");
-        assert_eq!(repo_name_from_url("git@host:team/app"), "app");
         assert_eq!(capitalize("work item"), "Work item");
     }
 }

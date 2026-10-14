@@ -186,8 +186,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 super::ops::start_job(st, spec, fx);
             }
             FolderPurpose::CloneParent => {
-                if let Some(Modal::Clone { parent, .. }) = st.modal.as_mut() {
-                    *parent = path.display().to_string();
+                if let Some(Modal::Clone(form)) = st.modal.as_mut() {
+                    form.parent = path.display().to_string();
                 }
             }
             FolderPurpose::HooksPath => {

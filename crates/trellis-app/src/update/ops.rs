@@ -74,13 +74,15 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         Msg::InitRepo => {
             fx.push(Effect::PickFolder { title: "Initialize a repository in…".into(), purpose: crate::msg::FolderPurpose::InitRepo })
         }
-        Msg::CloneRepo { url, parent, name } => {
-            let dest = parent.join(&name);
-            start_job(
-                st,
-                JobSpec { cwd: Some(parent), then_open: Some(dest), ..JobSpec::new("Clone".into(), vec![args(&["clone", &url, &name])]) },
-                fx,
-            );
+        Msg::CloneRepo(req) => {
+            // The dialog blocks these; checked again so no other sender can start a bad clone.
+            if req.name.is_empty() || trellis_core::remote_ops::check_url(&req.url).is_err() {
+                st.log(false, format!("Could not clone: {} isn't a URL or folder git can clone.", req.url));
+                return;
+            }
+            let dest = req.parent.join(&req.name);
+            let cmd = trellis_core::clone_ops::clone_cmd(&req.url, &req.name, &req.options);
+            start_job(st, JobSpec { cwd: Some(req.parent), then_open: Some(dest), ..JobSpec::new("Clone".into(), vec![cmd]) }, fx);
         }
         Msg::JobDone { ok, output, undo } => {
             let flow = super::gitflow_finish::headline(st, ok, &output);

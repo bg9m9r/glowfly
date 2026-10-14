@@ -6,6 +6,7 @@ mod askpass;
 mod avatars;
 mod branch_dialogs;
 mod branch_menu;
+mod clone_dialog;
 mod commit_box;
 pub(crate) mod common;
 mod conflict;
@@ -50,6 +51,8 @@ mod snapshot_tests;
 mod snapshot_tests_askpass;
 #[cfg(test)]
 mod snapshot_tests_branch;
+#[cfg(test)]
+mod snapshot_tests_clone;
 #[cfg(test)]
 mod snapshot_tests_commit;
 #[cfg(test)]

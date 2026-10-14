@@ -1,18 +1,17 @@
 //! Dialogs: confirmation, new branch, new tag (drawn by `tag_dialog.rs`), create worktree (drawn
 //! by `worktree_dialog.rs`), remove and lock worktree (drawn by `worktree_manage_dialog.rs`),
-//! clone, create pull request, publish (drawn by `publish.rs`), renaming a branch or setting its
-//! upstream (drawn by `branch_dialogs.rs`), creating or renaming a working-tree file (drawn by
-//! `file_dialogs.rs`), starting a Git Flow branch (drawn by `gitflow_dialog.rs`), finishing one
-//! (drawn by `gitflow_finish_dialog.rs`), adding or editing a remote (drawn by
-//! `remotes/dialog.rs`) and the keyboard shortcut sheet (drawn by
+//! clone (drawn by `clone_dialog.rs`), create pull request, publish (drawn by `publish.rs`),
+//! renaming a branch or setting its upstream (drawn by `branch_dialogs.rs`), creating or renaming
+//! a working-tree file (drawn by `file_dialogs.rs`), starting a Git Flow branch (drawn by
+//! `gitflow_dialog.rs`), finishing one (drawn by `gitflow_finish_dialog.rs`), adding or editing a
+//! remote (drawn by `remotes/dialog.rs`) and the keyboard shortcut sheet (drawn by
 //! `shortcuts/sheet.rs`).
 
-use super::common::{capitalize, issue_chip, parse_keys, repo_name_from_url};
+use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
-use crate::msg::{FolderPurpose, Msg};
+use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Modal};
 use eframe::egui::{self, Key, RichText};
-use std::path::{Path, PathBuf};
 use trellis_core::forge::{self, NewPullRequest, RefStyle};
 use trellis_core::gitcli::args;
 use trellis_core::repo::Snapshot;
@@ -20,6 +19,7 @@ use trellis_core::repo::Snapshot;
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Under a credential prompt, Esc and clicks belong to the prompt.
     let prompting = st.askpass.showing();
+    let today = trellis_core::clone_ops::local_date(st.view.now, st.view.utc_offset);
     let Some(modal) = st.modal.as_mut() else { return };
     let snap = st.snap.as_ref();
     let fs = st.forge.as_ref();
@@ -95,35 +95,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     close = true;
                 }
             }
-            Modal::Clone { url, parent } => {
-                ui.heading("Clone a repository");
-                ui.add_space(6.0);
-                ui.add(egui::TextEdit::singleline(url).hint_text("https://github.com/owner/repo.git").desired_width(f32::INFINITY));
-                ui.horizontal(|ui| {
-                    ui.add(egui::TextEdit::singleline(parent).hint_text("Clone into folder").desired_width(340.0));
-                    if ui.button("Browse…").clicked() {
-                        msgs.push(Msg::PickFolder(FolderPurpose::CloneParent));
-                    }
-                });
-                let name = repo_name_from_url(url);
-                if !name.is_empty() && !parent.is_empty() {
-                    ui.label(RichText::new(format!("→ {}", Path::new(parent.as_str()).join(&name).display())).color(color::weak()));
+            Modal::Clone(form) => {
+                if super::clone_dialog::show(ui, form, today, msgs) {
+                    close = true;
                 }
-                ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    let valid = !name.is_empty() && Path::new(parent.as_str()).is_dir();
-                    if ui.add_enabled(valid, egui::Button::new("Clone")).clicked() {
-                        msgs.push(Msg::CloneRepo {
-                            url: url.trim().to_owned(),
-                            parent: PathBuf::from(parent.as_str()),
-                            name: name.clone(),
-                        });
-                        close = true;
-                    }
-                    if ui.button("Cancel").clicked() {
-                        close = true;
-                    }
-                });
             }
             Modal::CreatePr { source, target, targets, title, description, draft, items } => {
                 let Some(fs) = fs.filter(|f| f.host.is_some()) else {

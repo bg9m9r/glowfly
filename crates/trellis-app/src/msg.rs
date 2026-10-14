@@ -277,11 +277,8 @@ pub enum Msg {
     Undo,
     Redo,
     InitRepo,
-    CloneRepo {
-        url: String,
-        parent: PathBuf,
-        name: String,
-    },
+    /// Clone a repository into a folder (the Clone dialog's request, options included).
+    CloneRepo(crate::state::clone::CloneRequest),
 
     // ---- branches
     /// Hide, show or solo a ref in the active repository's graph (saved per repository).
