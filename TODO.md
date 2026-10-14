@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-14 15:14 · **Worktrees**: Remove, lock, unlock and prune worktrees from the WORKTREES section (`714c150`)
 - 2026-10-14 15:09 · **Git LFS**: Track in Git LFS submenu on file rows for the file, its extension or its folder (`6b98a2b`)
 - 2026-10-14 14:40 · **Worktrees**: WORKTREES section with open in a new tab and Create worktree from a branch or commit (`a661ce2`)
 - 2026-10-14 14:34 · **Git Flow**: Git Flow preferences page with initialize, branch and prefix settings, and start feature/release/hotfix (`f6dd571`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 05:59 · **Diff viewer upgrade**: Highlight hunks from the lines before them (`a3c4e1a`)
 - 2026-10-14 05:51 · **File actions**: Unstage and delete staged renames and already-deleted new files (`27b09a4`)
 - 2026-10-14 05:46 · **Branch operations / Command palette (fuzzy finder)**: Stash, undo, tab, diff and toolbar commands, and a Refresh entry (`f3e52f4`)
-- 2026-10-14 05:30 · **Diff viewer upgrade**: Fold opened unchanged runs again, and expand or collapse all folds (`8ecf2e8`)
 
 ---
 
