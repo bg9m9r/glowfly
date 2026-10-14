@@ -10,7 +10,7 @@ use std::path::Path;
 /// and discarding whole files goes through git rather than libgit2 because only git runs the
 /// external clean/smudge filters (Git LFS, git-crypt) and `working-tree-encoding` conversions:
 /// without them, staging an LFS file would store its binary content instead of the pointer.
-fn git(workdir: &Path, a: &[&str]) -> Result<()> {
+pub(super) fn git(workdir: &Path, a: &[&str]) -> Result<()> {
     let mut argv = args(&["--literal-pathspecs"]);
     argv.extend(args(a));
     let (ok, out) = run_with_input(workdir, &argv, "", NO_PROMPTS);

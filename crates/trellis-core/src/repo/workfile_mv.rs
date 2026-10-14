@@ -1,7 +1,8 @@
 //! Renaming a tracked working-tree file so the index records the rename too.
 //!
 //! The move goes through `git mv` (the git CLI) rather than libgit2 index writes, so git's own
-//! index rules, sparse-checkout refusals and case handling apply. The path checks are the ones
+//! index rules, sparse-checkout refusals and case handling apply. The stored blob and the
+//! working file's bytes both move unchanged, so no clean or smudge filter is involved. The path checks are the ones
 //! the plain rename in `workfile` uses; the index is only read here, never written.
 
 use super::workfile::{create_parents, ensure_inside, plan_rename, prune_empty_parents, remove_dirs};

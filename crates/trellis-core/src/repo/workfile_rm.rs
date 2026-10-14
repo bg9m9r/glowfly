@@ -2,7 +2,9 @@
 //! its index entries together, and taking one whose working copy is already gone out of the index.
 //!
 //! The index entries are changed with libgit2 rather than the git CLI: no hooks, config or
-//! credentials apply to taking a path out of the index.
+//! credentials apply to taking a path out of the index, and no clean or smudge filter either,
+//! since only existing blobs move (HEAD's entry back into the index); no content passes between
+//! the working tree and the index.
 
 use super::head_tree;
 use super::removal::{Deleted, Removal};

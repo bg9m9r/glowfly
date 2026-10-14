@@ -28,7 +28,8 @@ fn short(oid: Oid) -> String {
 /// has unresolved conflicts for it, or when the working tree has a folder at the path or a file
 /// where one of its parent folders should be. The write goes through libgit2's checkout, so line
 /// endings (`core.autocrlf`), the executable bit and symbolic links come out as git would write
-/// them.
+/// them; a file git converts (a `filter` driver or `working-tree-encoding`) is written by
+/// `git restore` instead, so the smudge runs.
 ///
 /// Unless `overwrite` is set, nothing is written when the working-tree file holds contents that
 /// neither the index nor a commit can bring back (it is untracked or ignored, has unstaged edits,
@@ -70,6 +71,15 @@ pub fn restore_file(workdir: &Path, oid: Oid, path: &str, overwrite: bool) -> Re
         return Err(Error::WouldOverwrite(reason));
     }
 
+    if super::attrs::content_conversion(&repo, path).is_some() {
+        // libgit2 can't run an external smudge filter or encoding, so git writes the file.
+        let source = format!("--source={}", tree.id());
+        // Close the repository first: Windows locks files that are held open.
+        drop((entry, tree, index, commit));
+        drop(repo);
+        super::index::git(&root, &["restore", &source, "--worktree", "--", path])?;
+        return Ok(from);
+    }
     let mut cb = CheckoutBuilder::new();
     // update_index(false): the restored file must show up as an unstaged change, not be staged.
     cb.force().update_index(false).disable_pathspec_match(true).path(path);

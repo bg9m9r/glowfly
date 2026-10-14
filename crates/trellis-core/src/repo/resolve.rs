@@ -1,6 +1,7 @@
 //! Resolving a conflict: the side(s) picked per chunk, the file they produce, and writing and
 //! staging it (which clears the conflict).
 
+use super::attrs;
 use super::conflict::{ConflictContent, ConflictFile, ConflictIds, Segment, Side};
 use crate::error::{Error, Result};
 use git2::build::CheckoutBuilder;
@@ -113,9 +114,30 @@ fn ids_of(c: &IndexConflict) -> ConflictIds {
 
 /// Writes `contents` to the working file and stages it, which marks the conflict resolved.
 /// Refused if the conflict changed since `expected` was read.
+///
+/// When git converts the file's content (a `filter` driver or `working-tree-encoding`), the
+/// resolution is in repository form, as the stages it was merged from are: it is staged as is
+/// and git checks it out, so the smudge runs and the working file is what git would write.
 pub fn write_resolution(workdir: &Path, path: &str, contents: &str, expected: &ConflictIds) -> Result<()> {
     let repo = Repository::open(workdir)?;
-    let (mut index, _) = checked_index(&repo, path, expected)?;
+    let (mut index, conflict) = checked_index(&repo, path, expected)?;
+    if attrs::content_conversion(&repo, path).is_some() {
+        let has_crlf = |e: &IndexEntry| repo.find_blob(e.id).is_ok_and(|b| b.content().windows(2).any(|w| w == b"\r\n"));
+        let stages = [&conflict.ancestor, &conflict.our, &conflict.their];
+        // `render_output` adds CRs to match a CR LF working file; the stages it took lines
+        // from may have none, and then neither does the stored form.
+        let stored =
+            if stages.iter().filter_map(|e| e.as_ref()).any(has_crlf) { contents.to_owned() } else { contents.replace("\r\n", "\n") };
+        let side = conflict.our.or(conflict.their);
+        let mut entry = side.ok_or_else(|| Error::Other(format!("{path} has no side to resolve to")))?;
+        entry.id = repo.blob(stored.as_bytes())?;
+        if entry.mode & TYPE_MASK != REGULAR {
+            entry.mode = 0o100644;
+        }
+        stage_entry(&mut index, path, entry)?;
+        index.write()?;
+        return check_out(workdir, path, index, repo);
+    }
     write_file(workdir, path, contents.as_bytes())?;
     index.add_path(Path::new(path))?;
     index.write()?;
@@ -125,6 +147,7 @@ pub fn write_resolution(workdir: &Path, path: &str, contents: &str, expected: &C
 const TYPE_MASK: u32 = 0o170000;
 const SYMLINK: u32 = 0o120000;
 const GITLINK: u32 = 0o160000;
+const REGULAR: u32 = 0o100000;
 const STAGE_MASK: u16 = 0x3000;
 
 /// Resolves with one side's whole version: its entry (content and type), or deleting the file
@@ -154,6 +177,12 @@ pub fn resolve_with_side(workdir: &Path, path: &str, side: Side, expected: &Conf
             let mut co = CheckoutBuilder::new();
             co.force().recreate_missing(true).skip_unmerged(true).disable_pathspec_match(true).path(path);
             repo.checkout_index(Some(&mut index), Some(&mut co))?;
+        }
+        // A converted file: stage the side's blob and let git write it, running the smudge.
+        _ if attrs::content_conversion(&repo, path).is_some() => {
+            stage_entry(&mut index, path, entry)?;
+            index.write()?;
+            return check_out(workdir, path, index, repo);
         }
         _ => {
             let blob = repo.find_blob(entry.id)?;
@@ -187,6 +216,20 @@ fn stage_entry(index: &mut git2::Index, path: &str, mut entry: IndexEntry) -> Re
     (entry.ctime, entry.mtime, entry.dev, entry.ino, entry.uid, entry.gid, entry.file_size) = (zero, zero, 0, 0, 0, 0, 0);
     index.add(&entry)?;
     Ok(())
+}
+
+/// Writes the staged `path` to the working tree with `git checkout-index`, so git's smudge
+/// filter and encoding run, and refreshes its stat data in the index. The repository is
+/// closed first: Windows locks files that are held open.
+fn check_out(workdir: &Path, path: &str, index: git2::Index, repo: Repository) -> Result<()> {
+    drop(index);
+    drop(repo);
+    let full = workdir.join(path);
+    // checkout-index replaces a file but not a link; a link is never written through.
+    if is_link(&full) {
+        remove_working(&full)?;
+    }
+    super::index::git(workdir, &["checkout-index", "--force", "-u", "--", path])
 }
 
 /// Removes the file or link at `full` without following a link. A missing path or a real

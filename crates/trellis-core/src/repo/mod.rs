@@ -329,6 +329,8 @@ mod conflict_tests;
 #[cfg(test)]
 mod convert_tests;
 #[cfg(test)]
+mod convert_write_tests;
+#[cfg(test)]
 mod diff_tests;
 #[cfg(test)]
 mod discard_tests;

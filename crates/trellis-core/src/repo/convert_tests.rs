@@ -9,19 +9,19 @@ use crate::testutil::*;
 use git2::Repository;
 use std::path::Path;
 
-fn index_text(dir: &Path, path: &str) -> String {
+pub(super) fn index_text(dir: &Path, path: &str) -> String {
     let repo = Repository::open(dir).unwrap();
     let entry = repo.index().unwrap().get_path(Path::new(path), 0).expect("in the index");
     String::from_utf8(repo.find_blob(entry.id).unwrap().content().to_vec()).unwrap()
 }
 
-fn read(dir: &Path, path: &str) -> String {
+pub(super) fn read(dir: &Path, path: &str) -> String {
     std::fs::read_to_string(dir.join(path)).unwrap()
 }
 
 /// A repository where `*.up` files are stored upper-case and checked out lower-case, with
 /// `a.up` committed and a two-hunk edit of it in the working tree.
-fn filtered_repo(name: &str) -> std::path::PathBuf {
+pub(super) fn filtered_repo(name: &str) -> std::path::PathBuf {
     let dir = scratch_repo(name);
     git(&dir, &["config", "filter.upper.clean", "tr a-z A-Z"]);
     git(&dir, &["config", "filter.upper.smudge", "tr A-Z a-z"]);
