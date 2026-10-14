@@ -332,7 +332,7 @@ fn comparison_file_list() {
     drive(&mut st, Msg::ToggleCommit(older));
     let Selection::Commits(m) = &st.selection else { panic!("two commits selected") };
     assert_eq!(m.pair(), Some((older, newer)));
-    assert!(matches!(&m.changes, Some(Ok(files)) if files.len() == 3), "a, c and d differ");
+    assert!(matches!(&m.changes, Some(Ok(c)) if c.files.len() == 3), "a, c and d differ");
     at_end_of(&mut st, DiffTarget::Between(older, newer, "a.txt".into()));
     let fx = run(&mut st, Msg::JumpToChange(1));
     assert_eq!(one_load(&fx).0, &DiffTarget::Between(older, newer, "c.txt".into()));

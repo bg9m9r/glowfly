@@ -29,7 +29,8 @@ crates/
                           (reading an index conflict into chunks), resolve (picks, output, write
                           and stage), template (commit.template: the prefill and its comment char),
                           workfile (creating, renaming and deleting a working-tree file; path
-                          checks), workfile_mv (a rename staged through git mv), noclobber (a
+                          checks), workfile_mv (a rename staged through git mv), workfile_rm
+                          (deleting a staged new file with its index entry), noclobber (a
                           move that never replaces an existing file), tracked (the paths in
                           the index, for the palette's file finder)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
@@ -118,9 +119,10 @@ crates/
                           actions, message editor, drag to reorder), modals, menus,
                           branch_menu (local branch menu), branch_dialogs (rename, upstream),
                           ref_visibility (hide/solo menu items, row markers and banner),
-                          file_menu (file actions in file rows' menus: restore, open, show,
-                          new file in this folder, rename, delete), file_dialogs (new file,
-                          rename file), tag_dialog (new tag, plain or annotated),
+                          file_menu (file actions in file rows' menus, commit and comparison
+                          rows included: restore, open, show, new file in this folder, rename,
+                          delete), file_dialogs (new file, rename file), tag_dialog (new tag,
+                          plain or annotated),
                           askpass (the credential prompt, drawn above every other dialog),
                           palette (the Ctrl+P command palette overlay),
                           status, prefs/ (editor: the Editor page), theme, widgets

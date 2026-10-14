@@ -1,8 +1,9 @@
 //! Right panel for several selected commits: the list, actions on all of them, and with exactly
-//! two, the files that differ between them.
+//! two, the files that differ between them and their file actions.
 
 use super::common::short;
 use super::details::changed_file_row;
+use super::file_menu::RowSource;
 use super::menus::{cherry_pick_button, copy_shas};
 use super::theme::color;
 use crate::msg::Msg;
@@ -50,15 +51,16 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         Some(Err(e)) => {
             ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
         }
-        Some(Ok(files)) if files.is_empty() => {
+        Some(Ok(c)) if c.files.is_empty() => {
             ui.label(RichText::new("These commits have the same files.").color(color::weak()));
         }
-        Some(Ok(files)) => {
+        Some(Ok(c)) => {
             let open = st.diff.as_ref().map(|(t, _)| t);
             egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show(ui, |ui| {
-                for f in files {
+                for f in &c.files {
                     let target = DiffTarget::Between(older, newer, f.path.clone());
-                    changed_file_row(ui, f, target, open, newer, None, msgs);
+                    let actions = Some((RowSource::Between { older, newer }, c.in_workdir(&f.path)));
+                    changed_file_row(ui, f, target, open, newer, actions, msgs);
                 }
             });
         }

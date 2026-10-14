@@ -11,7 +11,9 @@ use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::rebase::{Outcome, RebaseAction, RebaseBase, RebasePlan};
-use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, RestoredFrom, Side, Snapshot};
+use trellis_core::repo::{
+    CommitDetail, Comparison, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, RestoredFrom, Side, Snapshot,
+};
 use trellis_core::settings::{DiffLayout, DiffMode, FilterOp, ThemeChoice, TrackerChoice};
 
 /// What a folder picker was opened for.
@@ -234,6 +236,8 @@ pub enum Msg {
         path: String,
         confirmed: bool,
     },
+    /// Delete the staged new file `.0` and remove it from the index (sent by the confirmation).
+    DeleteStagedNewFile(String),
     Commit,
     /// Ctrl+Shift+Enter in the commit message: stage everything (git add --all) and commit in one job.
     StageAllAndCommit,
@@ -412,11 +416,12 @@ pub enum Msg {
         oid: Oid,
         result: Result<CommitDetail, String>,
     },
-    /// The files that differ from commit `from` (older) to `to` (newer).
+    /// The files that differ from commit `from` (older) to `to` (newer), with which of them are
+    /// missing from the working tree.
     CompareLoaded {
         from: Oid,
         to: Oid,
-        result: Result<Vec<FileEntry>, String>,
+        result: Result<Comparison, String>,
     },
     DiffLoaded {
         target: DiffTarget,

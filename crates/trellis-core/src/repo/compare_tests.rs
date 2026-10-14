@@ -123,3 +123,23 @@ fn difftarget_helpers() {
     assert!(!DiffTarget::Commit(o, "p".into()).is_working_tree());
     assert!(!DiffTarget::Between(o, o, "p".into()).is_working_tree());
 }
+
+#[test]
+fn compare_reports_absent_paths() {
+    let dir = scratch_repo("compare-absent");
+    write(&dir, "a.txt", "a\n");
+    write(&dir, "b.txt", "b\n");
+    let c1 = commit_all(&dir, "c1");
+    std::fs::remove_file(dir.join("b.txt")).unwrap();
+    write(&dir, "c.txt", "c\n");
+    let c2 = commit_all(&dir, "c2");
+    std::fs::remove_file(dir.join("c.txt")).unwrap();
+
+    let c = compare(&dir, c1, c2).unwrap();
+    assert_eq!(c.files, compare_files(&dir, c1, c2).unwrap());
+    let absent: std::collections::HashSet<String> = ["b.txt", "c.txt"].map(String::from).into();
+    assert_eq!(c.absent, absent);
+    assert!(c.in_workdir("a.txt"));
+    assert!(!c.in_workdir("c.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}

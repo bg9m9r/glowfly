@@ -4,7 +4,7 @@
 use super::Selection;
 use git2::Oid;
 use std::collections::HashSet;
-use trellis_core::repo::{FileEntry, Snapshot};
+use trellis_core::repo::{Comparison, Snapshot};
 
 pub const PICK_BLOCKED_MERGE: &str = "Merge commits can't be cherry-picked from a multi-selection.";
 pub const PICK_BLOCKED_ON_HEAD: &str = "Some selected commits are already on the current branch.";
@@ -16,8 +16,9 @@ pub struct MultiSelection {
     /// Where a Shift range starts: the last Ctrl-clicked commit, or the single commit selected
     /// before.
     pub anchor: Oid,
-    /// With exactly two commits: the files that differ between them; `None` while loading.
-    pub changes: Option<Result<Vec<FileEntry>, String>>,
+    /// With exactly two commits: the files that differ between them and which are missing from
+    /// the working tree; `None` while loading.
+    pub changes: Option<Result<Comparison, String>>,
     /// Why "Cherry-pick N commits" is unavailable (merges, or commits already on HEAD).
     pub pick_blocked: Option<&'static str>,
 }

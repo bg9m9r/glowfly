@@ -157,7 +157,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
         }
         Effect::LoadDetail { workdir, oid } => Some(Msg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }),
         Effect::LoadCompare { workdir, from, to } => {
-            Some(Msg::CompareLoaded { from, to, result: repo::compare_files(&workdir, from, to).map_err(err) })
+            Some(Msg::CompareLoaded { from, to, result: repo::compare(&workdir, from, to).map_err(err) })
         }
         Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file } => {
             let result = repo::load_diff_with(&workdir, &target, repo::LoadDiffOptions { ignore_whitespace, whole_file })

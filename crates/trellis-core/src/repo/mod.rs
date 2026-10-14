@@ -21,9 +21,10 @@ mod template;
 mod tracked;
 mod workfile;
 mod workfile_mv;
+mod workfile_rm;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
-pub use diff::{commit_detail, commit_stats, compare_files, load_diff, load_diff_with};
+pub use diff::{Comparison, commit_detail, commit_stats, compare, compare_files, load_diff, load_diff_with};
 use diff::{head_tree, path_opts, workdir_opts};
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, stage_all, stage_file, unstage_paths};
@@ -36,6 +37,7 @@ pub use template::{CommitTemplate, commit_template};
 pub use tracked::tracked_paths;
 pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
 pub use workfile_mv::rename_file_staged;
+pub use workfile_rm::delete_staged_new_file;
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -326,5 +328,7 @@ mod whole_tests;
 mod workfile_exact_tests;
 #[cfg(test)]
 mod workfile_mv_tests;
+#[cfg(test)]
+mod workfile_rm_tests;
 #[cfg(test)]
 mod workfile_tests;

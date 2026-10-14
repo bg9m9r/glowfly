@@ -2,7 +2,7 @@
 
 use super::UiCache;
 use super::common::{issue_chip, lane_color, menu_item, short, state_actions, status_color, status_label};
-use super::file_menu;
+use super::file_menu::{self, RowSource};
 use super::graph::draw_avatar;
 use super::theme::color;
 use crate::msg::Msg;
@@ -135,22 +135,22 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     ui.label(RichText::new(format!("{n} changed file{}", if n == 1 { "" } else { "s" })).strong().color(color::text()));
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         for f in &d.files {
-            let restore = Some((d.oid, d.in_workdir(&f.path)));
-            changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, restore, msgs);
+            let actions = Some((RowSource::Commit(d.oid), d.in_workdir(&f.path)));
+            changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, actions, msgs);
         }
     });
 }
 
 /// A file changed by a commit (or between two): its status and path, which opens `target`.
-/// Its menu opens the file's history as seen from `history_at`. With `commit` (the commit to
-/// restore from, and whether the path is in the working tree) it also has the file actions.
+/// Its menu opens the file's history as seen from `history_at`. With `actions` (where the change
+/// comes from, and whether the path is in the working tree) it also has the file actions.
 pub(super) fn changed_file_row(
     ui: &mut egui::Ui,
     f: &FileEntry,
     target: DiffTarget,
     open: Option<&DiffTarget>,
     history_at: Oid,
-    commit: Option<(Oid, bool)>,
+    actions: Option<(RowSource, bool)>,
     msgs: &mut Vec<Msg>,
 ) {
     ui.horizontal(|ui| {
@@ -162,8 +162,8 @@ pub(super) fn changed_file_row(
         r.context_menu(|ui| {
             menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: Some(history_at) });
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
-            if let Some((oid, in_wd)) = commit {
-                file_menu::commit_file_items(ui, msgs, oid, f, in_wd);
+            if let Some((src, in_wd)) = actions {
+                file_menu::commit_file_items(ui, msgs, src, f, in_wd);
             }
         });
     });

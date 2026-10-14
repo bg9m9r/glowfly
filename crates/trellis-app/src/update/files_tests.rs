@@ -5,11 +5,12 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
-use crate::state::{AppState, Modal};
+use crate::state::selection::MultiSelection;
+use crate::state::{AppState, Modal, Selection};
 use git2::{Oid, Repository};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use trellis_core::repo::{self, FileEntry, LoadOptions, RestoredFrom};
+use trellis_core::repo::{self, Comparison, FileEntry, LoadOptions, RestoredFrom};
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
@@ -149,6 +150,60 @@ fn end_to_end_restore() {
     assert!(st.snap.as_ref().unwrap().unstaged.iter().any(|f| f.path == "a.txt"), "shows as an unstaged change");
     assert!(st.snap.as_ref().unwrap().staged.is_empty(), "nothing staged");
     assert!(st.toasts.last().is_some_and(|t| t.ok));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn comparison_restore_clears_absent() {
+    let (mut st, dir) = loaded("files-compare-absent");
+    let oid = head(&dir);
+    let files = vec![FileEntry { path: "a.txt".into(), status: 'D' }];
+    let changes = Comparison { files, absent: ["a.txt".to_owned()].into() };
+    let other = Oid::from_str("1111111111111111111111111111111111111111").unwrap();
+    st.selection =
+        Selection::Commits(MultiSelection { oids: vec![oid, other], anchor: oid, changes: Some(Ok(changes)), pick_blocked: None });
+
+    let fx = run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) });
+    let Selection::Commits(m) = &st.selection else { panic!("still two commits") };
+    let c = m.changes.as_ref().unwrap().as_ref().unwrap();
+    assert!(c.in_workdir("a.txt"), "Open and Show become available");
+    let toast = st.toasts.last().expect("a toast");
+    assert!(toast.text.contains(&format!("Restored a.txt from {}", short(oid))), "{}", toast.text);
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A file the newer commit deleted comes back from the older commit of the pair.
+#[test]
+fn end_to_end_restore_from_comparison() {
+    let dir = scratch_repo("files-compare-e2e");
+    git(&dir, &["config", "core.autocrlf", "false"]);
+    git(&dir, &["checkout", "-q", "--", "a.txt"]);
+    std::fs::write(
+        dir.join("gone.txt"),
+        "v1
+",
+    )
+    .unwrap();
+    git(&dir, &["add", "gone.txt"]);
+    git(&dir, &["commit", "-q", "-m", "add gone"]);
+    let older = head(&dir);
+    git(&dir, &["rm", "-q", "gone.txt"]);
+    git(&dir, &["commit", "-q", "-m", "delete gone"]);
+    let mut st = state();
+    drive(&mut st, Msg::Open(dir.clone()));
+
+    drive(&mut st, Msg::RestoreFile { oid: older, path: "gone.txt".into(), deleted: false, confirmed: true, overwrite: false });
+    assert_eq!(
+        std::fs::read_to_string(dir.join("gone.txt")).unwrap(),
+        "v1
+"
+    );
+    let snap = st.snap.as_ref().unwrap();
+    assert!(snap.unstaged.iter().any(|f| f.path == "gone.txt" && f.status == '?'), "{:?}", snap.unstaged);
+    assert!(snap.staged.is_empty(), "nothing staged");
+    let toast = st.toasts.last().expect("a toast");
+    assert!(toast.ok && toast.text.contains(&short(older)), "{}", toast.text);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

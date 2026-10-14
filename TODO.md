@@ -373,7 +373,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Delete several selected files at once (needs multi-select in file lists)
   - [ ] Move deleted files to the OS trash or recycle bin, or make Delete undoable with Ctrl+Z
   - [x] Rename tracked files with git mv so the rename is staged (option in the rename dialog, remembered)
-  - [ ] Unstage and delete a staged new file in one step
+  - [x] Unstage and delete a staged new file in one step (Delete… on a file staged as new asks
+    once and also removes it from the index)
+    - [ ] The same for a staged rename (the old path's staged deletion would be left behind)
+    - [ ] Finish removing a staged new file whose working copy is already gone (Delete is
+      disabled there)
+    - [ ] Label the item "Unstage and delete…" on rows whose path is staged as new
   - [ ] Open the newly created file in the editor or default app after creating it
   - [ ] Create a file from a template, or with initial contents
   - [ ] Rename or delete folders and submodules
@@ -381,7 +386,11 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     status won't list it
   - [ ] Edit a file in place
   - [ ] Restore several selected files from a commit at once (needs multi-select in file lists)
-  - [ ] Restore from comparison rows (two commits selected): the newer commit's version
+  - [x] Restore from comparison rows (two commits selected): the newer commit's version, or the
+    older one's for a file the newer commit doesn't have; open and show there too
+    - [ ] Choose which side to restore for a file the newer commit modified
+    - [ ] Re-check which comparison and commit-detail paths are on disk after a status refresh
+      (Open / Show can go stale until the commits are reselected)
   - [ ] Make Restore undoable (keep the overwritten working copy, as Discard does)
   - [ ] Honour smudge filters (Git LFS) when restoring, by writing through `git restore --source`
   - [ ] Explain when a restored or opened path is outside a sparse checkout

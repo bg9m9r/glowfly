@@ -27,7 +27,7 @@ fn with_selection(theme: ThemeChoice, name: &str, summaries: &[&str]) -> (AppSta
     if let Selection::Commits(m) = &mut sel
         && let Some((older, newer)) = m.pair()
     {
-        m.changes = Some(repo::compare_files(&dir, older, newer).map_err(|e| e.to_string()));
+        m.changes = Some(repo::compare(&dir, older, newer).map_err(|e| e.to_string()));
     }
     st.selection = sel;
     (st, dir)
@@ -42,7 +42,8 @@ fn multi(st: &AppState) -> &MultiSelection {
 fn graph_two_commits_selected() {
     let (st, dir) = with_selection(ThemeChoice::Dark, "multi-two", &["Add login page", "Search results page"]);
     let m = multi(&st);
-    let names: Vec<(&str, char)> = m.changes.as_ref().unwrap().as_ref().unwrap().iter().map(|f| (f.path.as_str(), f.status)).collect();
+    let names: Vec<(&str, char)> =
+        m.changes.as_ref().unwrap().as_ref().unwrap().files.iter().map(|f| (f.path.as_str(), f.status)).collect();
     assert_eq!(names, [("app.txt", 'M'), ("search.txt", 'A')]);
     let (older, newer) = m.pair().unwrap();
     assert_eq!((older, newer), (commit(&st, "Add login page"), commit(&st, "Search results page")));

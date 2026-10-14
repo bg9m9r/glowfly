@@ -117,7 +117,7 @@ fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
         }
         DiffTarget::Between(a, b, _) => match &st.selection {
             Selection::Commits(m) if m.pair() == Some((*a, *b)) => match &m.changes {
-                Some(Ok(files)) => Some(files.iter().map(|f| DiffTarget::Between(*a, *b, f.path.clone())).collect()),
+                Some(Ok(c)) => Some(c.files.iter().map(|f| DiffTarget::Between(*a, *b, f.path.clone())).collect()),
                 _ => None,
             },
             _ => None,

@@ -1,8 +1,8 @@
 //! Headless tests for creating, renaming and deleting working-tree files: the dialogs and their
-//! checks, the delete confirmation, the results, results for an inactive tab, and end to end
-//! against a scratch repository.
+//! checks, the delete confirmations (plain, and unstage-and-delete for a staged new file), the
+//! results, results for an inactive tab, and end to end against a scratch repository.
 
-use super::tests::{drive, scratch_repo, state};
+use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, FileOp};
 use crate::msg::Msg;
@@ -143,7 +143,7 @@ fn delete_asks_first() {
     let (mut st, dir) = loaded("wf-delete-ask");
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged = vec![entry("new.txt", '?'), entry("a.txt", 'M'), entry("c.txt", '!')];
-    snap.staged = vec![entry("s.txt", 'A')];
+    snap.staged = vec![entry("s.txt", 'M')];
 
     assert!(run(&mut st, Msg::DeleteFile { path: "new.txt".into(), confirmed: false }).is_empty());
     let (title, body, button, then) = confirm(&st);
@@ -164,6 +164,47 @@ fn delete_asks_first() {
     run(&mut st, Msg::DeleteFile { path: "new.txt".into(), confirmed: false });
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert_eq!(work_ops(&fx), [FileOp::Delete("new.txt".into())]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn delete_staged_new_file_asks_to_unstage() {
+    let (mut st, dir) = loaded("wf-delete-new");
+    let snap = st.snap.as_mut().unwrap();
+    snap.unstaged = Vec::new();
+    snap.staged = vec![entry("s.txt", 'A')];
+
+    assert!(run(&mut st, Msg::DeleteFile { path: "s.txt".into(), confirmed: false }).is_empty());
+    let (title, body, button, then) = confirm(&st);
+    assert_eq!((title, button), ("Delete new file", "Unstage and delete"));
+    assert!(body.contains("s.txt") && body.contains("staging area"), "{body}");
+    assert!(!body.contains("unstaged edits"), "{body}");
+    assert!(matches!(then, Msg::DeleteStagedNewFile(p) if p == "s.txt"));
+    let fx = run(&mut st, Msg::ConfirmAccepted);
+    assert_eq!(work_ops(&fx), [FileOp::UnstageDelete("s.txt".into())]);
+    assert_eq!(fx[0].scope(), Some(&dir));
+
+    // Further edits to the new file aren't staged: they go too.
+    st.snap.as_mut().unwrap().unstaged = vec![entry("s.txt", 'M')];
+    run(&mut st, Msg::DeleteFile { path: "s.txt".into(), confirmed: false });
+    let (title, body, ..) = confirm(&st);
+    assert_eq!(title, "Delete new file");
+    assert!(body.contains("unstaged edits"), "{body}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unstage_delete_results() {
+    let (mut st, dir) = loaded("wf-unstage-delete-done");
+    let op = || FileOp::UnstageDelete("s.txt".into());
+    st.diff = Some((DiffTarget::Staged("s.txt".into()), empty_diff()));
+    let fx = run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(false) });
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Deleted s.txt and removed it from the staging area."));
+    assert!(st.diff.is_none(), "the staged diff of the deleted file is closed");
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+
+    run(&mut st, Msg::WorkFileDone { op: op(), result: Err("boom".into()) });
+    assert_eq!(last_log(&st), "Could not delete s.txt: boom");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -226,6 +267,17 @@ fn result_for_inactive_tab() {
     assert!(fx.is_empty());
     assert!(st.modal.is_none(), "the waiting dialog is closed");
     assert_eq!(last_log(&st), "Could not create x.txt: in the way");
+
+    for (result, want) in [
+        (Ok(false), "Deleted s.txt and removed it from the staging area."),
+        (Err("in the way".to_owned()), "Could not delete s.txt: in the way"),
+    ] {
+        let ok = result.is_ok();
+        let msg = Msg::WorkFileDone { op: FileOp::UnstageDelete("s.txt".into()), result };
+        assert!(run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) }).is_empty());
+        let text = if ok { st.toasts.last().map(|t| t.text.as_str()) } else { st.log.last().map(|l| l.text.as_str()) };
+        assert_eq!(text, Some(want));
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -249,5 +301,29 @@ fn end_to_end_create_delete_rename() {
     let unstaged = &st.snap.as_ref().unwrap().unstaged;
     assert!(unstaged.contains(&entry("a.txt", 'D')) && unstaged.contains(&entry("b.txt", '?')), "{unstaged:?}");
     assert!(st.snap.as_ref().unwrap().staged.is_empty(), "nothing staged");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn end_to_end_unstage_and_delete() {
+    let dir = scratch_repo("wf-e2e-unstage-delete");
+    std::fs::write(
+        dir.join("new.txt"),
+        "new
+",
+    )
+    .unwrap();
+    git(&dir, &["add", "new.txt"]);
+    let mut st = state();
+    drive(&mut st, Msg::Open(dir.clone()));
+    assert!(st.snap.as_ref().unwrap().staged.contains(&entry("new.txt", 'A')));
+
+    drive(&mut st, Msg::DeleteFile { path: "new.txt".into(), confirmed: false });
+    assert!(matches!(&st.modal, Some(Modal::Confirm { title, .. }) if title == "Delete new file"));
+    drive(&mut st, Msg::ConfirmAccepted);
+    assert!(!dir.join("new.txt").exists());
+    let snap = st.snap.as_ref().unwrap();
+    assert!(snap.staged.iter().chain(&snap.unstaged).all(|f| f.path != "new.txt"), "{:?} {:?}", snap.staged, snap.unstaged);
+    assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == "Deleted new.txt and removed it from the staging area."));
     let _ = std::fs::remove_dir_all(&dir);
 }

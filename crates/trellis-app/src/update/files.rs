@@ -4,7 +4,7 @@
 
 use crate::effect::Effect;
 use crate::msg::Msg;
-use crate::state::{AppState, Modal};
+use crate::state::{AppState, Modal, Selection};
 use git2::Oid;
 use std::time::Instant;
 use trellis_core::repo::RestoredFrom;
@@ -50,6 +50,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     if let Some(d) = st.detail.as_mut() {
                         d.absent.remove(&path);
                     }
+                    if let Selection::Commits(m) = &mut st.selection
+                        && let Some(Ok(c)) = &mut m.changes
+                    {
+                        c.absent.remove(&path);
+                    }
                 }
                 Err(e) => st.log(false, format!("Could not restore {path}: {e}")),
             }
@@ -62,6 +67,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         | Msg::RenameFile { .. }
         | Msg::SetRenameStages(_)
         | Msg::DeleteFile { .. }
+        | Msg::DeleteStagedNewFile(_)
         | Msg::WorkFileDone { .. } => super::work_files::handle(st, msg, now, fx),
         Msg::OpenWorkingFile(p) => {
             if let Some(w) = st.workdir() {

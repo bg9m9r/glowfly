@@ -109,8 +109,14 @@ pub struct WatchTarget {
 #[derive(Clone, Debug, PartialEq)]
 pub enum FileOp {
     Create(String),
-    Rename { from: String, to: String, stage: bool },
+    Rename {
+        from: String,
+        to: String,
+        stage: bool,
+    },
     Delete(String),
+    /// Deletes a staged new file and removes its index entry.
+    UnstageDelete(String),
 }
 
 #[derive(Debug)]
@@ -181,7 +187,8 @@ pub enum Effect {
         path: String,
         overwrite: bool,
     },
-    /// Creates, renames or deletes a working-tree file; the index is untouched.
+    /// Creates, renames or deletes a working-tree file; the index is untouched, except for
+    /// UnstageDelete and a staged rename.
     WorkFile {
         workdir: PathBuf,
         op: FileOp,

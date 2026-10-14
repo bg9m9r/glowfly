@@ -217,6 +217,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::RenameFile { .. }
         | Msg::SetRenameStages(_)
         | Msg::DeleteFile { .. }
+        | Msg::DeleteStagedNewFile(_)
         | Msg::WorkFileDone { .. } => files::handle(st, msg, now, &mut fx),
         Msg::RenameBranchDialog(_)
         | Msg::RenameBranch { .. }

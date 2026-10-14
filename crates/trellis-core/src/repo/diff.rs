@@ -3,6 +3,7 @@
 use super::*;
 use crate::error::{Error, Result};
 use git2::{Delta, Diff, DiffOptions, Oid, Patch, Repository, Tree};
+use std::collections::HashSet;
 use std::path::Path;
 
 /// Lines added and removed, and files changed, for each commit (against its first parent).
@@ -66,6 +67,39 @@ pub fn compare_files(workdir: &Path, from: Oid, to: Oid) -> Result<Vec<FileEntry
     Ok(file_entries(&trees_diff(&repo, from, to, None)?))
 }
 
+/// The files that differ from commit `from` to commit `to`, as `compare_files` lists them.
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct Comparison {
+    pub files: Vec<FileEntry>,
+    /// Paths of `files` missing from the working tree when loaded (deleted, renamed or never
+    /// checked out). Views use it to disable Open / Show in folder.
+    pub absent: HashSet<String>,
+}
+
+impl Comparison {
+    /// Whether `path` was in the working tree when the comparison was loaded.
+    pub fn in_workdir(&self, path: &str) -> bool {
+        !self.absent.contains(path)
+    }
+}
+
+/// `compare_files` plus which of the files are missing from the working tree.
+pub fn compare(workdir: &Path, from: Oid, to: Oid) -> Result<Comparison> {
+    let repo = Repository::open(workdir)?;
+    let files = file_entries(&trees_diff(&repo, from, to, None)?);
+    let absent = absent_paths(&repo, &files);
+    Ok(Comparison { files, absent })
+}
+
+/// The paths of `files` with nothing at them in the working tree (all of them in a bare
+/// repository). One stat per file, so views can tell which ones can be opened.
+fn absent_paths(repo: &Repository, files: &[FileEntry]) -> HashSet<String> {
+    match repo.workdir() {
+        Some(root) => files.iter().filter(|f| root.join(&f.path).symlink_metadata().is_err()).map(|f| f.path.clone()).collect(),
+        None => files.iter().map(|f| f.path.clone()).collect(),
+    }
+}
+
 pub(super) fn path_opts(path: &str) -> DiffOptions {
     let mut o = DiffOptions::new();
     o.pathspec(path).disable_pathspec_match(true);
@@ -87,11 +121,7 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     let repo = Repository::open(workdir)?;
     let c = repo.find_commit(oid)?;
     let files = file_entries(&commit_diff(&repo, oid, None)?);
-    // One stat per changed file, so views can tell which ones can be opened.
-    let absent = match repo.workdir() {
-        Some(root) => files.iter().filter(|f| root.join(&f.path).symlink_metadata().is_err()).map(|f| f.path.clone()).collect(),
-        None => files.iter().map(|f| f.path.clone()).collect(),
-    };
+    let absent = absent_paths(&repo, &files);
     Ok(CommitDetail {
         oid,
         message: c.message().unwrap_or_default().trim_end().to_owned(),

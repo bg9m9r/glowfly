@@ -265,3 +265,26 @@ fn snapshot_missing_from_workdir() {
     assert!(!s.missing_from_workdir("d.txt"), "modified");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A file the newer of two compared commits lacks comes back from the older one. The newer
+/// commit's first parent is no substitute: it may hold another version, or none at all.
+#[test]
+fn restoring_from_the_older_commit_of_a_pair() {
+    let dir = scratch_repo("restore-pair");
+    let c1 = commit(&dir, &[("f", "v1\n"), ("g", "g\n")], "c1");
+    std::fs::remove_file(dir.join("g")).unwrap();
+    commit(&dir, &[("f", "v2\n")], "c2 deletes g");
+    std::fs::remove_file(dir.join("f")).unwrap();
+    let c3 = commit(&dir, &[], "c3 deletes f");
+
+    let between = compare(&dir, c1, c3).unwrap();
+    assert!(between.files.iter().any(|e| e.path == "f" && e.status == 'D'), "{:?}", between.files);
+    assert_eq!(restore_file(&dir, c1, "f", false).unwrap(), RestoredFrom::Commit);
+    assert_eq!(text(&dir, "f"), "v1\n", "the older commit's version, not its successor's");
+
+    // g left before c3's parent, so falling back from the newer commit finds nothing.
+    let e = restore_file(&dir, c3, "g", false).unwrap_err();
+    assert!(e.is_not_found(), "{e}");
+    assert!(!dir.join("g").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -9,13 +9,13 @@ use crate::runner;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::lines::LineClick;
-use crate::state::selection::{MultiSelection, PICK_BLOCKED_ON_HEAD};
+use crate::state::selection::{MultiSelection, PICK_BLOCKED_ON_HEAD, refreshed};
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::gitcli::{args, run, run_with_input};
-use trellis_core::repo::{DiffTarget, FileDiff, FileEntry};
+use trellis_core::repo::{Comparison, DiffTarget, FileDiff, FileEntry};
 
 /// Main's commits c1..c5 (oldest first) and `side`, a branch off c3 committed between c3 and c4.
 pub(super) struct Fixture {
@@ -228,11 +228,17 @@ fn compare_results() {
     up(&mut st, Msg::SelectCommit(f.c(5)));
     up(&mut st, Msg::ToggleCommit(f.c(3)));
     let files = vec![FileEntry { path: "f.txt".into(), status: 'M' }];
-    up(&mut st, Msg::CompareLoaded { from: f.c(3), to: f.c(5), result: Ok(files.clone()) });
-    assert_eq!(multi(&st).changes, Some(Ok(files.clone())));
+    let c = Comparison { files, absent: ["f.txt".to_owned()].into() };
+    up(&mut st, Msg::CompareLoaded { from: f.c(3), to: f.c(5), result: Ok(c.clone()) });
+    assert_eq!(multi(&st).changes, Some(Ok(c.clone())));
+    // The same pair after a refresh keeps the list and what was missing from the working tree.
+    match refreshed(multi(&st), st.snap.as_ref().unwrap()) {
+        Selection::Commits(m) => assert_eq!(m.changes, Some(Ok(c.clone()))),
+        other => panic!("{other:?}"),
+    }
     // A result for another pair is stale.
-    up(&mut st, Msg::CompareLoaded { from: f.c(2), to: f.c(5), result: Ok(Vec::new()) });
-    assert_eq!(multi(&st).changes, Some(Ok(files)));
+    up(&mut st, Msg::CompareLoaded { from: f.c(2), to: f.c(5), result: Ok(Comparison::default()) });
+    assert_eq!(multi(&st).changes, Some(Ok(c)));
     up(&mut st, Msg::CompareLoaded { from: f.c(3), to: f.c(5), result: Err("bad tree".into()) });
     assert_eq!(multi(&st).changes, Some(Err("bad tree".into())));
     assert!(st.log.iter().any(|l| !l.ok && l.text == "bad tree"));
@@ -244,7 +250,9 @@ fn two_commit_diff_end_to_end() {
     let (mut st, f) = fixture("multi-diff");
     drive(&mut st, Msg::SelectCommit(f.c(5)));
     drive(&mut st, Msg::ToggleCommit(f.c(3)));
-    assert_eq!(multi(&st).changes, Some(Ok(vec![FileEntry { path: "f.txt".into(), status: 'M' }])));
+    let c = multi(&st).changes.clone().unwrap().unwrap();
+    assert_eq!(c.files, [FileEntry { path: "f.txt".into(), status: 'M' }]);
+    assert!(c.absent.is_empty(), "f.txt is on disk");
 
     let target = DiffTarget::Between(f.c(3), f.c(5), "f.txt".into());
     drive(&mut st, Msg::OpenDiff(target.clone()));

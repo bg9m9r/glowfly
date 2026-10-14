@@ -37,6 +37,12 @@ pub fn tracked(snap: &trellis_core::repo::Snapshot, path: &str) -> bool {
         || snap.unstaged.iter().any(|f| f.path == path && matches!(f.status, 'M' | 'T' | 'R'))
 }
 
+/// Whether `path` is staged as a new file (staged 'A'): not in the last commit, or there is no
+/// commit yet. Deleting it then also takes it out of the index.
+pub fn staged_new(snap: &trellis_core::repo::Snapshot, path: &str) -> bool {
+    snap.staged.iter().any(|f| f.path == path && f.status == 'A')
+}
+
 /// Whether status lists `path` (unstaged or staged) as a file that is still in the working tree,
 /// so a new file can't take its place. A path equal to `except` ignoring case (a rename's source)
 /// doesn't count. Core checks the disk again; this only catches what the snapshot shows.
