@@ -7,6 +7,7 @@ use crate::state::ForgeState;
 use crate::state::selection::MultiSelection;
 use eframe::egui::{self, RichText};
 use git2::Oid;
+use trellis_core::rebase::RebaseBase;
 
 pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Msg>) {
     let sha = oid.to_string();
@@ -32,6 +33,7 @@ pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Ms
             ),
         );
     });
+    menu_item(msgs, ui, "Interactive rebase from here…", Msg::OpenRebase(RebaseBase::FromCommit(oid)));
     ui.separator();
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(sha.clone()));
     menu_item(msgs, ui, "Copy commit message", Msg::Copy(summary.to_owned()));

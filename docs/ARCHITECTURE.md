@@ -31,6 +31,10 @@ crates/
     branch_ops.rs         branch command lines (rename, upstream, fast-forward without
                           checkout, push, delete with the remote branch), name checks,
                           fast-forward state
+    rebase/               interactive rebase: types (mod.rs), plan (the commits to replay),
+                          todo (checking and writing the todo list, reword message files, and
+                          installing it over git's as the sequence-editor helper), run
+                          (`git rebase -i` with the prepared todo; where a stopped rebase is)
     undo.rs               undo/redo of Trellis's own operations: records state around a job,
                           plans the git commands that reverse it (checked against the repo)
     graph.rs              lane layout for the commit graph
@@ -53,28 +57,37 @@ crates/
                           history (the open file history), watch (what the file watcher
                           follows), selection (several selected commits: Ctrl/Shift-click
                           rules, cherry-pick checks), branches (why branch actions are blocked,
-                          push targets)
+                          push targets), rebase (the interactive rebase panel: the list being
+                          edited and the rules for starting it)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
-    runner.rs             executes effects on worker threads, reports back as Msg
+    runner/               executes effects on worker threads, reports back as Msg (mod.rs);
+                          config (reading git config), rebase (loading and running an
+                          interactive rebase, with Trellis as the sequence editor)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
                           undo, diff, conflict, history, watch, selection (several commits:
                           the two-commit comparison, cherry-picking them), branches (the local
-                          branch menu's operations)
+                          branch menu's operations), rebase (the interactive rebase panel and
+                          its job)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, details_multi (several commits), diff/ (header,
                           inline, split, syntax),
-                          conflict, history, modals, menus, branch_menu (local branch menu),
-                          branch_dialogs (rename, upstream),
+                          conflict, history, rebase/ (the interactive rebase panel; rows:
+                          actions, message editor, drag to reorder), modals, menus,
+                          branch_menu (local branch menu), branch_dialogs (rename, upstream),
                           status, prefs/, theme, widgets (+ snapshot_tests.rs, snapshot_tests_diff.rs,
                           snapshot_tests_revert.rs, snapshot_tests_select.rs, snapshot_tests_whole.rs,
-                          snapshot_tests_branch.rs)
+                          snapshot_tests_branch.rs, snapshot_tests_rebase.rs)
     platform.rs           OS integration (recent repos, terminal, file manager)
+    main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead
+                          installs a prepared todo list for git (no window) and exits
   trellis-app/tests/snapshots/   approved UI images
   trellis-app/tests/layering.rs  fails if a view under ui/ does I/O itself (see Rules)
+  trellis-app/tests/sequence_editor.rs  runs a rebase with the built executable as the
+                                 sequence editor
 ```
 
 ### Data flow (Elm-style)

@@ -32,6 +32,8 @@ pub enum Icon {
     /// Up and down arrows for previous / next change in the diff viewer.
     PrevChange,
     NextChange,
+    /// Two columns of three dots: a drag handle.
+    Grip,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -63,6 +65,13 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         }
         Icon::PrevChange => arrow_up(c.y - 6.0, c.y + 6.0),
         Icon::NextChange => arrow_down(c.y - 6.0, c.y + 6.0),
+        Icon::Grip => {
+            for dx in [-2.5, 2.5] {
+                for dy in [-5.0, 0.0, 5.0] {
+                    p.circle_filled(pos2(c.x + dx, c.y + dy), 1.4, col);
+                }
+            }
+        }
         Icon::Branch => {
             p.circle_stroke(pos2(c.x - 4.0, c.y - 7.0), 2.4, s);
             p.circle_stroke(pos2(c.x - 4.0, c.y + 7.0), 2.4, s);

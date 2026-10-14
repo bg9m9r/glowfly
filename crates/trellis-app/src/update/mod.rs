@@ -11,6 +11,7 @@ mod history;
 mod ops;
 mod prefs;
 mod publish;
+mod rebase;
 mod repo;
 mod selection;
 mod tabs;
@@ -31,6 +32,10 @@ mod history_tests;
 mod lines_tests;
 #[cfg(test)]
 mod publish_tests;
+#[cfg(test)]
+mod rebase_e2e_tests;
+#[cfg(test)]
+mod rebase_tests;
 #[cfg(test)]
 mod revert_tests;
 #[cfg(test)]
@@ -105,6 +110,19 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::MoreFileHistory
         | Msg::ShowInGraph(_)
         | Msg::FileHistoryLoaded { .. } => history::handle(st, msg, now, &mut fx),
+
+        // interactive rebase
+        Msg::OpenRebase(_)
+        | Msg::CloseRebase
+        | Msg::RebaseSetAction { .. }
+        | Msg::RebaseMove { .. }
+        | Msg::RebaseEditMessage(_)
+        | Msg::RebaseSaveMessage
+        | Msg::RebaseCancelMessage
+        | Msg::RebaseReset
+        | Msg::StartRebase { .. }
+        | Msg::RebasePlanLoaded { .. }
+        | Msg::RebaseFinished { .. } => rebase::handle(st, msg, now, &mut fx),
 
         // tabs
         Msg::NewTab

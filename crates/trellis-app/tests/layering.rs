@@ -56,6 +56,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("avatars", &["fetch"]),
     ("signing", &["list_gpg_keys", "list_ssh_keys", "generate_gpg_key", "export_public_key"]),
     ("undo", &["before", "after", "plan", "redone"]),
+    ("rebase", &["plan", "start", "stopped_at", "install_todo"]),
     ("platform", &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager"]),
 ];
 

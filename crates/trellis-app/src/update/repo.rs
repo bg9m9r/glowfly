@@ -259,6 +259,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             close_diff(st);
             super::conflict::close(st);
             super::history::close(st);
+            super::rebase::close(st);
             st.draft = CommitDraft::default();
             st.undo = Default::default();
             st.view.scroll_to_row = Some(0);
@@ -276,6 +277,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             if matches!(st.selection, Selection::Commits(_)) {
                 super::selection::refreshed(st, &snap, fx);
             }
+            super::rebase::refreshed(st, &snap);
         }
     }
     super::forge::detect(st, &snap);

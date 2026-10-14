@@ -8,6 +8,7 @@ use crate::msg::Msg;
 use crate::state::ForgeState;
 use crate::state::branches::{self, NO_REMOTES};
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
+use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{BranchInfo, Snapshot};
 
 pub fn local_branch_menu(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
@@ -18,6 +19,8 @@ pub fn local_branch_menu(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, fs:
         if !current.is_empty() {
             menu_item(msgs, ui, format!("Merge {name} into {current}"), Msg::git("Merge", &["merge", name]));
             menu_item(msgs, ui, format!("Rebase {current} onto {name}"), Msg::git("Rebase", &["rebase", name]));
+            let onto = Msg::OpenRebase(RebaseBase::OntoBranch(name.to_owned()));
+            menu_item(msgs, ui, format!("Interactive rebase {current} onto {name}…"), onto);
         }
         ui.separator();
     }

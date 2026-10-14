@@ -16,6 +16,7 @@ mod menus;
 mod modals;
 mod prefs;
 mod publish;
+mod rebase;
 mod sidebar;
 mod spell_edit;
 mod status;
@@ -30,6 +31,8 @@ mod snapshot_tests;
 mod snapshot_tests_branch;
 #[cfg(test)]
 mod snapshot_tests_diff;
+#[cfg(test)]
+mod snapshot_tests_rebase;
 #[cfg(test)]
 mod snapshot_tests_revert;
 #[cfg(test)]
@@ -152,7 +155,8 @@ impl TrellisApp {
 }
 
 /// Esc closes the innermost thing open: Preferences, the conflict view, the file history, the
-/// diff (a line selection first), then a multi-selection, and finally the search bar.
+/// diff (a line selection first), the interactive rebase panel (its message editor first), then
+/// a multi-selection, and finally the search bar.
 fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !ctx.input(|i| i.key_pressed(Key::Escape)) || st.modal.is_some() {
         return;
@@ -166,6 +170,9 @@ fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     } else if st.diff.is_some() {
         // Esc first drops a line selection, then closes the diff.
         msgs.push(if st.view.diff_lines.is_empty() { Msg::CloseDiff } else { Msg::ClearLineSelection });
+    } else if let Some(p) = &st.rebase {
+        // Esc first closes the message editor, then the panel.
+        msgs.push(if p.editing.is_some() { Msg::RebaseCancelMessage } else { Msg::CloseRebase });
     } else if matches!(st.selection, crate::state::Selection::Commits(_)) {
         msgs.push(Msg::CollapseSelection);
     } else {
@@ -253,6 +260,8 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
                 history::show(ui, st, msgs);
             } else if st.diff.is_some() {
                 diff::show(ui, st, msgs);
+            } else if st.rebase.is_some() {
+                rebase::show(ui, st, cache, msgs);
             } else {
                 graph::show(ui, st, cache, msgs);
             }

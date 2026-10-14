@@ -5,6 +5,7 @@ use crate::msg::{FilePurpose, FolderPurpose};
 use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::forge::{Account, Auth, Issue, NewPullRequest, NewRepo, PullRequest, Target};
+use trellis_core::rebase::{RebaseBase, StartRequest};
 use trellis_core::repo::{ConflictIds, DiffTarget, FileDiff, HistoryStart, Hunk, HunkOp, LoadOptions, Side};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
@@ -171,6 +172,18 @@ pub enum Effect {
         write_file: Option<(PathBuf, String)>,
         record: Option<UndoKind>,
     },
+    /// The commits an interactive rebase from `base` would replay.
+    LoadRebasePlan {
+        workdir: PathBuf,
+        base: RebaseBase,
+        generation: u64,
+    },
+    /// Runs an interactive rebase with a prepared todo list. Unscoped like `RunGit`: the job's
+    /// result must reach `update` even if its tab is no longer active.
+    InteractiveRebase {
+        cwd: PathBuf,
+        request: StartRequest,
+    },
     /// Undoes (or redoes) `action` after checking the repository still matches it. Unscoped like
     /// `RunGit`: the job's result must reach `update` even if its tab is no longer active.
     UndoRedo {
@@ -280,6 +293,7 @@ impl Effect {
             | Effect::LoadDiff { workdir, .. }
             | Effect::LoadConflict { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }
+            | Effect::LoadRebasePlan { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::RevertHunk { workdir, .. }
             | Effect::Stats { workdir, .. } => Some(workdir),

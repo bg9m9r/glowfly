@@ -162,15 +162,16 @@ pub fn repo_name_from_url(url: &str) -> String {
 
 pub type StateAction = (&'static str, &'static [&'static str]);
 
+const REBASE_ACTIONS: &[StateAction] =
+    &[("Continue", &["rebase", "--continue"]), ("Skip commit", &["rebase", "--skip"]), ("Abort rebase", &["rebase", "--abort"])];
+
 /// The in-progress operation name and its Continue/Skip/Abort commands.
 pub fn state_actions(state: RepositoryState) -> Option<(&'static str, &'static [StateAction])> {
     use RepositoryState::*;
     Some(match state {
         Merge => ("Merge", &[("Abort merge", &["merge", "--abort"])]),
-        Rebase | RebaseInteractive | RebaseMerge => (
-            "Rebase",
-            &[("Continue", &["rebase", "--continue"]), ("Skip commit", &["rebase", "--skip"]), ("Abort rebase", &["rebase", "--abort"])],
-        ),
+        Rebase | RebaseMerge => ("Rebase", REBASE_ACTIONS),
+        RebaseInteractive => ("Interactive rebase", REBASE_ACTIONS),
         CherryPick | CherryPickSequence => {
             ("Cherry-pick", &[("Continue", &["cherry-pick", "--continue"]), ("Abort cherry-pick", &["cherry-pick", "--abort"])])
         }

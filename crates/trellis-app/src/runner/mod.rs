@@ -3,7 +3,6 @@
 
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, LocalOp, UndoResult};
 use crate::msg::Msg;
-use crate::state::prefs::GitConfigValues;
 use std::path::Path;
 use std::sync::mpsc::Sender;
 use trellis_core::avatars;
@@ -14,6 +13,9 @@ use trellis_core::intraline;
 use trellis_core::repo;
 use trellis_core::signing::{self, SigningFormat};
 use trellis_core::undo::{self, Action, Plan};
+
+mod config;
+mod rebase;
 
 /// Wakes the UI when a result arrives (so it can process the message promptly).
 pub trait Waker: Send + Sync + 'static {
@@ -73,6 +75,8 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::RevertHunk { .. } => "revert-hunk",
         Effect::RunGit { .. } => "git",
         Effect::UndoRedo { .. } => "undo-redo",
+        Effect::LoadRebasePlan { .. } => "rebase-plan",
+        Effect::InteractiveRebase { .. } => "rebase",
         Effect::Forge { .. } => "forge",
         Effect::Connect { .. } => "connect",
         Effect::RepoOwners { .. } => "repo-owners",
@@ -164,6 +168,8 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             Some(Msg::JobDone { ok, output, undo })
         }
         Effect::UndoRedo { cwd, action, redo } => Some(undo_redo(&cwd, action, redo)),
+        Effect::LoadRebasePlan { workdir, base, generation } => Some(rebase::load_plan(&workdir, &base, generation)),
+        Effect::InteractiveRebase { cwd, request } => Some(rebase::start(&cwd, &request)),
         Effect::Forge { target, cwd, auth, interactive, call } => {
             Some(Msg::ForgeReplied(forge_call(target, &cwd, auth, interactive, call)))
         }
@@ -208,7 +214,7 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
                 })
                 .collect(),
         )),
-        Effect::ReadGitConfig { cwd, has_repo } => Some(Msg::GitConfigLoaded(read_git_config(&cwd, has_repo))),
+        Effect::ReadGitConfig { cwd, has_repo } => Some(Msg::GitConfigLoaded(config::read_git_config(&cwd, has_repo))),
         Effect::SetGitConfig { cwd, global, key, value } => {
             let scope = if global { "--global" } else { "--local" };
             let a = match &value {
@@ -369,33 +375,4 @@ fn forge_call(target: trellis_core::forge::Target, cwd: &Path, auth: Option<Auth
         ForgeCall::Create(pr) => vec![ForgeResult::Created(forge::create_pull_request(t, &auth, &pr).map_err(ForgeError::from))],
     };
     ForgeReply { target, auth: Some(auth), results }
-}
-
-fn read_git_config(cwd: &Path, has_repo: bool) -> GitConfigValues {
-    let read = |global: bool, key: &str| {
-        if !global && !has_repo {
-            return String::new();
-        }
-        let scope = if global { "--global" } else { "--local" };
-        let (ok, out) = gitcli::run(cwd, &args(&["config", scope, "--get", key]));
-        if ok { out.trim().to_owned() } else { String::new() }
-    };
-    let format = read(true, "gpg.format");
-    GitConfigValues {
-        longpaths: read(true, "core.longpaths") == "true",
-        autocrlf: read(true, "core.autocrlf") == "true",
-        user_name: read(true, "user.name"),
-        user_email: read(true, "user.email"),
-        gpgsign: read(true, "commit.gpgsign") == "true",
-        signing_format: if format.is_empty() { "openpgp".into() } else { format },
-        signing_key: read(true, "user.signingkey"),
-        repo_name: read(false, "user.name"),
-        repo_email: read(false, "user.email"),
-        hooks_path: read(false, "core.hooksPath"),
-        gpg_program: read(true, "gpg.program"),
-        ssh_program: read(true, "gpg.ssh.program"),
-        x509_program: read(true, "gpg.x509.program"),
-        tag_gpgsign: read(true, "tag.gpgsign") == "true",
-        ssh_allowed_signers: read(true, "gpg.ssh.allowedSignersFile"),
-    }
 }

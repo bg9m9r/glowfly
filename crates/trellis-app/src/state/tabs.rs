@@ -3,6 +3,7 @@
 
 use super::conflict::ConflictView;
 use super::history::FileHistoryView;
+use super::rebase::RebasePanel;
 use super::undo::UndoHistory;
 use super::{CommitDraft, ForgeState, Selection};
 use git2::Oid;
@@ -50,6 +51,8 @@ pub struct Parked {
     pub conflict: Option<ConflictView>,
     /// The open file history (a request in flight is sent again on return).
     pub history: Option<FileHistoryView>,
+    /// The interactive rebase panel (a list still loading is requested again on return).
+    pub rebase: Option<RebasePanel>,
     pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,

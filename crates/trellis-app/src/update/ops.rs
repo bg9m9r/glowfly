@@ -89,7 +89,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 fx,
             );
         }
-        Msg::JobDone { ok, output, undo } => job_done(st, ok, output, undo, now, fx),
+        Msg::JobDone { ok, output, undo } => finish_job(st, ok, output, None, undo, now, fx),
         _ => {}
     }
 }
@@ -122,19 +122,35 @@ pub(super) fn busy(st: &mut AppState, quiet: bool) -> bool {
 }
 
 pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) {
-    if busy(st, spec.quiet) {
-        return;
-    }
-    let Some(cwd) = spec.cwd.or_else(|| st.workdir()) else { return };
-    st.job = Some(RunningJob {
+    let job = RunningJob {
         label: spec.label,
-        workdir: st.workdir(),
+        workdir: None,
         quiet: spec.quiet,
         clear_commit: spec.clear_commit,
         then_open: spec.then_open,
         keeps_undo: super::undo::keeps_history(&spec.cmds),
-    });
+    };
+    let Some(cwd) = claim(st, job, spec.cwd) else { return };
     fx.push(Effect::RunGit { cwd, cmds: spec.cmds, write_file: spec.write_file, record: spec.record });
+}
+
+/// Makes a job labelled `label` the active one in the active tab's repository, unless another
+/// job is running (said in the log). Returns the folder to run it in.
+pub(super) fn begin_job(st: &mut AppState, label: &str, keeps_undo: bool) -> Option<PathBuf> {
+    let job = RunningJob { label: label.into(), workdir: None, quiet: false, clear_commit: false, then_open: None, keeps_undo };
+    claim(st, job, None)
+}
+
+/// Makes `job` the active job (in the active tab) unless one is running; returns `cwd`, or the
+/// active tab's repository.
+fn claim(st: &mut AppState, mut job: RunningJob, cwd: Option<PathBuf>) -> Option<PathBuf> {
+    if busy(st, job.quiet) {
+        return None;
+    }
+    let cwd = cwd.or_else(|| st.workdir())?;
+    job.workdir = st.workdir();
+    st.job = Some(job);
+    Some(cwd)
 }
 
 /// Stages, unstages or discards the selected diff lines, when the selection belongs to the
@@ -239,19 +255,27 @@ fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
     start_job(st, JobSpec::new(if force { "Force push" } else { "Push" }.into(), vec![cmd]), fx);
 }
 
-fn job_done(st: &mut AppState, ok: bool, output: String, undo: Option<UndoResult>, now: Instant, fx: &mut Vec<Effect>) {
+/// The active job ended: logs and toasts it (`headline`, or "<label> succeeded" / "<label>
+/// failed: <reason>"), updates the undo history of the tab it ran in, and refreshes that tab if
+/// it is still active.
+pub(super) fn finish_job(
+    st: &mut AppState,
+    ok: bool,
+    output: String,
+    headline: Option<String>,
+    undo: Option<UndoResult>,
+    now: Instant,
+    fx: &mut Vec<Effect>,
+) {
     let Some(job) = st.job.take() else { return };
     let status = if ok { "done" } else { "FAILED" };
     let text = format!("{} {status}\n{output}", job.label);
     if job.quiet {
         st.log.push(crate::state::LogEntry { ok, text });
     } else {
-        let headline = if ok {
-            format!("{} succeeded", job.label)
-        } else {
-            let reason = output.lines().rfind(|l| !l.starts_with("$ ")).unwrap_or("").to_owned();
-            format!("{} failed: {reason}", job.label)
-        };
+        let headline = headline.unwrap_or_else(|| {
+            if ok { format!("{} succeeded", job.label) } else { format!("{} failed: {}", job.label, last_line(&output)) }
+        });
         st.toast(ok, headline, now);
         st.log(ok, text);
     }
@@ -285,6 +309,11 @@ fn job_done(st: &mut AppState, ok: bool, output: String, undo: Option<UndoResult
     if !job.quiet {
         super::forge::refresh(st, true, false, now, fx);
     }
+}
+
+/// The last line of a job's output that isn't a command echo.
+pub(super) fn last_line(output: &str) -> &str {
+    output.lines().rfind(|l| !l.starts_with("$ ")).unwrap_or("")
 }
 
 /// Background fetch on the interval from Preferences > General.

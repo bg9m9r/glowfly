@@ -228,13 +228,36 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] History of a folder
   - [ ] Let `diff::show` delegate to `diff::body` once the diff header changes in flight have
     landed
-- [ ] **Interactive rebase**
-  Drag-to-reorder list with pick, reword, squash, drop and edit, driven through
-  `GIT_SEQUENCE_EDITOR` (Trellis as the editor: the same helper-process plumbing as credential
-  prompts). "Edit" stops reuse the Continue/Skip/Abort banner.
+- [x] **Interactive rebase**
+  "Interactive rebase from here…" on a commit (that commit and every later one on the current
+  branch) and "Interactive rebase {current} onto {branch}…" on a local branch open a panel in
+  place of the graph. It lists the commits oldest first; each row picks, rewords, squashes,
+  fixes up, drops or edits its commit, and rows move by dragging or with the up/down buttons.
+  Rewording opens an inline message editor. Reset restores the list (or reloads it once HEAD
+  has moved), Cancel or Esc closes it, and Start explains on hover why it is unavailable
+  (another job, uncommitted changes, an operation in progress, a stale list, a squash with
+  nothing before it, an empty message, nothing changed). Dropping asks first. Start runs
+  `git rebase -i` with `GIT_SEQUENCE_EDITOR` set to Trellis itself (`--write-todo`), which
+  installs the prepared todo after checking it lists the same commits as git's; rewords are
+  `exec git commit --amend -F` lines. Edit steps and conflicts stop in the "Interactive rebase
+  in progress" banner with Continue / Skip commit / Abort rebase. The panel is kept per tab.
   - [ ] Rebase onto a commit, and branch context menus on the graph's ref labels
   - [ ] History editing from the graph: reword, squash with parent, or drop commits from the
     context menu (several at once needs multi-select)
+  - [ ] Start with uncommitted changes by stashing them first (`--autostash`), after asking
+  - [ ] Rebase ranges that contain merge commits (`--rebase-merges`)
+  - [ ] Keep `update-ref` steps (`rebase.updateRefs`) so branches stacked inside the range move
+    with it
+  - [ ] Edit the combined message of a squash group in the panel instead of git's concatenation
+  - [ ] Keyboard control in the panel: select a row, Alt+Up/Down to move it, a letter key per
+    action
+  - [ ] Edit the remaining steps of a rebase already in progress (`rebase --edit-todo`),
+    including one started outside Trellis
+  - [ ] Show the step (N of M) and the stopped commit in the rebase banner, and report edit or
+    conflict stops after Continue too (Continue currently says "succeeded" even when it stops
+    again)
+  - [ ] Undo an interactive rebase (back to `ORIG_HEAD`) from the undo history
+  - [ ] `exec` and `break` steps in the panel
 - [x] **Multi-select commits**
   Ctrl-click toggles a commit and Shift-click selects a range of graph rows; Esc returns to one
   commit. The details panel lists the selection; with exactly two commits it lists the files that

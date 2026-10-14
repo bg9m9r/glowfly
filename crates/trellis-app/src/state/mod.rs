@@ -8,6 +8,7 @@ pub mod history;
 pub mod lines;
 pub mod prefs;
 pub mod publish;
+pub mod rebase;
 pub mod selection;
 pub mod tabs;
 pub mod undo;
@@ -241,6 +242,12 @@ pub struct AppState {
     /// Incremented for every history request and whenever the view closes; older
     /// `FileHistoryLoaded` results are ignored.
     pub history_gen: u64,
+    /// The interactive rebase panel; shown instead of the graph (below a diff, the file
+    /// history and a conflict).
+    pub rebase: Option<rebase::RebasePanel>,
+    /// Incremented for every rebase list request and whenever the panel closes; older
+    /// `RebasePlanLoaded` results are ignored.
+    pub rebase_gen: u64,
     pub draft: CommitDraft,
     pub job: Option<RunningJob>,
     /// The active tab's undo history.
@@ -283,6 +290,8 @@ impl AppState {
             conflict_gen: 0,
             history: None,
             history_gen: 0,
+            rebase: None,
+            rebase_gen: 0,
             draft: CommitDraft::default(),
             job: None,
             undo: undo::UndoHistory::default(),
