@@ -52,3 +52,12 @@ jobs:
       - name: Tests
         run: cargo test --workspace --locked
 
+  # Known vulnerabilities, unmaintained crates and licenses of every dependency (deny.toml).
+  deny:
+    name: Dependencies (cargo deny)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
