@@ -135,11 +135,14 @@ pub fn from_credential_manager(account: &Account, cwd: &Path, interactive: bool)
     if !interactive {
         env.push(("GCM_INTERACTIVE", "never"));
     }
-    let (ok, out) = crate::gitcli::run_with_input(cwd, &crate::gitcli::args(&["credential", "fill"]), &credential_request(account), &env);
-    if !ok {
+    // No timeout: the helper may be waiting on the user's sign-in window. Only stdout holds the
+    // answer; a helper's own messages go to stderr.
+    let a = crate::gitcli::args(&["credential", "fill"]);
+    let out = crate::gitcli::output(cwd, &a, &credential_request(account), &env, None);
+    if !out.ok {
         return Err(Error::Auth(format!("not signed in to {}", account.provider.name())));
     }
-    let field = |k: &str| out.lines().find_map(|l| l.strip_prefix(&format!("{k}="))).map(str::to_owned);
+    let field = |k: &str| out.stdout.lines().find_map(|l| l.strip_prefix(&format!("{k}="))).map(str::to_owned);
     let password = field("password").ok_or_else(|| Error::Auth("the credential helper returned no token".into()))?;
     let user = field("username").unwrap_or_default();
     let source = "Git Credential Manager";

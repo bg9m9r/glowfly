@@ -8,8 +8,9 @@
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::OnceLock;
+use std::time::{Duration, Instant};
 
 /// What git children need to reach the app's credential prompts.
 #[derive(Clone)]
@@ -46,16 +47,58 @@ pub fn askpass_vars(a: &AskpassEnv) -> Vec<(&'static str, OsString)> {
 /// `core.askpass` or `SSH_ASKPASS`.
 pub const NO_PROMPTS: &[(&str, &str)] = &[("GIT_ASKPASS", ""), ("SSH_ASKPASS", ""), ("SSH_ASKPASS_REQUIRE", "never")];
 
+/// What a finished git command printed. `stdout` and `stderr` are kept apart so a caller that
+/// parses output reads stdout only; job logs show [`GitOutput::combined`].
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct GitOutput {
+    pub ok: bool,
+    /// The exit code; None when git could not be started, was killed or timed out.
+    pub code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+    pub timed_out: bool,
+}
+
+impl GitOutput {
+    /// stdout then stderr, trailing whitespace trimmed (what the job log shows).
+    pub fn combined(&self) -> String {
+        let mut text = self.stdout.clone();
+        text.push_str(&self.stderr);
+        text.trim_end().to_owned()
+    }
+
+    fn failed(message: String) -> Self {
+        Self { stderr: message, ..Self::default() }
+    }
+}
+
+/// How long a quick local read ([`read`]) may take before it is killed.
+pub const READ_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Runs `git <args>` in `cwd`. Returns success and the combined stdout/stderr.
 pub fn run(cwd: &Path, args: &[String]) -> (bool, String) {
     run_with_input(cwd, args, "", &[])
 }
 
-/// Like `run`, feeding `input` on stdin and setting extra environment variables. `env` is
-/// applied after the fixed defaults (no terminal prompts, `true` as the editor and sequence
-/// editor, no merge message editing) and the askpass variables (once enabled), so a caller can
-/// override one of them for one command, e.g. with [`NO_PROMPTS`].
+/// Like `run`, feeding `input` on stdin and setting extra environment variables (see
+/// [`output`]). Returns success and the combined stdout/stderr.
 pub fn run_with_input(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)]) -> (bool, String) {
+    let out = output(cwd, args, input, env, None);
+    (out.ok, out.combined())
+}
+
+/// A quick local read whose stdout the caller parses (config values, `rev-parse`, versions):
+/// never prompts and is killed after [`READ_TIMEOUT`]. Not for network or long-running jobs.
+pub fn read(cwd: &Path, args: &[String]) -> GitOutput {
+    output(cwd, args, "", NO_PROMPTS, Some(READ_TIMEOUT))
+}
+
+/// Runs `git <args>` in `cwd`, feeding `input` on stdin, and keeps stdout and stderr apart.
+/// `env` is applied after the fixed defaults (no terminal prompts, `true` as the editor and
+/// sequence editor, no merge message editing, untranslated messages) and the askpass variables
+/// (once enabled), so a caller can override one of them for one command, e.g. with
+/// [`NO_PROMPTS`]. With a `timeout`, the child is killed once it runs that long.
+pub fn output(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: Option<Duration>) -> GitOutput {
     let mut cmd = Command::new("git");
     cmd.args(args)
         .current_dir(cwd)
@@ -67,6 +110,9 @@ pub fn run_with_input(cwd: &Path, args: &[String], input: &str, env: &[(&str, &s
         .env("GIT_EDITOR", "true")
         .env("GIT_SEQUENCE_EDITOR", "true")
         .env("GIT_MERGE_AUTOEDIT", "no")
+        // Untranslated messages, so the text Trellis matches is the same in every locale.
+        .env("LC_ALL", "C")
+        .env("LANGUAGE", "C")
         .envs(ASKPASS.get().map(askpass_vars).unwrap_or_default())
         .envs(env.iter().copied());
     #[cfg(windows)]
@@ -75,20 +121,80 @@ pub fn run_with_input(cwd: &Path, args: &[String], input: &str, env: &[(&str, &s
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    let output = cmd.spawn().and_then(|mut child| {
-        if let Some(mut stdin) = child.stdin.take() {
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => return GitOutput::failed(format!("failed to run git: {e}")),
+    };
+    // Feed stdin and drain both pipes on their own threads, so a large input or output can't
+    // leave git and Trellis each waiting for the other.
+    if let Some(mut stdin) = child.stdin.take() {
+        let input = input.as_bytes().to_vec();
+        std::thread::spawn(move || {
             use std::io::Write;
-            stdin.write_all(input.as_bytes())?;
+            // A command that exits without reading all of stdin closes the pipe; that's fine.
+            let _ = stdin.write_all(&input);
+        });
+    }
+    let stdout = drain(child.stdout.take());
+    let stderr = drain(child.stderr.take());
+    let (status, timed_out) = match wait(&mut child, timeout) {
+        Ok(s) => s,
+        Err(e) => return GitOutput::failed(format!("failed to run git: {e}")),
+    };
+    // After a kill, a grandchild (a hook, ssh) may still hold the pipes; don't wait on it.
+    let grace = timed_out.then_some(Duration::from_secs(1));
+    let mut out = GitOutput {
+        ok: status.is_some_and(|s| s.success()),
+        code: status.and_then(|s| s.code()),
+        stdout: collect(&stdout, grace),
+        stderr: collect(&stderr, grace),
+        timed_out,
+    };
+    if timed_out {
+        let secs = timeout.unwrap_or_default().as_secs_f32();
+        out.stderr.push_str(&format!("\ngit {} took more than {secs}s and was stopped", args.join(" ")));
+    }
+    out
+}
+
+type Drained = std::sync::mpsc::Receiver<Vec<u8>>;
+
+/// Reads `pipe` to the end on a new thread.
+fn drain(pipe: Option<impl std::io::Read + Send + 'static>) -> Drained {
+    let (tx, rx) = std::sync::mpsc::channel();
+    if let Some(mut pipe) = pipe {
+        std::thread::spawn(move || {
+            let mut buf = Vec::new();
+            let _ = pipe.read_to_end(&mut buf);
+            let _ = tx.send(buf);
+        });
+    }
+    rx
+}
+
+fn collect(rx: &Drained, grace: Option<Duration>) -> String {
+    let bytes = match grace {
+        Some(d) => rx.recv_timeout(d).unwrap_or_default(),
+        None => rx.recv().unwrap_or_default(),
+    };
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+/// Waits for `child`, killing it once `timeout` passes. Returns its status (None if killed)
+/// and whether it timed out.
+fn wait(child: &mut Child, timeout: Option<Duration>) -> std::io::Result<(Option<ExitStatus>, bool)> {
+    let Some(timeout) = timeout else { return child.wait().map(|s| (Some(s), false)) };
+    let deadline = Instant::now() + timeout;
+    loop {
+        if let Some(s) = child.try_wait()? {
+            return Ok((Some(s), false));
         }
-        child.wait_with_output()
-    });
-    match output {
-        Ok(out) => {
-            let mut text = String::from_utf8_lossy(&out.stdout).into_owned();
-            text.push_str(&String::from_utf8_lossy(&out.stderr));
-            (out.status.success(), text.trim_end().to_owned())
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok((None, true));
         }
-        Err(e) => (false, format!("failed to run git: {e}")),
+        std::thread::sleep(Duration::from_millis(5));
     }
 }
 
@@ -132,5 +238,49 @@ mod tests {
         let (ok, out) = run_with_input(&dir, &a, "protocol=https\nhost=example.invalid\n\n", NO_PROMPTS);
         assert!(!ok, "{out}");
         assert!(start.elapsed() < std::time::Duration::from_secs(30));
+    }
+
+    #[test]
+    fn stdout_and_stderr_stay_apart() {
+        let dir = std::env::temp_dir();
+        let out = output(&dir, &args(&["version"]), "", &[], None);
+        assert!(out.ok && out.code == Some(0) && out.stdout.starts_with("git version") && out.stderr.is_empty(), "{out:?}");
+        let out = output(&dir, &args(&["config", "--no-such-option"]), "", &[], None);
+        assert!(!out.ok && out.stdout.is_empty() && !out.stderr.is_empty(), "{out:?}");
+        assert_eq!(out.combined(), out.stderr.trim_end());
+    }
+
+    #[test]
+    fn messages_are_untranslated() {
+        let dir = std::env::temp_dir();
+        let env = |k: &str| {
+            let a = args(&["-c", &format!("alias.e=!echo ${k}"), "e"]);
+            output(&dir, &a, "", &[("LANG", "de_DE.UTF-8")], None).stdout
+        };
+        assert_eq!(env("LC_ALL").trim(), "C");
+        assert_eq!(env("LANGUAGE").trim(), "C");
+        assert_eq!(env("LANG").trim(), "de_DE.UTF-8", "the rest of the environment is kept");
+    }
+
+    #[test]
+    fn large_input_does_not_deadlock() {
+        // Several MB in and out: writing stdin before draining stdout would block both sides.
+        let dir = std::env::temp_dir();
+        let input = ("x".repeat(64) + "\n").repeat(100_000);
+        let a = args(&["-c", "alias.cat=!cat", "cat"]);
+        let out = output(&dir, &a, &input, &[], Some(Duration::from_secs(60)));
+        assert!(out.ok, "{}", out.stderr);
+        assert_eq!(out.stdout.len(), input.len());
+    }
+
+    #[test]
+    fn timeout_kills_the_command() {
+        let dir = std::env::temp_dir();
+        let start = Instant::now();
+        let a = args(&["-c", "alias.wait=!sleep 30", "wait"]);
+        let out = output(&dir, &a, "", &[], Some(Duration::from_millis(300)));
+        assert!(!out.ok && out.timed_out && out.code.is_none(), "{out:?}");
+        assert!(out.stderr.contains("was stopped"), "{out:?}");
+        assert!(start.elapsed() < Duration::from_secs(10), "{:?}", start.elapsed());
     }
 }

@@ -1,5 +1,5 @@
 use super::*;
-use crate::gitcli::run_with_input;
+use crate::gitcli::{run, run_with_input};
 use crate::testutil::{git, scratch_repo, with_origin, write};
 
 fn displays(s: &LfsStatus) -> Vec<&str> {

@@ -8,7 +8,7 @@
 //! read from files and git config. The app runs the command lines through `gitcli` as jobs.
 
 use crate::error::{Error, Result};
-use crate::gitcli::{args, run};
+use crate::gitcli::{args, read};
 use std::path::{Path, PathBuf};
 
 mod track;
@@ -55,8 +55,8 @@ pub fn parse_version(out: &str) -> Option<String> {
 
 /// git-lfs's version, or None when `git lfs` isn't available.
 pub fn installed(cwd: &Path) -> Option<String> {
-    let (ok, out) = run(cwd, &args(&["lfs", "version"]));
-    if ok { parse_version(&out) } else { None }
+    let out = read(cwd, &args(&["lfs", "version"]));
+    if out.ok { parse_version(&out.stdout) } else { None }
 }
 
 /// The hooks `git lfs install` writes.
@@ -64,11 +64,11 @@ pub const HOOKS: [&str; 4] = ["pre-push", "post-checkout", "post-commit", "post-
 
 /// The repository's hooks folder (honours core.hooksPath).
 fn hooks_dir(workdir: &Path) -> Result<PathBuf> {
-    let (ok, out) = run(workdir, &args(&["rev-parse", "--git-path", "hooks"]));
-    if !ok {
-        return Err(Error::Other(out));
+    let out = read(workdir, &args(&["rev-parse", "--git-path", "hooks"]));
+    if !out.ok {
+        return Err(Error::Other(out.combined()));
     }
-    let path = PathBuf::from(out.trim());
+    let path = PathBuf::from(out.stdout.trim());
     Ok(if path.is_relative() { workdir.join(path) } else { path })
 }
 
@@ -95,8 +95,8 @@ pub fn hook_state(dir: &Path) -> (bool, Vec<String>) {
 /// Whether the LFS filter is configured (at any level: Git for Windows sets it system-wide).
 fn filters_configured(workdir: &Path) -> bool {
     ["filter.lfs.process", "filter.lfs.smudge"].iter().any(|key| {
-        let (ok, out) = run(workdir, &args(&["config", "--get", key]));
-        ok && !out.trim().is_empty()
+        let out = read(workdir, &args(&["config", "--get", key]));
+        out.ok && !out.stdout.trim().is_empty()
     })
 }
 

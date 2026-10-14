@@ -10,8 +10,8 @@ pub(super) fn read_git_config(cwd: &Path, has_repo: bool) -> GitConfigValues {
             return String::new();
         }
         let scope = if global { "--global" } else { "--local" };
-        let (ok, out) = gitcli::run(cwd, &args(&["config", scope, "--get", key]));
-        if ok { out.trim().to_owned() } else { String::new() }
+        let out = gitcli::read(cwd, &args(&["config", scope, "--get", key]));
+        if out.ok { out.stdout.trim().to_owned() } else { String::new() }
     };
     let format = read(true, "gpg.format");
     GitConfigValues {
