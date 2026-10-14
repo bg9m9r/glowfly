@@ -67,7 +67,7 @@ fn big() -> DiffTarget {
     DiffTarget::Unstaged("big.rs".into())
 }
 
-fn shown(st: &AppState) -> &FileDiff {
+pub(super) fn shown(st: &AppState) -> &FileDiff {
     &st.diff.as_ref().expect("a diff is open").1
 }
 
@@ -97,7 +97,7 @@ fn assert_colored(d: &FileDiff) {
     }
 }
 
-fn opened_big(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
+pub(super) fn opened_big(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
     let dir = big_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Open(dir.clone()));
@@ -197,7 +197,7 @@ fn whole_file_over_limit_gets_colors() {
 }
 
 /// Executes the held diff loads and applies their results, returning the effects.
-fn land(st: &mut AppState, held: Vec<Effect>) -> Vec<Effect> {
+pub(super) fn land(st: &mut AppState, held: Vec<Effect>) -> Vec<Effect> {
     held.into_iter().filter_map(runner::execute).flat_map(|m| up(st, m)).collect()
 }
 

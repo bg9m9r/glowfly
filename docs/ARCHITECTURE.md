@@ -61,7 +61,8 @@ crates/
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds:
                           inline and background passes, hunks parsed in context from the
                           old text (highlight/context.rs, parse.rs), reuse/carry in
-                          highlight/reuse.rs
+                          highlight/reuse.rs, and the function context of hunk headers
+                          (highlight/header.rs)
     intraline.rs          word-level changes inside paired removed/added diff lines
     tabs.rs               tab stops for drawing diff text (lines keep raw tabs), with a byte
                           map so syntax spans and changed-word ranges follow the expansion

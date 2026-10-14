@@ -28,7 +28,7 @@ impl Side {
 
     /// Parses one line (`text` without its terminator) and returns its spans. Counts the line
     /// in `cx`, checking `cancelled` every 256 lines.
-    fn line(&mut self, text: &str, cx: &mut Classifier, cancelled: &dyn Fn() -> bool) -> Result<Vec<Span>, Stop> {
+    pub(super) fn line(&mut self, text: &str, cx: &mut Classifier, cancelled: &dyn Fn() -> bool) -> Result<Vec<Span>, Stop> {
         cx.parsed += 1;
         if cx.parsed.is_multiple_of(256) && cancelled() {
             return Err(Stop::Cancelled);

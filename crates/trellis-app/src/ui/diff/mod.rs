@@ -16,12 +16,11 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
-use eframe::egui::{self, Align2, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
+use eframe::egui::{self, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
 use style::DiffStyle;
-use trellis_core::highlight::DiffHighlight;
+use trellis_core::highlight::{self, DiffHighlight};
 use trellis_core::repo::{DiffTarget, FileDiff, HunkOp};
 use trellis_core::settings::DiffLayout;
-use trellis_core::tabs;
 use trellis_core::whole_file::{self, Expanded, Fold, WholeFile, folds};
 
 /// The default row height and font, which the conflict view keeps; the diff viewer draws
@@ -46,6 +45,10 @@ pub(super) struct DiffView<'a> {
     pub opened: Vec<Fold>,
     /// Syntax spans of the diff the lines come from (`lines()`), `None` to paint plain.
     pub hl: Option<&'a DiffHighlight>,
+    /// Syntax spans for the hunk headers' function context: the normal hunks' highlight, also
+    /// in the whole-file view, whose action rows show those headers; `None` to paint headers
+    /// plain.
+    pub header_hl: Option<&'a DiffHighlight>,
     /// The diff's generation, or `None` while a reload is on its way (see `hunk_header`).
     pub hunk_gen: Option<u64>,
     /// The line selection; `None` when lines can't be selected (commit diffs, the whole-file
@@ -129,12 +132,13 @@ fn rows(
     let whole = whole_file::shown(diff, st.settings.diff_mode);
     // Highlighting always comes with the diff; the setting only decides whether to paint it.
     let hl = whole.map_or(diff.highlight.as_ref(), |w| w.diff.highlight.as_ref()).filter(|_| st.settings.syntax_highlighting);
+    let header_hl = diff.highlight.as_ref().filter(|_| st.settings.syntax_highlighting);
     let selectable = target.is_working_tree() && st.line_ops_blocked().is_none();
     let sel = selectable.then_some(&st.view.diff_lines);
     let style = DiffStyle::new(&st.settings);
     let expanded = &st.view.diff_expanded;
     let opened = whole.map(|w| whole_file::opened(w, expanded)).unwrap_or_default();
-    let view = DiffView { target, diff, whole, expanded, opened, hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
+    let view = DiffView { target, diff, whole, expanded, opened, hl, header_hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
     Some(match st.settings.diff_layout {
         DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
@@ -149,17 +153,19 @@ enum HunkButton {
     Revert,
 }
 
-/// A hunk header row: the `@@` line, plus its buttons pinned to the visible right edge so they
-/// stay in view when scrolled sideways: Stage / Unstage / Discard Hunk on working-tree diffs (or
-/// Stage / Unstage / Discard N lines when the hunk has selected lines), Revert Hunk on commit
-/// and comparison diffs. The buttons are disabled while a reload is on its way (`hunk_gen` is
-/// `None`), since the hunk indexes may no longer match the file, and while `blocked`
-/// (whitespace hidden: the shown hunks aren't the ones the operations count).
+/// A hunk header row: the `@@` line (its function context in syntax colors), plus its buttons
+/// pinned to the visible right edge so they stay in view when scrolled sideways: Stage /
+/// Unstage / Discard Hunk on working-tree diffs (or Stage / Unstage / Discard N lines when the
+/// hunk has selected lines), Revert Hunk on commit and comparison diffs. The buttons are
+/// disabled while a reload is on its way (`hunk_gen` is `None`), since the hunk indexes may no
+/// longer match the file, and while `blocked` (whitespace hidden: the shown hunks aren't the
+/// ones the operations count).
 pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs: &mut Vec<Msg>) {
     let p = ui.painter();
     p.rect_filled(rect, 0.0, color::hunk_bg());
-    let header = tabs::expand(&v.diff.hunks[h].header, v.style.tab);
-    p.text(pos2(rect.left() + 8.0, rect.center().y), Align2::LEFT_CENTER, header.text, v.style.font.clone(), color::hunk_fg());
+    let raw = &v.diff.hunks[h].header;
+    let ctx = v.header_hl.map(|hl| hl.header(h)).filter(|s| !s.is_empty()).and_then(|s| highlight::context_start(raw).map(|at| (at, s)));
+    syntax::paint_header(p, pos2(rect.left() + 8.0, rect.center().y), raw, ctx, &v.style.font, v.style.tab);
     let path = v.target.path();
     let selected = v.sel.map_or(0, |s| s.count_in(v.target, h));
     let buttons: &[HunkButton] = match v.target {

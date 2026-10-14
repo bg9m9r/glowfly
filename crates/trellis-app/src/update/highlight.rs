@@ -1,6 +1,7 @@
 //! Syntax highlighting finished in the background: large diffs arrive with a pending highlight
-//! (plain or provisional spans), `Effect::HighlightDiff` parses them on a worker thread, and
-//! `Msg::DiffHighlighted` attaches the result if the same diff is still on screen.
+//! (plain or provisional spans), `Effect::HighlightDiff` parses them on a worker thread (the
+//! lines and the function context in the hunk headers), and `Msg::DiffHighlighted` attaches the
+//! result if the same diff is still on screen.
 
 use crate::effect::Effect;
 use crate::msg::Msg;

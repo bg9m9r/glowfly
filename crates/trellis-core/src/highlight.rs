@@ -19,18 +19,25 @@
 //! pass, within `BACKGROUND_MAX_LINES` and `BACKGROUND_MAX_BYTES`). Beyond that a diff stays
 //! plain. Lines over `MAX_LINE_BYTES` (minified files) are never parsed in either pass and stay
 //! plain.
+//!
+//! Hunk headers' function context (`@@ -a,b +c,d @@ fn main() {`) is highlighted too, each on
+//! its own from a fresh state (`header`): inline with the lines, or by `finish` when pending.
+//! A reload carries those spans by the context's text, so they survive changed line numbers.
 
 use crate::repo::{DiffLine, FileDiff};
+use header::parse_headers;
 use parse::{Classifier, Stop, parse_hunk, parse_in_context};
 use reuse::{Cost, Previous};
 use std::sync::{Arc, LazyLock};
 use syntect::parsing::{Scope, SyntaxReference, SyntaxSet};
 
 mod context;
+mod header;
 mod parse;
 mod reuse;
 
 pub use context::OldText;
+pub use header::context_start;
 
 // Parsing costs roughly 90 ms per 1,000 short lines and 1.4 ms per KB of text (release build),
 // so the inline limits keep a load's worst case near 150-200 ms, and the background limits near
@@ -87,12 +94,22 @@ pub struct DiffHighlight {
     /// The old text the spans were (or, while pending, will be) computed from; `None` when each
     /// hunk is parsed on its own.
     pub(crate) old_text: Option<Arc<OldText>>,
+    /// Per hunk: spans of the function context in the hunk header, relative to
+    /// `context_start(header)`. Empty when the header has none, it is too long, or it isn't
+    /// parsed yet (pending without carried spans).
+    pub(crate) headers: Vec<Vec<Span>>,
 }
 
 impl DiffHighlight {
     /// The spans of one line; empty when out of range, so a mismatched highlight never panics.
     pub fn line(&self, hunk: usize, line: usize) -> &[Span] {
         self.lines.get(hunk).and_then(|h| h.get(line)).map_or(&[], Vec::as_slice)
+    }
+
+    /// The spans of a hunk header's function context, relative to `context_start`; empty when
+    /// out of range or not highlighted.
+    pub fn header(&self, hunk: usize) -> &[Span] {
+        self.headers.get(hunk).map_or(&[], Vec::as_slice)
     }
 
     /// Number of lines per hunk (for checking the shape against the diff).
@@ -213,8 +230,10 @@ pub fn highlight_in_context(path: &str, diff: &FileDiff, previous: Option<&FileD
     }
     let n = diff.hunks.len();
     if context_cost(diff, &gaps).within(MAX_LINES, MAX_BYTES) {
-        let lines = parse_in_context(syntax, &diff.hunks, &gaps, &mut Classifier::new(), &|| false).ok()?;
-        return Some(DiffHighlight { syntax: syntax.name.clone(), lines, pending: vec![false; n], old_text: Some(o.clone()) });
+        let mut cx = Classifier::new();
+        let lines = parse_in_context(syntax, &diff.hunks, &gaps, &mut cx, &|| false).ok()?;
+        let headers = parse_headers(syntax, &diff.hunks, &mut cx, &|| false).unwrap_or_default();
+        return Some(DiffHighlight { syntax: syntax.name.clone(), lines, pending: vec![false; n], old_text: Some(o.clone()), headers });
     }
     // Pending: provisional spans from the per-hunk parse (exact reuse, an inline parse when the
     // hunks alone are small enough, or carried by line text), all re-parsed in context later.
@@ -238,17 +257,20 @@ fn per_hunk(syntax: &SyntaxReference, diff: &FileDiff, previous: Option<&FileDif
         return None;
     }
     let n = diff.hunks.len();
-    let (lines, pending) = if cost.within(MAX_LINES, MAX_BYTES) {
+    let (lines, pending, headers) = if cost.within(MAX_LINES, MAX_BYTES) {
         let mut cx = Classifier::new();
         let parsed = diff.hunks.iter().zip(exact).map(|(hunk, e)| match e {
             Some(spans) => Ok(spans.clone()),
             None => parse_hunk(syntax, hunk, &mut cx, &|| false),
         });
-        (parsed.collect::<Result<Vec<_>, Stop>>().ok()?, vec![false; n])
+        let lines = parsed.collect::<Result<Vec<_>, Stop>>().ok()?;
+        (lines, vec![false; n], parse_headers(syntax, &diff.hunks, &mut cx, &|| false).ok()?)
     } else {
-        diff.hunks.iter().zip(exact).map(|(hunk, e)| e.map_or_else(|| (prev.carry(hunk), true), |s| (s.clone(), false))).unzip()
+        let (lines, pending) =
+            diff.hunks.iter().zip(exact).map(|(hunk, e)| e.map_or_else(|| (prev.carry(hunk), true), |s| (s.clone(), false))).unzip();
+        (lines, pending, diff.hunks.iter().map(|h| prev.header(h)).collect())
     };
-    Some(DiffHighlight { syntax: syntax.name.clone(), lines, pending, old_text: None })
+    Some(DiffHighlight { syntax: syntax.name.clone(), lines, pending, old_text: None, headers })
 }
 
 /// Finishes a highlight left pending by `highlight_in_context`. With old text, every hunk is
@@ -267,9 +289,16 @@ pub fn finish(diff: &FileDiff, cancelled: &dyn Fn() -> bool) -> Option<DiffHighl
         && let Some(gaps) = o.gaps(&diff.hunks).filter(|g| context_cost(diff, g).within(BACKGROUND_MAX_LINES, BACKGROUND_MAX_BYTES))
         && let Some(syntax) = SYNTAXES.set.find_syntax_by_name(&hl.syntax)
     {
-        match parse_in_context(syntax, &diff.hunks, &gaps, &mut Classifier::new(), cancelled) {
+        let mut cx = Classifier::new();
+        match parse_in_context(syntax, &diff.hunks, &gaps, &mut cx, cancelled) {
             Ok(lines) => {
-                return Some(DiffHighlight { syntax: hl.syntax.clone(), lines, pending: vec![false; n], old_text: Some(o.clone()) });
+                let headers = match parse_headers(syntax, &diff.hunks, &mut cx, cancelled) {
+                    Ok(headers) => headers,
+                    Err(Stop::Cancelled) => return None,
+                    Err(Stop::Parse) => vec![Vec::new(); diff.hunks.len()],
+                };
+                let old_text = Some(o.clone());
+                return Some(DiffHighlight { syntax: hl.syntax.clone(), lines, pending: vec![false; n], old_text, headers });
             }
             Err(Stop::Cancelled) => return None,
             Err(Stop::Parse) => {}
@@ -294,12 +323,19 @@ pub fn finish(diff: &FileDiff, cancelled: &dyn Fn() -> bool) -> Option<DiffHighl
             Err(Stop::Parse) => lines.push(vec![Vec::new(); hunk.lines.len()]),
         }
     }
-    Some(DiffHighlight { syntax: hl.syntax.clone(), lines, pending: vec![false; n], old_text: None })
+    let headers = match syntax.map(|s| parse_headers(s, &diff.hunks, &mut cx, cancelled)) {
+        Some(Ok(headers)) => headers,
+        Some(Err(Stop::Cancelled)) => return None,
+        Some(Err(Stop::Parse)) | None => hl.headers.clone(),
+    };
+    Some(DiffHighlight { syntax: hl.syntax.clone(), lines, pending: vec![false; n], old_text: None, headers })
 }
 
 #[cfg(test)]
 mod background_tests;
 #[cfg(test)]
 mod context_tests;
+#[cfg(test)]
+mod header_tests;
 #[cfg(test)]
 mod tests;

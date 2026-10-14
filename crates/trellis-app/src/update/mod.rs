@@ -51,6 +51,8 @@ mod graph_filter_tests;
 #[cfg(test)]
 mod highlight_context_tests;
 #[cfg(test)]
+mod highlight_header_tests;
+#[cfg(test)]
 mod highlight_tests;
 #[cfg(test)]
 mod history_tests;

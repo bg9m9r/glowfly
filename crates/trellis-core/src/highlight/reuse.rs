@@ -1,8 +1,8 @@
 //! What a reload can take over from the diff shown before: the exact spans of unchanged hunks,
-//! and provisional spans for lines whose text appeared before. Plus the cost of what is left to
-//! parse.
+//! provisional spans for lines whose text appeared before, and hunk-header spans by their
+//! function context's text. Plus the cost of what is left to parse.
 
-use super::{MAX_LINE_BYTES, Span};
+use super::{MAX_LINE_BYTES, Span, context_start};
 use crate::repo::{FileDiff, Hunk};
 use std::collections::HashMap;
 
@@ -50,6 +50,9 @@ pub(super) struct Previous<'a> {
     /// Context and added lines key on the new side, as context is colored from the new side;
     /// removed lines key on the old side.
     carry: HashMap<(bool, &'a str), &'a [Span]>,
+    /// Hunk-header spans by function context text (pending ones too: they depend only on the
+    /// text and the syntax); the first occurrence wins.
+    headers: HashMap<&'a str, &'a [Span]>,
 }
 
 impl<'a> Previous<'a> {
@@ -58,6 +61,11 @@ impl<'a> Previous<'a> {
         let Some((diff, hl)) = previous.and_then(|p| p.highlight.as_ref().filter(|h| h.syntax == syntax).map(|h| (p, h))) else {
             return prev;
         };
+        for (hunk, spans) in diff.hunks.iter().zip(&hl.headers).filter(|(_, s)| !s.is_empty()) {
+            if let Some(at) = context_start(&hunk.header) {
+                prev.headers.entry(&hunk.header[at..]).or_insert(spans.as_slice());
+            }
+        }
         for (i, (hunk, spans)) in diff.hunks.iter().zip(&hl.lines).enumerate() {
             if !hl.hunk_pending(i) {
                 prev.exact.entry(hunk_key(hunk)).or_insert(spans);
@@ -86,6 +94,13 @@ impl<'a> Previous<'a> {
             _ => Vec::new(),
         };
         hunk.lines.iter().map(spans).collect()
+    }
+
+    /// Provisional spans for `hunk`'s header context: those of a previous header with the same
+    /// context text (the spans are relative to the context, so they still fit), or none.
+    pub(super) fn header(&self, hunk: &Hunk) -> Vec<Span> {
+        let context = context_start(&hunk.header).map(|at| &hunk.header[at..]);
+        context.and_then(|c| self.headers.get(c)).map_or_else(Vec::new, |s| s.to_vec())
     }
 }
 

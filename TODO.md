@@ -144,7 +144,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] More languages than syntect's defaults (TOML, TypeScript/TSX, PowerShell,
       Dockerfile, Kotlin, Swift) by bundling extra syntax definitions
     - [ ] Language overrides from `.gitattributes` (`linguist-language`) or a per-file picker
-    - [ ] Color the function context after `@@` in hunk headers
+    - [x] Color the function context after `@@` in hunk headers
+      - [ ] Take the context from `.gitattributes` diff drivers (`diff=<lang>`, `xfuncname`)
+        rather than only libgit2's default (lines starting with a letter, `_` or `$`)
+      - [ ] Parse the context in the file's context (the state at the function line in the old
+        text) for contexts that start inside a multi-line construct
+      - [ ] Color the context in the conflict view's chunk headers
     - [ ] A command or shortcut for the toggle (now on the Editor preferences page)
     - [ ] User-selectable syntax color themes beyond the dark and light palettes
   - [x] Word-level intraline highlights

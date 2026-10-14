@@ -1,5 +1,6 @@
-//! Diff viewer snapshots: layouts, line selection, syntax and word highlights, and hidden
-//! whitespace. Shares the fixture repository and renderer with `snapshot_tests`.
+//! Diff viewer snapshots: layouts, line selection, syntax and word highlights, hunk-header
+//! context, and hidden whitespace. Shares the fixture repository and renderer with
+//! `snapshot_tests`.
 
 use super::snapshot_tests::{git, render, with_repo};
 use crate::state::AppState;
@@ -94,6 +95,47 @@ fn diff_syntax_highlighting() {
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
     let (st, dir) = with_rust_diff(DiffLayout::Split, ThemeChoice::Light);
     render("diff_syntax_split_light", st, false);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+/// A change deep enough in a Rust function that the hunk header names it:
+/// `@@ -4,6 +4,6 @@ fn greet(name: &str) -> String {`.
+fn with_hunk_context(layout: DiffLayout, theme: ThemeChoice) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_repo(theme, &format!("diff-hunk-context-{layout:?}"));
+    let before = "/// Greets someone.
+fn greet(name: &str) -> String {
+    let greeting = \"Hello\";
+    let punctuation = '!';
+    let width = 12;
+    let shout = false;
+    let count = 1;
+    format!(\"{greeting}, {name}{punctuation} {width} {shout} {count}\")
+}
+";
+    std::fs::write(dir.join("greet.rs"), before).unwrap();
+    let d = "2026-01-11T10:00:00+00:00";
+    git(&dir, &["add", "greet.rs"], d);
+    git(&dir, &["commit", "-q", "-m", "Add greet.rs"], d);
+    std::fs::write(dir.join("greet.rs"), before.replace("let count = 1;", "let count = 2;")).unwrap();
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    let target = DiffTarget::Unstaged("greet.rs".into());
+    let mut diff = repo::load_diff(&dir, &target).unwrap();
+    diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
+    diff.intraline = intraline::intraline(&diff);
+    assert!(diff.hunks[0].header.contains("fn greet"), "{}", diff.hunks[0].header);
+    assert!(diff.highlight.as_ref().is_some_and(|h| !h.header(0).is_empty()), "the context is highlighted");
+    st.diff = Some((target, diff));
+    st.settings.diff_layout = layout;
+    (st, dir)
+}
+
+#[test]
+fn diff_hunk_context() {
+    let (st, dir) = with_hunk_context(DiffLayout::Inline, ThemeChoice::Dark);
+    render("diff_hunk_context_inline", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+    let (st, dir) = with_hunk_context(DiffLayout::Split, ThemeChoice::Light);
+    render("diff_hunk_context_split_light", st, false);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
