@@ -34,9 +34,9 @@ fn word_start(text: &[char], j: usize) -> bool {
 }
 
 /// Whether the (lowercased) query chars appear in order in `text`, ignoring case.
-fn is_subsequence(q: &[char], text: &str) -> bool {
+fn is_subsequence(q: &[char], text: impl IntoIterator<Item = char>) -> bool {
     let mut want = q.iter().peekable();
-    for c in text.chars() {
+    for c in text {
         match want.peek() {
             Some(&&w) if lower(c) == w => {
                 want.next();
@@ -48,18 +48,27 @@ fn is_subsequence(q: &[char], text: &str) -> bool {
     want.peek().is_none()
 }
 
+/// The query as matched: whitespace dropped, lowercased, at most `MAX_QUERY` chars.
+fn prepare(query: &str) -> Vec<char> {
+    query.chars().filter(|c| !c.is_whitespace()).map(lower).take(MAX_QUERY).collect()
+}
+
 /// Case-insensitive subsequence match of `query` (whitespace in the query is ignored) in `text`.
 pub fn fuzzy_match(query: &str, text: &str) -> Option<Match> {
-    let q: Vec<char> = query.chars().filter(|c| !c.is_whitespace()).map(lower).take(MAX_QUERY).collect();
+    match_prepared(&prepare(query), text)
+}
+
+/// `fuzzy_match` for a query already through `prepare`.
+fn match_prepared(q: &[char], text: &str) -> Option<Match> {
     if q.is_empty() {
         return Some(Match { score: 0, positions: Vec::new() });
     }
     // Most texts in a long list don't contain the query at all: rule them out in one pass
     // before allocating the score tables.
-    if !is_subsequence(&q, text) {
+    if !is_subsequence(q, text.chars()) {
         return None;
     }
-    best_match(&q, text)
+    best_match(q, text)
 }
 
 /// The best-scoring placement of the lowercased, non-empty query `q` in `text`, if any.
@@ -135,16 +144,23 @@ pub fn rank(query: &str, items: &[(&str, &str)]) -> Vec<(usize, Match)> {
     if query.chars().all(char::is_whitespace) {
         return (0..items.len()).map(|i| (i, Match { score: 0, positions: Vec::new() })).collect();
     }
+    let q = prepare(query);
     let mut found: Vec<(usize, Match, usize)> = items
         .iter()
         .enumerate()
         .filter_map(|(i, (label, keywords))| {
             let len = label.chars().count();
-            let m = fuzzy_match(query, label).or_else(|| {
+            let m = match_prepared(&q, label).or_else(|| {
                 if keywords.is_empty() {
                     return None;
                 }
-                let mut m = fuzzy_match(query, &format!("{label} {keywords}"))?;
+                // Rule out the label and keywords together before building their text: most
+                // entries in a long list match neither.
+                let joined = label.chars().chain(std::iter::once(' ')).chain(keywords.chars());
+                if !is_subsequence(&q, joined) {
+                    return None;
+                }
+                let mut m = best_match(&q, &format!("{label} {keywords}"))?;
                 m.score -= KEYWORD_PENALTY;
                 m.positions.retain(|&p| p < len);
                 Some(m)
@@ -245,6 +261,60 @@ mod tests {
             // The same result, score and positions as the full matcher without the precheck.
             assert_eq!(got, best_match(&q, text), "{query:?} in {text:?}");
         }
+    }
+
+    /// The ranking before the keyword precheck: the label, else the label and keywords joined.
+    fn rank_unchecked(query: &str, label: &str, keywords: &str) -> Option<Match> {
+        let len = label.chars().count();
+        fuzzy_match(query, label).or_else(|| {
+            if keywords.is_empty() {
+                return None;
+            }
+            let mut m = fuzzy_match(query, &format!("{label} {keywords}"))?;
+            m.score -= KEYWORD_PENALTY;
+            m.positions.retain(|&p| p < len);
+            Some(m)
+        })
+    }
+
+    #[test]
+    fn rank_keyword_precheck_matches_concatenation() {
+        let cases = [
+            ("push", "Push", "upload publish"),
+            ("upload", "Push", "upload publish"),
+            ("pushup", "Push", "upload publish"),
+            ("tagdet", "Checkout tag v1.0", "switch tag release version detached"),
+            ("v1 rel", "Checkout tag v1.0", "switch tag release version detached"),
+            ("zebra", "Open Preferences", "settings options"),
+            ("settings", "Open Preferences", ""),
+            ("Prefs", "Open Preferences", ""),
+            ("   ", "Open Preferences", "settings"),
+            ("hsup", "Push", "upload"),
+            ("öfopt", "Öffnen", "options"),
+        ];
+        for (query, label, keywords) in cases {
+            let got = rank(query, &[(label, keywords)]).into_iter().next().map(|(_, m)| m);
+            let want = if query.trim().is_empty() {
+                Some(Match { score: 0, positions: Vec::new() })
+            } else {
+                rank_unchecked(query, label, keywords)
+            };
+            assert_eq!(got, want, "{query:?} in {label:?} / {keywords:?}");
+        }
+        // The cases cover a label hit, a keyword-only hit, a hit across both and a miss.
+        assert!(fuzzy_match("upload", "Push").is_none() && rank_unchecked("upload", "Push", "upload publish").is_some());
+        assert!(fuzzy_match("pushup", "Push").is_none() && rank_unchecked("pushup", "Push", "upload publish").is_some());
+        assert!(rank_unchecked("zebra", "Open Preferences", "settings options").is_none());
+    }
+
+    #[test]
+    fn rank_many_items() {
+        let labels: Vec<String> = (0..20_000).map(|i| format!("Checkout tag v{i}")).collect();
+        let items: Vec<(&str, &str)> = labels.iter().map(|l| (l.as_str(), "switch tag release version detached")).collect();
+        let found = rank("v19999", &items);
+        assert_eq!(found.first().map(|(i, _)| *i), Some(19_999));
+        assert!(rank("zzzz", &items).is_empty());
+        assert_eq!(rank("", &items).len(), 20_000);
     }
 
     #[test]

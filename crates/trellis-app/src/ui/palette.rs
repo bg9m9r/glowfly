@@ -82,7 +82,7 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
             Mode::Commands => {
                 let (rect, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
                 widgets::paint_icon(ui.painter(), rect.center(), Icon::Search, color::weak());
-                "Type a command or branch name"
+                "Type a command, branch or tag name"
             }
             Mode::Pick(pk) => {
                 let (rect, r) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::click());
@@ -111,10 +111,11 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
     });
 }
 
-/// The commands matching the query.
+/// The commands matching the query (at most `MAX_COMMAND_ROWS`).
 fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_selected: bool) {
     let Some(query) = st.palette.as_ref().map(|p| p.query.clone()) else { return };
-    let list = palette::shown(st, &query);
+    let listed = palette::listed(st, &query);
+    let list = &listed.rows;
     let Some(p) = st.palette.as_mut() else { return };
     let sel = p.selected_in(list.len());
     if run_selected && let Some(s) = sel {
@@ -139,6 +140,11 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
             }
         }
     });
+    if listed.total > list.len() {
+        ui.add_space(4.0);
+        let more = format!("Showing {} of {} commands. Type more to narrow the list.", list.len(), listed.total);
+        ui.label(RichText::new(more).size(12.0).color(color::weak()));
+    }
 }
 
 /// A sub-list's items matching the query (at most `MAX_PICK_ROWS`). Returns the footer.

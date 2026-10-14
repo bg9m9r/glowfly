@@ -434,9 +434,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   annotated tag (at HEAD or the selected commit), rename the checked-out branch, search commits,
   refresh, open in terminal and in the file manager, diff layout and whitespace toggles, open a
   repository or a recent one, new and reopened tabs, close tab, Preferences, toolbar labels,
-  theme, and checkout of local branches, and a file finder for file history. Entries whose
-  command also has a global key show it dimmed at the right (Ctrl+F, Ctrl+W, F5, Ctrl+Z/Y,
-  Ctrl+T, Ctrl+Shift+T and Ctrl+,).
+  theme, and checkout of local branches, remote branches (creating a tracking branch) and tags
+  (detached), and a file finder for file history. Entries whose command also has a global key
+  show it dimmed at the right (Ctrl+F, Ctrl+W, F5, Ctrl+Z/Y, Ctrl+T, Ctrl+Shift+T and Ctrl+,).
+  The list shows at most 200 rows; typing more narrows the rest.
   - [x] File finder: pick any tracked file to open its history (blame waits for the blame gutter)
   - [x] Create tag and annotated tag
     - [x] Check tag names live in the New tag dialog (ref-format rules, an existing tag)
@@ -452,7 +453,13 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Cmd-style labels on macOS for the hints and tooltips
   - [ ] Two-step entries: pick a command, then a sub-list with its own prompt (branches,
     themes, repositories)
-  - [ ] Check out remote branches (creating a tracking branch) and tags
+  - [x] Check out remote branches (creating a tracking branch) and tags
+    - [ ] Check out a remote branch whose name is taken locally under a new local name
+    - [ ] Offer to fast-forward the checked-out branch when it is behind the picked remote branch
+    - [ ] Name the tag in the log after a tag checkout, and warn once that commits made while
+      detached can be lost
+    - [ ] Group ref entries by remote, or move them into a two-step checkout sub-list
+    - [ ] Virtualised command rows so the 200-row cap can be lifted
   - [ ] A toolbar button that opens the palette, with the shortcut in its tooltip
   - [ ] Rank recently run commands first
   - [x] More commands: stash and pop, rename branch, undo and redo, new tab and reopen closed

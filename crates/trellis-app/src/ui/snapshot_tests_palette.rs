@@ -1,7 +1,8 @@
 //! The command palette over the main window: the full list (with shortcut hints), a filtered
-//! list with matched characters highlighted, the tag commands, the tab commands, no matches,
-//! the file finder (its rows, loading and error states), and the keys and clicks it turns into
-//! messages. Shares the fixture repository and renderer with `snapshot_tests`.
+//! list with matched characters highlighted, the tag commands, remote branch and tag checkouts,
+//! the row cap, the tab commands, no matches, the file finder (its rows, loading and error
+//! states), and the keys and clicks it turns into messages. Shares the fixture repository and
+//! renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
@@ -44,6 +45,51 @@ fn palette_tags_and_hints() {
     h.get_by_label("Create annotated tag at HEAD…").click();
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true }))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn palette_checkout_refs() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-refs");
+    let snap = st.snap.as_mut().unwrap();
+    let oid = snap.head_oid.unwrap();
+    let names = |v: &[&str]| v.iter().map(|n| (n.to_string(), oid)).collect::<Vec<_>>();
+    snap.remotes = vec![("origin".into(), names(&["main", "login-page", "feature/sidebar"])), ("upstream".into(), names(&["release-2.0"]))];
+    st.palette = Some(Palette { query: "checkout".into(), ..Default::default() });
+    let mut h = harness(st, true);
+    h.run();
+    h.snapshot("palette_checkout_refs");
+    for present in ["Checkout origin/feature/sidebar", "Checkout upstream/release-2.0", "Checkout tag v0.1.0"] {
+        assert!(h.query_by_label(present).is_some(), "{present}");
+    }
+    // Local branches of the same name exist.
+    assert!(h.query_by_label("Checkout origin/main").is_none());
+    assert!(h.query_by_label("Checkout origin/login-page").is_none());
+    h.get_by_label("Checkout tag v0.1.0").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::CheckoutTag(t)) if t == "v0.1.0")));
+    h.get_by_label("Checkout upstream/release-2.0").click();
+    h.run();
+    let upstream = |m: &Msg| matches!(m, Msg::RunPaletteCommand(PaletteCommand::CheckoutRemote { remote, branch }) if remote == "upstream" && branch == "release-2.0");
+    assert!(pushed(&h, upstream));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn palette_many_refs_footer() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-many-refs");
+    let snap = st.snap.as_mut().unwrap();
+    let oid = snap.head_oid.unwrap();
+    snap.tags.extend((0..300).map(|i| (format!("t{i}"), oid)));
+    st.palette = Some(Palette::default());
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label_contains("Showing 200 of").is_some());
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Push))));
     drop(h);
     remove_fixture(&dir);
 }

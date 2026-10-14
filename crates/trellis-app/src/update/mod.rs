@@ -60,6 +60,8 @@ mod history_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
+mod palette_checkout_tests;
+#[cfg(test)]
 mod palette_more_tests;
 #[cfg(test)]
 mod palette_pick_tests;

@@ -131,6 +131,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::ToolbarLabels(on) => Msg::SetToolbarLabels(on),
         C::Theme(t) => Msg::SetTheme(t),
         C::Checkout(name) => Msg::git("Checkout", &["checkout", &name]),
+        C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
+        C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
         C::OpenRecent(path) => Msg::Open(path),
         C::OpenFileHistory(path) => Msg::OpenFileHistory { path, at: None },
         // Opens a sub-list in `handle`; never run directly.

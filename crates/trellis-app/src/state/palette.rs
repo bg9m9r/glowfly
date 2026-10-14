@@ -1,6 +1,7 @@
 //! The command palette (Ctrl+P): whether it is open, what is typed, which row is selected, and
 //! the commands it lists for the query. App-wide, never parked with a tab. The view, `update`
-//! and the tests all build the list through `entries` and `shown`; the commands themselves are
+//! and the tests all build the list through `entries` and `listed` (or `shown`), which keep at
+//! most `MAX_COMMAND_ROWS` of the ranked matches; the commands themselves are
 //! in `palette_commands`. Some commands open a second step (`Mode::Pick`): a list of items for
 //! that command, such as tracked files.
 
@@ -36,6 +37,9 @@ impl Palette {
 
 /// Most rows a sub-list shows; typing more narrows the rest.
 pub const MAX_PICK_ROWS: usize = 200;
+
+/// Most rows the command list shows; typing more narrows the rest.
+pub const MAX_COMMAND_ROWS: usize = MAX_PICK_ROWS;
 
 /// A second step: the palette lists items for one command, with its own prompt.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -199,12 +203,29 @@ pub struct Shown {
     pub matched: Vec<usize>,
 }
 
-/// `entries` filtered and ranked for `query`.
-pub fn shown(st: &AppState, query: &str) -> Vec<Shown> {
+/// The command list for a query: the first `MAX_COMMAND_ROWS` matches, and how many match.
+pub struct Listed {
+    pub rows: Vec<Shown>,
+    pub total: usize,
+}
+
+/// `entries` filtered and ranked for `query`, cut to `MAX_COMMAND_ROWS`.
+pub fn listed(st: &AppState, query: &str) -> Listed {
     let mut all: Vec<Option<Entry>> = entries(st).into_iter().map(Some).collect();
     let items: Vec<(&str, &str)> = all.iter().flatten().map(|e| (e.label.as_str(), e.keywords)).collect();
     let ranked = fuzzy::rank(query, &items);
-    ranked.into_iter().filter_map(|(i, m)| Some(Shown { entry: all[i].take()?, matched: m.positions })).collect()
+    let total = ranked.len();
+    let rows = ranked
+        .into_iter()
+        .take(MAX_COMMAND_ROWS)
+        .filter_map(|(i, m)| Some(Shown { entry: all[i].take()?, matched: m.positions }))
+        .collect();
+    Listed { rows, total }
+}
+
+/// The rows of `listed`.
+pub fn shown(st: &AppState, query: &str) -> Vec<Shown> {
+    listed(st, query).rows
 }
 
 /// Whether the file finder can be offered: a repository with a born HEAD and a working tree,

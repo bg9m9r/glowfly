@@ -3,6 +3,7 @@
 
 use super::palette::PickKind;
 use super::{AppState, Selection};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::{DiffLayout, ThemeChoice};
@@ -56,6 +57,13 @@ pub enum PaletteCommand {
     ToolbarLabels(bool),
     Theme(ThemeChoice),
     Checkout(String),
+    /// `git checkout --track <remote>/<branch>`: creates a local branch tracking it.
+    CheckoutRemote {
+        remote: String,
+        branch: String,
+    },
+    /// `git checkout refs/tags/<name>`: the tagged commit, detached.
+    CheckoutTag(String),
     OpenRecent(PathBuf),
     /// Enter the file finder; picking a file runs `OpenFileHistory`.
     FileHistory,
@@ -122,7 +130,9 @@ fn folder_name(path: &Path) -> String {
     path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string())
 }
 
-/// Every command available now, in the order shown for an empty query.
+/// Every command available now, in the order shown for an empty query: repository commands,
+/// app commands, local branch checkouts, recent repositories, then remote branch and tag
+/// checkouts (last, so a repository with many refs doesn't push the rest past the row cap).
 pub fn entries(st: &AppState) -> Vec<Entry> {
     let mut out = Vec::new();
     if let Some(snap) = &st.snap {
@@ -133,6 +143,10 @@ pub fn entries(st: &AppState) -> Vec<Entry> {
         checkout_entries(snap, &mut out);
     }
     recent_entries(st, &mut out);
+    if let Some(snap) = &st.snap {
+        remote_checkout_entries(snap, &mut out);
+        tag_checkout_entries(snap, &mut out);
+    }
     out
 }
 
@@ -222,6 +236,46 @@ fn checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
     for b in snap.locals.iter().filter(|b| !b.is_head) {
         let e = entry(PaletteCommand::Checkout(b.name.clone()), format!("Checkout {}", b.name), "switch branch");
         out.push(with_detail(e, b.upstream.clone()));
+    }
+}
+
+/// A checkout entry for each remote branch that no local branch shares a name with or tracks
+/// (its configured upstream counts even when the ref is gone): checking one out creates a local
+/// branch tracking it.
+fn remote_checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
+    let local: HashSet<&str> = snap.locals.iter().map(|b| b.name.as_str()).collect();
+    let mut tracked: HashSet<String> = HashSet::new();
+    for b in &snap.locals {
+        tracked.extend(b.upstream.clone());
+        if let Some(t) = b.tracking.as_ref().filter(|t| t.is_remote()) {
+            tracked.insert(t.display());
+        }
+    }
+    for (remote, branches) in &snap.remotes {
+        for (branch, _) in branches {
+            if branch == "HEAD" || local.contains(branch.as_str()) || tracked.contains(&format!("{remote}/{branch}")) {
+                continue;
+            }
+            let command = PaletteCommand::CheckoutRemote { remote: remote.clone(), branch: branch.clone() };
+            let e = entry(command, format!("Checkout {remote}/{branch}"), "switch branch remote track tracking");
+            out.push(with_detail(e, Some("creates local branch".to_owned())));
+        }
+    }
+}
+
+/// Hidden words for tag checkouts. "detached" comes first: after "release" its letters would
+/// let a query such as "create" match every tag.
+const TAG_KEYWORDS: &str = "detached switch tag release version";
+
+/// A checkout entry for each tag, except one at the commit HEAD is already detached at.
+fn tag_checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
+    let detached_at = if snap.head_branch.is_none() { snap.head_oid } else { None };
+    for (name, oid) in &snap.tags {
+        if Some(*oid) == detached_at {
+            continue;
+        }
+        let e = entry(PaletteCommand::CheckoutTag(name.clone()), format!("Checkout tag {name}"), TAG_KEYWORDS);
+        out.push(with_detail(e, Some(format!("detached at {}", &oid.to_string()[..7]))));
     }
 }
 

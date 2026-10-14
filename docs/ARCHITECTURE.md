@@ -90,8 +90,9 @@ crates/
                           diff came from, where a step lands), commit (the commit draft, its
                           readiness rules, button label and command line), palette (open
                           state and modes: the command list or a command's sub-list, ranked
-                          per query), palette_commands (the commands available now: labels,
-                          hidden keywords, details and shortcut hints), files (the
+                          per query and capped at MAX_COMMAND_ROWS), palette_commands (the
+                          commands available now (checkouts of local and remote branches and
+                          tags): labels, hidden keywords, details and shortcut hints), files (the
                           New file and Rename file dialogs' path form), tags (the New tag
                           dialog's form, its name check and push remote)
     msg.rs                Msg: user intents and background results
