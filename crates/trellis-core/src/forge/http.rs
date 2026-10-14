@@ -83,12 +83,40 @@ pub(super) fn service_headers(provider: Provider) -> &'static [(&'static str, &'
     }
 }
 
-pub(super) fn request(method: &str, auth: &Auth, url: &str) -> ureq::Request {
+/// A request carrying the credential and its service's own headers. Only `https://` URLs are
+/// accepted, so a credential never travels in the clear.
+pub(super) fn request(method: &str, auth: &Auth, url: &str) -> Result<ureq::Request> {
+    if links::https_host(url).is_none() {
+        return Err(Error::Other("refusing to send credentials to an address that isn't https".into()));
+    }
+    #[cfg(test)]
+    let redirected = super::mock::redirect(url);
+    #[cfg(test)]
+    let url = redirected.as_ref().map_or(url, |(u, _)| u.as_str());
     let mut req = agent().request(method, url).set("Authorization", &auth.header).set("Accept", "application/json");
+    #[cfg(test)]
+    if let Some((_, host)) = &redirected {
+        req = req.set("X-Test-Host", host);
+    }
     for (name, value) in service_headers(auth.provider) {
         req = req.set(name, value);
     }
-    req
+    Ok(req)
+}
+
+/// Sends a request (with a JSON body for writes); a non-success status becomes an error.
+fn call(req: ureq::Request, body: Option<serde_json::Value>) -> Result<ureq::Response> {
+    #[cfg(test)]
+    super::mock::only_local(req.url())?;
+    let r = match body {
+        Some(b) => req.send_json(b),
+        None => req.call(),
+    };
+    match r {
+        Ok(resp) => Ok(resp),
+        Err(ureq::Error::Status(code, resp)) => Err(read_error(code, resp)),
+        Err(e) => Err(Error::Network(e.to_string())),
+    }
 }
 
 /// The error message in a failed response's body, cleaned of control and bidi characters,
@@ -131,34 +159,25 @@ fn read_error(code: u16, resp: ureq::Response) -> Error {
     }
 }
 
-pub(super) fn finish<T: DeserializeOwned>(r: std::result::Result<ureq::Response, ureq::Error>) -> Result<T> {
-    match r {
-        Ok(resp) => {
-            // Some servers (Azure DevOps) answer bad credentials with 203 + an HTML sign-in page.
-            if resp.status() == 203 || !resp.content_type().contains("json") {
-                return Err(Error::Auth("the server answered with a sign-in page".into()));
-            }
-            read_json(resp)
-        }
-        Err(ureq::Error::Status(code, resp)) => Err(read_error(code, resp)),
-        Err(e) => Err(Error::Network(e.to_string())),
+fn json<T: DeserializeOwned>(resp: ureq::Response) -> Result<T> {
+    // Some servers (Azure DevOps) answer bad credentials with 203 + an HTML sign-in page.
+    if resp.status() == 203 || !resp.content_type().contains("json") {
+        return Err(Error::Auth("the server answered with a sign-in page".into()));
     }
+    read_json(resp)
 }
 
 pub(crate) fn get<T: DeserializeOwned>(auth: &Auth, url: &str) -> Result<T> {
-    finish(request("GET", auth, url).call())
+    json(call(request("GET", auth, url)?, None)?)
 }
 
 pub(crate) fn get_text(auth: &Auth, url: &str) -> Result<String> {
-    match request("GET", auth, url).call() {
-        Ok(resp) => Ok(String::from_utf8_lossy(&read_capped(resp.into_reader(), MAX_JSON)?).into_owned()),
-        Err(ureq::Error::Status(code, resp)) => Err(read_error(code, resp)),
-        Err(e) => Err(Error::Network(e.to_string())),
-    }
+    let resp = call(request("GET", auth, url)?, None)?;
+    Ok(String::from_utf8_lossy(&read_capped(resp.into_reader(), MAX_JSON)?).into_owned())
 }
 
 pub(crate) fn post<T: DeserializeOwned>(auth: &Auth, url: &str, body: serde_json::Value) -> Result<T> {
-    finish(request("POST", auth, url).send_json(body))
+    json(call(request("POST", auth, url)?, Some(body))?)
 }
 
 #[cfg(test)]
@@ -180,10 +199,22 @@ mod tests {
             assert_eq!(headers.iter().any(|(n, _)| n.starts_with("X-GitHub")), github, "{p:?}");
         }
         let auth = Auth::from_token(Provider::GitLab, None, "t", "test");
-        let req = request("GET", &auth, "https://gitlab.com/api/v4/user");
+        let req = request("GET", &auth, "https://gitlab.com/api/v4/user").unwrap();
         assert_eq!(req.header("X-GitHub-Api-Version"), None);
         let auth = Auth::from_token(Provider::GitHubEnterprise, None, "t", "test");
-        assert_eq!(request("GET", &auth, "https://git.acme.io/api/v3/user").header("X-GitHub-Api-Version"), Some("2022-11-28"));
+        let req = request("GET", &auth, "https://git.acme.io/api/v3/user").unwrap();
+        assert_eq!(req.header("X-GitHub-Api-Version"), Some("2022-11-28"));
+    }
+
+    #[test]
+    fn credentials_go_over_https_only() {
+        let auth = Auth::from_token(Provider::GitHub, None, "t", "test");
+        for bad in ["http://api.github.com/user", "ftp://x/y", "https://user@api.github.com/user", "api.github.com/user"] {
+            assert!(request("GET", &auth, bad).is_err(), "{bad}");
+        }
+        // And tests never reach the network without a mock server.
+        let err = get::<serde_json::Value>(&auth, "https://api.github.com/user").unwrap_err();
+        assert!(err.to_string().contains("tests may not call"), "{err}");
     }
 
     #[test]

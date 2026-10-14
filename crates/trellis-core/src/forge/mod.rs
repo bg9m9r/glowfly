@@ -380,4 +380,8 @@ pub fn link_line(code_host: Provider, tracker: Provider, key: &str) -> Option<St
 }
 
 #[cfg(test)]
+mod api_tests;
+#[cfg(test)]
+mod mock;
+#[cfg(test)]
 mod tests;
