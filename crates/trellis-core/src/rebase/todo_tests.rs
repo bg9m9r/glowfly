@@ -26,8 +26,16 @@ fn reword(n: u8, message: &str) -> TodoItem {
 
 const MSG_DIR: &str = "C:\\repo\\.git\\trellis-rebase";
 
+fn base_line(n: u8) -> String {
+    format!("exec git rev-parse HEAD >'C:/repo/.git/trellis-rebase/reword-{}.base'", oid(n))
+}
+
 fn exec_line(n: u8) -> String {
-    format!("exec git commit --amend --allow-empty --no-verify --cleanup=whitespace -F 'C:/repo/.git/trellis-rebase/reword-{}.txt'", oid(n))
+    let (base, file) =
+        (format!("'C:/repo/.git/trellis-rebase/reword-{0}.base'", oid(n)), format!("'C:/repo/.git/trellis-rebase/reword-{0}.txt'", oid(n)));
+    format!(
+        r#"exec h=$(git rev-parse -q --verify HEAD); p=$(git rev-parse -q --verify HEAD^); b=$(cat {base}); if [ "$h" != "$b" ] && {{ [ "$p" = "$b" ] || [ -z "$p" ]; }}; then git commit --amend --allow-empty --no-verify --cleanup=whitespace -F {file}; fi"#
+    )
 }
 
 #[test]
@@ -53,10 +61,11 @@ fn a_reword_amends_from_a_message_file() {
     let items = [item(1, RebaseAction::Pick), reword(2, "New title\n\nNew body\n\n"), item(3, RebaseAction::Pick)];
     let (text, files) = build(&items, Path::new(MSG_DIR));
     let lines: Vec<&str> = text.lines().collect();
-    assert_eq!(lines.len(), 4);
-    assert_eq!(lines[1], format!("pick {} commit 2", oid(2)));
-    assert_eq!(lines[2], exec_line(2));
-    assert!(lines[3].starts_with("pick "));
+    assert_eq!(lines.len(), 5);
+    assert_eq!(lines[1], base_line(2), "HEAD is recorded before the reworded pick");
+    assert_eq!(lines[2], format!("pick {} commit 2", oid(2)));
+    assert_eq!(lines[3], exec_line(2));
+    assert!(lines[4].starts_with("pick "));
     assert_eq!(files.len(), 1);
     assert_eq!(files[0].0, Path::new(MSG_DIR).join(format!("reword-{}.txt", oid(2))));
     assert_eq!(files[0].1, "New title\n\nNew body\n");
@@ -79,9 +88,10 @@ fn a_reword_exec_follows_its_whole_group() {
     ];
     let (text, _) = build(&items, Path::new(MSG_DIR));
     let lines: Vec<&str> = text.lines().collect();
-    assert!(lines[3].starts_with("fixup "), "{text}");
-    assert_eq!(lines[4], exec_line(1));
-    assert!(lines[5].starts_with("pick "));
+    assert_eq!(lines[0], base_line(1));
+    assert!(lines[4].starts_with("fixup "), "{text}");
+    assert_eq!(lines[5], exec_line(1));
+    assert!(lines[6].starts_with("pick "));
 }
 
 #[test]

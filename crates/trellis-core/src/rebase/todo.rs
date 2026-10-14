@@ -31,7 +31,10 @@ pub fn is_unchanged(items: &[TodoItem], original: &[TodoItem]) -> bool {
 /// The todo text (LF line endings) and the message files to write first. A reword becomes a
 /// pick plus an `exec` that amends the message from a file in `msg_dir`; the exec follows the
 /// commit's whole group (the squash and fixup rows right after it), so the typed message
-/// becomes the combined commit's message.
+/// becomes the combined commit's message. Another `exec` before the pick records HEAD, and the
+/// amend runs only when HEAD is then a new commit on top of it: a pick that was skipped (after
+/// a conflict, or because it became empty) leaves nothing to reword, and the amend must not
+/// rewrite the commit before it.
 pub fn build(items: &[TodoItem], msg_dir: &Path) -> (String, Vec<(PathBuf, String)>) {
     let mut text = String::new();
     let mut files = Vec::new();
@@ -39,16 +42,15 @@ pub fn build(items: &[TodoItem], msg_dir: &Path) -> (String, Vec<(PathBuf, Strin
     for (i, item) in items.iter().enumerate() {
         let keyword = if item.action == RebaseAction::Reword { "pick" } else { item.action.keyword() };
         let summary = item.summary.replace(['\r', '\n'], " ");
-        text.push_str(&format!("{keyword} {} {}\n", item.oid, summary.trim_end()));
         if item.rewords() {
             let file = msg_dir.join(format!("reword-{}.txt", item.oid));
+            let base = shell_quote(&msg_dir.join(format!("reword-{}.base", item.oid)).to_string_lossy());
             let message = item.new_message.as_deref().unwrap_or_default().trim_end().to_owned() + "\n";
-            pending = Some(format!(
-                "exec git commit --amend --allow-empty --no-verify --cleanup=whitespace -F {}\n",
-                shell_quote(&file.to_string_lossy())
-            ));
+            text.push_str(&format!("exec git rev-parse HEAD >{base}\n"));
+            pending = Some(guarded_amend(&base, &shell_quote(&file.to_string_lossy())));
             files.push((file, message));
         }
+        text.push_str(&format!("{keyword} {} {}\n", item.oid, summary.trim_end()));
         // The group ends where the next row neither combines nor is dropped.
         let continues =
             items[i + 1..].iter().take_while(|n| n.action == RebaseAction::Drop || n.action.combines()).any(|n| n.action.combines());
@@ -57,6 +59,16 @@ pub fn build(items: &[TodoItem], msg_dir: &Path) -> (String, Vec<(PathBuf, Strin
         }
     }
     (text, files)
+}
+
+/// The `exec` line that amends HEAD's message from `file`, but only when HEAD is a new commit
+/// whose parent is the commit recorded in `base`, or a new root commit (rewording the first
+/// commit of a `--root` rebase, which starts from a parentless placeholder). Both arguments
+/// are already shell-quoted.
+fn guarded_amend(base: &str, file: &str) -> String {
+    format!(
+        r#"exec h=$(git rev-parse -q --verify HEAD); p=$(git rev-parse -q --verify HEAD^); b=$(cat {base}); if [ "$h" != "$b" ] && {{ [ "$p" = "$b" ] || [ -z "$p" ]; }}; then git commit --amend --allow-empty --no-verify --cleanup=whitespace -F {file}; fi"#
+    ) + "\n"
 }
 
 /// `s` quoted for `sh` (git runs editors and exec lines through it, also on Windows), with

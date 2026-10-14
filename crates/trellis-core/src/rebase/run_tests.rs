@@ -183,3 +183,27 @@ fn rewording_the_root_commit() {
     assert_eq!(log(&dir), ["c4", "c3", "c2", "The very first commit"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn skipping_a_reworded_pick_rewords_nothing_else() {
+    let dir = scratch_repo("rebase-run-reword-skip");
+    let base = commit(&dir, "f.txt", "base\n", "base");
+    let a = commit(&dir, "f.txt", "one\n", "a");
+    let b = commit(&dir, "f.txt", "two\n", "b");
+    let req = request(&dir, RebaseBase::FromCommit(a), |items| {
+        // b first conflicts on top of base; it is reworded.
+        items.reverse();
+        set(items, 0, RebaseAction::Reword);
+        items[0].new_message = Some("New b message".into());
+    });
+    match start_copy(&dir, &req) {
+        Outcome::Stopped { stop, .. } => assert_eq!(stop, Stop { kind: StopKind::Conflict, oid: Some(b) }),
+        other => panic!("expected a conflict, got {other:?}"),
+    }
+    out(&dir, &["rebase", "--skip"]);
+    assert_eq!(state(&dir), git2::RepositoryState::Clean);
+    assert_eq!(log(&dir), ["a", "base"], "the skipped commit's message goes nowhere");
+    assert_eq!(head(&dir), a, "a replays onto base unchanged");
+    assert_eq!(Repository::open(&dir).unwrap().find_commit(a).unwrap().parent_id(0).unwrap(), base);
+    let _ = std::fs::remove_dir_all(&dir);
+}
