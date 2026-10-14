@@ -3,6 +3,7 @@
 use super::{Branches, FlowKind, GitFlowSettings};
 use crate::branch_ops::{NameProblem, check_branch_name};
 use crate::gitcli::args;
+use crate::tag_ops::{TagNameProblem, check_tag_name};
 
 /// Why a branch can't be started.
 #[derive(Debug, PartialEq)]
@@ -13,7 +14,10 @@ pub enum StartProblem {
         kind: FlowKind,
         base: String,
     },
+    /// The existing tag the release or hotfix would be tagged as, possibly in different case.
     TagExists(String),
+    /// The release or hotfix tag and an existing tag (the second name): one is a folder of the other.
+    TagClashes(String, String),
 }
 
 impl StartProblem {
@@ -25,6 +29,7 @@ impl StartProblem {
             }
             StartProblem::MissingBase { base, .. } => format!("{base} doesn't exist. Save the Git Flow settings to create it."),
             StartProblem::TagExists(t) => format!("The tag {t} already exists."),
+            StartProblem::TagClashes(t, other) => format!("The tag {t} would clash with the tag {other}: one is a folder of the other."),
         }
     }
 }
@@ -41,9 +46,14 @@ pub fn check_start(s: &GitFlowSettings, kind: FlowKind, name: &str, b: &Branches
     if !b.local(base) {
         return Err(StartProblem::MissingBase { kind, base: base.to_owned() });
     }
+    // The tag Finish will suggest; an invalid one is left for Finish to report.
     let tag = format!("{}{name}", s.version_tag);
-    if kind.versioned() && b.tags.contains(&tag.as_str()) {
-        return Err(StartProblem::TagExists(tag));
+    if kind.versioned() {
+        match check_tag_name(&tag, &b.tags) {
+            Err(TagNameProblem::Exists(other)) => return Err(StartProblem::TagExists(other)),
+            Err(TagNameProblem::Clashes(other)) => return Err(StartProblem::TagClashes(tag, other)),
+            _ => {}
+        }
     }
     Ok(full)
 }

@@ -6,6 +6,7 @@ use super::{Branches, FlowKind, GitFlowSettings};
 use crate::gitcli::args;
 use crate::rebase::operation_noun;
 use crate::repo::Snapshot;
+use crate::tag_ops::{TagNameProblem, check_tag_name};
 use git2::RepositoryState;
 
 /// The kind of a local branch from the configured prefixes: the longest matching prefix wins
@@ -151,7 +152,10 @@ pub enum FinishProblem {
     CheckedOutElsewhere(String),
     EmptyTag,
     InvalidTag(String),
+    /// The existing tag with the same name, possibly in different letter case.
     TagExists(String),
+    /// The tag and an existing tag (the second name) where one is a folder of the other.
+    TagClashes(String, String),
     EmptyMessage,
 }
 
@@ -171,6 +175,7 @@ impl FinishProblem {
             P::EmptyTag => "Enter a tag name.".into(),
             P::InvalidTag(t) => format!("{t} isn't a valid tag name."),
             P::TagExists(t) => format!("The tag {t} already exists."),
+            P::TagClashes(t, other) => format!("{t} clashes with the tag {other}: one is a folder of the other."),
             P::EmptyMessage => "Enter a tag message.".into(),
         }
     }
@@ -178,8 +183,8 @@ impl FinishProblem {
 
 /// Checks in this order: flow branch, exists locally, bases exist, no operation in progress,
 /// no tracked changes, nothing needed checked out elsewhere, then (release/hotfix) the tag
-/// (trimmed: non-empty, a valid tag name not starting with '-', not taken) and the message
-/// (trimmed, non-empty). Returns the plan.
+/// (trimmed: non-empty, a valid tag name, not taken in any letter case and not a folder of an
+/// existing tag or the other way round) and the message (trimmed, non-empty). Returns the plan.
 pub fn check_finish(
     s: &GitFlowSettings,
     branch: &str,
@@ -209,15 +214,12 @@ pub fn check_finish(
     }
     let tag = if kind.versioned() {
         let (tag, message) = (o.tag.trim(), o.message.trim());
-        if tag.is_empty() {
-            return Err(P::EmptyTag);
-        }
-        if tag.starts_with('-') || !git2::Reference::is_valid_name(&format!("refs/tags/{tag}")) {
-            return Err(P::InvalidTag(tag.to_owned()));
-        }
-        if b.tags.contains(&tag) {
-            return Err(P::TagExists(tag.to_owned()));
-        }
+        check_tag_name(tag, &b.tags).map_err(|p| match p {
+            TagNameProblem::Empty => P::EmptyTag,
+            TagNameProblem::Invalid(_) => P::InvalidTag(tag.to_owned()),
+            TagNameProblem::Exists(other) => P::TagExists(other),
+            TagNameProblem::Clashes(other) => P::TagClashes(tag.to_owned(), other),
+        })?;
         if message.is_empty() {
             return Err(P::EmptyMessage);
         }

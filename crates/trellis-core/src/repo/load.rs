@@ -129,10 +129,11 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
 
     let remote_urls = remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
 
-    let mut tags = Vec::new();
+    let (mut tags, mut other_tags) = (Vec::new(), Vec::new());
     for t in repo.tag_names(None)?.iter().flatten() {
-        if let Ok(c) = repo.revparse_single(&format!("refs/tags/{t}")).and_then(|o| o.peel_to_commit()) {
-            tags.push((t.to_owned(), c.id()));
+        match repo.revparse_single(&format!("refs/tags/{t}")).and_then(|o| o.peel_to_commit()) {
+            Ok(c) => tags.push((t.to_owned(), c.id())),
+            Err(_) => other_tags.push(t.to_owned()),
         }
     }
     tags.reverse();
@@ -217,6 +218,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         locals,
         remotes,
         tags,
+        other_tags,
         stashes,
         unstaged,
         staged,

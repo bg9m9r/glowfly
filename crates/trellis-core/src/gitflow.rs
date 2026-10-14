@@ -198,7 +198,7 @@ impl<'a> Branches<'a> {
             has_commits: snap.head_oid.is_some() || !locals.is_empty(),
             locals,
             remote,
-            tags: snap.tags.iter().map(|(t, _)| t.as_str()).collect(),
+            tags: snap.tags.iter().map(|(t, _)| t.as_str()).chain(snap.other_tags.iter().map(String::as_str)).collect(),
             head: snap.head_branch.as_deref(),
         }
     }

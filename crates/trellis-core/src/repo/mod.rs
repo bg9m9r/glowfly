@@ -153,6 +153,8 @@ pub struct Snapshot {
     pub locals: Vec<BranchInfo>,
     pub remotes: Vec<(String, Vec<(String, Oid)>)>,
     pub tags: Vec<(String, Oid)>,
+    /// Tags that point at a tree or blob instead of a commit: not shown, but their names are taken.
+    pub other_tags: Vec<String>,
     pub stashes: Vec<StashInfo>,
     pub unstaged: Vec<FileEntry>,
     pub staged: Vec<FileEntry>,

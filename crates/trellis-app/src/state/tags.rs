@@ -20,7 +20,8 @@ pub struct TagForm {
 /// What is wrong with `name` (trimmed here) as a new tag, given the snapshot's tags; None when
 /// it can be created.
 pub fn tag_problem(snap: Option<&Snapshot>, name: &str) -> Option<TagNameProblem> {
-    let existing: Vec<&str> = snap.map(|s| s.tags.iter().map(|(n, _)| n.as_str()).collect()).unwrap_or_default();
+    let existing: Vec<&str> =
+        snap.map(|s| s.tags.iter().map(|(n, _)| n.as_str()).chain(s.other_tags.iter().map(String::as_str)).collect()).unwrap_or_default();
     check_tag_name(name.trim(), &existing).err()
 }
 

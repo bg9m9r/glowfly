@@ -232,6 +232,13 @@ fn start_checks() {
     let mut tagged = branches(&["main", "develop"], &[]);
     tagged.tags = vec!["v1.2.0"];
     assert_eq!(check_start(&v, FlowKind::Release, "1.2.0", &tagged), Err(StartProblem::TagExists("v1.2.0".into())));
+    tagged.tags = vec!["V1.2.0"];
+    assert_eq!(check_start(&v, FlowKind::Release, "1.2.0", &tagged), Err(StartProblem::TagExists("V1.2.0".into())));
+    tagged.tags = vec!["v2/rc"];
+    let clash = check_start(&v, FlowKind::Hotfix, "2", &tagged).unwrap_err();
+    assert_eq!(clash, StartProblem::TagClashes("v2".into(), "v2/rc".into()));
+    assert_eq!(clash.message(), "The tag v2 would clash with the tag v2/rc: one is a folder of the other.");
+    tagged.tags = vec!["v1.2.0"];
     assert_eq!(check_start(&v, FlowKind::Feature, "1.2.0", &tagged), Ok("feature/1.2.0".into()));
     assert_eq!(check_start(&s, FlowKind::Release, "1.2.0", &tagged), Ok("release/1.2.0".into()));
 
