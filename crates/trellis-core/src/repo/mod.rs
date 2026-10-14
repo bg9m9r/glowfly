@@ -143,6 +143,8 @@ pub struct Snapshot {
     pub commit_template: Option<CommitTemplate>,
     /// The gitflow.* settings (Preferences > Git Flow, palette Start entries).
     pub gitflow: crate::gitflow::GitFlowConfig,
+    /// The LFS patterns of the root .gitattributes (empty without one); refreshed by full loads only.
+    pub lfs_patterns: Vec<crate::lfs::LfsPattern>,
     pub state: RepositoryState,
     pub commits: Vec<CommitInfo>,
     pub row_of: HashMap<Oid, usize>,

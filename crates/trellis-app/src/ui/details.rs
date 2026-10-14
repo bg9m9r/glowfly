@@ -7,6 +7,7 @@ use super::graph::draw_avatar;
 use super::theme::color;
 use crate::keymap::{BindingId, hint};
 use crate::msg::Msg;
+use crate::state::lfs::{TrackContext, track_items};
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
 use git2::Oid;
@@ -72,9 +73,10 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     }
 
     let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / 2.0).max(80.0);
-    file_list(ui, snap, false, &open, list_h, msgs);
+    let lfs = TrackContext::of(st);
+    file_list(ui, snap, false, &open, list_h, lfs, msgs);
     ui.add_space(8.0);
-    file_list(ui, snap, true, &open, list_h, msgs);
+    file_list(ui, snap, true, &open, list_h, lfs, msgs);
     super::commit_box::show(ui, st, cache, msgs);
 }
 
@@ -134,9 +136,10 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     ui.separator();
     let n = d.files.len();
     ui.label(RichText::new(format!("{n} changed file{}", if n == 1 { "" } else { "s" })).strong().color(color::text()));
+    let lfs = TrackContext::of(st);
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         for f in &d.files {
-            let actions = Some((RowSource::Commit(d.oid), d.in_workdir(&f.path)));
+            let actions = Some((RowSource::Commit(d.oid), d.in_workdir(&f.path), lfs));
             changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, actions, msgs);
         }
     });
@@ -144,14 +147,15 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
 
 /// A file changed by a commit (or between two): its status and path, which opens `target`.
 /// Its menu opens the file's history as seen from `history_at`. With `actions` (where the change
-/// comes from, and whether the path is in the working tree) it also has the file actions.
+/// comes from, whether the path is in the working tree, and what Track in Git LFS needs) it also
+/// has the file actions.
 pub(super) fn changed_file_row(
     ui: &mut egui::Ui,
     f: &FileEntry,
     target: DiffTarget,
     open: Option<&DiffTarget>,
     history_at: Oid,
-    actions: Option<(RowSource, bool)>,
+    actions: Option<(RowSource, bool, TrackContext<'_>)>,
     msgs: &mut Vec<Msg>,
 ) {
     ui.horizontal(|ui| {
@@ -163,8 +167,9 @@ pub(super) fn changed_file_row(
         r.context_menu(|ui| {
             menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: Some(history_at) });
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
-            if let Some((src, in_wd)) = actions {
-                file_menu::commit_file_items(ui, msgs, src, f, in_wd);
+            if let Some((src, in_wd, lfs)) = actions {
+                let items = if in_wd { track_items(&f.path, lfs) } else { Vec::new() };
+                file_menu::commit_file_items(ui, msgs, src, f, in_wd, &items);
             }
         });
     });
@@ -177,7 +182,7 @@ struct OpenFile<'a> {
 }
 
 /// The Unstaged or Staged Files list of the working tree.
-fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, msgs: &mut Vec<Msg>) {
+fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, lfs: TrackContext, msgs: &mut Vec<Msg>) {
     let (title, files) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
     egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
         ui.horizontal(|ui| {
@@ -267,7 +272,9 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
                     }
                     menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
                     let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
-                    file_menu::wip_file_items(ui, msgs, f, snap.missing_from_workdir(&f.path), unstages);
+                    let missing = snap.missing_from_workdir(&f.path);
+                    let items = if missing { Vec::new() } else { track_items(&f.path, lfs) };
+                    file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items);
                 });
             });
         }

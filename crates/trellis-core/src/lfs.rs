@@ -1,6 +1,8 @@
 //! Git LFS: whether git-lfs is installed, whether a repository is set up for it, the patterns
 //! `.gitattributes` stores in LFS, checks for a new pattern and the LFS command lines.
 //!
+//! What a file row can track (the file, its extension or its folder) is in `track`.
+//!
 //! Reading the status never runs a git-lfs command that writes: `git lfs track` without
 //! arguments, for example, quietly installs the hooks. Only `git lfs version` runs; the rest is
 //! read from files and git config. The app runs the command lines through `gitcli` as jobs.
@@ -8,6 +10,12 @@
 use crate::error::{Error, Result};
 use crate::gitcli::{args, run};
 use std::path::{Path, PathBuf};
+
+mod track;
+pub use track::{
+    TrackTarget, check_target, extension, extension_pattern, folder_pattern, literal_glob, root_patterns, track_filename_args,
+    track_targets,
+};
 
 /// A pattern `.gitattributes` stores in LFS.
 #[derive(Clone, Debug, PartialEq)]
@@ -244,6 +252,7 @@ pub fn install_args() -> Vec<String> {
     args(&["lfs", "install", "--local"])
 }
 
+/// Tracks a typed pattern (git-lfs escapes spaces and '#' itself).
 pub fn track_args(pattern: &str) -> Vec<String> {
     args(&["lfs", "track", "--", pattern])
 }
@@ -252,6 +261,9 @@ pub fn track_args(pattern: &str) -> Vec<String> {
 pub fn untrack_args(raw: &str) -> Vec<String> {
     args(&["lfs", "untrack", "--", &unescape_pattern(raw)])
 }
+
+/// Git's own files, which LFS must never store.
+pub(crate) const GIT_FILES: [&str; 3] = [".gitattributes", ".gitignore", ".lfsconfig"];
 
 /// Why a new pattern can't be tracked.
 #[derive(Clone, Debug, PartialEq)]
@@ -293,7 +305,7 @@ pub fn check_pattern(input: &str, existing: &[LfsPattern]) -> Result<String, Pat
     if p.ends_with('/') {
         return Err(PatternProblem::Folder(p.to_owned()));
     }
-    if [".gitattributes", ".gitignore", ".lfsconfig"].contains(&p) {
+    if GIT_FILES.contains(&p) {
         return Err(PatternProblem::GitFile);
     }
     let escaped = escape_pattern(p);
@@ -305,3 +317,5 @@ pub fn check_pattern(input: &str, existing: &[LfsPattern]) -> Result<String, Pat
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod track_tests;

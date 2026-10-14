@@ -6,12 +6,12 @@ fn displays(s: &LfsStatus) -> Vec<&str> {
     s.patterns.iter().map(|p| p.display.as_str()).collect()
 }
 
-fn pat(raw: &str) -> LfsPattern {
+pub(super) fn pat(raw: &str) -> LfsPattern {
     LfsPattern { raw: raw.into(), display: unescape_pattern(raw), lockable: false }
 }
 
 /// git-lfs's version, or None (with a note) so tests that need it can skip.
-fn lfs_or_skip(test: &str) -> Option<String> {
+pub(super) fn lfs_or_skip(test: &str) -> Option<String> {
     let v = installed(&std::env::temp_dir());
     if v.is_none() {
         eprintln!("{test}: git-lfs is not installed, skipping");
@@ -19,7 +19,7 @@ fn lfs_or_skip(test: &str) -> Option<String> {
     v
 }
 
-fn ok(dir: &Path, a: Vec<String>) -> String {
+pub(super) fn ok(dir: &Path, a: Vec<String>) -> String {
     let (ok, out) = run(dir, &a);
     assert!(ok, "git {a:?} failed: {out}");
     out

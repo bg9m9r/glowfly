@@ -1,6 +1,7 @@
-//! Messages of the Git LFS preferences page (state/lfs.rs, update/lfs.rs, ui/prefs/lfs.rs).
+//! Messages of the Git LFS preferences page (state/lfs.rs, update/lfs.rs, ui/prefs/lfs.rs) and
+//! of the file menu's Track in Git LFS submenu (ui/file_menu.rs).
 
-use trellis_core::lfs::{LfsCommand, LfsStatus};
+use trellis_core::lfs::{LfsCommand, LfsStatus, TrackTarget};
 
 pub enum LfsMsg {
     /// The navigation row: switch Preferences to the page and read the status.
@@ -20,7 +21,13 @@ pub enum LfsMsg {
         command: LfsCommand,
         confirmed: bool,
     },
+    /// Check whether git-lfs is installed (at startup).
+    Detect,
+    /// Track a file row's file, extension or folder (file context menu).
+    TrackPath(TrackTarget),
     // ---- from the runner
+    /// git-lfs's version, None when it isn't installed.
+    Detected(Option<String>),
     Loaded {
         generation: u64,
         result: Result<LfsStatus, String>,

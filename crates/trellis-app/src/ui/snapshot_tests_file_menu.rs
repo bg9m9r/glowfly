@@ -6,7 +6,7 @@
 //! send.
 
 use super::file_menu::{
-    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, RENAME, RowSource, SHOW_IN_FOLDER, UNSTAGE_DELETE, commit_file_items, wip_file_items,
+    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, RENAME, RowSource, SHOW_IN_FOLDER, TRACK_IN_LFS, UNSTAGE_DELETE, commit_file_items, wip_file_items,
 };
 use super::theme::{apply_theme, color};
 use crate::msg::Msg;
@@ -61,11 +61,11 @@ fn harness(f: FileEntry, menu: Menu, dark: bool) -> Harness<'static, Vec<Msg>> {
                 let _ = ui.button(if matches!(menu, Menu::Wip { .. }) { "Stage" } else { "File history" });
                 let _ = ui.button("Copy path");
                 match menu {
-                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir),
+                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[]),
                     Menu::Between { in_workdir } => {
-                        commit_file_items(ui, msgs, RowSource::Between { older: oid(), newer: newer() }, &f, in_workdir)
+                        commit_file_items(ui, msgs, RowSource::Between { older: oid(), newer: newer() }, &f, in_workdir, &[])
                     }
-                    Menu::Wip { missing, unstages } => wip_file_items(ui, msgs, &f, missing, unstages),
+                    Menu::Wip { missing, unstages } => wip_file_items(ui, msgs, &f, missing, unstages, &[]),
                 }
             });
         },
@@ -95,6 +95,7 @@ fn file_menu_commit() {
     assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(!h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
+    assert!(h.query_by_label(TRACK_IN_LFS).is_none(), "no submenu without entries");
 }
 
 #[test]
@@ -142,6 +143,7 @@ fn file_menu_wip() {
     for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, NEW_FILE_HERE, RENAME, DELETE] {
         assert!(!h.get_by_label(label).is_disabled(), "{label}");
     }
+    assert!(h.query_by_label(TRACK_IN_LFS).is_none(), "no submenu without entries");
 }
 
 #[test]

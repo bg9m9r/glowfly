@@ -1,14 +1,15 @@
 //! The Git LFS preferences page: reading the status, setting LFS up, tracking and untracking
-//! patterns, and the LFS commands, each run as the active git job.
+//! patterns, and the LFS commands, each run as the active git job. Also whether git-lfs is
+//! installed (checked at startup and by each status read) and the file menu's Track in Git LFS.
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
-use crate::state::lfs::{INIT_LABEL, lfs_remote};
+use crate::state::lfs::{INIT_LABEL, LfsInstall, lfs_remote};
 use crate::state::{AppState, PrefPage};
 use std::time::Instant;
-use trellis_core::lfs::{self, LfsCommand, LfsStatus};
+use trellis_core::lfs::{self, LfsCommand, LfsStatus, TrackTarget};
 
 const NOT_INSTALLED: &str = "Git LFS isn't installed.";
 
@@ -44,6 +45,12 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
         }
         LfsMsg::Run { command, .. } => run(st, command, fx),
         LfsMsg::Loaded { generation, result } => loaded(st, generation, result, now, fx),
+        LfsMsg::Detect => {
+            st.lfs_install = LfsInstall::Checking;
+            fx.push(Effect::DetectLfs { cwd: st.any_dir() });
+        }
+        LfsMsg::Detected(v) => st.lfs_install = LfsInstall::from_version(v),
+        LfsMsg::TrackPath(t) => track_path(st, t, fx),
     }
 }
 
@@ -103,6 +110,21 @@ fn track(st: &mut AppState, text: &str, fx: &mut Vec<Effect>) {
     }
 }
 
+/// The file menu's Track in Git LFS, checked again: the menu may have been drawn from an older
+/// state.
+fn track_path(st: &mut AppState, t: TrackTarget, fx: &mut Vec<Effect>) {
+    match &st.lfs_install {
+        LfsInstall::Installed(_) => {}
+        LfsInstall::Missing => return st.log(false, NOT_INSTALLED),
+        LfsInstall::Unknown | LfsInstall::Checking => return st.log(false, "Still checking whether Git LFS is installed."),
+    }
+    let Some(snap) = &st.snap else { return };
+    if let Err(p) = lfs::check_target(&t, &snap.lfs_patterns) {
+        return st.log(false, p.message());
+    }
+    start_job(st, JobSpec::new(format!("Track {} in LFS", t.display()), vec![t.args()]), fx);
+}
+
 fn run(st: &mut AppState, command: LfsCommand, fx: &mut Vec<Effect>) {
     let remote = st.snap.as_ref().and_then(lfs_remote);
     if command.needs_remote() && remote.is_none() {
@@ -113,9 +135,13 @@ fn run(st: &mut AppState, command: LfsCommand, fx: &mut Vec<Effect>) {
 }
 
 fn loaded(st: &mut AppState, generation: u64, result: Result<LfsStatus, String>, now: Instant, fx: &mut Vec<Effect>) {
+    let version = result.as_ref().ok().map(|s| s.version.clone());
     let Some(p) = st.prefs.as_mut() else { return };
     if p.lfs.generation != generation {
         return;
+    }
+    if let Some(v) = version {
+        st.lfs_install = LfsInstall::from_version(v);
     }
     match result {
         Ok(s) => p.lfs.status = Some(s),

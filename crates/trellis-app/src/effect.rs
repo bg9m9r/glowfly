@@ -192,6 +192,10 @@ pub enum Effect {
     /// Checks the folder of a worktree about to be created (missing, or an empty folder) before
     /// `git worktree add` runs. Unscoped: the dialog waits for the answer even if tabs change.
     CheckWorktreeFolder(crate::worktree::NewWorktree),
+    /// Whether git-lfs is installed (`git lfs version`). Unscoped: the answer is global.
+    DetectLfs {
+        cwd: PathBuf,
+    },
     /// Git LFS status for the preferences page: installed version, set up or not, tracked patterns.
     LoadLfs {
         workdir: PathBuf,

@@ -84,7 +84,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | *Repo:* Commit | ✘ | Commit template, push after commit, skip hooks per repo |
 | *Repo:* Agents | — | Out of scope |
 | *Repo:* Conflict Prevention | ✘ | P1 Conflict prediction, with per-repo enable and target branch |
-| *Repo:* LFS | ◐ Git LFS page | Track from the file menu, LFS-aware auto-fetch (P1 Git LFS) |
+| *Repo:* LFS | ◐ Git LFS page, Track in Git LFS on file rows | LFS-aware auto-fetch (P1 Git LFS) |
 | *Repo:* Sparse Checkout | ✘ | P1 Sparse checkout |
 | *Repo:* Issue Tracker | ✔ | — |
 | *Repo:* Team | — | Out of scope (cloud teams) |
@@ -635,8 +635,18 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Preferences > Git LFS (repo-specific): status, Initialize, tracked patterns with Untrack
     and a new-pattern field, Open .gitattributes, Fetch / Pull / Push / Prune / Checkout; palette
     'Initialize Git LFS' and 'Configure Git LFS…'
-  - [ ] Track from a file's context menu: that one file (`git lfs track --filename`), all files
+  - [x] Track from a file's context menu: that one file (`git lfs track --filename`), all files
     with its extension, or all files in its folder
+    - [ ] Offer it from file history rows, the diff header's file buttons and the palette
+    - [ ] Disable "Only this file" when a broader pattern already covers the file (attribute
+      lookup in the background)
+    - [ ] Refresh the tracked patterns on status-only (watcher) refreshes, so hand edits to
+      .gitattributes show without a full reload
+    - [ ] Warn when a folder pattern would also catch a nested .gitattributes in that folder
+    - [ ] Untrack lines that `--filename` wrote with backslash-escaped glob characters
+      (`git lfs untrack` leaves them): remove them directly
+    - [ ] Offer to convert files already committed (`git lfs migrate`) after tracking their
+      pattern
   - [ ] LFS-aware auto-fetch: fetch LFS objects for the checked-out commit after a background
     fetch, and say so on the auto-fetch preference
   - [ ] Honour smudge filters when restoring a file from a commit, by writing through

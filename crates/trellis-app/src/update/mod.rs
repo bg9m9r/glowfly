@@ -70,6 +70,8 @@ mod language_override_tests;
 #[cfg(test)]
 mod lfs_tests;
 #[cfg(test)]
+mod lfs_track_tests;
+#[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
 mod palette_checkout_tests;

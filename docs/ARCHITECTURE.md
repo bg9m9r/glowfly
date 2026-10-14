@@ -57,7 +57,10 @@ crates/
     lfs.rs                Git LFS: installed version, whether a repository is set up (hooks and
                           filters, read without running git-lfs commands that write), tracked
                           patterns parsed from .gitattributes, pattern checks and the LFS
-                          command lines
+                          command lines; lfs/track.rs: what a file row can track (the file, its
+                          extension, its folder), the pattern each writes (glob characters
+                          made literal with character classes) and the root .gitattributes'
+                          patterns read into Snapshot::lfs_patterns during a full load
     gitflow.rs            Git Flow with plain git: the gitflow.* config (read_config, read with
                           libgit2 during load into Snapshot::gitflow), defaults, the branch plan
                           and Initialize/Save command lines; gitflow/ checks (the settings
@@ -128,7 +131,9 @@ crates/
                           built-in terminal panel: one shell session per repository; global,
                           not parked with a tab), submodules (status words, tooltips, why
                           open/update/copy are blocked, the update confirmation, the update
-                          command), lfs (the Git LFS page: status, pattern buffer, push remote),
+                          command), lfs (the Git LFS page: status, pattern buffer, push remote;
+                          whether git-lfs is installed; the file menu's Track in Git LFS
+                          entries and why each is disabled),
                           gitflow (the Git Flow page's form, filled from the snapshot; the
                           Start dialog's form),
                           worktrees (the WORKTREES section's text, why opening is blocked, the
@@ -140,7 +145,8 @@ crates/
     effect.rs             Effect: everything slow or outside the process
     file_op.rs            FileOp (a working-tree file operation), DeleteMode (trash or
                           permanent, fixed when the confirmation opens), WorkFileOk (its result)
-    lfs.rs                LfsMsg: the Git LFS preferences page's messages (one Msg variant)
+    lfs.rs                LfsMsg: the Git LFS preferences page's and the file menu's Track in
+                          Git LFS messages (one Msg variant)
     gitflow.rs            GitFlowMsg: the Git Flow page's and Start dialog's messages (one Msg
                           variant)
     terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
@@ -187,14 +193,16 @@ crates/
                           tab, initialize/update as a job; out of sync reads the submodule again,
                           then confirms, naming commits the update would leave behind), lfs (the
                           Git LFS page: reading its status, Initialize, Track and Untrack, the LFS
-                          commands, reloading after a job and the pull offer after Initialize),
+                          commands, reloading after a job and the pull offer after Initialize;
+                          the startup git-lfs check and the file menu's Track in Git LFS),
                           gitflow (filling the Git Flow form and refilling it on new snapshots,
                           Initialize/Save and Start as git jobs, the Start dialog's prefill),
                           worktrees (open in a tab; Create worktree: the form checked again,
                           the folder checked on disk, then `git worktree add` as a job)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
                           update/terminal_tests.rs, update/submodule_tests.rs,
-                          update/lfs_tests.rs, update/gitflow_tests.rs, update/worktree_tests.rs)
+                          update/lfs_tests.rs, update/lfs_track_tests.rs, update/gitflow_tests.rs,
+                          update/worktree_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -206,7 +214,7 @@ crates/
                           ref_visibility (hide/solo menu items, row markers and banner),
                           file_menu (file actions in file rows' menus, commit and comparison
                           rows included: restore, open, show, new file in this folder, rename,
-                          delete), file_buttons (Restore / Open / Show buttons in the file
+                          delete, the Track in Git LFS submenu), file_buttons (Restore / Open / Show buttons in the file
                           history's selected-commit header and the commit diff header),
                           file_dialogs (new file, rename file), tag_dialog (new tag,
                           plain or annotated, name checks, push to a remote),
@@ -225,7 +233,8 @@ crates/
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
                           snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
                           snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
-                          snapshot_tests_file_menu.rs, snapshot_tests_commit.rs,
+                          snapshot_tests_file_menu.rs, snapshot_tests_file_menu_lfs.rs,
+                          snapshot_tests_commit.rs,
                           snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
                           snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
                           snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,

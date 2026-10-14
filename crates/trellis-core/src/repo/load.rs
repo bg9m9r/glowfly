@@ -51,6 +51,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
     let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).and_then(|c| c.message().map(|m| m.trim_end().to_owned()));
     let commit_template = template::commit_template(&repo, &workdir);
     let gitflow = crate::gitflow::read_config(&repo);
+    let lfs_patterns = crate::lfs::root_patterns(&workdir);
     let mut refs: HashMap<Oid, Vec<RefLabel>> = HashMap::new();
     if detached && let Some(o) = head_oid {
         refs.entry(o).or_default().push(RefLabel { name: "HEAD".into(), full: String::new(), kind: RefKind::Head, is_head: true });
@@ -207,6 +208,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         head_message,
         commit_template,
         gitflow,
+        lfs_patterns,
         state,
         commits,
         row_of,

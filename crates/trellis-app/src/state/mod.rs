@@ -277,6 +277,9 @@ pub struct AppState {
     pub watch: watch::WatchState,
     /// Credential prompts from git (global, not per tab).
     pub askpass: askpass::CredentialPrompts,
+    /// Whether git-lfs is installed (global, not per tab): checked at startup and whenever
+    /// Preferences > Git LFS reads its status.
+    pub lfs_install: lfs::LfsInstall,
     /// The command palette, while open (global, not per tab).
     pub palette: Option<palette::Palette>,
     /// Incremented for every palette list request; older `TrackedPathsLoaded` results are
@@ -326,6 +329,7 @@ impl AppState {
             last_fetch: now,
             watch,
             askpass: Default::default(),
+            lfs_install: Default::default(),
             palette: None,
             palette_gen: 0,
             terminal: Default::default(),

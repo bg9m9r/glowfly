@@ -1,13 +1,16 @@
 //! File actions added to file rows' context menus: restore a file from a commit (one commit's
 //! rows, or the rows comparing two selected commits), open it in its default program, show it in
-//! the file manager, start a new file in its folder, and (working-tree rows) rename or delete it.
-//! Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
+//! the file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
+//! for files in the working tree, track them in Git LFS. Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
 //! opening a popup. `file_buttons` reuses the labels, reasons and restore message for the same
 //! actions as header buttons.
 
 use super::common::{menu_item, menu_item_if, short};
+use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::state::files::folder_prefill;
+pub(super) use crate::state::lfs::TRACK_IN_LFS;
+use crate::state::lfs::TrackItem;
 use eframe::egui;
 use git2::Oid;
 use trellis_core::repo::FileEntry;
@@ -82,9 +85,41 @@ fn new_file_here(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str) {
     menu_item(msgs, ui, NEW_FILE_HERE, Msg::NewFileDialog(folder_prefill(path)));
 }
 
+/// The Track in Git LFS submenu's entries: each disabled with its reason, or showing on hover
+/// what it writes.
+pub(super) fn lfs_track_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
+    for item in items {
+        let r = ui.add_enabled(item.blocked.is_none(), egui::Button::new(&item.label));
+        let r = match &item.blocked {
+            Some(why) => r.on_disabled_hover_text(why),
+            None => r.on_hover_text(&item.hover),
+        };
+        if r.clicked() {
+            msgs.push(Msg::Lfs(LfsMsg::TrackPath(item.target.clone())));
+            ui.close_menu();
+        }
+    }
+}
+
+/// Separator and the Track in Git LFS submenu, unless there is nothing to offer.
+fn lfs_submenu(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
+    if !items.is_empty() {
+        ui.separator();
+        ui.menu_button(TRACK_IN_LFS, |ui| lfs_track_items(ui, msgs, items));
+    }
+}
+
 /// Extra items for a commit's file row, or a row comparing two commits: separator, restore,
-/// open items (disabled unless `in_workdir`), then separator and new file in this folder.
-pub(super) fn commit_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, src: RowSource, f: &FileEntry, in_workdir: bool) {
+/// open items (disabled unless `in_workdir`), separator and new file in this folder, then (only
+/// `in_workdir`) the Track in Git LFS submenu with `lfs`.
+pub(super) fn commit_file_items(
+    ui: &mut egui::Ui,
+    msgs: &mut Vec<Msg>,
+    src: RowSource,
+    f: &FileEntry,
+    in_workdir: bool,
+    lfs: &[TrackItem],
+) {
     ui.separator();
     match src {
         RowSource::Commit(oid) => restore_item(ui, msgs, oid, &f.path, f.status),
@@ -93,14 +128,17 @@ pub(super) fn commit_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, src: Row
     open_items(ui, msgs, &f.path, (!in_workdir).then_some(NOT_IN_WORKDIR));
     ui.separator();
     new_file_here(ui, msgs, &f.path);
+    if in_workdir {
+        lfs_submenu(ui, msgs, lfs);
+    }
 }
 
 /// Extra items for a working-tree row: separator, open items (disabled when `missing`), then
 /// separator, new file in this folder, rename and delete (the last two also disabled while the
-/// row is conflicted). `unstages` means deleting this path also takes it out of the index (staged
+/// row is conflicted), then (unless `missing`) the Track in Git LFS submenu with `lfs`. `unstages` means deleting this path also takes it out of the index (staged
 /// as new or as a rename's new path): the item then reads "Unstage and delete…" and stays enabled
 /// when the file is already gone, since unstaging it is still useful.
-pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEntry, missing: bool, unstages: bool) {
+pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEntry, missing: bool, unstages: bool, lfs: &[TrackItem]) {
     ui.separator();
     let gone = missing.then_some(DELETED_IN_WORKDIR);
     open_items(ui, msgs, &f.path, gone);
@@ -111,4 +149,7 @@ pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEnt
     menu_item_if(msgs, ui, RENAME, blocked, Msg::RenameFileDialog(f.path.clone()));
     let (label, del_blocked) = if unstages { (UNSTAGE_DELETE, conflicted) } else { (DELETE, blocked) };
     menu_item_if(msgs, ui, label, del_blocked, Msg::DeleteFile { path: f.path.clone(), confirmed: false });
+    if !missing {
+        lfs_submenu(ui, msgs, lfs);
+    }
 }

@@ -61,6 +61,8 @@ mod snapshot_tests_file_dialogs;
 #[cfg(test)]
 mod snapshot_tests_file_menu;
 #[cfg(test)]
+mod snapshot_tests_file_menu_lfs;
+#[cfg(test)]
 mod snapshot_tests_gitflow;
 #[cfg(test)]
 mod snapshot_tests_lfs;
@@ -132,6 +134,7 @@ impl TrellisApp {
         };
         // git and ssh ask for missing credentials through a dialog from now on.
         app.runner.start_askpass();
+        app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
         if !paths.is_empty() {
             app.dispatch(&cc.egui_ctx, Msg::RestoreTabs { paths, active });
         }

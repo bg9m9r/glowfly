@@ -1,9 +1,10 @@
 //! The Git LFS preferences page: the status read in the background, the new-pattern buffer and
-//! what to do once the status arrives; the remote LFS commands use.
+//! what to do once the status arrives; the remote LFS commands use. Also whether git-lfs is
+//! installed, and the Track in Git LFS entries of file rows' context menus.
 
-use super::branches;
-use trellis_core::lfs::LfsStatus;
-use trellis_core::repo::Snapshot;
+use super::{AppState, branches};
+use trellis_core::lfs::{self, LfsPattern, LfsStatus, TrackTarget};
+use trellis_core::repo::{Snapshot, SubmoduleInfo};
 
 /// The job label of `git lfs install --local`; a successful one may offer to pull.
 pub const INIT_LABEL: &str = "Initialize LFS";
@@ -28,4 +29,87 @@ pub struct LfsPage {
 /// The remote LFS push goes to: HEAD's upstream remote, else origin, else the first remote.
 pub fn lfs_remote(snap: &Snapshot) -> Option<String> {
     snap.head_info().and_then(branches::remote_tracking).map(|t| t.remote.clone()).or_else(|| branches::default_remote(snap))
+}
+
+/// Whether git-lfs is installed, for the file menu's Track in Git LFS entries.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum LfsInstall {
+    /// Not checked yet.
+    #[default]
+    Unknown,
+    Checking,
+    Missing,
+    /// The version.
+    Installed(String),
+}
+
+impl LfsInstall {
+    /// From git-lfs's version, None when it isn't installed.
+    pub fn from_version(v: Option<String>) -> Self {
+        v.map_or(Self::Missing, Self::Installed)
+    }
+}
+
+/// The file menu's submenu.
+pub const TRACK_IN_LFS: &str = "Track in Git LFS";
+/// The submenu's first entry.
+pub const ONLY_THIS_FILE: &str = "Only this file";
+/// Why the entries are disabled without git-lfs.
+pub const NOT_INSTALLED_MENU: &str = "Git LFS isn't installed. See Preferences > Git LFS.";
+/// Why the entries are disabled before the startup check has answered.
+pub const CHECKING: &str = "Checking whether Git LFS is installed…";
+
+/// What a file row needs to build its Track in Git LFS entries.
+#[derive(Clone, Copy)]
+pub struct TrackContext<'a> {
+    pub install: &'a LfsInstall,
+    /// The root .gitattributes' LFS patterns.
+    pub patterns: &'a [LfsPattern],
+    pub submodules: &'a [SubmoduleInfo],
+}
+
+impl<'a> TrackContext<'a> {
+    pub fn of(st: &'a AppState) -> Self {
+        Self {
+            install: &st.lfs_install,
+            patterns: st.snap.as_ref().map_or(&[][..], |s| &s.lfs_patterns),
+            submodules: st.snap.as_ref().map_or(&[][..], |s| &s.submodules),
+        }
+    }
+}
+
+/// One entry of the Track in Git LFS submenu.
+pub struct TrackItem {
+    pub label: String,
+    /// What the entry writes to .gitattributes.
+    pub hover: String,
+    /// Why the entry is disabled.
+    pub blocked: Option<String>,
+    pub target: TrackTarget,
+}
+
+/// The Track in Git LFS entries for a file row's `path`: none for a submodule.
+pub fn track_items(path: &str, cx: TrackContext) -> Vec<TrackItem> {
+    if cx.submodules.iter().any(|s| s.path == path) {
+        return Vec::new();
+    }
+    lfs::track_targets(path)
+        .into_iter()
+        .map(|t| {
+            let (label, extra) = match &t {
+                TrackTarget::File(_) => (ONLY_THIS_FILE.to_owned(), ""),
+                TrackTarget::Extension(_) => (format!("Every .{} file", lfs::extension(path).unwrap_or_default()), ""),
+                TrackTarget::Folder(_) => {
+                    let folder = path.rsplit_once('/').map_or("", |(f, _)| f);
+                    (format!("Everything in {folder}/"), " (subfolders included)")
+                }
+            };
+            let blocked = match cx.install {
+                LfsInstall::Unknown | LfsInstall::Checking => Some(CHECKING.to_owned()),
+                LfsInstall::Missing => Some(NOT_INSTALLED_MENU.to_owned()),
+                LfsInstall::Installed(_) => lfs::check_target(&t, cx.patterns).err().map(|p| p.message()),
+            };
+            TrackItem { hover: format!("Adds {} to .gitattributes{extra}", t.display()), label, blocked, target: t }
+        })
+        .collect()
 }

@@ -7,6 +7,7 @@ use super::file_menu::RowSource;
 use super::menus::{cherry_pick_button, copy_shas};
 use super::theme::color;
 use crate::msg::Msg;
+use crate::state::lfs::TrackContext;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, RichText};
 use trellis_core::repo::DiffTarget;
@@ -56,10 +57,11 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         }
         Some(Ok(c)) => {
             let open = st.diff.as_ref().map(|(t, _)| t);
+            let lfs = TrackContext::of(st);
             egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show(ui, |ui| {
                 for f in &c.files {
                     let target = DiffTarget::Between(older, newer, f.path.clone());
-                    let actions = Some((RowSource::Between { older, newer }, c.in_workdir(&f.path)));
+                    let actions = Some((RowSource::Between { older, newer }, c.in_workdir(&f.path), lfs));
                     changed_file_row(ui, f, target, open, newer, actions, msgs);
                 }
             });
