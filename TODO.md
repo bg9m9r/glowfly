@@ -17,7 +17,9 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 - Staging by file and by hunk, discard (file, hunk, or all through a recoverable stash),
   commit, and amend
 - Checkout, branch/tag here, cherry-pick, revert, reset soft/mixed/hard, merge, rebase, branch
-  delete and force delete, and remote branch delete
+  delete and force delete, and remote branch delete; branch rename, set/unset upstream,
+  fast-forward without checkout, push any branch or to a chosen remote, and delete local +
+  remote
 - Fetch, Pull (ff / ff-only / rebase), Push (sets upstream automatically, force-with-lease),
   Stash and Pop, Clone, Init, and search
 - Merge/rebase/cherry-pick in-progress banner with Continue/Skip/Abort
@@ -268,9 +270,19 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Trellis runs git with `GIT_TERMINAL_PROMPT=0`, so HTTPS without Git Credential Manager, SSH
   keys with passphrases, and GPG passphrases all fail. Add an askpass helper (`GIT_ASKPASS` /
   `SSH_ASKPASS`) that shows an in-app dialog.
-- [ ] **Branch operations**
-  Rename, set upstream, fast-forward without checkout, delete local + remote, push a non-HEAD
-  branch, push to a chosen remote, pin a branch to the left.
+- [x] **Branch operations**
+  From the local branch menu: rename, set and unset the upstream (also to a branch not on the
+  remote yet), fast-forward without checkout, delete local + remote in one step (undo restores
+  the local branch), push any branch to its upstream, push to a chosen remote.
+  - [ ] Pin a branch to the left (graph lane order, per-repo persistence, jump to the pinned branch)
+  - [ ] Force push (with lease) of a non-HEAD branch, and push to all remotes
+  - [ ] Rename the remote branch too when renaming (push the new name, delete the old one,
+    move the upstream)
+  - [ ] Choose a local branch as the upstream in the Set upstream dialog
+  - [ ] The same operations from the graph's BRANCH/TAG labels and the remote branch menu
+    (e.g. fast-forward a local branch from its remote row)
+  - [ ] Rename a branch from a command palette or shortcut
+  - [ ] Delete local + remote when the branch isn't merged (force), in one step
 - [ ] **Hide / solo branches in the graph**
   Hide or show refs and solo one branch. The core already supports it (`LoadOptions.hidden` and
   `solo`); this needs the menus, a way to unhide, and per-repo persistence.

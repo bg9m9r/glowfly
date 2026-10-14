@@ -75,17 +75,25 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         let (b, _) = b?;
         let name = b.name()?.unwrap_or_default().to_owned();
         let oid = b.get().target();
-        let (upstream, ahead, behind) = match b.upstream() {
+        let full = format!("refs/heads/{name}");
+        let tracking = match (repo.branch_upstream_remote(&full), repo.branch_upstream_merge(&full)) {
+            (Ok(r), Ok(m)) => match (r.as_str(), m.as_str()) {
+                (Some(r), Some(m)) => Some(Tracking { remote: r.to_owned(), merge: m.strip_prefix("refs/heads/").unwrap_or(m).to_owned() }),
+                _ => None,
+            },
+            _ => None,
+        };
+        let (upstream, upstream_ref, ahead, behind) = match b.upstream() {
             Ok(u) => {
                 let (a, bh) = match (oid, u.get().target()) {
                     (Some(x), Some(y)) => repo.graph_ahead_behind(x, y).unwrap_or((0, 0)),
                     _ => (0, 0),
                 };
-                (u.name().ok().flatten().map(str::to_owned), a, bh)
+                (u.name().ok().flatten().map(str::to_owned), u.get().name().map(str::to_owned), a, bh)
             }
-            Err(_) => (None, 0, 0),
+            Err(_) => (None, None, 0, 0),
         };
-        locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind });
+        locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref });
     }
 
     let mut remotes: Vec<(String, Vec<(String, Oid)>)> = repo.remotes()?.iter().flatten().map(|r| (r.to_owned(), Vec::new())).collect();

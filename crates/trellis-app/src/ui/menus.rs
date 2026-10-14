@@ -1,4 +1,4 @@
-//! Right-click menus for commits and branches.
+//! Right-click menus for commits and remote branches (local branches: `branch_menu.rs`).
 
 use super::common::{menu_item, short};
 use super::theme::color;
@@ -7,7 +7,6 @@ use crate::state::ForgeState;
 use crate::state::selection::MultiSelection;
 use eframe::egui::{self, RichText};
 use git2::Oid;
-use trellis_core::repo::BranchInfo;
 
 pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Msg>) {
     let sha = oid.to_string();
@@ -69,59 +68,6 @@ pub(super) fn copy_shas(m: &MultiSelection) -> Msg {
         "
 ",
     ))
-}
-
-pub fn local_branch_menu(ui: &mut egui::Ui, b: &BranchInfo, current: &str, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
-    let name = b.name.as_str();
-    if !b.is_head {
-        menu_item(msgs, ui, format!("Checkout {name}"), Msg::git("Checkout", &["checkout", name]));
-        if !current.is_empty() {
-            menu_item(msgs, ui, format!("Merge {name} into {current}"), Msg::git("Merge", &["merge", name]));
-            menu_item(msgs, ui, format!("Rebase {current} onto {name}"), Msg::git("Rebase", &["rebase", name]));
-        }
-    }
-    if let Some(fs) = fs {
-        ui.separator();
-        if fs.host.is_some() {
-            match fs.pr_for_branch(name) {
-                Some(pr) => menu_item(msgs, ui, format!("Open {} {}", fs.pr_noun(), fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone())),
-                None => menu_item(msgs, ui, format!("Create {}…", fs.pr_noun()), Msg::CreatePrDialog(name.to_owned())),
-            }
-        }
-        if let Some(key) = fs.branch_issue(name) {
-            menu_item(msgs, ui, format!("Open {} {}", fs.issue_noun(), fs.mention(&key)), Msg::OpenUrl(fs.issue_url(&key)));
-        }
-        ui.separator();
-    }
-    if let Some(o) = b.oid {
-        menu_item(msgs, ui, "Create branch here…", Msg::NewBranch { start: Some(o.to_string()), name: String::new() });
-    }
-    menu_item(msgs, ui, "Copy branch name", Msg::Copy(name.to_owned()));
-    if !b.is_head {
-        ui.separator();
-        menu_item(
-            msgs,
-            ui,
-            format!("Delete {name}"),
-            Msg::confirm(
-                "Delete branch",
-                format!("Delete local branch {name}?"),
-                "Delete",
-                Msg::git("Delete branch", &["branch", "-d", name]),
-            ),
-        );
-        menu_item(
-            msgs,
-            ui,
-            format!("Force delete {name}"),
-            Msg::confirm(
-                "Force delete branch",
-                format!("Delete {name} even if it has unmerged commits?"),
-                "Delete",
-                Msg::git("Delete branch", &["branch", "-D", name]),
-            ),
-        );
-    }
 }
 
 pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, current: &str, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {

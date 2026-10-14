@@ -1,7 +1,8 @@
 //! Left panel: local and remote branches, pull requests, issues, tags and stashes.
 
+use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, state_color};
-use super::menus::{local_branch_menu, remote_branch_menu};
+use super::menus::remote_branch_menu;
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
@@ -61,9 +62,10 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             if r.hovered() {
                 *hover_next = b.oid;
             }
-            let r = match &b.upstream {
-                Some(u) => r.on_hover_text(format!("tracking {u}")),
-                None => r,
+            let r = match (&b.upstream, &b.tracking) {
+                (Some(u), _) => r.on_hover_text(format!("tracking {u}")),
+                (None, Some(t)) => r.on_hover_text(format!("tracking {} (not on the remote)", t.display())),
+                (None, None) => r,
             };
             if r.double_clicked() {
                 msgs.push(Msg::git("Checkout", &["checkout", &b.name]));
@@ -72,7 +74,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             {
                 msgs.push(Msg::JumpTo(o));
             }
-            r.context_menu(|ui| local_branch_menu(ui, b, &current, fs, msgs));
+            r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, msgs));
         }
     }
 

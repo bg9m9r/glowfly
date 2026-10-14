@@ -33,9 +33,21 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
     fx.push(Effect::UndoRedo { cwd, action, redo });
 }
 
-/// Jobs that never move the local branch, HEAD, index or working tree, so the history stays valid.
+/// Jobs that never move a local branch, HEAD, index or working tree, so the history stays
+/// valid: fetch, push, tag, clone, init, config, and setting or unsetting a branch's upstream.
+/// A fetch into the repository itself (`fetch . a:b`, a fast-forward without checkout) moves a
+/// branch, so it doesn't count.
 pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
-    cmds.iter().all(|c| matches!(c.first().map(String::as_str), Some("fetch" | "push" | "tag" | "clone" | "init")))
+    cmds.iter().all(|c| {
+        let a: Vec<&str> = c.iter().map(String::as_str).collect();
+        match a.as_slice() {
+            ["fetch", rest @ ..] => !rest.contains(&"."),
+            ["push" | "tag" | "clone" | "init" | "config", ..] => true,
+            ["branch", "--unset-upstream", ..] => true,
+            ["branch", flag, ..] => flag.starts_with("--set-upstream-to"),
+            _ => false,
+        }
+    })
 }
 
 /// Updates the history of the tab `job` ran in (active when `here`, otherwise parked).

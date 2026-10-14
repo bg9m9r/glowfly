@@ -3,6 +3,7 @@
 //! touches disk, network or the window, which keeps it fully testable.
 
 mod avatars;
+mod branches;
 mod conflict;
 mod diff;
 mod forge;
@@ -16,6 +17,8 @@ mod tabs;
 mod undo;
 mod watch;
 
+#[cfg(test)]
+mod branch_tests;
 #[cfg(test)]
 mod cherry_pick_tests;
 #[cfg(test)]
@@ -146,6 +149,14 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::HunkReverted { .. }
         | Msg::JobDone { .. } => ops::handle(st, msg, now, &mut fx),
         Msg::Undo | Msg::Redo => undo::handle(st, msg, now, &mut fx),
+        Msg::RenameBranchDialog(_)
+        | Msg::RenameBranch { .. }
+        | Msg::SetUpstreamDialog(_)
+        | Msg::SetUpstream { .. }
+        | Msg::UnsetUpstream(_)
+        | Msg::FastForwardBranch(_)
+        | Msg::DeleteBranchAndRemote(_)
+        | Msg::PushBranch { .. } => branches::handle(st, msg, &mut fx),
         Msg::RepoChanged { .. } | Msg::WatchFailed { .. } => watch::handle(st, msg, now, &mut fx),
 
         // hosting services

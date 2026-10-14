@@ -60,6 +60,18 @@ pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::
     }
 }
 
+/// A menu item that is disabled, with the reason on hover, while `blocked` is set.
+pub fn menu_item_if(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<&str>, m: Msg) {
+    let mut r = ui.add_enabled(blocked.is_none(), egui::Button::new(label));
+    if let Some(why) = blocked {
+        r = r.on_disabled_hover_text(why);
+    }
+    if r.clicked() {
+        msgs.push(m);
+        ui.close_menu();
+    }
+}
+
 /// Small caret drawn after a menu button (the font has no ▾ glyph).
 pub fn caret_after(ui: &mut egui::Ui, r: &egui::Response) {
     let c = pos2(r.rect.right() + 6.0, r.rect.center().y + 1.0);

@@ -214,8 +214,7 @@ fn commit(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// The remote to push a new branch to: origin if present, else the first remote.
 pub(super) fn default_remote(snap: &Snapshot) -> Option<String> {
-    let names: Vec<&str> = snap.remotes.iter().map(|(r, _)| r.as_str()).collect();
-    names.iter().find(|r| **r == "origin").or(names.first()).map(|r| r.to_string())
+    crate::state::branches::default_remote(snap)
 }
 
 fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {

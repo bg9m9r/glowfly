@@ -3,6 +3,8 @@
 //! effects that need the window.
 
 mod avatars;
+mod branch_dialogs;
+mod branch_menu;
 pub(crate) mod common;
 mod conflict;
 mod details;
@@ -24,6 +26,8 @@ pub mod widgets;
 
 #[cfg(test)]
 mod snapshot_tests;
+#[cfg(test)]
+mod snapshot_tests_branch;
 #[cfg(test)]
 mod snapshot_tests_diff;
 #[cfg(test)]

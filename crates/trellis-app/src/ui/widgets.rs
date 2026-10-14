@@ -266,6 +266,8 @@ pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut
 /// One sidebar list row. Returns the click response; `right` is optional dim text at the right.
 pub fn list_row(ui: &mut Ui, indent: f32, text: &str, right: Option<(&str, Color32)>, selected: bool, strong: bool) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 24.0), Sense::click());
+    // Painted text has no accessible name; give the row one (screen readers and UI tests).
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     let p = ui.painter_at(rect);
     if selected {
         p.rect_filled(rect, 0.0, color::selected());

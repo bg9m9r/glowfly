@@ -186,6 +186,34 @@ pub enum Msg {
         name: String,
     },
 
+    // ---- branches
+    /// Open the rename dialog for local branch `.0`.
+    RenameBranchDialog(String),
+    /// `git branch -m old new`.
+    RenameBranch {
+        old: String,
+        new: String,
+    },
+    /// Open the upstream dialog for local branch `.0`.
+    SetUpstreamDialog(String),
+    /// Make `branch` track `name` on `remote` (which need not exist yet).
+    SetUpstream {
+        branch: String,
+        remote: String,
+        name: String,
+    },
+    /// Remove the upstream setting of local branch `.0`.
+    UnsetUpstream(String),
+    /// Fast-forward local branch `.0` to its upstream, without checking it out.
+    FastForwardBranch(String),
+    /// Delete local branch `.0` and then its upstream branch on the remote.
+    DeleteBranchAndRemote(String),
+    /// Push local `branch` to `remote`; None means its upstream, or the default remote with -u.
+    PushBranch {
+        branch: String,
+        remote: Option<String>,
+    },
+
     // ---- dialogs
     Confirm {
         title: String,

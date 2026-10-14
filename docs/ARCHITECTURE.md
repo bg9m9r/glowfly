@@ -28,6 +28,9 @@ crates/
                           (reading an index conflict into chunks), resolve (picks, output, write
                           and stage)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing)
+    branch_ops.rs         branch command lines (rename, upstream, fast-forward without
+                          checkout, push, delete with the remote branch), name checks,
+                          fast-forward state
     undo.rs               undo/redo of Trellis's own operations: records state around a job,
                           plans the git commands that reverse it (checked against the repo)
     graph.rs              lane layout for the commit graph
@@ -49,7 +52,8 @@ crates/
                           line selection), conflict (the open conflict and its picks),
                           history (the open file history), watch (what the file watcher
                           follows), selection (several selected commits: Ctrl/Shift-click
-                          rules, cherry-pick checks)
+                          rules, cherry-pick checks), branches (why branch actions are blocked,
+                          push targets)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner.rs             executes effects on worker threads, reports back as Msg
@@ -57,14 +61,17 @@ crates/
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
                           undo, diff, conflict, history, watch, selection (several commits:
-                          the two-commit comparison, cherry-picking them)
+                          the two-commit comparison, cherry-picking them), branches (the local
+                          branch menu's operations)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, details_multi (several commits), diff/ (header,
                           inline, split, syntax),
-                          conflict, history, modals, menus,
+                          conflict, history, modals, menus, branch_menu (local branch menu),
+                          branch_dialogs (rename, upstream),
                           status, prefs/, theme, widgets (+ snapshot_tests.rs, snapshot_tests_diff.rs,
-                          snapshot_tests_revert.rs, snapshot_tests_select.rs, snapshot_tests_whole.rs)
+                          snapshot_tests_revert.rs, snapshot_tests_select.rs, snapshot_tests_whole.rs,
+                          snapshot_tests_branch.rs)
     platform.rs           OS integration (recent repos, terminal, file manager)
   trellis-app/tests/snapshots/   approved UI images
   trellis-app/tests/layering.rs  fails if a view under ui/ does I/O itself (see Rules)

@@ -55,14 +55,41 @@ pub struct RefLabel {
     pub is_head: bool,
 }
 
+/// A branch's configured upstream (`branch.<name>.remote` and `.merge`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Tracking {
+    /// The remote name, or "." when the upstream is a local branch.
+    pub remote: String,
+    /// The upstream branch name on that remote, without refs/heads/.
+    pub merge: String,
+}
+
+impl Tracking {
+    /// Whether the upstream is on a remote rather than a local branch.
+    pub fn is_remote(&self) -> bool {
+        self.remote != "."
+    }
+
+    /// "remote/merge", or just the branch name for a local upstream.
+    pub fn display(&self) -> String {
+        if self.is_remote() { format!("{}/{}", self.remote, self.merge) } else { self.merge.clone() }
+    }
+}
+
 #[derive(Clone)]
 pub struct BranchInfo {
     pub name: String,
     pub oid: Option<Oid>,
     pub is_head: bool,
+    /// The upstream ref's short name (e.g. origin/x), when it exists.
     pub upstream: Option<String>,
     pub ahead: usize,
     pub behind: usize,
+    /// The configured upstream, present even when its remote-tracking ref is gone.
+    pub tracking: Option<Tracking>,
+    /// Full name of the resolved upstream ref, e.g. refs/remotes/origin/x; None when
+    /// `upstream` is None.
+    pub upstream_ref: Option<String>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

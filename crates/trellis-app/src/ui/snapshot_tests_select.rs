@@ -69,7 +69,7 @@ fn graph_many_commits_selected_light() {
     remove_fixture(&dir);
 }
 
-fn click(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: PointerButton) {
+pub(super) fn click(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: PointerButton) {
     for pressed in [true, false] {
         let events = &mut h.input_mut().events;
         events.push(Event::PointerMoved(pos));

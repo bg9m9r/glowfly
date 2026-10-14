@@ -1,6 +1,7 @@
 //! Application state: plain data, no egui types. Only `update` changes it, except for
 //! transient view state (`ViewState`) and text buffers that views edit in place.
 
+pub mod branches;
 pub mod conflict;
 mod forge;
 pub mod history;
@@ -121,6 +122,8 @@ pub enum Modal {
     Clone { url: String, parent: String },
     CreatePr { source: String, target: String, targets: Vec<String>, title: String, description: String, draft: bool, items: String },
     Publish(Box<publish::PublishForm>),
+    RenameBranch { old: String, name: String },
+    SetUpstream { branch: String, remote: String, name: String },
 }
 
 pub struct Sections {

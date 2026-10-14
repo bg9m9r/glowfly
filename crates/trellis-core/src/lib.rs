@@ -2,6 +2,7 @@
 //! integrations, settings and formatting helpers. Nothing here depends on the UI.
 
 pub mod avatars;
+pub mod branch_ops;
 pub mod conflict_rows;
 pub mod dates;
 pub mod diff_rows;
