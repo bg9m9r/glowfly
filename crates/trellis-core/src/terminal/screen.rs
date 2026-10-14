@@ -160,14 +160,17 @@ fn row(screen: &vt100::Screen, r: u16, cols: u16) -> TermRow {
         let contents = cell.contents();
         let text = if contents.is_empty() { " ".to_owned() } else { contents };
         let wide = cell.is_wide();
+        // A cell can hold a character and its combining marks: it gets a span of its own, so
+        // every other span has one char per column.
+        let one_cell = wide || text.chars().nth(1).is_some();
         match spans.last_mut() {
-            Some(last) if joinable && !wide && last.style == style => {
+            Some(last) if joinable && !one_cell && last.style == style => {
                 last.text.push_str(&text);
                 last.width += 1;
             }
-            _ => spans.push(TermSpan { col: c, width: if wide { 2 } else { 1 }, text, style }),
+            _ => spans.push(TermSpan { col: c, width: if wide { 2 } else { 1 }, text, style, one_cell }),
         }
-        joinable = !wide;
+        joinable = !one_cell;
     }
     // Trailing blanks that draw nothing.
     while let Some(last) = spans.last_mut() {
@@ -227,6 +230,21 @@ mod tests {
         let rows = s.rows();
         let got: Vec<(u16, &str, u16)> = rows[0].spans.iter().map(|sp| (sp.col, sp.text.as_str(), sp.width)).collect();
         assert_eq!(got, vec![(0, "a", 1), (1, "漢", 2), (3, "b", 1)]);
+    }
+
+    #[test]
+    fn combining_marks_stay_in_their_cell() {
+        let s = screen("e\u{301}x\u{e9}\u{2500}a\u{308}\u{301}b");
+        let rows = s.rows();
+        let got: Vec<(u16, &str, u16, bool)> = rows[0].spans.iter().map(|sp| (sp.col, sp.text.as_str(), sp.width, sp.one_cell)).collect();
+        let want = vec![(0, "e\u{301}", 1, true), (1, "x\u{e9}\u{2500}", 3, false), (4, "a\u{308}\u{301}", 1, true), (5, "b", 1, false)];
+        assert_eq!(got, want);
+        let cells: Vec<Vec<(u16, &str)>> = rows[0].spans.iter().map(TermSpan::cells).collect();
+        assert_eq!(cells[0], [(0, "e\u{301}")]);
+        assert_eq!(cells[1], [(0, "x"), (1, "\u{e9}"), (2, "\u{2500}")], "one char per column");
+        assert_eq!(cells[3], [(0, "b")]);
+        let wide = screen("\u{6f22}\u{301}");
+        assert_eq!(wide.rows()[0].spans[0].cells(), [(0, "\u{6f22}\u{301}")], "a wide glyph with its mark");
     }
 
     #[test]

@@ -38,8 +38,23 @@ pub struct TermSpan {
     pub col: u16,
     /// The number of columns covered (a wide glyph covers two).
     pub width: u16,
+    /// One char per column, or with `one_cell` the single cell's contents.
     pub text: String,
     pub style: CellStyle,
+    /// The span is one cell whose contents aren't one narrow char: a wide glyph, or a
+    /// character with combining marks.
+    pub one_cell: bool,
+}
+
+impl TermSpan {
+    /// Where each cell's text goes: (column offset in the span, text). A run of ASCII comes as
+    /// one piece, since every char of it is one column.
+    pub fn cells(&self) -> Vec<(u16, &str)> {
+        if self.one_cell || self.text.is_ascii() {
+            return vec![(0, self.text.as_str())];
+        }
+        self.text.char_indices().zip(0..).map(|((i, ch), col)| (col, &self.text[i..i + ch.len_utf8()])).collect()
+    }
 }
 
 /// One screen row as styled spans; trailing blank cells are left out.
