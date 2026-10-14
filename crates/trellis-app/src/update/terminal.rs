@@ -108,8 +108,14 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 }
 
-/// The tab for `path` closed: stop its shell and forget the session.
-pub(super) fn tab_closed(st: &mut AppState, path: &Path, fx: &mut Vec<Effect>) {
+/// The tab for `path` is closing, along with the tabs at `closing` (indices into `st.tabs`,
+/// it among them): stop its shell and forget the session, unless a tab that stays open shows
+/// the same working directory and so still uses it.
+pub(super) fn tab_closed(st: &mut AppState, path: &Path, closing: &[usize], fx: &mut Vec<Effect>) {
+    let shared = st.tabs.iter().enumerate().any(|(j, t)| !closing.contains(&j) && t.path.as_deref() == Some(path));
+    if shared {
+        return;
+    }
     let ids: Vec<u64> = st.terminal.sessions.iter().filter(|s| s.workdir == path).map(|s| s.id).collect();
     st.terminal.sessions.retain(|s| s.workdir != path);
     for id in ids {

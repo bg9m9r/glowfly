@@ -144,7 +144,7 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         return;
     }
     if let Some(path) = st.tabs[i].path.clone() {
-        super::terminal::tab_closed(st, &path, fx);
+        super::terminal::tab_closed(st, &path, &[i], fx);
         remember_closed(st, path);
     }
     st.tab_return = None;
@@ -200,7 +200,7 @@ fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize,
     // their original order.
     for &j in closing.iter().rev() {
         if let Some(path) = st.tabs[j].path.clone() {
-            super::terminal::tab_closed(st, &path, fx);
+            super::terminal::tab_closed(st, &path, &closing, fx);
             remember_closed(st, path);
         }
     }
