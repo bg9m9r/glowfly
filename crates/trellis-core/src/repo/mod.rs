@@ -37,7 +37,7 @@ pub use template::{CommitTemplate, commit_template};
 pub use tracked::tracked_paths;
 pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
 pub use workfile_mv::rename_file_staged;
-pub use workfile_rm::delete_staged_new_file;
+pub use workfile_rm::{delete_staged_new_file, unstage_gone_new_file};
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -328,6 +328,8 @@ mod whole_tests;
 mod workfile_exact_tests;
 #[cfg(test)]
 mod workfile_mv_tests;
+#[cfg(test)]
+mod workfile_rm_gone_tests;
 #[cfg(test)]
 mod workfile_rm_tests;
 #[cfg(test)]

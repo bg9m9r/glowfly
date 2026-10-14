@@ -26,6 +26,7 @@ const CONFLICTED: &str = "Resolve the conflict first";
 pub(super) const NEW_FILE_HERE: &str = "New file in this folder…";
 pub(super) const RENAME: &str = "Rename…";
 pub(super) const DELETE: &str = "Delete…";
+pub(super) const UNSTAGE_DELETE: &str = "Unstage and delete…";
 
 /// Where a commit file row's change comes from.
 #[derive(Clone, Copy)]
@@ -86,14 +87,18 @@ pub(super) fn commit_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, src: Row
 
 /// Extra items for a working-tree row: separator, open items (disabled when `missing`), then
 /// separator, new file in this folder, rename and delete (the last two also disabled while the
-/// row is conflicted).
-pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEntry, missing: bool) {
+/// row is conflicted). `unstages` means deleting this path also takes it out of the index (staged
+/// as new or as a rename's new path): the item then reads "Unstage and delete…" and stays enabled
+/// when the file is already gone, since unstaging it is still useful.
+pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEntry, missing: bool, unstages: bool) {
     ui.separator();
     let gone = missing.then_some(DELETED_IN_WORKDIR);
     open_items(ui, msgs, &f.path, gone);
     ui.separator();
     new_file_here(ui, msgs, &f.path);
-    let blocked = gone.or((f.status == '!').then_some(CONFLICTED));
+    let conflicted = (f.status == '!').then_some(CONFLICTED);
+    let blocked = gone.or(conflicted);
     menu_item_if(msgs, ui, RENAME, blocked, Msg::RenameFileDialog(f.path.clone()));
-    menu_item_if(msgs, ui, DELETE, blocked, Msg::DeleteFile { path: f.path.clone(), confirmed: false });
+    let (label, del_blocked) = if unstages { (UNSTAGE_DELETE, conflicted) } else { (DELETE, blocked) };
+    menu_item_if(msgs, ui, label, del_blocked, Msg::DeleteFile { path: f.path.clone(), confirmed: false });
 }

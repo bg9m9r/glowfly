@@ -243,8 +243,12 @@ pub enum Msg {
         path: String,
         confirmed: bool,
     },
-    /// Delete the staged new file `.0` and remove it from the index (sent by the confirmation).
+    /// Delete the staged new file (or staged rename's new path) `.0` and remove it from the index,
+    /// unstaging a rename's source too (sent by the confirmation).
     DeleteStagedNewFile(String),
+    /// Remove the staged new file (or staged rename's new path) `.0`, already gone from the
+    /// working tree, from the index (sent by the confirmation).
+    UnstageGoneFile(String),
     Commit,
     /// Ctrl+Shift+Enter in the commit message: stage everything (git add --all) and commit in one job.
     StageAllAndCommit,

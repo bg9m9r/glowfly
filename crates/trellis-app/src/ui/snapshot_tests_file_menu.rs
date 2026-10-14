@@ -1,10 +1,13 @@
 //! The file actions in file rows' context menus, drawn as menu bodies in a small window: a
 //! commit's modified file, a file the commit deleted (not in the working tree), a row comparing
 //! two commits, and working-tree rows (a modified file, one whose file is gone, a conflicted
-//! one). New file in this folder is enabled on every row. Clicks check the messages the items
+//! one, and a staged new file present or gone, whose delete also unstages it). New file in this
+//! folder is enabled on every row. Clicks check the messages the items
 //! send.
 
-use super::file_menu::{DELETE, NEW_FILE_HERE, OPEN_DEFAULT, RENAME, RowSource, SHOW_IN_FOLDER, commit_file_items, wip_file_items};
+use super::file_menu::{
+    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, RENAME, RowSource, SHOW_IN_FOLDER, UNSTAGE_DELETE, commit_file_items, wip_file_items,
+};
 use super::theme::{apply_theme, color};
 use crate::msg::Msg;
 use eframe::egui;
@@ -26,8 +29,10 @@ enum Menu {
     Between {
         in_workdir: bool,
     },
+    /// `unstages`: deleting the row's path also takes it out of the index.
     Wip {
         missing: bool,
+        unstages: bool,
     },
 }
 
@@ -60,7 +65,7 @@ fn harness(f: FileEntry, menu: Menu, dark: bool) -> Harness<'static, Vec<Msg>> {
                     Menu::Between { in_workdir } => {
                         commit_file_items(ui, msgs, RowSource::Between { older: oid(), newer: newer() }, &f, in_workdir)
                     }
-                    Menu::Wip { missing } => wip_file_items(ui, msgs, &f, missing),
+                    Menu::Wip { missing, unstages } => wip_file_items(ui, msgs, &f, missing, unstages),
                 }
             });
         },
@@ -131,7 +136,7 @@ fn file_menu_between_restores_the_right_commit() {
 
 #[test]
 fn file_menu_wip() {
-    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false }, true);
+    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     h.snapshot("file_menu_wip");
     for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, NEW_FILE_HERE, RENAME, DELETE] {
@@ -141,7 +146,7 @@ fn file_menu_wip() {
 
 #[test]
 fn file_menu_wip_missing() {
-    let mut h = harness(entry("src/gone.txt", 'D'), Menu::Wip { missing: true }, true);
+    let mut h = harness(entry("src/gone.txt", 'D'), Menu::Wip { missing: true, unstages: false }, true);
     h.run();
     h.snapshot("file_menu_wip_missing");
     for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME, DELETE] {
@@ -152,12 +157,52 @@ fn file_menu_wip_missing() {
 
 #[test]
 fn file_menu_wip_conflicted() {
-    let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false }, true);
+    let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
     assert!(h.get_by_label(RENAME).is_disabled());
     assert!(h.get_by_label(DELETE).is_disabled());
+    drop(h);
+
+    let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false, unstages: true }, true);
+    h.run();
+    assert!(h.get_by_label(UNSTAGE_DELETE).is_disabled());
+}
+
+/// Clicks the "Unstage and delete…" item and checks it asks to delete `path`.
+fn click_unstage_delete(mut h: Harness<'static, Vec<Msg>>, path: &str) {
+    h.get_by_label(UNSTAGE_DELETE).click();
+    h.run();
+    assert!(matches!(&h.state()[..], [Msg::DeleteFile { path: p, confirmed: false }] if p == path));
+}
+
+#[test]
+fn file_menu_wip_staged_new() {
+    let mut h = harness(entry("src/new.txt", 'A'), Menu::Wip { missing: false, unstages: true }, true);
+    h.run();
+    h.snapshot("file_menu_wip_staged_new");
+    assert!(!h.get_by_label(UNSTAGE_DELETE).is_disabled());
+    assert!(h.query_by_label(DELETE).is_none());
+    for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, NEW_FILE_HERE, RENAME] {
+        assert!(!h.get_by_label(label).is_disabled(), "{label}");
+    }
+    click_unstage_delete(h, "src/new.txt");
+}
+
+#[test]
+fn file_menu_wip_staged_new_gone() {
+    let mut h = harness(entry("src/new.txt", 'D'), Menu::Wip { missing: true, unstages: true }, true);
+    h.run();
+    h.snapshot("file_menu_wip_staged_new_gone");
+    for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME] {
+        assert!(h.get_by_label(label).is_disabled(), "{label}");
+    }
+    for label in [UNSTAGE_DELETE, NEW_FILE_HERE] {
+        assert!(!h.get_by_label(label).is_disabled(), "{label}");
+    }
+    assert!(h.query_by_label(DELETE).is_none());
+    click_unstage_delete(h, "src/new.txt");
 }
 
 #[test]
@@ -171,21 +216,21 @@ fn file_menu_clicks_send_msgs() {
     );
     drop(h);
 
-    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false }, true);
+    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     h.get_by_label(SHOW_IN_FOLDER).click();
     h.run();
     assert!(matches!(&h.state()[..], [Msg::ShowWorkingFile(p)] if p == "src/app.txt"));
     drop(h);
 
-    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false }, true);
+    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     h.get_by_label(RENAME).click();
     h.run();
     assert!(matches!(&h.state()[..], [Msg::RenameFileDialog(p)] if p == "src/app.txt"));
     drop(h);
 
-    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false }, true);
+    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     h.get_by_label(DELETE).click();
     h.run();
@@ -195,7 +240,7 @@ fn file_menu_clicks_send_msgs() {
     // New file in this folder: the row's folder, "" at the root, and a folder the commit
     // deleted from the working tree.
     for (path, status, menu, want) in [
-        ("src/app.txt", 'M', Menu::Wip { missing: false }, "src/"),
+        ("src/app.txt", 'M', Menu::Wip { missing: false, unstages: false }, "src/"),
         ("README.md", 'M', Menu::Commit { in_workdir: true }, ""),
         ("old/notes.txt", 'D', Menu::Commit { in_workdir: false }, "old/"),
     ] {
@@ -208,7 +253,7 @@ fn file_menu_clicks_send_msgs() {
     }
 
     // A disabled item sends nothing.
-    let mut h = harness(entry("src/gone.txt", 'D'), Menu::Wip { missing: true }, true);
+    let mut h = harness(entry("src/gone.txt", 'D'), Menu::Wip { missing: true, unstages: false }, true);
     h.run();
     h.get_by_label(OPEN_DEFAULT).click();
     h.run();

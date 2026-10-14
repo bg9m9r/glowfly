@@ -8,7 +8,7 @@ use trellis_core::repo;
 
 /// Runs `op` in `workdir`; the result says whether git ignores the new path (false for a delete,
 /// and for a staged rename, whose new path stays tracked). A staged rename goes through git mv;
-/// UnstageDelete also removes the file's index entry.
+/// UnstageDelete also takes the file out of the index, and UnstageGone only does that.
 pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
     let r = match &op {
         FileOp::Create(p) => repo::create_file(workdir, p),
@@ -16,6 +16,7 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
         FileOp::Rename { from, to, stage: false } => repo::rename_file(workdir, from, to),
         FileOp::Delete(p) => repo::delete_file(workdir, p).map(|()| false),
         FileOp::UnstageDelete(p) => repo::delete_staged_new_file(workdir, p).map(|()| false),
+        FileOp::UnstageGone(p) => repo::unstage_gone_new_file(workdir, p).map(|()| false),
     };
     Msg::WorkFileDone { op, result: r.map_err(|e| e.to_string()) }
 }

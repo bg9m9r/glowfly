@@ -98,7 +98,7 @@ fn valid_name(part: &str) -> bool {
 /// containment rules apply, so a file with an odd name can still be removed, and nothing is
 /// trimmed or rewritten: " a.txt" or (outside Windows) "a\b" is that file, never "a.txt" or
 /// "a/b". A path the system would read as another file is refused instead.
-fn contained(path: &str) -> Result<&str> {
+pub(super) fn contained(path: &str) -> Result<&str> {
     let parts: Vec<&str> = path.split('/').collect();
     if path.starts_with('/') {
         return Err(problem(PathProblem::Absolute));

@@ -68,6 +68,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         | Msg::SetRenameStages(_)
         | Msg::DeleteFile { .. }
         | Msg::DeleteStagedNewFile(_)
+        | Msg::UnstageGoneFile(_)
         | Msg::WorkFileDone { .. } => super::work_files::handle(st, msg, now, fx),
         Msg::OpenWorkingFile(p) => {
             if let Some(w) = st.workdir() {

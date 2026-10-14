@@ -261,7 +261,8 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
                         menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: None });
                     }
                     menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
-                    file_menu::wip_file_items(ui, msgs, f, snap.missing_from_workdir(&f.path));
+                    let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
+                    file_menu::wip_file_items(ui, msgs, f, snap.missing_from_workdir(&f.path), unstages);
                 });
             });
         }

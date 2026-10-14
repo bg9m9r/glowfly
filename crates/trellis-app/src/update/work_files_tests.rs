@@ -42,7 +42,7 @@ pub(super) fn rename_form(st: &AppState) -> &PathForm {
     }
 }
 
-fn last_log(st: &AppState) -> &str {
+pub(super) fn last_log(st: &AppState) -> &str {
     st.log.last().map(|l| l.text.as_str()).unwrap_or_default()
 }
 
@@ -131,7 +131,7 @@ fn rename_checks_the_target() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-fn confirm(st: &AppState) -> (&str, &str, &str, &Msg) {
+pub(super) fn confirm(st: &AppState) -> (&str, &str, &str, &Msg) {
     match &st.modal {
         Some(Modal::Confirm { title, body, button, then }) => (title, body, button, then),
         _ => panic!("expected the confirmation"),

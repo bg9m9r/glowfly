@@ -38,9 +38,22 @@ pub fn tracked(snap: &trellis_core::repo::Snapshot, path: &str) -> bool {
 }
 
 /// Whether `path` is staged as a new file (staged 'A'): not in the last commit, or there is no
-/// commit yet. Deleting it then also takes it out of the index.
+/// commit yet. Deleting it then also takes it out of the index. Staged renames are covered by
+/// `staged_rename`.
 pub fn staged_new(snap: &trellis_core::repo::Snapshot, path: &str) -> bool {
     snap.staged.iter().any(|f| f.path == path && f.status == 'A')
+}
+
+/// Whether `path` is the new path of a staged rename (staged 'R'). Status lists a staged rename
+/// once, on its new path; the path it was renamed from isn't listed.
+pub fn staged_rename(snap: &trellis_core::repo::Snapshot, path: &str) -> bool {
+    snap.staged.iter().any(|f| f.path == path && f.status == 'R')
+}
+
+/// Whether deleting `path` also takes it out of the index: it is staged as new or as a staged
+/// rename's new path.
+pub fn unstages_on_delete(snap: &trellis_core::repo::Snapshot, path: &str) -> bool {
+    staged_new(snap, path) || staged_rename(snap, path)
 }
 
 /// Whether status lists `path` (unstaged or staged) as a file that is still in the working tree,

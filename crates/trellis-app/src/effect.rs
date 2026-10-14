@@ -115,8 +115,12 @@ pub enum FileOp {
         stage: bool,
     },
     Delete(String),
-    /// Deletes a staged new file and removes its index entry.
+    /// Deletes a file staged as new, or the new path of a staged rename, and takes it out of the
+    /// index (a rename's source is unstaged too).
     UnstageDelete(String),
+    /// Takes a staged new file or staged rename's new path that is already gone from the working
+    /// tree out of the index; the working tree is not touched.
+    UnstageGone(String),
 }
 
 #[derive(Debug)]
@@ -188,7 +192,7 @@ pub enum Effect {
         overwrite: bool,
     },
     /// Creates, renames or deletes a working-tree file; the index is untouched, except for
-    /// UnstageDelete and a staged rename.
+    /// UnstageDelete, UnstageGone (index only) and a staged rename.
     WorkFile {
         workdir: PathBuf,
         op: FileOp,

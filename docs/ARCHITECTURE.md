@@ -30,9 +30,10 @@ crates/
                           and stage), template (commit.template: the prefill and its comment char),
                           workfile (creating, renaming and deleting a working-tree file; path
                           checks), workfile_mv (a rename staged through git mv), workfile_rm
-                          (deleting a staged new file with its index entry), noclobber (a
-                          move that never replaces an existing file), tracked (the paths in
-                          the index, for the palette's file finder)
+                          (deleting a staged new file or a staged rename's new path with its
+                          index entries, and unstaging one whose working copy is already
+                          gone), noclobber (a move that never replaces an existing file),
+                          tracked (the paths in the index, for the palette's file finder)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),

@@ -376,10 +376,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Rename tracked files with git mv so the rename is staged (option in the rename dialog, remembered)
   - [x] Unstage and delete a staged new file in one step (Delete… on a file staged as new asks
     once and also removes it from the index)
-    - [ ] The same for a staged rename (the old path's staged deletion would be left behind)
-    - [ ] Finish removing a staged new file whose working copy is already gone (Delete is
+    - [x] The same for a staged rename (the old path's staged deletion would be left behind)
+    - [x] Finish removing a staged new file whose working copy is already gone (Delete is
       disabled there)
-    - [ ] Label the item "Unstage and delete…" on rows whose path is staged as new
+    - [x] Label the item "Unstage and delete…" on rows whose path is staged as new
+    - [ ] Name a staged rename's source path in its confirmation and toast
+    - [ ] Keep the staged version recoverable so Unstage and delete can be undone
   - [ ] Open the newly created file in the editor or default app after creating it
   - [ ] Create a file from a template, or with initial contents
   - [ ] Rename or delete folders and submodules

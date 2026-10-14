@@ -1,11 +1,11 @@
 //! Creating, renaming and deleting working-tree files: the New file and Rename dialogs (checked
-//! against the snapshot before anything runs), the delete confirmations (a staged new file is
-//! also taken out of the index), and the results (a toast, the dialog's inline error, or a log
-//! line).
+//! against the snapshot before anything runs), the delete confirmations (a staged new file or a
+//! staged rename's new path is also taken out of the index, and one already gone from the working
+//! tree is only unstaged), and the results (a toast, the dialog's inline error, or a log line).
 
 use crate::effect::{Effect, FileOp};
 use crate::msg::Msg;
-use crate::state::files::{PathForm, listed, staged_new, tracked};
+use crate::state::files::{PathForm, listed, staged_rename, tracked, unstages_on_delete};
 use crate::state::{AppState, Modal};
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, PathProblem, check_new_path};
@@ -33,6 +33,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         Msg::DeleteStagedNewFile(path) => {
             if let Some(workdir) = st.workdir() {
                 fx.push(Effect::WorkFile { workdir, op: FileOp::UnstageDelete(path) });
+            }
+        }
+        Msg::UnstageGoneFile(path) => {
+            if let Some(workdir) = st.workdir() {
+                fx.push(Effect::WorkFile { workdir, op: FileOp::UnstageGone(path) });
             }
         }
         Msg::WorkFileDone { op, result } => {
@@ -82,6 +87,7 @@ fn success_text(op: &FileOp, ignored: bool) -> String {
         FileOp::Rename { from, to, stage: false } => format!("Renamed {from} to {to}."),
         FileOp::Delete(p) => format!("Deleted {p}."),
         FileOp::UnstageDelete(p) => return format!("Deleted {p} and removed it from the staging area."),
+        FileOp::UnstageGone(p) => return format!("Removed {p} from the staging area."),
     };
     if ignored {
         text.push_str(" Git ignores it, so it isn't listed with your changes.");
@@ -94,6 +100,7 @@ fn failure(op: &FileOp, e: &str) -> String {
         FileOp::Create(p) => format!("Could not create {p}: {e}"),
         FileOp::Rename { from, .. } => format!("Could not rename {from}: {e}"),
         FileOp::Delete(p) | FileOp::UnstageDelete(p) => format!("Could not delete {p}: {e}"),
+        FileOp::UnstageGone(p) => format!("Could not unstage {p}: {e}"),
     }
 }
 
@@ -104,7 +111,7 @@ fn succeeded(st: &mut AppState, op: &FileOp, ignored: bool, now: Instant) {
     st.toast(true, success_text(op, ignored), now);
     // The old path's working-tree diff is gone; don't leave it on screen.
     let old = match op {
-        FileOp::Rename { from, .. } | FileOp::Delete(from) | FileOp::UnstageDelete(from) => from,
+        FileOp::Rename { from, .. } | FileOp::Delete(from) | FileOp::UnstageDelete(from) | FileOp::UnstageGone(from) => from,
         FileOp::Create(_) => return,
     };
     if matches!(&st.diff, Some((DiffTarget::Unstaged(p) | DiffTarget::Staged(p), _)) if p == old) {
@@ -195,32 +202,23 @@ fn rename(st: &mut AppState, from: String, to: String, stage: bool, fx: &mut Vec
 }
 
 /// Opens the confirmation for deleting `path`, worded by what status says about it. Conflicted
-/// paths and files already gone from the working tree are refused instead. A file staged as new
-/// gets its own confirmation that also removes it from the index; the choice is made here and
-/// carried by the confirmation, so a refresh before it is accepted can't change what runs.
+/// paths are refused, and so are files already gone from the working tree unless they are staged
+/// as new or as a rename's new path. Those get their own confirmation that also takes them out of
+/// the index (only that, when the working copy is gone). The choice is made here and carried by
+/// the confirmation, so a refresh before it is accepted can't change what runs.
 fn ask_delete(st: &mut AppState, path: String) {
     let Some(snap) = &st.snap else { return };
     let unstaged = snap.unstaged.iter().find(|f| f.path == path);
     if unstaged.is_some_and(|f| f.status == '!') {
         return st.log(false, format!("Resolve the conflict in {path} before deleting it."));
     }
-    if snap.missing_from_workdir(&path) {
-        return st.log(false, format!("{path} is not in your working tree."));
-    }
-    if staged_new(snap, &path) {
-        let mut body = format!(
-            "{path} is a new file in the staging area. Deleting it also takes it out of the staging area, so it can't be brought back."
-        );
-        if unstaged.is_some() {
-            body.push_str(" Your unstaged edits to it are lost too.");
-        }
-        st.modal = Some(Modal::Confirm {
-            title: "Delete new file".into(),
-            body,
-            button: "Unstage and delete".into(),
-            then: Box::new(Msg::DeleteStagedNewFile(path)),
-        });
+    let gone = snap.missing_from_workdir(&path);
+    if unstages_on_delete(snap, &path) {
+        st.modal = Some(unstage_confirm(path.clone(), staged_rename(snap, &path), gone, unstaged.is_some()));
         return;
+    }
+    if gone {
+        return st.log(false, format!("{path} is not in your working tree."));
     }
     let body = match unstaged {
         Some(f) if f.status == '?' => format!("{path} isn't tracked by git, so deleting it can't be undone."),
@@ -238,4 +236,35 @@ fn ask_delete(st: &mut AppState, path: String) {
         button: "Delete".into(),
         then: Box::new(Msg::DeleteFile { path, confirmed: true }),
     });
+}
+
+/// The confirmation for `path`, staged as new or (`renamed`) as a staged rename's new path:
+/// unstage only when the working copy is `gone`, otherwise unstage and delete, warning about
+/// unstaged `edits`.
+fn unstage_confirm(path: String, renamed: bool, gone: bool, edits: bool) -> Modal {
+    if gone {
+        let body = if renamed {
+            format!(
+                "{path} is staged as a rename but is no longer in your working tree. This removes the rename from the staging area; the file it was renamed from shows as deleted in your working tree, and discarding that brings back its committed version."
+            )
+        } else {
+            format!(
+                "{path} is staged as a new file but is no longer in your working tree. This removes it from the staging area too, so its staged version can't be brought back."
+            )
+        };
+        let then = Box::new(Msg::UnstageGoneFile(path));
+        return Modal::Confirm { title: "Unstage deleted file".into(), body, button: "Unstage".into(), then };
+    }
+    let mut body = if renamed {
+        format!(
+            "{path} is staged as a rename. Deleting it also unstages the rename: the file it was renamed from stays deleted in your working tree as an unstaged change, and discarding that brings back its committed version. Staged changes to {path} can't be brought back."
+        )
+    } else {
+        format!("{path} is a new file in the staging area. Deleting it also takes it out of the staging area, so it can't be brought back.")
+    };
+    if edits {
+        body.push_str(" Your unstaged edits to it are lost too.");
+    }
+    let title = if renamed { "Delete renamed file" } else { "Delete new file" };
+    Modal::Confirm { title: title.into(), body, button: "Unstage and delete".into(), then: Box::new(Msg::DeleteStagedNewFile(path)) }
 }
