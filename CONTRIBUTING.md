@@ -33,9 +33,10 @@ Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before structural changes. The
 
 - Git, CLI and network code lives in `trellis-core`, which must not depend on egui.
 - New behaviour is a `Msg` handled in `update/<area>.rs`. Anything slow returns an `Effect` that
-  `runner.rs` executes in the background, reporting back with a result `Msg`. Test it with a
-  headless `update` test.
-- Views in `ui/` only draw and push `Msg`s; they do no I/O (`tests/layering.rs` checks this).
+  the runner (`runner/mod.rs`) executes in the background, reporting back with a result `Msg`.
+  Test it with a headless `update` test. The architecture document has a step-by-step recipe.
+- Views in `ui/` only draw and push `Msg`s. Views, `update/` and `state/` do no I/O
+  (`tests/layering.rs` checks this).
 - Keep files under about 400 lines; split by responsibility.
 - Operations that should honour the user's git config, hooks or credentials go through the git
   CLI (`gitcli`); everything else uses libgit2.

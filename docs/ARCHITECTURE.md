@@ -1,311 +1,71 @@
 # Trellis architecture
 
-Trellis is a native Git client (Rust, egui, libgit2). This document describes the target
-structure, the rules that keep it maintainable, and the migration from the original
-single-crate prototype.
+Trellis is a native Git client (Rust, egui, libgit2). This document describes its structure and
+the rules that keep it maintainable. Each module's `//!` comment says what it holds in more
+detail.
 
 ## Goals
 
 - **Small, focused files** (aim for < 400 lines) so a change, by a person or an AI, needs only
   the files for one area.
-- **Layers enforced by the compiler**: the UI cannot call git or HTTP directly, and core logic
-  cannot depend on egui.
+- **Layers enforced by the compiler and a test**: the UI cannot call git or HTTP directly, and
+  core logic cannot depend on egui.
 - **Testable without a window**: behavior lives in a pure `update` function; views get
   snapshot tests.
-- **One way to do background work.**
+- **One way to do background work**: an `Effect`, run by the runner.
 
 ## Layout
 
-```
-crates/
-  trellis-core/            library: no egui, no app state
-    repo/                 repository model on libgit2: types (mod.rs), load (history, refs,
-                          status), diff (details, comparisons between two commits, file
-                          diffs with optional whitespace filtering, line counts), history
-                          (commits that changed a file, following renames, and whether the
-                          path is on disk), index (staging),
-                          lines (partial patches for line staging), revert (a commit or
-                          comparison hunk's inverse applied to the working tree), restore (one
-                          file written from a commit, or its parent, into the working tree), conflict
-                          (reading an index conflict into chunks), resolve (picks, output, write
-                          and stage), template (commit.template: the prefill and its comment char),
-                          workfile (creating, renaming and deleting a working-tree file; path
-                          checks), workfile_mv (a rename staged through git mv), workfile_rm
-                          (deleting a staged new file or a staged rename's new path with its
-                          index entries, and unstaging one whose working copy is already
-                          gone), noclobber (a move that never replaces an existing file),
-                          removal (a deleted working copy goes to the OS trash through the
-                          `trash` crate, or is removed for good; links never go to the trash),
-                          tracked (the paths in the index, for the palette's file finder),
-                          attrs (gitattribute lookups: linguist-language), submodules (the
-                          index's submodules: recorded and checked-out commits, classified in
-                          sync / out of sync / dirty / uninitialized, and the commits on no
-                          branch or tag that updating would leave behind), worktrees (the main
-                          and linked worktrees: path, branch or detached HEAD, lock, missing),
-                          remotes (every configured remote's raw fetch and push URLs from git
-                          config, into Snapshot::remote_info)
-    gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
-                          passes the askpass environment to every git child once enabled
-    askpass/              credential prompts: prompt (classifying what git or ssh asks),
-                          protocol (the helper's JSON line protocol and token), server (the
-                          app's loopback listener), client (the helper's side)
-    branch_ops.rs         branch command lines (rename, upstream, fast-forward without
-                          checkout, push, delete with the remote branch), name checks,
-                          fast-forward state
-    tag_ops.rs            tag name checks (ref-format rules with a reason, existing and
-                          clashing tags), the tag and tag-push command lines, and deleting a
-                          tag from a remote
-    remote_ops.rs         adding, editing, fetching and removing a remote: name checks (ref-format
-                          rules with a reason, taken names compared case-insensitively), URL checks,
-                          the anchored old-URL pattern for `git remote set-url`, the add/edit/fetch/
-                          remove command lines (an edit runs only what changed) and URLs shown
-                          with their password hidden
-    worktree_ops.rs       creating, removing, locking and pruning worktrees: `git worktree add`
-                          command lines, the folder slug, folder checks (typed text, the disk,
-                          inside another worktree); worktree_ops/manage (remove/lock/unlock/
-                          prune command lines, git's refusal read without relying on English,
-                          the uncommitted-file count, and `remove`: lock and changes checked
-                          before git runs, the result judged by listing the worktrees again)
-    clone_ops.rs          clone command lines (full, or shallow by commit count or since a date,
-                          one branch, `--no-local` for folder sources), depth/date/branch checks
-                          and the folder name from a URL
-    lfs.rs                Git LFS: installed version, whether a repository is set up (hooks and
-                          filters, read without running git-lfs commands that write), tracked
-                          patterns parsed from .gitattributes, pattern checks and the LFS
-                          command lines; lfs/track.rs: what a file row can track (the file, its
-                          extension, its folder), the pattern each writes (glob characters
-                          made literal with character classes) and the root .gitattributes'
-                          patterns read into Snapshot::lfs_patterns during a full load
-    gitflow.rs            Git Flow with plain git: the gitflow.* config (read_config, read with
-                          libgit2 during load into Snapshot::gitflow), defaults, the branch plan
-                          and Initialize/Save command lines; gitflow/ checks (the settings
-                          form), start (Start's checks and command line), finish (which
-                          branches are flow branches, Finish's checks and its plan of merges,
-                          tag and delete), version (the next release or hotfix version from
-                          the tags)
-    terminal/             the built-in terminal: screen (the VT screen model as styled rows,
-                          answering cursor-position and status queries), keys (key and paste
-                          encoding), pty (shell choice and PTY sessions with reader and exit
-                          threads), queries (finding those queries in a shell's output)
-    rebase/               interactive rebase: types (mod.rs), plan (the commits to replay),
-                          todo (checking and writing the todo list, reword message files, and
-                          installing it over git's as the sequence-editor helper), run
-                          (`git rebase -i` with the prepared todo; where a stopped rebase is)
-    undo.rs               undo/redo of Trellis's own operations: records state around a job,
-                          plans the git commands that reverse it (checked against the repo)
-    graph.rs              lane layout for the commit graph
-    fuzzy.rs              fuzzy matching and ranking for the command palette (word starts,
-                          runs, hidden keywords)
-    diff_rows.rs          inline and side-by-side row layout of a diff
-    whole_file.rs         whole-file view: change blocks mapped onto hunks, folds of long
-                          unchanged runs (folds.rs), their rows, and mapping rows to lines
-                          so fold changes keep the view in place (anchor.rs)
-    conflict_rows.rs      row layout of the conflict view (aligned ours/theirs panes, output)
-    highlight.rs          syntax highlighting of diff lines (syntect), as token kinds:
-                          inline and background passes, hunks parsed in context from the
-                          old text (highlight/context.rs, parse.rs), reuse/carry in
-                          highlight/reuse.rs, the function context of hunk headers
-                          (highlight/header.rs), and the syntax set and scope rules
-                          (highlight/syntaxes.rs), dumped at build time by build.rs from
-                          the two-face set plus Trellis's own grammars in
-                          crates/trellis-core/syntaxes/; language overrides from the
-                          linguist-language gitattribute and the .jsx mapping
-                          (highlight/linguist.rs)
-    intraline.rs          word-level changes inside paired removed/added diff lines
-    tabs.rs               tab stops for drawing diff text (lines keep raw tabs), with a byte
-                          map so syntax spans and changed-word ranges follow the expansion
-    watch.rs              which file changes in a repository matter (status or full reload; a
-                          linked worktree added, removed, locked or moved to another HEAD reloads
-                          in full, but not the folder modifies its index writes cause), and a
-                          cache of folders .gitignore ignores
-    forge/                hosting services behind the `Forge` trait (github, gitlab,
-                          bitbucket, bitbucket_dc, azure, jira); model and trait in mod.rs,
-                          each provider's constants in one `ProviderInfo` (provider.rs), plus
-                          remote (URL detection), auth (credentials), refs (issue references),
-                          http, page (following list pages), publish (creating a repository)
-    settings.rs, dates.rs, spell.rs, signing.rs, avatars.rs (fetching); settings/graph_filter
-                          (hidden and soloed refs per repository)
-  trellis-app/             binary
-    state/                AppState (plain data), ForgeState, PrefsState, tabs (parked per-repo
-                          data for inactive tabs), undo (per-tab undo history), lines (diff
-                          line selection), conflict (the open conflict and its picks),
-                          history (the open file history), watch (what the file watcher
-                          follows), selection (several selected commits: Ctrl/Shift-click
-                          rules, cherry-pick checks), branches (why branch actions are blocked,
-                          push targets), rebase (the interactive rebase panel: the list being
-                          edited and the rules for starting it), askpass (credential
-                          prompts waiting for the user; global, not parked with a tab),
-                          diff_nav (next/previous change across files: the file list a
-                          diff came from, where a step lands), commit (the commit draft, its
-                          readiness rules, button label and command line), palette (open
-                          state and modes: the command list, a command's sub-list or a
-                          free-text step, ranked per query and capped at MAX_COMMAND_ROWS),
-                          palette_kinds (the palette's second steps: sub-lists for files and
-                          stashes, free-text steps, their prompts), palette_commands (the
-                          commands available now (checkouts of local and remote branches and
-                          tags): labels, hidden keywords, details and shortcut hints), files (the
-                          New file and Rename file dialogs' path form), tags (the New tag
-                          dialog's form, its name check and push remote; the remote tag job's
-                          labels, headlines and delete confirmation), terminal (the
-                          built-in terminal panel: one shell session per repository; global,
-                          not parked with a tab), submodules (status words, tooltips, why
-                          open/update/copy are blocked, the update confirmation, the update
-                          command), lfs (the Git LFS page: status, pattern buffer, push remote;
-                          whether git-lfs is installed; the file menu's Track in Git LFS
-                          entries and why each is disabled),
-                          gitflow (the Git Flow page's form, filled from the snapshot; the
-                          Start and Finish dialogs' forms; the running Finish job's steps),
-                          palette_gitflow (the palette's Git Flow entries),
-                          worktrees (the WORKTREES section's text, why opening is blocked, the
-                          Create worktree form and its folder and branch checks),
-                          worktree_manage (the Remove and Lock dialogs' forms, why removing,
-                          locking or pruning is blocked, the outcome messages), remotes (the
-                          Add/Edit remote form and its checks, the job for a submitted form, the
-                          Remove confirmation's text, row tooltips, why Fetch is blocked, the
-                          palette's Add remote… and Fetch <remote> entries), clone (the Clone
-                          dialog's form, its checks and the request it builds), view (which
-                          left-panel sections are open)
-    msg.rs                Msg: user intents and background results
-    keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
-                          the shortcut sheet, palette hints and tooltips
-    effect.rs             Effect: everything slow or outside the process
-    file_op.rs            FileOp (a working-tree file operation), DeleteMode (trash or
-                          permanent, fixed when the confirmation opens), WorkFileOk (its result)
-    lfs.rs                LfsMsg: the Git LFS preferences page's and the file menu's Track in
-                          Git LFS messages (one Msg variant)
-    gitflow.rs            GitFlowMsg: the Git Flow page's and Start and Finish dialogs' messages
-                          (one Msg variant)
-    terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
-                          and its shells' effects (one Msg and one Effect variant each)
-    submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
-    remote.rs             RemoteMsg: the REMOTE section's and the Add/Edit remote dialog's
-                          messages (one Msg variant)
-    tag.rs                TagMsg: the TAGS section's remote push and delete messages (one Msg
-                          variant)
-    worktree.rs           WorktreeMsg, NewWorktree and RemoveRequest: the WORKTREES section's,
-                          Create worktree dialog's and Remove/Lock dialogs' messages (one Msg
-                          variant), a create request and a remove request
-    runner/               executes effects on worker threads, reports back as Msg (mod.rs);
-                          names (each effect's short name for threads and logs);
-                          config (reading git config), rebase (loading and running an
-                          interactive rebase, with Trellis as the sequence editor), askpass
-                          (starting the credential-prompt listener, answering prompts), os
-                          (URLs, terminals, opening files and showing them in the file manager),
-                          files (creating, renaming and deleting a working-tree file; listing
-                          the tracked files), highlight.rs: load + decorate + background highlighting
-                          (a newer HighlightDiff cancels the older), terminal (one thread per
-                          shell session owning its PTY; Effect::Terminal is handled by
-                          Runner::run itself), submodules (reading one submodule again before
-                          its update is confirmed), worktrees (checking a new worktree's folder
-                          on disk; removing one, then `git branch -d` when asked, recorded for
-                          undo)
-    watcher.rs            notify watcher for the active tab's repository, debounced in its own
-                          thread, owned by the runner (Effect::Watch)
-    update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
-                          undo, diff, conflict, history, watch, selection (several commits:
-                          the two-commit comparison, cherry-picking them), branches (the local
-                          branch menu's operations), rebase (the interactive rebase panel and
-                          its job), graph_filter (hidden and soloed refs, saved per repository),
-                          askpass (queueing, answering and cancelling credential prompts; what a
-                          finished job clears), files (restoring a file from a commit, opening
-                          or showing a working-tree file; work_files: create, rename, delete,
-                          discard an untracked file; work_files_delete: the delete and discard
-                          confirmations, the permanent fallback when the trash refuses a file,
-                          the delete toasts),
-                          commit (committing, stage-all-and-commit, push after committing, the
-                          template prefill), palette (opening the command palette, moving,
-                          running a command, entering and leaving a sub-list and loading its
-                          items, stash sub-lists and the stash message step), highlight (starting the background highlighting pass,
-                          attaching its result if the same diff is still shown), tags
-                          (opening the New tag dialog, creating the tag and pushing it in
-                          one job, the push setting; the TAGS menu's push to and delete from
-                          remotes, checked again, as one job, with a headline naming the
-                          failing remote), shortcuts (checking and routing the
-                          staging, stage-all, focus-message and sheet keys), terminal (showing
-                          the panel, starting one shell per repository, input, resizing, output
-                          and exit; stopping a closed tab's shell), submodules (open in a
-                          tab, initialize/update as a job; out of sync reads the submodule again,
-                          then confirms, naming commits the update would leave behind), lfs (the
-                          Git LFS page: reading its status, Initialize, Track and Untrack, the LFS
-                          commands, reloading after a job and the pull offer after Initialize;
-                          the startup git-lfs check and the file menu's Track in Git LFS),
-                          gitflow (filling the Git Flow form and refilling it on new snapshots,
-                          Initialize/Save and Start as git jobs, the Start dialog's prefill),
-                          gitflow_finish (the Finish dialog's prefill, Finish as one git job,
-                          and its headline: the summary, or the step that stopped it and what
-                          is still to do),
-                          worktrees (open in a tab; Create worktree: the form checked again,
-                          the folder checked on disk, then `git worktree add` as a job),
-                          worktree_manage (Remove: checked again, run as Effect::RemoveWorktree,
-                          its outcome reported and the dialog reopened in force mode when
-                          needed; Lock, Unlock and Prune as git jobs), remotes (Add/Edit remote
-                          checked again against the current snapshot, Fetch one remote, Remove
-                          after a confirmation; all plain git jobs)
-                          (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
-                          update/terminal_tests.rs, update/submodule_tests.rs,
-                          update/lfs_tests.rs, update/lfs_track_tests.rs, update/gitflow_tests.rs,
-                          update/gitflow_finish_tests.rs,
-                          update/worktree_tests.rs, update/worktree_manage_tests.rs,
-                          update/remote_tests.rs, update/tag_remote_tests.rs,
-                          update/clone_tests.rs)
-    ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
-                          arrow keys), details, commit_box (the WIP commit message, options,
-                          button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
-                          inline, split, syntax, style: font, row height and gutters from
-                          Preferences > Editor),
-                          conflict, history, rebase/ (the interactive rebase panel; rows:
-                          actions, message editor, drag to reorder), modals, menus,
-                          branch_menu (local branch menu), branch_dialogs (rename, upstream),
-                          ref_visibility (hide/solo menu items, row markers and banner),
-                          file_menu (file actions in file rows' menus, commit and comparison
-                          rows included: restore, open, show, new file in this folder, rename,
-                          delete, the Track in Git LFS submenu), file_buttons (Restore / Open / Show buttons in the file
-                          history's selected-commit header and the commit diff header),
-                          file_dialogs (new file, rename file), tag_dialog (new tag,
-                          plain or annotated, name checks, push to a remote),
-                          askpass (the credential prompt, drawn above every other dialog),
-                          palette (the Ctrl+P command palette overlay),
-                          shortcuts/ (matching the newer keys from the table; sheet: the
-                          Ctrl+/ shortcut sheet), terminal/ (the built-in terminal panel:
-                          header, grid painting, egui input mapping, colours), submodules
-                          (the SUBMODULES section: rows, status markers, menu), worktrees (the
-                          WORKTREES section: rows, tooltip, row and header menus), worktree_dialog
-                          (Create worktree), worktree_manage_dialog (Remove worktree, Lock
-                          worktree), gitflow_dialog (the Git Flow Start dialog),
-                          gitflow_finish_dialog (the Git Flow Finish dialog), remotes/ (the
-                          REMOTE section: remote group rows, tooltips, header and row menus;
-                          dialog: Add/Edit remote),
-                          tags (the TAGS section: rows and row menu), clone_dialog (the Clone
-                          dialog with its shallow options),
-                          status, prefs/ (editor: the Editor page; lfs: the Git LFS page;
-                          gitflow: the Git Flow page),
-                          theme, widgets, icons (painting of the newer icons)
-                          (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
-                          snapshot_tests_select.rs, snapshot_tests_whole.rs,
-                          snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
-                          snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
-                          snapshot_tests_file_menu.rs, snapshot_tests_file_menu_lfs.rs,
-                          snapshot_tests_commit.rs,
-                          snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
-                          snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
-                          snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,
-                          snapshot_tests_submodules.rs, snapshot_tests_lfs.rs,
-                          snapshot_tests_gitflow.rs, snapshot_tests_worktrees.rs,
-                          snapshot_tests_worktree_manage.rs, snapshot_tests_remotes.rs,
-                          snapshot_tests_clone.rs)
-    platform.rs           OS integration (recent repos, terminal, file manager, showing a
-                          file selected in it)
-    main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead
-                          installs a prepared todo list for git (no window) and exits; with
-                          TRELLIS_ASKPASS set (or `--askpass <prompt>`) it is git's and ssh's
-                          askpass helper: asks the running app and prints the answer
-  trellis-app/tests/snapshots/   approved UI images
-  trellis-app/tests/layering.rs  fails if a view under ui/ does I/O itself (see Rules)
-  trellis-app/tests/sequence_editor.rs  runs a rebase with the built executable as the
-                                 sequence editor
-  trellis-app/tests/askpass.rs   runs the built executable as the askpass helper, alone and
-                                 under `git credential fill`
-```
+Two crates. `trellis-core` is a library with no egui and no app state. `trellis-app` is the
+binary (package `trellis`).
+
+### trellis-core (`crates/trellis-core/src/`)
+
+| Module | Holds |
+| --- | --- |
+| `repo/` | The repository model on libgit2: loading history, refs and status; diffs; staging, line staging, revert, restore; conflicts and their resolution; working-tree files; submodules, worktrees, remotes. |
+| `gitcli.rs` | The git CLI, for commands that honour hooks, credentials and signing. |
+| `askpass/` | Credential prompts: classifying git's and ssh's questions, the helper protocol, the app's listener and the helper's client. |
+| `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `worktree_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning and worktrees. |
+| `lfs.rs`, `lfs/` | Git LFS: install and setup state, tracked patterns, LFS command lines. |
+| `gitflow.rs`, `gitflow/` | Git Flow with plain git: config, checks, start and finish plans, versions. |
+| `rebase/` | Interactive rebase: the plan, the todo file, running `git rebase -i`. |
+| `undo.rs` | Undo and redo of Trellis's own operations. |
+| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`. |
+| `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
+| `graph.rs` | Lane layout for the commit graph. |
+| `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `tabs.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; tab stops. |
+| `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds. |
+| `watch.rs` | Which file changes in a repository matter. |
+| `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
+| `settings.rs`, `settings/` | Preferences and per-repository graph filters. |
+| `persist.rs` | Crash-safe writes of Trellis's own files. |
+| `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
+
+### trellis-app (`crates/trellis-app/src/`)
+
+| Module | Holds |
+| --- | --- |
+| `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`) and askpass helper. |
+| `msg.rs` | `Msg`: user intents and background results. |
+| `effect.rs` | `Effect`: everything slow or outside the process. |
+| `lfs.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `file_op.rs` | Per-area message and effect types (one `Msg` variant each). |
+| `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data. |
+| `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
+| `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |
+| `watcher.rs` | The file watcher for the active tab's repository, owned by the runner. |
+| `platform.rs` | OS integration: recent repositories, open tabs, terminals, the file manager. |
+| `keymap.rs` | The keyboard binding table, shared by shortcuts, the palette and tooltips. |
+| `ui/` | egui views, one file or folder per region, plus snapshot tests (`snapshot_tests*.rs`). `ui/mod.rs` is the shell: it owns the runner and dispatches messages. |
+
+### Tests outside `src/`
+
+| Path | Checks |
+| --- | --- |
+| `crates/trellis-app/tests/layering.rs` | No I/O in `ui/`, `update/` or `state/` (see Rules). |
+| `crates/trellis-app/tests/sequence_editor.rs` | A rebase with the built executable as the sequence editor. |
+| `crates/trellis-app/tests/askpass.rs` | The built executable as the askpass helper. |
+| `crates/trellis-app/tests/snapshots/` | Approved UI images. |
 
 ### Data flow (Elm-style)
 
@@ -315,39 +75,62 @@ crates/
        └─────────────── Msg::…Done(result) ◀── worker thread ◀─────────────┘
 ```
 
-- **Views** never mutate `AppState` directly, except transient widget buffers such as text
-  fields, and never call `trellis_core` operations that touch disk or network. They may use core
-  types and pure helpers. `tests/layering.rs` enforces this: it fails on threads, processes,
-  files, HTTP or the core functions that do I/O anywhere under `ui/` (the shell's startup in
-  `ui/mod.rs` and the snapshot tests are exempt). Avatars, for example, are requested by the
-  views, fetched through `Effect::FetchAvatars`, and turned into textures by the shell.
-- **`update`** is the only place state changes. It never blocks. Anything slow (git commands,
-  HTTP, large diffs) becomes an `Effect`.
-- **The runner** executes effects on a worker pool and sends results back as `Msg`s.
+- **Views** draw `AppState` and push `Msg`s. They change only text buffers and `view` state
+  (scroll, hover, open sections), never domain state such as the log, the selection or a form's
+  checks. They never touch disk, network, processes or the clock. They may use core types and
+  pure helpers. Avatars, for example, are requested by the views, fetched through
+  `Effect::FetchAvatars`, and turned into textures by the shell.
+- **`update`** is the only place domain state changes. It never blocks and does no I/O. Anything
+  slow or outside the process (git, HTTP, the file system) becomes an `Effect`.
+- **The runner** (`runner/mod.rs`) starts one worker thread per effect and sends the result back
+  as a `Msg`, waking the UI.
 - **Tabs**: the active tab's repository data lives directly in `AppState`; switching tabs parks
-  it in `state::tabs::Parked` and restores the other tab's (reordering moves parked data with
-  the tab; `active_tab` follows the active tab). Results of repository-scoped
-  effects (`Effect::scope`) come back as `Msg::Scoped` and are dropped if their tab is no
-  longer active; that tab refreshes when selected again.
+  it in `state::tabs::Parked` and restores the other tab's. Results of repository-scoped effects
+  (`Effect::scope`) come back as `Msg::Scoped` and are dropped if their tab is no longer active.
+  Paths are resolved on disk once, when a repository loads (`Snapshot::real_workdir`); `update`
+  compares them with the pure `state::tabs::same_path`.
 - **`AppState`** holds no egui types; textures and fonts live in a `UiCache` owned by the UI
   layer.
 
 ## Rules
 
 1. `trellis-core` must not depend on `eframe`/`egui`.
-2. New behavior gets an `update` test; new git or API logic gets a `trellis-core` test.
-3. New views get an `egui_kittest` snapshot when practical. Views read time from
+2. `ui/`, `update/` and `state/` do no I/O. `tests/layering.rs` denies whole families (the file
+   system, processes, network, threads, environment, clock, libgit2 access) and the core
+   functions that do I/O, and names the file and line of each use. The few justified exceptions
+   (the shell's startup in `ui/mod.rs`) are listed in its `ALLOWED` table with a reason.
+3. New behavior gets an `update` test; new git or API logic gets a `trellis-core` test.
+4. New views get an `egui_kittest` snapshot when practical. Views read time from
    `st.view.now` / `st.view.utc_offset` (never the system clock) so images are reproducible.
-4. No global mutable state; pass values in. The one exception is the active palette
+5. No global mutable state; pass values in. The one exception is the active palette
    (`ui::theme::color`): a thread-local flag the shell sets at the start of each frame, so
    renders on different threads (parallel snapshot tests) can't affect each other. Immutable
    data loaded once (the syntax definitions in `highlight/syntaxes.rs`) is not mutable state,
    and neither is the askpass environment in `gitcli` (`enable_askpass`): set once by the app
    shell at startup, never changed afterwards and never set in tests.
-5. Each hosting provider implements `Forge`; the UI never matches on provider-specific types.
-6. `scripts/check.ps1` (fmt, clippy -D warnings, tests) must pass before committing.
-7. `trellis-core` returns `trellis_core::error::Error` (typed, via `thiserror`); decide behaviour
+6. Each hosting provider implements `Forge`; the UI never matches on provider-specific types.
+7. `scripts/check.ps1` (fmt, clippy -D warnings, tests) must pass before committing.
+8. `trellis-core` returns `trellis_core::error::Error` (typed, via `thiserror`); decide behaviour
    from the variant (`is_auth()`, `is_not_found()`), never from message text.
+
+## Recipe: adding a feature
+
+1. **Message.** Add a `Msg` variant for the user's intent in `msg.rs`, or in the area's own
+   message enum (`lfs.rs`, `worktree.rs`, …) when the area has one.
+2. **Update.** Handle it in `update/<area>.rs` and route it from `update/mod.rs`. Change state
+   there. Keep pure rules (checks, labels, why something is blocked) in `state/<area>.rs`.
+3. **Effect.** If the work is slow or leaves the process, add an `Effect` variant in
+   `effect.rs` (and its name in `runner/names.rs`), and return it from `update`.
+4. **Runner.** Execute it in `runner/mod.rs`, or in `runner/<area>.rs` for more than a line.
+   The real work (git, files, HTTP) goes in `trellis-core`.
+5. **Result.** The runner sends a result `Msg` back. Handle it in the same `update` file. Drop
+   stale results: compare a generation number, or the request with what is still open.
+6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
+7. **Tests.** Write an `update` test (`update/<area>_tests.rs`). Add a core test on a fixture
+   repository (see `scratch_repo`) for new git logic, and an `egui_kittest` snapshot for a new
+   view.
+8. **Settings.** For a new preference, add a field with a default in `settings.rs`
+   (`#[serde(default)]`) and a control on the matching Preferences page (`ui/prefs/`).
 
 ## Migration status
 

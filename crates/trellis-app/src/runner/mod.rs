@@ -1,5 +1,11 @@
 //! Executes `Effect`s on worker threads and reports results as `Msg`s. This is the only place
 //! the app starts background work.
+//!
+//! `Runner::run` starts one named thread per effect. A few effects get special handling: the
+//! file watcher (`Effect::Watch`), credential-prompt answers and the terminal's shell sessions
+//! are run by the runner itself, and saves of Trellis's own files are kept in order (`saves`). Work longer than a line lives in this
+//! folder's per-area files (`files`, `worktrees`, `rebase`, `highlight`, …); the git, file and
+//! network code itself lives in `trellis-core`.
 
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, LocalOp, UndoResult};
 use crate::lfs::LfsMsg;

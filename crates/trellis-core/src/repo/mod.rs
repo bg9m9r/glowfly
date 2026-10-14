@@ -1,6 +1,12 @@
 //! Repository model built on libgit2.
 //! Reads (history, refs, status, diffs) and index/working-tree edits happen here; operations
 //! that should run hooks or talk to remotes go through `gitcli`.
+//!
+//! The types are here; the work is split by area: `load` (history, refs, status), `diff`,
+//! `history` (one file's commits), `index` and `lines` (staging, line staging), `revert`,
+//! `restore`, `conflict` and `resolve`, `template` (commit.template), `workfile`,
+//! `workfile_mv`, `workfile_rm`, `noclobber` and `removal` (working-tree files), `tracked`,
+//! `attrs` (gitattributes), `submodules`, `worktrees` and `remotes`.
 
 use crate::graph::Layout;
 use git2::{Oid, RepositoryState};
