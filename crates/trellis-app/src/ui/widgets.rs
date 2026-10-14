@@ -39,10 +39,15 @@ pub enum Icon {
     /// Show / hide a masked field's text.
     Eye,
     EyeOff,
+    /// A database cylinder: Git LFS storage (Preferences).
+    Storage,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
     let s = Stroke::new(1.8_f32, col);
+    if super::icons::paint(p, c, icon, s) {
+        return;
+    }
     let line = |a: Pos2, b: Pos2| p.line_segment([a, b], s);
     let arrow_down = |top: f32, bottom: f32| {
         line(pos2(c.x, top), pos2(c.x, bottom));
@@ -164,17 +169,6 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             line(pos2(c.x + 8.0, c.y - 8.0), pos2(c.x - 1.0, c.y + 1.0));
             p.circle_filled(pos2(c.x - 4.0, c.y + 4.0), 4.0, col);
         }
-        Icon::Eye | Icon::EyeOff => {
-            let (l, r) = (pos2(c.x - 8.0, c.y), pos2(c.x + 8.0, c.y));
-            for dy in [-7.0, 7.0] {
-                let lid = [l, pos2(c.x, c.y + dy), r];
-                p.add(egui::epaint::QuadraticBezierShape::from_points_stroke(lid, false, Color32::TRANSPARENT, s));
-            }
-            p.circle_stroke(c, 2.2, s);
-            if icon == Icon::EyeOff {
-                line(pos2(c.x - 7.0, c.y + 6.0), pos2(c.x + 7.0, c.y - 6.0));
-            }
-        }
         Icon::Key => {
             p.circle_stroke(pos2(c.x - 4.0, c.y), 4.0, s);
             line(pos2(c.x, c.y), pos2(c.x + 9.0, c.y));
@@ -183,13 +177,6 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         }
         Icon::Hook => {
             p.text(c, Align2::CENTER_CENTER, "{ }", FontId::monospace(13.0), col);
-        }
-        Icon::Code => {
-            line(pos2(c.x - 5.0, c.y - 5.0), pos2(c.x - 9.0, c.y));
-            line(pos2(c.x - 9.0, c.y), pos2(c.x - 5.0, c.y + 5.0));
-            line(pos2(c.x + 2.0, c.y - 7.0), pos2(c.x - 2.0, c.y + 7.0));
-            line(pos2(c.x + 5.0, c.y - 5.0), pos2(c.x + 9.0, c.y));
-            line(pos2(c.x + 9.0, c.y), pos2(c.x + 5.0, c.y + 5.0));
         }
         Icon::Back => {
             line(pos2(c.x + 7.0, c.y), pos2(c.x - 7.0, c.y));
@@ -207,6 +194,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             ];
             p.add(egui::Shape::closed_line(pts, s));
         }
+        Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage => {} // icons.rs
     }
 }
 

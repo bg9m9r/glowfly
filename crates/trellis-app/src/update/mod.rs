@@ -13,6 +13,7 @@ mod forge;
 mod graph_filter;
 mod highlight;
 mod history;
+mod lfs;
 mod ops;
 mod palette;
 mod prefs;
@@ -62,6 +63,8 @@ mod highlight_tests;
 mod history_tests;
 #[cfg(test)]
 mod language_override_tests;
+#[cfg(test)]
+mod lfs_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
@@ -341,6 +344,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
+        Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
     }
     fx
 }

@@ -84,7 +84,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | *Repo:* Commit | ✘ | Commit template, push after commit, skip hooks per repo |
 | *Repo:* Agents | — | Out of scope |
 | *Repo:* Conflict Prevention | ✘ | P1 Conflict prediction, with per-repo enable and target branch |
-| *Repo:* LFS | ✘ | P1 Git LFS |
+| *Repo:* LFS | ◐ Git LFS page | Track from the file menu, LFS-aware auto-fetch (P1 Git LFS) |
 | *Repo:* Sparse Checkout | ✘ | P1 Sparse checkout |
 | *Repo:* Issue Tracker | ✔ | — |
 | *Repo:* Team | — | Out of scope (cloud teams) |
@@ -609,6 +609,28 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Git LFS**
   Initialize, track patterns (file, extension, folder), fetch/pull/push/prune, view
   `.gitattributes`, and LFS-aware auto-fetch.
+  - [x] Preferences > Git LFS (repo-specific): status, Initialize, tracked patterns with Untrack
+    and a new-pattern field, Open .gitattributes, Fetch / Pull / Push / Prune / Checkout; palette
+    'Initialize Git LFS' and 'Configure Git LFS…'
+  - [ ] Track from a file's context menu: that one file (`git lfs track --filename`), all files
+    with its extension, or all files in its folder
+  - [ ] LFS-aware auto-fetch: fetch LFS objects for the checked-out commit after a background
+    fetch, and say so on the auto-fetch preference
+  - [ ] Honour smudge filters when restoring a file from a commit, by writing through
+    `git restore --source` so LFS files aren't left as pointers (the same item as under File
+    actions > Restore)
+  - [ ] When initializing fails because a non-LFS hook already exists, offer to merge or
+    overwrite it (`git lfs update --manual` / `--force`)
+  - [ ] Warn in the main window, not only on the page, when a repository tracks files in LFS but
+    git-lfs isn't installed
+  - [ ] Initialize with LFS when creating or cloning a repository
+  - [ ] File locking: lockable patterns (`track --lockable`), locking and unlocking files, and
+    showing who holds locks
+  - [ ] Read patterns from nested `.gitattributes` files and `.git/info/attributes`, and show
+    which file each pattern comes from
+  - [ ] Show LFS pointer files and LFS status in file lists and diffs (for example "stored in
+    LFS" instead of the pointer text)
+  - [ ] Check for a minimum git and git-lfs version and say clearly when either is too old
 - [ ] **Git Flow**
   Initialize with prefixes; start/finish feature, release and hotfix; a Git Flow panel; and
   "create Git Flow branch from issue".

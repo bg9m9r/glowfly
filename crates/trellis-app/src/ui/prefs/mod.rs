@@ -6,6 +6,7 @@ mod editor;
 mod general;
 mod git;
 mod integrations;
+mod lfs;
 mod signing;
 
 use super::theme::color;
@@ -77,6 +78,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         providers(ctx, st, msgs);
     }
 
+    let lfs_cx = lfs::LfsContext {
+        repo_name: repo_name.clone(),
+        remote: st.snap.as_ref().and_then(crate::state::lfs::lfs_remote),
+        job: st.job.as_ref().map(|j| j.label.clone()),
+    };
     let settings = &mut st.settings;
     let Some(prefs) = st.prefs.as_mut() else { return };
     let fs = st.forge.as_ref();
@@ -108,6 +114,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
                     PrefPage::Ui => appearance::ui_page(ui, settings, now),
                     PrefPage::Editor => editor::editor_page(ui, settings),
+                    PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     _ => {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {
@@ -154,6 +161,10 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
             go(ui, PrefPage::RepoIdentity, Icon::Identity, "Identity");
             go(ui, PrefPage::RepoHooks, Icon::Hook, "Git Hooks");
             go(ui, PrefPage::RepoTracker, Icon::Activity, "Issue Tracker");
+            // Not `go`: the page reads its status when it opens.
+            if widgets::nav_row(ui, Some(Icon::Storage), "Git LFS", page == PrefPage::RepoLfs, 15.0).clicked() {
+                msgs.push(Msg::Lfs(crate::lfs::LfsMsg::ShowPage));
+            }
         }
     });
 }

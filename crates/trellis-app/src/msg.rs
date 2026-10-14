@@ -390,6 +390,8 @@ pub enum Msg {
     },
 
     // ---- preferences
+    /// The Git LFS preferences page (lfs.rs).
+    Lfs(crate::lfs::LfsMsg),
     OpenPrefs(PrefPage),
     ClosePrefs,
     SelectIntegration(trellis_core::forge::Provider),

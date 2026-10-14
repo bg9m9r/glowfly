@@ -51,6 +51,10 @@ crates/
                           fast-forward state
     tag_ops.rs            tag name checks (ref-format rules with a reason, existing and
                           clashing tags) and the tag and tag-push command lines
+    lfs.rs                Git LFS: installed version, whether a repository is set up (hooks and
+                          filters, read without running git-lfs commands that write), tracked
+                          patterns parsed from .gitattributes, pattern checks and the LFS
+                          command lines
     terminal/             the built-in terminal: screen (the VT screen model as styled rows,
                           answering cursor-position and status queries), keys (key and paste
                           encoding), pty (shell choice and PTY sessions with reader and exit
@@ -114,17 +118,19 @@ crates/
                           built-in terminal panel: one shell session per repository; global,
                           not parked with a tab), submodules (status words, tooltips, why
                           open/update/copy are blocked, the update confirmation, the update
-                          command)
+                          command), lfs (the Git LFS page: status, pattern buffer, push remote)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
                           the shortcut sheet, palette hints and tooltips
     effect.rs             Effect: everything slow or outside the process
     file_op.rs            FileOp (a working-tree file operation), DeleteMode (trash or
                           permanent, fixed when the confirmation opens), WorkFileOk (its result)
+    lfs.rs                LfsMsg: the Git LFS preferences page's messages (one Msg variant)
     terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
                           and its shells' effects (one Msg and one Effect variant each)
     submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
+                          names (each effect's short name for threads and logs);
                           config (reading git config), rebase (loading and running an
                           interactive rebase, with Trellis as the sequence editor), askpass
                           (starting the credential-prompt listener, answering prompts), os
@@ -159,9 +165,12 @@ crates/
                           the panel, starting one shell per repository, input, resizing, output
                           and exit; stopping a closed tab's shell), submodules (open in a
                           tab, initialize/update as a job; out of sync reads the submodule again,
-                          then confirms, naming commits the update would leave behind)
+                          then confirms, naming commits the update would leave behind), lfs (the
+                          Git LFS page: reading its status, Initialize, Track and Untrack, the LFS
+                          commands, reloading after a job and the pull offer after Initialize)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
-                          update/terminal_tests.rs, update/submodule_tests.rs)
+                          update/terminal_tests.rs, update/submodule_tests.rs,
+                          update/lfs_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -183,7 +192,8 @@ crates/
                           Ctrl+/ shortcut sheet), terminal/ (the built-in terminal panel:
                           header, grid painting, egui input mapping, colours), submodules
                           (the SUBMODULES section: rows, status markers, menu),
-                          status, prefs/ (editor: the Editor page), theme, widgets
+                          status, prefs/ (editor: the Editor page; lfs: the Git LFS page),
+                          theme, widgets, icons (painting of the newer icons)
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
                           snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
@@ -192,7 +202,7 @@ crates/
                           snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
                           snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
                           snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,
-                          snapshot_tests_submodules.rs)
+                          snapshot_tests_submodules.rs, snapshot_tests_lfs.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

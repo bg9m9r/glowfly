@@ -15,6 +15,7 @@ pub enum PrefPage {
     RepoIdentity,
     RepoHooks,
     RepoTracker,
+    RepoLfs,
 }
 
 impl PrefPage {
@@ -29,6 +30,7 @@ impl PrefPage {
             PrefPage::RepoIdentity => "Identity",
             PrefPage::RepoHooks => "Git Hooks",
             PrefPage::RepoTracker => "Issue Tracker",
+            PrefPage::RepoLfs => "Git LFS",
         }
     }
 }
@@ -86,6 +88,7 @@ pub struct PrefsState {
     pub int_error: Option<String>,
     pub jira_project: String,
     pub signing: SigningState,
+    pub lfs: crate::state::lfs::LfsPage,
 }
 
 impl PrefsState {
@@ -101,6 +104,7 @@ impl PrefsState {
             int_error: None,
             jira_project: String::new(),
             signing: SigningState::default(),
+            lfs: Default::default(),
         }
     }
 }

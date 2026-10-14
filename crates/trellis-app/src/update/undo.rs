@@ -35,11 +35,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
 }
 
 /// Jobs that never move a local branch, HEAD, index or working tree, so the history stays
-/// valid: fetch, push, tag, clone, init, config, setting or unsetting a branch's upstream, and
+/// valid: fetch, push, tag, clone, init, config, setting or unsetting a branch's upstream,
 /// `submodule update` (it moves only the submodule's own checkout; the parent's HEAD, index and
-/// files stay put).
+/// files stay put), and the LFS commands that only touch hooks, config or the LFS store (install, fetch, push, prune).
 /// A fetch into the repository itself (`fetch . a:b`, a fast-forward without checkout) moves a
-/// branch, so it doesn't count.
+/// branch, so it doesn't count; LFS track, untrack, pull and checkout write working-tree files.
 pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
     cmds.iter().all(|c| {
         let a: Vec<&str> = c.iter().map(String::as_str).collect();
@@ -48,6 +48,7 @@ pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
             ["push" | "tag" | "clone" | "init" | "config", ..] => true,
             ["branch", "--unset-upstream", ..] => true,
             ["submodule", "update", ..] => true,
+            ["lfs", "install" | "fetch" | "push" | "prune", ..] => true,
             ["branch", flag, ..] => flag.starts_with("--set-upstream-to"),
             _ => false,
         }

@@ -9,6 +9,7 @@ pub mod diff_nav;
 pub mod files;
 mod forge;
 pub mod history;
+pub mod lfs;
 pub mod lines;
 pub mod palette;
 pub mod palette_commands;

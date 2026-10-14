@@ -14,6 +14,7 @@ pub mod gitcli;
 pub mod graph;
 pub mod highlight;
 pub mod intraline;
+pub mod lfs;
 pub mod rebase;
 pub mod repo;
 pub mod settings;

@@ -189,6 +189,11 @@ pub enum Effect {
         workdir: PathBuf,
         path: String,
     },
+    /// Git LFS status for the preferences page: installed version, set up or not, tracked patterns.
+    LoadLfs {
+        workdir: PathBuf,
+        generation: u64,
+    },
     /// The commits that changed `path`, examining at most `limit` commits.
     LoadFileHistory {
         workdir: PathBuf,
@@ -344,6 +349,7 @@ impl Effect {
             | Effect::LoadFileHistory { workdir, .. }
             | Effect::LoadTrackedPaths { workdir, .. }
             | Effect::CheckSubmodule { workdir, .. }
+            | Effect::LoadLfs { workdir, .. }
             | Effect::LoadRebasePlan { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::RevertHunk { workdir, .. }

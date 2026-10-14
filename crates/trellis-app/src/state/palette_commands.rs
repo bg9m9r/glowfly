@@ -53,6 +53,10 @@ pub enum PaletteCommand {
     /// Opens the Rename branch dialog for this (checked-out) branch.
     RenameBranch(String),
     SearchCommits,
+    /// Open the Git LFS page and set LFS up once its status shows that it can.
+    InitializeLfs,
+    /// Open Preferences on the Git LFS page.
+    ConfigureLfs,
     Refresh,
     OpenTerminal,
     /// Show or hide the built-in terminal panel.
@@ -244,6 +248,12 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if super::palette::can_pick_file(st) {
         out.push(entry(C::FileHistory, "File history…", "find open file path log"));
     }
+    out.push(entry(C::InitializeLfs, "Initialize Git LFS", "lfs large file storage setup install enable binary assets"));
+    out.push(entry(
+        C::ConfigureLfs,
+        "Configure Git LFS…",
+        "lfs large file storage track patterns gitattributes fetch pull push prune preferences settings",
+    ));
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));
     let toggle = if st.terminal.open { "Hide terminal panel" } else { "Show terminal panel" };

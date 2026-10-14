@@ -17,6 +17,7 @@ mod file_dialogs;
 mod file_menu;
 mod graph;
 mod history;
+mod icons;
 mod menus;
 mod modals;
 mod palette;
@@ -56,6 +57,8 @@ mod snapshot_tests_file_actions;
 mod snapshot_tests_file_dialogs;
 #[cfg(test)]
 mod snapshot_tests_file_menu;
+#[cfg(test)]
+mod snapshot_tests_lfs;
 #[cfg(test)]
 mod snapshot_tests_palette;
 #[cfg(test)]

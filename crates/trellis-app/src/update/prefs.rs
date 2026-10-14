@@ -2,7 +2,7 @@
 
 use crate::effect::Effect;
 use crate::msg::{FilePurpose, FolderPurpose, Msg};
-use crate::state::{AppState, Modal, PrefsState, host_text};
+use crate::state::{AppState, Modal, PrefPage, PrefsState, host_text};
 use std::time::Instant;
 use trellis_core::forge::Provider;
 use trellis_core::gitcli::args;
@@ -19,6 +19,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 prefs.jira_project = project;
             }
             st.prefs = Some(prefs);
+            if page == PrefPage::RepoLfs {
+                super::lfs::load(st, fx);
+            }
             // Start the Integrations page on the open repository's service.
             let provider = st.forge.as_ref().and_then(|f| f.host_provider()).unwrap_or(Provider::GitHub);
             select_integration(st, provider);

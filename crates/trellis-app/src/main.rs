@@ -9,6 +9,7 @@
 mod effect;
 mod file_op;
 mod keymap;
+mod lfs;
 mod msg;
 mod platform;
 mod runner;

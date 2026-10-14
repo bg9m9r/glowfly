@@ -171,6 +171,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             Msg::NewTag { at: at.to_string(), annotated }
         }
         C::RenameBranch(name) => Msg::RenameBranchDialog(name),
+        C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),
+        C::ConfigureLfs => Msg::OpenPrefs(PrefPage::RepoLfs),
         C::Refresh => Msg::Refresh,
         C::OpenTerminal => Msg::OpenTerminal,
         C::ToggleTerminal => Msg::Terminal(crate::terminal::TerminalMsg::Toggle),

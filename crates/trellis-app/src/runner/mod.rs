@@ -2,6 +2,7 @@
 //! the app starts background work.
 
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, LocalOp, UndoResult};
+use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use std::path::Path;
 use std::sync::Arc;
@@ -18,6 +19,7 @@ mod askpass;
 mod config;
 pub(crate) mod files;
 mod highlight;
+mod names;
 mod os;
 mod rebase;
 mod submodules;
@@ -64,7 +66,7 @@ impl<W: Waker + Clone> Runner<W> {
         };
         let tx = self.tx.clone();
         let waker = self.waker.clone();
-        let name = effect_name(&effect);
+        let name = names::effect_name(&effect);
         let epoch = &self.highlight_epoch;
         let ticket = matches!(effect, Effect::HighlightDiff { .. }).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
         let spawned = std::thread::Builder::new().name(format!("trellis-{name}")).spawn(move || {
@@ -79,57 +81,6 @@ impl<W: Waker + Clone> Runner<W> {
         if let Err(e) = spawned {
             tracing::error!("could not start a worker thread for {name}: {e}");
         }
-    }
-}
-
-fn effect_name(e: &Effect) -> &'static str {
-    match e {
-        Effect::LoadRepo { .. } => "load-repo",
-        Effect::LoadStatus { .. } => "load-status",
-        Effect::LoadDetail { .. } => "load-detail",
-        Effect::LoadCompare { .. } => "load-compare",
-        Effect::LoadDiff { .. } => "load-diff",
-        Effect::HighlightDiff { .. } => "highlight",
-        Effect::LoadConflict { .. } => "load-conflict",
-        Effect::LoadFileHistory { .. } => "file-history",
-        Effect::LocalOp { .. } => "local-op",
-        Effect::RevertHunk { .. } => "revert-hunk",
-        Effect::RestoreFile { .. } => "restore-file",
-        Effect::WorkFile { .. } => "work-file",
-        Effect::LoadTrackedPaths { .. } => "tracked-paths",
-        Effect::CheckSubmodule { .. } => "check-submodule",
-        Effect::RunGit { .. } => "git",
-        Effect::UndoRedo { .. } => "undo-redo",
-        Effect::LoadRebasePlan { .. } => "rebase-plan",
-        Effect::InteractiveRebase { .. } => "rebase",
-        Effect::Forge { .. } => "forge",
-        Effect::Connect { .. } => "connect",
-        Effect::RepoOwners { .. } => "repo-owners",
-        Effect::CreateRepo { .. } => "create-repo",
-        Effect::SaveToken { .. } => "save-token",
-        Effect::DeleteToken(_) => "delete-token",
-        Effect::ForgetCredentialManager { .. } => "forget-gcm",
-        Effect::Stats { .. } => "stats",
-        Effect::FetchAvatars(_) => "avatars",
-        Effect::ReadGitConfig { .. } => "read-config",
-        Effect::SetGitConfig { .. } => "set-config",
-        Effect::SaveSettings(_) => "save-settings",
-        Effect::SaveRecent(_) => "save-recent",
-        Effect::SaveTabs { .. } => "save-tabs",
-        Effect::OpenUrl(_) => "open-url",
-        Effect::OpenTerminal(_) => "open-terminal",
-        Effect::OpenFolder(_) => "open-folder",
-        Effect::OpenPath(_) => "open-path",
-        Effect::RevealPath(_) => "reveal-path",
-        Effect::PickFolder { .. } => "pick-folder",
-        Effect::PickFile { .. } => "pick-file",
-        Effect::ListSigningKeys { .. } => "list-keys",
-        Effect::GenerateGpgKey { .. } => "generate-key",
-        Effect::ExportPublicKey { .. } => "export-key",
-        Effect::Watch(_) => "watch",
-        Effect::AnswerPrompt { .. } => "answer-prompt",
-        Effect::Terminal(_) => "terminal",
-        Effect::Ui(_) => "ui",
     }
 }
 
@@ -196,6 +147,9 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
         Effect::CheckSubmodule { workdir, path } => Some(submodules::check(&workdir, path)),
+        Effect::LoadLfs { workdir, generation } => {
+            Some(Msg::Lfs(LfsMsg::Loaded { generation, result: trellis_core::lfs::status(&workdir).map_err(err) }))
+        }
         Effect::RunGit { cwd, cmds, write_file, record, prompts } => {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             let (ok, output) = run_git(&cwd, &cmds, write_file, prompts);

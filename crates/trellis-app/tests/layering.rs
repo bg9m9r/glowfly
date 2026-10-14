@@ -70,6 +70,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("askpass", &["start", "start_with", "ask", "ask_from_env"]),
     ("server", &["start", "start_with"]),
     ("pty", &["spawn", "default_shell"]),
+    ("lfs", &["status", "installed", "hook_state"]),
     (
         "platform",
         &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager", "reveal_in_file_manager"],
