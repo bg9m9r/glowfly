@@ -12,6 +12,11 @@ use std::time::Instant;
 use trellis_core::repo::{DiffTarget, HunkOp};
 
 pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mut Vec<Effect>) {
+    // Preferences and a credential prompt cover the main window: only the sheet toggle (which
+    // checks for itself) gets through, whatever the key matching let past.
+    if action != KeyAction::ToggleSheet && (st.prefs.is_some() || st.askpass.showing()) {
+        return;
+    }
     let msg = match action {
         KeyAction::Stage => stage_msg(st, true),
         KeyAction::Unstage => stage_msg(st, false),
@@ -33,9 +38,9 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
 
 /// What S (`stage`) or U does on the open diff: the selected lines when the selection is
 /// visible, else the whole file. Nothing on a diff of the other side, a commit or comparison
-/// diff, a conflicted file, or under the conflict view, the file history or Preferences.
+/// diff, a conflicted file, or under the conflict view or the file history.
 fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
-    if st.prefs.is_some() || st.conflict.is_some() || st.history.is_some() {
+    if st.conflict.is_some() || st.history.is_some() {
         return None;
     }
     let (target, _) = st.diff.as_ref()?;
@@ -56,7 +61,7 @@ fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
 /// Selects the WIP panel (when a repository is open) and has the commit box focus its summary
 /// on the next frame.
 fn focus_message(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
-    if st.snap.is_none() || st.prefs.is_some() {
+    if st.snap.is_none() {
         return;
     }
     if st.selection != Selection::Wip {

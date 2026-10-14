@@ -143,6 +143,34 @@ fn stage_and_unstage_all_need_files() {
 }
 
 #[test]
+fn only_the_sheet_key_works_under_preferences_or_a_credential_prompt() {
+    let (mut st, dir) = with_repo("keys-covered", unstaged());
+    let snap = st.snap.as_mut().unwrap();
+    snap.staged = snap.unstaged.clone();
+    let quiet = |st: &mut AppState, what: &str| {
+        st.diff = Some((unstaged(), one_hunk()));
+        for a in [KeyAction::Stage, KeyAction::StageAll, KeyAction::UnstageAll, KeyAction::FocusMessage] {
+            assert!(key(st, a).is_empty(), "{a:?} under {what}");
+        }
+        st.diff = Some((staged(), one_hunk()));
+        assert!(key(st, KeyAction::Unstage).is_empty(), "Unstage under {what}");
+        assert!(!st.view.focus_message, "FocusMessage under {what}");
+        assert_eq!(st.selection, Selection::None, "FocusMessage under {what}");
+    };
+    st.prefs = Some(PrefsState::new(PrefPage::General));
+    quiet(&mut st, "Preferences");
+    st.prefs = None;
+    update(&mut st, Msg::CredentialPrompt { id: 1, prompt: Prompt::new("Password: ", None) }, Instant::now());
+    assert!(st.askpass.showing());
+    quiet(&mut st, "a credential prompt");
+
+    st.askpass.queue.clear();
+    assert_eq!(op(&key(&mut st, KeyAction::StageAll)), Some(&LocalOp::StageAll), "works again once it's gone");
+    assert!(st.log.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn focus_message_selects_the_wip_panel() {
     let (mut st, dir) = with_repo("keys-focus", unstaged());
     st.selection = Selection::Commit(git2::Oid::zero());

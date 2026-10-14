@@ -1,12 +1,14 @@
 //! Matching the newer keys: which presses become `Msg::Shortcut`, and when nothing does
-//! (dialogs, the palette, a focused text field).
+//! (dialogs, the palette, Preferences, a credential prompt, a focused text field).
 
 use crate::keymap::KeyAction;
 use crate::msg::Msg;
-use crate::state::{AppState, Modal};
+use crate::state::askpass::PendingPrompt;
+use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use std::time::Instant;
+use trellis_core::askpass::Prompt;
 use trellis_core::repo::{DiffTarget, FileDiff};
 use trellis_core::settings::Settings;
 
@@ -106,6 +108,37 @@ fn nothing_under_dialogs_or_the_palette() {
     assert_eq!(press(&mut h, Modifiers::NONE, Key::S), []);
     assert_eq!(press(&mut h, CMD_SHIFT, Key::M), []);
     assert_eq!(press(&mut h, Modifiers::COMMAND, Key::Slash), [KeyAction::ToggleSheet], "closes the sheet");
+}
+
+/// Every newer key, on a working-tree diff with files to stage, gives nothing.
+fn all_quiet(st: AppState, what: &str) {
+    let mut h = harness(st, false);
+    for (mods, key) in [
+        (Modifiers::NONE, Key::S),
+        (Modifiers::NONE, Key::U),
+        (CMD_SHIFT, Key::S),
+        (CMD_SHIFT, Key::U),
+        (CMD_SHIFT, Key::M),
+        (Modifiers::COMMAND, Key::Slash),
+    ] {
+        assert_eq!(press(&mut h, mods, key), [], "{mods:?} {key:?} under {what}");
+    }
+}
+
+#[test]
+fn nothing_under_preferences_or_a_credential_prompt() {
+    let mut st = unstaged();
+    st.prefs = Some(PrefsState::new(PrefPage::General));
+    all_quiet(st, "Preferences");
+
+    let mut st = unstaged();
+    let prompt = PendingPrompt { id: 1, prompt: Prompt::new("Password: ", None), retry: false, rejected_before: false };
+    st.askpass.queue.push_back(prompt);
+    all_quiet(st, "a credential prompt");
+
+    let st = diff(DiffTarget::Staged("f.txt".into()));
+    let mut h = harness(st, false);
+    assert_eq!(press(&mut h, Modifiers::NONE, Key::U), [KeyAction::Unstage], "U works with nothing in the way");
 }
 
 #[test]
