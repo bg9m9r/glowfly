@@ -37,6 +37,10 @@ pub mod color {
         /// Selected lines (line-level staging): stronger than `diff_add` / `diff_del`.
         pub diff_add_sel: Color32,
         pub diff_del_sel: Color32,
+        /// Changed words inside paired -/+ lines: a step stronger than `diff_*_sel`; text stays
+        /// >= 4.5:1 and every `syn_*` >= 2.4:1 on them.
+        pub diff_add_word: Color32,
+        pub diff_del_word: Color32,
         pub hunk_bg: Color32,
         pub hunk_fg: Color32,
         pub banner: Color32,
@@ -47,8 +51,8 @@ pub mod color {
         pub danger_off: Color32,
         pub tag_bg: Color32,
         pub tag_fg: Color32,
-        /// Syntax colors for diff text; each stays readable on `panel`, `diff_add` and
-        /// `diff_del`.
+        /// Syntax colors for diff text; each stays readable on `panel`, `diff_add`, `diff_del`,
+        /// `diff_add_word` and `diff_del_word`.
         pub syn_comment: Color32,
         pub syn_string: Color32,
         pub syn_number: Color32,
@@ -85,6 +89,8 @@ pub mod color {
         diff_del: rgb(0x45, 0x21, 0x24),
         diff_add_sel: rgb(0x2a, 0x5c, 0x3a),
         diff_del_sel: rgb(0x6a, 0x2c, 0x31),
+        diff_add_word: rgb(0x2c, 0x62, 0x3d),
+        diff_del_word: rgb(0x76, 0x30, 0x3a),
         hunk_bg: rgb(0x26, 0x2d, 0x3a),
         hunk_fg: rgb(0x8a, 0xa8, 0xd8),
         banner: rgb(0x4a, 0x38, 0x12),
@@ -127,6 +133,8 @@ pub mod color {
         diff_del: rgb(0xfb, 0xe6, 0xe6),
         diff_add_sel: rgb(0xb8, 0xe6, 0xc1),
         diff_del_sel: rgb(0xf5, 0xc2, 0xc2),
+        diff_add_word: rgb(0xa8, 0xdf, 0xb4),
+        diff_del_word: rgb(0xf2, 0xb4, 0xb4),
         hunk_bg: rgb(0xe6, 0xee, 0xf8),
         hunk_fg: rgb(0x2a, 0x55, 0x96),
         banner: rgb(0xfb, 0xec, 0xc8),
@@ -188,6 +196,8 @@ pub mod color {
         diff_del,
         diff_add_sel,
         diff_del_sel,
+        diff_add_word,
+        diff_del_word,
         hunk_bg,
         hunk_fg,
         banner,

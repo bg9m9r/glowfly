@@ -36,8 +36,10 @@ fn each_tab_keeps_its_own_repository_and_draft() {
     assert_eq!(st.tabs.len(), 1, "the empty start tab is reused");
     st.draft.summary = "work in a".into();
     // A's open diff, scrolled down a few rows.
-    st.diff =
-        Some((DiffTarget::Unstaged("a.txt".into()), trellis_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None }));
+    st.diff = Some((
+        DiffTarget::Unstaged("a.txt".into()),
+        trellis_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default() },
+    ));
     st.view.diff_top_row = 6;
 
     let b = scratch_repo("tabs-own-b");

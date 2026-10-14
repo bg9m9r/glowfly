@@ -9,6 +9,7 @@ pub mod forge;
 pub mod gitcli;
 pub mod graph;
 pub mod highlight;
+pub mod intraline;
 pub mod repo;
 pub mod settings;
 pub mod signing;

@@ -6,9 +6,13 @@ use super::{DiffView, ROW_H, hunk_header, line_click, mono, paint_mark};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, FontId, Rect, Sense, Stroke, Ui, pos2, vec2};
+use std::ops::Range;
 use trellis_core::diff_rows::{SplitRow, split_rows};
 use trellis_core::highlight::Span;
 use trellis_core::repo::DiffLine;
+
+/// A line with its syntax spans and changed-word ranges.
+type CellLine<'a> = (&'a DiffLine, &'a [Span], &'a [Range<u32>]);
 
 #[derive(Clone, Copy, PartialEq, Hash)]
 enum Side {
@@ -57,7 +61,7 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
                         let resp = ui.interact(r, ui.id().with(("diff-cell", hunk, idx, side)), Sense::click());
                         line_click(ui, &resp, hunk, idx, origin, msgs)
                     };
-                    cell(ui, r, Some((dl, spans(idx))), side, &mono, selected);
+                    cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, &mono, selected);
                     paint_mark(ui, r, selected, hovered);
                 }
                 ui.painter().vline(left.right(), rect.y_range(), Stroke::new(1.0_f32, color::border()));
@@ -67,11 +71,11 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
 }
 
 /// One side of a row: background, line number, sign and text, clipped to the column so long
-/// lines never draw into the other side. `line` comes with its syntax spans; `None` is an
-/// empty cell. `selected` cells get the stronger background.
-fn cell(ui: &Ui, rect: Rect, line: Option<(&DiffLine, &[Span])>, side: Side, mono: &FontId, selected: bool) {
+/// lines never draw into the other side. `line` comes with its syntax spans and changed-word
+/// ranges; `None` is an empty cell. `selected` cells get the stronger background.
+fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, mono: &FontId, selected: bool) {
     let p = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
-    let Some((dl, spans)) = line else {
+    let Some((dl, spans, words)) = line else {
         p.rect_filled(rect, 0.0, color::panel());
         return;
     };
@@ -92,5 +96,10 @@ fn cell(ui: &Ui, rect: Rect, line: Option<(&DiffLine, &[Span])>, side: Side, mon
     let number = number.map(|n| n.to_string()).unwrap_or_default();
     p.text(pos2(rect.left() + 40.0, y), Align2::RIGHT_CENTER, number, mono.clone(), color::faint());
     p.text(pos2(rect.left() + 48.0, y), Align2::LEFT_CENTER, sign, mono.clone(), fg);
-    paint_code(&p, pos2(rect.left() + 62.0, y), &dl.text, spans, mono, fg);
+    let marks = match (dl.origin, side) {
+        ('-', Side::Old) => Some((words, color::diff_del_word())),
+        ('+', Side::New) => Some((words, color::diff_add_word())),
+        _ => None,
+    };
+    paint_code(&p, pos2(rect.left() + 62.0, y), &dl.text, spans, marks, mono, fg);
 }

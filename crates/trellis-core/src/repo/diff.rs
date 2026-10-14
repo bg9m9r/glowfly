@@ -74,8 +74,8 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     })
 }
 
-/// One file's hunks. Git only: `highlight` is left `None` for the caller to fill in with
-/// `highlight::highlight_diff`.
+/// One file's hunks. Git only: `highlight` and `intraline` are left empty for the caller to
+/// fill in with `highlight::highlight_diff` and `intraline::intraline`.
 pub fn load_diff(workdir: &Path, target: &DiffTarget) -> Result<FileDiff> {
     let repo = Repository::open(workdir)?;
     let path = target.path();
@@ -84,7 +84,7 @@ pub fn load_diff(workdir: &Path, target: &DiffTarget) -> Result<FileDiff> {
         DiffTarget::Unstaged(p) => repo.diff_index_to_workdir(None, Some(&mut workdir_opts(p)))?,
         DiffTarget::Staged(p) => repo.diff_tree_to_index(head_tree(&repo).as_ref(), None, Some(&mut path_opts(p)))?,
     };
-    let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None };
+    let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default() };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
         return Ok(out);

@@ -131,7 +131,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Color the function context after `@@` in hunk headers
     - [ ] A command or shortcut for the toggle (it moves with the Editor preferences page)
     - [ ] User-selectable syntax color themes beyond the dark and light palettes
-  - [ ] Word-level intraline highlights
+  - [x] Word-level intraline highlights
+    - [ ] A preference to turn them off (with the Editor preferences page)
+    - [ ] Pair removed and added lines by similarity instead of by position
   - [ ] Ignore leading/trailing whitespace: hunk stage/discard must then be disabled or mapped
     back to the unfiltered diff, since `apply_hunk` counts the unfiltered hunks
   - [ ] Word wrap toggle (header and editor preference); needs rows of varying height

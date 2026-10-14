@@ -47,7 +47,12 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
                     ('<' | '>' | '=', _) | (_, None) => &[],
                     (_, Some(h)) => h.line(hunk, line),
                 };
-                paint_code(p, pos2(rect.left() + 110.0, y), &dl.text, spans, &mono, fg);
+                let marks = match dl.origin {
+                    '-' => Some((diff.intraline.line(hunk, line), color::diff_del_word())),
+                    '+' => Some((diff.intraline.line(hunk, line), color::diff_add_word())),
+                    _ => None,
+                };
+                paint_code(p, pos2(rect.left() + 110.0, y), &dl.text, spans, marks, &mono, fg);
                 paint_mark(ui, rect, selected, hovered);
             }
         }

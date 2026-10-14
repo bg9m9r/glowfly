@@ -19,7 +19,7 @@ fn three_hunks() -> FileDiff {
         Hunk { header: "@@ -9,3 +9,2 @@".into(), lines: vec![line('-', "d"), line('-', "e"), line('-', "f"), line('+', "g")] },
         Hunk { header: "@@ -20 +19,2 @@".into(), lines: vec![line('+', "h"), line('+', "i")] },
     ];
-    FileDiff { binary: false, hunks, highlight: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default() }
 }
 
 fn with_diff() -> AppState {
@@ -151,6 +151,12 @@ fn diffs_arrive_highlighted_including_reloads() {
     let hl = d.highlight.as_ref().expect("highlighted on load");
     assert_eq!(hl.syntax, "Rust");
     assert_eq!(hl.hunk_lens(), shape(d));
+    // `let x = 1;` became `let x = 2; // two`: the pair arrives with word marks.
+    let marked = |d: &FileDiff, h: usize, origin: char| {
+        d.hunks[h].lines.iter().enumerate().any(|(l, dl)| dl.origin == origin && !d.intraline.line(h, l).is_empty())
+    };
+    assert!(marked(d, 0, '-') && marked(d, 0, '+'), "word marks on load");
+    assert_eq!(d.intraline.hunk_lens(), shape(d));
 
     // Staging the first hunk reloads the diff with the second one left. The reload hands the
     // diff on screen to the runner so the unchanged hunk keeps its colors, and arrives colored.
@@ -165,6 +171,8 @@ fn diffs_arrive_highlighted_including_reloads() {
     let (_, d) = st.diff.as_ref().expect("the second hunk is still unstaged");
     assert_eq!(d.hunks.len(), 1);
     assert_eq!(d.highlight.as_ref().map(|h| h.hunk_lens()), Some(shape(d)), "the reload comes highlighted");
+    assert!(marked(d, 0, '+'), "the reload comes with word marks for `let y = \"why\"`");
+    assert_eq!(d.intraline.hunk_lens(), shape(d));
 
     drive(&mut st, Msg::OpenDiff(DiffTarget::Staged("main.rs".into())));
     let (target, d) = st.diff.as_ref().expect("staged diff open");

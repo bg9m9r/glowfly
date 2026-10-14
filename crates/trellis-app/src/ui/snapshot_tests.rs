@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::gitcli::{args, run_with_input};
 use trellis_core::highlight;
+use trellis_core::intraline;
 use trellis_core::repo::{self, DiffTarget, LoadOptions};
 use trellis_core::settings::{DiffLayout, Settings, ThemeChoice};
 use trellis_core::spell::Speller;
@@ -131,7 +132,8 @@ fn with_diff(layout: DiffLayout, name: &str) -> (AppState, PathBuf) {
     std::fs::write(dir.join("app.txt"), "app\nfixed build\nnew line\n").unwrap();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap()); // lists app.txt as changed
     let target = DiffTarget::Unstaged("app.txt".into());
-    let diff = repo::load_diff(&dir, &target).unwrap();
+    let mut diff = repo::load_diff(&dir, &target).unwrap();
+    diff.intraline = intraline::intraline(&diff);
     st.diff = Some((target, diff));
     st.settings.diff_layout = layout;
     (st, dir)
@@ -194,6 +196,7 @@ fn main() {
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     assert!(diff.highlight.is_some(), "main.rs is highlighted as Rust");
+    diff.intraline = intraline::intraline(&diff);
     st.diff = Some((target, diff));
     st.settings.diff_layout = layout;
     (st, dir)
@@ -206,6 +209,42 @@ fn diff_syntax_highlighting() {
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
     let (st, dir) = with_rust_diff(DiffLayout::Split, ThemeChoice::Light);
     render("diff_syntax_split_light", st, false);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+/// A one-word edit in a Rust file, highlighted and word-marked as the runner does.
+fn with_word_diff(layout: DiffLayout, theme: ThemeChoice) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_repo(theme, &format!("diff-words-{layout:?}"));
+    let before = "fn total(price: u32, quantity: u32) -> u32 {
+    let total = price * quantity;
+    total
+}
+";
+    std::fs::write(dir.join("words.rs"), before).unwrap();
+    let d = "2026-01-11T10:00:00+00:00";
+    git(&dir, &["add", "words.rs"], d);
+    git(&dir, &["commit", "-q", "-m", "Add words.rs"], d);
+    std::fs::write(dir.join("words.rs"), before.replace("price * quantity;", "price * count;")).unwrap();
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    let target = DiffTarget::Unstaged("words.rs".into());
+    let mut diff = repo::load_diff(&dir, &target).unwrap();
+    diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
+    diff.intraline = intraline::intraline(&diff);
+    st.diff = Some((target, diff));
+    st.settings.diff_layout = layout;
+    (st, dir)
+}
+
+#[test]
+fn diff_word_highlights() {
+    let (st, dir) = with_word_diff(DiffLayout::Inline, ThemeChoice::Dark);
+    let d = &st.diff.as_ref().unwrap().1;
+    let marked = d.hunks[0].lines.iter().enumerate().filter(|(l, _)| !d.intraline.line(0, *l).is_empty()).count();
+    assert_eq!(marked, 2, "the -/+ pair is marked");
+    render("diff_words_inline", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+    let (st, dir) = with_word_diff(DiffLayout::Split, ThemeChoice::Light);
+    render("diff_words_split_light", st, false);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 

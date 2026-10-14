@@ -171,6 +171,8 @@ pub struct FileDiff {
     pub hunks: Vec<Hunk>,
     /// Filled in by `highlight::highlight_diff`; `None` means plain.
     pub highlight: Option<crate::highlight::DiffHighlight>,
+    /// Filled in by `intraline::intraline`; empty means no word marks.
+    pub intraline: crate::intraline::Intraline,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]

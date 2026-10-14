@@ -10,6 +10,7 @@ use trellis_core::avatars;
 use trellis_core::forge::{self, Auth};
 use trellis_core::gitcli::{self, args};
 use trellis_core::highlight;
+use trellis_core::intraline;
 use trellis_core::repo;
 use trellis_core::signing::{self, SigningFormat};
 use trellis_core::undo::{self, Action, Plan};
@@ -118,8 +119,12 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             let result = repo::load_diff(&workdir, &target)
                 .map(|mut d| {
                     d.highlight = highlight::highlight_diff(target.path(), &d, previous.as_ref());
+                    d.intraline = intraline::intraline(&d);
                     let syntax = d.highlight.as_ref().map_or("plain", |h| h.syntax.as_str());
-                    tracing::debug!(path = target.path(), syntax, "diff highlighted");
+                    let marked = (0..d.hunks.len())
+                        .map(|h| (0..d.hunks[h].lines.len()).filter(|&l| !d.intraline.line(h, l).is_empty()).count())
+                        .sum::<usize>();
+                    tracing::debug!(path = target.path(), syntax, marked, "diff highlighted");
                     d
                 })
                 .map_err(err);

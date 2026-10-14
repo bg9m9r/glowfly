@@ -28,6 +28,7 @@ crates/
     graph.rs              lane layout for the commit graph
     diff_rows.rs          inline and side-by-side row layout of a diff
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds
+    intraline.rs          word-level changes inside paired removed/added diff lines
     forge/                hosting services behind the `Forge` trait (github, gitlab,
                           bitbucket, azure, jira); model and trait in mod.rs, plus remote
                           (URL detection), auth (credentials), refs (issue references), http,
