@@ -272,8 +272,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   `SSH_ASKPASS`) that shows an in-app dialog.
 - [x] **Branch operations**
   From the local branch menu: rename, set and unset the upstream (also to a branch not on the
-  remote yet), fast-forward without checkout, delete local + remote in one step (undo restores
-  the local branch), push any branch to its upstream, push to a chosen remote.
+  remote yet), fast-forward without checkout, delete local + remote in one step when the
+  checked-out branch contains it (undo restores the local branch), push any branch to its
+  upstream, push to a chosen remote.
   - [ ] Pin a branch to the left (graph lane order, per-repo persistence, jump to the pinned branch)
   - [ ] Force push (with lease) of a non-HEAD branch, and push to all remotes
   - [ ] Rename the remote branch too when renaming (push the new name, delete the old one,
@@ -282,7 +283,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] The same operations from the graph's BRANCH/TAG labels and the remote branch menu
     (e.g. fast-forward a local branch from its remote row)
   - [ ] Rename a branch from a command palette or shortcut
-  - [ ] Delete local + remote when the branch isn't merged (force), in one step
+  - [ ] Delete local + remote when the branch isn't merged into HEAD (force), in one step
 - [ ] **Hide / solo branches in the graph**
   Hide or show refs and solo one branch. The core already supports it (`LoadOptions.hidden` and
   `solo`); this needs the menus, a way to unhide, and per-repo persistence.

@@ -15,6 +15,7 @@ fn branch(name: &str, ahead: usize, behind: usize, tracked: bool, upstream: bool
         behind,
         tracking: tracked.then(|| Tracking { remote: "origin".into(), merge: name.into() }),
         upstream_ref: upstream.then(|| format!("refs/remotes/origin/{name}")),
+        merged: true,
     }
 }
 
@@ -63,7 +64,14 @@ fn command_builders() {
         vec![args(&["config", "branch.a.remote", "origin"]), args(&["config", "branch.a.merge", "refs/heads/b"])]
     );
     let t = Tracking { remote: "origin".into(), merge: "other".into() };
-    assert_eq!(delete_with_remote_cmds("a", &t), vec![args(&["branch", "-d", "a"]), args(&["push", "origin", "--delete", "other"])]);
+    assert_eq!(
+        delete_with_remote_cmds("a", &t),
+        vec![
+            args(&["merge-base", "--is-ancestor", "refs/heads/a", "HEAD"]),
+            args(&["branch", "-d", "a"]),
+            args(&["push", "origin", "--delete", "other"])
+        ]
+    );
     assert_eq!(push_cmd("a", "origin", "b", true), args(&["push", "-u", "origin", "refs/heads/a:refs/heads/b"]));
     assert_eq!(push_cmd("a", "backup", "a", false), args(&["push", "backup", "refs/heads/a:refs/heads/a"]));
     assert_eq!(t.display(), "origin/other");
@@ -215,7 +223,9 @@ fn delete_local_and_remote() {
     let (work, bare) = with_origin("bops-delete");
     git(&work, &["branch", "feature"]);
     git(&work, &["push", "-q", "-u", "origin", "feature"]);
-    let t = info(&work, "feature").tracking.unwrap();
+    let b = info(&work, "feature");
+    assert!(b.merged);
+    let t = b.tracking.unwrap();
     assert!(run_all(&work, &delete_with_remote_cmds("feature", &t)));
     assert_eq!(ref_oid(&work, "refs/heads/feature"), None);
     assert_eq!(ref_oid(&work, "refs/remotes/origin/feature"), None);
@@ -229,6 +239,33 @@ fn delete_local_and_remote() {
     assert!(!run_all(&work, &delete_with_remote_cmds("wip", &t)));
     assert!(ref_oid(&work, "refs/heads/wip").is_some());
     assert!(ref_oid(&bare, "refs/heads/wip").is_some());
+
+    // Pushed but not merged into HEAD: `branch -d` alone accepts it (it is merged into its
+    // upstream), and the remote delete would then leave its commit on no branch.
+    git(&work, &["branch", "topic"]);
+    local_commit(&work, "topic", "pushed, never merged");
+    git(&work, &["push", "-q", "-u", "origin", "topic"]);
+    let b = info(&work, "topic");
+    assert_eq!((b.ahead, b.behind, b.merged), (0, 0, false));
+    let tip = ref_oid(&work, "refs/heads/topic");
+    assert!(!run_all(&work, &delete_with_remote_cmds("topic", &b.tracking.unwrap())));
+    assert_eq!(ref_oid(&work, "refs/heads/topic"), tip, "the local branch stays");
+    assert_eq!(ref_oid(&bare, "refs/heads/topic"), tip, "the remote branch stays");
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn merged_means_head_contains_the_branch() {
+    let (work, bare) = with_origin("bops-merged");
+    git(&work, &["branch", "behind"]);
+    local_commit(&work, "main", "main moves on");
+    git(&work, &["branch", "side"]);
+    local_commit(&work, "side", "only on side");
+    let s = load(&work, &LoadOptions::all(100)).unwrap();
+    let merged = |n: &str| s.locals.iter().find(|b| b.name == n).unwrap().merged;
+    assert!(merged("main"), "the checked-out branch");
+    assert!(merged("behind"), "an ancestor of HEAD");
+    assert!(!merged("side"));
     cleanup(&[&work, &bare]);
 }
 

@@ -93,7 +93,11 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
             }
             Err(_) => (None, None, 0, 0),
         };
-        locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref });
+        let merged = match (oid, head_oid) {
+            (Some(tip), Some(head)) => tip == head || repo.graph_descendant_of(head, tip).unwrap_or(false),
+            _ => false,
+        };
+        locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref, merged });
     }
 
     let mut remotes: Vec<(String, Vec<(String, Oid)>)> = repo.remotes()?.iter().flatten().map(|r| (r.to_owned(), Vec::new())).collect();

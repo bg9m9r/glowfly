@@ -28,6 +28,7 @@ fn tracked(st: &mut AppState, ahead: usize, behind: usize) {
     b.upstream = Some("origin/search".into());
     b.upstream_ref = Some("refs/remotes/origin/search".into());
     (b.ahead, b.behind) = (ahead, behind);
+    b.merged = true;
 }
 
 #[test]
@@ -82,8 +83,18 @@ fn branch_menu() {
     open_menu(&mut h);
     assert!(h.get_by_label("Fast-forward search to origin/search").is_disabled());
     assert!(h.get_by_label("Push search").is_disabled(), "behind its upstream");
-    assert!(h.query_by_label("Delete search and origin/search").is_some());
+    assert!(h.query_by_label("Delete search and origin/search").is_some_and(|n| !n.is_disabled()));
     assert!(h.query_by_label("Unset upstream").is_some());
+    drop(h);
+
+    // Not merged into the checked-out branch: deleting both is disabled.
+    let (mut st, _) = with_repo(ThemeChoice::Dark, "branch-menu");
+    tracked(&mut st, 0, 0);
+    branch(&mut st, "search").merged = false;
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h);
+    assert!(h.get_by_label("Delete search and origin/search").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

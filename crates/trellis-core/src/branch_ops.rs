@@ -125,11 +125,18 @@ pub fn unset_upstream_cmd(branch: &str) -> Vec<String> {
     args(&["branch", "--unset-upstream", branch])
 }
 
-/// Deletes `branch` and then its upstream branch on the remote. The local delete (`-d`) comes
-/// first: it refuses an unmerged branch, and a failed command stops the sequence, so the
-/// remote branch is only removed once the local one is gone.
+/// Deletes `branch` and then its upstream branch on the remote, only when HEAD contains the
+/// branch. `branch -d` alone isn't enough: for a branch with an upstream it checks only the
+/// upstream, which is the ref deleted next, so a pushed but unmerged branch would end up on no
+/// branch at all. The `merge-base --is-ancestor` check fails unless HEAD contains the branch tip,
+/// and a failed command stops the sequence, so the remote branch is only removed once the local
+/// one is gone.
 pub fn delete_with_remote_cmds(branch: &str, t: &Tracking) -> Vec<Vec<String>> {
-    vec![args(&["branch", "-d", branch]), args(&["push", &t.remote, "--delete", &t.merge])]
+    vec![
+        args(&["merge-base", "--is-ancestor", &format!("refs/heads/{branch}"), "HEAD"]),
+        args(&["branch", "-d", branch]),
+        args(&["push", &t.remote, "--delete", &t.merge]),
+    ]
 }
 
 /// Pushes local `branch` to `remote_branch` on `remote` with an explicit refspec; `set_upstream`

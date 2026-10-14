@@ -90,6 +90,9 @@ pub struct BranchInfo {
     /// Full name of the resolved upstream ref, e.g. refs/remotes/origin/x; None when
     /// `upstream` is None.
     pub upstream_ref: Option<String>,
+    /// Whether HEAD contains the branch tip, so deleting the branch loses no commits. True for
+    /// the checked-out branch; false when HEAD is unborn.
+    pub merged: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]

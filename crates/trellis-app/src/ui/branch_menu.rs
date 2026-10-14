@@ -47,7 +47,7 @@ pub fn local_branch_menu(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, fs:
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(name.to_owned()));
     if !b.is_head {
         ui.separator();
-        delete_items(ui, b, msgs);
+        delete_items(ui, b, snap.head_branch.as_deref(), msgs);
     }
 }
 
@@ -89,8 +89,9 @@ fn push_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec
     });
 }
 
-/// Delete, force delete and, with an upstream on a remote, delete together with it.
-fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, msgs: &mut Vec<Msg>) {
+/// Delete, force delete and, with an upstream on a remote, delete together with it (only when
+/// `head`, the checked-out branch, contains it).
+fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, head: Option<&str>, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     menu_item(
         msgs,
@@ -110,10 +111,12 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, msgs: &mut Vec<Msg>) {
         ),
     );
     if let Some(t) = branches::can_delete_with_remote(b) {
-        menu_item(
+        let blocked = branches::delete_with_remote_blocked(b, t, head);
+        menu_item_if(
             msgs,
             ui,
             format!("Delete {name} and {}", t.display()),
+            blocked.as_deref(),
             Msg::confirm(
                 "Delete local and remote branch",
                 branches::delete_with_remote_body(b, t),

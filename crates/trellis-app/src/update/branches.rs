@@ -120,6 +120,11 @@ fn delete_with_remote(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
         st.log(false, format!("{name} has no upstream branch on a remote to delete."));
         return;
     };
+    let head = st.snap.as_ref().and_then(|s| s.head_branch.as_deref());
+    if let Some(why) = branches::delete_with_remote_blocked(&b, t, head) {
+        st.log(false, why);
+        return;
+    }
     let cmds = branch_ops::delete_with_remote_cmds(name, t);
     let spec =
         JobSpec { record: Some(UndoKind::DeleteBranch(name.to_owned())), ..JobSpec::new("Delete local and remote branch".into(), cmds) };

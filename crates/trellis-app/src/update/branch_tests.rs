@@ -245,7 +245,14 @@ fn delete_with_remote_commands_and_refusals() {
     st.job = None;
     match &fx[..] {
         [Effect::RunGit { cmds, record, .. }] => {
-            assert_eq!(cmds, &vec![args(&["branch", "-d", "feature"]), args(&["push", "origin", "--delete", "feature"])]);
+            assert_eq!(
+                cmds,
+                &vec![
+                    args(&["merge-base", "--is-ancestor", "refs/heads/feature", "HEAD"]),
+                    args(&["branch", "-d", "feature"]),
+                    args(&["push", "origin", "--delete", "feature"])
+                ]
+            );
             assert!(matches!(record, Some(UndoKind::DeleteBranch(n)) if n == "feature"));
         }
         other => panic!("unexpected {other:?}"),
@@ -253,7 +260,16 @@ fn delete_with_remote_commands_and_refusals() {
     let b = local(&mut st, "feature");
     b.tracking = Some(Tracking { remote: "origin".into(), merge: "other".into() });
     b.upstream_ref = Some("refs/remotes/origin/other".into());
-    assert_eq!(cmds(&mut st, Msg::DeleteBranchAndRemote("feature".into()))[1], args(&["push", "origin", "--delete", "other"]));
+    assert_eq!(cmds(&mut st, Msg::DeleteBranchAndRemote("feature".into()))[2], args(&["push", "origin", "--delete", "other"]));
+
+    // Not merged into HEAD: refused, since both deletes would leave its commits on no branch.
+    local(&mut st, "feature").merged = false;
+    assert!(cmds(&mut st, Msg::DeleteBranchAndRemote("feature".into())).is_empty(), "unmerged");
+    assert_eq!(
+        last_log(&st),
+        "feature has commits that aren't merged into main. Deleting it and origin/other would leave them on no branch."
+    );
+    local(&mut st, "feature").merged = true;
 
     assert!(cmds(&mut st, Msg::DeleteBranchAndRemote("main".into())).is_empty(), "checked out");
     let b = local(&mut st, "feature");
@@ -267,7 +283,7 @@ fn delete_with_remote_commands_and_refusals() {
     let then = Msg::DeleteBranchAndRemote("feature".into());
     update(&mut st, Msg::confirm("Delete local and remote branch", "…".into(), "Delete both", then), Instant::now());
     let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { cmds, .. }] if cmds.len() == 2));
+    assert!(matches!(&fx[..], [Effect::RunGit { cmds, .. }] if cmds.len() == 3));
     st.job = None;
     cleanup(&[&work, &bare]);
 }
@@ -286,6 +302,36 @@ fn delete_with_remote_end_to_end_then_undo() {
     let b = local(&mut st, "feature").clone();
     assert_eq!(b.oid, tip);
     assert_eq!((b.tracking, b.upstream), (None, None), "the remote branch is not restored");
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn delete_with_remote_keeps_a_pushed_unmerged_branch() {
+    let (mut st, work, bare) = with_origin("br-delete-unmerged");
+    git(&work, &["checkout", "-q", "feature"]);
+    std::fs::write(
+        work.join("b.txt"),
+        "feature only
+",
+    )
+    .unwrap();
+    git(&work, &["add", "b.txt"]);
+    git(&work, &["commit", "-q", "-m", "feature only"]);
+    git(&work, &["push", "-q", "origin", "feature"]);
+    git(&work, &["checkout", "-q", "main"]);
+    drive(&mut st, Msg::Refresh);
+    let b = local(&mut st, "feature").clone();
+    assert_eq!((b.ahead, b.behind, b.merged), (0, 0, false), "pushed, not merged into main");
+
+    assert!(cmds(&mut st, Msg::DeleteBranchAndRemote("feature".into())).is_empty());
+    // Even when the snapshot is stale and says merged, the command sequence refuses.
+    local(&mut st, "feature").merged = true;
+    drive(&mut st, Msg::DeleteBranchAndRemote("feature".into()));
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!(snap.locals.iter().find(|l| l.name == "feature").and_then(|l| l.oid), b.oid, "the local branch stays");
+    assert!(snap.remotes[0].1.iter().any(|(n, o)| n == "feature" && Some(*o) == b.oid), "origin/feature stays");
+    let on_origin = git2::Repository::open(&bare).unwrap().refname_to_id("refs/heads/feature").ok();
+    assert_eq!(on_origin, b.oid, "the branch stays on the remote");
     cleanup(&[&work, &bare]);
 }
 

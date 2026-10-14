@@ -96,6 +96,17 @@ pub fn can_delete_with_remote(b: &BranchInfo) -> Option<&Tracking> {
     remote_tracking(b).filter(|_| !b.is_head && exists)
 }
 
+/// Why `b` can't be deleted together with its upstream `t`: the checked-out commit (`head`, the
+/// branch name or None when detached) doesn't contain it, so both deletes would leave its
+/// commits on no branch.
+pub fn delete_with_remote_blocked(b: &BranchInfo, t: &Tracking, head: Option<&str>) -> Option<String> {
+    if b.merged {
+        return None;
+    }
+    let head = head.unwrap_or("HEAD");
+    Some(format!("{} has commits that aren't merged into {head}. Deleting it and {} would leave them on no branch.", b.name, t.display()))
+}
+
 /// The confirmation text for deleting `b` and its upstream `t`.
 pub fn delete_with_remote_body(b: &BranchInfo, t: &Tracking) -> String {
     let (name, remote, merge) = (&b.name, &t.remote, &t.merge);
