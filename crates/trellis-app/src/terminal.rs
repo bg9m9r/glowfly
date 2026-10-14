@@ -1,0 +1,77 @@
+//! Messages and effects of the built-in terminal panel (state/terminal.rs, update/terminal.rs,
+//! runner/terminal.rs, ui/terminal/).
+
+use std::path::PathBuf;
+use trellis_core::terminal::TermInput;
+
+pub enum TerminalMsg {
+    /// Show or hide the panel (toolbar button, palette, Ctrl+`).
+    Toggle,
+    Hide,
+    /// Stop the active repository's shell.
+    Kill,
+    /// Start a new shell for the active repository after the last one ended.
+    Restart,
+    /// Keyboard input for the active repository's shell.
+    Input(Vec<TermInput>),
+    /// The grid the panel has room for, in cells.
+    Resize {
+        rows: u16,
+        cols: u16,
+    },
+    // ---- from the runner
+    /// Session `id`'s shell is running; `program` is its short name (pwsh, bash).
+    Started {
+        id: u64,
+        program: String,
+    },
+    Output {
+        id: u64,
+        bytes: Vec<u8>,
+    },
+    /// Session `id`'s shell ended; `code` is None when it is unknown.
+    Exited {
+        id: u64,
+        code: Option<u32>,
+    },
+    SpawnFailed {
+        id: u64,
+        error: String,
+    },
+}
+
+/// Work on the terminal sessions' shells, carried out by the runner's session threads.
+/// `Write` bytes may be secrets the user typed: never log them (the effect is only ever named
+/// "terminal").
+pub enum TerminalEffect {
+    Spawn {
+        id: u64,
+        cwd: PathBuf,
+        rows: u16,
+        cols: u16,
+    },
+    Write {
+        id: u64,
+        bytes: Vec<u8>,
+    },
+    Resize {
+        id: u64,
+        rows: u16,
+        cols: u16,
+    },
+    Kill(u64),
+    /// Forget session `id` (it ended or its tab closed); its thread ends once the shell has.
+    Close(u64),
+}
+
+impl std::fmt::Debug for TerminalEffect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Spawn { id, cwd, rows, cols } => write!(f, "Spawn {{ id: {id}, cwd: {cwd:?}, rows: {rows}, cols: {cols} }}"),
+            Self::Write { id, bytes } => write!(f, "Write {{ id: {id}, bytes: <{} bytes> }}", bytes.len()),
+            Self::Resize { id, rows, cols } => write!(f, "Resize {{ id: {id}, rows: {rows}, cols: {cols} }}"),
+            Self::Kill(id) => write!(f, "Kill({id})"),
+            Self::Close(id) => write!(f, "Close({id})"),
+        }
+    }
+}

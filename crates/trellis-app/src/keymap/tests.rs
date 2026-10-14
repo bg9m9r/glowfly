@@ -2,7 +2,7 @@
 
 use super::*;
 
-const ALL: [BindingId; 31] = [
+const ALL: [BindingId; 32] = [
     I::Stage,
     I::Unstage,
     I::StageAll,
@@ -34,6 +34,7 @@ const ALL: [BindingId; 31] = [
     I::Undo,
     I::Redo,
     I::DialogSubmit,
+    I::ToggleTerminal,
 ];
 
 #[test]

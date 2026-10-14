@@ -84,6 +84,7 @@ fn egui_chord(c: Chord) -> Option<(Modifiers, Key)> {
         KeyName::Down => Key::ArrowDown,
         KeyName::Comma => Key::Comma,
         KeyName::Slash => Key::Slash,
+        KeyName::Backtick => Key::Backtick,
     };
     Some((m, key))
 }

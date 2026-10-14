@@ -20,6 +20,7 @@ pub(crate) mod files;
 mod highlight;
 mod os;
 mod rebase;
+mod terminal;
 
 #[cfg(test)]
 pub(crate) use highlight::{decorate, decorate_in_context};
@@ -43,11 +44,13 @@ pub struct Runner<W: Waker + Clone> {
     askpass: Option<Arc<trellis_core::askpass::Server>>,
     /// Counts HighlightDiff jobs started: a job whose number is no longer the latest stops.
     highlight_epoch: Arc<AtomicU64>,
+    /// The built-in terminal's shell sessions.
+    terminals: terminal::Terminals,
 }
 
 impl<W: Waker + Clone> Runner<W> {
     pub fn new(tx: Sender<Msg>, waker: W) -> Self {
-        Self { tx, waker, watch: Default::default(), askpass: None, highlight_epoch: Default::default() }
+        Self { tx, waker, watch: Default::default(), askpass: None, highlight_epoch: Default::default(), terminals: Default::default() }
     }
 
     /// Starts `effect` on a worker thread. UI effects must be handled by the caller instead.
@@ -55,6 +58,7 @@ impl<W: Waker + Clone> Runner<W> {
         let effect = match effect {
             Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
+            Effect::Terminal(t) => return self.terminal(t),
             other => other,
         };
         let tx = self.tx.clone();
@@ -122,6 +126,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::ExportPublicKey { .. } => "export-key",
         Effect::Watch(_) => "watch",
         Effect::AnswerPrompt { .. } => "answer-prompt",
+        Effect::Terminal(_) => "terminal",
         Effect::Ui(_) => "ui",
     }
 }
@@ -299,8 +304,8 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None
         }
-        Effect::Watch(_) | Effect::AnswerPrompt { .. } => {
-            tracing::warn!("watch or prompt effect reached a worker; it is handled by Runner::run");
+        Effect::Watch(_) | Effect::AnswerPrompt { .. } | Effect::Terminal(_) => {
+            tracing::warn!("watch, prompt or terminal effect reached a worker; it is handled by Runner::run");
             None
         }
     }

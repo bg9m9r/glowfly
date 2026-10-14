@@ -319,6 +319,8 @@ pub enum Effect {
         id: u64,
         reply: Reply,
     },
+    /// The built-in terminal panel's shells; handled by Runner::run, never a worker.
+    Terminal(crate::terminal::TerminalEffect),
     Ui(UiEffect),
 }
 

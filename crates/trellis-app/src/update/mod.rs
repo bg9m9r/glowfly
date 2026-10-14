@@ -23,6 +23,7 @@ mod selection;
 mod shortcuts;
 mod tabs;
 mod tags;
+mod terminal;
 mod undo;
 mod watch;
 mod work_files;
@@ -88,6 +89,8 @@ mod shortcuts_tests;
 mod tabs_tests;
 #[cfg(test)]
 mod tag_tests;
+#[cfg(test)]
+mod terminal_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -333,6 +336,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         }
         Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
         Msg::Logged { ok, text } => st.log(ok, text),
+        Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
     }
     fx
 }

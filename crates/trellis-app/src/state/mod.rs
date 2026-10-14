@@ -19,6 +19,7 @@ pub mod rebase;
 pub mod selection;
 pub mod tabs;
 pub mod tags;
+pub mod terminal;
 pub mod undo;
 pub mod watch;
 
@@ -278,6 +279,8 @@ pub struct AppState {
     /// Incremented for every palette list request; older `TrackedPathsLoaded` results are
     /// ignored.
     pub palette_gen: u64,
+    /// The built-in terminal panel (global, not per tab).
+    pub terminal: terminal::TerminalPanel,
     pub view: ViewState,
 }
 
@@ -322,6 +325,7 @@ impl AppState {
             askpass: Default::default(),
             palette: None,
             palette_gen: 0,
+            terminal: Default::default(),
             view: ViewState::default(),
         }
     }

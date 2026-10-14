@@ -49,6 +49,8 @@ pub(super) fn drive(st: &mut AppState, msg: Msg) {
                 Effect::RepoOwners { .. } | Effect::CreateRepo { .. } => {}
                 Effect::ForgetCredentialManager { .. } | Effect::SaveSettings(_) | Effect::SaveRecent(_) => {}
                 Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. } => {}
+                // Shells are never started by these tests.
+                Effect::Terminal(_) => {}
                 Effect::OpenPath(_) | Effect::RevealPath(_) => {}
                 other => queue.extend(runner::execute(other)),
             }

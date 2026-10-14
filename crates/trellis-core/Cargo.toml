@@ -24,6 +24,8 @@ syntect = { version = "5.3", default-features = false, features = ["parsing", "d
 ureq = { version = "2", features = ["json"] }
 thiserror = "2"
 trash = "5.2"
+portable-pty = "0.9"
+vt100 = "0.15"
 
 [build-dependencies]
 syntect = { version = "5.3", default-features = false, features = ["parsing", "yaml-load", "dump-create", "regex-fancy"] }

@@ -129,6 +129,26 @@ fn terminal_and_file_manager_entries() {
 }
 
 #[test]
+fn terminal_panel_entry_toggles() {
+    let (mut st, dir) = repo_with_topic("palette-more-panel");
+    let show = find(&st, "Show terminal panel").expect("Show terminal panel");
+    assert_eq!(show.shortcut, Some("Ctrl+`"));
+    assert!(matches(&st, "integrated", "Show terminal panel"));
+
+    open_palette(&mut st);
+    let fx = run(&mut st, Msg::RunPaletteCommand(C::ToggleTerminal));
+    assert!(st.palette.is_none() && st.terminal.open);
+    assert!(fx.iter().any(|e| matches!(e, Effect::Terminal(crate::terminal::TerminalEffect::Spawn { .. }))), "{fx:?}");
+    assert!(has(&st, "Hide terminal panel"));
+    assert!(!has(&st, "Show terminal panel"));
+    // The external terminal entry is unchanged.
+    assert!(has(&st, "Open in terminal"));
+
+    assert!(!has(&state(), "Show terminal panel"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn tab_entries() {
     let mut st = state();
     assert_eq!(find(&st, "New tab").expect("New tab").shortcut, Some("Ctrl+T"));

@@ -28,6 +28,7 @@ pub enum KeyName {
     Down,
     Comma,
     Slash,
+    Backtick,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -105,6 +106,7 @@ fn key_name(k: KeyName) -> &'static str {
         KeyName::Down => "Down",
         KeyName::Comma => ",",
         KeyName::Slash => "/",
+        KeyName::Backtick => "`",
     }
 }
 
@@ -201,6 +203,7 @@ pub enum BindingId {
     Undo,
     Redo,
     DialogSubmit,
+    ToggleTerminal,
 }
 
 pub struct Binding {
@@ -237,7 +240,7 @@ use When as W;
 /// UnstageAll, FocusMessage and Sheet are matched from this table (`ui/shortcuts.rs`); the
 /// others document handlers that match their own keys: `ui/mod.rs` (tabs, undo/redo, F5,
 /// Ctrl+F, Ctrl+comma, F7/Alt+arrows, Esc), `ui/commit_box.rs`, `ui/graph/select.rs`,
-/// `ui/history.rs`, `ui/palette.rs` and the dialogs. Change a key there, change it here.
+/// `ui/history.rs`, `ui/palette.rs`, `ui/terminal/` and the dialogs. Change a key there, change it here.
 pub const BINDINGS: &[Binding] = &[
     b(I::Stage, G::Staging, "Stage the file or the selected lines", &[C::plain(K::Letter('S'))], W::WorkingDiff),
     b(I::Unstage, G::Staging, "Unstage the file or the selected lines", &[C::plain(K::Letter('U'))], W::WorkingDiff),
@@ -279,6 +282,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::Sheet, G::General, "Keyboard shortcuts", &[C::cmd(K::Slash)], W::Anywhere),
     b(I::Prefs, G::General, "Preferences", &[C::cmd(K::Comma)], W::Anywhere),
     b(I::Refresh, G::General, "Refresh", &[C::plain(K::F(5))], W::Anywhere),
+    b(I::ToggleTerminal, G::General, "Show or hide the terminal", &[C::ctrl(K::Backtick)], W::Anywhere),
     b(I::Undo, G::General, "Undo", &[C::cmd(K::Letter('Z'))], W::NotTyping),
     b(I::Redo, G::General, "Redo", &[C::cmd(K::Letter('Y')), C::cmd_shift(K::Letter('Z'))], W::NotTyping),
     b(I::DialogSubmit, G::General, "Confirm a dialog's name field", &[C::plain(K::Enter)], W::Dialog),

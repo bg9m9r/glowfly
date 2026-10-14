@@ -119,6 +119,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     let parked = st.tabs[i].parked.take().map(|p| *p).unwrap_or_default();
     unpark(st, parked);
     super::watch::sync(st, fx);
+    super::terminal::sync(st, fx);
     // Results still in flight for the previous tab are now stale.
     st.load_gen += 1;
     st.loading = false;
@@ -143,6 +144,7 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         return;
     }
     if let Some(path) = st.tabs[i].path.clone() {
+        super::terminal::tab_closed(st, &path, fx);
         remember_closed(st, path);
     }
     st.tab_return = None;
@@ -198,6 +200,7 @@ fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize,
     // their original order.
     for &j in closing.iter().rev() {
         if let Some(path) = st.tabs[j].path.clone() {
+            super::terminal::tab_closed(st, &path, fx);
             remember_closed(st, path);
         }
     }

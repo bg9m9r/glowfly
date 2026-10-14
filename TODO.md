@@ -76,7 +76,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
 | Commit Signing | ✔ Commit Signing | Signature badge on commits (P1) |
 | Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights) | Font family, word wrap, EOL character |
-| In-App Terminal | ✘ | Needs the built-in terminal (P1) |
+| In-App Terminal | ✘ | Shell, font, cursor style and dimming for the built-in terminal (P1 Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
 | *Repo:* Gitflow | ✘ | P1 Git Flow |
@@ -546,9 +546,29 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] A visible way to the sheet (a toolbar, status bar or Help entry naming Ctrl+/)
   - [ ] S in the WIP file lists (keyboard focus in the lists, Up/Down between files), and moving
     on to the next unstaged file after S stages the open one
-- [ ] **Built-in terminal**
-  Bottom terminal panel with tabs (`portable-pty` plus a terminal widget). Trellis currently only
-  launches an external terminal.
+- [x] **Built-in terminal**
+  A resizable Terminal panel under the central area, shown or hidden with the toolbar's Terminal
+  button, the palette or Ctrl+` (right-clicking the button still opens an external terminal).
+  Each repository tab gets its own shell (pwsh, Windows PowerShell or cmd on Windows; $SHELL
+  elsewhere) on a pseudo-terminal, started in its working directory the first time the panel
+  shows it; hidden tabs' shells keep running, closing a tab stops its shell. The screen is drawn
+  with 16, 256 and true colours, bold, underline, inverse and a cursor; typing, named keys,
+  Ctrl+letters and pastes (bracketed when asked for) go to the shell while it has focus. Kill,
+  Restart, a starting message, the exit code and start failures are shown.
+  - [ ] Several terminals per repository as tabs in the panel ("Terminal N", new and close
+    buttons), and kill all with a confirmation that says how many will stop
+  - [ ] Scrollback (history in the screen model, scrolled with the mouse wheel), with mouse
+    selection and copying to the clipboard
+  - [ ] Right-click menu in the terminal: copy, paste, select all, clear
+  - [ ] In-App Terminal preferences page: default shell (auto, pwsh, Windows PowerShell, cmd,
+    bash or a custom path with arguments), font size, cursor style, dim when unfocused
+  - [ ] A setting to use the built-in terminal for Open in terminal (palette entry and the
+    toolbar button's right-click item)
+  - [ ] Let the focused terminal keep the keys the global shortcuts take today (Ctrl+W,
+    Ctrl+T, Ctrl+Tab, Ctrl+1–9, Ctrl+P, Ctrl+F, F5; Ctrl+F and F5 also reach the shell), and
+    send Alt+letter as an ESC prefix; coordinate with the keyboard shortcuts in ui/mod.rs
+  - [ ] Remember whether the panel is open, and its height, across restarts
+  - [ ] Mouse reporting (xterm mouse modes) and the window or tab title from the shell (OSC 0/2)
 - [ ] **Submodules**
   SUBMODULES section with status (in sync, dirty, uninitialized); add, init, update, open as a
   repo, set URL, remove; "keep submodules up to date".

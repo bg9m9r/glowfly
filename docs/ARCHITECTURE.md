@@ -48,6 +48,10 @@ crates/
                           fast-forward state
     tag_ops.rs            tag name checks (ref-format rules with a reason, existing and
                           clashing tags) and the tag and tag-push command lines
+    terminal/             the built-in terminal: screen (the VT screen model as styled rows,
+                          answering cursor-position and status queries), keys (key and paste
+                          encoding), pty (shell choice and PTY sessions with reader and exit
+                          threads), queries (finding those queries in a shell's output)
     rebase/               interactive rebase: types (mod.rs), plan (the commits to replay),
                           todo (checking and writing the todo list, reword message files, and
                           installing it over git's as the sequence-editor helper), run
@@ -103,13 +107,17 @@ crates/
                           commands available now (checkouts of local and remote branches and
                           tags): labels, hidden keywords, details and shortcut hints), files (the
                           New file and Rename file dialogs' path form), tags (the New tag
-                          dialog's form, its name check and push remote)
+                          dialog's form, its name check and push remote), terminal (the
+                          built-in terminal panel: one shell session per repository; global,
+                          not parked with a tab)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
                           the shortcut sheet, palette hints and tooltips
     effect.rs             Effect: everything slow or outside the process
     file_op.rs            FileOp (a working-tree file operation), DeleteMode (trash or
                           permanent, fixed when the confirmation opens), WorkFileOk (its result)
+    terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
+                          and its shells' effects (one Msg and one Effect variant each)
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
                           config (reading git config), rebase (loading and running an
                           interactive rebase, with Trellis as the sequence editor), askpass
@@ -117,7 +125,9 @@ crates/
                           (URLs, terminals, opening files and showing them in the file manager),
                           files (creating, renaming and deleting a working-tree file; listing
                           the tracked files), highlight.rs: load + decorate + background highlighting
-                          (a newer HighlightDiff cancels the older)
+                          (a newer HighlightDiff cancels the older), terminal (one thread per
+                          shell session owning its PTY; Effect::Terminal is handled by
+                          Runner::run itself)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
@@ -138,8 +148,11 @@ crates/
                           attaching its result if the same diff is still shown), tags
                           (opening the New tag dialog, creating the tag and pushing it in
                           one job, the push setting), shortcuts (checking and routing the
-                          staging, stage-all, focus-message and sheet keys)
-                          (+ headless tests in update/tests.rs, update/palette_stash_tests.rs)
+                          staging, stage-all, focus-message and sheet keys), terminal (showing
+                          the panel, starting one shell per repository, input, resizing, output
+                          and exit; stopping a closed tab's shell)
+                          (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
+                          update/terminal_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -158,7 +171,8 @@ crates/
                           askpass (the credential prompt, drawn above every other dialog),
                           palette (the Ctrl+P command palette overlay),
                           shortcuts/ (matching the newer keys from the table; sheet: the
-                          Ctrl+/ shortcut sheet),
+                          Ctrl+/ shortcut sheet), terminal/ (the built-in terminal panel:
+                          header, grid painting, egui input mapping, colours),
                           status, prefs/ (editor: the Editor page), theme, widgets
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
@@ -167,7 +181,7 @@ crates/
                           snapshot_tests_file_menu.rs, snapshot_tests_commit.rs,
                           snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
                           snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
-                          snapshot_tests_file_actions.rs)
+                          snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

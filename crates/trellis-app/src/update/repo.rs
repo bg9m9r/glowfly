@@ -319,6 +319,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     st.snap = Some(snap);
     super::commit::apply_template(st);
     super::watch::sync(st, fx);
+    super::terminal::sync(st, fx);
     if kind == LoadKind::Open {
         fx.push(super::tabs::opened(st));
     } else {

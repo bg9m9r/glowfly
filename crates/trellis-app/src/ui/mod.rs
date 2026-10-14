@@ -30,6 +30,7 @@ mod spell_edit;
 mod status;
 mod tabs;
 mod tag_dialog;
+mod terminal;
 pub mod theme;
 mod toolbar;
 pub mod widgets;
@@ -64,6 +65,8 @@ mod snapshot_tests_revert;
 mod snapshot_tests_select;
 #[cfg(test)]
 mod snapshot_tests_tag;
+#[cfg(test)]
+mod snapshot_tests_terminal;
 #[cfg(test)]
 mod snapshot_tests_whole;
 #[cfg(test)]
@@ -153,6 +156,7 @@ impl TrellisApp {
     fn input(&mut self, ctx: &egui::Context, msgs: &mut Vec<Msg>) {
         palette::shortcut(ctx, &self.st, msgs);
         shortcuts::keys(ctx, &self.st, msgs);
+        terminal::shortcut(ctx, &self.st, msgs);
         // The open palette keeps the keyboard: no other shortcut reaches what is under it.
         let palette = self.st.palette.is_some();
         let focused = ctx.input(|i| i.focused);
@@ -199,7 +203,12 @@ impl TrellisApp {
 /// a multi-selection, and finally the search bar. Dialogs (a credential prompt included) and the
 /// command palette handle Esc themselves.
 fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    if !ctx.input(|i| i.key_pressed(Key::Escape)) || st.modal.is_some() || st.askpass.showing() || st.palette.is_some() {
+    if !ctx.input(|i| i.key_pressed(Key::Escape))
+        || st.modal.is_some()
+        || st.askpass.showing()
+        || st.palette.is_some()
+        || st.terminal.focused
+    {
         return;
     }
     if st.prefs.is_some() {
@@ -292,6 +301,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         if st.snap.is_some() {
             sidebar::show(ctx, st, msgs);
             details::show(ctx, st, cache, msgs);
+            terminal::show(ctx, st, msgs);
         }
         egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |ui| {
             if st.snap.is_none() {

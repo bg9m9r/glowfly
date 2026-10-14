@@ -55,6 +55,8 @@ pub enum PaletteCommand {
     SearchCommits,
     Refresh,
     OpenTerminal,
+    /// Show or hide the built-in terminal panel.
+    ToggleTerminal,
     ShowInFileManager,
     /// Switch the diff to this layout.
     DiffLayout(DiffLayout),
@@ -122,6 +124,7 @@ impl PaletteCommand {
             C::StageAll => BindingId::StageAll,
             C::UnstageAll => BindingId::UnstageAll,
             C::KeyboardShortcuts => BindingId::Sheet,
+            C::ToggleTerminal => BindingId::ToggleTerminal,
             _ => return None,
         })
     }
@@ -243,6 +246,8 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     }
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));
+    let toggle = if st.terminal.open { "Hide terminal panel" } else { "Show terminal panel" };
+    out.push(entry(C::ToggleTerminal, toggle, "built-in integrated embedded shell console prompt command line toggle"));
     out.push(entry(C::ShowInFileManager, SHOW_REPO_FOLDER, "folder directory explorer finder files browse"));
     out.push(match st.settings.diff_layout {
         DiffLayout::Inline => entry(C::DiffLayout(DiffLayout::Split), "Use split diff layout", "side by side columns two diff view"),

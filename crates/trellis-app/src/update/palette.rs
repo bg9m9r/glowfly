@@ -173,6 +173,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::RenameBranch(name) => Msg::RenameBranchDialog(name),
         C::Refresh => Msg::Refresh,
         C::OpenTerminal => Msg::OpenTerminal,
+        C::ToggleTerminal => Msg::Terminal(crate::terminal::TerminalMsg::Toggle),
         C::ShowInFileManager => {
             let Some(w) = st.workdir() else { return };
             Msg::OpenFolder(w)

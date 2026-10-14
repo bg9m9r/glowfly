@@ -68,6 +68,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("rebase", &["plan", "start", "stopped_at", "install_todo"]),
     ("askpass", &["start", "start_with", "ask", "ask_from_env"]),
     ("server", &["start", "start_with"]),
+    ("pty", &["spawn", "default_shell"]),
     (
         "platform",
         &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager", "reveal_in_file_manager"],
@@ -86,6 +87,7 @@ const RAW_IO: &[&str] = &[
     "std::fs",
     "ureq::",
     "keyring::",
+    "portable_pty",
     "Repository::",
     "Settings::load",
     ".save()",
@@ -177,4 +179,7 @@ fn the_check_catches_io() {
     assert_eq!(violations("askpass::ask_from_env(p)").len(), 1);
     assert_eq!(violations("let s = std::net::TcpStream::connect(a);").len(), 2);
     assert!(violations("use trellis_core::askpass::{PromptKind, host};").is_empty());
+    assert_eq!(violations("let s = pty::spawn(&d, 24, 80, &sh, o, e);").len(), 1);
+    assert_eq!(violations("let sh = pty::default_shell();").len(), 1);
+    assert!(violations("use trellis_core::terminal::{TermScreen, encode};").is_empty());
 }

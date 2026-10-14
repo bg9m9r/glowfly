@@ -4,6 +4,7 @@ use crate::effect::{FileOp, ForgeReply, LoadKind, UndoResult, WorkFileOk};
 use crate::state::PrefPage;
 use crate::state::lines::LineClick;
 use crate::state::prefs::GitConfigValues;
+use crate::terminal::TerminalMsg;
 use git2::Oid;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -350,6 +351,8 @@ pub enum Msg {
     OpenWorkingFile(String),
     /// Select a working-tree file in the file manager (its folder where selecting isn't supported).
     ShowWorkingFile(String),
+    /// The built-in terminal panel (terminal.rs).
+    Terminal(TerminalMsg),
 
     // ---- hosting services
     ForgeRefresh {

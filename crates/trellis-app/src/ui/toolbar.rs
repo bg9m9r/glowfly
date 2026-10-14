@@ -5,6 +5,7 @@ use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::msg::Msg;
 use crate::state::{AppState, PrefPage};
+use crate::terminal::TerminalMsg;
 use eframe::egui::{self, Align, Layout, RichText};
 use std::path::PathBuf;
 use trellis_core::forge::Provider;
@@ -116,9 +117,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.add_space(6.0);
                 ui.separator();
                 ui.add_space(6.0);
-                if tool(ui, Icon::Terminal, "Terminal", true).clicked() {
-                    msgs.push(Msg::OpenTerminal);
-                }
+                terminal_button(ui, st.terminal.open, labels, msgs);
                 if tool(ui, Icon::Folder, "Folder", true).clicked() {
                     msgs.push(Msg::OpenFolder(snap.workdir.clone()));
                 }
@@ -139,6 +138,23 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 });
             });
         });
+}
+
+/// Shows or hides the terminal panel; right-click opens an external terminal instead. A bar
+/// under the button marks the panel as open.
+fn terminal_button(ui: &mut egui::Ui, open: bool, labels: bool, msgs: &mut Vec<Msg>) {
+    let verb = if open { "Hide" } else { "Show" };
+    let tip = format!("{verb} the terminal panel (Ctrl+`)\nRight-click to open an external terminal");
+    let resp = widgets::tool_button(ui, Icon::Terminal, "Terminal", true, labels).on_hover_text(tip);
+    if open {
+        let r = resp.rect;
+        let bar = egui::Rect::from_min_max(egui::pos2(r.left() + 6.0, r.bottom() - 2.0), egui::pos2(r.right() - 6.0, r.bottom()));
+        ui.painter().rect_filled(bar, 1.0, color::accent());
+    }
+    if resp.clicked() {
+        msgs.push(Msg::Terminal(TerminalMsg::Toggle));
+    }
+    resp.context_menu(|ui| menu_item(msgs, ui, "Open in external terminal", Msg::OpenTerminal));
 }
 
 /// The small ▾ button next to a tool button, opening a menu below it.
