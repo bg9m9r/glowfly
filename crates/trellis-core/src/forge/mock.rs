@@ -81,6 +81,11 @@ impl Reply {
     pub fn not_found() -> Reply {
         Reply::status(404, r#"{"message":"Not Found"}"#)
     }
+
+    pub fn header(mut self, name: &str, value: &str) -> Reply {
+        self.headers.push((name.to_owned(), value.to_owned()));
+        self
+    }
 }
 
 type Handler = dyn Fn(&Request) -> Reply + Send + Sync;

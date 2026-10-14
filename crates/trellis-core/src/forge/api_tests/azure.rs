@@ -16,7 +16,7 @@ const PRS: &str = r#"{"count":1,"value":[{"pullRequestId":17,"title":"Add login"
 fn pull_requests_with_votes_and_built_links() {
     let m = Mock::start(|r| {
         let list =
-            format!("GET {BASE}/_apis/git/repositories/web%20app/pullrequests?searchCriteria.status=active&$top=200&api-version=7.1");
+            format!("GET {BASE}/_apis/git/repositories/web%20app/pullrequests?searchCriteria.status=active&$top=100&api-version=7.1");
         if r.route() == list { Reply::json(PRS) } else { Reply::not_found() }
     });
     let prs = pull_requests(&t(), &token(Provider::AzureDevOps)).unwrap();
@@ -63,7 +63,7 @@ fn creates_a_pull_request_linking_work_items() {
 fn assigned_work_items_keep_the_query_order() {
     let m = Mock::start(|r| {
         let route = r.route();
-        if route == format!("POST {BASE}/_apis/wit/wiql?$top=100&api-version=7.1") {
+        if route == format!("POST {BASE}/_apis/wit/wiql?$top=1000&api-version=7.1") {
             Reply::json(r#"{"workItems":[{"id":8},{"id":5}]}"#)
         } else if route.starts_with(&format!("GET {BASE}/_apis/wit/workitems?ids=8,5&")) {
             Reply::json(

@@ -1,11 +1,15 @@
 //! Azure DevOps (Azure Repos + Azure Boards), REST api-version 7.1.
 
+use super::http::get_paged;
+use super::page::{self, MAX_ITEMS, Page};
 use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, dec, enc, get, post};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde_json::json;
 
 const V: &str = "7.1";
+/// Pull requests asked for per page.
+const TOP: usize = 100;
 
 /// Recognises dev.azure.com, *.visualstudio.com and SSH remote URLs.
 pub fn parse_remote(url: &str) -> Option<Target> {
@@ -166,8 +170,19 @@ fn convert(t: &Target, p: ApiPr) -> PullRequest {
 }
 
 pub fn pull_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-    let url = format!("{}/pullrequests?searchCriteria.status=active&$top=200&api-version={V}", repo_api(t));
-    Ok(get::<List<ApiPr>>(auth, &url)?.value.into_iter().map(|p| convert(t, p)).collect())
+    let first = format!("{}/pullrequests?searchCriteria.status=active&$top={TOP}&api-version={V}", repo_api(t));
+    let mut read = 0;
+    let prs = page::collect(first.clone(), |url| {
+        let p = get_paged::<List<ApiPr>>(auth, url)?;
+        read += p.body.value.len();
+        // A continuation token when the server sends one; otherwise skip what was read.
+        let next = match p.continuation {
+            Some(token) => Some(page::with_param(&first, "continuationToken", &token)),
+            None => (p.body.value.len() >= TOP).then(|| page::with_param(&first, "$skip", &read.to_string())),
+        };
+        Ok(Page { items: p.body.value, next })
+    })?;
+    Ok(prs.into_iter().map(|p| convert(t, p)).collect())
 }
 
 pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
@@ -258,7 +273,8 @@ pub fn my_work_items(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
         WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me \
         AND [System.State] NOT IN ('Closed', 'Done', 'Removed') \
         ORDER BY [System.ChangedDate] DESC";
-    let result: Wiql = post(auth, &format!("{}/_apis/wit/wiql?$top=100&api-version={V}", project_base(t)), json!({ "query": query }))?;
+    let result: Wiql =
+        post(auth, &format!("{}/_apis/wit/wiql?$top={MAX_ITEMS}&api-version={V}", project_base(t)), json!({ "query": query }))?;
     let ids: Vec<String> = result.work_items.iter().map(|w| w.id.to_string()).collect();
     let mut items = work_items(t, auth, &ids)?;
     items.sort_by_key(|w| ids.iter().position(|i| *i == w.key));

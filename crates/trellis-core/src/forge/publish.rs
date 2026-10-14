@@ -2,7 +2,7 @@
 //! remote yet. GitHub and GitHub Enterprise Server for now.
 
 use super::github::api;
-use super::{Account, Auth, Provider, get, post};
+use super::{Account, Auth, Provider, get, page, post};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde_json::json;
@@ -45,7 +45,7 @@ pub fn repo_owners(account: &Account, auth: &Auth) -> Result<Vec<String>> {
     let base = api(&account.host, account.provider);
     let me: Login = get(auth, &format!("{base}/user"))?;
     // Listing organizations needs the read:org scope; without it, offer only the user.
-    let mut orgs: Vec<String> = get::<Vec<Login>>(auth, &format!("{base}/user/orgs?per_page=100"))
+    let mut orgs: Vec<String> = page::by_link::<Login>(auth, format!("{base}/user/orgs?per_page=100"))
         .map(|o| o.into_iter().map(|l| l.login).collect())
         .unwrap_or_default();
     orgs.sort_by_key(|o| o.to_lowercase());

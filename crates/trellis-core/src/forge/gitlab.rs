@@ -1,6 +1,6 @@
 //! GitLab.com and GitLab Self-Managed (REST API v4).
 
-use super::{Account, Auth, Issue, NewPullRequest, PullRequest, Reviewer, Target, enc, get, post};
+use super::{Account, Auth, Issue, NewPullRequest, PullRequest, Reviewer, Target, enc, get, page, post};
 use crate::error::Result;
 use serde::Deserialize;
 use serde_json::json;
@@ -80,7 +80,7 @@ fn convert(m: ApiMr, approvals: Approvals) -> PullRequest {
 }
 
 pub fn merge_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-    let mrs: Vec<ApiMr> = get(auth, &format!("{}/merge_requests?state=opened&per_page=100", project_api(t)))?;
+    let mrs: Vec<ApiMr> = page::by_link(auth, format!("{}/merge_requests?state=opened&per_page=100", project_api(t)))?;
     let mut out = Vec::with_capacity(mrs.len());
     for (i, m) in mrs.into_iter().enumerate() {
         let approvals = if i < 25 {
@@ -135,7 +135,7 @@ fn to_issue(i: ApiIssue) -> Issue {
 
 pub fn my_issues(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
     let url = format!("{}/issues?state=opened&scope=assigned_to_me&per_page=100&order_by=updated_at", project_api(t));
-    Ok(get::<Vec<ApiIssue>>(auth, &url)?.into_iter().map(to_issue).collect())
+    Ok(page::by_link::<ApiIssue>(auth, url)?.into_iter().map(to_issue).collect())
 }
 
 pub fn issues(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
@@ -144,7 +144,7 @@ pub fn issues(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
         return Ok(Vec::new());
     }
     let url = format!("{}/issues?scope=all&per_page=100&{}", project_api(t), iids.join("&"));
-    Ok(get::<Vec<ApiIssue>>(auth, &url)?.into_iter().map(to_issue).collect())
+    Ok(page::by_link::<ApiIssue>(auth, url)?.into_iter().map(to_issue).collect())
 }
 
 /// The GitLab [`Forge`](super::Forge).

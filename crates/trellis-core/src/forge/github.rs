@@ -1,6 +1,6 @@
 //! GitHub and GitHub Enterprise Server (REST API v3).
 
-use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, enc, get, post};
+use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, enc, get, page, post};
 use crate::error::Result;
 use serde::Deserialize;
 use serde_json::json;
@@ -99,7 +99,7 @@ fn convert(p: ApiPr, reviews: Vec<Review>) -> PullRequest {
 }
 
 pub fn pull_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-    let prs: Vec<ApiPr> = get(auth, &format!("{}/pulls?state=open&per_page=100", repo_api(t)))?;
+    let prs: Vec<ApiPr> = page::by_link(auth, format!("{}/pulls?state=open&per_page=100", repo_api(t)))?;
     let mut out = Vec::with_capacity(prs.len());
     for (i, p) in prs.into_iter().enumerate() {
         // Review states need one call per PR; keep it bounded.
@@ -161,7 +161,7 @@ fn to_issue(i: ApiIssue) -> Issue {
 pub fn my_issues(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
     let login = me(&t.host, t.provider, auth)?.login;
     let url = format!("{}/issues?state=open&assignee={}&per_page=100&sort=updated", repo_api(t), enc(&login));
-    let items: Vec<ApiIssue> = get(auth, &url)?;
+    let items: Vec<ApiIssue> = page::by_link(auth, url)?;
     Ok(items.into_iter().filter(|i| i.pull_request.is_none()).map(to_issue).collect())
 }
 

@@ -1,5 +1,6 @@
 //! Jira Cloud (REST v3) and Jira Data Center / Server (REST v2), as issue trackers.
 
+use super::page::{self, Page};
 use super::{Account, Auth, Issue, Provider, Target, enc, get};
 use crate::error::{Error, Result};
 use serde::Deserialize;
@@ -43,10 +44,18 @@ struct ApiIssue {
     fields: Fields,
 }
 
+/// Jira Cloud pages with a token; Data Center with a start index and total.
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct Search {
     #[serde(default)]
     issues: Vec<ApiIssue>,
+    #[serde(default)]
+    next_page_token: Option<String>,
+    #[serde(default)]
+    start_at: usize,
+    #[serde(default)]
+    total: Option<usize>,
 }
 
 fn to_issue(host: &str, i: ApiIssue) -> Issue {
@@ -69,8 +78,18 @@ pub fn my_issues(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
     jql.push_str(" ORDER BY updated DESC");
     // Jira Cloud retired /search in favour of /search/jql.
     let path = if t.provider == Provider::JiraCloud { "search/jql" } else { "search" };
-    let url = format!("{}/{path}?jql={}&fields={FIELDS}&maxResults=50", api(&t.host, t.provider), enc(&jql));
-    Ok(get::<Search>(auth, &url)?.issues.into_iter().map(|i| to_issue(&t.host, i)).collect())
+    let first = format!("{}/{path}?jql={}&fields={FIELDS}&maxResults=100", api(&t.host, t.provider), enc(&jql));
+    let items = page::collect(first.clone(), |url| {
+        let s: Search = get(auth, url)?;
+        let read = s.start_at + s.issues.len();
+        let next = match (s.next_page_token, s.total) {
+            (Some(token), _) => Some(page::with_param(&first, "nextPageToken", &token)),
+            (None, Some(total)) if read < total => Some(page::with_param(&first, "startAt", &read.to_string())),
+            _ => None,
+        };
+        Ok(Page { items: s.issues, next })
+    })?;
+    Ok(items.into_iter().map(|i| to_issue(&t.host, i)).collect())
 }
 
 /// Looks keys up one by one: a JQL `key in (...)` fails entirely if any key doesn't exist.

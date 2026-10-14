@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 mod auth;
 mod http;
 mod links;
+mod page;
 mod publish;
 mod refs;
 mod remote;

@@ -171,6 +171,22 @@ pub(crate) fn get<T: DeserializeOwned>(auth: &Auth, url: &str) -> Result<T> {
     json(call(request("GET", auth, url)?, None)?)
 }
 
+/// A list page's body, with the paging headers that came with it.
+pub(crate) struct Paged<T> {
+    pub body: T,
+    /// The `Link: <…>; rel="next"` target (GitHub, GitLab).
+    pub link_next: Option<String>,
+    /// The `x-ms-continuationtoken` header (Azure DevOps).
+    pub continuation: Option<String>,
+}
+
+pub(crate) fn get_paged<T: DeserializeOwned>(auth: &Auth, url: &str) -> Result<Paged<T>> {
+    let resp = call(request("GET", auth, url)?, None)?;
+    let link_next = resp.header("Link").and_then(super::page::next_link);
+    let continuation = resp.header("x-ms-continuationtoken").filter(|t| !t.is_empty()).map(str::to_owned);
+    Ok(Paged { body: json(resp)?, link_next, continuation })
+}
+
 pub(crate) fn get_text(auth: &Auth, url: &str) -> Result<String> {
     let resp = call(request("GET", auth, url)?, None)?;
     Ok(String::from_utf8_lossy(&read_capped(resp.into_reader(), MAX_JSON)?).into_owned())

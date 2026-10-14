@@ -1,8 +1,10 @@
 //! Bitbucket Cloud (API 2.0) and Bitbucket Data Center / Server (REST 1.0).
 
+use super::page::{self, Page};
 use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, enc, get, get_text, post};
 use crate::error::{Error, Result};
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use serde_json::json;
 
 const CLOUD: &str = "https://api.bitbucket.org/2.0";
@@ -15,9 +17,35 @@ fn dc_repo(t: &Target) -> String {
     format!("https://{}/rest/api/1.0/projects/{}/repos/{}", t.host, enc(&t.owner), enc(&t.repo))
 }
 
+/// A page of a list: Cloud links the next page; Data Center gives the next start index.
 #[derive(Deserialize)]
-struct Page<T> {
+#[serde(rename_all = "camelCase")]
+struct Values<T> {
     values: Vec<T>,
+    #[serde(default)]
+    next: Option<String>,
+    #[serde(default)]
+    is_last_page: Option<bool>,
+    #[serde(default)]
+    next_page_start: Option<u64>,
+}
+
+fn cloud_list<T: DeserializeOwned>(auth: &Auth, first: String) -> Result<Vec<T>> {
+    page::collect(first, |url| {
+        let v: Values<T> = get(auth, url)?;
+        Ok(Page { items: v.values, next: v.next })
+    })
+}
+
+fn dc_list<T: DeserializeOwned>(auth: &Auth, first: String) -> Result<Vec<T>> {
+    page::collect(first.clone(), |url| {
+        let v: Values<T> = get(auth, url)?;
+        let next = match (v.is_last_page, v.next_page_start) {
+            (Some(false), Some(start)) => Some(page::with_param(&first, "start", &start.to_string())),
+            _ => None,
+        };
+        Ok(Page { items: v.values, next })
+    })
 }
 
 #[derive(Deserialize, Default)]
@@ -209,10 +237,10 @@ fn convert_dc(p: DcPr) -> PullRequest {
 pub fn pull_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
     if t.provider == Provider::Bitbucket {
         let url = format!("{}/pullrequests?state=OPEN&pagelen=50&fields=%2Bvalues.participants", cloud_repo(t));
-        Ok(get::<Page<CloudPr>>(auth, &url)?.values.into_iter().map(convert_cloud).collect())
+        Ok(cloud_list::<CloudPr>(auth, url)?.into_iter().map(convert_cloud).collect())
     } else {
         let url = format!("{}/pull-requests?state=OPEN&limit=100", dc_repo(t));
-        Ok(get::<Page<DcPr>>(auth, &url)?.values.into_iter().map(convert_dc).collect())
+        Ok(dc_list::<DcPr>(auth, url)?.into_iter().map(convert_dc).collect())
     }
 }
 
@@ -285,8 +313,8 @@ fn to_issue(i: CloudIssue) -> Issue {
 pub fn my_issues(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
     let me: CloudUser = get(auth, &format!("{CLOUD}/user"))?;
     let q = format!(r#"assignee.uuid="{}" AND (state="new" OR state="open")"#, me.uuid);
-    match get::<Page<CloudIssue>>(auth, &format!("{}/issues?q={}&sort=-updated_on&pagelen=50", cloud_repo(t), enc(&q))) {
-        Ok(p) => Ok(p.values.into_iter().map(to_issue).collect()),
+    match cloud_list::<CloudIssue>(auth, format!("{}/issues?q={}&sort=-updated_on&pagelen=50", cloud_repo(t), enc(&q))) {
+        Ok(items) => Ok(items.into_iter().map(to_issue).collect()),
         Err(e) if e.is_not_found() => Ok(Vec::new()),
         Err(e) => Err(e),
     }
@@ -334,7 +362,7 @@ mod tests {
 
     #[test]
     fn converts_cloud_and_dc() {
-        let p: Page<CloudPr> = serde_json::from_str(
+        let p: Values<CloudPr> = serde_json::from_str(
             r#"{"values":[{"id":12,"title":"Fix","description":"","source":{"branch":{"name":"7-fix"},"commit":{"hash":"0123456789ab"}},
             "destination":{"branch":{"name":"main"}},"author":{"display_name":"Ada","uuid":"{1}"},"links":{"html":{"href":"https://bitbucket.org/t/a/pull-requests/12"}},
             "participants":[{"user":{"display_name":"Grace"},"role":"REVIEWER","approved":true},{"user":{"display_name":"Bob"},"role":"PARTICIPANT","approved":false}]}]}"#,
@@ -344,7 +372,7 @@ mod tests {
         assert_eq!((pr.id, pr.source.as_str(), pr.approvals(), pr.reviewers.len()), (12, "7-fix", 1, 1));
         assert!(pr.head_matches("0123456789abcdef0000"));
 
-        let d: Page<DcPr> = serde_json::from_str(
+        let d: Values<DcPr> = serde_json::from_str(
             r#"{"values":[{"id":3,"title":"Port","fromRef":{"displayId":"PROJ-1-port","latestCommit":"deadbeef00"},"toRef":{"displayId":"master"},
             "author":{"user":{"displayName":"Ada"},"status":"UNAPPROVED"},"reviewers":[{"user":{"displayName":"Linus"},"status":"NEEDS_WORK"}],
             "links":{"self":[{"href":"https://bb.acme.io/projects/P/repos/r/pull-requests/3"}]}}]}"#,
