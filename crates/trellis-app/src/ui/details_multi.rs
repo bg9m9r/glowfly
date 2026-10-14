@@ -58,7 +58,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show(ui, |ui| {
                 for f in files {
                     let target = DiffTarget::Between(older, newer, f.path.clone());
-                    changed_file_row(ui, f, target, open, newer, msgs);
+                    changed_file_row(ui, f, target, open, newer, None, msgs);
                 }
             });
         }

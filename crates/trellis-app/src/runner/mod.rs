@@ -16,6 +16,7 @@ use trellis_core::undo::{self, Action, Plan};
 
 mod askpass;
 mod config;
+mod os;
 mod rebase;
 
 /// Wakes the UI when a result arrives (so it can process the message promptly).
@@ -77,6 +78,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::LoadFileHistory { .. } => "file-history",
         Effect::LocalOp { .. } => "local-op",
         Effect::RevertHunk { .. } => "revert-hunk",
+        Effect::RestoreFile { .. } => "restore-file",
         Effect::RunGit { .. } => "git",
         Effect::UndoRedo { .. } => "undo-redo",
         Effect::LoadRebasePlan { .. } => "rebase-plan",
@@ -98,6 +100,8 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::OpenUrl(_) => "open-url",
         Effect::OpenTerminal(_) => "open-terminal",
         Effect::OpenFolder(_) => "open-folder",
+        Effect::OpenPath(_) => "open-path",
+        Effect::RevealPath(_) => "reveal-path",
         Effect::PickFolder { .. } => "pick-folder",
         Effect::PickFile { .. } => "pick-file",
         Effect::ListSigningKeys { .. } => "list-keys",
@@ -164,6 +168,9 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
         Effect::RevertHunk { workdir, target, index, expected } => {
             let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
             Some(Msg::HunkReverted { path: target.path().to_owned(), result })
+        }
+        Effect::RestoreFile { workdir, oid, path } => {
+            Some(Msg::FileRestored { result: repo::restore_file(&workdir, oid, &path).map_err(err), path, oid })
         }
         Effect::RunGit { cwd, cmds, write_file, record, prompts } => {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
@@ -242,17 +249,11 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             crate::platform::save_tabs(&paths, active);
             None
         }
-        Effect::OpenUrl(url) => {
-            open::that_detached(&url).err().map(|e| Msg::Logged { ok: false, text: format!("Could not open {url}: {e}") })
-        }
-        Effect::OpenTerminal(dir) => {
-            crate::platform::open_terminal(&dir);
-            None
-        }
-        Effect::OpenFolder(dir) => {
-            crate::platform::open_in_file_manager(&dir);
-            None
-        }
+        Effect::OpenUrl(url) => os::open_url(&url),
+        Effect::OpenTerminal(dir) => os::open_terminal(&dir),
+        Effect::OpenFolder(dir) => os::open_folder(&dir),
+        Effect::OpenPath(p) => os::open_path(&p),
+        Effect::RevealPath(p) => os::reveal(&p),
         Effect::PickFolder { title, purpose } => {
             let path = rfd::FileDialog::new().set_title(title).pick_folder();
             Some(Msg::FolderPicked { purpose, path })

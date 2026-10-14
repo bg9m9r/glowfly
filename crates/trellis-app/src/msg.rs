@@ -10,7 +10,7 @@ use std::time::Instant;
 use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
 use trellis_core::rebase::{Outcome, RebaseAction, RebaseBase, RebasePlan};
-use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, Side, Snapshot};
+use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, RestoredFrom, Side, Snapshot};
 use trellis_core::settings::{DiffLayout, DiffMode, FilterOp, TrackerChoice};
 
 /// What a folder picker was opened for.
@@ -199,6 +199,14 @@ pub enum Msg {
         index: usize,
         generation: u64,
     },
+    /// Write `path` as of commit `oid` into the working tree (its parent's version when `deleted`,
+    /// i.e. the commit deleted it). `confirmed: false` opens the confirmation first.
+    RestoreFile {
+        oid: Oid,
+        path: String,
+        deleted: bool,
+        confirmed: bool,
+    },
     Commit,
     PrefillAmend,
     AppendToDescription(String),
@@ -273,6 +281,10 @@ pub enum Msg {
     OpenUrl(String),
     OpenTerminal,
     OpenFolder(PathBuf),
+    /// Open a working-tree file (repo-relative path) in the OS default program.
+    OpenWorkingFile(String),
+    /// Select a working-tree file in the file manager (its folder where selecting isn't supported).
+    ShowWorkingFile(String),
 
     // ---- hosting services
     ForgeRefresh {
@@ -366,6 +378,12 @@ pub enum Msg {
     HunkReverted {
         path: String,
         result: Result<(), String>,
+    },
+    /// A RestoreFile finished.
+    FileRestored {
+        path: String,
+        oid: Oid,
+        result: Result<RestoredFrom, String>,
     },
     JobDone {
         ok: bool,

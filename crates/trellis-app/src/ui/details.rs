@@ -2,6 +2,7 @@
 
 use super::UiCache;
 use super::common::{issue_chip, lane_color, menu_item, short, state_actions, status_color, status_label};
+use super::file_menu;
 use super::graph::draw_avatar;
 use super::spell_edit::spell_text_edit;
 use super::theme::color;
@@ -9,7 +10,7 @@ use crate::msg::Msg;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, vec2};
 use git2::Oid;
-use trellis_core::repo::{DiffTarget, FileEntry};
+use trellis_core::repo::{DiffTarget, FileEntry, Snapshot};
 use trellis_core::undo::DISCARD_STASH_MESSAGE;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -71,9 +72,9 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     }
 
     let list_h = ((ui.available_height() - 300.0) / 2.0).max(80.0);
-    file_list(ui, "Unstaged Files", &snap.unstaged, false, &open, list_h, msgs);
+    file_list(ui, snap, false, &open, list_h, msgs);
     ui.add_space(8.0);
-    file_list(ui, "Staged Files", &snap.staged, true, &open, list_h, msgs);
+    file_list(ui, snap, true, &open, list_h, msgs);
 
     ui.add_space(6.0);
     ui.separator();
@@ -179,19 +180,22 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     ui.label(RichText::new(format!("{n} changed file{}", if n == 1 { "" } else { "s" })).strong().color(color::text()));
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         for f in &d.files {
-            changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, msgs);
+            let restore = Some((d.oid, d.in_workdir(&f.path)));
+            changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, restore, msgs);
         }
     });
 }
 
 /// A file changed by a commit (or between two): its status and path, which opens `target`.
-/// Its menu opens the file's history as seen from `history_at`.
+/// Its menu opens the file's history as seen from `history_at`. With `commit` (the commit to
+/// restore from, and whether the path is in the working tree) it also has the file actions.
 pub(super) fn changed_file_row(
     ui: &mut egui::Ui,
     f: &FileEntry,
     target: DiffTarget,
     open: Option<&DiffTarget>,
     history_at: Oid,
+    commit: Option<(Oid, bool)>,
     msgs: &mut Vec<Msg>,
 ) {
     ui.horizontal(|ui| {
@@ -203,6 +207,9 @@ pub(super) fn changed_file_row(
         r.context_menu(|ui| {
             menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: Some(history_at) });
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
+            if let Some((oid, in_wd)) = commit {
+                file_menu::commit_file_items(ui, msgs, oid, f, in_wd);
+            }
         });
     });
 }
@@ -213,7 +220,9 @@ struct OpenFile<'a> {
     conflict: Option<&'a str>,
 }
 
-fn file_list(ui: &mut egui::Ui, title: &str, files: &[FileEntry], staged: bool, open: &OpenFile, max_h: f32, msgs: &mut Vec<Msg>) {
+/// The Unstaged or Staged Files list of the working tree.
+fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, msgs: &mut Vec<Msg>) {
+    let (title, files) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
     egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new(format!("{title} ({})", files.len())).strong().color(color::text()));
@@ -294,6 +303,7 @@ fn file_list(ui: &mut egui::Ui, title: &str, files: &[FileEntry], staged: bool, 
                         menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: None });
                     }
                     menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
+                    file_menu::wip_file_items(ui, msgs, f, snap.missing_from_workdir(&f.path));
                 });
             });
         }

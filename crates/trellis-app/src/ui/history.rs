@@ -2,6 +2,7 @@
 //! following renames), and the selected commit with its diff of the file on the right.
 
 use super::common::{menu_item, short, status_color};
+use super::file_menu;
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -88,6 +89,8 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             resp.context_menu(|ui| {
                 menu_item(msgs, ui, "View on graph", Msg::ShowInGraph(e.oid));
                 menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));
+                ui.separator();
+                file_menu::restore_item(ui, msgs, e.oid, &e.path, e.status);
             });
             ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
         }

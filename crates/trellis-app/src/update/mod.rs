@@ -7,6 +7,7 @@ mod avatars;
 mod branches;
 mod conflict;
 mod diff;
+mod files;
 mod forge;
 mod graph_filter;
 mod history;
@@ -34,6 +35,8 @@ mod diff_nav_tests;
 mod diff_tests;
 #[cfg(test)]
 mod editor_tests;
+#[cfg(test)]
+mod files_tests;
 #[cfg(test)]
 mod graph_filter_tests;
 #[cfg(test)]
@@ -151,6 +154,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 st.log(false, e);
             } else if let Msg::HunkReverted { path, result: Err(e) } = *msg {
                 st.log(false, format!("Could not revert the hunk in {path}: {e}"));
+            } else if let Msg::FileRestored { path, result: Err(e), .. } = *msg {
+                st.log(false, format!("Could not restore {path}: {e}"));
             } else {
                 tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display());
             }
@@ -177,6 +182,9 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::HunkReverted { .. }
         | Msg::JobDone { .. } => ops::handle(st, msg, now, &mut fx),
         Msg::Undo | Msg::Redo => undo::handle(st, msg, now, &mut fx),
+        Msg::RestoreFile { .. } | Msg::FileRestored { .. } | Msg::OpenWorkingFile(_) | Msg::ShowWorkingFile(_) => {
+            files::handle(st, msg, now, &mut fx)
+        }
         Msg::RenameBranchDialog(_)
         | Msg::RenameBranch { .. }
         | Msg::SetUpstreamDialog(_)

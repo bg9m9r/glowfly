@@ -87,6 +87,11 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     let repo = Repository::open(workdir)?;
     let c = repo.find_commit(oid)?;
     let files = file_entries(&commit_diff(&repo, oid, None)?);
+    // One stat per changed file, so views can tell which ones can be opened.
+    let absent = match repo.workdir() {
+        Some(root) => files.iter().filter(|f| root.join(&f.path).symlink_metadata().is_err()).map(|f| f.path.clone()).collect(),
+        None => files.iter().map(|f| f.path.clone()).collect(),
+    };
     Ok(CommitDetail {
         oid,
         message: c.message().unwrap_or_default().trim_end().to_owned(),
@@ -96,6 +101,7 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
         time: c.time().seconds(),
         parents: c.parent_ids().collect(),
         files,
+        absent,
     })
 }
 

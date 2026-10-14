@@ -1,4 +1,5 @@
-//! Operating-system integration: the recent-repositories file, terminals, file managers.
+//! Operating-system integration: the recent-repositories file, terminals, file managers (opening
+//! a folder, or showing a file selected in it).
 
 use std::path::{Path, PathBuf};
 
@@ -86,4 +87,27 @@ pub fn open_in_file_manager(dir: &Path) {
     if let Err(e) = std::process::Command::new(cmd).arg(dir).spawn() {
         tracing::warn!("could not open the file manager: {e}");
     }
+}
+
+/// Shows `path` selected in the file manager: Explorer on Windows, Finder on macOS. Elsewhere
+/// there is no common way to select a file, so its folder opens instead.
+pub fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
+    // Rebuilding from components normalises separators (`C:\repo\src/a.txt` on Windows).
+    let path: PathBuf = path.components().collect();
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // Explorer parses `/select,` itself and wants the path quoted inside the same argument.
+        // Its exit code is 1 even when it worked, so it isn't checked.
+        std::process::Command::new("explorer").raw_arg(format!("/select,\"{}\"", path.display())).spawn()?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").arg("-R").arg(&path).spawn()?;
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open").arg(path.parent().unwrap_or(&path)).spawn()?;
+    }
+    Ok(())
 }

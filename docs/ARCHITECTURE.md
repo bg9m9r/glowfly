@@ -24,7 +24,8 @@ crates/
                           diffs with optional whitespace filtering, line counts), history
                           (commits that changed a file, following renames), index (staging),
                           lines (partial patches for line staging), revert (a commit or
-                          comparison hunk's inverse applied to the working tree), conflict
+                          comparison hunk's inverse applied to the working tree), restore (one
+                          file written from a commit, or its parent, into the working tree), conflict
                           (reading an index conflict into chunks), resolve (picks, output, write
                           and stage)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
@@ -74,7 +75,8 @@ crates/
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
                           config (reading git config), rebase (loading and running an
                           interactive rebase, with Trellis as the sequence editor), askpass
-                          (starting the credential-prompt listener, answering prompts)
+                          (starting the credential-prompt listener, answering prompts), os
+                          (URLs, terminals, opening files and showing them in the file manager)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
@@ -83,7 +85,8 @@ crates/
                           branch menu's operations), rebase (the interactive rebase panel and
                           its job), graph_filter (hidden and soloed refs, saved per repository),
                           askpass (queueing, answering and cancelling credential prompts; what a
-                          finished job clears)
+                          finished job clears), files (restoring a file from a commit, opening
+                          or showing a working-tree file)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, details_multi (several commits), diff/ (header,
@@ -93,13 +96,16 @@ crates/
                           actions, message editor, drag to reorder), modals, menus,
                           branch_menu (local branch menu), branch_dialogs (rename, upstream),
                           ref_visibility (hide/solo menu items, row markers and banner),
+                          file_menu (file actions in file rows' menus: restore, open, show),
                           askpass (the credential prompt, drawn above every other dialog),
                           status, prefs/ (editor: the Editor page), theme, widgets
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
                           snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
-                          snapshot_tests_editor.rs, snapshot_tests_askpass.rs)
-    platform.rs           OS integration (recent repos, terminal, file manager)
+                          snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
+                          snapshot_tests_file_menu.rs)
+    platform.rs           OS integration (recent repos, terminal, file manager, showing a
+                          file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead
                           installs a prepared todo list for git (no window) and exits; with
                           TRELLIS_ASKPASS set (or `--askpass <prompt>`) it is git's and ssh's

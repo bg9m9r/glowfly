@@ -14,6 +14,7 @@ mod index;
 mod lines;
 mod load;
 mod resolve;
+mod restore;
 mod revert;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
@@ -24,6 +25,7 @@ pub use index::{apply_hunk, discard_file, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
 pub use load::{load, messages_between, status_at};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
+pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
 
 #[derive(Clone)]
@@ -161,6 +163,15 @@ impl Snapshot {
     pub fn head_info(&self) -> Option<&BranchInfo> {
         self.locals.iter().find(|b| b.is_head)
     }
+
+    /// Whether status says `path` is gone from the working tree: deleted there (unstaged 'D'),
+    /// or deleted in the index ('D' staged) with nothing at the path since.
+    pub fn missing_from_workdir(&self, path: &str) -> bool {
+        if let Some(u) = self.unstaged.iter().find(|f| f.path == path) {
+            return u.status == 'D';
+        }
+        self.staged.iter().any(|f| f.path == path && f.status == 'D')
+    }
 }
 
 pub struct CommitDetail {
@@ -172,6 +183,16 @@ pub struct CommitDetail {
     pub time: i64,
     pub parents: Vec<Oid>,
     pub files: Vec<FileEntry>,
+    /// Paths of `files` missing from the working tree when the detail was loaded (deleted,
+    /// renamed or never checked out). Views use it to disable Open / Show in folder.
+    pub absent: HashSet<String>,
+}
+
+impl CommitDetail {
+    /// Whether `path` was in the working tree when the detail was loaded.
+    pub fn in_workdir(&self, path: &str) -> bool {
+        !self.absent.contains(path)
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -277,6 +298,8 @@ mod lines_tests;
 mod load_filter_tests;
 #[cfg(test)]
 mod resolve_tests;
+#[cfg(test)]
+mod restore_tests;
 #[cfg(test)]
 mod revert_tests;
 #[cfg(test)]

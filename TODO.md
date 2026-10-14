@@ -350,8 +350,20 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - Skip hooks (`--no-verify`)
   - Stage-all-and-commit shortcut
 - [ ] **File actions**
-  Restore a file from a commit, open in an external editor or the default program, show in
-  folder, create/delete/rename a file, and edit in place.
+  - [x] Restore a file from a commit (commit details and file history menus; a deleted file
+    comes back from the parent)
+  - [x] Open a file in the default program and show it in Explorer / Finder (WIP and commit
+    file rows)
+  - [ ] Open in an external editor (needs P1 External tools)
+  - [ ] Create, delete and rename a file
+  - [ ] Edit a file in place
+  - [ ] Restore several selected files from a commit at once (needs multi-select in file lists)
+  - [ ] Restore from comparison rows (two commits selected): the newer commit's version
+  - [ ] Make Restore undoable (keep the overwritten working copy, as Discard does)
+  - [ ] Honour smudge filters (Git LFS) when restoring, by writing through `git restore --source`
+  - [ ] Explain when a restored or opened path is outside a sparse checkout
+  - [ ] Open with default app and show in folder from the file history view and the diff header
+  - [ ] Restore button in the file history's selected-commit header and the commit diff header
 
 ## P1: power features
 

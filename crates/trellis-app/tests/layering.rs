@@ -31,6 +31,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "file_history",
             "write_resolution",
             "resolve_with_side",
+            "restore_file",
         ],
     ),
     ("gitcli", &["run", "run_with_input"]),
@@ -59,7 +60,10 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("rebase", &["plan", "start", "stopped_at", "install_todo"]),
     ("askpass", &["start", "start_with", "ask", "ask_from_env"]),
     ("server", &["start", "start_with"]),
-    ("platform", &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager"]),
+    (
+        "platform",
+        &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager", "reveal_in_file_manager"],
+    ),
 ];
 
 /// Ways to reach the outside world without going through core at all.

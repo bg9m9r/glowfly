@@ -156,6 +156,12 @@ pub enum Effect {
         index: usize,
         expected: Hunk,
     },
+    /// Writes `path` from commit `oid` (or its parent) into the working tree only.
+    RestoreFile {
+        workdir: PathBuf,
+        oid: Oid,
+        path: String,
+    },
     /// The commits that changed `path`, examining at most `limit` commits.
     LoadFileHistory {
         workdir: PathBuf,
@@ -256,6 +262,10 @@ pub enum Effect {
     OpenUrl(String),
     OpenTerminal(PathBuf),
     OpenFolder(PathBuf),
+    /// Opens an absolute path in the default program.
+    OpenPath(PathBuf),
+    /// Shows an absolute path selected in the file manager.
+    RevealPath(PathBuf),
     PickFolder {
         title: String,
         purpose: FolderPurpose,
@@ -305,6 +315,7 @@ impl Effect {
             | Effect::LoadRebasePlan { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::RevertHunk { workdir, .. }
+            | Effect::RestoreFile { workdir, .. }
             | Effect::Stats { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             _ => None,
