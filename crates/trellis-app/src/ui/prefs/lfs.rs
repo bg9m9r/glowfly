@@ -131,15 +131,15 @@ fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx
     });
     row(ui, "New pattern", |ui| {
         let mut submit = false;
-        ui.add_enabled_ui(!busy, |ui| {
-            ui.horizontal(|ui| {
-                let r = text_field(ui, &mut page.new_pattern, "*.psd, *.zip or assets/video/**");
-                if r.changed() {
-                    page.pattern_error = None;
-                }
-                submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-                submit |= ui.button("Track").clicked();
-            });
+        ui.horizontal(|ui| {
+            // Always enabled: disabling it while a job (an auto-fetch, say) runs would take the
+            // focus away mid-typing. Only Track waits for the job.
+            let r = text_field(ui, &mut page.new_pattern, "*.psd, *.zip or assets/video/**");
+            if r.changed() {
+                page.pattern_error = None;
+            }
+            submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+            submit |= ui.add_enabled(!busy, egui::Button::new("Track")).clicked();
         });
         if submit && !busy {
             msgs.push(Msg::Lfs(LfsMsg::Track(page.new_pattern.clone())));

@@ -54,24 +54,36 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
     }
 }
 
-/// Reads the active repository's status again for the open page.
+/// Reads the active repository's status again for the open page, showing "Checking" meanwhile.
 pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
+    read(st, false, fx);
+}
+
+/// Asks for the status; `keep` leaves the current one on screen until the new one arrives, so
+/// the page (and the New pattern field, with its text and focus) stays put.
+fn read(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     let Some(p) = st.prefs.as_mut() else { return };
     p.lfs.generation += 1;
-    p.lfs.status = None;
+    if !keep {
+        p.lfs.status = None;
+    }
     p.lfs.error = None;
     fx.push(Effect::LoadLfs { workdir, generation: p.lfs.generation });
 }
 
-/// A job finished in the active tab: refresh the page if it is open. A successful Initialize
-/// may lead to the pull offer once the new status arrives.
-pub(super) fn job_finished(st: &mut AppState, label: &str, ok: bool, fx: &mut Vec<Effect>) {
+/// A job finished in the active tab: refresh the page if it is open, keeping it on screen
+/// meanwhile. A successful Initialize may lead to the pull offer once the new status arrives.
+/// Background jobs (auto-fetch) can't change the LFS setup or patterns, so they leave it alone.
+pub(super) fn job_finished(st: &mut AppState, label: &str, ok: bool, quiet: bool, fx: &mut Vec<Effect>) {
+    if quiet {
+        return;
+    }
     let Some(p) = st.prefs.as_mut().filter(|p| p.page == PrefPage::RepoLfs) else { return };
     if ok && label == INIT_LABEL {
         p.lfs.offer_pull = true;
     }
-    load(st, fx);
+    read(st, true, fx);
 }
 
 fn status(st: &AppState) -> Option<&LfsStatus> {

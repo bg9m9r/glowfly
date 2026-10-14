@@ -301,7 +301,7 @@ pub(super) fn finish_job(
     }
     super::watch::settled(st, now);
     super::repo::refresh(st, fx);
-    super::lfs::job_finished(st, &job.label, ok, fx);
+    super::lfs::job_finished(st, &job.label, ok, job.quiet, fx);
     // Pushes and branch changes affect pull requests; auto-fetch uses the normal interval.
     if !job.quiet {
         super::forge::refresh(st, true, false, now, fx);

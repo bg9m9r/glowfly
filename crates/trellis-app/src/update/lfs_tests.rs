@@ -251,6 +251,29 @@ fn initialize_then_offer_to_pull() {
 }
 
 #[test]
+fn finished_jobs_keep_the_page_and_auto_fetch_leaves_it_alone() {
+    let (mut st, dir) = open("lfs-auto-fetch");
+    page_with(&mut st, status(true, true, &["*.a"]));
+    st.prefs.as_mut().unwrap().lfs.new_pattern = "*.ps".into();
+    let generation = lfs_gen(&st);
+    init_job(&mut st);
+    st.job.as_mut().unwrap().quiet = true;
+    let fx = run(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None });
+    assert!(!loads(&fx), "{fx:?}");
+    let page = &st.prefs.as_ref().unwrap().lfs;
+    assert_eq!((page.generation, page.status.is_some(), page.new_pattern.as_str()), (generation, true, "*.ps"));
+    assert!(!page.offer_pull);
+
+    // Another job reloads it, keeping the status and the typed text on screen meanwhile.
+    init_job(&mut st);
+    st.job.as_mut().unwrap().label = "LFS pull".into();
+    assert!(loads(&run(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None })));
+    let page = &st.prefs.as_ref().unwrap().lfs;
+    assert_eq!((page.status.is_some(), page.new_pattern.as_str()), (true, "*.ps"));
+    cleanup(&dir);
+}
+
+#[test]
 fn initialize_when_ready() {
     let (mut st, dir) = open("lfs-when-ready");
     let fx = lfs(&mut st, LfsMsg::InitializeWhenReady);
