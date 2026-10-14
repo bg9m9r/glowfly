@@ -57,7 +57,8 @@ pub enum Msg {
     SetDiffMode(DiffMode),
     /// Diff header toggle: hide whitespace-only changes and reload the open diff.
     SetIgnoreWhitespace(bool),
-    /// Scroll the diff to the next (1) or previous (-1) hunk.
+    /// Scroll the diff to the next (1) or previous (-1) change; at either end, open the next or
+    /// previous changed file of the list the diff came from (on its first or last change).
     JumpToChange(isize),
     /// A click on line `line` of hunk `hunk` in the open diff (line-level staging).
     SelectDiffLine {

@@ -238,8 +238,9 @@ fn undo_shortcuts(ctx: &egui::Context, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// F7 / Shift+F7 and Alt+Down / Alt+Up: the next (1) or previous (-1) change in the open diff,
-/// or conflict in the conflict view.
+/// F7 / Shift+F7 and Alt+Down / Alt+Up: the next (1) or previous (-1) change in the open diff
+/// (at either end, continuing into the next or previous changed file), or conflict in the
+/// conflict view.
 fn step_shortcuts(ctx: &egui::Context) -> Option<isize> {
     use egui::Modifiers;
     ctx.input_mut(|i| {

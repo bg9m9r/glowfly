@@ -66,7 +66,9 @@ crates/
                           rules, cherry-pick checks), branches (why branch actions are blocked,
                           push targets), rebase (the interactive rebase panel: the list being
                           edited and the rules for starting it), askpass (credential
-                          prompts waiting for the user; global, not parked with a tab)
+                          prompts waiting for the user; global, not parked with a tab),
+                          diff_nav (next/previous change across files: the file list a
+                          diff came from, where a step lands)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);

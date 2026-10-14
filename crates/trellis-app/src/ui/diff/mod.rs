@@ -11,6 +11,7 @@ mod syntax;
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::AppState;
+use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
 use eframe::egui::{self, Align2, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
 use style::DiffStyle;
@@ -63,12 +64,14 @@ impl DiffView<'_> {
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
     let ignore_ws = st.settings.diff_ignore_whitespace;
+    // Where Previous and Next go: a change in this file, another file, or nowhere.
+    let nav = [diff_nav::step(st, -1).kind(), diff_nav::step(st, 1).kind()];
     {
         let Some((target, diff)) = &st.diff else { return };
         let has_rows = !diff.binary && !diff.hunks.is_empty();
         ui.add_space(6.0);
         let rows = has_rows.then_some((st.settings.diff_layout, st.settings.diff_mode));
-        header::header_bar(ui, target, rows, (!diff.binary).then_some(ignore_ws), msgs);
+        header::header_bar(ui, target, rows, nav, (!diff.binary).then_some(ignore_ws), msgs);
         ui.separator();
         if diff.binary {
             ui.label(RichText::new("Binary file not shown.").color(color::weak()));
@@ -84,16 +87,28 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             return;
         }
     }
+    record_rows(ui, st, scroll_to, msgs);
+}
+
+/// Draws the open diff's rows and records the first visible row and how many rows fit.
+fn record_rows(ui: &mut Ui, st: &mut AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
     let blocked = st.hunk_ops_blocked();
-    if let Some(top) = rows(ui, st, blocked, scroll_to, msgs) {
+    if let Some((top, visible)) = rows(ui, st, blocked, scroll_to, msgs) {
         st.view.diff_top_row = top;
+        st.view.diff_visible_rows = visible;
     }
 }
 
 /// Draws the open diff's rows in the current layout and view mode (hunks, or the whole file
-/// when it loaded) and returns the first visible row. Lines are selectable in working-tree
-/// diffs unless line operations are blocked.
-fn rows(ui: &mut Ui, st: &AppState, blocked: Option<&'static str>, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> Option<usize> {
+/// when it loaded) and returns the first visible row and how many rows fit. Lines are
+/// selectable in working-tree diffs unless line operations are blocked.
+fn rows(
+    ui: &mut Ui,
+    st: &AppState,
+    blocked: Option<&'static str>,
+    scroll_to: Option<usize>,
+    msgs: &mut Vec<Msg>,
+) -> Option<(usize, usize)> {
     let (target, diff) = st.diff.as_ref()?;
     let whole = whole_file::shown(diff, st.settings.diff_mode);
     // Highlighting always comes with the diff; the setting only decides whether to paint it.
@@ -230,8 +245,14 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
 
 /// Uniform rows in a scroll area shared by both layouts (one id, so switching layout doesn't
 /// leave a stale second scroll state), each `row_h` high. Scrolls `scroll_to` to the top if set,
-/// and returns the first visible row.
-pub(super) fn scroll(ui: &mut Ui, rows: usize, row_h: f32, scroll_to: Option<usize>, mut add_row: impl FnMut(&mut Ui, usize)) -> usize {
+/// and returns the first visible row and how many rows fit in the viewport.
+pub(super) fn scroll(
+    ui: &mut Ui,
+    rows: usize,
+    row_h: f32,
+    scroll_to: Option<usize>,
+    mut add_row: impl FnMut(&mut Ui, usize),
+) -> (usize, usize) {
     ui.spacing_mut().item_spacing.y = 0.0;
     let mut area = egui::ScrollArea::both().id_salt("diff").auto_shrink([false, false]);
     if let Some(row) = scroll_to {
@@ -242,7 +263,7 @@ pub(super) fn scroll(ui: &mut Ui, rows: usize, row_h: f32, scroll_to: Option<usi
             add_row(ui, i);
         }
     });
-    (out.state.offset.y / row_h).round() as usize
+    ((out.state.offset.y / row_h).round() as usize, (out.inner_rect.height() / row_h).floor() as usize)
 }
 
 /// The diff's rows without the header bar, for views that embed a commit's diff of a file (the
@@ -261,8 +282,5 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             return;
         }
     }
-    let blocked = st.hunk_ops_blocked();
-    if let Some(top) = rows(ui, st, blocked, scroll_to, msgs) {
-        st.view.diff_top_row = top;
-    }
+    record_rows(ui, st, scroll_to, msgs);
 }

@@ -96,19 +96,36 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             if generation != st.diff_gen {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
+            // Any accepted result ends a pending step, so a superseding reload can't block it.
+            let landing = st.view.diff_landing.take();
             match result {
                 Ok(d) => {
+                    let landing = landing.filter(|(t, _)| !reload && *t == target).map(|(_, l)| l);
+                    // A stepped-to file with nothing to land on is passed over, never shown.
+                    if let Some(l) = landing
+                        && super::diff::skip_past(st, &target, &d, l, fx)
+                    {
+                        return;
+                    }
                     // The line selection survives only a reload that brings back the same diff.
                     let same = reload && st.diff.as_ref().is_some_and(|(t, old)| *t == target && *old == d);
                     if !same {
                         st.view.diff_lines.clear();
                     }
                     // A different file opens at the top (or its first change block, or the hunk kept
-                    // through a view mode switch); a reload after a hunk operation keeps its place.
+                    // through a view mode switch, or the change a step lands on); a reload after a
+                    // hunk operation keeps its place, but its change rows may have moved.
                     if !reload {
-                        let row = super::diff::opening_row(&d, &st.settings, st.view.diff_open_hunk.take());
+                        let hunk = st.view.diff_open_hunk.take();
+                        let row = match landing {
+                            Some(l) => super::diff::landing_row(&d, &st.settings, l),
+                            None => super::diff::opening_row(&d, &st.settings, hunk),
+                        };
                         st.view.diff_scroll_to_row = Some(row);
                         st.view.diff_top_row = row;
+                        st.view.diff_cursor = landing.map(|_| row);
+                    } else {
+                        st.view.diff_cursor = None;
                     }
                     st.diff = Some((target, d));
                     st.diff_shown_gen = generation;
@@ -227,8 +244,10 @@ fn next_diff_gen(st: &mut AppState) -> u64 {
 /// Opens `target` in the diff viewer (closing a conflict view).
 pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
     super::conflict::close(st);
-    // A different file opens: the hunk kept through a view mode switch doesn't apply to it.
+    // A different file opens: a hunk kept through a view mode switch or a pending step is moot.
     st.view.diff_open_hunk = None;
+    st.view.diff_landing = None;
+    st.view.diff_cursor = None;
     if let Some(workdir) = st.workdir() {
         let generation = next_diff_gen(st);
         let ignore_whitespace = st.settings.diff_ignore_whitespace;
@@ -242,6 +261,8 @@ pub(super) fn close_diff(st: &mut AppState) {
     st.diff = None;
     st.view.diff_lines.clear();
     st.view.diff_open_hunk = None;
+    st.view.diff_landing = None;
+    st.view.diff_cursor = None;
     next_diff_gen(st);
 }
 

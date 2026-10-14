@@ -10,8 +10,8 @@ use trellis_core::diff_rows::{DiffRow, inline_rows};
 use trellis_core::highlight::Span;
 use trellis_core::{tabs, whole_file};
 
-/// Draws the rows and returns the first visible one.
-pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> usize {
+/// Draws the rows and returns the first visible one and how many rows fit.
+pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> (usize, usize) {
     let diff = v.lines();
     // Uniform rows so huge diffs stay fast. In the whole-file view `hunk` is always 0.
     let rows = v.whole.map_or_else(|| inline_rows(v.diff), whole_file::inline_rows);

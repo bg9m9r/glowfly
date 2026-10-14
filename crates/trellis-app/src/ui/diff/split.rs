@@ -22,8 +22,8 @@ enum Side {
     New,
 }
 
-/// Draws the rows and returns the first visible one.
-pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> usize {
+/// Draws the rows and returns the first visible one and how many rows fit.
+pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> (usize, usize) {
     let diff = v.lines();
     // In the whole-file view `hunk` is always 0.
     let rows = v.whole.map_or_else(|| split_rows(v.diff), whole_file::split_rows);

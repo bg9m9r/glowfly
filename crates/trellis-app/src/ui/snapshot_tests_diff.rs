@@ -173,3 +173,23 @@ fn diff_ignore_whitespace() {
     render("diff_whitespace_only", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
+
+#[test]
+fn diff_nav_first_file() {
+    // app.txt is the first changed file (README.md is staged after it), opened at its only
+    // change: Previous is dimmed, Next goes on to README.md.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "diff-nav-first");
+    git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
+    std::fs::write(dir.join("app.txt"), "app\nfixed build\nnew line\n").unwrap();
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!((snap.unstaged.len(), snap.staged.len()), (1, 1));
+    let target = DiffTarget::Unstaged("app.txt".into());
+    let mut diff = repo::load_diff(&dir, &target).unwrap();
+    diff.intraline = intraline::intraline(&diff);
+    st.diff = Some((target, diff));
+    use crate::state::diff_nav::{StepKind, step};
+    assert_eq!([step(&st, -1).kind(), step(&st, 1).kind()], [StepKind::End, StepKind::File]);
+    render("diff_nav_first_file", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}

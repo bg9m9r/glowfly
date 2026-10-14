@@ -4,6 +4,7 @@
 pub mod askpass;
 pub mod branches;
 pub mod conflict;
+pub mod diff_nav;
 mod forge;
 pub mod history;
 pub mod lines;
@@ -158,6 +159,14 @@ pub struct ViewState {
     /// Put this hunk at the top of the next freshly opened diff (its header row, or its change
     /// block in the whole-file view); set when the view mode changes.
     pub diff_open_hunk: Option<usize>,
+    /// A file opened by next/previous change, still loading, and the change to land on. Set
+    /// and cleared only by `update`.
+    pub diff_landing: Option<(DiffTarget, diff_nav::Landing)>,
+    /// The change row next/previous change last moved to. Steps continue from it while it is
+    /// on screen, because a change near the end can't scroll to the top.
+    pub diff_cursor: Option<usize>,
+    /// How many diff rows fit in the viewport, recorded by the view.
+    pub diff_visible_rows: usize,
     /// Branch tip under the pointer (sidebar or BRANCH/TAG column), for row highlighting.
     pub hover_tip: Option<Oid>,
     pub hover_tip_next: Option<Oid>,
@@ -193,6 +202,9 @@ impl Default for ViewState {
             diff_top_row: 0,
             diff_scroll_to_row: None,
             diff_open_hunk: None,
+            diff_landing: None,
+            diff_cursor: None,
+            diff_visible_rows: 0,
             hover_tip: None,
             hover_tip_next: None,
             highlight: None,

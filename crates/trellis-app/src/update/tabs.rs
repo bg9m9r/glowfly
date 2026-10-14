@@ -223,6 +223,9 @@ fn park(st: &mut AppState) -> Parked {
     st.stats_pending.clear();
     // Not kept: another tab may show the same path, and its diff reloads on return anyway.
     st.view.diff_lines.clear();
+    // The parked tab's diff results are dropped, so a pending step can't land.
+    st.view.diff_landing = None;
+    st.view.diff_cursor = None;
     Parked {
         snap: st.snap.take(),
         selection: std::mem::take(&mut st.selection),

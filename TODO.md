@@ -183,7 +183,15 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Record a hunk revert in Trellis's undo history
     - [ ] Revert a whole file of a commit into the working tree (file-list context menu), and a
       keyboard shortcut for Revert Hunk
-  - [ ] Next/previous change continues to the next/previous changed file at either end
+  - [x] Next/previous change continues to the next/previous changed file at either end
+    - [ ] Scroll the Unstaged/Staged, commit or comparison file list so the file opened by
+      next/previous change is in view
+    - [ ] Next/previous change across entries in the File history view (step into the next or
+      previous commit's diff of the file)
+    - [ ] An optional wrap-around from the last changed file back to the first (with a notice)
+    - [ ] Keep a step from being superseded when a status refresh reloads the old file while
+      the next one is loading
+    - [ ] Show which file of how many (e.g. 3 of 12) in the diff header
   - [ ] Cache the computed diff rows instead of rebuilding them every frame
 - [x] **Line-level staging**
   Select lines in a hunk to stage, unstage or discard (click, Shift-click for a range,

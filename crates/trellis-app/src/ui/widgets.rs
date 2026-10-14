@@ -378,11 +378,13 @@ pub fn nav_row(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool, size
 
 /// A small square button showing a painted icon (for glyphs the font lacks).
 pub fn icon_button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(26.0, 24.0), Sense::click());
+    // Disabled (e.g. inside `add_enabled_ui`): dimmed, inert, and still explained on hover.
+    let enabled = ui.is_enabled();
+    let (rect, resp) = ui.allocate_exact_size(vec2(26.0, 24.0), if enabled { Sense::click() } else { Sense::hover() });
     let p = ui.painter();
-    let fill = if resp.hovered() { color::hover() } else { color::toolbar() };
+    let fill = if enabled && resp.hovered() { color::hover() } else { color::toolbar() };
     p.rect_filled(rect, CornerRadius::same(3), fill);
     // The toolbar icons are drawn for ~20px; scale down by drawing at the center.
-    paint_icon(p, rect.center(), icon, color::text());
-    resp.on_hover_text(tooltip)
+    paint_icon(p, rect.center(), icon, if enabled { color::text() } else { color::faint() });
+    resp.on_hover_text(tooltip).on_disabled_hover_text(tooltip)
 }

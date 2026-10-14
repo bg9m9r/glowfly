@@ -2,10 +2,11 @@
 //! view mode and layout toggles and the whitespace toggle.
 
 use crate::msg::Msg;
+use crate::state::diff_nav::StepKind;
 use crate::ui::common::short;
 use crate::ui::theme::color;
 use crate::ui::widgets::{Icon, icon_button};
-use eframe::egui::{Align, Layout, RichText, Ui};
+use eframe::egui::{Align, Layout, Response, RichText, Ui};
 use trellis_core::repo::DiffTarget;
 use trellis_core::settings::{DiffLayout, DiffMode};
 
@@ -14,14 +15,17 @@ const WHOLE_FILE_TIP: &str = "Every line of the file, with changes marked in pla
 
 /// Path and kind on the left; on the right (listed from the edge inwards) Close, the file
 /// action, next/previous change, the layout toggle, the view mode toggle and the whitespace
-/// toggle. `rows` holds the layout and view mode, `None` when there are no rows to lay out or
-/// navigate (binary or empty diffs); `ignore_ws` is the whitespace setting, `None` for binary
-/// diffs. The whitespace toggle shows even with no rows, so a file it hid entirely can be shown
-/// again.
+/// toggle. `rows` holds the layout and view mode, `None` when there are no rows to lay out
+/// (binary or empty diffs); `nav` is where Previous and Next go. The arrows show when there
+/// are rows or a neighbouring file to step to, so a binary or empty file can be stepped past
+/// with the mouse; an arrow with nowhere to go is dimmed. `ignore_ws` is the whitespace
+/// setting, `None` for binary diffs. The whitespace toggle shows even with no rows, so a file
+/// it hid entirely can be shown again.
 pub(super) fn header_bar(
     ui: &mut Ui,
     target: &DiffTarget,
     rows: Option<(DiffLayout, DiffMode)>,
+    nav: [StepKind; 2],
     ignore_ws: Option<bool>,
     msgs: &mut Vec<Msg>,
 ) {
@@ -52,15 +56,18 @@ pub(super) fn header_bar(
                 }
                 DiffTarget::Commit(..) | DiffTarget::Between(..) => {}
             }
-            if let Some((layout, mode)) = rows {
+            if rows.is_some() || nav.iter().any(|k| *k != StepKind::End) {
                 ui.add_space(10.0);
+                let [prev, next] = nav;
                 // Arrows are painted: the bundled fonts have no arrow glyphs.
-                if icon_button(ui, Icon::NextChange, "Next change (F7)").clicked() {
+                if step_button(ui, Icon::NextChange, next, NEXT_TIPS).clicked() {
                     msgs.push(Msg::JumpToChange(1));
                 }
-                if icon_button(ui, Icon::PrevChange, "Previous change (Shift+F7)").clicked() {
+                if step_button(ui, Icon::PrevChange, prev, PREV_TIPS).clicked() {
                     msgs.push(Msg::JumpToChange(-1));
                 }
+            }
+            if let Some((layout, mode)) = rows {
                 ui.add_space(10.0);
                 let layouts =
                     [(DiffLayout::Split, "Split", "Old and new side by side"), (DiffLayout::Inline, "Inline", "Changes in one column")];
@@ -84,6 +91,21 @@ pub(super) fn header_bar(
             }
         });
     });
+}
+
+/// Tooltips for a step that stays in the file, opens another file, or goes nowhere.
+const NEXT_TIPS: [&str; 3] = ["Next change (F7)", "Next change, in the next file (F7)", "No more changes after this file (F7)"];
+const PREV_TIPS: [&str; 3] =
+    ["Previous change (Shift+F7)", "Previous change, in the previous file (Shift+F7)", "No changes before this file (Shift+F7)"];
+
+/// A next or previous change arrow, dimmed and inert when the step goes nowhere.
+fn step_button(ui: &mut Ui, icon: Icon, kind: StepKind, tips: [&str; 3]) -> Response {
+    let tip = match kind {
+        StepKind::Change => tips[0],
+        StepKind::File => tips[1],
+        StepKind::End => tips[2],
+    };
+    ui.add_enabled_ui(kind != StepKind::End, |ui| icon_button(ui, icon, tip)).inner
 }
 
 /// A segmented control of selectable labels with no gaps. The bar lays out right to left, so

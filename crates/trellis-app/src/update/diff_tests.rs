@@ -12,7 +12,7 @@ use trellis_core::repo::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp};
 use trellis_core::settings::DiffLayout;
 
 /// Three hunks of 3, 4 and 2 lines; their split rows differ from their inline rows.
-fn three_hunks() -> FileDiff {
+pub(super) fn three_hunks() -> FileDiff {
     let line = |origin: char, text: &str| DiffLine { origin, old: Some(1), new: Some(1), text: text.into() };
     let hunks = vec![
         Hunk { header: "@@ -1,2 +1,2 @@".into(), lines: vec![line(' ', "a"), line('-', "b"), line('+', "c")] },
