@@ -264,3 +264,32 @@ pub(super) fn scroll(ui: &mut Ui, rows: usize, scroll_to: Option<usize>, mut add
     });
     (out.state.offset.y / ROW_H).round() as usize
 }
+
+/// The diff's rows without the header bar, for views that embed a commit's diff of a file (the
+/// file history). Commit diffs have no hunk buttons or line selection. `show` could delegate to
+/// this once the header bar changes in flight have landed.
+pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    let layout = st.settings.diff_layout;
+    let colored = st.settings.syntax_highlighting;
+    let scroll_to = st.view.diff_scroll_to_row.take();
+    let hunk_gen = st.hunk_ops_gen();
+    let top = {
+        let Some((target, diff)) = &st.diff else { return };
+        if diff.binary {
+            ui.label(RichText::new("Binary file not shown.").color(color::weak()));
+            return;
+        }
+        if diff.hunks.is_empty() {
+            ui.label(RichText::new("No textual changes (mode or empty file).").color(color::weak()));
+            return;
+        }
+        let hl = diff.highlight.as_ref().filter(|_| colored);
+        let selectable = !matches!(target, DiffTarget::Commit(..));
+        let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines) };
+        match layout {
+            DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
+            DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
+        }
+    };
+    st.view.diff_top_row = top;
+}

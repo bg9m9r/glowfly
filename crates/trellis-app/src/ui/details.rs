@@ -184,7 +184,10 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
                 if r.clicked() {
                     msgs.push(Msg::OpenDiff(target));
                 }
-                r.context_menu(|ui| menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone())));
+                r.context_menu(|ui| {
+                    menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: Some(d.oid) });
+                    menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
+                });
             });
         }
     });
@@ -272,6 +275,9 @@ fn file_list(ui: &mut egui::Ui, title: &str, files: &[FileEntry], staged: bool, 
                                 Msg::DiscardFile(f.path.clone(), untracked),
                             ),
                         );
+                    }
+                    if f.status != '?' {
+                        menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: None });
                     }
                     menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
                 });

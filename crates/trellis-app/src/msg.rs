@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
-use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, HunkOp, Side, Snapshot};
+use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, Side, Snapshot};
 use trellis_core::settings::{DiffLayout, TrackerChoice};
 
 /// What a folder picker was opened for.
@@ -86,6 +86,25 @@ pub enum Msg {
         path: String,
         generation: u64,
         result: Result<ConflictFile, String>,
+    },
+
+    // ---- file history
+    /// The commits that changed `path`, from HEAD (`at: None`) or as seen from commit `at`.
+    OpenFileHistory {
+        path: String,
+        at: Option<Oid>,
+    },
+    CloseFileHistory,
+    /// Select entry `i` of the open file history and show its diff.
+    SelectHistoryEntry(usize),
+    /// Continue the walk past the commit limit.
+    MoreFileHistory,
+    /// "View on graph": close the history and select the commit.
+    ShowInGraph(Oid),
+    FileHistoryLoaded {
+        path: String,
+        generation: u64,
+        result: Result<FileHistory, String>,
     },
 
     // ---- tabs

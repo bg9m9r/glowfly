@@ -21,8 +21,9 @@ crates/
   trellis-core/            library: no egui, no app state
     repo/                 repository model on libgit2: types (mod.rs), load (history, refs,
                           status), diff (details, file diffs with optional whitespace
-                          filtering, line counts), index (staging),
-                          lines (partial patches for line staging), conflict (reading an index
+                          filtering, line counts), history (commits that changed a file,
+                          following renames), index (staging), lines (partial patches for
+                          line staging), conflict (reading an index
                           conflict into chunks), resolve (picks, output, write and stage)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing)
     undo.rs               undo/redo of Trellis's own operations: records state around a job,
@@ -40,15 +41,16 @@ crates/
   trellis-app/             binary
     state/                AppState (plain data), ForgeState, PrefsState, tabs (parked per-repo
                           data for inactive tabs), undo (per-tab undo history), lines (diff
-                          line selection), conflict (the open conflict and its picks)
+                          line selection), conflict (the open conflict and its picks),
+                          history (the open file history)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner.rs             executes effects on worker threads, reports back as Msg
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
-                          undo, diff, conflict
+                          undo, diff, conflict, history
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/, details, diff/ (inline, split, syntax),
-                          conflict, modals, menus,
+                          conflict, history, modals, menus,
                           status, prefs/, theme, widgets (+ snapshot_tests.rs, snapshot_tests_diff.rs)
     platform.rs           OS integration (recent repos, terminal, file manager)
   trellis-app/tests/snapshots/   approved UI images

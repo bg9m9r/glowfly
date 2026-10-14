@@ -62,6 +62,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::LoadDetail { .. } => "load-detail",
         Effect::LoadDiff { .. } => "load-diff",
         Effect::LoadConflict { .. } => "load-conflict",
+        Effect::LoadFileHistory { .. } => "file-history",
         Effect::LocalOp { .. } => "local-op",
         Effect::RunGit { .. } => "git",
         Effect::UndoRedo { .. } => "undo-redo",
@@ -133,6 +134,11 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
         }
         Effect::LoadConflict { workdir, path, generation } => {
             Some(Msg::ConflictLoaded { path: path.clone(), generation, result: repo::load_conflict(&workdir, &path).map_err(err) })
+        }
+        Effect::LoadFileHistory { workdir, path, start, limit, generation } => {
+            let result =
+                repo::file_history(&workdir, &path, &start, limit).map_err(|e| format!("Could not load the history of {path}: {e}"));
+            Some(Msg::FileHistoryLoaded { path, generation, result })
         }
         Effect::LocalOp { workdir, op } => Some(Msg::LocalOpDone(local_op(&workdir, op).map_err(err))),
         Effect::RunGit { cwd, cmds, write_file, record } => {

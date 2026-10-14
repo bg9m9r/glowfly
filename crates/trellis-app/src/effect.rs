@@ -5,7 +5,7 @@ use crate::msg::{FilePurpose, FolderPurpose};
 use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::forge::{Account, Auth, Issue, NewPullRequest, NewRepo, PullRequest, Target};
-use trellis_core::repo::{ConflictIds, DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions, Side};
+use trellis_core::repo::{ConflictIds, DiffTarget, FileDiff, HistoryStart, Hunk, HunkOp, LoadOptions, Side};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
 
@@ -131,6 +131,14 @@ pub enum Effect {
         workdir: PathBuf,
         op: LocalOp,
     },
+    /// The commits that changed `path`, examining at most `limit` commits.
+    LoadFileHistory {
+        workdir: PathBuf,
+        path: String,
+        start: HistoryStart,
+        limit: usize,
+        generation: u64,
+    },
     /// Runs git commands in order, stopping at the first failure. `write_file` is written first
     /// (used for commit messages). With `record`, the state before and after is compared and
     /// the resulting undoable action reported back.
@@ -244,6 +252,7 @@ impl Effect {
             | Effect::LoadDetail { workdir, .. }
             | Effect::LoadDiff { workdir, .. }
             | Effect::LoadConflict { workdir, .. }
+            | Effect::LoadFileHistory { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::Stats { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),

@@ -188,9 +188,21 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Collapse long unchanged runs in the panes; a resizable split between panes and output
   - [ ] Syntax highlighting in the conflict panes
   - [ ] Warn before Mark resolved when the working file still contains conflict markers
-- [ ] **File history and blame**
-  File history (commits that touched a path, following renames) with links to the graph;
-  blame gutter with author, date and commit.
+- [x] **File history and blame**
+  File history: commits that changed a file, newest first, following renames, opened from a
+  file's context menu in the commit details or WIP panel; each shows that commit's diff of the
+  file and links to the graph. Searches back in batches of the commit limit.
+  - [ ] Blame gutter with author, date and commit, opened from file history or the file context
+    menu
+  - [ ] Open file history or blame for any file from the command palette (a file finder), not
+    only from a changed-file list
+  - [ ] Start from HEAD when the file was renamed after the chosen commit (track renames
+    forwards)
+  - [ ] Refresh an open file history when HEAD moves (commit, checkout, pull, fetch)
+  - [ ] Show the whole file at the selected commit (file view) as an alternative to its diff
+  - [ ] History of a folder
+  - [ ] Let `diff::show` delegate to `diff::body` once the diff header changes in flight have
+    landed
 - [ ] **Interactive rebase**
   Drag-to-reorder list with pick, reword, squash, drop and edit, driven through
   `GIT_SEQUENCE_EDITOR` (Trellis as the editor: the same helper-process plumbing as credential

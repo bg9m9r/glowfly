@@ -6,7 +6,7 @@ use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
 use std::path::PathBuf;
 use std::time::Instant;
-use trellis_core::repo::Snapshot;
+use trellis_core::repo::{DiffTarget, Snapshot};
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -88,12 +88,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
         }
         Msg::OpenDiff(target) => {
-            super::conflict::close(st);
-            if let Some(workdir) = st.workdir() {
-                let generation = next_diff_gen(st);
-                let ignore_whitespace = st.settings.diff_ignore_whitespace;
-                fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None, ignore_whitespace });
-            }
+            super::history::close(st);
+            open_diff(st, target, fx);
         }
         Msg::DiffLoaded { target, reload, generation, result } => {
             if generation != st.diff_gen {
@@ -194,6 +190,16 @@ fn next_diff_gen(st: &mut AppState) -> u64 {
     st.diff_gen
 }
 
+/// Opens `target` in the diff viewer (closing a conflict view).
+pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
+    super::conflict::close(st);
+    if let Some(workdir) = st.workdir() {
+        let generation = next_diff_gen(st);
+        let ignore_whitespace = st.settings.diff_ignore_whitespace;
+        fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None, ignore_whitespace });
+    }
+}
+
 /// Closes the diff; a load still in flight must not reopen it.
 pub(super) fn close_diff(st: &mut AppState) {
     st.diff = None;
@@ -215,6 +221,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             st.detail = None;
             close_diff(st);
             super::conflict::close(st);
+            super::history::close(st);
             st.draft = CommitDraft::default();
             st.undo = Default::default();
             st.view.scroll_to_row = Some(0);
@@ -243,11 +250,12 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
 }
 
-fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut Vec<Effect>) {
+pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     st.selection = Selection::Commit(oid);
     close_diff(st);
     super::conflict::close(st);
+    super::history::close(st);
     fx.push(Effect::LoadDetail { workdir, oid });
     if scroll
         && let Some(snap) = &st.snap

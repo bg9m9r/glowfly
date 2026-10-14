@@ -2,6 +2,7 @@
 //! it); every other tab keeps its data parked here until it is selected again.
 
 use super::conflict::ConflictView;
+use super::history::FileHistoryView;
 use super::undo::UndoHistory;
 use super::{CommitDraft, ForgeState, Selection};
 use git2::Oid;
@@ -47,6 +48,8 @@ pub struct Parked {
     pub diff: Option<(DiffTarget, FileDiff)>,
     /// The open conflict with its picks (a load in flight is requested again on return).
     pub conflict: Option<ConflictView>,
+    /// The open file history (a request in flight is sent again on return).
+    pub history: Option<FileHistoryView>,
     pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,

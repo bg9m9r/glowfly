@@ -8,6 +8,7 @@ mod conflict;
 mod details;
 mod diff;
 mod graph;
+mod history;
 mod menus;
 mod modals;
 mod prefs;
@@ -145,6 +146,8 @@ impl TrellisApp {
                 msgs.push(Msg::ClosePrefs);
             } else if self.st.conflict.is_some() {
                 msgs.push(Msg::CloseConflict);
+            } else if self.st.history.is_some() {
+                msgs.push(Msg::CloseFileHistory);
             } else if self.st.diff.is_some() {
                 // Esc first drops a line selection, then closes the diff.
                 msgs.push(if self.st.view.diff_lines.is_empty() { Msg::CloseDiff } else { Msg::ClearLineSelection });
@@ -231,6 +234,8 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
                 common::welcome(ui, st, msgs);
             } else if st.conflict.is_some() {
                 conflict::show(ui, st, msgs);
+            } else if st.history.is_some() {
+                history::show(ui, st, msgs);
             } else if st.diff.is_some() {
                 diff::show(ui, st, msgs);
             } else {

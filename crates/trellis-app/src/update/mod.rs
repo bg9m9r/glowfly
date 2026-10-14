@@ -6,6 +6,7 @@ mod avatars;
 mod conflict;
 mod diff;
 mod forge;
+mod history;
 mod ops;
 mod prefs;
 mod publish;
@@ -17,6 +18,8 @@ mod undo;
 mod conflict_tests;
 #[cfg(test)]
 mod diff_tests;
+#[cfg(test)]
+mod history_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
@@ -75,6 +78,14 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::SaveConflict
         | Msg::ResolveWithSide { .. }
         | Msg::ConflictLoaded { .. } => conflict::handle(st, msg, &mut fx),
+
+        // file history
+        Msg::OpenFileHistory { .. }
+        | Msg::CloseFileHistory
+        | Msg::SelectHistoryEntry(_)
+        | Msg::MoreFileHistory
+        | Msg::ShowInGraph(_)
+        | Msg::FileHistoryLoaded { .. } => history::handle(st, msg, now, &mut fx),
 
         // tabs
         Msg::NewTab

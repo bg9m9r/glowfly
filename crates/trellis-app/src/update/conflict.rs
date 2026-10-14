@@ -15,6 +15,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 return;
             }
             super::repo::close_diff(st);
+            super::history::close(st);
             st.conflict = Some(ConflictView::loading(path));
             request_load(st, fx);
         }

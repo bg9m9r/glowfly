@@ -258,3 +258,69 @@ fn conflict_binary() {
     render("conflict_binary", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
+
+/// The fixture's app.txt grown to a dozen lines, moved to src/app.txt with an edit, then
+/// edited again; the file history is open on it with entry `select` shown, walked with
+/// `limit` commits per request.
+fn with_history(name: &str, theme: ThemeChoice, limit: usize, select: usize) -> (AppState, PathBuf) {
+    use crate::state::history::FileHistoryView;
+    use trellis_core::repo::HistoryStart;
+    let (mut st, dir) = with_repo(theme, name);
+    let lines: Vec<String> = ["app", "fix"].into_iter().map(String::from).chain((3..=12).map(|i| format!("setting_{i} = {i}"))).collect();
+    let text = |l: &[String]| l.join("\n") + "\n";
+    std::fs::write(dir.join("app.txt"), text(&lines)).unwrap();
+    let d = "2026-01-11T10:00:00+00:00";
+    git(&dir, &["commit", "-q", "-m", "Expand app settings", "app.txt"], d);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    git(&dir, &["mv", "app.txt", "src/app.txt"], d);
+    let mut moved = lines.clone();
+    moved[5] = "setting_6 = 60".into();
+    std::fs::write(dir.join("src/app.txt"), text(&moved)).unwrap();
+    git(&dir, &["add", "src/app.txt"], d);
+    let d = "2026-01-12T10:00:00+00:00";
+    git(&dir, &["commit", "-q", "-m", "Move app settings under src"], d);
+    moved[9] = "setting_10 = 100".into();
+    moved.push("theme = \"dark\"".into());
+    std::fs::write(dir.join("src/app.txt"), text(&moved)).unwrap();
+    let d = "2026-01-14T10:00:00+00:00";
+    // Only the file: the fixture's README edit stays uncommitted.
+    git(&dir, &["commit", "-q", "-m", "Raise setting 10 and add a theme", "src/app.txt"], d);
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+
+    let h = repo::file_history(&dir, "src/app.txt", &HistoryStart::Head, limit).unwrap();
+    let mut view = FileHistoryView::loading("src/app.txt".into(), None);
+    view.append(h);
+    view.selected = Some(select);
+    let e = &view.entries[select];
+    let target = DiffTarget::Commit(e.oid, e.path.clone());
+    let mut diff = repo::load_diff(&dir, &target).unwrap();
+    diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
+    diff.intraline = intraline::intraline(&diff);
+    st.diff = Some((target, diff));
+    st.history = Some(view);
+    (st, dir)
+}
+
+#[test]
+fn file_history() {
+    let (st, dir) = with_history("history", ThemeChoice::Dark, 500, 0);
+    let view = st.history.as_ref().unwrap();
+    let statuses: String = view.entries.iter().map(|e| e.status).collect();
+    assert_eq!(statuses, "MRMMA");
+    assert!(view.complete());
+    render("file_history", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+#[test]
+fn file_history_partial_light() {
+    let (mut st, dir) = with_history("history-partial", ThemeChoice::Light, 2, 1);
+    let view = st.history.as_ref().unwrap();
+    assert_eq!(view.entries.len(), 2);
+    assert!(view.searched_until.is_some() && !view.resume.is_empty());
+    // The renaming commit is not on the graph (as if its branch were hidden).
+    let gone = view.entries[1].oid;
+    st.snap.as_mut().unwrap().row_of.remove(&gone);
+    render("file_history_partial_light", st, false);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
