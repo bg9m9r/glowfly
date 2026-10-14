@@ -73,7 +73,8 @@ crates/
   HTTP, large diffs) becomes an `Effect`.
 - **The runner** executes effects on a worker pool and sends results back as `Msg`s.
 - **Tabs**: the active tab's repository data lives directly in `AppState`; switching tabs parks
-  it in `state::tabs::Parked` and restores the other tab's. Results of repository-scoped
+  it in `state::tabs::Parked` and restores the other tab's (reordering moves parked data with
+  the tab; `active_tab` follows the active tab). Results of repository-scoped
   effects (`Effect::scope`) come back as `Msg::Scoped` and are dropped if their tab is no
   longer active; that tab refreshes when selected again.
 - **`AppState`** holds no egui types; textures and fonts live in a `UiCache` owned by the UI

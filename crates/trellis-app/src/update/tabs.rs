@@ -1,10 +1,11 @@
-//! Tabs: opening repositories side by side, switching, closing and reopening, and restoring
-//! the previous session. Switching parks the active tab's data and restores the other's.
+//! Tabs: opening repositories side by side, switching, reordering, closing and reopening, and
+//! restoring the previous session. Switching parks the active tab's data and restores the
+//! other's; reordering moves parked data with its tab.
 
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::Msg;
 use crate::state::conflict::ConflictView;
-use crate::state::tabs::{MAX_CLOSED_TABS, Parked};
+use crate::state::tabs::{MAX_CLOSED_TABS, Parked, index_after_move};
 use crate::state::{AppState, Selection, Tab};
 use std::path::PathBuf;
 
@@ -25,6 +26,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 open(st, path, fx);
             }
         }
+        Msg::MoveTab { from, to } => move_tab(st, from, to, fx),
+        Msg::CloseOtherTabs(i) if i < st.tabs.len() => close_where(st, |j| j == i, i, fx),
+        Msg::CloseTabsToRight(i) if i < st.tabs.len() => close_where(st, |j| j <= i, i, fx),
         Msg::RestoreTabs { paths, active } => {
             for path in paths {
                 if !st.tabs.iter().any(|t| t.is(&path)) {
@@ -135,11 +139,7 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         return;
     }
     if let Some(path) = st.tabs[i].path.clone() {
-        st.closed_tabs.retain(|p| p != &path);
-        st.closed_tabs.push(path);
-        if st.closed_tabs.len() > MAX_CLOSED_TABS {
-            st.closed_tabs.remove(0);
-        }
+        remember_closed(st, path);
     }
     st.tab_return = None;
     if i != st.active_tab {
@@ -157,6 +157,61 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     } else {
         st.tabs.remove(i);
         activate(st, i.min(st.tabs.len() - 1), fx);
+    }
+}
+
+/// Puts `path` on top of the "Reopen closed tab" stack.
+fn remember_closed(st: &mut AppState, path: PathBuf) {
+    st.closed_tabs.retain(|p| p != &path);
+    st.closed_tabs.push(path);
+    if st.closed_tabs.len() > MAX_CLOSED_TABS {
+        st.closed_tabs.remove(0);
+    }
+}
+
+/// Moves tab `from` to index `to`. The active tab stays active and keeps its data in
+/// `AppState`; every other tab's parked data moves with it.
+fn move_tab(st: &mut AppState, from: usize, to: usize, fx: &mut Vec<Effect>) {
+    let n = st.tabs.len();
+    if from >= n || to >= n || from == to {
+        return;
+    }
+    let tab = st.tabs.remove(from);
+    st.tabs.insert(to, tab);
+    st.active_tab = index_after_move(st.active_tab, from, to);
+    st.tab_return = st.tab_return.map(|r| index_after_move(r, from, to));
+    fx.push(save(st));
+}
+
+/// Closes every tab for which `keep` is false. `survivor` (the tab the request came from) is
+/// always kept, and becomes active if the active tab closes.
+fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize, fx: &mut Vec<Effect>) {
+    let closing: Vec<usize> = (0..st.tabs.len()).filter(|&j| !keep(j)).collect();
+    if closing.is_empty() {
+        return;
+    }
+    // Right to left, so the leftmost closed tab is reopened first and the tabs come back in
+    // their original order.
+    for &j in closing.iter().rev() {
+        if let Some(path) = st.tabs[j].path.clone() {
+            remember_closed(st, path);
+        }
+    }
+    st.tab_return = None;
+    let before = |i: usize| closing.iter().filter(|&&j| j < i).count();
+    let new_survivor = survivor - before(survivor);
+    if closing.contains(&st.active_tab) {
+        park(st); // discarded with the tab
+        for &j in closing.iter().rev() {
+            st.tabs.remove(j);
+        }
+        activate(st, new_survivor, fx);
+    } else {
+        st.active_tab -= before(st.active_tab);
+        for &j in closing.iter().rev() {
+            st.tabs.remove(j);
+        }
+        fx.push(save(st));
     }
 }
 

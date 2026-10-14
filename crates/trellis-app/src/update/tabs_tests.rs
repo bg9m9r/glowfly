@@ -3,9 +3,10 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
+use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::Msg;
-use crate::state::AppState;
+use crate::state::tabs::MAX_CLOSED_TABS;
+use crate::state::{AppState, Tab};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::repo::DiffTarget;
@@ -188,4 +189,131 @@ fn conflict_view_survives_tab_switch() {
     let generation = st.conflict_gen;
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadConflict { path, generation: g, .. } if path == "a.txt" && *g == generation)));
     cleanup(&[&a, &b]);
+}
+
+/// Unloaded tabs for made-up paths (nothing is read from disk), with tab `active` selected.
+fn fake_tabs(names: &[&str], active: usize) -> AppState {
+    let mut st = state();
+    st.tabs = names.iter().map(|n| Tab::unloaded(fake(n))).collect();
+    st.active_tab = active;
+    st
+}
+
+fn fake(name: &str) -> PathBuf {
+    PathBuf::from(format!("C:/r/{name}"))
+}
+
+fn tab_names(st: &AppState) -> Vec<String> {
+    st.tabs.iter().map(|t| t.name.clone()).collect()
+}
+
+fn saved(fx: &[Effect]) -> Vec<(Vec<PathBuf>, usize)> {
+    fx.iter().filter_map(|e| if let Effect::SaveTabs { paths, active } = e { Some((paths.clone(), *active)) } else { None }).collect()
+}
+
+#[test]
+fn move_tab_keeps_the_active_repository() {
+    let mut st = fake_tabs(&["a", "b", "c"], 1);
+    st.draft.summary = "wip".into();
+    let load_gen = st.load_gen;
+    let fx = update(&mut st, Msg::MoveTab { from: 1, to: 2 }, Instant::now());
+    assert_eq!(tab_names(&st), ["a", "c", "b"]);
+    assert_eq!(st.active_tab, 2);
+    assert_eq!(st.draft.summary, "wip");
+    assert_eq!(st.load_gen, load_gen);
+    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. } | Effect::Ui(UiEffect::SetTitle(_)))));
+    assert_eq!(fx.len(), 1);
+    assert_eq!(saved(&fx), [(vec![fake("a"), fake("c"), fake("b")], 2)]);
+}
+
+#[test]
+fn moving_another_tab_across_the_active_one_shifts_active_tab() {
+    let mut st = fake_tabs(&["a", "b", "c"], 1);
+    update(&mut st, Msg::MoveTab { from: 0, to: 2 }, Instant::now());
+    assert_eq!((tab_names(&st), st.active_tab), (vec!["b".to_owned(), "c".into(), "a".into()], 0));
+    update(&mut st, Msg::MoveTab { from: 2, to: 0 }, Instant::now());
+    assert_eq!((tab_names(&st), st.active_tab), (vec!["a".to_owned(), "b".into(), "c".into()], 1));
+    for (from, to) in [(1, 1), (5, 0), (0, 5)] {
+        let fx = update(&mut st, Msg::MoveTab { from, to }, Instant::now());
+        assert!(fx.is_empty(), "MoveTab {{ {from}, {to} }} is a no-op");
+        assert_eq!((tab_names(&st), st.active_tab), (vec!["a".to_owned(), "b".into(), "c".into()], 1));
+    }
+}
+
+#[test]
+fn move_tab_remaps_tab_return() {
+    let mut st = fake_tabs(&["a", "b", "c"], 1);
+    st.tab_return = Some(0);
+    update(&mut st, Msg::MoveTab { from: 0, to: 2 }, Instant::now());
+    assert_eq!(st.tab_return, Some(2));
+}
+
+#[test]
+fn close_other_tabs_keeping_an_inactive_tab() {
+    let (mut st, a, b) = two_repos("tabs-close-others");
+    assert!(active_is(&st, &b));
+    let fx = update(&mut st, Msg::CloseOtherTabs(0), Instant::now());
+    assert_eq!(st.tabs.len(), 1);
+    assert!(active_is(&st, &a), "A's parked snapshot is restored");
+    assert_eq!(st.closed_tabs.len(), 1);
+    assert!(crate::state::tabs::same_path(&st.closed_tabs[0], &b));
+    let saves = saved(&fx);
+    assert_eq!(saves.len(), 1);
+    assert!(saves[0].0.len() == 1 && crate::state::tabs::same_path(&saves[0].0[0], &a));
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
+    cleanup(&[&a, &b]);
+}
+
+#[test]
+fn close_other_tabs_keeping_the_active_tab() {
+    let mut st = fake_tabs(&["a", "b", "c", "d"], 2);
+    let fx = update(&mut st, Msg::CloseOtherTabs(2), Instant::now());
+    assert_eq!((tab_names(&st), st.active_tab), (vec!["c".to_owned()], 0));
+    assert_eq!(st.closed_tabs, [fake("d"), fake("b"), fake("a")], "a is reopened first");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })));
+    assert_eq!(saved(&fx), [(vec![fake("c")], 0)]);
+    // With one tab left there is nothing to close.
+    assert!(update(&mut st, Msg::CloseOtherTabs(0), Instant::now()).is_empty());
+    assert!(update(&mut st, Msg::CloseOtherTabs(4), Instant::now()).is_empty());
+}
+
+#[test]
+fn close_tabs_to_the_right() {
+    let mut st = fake_tabs(&["a", "b", "c", "d"], 3);
+    let fx = update(&mut st, Msg::CloseTabsToRight(1), Instant::now());
+    assert_eq!((tab_names(&st), st.active_tab), (vec!["a".to_owned(), "b".into()], 1));
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, kind: LoadKind::Open, .. } if path == &fake("b"))),
+        "the survivor was never loaded"
+    );
+    assert!(update(&mut st, Msg::CloseTabsToRight(1), Instant::now()).is_empty());
+    assert!(update(&mut st, Msg::CloseTabsToRight(9), Instant::now()).is_empty());
+    assert_eq!(st.tabs.len(), 2);
+}
+
+#[test]
+fn bulk_closed_tabs_reopen_in_their_original_order() {
+    let mut st = fake_tabs(&["a", "b", "c", "d"], 0);
+    let fx = update(&mut st, Msg::CloseTabsToRight(1), Instant::now());
+    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the active tab stays");
+    update(&mut st, Msg::ReopenClosedTab, Instant::now());
+    update(&mut st, Msg::ReopenClosedTab, Instant::now());
+    let paths: Vec<PathBuf> = st.tabs.iter().filter_map(|t| t.path.clone()).collect();
+    assert_eq!(paths, [fake("a"), fake("b"), fake("c"), fake("d")]);
+}
+
+#[test]
+fn bulk_close_skips_empty_tabs_and_caps_the_stack() {
+    let mut st = fake_tabs(&["x", "y"], 0);
+    st.tabs.insert(1, Tab::empty());
+    st.tabs.push(Tab::empty());
+    update(&mut st, Msg::CloseOtherTabs(0), Instant::now());
+    assert_eq!(st.closed_tabs, [fake("y")], "empty tabs are not remembered");
+
+    let names: Vec<String> = (0..13).map(|i| format!("t{i}")).collect();
+    let mut st = fake_tabs(&names.iter().map(String::as_str).collect::<Vec<_>>(), 0);
+    update(&mut st, Msg::CloseTabsToRight(0), Instant::now());
+    assert_eq!(st.closed_tabs.len(), MAX_CLOSED_TABS);
+    assert_eq!(st.closed_tabs.last(), Some(&fake("t1")), "the leftmost closed tab reopens first");
+    assert_eq!(st.closed_tabs[0], fake("t10"), "the rightmost ones drop off");
 }

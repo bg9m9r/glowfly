@@ -61,6 +61,19 @@ pub struct Parked {
     pub diff_layout: DiffLayout,
 }
 
+/// Where the tab at index `i` ends up after moving the tab at `from` to `to`.
+pub fn index_after_move(i: usize, from: usize, to: usize) -> usize {
+    if i == from {
+        to
+    } else if from < i && i <= to {
+        i - 1
+    } else if to <= i && i < from {
+        i + 1
+    } else {
+        i
+    }
+}
+
 /// Whether two paths name the same folder, ignoring separator style, trailing separators and
 /// (on Windows) case. Folders that exist are compared by their real location, so a short (8.3)
 /// name, a junction or a symlink matches the path libgit2 reports for the same repository.

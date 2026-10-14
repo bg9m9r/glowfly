@@ -77,9 +77,15 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::ConflictLoaded { .. } => conflict::handle(st, msg, &mut fx),
 
         // tabs
-        Msg::NewTab | Msg::SelectTab(_) | Msg::CycleTab(_) | Msg::CloseTab(_) | Msg::ReopenClosedTab | Msg::RestoreTabs { .. } => {
-            tabs::handle(st, msg, &mut fx)
-        }
+        Msg::NewTab
+        | Msg::SelectTab(_)
+        | Msg::CycleTab(_)
+        | Msg::CloseTab(_)
+        | Msg::ReopenClosedTab
+        | Msg::RestoreTabs { .. }
+        | Msg::MoveTab { .. }
+        | Msg::CloseOtherTabs(_)
+        | Msg::CloseTabsToRight(_) => tabs::handle(st, msg, &mut fx),
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {
                 fx.extend(update(st, *msg, now));

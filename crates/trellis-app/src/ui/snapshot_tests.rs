@@ -3,6 +3,7 @@
 //! review the new images.
 
 use super::{UiCache, avatars::Avatars, draw, theme::color};
+use crate::msg::Msg;
 use crate::state::{AppState, PrefPage, PrefsState, Selection, Tab};
 use eframe::egui;
 use egui_kittest::Harness;
@@ -75,21 +76,26 @@ fn settings(theme: ThemeChoice) -> Settings {
 /// 2026-02-01 12:00 UTC, shown in UTC: rendering never depends on the machine's clock or zone.
 const NOW: i64 = 1_769_947_200;
 
-pub(super) fn render(name: &str, mut st: AppState, dark: bool) {
+/// A window-sized harness drawing `st`; the messages views push collect in its state.
+pub(super) fn harness(mut st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    let mut harness = Harness::builder().with_size(SIZE).build_state(
-        move |ctx, st: &mut AppState| {
+    Harness::builder().with_size(SIZE).build_state(
+        move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             // Like the app, pick the palette at the start of every frame.
             color::set_dark(dark);
             super::theme::apply_theme(ctx);
             ctx.set_theme(if dark { egui::Theme::Dark } else { egui::Theme::Light });
             let cache = cache.get_or_insert_with(|| UiCache { avatars: Avatars::default(), speller: Speller::new() });
-            draw(ctx, st, cache, &mut Vec::new());
+            draw(ctx, st, cache, msgs);
         },
-        std::mem::replace(&mut st, AppState::new(Settings::default(), Vec::new(), Instant::now())),
-    );
+        (st, Vec::new()),
+    )
+}
+
+pub(super) fn render(name: &str, st: AppState, dark: bool) {
+    let mut harness = harness(st, dark);
     harness.run();
     harness.snapshot(name);
 }
@@ -102,6 +108,11 @@ pub(super) fn with_repo(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     // A second, inactive tab.
     st.tabs = vec![Tab::unloaded(dir.clone()), Tab::unloaded(PathBuf::from("C:/work/api-server"))];
     (st, dir)
+}
+
+/// Removes the folder `with_repo` made for `dir`.
+pub(super) fn remove_fixture(dir: &Path) {
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 
 #[test]

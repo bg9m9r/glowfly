@@ -103,7 +103,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [x] **Tabs (multiple open repos)**
   Tab bar; Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+1–9 and Ctrl+Shift+T to reopen; open tabs restored
   on start (only the active one loads until selected).
-  - [ ] Drag to reorder tabs; tab context menu (close others, close to the right)
+  - [x] Drag to reorder tabs; tab context menu (close others, close to the right)
+    - [ ] Keyboard reordering, and Escape to cancel a drag in progress
+    - [ ] Rename a tab; a tab list with recently closed tabs to reopen any of them
+    - [ ] Ask before closing tabs that hold a commit draft or conflict picks
 - [x] **Undo / Redo**
   Toolbar Undo/Redo and Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) for checkout, commit/amend, reset,
   branch delete and Discard all; per-tab, in-memory history of 20, refuses (and says why) when
