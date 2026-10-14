@@ -20,3 +20,9 @@ trellis-core = { path = "crates/trellis-core" }
 
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"
+
+# Smaller, faster release builds. Panics still unwind: effect threads catch them.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
