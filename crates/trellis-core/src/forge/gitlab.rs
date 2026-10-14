@@ -1,9 +1,25 @@
 //! GitLab.com and GitLab Self-Managed (REST API v4).
 
-use super::{Account, Auth, Issue, NewPullRequest, PullRequest, Reviewer, Target, enc, get, page, post};
+use super::provider::{DEFAULTS, ProviderInfo};
+use super::{Account, Auth, Issue, NewPullRequest, PullRequest, Reviewer, Target, enc, enc_path, get, page, post};
 use crate::error::Result;
 use serde::Deserialize;
 use serde_json::json;
+
+pub(super) static GITLAB: ProviderInfo =
+    ProviderInfo { name: "GitLab", fixed_host: Some("gitlab.com"), host_hint: "", ..GITLAB_SELF_MANAGED };
+
+pub(super) static GITLAB_SELF_MANAGED: ProviderInfo = ProviderInfo {
+    name: "GitLab Self-Managed",
+    host_hint: "e.g., gitlab.mycompany.com",
+    token_help: "A personal access token with the api scope.",
+    env_var: Some("GITLAB_TOKEN"),
+    pr_noun: "merge request",
+    pr_prefix: "!",
+    close_keyword: Some("Closes"),
+    service: &GitLab,
+    ..DEFAULTS
+};
 
 fn project_api(t: &Target) -> String {
     format!("https://{}/api/v4/projects/{}", t.host, enc(&format!("{}/{}", t.owner, t.repo)))
@@ -15,11 +31,6 @@ struct User {
     name: String,
     #[serde(default)]
     username: String,
-}
-
-pub fn verify(account: &Account, auth: &Auth) -> Result<String> {
-    let u: User = get(auth, &format!("https://{}/api/v4/user", account.host))?;
-    Ok(if u.name.is_empty() { u.username } else { u.name })
 }
 
 #[derive(Deserialize)]
@@ -79,41 +90,6 @@ fn convert(m: ApiMr, approvals: Approvals) -> PullRequest {
     }
 }
 
-pub fn merge_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-    let mrs: Vec<ApiMr> = page::by_link(auth, format!("{}/merge_requests?state=opened&per_page=100", project_api(t)))?;
-    let mut out = Vec::with_capacity(mrs.len());
-    for (i, m) in mrs.into_iter().enumerate() {
-        let approvals = if i < 25 {
-            get(auth, &format!("{}/merge_requests/{}/approvals", project_api(t), m.iid)).unwrap_or_default()
-        } else {
-            Approvals::default()
-        };
-        out.push(convert(m, approvals));
-    }
-    Ok(out)
-}
-
-pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
-    #[derive(Deserialize)]
-    struct Project {
-        default_branch: Option<String>,
-    }
-    Ok(get::<Project>(auth, &project_api(t))?.default_branch)
-}
-
-pub fn create_merge_request(t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
-    let title = if pr.draft { format!("Draft: {}", pr.title) } else { pr.title.clone() };
-    let body = json!({
-        "source_branch": pr.source,
-        "target_branch": pr.target,
-        "title": title,
-        "description": pr.description,
-        "remove_source_branch": false,
-    });
-    let created: ApiMr = post(auth, &format!("{}/merge_requests", project_api(t)), body)?;
-    Ok(convert(created, Approvals::default()))
-}
-
 #[derive(Deserialize)]
 struct ApiIssue {
     iid: u64,
@@ -133,41 +109,71 @@ fn to_issue(i: ApiIssue) -> Issue {
     Issue { key: i.iid.to_string(), title: i.title, state: i.state, kind, assignee: i.assignee.map(|a| a.name), url: i.web_url }
 }
 
-pub fn my_issues(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-    let url = format!("{}/issues?state=opened&scope=assigned_to_me&per_page=100&order_by=updated_at", project_api(t));
-    Ok(page::by_link::<ApiIssue>(auth, url)?.into_iter().map(to_issue).collect())
-}
-
-pub fn issues(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
-    let iids: Vec<String> = keys.iter().filter(|k| k.parse::<u64>().is_ok()).map(|k| format!("iids[]={k}")).collect();
-    if iids.is_empty() {
-        return Ok(Vec::new());
-    }
-    let url = format!("{}/issues?scope=all&per_page=100&{}", project_api(t), iids.join("&"));
-    Ok(page::by_link::<ApiIssue>(auth, url)?.into_iter().map(to_issue).collect())
-}
-
 /// The GitLab [`Forge`](super::Forge).
 pub struct GitLab;
 
 impl super::Forge for GitLab {
+    fn issue_url(&self, t: &Target, key: &str) -> String {
+        // A GitLab namespace can be several path segments.
+        format!("https://{}/{}/{}/-/issues/{}", t.host, enc_path(&t.owner), enc(&t.repo), enc(key))
+    }
+
+    fn token_url(&self, account: &Account) -> Option<String> {
+        Some(format!("https://{}/-/user_settings/personal_access_tokens", account.host))
+    }
+
     fn verify(&self, account: &Account, auth: &Auth) -> Result<String> {
-        verify(account, auth)
+        let u: User = get(auth, &format!("https://{}/api/v4/user", account.host))?;
+        Ok(if u.name.is_empty() { u.username } else { u.name })
     }
+
     fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-        merge_requests(t, auth)
+        let mrs: Vec<ApiMr> = page::by_link(auth, format!("{}/merge_requests?state=opened&per_page=100", project_api(t)))?;
+        let mut out = Vec::with_capacity(mrs.len());
+        for (i, m) in mrs.into_iter().enumerate() {
+            let approvals = if i < 25 {
+                get(auth, &format!("{}/merge_requests/{}/approvals", project_api(t), m.iid)).unwrap_or_default()
+            } else {
+                Approvals::default()
+            };
+            out.push(convert(m, approvals));
+        }
+        Ok(out)
     }
+
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
-        default_branch(t, auth)
+        #[derive(Deserialize)]
+        struct Project {
+            default_branch: Option<String>,
+        }
+        Ok(get::<Project>(auth, &project_api(t))?.default_branch)
     }
+
     fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
-        create_merge_request(t, auth, pr)
+        let title = if pr.draft { format!("Draft: {}", pr.title) } else { pr.title.clone() };
+        let body = json!({
+            "source_branch": pr.source,
+            "target_branch": pr.target,
+            "title": title,
+            "description": pr.description,
+            "remove_source_branch": false,
+        });
+        let created: ApiMr = post(auth, &format!("{}/merge_requests", project_api(t)), body)?;
+        Ok(convert(created, Approvals::default()))
     }
+
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-        my_issues(t, auth)
+        let url = format!("{}/issues?state=opened&scope=assigned_to_me&per_page=100&order_by=updated_at", project_api(t));
+        Ok(page::by_link::<ApiIssue>(auth, url)?.into_iter().map(to_issue).collect())
     }
+
     fn issues(&self, t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
-        issues(t, auth, keys)
+        let iids: Vec<String> = keys.iter().filter(|k| k.parse::<u64>().is_ok()).map(|k| format!("iids[]={k}")).collect();
+        if iids.is_empty() {
+            return Ok(Vec::new());
+        }
+        let url = format!("{}/issues?scope=all&per_page=100&{}", project_api(t), iids.join("&"));
+        Ok(page::by_link::<ApiIssue>(auth, url)?.into_iter().map(to_issue).collect())
     }
 }
 

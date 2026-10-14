@@ -119,9 +119,10 @@ crates/
                           in full, but not the folder modifies its index writes cause), and a
                           cache of folders .gitignore ignores
     forge/                hosting services behind the `Forge` trait (github, gitlab,
-                          bitbucket, azure, jira); model and trait in mod.rs, plus remote
-                          (URL detection), auth (credentials), refs (issue references), http,
-                          publish (creating a repository on the service)
+                          bitbucket, bitbucket_dc, azure, jira); model and trait in mod.rs,
+                          each provider's constants in one `ProviderInfo` (provider.rs), plus
+                          remote (URL detection), auth (credentials), refs (issue references),
+                          http, page (following list pages), publish (creating a repository)
     settings.rs, dates.rs, spell.rs, signing.rs, avatars.rs (fetching); settings/graph_filter
                           (hidden and soloed refs per repository)
   trellis-app/             binary

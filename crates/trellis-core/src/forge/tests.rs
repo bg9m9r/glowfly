@@ -99,3 +99,48 @@ fn issue_links_encode_owner_repo_and_key() {
     let t = parse_remote("https://bitbucket.org/..%2Fteam/app", &[]).unwrap();
     assert_eq!(t.issue_url("3?x"), "https://bitbucket.org/..%2Fteam/app/issues/3%3Fx");
 }
+
+#[test]
+fn service_links_and_names_per_provider() {
+    let acct = |provider, host: &str, org: &str| Account { provider, host: host.into(), org: org.into() };
+    let token = |a: Account| Target::token_url(&a);
+    assert_eq!(token(acct(Provider::GitHubEnterprise, "git.acme.io", "")).as_deref(), Some("https://git.acme.io/settings/tokens"));
+    assert_eq!(
+        token(acct(Provider::GitLab, "gitlab.com", "")).as_deref(),
+        Some("https://gitlab.com/-/user_settings/personal_access_tokens")
+    );
+    assert_eq!(
+        token(acct(Provider::Bitbucket, "bitbucket.org", "")).as_deref(),
+        Some("https://bitbucket.org/account/settings/app-passwords/")
+    );
+    assert_eq!(
+        token(acct(Provider::BitbucketDataCenter, "bb.acme.io", "")).as_deref(),
+        Some("https://bb.acme.io/plugins/servlet/access-tokens/manage")
+    );
+    assert_eq!(
+        token(acct(Provider::AzureDevOps, "dev.azure.com", "my co")).as_deref(),
+        Some("https://dev.azure.com/my%20co/_usersSettings/tokens")
+    );
+    assert_eq!(token(acct(Provider::AzureDevOps, "dev.azure.com", "")), None);
+    assert_eq!(
+        token(acct(Provider::JiraCloud, "x.atlassian.net", "")).as_deref(),
+        Some("https://id.atlassian.com/manage-profile/security/api-tokens")
+    );
+    assert_eq!(token(acct(Provider::JiraDataCenter, "jira.acme.io", "")).as_deref(), Some("https://jira.acme.io/secure/ViewProfile.jspa"));
+
+    let az = parse_remote("https://dev.azure.com/contoso/Web/_git/app", &[]).unwrap();
+    assert_eq!(
+        (az.display(), az.issue_url("4 2")),
+        ("contoso/Web/app".into(), "https://dev.azure.com/contoso/Web/_workitems/edit/4%202".into())
+    );
+    let dc = parse_remote("https://bitbucket.acme.io/scm/PROJ/api.git", &[]).unwrap();
+    assert_eq!((dc.display(), dc.issue_url("1")), ("PROJ/api".into(), String::new()));
+    let jira = Target::jira(&acct(Provider::JiraCloud, "x.atlassian.net", ""), "");
+    assert_eq!((jira.display(), jira.issue_url("AB-1")), ("x.atlassian.net".into(), "https://x.atlassian.net/browse/AB-1".into()));
+    assert_eq!(Target::jira(&acct(Provider::JiraDataCenter, "jira.acme.io", ""), "AB").display(), "jira.acme.io · AB");
+    assert_eq!(link_line(Provider::Bitbucket, Provider::Bitbucket, "5").as_deref(), Some("Resolves #5"));
+    assert_eq!(link_line(Provider::GitLab, Provider::GitLab, "5").as_deref(), Some("Closes #5"));
+    assert_eq!(link_line(Provider::BitbucketDataCenter, Provider::BitbucketDataCenter, "5").as_deref(), Some("#5"));
+    assert_eq!(link_line(Provider::AzureDevOps, Provider::JiraCloud, "AB-1").as_deref(), Some("AB-1"));
+    assert_eq!(link_line(Provider::GitHub, Provider::AzureDevOps, "5").as_deref(), Some("Closes #5"));
+}

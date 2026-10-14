@@ -3,17 +3,19 @@
 
 mod azure;
 mod bitbucket;
+mod bitbucket_dc;
 mod github;
 mod gitlab;
 mod jira;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 mod auth;
 mod http;
 mod links;
 mod page;
+mod provider;
 mod publish;
 mod refs;
 mod remote;
@@ -25,139 +27,10 @@ pub use auth::{
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
 pub use links::https_host;
+pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, mention};
 pub use remote::{Connection, parse_host, parse_remote};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Provider {
-    GitHub,
-    GitHubEnterprise,
-    GitLab,
-    GitLabSelfManaged,
-    Bitbucket,
-    BitbucketDataCenter,
-    AzureDevOps,
-    JiraCloud,
-    JiraDataCenter,
-}
-
-impl Provider {
-    /// In the order Preferences lists them.
-    pub const ALL: [Provider; 9] = [
-        Provider::GitHub,
-        Provider::GitHubEnterprise,
-        Provider::GitLab,
-        Provider::GitLabSelfManaged,
-        Provider::Bitbucket,
-        Provider::BitbucketDataCenter,
-        Provider::AzureDevOps,
-        Provider::JiraCloud,
-        Provider::JiraDataCenter,
-    ];
-
-    pub fn name(self) -> &'static str {
-        match self {
-            Provider::GitHub => "GitHub",
-            Provider::GitHubEnterprise => "GitHub Enterprise Server",
-            Provider::GitLab => "GitLab",
-            Provider::GitLabSelfManaged => "GitLab Self-Managed",
-            Provider::Bitbucket => "Bitbucket",
-            Provider::BitbucketDataCenter => "Bitbucket Data Center",
-            Provider::AzureDevOps => "Azure DevOps",
-            Provider::JiraCloud => "Jira Cloud",
-            Provider::JiraDataCenter => "Jira Data Center",
-        }
-    }
-
-    pub fn is_jira(self) -> bool {
-        matches!(self, Provider::JiraCloud | Provider::JiraDataCenter)
-    }
-
-    /// Public SaaS host, for providers that have exactly one.
-    pub fn fixed_host(self) -> Option<&'static str> {
-        match self {
-            Provider::GitHub => Some("github.com"),
-            Provider::GitLab => Some("gitlab.com"),
-            Provider::Bitbucket => Some("bitbucket.org"),
-            _ => None,
-        }
-    }
-
-    /// Git Credential Manager can sign in to every code host (not Jira).
-    pub fn supports_gcm(self) -> bool {
-        !self.is_jira()
-    }
-
-    /// Label for an extra username field, when the token must be paired with one.
-    pub fn username_label(self) -> Option<&'static str> {
-        match self {
-            Provider::Bitbucket => Some("Username"),
-            Provider::JiraCloud => Some("Email"),
-            _ => None,
-        }
-    }
-
-    pub fn host_hint(self) -> &'static str {
-        match self {
-            Provider::GitHubEnterprise => "e.g., github.mycompany.com",
-            Provider::GitLabSelfManaged => "e.g., gitlab.mycompany.com",
-            Provider::BitbucketDataCenter => "e.g., bitbucket.mycompany.com",
-            Provider::AzureDevOps => "e.g., dev.azure.com/mycompany",
-            Provider::JiraCloud => "e.g., mycompany.atlassian.net",
-            Provider::JiraDataCenter => "e.g., jira.mycompany.com",
-            _ => "",
-        }
-    }
-
-    pub fn token_help(self) -> &'static str {
-        match self {
-            Provider::GitHub | Provider::GitHubEnterprise => {
-                "A personal access token with the repo scope (classic), or a fine-grained token with Pull requests and Issues read & write."
-            }
-            Provider::GitLab | Provider::GitLabSelfManaged => "A personal access token with the api scope.",
-            Provider::Bitbucket => "Your Bitbucket username and an app password with Repositories, Pull requests and Issues permissions.",
-            Provider::BitbucketDataCenter => "An HTTP access token with Repository write permission.",
-            Provider::AzureDevOps => "Needs the Code (Read & write) and Work Items (Read) scopes.",
-            Provider::JiraCloud => "Your Atlassian account email and an API token.",
-            Provider::JiraDataCenter => "A personal access token.",
-        }
-    }
-
-    /// Environment variable checked before saved credentials (on the public host only).
-    pub fn env_var(self) -> Option<&'static str> {
-        match self {
-            Provider::GitHub | Provider::GitHubEnterprise => Some("GITHUB_TOKEN"),
-            Provider::GitLab | Provider::GitLabSelfManaged => Some("GITLAB_TOKEN"),
-            Provider::AzureDevOps => Some("AZURE_DEVOPS_EXT_PAT"),
-            _ => None,
-        }
-    }
-
-    /// "Pull Request" or GitLab's "Merge Request".
-    pub fn pr_noun(self) -> &'static str {
-        if matches!(self, Provider::GitLab | Provider::GitLabSelfManaged) { "merge request" } else { "pull request" }
-    }
-
-    pub fn pr_prefix(self) -> &'static str {
-        match self {
-            Provider::GitLab | Provider::GitLabSelfManaged | Provider::AzureDevOps => "!",
-            _ => "#",
-        }
-    }
-
-    pub fn ref_style(self) -> RefStyle {
-        match self {
-            Provider::AzureDevOps => RefStyle::AzureBoards,
-            Provider::JiraCloud | Provider::JiraDataCenter => RefStyle::Jira,
-            _ => RefStyle::Hash,
-        }
-    }
-
-    pub fn has_issues(self) -> bool {
-        !matches!(self, Provider::BitbucketDataCenter)
-    }
-}
 
 /// A connection identity: which service, which host, and (Azure DevOps) which organization.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -208,47 +81,17 @@ impl Target {
     }
 
     pub fn display(&self) -> String {
-        match self.provider {
-            Provider::AzureDevOps => format!("{}/{}/{}", self.owner, self.project, self.repo),
-            Provider::JiraCloud | Provider::JiraDataCenter => {
-                if self.project.is_empty() {
-                    self.host.clone()
-                } else {
-                    format!("{} · {}", self.host, self.project)
-                }
-            }
-            _ => format!("{}/{}", self.owner, self.repo),
-        }
+        self.provider.info().service.display(self)
     }
 
+    /// Web page for an issue; empty when the service has no issue tracker.
     pub fn issue_url(&self, key: &str) -> String {
-        let (h, o, r, key) = (&self.host, enc_path(&self.owner), enc(&self.repo), enc(key));
-        match self.provider {
-            // A GitHub owner is one path segment; a GitLab namespace can be several.
-            Provider::GitHub | Provider::GitHubEnterprise => format!("https://{h}/{}/{r}/issues/{key}", enc(&self.owner)),
-            Provider::GitLab | Provider::GitLabSelfManaged => format!("https://{h}/{o}/{r}/-/issues/{key}"),
-            Provider::Bitbucket => format!("https://bitbucket.org/{}/{r}/issues/{key}", enc(&self.owner)),
-            Provider::BitbucketDataCenter => String::new(),
-            Provider::AzureDevOps => azure::work_item_url(self, &key),
-            Provider::JiraCloud | Provider::JiraDataCenter => format!("https://{h}/browse/{key}"),
-        }
+        self.provider.info().service.issue_url(self, key)
     }
 
     /// Link to create a personal access token for this service.
     pub fn token_url(account: &Account) -> Option<String> {
-        let h = &account.host;
-        Some(match account.provider {
-            Provider::GitHub | Provider::GitHubEnterprise => format!("https://{h}/settings/tokens"),
-            Provider::GitLab | Provider::GitLabSelfManaged => format!("https://{h}/-/user_settings/personal_access_tokens"),
-            Provider::Bitbucket => "https://bitbucket.org/account/settings/app-passwords/".into(),
-            Provider::BitbucketDataCenter => format!("https://{h}/plugins/servlet/access-tokens/manage"),
-            Provider::AzureDevOps if !account.org.is_empty() => {
-                format!("https://dev.azure.com/{}/_usersSettings/tokens", enc(&account.org))
-            }
-            Provider::JiraCloud => "https://id.atlassian.com/manage-profile/security/api-tokens".into(),
-            Provider::JiraDataCenter => format!("https://{h}/secure/ViewProfile.jspa"),
-            _ => return None,
-        })
+        account.provider.info().service.token_url(account)
     }
 }
 
@@ -313,29 +156,51 @@ pub struct NewPullRequest {
 
 // -------------------------------------------------------------------- service trait
 
-/// One hosting service's API. Code hosts implement everything; issue trackers (Jira) return
-/// empty results for pull requests.
+/// One hosting service's API. Code hosts implement everything; the defaults suit an issue
+/// tracker (Jira) that has no repositories or pull requests.
 pub trait Forge: Sync {
     /// Checks credentials and returns the signed-in user's display name.
     fn verify(&self, account: &Account, auth: &Auth) -> Result<String>;
-    fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>>;
-    fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>>;
-    fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest>;
+
+    fn pull_requests(&self, _t: &Target, _auth: &Auth) -> Result<Vec<PullRequest>> {
+        Ok(Vec::new())
+    }
+
+    fn default_branch(&self, _t: &Target, _auth: &Auth) -> Result<Option<String>> {
+        Ok(None)
+    }
+
+    fn create_pull_request(&self, _t: &Target, _auth: &Auth, _pr: &NewPullRequest) -> Result<PullRequest> {
+        Err(Error::Unsupported("this service does not host pull requests".into()))
+    }
+
     /// Open issues assigned to the signed-in user.
-    fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>>;
+    fn my_issues(&self, _t: &Target, _auth: &Auth) -> Result<Vec<Issue>> {
+        Ok(Vec::new())
+    }
+
     /// Looks up specific issues by key; unknown keys are skipped.
-    fn issues(&self, t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>>;
+    fn issues(&self, _t: &Target, _auth: &Auth, _keys: &[String]) -> Result<Vec<Issue>> {
+        Ok(Vec::new())
+    }
+
+    /// Web page for an issue (the key is not yet encoded); empty without an issue tracker.
+    fn issue_url(&self, _t: &Target, _key: &str) -> String {
+        String::new()
+    }
+
+    /// Where to create a personal access token.
+    fn token_url(&self, account: &Account) -> Option<String>;
+
+    /// How a repository is named in the interface.
+    fn display(&self, t: &Target) -> String {
+        format!("{}/{}", t.owner, t.repo)
+    }
 }
 
 /// The implementation for a provider.
 pub fn service(provider: Provider) -> &'static dyn Forge {
-    match provider {
-        Provider::GitHub | Provider::GitHubEnterprise => &github::GitHub,
-        Provider::GitLab | Provider::GitLabSelfManaged => &gitlab::GitLab,
-        Provider::Bitbucket | Provider::BitbucketDataCenter => &bitbucket::Bitbucket,
-        Provider::AzureDevOps => &azure::AzureDevOps,
-        Provider::JiraCloud | Provider::JiraDataCenter => &jira::Jira,
-    }
+    provider.info().service
 }
 
 pub fn verify(account: &Account, auth: &Auth) -> Result<String> {
@@ -368,15 +233,16 @@ pub fn issues(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
 
 /// Text appended to a PR description to link an issue, for trackers linked by mention.
 pub fn link_line(code_host: Provider, tracker: Provider, key: &str) -> Option<String> {
-    match (code_host, tracker) {
-        // Azure DevOps links work items through the API instead.
-        (Provider::AzureDevOps, Provider::AzureDevOps) => None,
-        (_, Provider::JiraCloud | Provider::JiraDataCenter) => Some(key.to_owned()),
-        (Provider::GitHub | Provider::GitHubEnterprise | Provider::GitLab | Provider::GitLabSelfManaged, _) => {
-            Some(format!("Closes #{key}"))
-        }
-        (Provider::Bitbucket, _) => Some(format!("Resolves #{key}")),
-        _ => Some(mention(tracker.ref_style(), key)),
+    let host = code_host.info();
+    if tracker.is_jira() {
+        Some(key.to_owned())
+    } else if code_host == tracker && host.links_issues_by_api {
+        // Linked through the API when the pull request is created instead.
+        None
+    } else if let Some(word) = host.close_keyword {
+        Some(format!("{word} #{key}"))
+    } else {
+        Some(mention(tracker.ref_style(), key))
     }
 }
 

@@ -2,10 +2,23 @@
 
 use super::http::get_paged;
 use super::page::{self, MAX_ITEMS, Page};
-use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, dec, enc, get, post};
+use super::provider::{DEFAULTS, ProviderInfo};
+use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, RefStyle, Reviewer, Target, dec, enc, get, post};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde_json::json;
+
+pub(super) static AZURE_DEVOPS: ProviderInfo = ProviderInfo {
+    name: "Azure DevOps",
+    host_hint: "e.g., dev.azure.com/mycompany",
+    token_help: "Needs the Code (Read & write) and Work Items (Read) scopes.",
+    env_var: Some("AZURE_DEVOPS_EXT_PAT"),
+    pr_prefix: "!",
+    ref_style: RefStyle::AzureBoards,
+    links_issues_by_api: true,
+    service: &AzureDevOps,
+    ..DEFAULTS
+};
 
 const V: &str = "7.1";
 /// Pull requests asked for per page.
@@ -169,47 +182,6 @@ fn convert(t: &Target, p: ApiPr) -> PullRequest {
     }
 }
 
-pub fn pull_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-    let first = format!("{}/pullrequests?searchCriteria.status=active&$top={TOP}&api-version={V}", repo_api(t));
-    let mut read = 0;
-    let prs = page::collect(first.clone(), |url| {
-        let p = get_paged::<List<ApiPr>>(auth, url)?;
-        read += p.body.value.len();
-        // A continuation token when the server sends one; otherwise skip what was read.
-        let next = match p.continuation {
-            Some(token) => Some(page::with_param(&first, "continuationToken", &token)),
-            None => (p.body.value.len() >= TOP).then(|| page::with_param(&first, "$skip", &read.to_string())),
-        };
-        Ok(Page { items: p.body.value, next })
-    })?;
-    Ok(prs.into_iter().map(|p| convert(t, p)).collect())
-}
-
-pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct RepoInfo {
-        #[serde(default)]
-        default_branch: Option<String>,
-    }
-    let info: RepoInfo = get(auth, &format!("{}?api-version={V}", repo_api(t)))?;
-    Ok(info.default_branch.map(|b| b.trim_start_matches("refs/heads/").to_owned()))
-}
-
-pub fn create_pull_request(t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
-    let work_items: Vec<_> = pr.issues.iter().filter(|k| k.parse::<u32>().is_ok()).map(|id| json!({ "id": id })).collect();
-    let body = json!({
-        "sourceRefName": format!("refs/heads/{}", pr.source),
-        "targetRefName": format!("refs/heads/{}", pr.target),
-        "title": pr.title,
-        "description": pr.description,
-        "isDraft": pr.draft,
-        "workItemRefs": work_items,
-    });
-    let created: ApiPr = post(auth, &format!("{}/pullrequests?api-version={V}", repo_api(t)), body)?;
-    Ok(convert(t, created))
-}
-
 #[derive(Deserialize)]
 struct Fields {
     #[serde(rename = "System.Title", default)]
@@ -240,94 +212,128 @@ fn to_issue(t: &Target, w: WorkItem) -> Issue {
     }
 }
 
-pub fn work_items(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
-    let ids: Vec<&String> = keys.iter().filter(|k| k.parse::<u32>().is_ok()).collect();
-    let mut out = Vec::new();
-    // The batch endpoint accepts at most 200 ids per call.
-    for chunk in ids.chunks(200) {
-        let list: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
-        let url = format!(
-            "{}/_apis/wit/workitems?ids={}&fields=System.Title,System.State,System.WorkItemType,System.AssignedTo&errorPolicy=omit&api-version={V}",
-            project_base(t),
-            list.join(",")
-        );
-        // With errorPolicy=omit, ids that do not exist come back as null entries.
-        out.extend(get::<List<Option<WorkItem>>>(auth, &url)?.value.into_iter().flatten().map(|w| to_issue(t, w)));
-    }
-    Ok(out)
-}
-
-/// Open work items assigned to the signed-in user in this project, most recently changed first.
-pub fn my_work_items(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Wiql {
-        #[serde(default)]
-        work_items: Vec<Ref>,
-    }
-    #[derive(Deserialize)]
-    struct Ref {
-        id: u32,
-    }
-    let query = "SELECT [System.Id] FROM WorkItems \
-        WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me \
-        AND [System.State] NOT IN ('Closed', 'Done', 'Removed') \
-        ORDER BY [System.ChangedDate] DESC";
-    let result: Wiql =
-        post(auth, &format!("{}/_apis/wit/wiql?$top={MAX_ITEMS}&api-version={V}", project_base(t)), json!({ "query": query }))?;
-    let ids: Vec<String> = result.work_items.iter().map(|w| w.id.to_string()).collect();
-    let mut items = work_items(t, auth, &ids)?;
-    items.sort_by_key(|w| ids.iter().position(|i| *i == w.key));
-    Ok(items)
-}
-
-pub fn verify(account: &Account, auth: &Auth) -> Result<String> {
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct ConnectionData {
-        authenticated_user: User,
-    }
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct User {
-        #[serde(default)]
-        provider_display_name: String,
-        #[serde(default)]
-        descriptor: String,
-    }
-    let url = format!("https://dev.azure.com/{}/_apis/connectionData?api-version=7.1-preview", enc(&account.org));
-    let user = get::<ConnectionData>(auth, &url)?.authenticated_user;
-    // Unauthenticated callers get an anonymous/public identity rather than an error.
-    if user.provider_display_name.is_empty()
-        || user.descriptor.starts_with("System:PublicAccess")
-        || user.provider_display_name.eq_ignore_ascii_case("anonymous")
-    {
-        return Err(Error::Auth(format!("the credentials were not accepted by {}", account.org)));
-    }
-    Ok(user.provider_display_name)
-}
-
 /// The AzureDevOps [`Forge`](super::Forge).
 pub struct AzureDevOps;
 
 impl super::Forge for AzureDevOps {
+    fn issue_url(&self, t: &Target, key: &str) -> String {
+        work_item_url(t, &enc(key))
+    }
+
+    fn token_url(&self, account: &Account) -> Option<String> {
+        (!account.org.is_empty()).then(|| format!("https://dev.azure.com/{}/_usersSettings/tokens", enc(&account.org)))
+    }
+
+    fn display(&self, t: &Target) -> String {
+        format!("{}/{}/{}", t.owner, t.project, t.repo)
+    }
+
     fn verify(&self, account: &Account, auth: &Auth) -> Result<String> {
-        verify(account, auth)
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct ConnectionData {
+            authenticated_user: User,
+        }
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct User {
+            #[serde(default)]
+            provider_display_name: String,
+            #[serde(default)]
+            descriptor: String,
+        }
+        let url = format!("https://dev.azure.com/{}/_apis/connectionData?api-version=7.1-preview", enc(&account.org));
+        let user = get::<ConnectionData>(auth, &url)?.authenticated_user;
+        // Unauthenticated callers get an anonymous/public identity rather than an error.
+        if user.provider_display_name.is_empty()
+            || user.descriptor.starts_with("System:PublicAccess")
+            || user.provider_display_name.eq_ignore_ascii_case("anonymous")
+        {
+            return Err(Error::Auth(format!("the credentials were not accepted by {}", account.org)));
+        }
+        Ok(user.provider_display_name)
     }
+
     fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-        pull_requests(t, auth)
+        let first = format!("{}/pullrequests?searchCriteria.status=active&$top={TOP}&api-version={V}", repo_api(t));
+        let mut read = 0;
+        let prs = page::collect(first.clone(), |url| {
+            let p = get_paged::<List<ApiPr>>(auth, url)?;
+            read += p.body.value.len();
+            // A continuation token when the server sends one; otherwise skip what was read.
+            let next = match p.continuation {
+                Some(token) => Some(page::with_param(&first, "continuationToken", &token)),
+                None => (p.body.value.len() >= TOP).then(|| page::with_param(&first, "$skip", &read.to_string())),
+            };
+            Ok(Page { items: p.body.value, next })
+        })?;
+        Ok(prs.into_iter().map(|p| convert(t, p)).collect())
     }
+
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
-        default_branch(t, auth)
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct RepoInfo {
+            #[serde(default)]
+            default_branch: Option<String>,
+        }
+        let info: RepoInfo = get(auth, &format!("{}?api-version={V}", repo_api(t)))?;
+        Ok(info.default_branch.map(|b| b.trim_start_matches("refs/heads/").to_owned()))
     }
+
     fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
-        create_pull_request(t, auth, pr)
+        let work_items: Vec<_> = pr.issues.iter().filter(|k| k.parse::<u32>().is_ok()).map(|id| json!({ "id": id })).collect();
+        let body = json!({
+            "sourceRefName": format!("refs/heads/{}", pr.source),
+            "targetRefName": format!("refs/heads/{}", pr.target),
+            "title": pr.title,
+            "description": pr.description,
+            "isDraft": pr.draft,
+            "workItemRefs": work_items,
+        });
+        let created: ApiPr = post(auth, &format!("{}/pullrequests?api-version={V}", repo_api(t)), body)?;
+        Ok(convert(t, created))
     }
+
+    /// Open work items assigned to the signed-in user in this project, most recently changed first.
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-        my_work_items(t, auth)
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Wiql {
+            #[serde(default)]
+            work_items: Vec<Ref>,
+        }
+        #[derive(Deserialize)]
+        struct Ref {
+            id: u32,
+        }
+        let query = "SELECT [System.Id] FROM WorkItems \
+            WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me \
+            AND [System.State] NOT IN ('Closed', 'Done', 'Removed') \
+            ORDER BY [System.ChangedDate] DESC";
+        let result: Wiql =
+            post(auth, &format!("{}/_apis/wit/wiql?$top={MAX_ITEMS}&api-version={V}", project_base(t)), json!({ "query": query }))?;
+        let ids: Vec<String> = result.work_items.iter().map(|w| w.id.to_string()).collect();
+        let mut items = self.issues(t, auth, &ids)?;
+        items.sort_by_key(|w| ids.iter().position(|i| *i == w.key));
+        Ok(items)
     }
+
     fn issues(&self, t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
-        work_items(t, auth, keys)
+        let ids: Vec<&String> = keys.iter().filter(|k| k.parse::<u32>().is_ok()).collect();
+        let mut out = Vec::new();
+        // The batch endpoint accepts at most 200 ids per call.
+        for chunk in ids.chunks(200) {
+            let list: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
+            let url = format!(
+                "{}/_apis/wit/workitems?ids={}&fields=System.Title,System.State,System.WorkItemType,System.AssignedTo&errorPolicy=omit&api-version={V}",
+                project_base(t),
+                list.join(",")
+            );
+            // With errorPolicy=omit, ids that do not exist come back as null entries.
+            out.extend(get::<List<Option<WorkItem>>>(auth, &url)?.value.into_iter().flatten().map(|w| to_issue(t, w)));
+        }
+        Ok(out)
     }
 }
 

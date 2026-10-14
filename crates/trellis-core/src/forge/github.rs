@@ -1,10 +1,25 @@
 //! GitHub and GitHub Enterprise Server (REST API v3).
 
+use super::provider::{DEFAULTS, ProviderInfo};
 use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, enc, get, page, post};
 use crate::error::Result;
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
+
+pub(super) static GITHUB: ProviderInfo =
+    ProviderInfo { name: "GitHub", fixed_host: Some("github.com"), host_hint: "", ..GITHUB_ENTERPRISE };
+
+pub(super) static GITHUB_ENTERPRISE: ProviderInfo = ProviderInfo {
+    name: "GitHub Enterprise Server",
+    host_hint: "e.g., github.mycompany.com",
+    token_help: "A personal access token with the repo scope (classic), or a fine-grained token with Pull requests and Issues read & write.",
+    env_var: Some("GITHUB_TOKEN"),
+    close_keyword: Some("Closes"),
+    api_headers: &[("X-GitHub-Api-Version", "2022-11-28")],
+    service: &GitHub,
+    ..DEFAULTS
+};
 
 /// Pull requests whose reviews are asked for in one GraphQL call.
 const REVIEW_BATCH: usize = 50;
@@ -30,11 +45,6 @@ struct User {
 
 fn me(host: &str, provider: Provider, auth: &Auth) -> Result<User> {
     get(auth, &format!("{}/user", api(host, provider)))
-}
-
-pub fn verify(account: &Account, auth: &Auth) -> Result<String> {
-    let u = me(&account.host, account.provider, auth)?;
-    Ok(u.name.filter(|n| !n.is_empty()).unwrap_or(u.login))
 }
 
 #[derive(Deserialize)]
@@ -108,19 +118,6 @@ fn convert(p: ApiPr, reviews: Vec<Review>) -> PullRequest {
     }
 }
 
-pub fn pull_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-    let prs: Vec<ApiPr> = page::by_link(auth, format!("{}/pulls?state=open&per_page=100", repo_api(t)))?;
-    let numbers: Vec<u64> = prs.iter().map(|p| p.number).collect();
-    let mut reviews = reviews(t, auth, &numbers);
-    Ok(prs
-        .into_iter()
-        .map(|p| {
-            let r = reviews.remove(&p.number).unwrap_or_default();
-            convert(p, r)
-        })
-        .collect())
-}
-
 /// Each pull request's reviews, asked for in a few GraphQL calls rather than one REST call per
 /// pull request. Pull requests whose reviews can't be read are left out (and show no votes).
 fn reviews(t: &Target, auth: &Auth, numbers: &[u64]) -> HashMap<u64, Vec<Review>> {
@@ -141,20 +138,6 @@ fn reviews(t: &Target, auth: &Auth, numbers: &[u64]) -> HashMap<u64, Vec<Review>
         }
     }
     out
-}
-
-pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
-    #[derive(Deserialize)]
-    struct Repo {
-        default_branch: Option<String>,
-    }
-    Ok(get::<Repo>(auth, &repo_api(t))?.default_branch)
-}
-
-pub fn create_pull_request(t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
-    let body = json!({ "title": pr.title, "head": pr.source, "base": pr.target, "body": pr.description, "draft": pr.draft });
-    let created: ApiPr = post(auth, &format!("{}/pulls", repo_api(t)), body)?;
-    Ok(convert(created, Vec::new()))
 }
 
 #[derive(Deserialize)]
@@ -188,46 +171,68 @@ fn to_issue(i: ApiIssue) -> Issue {
     }
 }
 
-pub fn my_issues(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-    let login = me(&t.host, t.provider, auth)?.login;
-    let url = format!("{}/issues?state=open&assignee={}&per_page=100&sort=updated", repo_api(t), enc(&login));
-    let items: Vec<ApiIssue> = page::by_link(auth, url)?;
-    Ok(items.into_iter().filter(|i| i.pull_request.is_none()).map(to_issue).collect())
-}
-
-pub fn issues(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
-    let mut out = Vec::new();
-    for k in keys.iter().filter(|k| k.parse::<u64>().is_ok()).take(30) {
-        match get::<ApiIssue>(auth, &format!("{}/issues/{k}", repo_api(t))) {
-            Ok(i) => out.push(to_issue(i)),
-            Err(e) if e.is_not_found() => {}
-            Err(e) => return Err(e),
-        }
-    }
-    Ok(out)
-}
-
 /// The GitHub [`Forge`](super::Forge).
 pub struct GitHub;
 
 impl super::Forge for GitHub {
+    fn issue_url(&self, t: &Target, key: &str) -> String {
+        // A GitHub owner is one path segment.
+        format!("https://{}/{}/{}/issues/{}", t.host, enc(&t.owner), enc(&t.repo), enc(key))
+    }
+
+    fn token_url(&self, account: &Account) -> Option<String> {
+        Some(format!("https://{}/settings/tokens", account.host))
+    }
+
     fn verify(&self, account: &Account, auth: &Auth) -> Result<String> {
-        verify(account, auth)
+        let u = me(&account.host, account.provider, auth)?;
+        Ok(u.name.filter(|n| !n.is_empty()).unwrap_or(u.login))
     }
+
     fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-        pull_requests(t, auth)
+        let prs: Vec<ApiPr> = page::by_link(auth, format!("{}/pulls?state=open&per_page=100", repo_api(t)))?;
+        let numbers: Vec<u64> = prs.iter().map(|p| p.number).collect();
+        let mut reviews = reviews(t, auth, &numbers);
+        Ok(prs
+            .into_iter()
+            .map(|p| {
+                let r = reviews.remove(&p.number).unwrap_or_default();
+                convert(p, r)
+            })
+            .collect())
     }
+
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
-        default_branch(t, auth)
+        #[derive(Deserialize)]
+        struct Repo {
+            default_branch: Option<String>,
+        }
+        Ok(get::<Repo>(auth, &repo_api(t))?.default_branch)
     }
+
     fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
-        create_pull_request(t, auth, pr)
+        let body = json!({ "title": pr.title, "head": pr.source, "base": pr.target, "body": pr.description, "draft": pr.draft });
+        let created: ApiPr = post(auth, &format!("{}/pulls", repo_api(t)), body)?;
+        Ok(convert(created, Vec::new()))
     }
+
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-        my_issues(t, auth)
+        let login = me(&t.host, t.provider, auth)?.login;
+        let url = format!("{}/issues?state=open&assignee={}&per_page=100&sort=updated", repo_api(t), enc(&login));
+        let items: Vec<ApiIssue> = page::by_link(auth, url)?;
+        Ok(items.into_iter().filter(|i| i.pull_request.is_none()).map(to_issue).collect())
     }
+
     fn issues(&self, t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
-        issues(t, auth, keys)
+        let mut out = Vec::new();
+        for k in keys.iter().filter(|k| k.parse::<u64>().is_ok()).take(30) {
+            match get::<ApiIssue>(auth, &format!("{}/issues/{k}", repo_api(t))) {
+                Ok(i) => out.push(to_issue(i)),
+                Err(e) if e.is_not_found() => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(out)
     }
 }
 

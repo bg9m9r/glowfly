@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::error::{Error, Result};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, percent_decode_str, utf8_percent_encode};
 use serde::de::DeserializeOwned;
 use std::io::Read;
 use std::sync::OnceLock;
@@ -26,23 +27,12 @@ fn read_json<T: DeserializeOwned>(resp: ureq::Response) -> Result<T> {
     Ok(serde_json::from_slice(&read_capped(resp.into_reader(), MAX_JSON)?)?)
 }
 
+/// Everything except the characters RFC 3986 leaves unreserved: letters, digits and `-._~`.
+const SEGMENT: &AsciiSet = &NON_ALPHANUMERIC.remove(b'-').remove(b'.').remove(b'_').remove(b'~');
+
+/// Decodes `%XX` escapes; invalid escapes stay as they are, invalid UTF-8 becomes U+FFFD.
 pub(crate) fn dec(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'%' && i + 2 < bytes.len() {
-            let hex = std::str::from_utf8(&bytes[i + 1..i + 3]).ok();
-            if let Some(b) = hex.and_then(|h| u8::from_str_radix(h, 16).ok()) {
-                out.push(b);
-                i += 3;
-                continue;
-            }
-        }
-        out.push(bytes[i]);
-        i += 1;
-    }
-    String::from_utf8_lossy(&out).into_owned()
+    percent_decode_str(s).decode_utf8_lossy().into_owned()
 }
 
 /// Percent-encodes one URL path segment or query value. `.` and `..` are encoded too, so a
@@ -51,15 +41,7 @@ pub(crate) fn enc(s: &str) -> String {
     if s == "." || s == ".." {
         return s.replace('.', "%2E");
     }
-    let mut out = String::with_capacity(s.len());
-    for b in s.bytes() {
-        if b.is_ascii_alphanumeric() || b"-._~".contains(&b) {
-            out.push(b as char);
-        } else {
-            out.push_str(&format!("%{b:02X}"));
-        }
-    }
-    out
+    utf8_percent_encode(s, SEGMENT).to_string()
 }
 
 /// Encodes each `/`-separated segment of a path such as a GitLab `group/subgroup`.
@@ -73,14 +55,6 @@ fn agent() -> &'static ureq::Agent {
     AGENT.get_or_init(|| {
         ureq::AgentBuilder::new().timeout(Duration::from_secs(20)).user_agent(concat!("Trellis/", env!("CARGO_PKG_VERSION"))).build()
     })
-}
-
-/// Headers only one service understands, sent to that service alone.
-pub(super) fn service_headers(provider: Provider) -> &'static [(&'static str, &'static str)] {
-    match provider {
-        Provider::GitHub | Provider::GitHubEnterprise => &[("X-GitHub-Api-Version", "2022-11-28")],
-        _ => &[],
-    }
 }
 
 /// A request carrying the credential and its service's own headers. Only `https://` URLs are
@@ -98,7 +72,8 @@ pub(super) fn request(method: &str, auth: &Auth, url: &str) -> Result<ureq::Requ
     if let Some((_, host)) = &redirected {
         req = req.set("X-Test-Host", host);
     }
-    for (name, value) in service_headers(auth.provider) {
+    // Headers only one service understands go to that service alone.
+    for (name, value) in auth.provider.info().api_headers {
         req = req.set(name, value);
     }
     Ok(req)
@@ -210,7 +185,7 @@ mod tests {
     #[test]
     fn service_headers_go_to_their_own_service_only() {
         for p in Provider::ALL {
-            let headers = service_headers(p);
+            let headers = p.info().api_headers;
             let github = matches!(p, Provider::GitHub | Provider::GitHubEnterprise);
             assert_eq!(headers.iter().any(|(n, _)| n.starts_with("X-GitHub")), github, "{p:?}");
         }
@@ -231,6 +206,22 @@ mod tests {
         // And tests never reach the network without a mock server.
         let err = get::<serde_json::Value>(&auth, "https://api.github.com/user").unwrap_err();
         assert!(err.to_string().contains("tests may not call"), "{err}");
+    }
+
+    #[test]
+    fn encodes_and_decodes_url_parts() {
+        assert_eq!(enc("a b/c?d#e%f"), "a%20b%2Fc%3Fd%23e%25f");
+        assert_eq!(enc("Az09-._~"), "Az09-._~");
+        assert_eq!(enc("caf\u{e9}"), "caf%C3%A9");
+        assert_eq!((enc("."), enc(".."), enc("..."), enc("a.b")), ("%2E".into(), "%2E%2E".into(), "...".into(), "a.b".into()));
+        assert_eq!(enc_path("group/sub/../x"), "group/sub/%2E%2E/x");
+        assert_eq!(dec("a%20b%2Fc%C3%A9"), "a b/c\u{e9}");
+        assert_eq!(dec("100%"), "100%");
+        assert_eq!(dec("%zz%4"), "%zz%4");
+        assert_eq!(dec("%FF"), "\u{fffd}");
+        for s in ["", "x y", "\u{1f600}/%", "..", "a+b"] {
+            assert_eq!(dec(&enc(s)), s);
+        }
     }
 
     #[test]

@@ -4182,6 +4182,7 @@ dependencies = [
  "git2",
  "image",
  "keyring",
+ "percent-encoding",
  "portable-pty",
  "serde",
  "serde_json",
