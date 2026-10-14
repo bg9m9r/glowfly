@@ -3,7 +3,8 @@
 
 use super::conflict::{ConflictContent, ConflictFile, ConflictIds, Segment, Side};
 use crate::error::{Error, Result};
-use git2::Repository;
+use git2::build::CheckoutBuilder;
+use git2::{IndexConflict, IndexEntry, IndexTime, Repository};
 use std::path::Path;
 
 /// What a conflict chunk resolves to.
@@ -98,59 +99,134 @@ fn to_crlf(text: &str) -> String {
 }
 
 /// Opens the index and checks the conflict at `path` still has the stages it was loaded with.
-fn checked_index(repo: &Repository, path: &str, expected: &ConflictIds) -> Result<git2::Index> {
+fn checked_index(repo: &Repository, path: &str, expected: &ConflictIds) -> Result<(git2::Index, IndexConflict)> {
     let index = repo.index()?;
-    let current = index.conflict_get(Path::new(path)).ok().map(|c| ConflictIds {
-        ancestor: c.ancestor.map(|e| e.id),
-        ours: c.our.map(|e| e.id),
-        theirs: c.their.map(|e| e.id),
-    });
-    if current.as_ref() != Some(expected) {
-        return Err(Error::Other(format!("The conflict in {path} changed since it was opened. Close and reopen it.")));
+    match index.conflict_get(Path::new(path)) {
+        Ok(c) if ids_of(&c) == *expected => Ok((index, c)),
+        _ => Err(Error::Other(format!("The conflict in {path} changed since it was opened. Close and reopen it."))),
     }
-    Ok(index)
+}
+
+fn ids_of(c: &IndexConflict) -> ConflictIds {
+    ConflictIds { ancestor: c.ancestor.as_ref().map(|e| e.id), ours: c.our.as_ref().map(|e| e.id), theirs: c.their.as_ref().map(|e| e.id) }
 }
 
 /// Writes `contents` to the working file and stages it, which marks the conflict resolved.
 /// Refused if the conflict changed since `expected` was read.
 pub fn write_resolution(workdir: &Path, path: &str, contents: &str, expected: &ConflictIds) -> Result<()> {
     let repo = Repository::open(workdir)?;
-    let mut index = checked_index(&repo, path, expected)?;
+    let (mut index, _) = checked_index(&repo, path, expected)?;
     write_file(workdir, path, contents.as_bytes())?;
     index.add_path(Path::new(path))?;
     index.write()?;
     Ok(())
 }
 
-/// Resolves with one side's whole version: its blob, or deleting the file if that side deleted
-/// it. Refused if the conflict changed since `expected` was read.
+const TYPE_MASK: u32 = 0o170000;
+const SYMLINK: u32 = 0o120000;
+const GITLINK: u32 = 0o160000;
+const STAGE_MASK: u16 = 0x3000;
+
+/// Resolves with one side's whole version: its entry (content and type), or deleting the file
+/// if that side deleted it. Refused if the conflict changed since `expected` was read.
 pub fn resolve_with_side(workdir: &Path, path: &str, side: Side, expected: &ConflictIds) -> Result<()> {
     let repo = Repository::open(workdir)?;
-    let mut index = checked_index(&repo, path, expected)?;
+    let (mut index, conflict) = checked_index(&repo, path, expected)?;
     let full = workdir.join(path);
-    match expected.side(side) {
-        Some(id) => {
-            let blob = repo.find_blob(id)?;
-            let crlf = std::fs::read(&full).is_ok_and(|b| b.windows(2).any(|w| w == b"\r\n"));
+    let chosen = match side {
+        Side::Ours => conflict.our,
+        Side::Theirs => conflict.their,
+    };
+    let Some(entry) = chosen else {
+        remove_working(&full)?;
+        index.remove_path(Path::new(path))?;
+        index.write()?;
+        return Ok(());
+    };
+    match entry.mode & TYPE_MASK {
+        // The submodule's own checkout is left as it is.
+        GITLINK => stage_entry(&mut index, path, entry)?,
+        SYMLINK => {
+            // Check the link out from the index (as a plain file where links are off), never
+            // writing through whatever link the working tree holds now.
+            stage_entry(&mut index, path, entry)?;
+            remove_working(&full)?;
+            let mut co = CheckoutBuilder::new();
+            co.force().recreate_missing(true).skip_unmerged(true).disable_pathspec_match(true).path(path);
+            repo.checkout_index(Some(&mut index), Some(&mut co))?;
+        }
+        _ => {
+            let blob = repo.find_blob(entry.id)?;
+            let crlf = !is_link(&full) && std::fs::read(&full).is_ok_and(|b| b.windows(2).any(|w| w == b"\r\n"));
             match std::str::from_utf8(blob.content()) {
                 Ok(text) if crlf && !blob.is_binary() => write_file(workdir, path, to_crlf(text).as_bytes())?,
                 _ => write_file(workdir, path, blob.content())?,
             }
+            set_executable(&full, entry.mode)?;
             index.add_path(Path::new(path))?;
-        }
-        None => {
-            if full.exists() {
-                std::fs::remove_file(&full)?;
+            // Where the file system can't say (no executable bit, links off), the mode comes from
+            // the old entry: keep the chosen side's instead.
+            if let Some(mut e) = index.get_path(Path::new(path), 0)
+                && e.mode != entry.mode
+            {
+                e.mode = entry.mode;
+                index.add(&e)?;
             }
-            index.remove_path(Path::new(path))?;
         }
     }
     index.write()?;
     Ok(())
 }
 
+/// Stages `entry` (one side of the conflict at `path`) as the resolution.
+fn stage_entry(index: &mut git2::Index, path: &str, mut entry: IndexEntry) -> Result<()> {
+    index.conflict_remove(Path::new(path))?;
+    entry.flags &= !STAGE_MASK;
+    // No cached stat data, so the working file is always compared by content.
+    let zero = IndexTime::new(0, 0);
+    (entry.ctime, entry.mtime, entry.dev, entry.ino, entry.uid, entry.gid, entry.file_size) = (zero, zero, 0, 0, 0, 0, 0);
+    index.add(&entry)?;
+    Ok(())
+}
+
+/// Removes the file or link at `full` without following a link. A missing path or a real
+/// directory is left alone.
+fn remove_working(full: &Path) -> Result<()> {
+    match std::fs::symlink_metadata(full) {
+        Ok(m) if m.is_dir() => Ok(()),
+        // A Windows link to a directory is removed as a directory.
+        Ok(m) => Ok(std::fs::remove_file(full).or_else(|e| if m.file_type().is_symlink() { std::fs::remove_dir(full) } else { Err(e) })?),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(e.into()),
+    }
+}
+
+#[cfg(unix)]
+fn set_executable(full: &Path, mode: u32) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = std::fs::metadata(full)?.permissions();
+    let exec = mode & 0o111 != 0;
+    let bits = perms.mode();
+    perms.set_mode(if exec { bits | ((bits & 0o444) >> 2) } else { bits & !0o111 });
+    std::fs::set_permissions(full, perms)?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn set_executable(_full: &Path, _mode: u32) -> Result<()> {
+    Ok(())
+}
+
+fn is_link(full: &Path) -> bool {
+    std::fs::symlink_metadata(full).is_ok_and(|m| m.file_type().is_symlink())
+}
+
+/// Writes a regular file at `path`, replacing a link there rather than writing through it.
 fn write_file(workdir: &Path, path: &str, bytes: &[u8]) -> Result<()> {
     let full = workdir.join(path);
+    if is_link(&full) {
+        remove_working(&full)?;
+    }
     if let Some(parent) = full.parent() {
         std::fs::create_dir_all(parent)?;
     }

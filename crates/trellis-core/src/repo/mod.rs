@@ -211,4 +211,6 @@ mod conflict_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
+mod resolve_tests;
+#[cfg(test)]
 mod tests;
