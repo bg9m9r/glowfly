@@ -58,9 +58,19 @@ impl PtySession {
         self.master.resize(size(rows, cols)).map_err(other)
     }
 
-    /// Stops the shell (and, on Windows, everything attached to its console).
+    /// A handle that stops the shell from any thread, so a stop never waits for a write that
+    /// is blocked on a full input pipe.
+    pub fn killer(&self) -> PtyKiller {
+        PtyKiller(self.killer.clone_killer())
+    }
+}
+
+/// Stops a session's shell (and, on Windows, everything attached to its console).
+pub struct PtyKiller(Box<dyn ChildKiller + Send + Sync>);
+
+impl PtyKiller {
     pub fn kill(&mut self) -> std::io::Result<()> {
-        self.killer.kill()
+        self.0.kill()
     }
 }
 
