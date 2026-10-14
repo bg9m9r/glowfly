@@ -66,6 +66,13 @@ pub enum Msg {
     /// A click on a whole-file "N unchanged lines" row: show the lines of the fold with this key
     /// in place.
     ExpandUnchanged(u32),
+    /// A click on the fold-back control on the first line of an opened whole-file run: fold
+    /// the run with this key back into one row.
+    CollapseUnchanged(u32),
+    /// The diff header's Expand all: open every fold of the whole file on screen.
+    ExpandAllUnchanged,
+    /// The diff header's Collapse all: close every opened fold.
+    CollapseAllUnchanged,
     /// A click on line `line` of hunk `hunk` in the open diff (line-level staging).
     SelectDiffLine {
         hunk: usize,

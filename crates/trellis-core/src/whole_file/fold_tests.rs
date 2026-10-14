@@ -188,3 +188,33 @@ fn expanded_set() {
     assert!(collapsed(&w, &Expanded::all(&w)).is_empty());
     assert_eq!(collapsed(&w, &Expanded::default()), folds(&w));
 }
+
+#[test]
+fn expanded_remove_reports_whether_open() {
+    let mut ex = Expanded::default();
+    assert!(ex.insert(6));
+    assert!(ex.remove(6), "it was open");
+    assert!(!ex.contains(6));
+    assert!(!ex.remove(6), "already closed");
+}
+
+#[test]
+fn opened_lists_open_folds_in_order() {
+    // Three runs of 10 context lines between and around two changes: three folds.
+    let (del, add) = (l('-', Some(11), None, "gone"), l('+', None, Some(21), "new"));
+    let mut lines: Vec<DiffLine> = (1..=10).map(|n| ctx(n, n)).collect();
+    lines.push(del.clone());
+    lines.extend((12..=21).map(|n| ctx(n, n - 1)));
+    lines.push(add.clone());
+    lines.extend((22..=31).map(|n| ctx(n, n)));
+    let w = WholeFile::new(&[hunk(vec![del]), hunk(vec![add])], hunk(lines)).expect("maps");
+    let all = folds(&w);
+    assert_eq!(all.len(), 3);
+    let mut ex = Expanded::default();
+    for key in [all[2].key, all[0].key, 999] {
+        ex.insert(key);
+    }
+    assert_eq!(opened(&w, &ex), [all[0], all[2]], "in file order, without the stale key");
+    assert!(opened(&w, &Expanded::default()).is_empty());
+    assert_eq!(opened(&w, &Expanded::all(&w)), all);
+}

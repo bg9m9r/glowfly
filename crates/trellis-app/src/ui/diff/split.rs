@@ -74,6 +74,13 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
                     paint_mark(ui, r, selected, hovered);
                 }
                 ui.painter().vline(left.right(), rect.y_range(), Stroke::new(1.0_f32, color::border()));
+                // An opened run folds back from its first line, at the fold row's mark position.
+                if let (Some(i), Some(j)) = (old, new)
+                    && i == j
+                    && let Some(f) = fold::opened_at(&v.opened, i)
+                {
+                    fold::fold_back(ui, left, v, f, st.split_cols().sign, msgs);
+                }
             }
         }
     })

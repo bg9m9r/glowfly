@@ -52,7 +52,8 @@ crates/
                           runs, hidden keywords)
     diff_rows.rs          inline and side-by-side row layout of a diff
     whole_file.rs         whole-file view: change blocks mapped onto hunks, folds of long
-                          unchanged runs (folds.rs), and their rows
+                          unchanged runs (folds.rs), their rows, and mapping rows to lines
+                          so fold changes keep the view in place (anchor.rs)
     conflict_rows.rs      row layout of the conflict view (aligned ours/theirs panes, output)
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds:
                           inline and background passes, reuse/carry in highlight/reuse.rs

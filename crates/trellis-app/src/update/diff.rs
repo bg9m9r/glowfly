@@ -1,4 +1,4 @@
-//! Diff viewer layout, view mode (hunks or the whole file) and navigation.
+//! Diff viewer layout, view mode (hunks or the whole file), navigation and whole-file folds.
 
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -7,7 +7,7 @@ use crate::state::diff_nav::{self, Landing, Step};
 use trellis_core::diff_rows::{header_rows, hunk_at};
 use trellis_core::repo::{DiffTarget, FileDiff};
 use trellis_core::settings::{DiffLayout, DiffMode, Settings};
-use trellis_core::whole_file::{Expanded, change_of_hunk, change_rows, folds, hunk_of_change, shown};
+use trellis_core::whole_file::{Expanded, WholeFile, change_of_hunk, change_rows, folds, hunk_of_change, line_at_row, row_of_line, shown};
 
 /// The row in layout `to` showing the change (hunk, or change block in the whole-file view)
 /// that row `top` of layout `from` is in, so the change at the top of the viewport stays there.
@@ -120,7 +120,24 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 Step::End => {}
             }
         }
-        Msg::ExpandUnchanged(key) => expand(st, key),
+        Msg::ExpandUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.insert(key)),
+        Msg::CollapseUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.remove(key)),
+        Msg::ExpandAllUnchanged => refold(st, |ex, w| {
+            // Replacing the set also drops keys of folds that are gone.
+            let all = Expanded::all(w);
+            if *ex == all {
+                return false;
+            }
+            *ex = all;
+            true
+        }),
+        Msg::CollapseAllUnchanged => refold(st, |ex, _| {
+            if ex.is_empty() {
+                return false;
+            }
+            ex.clear();
+            true
+        }),
         _ => {}
     }
 }
@@ -155,21 +172,34 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
     }
 }
 
-/// Opens the whole-file fold `key` in place. Rows above it keep their indexes, so nothing
-/// scrolls. Ignored when `key` isn't a fold of the whole file on screen (a click that raced a
-/// reload or close) or is already open.
-fn expand(st: &mut AppState, key: u32) {
+/// Changes which whole-file folds are open (`change` says whether it changed anything),
+/// keeping the line at the top of the viewport there and the change last stepped to in its
+/// place among the change rows. Rows above a fold keep their indexes, so opening or closing one
+/// fold only scrolls when it begins above the top row; bulk changes can add or remove rows
+/// above it. Ignored outside the whole-file view, and when `change` changes nothing (a key
+/// that isn't a fold of the file on screen, from a click that raced a reload, or a fold
+/// already in the asked-for state).
+fn refold(st: &mut AppState, change: impl FnOnce(&mut Expanded, &WholeFile) -> bool) {
     let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
     let Some((_, d)) = &st.diff else { return };
     let Some(w) = shown(d, mode) else { return };
-    if !folds(w).iter().any(|f| f.key == key) {
-        return;
-    }
     let before = change_rows(d, mode, layout, &st.view.diff_expanded);
-    if !st.view.diff_expanded.insert(key) {
+    let anchor = line_at_row(w, layout, &st.view.diff_expanded, st.view.diff_top_row);
+    if !change(&mut st.view.diff_expanded, w) {
         return;
     }
     let after = change_rows(d, mode, layout, &st.view.diff_expanded);
-    // The change last stepped to keeps its place among the change rows.
     st.view.diff_cursor = st.view.diff_cursor.and_then(|c| before.iter().position(|&r| r == c)).and_then(|i| after.get(i).copied());
+    if let Some(line) = anchor {
+        let row = row_of_line(w, layout, &st.view.diff_expanded, line);
+        if row != st.view.diff_top_row {
+            st.view.diff_top_row = row;
+            st.view.diff_scroll_to_row = Some(row);
+        }
+    }
+}
+
+/// Whether `key` names a fold of `w`.
+fn is_fold(w: &WholeFile, key: u32) -> bool {
+    folds(w).iter().any(|f| f.key == key)
 }

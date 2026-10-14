@@ -43,6 +43,11 @@ impl Expanded {
         self.0.insert(key)
     }
 
+    /// Closes the fold `key`; false when it was not open.
+    pub fn remove(&mut self, key: u32) -> bool {
+        self.0.remove(&key)
+    }
+
     pub fn contains(&self, key: u32) -> bool {
         self.0.contains(&key)
     }
@@ -106,4 +111,10 @@ pub fn folds(w: &WholeFile) -> Vec<Fold> {
 /// The folds of `w` still closed.
 pub fn collapsed(w: &WholeFile, ex: &Expanded) -> Vec<Fold> {
     folds(w).into_iter().filter(|f| !ex.contains(f.key)).collect()
+}
+
+/// The folds of `w` the user opened, in order. Keys in `ex` that are not folds of `w` are
+/// ignored.
+pub fn opened(w: &WholeFile, ex: &Expanded) -> Vec<Fold> {
+    folds(w).into_iter().filter(|f| ex.contains(f.key)).collect()
 }

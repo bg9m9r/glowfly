@@ -4,11 +4,14 @@
 //! The normal hunks stay the ones staging works on, so each block keeps its hunk's index and
 //! the action row above it acts on that hunk. Long unchanged runs between blocks are folded
 //! (`folds.rs`) into one "N unchanged lines" row each until opened, so every function that
-//! turns the file into rows takes the set of opened folds.
+//! turns the file into rows takes the set of opened folds. Opening or closing folds adds or
+//! removes rows, so `anchor.rs` maps rows to file lines and back to keep the view in place.
 
+mod anchor;
 mod folds;
 
-pub use folds::{Expanded, FOLD_CONTEXT, Fold, MIN_FOLD, collapsed, folds};
+pub use anchor::{line_at_row, row_of_line};
+pub use folds::{Expanded, FOLD_CONTEXT, Fold, MIN_FOLD, collapsed, folds, opened};
 
 use crate::diff_rows::{self, DiffRow, SplitRow, header_rows};
 use crate::repo::{DiffLine, FileDiff, Hunk};

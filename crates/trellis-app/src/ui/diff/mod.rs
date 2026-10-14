@@ -1,7 +1,8 @@
 //! The diff viewer: one column (inline) or old and new side by side (split), showing the hunks
 //! or the whole file, with hunk- and line-level stage, unstage and discard, and Revert Hunk on
 //! commit diffs, and next/previous change navigation. In the whole-file view long unchanged
-//! runs are folded into "N unchanged lines" rows that open in place when clicked.
+//! runs are folded into "N unchanged lines" rows that open in place when clicked; an opened
+//! run folds back from a control on its first line, and the header can open or close them all.
 
 mod fold;
 mod header;
@@ -21,7 +22,7 @@ use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{DiffTarget, FileDiff, HunkOp};
 use trellis_core::settings::DiffLayout;
 use trellis_core::tabs;
-use trellis_core::whole_file::{self, Expanded, WholeFile};
+use trellis_core::whole_file::{self, Expanded, Fold, WholeFile, folds};
 
 /// The default row height and font, which the conflict view keeps; the diff viewer draws
 /// with `DiffStyle` from the settings.
@@ -40,6 +41,9 @@ pub(super) struct DiffView<'a> {
     pub whole: Option<&'a WholeFile>,
     /// The folds opened in the whole-file view; the others are drawn as fold rows.
     pub expanded: &'a Expanded,
+    /// The opened folds of the whole-file view, in order; their first lines get the fold-back
+    /// control.
+    pub opened: Vec<Fold>,
     /// Syntax spans of the diff the lines come from (`lines()`), `None` to paint plain.
     pub hl: Option<&'a DiffHighlight>,
     /// The diff's generation, or `None` while a reload is on its way (see `hunk_header`).
@@ -75,7 +79,15 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let has_rows = !diff.binary && !diff.hunks.is_empty();
         ui.add_space(6.0);
         let rows = has_rows.then_some((st.settings.diff_layout, st.settings.diff_mode));
-        header::header_bar(ui, target, rows, nav, (!diff.binary).then_some(ignore_ws), msgs);
+        // How many folds of the whole file on screen are open and closed, when it has any.
+        let fold_counts = whole_file::shown(diff, st.settings.diff_mode)
+            .map(|w| {
+                let all = folds(w);
+                let open = all.iter().filter(|f| st.view.diff_expanded.contains(f.key)).count();
+                header::FoldCounts { open, closed: all.len() - open }
+            })
+            .filter(|c| c.open + c.closed > 0 && has_rows);
+        header::header_bar(ui, target, rows, nav, (!diff.binary).then_some(ignore_ws), fold_counts, msgs);
         ui.separator();
         if diff.binary {
             ui.label(RichText::new("Binary file not shown.").color(color::weak()));
@@ -121,7 +133,8 @@ fn rows(
     let sel = selectable.then_some(&st.view.diff_lines);
     let style = DiffStyle::new(&st.settings);
     let expanded = &st.view.diff_expanded;
-    let view = DiffView { target, diff, whole, expanded, hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
+    let opened = whole.map(|w| whole_file::opened(w, expanded)).unwrap_or_default();
+    let view = DiffView { target, diff, whole, expanded, opened, hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
     Some(match st.settings.diff_layout {
         DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),

@@ -164,7 +164,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Line selection and single-line stage/unstage/discard in the whole-file view (map
       whole-file line indexes back to the normal hunk and line)
     - [x] Collapse long unchanged runs into expandable "N unchanged lines" rows
-      - [ ] Collapse an opened run again (a fold-back control on its first line), and Expand all
+      - [x] Collapse an opened run again (a fold-back control on its first line), and Expand all
         / Collapse all in the diff header
       - [ ] Open part of a fold (N more lines above or below) instead of all of it at once
       - [ ] Keep folds open when a reload shifts their lines (follow them through the edit)

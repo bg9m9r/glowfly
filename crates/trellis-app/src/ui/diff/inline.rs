@@ -64,6 +64,9 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
                 };
                 paint_line(p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab);
                 paint_mark(ui, rect, selected, hovered);
+                if let Some(f) = fold::opened_at(&v.opened, line) {
+                    fold::fold_back(ui, rect, v, f, cols.sign, msgs);
+                }
             }
         }
     })

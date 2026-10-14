@@ -1,6 +1,7 @@
 //! Whole-file diff snapshots: every line with changes in place and an action row above each
 //! change block, in both layouts, for a commit and with whitespace hidden, and long unchanged
-//! runs folded into "N unchanged lines" rows. Shares the fixture repository and renderer with
+//! runs folded into "N unchanged lines" rows, an opened run's fold-back control and the
+//! header's Expand all / Collapse all. Shares the fixture repository and renderer with
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, remove_fixture, render, with_repo};
@@ -184,6 +185,50 @@ fn fold_row_click_sends_expand() {
     h.run();
     let sent: Vec<u32> = h.state().1.iter().filter_map(|m| if let Msg::ExpandUnchanged(k) = m { Some(*k) } else { None }).collect();
     assert_eq!(sent, [key]);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn diff_whole_fold_back() {
+    let (mut st, dir) = with_notes("whole-fold-back", ThemeChoice::Dark, DiffLayout::Inline);
+    let key = middle_key(&st);
+    st.view.diff_expanded.insert(key);
+    render("diff_whole_fold_back", st, true);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn fold_back_click_sends_collapse() {
+    for layout in [DiffLayout::Inline, DiffLayout::Split] {
+        let (mut st, dir) = with_notes(&format!("whole-fold-back-click-{layout:?}"), ThemeChoice::Dark, layout);
+        let key = middle_key(&st);
+        st.view.diff_expanded.insert(key);
+        let mut h = harness(st, true);
+        h.run();
+        h.get_by_label("Fold 11 unchanged lines").click();
+        h.run();
+        let sent = &h.state().1;
+        assert!(matches!(sent[..], [Msg::CollapseUnchanged(k)] if k == key), "{layout:?}: {} messages", sent.len());
+        drop(h);
+        remove_fixture(&dir);
+    }
+}
+
+#[test]
+fn header_fold_buttons() {
+    let (st, dir) = with_notes("whole-fold-header", ThemeChoice::Dark, DiffLayout::Inline);
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Collapse all").click();
+    h.run();
+    assert!(h.state().1.is_empty(), "Collapse all is off with every fold closed");
+    h.get_by_label("Expand all").click();
+    h.run();
+    assert!(matches!(h.state().1[..], [Msg::ExpandAllUnchanged]), "{} messages", h.state().1.len());
+    h.state_mut().0.settings.diff_mode = DiffMode::Hunks;
+    h.run();
+    assert!(h.query_by_label("Expand all").is_none() && h.query_by_label("Collapse all").is_none(), "not in the Hunks view");
     drop(h);
     remove_fixture(&dir);
 }

@@ -117,6 +117,9 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::SetIgnoreWhitespace(_)
         | Msg::JumpToChange(_)
         | Msg::ExpandUnchanged(_)
+        | Msg::CollapseUnchanged(_)
+        | Msg::ExpandAllUnchanged
+        | Msg::CollapseAllUnchanged
         | Msg::SelectDiffLine { .. }
         | Msg::ClearLineSelection => diff::handle(st, msg, &mut fx),
         Msg::ToggleCommit(_) | Msg::SelectCommitRange(_) | Msg::CollapseSelection | Msg::CherryPick(_) | Msg::CompareLoaded { .. } => {
