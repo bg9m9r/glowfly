@@ -6,7 +6,9 @@ use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
+mod file;
 mod graph_filter;
+pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
 
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
@@ -267,29 +269,6 @@ fn move_dir_if_new_missing(old: &Path, new: &Path) -> std::io::Result<()> {
 }
 
 impl Settings {
-    pub fn load() -> Settings {
-        config_dir()
-            .and_then(|d| std::fs::read_to_string(d.join("settings.json")).ok())
-            .and_then(|s| serde_json::from_str::<Settings>(&s).ok())
-            .map(|mut s| {
-                // Early builds stored a preset name ("Iso", "Long", "Relative") here.
-                if matches!(s.date_format.as_str(), "Iso" | "Long" | "Relative") {
-                    s.relative_dates = s.date_format == "Relative";
-                    s.date_format = Settings::default().date_format;
-                }
-                s
-            })
-            .unwrap_or_default()
-    }
-
-    pub fn save(&self) {
-        let Some(dir) = config_dir() else { return };
-        let _ = std::fs::create_dir_all(&dir);
-        if let Ok(text) = serde_json::to_string_pretty(self) {
-            let _ = std::fs::write(dir.join("settings.json"), text);
-        }
-    }
-
     pub fn connection(&self, account: &Account) -> Option<&Connection> {
         self.connections.iter().find(|c| &c.account == account)
     }

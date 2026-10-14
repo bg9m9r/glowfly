@@ -371,6 +371,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         }
         Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
         Msg::Logged { ok, text } => st.log(ok, text),
+        Msg::SettingsUnreadable(text) => prefs::unreadable(st, text, now),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),

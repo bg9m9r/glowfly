@@ -132,7 +132,7 @@ impl TrellisApp {
     pub fn new(cc: &eframe::CreationContext<'_>, start: Option<PathBuf>) -> Self {
         theme::apply_theme(&cc.egui_ctx);
         let (tx, results) = mpsc::channel();
-        let settings = Settings::load();
+        let (settings, problem) = Settings::load();
         let recent = crate::platform::load_recent();
         // Restore the last session's tabs (or, before tabs were saved, the last repository).
         let (mut paths, active) = if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), 0) };
@@ -148,6 +148,10 @@ impl TrellisApp {
         // git and ssh ask for missing credentials through a dialog from now on.
         app.runner.start_askpass();
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
+        if let Some(problem) = problem {
+            tracing::warn!("settings: {}", problem.message());
+            app.dispatch(&cc.egui_ctx, Msg::SettingsUnreadable(problem.message()));
+        }
         if !paths.is_empty() {
             app.dispatch(&cc.egui_ctx, Msg::RestoreTabs { paths, active });
         }

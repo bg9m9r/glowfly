@@ -15,18 +15,11 @@ pub fn load_recent() -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
-pub fn save_recent(list: &[PathBuf]) {
-    let Some(f) = recent_file() else { return };
-    if let Some(dir) = f.parent()
-        && let Err(e) = std::fs::create_dir_all(dir)
-    {
-        tracing::warn!("could not create {}: {e}", dir.display());
-        return;
-    }
+/// Saves the recent-repositories list, newest first.
+pub fn save_recent(list: &[PathBuf]) -> std::io::Result<()> {
+    let Some(f) = recent_file() else { return Ok(()) };
     let text: Vec<String> = list.iter().map(|p| p.display().to_string()).collect();
-    if let Err(e) = std::fs::write(&f, text.join("\n")) {
-        tracing::warn!("could not save recent repositories: {e}");
-    }
+    trellis_core::persist::atomic_write(&f, text.join("\n").as_bytes())
 }
 
 fn tabs_file() -> Option<PathBuf> {
@@ -53,16 +46,14 @@ pub fn load_tabs() -> (Vec<PathBuf>, usize) {
     (paths, new_active)
 }
 
-pub fn save_tabs(paths: &[PathBuf], active: usize) {
-    let Some(f) = tabs_file() else { return };
+pub fn save_tabs(paths: &[PathBuf], active: usize) -> std::io::Result<()> {
+    let Some(f) = tabs_file() else { return Ok(()) };
     let mut text = active.to_string();
     for p in paths {
         text.push('\n');
         text.push_str(&p.display().to_string());
     }
-    if let Err(e) = f.parent().map_or(Ok(()), std::fs::create_dir_all).and_then(|_| std::fs::write(&f, text)) {
-        tracing::warn!("could not save open tabs: {e}");
-    }
+    trellis_core::persist::atomic_write(&f, text.as_bytes())
 }
 
 pub fn open_terminal(dir: &Path) {

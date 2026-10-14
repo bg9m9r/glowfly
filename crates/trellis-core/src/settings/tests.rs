@@ -153,3 +153,80 @@ fn delete_to_trash_defaults_on() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
     assert!(!back.delete_to_trash);
 }
+
+fn json(s: &Settings) -> serde_json::Value {
+    serde_json::to_value(s).unwrap()
+}
+
+fn scratch_settings(name: &str, text: &[u8]) -> (std::path::PathBuf, std::path::PathBuf) {
+    let dir = std::env::temp_dir().join(format!("trellis-settings-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("settings.json");
+    std::fs::write(&file, text).unwrap();
+    (dir, file)
+}
+
+#[test]
+fn torn_settings_file_is_backed_up_and_defaults_used() {
+    let torn = br#"{"auto_fetch_minutes": 5, "connections": [{"acc"#;
+    let (dir, file) = scratch_settings("torn", torn);
+    let (s, problem) = Settings::load_from(&file);
+    assert_eq!(json(&s), json(&Settings::default()));
+    let problem = problem.expect("a problem to report");
+    assert_eq!(problem.reset, None);
+    let backup = dir.join("settings.json.bak");
+    assert_eq!(problem.backup.as_deref(), Some(backup.as_path()));
+    assert!(problem.message().contains("settings.json.bak"));
+    // The unreadable file is kept, and the next save can't overwrite it.
+    assert_eq!(std::fs::read(&backup).unwrap(), torn);
+    assert!(!file.exists());
+    Settings::default().save_to(&file).unwrap();
+    assert_eq!(std::fs::read(&backup).unwrap(), torn);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn garbage_bytes_are_backed_up() {
+    let (dir, file) = scratch_settings("garbage", &[0xff, 0xfe, 0x00, 0x42]);
+    let (s, problem) = Settings::load_from(&file);
+    assert_eq!(json(&s), json(&Settings::default()));
+    assert!(problem.unwrap().backup.is_some());
+    assert_eq!(std::fs::read(dir.join("settings.json.bak")).unwrap(), [0xff, 0xfe, 0x00, 0x42]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unknown_value_resets_only_that_setting() {
+    // A newer version's theme: the rest of the file still loads.
+    let text = br#"{"auto_fetch_minutes": 7, "theme": "Sepia", "default_branch": "trunk"}"#;
+    let (dir, file) = scratch_settings("unknown", text);
+    let (s, problem) = Settings::load_from(&file);
+    assert_eq!(s.auto_fetch_minutes, 7);
+    assert_eq!(s.default_branch, "trunk");
+    assert_eq!(s.theme, Settings::default().theme);
+    let problem = problem.unwrap();
+    assert_eq!(problem.reset, Some(vec!["theme".to_owned()]));
+    // The original is kept, and what could be read is written back.
+    assert_eq!(std::fs::read(dir.join("settings.json.bak")).unwrap(), text);
+    let (again, problem) = Settings::load_from(&file);
+    assert_eq!((json(&again), problem), (json(&s), None));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn missing_file_is_not_a_problem() {
+    let dir = std::env::temp_dir().join(format!("trellis-settings-missing-{}", std::process::id()));
+    let (s, problem) = Settings::load_from(&dir.join("settings.json"));
+    assert_eq!((json(&s), problem), (json(&Settings::default()), None));
+}
+
+#[test]
+fn save_then_load_roundtrips() {
+    let (dir, file) = scratch_settings("roundtrip", b"{}");
+    let s = Settings { auto_fetch_minutes: 3, ..Settings::default() };
+    s.save_to(&file).unwrap();
+    let (back, problem) = Settings::load_from(&file);
+    assert_eq!((json(&back), problem), (json(&s), None));
+    let _ = std::fs::remove_dir_all(&dir);
+}

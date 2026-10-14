@@ -294,3 +294,13 @@ fn avatars_are_fetched_in_batches_and_handed_to_the_shell() {
     update(&mut st, Msg::AvatarsLoaded(vec![("dev0@example.com".into(), None)]), Instant::now());
     assert_eq!(st.view.avatars_loaded.len(), 1);
 }
+
+#[test]
+fn unreadable_settings_are_reported_once() {
+    let mut st = state();
+    let fx = update(&mut st, Msg::SettingsUnreadable("Settings could not be read".into()), Instant::now());
+    assert!(fx.is_empty(), "{fx:?}");
+    assert!(st.log.iter().any(|l| !l.ok && l.text == "Settings could not be read"));
+    assert!(st.view.show_log);
+    assert_eq!(st.toasts.len(), 1);
+}

@@ -23,6 +23,7 @@ mod highlight;
 mod names;
 mod os;
 mod rebase;
+mod saves;
 mod submodules;
 mod terminal;
 mod worktrees;
@@ -51,11 +52,21 @@ pub struct Runner<W: Waker + Clone> {
     highlight_epoch: Arc<AtomicU64>,
     /// The built-in terminal's shell sessions.
     terminals: terminal::Terminals,
+    /// Keeps saves of each settings file in order.
+    saves: saves::Saves,
 }
 
 impl<W: Waker + Clone> Runner<W> {
     pub fn new(tx: Sender<Msg>, waker: W) -> Self {
-        Self { tx, waker, watch: Default::default(), askpass: None, highlight_epoch: Default::default(), terminals: Default::default() }
+        Self {
+            tx,
+            waker,
+            watch: Default::default(),
+            askpass: None,
+            highlight_epoch: Default::default(),
+            terminals: Default::default(),
+            saves: Default::default(),
+        }
     }
 
     /// Starts `effect` on a worker thread. UI effects must be handled by the caller instead.
@@ -64,7 +75,10 @@ impl<W: Waker + Clone> Runner<W> {
             Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
             Effect::Terminal(t) => return self.terminal(t),
-            other => other,
+            other => match self.save(other) {
+                Some(other) => other,
+                None => return,
+            },
         };
         let tx = self.tx.clone();
         let waker = self.waker.clone();
@@ -225,18 +239,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
             // `--unset` of a missing key exits 5; that's fine.
             (!ok && value.is_some()).then(|| Msg::Logged { ok: false, text: format!("git config {key} failed: {out}") })
         }
-        Effect::SaveSettings(settings) => {
-            settings.save();
-            None
-        }
-        Effect::SaveRecent(list) => {
-            crate::platform::save_recent(&list);
-            None
-        }
-        Effect::SaveTabs { paths, active } => {
-            crate::platform::save_tabs(&paths, active);
-            None
-        }
+        save @ (Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. }) => saves::save_now(save),
         Effect::OpenUrl(url) => os::open_url(&url),
         Effect::OpenTerminal(dir) => os::open_terminal(&dir),
         Effect::OpenFolder(dir) => os::open_folder(&dir),

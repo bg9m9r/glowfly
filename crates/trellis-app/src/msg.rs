@@ -562,6 +562,8 @@ pub enum Msg {
         workdir: PathBuf,
         error: String,
     },
+    /// The settings file couldn't be read at startup (it was backed up); shown once.
+    SettingsUnreadable(String),
     /// A line for the activity log from a background effect.
     Logged {
         ok: bool,

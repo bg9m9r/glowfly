@@ -216,6 +216,12 @@ fn load_signing_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::ListSigningKeys { format, program: non_empty(git.program(), format.default_program()) });
 }
 
+/// Tells the user, in a toast and the activity log, that their settings file couldn't be read.
+pub(super) fn unreadable(st: &mut AppState, text: String, now: Instant) {
+    st.log(false, text.clone());
+    st.toast(false, text, now);
+}
+
 /// Records the current settings as saved and returns the effect that writes them.
 pub(super) fn save_settings(st: &mut AppState) -> Effect {
     st.saved_settings = serde_json::to_string(&st.settings).unwrap_or_default();
