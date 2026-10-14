@@ -17,6 +17,7 @@ use trellis_core::undo::{self, Action, Plan};
 
 mod askpass;
 mod config;
+mod expect;
 pub(crate) mod files;
 mod highlight;
 mod names;
@@ -156,7 +157,10 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
         Effect::LoadLfs { workdir, generation } => {
             Some(Msg::Lfs(LfsMsg::Loaded { generation, result: trellis_core::lfs::status(&workdir).map_err(err) }))
         }
-        Effect::RunGit { cwd, cmds, write_file, record, prompts } => {
+        Effect::RunGit { cwd, cmds, write_file, record, prompts, expect } => {
+            if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
+                return Some(Msg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) });
+            }
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             let (ok, output) = run_git(&cwd, &cmds, write_file, prompts);
             let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };

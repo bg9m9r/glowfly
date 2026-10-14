@@ -25,6 +25,7 @@ mod remotes;
 mod repo;
 mod selection;
 mod shortcuts;
+mod stash;
 mod submodules;
 mod tabs;
 mod tags;
@@ -108,6 +109,8 @@ mod revert_tests;
 mod selection_tests;
 #[cfg(test)]
 mod shortcuts_tests;
+#[cfg(test)]
+mod stash_tests;
 #[cfg(test)]
 mod submodule_tests;
 #[cfg(test)]
@@ -261,6 +264,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::RevertHunk { .. }
         | Msg::Git { .. }
         | Msg::Push { .. }
+        | Msg::Stash { .. }
         | Msg::InitRepo
         | Msg::CloneRepo(_)
         | Msg::LocalOpDone(_)

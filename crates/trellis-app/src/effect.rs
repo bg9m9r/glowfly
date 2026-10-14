@@ -224,6 +224,8 @@ pub enum Effect {
         write_file: Option<(PathBuf, String)>,
         record: Option<UndoKind>,
         prompts: bool,
+        /// Run nothing unless this revision still resolves to this commit.
+        expect: Option<(String, git2::Oid)>,
     },
     /// The commits an interactive rebase from `base` would replay.
     LoadRebasePlan {

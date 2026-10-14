@@ -207,8 +207,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
 
 /// The same messages the sidebar's STASHES menu sends.
 fn stash_msg(action: StashAction, s: &StashInfo) -> Msg {
-    let refname = format!("stash@{{{}}}", s.index);
-    let git = Msg::git(action.job_label(), &["stash", action.git_verb(), &refname]);
+    let git = Msg::Stash { action, index: s.index, oid: s.oid };
     match action {
         StashAction::Drop => Msg::confirm("Delete stash", format!("Delete \"{}\"? This cannot be undone.", s.message), "Delete", git),
         StashAction::Apply | StashAction::Pop => git,

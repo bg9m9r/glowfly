@@ -7,6 +7,7 @@ use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
+use crate::state::palette::StashAction;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use eframe::egui;
 use trellis_core::forge;
@@ -110,13 +111,13 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     if sections.stashes {
         for s in snap.stashes.iter().filter(|s| shown(&s.message)) {
             let r = widgets::list_row(ui, 26.0, &s.message, None, sel == Selection::Commit(s.oid), false);
-            let refname = format!("stash@{{{}}}", s.index);
+            let stash = |action| Msg::Stash { action, index: s.index, oid: s.oid };
             if r.clicked() {
                 msgs.push(Msg::SelectCommit(s.oid));
             }
             r.context_menu(|ui| {
-                menu_item(msgs, ui, "Apply", Msg::git("Apply stash", &["stash", "apply", &refname]));
-                menu_item(msgs, ui, "Pop", Msg::git("Pop stash", &["stash", "pop", &refname]));
+                menu_item(msgs, ui, "Apply", stash(StashAction::Apply));
+                menu_item(msgs, ui, "Pop", stash(StashAction::Pop));
                 menu_item(
                     msgs,
                     ui,
@@ -125,7 +126,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                         "Delete stash",
                         format!("Delete \"{}\"? This cannot be undone.", s.message),
                         "Delete",
-                        Msg::git("Drop stash", &["stash", "drop", &refname]),
+                        stash(StashAction::Drop),
                     ),
                 );
             });

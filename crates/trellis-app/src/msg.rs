@@ -270,6 +270,13 @@ pub enum Msg {
         label: String,
         cmds: Vec<Vec<String>>,
     },
+    /// Applies, pops or drops the stash shown at `stash@{index}`, only if that entry still is
+    /// commit `oid` (another tab, worktree or terminal may have pushed or dropped one since).
+    Stash {
+        action: crate::state::palette::StashAction,
+        index: usize,
+        oid: Oid,
+    },
     Push {
         force: bool,
     },

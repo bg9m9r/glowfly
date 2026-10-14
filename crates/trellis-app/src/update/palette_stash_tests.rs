@@ -69,7 +69,7 @@ fn argv(a: &[&str]) -> Vec<Vec<String>> {
 
 /// A clean repository with stashes [0] "On main: second" and [1] "On main: first"; "second"
 /// holds the untracked c.txt.
-fn two_stashes(name: &str) -> (AppState, PathBuf) {
+pub(super) fn two_stashes(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = repo_with_topic(name);
     git(&dir, &["stash", "push", "-u", "-m", "first"]);
     std::fs::write(dir.join("c.txt"), "c\n").unwrap();
@@ -228,13 +228,11 @@ fn delete_chosen_stash_confirms() {
     assert_eq!(title, "Delete stash");
     assert_eq!(button, "Delete");
     assert!(body.contains("On main: first") && body.contains("cannot be undone"), "{body}");
-    match then.as_ref() {
-        Msg::Git { label, cmds } => {
-            assert_eq!(label, "Drop stash");
-            assert_eq!(cmds, &argv(&["stash", "drop", "stash@{1}"]));
-        }
-        _ => panic!("the confirmation doesn't drop the stash"),
-    }
+    let first = st.snap.as_ref().unwrap().stashes[1].oid;
+    assert!(
+        matches!(then.as_ref(), Msg::Stash { action: StashAction::Drop, index: 1, oid } if *oid == first),
+        "the confirmation doesn't drop the stash"
+    );
     drive(&mut st, Msg::ConfirmAccepted);
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 1);

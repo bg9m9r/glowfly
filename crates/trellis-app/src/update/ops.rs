@@ -71,6 +71,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             start_job(st, JobSpec { record, ..JobSpec::new(label, cmds) }, fx);
         }
         Msg::Push { force } => push(st, force, fx),
+        Msg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),
         Msg::InitRepo => {
             fx.push(Effect::PickFolder { title: "Initialize a repository in…".into(), purpose: crate::msg::FolderPurpose::InitRepo })
         }
@@ -112,6 +113,8 @@ pub(super) struct JobSpec {
     pub write_file: Option<(PathBuf, String)>,
     /// Record the job for undo when it is this kind of operation.
     pub record: Option<UndoKind>,
+    /// Run nothing unless this revision still resolves to this commit.
+    pub expect: Option<(String, git2::Oid)>,
 }
 
 impl JobSpec {
@@ -126,6 +129,7 @@ impl JobSpec {
             then_open: None,
             write_file: None,
             record: None,
+            expect: None,
         }
     }
 }
@@ -151,7 +155,7 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     let Some(cwd) = claim(st, job, spec.cwd) else { return };
     // Background jobs fail rather than pop up a credential prompt.
     let prompts = !spec.quiet;
-    fx.push(Effect::RunGit { cwd, cmds: spec.cmds, write_file: spec.write_file, record: spec.record, prompts });
+    fx.push(Effect::RunGit { cwd, cmds: spec.cmds, write_file: spec.write_file, record: spec.record, prompts, expect: spec.expect });
 }
 
 /// Makes a job labelled `label` the active one in the active tab's repository, unless another
