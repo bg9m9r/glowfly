@@ -4,6 +4,7 @@ use super::*;
 use crate::error::{Error, Result};
 use serde::de::DeserializeOwned;
 use std::io::Read;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 /// The most of an API response Trellis reads; a larger answer is refused.
@@ -66,8 +67,12 @@ pub(crate) fn enc_path(s: &str) -> String {
     s.split('/').map(enc).collect::<Vec<_>>().join("/")
 }
 
-fn agent() -> ureq::Agent {
-    ureq::AgentBuilder::new().timeout(Duration::from_secs(20)).user_agent(concat!("Trellis/", env!("CARGO_PKG_VERSION"))).build()
+/// One agent for every service call, so connections (and TLS sessions) are pooled and reused.
+fn agent() -> &'static ureq::Agent {
+    static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+    AGENT.get_or_init(|| {
+        ureq::AgentBuilder::new().timeout(Duration::from_secs(20)).user_agent(concat!("Trellis/", env!("CARGO_PKG_VERSION"))).build()
+    })
 }
 
 pub(super) fn request(method: &str, auth: &Auth, url: &str) -> ureq::Request {
@@ -157,6 +162,11 @@ mod tests {
         assert_eq!(read_capped(&b"12345"[..], 5).unwrap(), b"12345");
         let err = read_capped(std::io::repeat(b'x'), 2 * 1024 * 1024).unwrap_err();
         assert!(err.to_string().contains("larger than 2 MB"), "{err}");
+    }
+
+    #[test]
+    fn every_request_shares_one_agent() {
+        assert!(std::ptr::eq(agent(), agent()));
     }
 
     #[test]
