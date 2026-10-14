@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use trellis_core::gitcli::args;
 use trellis_core::repo::{DiffTarget, HunkOp, Snapshot};
-use trellis_core::undo::UndoKind;
+use trellis_core::undo::{ResetMode, UndoKind};
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -70,8 +70,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
-        Msg::Git { label, cmds } => {
+        Msg::Git { label, mut cmds } => {
             let record = if cmds.len() == 1 { UndoKind::classify(&cmds[0]) } else { None };
+            // A hard reset stashes uncommitted changes first, so undoing it brings them back.
+            if record == Some(UndoKind::Reset(ResetMode::Hard)) {
+                cmds = trellis_core::undo::hard_reset_commands(&cmds[0][2]);
+            }
             start_job(st, JobSpec { record, ..JobSpec::new(label, cmds) }, fx);
         }
         Msg::Push { force } => push(st, force, fx),

@@ -87,7 +87,7 @@ fn describe_names_the_action() {
     assert_eq!(commit("Fix", true).describe(), "amend 'Fix'");
     let long = "x".repeat(60);
     assert_eq!(commit(&long, false).describe(), format!("commit '{}…'", "x".repeat(50)));
-    assert_eq!(Action::Reset { mode: ResetMode::Mixed, branch: None, from: o, to: o }.describe(), "mixed reset to 1a2b3c4");
+    assert_eq!(Action::Reset { mode: ResetMode::Mixed, branch: None, from: o, to: o, stash: None }.describe(), "mixed reset to 1a2b3c4");
     assert_eq!(Action::DeleteBranch { name: "feature".into(), oid: o, upstream: None }.describe(), "delete of branch feature");
     assert_eq!(Action::DiscardAll { stash: o, head: o }.describe(), "Discard all changes");
 }
@@ -157,7 +157,7 @@ fn hard_reset_undo_needs_clean_tree() {
     let c1 = commit(&dir, "a.txt", "one\n", "c1");
     let c2 = commit(&dir, "a.txt", "one\ntwo\n", "c2");
     let action = record(&dir, &["reset", "--hard", "HEAD~1"]).expect("recorded");
-    assert_eq!(action, Action::Reset { mode: ResetMode::Hard, branch: Some("main".into()), from: c2, to: c1 });
+    assert_eq!(action, Action::Reset { mode: ResetMode::Hard, branch: Some("main".into()), from: c2, to: c1, stash: None });
 
     write(&dir, "untracked.txt", "new\n");
     assert!(matches!(refused(plan(&dir, &action, false).unwrap()), Refusal::Dirty(m) if m.contains("hard reset")));
@@ -174,7 +174,7 @@ fn hard_reset_undo_needs_clean_tree() {
     assert_eq!(plan(&dir, &soft, false).unwrap(), cmds(&[&["reset", "--soft", &c2.to_string()]]));
 
     // A mixed reset rewrites the index, so staged changes block it; unstaged ones don't.
-    let mixed = Action::Reset { mode: ResetMode::Mixed, branch: Some("main".into()), from: c2, to: c1 };
+    let mixed = Action::Reset { mode: ResetMode::Mixed, branch: Some("main".into()), from: c2, to: c1, stash: None };
     assert!(matches!(refused(plan(&dir, &mixed, false).unwrap()), Refusal::Dirty(m) if m.contains("staged")));
     run(&dir, &args(&["reset", "-q"]));
     assert_eq!(plan(&dir, &mixed, false).unwrap(), cmds(&[&["reset", "--mixed", &c2.to_string()]]));

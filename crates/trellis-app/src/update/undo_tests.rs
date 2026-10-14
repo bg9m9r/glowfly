@@ -291,3 +291,25 @@ fn discarded_file_comes_back_with_undo() {
     assert!(matches!(st.undo.undo.last(), Some(Action::Discard { .. })));
     cleanup(&[&dir]);
 }
+
+#[test]
+fn hard_reset_stashes_uncommitted_work_and_undo_restores_it() {
+    let (mut st, dir) = committed("undo-hard-dirty");
+    let first = summary_oid(&st, "first").to_string();
+    std::fs::write(dir.join("a.txt"), "not committed\n").unwrap();
+    let fx = update(&mut st, Msg::git("Reset (hard)", &["reset", "--hard", &first]), Instant::now());
+    assert!(
+        matches!(&fx[..], [Effect::RunGit { cmds, .. }] if cmds[0][..2] == ["stash", "push"] && cmds[1] == ["reset", "--hard", first.as_str()]),
+        "{fx:?}"
+    );
+    st.job = None;
+    drive(&mut st, Msg::git("Reset (hard)", &["reset", "--hard", &first]));
+    assert_eq!(head_summary(&st), "first");
+    assert!(matches!(st.undo.undo.last(), Some(Action::Reset { stash: Some(_), .. })), "{:?}", st.undo.undo);
+
+    drive(&mut st, Msg::Undo);
+    assert_eq!(head_summary(&st), "Second line");
+    // Line endings follow the user's core.autocrlf when git checks the stash out.
+    assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap().replace("\r\n", "\n"), "not committed\n");
+    cleanup(&[&dir]);
+}

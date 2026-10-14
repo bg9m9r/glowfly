@@ -32,7 +32,9 @@ pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Ms
             "Hard - discard all changes",
             Msg::confirm(
                 "Hard reset",
-                format!("Reset the current branch to {s} and discard all uncommitted changes?"),
+                format!(
+                    "Reset the current branch to {s}? Uncommitted changes to tracked files are stashed first, so Undo brings them back."
+                ),
                 "Reset",
                 Msg::git("Reset (hard)", &["reset", "--hard", &sha]),
             ),

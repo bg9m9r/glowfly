@@ -8,7 +8,9 @@ use crate::gitcli::args;
 use git2::{BranchType, Oid, Repository, RepositoryState};
 use std::path::Path;
 
+mod reset;
 mod saved;
+pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
 pub use saved::{Saved, discard_saving, write as write_saved};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.
@@ -54,12 +56,12 @@ pub enum HeadPos {
 
 /// A recorded operation that can be undone (and then redone). `Discard` is one file's unstaged
 /// changes (all, a hunk or some lines) discarded: `before` is its content then and `after` what
-/// the discard left (`None`: absent).
+/// the discard left (`None`: absent). A hard reset's `stash` holds the changes it stashed.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     Checkout { from: HeadPos, to: HeadPos },
     Commit { branch: Option<String>, from: Oid, to: Oid, message: String, amend: bool },
-    Reset { mode: ResetMode, branch: Option<String>, from: Oid, to: Oid },
+    Reset { mode: ResetMode, branch: Option<String>, from: Oid, to: Oid, stash: Option<Oid> },
     DeleteBranch { name: String, oid: Oid, upstream: Option<String> },
     DiscardAll { stash: Oid, head: Oid },
     Discard { path: String, before: Option<Saved>, after: Option<Saved> },
@@ -205,7 +207,10 @@ pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
         }),
         _ => None,
     };
-    let stash_top = if *kind == UndoKind::DiscardAll { stash_top(&repo) } else { None };
+    let stash_top = match kind {
+        UndoKind::DiscardAll | UndoKind::Reset(ResetMode::Hard) => stash_top(&repo),
+        _ => None,
+    };
     Ok(Before { head, head_oid, branch, stash_top })
 }
 
@@ -226,7 +231,12 @@ pub fn after(workdir: &Path, kind: UndoKind, before: Before) -> Result<Option<Ac
             _ => None,
         },
         UndoKind::Reset(mode) => match (before.head_oid, oid) {
-            (Some(from), Some(to)) if from != to => Some(Action::Reset { mode, branch: branch_name(&pos), from, to }),
+            // A hard reset to HEAD only discards changes, which its stash makes undoable.
+            (Some(from), Some(to)) => {
+                let stash =
+                    if mode == ResetMode::Hard { reset::new_stash(&repo, from) } else { None }.filter(|s| Some(*s) != before.stash_top);
+                (from != to || stash.is_some()).then(|| Action::Reset { mode, branch: branch_name(&pos), from, to, stash })
+            }
             _ => None,
         },
         UndoKind::DeleteBranch(name) => match before.branch {
@@ -324,23 +334,14 @@ pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
                 Plan::Run(vec![args(&["reset", "--soft", &target.to_string()])])
             }
         }
-        Action::Reset { mode, branch, from, to } => {
+        Action::Reset { mode, branch, from, to, stash } => {
             let (expect, target) = if redo { (*from, *to) } else { (*to, *from) };
             if !at(branch, expect) {
                 moved()
             } else if !exists(target) {
                 gone()
-            } else if *mode == ResetMode::Hard && !is_clean(workdir)? {
-                dirty()
-            } else if *mode == ResetMode::Mixed && has_staged(workdir)? {
-                // A mixed reset rewrites the index, so a staged version that differs from the
-                // working copy would be lost.
-                Plan::Refuse(Refusal::Dirty(format!(
-                    "Commit or unstage your staged changes first: {verb} {} would replace them.",
-                    action.describe()
-                )))
             } else {
-                Plan::Run(vec![args(&["reset", mode.flag(), &target.to_string()])])
+                reset::plan(workdir, action, *mode, *stash, target, redo)?
             }
         }
         Action::DeleteBranch { name, oid, upstream } => {
@@ -395,7 +396,8 @@ pub fn discard_command() -> Vec<String> {
     args(&["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE])
 }
 
-/// `action` as it stands after a successful redo: a re-done discard lives in a new stash.
+/// `action` as it stands after a successful redo: a re-done discard lives in a new stash, and a
+/// re-done hard reset stashed whatever was uncommitted then (maybe nothing).
 pub fn redone(workdir: &Path, action: Action) -> Result<Action> {
     Ok(match action {
         Action::DiscardAll { head, .. } => {
@@ -405,10 +407,16 @@ pub fn redone(workdir: &Path, action: Action) -> Result<Action> {
                 None => return Err(crate::error::Error::NotFound("the stash for the redone discard".into())),
             }
         }
+        Action::Reset { mode: ResetMode::Hard, branch, from, to, .. } => {
+            let stash = reset::new_stash(&Repository::open(workdir)?, from);
+            Action::Reset { mode: ResetMode::Hard, branch, from, to, stash }
+        }
         other => other,
     })
 }
 
+#[cfg(test)]
+mod reset_tests;
 #[cfg(test)]
 mod saved_tests;
 #[cfg(test)]
