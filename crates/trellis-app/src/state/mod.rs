@@ -17,6 +17,7 @@ pub mod prefs;
 pub mod publish;
 pub mod rebase;
 pub mod selection;
+pub mod submodules;
 pub mod tabs;
 pub mod tags;
 pub mod terminal;
@@ -121,6 +122,7 @@ pub struct Sections {
     pub issues: bool,
     pub tags: bool,
     pub stashes: bool,
+    pub submodules: bool,
 }
 
 /// Purely visual state that views may change directly.
@@ -191,7 +193,7 @@ impl Default for ViewState {
             search: String::new(),
             search_cursor: 0,
             ref_filter: String::new(),
-            sections: Sections { local: true, remote: true, prs: true, issues: true, tags: false, stashes: true },
+            sections: Sections { local: true, remote: true, prs: true, issues: true, tags: false, stashes: true, submodules: true },
             scroll_to_row: None,
             scroll_offset: None,
             graph_scroll: (0.0, 0.0),

@@ -136,6 +136,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
     tags.reverse();
 
     let (unstaged, staged) = load_status(&repo)?;
+    let submodules = submodules::list(&repo);
 
     let mut walk = repo.revwalk()?;
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
@@ -214,6 +215,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         stashes,
         unstaged,
         staged,
+        submodules,
         graph,
     })
 }
@@ -230,7 +232,13 @@ fn load_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     opts.include_untracked(true).recurse_untracked_dirs(true).renames_head_to_index(true).include_ignored(false);
     let mut unstaged = Vec::new();
     let mut staged = Vec::new();
-    for e in repo.statuses(Some(&mut opts))?.iter() {
+    // A .gitmodules that can't be parsed fails the status of every gitlink; read it again
+    // without submodules rather than failing the whole load.
+    let statuses = match repo.statuses(Some(&mut opts)) {
+        Ok(s) => s,
+        Err(_) => repo.statuses(Some(opts.exclude_submodules(true)))?,
+    };
+    for e in statuses.iter() {
         let s = e.status();
         let path = e
             .head_to_index()

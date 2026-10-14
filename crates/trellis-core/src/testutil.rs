@@ -58,3 +58,26 @@ pub(crate) fn remote_commit(bare: &Path, branch: &str, file: &str, msg: &str) {
     git(&tmp, &["push", "-q", "origin", branch]);
     let _ = std::fs::remove_dir_all(&tmp);
 }
+
+/// A repository with one submodule at libs/lib, added from a sibling repository by its relative
+/// URL and committed. Returns (parent, the submodule's checkout), with an identity set inside
+/// the checkout so tests can commit there.
+pub(crate) fn with_submodule(name: &str) -> (PathBuf, PathBuf) {
+    let lib = scratch_repo(&format!("{name}-lib"));
+    write(&lib, "lib.txt", "lib\n");
+    git(&lib, &["add", "."]);
+    git(&lib, &["commit", "-q", "-m", "lib"]);
+    let parent = scratch_repo(name);
+    write(&parent, "a.txt", "one\n");
+    git(&parent, &["add", "."]);
+    git(&parent, &["commit", "-q", "-m", "first"]);
+    let url = format!("../{}", lib.file_name().unwrap().to_string_lossy());
+    // Git refuses the file transport for submodules unless allowed on the command line.
+    git(&parent, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, "libs/lib"]);
+    git(&parent, &["commit", "-q", "-m", "add lib"]);
+    let sub = parent.join("libs/lib");
+    git(&sub, &["config", "user.name", "Test"]);
+    git(&sub, &["config", "user.email", "test@example.com"]);
+    git(&sub, &["config", "commit.gpgsign", "false"]);
+    (parent, sub)
+}

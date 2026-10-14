@@ -35,7 +35,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
 }
 
 /// Jobs that never move a local branch, HEAD, index or working tree, so the history stays
-/// valid: fetch, push, tag, clone, init, config, and setting or unsetting a branch's upstream.
+/// valid: fetch, push, tag, clone, init, config, setting or unsetting a branch's upstream, and
+/// `submodule update` (it moves only the submodule's own checkout; the parent's HEAD, index and
+/// files stay put).
 /// A fetch into the repository itself (`fetch . a:b`, a fast-forward without checkout) moves a
 /// branch, so it doesn't count.
 pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
@@ -45,6 +47,7 @@ pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
             ["fetch", rest @ ..] => !rest.contains(&"."),
             ["push" | "tag" | "clone" | "init" | "config", ..] => true,
             ["branch", "--unset-upstream", ..] => true,
+            ["submodule", "update", ..] => true,
             ["branch", flag, ..] => flag.starts_with("--set-upstream-to"),
             _ => false,
         }

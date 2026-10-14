@@ -1,4 +1,4 @@
-//! Left panel: local and remote branches, pull requests, issues, tags and stashes.
+//! Left panel: local and remote branches, pull requests, issues, tags, stashes and submodules.
 
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, state_color};
@@ -168,6 +168,9 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 );
             });
         }
+    }
+    if !snap.submodules.is_empty() {
+        super::submodules::section(ui, snap, &mut sections.submodules, &shown, msgs);
     }
     ui.add_space(12.0);
 }

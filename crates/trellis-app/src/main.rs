@@ -13,6 +13,7 @@ mod msg;
 mod platform;
 mod runner;
 mod state;
+mod submodule;
 mod terminal;
 mod ui;
 mod update;

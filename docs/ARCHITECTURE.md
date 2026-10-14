@@ -37,7 +37,9 @@ crates/
                           removal (a deleted working copy goes to the OS trash through the
                           `trash` crate, or is removed for good; links never go to the trash),
                           tracked (the paths in the index, for the palette's file finder),
-                          attrs (gitattribute lookups: linguist-language)
+                          attrs (gitattribute lookups: linguist-language), submodules (the
+                          index's submodules: recorded and checked-out commits, classified in
+                          sync / out of sync / dirty / uninitialized)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -109,7 +111,8 @@ crates/
                           New file and Rename file dialogs' path form), tags (the New tag
                           dialog's form, its name check and push remote), terminal (the
                           built-in terminal panel: one shell session per repository; global,
-                          not parked with a tab)
+                          not parked with a tab), submodules (status words, tooltips, why
+                          open/update/copy are blocked, the update command)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
                           the shortcut sheet, palette hints and tooltips
@@ -118,6 +121,7 @@ crates/
                           permanent, fixed when the confirmation opens), WorkFileOk (its result)
     terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
                           and its shells' effects (one Msg and one Effect variant each)
+    submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
                           config (reading git config), rebase (loading and running an
                           interactive rebase, with Trellis as the sequence editor), askpass
@@ -150,9 +154,10 @@ crates/
                           one job, the push setting), shortcuts (checking and routing the
                           staging, stage-all, focus-message and sheet keys), terminal (showing
                           the panel, starting one shell per repository, input, resizing, output
-                          and exit; stopping a closed tab's shell)
+                          and exit; stopping a closed tab's shell), submodules (open in a
+                          tab, initialize/update as a job, with a confirmation when out of sync)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
-                          update/terminal_tests.rs)
+                          update/terminal_tests.rs, update/submodule_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -172,7 +177,8 @@ crates/
                           palette (the Ctrl+P command palette overlay),
                           shortcuts/ (matching the newer keys from the table; sheet: the
                           Ctrl+/ shortcut sheet), terminal/ (the built-in terminal panel:
-                          header, grid painting, egui input mapping, colours),
+                          header, grid painting, egui input mapping, colours), submodules
+                          (the SUBMODULES section: rows, status markers, menu),
                           status, prefs/ (editor: the Editor page), theme, widgets
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
@@ -181,7 +187,8 @@ crates/
                           snapshot_tests_file_menu.rs, snapshot_tests_commit.rs,
                           snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
                           snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
-                          snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs)
+                          snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,
+                          snapshot_tests_submodules.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

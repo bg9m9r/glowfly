@@ -4,6 +4,7 @@ use crate::effect::{FileOp, ForgeReply, LoadKind, UndoResult, WorkFileOk};
 use crate::state::PrefPage;
 use crate::state::lines::LineClick;
 use crate::state::prefs::GitConfigValues;
+use crate::submodule::SubmoduleMsg;
 use crate::terminal::TerminalMsg;
 use git2::Oid;
 use std::path::PathBuf;
@@ -353,6 +354,8 @@ pub enum Msg {
     ShowWorkingFile(String),
     /// The built-in terminal panel (terminal.rs).
     Terminal(TerminalMsg),
+    /// The SUBMODULES section (submodule.rs).
+    Submodule(SubmoduleMsg),
 
     // ---- hosting services
     ForgeRefresh {

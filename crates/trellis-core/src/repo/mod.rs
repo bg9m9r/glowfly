@@ -19,6 +19,7 @@ mod removal;
 mod resolve;
 mod restore;
 mod revert;
+mod submodules;
 mod template;
 mod tracked;
 mod workfile;
@@ -36,6 +37,7 @@ pub use removal::{Deleted, Removal, Trasher, os_trash};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
+pub use submodules::{SubmoduleInfo, SubmoduleState, submodules_at};
 pub use template::{CommitTemplate, commit_template};
 pub use tracked::tracked_paths;
 pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
@@ -148,6 +150,8 @@ pub struct Snapshot {
     pub stashes: Vec<StashInfo>,
     pub unstaged: Vec<FileEntry>,
     pub staged: Vec<FileEntry>,
+    /// The index's submodules sorted by path; refreshed by full loads only.
+    pub submodules: Vec<SubmoduleInfo>,
     pub graph: Layout,
 }
 
@@ -323,6 +327,8 @@ mod resolve_tests;
 mod restore_tests;
 #[cfg(test)]
 mod revert_tests;
+#[cfg(test)]
+mod submodules_tests;
 #[cfg(test)]
 mod template_tests;
 #[cfg(test)]

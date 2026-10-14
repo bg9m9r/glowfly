@@ -40,6 +40,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "delete_staged_new_file",
             "unstage_gone_new_file",
             "os_trash",
+            "submodules_at",
         ],
     ),
     ("gitcli", &["run", "run_with_input"]),

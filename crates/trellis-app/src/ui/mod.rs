@@ -28,6 +28,7 @@ mod shortcuts;
 mod sidebar;
 mod spell_edit;
 mod status;
+mod submodules;
 mod tabs;
 mod tag_dialog;
 mod terminal;
@@ -65,6 +66,8 @@ mod snapshot_tests_rebase;
 mod snapshot_tests_revert;
 #[cfg(test)]
 mod snapshot_tests_select;
+#[cfg(test)]
+mod snapshot_tests_submodules;
 #[cfg(test)]
 mod snapshot_tests_tag;
 #[cfg(test)]

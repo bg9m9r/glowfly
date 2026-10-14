@@ -21,6 +21,7 @@ mod rebase;
 mod repo;
 mod selection;
 mod shortcuts;
+mod submodules;
 mod tabs;
 mod tags;
 mod terminal;
@@ -85,6 +86,8 @@ mod revert_tests;
 mod selection_tests;
 #[cfg(test)]
 mod shortcuts_tests;
+#[cfg(test)]
+mod submodule_tests;
 #[cfg(test)]
 mod tabs_tests;
 #[cfg(test)]
@@ -337,6 +340,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
+        Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
     }
     fx
 }

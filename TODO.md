@@ -569,9 +569,39 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     send Alt+letter as an ESC prefix; coordinate with the keyboard shortcuts in ui/mod.rs
   - [ ] Remember whether the panel is open, and its height, across restarts
   - [ ] Mouse reporting (xterm mouse modes) and the window or tab title from the shell (OSC 0/2)
-- [ ] **Submodules**
-  SUBMODULES section with status (in sync, dirty, uninitialized); add, init, update, open as a
-  repo, set URL, remove; "keep submodules up to date".
+- [x] **Submodules**
+  A SUBMODULES section at the bottom of the left panel (shown when the repository has any) lists
+  the index's submodules with a painted marker and a word for each state: in sync, out of sync,
+  changes, changes and out of sync, not initialized. The tooltip explains the state and shows
+  the URL, the recorded commit and the checked-out commit. Double-click or Open in new tab opens
+  an initialized submodule as a repository; Initialize / Update to recorded commit runs
+  `git submodule update --init` for it as a job (asking first when it is out of sync); Copy URL
+  copies the .gitmodules URL. The left-panel filter also filters the section.
+  - [ ] Add a submodule: URL, path and optional branch, through `git submodule add`, with checks
+    for a path that already exists or is already in the index
+  - [ ] Set a submodule's URL (`git submodule set-url`, then `git submodule sync`) and edit its
+    branch
+  - [ ] Remove a submodule (deinit, `git rm`, clean its `.git/modules` entry) behind a
+    destructive confirmation
+  - [ ] "Keep submodules up to date": a General preference with a per-repository override (use
+    global / on / off) that runs `git submodule update --init --recursive` after checkout,
+    pull, merge, rebase and reset
+  - [ ] Initialize / update all submodules from the section header's menu, and offer to
+    initialize them when a repository with uninitialized submodules is opened or cloned
+  - [ ] Refresh submodule status on status-only reloads and watcher events, not just full loads
+  - [ ] Nested (recursive) submodules shown as a tree under their parent
+  - [ ] Tell apart a deleted submodule folder, a newly added one (staged, not committed) and a
+    never-initialized one in the marker and tooltip
+  - [ ] Resolve a relative .gitmodules URL against the parent's remote for Copy URL and the
+    tooltip
+  - [ ] Commit the current checkout as the new recorded commit (stage the gitlink) from the row
+    menu, and discard a submodule's uncommitted changes
+  - [ ] Show a gitlink change in the WIP and commit diffs as the commit range it moves over, and
+    explain that a submodule's own changes are committed inside it
+  - [ ] Fetch and pull inside a submodule; recurse-submodules options for fetch, pull and push;
+    a clear message when checkout or reset fails because of submodule changes
+  - [ ] Palette commands for opening, initializing and updating submodules
+  - [ ] A context-menu entry to show or hide the SUBMODULES section
 - [ ] **Worktrees**
   WORKTREES section: create from a branch or commit, open (in a new tab), lock/unlock, prune,
   remove (optionally deleting the branch); show worktree WIP nodes in the graph.
