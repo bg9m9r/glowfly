@@ -1,8 +1,8 @@
-//! The Git Flow preferences page (its form, filled from the snapshot's gitflow config) and the
-//! Start dialog's form.
+//! The Git Flow preferences page (its form, filled from the snapshot's gitflow config), the
+//! Start and Finish dialogs' forms, and the running Finish job.
 
 use std::path::PathBuf;
-use trellis_core::gitflow::{Branches, FlowKind, GitFlowConfig, GitFlowSettings, suggested};
+use trellis_core::gitflow::{Branches, FinishOptions, FlowKind, GitFlowConfig, GitFlowSettings, suggested};
 use trellis_core::repo::Snapshot;
 
 /// The job label of a first Initialize.
@@ -22,6 +22,8 @@ pub struct GitFlowPage {
     pub workdir: Option<PathBuf>,
     /// Why the last Apply was refused; cleared when a field changes.
     pub error: Option<String>,
+    /// The Finish row's chosen branch (view state, untouched by `fill`).
+    pub finish_branch: String,
 }
 
 impl GitFlowPage {
@@ -51,4 +53,29 @@ impl GitFlowPage {
 pub struct StartForm {
     pub kind: FlowKind,
     pub name: String,
+}
+
+/// The Finish dialog: the branch, the tag and message (release and hotfix) and Keep.
+pub struct FinishForm {
+    pub kind: FlowKind,
+    pub branch: String,
+    pub tag: String,
+    pub message: String,
+    pub keep: bool,
+    /// Focus the Tag field on the next frame.
+    pub focus_tag: bool,
+}
+
+impl FinishForm {
+    pub fn options(&self) -> FinishOptions {
+        FinishOptions { tag: self.tag.clone(), message: self.message.clone(), keep: self.keep }
+    }
+}
+
+/// A running Finish job: its label (to match `st.job`), the plan's step texts and the success
+/// summary, for the headline when it ends.
+pub struct FinishJob {
+    pub label: String,
+    pub steps: Vec<String>,
+    pub done: String,
 }

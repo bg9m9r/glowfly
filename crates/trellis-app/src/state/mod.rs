@@ -123,6 +123,7 @@ pub enum Modal {
     RenameFile { old: String, form: files::PathForm },
     Shortcuts { filter: String },
     GitFlowStart(gitflow::StartForm),
+    GitFlowFinish(gitflow::FinishForm),
 }
 
 /// Purely visual state that views may change directly.
@@ -290,6 +291,8 @@ pub struct AppState {
     pub palette_gen: u64,
     /// The built-in terminal panel (global, not per tab).
     pub terminal: terminal::TerminalPanel,
+    /// The running Git Flow Finish job's steps (update/gitflow_finish.rs).
+    pub gitflow_finish: Option<gitflow::FinishJob>,
     pub view: ViewState,
 }
 
@@ -336,6 +339,7 @@ impl AppState {
             palette: None,
             palette_gen: 0,
             terminal: Default::default(),
+            gitflow_finish: None,
             view: ViewState::default(),
         }
     }

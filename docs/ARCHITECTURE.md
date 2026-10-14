@@ -68,8 +68,10 @@ crates/
     gitflow.rs            Git Flow with plain git: the gitflow.* config (read_config, read with
                           libgit2 during load into Snapshot::gitflow), defaults, the branch plan
                           and Initialize/Save command lines; gitflow/ checks (the settings
-                          form), start (Start's checks and command line), version (the next
-                          release or hotfix version from the tags)
+                          form), start (Start's checks and command line), finish (which
+                          branches are flow branches, Finish's checks and its plan of merges,
+                          tag and delete), version (the next release or hotfix version from
+                          the tags)
     terminal/             the built-in terminal: screen (the VT screen model as styled rows,
                           answering cursor-position and status queries), keys (key and paste
                           encoding), pty (shell choice and PTY sessions with reader and exit
@@ -139,7 +141,8 @@ crates/
                           whether git-lfs is installed; the file menu's Track in Git LFS
                           entries and why each is disabled),
                           gitflow (the Git Flow page's form, filled from the snapshot; the
-                          Start dialog's form),
+                          Start and Finish dialogs' forms; the running Finish job's steps),
+                          palette_gitflow (the palette's Git Flow entries),
                           worktrees (the WORKTREES section's text, why opening is blocked, the
                           Create worktree form and its folder and branch checks),
                           worktree_manage (the Remove and Lock dialogs' forms, why removing,
@@ -153,8 +156,8 @@ crates/
                           permanent, fixed when the confirmation opens), WorkFileOk (its result)
     lfs.rs                LfsMsg: the Git LFS preferences page's and the file menu's Track in
                           Git LFS messages (one Msg variant)
-    gitflow.rs            GitFlowMsg: the Git Flow page's and Start dialog's messages (one Msg
-                          variant)
+    gitflow.rs            GitFlowMsg: the Git Flow page's and Start and Finish dialogs' messages
+                          (one Msg variant)
     terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
                           and its shells' effects (one Msg and one Effect variant each)
     submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
@@ -205,6 +208,9 @@ crates/
                           the startup git-lfs check and the file menu's Track in Git LFS),
                           gitflow (filling the Git Flow form and refilling it on new snapshots,
                           Initialize/Save and Start as git jobs, the Start dialog's prefill),
+                          gitflow_finish (the Finish dialog's prefill, Finish as one git job,
+                          and its headline: the summary, or the step that stopped it and what
+                          is still to do),
                           worktrees (open in a tab; Create worktree: the form checked again,
                           the folder checked on disk, then `git worktree add` as a job),
                           worktree_manage (Remove: checked again, run as Effect::RemoveWorktree,
@@ -213,6 +219,7 @@ crates/
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
                           update/terminal_tests.rs, update/submodule_tests.rs,
                           update/lfs_tests.rs, update/lfs_track_tests.rs, update/gitflow_tests.rs,
+                          update/gitflow_finish_tests.rs,
                           update/worktree_tests.rs, update/worktree_manage_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
@@ -238,6 +245,7 @@ crates/
                           WORKTREES section: rows, tooltip, row and header menus), worktree_dialog
                           (Create worktree), worktree_manage_dialog (Remove worktree, Lock
                           worktree), gitflow_dialog (the Git Flow Start dialog),
+                          gitflow_finish_dialog (the Git Flow Finish dialog),
                           status, prefs/ (editor: the Editor page; lfs: the Git LFS page;
                           gitflow: the Git Flow page),
                           theme, widgets, icons (painting of the newer icons)

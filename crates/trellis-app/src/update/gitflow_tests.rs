@@ -15,16 +15,16 @@ use std::time::Instant;
 use trellis_core::gitcli::{args, run as git_run};
 use trellis_core::gitflow::{FlowKind, GitFlowSettings};
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn flow(st: &mut AppState, m: GitFlowMsg) -> Vec<Effect> {
+pub(super) fn flow(st: &mut AppState, m: GitFlowMsg) -> Vec<Effect> {
     run(st, Msg::GitFlow(m))
 }
 
 /// A scratch repository (one commit on main) opened in a fresh state.
-fn open(name: &str) -> (AppState, PathBuf) {
+pub(super) fn open(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(&format!("gitflow-{name}"));
     let mut st = state();
     drive(&mut st, Msg::Open(dir.clone()));
@@ -33,7 +33,7 @@ fn open(name: &str) -> (AppState, PathBuf) {
 }
 
 /// The same, initialized through the page with the default settings.
-fn initialized(name: &str) -> (AppState, PathBuf) {
+pub(super) fn initialized(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = open(name);
     drive(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
     drive(&mut st, Msg::GitFlow(GitFlowMsg::Apply));
@@ -42,7 +42,7 @@ fn initialized(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn cleanup(dir: &Path) {
+pub(super) fn cleanup(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -54,18 +54,18 @@ fn page_mut(st: &mut AppState) -> &mut GitFlowPage {
     &mut st.prefs.as_mut().expect("prefs open").gitflow
 }
 
-fn git_job(fx: &[Effect]) -> Option<Vec<Vec<String>>> {
+pub(super) fn git_job(fx: &[Effect]) -> Option<Vec<Vec<String>>> {
     fx.iter().find_map(|e| match e {
         Effect::RunGit { cmds, .. } => Some(cmds.clone()),
         _ => None,
     })
 }
 
-fn job_label(st: &AppState) -> Option<String> {
+pub(super) fn job_label(st: &AppState) -> Option<String> {
     st.job.as_ref().map(|j| j.label.clone())
 }
 
-fn last_log(st: &AppState) -> String {
+pub(super) fn last_log(st: &AppState) -> String {
     st.log.last().map(|l| l.text.clone()).unwrap_or_default()
 }
 
@@ -80,7 +80,7 @@ fn defaults() -> GitFlowSettings {
     }
 }
 
-fn rev(dir: &Path, r: &str) -> String {
+pub(super) fn rev(dir: &Path, r: &str) -> String {
     let (ok, out) = git_run(dir, &args(&["rev-parse", "--verify", r]));
     assert!(ok, "{r}: {out}");
     out.trim().to_owned()

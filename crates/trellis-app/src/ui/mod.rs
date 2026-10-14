@@ -16,6 +16,7 @@ mod file_buttons;
 mod file_dialogs;
 mod file_menu;
 mod gitflow_dialog;
+mod gitflow_finish_dialog;
 mod graph;
 mod history;
 mod icons;

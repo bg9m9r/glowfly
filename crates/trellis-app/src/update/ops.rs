@@ -82,7 +82,14 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 fx,
             );
         }
-        Msg::JobDone { ok, output, undo } => finish_job(st, ok, output, None, undo, now, fx),
+        Msg::JobDone { ok, output, undo } => {
+            let headline = super::gitflow_finish::headline(st, ok, &output);
+            finish_job(st, ok, output, headline.clone(), undo, now, fx);
+            // Toasts fade after a few seconds; the log keeps what a stopped Finish left to do.
+            if let (false, Some(h)) = (ok, headline) {
+                st.log(false, h);
+            }
+        }
         _ => {}
     }
 }

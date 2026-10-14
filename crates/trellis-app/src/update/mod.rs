@@ -11,6 +11,7 @@ mod diff;
 mod files;
 mod forge;
 mod gitflow;
+mod gitflow_finish;
 mod graph_filter;
 mod highlight;
 mod history;
@@ -54,6 +55,8 @@ mod editor_tests;
 mod files_tests;
 #[cfg(test)]
 mod fold_tests;
+#[cfg(test)]
+mod gitflow_finish_tests;
 #[cfg(test)]
 mod gitflow_tests;
 #[cfg(test)]

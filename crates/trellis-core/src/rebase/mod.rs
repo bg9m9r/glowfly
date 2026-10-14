@@ -164,8 +164,15 @@ pub enum Outcome {
 
 /// Why nothing can start while an operation is in progress, if one is.
 pub fn in_progress_text(state: RepositoryState) -> Option<String> {
+    let op = operation_noun(state)?;
+    Some(format!("Finish or abort the {op} in progress before starting an interactive rebase."))
+}
+
+/// The operation in progress ("merge", "rebase", "cherry-pick", "revert", "patch application"
+/// or "bisect"), if any.
+pub fn operation_noun(state: RepositoryState) -> Option<&'static str> {
     use RepositoryState::*;
-    let op = match state {
+    Some(match state {
         Clean => return None,
         Merge => "merge",
         Rebase | RebaseInteractive | RebaseMerge => "rebase",
@@ -173,8 +180,7 @@ pub fn in_progress_text(state: RepositoryState) -> Option<String> {
         Revert | RevertSequence => "revert",
         ApplyMailbox | ApplyMailboxOrRebase => "patch application",
         Bisect => "bisect",
-    };
-    Some(format!("Finish or abort the {op} in progress before starting an interactive rebase."))
+    })
 }
 
 /// The first seven characters of a commit id.

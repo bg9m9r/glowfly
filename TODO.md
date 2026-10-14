@@ -79,7 +79,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | In-App Terminal | ✘ | Shell, font, cursor style and dimming for the built-in terminal (P1 Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
-| *Repo:* Gitflow | ◐ Git Flow page and Start | Finish, Git Flow panel, branch from issue (P1 Git Flow) |
+| *Repo:* Gitflow | ◐ Git Flow page, Start and Finish | Git Flow panel, branch from issue, finish options (P1 Git Flow) |
 | *Repo:* Git Hooks | ✔ hooks path | — |
 | *Repo:* Commit | ✘ | Commit template, push after commit, skip hooks per repo |
 | *Repo:* Agents | — | Out of scope |
@@ -678,9 +678,15 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     and Save; Start feature, release and hotfix (`checkout -b` from develop or production, with
     the next version suggested from the tags); palette 'Configure Git Flow…' and 'Start Git
     Flow feature/release/hotfix…'
-  - [ ] Finish feature, release and hotfix: merge back into develop (and production for
-    release and hotfix) with --no-ff, tag the version with a message, delete the branch (or
-    keep it), optionally rebase on develop first, squash and push
+  - [x] Finish feature, release and hotfix: one git job that merges back into develop (and
+    production first for release and hotfix) with --no-ff, tags production with an annotated
+    version tag and message, and deletes the branch unless Keep is ticked; a Finish dialog with
+    the steps checked live (changes, operations in progress, other worktrees, tag name), palette
+    'Finish Git Flow <kind> <name>…' entries and a Finish row on the Git Flow page; a stopped
+    job names the failed step and what is still to do
+    - [ ] Rebase on develop first, squash, and push after finishing
+    - [ ] Continue a Finish that stopped at a merge conflict once the merge is committed
+    - [ ] Skip the tag, sign it with a chosen key, delete the remote branch, force-delete
   - [ ] A Git Flow panel listing feature, release and hotfix branches by type with Start and
     Finish, a palette entry to open it, and a Git Flow group in the left panel
   - [ ] Create a feature, release or hotfix branch from an issue (issue menu and palette)

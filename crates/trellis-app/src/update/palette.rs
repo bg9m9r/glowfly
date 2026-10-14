@@ -175,6 +175,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::ConfigureLfs => Msg::OpenPrefs(PrefPage::RepoLfs),
         C::ConfigureGitFlow => Msg::OpenPrefs(PrefPage::RepoGitFlow),
         C::StartGitFlow(k) => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartDialog(k)),
+        C::FinishGitFlow(b) => Msg::GitFlow(crate::gitflow::GitFlowMsg::FinishDialog(b)),
         C::Refresh => Msg::Refresh,
         C::OpenTerminal => Msg::OpenTerminal,
         C::ToggleTerminal => Msg::Terminal(crate::terminal::TerminalMsg::Toggle),

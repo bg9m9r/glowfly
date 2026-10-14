@@ -1,7 +1,8 @@
 //! Preferences > Git Flow (repository-specific): whether Git Flow is set up, the production and
 //! development branches with a note on how each would be created, the branch and tag prefixes,
-//! Initialize / Save, and buttons that start a feature, release or hotfix. Every action is a
-//! `Msg`; the checks are the pure ones from `trellis_core::gitflow`.
+//! Initialize / Save, buttons that start a feature, release or hotfix, and a row that picks an
+//! open one to finish. Every action is a `Msg`; the checks are the pure ones from
+//! `trellis_core::gitflow`.
 
 use super::appearance::section;
 use super::{help, primary_button, row, text_field, warn};
@@ -11,7 +12,7 @@ use crate::state::gitflow::GitFlowPage;
 use crate::ui::theme::color;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::branch_ops::is_valid_branch_name;
-use trellis_core::gitflow::{BranchPlan, Branches, FlowKind, GitFlowSettings, InitProblem, check_settings, plan_branches};
+use trellis_core::gitflow::{BranchPlan, Branches, FlowKind, GitFlowSettings, InitProblem, check_settings, flow_branches, plan_branches};
 use trellis_core::repo::Snapshot;
 
 /// What the page needs from outside Preferences.
@@ -52,6 +53,7 @@ pub fn gitflow_page(ui: &mut Ui, page: &mut GitFlowPage, cx: &GitFlowContext, ms
     buttons(ui, page, &b, initialized, cx.busy, msgs);
     if let Some(s) = &saved {
         start_row(ui, s, &b, cx.busy, msgs);
+        finish_row(ui, &mut page.finish_branch, s, &b, cx.busy, msgs);
     }
 }
 
@@ -173,6 +175,31 @@ fn start_row(ui: &mut Ui, s: &GitFlowSettings, b: &Branches, busy: bool, msgs: &
                 if r.on_hover_text(&hover).on_disabled_hover_text(&hover).clicked() {
                     msgs.push(Msg::GitFlow(GitFlowMsg::StartDialog(kind)));
                 }
+            }
+        });
+    });
+}
+
+/// Pick an open feature, release or hotfix branch (the checked-out one by default) and open the
+/// Finish dialog for it.
+fn finish_row(ui: &mut Ui, choice: &mut String, s: &GitFlowSettings, b: &Branches, busy: bool, msgs: &mut Vec<Msg>) {
+    let open = flow_branches(s, b);
+    row(ui, "Finish", |ui| {
+        let Some((_, first)) = open.first() else {
+            help(ui, "No feature, release or hotfix branch is open.");
+            return;
+        };
+        if !open.iter().any(|(_, n)| n == choice) {
+            *choice = (*first).to_owned();
+        }
+        ui.horizontal(|ui| {
+            egui::ComboBox::from_id_salt("gitflow-finish-branch").selected_text(choice.as_str()).width(220.0).show_ui(ui, |ui| {
+                for (_, n) in &open {
+                    ui.selectable_value(choice, (*n).to_owned(), *n);
+                }
+            });
+            if ui.add_enabled(!busy, egui::Button::new("Finish…")).clicked() {
+                msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(choice.clone())));
             }
         });
     });
