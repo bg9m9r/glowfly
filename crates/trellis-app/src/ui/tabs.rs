@@ -169,7 +169,7 @@ fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, active: bool, hovered: b
 
 fn new_tab_button(ui: &mut egui::Ui, msgs: &mut Vec<Msg>) {
     let (rect, r) = ui.allocate_exact_size(vec2(HEIGHT, HEIGHT), Sense::click());
-    let r = r.on_hover_text("New tab (Ctrl+T)");
+    let r = r.on_hover_text(format!("New tab ({})", crate::keymap::hint(crate::keymap::BindingId::NewTab)));
     let c = rect.center();
     let col = if r.hovered() { color::text() } else { color::weak() };
     let s = Stroke::new(1.6_f32, col);
@@ -187,7 +187,7 @@ fn tab_menu(ui: &mut egui::Ui, i: usize, st: &AppState, msgs: &mut Vec<Msg>) {
     item(ui, msgs, n > 1, Button::new("Close other tabs"), Msg::CloseOtherTabs(i));
     item(ui, msgs, i + 1 < n, Button::new("Close tabs to the right"), Msg::CloseTabsToRight(i));
     ui.separator();
-    let reopen = Button::new("Reopen closed tab").shortcut_text("Ctrl+Shift+T");
+    let reopen = Button::new("Reopen closed tab").shortcut_text(crate::keymap::hint(crate::keymap::BindingId::ReopenTab));
     let r = item(ui, msgs, !st.closed_tabs.is_empty(), reopen, Msg::ReopenClosedTab);
     if let Some(path) = st.closed_tabs.last() {
         r.on_hover_text(path.display().to_string());

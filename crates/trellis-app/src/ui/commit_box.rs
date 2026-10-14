@@ -14,7 +14,10 @@ use eframe::egui::{self, Align, Color32, Key, Layout, Modifiers, RichText, vec2}
 /// Height the commit box needs below the file lists (the lists share what is left).
 pub(super) const RESERVED_HEIGHT: f32 = 340.0;
 
-const SHORTCUTS: &str = "Ctrl+Enter commits from the message fields; Ctrl+Shift+Enter stages all changes first.";
+fn shortcuts_tip() -> String {
+    use crate::keymap::{BindingId, hint};
+    format!("{} commits from the message fields; {} stages all changes first.", hint(BindingId::Commit), hint(BindingId::StageAllAndCommit))
+}
 const PUSH_HINT: &str =
     "After a successful commit, push the branch. A branch with no upstream is pushed to the default remote and tracks it.";
 const NO_PUSH_DETACHED: &str = "Nothing to push from a detached HEAD";
@@ -78,7 +81,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     let button = egui::Button::new(RichText::new(label).strong().color(if enabled { Color32::WHITE } else { color::faint() }))
         .fill(if enabled { color::primary() } else { color::toolbar() })
         .min_size(vec2(ui.available_width(), 34.0));
-    let r = ui.add_enabled(enabled, button).on_hover_text(SHORTCUTS).on_disabled_hover_text(blocked.unwrap_or_default());
+    let r = ui.add_enabled(enabled, button).on_hover_text(shortcuts_tip()).on_disabled_hover_text(blocked.unwrap_or_default());
     if r.clicked() {
         msgs.push(Msg::Commit);
     }

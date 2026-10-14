@@ -69,6 +69,9 @@ fn map(e: &Event) -> Option<TermInput> {
     match e {
         Event::Text(t) | Event::Ime(ImeEvent::Commit(t)) => Some(TermInput::Text(t.clone())),
         Event::Paste(t) => Some(TermInput::Paste(t.clone())),
+        // Cmd chords (Cmd+T, Cmd+arrows...) are the app's on macOS, not the shell's; only real
+        // Ctrl makes control codes. `mac_cmd` is never set elsewhere.
+        Event::Key { modifiers, .. } if modifiers.mac_cmd => None,
         Event::Key { key, pressed: true, modifiers, .. } => {
             let mods = KeyMods { ctrl: modifiers.ctrl, alt: modifiers.alt, shift: modifiers.shift };
             Some(TermInput::Key { key: term_key(*key, mods)?, mods })
@@ -157,6 +160,20 @@ mod tests {
         assert_eq!(one(key(Key::ArrowUp, true, Modifiers::SHIFT)), [input(TermKey::Up, false, false, true)]);
         assert!(one(key(Key::A, true, none)).is_empty(), "plain letters come as text");
         assert_eq!(one(key(Key::OpenBracket, true, Modifiers::CTRL)), [input(TermKey::Char('['), true, false, false)]);
+    }
+
+    #[test]
+    fn real_ctrl_on_every_platform_and_never_cmd() {
+        let one = |e: Event| collect(&[e], &mut None);
+        let ctrl_c = [input(TermKey::Char('c'), true, false, false)];
+        // Windows and Linux report Ctrl as both `ctrl` and `command`; macOS only as `ctrl`.
+        assert_eq!(one(key(Key::C, true, Modifiers::CTRL | Modifiers::COMMAND)), ctrl_c);
+        assert_eq!(one(key(Key::C, true, Modifiers::CTRL)), ctrl_c);
+        // macOS Cmd (`mac_cmd` and `command`) sends nothing to the shell.
+        let cmd = Modifiers::MAC_CMD | Modifiers::COMMAND;
+        assert!(one(key(Key::C, true, cmd)).is_empty());
+        assert!(one(key(Key::ArrowLeft, true, cmd)).is_empty(), "not a plain Left");
+        assert!(one(key(Key::Enter, true, cmd | Modifiers::SHIFT)).is_empty());
     }
 
     /// Feeds `frames` of events in turn, as the panel does, and returns all the input.

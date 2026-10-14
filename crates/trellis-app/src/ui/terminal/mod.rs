@@ -10,7 +10,7 @@ use crate::state::AppState;
 use crate::state::terminal::SessionStatus;
 use crate::terminal::TerminalMsg;
 use crate::ui::theme::color;
-use eframe::egui::{self, Align, FontSelection, Key, Layout, Modifiers, RichText, text::LayoutJob};
+use eframe::egui::{self, Align, FontSelection, Layout, RichText, text::LayoutJob};
 
 const HIDE_TIP: &str = "Hide the terminal panel (Ctrl+`)";
 const KILL_TIP: &str = "Stop the shell and everything running in it";
@@ -22,7 +22,7 @@ pub fn shortcut(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
         return;
     }
     ctx.input_mut(|i| {
-        if i.consume_key(Modifiers::CTRL, Key::Backtick) {
+        if super::shortcuts::pressed(i, crate::keymap::BindingId::ToggleTerminal) {
             msgs.push(Msg::Terminal(TerminalMsg::Toggle));
         }
     });

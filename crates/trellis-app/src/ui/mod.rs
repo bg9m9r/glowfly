@@ -207,12 +207,12 @@ impl TrellisApp {
             (i.key_pressed(Key::F5), i.modifiers.command && i.key_pressed(Key::F), i.modifiers.command && i.key_pressed(Key::Comma))
         });
         if self.st.prefs.is_none() && !palette {
-            tab_shortcuts(ctx, self.st.tabs.len(), msgs);
+            shortcuts::tab_keys(ctx, self.st.tabs.len(), msgs);
         }
         // Text fields keep Ctrl+Z for their own undo; nothing reaches the views under a dialog.
         let dialog = self.st.modal.is_some() || self.st.askpass.showing() || palette;
         if self.st.prefs.is_none() && !dialog && !ctx.wants_keyboard_input() {
-            undo_shortcuts(ctx, msgs);
+            shortcuts::undo_keys(ctx, msgs);
         }
         // Text fields (the commit message) keep Alt+arrows.
         let stepping = self.st.conflict.is_some() || self.st.diff.is_some();
@@ -269,48 +269,6 @@ fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     } else {
         st.view.show_search = false;
     }
-}
-
-/// Ctrl+T new tab, Ctrl+W close, Ctrl+Shift+T reopen, Ctrl+(Shift+)Tab cycle, Ctrl+1–8 select,
-/// Ctrl+9 last tab.
-fn tab_shortcuts(ctx: &egui::Context, count: usize, msgs: &mut Vec<Msg>) {
-    use egui::Modifiers;
-    const DIGITS: [Key; 9] = [Key::Num1, Key::Num2, Key::Num3, Key::Num4, Key::Num5, Key::Num6, Key::Num7, Key::Num8, Key::Num9];
-    ctx.input_mut(|i| {
-        let shift = Modifiers::COMMAND | Modifiers::SHIFT;
-        if i.consume_key(shift, Key::T) {
-            msgs.push(Msg::ReopenClosedTab);
-        } else if i.consume_key(Modifiers::COMMAND, Key::T) {
-            msgs.push(Msg::NewTab);
-        }
-        if i.consume_key(Modifiers::COMMAND, Key::W) {
-            msgs.push(Msg::CloseTab(usize::MAX));
-        }
-        // Ctrl+Tab, matched exactly so it doesn't also count as Ctrl+Shift+Tab.
-        if i.consume_key(Modifiers::CTRL | Modifiers::SHIFT, Key::Tab) {
-            msgs.push(Msg::CycleTab(-1));
-        } else if i.consume_key(Modifiers::CTRL, Key::Tab) {
-            msgs.push(Msg::CycleTab(1));
-        }
-        for (n, key) in DIGITS.into_iter().enumerate() {
-            if i.consume_key(Modifiers::COMMAND, key) {
-                msgs.push(Msg::SelectTab(if n == 8 { count - 1 } else { n }));
-            }
-        }
-    });
-}
-
-/// Ctrl+Z undo; Ctrl+Y or Ctrl+Shift+Z redo (Cmd on macOS).
-fn undo_shortcuts(ctx: &egui::Context, msgs: &mut Vec<Msg>) {
-    use egui::Modifiers;
-    ctx.input_mut(|i| {
-        // Shift first: consume_key ignores extra Shift, so Ctrl+Z would also match Ctrl+Shift+Z.
-        if i.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z) || i.consume_key(Modifiers::COMMAND, Key::Y) {
-            msgs.push(Msg::Redo);
-        } else if i.consume_key(Modifiers::COMMAND, Key::Z) {
-            msgs.push(Msg::Undo);
-        }
-    });
 }
 
 /// F7 / Shift+F7 and Alt+Down / Alt+Up: the next (1) or previous (-1) change in the open diff

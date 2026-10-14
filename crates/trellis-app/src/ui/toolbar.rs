@@ -3,6 +3,7 @@
 use super::common::{caret_after, menu_item, short};
 use super::theme::color;
 use super::widgets::{self, Icon};
+use crate::keymap::{self, BindingId};
 use crate::msg::Msg;
 use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
@@ -126,10 +127,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
 
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if tool(ui, Icon::Gear, "Settings", true).on_hover_text("Preferences (Ctrl+,)").clicked() {
+                    if tool(ui, Icon::Gear, "Settings", true)
+                        .on_hover_text(format!("Preferences ({})", keymap::hint(BindingId::Prefs)))
+                        .clicked()
+                    {
                         msgs.push(Msg::OpenPrefs(PrefPage::General));
                     }
-                    if tool(ui, Icon::Search, "Search", true).on_hover_text("Ctrl+F").clicked() {
+                    if tool(ui, Icon::Search, "Search", true).on_hover_text(keymap::hint(BindingId::Search)).clicked() {
                         st.view.show_search = !st.view.show_search;
                     }
                     if tool(ui, Icon::Activity, "Activity", true).clicked() {

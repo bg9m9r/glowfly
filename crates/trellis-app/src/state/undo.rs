@@ -60,7 +60,7 @@ impl UndoHistory {
 
     pub fn undo_tooltip(&self) -> String {
         match (self.undo.last(), &self.blocked) {
-            (Some(a), _) => format!("Undo {} (Ctrl+Z)", a.describe()),
+            (Some(a), _) => format!("Undo {} ({})", a.describe(), crate::keymap::hint(crate::keymap::BindingId::Undo)),
             (None, Some(label)) => {
                 format!("Can't undo {label}: only checkout, commit, reset, branch delete and discards can be undone")
             }
@@ -70,7 +70,7 @@ impl UndoHistory {
 
     pub fn redo_tooltip(&self) -> String {
         match self.redo.last() {
-            Some(a) => format!("Redo {} (Ctrl+Y)", a.describe()),
+            Some(a) => format!("Redo {} ({})", a.describe(), crate::keymap::hint(crate::keymap::BindingId::Redo)),
             None => "Nothing to redo".to_owned(),
         }
     }

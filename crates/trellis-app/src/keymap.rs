@@ -236,10 +236,10 @@ use Group as G;
 use KeyName as K;
 use When as W;
 
-/// Every binding, in display order within its group. Only Stage, Unstage, StageAll,
-/// UnstageAll, FocusMessage and Sheet are matched from this table (`ui/shortcuts.rs`); the
-/// others document handlers that match their own keys: `ui/mod.rs` (tabs, undo/redo, F5,
-/// Ctrl+F, Ctrl+comma, F7/Alt+arrows, Esc), `ui/commit_box.rs`, `ui/graph/select.rs`,
+/// Every binding, in display order within its group. The staging keys, FocusMessage, Sheet,
+/// the tab keys (but the 1-8 range), Undo, Redo and ToggleTerminal are matched from this table
+/// (`ui/shortcuts.rs`); the others document handlers that match their own keys: `ui/mod.rs`
+/// (F5, Ctrl+F, Ctrl+comma, F7/Alt+arrows, Esc), `ui/commit_box.rs`, `ui/graph/select.rs`,
 /// `ui/history.rs`, `ui/palette.rs`, `ui/terminal/` and the dialogs. Change a key there, change it here.
 pub const BINDINGS: &[Binding] = &[
     b(I::Stage, G::Staging, "Stage the file or the selected lines", &[C::plain(K::Letter('S'))], W::WorkingDiff),
