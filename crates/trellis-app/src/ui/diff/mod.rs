@@ -7,6 +7,7 @@
 mod fold;
 mod header;
 mod inline;
+pub(super) mod rows_cache;
 mod split;
 mod style;
 mod syntax;
@@ -18,11 +19,12 @@ use crate::state::AppState;
 use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
 use eframe::egui::{self, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
+use rows_cache::{DiffRowsCache, Source};
 use style::DiffStyle;
 use trellis_core::highlight::{self, DiffHighlight};
 use trellis_core::repo::{DiffTarget, FileDiff, HunkOp};
 use trellis_core::settings::DiffLayout;
-use trellis_core::whole_file::{self, Expanded, Fold, WholeFile, folds};
+use trellis_core::whole_file::{self, Fold, WholeFile, folds};
 
 /// The default row height and font, which the conflict view keeps; the diff viewer draws
 /// with `DiffStyle` from the settings.
@@ -39,8 +41,6 @@ pub(super) struct DiffView<'a> {
     /// Some in the whole-file view: rows and lines come from `whole.diff`; `diff` still
     /// supplies hunk headers and hunk indexes for the action rows.
     pub whole: Option<&'a WholeFile>,
-    /// The folds opened in the whole-file view; the others are drawn as fold rows.
-    pub expanded: &'a Expanded,
     /// The opened folds of the whole-file view, in order; their first lines get the fold-back
     /// control.
     pub opened: Vec<Fold>,
@@ -73,7 +73,7 @@ impl DiffView<'_> {
     }
 }
 
-pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
     let ignore_ws = st.settings.diff_ignore_whitespace;
     // Where Previous and Next go: a change in this file, another file, or nowhere.
@@ -121,13 +121,13 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             return;
         }
     }
-    record_rows(ui, st, scroll_to, msgs);
+    record_rows(ui, st, rows_cache, scroll_to, msgs);
 }
 
 /// Draws the open diff's rows and records the first visible row and how many rows fit.
-fn record_rows(ui: &mut Ui, st: &mut AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
+fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
     let blocked = st.hunk_ops_blocked();
-    if let Some((top, visible)) = rows(ui, st, blocked, scroll_to, msgs) {
+    if let Some((top, visible)) = rows(ui, st, cache, blocked, scroll_to, msgs) {
         st.view.diff_top_row = top;
         st.view.diff_visible_rows = visible;
     }
@@ -139,6 +139,7 @@ fn record_rows(ui: &mut Ui, st: &mut AppState, scroll_to: Option<usize>, msgs: &
 fn rows(
     ui: &mut Ui,
     st: &AppState,
+    cache: &mut DiffRowsCache,
     blocked: Option<&'static str>,
     scroll_to: Option<usize>,
     msgs: &mut Vec<Msg>,
@@ -153,10 +154,13 @@ fn rows(
     let style = DiffStyle::new(&st.settings);
     let expanded = &st.view.diff_expanded;
     let opened = whole.map(|w| whole_file::opened(w, expanded)).unwrap_or_default();
-    let view = DiffView { target, diff, whole, expanded, opened, hl, header_hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
-    Some(match st.settings.diff_layout {
-        DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
-        DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
+    let layout = st.settings.diff_layout;
+    let generation = (st.diff_gen, st.diff_shown_gen);
+    cache.refresh(Source { diff, whole, generation, layout, expanded, tab: style.tab });
+    let view = DiffView { target, diff, whole, opened, hl, header_hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
+    Some(match layout {
+        DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, scroll_to, msgs),
+        DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, scroll_to, msgs),
     })
 }
 
@@ -308,7 +312,7 @@ pub(super) fn scroll(
 /// The diff's rows without the header bar, for views that embed a commit's diff of a file (the
 /// file history). Commit diffs have Revert Hunk buttons (off while whitespace is hidden) and no
 /// line selection.
-pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
     {
         let Some((_, diff)) = &st.diff else { return };
@@ -321,5 +325,5 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             return;
         }
     }
-    record_rows(ui, st, scroll_to, msgs);
+    record_rows(ui, st, rows_cache, scroll_to, msgs);
 }

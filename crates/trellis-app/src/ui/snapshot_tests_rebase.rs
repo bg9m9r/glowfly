@@ -95,7 +95,11 @@ fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             super::theme::apply_theme(ctx);
-            let cache = cache.get_or_insert_with(|| UiCache { avatars: Avatars::default(), speller: Speller::new() });
+            let cache = cache.get_or_insert_with(|| UiCache {
+                avatars: Avatars::default(),
+                speller: Speller::new(),
+                diff_rows: Default::default(),
+            });
             draw(ctx, st, cache, msgs);
             super::escape_key(ctx, st, msgs);
         },

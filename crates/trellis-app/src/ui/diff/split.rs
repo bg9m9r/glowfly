@@ -8,10 +8,9 @@ use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
 use std::ops::Range;
-use trellis_core::diff_rows::{SplitRow, split_rows};
+use trellis_core::diff_rows::SplitRow;
 use trellis_core::highlight::Span;
 use trellis_core::repo::DiffLine;
-use trellis_core::{tabs, whole_file};
 
 /// A line with its syntax spans and changed-word ranges.
 type CellLine<'a> = (&'a DiffLine, &'a [Span], &'a [Range<u32>]);
@@ -23,12 +22,18 @@ enum Side {
 }
 
 /// Draws the rows and returns the first visible one and how many rows fit.
-pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> (usize, usize) {
+/// `rows` and `widest` (in columns) come from the rows cache.
+pub(super) fn show(
+    ui: &mut Ui,
+    v: &DiffView,
+    rows: &[SplitRow],
+    widest: usize,
+    scroll_to: Option<usize>,
+    msgs: &mut Vec<Msg>,
+) -> (usize, usize) {
     let diff = v.lines();
     // In the whole-file view `hunk` is always 0.
-    let rows = v.whole.map_or_else(|| split_rows(v.diff), |w| whole_file::split_rows(w, v.expanded));
     let st = &v.style;
-    let widest = diff.hunks.iter().flat_map(|h| &h.lines).map(|l| tabs::columns(&l.text, st.tab)).max().unwrap_or(0);
     let char_w = ui.fonts(|f| f.glyph_width(&st.font, 'M'));
     // Each column is wide enough for the longest line on either side.
     let width = ui.available_width().max(2.0 * (st.split_cols().text + widest as f32 * char_w + 20.0));

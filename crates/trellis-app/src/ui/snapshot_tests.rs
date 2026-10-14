@@ -87,7 +87,11 @@ pub(super) fn harness(mut st: AppState, dark: bool) -> Harness<'static, (AppStat
             color::set_dark(dark);
             super::theme::apply_theme(ctx);
             ctx.set_theme(if dark { egui::Theme::Dark } else { egui::Theme::Light });
-            let cache = cache.get_or_insert_with(|| UiCache { avatars: Avatars::default(), speller: Speller::new() });
+            let cache = cache.get_or_insert_with(|| UiCache {
+                avatars: Avatars::default(),
+                speller: Speller::new(),
+                diff_rows: Default::default(),
+            });
             draw(ctx, st, cache, msgs);
         },
         (st, Vec::new()),

@@ -2,6 +2,7 @@
 //! following renames), and the selected commit with its diff of the file on the right. Each
 //! commit can restore its version of the file; Open and Show act on the file as it is today.
 
+use super::UiCache;
 use super::common::{menu_item, short, status_color};
 use super::file_buttons::{self, CommitFile, Labels};
 use super::file_menu;
@@ -16,7 +17,7 @@ use trellis_core::repo::{DiffTarget, HistoryEntry};
 const ROW_H: f32 = 44.0;
 const NOT_ON_GRAPH: &str = "Not visible on the graph: its branch is hidden or it is older than the commit limit";
 
-pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.history_scroll_to.take();
     let Some(view) = &st.history else { return };
     ui.add_space(6.0);
@@ -28,7 +29,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         .width_range(260.0..=600.0)
         .frame(egui::Frame::new().fill(color::panel()))
         .show_inside(ui, |ui| list(ui, st, scroll_to, msgs));
-    egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show_inside(ui, |ui| selected(ui, st, msgs));
+    egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show_inside(ui, |ui| selected(ui, st, cache, msgs));
 }
 
 /// "File history", the path, "as of <sha>" when the walk didn't start at HEAD, and Close.
@@ -179,7 +180,7 @@ fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
 
 /// The selected commit: summary, author and date, links, file buttons (Restore this version,
 /// Open, Show), then its diff of the file.
-fn selected(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.history else { return };
     let open_path = view.path.clone();
     let in_wd = view.in_workdir(st.snap.as_ref());
@@ -213,7 +214,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     ui.separator();
     let target = DiffTarget::Commit(e.oid, e.path.clone());
     if st.diff.as_ref().is_some_and(|(t, _)| *t == target) {
-        super::diff::body(ui, st, msgs);
+        super::diff::body(ui, st, &mut cache.diff_rows, msgs);
     } else {
         ui.add_space(4.0);
         ui.horizontal(|ui| {

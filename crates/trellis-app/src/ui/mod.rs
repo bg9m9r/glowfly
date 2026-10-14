@@ -119,6 +119,7 @@ use trellis_core::spell::Speller;
 pub struct UiCache {
     pub avatars: avatars::Avatars,
     pub speller: Speller,
+    pub diff_rows: diff::rows_cache::DiffRowsCache,
 }
 
 pub struct TrellisApp {
@@ -141,7 +142,7 @@ impl TrellisApp {
         }
         let mut app = Self {
             st: AppState::new(settings, recent, Instant::now()),
-            cache: UiCache { avatars: avatars::Avatars::default(), speller: Speller::new() },
+            cache: UiCache { avatars: avatars::Avatars::default(), speller: Speller::new(), diff_rows: Default::default() },
             runner: Runner::new(tx, cc.egui_ctx.clone()),
             results,
         };
@@ -353,9 +354,9 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
             } else if st.conflict.is_some() {
                 conflict::show(ui, st, msgs);
             } else if st.history.is_some() {
-                history::show(ui, st, msgs);
+                history::show(ui, st, cache, msgs);
             } else if st.diff.is_some() {
-                diff::show(ui, st, msgs);
+                diff::show(ui, st, &mut cache.diff_rows, msgs);
             } else if st.rebase.is_some() {
                 rebase::show(ui, st, cache, msgs);
             } else {

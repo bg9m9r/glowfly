@@ -20,7 +20,11 @@ fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             escape_key(ctx, st, msgs);
-            let cache = cache.get_or_insert_with(|| UiCache { avatars: Avatars::default(), speller: Speller::new() });
+            let cache = cache.get_or_insert_with(|| UiCache {
+                avatars: Avatars::default(),
+                speller: Speller::new(),
+                diff_rows: Default::default(),
+            });
             draw(ctx, st, cache, msgs);
         },
         (st, Vec::new()),

@@ -6,18 +6,23 @@ use super::{DiffView, fold, hunk_header, line_click, paint_mark};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
-use trellis_core::diff_rows::{DiffRow, inline_rows};
+use trellis_core::diff_rows::DiffRow;
 use trellis_core::highlight::Span;
-use trellis_core::{tabs, whole_file};
 
 /// Draws the rows and returns the first visible one and how many rows fit.
-pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> (usize, usize) {
+/// `rows` and `widest` (in columns) come from the rows cache.
+pub(super) fn show(
+    ui: &mut Ui,
+    v: &DiffView,
+    rows: &[DiffRow],
+    widest: usize,
+    scroll_to: Option<usize>,
+    msgs: &mut Vec<Msg>,
+) -> (usize, usize) {
     let diff = v.lines();
     // Uniform rows so huge diffs stay fast. In the whole-file view `hunk` is always 0.
-    let rows = v.whole.map_or_else(|| inline_rows(v.diff), |w| whole_file::inline_rows(w, v.expanded));
     let st = &v.style;
     let cols = st.inline_cols();
-    let widest = diff.hunks.iter().flat_map(|h| &h.lines).map(|l| tabs::columns(&l.text, st.tab)).max().unwrap_or(0);
     let mono = &st.font;
     let char_w = ui.fonts(|f| f.glyph_width(mono, 'M'));
     let width = ui.available_width().max(cols.text + widest as f32 * char_w + 40.0);
