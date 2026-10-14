@@ -20,6 +20,17 @@ const LANE_COLORS: [Color32; 10] = [
     Color32::from_rgb(0x2e, 0xc2, 0x95),
 ];
 
+/// The height of a `ui.horizontal` row of labels and buttons, for lists drawn with
+/// `ScrollArea::show_rows` (only the rows in view are laid out).
+pub fn widget_row_height(ui: &egui::Ui) -> f32 {
+    // A laid-out line, not the font's row height: galleys are rounded to whole points.
+    let styles = [egui::TextStyle::Body, egui::TextStyle::Button, egui::TextStyle::Monospace];
+    let line = |t: &egui::TextStyle| ui.fonts(|f| f.layout_no_wrap("Ag".into(), t.resolve(ui.style()), Color32::WHITE).size().y);
+    let text = styles.iter().map(line).fold(0.0, f32::max);
+    let s = ui.spacing();
+    s.interact_size.y.max(text + 2.0 * s.button_padding.y)
+}
+
 pub fn lane_color(i: usize) -> Color32 {
     LANE_COLORS[i % LANE_COLORS.len()]
 }

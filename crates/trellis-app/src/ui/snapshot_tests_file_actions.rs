@@ -203,3 +203,23 @@ fn working_tree_diff_header_unchanged() {
     drop(h);
     remove_fixture(&dir);
 }
+
+/// Long lists draw only the rows in view: thousands of changed files or local branches lay out
+/// the visible rows, and the rest stay out of the widget tree.
+#[test]
+fn long_lists_draw_only_visible_rows() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "long-lists");
+    let snap = st.snap.as_mut().unwrap();
+    let file = |i: usize| trellis_core::repo::FileEntry { path: format!("gen/file{i}.txt"), status: 'M' };
+    snap.unstaged = (0..3000).map(file).collect();
+    let branch = snap.locals[0].clone();
+    snap.locals =
+        (0..3000).map(|i| trellis_core::repo::BranchInfo { name: format!("topic-{i}"), is_head: false, ..branch.clone() }).collect();
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("gen/file0.txt").is_some());
+    assert!(h.query_by_label("gen/file2999.txt").is_none(), "an unstaged row out of view isn't drawn");
+    assert!(h.query_by_label("topic-0").is_some());
+    assert!(h.query_by_label("topic-2999").is_none(), "a branch row out of view isn't drawn");
+    remove_fixture(&dir);
+}

@@ -27,6 +27,9 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         return;
     }
     for (name, oid) in snap.tags.iter().filter(|(n, _)| shown(n)) {
+        if widgets::list_row_hidden(ui) {
+            continue;
+        }
         let r = widgets::list_row(ui, 26.0, name, None, *sel == Selection::Commit(*oid), false);
         if r.clicked() {
             msgs.push(Msg::JumpTo(*oid));

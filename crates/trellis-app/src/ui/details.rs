@@ -1,7 +1,7 @@
 //! Right panel: staging and committing (WIP), or the selected commit's details.
 
 use super::UiCache;
-use super::common::{issue_chip, lane_color, menu_item, short, state_actions, status_color, status_label};
+use super::common::{issue_chip, lane_color, menu_item, short, state_actions, status_color, status_label, widget_row_height};
 use super::file_menu::{self, RowSource};
 use super::graph::draw_avatar;
 use super::theme::color;
@@ -137,8 +137,9 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     let n = d.files.len();
     ui.label(RichText::new(format!("{n} changed file{}", if n == 1 { "" } else { "s" })).strong().color(color::text()));
     let lfs = TrackContext::of(st);
-    egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-        for f in &d.files {
+    let row_h = widget_row_height(ui);
+    egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
+        for f in &d.files[range] {
             let actions = Some((RowSource::Commit(d.oid), d.in_workdir(&f.path), lfs));
             changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, actions, msgs);
         }
@@ -220,63 +221,77 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
             });
         });
     });
-    egui::ScrollArea::vertical().id_salt(title).max_height(max_h).auto_shrink([false, true]).show(ui, |ui| {
-        if files.is_empty() {
-            ui.label(RichText::new("None").color(color::faint()));
+    let area = egui::ScrollArea::vertical().id_salt(title).max_height(max_h).auto_shrink([false, true]);
+    if files.is_empty() {
+        area.show(ui, |ui| ui.label(RichText::new("None").color(color::faint())));
+        return;
+    }
+    // Only the rows in view are drawn: a working tree can have thousands of changed files.
+    area.show_rows(ui, widget_row_height(ui), files.len(), |ui, range| {
+        for f in &files[range] {
+            wip_file_row(ui, snap, f, staged, open, lfs, msgs);
         }
-        for f in files {
-            let target = if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
-            let toggle = || if staged { Msg::UnstageFile(f.path.clone()) } else { Msg::StageFile(f.path.clone()) };
-            // A conflicted file opens in the conflict view; staging it marks it resolved.
-            let conflicted = !staged && f.status == '!';
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
-                let action = match (staged, conflicted) {
-                    (true, _) => "Unstage",
-                    (false, true) => "Mark resolved",
-                    (false, false) => "Stage",
-                };
-                if ui.small_button(action).clicked() {
-                    msgs.push(toggle());
-                }
-                let selected = if conflicted { open.conflict == Some(f.path.as_str()) } else { open.diff == Some(&target) };
-                let r = ui.selectable_label(selected, &f.path);
-                if r.clicked() {
-                    msgs.push(if conflicted { Msg::OpenConflict(f.path.clone()) } else { Msg::OpenDiff(target.clone()) });
-                }
-                r.context_menu(|ui| {
-                    if conflicted {
-                        menu_item(msgs, ui, "Open conflict", Msg::OpenConflict(f.path.clone()));
-                    }
-                    menu_item(msgs, ui, action, toggle());
-                    // Checking out the index version of a conflicted path means nothing.
-                    if !staged && !conflicted {
-                        if f.status == '?' {
-                            menu_item(msgs, ui, "Discard changes", Msg::DiscardUntracked(f.path.clone()));
-                        } else {
-                            menu_item(
-                                msgs,
-                                ui,
-                                "Discard changes",
-                                Msg::confirm(
-                                    "Discard changes",
-                                    format!("Discard changes to {}? This cannot be undone.", f.path),
-                                    "Discard",
-                                    Msg::DiscardFile(f.path.clone()),
-                                ),
-                            );
-                        }
-                    }
-                    if f.status != '?' {
-                        menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: None });
-                    }
-                    menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
-                    let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
-                    let missing = snap.missing_from_workdir(&f.path);
-                    let items = if missing { Vec::new() } else { track_items(&f.path, lfs) };
-                    file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items);
-                });
-            });
+    });
+}
+
+/// A row of the Unstaged or Staged Files list: status, Stage / Unstage / Mark resolved, the
+/// path (opens its diff, or the conflict view) and its menu.
+fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool, open: &OpenFile, lfs: TrackContext, msgs: &mut Vec<Msg>) {
+    let target = || if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
+    let toggle = || if staged { Msg::UnstageFile(f.path.clone()) } else { Msg::StageFile(f.path.clone()) };
+    // A conflicted file opens in the conflict view; staging it marks it resolved.
+    let conflicted = !staged && f.status == '!';
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
+        let action = match (staged, conflicted) {
+            (true, _) => "Unstage",
+            (false, true) => "Mark resolved",
+            (false, false) => "Stage",
+        };
+        if ui.small_button(action).clicked() {
+            msgs.push(toggle());
         }
+        let selected = match open.diff {
+            _ if conflicted => open.conflict == Some(f.path.as_str()),
+            Some(DiffTarget::Staged(p)) => staged && *p == f.path,
+            Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
+            _ => false,
+        };
+        let r = ui.selectable_label(selected, &f.path);
+        if r.clicked() {
+            msgs.push(if conflicted { Msg::OpenConflict(f.path.clone()) } else { Msg::OpenDiff(target()) });
+        }
+        r.context_menu(|ui| {
+            if conflicted {
+                menu_item(msgs, ui, "Open conflict", Msg::OpenConflict(f.path.clone()));
+            }
+            menu_item(msgs, ui, action, toggle());
+            // Checking out the index version of a conflicted path means nothing.
+            if !staged && !conflicted {
+                if f.status == '?' {
+                    menu_item(msgs, ui, "Discard changes", Msg::DiscardUntracked(f.path.clone()));
+                } else {
+                    menu_item(
+                        msgs,
+                        ui,
+                        "Discard changes",
+                        Msg::confirm(
+                            "Discard changes",
+                            format!("Discard changes to {}? This cannot be undone.", f.path),
+                            "Discard",
+                            Msg::DiscardFile(f.path.clone()),
+                        ),
+                    );
+                }
+            }
+            if f.status != '?' {
+                menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: None });
+            }
+            menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
+            let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
+            let missing = snap.missing_from_workdir(&f.path);
+            let items = if missing { Vec::new() } else { track_items(&f.path, lfs) };
+            file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items);
+        });
     });
 }

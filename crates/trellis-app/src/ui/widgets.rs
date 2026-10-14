@@ -287,7 +287,7 @@ pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut
 
 /// One sidebar list row. Returns the click response; `right` is optional dim text at the right.
 pub fn list_row(ui: &mut Ui, indent: f32, text: &str, right: Option<(&str, Color32)>, selected: bool, strong: bool) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 24.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), LIST_ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     let p = ui.painter_at(rect);
@@ -310,6 +310,21 @@ pub fn list_row(ui: &mut Ui, indent: f32, text: &str, right: Option<(&str, Color
     let clipped = p.with_clip_rect(text_rect);
     clipped.galley(pos2(text_rect.left(), rect.center().y - g.size().y / 2.0), g, col);
     resp
+}
+
+/// The height of a `list_row`.
+pub const LIST_ROW_H: f32 = 24.0;
+
+/// For a `list_row` about to be drawn: when it would be scrolled out of view, takes its space
+/// (and one widget id, as the row does) and returns true, so the caller skips it. Long sections
+/// of the left panel then cost little more than their visible rows.
+pub fn list_row_hidden(ui: &mut Ui) -> bool {
+    let size = vec2(ui.available_width(), LIST_ROW_H);
+    if ui.is_rect_visible(Rect::from_min_size(ui.cursor().min, size)) {
+        return false;
+    }
+    ui.allocate_space(size);
+    true
 }
 
 /// Rounded label chip drawn with the painter; returns its width.

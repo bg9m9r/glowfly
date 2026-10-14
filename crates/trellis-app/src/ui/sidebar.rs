@@ -54,6 +54,9 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     widgets::section_header(ui, "LOCAL", Some(snap.locals.len()), &mut sections.local);
     if sections.local {
         for b in snap.locals.iter().filter(|b| shown(&b.name)) {
+            if widgets::list_row_hidden(ui) {
+                continue;
+            }
             let mut right = String::new();
             if b.ahead > 0 {
                 right.push_str(&format!("{}↑ ", b.ahead));
@@ -110,6 +113,9 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     widgets::section_header(ui, "STASHES", Some(snap.stashes.len()), &mut sections.stashes);
     if sections.stashes {
         for s in snap.stashes.iter().filter(|s| shown(&s.message)) {
+            if widgets::list_row_hidden(ui) {
+                continue;
+            }
             let r = widgets::list_row(ui, 26.0, &s.message, None, sel == Selection::Commit(s.oid), false);
             let stash = |action| Msg::Stash { action, index: s.index, oid: s.oid };
             if r.clicked() {
@@ -149,6 +155,9 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
         hint_row(ui, if f.loading > 0 { "Loading…".to_owned() } else { format!("No open {}s", f.pr_noun()) });
     }
     for pr in f.prs.iter().filter(|p| shown(&p.title) || shown(&p.source) || shown(&p.id.to_string())) {
+        if widgets::list_row_hidden(ui) {
+            continue;
+        }
         let title = if pr.draft { format!("[Draft] {}", pr.title) } else { pr.title.clone() };
         let votes = pr.approvals();
         let right = format!("{}{}", f.pr_label(pr.id), if votes > 0 { format!(" ✔{votes}") } else { String::new() });
@@ -195,6 +204,9 @@ fn issues(ui: &mut egui::Ui, f: &ForgeState, shown: &dyn Fn(&str) -> bool, msgs:
         forge_error_rows(ui, e, msgs);
     }
     for issue in f.my_issues.iter().filter(|i| shown(&i.title) || shown(&i.key)) {
+        if widgets::list_row_hidden(ui) {
+            continue;
+        }
         let text = format!("{}  {}", f.mention(&issue.key), issue.title);
         let r = widgets::list_row(ui, 26.0, &text, Some((&issue.state, state_color(&issue.state))), false, false);
         let assignee = issue.assignee.as_deref().unwrap_or("unassigned");

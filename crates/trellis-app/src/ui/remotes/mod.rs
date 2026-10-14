@@ -62,6 +62,9 @@ pub(in crate::ui) fn section(
             hint_row(ui, "No branches yet. Fetch this remote to load them.".to_owned());
         }
         for (name, oid) in branches.iter().filter(|(n, _)| (c.shown)(n)) {
+            if widgets::list_row_hidden(ui) {
+                continue;
+            }
             let r = widgets::list_row(ui, 34.0, name, None, *c.sel == Selection::Commit(*oid), false);
             if r.hovered() {
                 *hover_next = Some(*oid);

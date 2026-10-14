@@ -1,7 +1,7 @@
 //! Right panel for several selected commits: the list, actions on all of them, and with exactly
 //! two, the files that differ between them and their file actions.
 
-use super::common::short;
+use super::common::{short, widget_row_height};
 use super::details::changed_file_row;
 use super::file_menu::RowSource;
 use super::menus::{cherry_pick_button, copy_shas};
@@ -25,17 +25,24 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.add_space(6.0);
 
     let list_h = if m.pair().is_some() { 160.0 } else { ui.available_height() };
-    egui::ScrollArea::vertical().id_salt("multi-commits").max_height(list_h).auto_shrink([false, true]).show(ui, |ui| {
-        for &oid in &m.oids {
-            let Some(&row) = snap.row_of.get(&oid) else { continue };
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(short(oid)).monospace().color(color::weak()));
-                if ui.selectable_label(false, &snap.commits[row].summary).clicked() {
-                    msgs.push(Msg::SelectCommit(oid));
-                }
-            });
-        }
-    });
+    // Only the rows in view are drawn: a range selection can span the whole history.
+    let rows: Vec<(git2::Oid, usize)> = m.oids.iter().filter_map(|&o| Some((o, *snap.row_of.get(&o)?))).collect();
+    let row_h = widget_row_height(ui);
+    egui::ScrollArea::vertical().id_salt("multi-commits").max_height(list_h).auto_shrink([false, true]).show_rows(
+        ui,
+        row_h,
+        rows.len(),
+        |ui, range| {
+            for &(oid, row) in &rows[range] {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(short(oid)).monospace().color(color::weak()));
+                    if ui.selectable_label(false, &snap.commits[row].summary).clicked() {
+                        msgs.push(Msg::SelectCommit(oid));
+                    }
+                });
+            }
+        },
+    );
 
     let Some((older, newer)) = m.pair() else {
         ui.add_space(8.0);
@@ -58,13 +65,19 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         Some(Ok(c)) => {
             let open = st.diff.as_ref().map(|(t, _)| t);
             let lfs = TrackContext::of(st);
-            egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show(ui, |ui| {
-                for f in &c.files {
-                    let target = DiffTarget::Between(older, newer, f.path.clone());
-                    let actions = Some((RowSource::Between { older, newer }, c.in_workdir(&f.path), lfs));
-                    changed_file_row(ui, f, target, open, newer, actions, msgs);
-                }
-            });
+            let row_h = widget_row_height(ui);
+            egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show_rows(
+                ui,
+                row_h,
+                c.files.len(),
+                |ui, range| {
+                    for f in &c.files[range] {
+                        let target = DiffTarget::Between(older, newer, f.path.clone());
+                        let actions = Some((RowSource::Between { older, newer }, c.in_workdir(&f.path), lfs));
+                        changed_file_row(ui, f, target, open, newer, actions, msgs);
+                    }
+                },
+            );
         }
     }
 }
