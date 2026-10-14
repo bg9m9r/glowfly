@@ -53,7 +53,8 @@ crates/
     whole_file.rs         whole-file view: change blocks mapped onto hunks, folds of long
                           unchanged runs (folds.rs), and their rows
     conflict_rows.rs      row layout of the conflict view (aligned ours/theirs panes, output)
-    highlight.rs          syntax highlighting of diff lines (syntect), as token kinds
+    highlight.rs          syntax highlighting of diff lines (syntect), as token kinds:
+                          inline and background passes, reuse/carry in highlight/reuse.rs
     intraline.rs          word-level changes inside paired removed/added diff lines
     tabs.rs               tab stops for drawing diff text (lines keep raw tabs), with a byte
                           map so syntax spans and changed-word ranges follow the expansion
@@ -90,7 +91,8 @@ crates/
                           (starting the credential-prompt listener, answering prompts), os
                           (URLs, terminals, opening files and showing them in the file manager),
                           files (creating, renaming and deleting a working-tree file; listing
-                          the tracked files)
+                          the tracked files), highlight.rs: decorate + background highlighting
+                          (a newer HighlightDiff cancels the older)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
@@ -104,7 +106,8 @@ crates/
                           commit (committing, stage-all-and-commit, push after committing, the
                           template prefill), palette (opening the command palette, moving,
                           running a command, entering and leaving a sub-list and loading its
-                          items)
+                          items), highlight (starting the background highlighting pass,
+                          attaching its result if the same diff is still shown)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,

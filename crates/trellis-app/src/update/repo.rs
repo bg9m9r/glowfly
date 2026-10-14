@@ -99,7 +99,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             // Any accepted result ends a pending step, so a superseding reload can't block it.
             let landing = st.view.diff_landing.take();
             match result {
-                Ok(d) => {
+                Ok(mut d) => {
                     let landing = landing.filter(|(t, _)| !reload && *t == target).map(|(_, l)| l);
                     // A stepped-to file with nothing to land on is passed over, never shown.
                     if let Some(l) = landing
@@ -108,7 +108,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                         return;
                     }
                     // The line selection survives only a reload that brings back the same diff.
-                    let same = reload && st.diff.as_ref().is_some_and(|(t, old)| *t == target && *old == d);
+                    // Only the text counts: a provisional or pending highlight doesn't make it differ.
+                    let same =
+                        reload && st.diff.as_ref().is_some_and(|(t, old)| *t == target && old.binary == d.binary && old.hunks == d.hunks);
                     if !same {
                         st.view.diff_lines.clear();
                     }
@@ -131,8 +133,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     } else {
                         st.view.diff_cursor = None;
                     }
+                    if reload {
+                        super::highlight::keep_finished(st.diff.as_ref(), &target, &mut d);
+                    }
                     st.diff = Some((target, d));
                     st.diff_shown_gen = generation;
+                    super::highlight::schedule(st, fx);
                 }
                 // A reload that finds no changes left simply closes the diff.
                 Err(_) if reload => {

@@ -4,7 +4,7 @@ use crate::testutil::{git, scratch_repo, write};
 use std::collections::HashSet;
 
 /// A hunk from (origin, text) pairs, numbered from line 1 on both sides.
-fn hunk(lines: &[(char, &str)]) -> Hunk {
+pub(super) fn hunk(lines: &[(char, &str)]) -> Hunk {
     let (mut old, mut new) = (1, 1);
     let lines = lines
         .iter()
@@ -19,16 +19,16 @@ fn hunk(lines: &[(char, &str)]) -> Hunk {
     Hunk { header: "@@ -1 +1 @@".into(), lines }
 }
 
-fn diff(hunks: Vec<Hunk>) -> FileDiff {
+pub(super) fn diff(hunks: Vec<Hunk>) -> FileDiff {
     FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
 }
 
-fn kinds(spans: &[Span]) -> HashSet<TokenKind> {
+pub(super) fn kinds(spans: &[Span]) -> HashSet<TokenKind> {
     spans.iter().map(|s| s.kind).collect()
 }
 
 /// Spans are contiguous and cover the whole line.
-fn assert_covers(spans: &[Span], text: &str) {
+pub(super) fn assert_covers(spans: &[Span], text: &str) {
     if text.is_empty() {
         assert!(spans.is_empty(), "{spans:?}");
         return;
@@ -96,19 +96,30 @@ fn binary_and_oversized_are_plain() {
     d.binary = true;
     assert_eq!(highlight_diff("a.rs", &d, None), None);
 
+    // Over the inline limits: pending, full shape, nothing parsed yet.
+    let pending_and_empty = |d: &FileDiff| {
+        let hl = highlight_diff("a.rs", d, None).expect("left for the background pass");
+        assert!(hl.is_pending());
+        assert_eq!(hl.hunk_lens(), d.hunks.iter().map(|h| h.lines.len()).collect::<Vec<_>>());
+        assert!((0..d.hunks[0].lines.len()).all(|l| hl.line(0, l).is_empty()));
+    };
     let many: Vec<_> = (0..=MAX_LINES).map(|_| ('+', "let x = 1;")).collect();
-    assert_eq!(highlight_diff("a.rs", &diff(vec![hunk(&many)]), None), None);
+    pending_and_empty(&diff(vec![hunk(&many)]));
     let at_limit: Vec<_> = (0..MAX_LINES).map(|_| ('+', "x")).collect();
-    assert!(highlight_diff("a.rs", &diff(vec![hunk(&at_limit)]), None).is_some());
+    assert!(highlight_diff("a.rs", &diff(vec![hunk(&at_limit)]), None).is_some_and(|h| !h.is_pending()));
 
     // Total text over the limit, in lines that are each short enough.
-    let line = "x".repeat(MAX_BYTES / 50 + 1);
-    let bulky: Vec<_> = (0..50).map(|_| ('+', line.as_str())).collect();
-    assert_eq!(highlight_diff("a.rs", &diff(vec![hunk(&bulky)]), None), None);
+    let line = "x".repeat(MAX_LINE_BYTES);
+    let bulky: Vec<_> = (0..=MAX_BYTES / MAX_LINE_BYTES).map(|_| ('+', line.as_str())).collect();
+    pending_and_empty(&diff(vec![hunk(&bulky)]));
 
+    // One long line no longer makes the diff plain: it alone stays plain.
     let long = "x".repeat(MAX_LINE_BYTES + 1);
-    assert_eq!(highlight_diff("a.rs", &diff(vec![hunk(&[('+', "let a = 1;"), ('+', &long)])]), None), None);
-    assert!(highlight_diff("a.rs", &diff(vec![hunk(&[('+', &long[1..])])]), None).is_some());
+    let hl = highlight_diff("a.rs", &diff(vec![hunk(&[('+', "let a = 1;"), ('+', &long)])]), None).expect("highlighted inline");
+    assert!(!hl.is_pending());
+    assert!(kinds(hl.line(0, 0)).contains(&TokenKind::Keyword), "{:?}", hl.line(0, 0));
+    assert_eq!(hl.line(0, 1), &[]);
+    assert!(highlight_diff("a.rs", &diff(vec![hunk(&[('+', &long[1..])])]), None).is_some_and(|h| !h.line(0, 0).is_empty()));
 
     assert_eq!(highlight_diff("a.rs", &diff(Vec::new()), None), None);
 }

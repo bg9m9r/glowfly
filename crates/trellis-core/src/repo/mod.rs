@@ -248,7 +248,8 @@ pub struct Hunk {
 pub struct FileDiff {
     pub binary: bool,
     pub hunks: Vec<Hunk>,
-    /// Filled in by `highlight::highlight_diff`; `None` means plain.
+    /// Filled in by `highlight::highlight_diff`; `None` means plain. A pending highlight is
+    /// finished by Effect::HighlightDiff (`highlight::finish`).
     pub highlight: Option<crate::highlight::DiffHighlight>,
     /// Filled in by `intraline::intraline`; empty means no word marks.
     pub intraline: crate::intraline::Intraline,

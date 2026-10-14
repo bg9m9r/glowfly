@@ -11,6 +11,7 @@ mod diff;
 mod files;
 mod forge;
 mod graph_filter;
+mod highlight;
 mod history;
 mod ops;
 mod palette;
@@ -46,6 +47,8 @@ mod files_tests;
 mod fold_tests;
 #[cfg(test)]
 mod graph_filter_tests;
+#[cfg(test)]
+mod highlight_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]
@@ -108,6 +111,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::DetailLoaded { .. }
         | Msg::DiffLoaded { .. }
         | Msg::StatsLoaded(_) => repo::handle(st, msg, now, &mut fx),
+        Msg::DiffHighlighted { .. } => highlight::handle(st, msg),
         Msg::SetDiffLayout(_)
         | Msg::SetDiffMode(_)
         | Msg::SetIgnoreWhitespace(_)

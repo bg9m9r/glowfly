@@ -124,7 +124,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Split (side-by-side) vs inline view
   - [x] Next/previous change (F7 / Shift+F7, Alt+Down / Alt+Up)
   - [x] Syntax highlighting (`syntect`)
-    - [ ] Highlight in a second background pass, so diffs over the size limit (2,000 lines,
+    - [x] Highlight in a second background pass, so diffs over the size limit (2,000 lines,
       100 KB, or a line over 1,000 bytes) show plain at once and gain colors later, with no
       plain flash on reload
     - [ ] Highlight from the whole old and new files instead of per-hunk fragments, so hunks
@@ -175,7 +175,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       - [ ] Fill in the unchanged lines between hunks in the hunk view
     - [ ] Hunks / Whole file and Inline / Split toggles in the File history header, and a command
       or shortcut for the view mode toggle
-    - [ ] Syntax colors for whole files over the highlight size limit (see the background
+    - [x] Syntax colors for whole files over the highlight size limit (see the background
       highlighting item above)
   - [ ] Diff view vs file view toggle (plain file, or a rendered preview for Markdown/images)
   - [x] Revert a hunk of a commit diff into the working tree (Revert Hunk on commit, compare and

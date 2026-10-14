@@ -147,6 +147,15 @@ pub enum Effect {
         /// Also load the whole file (the diff_mode setting when the request was made).
         whole_file: bool,
     },
+    /// Finishes the syntax highlighting `diff` arrived with (pending in its hunks or its whole
+    /// file) for the diff shown at `generation` (AppState::diff_shown_gen). Started by
+    /// Runner::run with a cancel ticket: a newer HighlightDiff cancels this one.
+    HighlightDiff {
+        workdir: PathBuf,
+        target: DiffTarget,
+        generation: u64,
+        diff: Box<FileDiff>,
+    },
     LoadConflict {
         workdir: PathBuf,
         path: String,
@@ -330,6 +339,7 @@ impl Effect {
             | Effect::LoadDetail { workdir, .. }
             | Effect::LoadCompare { workdir, .. }
             | Effect::LoadDiff { workdir, .. }
+            | Effect::HighlightDiff { workdir, .. }
             | Effect::LoadConflict { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }
             | Effect::LoadTrackedPaths { workdir, .. }

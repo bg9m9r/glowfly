@@ -4,12 +4,12 @@
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, LocalOp, UndoResult};
 use crate::msg::Msg;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use trellis_core::avatars;
 use trellis_core::forge::{self, Auth};
 use trellis_core::gitcli::{self, args};
-use trellis_core::highlight;
-use trellis_core::intraline;
 use trellis_core::repo;
 use trellis_core::signing::{self, SigningFormat};
 use trellis_core::undo::{self, Action, Plan};
@@ -17,8 +17,11 @@ use trellis_core::undo::{self, Action, Plan};
 mod askpass;
 mod config;
 mod files;
+mod highlight;
 mod os;
 mod rebase;
+
+pub(crate) use highlight::decorate;
 
 /// Wakes the UI when a result arrives (so it can process the message promptly).
 pub trait Waker: Send + Sync + 'static {
@@ -36,12 +39,14 @@ pub struct Runner<W: Waker + Clone> {
     waker: W,
     watch: crate::watcher::WatchSlot,
     /// The credential-prompt listener, once started (never in tests).
-    askpass: Option<std::sync::Arc<trellis_core::askpass::Server>>,
+    askpass: Option<Arc<trellis_core::askpass::Server>>,
+    /// Counts HighlightDiff jobs started: a job whose number is no longer the latest stops.
+    highlight_epoch: Arc<AtomicU64>,
 }
 
 impl<W: Waker + Clone> Runner<W> {
     pub fn new(tx: Sender<Msg>, waker: W) -> Self {
-        Self { tx, waker, watch: Default::default(), askpass: None }
+        Self { tx, waker, watch: Default::default(), askpass: None, highlight_epoch: Default::default() }
     }
 
     /// Starts `effect` on a worker thread. UI effects must be handled by the caller instead.
@@ -54,9 +59,12 @@ impl<W: Waker + Clone> Runner<W> {
         let tx = self.tx.clone();
         let waker = self.waker.clone();
         let name = effect_name(&effect);
+        let epoch = &self.highlight_epoch;
+        let ticket = matches!(effect, Effect::HighlightDiff { .. }).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
         let spawned = std::thread::Builder::new().name(format!("trellis-{name}")).spawn(move || {
             let _span = tracing::debug_span!("effect", name).entered();
-            if let Some(msg) = execute(effect)
+            let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
+            if let Some(msg) = execute_with(effect, &cancelled)
                 && tx.send(msg).is_ok()
             {
                 waker.wake();
@@ -75,6 +83,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::LoadDetail { .. } => "load-detail",
         Effect::LoadCompare { .. } => "load-compare",
         Effect::LoadDiff { .. } => "load-diff",
+        Effect::HighlightDiff { .. } => "highlight",
         Effect::LoadConflict { .. } => "load-conflict",
         Effect::LoadFileHistory { .. } => "file-history",
         Effect::LocalOp { .. } => "local-op",
@@ -122,16 +131,22 @@ fn err(e: trellis_core::error::Error) -> String {
 
 /// Runs one effect to completion (blocking) and returns the message to send back, if any.
 /// Results that belong to one repository come back as `Msg::Scoped`.
+#[cfg(test)]
 pub fn execute(effect: Effect) -> Option<Msg> {
+    execute_with(effect, &|| false)
+}
+
+/// `execute`, stopping early when `cancelled` returns true (only HighlightDiff checks it).
+fn execute_with(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg> {
     let scope = effect.scope().cloned();
-    let msg = execute_unscoped(effect)?;
+    let msg = execute_unscoped(effect, cancelled)?;
     Some(match scope {
         Some(workdir) => Msg::Scoped { workdir, msg: Box::new(msg) },
         None => msg,
     })
 }
 
-fn execute_unscoped(effect: Effect) -> Option<Msg> {
+fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg> {
     match effect {
         Effect::LoadRepo { path, opts, generation, kind } => {
             let result = repo::load(&path, &opts).map(Box::new).map_err(|e| format!("Could not open {}: {e}", path.display()));
@@ -153,12 +168,14 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
                         .map(|h| (0..d.hunks[h].lines.len()).filter(|&l| !d.intraline.line(h, l).is_empty()).count())
                         .sum::<usize>();
                     let whole = d.whole.is_some();
-                    tracing::debug!(path = target.path(), syntax, marked, ignore_whitespace, whole, "diff highlighted");
+                    let pending = d.highlight.as_ref().is_some_and(|h| h.is_pending());
+                    tracing::debug!(path = target.path(), syntax, pending, marked, ignore_whitespace, whole, "diff highlighted");
                     d
                 })
                 .map_err(err);
             Some(Msg::DiffLoaded { target, reload, generation, result })
         }
+        Effect::HighlightDiff { target, generation, diff, .. } => highlight::finish_job(target, generation, &diff, cancelled),
         Effect::LoadConflict { workdir, path, generation } => {
             Some(Msg::ConflictLoaded { path: path.clone(), generation, result: repo::load_conflict(&workdir, &path).map_err(err) })
         }
@@ -293,16 +310,6 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             tracing::warn!("watch or prompt effect reached a worker; it is handled by Runner::run");
             None
         }
-    }
-}
-
-/// Syntax spans and word marks for a loaded diff and its whole file, reusing `previous`'s spans.
-pub(crate) fn decorate(path: &str, d: &mut repo::FileDiff, previous: Option<&repo::FileDiff>) {
-    d.highlight = highlight::highlight_diff(path, d, previous);
-    d.intraline = intraline::intraline(d);
-    if let Some(w) = d.whole.as_mut() {
-        w.diff.highlight = highlight::highlight_diff(path, &w.diff, previous.and_then(|p| p.whole.as_deref()).map(|w| &w.diff));
-        w.diff.intraline = intraline::intraline(&w.diff);
     }
 }
 

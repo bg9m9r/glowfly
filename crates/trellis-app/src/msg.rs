@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
+use trellis_core::highlight::DiffHighlight;
 use trellis_core::rebase::{Outcome, RebaseAction, RebaseBase, RebasePlan};
 use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, RestoredFrom, Side, Snapshot};
 use trellis_core::settings::{DiffLayout, DiffMode, FilterOp, ThemeChoice, TrackerChoice};
@@ -418,6 +419,15 @@ pub enum Msg {
         reload: bool,
         generation: u64,
         result: Result<FileDiff, String>,
+    },
+    /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
+    /// at `generation`, each only where it was pending. Applied only while that diff is still on
+    /// screen.
+    DiffHighlighted {
+        target: DiffTarget,
+        generation: u64,
+        hunks: Option<DiffHighlight>,
+        whole: Option<DiffHighlight>,
     },
     LocalOpDone(Result<(), String>),
     /// A RevertHunk finished; `path` is the file it was for.
