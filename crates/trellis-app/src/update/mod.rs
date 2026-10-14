@@ -27,6 +27,8 @@ mod tabs_tests;
 mod tests;
 #[cfg(test)]
 mod undo_tests;
+#[cfg(test)]
+mod whitespace_tests;
 
 pub use repo::commit_matches;
 
@@ -55,9 +57,11 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::DetailLoaded { .. }
         | Msg::DiffLoaded { .. }
         | Msg::StatsLoaded(_) => repo::handle(st, msg, now, &mut fx),
-        Msg::SetDiffLayout(_) | Msg::JumpToChange(_) | Msg::SelectDiffLine { .. } | Msg::ClearLineSelection => {
-            diff::handle(st, msg, &mut fx)
-        }
+        Msg::SetDiffLayout(_)
+        | Msg::SetIgnoreWhitespace(_)
+        | Msg::JumpToChange(_)
+        | Msg::SelectDiffLine { .. }
+        | Msg::ClearLineSelection => diff::handle(st, msg, &mut fx),
         Msg::WantAvatars(_) | Msg::AvatarsLoaded(_) => avatars::handle(st, msg, &mut fx),
 
         // conflicts

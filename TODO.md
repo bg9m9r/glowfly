@@ -134,8 +134,17 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Word-level intraline highlights
     - [ ] A preference to turn them off (with the Editor preferences page)
     - [ ] Pair removed and added lines by similarity instead of by position
-  - [ ] Ignore leading/trailing whitespace: hunk stage/discard must then be disabled or mapped
-    back to the unfiltered diff, since `apply_hunk` counts the unfiltered hunks
+  - [x] Ignore leading/trailing whitespace (diff header toggle, saved in settings; hunk and line
+    operations are off while it is on, since `apply_hunk` counts the unfiltered hunks)
+    - [ ] Map hunk and line stage/unstage/discard from the filtered diff back to the unfiltered
+      one, instead of disabling them while whitespace is hidden
+    - [ ] Also ignore whitespace inserted where there was none (indenting from column 0, which
+      git's `-b` still shows): ignore-all-whitespace or a leading/trailing line filter
+    - [ ] An ignore-whitespace choice on the Editor preferences page, and a command or shortcut
+      for the toggle
+    - [ ] Apply the filter to the commit details file list and the graph's CHANGES counts (hide
+      files whose only changes are whitespace)
+    - [ ] Ignore blank-line-only changes as a separate option
   - [ ] Word wrap toggle (header and editor preference); needs rows of varying height
   - [ ] Editor preferences page: monospace font, font size, tab size (a tab is 4 spaces today),
     line numbers on/off, end-of-line character, and the syntax highlighting toggle (now under

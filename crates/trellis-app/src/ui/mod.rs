@@ -22,6 +22,8 @@ pub mod widgets;
 
 #[cfg(test)]
 mod snapshot_tests;
+#[cfg(test)]
+mod snapshot_tests_diff;
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::Msg;

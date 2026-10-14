@@ -5,7 +5,9 @@ use crate::error::Result;
 use git2::{ApplyLocation, ApplyOptions, IndexAddOption, Repository, build::CheckoutBuilder};
 use std::path::Path;
 
-/// Stages, unstages or discards a single hunk (by index within the displayed diff).
+/// Stages, unstages or discards a single hunk (by index within the displayed diff). The index
+/// counts hunks of the unfiltered diff, so callers must not pass an index taken from a
+/// `load_diff_with` diff that ignores whitespace.
 pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, op: HunkOp) -> Result<()> {
     let repo = Repository::open(workdir)?;
     let (diff, location) = match op {

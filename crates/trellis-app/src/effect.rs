@@ -119,6 +119,8 @@ pub enum Effect {
         generation: u64,
         /// On a reload, the diff on screen: unchanged hunks keep its highlighting.
         previous: Option<FileDiff>,
+        /// Hide whitespace-only changes (the diff_ignore_whitespace setting when the request was made).
+        ignore_whitespace: bool,
     },
     LoadConflict {
         workdir: PathBuf,

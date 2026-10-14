@@ -91,7 +91,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::conflict::close(st);
             if let Some(workdir) = st.workdir() {
                 let generation = next_diff_gen(st);
-                fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None });
+                let ignore_whitespace = st.settings.diff_ignore_whitespace;
+                fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None, ignore_whitespace });
             }
         }
         Msg::DiffLoaded { target, reload, generation, result } => {
@@ -167,11 +168,22 @@ pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 pub(super) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
+    request_diff(st, fx, true);
+}
+
+/// Opens the diff on screen again, as if newly opened (top of the file, no line selection),
+/// e.g. after the diff options changed. Does nothing when no diff is open.
+pub(super) fn reopen_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
+    request_diff(st, fx, false);
+}
+
+fn request_diff(st: &mut AppState, fx: &mut Vec<Effect>, reload: bool) {
     if let (Some(workdir), Some((target, diff))) = (st.workdir(), st.diff.as_ref()) {
         let target = target.clone();
         let previous = diff.highlight.is_some().then(|| diff.clone());
         let generation = next_diff_gen(st);
-        fx.push(Effect::LoadDiff { workdir, target, reload: true, generation, previous });
+        let ignore_whitespace = st.settings.diff_ignore_whitespace;
+        fx.push(Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace });
     }
 }
 

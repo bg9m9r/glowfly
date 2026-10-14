@@ -24,6 +24,9 @@ use trellis_core::settings::{BranchVisibility, Settings};
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
 pub const TOAST_LIFETIME: Duration = Duration::from_secs(5);
+/// Why hunk and line operations are off while the diff hides whitespace changes.
+pub const WHITESPACE_BLOCKS_HUNK_OPS: &str =
+    "Turn off Ignore whitespace to stage, unstage or discard hunks and lines. The hidden whitespace changes are part of each hunk.";
 
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum Selection {
@@ -255,6 +258,15 @@ impl AppState {
     /// or newer diff is on its way. Hunk operations must carry it.
     pub fn hunk_ops_gen(&self) -> Option<u64> {
         (self.diff.is_some() && self.diff_shown_gen == self.diff_gen).then_some(self.diff_gen)
+    }
+
+    /// Why hunk and line operations on the open working-tree diff are refused, apart from a
+    /// pending reload: with whitespace hidden its hunks don't match the ones staging works on.
+    /// Every change to the setting reopens the diff (a new `diff_gen`), so a diff loaded under
+    /// the other setting never has `hunk_ops_gen` set.
+    pub fn hunk_ops_blocked(&self) -> Option<&'static str> {
+        let working_tree = matches!(self.diff, Some((DiffTarget::Unstaged(_) | DiffTarget::Staged(_), _)));
+        (self.settings.diff_ignore_whitespace && working_tree).then_some(WHITESPACE_BLOCKS_HUNK_OPS)
     }
 
     pub fn workdir(&self) -> Option<PathBuf> {

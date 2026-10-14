@@ -15,7 +15,7 @@ mod load;
 mod resolve;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
-pub use diff::{commit_detail, commit_stats, load_diff};
+pub use diff::{commit_detail, commit_stats, load_diff, load_diff_with};
 use diff::{head_tree, path_opts, workdir_opts};
 pub use index::{apply_hunk, discard_file, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
@@ -179,6 +179,14 @@ pub struct FileDiff {
     pub intraline: crate::intraline::Intraline,
 }
 
+/// How `load_diff_with` builds a file diff.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LoadDiffOptions {
+    /// Hide changes in the amount of whitespace and at line ends (git `-b --ignore-space-at-eol`).
+    /// Hunk indexes then no longer match `apply_hunk` / `apply_lines`.
+    pub ignore_whitespace: bool,
+}
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum HunkOp {
     Stage,
@@ -208,6 +216,8 @@ impl LoadOptions {
 
 #[cfg(test)]
 mod conflict_tests;
+#[cfg(test)]
+mod diff_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]

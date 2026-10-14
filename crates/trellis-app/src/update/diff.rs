@@ -31,7 +31,20 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             st.settings.diff_layout = layout;
             fx.push(super::prefs::save_settings(st));
         }
+        Msg::SetIgnoreWhitespace(on) => {
+            if on == st.settings.diff_ignore_whitespace {
+                return;
+            }
+            st.settings.diff_ignore_whitespace = on;
+            st.view.diff_lines.clear();
+            fx.push(super::prefs::save_settings(st));
+            // Hunk rows change, so the diff reopens at the top; hunk operations wait for it.
+            super::repo::reopen_diff(st, fx);
+        }
         Msg::SelectDiffLine { hunk, line, how } => {
+            if st.hunk_ops_blocked().is_some() {
+                return;
+            }
             if let Some((target, d)) = &st.diff {
                 st.view.diff_lines.click(target, d, hunk, line, how);
             }

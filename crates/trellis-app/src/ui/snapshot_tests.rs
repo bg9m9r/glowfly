@@ -9,16 +9,14 @@ use egui_kittest::Harness;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::gitcli::{args, run_with_input};
-use trellis_core::highlight;
-use trellis_core::intraline;
-use trellis_core::repo::{self, DiffTarget, LoadOptions};
-use trellis_core::settings::{DiffLayout, Settings, ThemeChoice};
+use trellis_core::repo::{self, LoadOptions};
+use trellis_core::settings::{Settings, ThemeChoice};
 use trellis_core::spell::Speller;
 
 const SIZE: egui::Vec2 = egui::vec2(1400.0, 820.0);
 
 /// Fixed identity and dates keep commit SHAs and the rendering identical between runs.
-fn git(dir: &Path, a: &[&str], date: &str) {
+pub(super) fn git(dir: &Path, a: &[&str], date: &str) {
     let (ok, out) = try_git(dir, a, date);
     assert!(ok, "git {a:?} failed: {out}");
 }
@@ -77,7 +75,7 @@ fn settings(theme: ThemeChoice) -> Settings {
 /// 2026-02-01 12:00 UTC, shown in UTC: rendering never depends on the machine's clock or zone.
 const NOW: i64 = 1_769_947_200;
 
-fn render(name: &str, mut st: AppState, dark: bool) {
+pub(super) fn render(name: &str, mut st: AppState, dark: bool) {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
@@ -96,7 +94,7 @@ fn render(name: &str, mut st: AppState, dark: bool) {
     harness.snapshot(name);
 }
 
-fn with_repo(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_repo(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let dir = fixture_repo(name);
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
@@ -126,129 +124,6 @@ fn main_window_dark_and_light() {
     let message = "Merge branch 'login-page'".to_owned();
     st.undo.record(trellis_core::undo::Action::Commit { branch: Some("main".into()), from, to, message, amend: false });
     render("main_undo_available", st, true);
-    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-}
-
-/// The fixture's app.txt with an uneven edit: one line replaced, one added. `name` keeps
-/// tests running in parallel apart.
-fn with_diff(layout: DiffLayout, name: &str) -> (AppState, PathBuf) {
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, &format!("{name}-{layout:?}"));
-    std::fs::write(dir.join("app.txt"), "app\nfixed build\nnew line\n").unwrap();
-    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap()); // lists app.txt as changed
-    let target = DiffTarget::Unstaged("app.txt".into());
-    let mut diff = repo::load_diff(&dir, &target).unwrap();
-    diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
-    st.settings.diff_layout = layout;
-    (st, dir)
-}
-
-#[test]
-fn diff_inline_and_split() {
-    let (st, dir) = with_diff(DiffLayout::Inline, "diff");
-    render("diff_inline", st, true);
-    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-    let (st, dir) = with_diff(DiffLayout::Split, "diff");
-    render("diff_split", st, true);
-    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-}
-
-#[test]
-fn diff_line_selection() {
-    use crate::msg::Msg;
-    use crate::state::lines::LineClick;
-    for (layout, name) in [(DiffLayout::Inline, "diff_lines_inline"), (DiffLayout::Split, "diff_lines_split")] {
-        let (mut st, dir) = with_diff(layout, "diff-lines");
-        // Select `-fix` and `+new line`, as a click and a Ctrl-click would.
-        let lines = &st.diff.as_ref().unwrap().1.hunks[0].lines;
-        let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
-        let (fix, new_line) = (at('-', "fix"), at('+', "new line"));
-        for (line, how) in [(fix, LineClick::Only), (new_line, LineClick::Toggle)] {
-            crate::update::update(&mut st, Msg::SelectDiffLine { hunk: 0, line, how }, Instant::now());
-        }
-        assert_eq!(st.view.diff_lines.count_in(&DiffTarget::Unstaged("app.txt".into()), 0), 2);
-        render(name, st, true);
-        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-    }
-}
-
-/// A Rust file with a doc comment, strings, numbers, keywords, a type and a function name;
-/// the edit replaces one line and adds another.
-fn with_rust_diff(layout: DiffLayout, theme: ThemeChoice) -> (AppState, PathBuf) {
-    let (mut st, dir) = with_repo(theme, &format!("diff-syntax-{layout:?}"));
-    let before = "/// Prints a greeting.
-fn main() {
-    let name = \"world\";
-    let count = 3;
-    println!(\"hello {name} x{count}\");
-}
-";
-    let after = before.replace("let count = 3;", "let count: u32 = 5; // more greetings").replace(
-        "x{count}\");
-",
-        "x{count}\");
-    std::process::exit(0);
-",
-    );
-    std::fs::write(dir.join("main.rs"), before).unwrap();
-    let d = "2026-01-11T10:00:00+00:00";
-    git(&dir, &["add", "main.rs"], d);
-    git(&dir, &["commit", "-q", "-m", "Add main.rs"], d);
-    std::fs::write(dir.join("main.rs"), after).unwrap();
-    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    let target = DiffTarget::Unstaged("main.rs".into());
-    let mut diff = repo::load_diff(&dir, &target).unwrap();
-    diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
-    assert!(diff.highlight.is_some(), "main.rs is highlighted as Rust");
-    diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
-    st.settings.diff_layout = layout;
-    (st, dir)
-}
-
-#[test]
-fn diff_syntax_highlighting() {
-    let (st, dir) = with_rust_diff(DiffLayout::Inline, ThemeChoice::Dark);
-    render("diff_syntax_inline", st, true);
-    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-    let (st, dir) = with_rust_diff(DiffLayout::Split, ThemeChoice::Light);
-    render("diff_syntax_split_light", st, false);
-    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-}
-
-/// A one-word edit in a Rust file, highlighted and word-marked as the runner does.
-fn with_word_diff(layout: DiffLayout, theme: ThemeChoice) -> (AppState, PathBuf) {
-    let (mut st, dir) = with_repo(theme, &format!("diff-words-{layout:?}"));
-    let before = "fn total(price: u32, quantity: u32) -> u32 {
-    let total = price * quantity;
-    total
-}
-";
-    std::fs::write(dir.join("words.rs"), before).unwrap();
-    let d = "2026-01-11T10:00:00+00:00";
-    git(&dir, &["add", "words.rs"], d);
-    git(&dir, &["commit", "-q", "-m", "Add words.rs"], d);
-    std::fs::write(dir.join("words.rs"), before.replace("price * quantity;", "price * count;")).unwrap();
-    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    let target = DiffTarget::Unstaged("words.rs".into());
-    let mut diff = repo::load_diff(&dir, &target).unwrap();
-    diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
-    diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
-    st.settings.diff_layout = layout;
-    (st, dir)
-}
-
-#[test]
-fn diff_word_highlights() {
-    let (st, dir) = with_word_diff(DiffLayout::Inline, ThemeChoice::Dark);
-    let d = &st.diff.as_ref().unwrap().1;
-    let marked = d.hunks[0].lines.iter().enumerate().filter(|(l, _)| !d.intraline.line(0, *l).is_empty()).count();
-    assert_eq!(marked, 2, "the -/+ pair is marked");
-    render("diff_words_inline", st, true);
-    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
-    let (st, dir) = with_word_diff(DiffLayout::Split, ThemeChoice::Light);
-    render("diff_words_split_light", st, false);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
 

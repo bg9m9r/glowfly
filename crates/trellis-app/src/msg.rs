@@ -44,6 +44,8 @@ pub enum Msg {
     CloseDiff,
     /// Switch the diff between one column and side by side (saved in settings).
     SetDiffLayout(DiffLayout),
+    /// Diff header toggle: hide whitespace-only changes and reload the open diff.
+    SetIgnoreWhitespace(bool),
     /// Scroll the diff to the next (1) or previous (-1) hunk.
     JumpToChange(isize),
     /// A click on line `line` of hunk `hunk` in the open diff (line-level staging).

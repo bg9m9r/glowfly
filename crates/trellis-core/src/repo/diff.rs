@@ -10,7 +10,7 @@ pub fn commit_stats(workdir: &Path, oids: &[Oid]) -> Vec<(Oid, usize, usize, usi
     let Ok(repo) = Repository::open(workdir) else { return Vec::new() };
     oids.iter()
         .filter_map(|&oid| {
-            let stats = commit_diff(&repo, oid).ok()?.stats().ok()?;
+            let stats = commit_diff(&repo, oid, None).ok()?.stats().ok()?;
             Some((oid, stats.files_changed(), stats.insertions(), stats.deletions()))
         })
         .collect()
@@ -31,11 +31,11 @@ pub(super) fn head_tree(repo: &Repository) -> Option<Tree<'_>> {
     repo.head().ok().and_then(|h| h.peel_to_tree().ok())
 }
 
-fn commit_diff<'r>(repo: &'r Repository, oid: Oid) -> Result<Diff<'r>> {
+fn commit_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
     let c = repo.find_commit(oid)?;
     let tree = c.tree()?;
     let parent_tree = if c.parent_count() > 0 { Some(c.parent(0)?.tree()?) } else { None };
-    let mut diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), None)?;
+    let mut diff = repo.diff_tree_to_tree(parent_tree.as_ref(), Some(&tree), opts)?;
     diff.find_similar(None)?;
     Ok(diff)
 }
@@ -44,6 +44,11 @@ pub(super) fn path_opts(path: &str) -> DiffOptions {
     let mut o = DiffOptions::new();
     o.pathspec(path).disable_pathspec_match(true);
     o
+}
+
+/// Applies the viewer's whitespace filter to `o` (git `-b --ignore-space-at-eol`).
+fn whitespace_opts(o: &mut DiffOptions, v: LoadDiffOptions) -> &mut DiffOptions {
+    o.ignore_whitespace_change(v.ignore_whitespace).ignore_whitespace_eol(v.ignore_whitespace)
 }
 
 pub(super) fn workdir_opts(path: &str) -> DiffOptions {
@@ -55,7 +60,7 @@ pub(super) fn workdir_opts(path: &str) -> DiffOptions {
 pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     let repo = Repository::open(workdir)?;
     let c = repo.find_commit(oid)?;
-    let files = commit_diff(&repo, oid)?
+    let files = commit_diff(&repo, oid, None)?
         .deltas()
         .map(|d| FileEntry {
             path: d.new_file().path().or(d.old_file().path()).map(|p| p.to_string_lossy().into_owned()).unwrap_or_default(),
@@ -74,15 +79,25 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     })
 }
 
-/// One file's hunks. Git only: `highlight` and `intraline` are left empty for the caller to
-/// fill in with `highlight::highlight_diff` and `intraline::intraline`.
+/// One file's hunks, with every change shown. Git only: `highlight` and `intraline` are left
+/// empty for the caller to fill in with `highlight::highlight_diff` and `intraline::intraline`.
 pub fn load_diff(workdir: &Path, target: &DiffTarget) -> Result<FileDiff> {
+    load_diff_with(workdir, target, LoadDiffOptions::default())
+}
+
+/// `load_diff` with options. With whitespace ignored, a modified file whose changes are all
+/// whitespace comes back with `hunks` empty rather than an error: the delta stays (deltas compare
+/// blob ids) and only the patch loses its hunks. Hunk indexes from such a diff don't match
+/// `apply_hunk` or `apply_lines`, which always work on the unfiltered diff.
+pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<FileDiff> {
     let repo = Repository::open(workdir)?;
     let path = target.path();
     let diff = match target {
-        DiffTarget::Commit(oid, _) => commit_diff(&repo, *oid)?,
-        DiffTarget::Unstaged(p) => repo.diff_index_to_workdir(None, Some(&mut workdir_opts(p)))?,
-        DiffTarget::Staged(p) => repo.diff_tree_to_index(head_tree(&repo).as_ref(), None, Some(&mut path_opts(p)))?,
+        DiffTarget::Commit(oid, _) => commit_diff(&repo, *oid, Some(whitespace_opts(&mut DiffOptions::new(), opts)))?,
+        DiffTarget::Unstaged(p) => repo.diff_index_to_workdir(None, Some(whitespace_opts(&mut workdir_opts(p), opts)))?,
+        DiffTarget::Staged(p) => {
+            repo.diff_tree_to_index(head_tree(&repo).as_ref(), None, Some(whitespace_opts(&mut path_opts(p), opts)))?
+        }
     };
     let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default() };
     let Some(patch) = file_patch(&diff, path)? else {

@@ -20,6 +20,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "commit_stats",
             "commit_detail",
             "load_diff",
+            "load_diff_with",
             "apply_hunk",
             "apply_lines",
             "stage_file",
@@ -71,7 +72,7 @@ const RAW_IO: &[&str] = &[
     ".save()",
 ];
 
-const EXEMPT: &[&str] = &["mod.rs", "snapshot_tests.rs"];
+const EXEMPT: &[&str] = &["mod.rs", "snapshot_tests.rs", "snapshot_tests_diff.rs"];
 
 /// Problems in one file's source, as "what: line".
 fn violations(src: &str) -> Vec<String> {

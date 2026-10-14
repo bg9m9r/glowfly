@@ -21,6 +21,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         }
         Msg::DiscardFile(path, untracked) => local(st, LocalOp::DiscardFile { path, untracked }, fx),
         Msg::Hunk { op, path, index, generation } => {
+            // A confirm dialog or a message sent before whitespace was hidden can still arrive.
+            if let Some(why) = st.hunk_ops_blocked() {
+                st.log(false, why);
+                return;
+            }
             // The index counts hunks in the diff the user saw. If that diff has been reloaded,
             // replaced, or a reload is still on its way, the index may name a different hunk.
             if st.hunk_ops_gen() != Some(generation) {
@@ -130,6 +135,10 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     let fits =
         matches!((target, op), (DiffTarget::Unstaged(_), HunkOp::Stage | HunkOp::Discard) | (DiffTarget::Staged(_), HunkOp::Unstage));
     if sel.is_empty() || sel.target.as_ref() != Some(target) || !fits {
+        return;
+    }
+    if let Some(why) = st.hunk_ops_blocked() {
+        st.log(false, why);
         return;
     }
     // Like hunk operations: line indexes are only good for the diff on screen.

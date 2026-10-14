@@ -20,7 +20,8 @@ single-crate prototype.
 crates/
   trellis-core/            library: no egui, no app state
     repo/                 repository model on libgit2: types (mod.rs), load (history, refs,
-                          status), diff (details, file diffs, line counts), index (staging),
+                          status), diff (details, file diffs with optional whitespace
+                          filtering, line counts), index (staging),
                           lines (partial patches for line staging), conflict (reading an index
                           conflict into chunks), resolve (picks, output, write and stage)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing)
@@ -48,7 +49,7 @@ crates/
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/, details, diff/ (inline, split, syntax),
                           conflict, modals, menus,
-                          status, prefs/, theme, widgets (+ snapshot_tests.rs)
+                          status, prefs/, theme, widgets (+ snapshot_tests.rs, snapshot_tests_diff.rs)
     platform.rs           OS integration (recent repos, terminal, file manager)
   trellis-app/tests/snapshots/   approved UI images
   trellis-app/tests/layering.rs  fails if a view under ui/ does I/O itself (see Rules)

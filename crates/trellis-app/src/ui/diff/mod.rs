@@ -29,8 +29,12 @@ pub(super) struct DiffView<'a> {
     pub hl: Option<&'a DiffHighlight>,
     /// The diff's generation, or `None` while a reload is on its way (see `hunk_header`).
     pub hunk_gen: Option<u64>,
-    /// The line selection; `None` when lines can't be selected (commit diffs).
+    /// The line selection; `None` when lines can't be selected (commit diffs, or while hunk
+    /// and line operations are blocked).
     pub sel: Option<&'a LineSelection>,
+    /// Why hunk and line operations are off for reasons other than a pending reload (e.g.
+    /// whitespace hidden).
+    pub blocked: Option<&'static str>,
 }
 
 impl DiffView<'_> {
@@ -44,24 +48,31 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let colored = st.settings.syntax_highlighting;
     let scroll_to = st.view.diff_scroll_to_row.take();
     let hunk_gen = st.hunk_ops_gen();
+    let ignore_ws = st.settings.diff_ignore_whitespace;
+    let blocked = st.hunk_ops_blocked();
     let top = {
         let Some((target, diff)) = &st.diff else { return };
         let has_rows = !diff.binary && !diff.hunks.is_empty();
         ui.add_space(6.0);
-        header_bar(ui, target, has_rows.then_some(layout), msgs);
+        header_bar(ui, target, has_rows.then_some(layout), (!diff.binary).then_some(ignore_ws), msgs);
         ui.separator();
         if diff.binary {
             ui.label(RichText::new("Binary file not shown.").color(color::weak()));
             return;
         }
         if diff.hunks.is_empty() {
-            ui.label(RichText::new("No textual changes (mode or empty file).").color(color::weak()));
+            let text = if ignore_ws {
+                "Only whitespace changed in this file. Turn off Ignore whitespace to see it."
+            } else {
+                "No textual changes (mode or empty file)."
+            };
+            ui.label(RichText::new(text).color(color::weak()));
             return;
         }
         // Highlighting always comes with the diff; the setting only decides whether to paint it.
         let hl = diff.highlight.as_ref().filter(|_| colored);
-        let selectable = !matches!(target, DiffTarget::Commit(..));
-        let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines) };
+        let selectable = !matches!(target, DiffTarget::Commit(..)) && blocked.is_none();
+        let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines), blocked };
         match layout {
             DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
             DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
@@ -71,9 +82,11 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
 }
 
 /// Path and kind on the left; on the right (listed from the edge inwards) Close, the file
-/// action, next/previous change and the layout toggle. `layout` is `None` when there are no
-/// rows to lay out or navigate (binary or empty diffs).
-fn header_bar(ui: &mut Ui, target: &DiffTarget, layout: Option<DiffLayout>, msgs: &mut Vec<Msg>) {
+/// action, next/previous change, the layout toggle and the whitespace toggle. `layout` is
+/// `None` when there are no rows to lay out or navigate (binary or empty diffs); `ignore_ws`
+/// is the whitespace setting, `None` for binary diffs. The whitespace toggle shows even with
+/// no rows, so a file it hid entirely can be shown again.
+fn header_bar(ui: &mut Ui, target: &DiffTarget, layout: Option<DiffLayout>, ignore_ws: Option<bool>, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         let kind = match target {
@@ -100,28 +113,42 @@ fn header_bar(ui: &mut Ui, target: &DiffTarget, layout: Option<DiffLayout>, msgs
                 }
                 DiffTarget::Commit(..) => {}
             }
-            let Some(layout) = layout else { return };
-            ui.add_space(10.0);
-            // Arrows are painted: the bundled fonts have no arrow glyphs.
-            if icon_button(ui, Icon::NextChange, "Next change (F7)").clicked() {
-                msgs.push(Msg::JumpToChange(1));
-            }
-            if icon_button(ui, Icon::PrevChange, "Previous change (Shift+F7)").clicked() {
-                msgs.push(Msg::JumpToChange(-1));
-            }
-            ui.add_space(10.0);
-            // A two-button segmented control; right to left, so Split is added first.
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 0.0;
-                let options =
-                    [(DiffLayout::Split, "Split", "Old and new side by side"), (DiffLayout::Inline, "Inline", "Changes in one column")];
-                for (value, label, tip) in options {
-                    let selected = layout == value;
-                    if ui.selectable_label(selected, label).on_hover_text(tip).clicked() && !selected {
-                        msgs.push(Msg::SetDiffLayout(value));
-                    }
+            if let Some(layout) = layout {
+                ui.add_space(10.0);
+                // Arrows are painted: the bundled fonts have no arrow glyphs.
+                if icon_button(ui, Icon::NextChange, "Next change (F7)").clicked() {
+                    msgs.push(Msg::JumpToChange(1));
                 }
-            });
+                if icon_button(ui, Icon::PrevChange, "Previous change (Shift+F7)").clicked() {
+                    msgs.push(Msg::JumpToChange(-1));
+                }
+                ui.add_space(10.0);
+                // A two-button segmented control; right to left, so Split is added first.
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    let options =
+                        [(DiffLayout::Split, "Split", "Old and new side by side"), (DiffLayout::Inline, "Inline", "Changes in one column")];
+                    for (value, label, tip) in options {
+                        let selected = layout == value;
+                        if ui.selectable_label(selected, label).on_hover_text(tip).clicked() && !selected {
+                            msgs.push(Msg::SetDiffLayout(value));
+                        }
+                    }
+                });
+            }
+            if let Some(on) = ignore_ws {
+                ui.add_space(10.0);
+                let what = "Hide changes that only add or remove trailing whitespace or change the amount of existing \
+                            whitespace (such as re-indenting)";
+                let tip = if on {
+                    format!("{what}. Hunk and line staging is unavailable while whitespace changes are hidden.")
+                } else {
+                    what.to_owned()
+                };
+                if ui.selectable_label(on, "Ignore whitespace").on_hover_text(tip).clicked() {
+                    msgs.push(Msg::SetIgnoreWhitespace(!on));
+                }
+            }
         });
     });
 }
@@ -129,7 +156,8 @@ fn header_bar(ui: &mut Ui, target: &DiffTarget, layout: Option<DiffLayout>, msgs
 /// A hunk header row: the `@@` line, plus Stage / Unstage / Discard Hunk buttons pinned to the
 /// visible right edge so they stay in view when scrolled sideways. A hunk with selected lines
 /// shows Stage / Unstage / Discard N lines instead. The buttons are disabled while a reload is
-/// on its way (`hunk_gen` is `None`), since the hunk indexes may no longer match the file.
+/// on its way (`hunk_gen` is `None`), since the hunk indexes may no longer match the file, and
+/// while `blocked` (whitespace hidden: the shown hunks aren't the ones staging works on).
 pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs: &mut Vec<Msg>) {
     let p = ui.painter();
     p.rect_filled(rect, 0.0, color::hunk_bg());
@@ -159,13 +187,14 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         let r = Rect::from_min_size(pos2(x - w, rect.top() + 1.0), vec2(w, ROW_H - 2.0));
         x -= w + 6.0;
         let mut builder = egui::UiBuilder::new().max_rect(r).layout(Layout::centered_and_justified(egui::Direction::TopDown));
-        if v.hunk_gen.is_none() {
+        let reason = v.blocked.or(v.hunk_gen.is_none().then_some("Updating the diff..."));
+        if reason.is_some() {
             builder = builder.disabled();
         }
         let button = ui
             .allocate_new_ui(builder, |ui| ui.add(egui::Button::new(RichText::new(label).small())))
             .inner
-            .on_disabled_hover_text("Updating the diff...");
+            .on_disabled_hover_text(reason.unwrap_or_default());
         let (true, Some(generation)) = (button.clicked(), v.hunk_gen) else { continue };
         let m = if selected > 0 { Msg::ApplyLines(op) } else { Msg::Hunk { op, path: path.to_owned(), index: h, generation } };
         msgs.push(match (op, selected) {

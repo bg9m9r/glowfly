@@ -116,8 +116,8 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             Some(Msg::StatusLoaded { generation, result: repo::status_at(&workdir).map_err(err) })
         }
         Effect::LoadDetail { workdir, oid } => Some(Msg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }),
-        Effect::LoadDiff { workdir, target, reload, generation, previous } => {
-            let result = repo::load_diff(&workdir, &target)
+        Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace } => {
+            let result = repo::load_diff_with(&workdir, &target, repo::LoadDiffOptions { ignore_whitespace })
                 .map(|mut d| {
                     d.highlight = highlight::highlight_diff(target.path(), &d, previous.as_ref());
                     d.intraline = intraline::intraline(&d);
@@ -125,7 +125,7 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
                     let marked = (0..d.hunks.len())
                         .map(|h| (0..d.hunks[h].lines.len()).filter(|&l| !d.intraline.line(h, l).is_empty()).count())
                         .sum::<usize>();
-                    tracing::debug!(path = target.path(), syntax, marked, "diff highlighted");
+                    tracing::debug!(path = target.path(), syntax, marked, ignore_whitespace, "diff highlighted");
                     d
                 })
                 .map_err(err);

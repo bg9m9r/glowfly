@@ -139,6 +139,9 @@ pub struct Settings {
     pub diff_layout: DiffLayout,
     /// Color diff text by language (Preferences > UI Customization).
     pub syntax_highlighting: bool,
+    /// Hide whitespace-only changes in diffs (diff header toggle).
+    #[serde(default)]
+    pub diff_ignore_whitespace: bool,
 
     /// Connected services. Secrets live in the OS credential store or Git Credential
     /// Manager, never here.
@@ -172,6 +175,7 @@ impl Default for Settings {
             columns: GraphColumns::default(),
             diff_layout: DiffLayout::Inline,
             syntax_highlighting: true,
+            diff_ignore_whitespace: false,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
         }
@@ -303,5 +307,15 @@ mod tests {
         let off = Settings { syntax_highlighting: false, ..Settings::default() };
         let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
         assert!(!back.syntax_highlighting);
+    }
+
+    #[test]
+    fn ignore_whitespace_defaults_off() {
+        // Files written before the toggle existed show every whitespace change.
+        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+        assert!(!s.diff_ignore_whitespace);
+        let on = Settings { diff_ignore_whitespace: true, ..Settings::default() };
+        let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+        assert!(back.diff_ignore_whitespace);
     }
 }
