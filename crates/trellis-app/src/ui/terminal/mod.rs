@@ -10,7 +10,7 @@ use crate::state::AppState;
 use crate::state::terminal::SessionStatus;
 use crate::terminal::TerminalMsg;
 use crate::ui::theme::color;
-use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText};
+use eframe::egui::{self, Align, FontSelection, Key, Layout, Modifiers, RichText, text::LayoutJob};
 
 const HIDE_TIP: &str = "Hide the terminal panel (Ctrl+`)";
 const KILL_TIP: &str = "Stop the shell and everything running in it";
@@ -51,12 +51,11 @@ fn header(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let session = crate::state::terminal::active(st);
     let tab = st.snap.as_ref().map(|s| s.name.as_str()).unwrap_or_default();
     ui.horizontal(|ui| {
-        ui.strong("Terminal");
-        let what = match session.map(|s| s.program.as_str()).filter(|p| !p.is_empty()) {
-            Some(program) => format!("{program} · {tab}"),
-            None => tab.to_owned(),
-        };
-        ui.label(RichText::new(what).color(color::weak()));
+        let program = session.map(|s| s.program.as_str()).unwrap_or_default();
+        let mut job = LayoutJob::default();
+        RichText::new("Terminal").strong().append_to(&mut job, ui.style(), FontSelection::Default, Align::Center);
+        RichText::new(subtitle(program, tab)).color(color::weak()).append_to(&mut job, ui.style(), FontSelection::Default, Align::Center);
+        ui.label(job);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.small_button("Hide").on_hover_text(HIDE_TIP).clicked() {
                 msgs.push(Msg::Terminal(TerminalMsg::Hide));
@@ -107,6 +106,11 @@ fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     }
 }
 
+/// What follows "Terminal" in the header: " · program · tab", leaving out what is empty.
+fn subtitle(program: &str, tab: &str) -> String {
+    [program, tab].iter().filter(|s| !s.is_empty()).map(|s| format!(" · {s}")).collect()
+}
+
 /// "Process exited with code N" and a Restart button across the bottom of the panel.
 fn exit_strip(ui: &mut egui::Ui, code: Option<u32>, msgs: &mut Vec<Msg>) {
     egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 4)).show(ui, |ui| {
@@ -122,4 +126,15 @@ fn exit_strip(ui: &mut egui::Ui, code: Option<u32>, msgs: &mut Vec<Msg>) {
             }
         });
     });
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn subtitle_separates_the_program_and_tab_from_terminal() {
+        assert_eq!(format!("Terminal{}", super::subtitle("pwsh", "demo")), "Terminal · pwsh · demo");
+        assert_eq!(super::subtitle("", "demo"), " · demo");
+        assert_eq!(super::subtitle("bash", ""), " · bash");
+        assert_eq!(super::subtitle("", ""), "");
+    }
 }

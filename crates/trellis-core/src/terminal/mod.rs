@@ -1,9 +1,11 @@
 //! Terminal emulation for the built-in terminal panel: the screen model (screen), key and paste
-//! encoding (keys), PTY sessions (pty) and the queries the terminal answers (queries).
+//! encoding (keys), PTY sessions (pty), the queries the terminal answers (queries) and redrawing
+//! a screen on a fresh parser (replay).
 
 mod keys;
 pub mod pty;
 mod queries;
+mod replay;
 mod screen;
 
 pub use keys::{KeyMods, Modes, TermInput, TermKey, encode};

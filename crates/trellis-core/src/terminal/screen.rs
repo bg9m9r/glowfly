@@ -1,8 +1,10 @@
 //! The terminal screen: a VT parser fed with a shell's output, read back as styled rows.
 
+use std::panic::AssertUnwindSafe;
+
 use super::keys::Modes;
-use super::queries;
 use super::{CellStyle, TermColor, TermRow, TermSpan};
+use super::{queries, replay};
 
 /// The visible screen of one terminal session (no scrollback yet).
 pub struct TermScreen {
@@ -25,12 +27,12 @@ impl TermScreen {
         data.extend_from_slice(bytes);
         let mut done = 0;
         for (end, query) in queries::find(&data) {
-            self.parser.process(&data[done..end]);
+            self.process(&data[done..end]);
             done = end;
             replies.extend(self.answer(query));
         }
         let keep = queries::partial_tail(&data[done..]);
-        self.parser.process(&data[done..data.len() - keep]);
+        self.process(&data[done..data.len() - keep]);
         self.pending = data[data.len() - keep..].to_vec();
         replies
     }
@@ -46,8 +48,39 @@ impl TermScreen {
         }
     }
 
+    /// Hands output to the parser. vt100 panics on some states it gets itself into (see
+    /// `resize`); rather than take the app down, the screen starts over from what it showed and
+    /// the rest of this output is lost. Programs redraw after a resize anyway.
+    fn process(&mut self, bytes: &[u8]) {
+        let parser = &mut self.parser;
+        if std::panic::catch_unwind(AssertUnwindSafe(|| parser.process(bytes))).is_err() {
+            self.rebuild();
+        }
+    }
+
+    /// Replaces the parser with a fresh one showing the same screen.
+    fn rebuild(&mut self) {
+        let (rows, cols) = self.size();
+        let replay = replay::replay(self.parser.screen(), &self.rows());
+        let mut parser = vt100::Parser::new(rows, cols, 0);
+        parser.process(&replay);
+        self.parser = parser;
+    }
+
     pub fn resize(&mut self, rows: u16, cols: u16) {
+        let narrower = cols.max(1) < self.size().1;
         self.parser.set_size(rows.max(1), cols.max(1));
+        // A wide glyph whose second half the new width cut off stays in vt100's grid, and the
+        // next write over it panics. Redraw without it.
+        if narrower && self.cut_wide_glyph() {
+            self.rebuild();
+        }
+    }
+
+    fn cut_wide_glyph(&self) -> bool {
+        let screen = self.parser.screen();
+        let (rows, cols) = screen.size();
+        (0..rows).any(|r| screen.cell(r, cols - 1).is_some_and(vt100::Cell::is_wide))
     }
 
     /// (rows, cols).
@@ -226,5 +259,45 @@ mod tests {
         assert!(s.text().starts_with("hello"), "{:?}", s.text());
         s.resize(0, 0);
         assert_eq!(s.size(), (1, 1));
+    }
+
+    #[test]
+    fn narrowing_through_a_wide_glyph_drops_it_instead_of_panicking() {
+        // The glyph sits in the last two columns, and the narrower screen keeps only one of them.
+        for (before, cols) in [(77, 78), (78, 79)] {
+            let mut s = screen(&format!("{}漢", "a".repeat(before)));
+            s.resize(24, cols);
+            assert_eq!(s.size(), (24, cols));
+            s.feed(b"xy");
+            s.feed(b"\x1b[1;1Hz");
+            let first = s.text().lines().next().unwrap_or_default().to_owned();
+            assert!(first.starts_with(&format!("z{}", "a".repeat(before - 1))), "cols {cols}: {first:?}");
+            assert!(!first.contains('漢') && first.chars().count() <= usize::from(cols), "{first:?}");
+        }
+    }
+
+    #[test]
+    fn narrowing_keeps_styles_modes_and_the_cursor() {
+        let mut s = screen(&format!("\x1b[?2004h\x1b[31mred\x1b[0m\r\n{}漢\x1b[2;3H", "b".repeat(77)));
+        s.resize(24, 78);
+        let rows = s.rows();
+        assert_eq!(rows[0].spans[0].text, "red");
+        assert_eq!(rows[0].spans[0].style.fg, TermColor::Indexed(1));
+        assert_eq!(rows[1].spans.iter().map(|sp| sp.text.as_str()).collect::<String>(), "b".repeat(77));
+        assert_eq!(s.cursor(), Some((1, 2)));
+        assert!(s.modes().bracketed_paste);
+        s.feed(b"\x1b[2;78Hz");
+        assert_eq!(s.text().lines().nth(1), Some(format!("{}z", "b".repeat(77)).as_str()));
+    }
+
+    #[test]
+    fn a_parser_panic_resets_the_screen_instead_of_crashing() {
+        // A glyph cut by narrowing the main screen while a full-screen program shows the other.
+        let mut s = screen(&format!("{}漢\x1b[?1049h", "a".repeat(77)));
+        s.resize(24, 78);
+        s.feed(b"\x1b[?1049l\x1b[1;78Hxy");
+        assert_eq!(s.size(), (24, 78));
+        s.feed(b"\x1b[1;1Hok");
+        assert!(s.text().starts_with("ok"), "{:?}", s.text());
     }
 }

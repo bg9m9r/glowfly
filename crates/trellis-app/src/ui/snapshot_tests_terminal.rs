@@ -56,7 +56,7 @@ fn terminal_panel_dark() {
     assert!(pushed(&h, |t| matches!(t, TerminalMsg::Resize { .. })), "the grid is not 24x80");
     assert!(h.query_by_label("Kill").is_some());
     assert!(h.query_by_label("Restart").is_none());
-    assert!(h.query_by_label("pwsh · demo").is_some());
+    assert!(h.query_by_label("Terminal · pwsh · demo").is_some());
     drop(h);
     remove_fixture(&dir);
 }
