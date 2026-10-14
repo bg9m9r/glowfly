@@ -1,8 +1,9 @@
 //! The command palette's commands: which are available now, their labels, hidden keywords,
-//! details and the global keys that do the same.
+//! details and the global keys that do the same (from the binding table in `keymap.rs`).
 
 use super::palette_kinds::{InputKind, PickKind, StashAction};
 use super::{AppState, Selection};
+use crate::keymap::BindingId;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::Snapshot;
@@ -64,6 +65,8 @@ pub enum PaletteCommand {
     ReopenClosedTab,
     CloseTab,
     OpenPrefs,
+    /// Open the keyboard shortcut sheet.
+    KeyboardShortcuts,
     /// Show (true) or hide (false) the text under toolbar buttons.
     ToolbarLabels(bool),
     Theme(ThemeChoice),
@@ -99,20 +102,28 @@ impl PaletteCommand {
         }
     }
 
-    /// The global binding in `ui/mod.rs` that does the same thing (`tab_shortcuts`,
-    /// `undo_shortcuts`, F5 and the rest); keep the two in step.
+    /// The key that does the same thing, from the binding table.
     pub fn shortcut(&self) -> Option<&'static str> {
-        match self {
-            PaletteCommand::SearchCommits => Some("Ctrl+F"),
-            PaletteCommand::CloseTab => Some("Ctrl+W"),
-            PaletteCommand::OpenPrefs => Some("Ctrl+,"),
-            PaletteCommand::Undo => Some("Ctrl+Z"),
-            PaletteCommand::Redo => Some("Ctrl+Y"),
-            PaletteCommand::NewTab => Some("Ctrl+T"),
-            PaletteCommand::ReopenClosedTab => Some("Ctrl+Shift+T"),
-            PaletteCommand::Refresh => Some("F5"),
-            _ => None,
-        }
+        self.binding().map(crate::keymap::hint)
+    }
+
+    /// The binding in `keymap.rs` that does the same thing.
+    fn binding(&self) -> Option<BindingId> {
+        use PaletteCommand as C;
+        Some(match self {
+            C::SearchCommits => BindingId::Search,
+            C::CloseTab => BindingId::CloseTab,
+            C::OpenPrefs => BindingId::Prefs,
+            C::Undo => BindingId::Undo,
+            C::Redo => BindingId::Redo,
+            C::NewTab => BindingId::NewTab,
+            C::ReopenClosedTab => BindingId::ReopenTab,
+            C::Refresh => BindingId::Refresh,
+            C::StageAll => BindingId::StageAll,
+            C::UnstageAll => BindingId::UnstageAll,
+            C::KeyboardShortcuts => BindingId::Sheet,
+            _ => return None,
+        })
     }
 }
 
@@ -255,6 +266,7 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
         out.push(entry(C::CloseTab, "Close tab", "close repository"));
     }
     out.push(entry(C::OpenPrefs, "Open Preferences", "settings options configure"));
+    out.push(entry(C::KeyboardShortcuts, "Keyboard shortcuts", "keys keyboard bindings hotkeys help reference list"));
     let labels = st.settings.toolbar_labels;
     let label = if labels { "Hide toolbar labels" } else { "Show toolbar labels" };
     out.push(entry(C::ToolbarLabels(!labels), label, "toolbar buttons text captions icons compact"));

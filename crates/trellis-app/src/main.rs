@@ -8,6 +8,7 @@
 
 mod effect;
 mod file_op;
+mod keymap;
 mod msg;
 mod platform;
 mod runner;

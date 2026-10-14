@@ -72,14 +72,23 @@ fn entries_without_repo() {
     st.settings.theme = ThemeChoice::Dark;
     assert_eq!(
         labels(&st, ""),
-        ["Open repository…", "New tab", "Open Preferences", "Hide toolbar labels", "Theme: Dark", "Theme: Light", "Theme: Follow system"]
+        [
+            "Open repository…",
+            "New tab",
+            "Open Preferences",
+            "Keyboard shortcuts",
+            "Hide toolbar labels",
+            "Theme: Dark",
+            "Theme: Light",
+            "Theme: Follow system"
+        ]
     );
     let list = shown(&st, "");
-    assert_eq!(list[4].entry.detail.as_deref(), Some("current"));
-    assert!(list[5].entry.detail.is_none() && list[6].entry.detail.is_none());
+    assert_eq!(list[5].entry.detail.as_deref(), Some("current"));
+    assert!(list[6].entry.detail.is_none() && list[7].entry.detail.is_none());
 
     st.settings.theme = ThemeChoice::System;
-    assert_eq!(shown(&st, "")[6].entry.detail.as_deref(), Some("current"));
+    assert_eq!(shown(&st, "")[7].entry.detail.as_deref(), Some("current"));
 
     st.tabs.push(Tab::empty());
     assert!(has(&st, "Close tab"));
@@ -121,10 +130,10 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 7);
+    assert_eq!(shown(&st, "").len(), 8);
     run(&mut st, Msg::PaletteMove(-1));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 6);
+    assert_eq!(p.selected, 7);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::PaletteMove(1));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
@@ -310,7 +319,9 @@ fn shortcut_hints() {
     assert_eq!(hint("Open Preferences"), Some("Ctrl+,"));
     assert_eq!(hint("Refresh"), Some("F5"));
     assert_eq!(hint("New tab"), Some("Ctrl+T"));
-    for label in ["Push", "Stash changes", "Stage all files", "Create tag at HEAD…", "Checkout topic"] {
+    assert_eq!(hint("Stage all files"), Some("Ctrl+Shift+S"));
+    assert_eq!(hint("Keyboard shortcuts"), Some("Ctrl+/"));
+    for label in ["Push", "Stash changes", "Create tag at HEAD…", "Checkout topic"] {
         assert_eq!(hint(label), None, "{label}");
     }
     // F5 refreshes; it doesn't fetch.

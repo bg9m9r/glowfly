@@ -105,6 +105,8 @@ crates/
                           New file and Rename file dialogs' path form), tags (the New tag
                           dialog's form, its name check and push remote)
     msg.rs                Msg: user intents and background results
+    keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
+                          the shortcut sheet, palette hints and tooltips
     effect.rs             Effect: everything slow or outside the process
     file_op.rs            FileOp (a working-tree file operation), DeleteMode (trash or
                           permanent, fixed when the confirmation opens), WorkFileOk (its result)
@@ -135,7 +137,8 @@ crates/
                           items, stash sub-lists and the stash message step), highlight (starting the background highlighting pass,
                           attaching its result if the same diff is still shown), tags
                           (opening the New tag dialog, creating the tag and pushing it in
-                          one job, the push setting)
+                          one job, the push setting), shortcuts (checking and routing the
+                          staging, stage-all, focus-message and sheet keys)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
@@ -154,6 +157,8 @@ crates/
                           plain or annotated, name checks, push to a remote),
                           askpass (the credential prompt, drawn above every other dialog),
                           palette (the Ctrl+P command palette overlay),
+                          shortcuts/ (matching the newer keys from the table; sheet: the
+                          Ctrl+/ shortcut sheet),
                           status, prefs/ (editor: the Editor page), theme, widgets
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,

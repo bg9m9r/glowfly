@@ -184,6 +184,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::ReopenClosedTab => Msg::ReopenClosedTab,
         C::CloseTab => Msg::CloseTab(usize::MAX),
         C::OpenPrefs => Msg::OpenPrefs(PrefPage::General),
+        C::KeyboardShortcuts => Msg::Shortcut(crate::keymap::KeyAction::ToggleSheet),
         C::ToolbarLabels(on) => Msg::SetToolbarLabels(on),
         C::Theme(t) => Msg::SetTheme(t),
         C::Checkout(name) => Msg::git("Checkout", &["checkout", &name]),

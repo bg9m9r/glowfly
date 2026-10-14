@@ -269,8 +269,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Per-line hover buttons (stage / unstage / discard this line)
   - [ ] Drag to select a range of lines
   - [ ] Selections spanning several hunks
-  - [ ] Keyboard shortcuts (see P1 Keyboard shortcuts); reverting lines of a commit diff is
-    under the diff viewer
+  - [x] Keyboard shortcuts: S/U stage or unstage the selected lines (see P1 Keyboard
+    shortcuts); reverting lines of a commit diff is under the diff viewer
   - [ ] Keep the line selection across tab switches
   - [ ] Remove the index entry, rather than leaving an empty file, when every line of an added
     or deleted file is unstaged or staged line by line
@@ -532,10 +532,20 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       - [ ] Apply or pop with `--index` to restore the staged state
   - [ ] Create, delete and edit files
   - [ ] PageUp/PageDown/Home/End in the list, and the selection following the mouse
-- [ ] **Keyboard shortcuts**
-  Exist: tabs, undo/redo, F5, Ctrl+F, Ctrl+, and diff navigation. Missing: stage/unstage the
-  file or selected lines (S/U), stage all, commit (Ctrl+Enter), focus the message, topological
-  next/previous, a shortcut reference sheet, and customization.
+- [x] **Keyboard shortcuts**
+  Exist: tabs, undo/redo, F5, Ctrl+F, Ctrl+, , diff navigation, commit from the message box
+  (Ctrl+Enter, Ctrl+Shift+Enter), S/U to stage or unstage the open file or its selected lines,
+  Ctrl+Shift+S/U to stage or unstage all, Ctrl+Shift+M for the commit message, and a Ctrl+/
+  shortcut sheet (filterable; also in the palette). One binding table (keymap.rs) feeds the
+  sheet, palette hints and tooltips.
+  - [ ] Topological next/previous (the next or previous commit on the selected commit's own
+    branch line) and first/last row in the graph
+  - [ ] Customization: rebind keys in Preferences, saved in settings, matched through the table
+  - [ ] Match the older keys (tabs, undo/redo, F5, Ctrl+F, Ctrl+, , F7/Alt+arrows, the palette's
+    keys) through the table too, so it is checked rather than kept in step by hand
+  - [ ] A visible way to the sheet (a toolbar, status bar or Help entry naming Ctrl+/)
+  - [ ] S in the WIP file lists (keyboard focus in the lists, Up/Down between files), and moving
+    on to the next unstaged file after S stages the open one
 - [ ] **Built-in terminal**
   Bottom terminal panel with tabs (`portable-pty` plus a terminal widget). Trellis currently only
   launches an external terminal.

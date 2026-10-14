@@ -97,6 +97,8 @@ pub struct Toast {
     pub at: Instant,
 }
 
+/// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter
+/// field.
 pub enum Modal {
     NewBranch { start: Option<String>, name: String, checkout: bool },
     NewTag(tags::TagForm),
@@ -108,6 +110,7 @@ pub enum Modal {
     SetUpstream { branch: String, remote: String, name: String },
     NewFile(files::PathForm),
     RenameFile { old: String, form: files::PathForm },
+    Shortcuts { filter: String },
 }
 
 pub struct Sections {
@@ -172,6 +175,8 @@ pub struct ViewState {
     pub history_scroll_to: Option<usize>,
     /// Focus the graph search field on the next frame (set by update).
     pub focus_search: bool,
+    /// Focus the commit summary field on the next frame (set by update, taken by the commit box).
+    pub focus_message: bool,
 }
 
 impl Default for ViewState {
@@ -205,6 +210,7 @@ impl Default for ViewState {
             conflict_scroll_to: None,
             history_scroll_to: None,
             focus_search: false,
+            focus_message: false,
         }
     }
 }

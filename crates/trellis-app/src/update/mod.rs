@@ -20,6 +20,7 @@ mod publish;
 mod rebase;
 mod repo;
 mod selection;
+mod shortcuts;
 mod tabs;
 mod tags;
 mod undo;
@@ -81,6 +82,8 @@ mod rebase_tests;
 mod revert_tests;
 #[cfg(test)]
 mod selection_tests;
+#[cfg(test)]
+mod shortcuts_tests;
 #[cfg(test)]
 mod tabs_tests;
 #[cfg(test)]
@@ -233,6 +236,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             commit::handle(st, msg, now, &mut fx)
         }
         Msg::Undo | Msg::Redo => undo::handle(st, msg, now, &mut fx),
+        Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
         Msg::RestoreFile { .. }
         | Msg::FileRestored { .. }
         | Msg::RestoreWouldOverwrite { .. }

@@ -5,6 +5,7 @@ use super::common::{issue_chip, lane_color, menu_item, short, state_actions, sta
 use super::file_menu::{self, RowSource};
 use super::graph::draw_avatar;
 use super::theme::color;
+use crate::keymap::{BindingId, hint};
 use crate::msg::Msg;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
@@ -183,13 +184,15 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
             ui.label(RichText::new(format!("{title} ({})", files.len())).strong().color(color::text()));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if staged {
-                    if !files.is_empty() && ui.small_button("Unstage all").clicked() {
+                    let tip = format!("Unstage every file ({})", hint(BindingId::UnstageAll));
+                    if !files.is_empty() && ui.small_button("Unstage all").on_hover_text(tip).clicked() {
                         msgs.push(Msg::UnstageAll);
                     }
                     return;
                 }
                 if !files.is_empty() {
-                    if ui.small_button("Stage all").clicked() {
+                    let tip = format!("Stage every changed file ({})", hint(BindingId::StageAll));
+                    if ui.small_button("Stage all").on_hover_text(tip).clicked() {
                         msgs.push(Msg::StageAll);
                     }
                     if ui.small_button("Discard all").clicked() {

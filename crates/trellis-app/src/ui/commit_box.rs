@@ -1,5 +1,6 @@
 //! The commit box under the WIP file lists: summary and description, the Amend, "Push after
-//! committing" and "Skip hooks" options, the commit button, and the Ctrl+Enter shortcuts.
+//! committing" and "Skip hooks" options, the commit button, and the Ctrl+Enter shortcuts. The
+//! summary takes the keyboard when `view.focus_message` is set (Ctrl+Shift+M).
 
 use super::UiCache;
 use super::common::issue_chip;
@@ -46,6 +47,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
 
     let spell = st.settings.spellcheck;
     let s = spell_text_edit(ui, &mut st.draft.summary, "Commit summary", 1, &mut cache.speller, spell);
+    if std::mem::take(&mut st.view.focus_message) {
+        s.request_focus();
+    }
     let len = st.draft.summary.chars().count();
     let c = if len > 72 { color::red() } else { color::faint() };
     ui.label(RichText::new(format!("{len}/72")).small().color(c));

@@ -24,6 +24,7 @@ mod prefs;
 mod publish;
 mod rebase;
 mod ref_visibility;
+mod shortcuts;
 mod sidebar;
 mod spell_edit;
 mod status;
@@ -151,6 +152,7 @@ impl TrellisApp {
     /// Keyboard shortcuts and window events, turned into messages or view-state changes.
     fn input(&mut self, ctx: &egui::Context, msgs: &mut Vec<Msg>) {
         palette::shortcut(ctx, &self.st, msgs);
+        shortcuts::keys(ctx, &self.st, msgs);
         // The open palette keeps the keyboard: no other shortcut reaches what is under it.
         let palette = self.st.palette.is_some();
         let focused = ctx.input(|i| i.focused);

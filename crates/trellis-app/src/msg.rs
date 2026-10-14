@@ -209,6 +209,10 @@ pub enum Msg {
     /// Stage, unstage or discard the selected diff lines. Reads the selection when handled,
     /// so a confirmation whose diff changed meanwhile does nothing.
     ApplyLines(HunkOp),
+    /// A key from ui/shortcuts.rs: stage or unstage the open file or its selected lines, stage
+    /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
+    /// and turned into the usual messages in update/shortcuts.rs.
+    Shortcut(crate::keymap::KeyAction),
     /// Revert hunk `index` of the commit or comparison diff shown at `generation`
     /// (AppState::hunk_ops_gen) into the working tree. Refused if the diff changed since.
     RevertHunk {

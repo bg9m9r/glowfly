@@ -2,6 +2,7 @@
 //! Restore, Open and Show for a commit's file), next/previous change, the view mode and layout
 //! toggles, Expand all / Collapse all for whole-file folds and the whitespace toggle.
 
+use crate::keymap::{self, BindingId};
 use crate::msg::Msg;
 use crate::state::diff_nav::StepKind;
 use crate::ui::common::short;
@@ -78,12 +79,16 @@ pub(super) fn header_bar(
             }
             match target {
                 DiffTarget::Unstaged(p) => {
-                    if ui.button("Stage file").clicked() {
+                    let k = keymap::hint(BindingId::Stage);
+                    let tip = format!("Stage this file ({k}). With lines selected, {k} stages only those lines.");
+                    if ui.button("Stage file").on_hover_text(tip).clicked() {
                         msgs.push(Msg::StageFile(p.clone()));
                     }
                 }
                 DiffTarget::Staged(p) => {
-                    if ui.button("Unstage file").clicked() {
+                    let k = keymap::hint(BindingId::Unstage);
+                    let tip = format!("Unstage this file ({k}). With lines selected, {k} unstages only those lines.");
+                    if ui.button("Unstage file").on_hover_text(tip).clicked() {
                         msgs.push(Msg::UnstageFile(p.clone()));
                     }
                 }
