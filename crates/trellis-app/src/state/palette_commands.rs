@@ -1,7 +1,7 @@
 //! The command palette's commands: which are available now, their labels, hidden keywords,
 //! details and the global keys that do the same.
 
-use super::palette::PickKind;
+use super::palette_kinds::{InputKind, PickKind, StashAction};
 use super::{AppState, Selection};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -29,6 +29,17 @@ pub enum PaletteCommand {
     Stash,
     /// Pop the most recent stash.
     PopStash,
+    /// Enter the stash sub-list for this action; choosing a stash runs `StashOp`.
+    ChooseStash(StashAction),
+    /// Apply, pop or drop the stash with this commit, found again in the current snapshot.
+    StashOp {
+        action: StashAction,
+        oid: git2::Oid,
+    },
+    /// Enter the stash message step; Enter runs `StashWithMessage`.
+    StashMessage,
+    /// Stash every change, untracked files included, under this message.
+    StashWithMessage(String),
     StageAll,
     UnstageAll,
     Undo,
@@ -75,6 +86,15 @@ impl PaletteCommand {
     pub fn pick_kind(&self) -> Option<PickKind> {
         match self {
             PaletteCommand::FileHistory => Some(PickKind::FileHistory),
+            PaletteCommand::ChooseStash(a) => Some(PickKind::Stash(*a)),
+            _ => None,
+        }
+    }
+
+    /// The free-text step this command opens instead of running at once.
+    pub fn input_kind(&self) -> Option<InputKind> {
+        match self {
+            PaletteCommand::StashMessage => Some(InputKind::StashMessage),
             _ => None,
         }
     }
@@ -162,9 +182,22 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     }
     if snap.is_dirty() {
         out.push(entry(C::Stash, "Stash changes", "save shelve park untracked wip stash push"));
+        out.push(entry(C::StashMessage, "Stash with message…", "save shelve park untracked wip stash push name describe message"));
     }
     if let Some(top) = snap.stashes.first() {
         out.push(with_detail(entry(C::PopStash, "Pop stash", "unstash apply restore stash"), Some(top.message.clone())));
+    }
+    if !snap.stashes.is_empty() {
+        let len = snap.stashes.len();
+        let n = format!("{len} stash{}", if len == 1 { "" } else { "es" });
+        let choose = [
+            (StashAction::Apply, "Apply stash…", "unstash restore keep stash"),
+            (StashAction::Pop, "Pop stash…", "unstash apply restore remove stash"),
+            (StashAction::Drop, "Delete stash…", "drop remove discard clear stash"),
+        ];
+        for (action, label, keywords) in choose {
+            out.push(with_detail(entry(C::ChooseStash(action), label, keywords), Some(n.clone())));
+        }
     }
     if !snap.unstaged.is_empty() {
         out.push(entry(C::StageAll, "Stage all files", "add everything"));

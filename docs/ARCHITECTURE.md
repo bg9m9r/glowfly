@@ -92,8 +92,10 @@ crates/
                           diff_nav (next/previous change across files: the file list a
                           diff came from, where a step lands), commit (the commit draft, its
                           readiness rules, button label and command line), palette (open
-                          state and modes: the command list or a command's sub-list, ranked
-                          per query and capped at MAX_COMMAND_ROWS), palette_commands (the
+                          state and modes: the command list, a command's sub-list or a
+                          free-text step, ranked per query and capped at MAX_COMMAND_ROWS),
+                          palette_kinds (the palette's second steps: sub-lists for files and
+                          stashes, free-text steps, their prompts), palette_commands (the
                           commands available now (checkouts of local and remote branches and
                           tags): labels, hidden keywords, details and shortcut hints), files (the
                           New file and Rename file dialogs' path form), tags (the New tag
@@ -126,11 +128,11 @@ crates/
                           commit (committing, stage-all-and-commit, push after committing, the
                           template prefill), palette (opening the command palette, moving,
                           running a command, entering and leaving a sub-list and loading its
-                          items), highlight (starting the background highlighting pass,
+                          items, stash sub-lists and the stash message step), highlight (starting the background highlighting pass,
                           attaching its result if the same diff is still shown), tags
                           (opening the New tag dialog, creating the tag and pushing it in
                           one job, the push setting)
-                          (+ headless tests in update/tests.rs)
+                          (+ headless tests in update/tests.rs, update/palette_stash_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -153,7 +155,7 @@ crates/
                           snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
                           snapshot_tests_file_menu.rs, snapshot_tests_commit.rs,
                           snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
-                          snapshot_tests_tag.rs)
+                          snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

@@ -12,6 +12,7 @@ pub mod history;
 pub mod lines;
 pub mod palette;
 pub mod palette_commands;
+pub mod palette_kinds;
 pub mod prefs;
 pub mod publish;
 pub mod rebase;

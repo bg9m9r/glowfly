@@ -447,7 +447,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   refresh, open in terminal and in the file manager, diff layout and whitespace toggles, open a
   repository or a recent one, new and reopened tabs, close tab, Preferences, toolbar labels,
   theme, and checkout of local branches, remote branches (creating a tracking branch) and tags
-  (detached), and a file finder for file history. Entries whose command also has a global key
+  (detached), a file finder for file history, apply, pop or delete a chosen stash, and stash
+  with a message. Entries whose command also has a global key
   show it dimmed at the right (Ctrl+F, Ctrl+W, F5, Ctrl+Z/Y, Ctrl+T, Ctrl+Shift+T and Ctrl+,).
   The list shows at most 200 rows; typing more narrows the rest.
   - [x] File finder: pick any tracked file to open its history (blame waits for the blame gutter)
@@ -463,8 +464,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Shortcut hints next to entries (Ctrl+F, Ctrl+, Ctrl+W)
     - [x] A Refresh entry carrying the F5 hint
     - [ ] Cmd-style labels on macOS for the hints and tooltips
-  - [ ] Two-step entries: pick a command, then a sub-list with its own prompt (branches,
-    themes, repositories)
+  - [ ] Two-step entries: pick a command, then a sub-list with its own prompt (done for files
+    and stashes; branches, themes and repositories remain)
   - [x] Check out remote branches (creating a tracking branch) and tags
     - [ ] Check out a remote branch whose name is taken locally under a new local name
     - [ ] Offer to fast-forward the checked-out branch when it is behind the picked remote branch
@@ -479,7 +480,13 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Syntax highlighting on/off (re-highlighting the open diff when flipped)
     - [ ] Show the working directory changes (select the WIP row)
     - [ ] Diff mode (whole file / hunks) toggle
-    - [ ] Apply, pop or drop a chosen stash through a stash sub-list, and stash with a message
+    - [x] Apply, pop or drop a chosen stash through a stash sub-list, and stash with a message
+      - [ ] Confirm before applying or popping a stash on top of uncommitted changes, in the
+        palette and the sidebar alike
+      - [ ] Share one stash-action message builder between the sidebar and the palette
+      - [ ] Refresh an open stash sub-list's rows when the stash stack changes while it is
+        shown (choosing a stash already finds it again by its commit)
+      - [ ] Apply or pop with `--index` to restore the staged state
   - [ ] Create, delete and edit files
   - [ ] PageUp/PageDown/Home/End in the list, and the selection following the mouse
 - [ ] **Keyboard shortcuts**
@@ -514,6 +521,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   (Push a tag and delete it locally exist; tag signing is on the Commit Signing page.)
 - [ ] **Stash improvements**
   Stash selected files only, a stash message field, rename a stash, hide stashes.
+  - [ ] Rename (edit the message of) an existing stash, from the sidebar and the palette
+  - [ ] Stash only staged changes or selected files, with a message, from the palette too
 - [ ] **Clone and init options**
   Shallow and sparse clone; init with a `.gitignore` template and a license; create the hosting-service repo and push on init; clone from a list of
   your repos on a connected service.

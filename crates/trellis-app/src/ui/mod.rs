@@ -51,6 +51,8 @@ mod snapshot_tests_file_menu;
 #[cfg(test)]
 mod snapshot_tests_palette;
 #[cfg(test)]
+mod snapshot_tests_palette_stash;
+#[cfg(test)]
 mod snapshot_tests_rebase;
 #[cfg(test)]
 mod snapshot_tests_revert;

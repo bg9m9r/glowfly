@@ -2,13 +2,16 @@
 //! the commands it lists for the query. App-wide, never parked with a tab. The view, `update`
 //! and the tests all build the list through `entries` and `listed` (or `shown`), which keep at
 //! most `MAX_COMMAND_ROWS` of the ranked matches; the commands themselves are
-//! in `palette_commands`. Some commands open a second step (`Mode::Pick`): a list of items for
-//! that command, such as tracked files.
+//! in `palette_commands`. Some commands open a second step: a list of items for that command
+//! (`Mode::Pick`), such as tracked files or stashes, or a free-text field (`Mode::Input`), such
+//! as a stash message. The steps' texts are in `palette_kinds`.
 
 pub use super::palette_commands::{Entry, PaletteCommand, entries};
+pub use super::palette_kinds::{InputKind, PickKind, StashAction};
 
 use super::AppState;
 use trellis_core::fuzzy;
+use trellis_core::repo::StashInfo;
 
 #[derive(Default)]
 pub struct Palette {
@@ -26,6 +29,8 @@ pub enum Mode {
     #[default]
     Commands,
     Pick(Pick),
+    /// The field takes free text for one command.
+    Input(InputKind),
 }
 
 impl Palette {
@@ -41,68 +46,6 @@ pub const MAX_PICK_ROWS: usize = 200;
 /// Most rows the command list shows; typing more narrows the rest.
 pub const MAX_COMMAND_ROWS: usize = MAX_PICK_ROWS;
 
-/// A second step: the palette lists items for one command, with its own prompt.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PickKind {
-    FileHistory,
-}
-
-impl PickKind {
-    /// The step label beside the search field.
-    pub fn title(self) -> &'static str {
-        match self {
-            PickKind::FileHistory => "File history",
-        }
-    }
-
-    /// The search field's hint.
-    pub fn prompt(self) -> &'static str {
-        match self {
-            PickKind::FileHistory => "Find a file to show its history",
-        }
-    }
-
-    pub fn loading(self) -> &'static str {
-        match self {
-            PickKind::FileHistory => "Loading files…",
-        }
-    }
-
-    /// Shown when nothing matches the query.
-    pub fn none_text(self) -> &'static str {
-        match self {
-            PickKind::FileHistory => "No matching files",
-        }
-    }
-
-    /// Shown when there is nothing to pick at all.
-    pub fn empty_text(self) -> &'static str {
-        match self {
-            PickKind::FileHistory => "This repository has no tracked files",
-        }
-    }
-
-    pub fn footer(self) -> &'static str {
-        match self {
-            PickKind::FileHistory => "Up/Down to choose, Enter to show history, Backspace or Esc to go back",
-        }
-    }
-
-    /// The line under a list cut short at `shown` of `total` matches.
-    pub fn more_text(self, shown: usize, total: usize) -> String {
-        match self {
-            PickKind::FileHistory => format!("Showing {shown} of {total} files. Type more to narrow the list."),
-        }
-    }
-
-    /// What picking `item` runs.
-    pub fn command(self, item: &str) -> PaletteCommand {
-        match self {
-            PickKind::FileHistory => PaletteCommand::OpenFileHistory(item.to_owned()),
-        }
-    }
-}
-
 /// A sub-list's items, loaded in the background.
 #[derive(Debug, PartialEq)]
 pub enum Items {
@@ -114,6 +57,9 @@ pub enum Items {
 pub struct Pick {
     pub kind: PickKind,
     pub items: Items,
+    /// The stashes behind the items of a stash sub-list (empty for other kinds), as the
+    /// snapshot listed them when the sub-list opened.
+    stashes: Vec<StashInfo>,
     /// The ranking for the last query, kept until the query or the items change.
     ranked: Option<Ranked>,
 }
@@ -137,7 +83,26 @@ pub struct Hit {
 
 impl Pick {
     pub fn new(kind: PickKind) -> Self {
-        Self { kind, items: Items::Loading, ranked: None }
+        Self { kind, items: Items::Loading, stashes: Vec::new(), ranked: None }
+    }
+
+    /// A stash sub-list over `list`, labelled by the stash messages.
+    pub fn stashes(action: StashAction, list: &[StashInfo]) -> Self {
+        let items = Items::Ready(list.iter().map(|s| s.message.clone()).collect());
+        Self { kind: PickKind::Stash(action), items, stashes: list.to_vec(), ranked: None }
+    }
+
+    /// The dim text at the right of item `index`: a stash's ref.
+    pub fn detail(&self, index: usize) -> Option<String> {
+        self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index))
+    }
+
+    /// What choosing item `index` runs.
+    pub fn command(&self, index: usize) -> Option<PaletteCommand> {
+        match self.kind {
+            PickKind::FileHistory => Some(PaletteCommand::OpenFileHistory(self.label(index).to_owned())),
+            PickKind::Stash(action) => self.stashes.get(index).map(|s| PaletteCommand::StashOp { action, oid: s.oid }),
+        }
     }
 
     pub fn set_items(&mut self, items: Items) {
@@ -160,11 +125,13 @@ impl Pick {
 
     /// Ranks the items for `query`, unless they already are. A query that extends the last one
     /// only searches the last matches: whatever matches the longer query matches the shorter.
+    /// Details (a stash's ref) match as hidden keywords.
     pub fn refresh(&mut self, query: &str) {
-        let Items::Ready(items) = &self.items else { return };
         if self.ranked.as_ref().is_some_and(|r| r.query == query) {
             return;
         }
+        let details: Vec<String> = (0..self.stashes.len()).filter_map(|i| self.detail(i)).collect();
+        let Items::Ready(items) = &self.items else { return };
         let squash = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
         let ranked = if squash(query).is_empty() {
             let hits = (0..items.len().min(MAX_PICK_ROWS)).map(|index| Hit { index, matched: Vec::new() }).collect();
@@ -179,7 +146,8 @@ impl Pick {
                 }
                 _ => (0..items.len()).collect(),
             };
-            let pairs: Vec<(&str, &str)> = candidates.iter().map(|&i| (items[i].as_str(), "")).collect();
+            let keywords = |i: usize| details.get(i).map_or("", String::as_str);
+            let pairs: Vec<(&str, &str)> = candidates.iter().map(|&i| (items[i].as_str(), keywords(i))).collect();
             let found = fuzzy::rank(query, &pairs);
             let total = found.len();
             let mut matches = Vec::with_capacity(total);
@@ -238,12 +206,24 @@ pub fn can_pick_file(st: &AppState) -> bool {
         && st.history.is_none()
 }
 
+/// Whether a stash sub-list can be offered: a repository with at least one stash.
+pub fn can_pick_stash(st: &AppState) -> bool {
+    st.snap.as_ref().is_some_and(|s| !s.stashes.is_empty())
+}
+
+/// Whether "Stash with message…" can be offered: a repository with changes to stash.
+pub fn can_stash(st: &AppState) -> bool {
+    st.snap.as_ref().is_some_and(|s| s.is_dirty())
+}
+
 /// The number of rows the palette lists now (ranking the sub-list for the query if needed).
 pub fn row_count(st: &mut AppState) -> usize {
     let Some(p) = st.palette.as_ref() else { return 0 };
     let query = p.query.clone();
-    if matches!(p.mode, Mode::Commands) {
-        return shown(st, &query).len();
+    match p.mode {
+        Mode::Commands => return shown(st, &query).len(),
+        Mode::Input(_) => return 0,
+        Mode::Pick(_) => {}
     }
     let Some(Palette { mode: Mode::Pick(pick), .. }) = st.palette.as_mut() else { return 0 };
     pick.refresh(&query);

@@ -207,6 +207,7 @@ fn keywords_match_synonyms() {
     assert!(!snap.stashes.is_empty() && snap.is_dirty());
 
     assert!(matches(&st, "shelve", "Stash changes"));
+    assert!(matches(&st, "describe", "Stash with message…"));
     assert!(matches(&st, "unstash", "Pop stash"));
     assert!(matches(&st, "console", "Open in terminal"));
     assert!(matches(&st, "finder", SHOW_REPO_FOLDER));

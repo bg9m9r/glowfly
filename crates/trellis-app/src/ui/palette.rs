@@ -1,12 +1,13 @@
 //! The command palette (Ctrl+P): a search field over the commands available now, ranked by a
-//! fuzzy match, or over a two-step command's items (tracked files for File history). The lists
-//! come from `state::palette`; this file only draws them and turns keys and clicks into messages.
+//! fuzzy match, or over a two-step command's items (tracked files for File history, stashes to
+//! apply, pop or delete), or a free-text step (the message for a new stash). The lists come
+//! from `state::palette`; this file only draws them and turns keys and clicks into messages.
 
 use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::palette::{self, Items, Mode, Palette};
+use crate::state::palette::{self, InputKind, Items, Mode, Palette};
 use eframe::egui::{self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, pos2, text::LayoutJob, vec2};
 
 const WIDTH: f32 = 560.0;
@@ -31,7 +32,7 @@ pub fn shortcut(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
 /// Draws the open palette. A credential prompt above it keeps the keyboard.
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(p) = st.palette.as_ref() else { return };
-    let picking = matches!(p.mode, Mode::Pick(_));
+    let stepping = !matches!(p.mode, Mode::Commands);
     let empty = p.query.is_empty();
     let prompting = st.askpass.showing();
     let id = Id::new("trellis-palette");
@@ -48,12 +49,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     msgs.push(Msg::PaletteMove(-1));
                 }
                 run_selected = i.consume_key(Modifiers::NONE, Key::Enter);
-                // In a sub-list, Backspace on an empty field and Esc go back to the commands.
+                // In a second step, Backspace on an empty field and Esc go back to the commands.
                 // Taken before the field draws, and before the modal would close on Esc.
                 let back = |i: &mut egui::InputState| {
                     (empty && i.consume_key(Modifiers::NONE, Key::Backspace)) | i.consume_key(Modifiers::NONE, Key::Escape)
                 };
-                if picking && back(i) {
+                if stepping && back(i) {
                     msgs.push(Msg::PaletteBack);
                 }
             });
@@ -61,11 +62,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let Some(p) = st.palette.as_mut() else { return };
         search_row(ui, p, prompting, msgs);
         ui.add_space(6.0);
-        let footer = if picking {
-            pick_list(ui, p, msgs, run_selected)
-        } else {
-            commands_list(ui, st, msgs, run_selected);
-            "Up/Down to choose, Enter to run, Esc to close"
+        let footer = match &p.mode {
+            Mode::Commands => {
+                commands_list(ui, st, msgs, run_selected);
+                "Up/Down to choose, Enter to run, Esc to close"
+            }
+            Mode::Pick(_) => pick_list(ui, p, msgs, run_selected),
+            &Mode::Input(kind) => input_step(ui, kind, &p.query, msgs, run_selected),
         };
         ui.add_space(6.0);
         ui.label(RichText::new(footer).size(12.0).color(color::weak()));
@@ -75,7 +78,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     }
 }
 
-/// The search field, after a search icon, or in a sub-list after a back arrow and its title.
+/// The search field, after a search icon, or in a second step after a back arrow and its title.
 fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         let hint = match &p.mode {
@@ -85,14 +88,12 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 "Type a command, branch or tag name"
             }
             Mode::Pick(pk) => {
-                let (rect, r) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::click());
-                let col = if r.hovered() { color::text() } else { color::weak() };
-                widgets::paint_icon(ui.painter(), rect.center(), Icon::Back, col);
-                if r.on_hover_text("Back to commands (Backspace)").clicked() {
-                    msgs.push(Msg::PaletteBack);
-                }
-                ui.label(RichText::new(pk.kind.title()).size(12.5).color(color::weak()));
+                back_and_title(ui, pk.kind.title(), msgs);
                 pk.kind.prompt()
+            }
+            Mode::Input(k) => {
+                back_and_title(ui, k.title(), msgs);
+                k.prompt()
             }
         };
         let r = ui.add(
@@ -109,6 +110,27 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
             p.selected = 0;
         }
     });
+}
+
+/// A second step's back arrow (going back when clicked) and its title.
+fn back_and_title(ui: &mut Ui, title: &str, msgs: &mut Vec<Msg>) {
+    let (rect, r) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::click());
+    let col = if r.hovered() { color::text() } else { color::weak() };
+    widgets::paint_icon(ui.painter(), rect.center(), Icon::Back, col);
+    if r.on_hover_text("Back to commands (Backspace)").clicked() {
+        msgs.push(Msg::PaletteBack);
+    }
+    ui.label(RichText::new(title).size(12.5).color(color::weak()));
+}
+
+/// A free-text step: a note under the field; Enter runs the command for the typed text, unless
+/// it is blank. Returns the footer.
+fn input_step(ui: &mut Ui, kind: InputKind, query: &str, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
+    note(ui, kind.note(), color::weak());
+    if run_selected && let Some(cmd) = kind.command(query) {
+        msgs.push(Msg::RunPaletteCommand(cmd));
+    }
+    kind.footer()
 }
 
 /// The commands matching the query (at most `MAX_COMMAND_ROWS`).
@@ -160,18 +182,21 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
         Items::Ready(_) => match pk.ranked() {
             Some(r) if !r.hits.is_empty() => {
                 let sel = selected.min(r.hits.len() - 1);
-                if run_selected {
-                    msgs.push(Msg::RunPaletteCommand(kind.command(pk.label(r.hits[sel].index))));
+                if run_selected && let Some(c) = pk.command(r.hits[sel].index) {
+                    msgs.push(Msg::RunPaletteCommand(c));
                 }
                 egui::ScrollArea::vertical().id_salt("trellis-palette-items").max_height(LIST_MAX_H).show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 0.0;
                     for (i, hit) in r.hits.iter().enumerate() {
                         let label = pk.label(hit.index);
-                        // The folder part (through the last '/') is dimmed.
-                        let dim = label.rfind('/').map_or(0, |b| label[..=b].chars().count());
-                        let resp = row(ui, label, None, None, &hit.matched, dim, i == sel);
-                        if resp.clicked() {
-                            msgs.push(Msg::RunPaletteCommand(kind.command(label)));
+                        // A file's folder part (through the last '/') is dimmed.
+                        let dim = if kind.dims_folders() { label.rfind('/').map_or(0, |b| label[..=b].chars().count()) } else { 0 };
+                        let detail = pk.detail(hit.index);
+                        let resp = row(ui, label, detail.as_deref(), None, &hit.matched, dim, i == sel);
+                        if resp.clicked()
+                            && let Some(c) = pk.command(hit.index)
+                        {
+                            msgs.push(Msg::RunPaletteCommand(c));
                         }
                         if i == sel && scroll {
                             resp.scroll_to_me(None);

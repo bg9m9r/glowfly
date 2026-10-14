@@ -1,12 +1,14 @@
 //! The command palette: opening and closing it, moving the selection, running a command
-//! through the message that the rest of the app already uses for it, and the sub-lists that
-//! two-step commands open (loading their items in the background).
+//! through the message that the rest of the app already uses for it, and the second steps that
+//! two-step commands open: the file finder (loading its items in the background), the stash
+//! sub-lists and the stash message step.
 
 use crate::effect::Effect;
 use crate::msg::Msg;
-use crate::state::palette::{self, Items, Mode, Palette, PaletteCommand, Pick, PickKind};
+use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
 use crate::state::{AppState, PrefPage, Selection};
 use std::time::Instant;
+use trellis_core::repo::StashInfo;
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -29,12 +31,22 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 enter_pick(st, kind, fx);
                 return;
             }
+            if let Some(kind) = cmd.input_kind() {
+                enter_input(st, kind);
+                return;
+            }
+            // A blank message stashes nothing and leaves the step open.
+            if let PaletteCommand::StashWithMessage(t) = &cmd
+                && t.trim().is_empty()
+            {
+                return;
+            }
             st.palette = None;
             run(st, cmd, now, fx);
         }
         Msg::PaletteBack => {
             if let Some(p) = st.palette.as_mut()
-                && matches!(p.mode, Mode::Pick(_))
+                && !matches!(p.mode, Mode::Commands)
             {
                 p.mode = Mode::Commands;
                 p.query.clear();
@@ -67,25 +79,55 @@ fn may_open(st: &AppState) -> bool {
     st.modal.is_none() && st.prefs.is_none() && !st.askpass.showing()
 }
 
-/// Switches the palette to the sub-list for `kind` (opening it if closed) and loads its items.
-fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
-    if !palette::can_pick_file(st) {
-        return;
-    }
-    let Some(workdir) = st.workdir() else { return };
+/// Switches the palette to `mode` with an empty query, opening it if closed (unless something
+/// covers the window). Returns whether the step opened.
+fn open_step(st: &mut AppState, mode: Mode) -> bool {
     if st.palette.is_none() {
         if !may_open(st) {
-            return;
+            return false;
         }
         st.palette = Some(Palette::default());
     }
-    let Some(p) = st.palette.as_mut() else { return };
-    p.mode = Mode::Pick(Pick::new(kind));
+    let Some(p) = st.palette.as_mut() else { return false };
+    p.mode = mode;
     p.query.clear();
     p.selected = 0;
     p.scroll_to_selected = false;
     st.palette_gen += 1;
-    fx.push(Effect::LoadTrackedPaths { workdir, generation: st.palette_gen });
+    true
+}
+
+/// Switches the palette to the sub-list for `kind` (opening it if closed) and fills it: the
+/// tracked files load in the background, the stashes come from the snapshot.
+fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
+    match kind {
+        PickKind::FileHistory => {
+            if !palette::can_pick_file(st) {
+                return;
+            }
+            let Some(workdir) = st.workdir() else { return };
+            if open_step(st, Mode::Pick(Pick::new(kind))) {
+                fx.push(Effect::LoadTrackedPaths { workdir, generation: st.palette_gen });
+            }
+        }
+        PickKind::Stash(action) => {
+            if !palette::can_pick_stash(st) {
+                return;
+            }
+            let list = st.snap.as_ref().map(|s| s.stashes.clone()).unwrap_or_default();
+            open_step(st, Mode::Pick(Pick::stashes(action, &list)));
+        }
+    }
+}
+
+/// Switches the palette to the free-text step `kind` (opening it if closed).
+fn enter_input(st: &mut AppState, kind: InputKind) {
+    let ok = match kind {
+        InputKind::StashMessage => palette::can_stash(st),
+    };
+    if ok {
+        open_step(st, Mode::Input(kind));
+    }
 }
 
 /// Runs `cmd` through the message the toolbar, menus and sidebar already send for it.
@@ -105,6 +147,20 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Push => Msg::Push { force: false },
         C::Stash => Msg::git("Stash", &["stash", "push", "-u"]),
         C::PopStash => Msg::git("Pop stash", &["stash", "pop"]),
+        C::StashOp { action, oid } => {
+            let Some(s) = st.snap.as_ref().and_then(|s| s.stashes.iter().find(|x| x.oid == oid)).cloned() else {
+                st.log(false, "That stash no longer exists.");
+                return;
+            };
+            stash_msg(action, &s)
+        }
+        C::StashWithMessage(text) => {
+            let t = text.trim();
+            if t.is_empty() {
+                return;
+            }
+            Msg::git("Stash", &["stash", "push", "-u", "-m", t])
+        }
         C::StageAll => Msg::StageAll,
         C::UnstageAll => Msg::UnstageAll,
         C::Undo => Msg::Undo,
@@ -135,10 +191,20 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
         C::OpenRecent(path) => Msg::Open(path),
         C::OpenFileHistory(path) => Msg::OpenFileHistory { path, at: None },
-        // Opens a sub-list in `handle`; never run directly.
-        C::FileHistory => return,
+        // Opens a step in `handle`; never run directly.
+        C::FileHistory | C::ChooseStash(_) | C::StashMessage => return,
     };
     fx.extend(super::update(st, msg, now));
+}
+
+/// The same messages the sidebar's STASHES menu sends.
+fn stash_msg(action: StashAction, s: &StashInfo) -> Msg {
+    let refname = format!("stash@{{{}}}", s.index);
+    let git = Msg::git(action.job_label(), &["stash", action.git_verb(), &refname]);
+    match action {
+        StashAction::Drop => Msg::confirm("Delete stash", format!("Delete \"{}\"? This cannot be undone.", s.message), "Delete", git),
+        StashAction::Apply | StashAction::Pop => git,
+    }
 }
 
 /// The single selected commit, if any (WIP, nothing or several commits give None).
