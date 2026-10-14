@@ -17,6 +17,7 @@ pub mod graph;
 pub mod highlight;
 pub mod intraline;
 pub mod lfs;
+pub mod matching;
 pub mod persist;
 pub mod rebase;
 pub mod remote_ops;

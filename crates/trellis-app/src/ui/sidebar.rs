@@ -43,7 +43,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let open_tabs: Vec<std::path::PathBuf> = st.tabs.iter().filter_map(|t| t.path.clone()).collect();
     let Some(snap) = &st.snap else { return };
     let filter = st.view.ref_filter.to_lowercase();
-    let shown = |name: &str| filter.is_empty() || name.to_lowercase().contains(&filter);
+    let shown = |name: &str| trellis_core::matching::contains_lower(name, &filter);
     let current = snap.head_branch.clone().unwrap_or_default();
     let sel = st.selection.clone();
     let fs = st.forge.as_ref();

@@ -377,9 +377,10 @@ fn search_next(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 }
 
+/// Whether the commit's summary, body or author contains `q`, or its id starts with it. `q` is
+/// lowercase. Runs for every row the graph dims and over the history on Find next, so it
+/// doesn't allocate.
 pub fn commit_matches(c: &trellis_core::repo::CommitInfo, q: &str) -> bool {
-    c.summary.to_lowercase().contains(q)
-        || c.body.to_lowercase().contains(q)
-        || c.author.to_lowercase().contains(q)
-        || c.oid.to_string().starts_with(q)
+    use trellis_core::matching::{contains_lower, hex_starts_with};
+    contains_lower(&c.summary, q) || contains_lower(&c.body, q) || contains_lower(&c.author, q) || hex_starts_with(c.oid.as_bytes(), q)
 }
