@@ -25,6 +25,7 @@ pub enum FolderPurpose {
     InitRepo,
     CloneParent,
     HooksPath,
+    WorktreeParent,
 }
 
 /// What a file picker was opened for.
@@ -356,6 +357,8 @@ pub enum Msg {
     Terminal(TerminalMsg),
     /// The SUBMODULES section (submodule.rs).
     Submodule(SubmoduleMsg),
+    /// The WORKTREES section and Create worktree dialog (worktree.rs).
+    Worktree(crate::worktree::WorktreeMsg),
 
     // ---- hosting services
     ForgeRefresh {

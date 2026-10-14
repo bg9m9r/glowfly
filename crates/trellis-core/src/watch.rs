@@ -75,6 +75,8 @@ pub fn git_change(rel: &Path) -> Change {
         return Change::Full;
     }
     match parts.as_slice() {
+        // A linked worktree added, removed, moved, locked or switched to another HEAD.
+        ["worktrees", _] | ["worktrees", _, "HEAD" | "locked" | "gitdir"] => Change::Full,
         ["HEAD" | "packed-refs" | "MERGE_HEAD" | "CHERRY_PICK_HEAD" | "REVERT_HEAD" | "REBASE_HEAD" | "BISECT_LOG"] => Change::Full,
         ["index"] | ["info", "exclude"] => Change::Status,
         _ => Change::None,
@@ -137,6 +139,12 @@ mod tests {
         let c = |p: &str| git_change(Path::new(p));
         assert_eq!(c("index"), Change::Status);
         assert_eq!(c("info/exclude"), Change::Status);
+        for full in ["worktrees/wt", "worktrees/wt/HEAD", "worktrees/wt/locked", "worktrees/wt/gitdir"] {
+            assert_eq!(c(full), Change::Full, "{full}");
+        }
+        for none in ["worktrees/wt/index", "worktrees/wt/logs/HEAD", "worktrees/wt/ORIG_HEAD"] {
+            assert_eq!(c(none), Change::None, "{none}");
+        }
         for full in [
             "HEAD",
             "packed-refs",

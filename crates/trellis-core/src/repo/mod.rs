@@ -25,6 +25,7 @@ mod tracked;
 mod workfile;
 mod workfile_mv;
 mod workfile_rm;
+mod worktrees;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{Comparison, ViewDiff, commit_detail, commit_stats, compare, compare_files, load_diff, load_diff_for_view, load_diff_with};
@@ -43,6 +44,7 @@ pub use tracked::tracked_paths;
 pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
 pub use workfile_mv::rename_file_staged;
 pub use workfile_rm::{delete_staged_new_file, unstage_gone_new_file};
+pub use worktrees::{WorktreeInfo, worktrees_at};
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -154,6 +156,8 @@ pub struct Snapshot {
     pub staged: Vec<FileEntry>,
     /// The index's submodules sorted by path; refreshed by full loads only.
     pub submodules: Vec<SubmoduleInfo>,
+    /// The main worktree first, then linked ones by path; refreshed by full loads only.
+    pub worktrees: Vec<WorktreeInfo>,
     pub graph: Layout,
 }
 
@@ -349,3 +353,5 @@ mod workfile_rm_gone_tests;
 mod workfile_rm_tests;
 #[cfg(test)]
 mod workfile_tests;
+#[cfg(test)]
+mod worktrees_tests;

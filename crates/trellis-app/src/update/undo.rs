@@ -48,6 +48,8 @@ pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
             ["push" | "tag" | "clone" | "init" | "config", ..] => true,
             ["branch", "--unset-upstream", ..] => true,
             ["submodule", "update", ..] => true,
+            // A plain add touches no ref of this repository; -b creates a branch.
+            ["worktree", "add", rest @ ..] => !rest.contains(&"-b"),
             ["lfs", "install" | "fetch" | "push" | "prune", ..] => true,
             ["branch", flag, ..] => flag.starts_with("--set-upstream-to"),
             _ => false,

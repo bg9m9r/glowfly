@@ -41,6 +41,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "unstage_gone_new_file",
             "os_trash",
             "submodules_at",
+            "worktrees_at",
         ],
     ),
     ("gitcli", &["run", "run_with_input"]),
@@ -72,6 +73,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("pty", &["spawn", "default_shell"]),
     ("lfs", &["status", "installed", "hook_state"]),
     ("gitflow", &["read_config"]),
+    ("worktree_ops", &["check_folder"]),
     (
         "platform",
         &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager", "reveal_in_file_manager"],

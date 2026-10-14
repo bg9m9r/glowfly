@@ -20,6 +20,7 @@ mod terminal;
 mod ui;
 mod update;
 mod watcher;
+mod worktree;
 
 use eframe::egui;
 use std::ffi::OsString;

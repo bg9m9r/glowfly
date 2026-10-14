@@ -168,11 +168,13 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 FolderPurpose::InitRepo => "Initialize a repository in…",
                 FolderPurpose::CloneParent => "Clone into folder",
                 FolderPurpose::HooksPath => "Hooks folder",
+                FolderPurpose::WorktreeParent => "Create the worktree in…",
             };
             fx.push(Effect::PickFolder { title: title.into(), purpose });
         }
         Msg::FolderPicked { purpose, path: Some(path) } => match purpose {
             FolderPurpose::OpenRepo => super::tabs::open(st, path, fx),
+            FolderPurpose::WorktreeParent => super::worktrees::parent_picked(st, path),
             FolderPurpose::InitRepo => {
                 let branch = st.settings.default_branch.trim().to_owned();
                 let cmd = if branch.is_empty() { args(&["init"]) } else { args(&["init", "-b", &branch]) };

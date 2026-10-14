@@ -81,7 +81,7 @@ pub(super) fn click(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button
 }
 
 /// The y of graph row `row` (the WIP row is 0) in the window the harness draws.
-fn row_y(row: usize) -> f32 {
+pub(super) fn row_y(row: usize) -> f32 {
     ROWS_TOP + 30.0 * row as f32 + 15.0
 }
 

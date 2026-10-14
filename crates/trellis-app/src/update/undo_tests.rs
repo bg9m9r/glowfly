@@ -265,3 +265,11 @@ fn undo_requires_idle_and_history() {
     assert!(h.redo.is_empty() && h.blocked.is_none());
     cleanup(&[&dir]);
 }
+
+#[test]
+fn worktree_add_keeps_history_without_a_new_branch() {
+    let keeps = |a: &[&str]| super::undo::keeps_history(&[trellis_core::gitcli::args(a)]);
+    assert!(keeps(&["worktree", "add", "C:/w/side", "side"]));
+    assert!(keeps(&["worktree", "add", "--detach", "C:/w/abc", "abc1234"]));
+    assert!(!keeps(&["worktree", "add", "-b", "x", "C:/w/x", "main"]));
+}

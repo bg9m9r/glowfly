@@ -138,6 +138,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
 
     let (unstaged, staged) = load_status(&repo)?;
     let submodules = submodules::list(&repo);
+    let worktrees = worktrees::list(&repo);
 
     let mut walk = repo.revwalk()?;
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
@@ -218,6 +219,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         unstaged,
         staged,
         submodules,
+        worktrees,
         graph,
     })
 }

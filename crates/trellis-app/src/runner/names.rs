@@ -18,6 +18,7 @@ pub(super) fn effect_name(e: &Effect) -> &'static str {
         Effect::WorkFile { .. } => "work-file",
         Effect::LoadTrackedPaths { .. } => "tracked-paths",
         Effect::CheckSubmodule { .. } => "check-submodule",
+        Effect::CheckWorktreeFolder(_) => "check-worktree-folder",
         Effect::LoadLfs { .. } => "lfs-status",
         Effect::RunGit { .. } => "git",
         Effect::UndoRedo { .. } => "undo-redo",

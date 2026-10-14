@@ -40,7 +40,8 @@ crates/
                           attrs (gitattribute lookups: linguist-language), submodules (the
                           index's submodules: recorded and checked-out commits, classified in
                           sync / out of sync / dirty / uninitialized, and the commits on no
-                          branch or tag that updating would leave behind)
+                          branch or tag that updating would leave behind), worktrees (the main
+                          and linked worktrees: path, branch or detached HEAD, lock, missing)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -51,6 +52,8 @@ crates/
                           fast-forward state
     tag_ops.rs            tag name checks (ref-format rules with a reason, existing and
                           clashing tags) and the tag and tag-push command lines
+    worktree_ops.rs       creating a worktree: `git worktree add` command lines, the folder
+                          slug, folder checks (typed text, the disk, inside another worktree)
     lfs.rs                Git LFS: installed version, whether a repository is set up (hooks and
                           filters, read without running git-lfs commands that write), tracked
                           patterns parsed from .gitattributes, pattern checks and the LFS
@@ -91,8 +94,9 @@ crates/
     intraline.rs          word-level changes inside paired removed/added diff lines
     tabs.rs               tab stops for drawing diff text (lines keep raw tabs), with a byte
                           map so syntax spans and changed-word ranges follow the expansion
-    watch.rs              which file changes in a repository matter (status or full reload),
-                          and a cache of folders .gitignore ignores
+    watch.rs              which file changes in a repository matter (status or full reload; a
+                          linked worktree added, removed, locked or moved to another HEAD reloads
+                          in full), and a cache of folders .gitignore ignores
     forge/                hosting services behind the `Forge` trait (github, gitlab,
                           bitbucket, azure, jira); model and trait in mod.rs, plus remote
                           (URL detection), auth (credentials), refs (issue references), http,
@@ -125,7 +129,10 @@ crates/
                           open/update/copy are blocked, the update confirmation, the update
                           command), lfs (the Git LFS page: status, pattern buffer, push remote),
                           gitflow (the Git Flow page's form, filled from the snapshot; the
-                          Start dialog's form)
+                          Start dialog's form),
+                          worktrees (the WORKTREES section's text, why opening is blocked, the
+                          Create worktree form and its folder and branch checks), view (which
+                          left-panel sections are open)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
                           the shortcut sheet, palette hints and tooltips
@@ -138,6 +145,8 @@ crates/
     terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
                           and its shells' effects (one Msg and one Effect variant each)
     submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
+    worktree.rs           WorktreeMsg and NewWorktree: the WORKTREES section's and Create
+                          worktree dialog's messages (one Msg variant) and a create request
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
                           names (each effect's short name for threads and logs);
                           config (reading git config), rebase (loading and running an
@@ -149,7 +158,8 @@ crates/
                           (a newer HighlightDiff cancels the older), terminal (one thread per
                           shell session owning its PTY; Effect::Terminal is handled by
                           Runner::run itself), submodules (reading one submodule again before
-                          its update is confirmed)
+                          its update is confirmed), worktrees (checking a new worktree's folder
+                          on disk)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
@@ -178,10 +188,12 @@ crates/
                           Git LFS page: reading its status, Initialize, Track and Untrack, the LFS
                           commands, reloading after a job and the pull offer after Initialize),
                           gitflow (filling the Git Flow form and refilling it on new snapshots,
-                          Initialize/Save and Start as git jobs, the Start dialog's prefill)
+                          Initialize/Save and Start as git jobs, the Start dialog's prefill),
+                          worktrees (open in a tab; Create worktree: the form checked again,
+                          the folder checked on disk, then `git worktree add` as a job)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
                           update/terminal_tests.rs, update/submodule_tests.rs,
-                          update/lfs_tests.rs, update/gitflow_tests.rs)
+                          update/lfs_tests.rs, update/gitflow_tests.rs, update/worktree_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -202,8 +214,9 @@ crates/
                           shortcuts/ (matching the newer keys from the table; sheet: the
                           Ctrl+/ shortcut sheet), terminal/ (the built-in terminal panel:
                           header, grid painting, egui input mapping, colours), submodules
-                          (the SUBMODULES section: rows, status markers, menu),
-                          gitflow_dialog (the Git Flow Start dialog),
+                          (the SUBMODULES section: rows, status markers, menu), worktrees (the
+                          WORKTREES section: rows, tooltip, menu), worktree_dialog (Create
+                          worktree), gitflow_dialog (the Git Flow Start dialog),
                           status, prefs/ (editor: the Editor page; lfs: the Git LFS page;
                           gitflow: the Git Flow page),
                           theme, widgets, icons (painting of the newer icons)
@@ -216,7 +229,7 @@ crates/
                           snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
                           snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,
                           snapshot_tests_submodules.rs, snapshot_tests_lfs.rs,
-                          snapshot_tests_gitflow.rs)
+                          snapshot_tests_gitflow.rs, snapshot_tests_worktrees.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

@@ -8,10 +8,12 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::state::ForgeState;
 use crate::state::branches::{self, NO_REMOTES};
+use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{BranchInfo, Snapshot};
 use trellis_core::settings::GraphFilter;
+use trellis_core::worktree_ops::WorktreeBase;
 
 pub fn local_branch_menu(
     ui: &mut egui::Ui,
@@ -49,6 +51,12 @@ pub fn local_branch_menu(
     ui.separator();
     if let Some(o) = b.oid {
         menu_item(msgs, ui, "Create branch here…", Msg::NewBranch { start: Some(o.to_string()), name: String::new() });
+        menu_item(
+            msgs,
+            ui,
+            format!("Create worktree from {name}…"),
+            Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Branch(name.to_owned()))),
+        );
     }
     menu_item(msgs, ui, format!("Rename {name}…"), Msg::RenameBranchDialog(name.to_owned()));
     let no_remotes = snap.remotes.is_empty().then_some(NO_REMOTES);

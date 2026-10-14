@@ -607,6 +607,29 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Worktrees**
   WORKTREES section: create from a branch or commit, open (in a new tab), lock/unlock, prune,
   remove (optionally deleting the branch); show worktree WIP nodes in the graph.
+  - [x] WORKTREES section (shown when a linked worktree exists): folder name, branch or detached
+    commit, locked and missing markers, a tooltip, the left-panel filter; click jumps to its HEAD,
+    double-click or Open in new tab opens it, Open folder, Copy path. Create worktree from a local
+    branch or a graph commit: folder (default `<repo>-worktrees/<branch>` next to the main
+    worktree, or Browse…), optional new branch, open in a new tab; live checks (registered
+    folder, folder inside a worktree, branch name, branch checked out elsewhere) and a disk check
+    of the folder before `git worktree add` runs. Worktree changes made outside reload the tab.
+  - [ ] Remove a worktree from its row menu (`git worktree remove`, with a confirmation; offer
+    `--force` when it has changes or is locked), optionally deleting its branch afterwards; report
+    separately when the folder couldn't be fully deleted or the branch delete failed
+  - [ ] Lock / unlock a worktree with an optional reason (`git worktree lock --reason` / `unlock`)
+  - [ ] Prune worktree records whose folders are gone (`git worktree prune`), from the section
+    header menu or a missing row
+  - [ ] Show worktree WIP nodes in the graph: a WIP row per worktree with uncommitted changes, at
+    its HEAD commit
+  - [ ] Mark local branches checked out in another worktree in LOCAL (tooltip with the folder), and
+    disable Checkout / Delete for them with the reason
+  - [ ] Create a worktree from a remote branch or a pull request (creating the tracking branch)
+  - [ ] Watch the common git dir (refs, packed-refs) when a linked worktree is the open tab, so ref
+    changes made elsewhere reload it
+  - [ ] Palette commands: open a worktree, Create worktree…
+  - [ ] A context-menu entry to show or hide the WORKTREES section; optionally group worktree tabs
+    next to their main repository's tab
 - [ ] **Git LFS**
   Initialize, track patterns (file, extension, folder), fetch/pull/push/prune, view
   `.gitattributes`, and LFS-aware auto-fetch.

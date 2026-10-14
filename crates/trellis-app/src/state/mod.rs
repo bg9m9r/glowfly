@@ -24,12 +24,15 @@ pub mod tabs;
 pub mod tags;
 pub mod terminal;
 pub mod undo;
+mod view;
 pub mod watch;
+pub mod worktrees;
 
 pub use commit::CommitDraft;
 pub use forge::{ForgeState, Status};
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use tabs::Tab;
+pub use view::Sections;
 
 use crate::msg::Msg;
 use git2::Oid;
@@ -106,6 +109,7 @@ pub struct Toast {
 pub enum Modal {
     NewBranch { start: Option<String>, name: String, checkout: bool },
     NewTag(tags::TagForm),
+    NewWorktree(worktrees::WorktreeForm),
     Confirm { title: String, body: String, button: String, then: Box<Msg> },
     Clone { url: String, parent: String },
     CreatePr { source: String, target: String, targets: Vec<String>, title: String, description: String, draft: bool, items: String },
@@ -116,16 +120,6 @@ pub enum Modal {
     RenameFile { old: String, form: files::PathForm },
     Shortcuts { filter: String },
     GitFlowStart(gitflow::StartForm),
-}
-
-pub struct Sections {
-    pub local: bool,
-    pub remote: bool,
-    pub prs: bool,
-    pub issues: bool,
-    pub tags: bool,
-    pub stashes: bool,
-    pub submodules: bool,
 }
 
 /// Purely visual state that views may change directly.
@@ -196,7 +190,7 @@ impl Default for ViewState {
             search: String::new(),
             search_cursor: 0,
             ref_filter: String::new(),
-            sections: Sections { local: true, remote: true, prs: true, issues: true, tags: false, stashes: true, submodules: true },
+            sections: Sections::default(),
             scroll_to_row: None,
             scroll_offset: None,
             graph_scroll: (0.0, 0.0),

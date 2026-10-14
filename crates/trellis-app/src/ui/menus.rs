@@ -6,16 +6,19 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::state::ForgeState;
 use crate::state::selection::MultiSelection;
+use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, RichText};
 use git2::Oid;
 use trellis_core::rebase::RebaseBase;
 use trellis_core::settings::GraphFilter;
+use trellis_core::worktree_ops::WorktreeBase;
 
 pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Msg>) {
     let sha = oid.to_string();
     let s = short(oid);
     menu_item(msgs, ui, "Create branch here…", Msg::NewBranch { start: Some(sha.clone()), name: String::new() });
     menu_item(msgs, ui, "Create tag here…", Msg::NewTag { at: sha.clone(), annotated: false });
+    menu_item(msgs, ui, "Create worktree from this commit…", Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Commit(oid))));
     menu_item(msgs, ui, "Checkout this commit (detached)", Msg::git("Checkout", &["checkout", &sha]));
     ui.separator();
     menu_item(msgs, ui, "Cherry-pick commit", Msg::git("Cherry-pick", &["cherry-pick", &sha]));

@@ -29,3 +29,4 @@ pub(crate) mod testutil;
 pub mod undo;
 pub mod watch;
 pub mod whole_file;
+pub mod worktree_ops;

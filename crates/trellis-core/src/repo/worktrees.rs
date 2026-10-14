@@ -1,0 +1,113 @@
+//! The repository's worktrees: the main one and the linked ones registered under the common git
+//! dir, read through libgit2 for the left panel.
+
+use crate::error::Result;
+use git2::{Oid, Repository, WorktreeLockStatus};
+use std::path::{Component, Path, PathBuf};
+
+/// One worktree of the repository.
+#[derive(Clone, PartialEq, Debug)]
+pub struct WorktreeInfo {
+    /// Name under <common dir>/worktrees; None for the main worktree.
+    pub name: Option<String>,
+    /// The worktree folder, rebuilt from its components so it has the platform's separators
+    /// (libgit2 reports C:/x/y/ with forward slashes and a trailing slash on Windows).
+    pub path: PathBuf,
+    /// Checked-out branch (short name); None when detached or HEAD is unreadable.
+    pub branch: Option<String>,
+    /// HEAD's commit; None for an unborn branch or an unreadable HEAD.
+    pub head: Option<Oid>,
+    /// The worktree the snapshot was loaded from.
+    pub current: bool,
+    /// Some(reason) when locked ("" without a reason).
+    pub locked: Option<String>,
+    /// Its folder (or the gitdir link) is gone: `Worktree::validate()` fails.
+    pub missing: bool,
+    /// `git worktree prune` would drop it: `Worktree::is_prunable(None)` (missing and not locked).
+    pub prunable: bool,
+}
+
+impl WorktreeInfo {
+    pub fn is_main(&self) -> bool {
+        self.name.is_none()
+    }
+
+    /// The folder's last path component (the whole path when it has none).
+    pub fn folder_name(&self) -> String {
+        self.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| self.path.display().to_string())
+    }
+}
+
+/// The worktrees of the repository `workdir` belongs to: main first, then linked by path.
+pub fn worktrees_at(workdir: &Path) -> Result<Vec<WorktreeInfo>> {
+    let repo = Repository::open(workdir)?;
+    Ok(list(&repo))
+}
+
+/// The worktrees of `repo`'s repository, main first and then linked ones by path. Never fails:
+/// an error gives an empty list, and an entry that can't be opened is left out.
+pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
+    let Ok(common) = Repository::open(repo.commondir()) else { return Vec::new() };
+    let here = repo.workdir().map(normalize);
+    let is_current = |path: &Path| here.as_deref().is_some_and(|h| same_place(path, h));
+    let mut out = Vec::new();
+    if let Some(workdir) = common.workdir() {
+        let path = normalize(workdir);
+        let (branch, head) = read_head(common.path(), &common);
+        let current = is_current(&path);
+        out.push(WorktreeInfo { name: None, path, branch, head, current, locked: None, missing: false, prunable: false });
+    }
+    let Ok(names) = common.worktrees() else { return out };
+    let mut linked: Vec<WorktreeInfo> = names
+        .iter()
+        .flatten()
+        .filter_map(|name| {
+            let wt = common.find_worktree(name).ok()?;
+            let path = normalize(wt.path());
+            let locked = match wt.is_locked() {
+                Ok(WorktreeLockStatus::Locked(r)) => Some(r.unwrap_or_default().trim_end().to_owned()),
+                _ => None,
+            };
+            let missing = wt.validate().is_err();
+            let prunable = wt.is_prunable(None).unwrap_or(false);
+            let (branch, head) = read_head(&common.commondir().join("worktrees").join(name), &common);
+            let current = is_current(&path);
+            Some(WorktreeInfo { name: Some(name.to_owned()), path, branch, head, current, locked, missing, prunable })
+        })
+        .collect();
+    linked.sort_by(|a, b| a.path.cmp(&b.path));
+    out.extend(linked);
+    out
+}
+
+/// `path` rebuilt from its components: platform separators, no trailing separator.
+fn normalize(path: &Path) -> PathBuf {
+    path.components().filter(|c| !matches!(c, Component::CurDir)).collect()
+}
+
+/// Whether `a` and `b` name the same folder: by their canonical forms, or by their components
+/// when either can't be canonicalized (case-insensitive on Windows).
+fn same_place(a: &Path, b: &Path) -> bool {
+    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        (Ok(x), Ok(y)) => x == y,
+        _ => crate::worktree_ops::same_folder(a, b),
+    }
+}
+
+/// The branch (short name for refs/heads/, the whole ref otherwise) and commit that the HEAD
+/// file in `git_dir` names. Reading the file means a worktree whose folder is gone still shows
+/// its branch.
+fn read_head(git_dir: &Path, common: &Repository) -> (Option<String>, Option<Oid>) {
+    let Ok(text) = std::fs::read_to_string(git_dir.join("HEAD")) else { return (None, None) };
+    let text = text.trim();
+    if let Some(target) = text.strip_prefix("ref:") {
+        let full = target.trim();
+        let head = common.refname_to_id(full).ok();
+        let branch = full.strip_prefix("refs/heads/").unwrap_or(full).to_owned();
+        return (Some(branch), head);
+    }
+    match Oid::from_str(text) {
+        Ok(oid) => (None, Some(oid)),
+        Err(_) => (None, None),
+    }
+}
