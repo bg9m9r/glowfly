@@ -1,0 +1,106 @@
+//! The REMOTE section of the left panel: a group row per configured remote (also remotes with
+//! no branches yet) with its URLs on hover and a menu to fetch, edit, copy its URLs or remove
+//! it, and under it the remote-tracking branch rows. The header's menu adds a remote.
+
+use super::common::{hint_row, menu_item, menu_item_if};
+use super::menus::remote_branch_menu;
+use super::ref_visibility;
+use super::theme::color;
+use super::widgets;
+use crate::msg::Msg;
+use crate::remote::RemoteMsg;
+use crate::state::remotes::{fetch_blocked, find, tooltip};
+use crate::state::{ForgeState, Selection};
+use eframe::egui::{self, Align2, FontId, Response, Sense, pos2, vec2};
+use git2::Oid;
+use trellis_core::repo::{RemoteInfo, Snapshot};
+use trellis_core::settings::GraphFilter;
+
+pub(super) mod dialog;
+
+/// What the section is drawn against.
+pub(super) struct Ctx<'a> {
+    /// The left-panel filter.
+    pub shown: &'a dyn Fn(&str) -> bool,
+    pub sel: &'a Selection,
+    /// The checked-out branch's name ("" when detached).
+    pub current: &'a str,
+    pub fs: Option<&'a ForgeState>,
+    pub graph: &'a GraphFilter,
+    /// No job is running.
+    pub idle: bool,
+    /// The left-panel filter has text.
+    pub filtering: bool,
+}
+
+pub(in crate::ui) fn section(
+    ui: &mut egui::Ui,
+    snap: &Snapshot,
+    open: &mut bool,
+    c: Ctx,
+    hover_next: &mut Option<Oid>,
+    msgs: &mut Vec<Msg>,
+) {
+    let count = snap.remotes.iter().map(|(_, b)| b.len()).sum();
+    let h = widgets::section_header(ui, "REMOTE", Some(count), open);
+    h.context_menu(|ui| menu_item(msgs, ui, "Add remote…", Msg::Remote(RemoteMsg::AddDialog)));
+    if !*open {
+        return;
+    }
+    for (remote, branches) in &snap.remotes {
+        let fallback;
+        let info = match find(snap, remote) {
+            Some(i) => i,
+            None => {
+                fallback = RemoteInfo { name: remote.clone(), ..RemoteInfo::default() };
+                &fallback
+            }
+        };
+        let r = group_row(ui, remote).on_hover_text(tooltip(info));
+        r.context_menu(|ui| group_menu(ui, info, c.idle, msgs));
+        if branches.is_empty() && !c.filtering {
+            hint_row(ui, "No branches yet. Fetch this remote to load them.".to_owned());
+        }
+        for (name, oid) in branches.iter().filter(|(n, _)| (c.shown)(n)) {
+            let r = widgets::list_row(ui, 34.0, name, None, *c.sel == Selection::Commit(*oid), false);
+            if r.hovered() {
+                *hover_next = Some(*oid);
+            }
+            let full = format!("{remote}/{name}");
+            if r.double_clicked() {
+                msgs.push(Msg::git("Checkout", &["checkout", "--track", &full]));
+            } else if r.clicked() {
+                msgs.push(Msg::JumpTo(*oid));
+            }
+            ref_visibility::row_marker(ui, &r, 20.0, &format!("refs/remotes/{full}"), &full, c.graph, msgs);
+            r.context_menu(|ui| remote_branch_menu(ui, remote, name, c.current, c.fs, c.graph, msgs));
+        }
+    }
+}
+
+/// A remote's name, dim and small, on a clickable row with a hover fill.
+fn group_row(ui: &mut egui::Ui, name: &str) -> Response {
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::click());
+    // Painted text has no accessible name; give the row one (screen readers and UI tests).
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+    let p = ui.painter_at(rect);
+    if resp.hovered() {
+        p.rect_filled(rect, 0.0, color::hover());
+    }
+    p.text(pos2(rect.left() + 24.0, rect.center().y), Align2::LEFT_CENTER, name, FontId::proportional(12.0), color::weak());
+    resp
+}
+
+fn group_menu(ui: &mut egui::Ui, info: &RemoteInfo, idle: bool, msgs: &mut Vec<Msg>) {
+    let name = &info.name;
+    menu_item_if(msgs, ui, format!("Fetch {name}"), fetch_blocked(info, idle), Msg::Remote(RemoteMsg::Fetch(name.clone())));
+    menu_item(msgs, ui, "Edit remote…", Msg::Remote(RemoteMsg::EditDialog(name.clone())));
+    if !info.fetch_url().is_empty() {
+        menu_item(msgs, ui, "Copy fetch URL", Msg::Copy(info.fetch_url().to_owned()));
+    }
+    if let Some(p) = info.separate_push_url() {
+        menu_item(msgs, ui, "Copy push URL", Msg::Copy(p.to_owned()));
+    }
+    ui.separator();
+    menu_item(msgs, ui, "Remove remote…", Msg::Remote(RemoteMsg::RemoveDialog(name.clone())));
+}

@@ -127,6 +127,8 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         }
     }
 
+    let names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
+    let remote_info = super::remotes::remote_info(&repo, &names);
     let remote_urls = remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
 
     let (mut tags, mut other_tags) = (Vec::new(), Vec::new());
@@ -217,6 +219,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         refs,
         locals,
         remotes,
+        remote_info,
         tags,
         other_tags,
         stashes,

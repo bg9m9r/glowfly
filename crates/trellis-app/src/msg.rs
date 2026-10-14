@@ -359,6 +359,8 @@ pub enum Msg {
     Submodule(SubmoduleMsg),
     /// The WORKTREES section and Create worktree dialog (worktree.rs).
     Worktree(crate::worktree::WorktreeMsg),
+    /// The REMOTE section and the Add/Edit remote dialog (remote.rs).
+    Remote(crate::remote::RemoteMsg),
 
     // ---- hosting services
     ForgeRefresh {

@@ -35,7 +35,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
 }
 
 /// Jobs that never move a local branch, HEAD, index or working tree, so the history stays
-/// valid: fetch, push, tag, clone, init, config, setting or unsetting a branch's upstream,
+/// valid: fetch, push, tag, clone, init, config, adding a remote or changing its URLs, setting
+/// or unsetting a branch's upstream,
 /// `submodule update` (it moves only the submodule's own checkout; the parent's HEAD, index and
 /// files stay put), and the LFS commands that only touch hooks, config or the LFS store (install, fetch, push, prune).
 /// A fetch into the repository itself (`fetch . a:b`, a fast-forward without checkout) moves a
@@ -47,6 +48,9 @@ pub(super) fn keeps_history(cmds: &[Vec<String>]) -> bool {
             ["fetch", rest @ ..] => !rest.contains(&"."),
             ["push" | "tag" | "clone" | "init" | "config", ..] => true,
             ["branch", "--unset-upstream", ..] => true,
+            // Renaming or removing a remote renames or deletes remote branches that recorded
+            // actions can name, so those fall through.
+            ["remote", "add" | "set-url", ..] => true,
             ["submodule", "update", ..] => true,
             // A plain add touches no ref of this repository; -b creates a branch.
             ["worktree", "add", rest @ ..] => !rest.contains(&"-b"),

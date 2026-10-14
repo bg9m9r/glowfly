@@ -13,6 +13,7 @@ mod keymap;
 mod lfs;
 mod msg;
 mod platform;
+mod remote;
 mod runner;
 mod state;
 mod submodule;

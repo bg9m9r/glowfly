@@ -97,6 +97,8 @@ pub enum PaletteCommand {
     /// Enter the file finder; picking a file runs `OpenFileHistory`.
     FileHistory,
     OpenFileHistory(String),
+    /// A REMOTE section action (Add remote…, Fetch <remote>).
+    Remote(crate::remote::RemoteMsg),
 }
 
 impl PaletteCommand {
@@ -204,6 +206,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(entry(C::Fetch, "Fetch all remotes", "remote update download"));
         out.push(entry(C::Pull, "Pull", "fast-forward merge update"));
     }
+    super::remotes::palette_entries(snap, out);
     if snap.head_branch.is_some() {
         out.push(entry(C::Push, "Push", "upload publish"));
     }

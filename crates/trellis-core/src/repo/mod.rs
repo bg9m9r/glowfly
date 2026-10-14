@@ -15,6 +15,7 @@ mod index;
 mod lines;
 mod load;
 mod noclobber;
+mod remotes;
 mod removal;
 mod resolve;
 mod restore;
@@ -34,6 +35,7 @@ pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
 pub use load::{load, messages_between, status_at};
+pub use remotes::RemoteInfo;
 pub use removal::{Deleted, Removal, Trasher, os_trash};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
@@ -152,6 +154,9 @@ pub struct Snapshot {
     pub refs: HashMap<Oid, Vec<RefLabel>>,
     pub locals: Vec<BranchInfo>,
     pub remotes: Vec<(String, Vec<(String, Oid)>)>,
+    /// Every configured remote with its raw fetch and push URLs, in `remotes` order (also remotes
+    /// without branches). `remote_urls` keeps libgit2's rewritten fetch URLs for forge detection.
+    pub remote_info: Vec<RemoteInfo>,
     pub tags: Vec<(String, Oid)>,
     /// Tags that point at a tree or blob instead of a commit: not shown, but their names are taken.
     pub other_tags: Vec<String>,
@@ -330,6 +335,8 @@ mod history_tests;
 mod lines_tests;
 #[cfg(test)]
 mod load_filter_tests;
+#[cfg(test)]
+mod remotes_tests;
 #[cfg(test)]
 mod removal_tests;
 #[cfg(test)]

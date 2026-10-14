@@ -18,6 +18,7 @@ pub mod palette_kinds;
 pub mod prefs;
 pub mod publish;
 pub mod rebase;
+pub mod remotes;
 pub mod selection;
 pub mod submodules;
 pub mod tabs;
@@ -124,6 +125,7 @@ pub enum Modal {
     Shortcuts { filter: String },
     GitFlowStart(gitflow::StartForm),
     GitFlowFinish(gitflow::FinishForm),
+    Remote(remotes::RemoteForm),
 }
 
 /// Purely visual state that views may change directly.

@@ -704,8 +704,19 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Publish a repository with no remote to GitHub: Push (or Push ▾ > Publish to GitHub…)
     offers to create the repository (owner: you or an organization; private or public), adds it
     as `origin` and pushes the branch with upstream set
+  - [x] Add, edit (name, fetch URL, separate push URL) and remove remotes, and fetch one remote,
+    from the REMOTE section (header and remote row menus, palette)
   - [ ] Publish to GitLab, Bitbucket and Azure DevOps
   - [ ] Add an existing remote URL from the same dialog
+  - [ ] View a remote on its hosting service in the browser (row menu, from the remote URL)
+  - [ ] Add a teammate's fork as a remote (pick from the service's forks of this repository)
+  - [ ] Fork the repository on the hosting service and add the fork as a remote
+  - [ ] Undo removing or renaming a remote (re-add it with its URLs and fetch, or rename it back)
+  - [ ] Rewrite the saved graph filter's hidden or soloed refs when a remote is renamed or removed
+  - [ ] Edit remotes defined outside the repository's config, and every URL of a remote with
+    several fetch or push URLs
+  - [ ] Per-remote options: fetch refspecs, tag fetching, prune on fetch, the default branch
+  - [ ] Offer Add remote… when fetch, pull or push finds no remote
 - [ ] **Tag management**
   Annotate an existing tag, delete from one or all remotes, push to all remotes, hide tags.
   (Push a tag and delete it locally exist; tag signing is on the Commit Signing page.)

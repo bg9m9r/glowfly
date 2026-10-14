@@ -21,6 +21,7 @@ mod palette;
 mod prefs;
 mod publish;
 mod rebase;
+mod remotes;
 mod repo;
 mod selection;
 mod shortcuts;
@@ -93,6 +94,8 @@ mod publish_tests;
 mod rebase_e2e_tests;
 #[cfg(test)]
 mod rebase_tests;
+#[cfg(test)]
+mod remote_tests;
 #[cfg(test)]
 mod revert_tests;
 #[cfg(test)]
@@ -359,6 +362,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
+        Msg::Remote(m) => remotes::handle(st, m, &mut fx),
         Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
         Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
     }

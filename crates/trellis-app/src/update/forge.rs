@@ -81,7 +81,11 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
         return;
     }
     st.forge = match st.forge.take() {
-        Some(existing) if existing.host == host && existing.tracker == tracker => Some(existing),
+        // The same service: keep its loaded state, following a renamed remote.
+        Some(mut existing) if existing.host == host && existing.tracker == tracker => {
+            existing.remote = remote;
+            Some(existing)
+        }
         _ => Some(ForgeState::new(host, remote, tracker)),
     };
 }

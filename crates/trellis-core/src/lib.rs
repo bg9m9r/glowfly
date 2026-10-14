@@ -17,6 +17,7 @@ pub mod highlight;
 pub mod intraline;
 pub mod lfs;
 pub mod rebase;
+pub mod remote_ops;
 pub mod repo;
 pub mod settings;
 pub mod signing;

@@ -198,6 +198,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
         C::OpenRecent(path) => Msg::Open(path),
         C::OpenFileHistory(path) => Msg::OpenFileHistory { path, at: None },
+        C::Remote(m) => Msg::Remote(m),
         // Opens a step in `handle`; never run directly.
         C::FileHistory | C::ChooseStash(_) | C::StashMessage => return,
     };

@@ -27,6 +27,7 @@ mod prefs;
 mod publish;
 mod rebase;
 mod ref_visibility;
+mod remotes;
 mod shortcuts;
 mod sidebar;
 mod spell_edit;
@@ -74,6 +75,8 @@ mod snapshot_tests_palette;
 mod snapshot_tests_palette_stash;
 #[cfg(test)]
 mod snapshot_tests_rebase;
+#[cfg(test)]
+mod snapshot_tests_remotes;
 #[cfg(test)]
 mod snapshot_tests_revert;
 #[cfg(test)]

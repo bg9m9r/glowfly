@@ -32,7 +32,7 @@ pub(super) fn with_origin(name: &str) -> (AppState, PathBuf, PathBuf) {
 }
 
 /// Commits a file on `branch` in `bare` through a temporary clone.
-fn remote_commit(bare: &Path, branch: &str, file: &str) {
+pub(super) fn remote_commit(bare: &Path, branch: &str, file: &str) {
     let tmp = bare.with_file_name(format!("{}-clone", bare.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&tmp);
     git(tmp.parent().unwrap(), &["clone", "-q", "-b", branch, &bare.display().to_string(), &tmp.display().to_string()]);

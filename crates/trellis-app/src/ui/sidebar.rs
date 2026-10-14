@@ -3,13 +3,12 @@
 
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, state_color};
-use super::menus::remote_branch_menu;
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Selection, Status};
-use eframe::egui::{self, RichText};
+use eframe::egui;
 use trellis_core::forge;
 use trellis_core::settings::GraphFilter;
 
@@ -46,6 +45,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let current = snap.head_branch.clone().unwrap_or_default();
     let sel = st.selection.clone();
     let fs = st.forge.as_ref();
+    let idle = st.job.is_none();
     let sections = &mut st.view.sections;
     let hover_next = &mut st.view.hover_tip_next;
 
@@ -85,30 +85,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         }
     }
 
-    let remote_count = snap.remotes.iter().map(|(_, b)| b.len()).sum();
-    widgets::section_header(ui, "REMOTE", Some(remote_count), &mut sections.remote);
-    if sections.remote {
-        for (remote, branches) in &snap.remotes {
-            ui.horizontal(|ui| {
-                ui.add_space(24.0);
-                ui.add(egui::Label::new(RichText::new(remote).color(color::weak()).size(12.0)).selectable(false));
-            });
-            for (name, oid) in branches.iter().filter(|(n, _)| shown(n)) {
-                let r = widgets::list_row(ui, 34.0, name, None, sel == Selection::Commit(*oid), false);
-                if r.hovered() {
-                    *hover_next = Some(*oid);
-                }
-                let full = format!("{remote}/{name}");
-                if r.double_clicked() {
-                    msgs.push(Msg::git("Checkout", &["checkout", "--track", &full]));
-                } else if r.clicked() {
-                    msgs.push(Msg::JumpTo(*oid));
-                }
-                ref_visibility::row_marker(ui, &r, 20.0, &format!("refs/remotes/{full}"), &full, graph, msgs);
-                r.context_menu(|ui| remote_branch_menu(ui, remote, name, &current, fs, graph, msgs));
-            }
-        }
-    }
+    let ctx = super::remotes::Ctx { shown: &shown, sel: &sel, current: &current, fs, graph, idle, filtering: !filter.is_empty() };
+    super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, msgs);
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {
         let title = if f.pr_noun() == "merge request" { "MERGE REQUESTS" } else { "PULL REQUESTS" };

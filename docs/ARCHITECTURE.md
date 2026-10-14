@@ -41,7 +41,9 @@ crates/
                           index's submodules: recorded and checked-out commits, classified in
                           sync / out of sync / dirty / uninitialized, and the commits on no
                           branch or tag that updating would leave behind), worktrees (the main
-                          and linked worktrees: path, branch or detached HEAD, lock, missing)
+                          and linked worktrees: path, branch or detached HEAD, lock, missing),
+                          remotes (every configured remote's raw fetch and push URLs from git
+                          config, into Snapshot::remote_info)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -52,6 +54,11 @@ crates/
                           fast-forward state
     tag_ops.rs            tag name checks (ref-format rules with a reason, existing and
                           clashing tags) and the tag and tag-push command lines
+    remote_ops.rs         adding, editing, fetching and removing a remote: name checks (ref-format
+                          rules with a reason, taken names compared case-insensitively), URL checks,
+                          the anchored old-URL pattern for `git remote set-url`, the add/edit/fetch/
+                          remove command lines (an edit runs only what changed) and URLs shown
+                          with their password hidden
     worktree_ops.rs       creating, removing, locking and pruning worktrees: `git worktree add`
                           command lines, the folder slug, folder checks (typed text, the disk,
                           inside another worktree); worktree_ops/manage (remove/lock/unlock/
@@ -146,7 +153,10 @@ crates/
                           worktrees (the WORKTREES section's text, why opening is blocked, the
                           Create worktree form and its folder and branch checks),
                           worktree_manage (the Remove and Lock dialogs' forms, why removing,
-                          locking or pruning is blocked, the outcome messages), view (which
+                          locking or pruning is blocked, the outcome messages), remotes (the
+                          Add/Edit remote form and its checks, the job for a submitted form, the
+                          Remove confirmation's text, row tooltips, why Fetch is blocked, the
+                          palette's Add remote… and Fetch <remote> entries), view (which
                           left-panel sections are open)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
@@ -161,6 +171,8 @@ crates/
     terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
                           and its shells' effects (one Msg and one Effect variant each)
     submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
+    remote.rs             RemoteMsg: the REMOTE section's and the Add/Edit remote dialog's
+                          messages (one Msg variant)
     worktree.rs           WorktreeMsg, NewWorktree and RemoveRequest: the WORKTREES section's,
                           Create worktree dialog's and Remove/Lock dialogs' messages (one Msg
                           variant), a create request and a remove request
@@ -215,12 +227,15 @@ crates/
                           the folder checked on disk, then `git worktree add` as a job),
                           worktree_manage (Remove: checked again, run as Effect::RemoveWorktree,
                           its outcome reported and the dialog reopened in force mode when
-                          needed; Lock, Unlock and Prune as git jobs)
+                          needed; Lock, Unlock and Prune as git jobs), remotes (Add/Edit remote
+                          checked again against the current snapshot, Fetch one remote, Remove
+                          after a confirmation; all plain git jobs)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
                           update/terminal_tests.rs, update/submodule_tests.rs,
                           update/lfs_tests.rs, update/lfs_track_tests.rs, update/gitflow_tests.rs,
                           update/gitflow_finish_tests.rs,
-                          update/worktree_tests.rs, update/worktree_manage_tests.rs)
+                          update/worktree_tests.rs, update/worktree_manage_tests.rs,
+                          update/remote_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -245,7 +260,9 @@ crates/
                           WORKTREES section: rows, tooltip, row and header menus), worktree_dialog
                           (Create worktree), worktree_manage_dialog (Remove worktree, Lock
                           worktree), gitflow_dialog (the Git Flow Start dialog),
-                          gitflow_finish_dialog (the Git Flow Finish dialog),
+                          gitflow_finish_dialog (the Git Flow Finish dialog), remotes/ (the
+                          REMOTE section: remote group rows, tooltips, header and row menus;
+                          dialog: Add/Edit remote),
                           status, prefs/ (editor: the Editor page; lfs: the Git LFS page;
                           gitflow: the Git Flow page),
                           theme, widgets, icons (painting of the newer icons)
@@ -260,7 +277,7 @@ crates/
                           snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,
                           snapshot_tests_submodules.rs, snapshot_tests_lfs.rs,
                           snapshot_tests_gitflow.rs, snapshot_tests_worktrees.rs,
-                          snapshot_tests_worktree_manage.rs)
+                          snapshot_tests_worktree_manage.rs, snapshot_tests_remotes.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

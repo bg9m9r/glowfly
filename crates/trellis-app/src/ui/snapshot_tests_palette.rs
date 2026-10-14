@@ -6,6 +6,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
+use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::palette::{Items, Mode, Palette, PaletteCommand, Pick, PickKind};
 use eframe::egui::{Key, Modifiers};
@@ -89,7 +90,7 @@ fn palette_many_refs_footer() {
     assert!(h.query_by_label_contains("Showing 200 of").is_some());
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Push))));
+    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog)))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -157,11 +158,11 @@ fn palette_keys_and_clicks() {
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::PaletteMove(-1))));
 
-    // The fixture has no remote, so the first row is Push.
+    // The fixture has no remote, so the first row is Add remote… (Fetch and Pull need one).
     h.state_mut().1.clear();
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Push))));
+    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog)))));
 
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
