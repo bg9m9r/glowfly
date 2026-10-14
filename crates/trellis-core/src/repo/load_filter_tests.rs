@@ -86,3 +86,16 @@ fn smart_mode_skips_hidden_tips() {
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }
+
+#[test]
+fn checked_out_branch_is_never_hidden() {
+    let dir = branches("filter-head");
+    git(&dir, &["checkout", "-q", "feature"]);
+    for smart in [false, true] {
+        let s = load(&dir, &LoadOptions { smart, ..opts(&["refs/heads/feature"], &[]) }).unwrap();
+        let head = s.refs.get(&s.head_oid.unwrap()).expect("HEAD row has labels");
+        assert!(head.iter().any(|l| l.name == "feature" && l.is_head), "smart={smart}");
+        assert!(has(&s, "feature work"));
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

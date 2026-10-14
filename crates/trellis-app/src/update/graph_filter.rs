@@ -35,7 +35,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
 /// opened through another spelling of its path, so the saved filter wasn't applied.
 pub(super) fn loaded(st: &mut AppState, snap: &Snapshot, kind: LoadKind, fx: &mut Vec<Effect>) -> bool {
     let mut f = st.settings.graph_filter_for(&snap.workdir);
-    let (hidden_changed, solo_changed) = f.prune(|r| ref_exists(snap, r));
+    let (mut hidden_changed, solo_changed) = f.prune(|r| ref_exists(snap, r));
+    // A hidden branch that has since been checked out is shown again (the load already showed it).
+    if let Some(b) = &snap.head_branch {
+        hidden_changed |= f.apply(FilterOp::Show(format!("refs/heads/{b}")));
+    }
     if hidden_changed || solo_changed {
         st.settings.set_graph_filter(&snap.workdir, f);
         fx.push(super::prefs::save_settings(st));

@@ -118,6 +118,24 @@ fn hiding_checked_out_branch_is_refused() {
 }
 
 #[test]
+fn checking_out_hidden_branch_shows_it_again() {
+    let (mut st, dir) = opened("gf-checkout-hidden", &["feature", "other"]);
+    drive(&mut st, Msg::GraphFilter(FilterOp::Hide(heads("feature"))));
+    drive(&mut st, Msg::GraphFilter(FilterOp::Hide(heads("other"))));
+    git(&dir, &["checkout", "-q", "feature"]);
+
+    let fx = update(&mut st, Msg::Refresh, Instant::now());
+    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::execute(e)).flatten()).unwrap();
+    let fx = update(&mut st, loaded, Instant::now());
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the load already showed it");
+    assert_eq!(filter(&st).hidden, [heads("other")], "only the checked-out branch is unhidden");
+    assert!(has_label(&st, "feature") && has_commit(&st, "feature work"));
+    assert!(!has_label(&st, "other"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn filter_messages_need_a_repository() {
     let mut st = state();
     assert!(op(&mut st, FilterOp::Solo(heads("feature"))).is_empty());

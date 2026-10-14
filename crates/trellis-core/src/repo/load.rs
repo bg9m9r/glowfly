@@ -40,6 +40,14 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         }
     };
 
+    // The checked-out branch is always shown: a saved filter may still hide it after a checkout.
+    let mut opts = opts.clone();
+    if let Some(b) = &head_branch {
+        let full = format!("refs/heads/{b}");
+        opts.hidden.retain(|h| *h != full);
+    }
+    let opts = &opts;
+
     let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).and_then(|c| c.message().map(|m| m.trim_end().to_owned()));
     let mut refs: HashMap<Oid, Vec<RefLabel>> = HashMap::new();
     if detached && let Some(o) = head_oid {
