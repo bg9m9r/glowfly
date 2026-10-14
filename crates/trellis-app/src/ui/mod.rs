@@ -184,7 +184,10 @@ impl TrellisApp {
             ThemeChoice::System => ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark),
         };
         color::set_dark(dark);
-        ctx.set_theme(if dark { egui::Theme::Dark } else { egui::Theme::Light });
+        let theme = if dark { egui::Theme::Dark } else { egui::Theme::Light };
+        if ctx.options(|o| o.theme_preference) != theme.into() {
+            ctx.set_theme(theme);
+        }
     }
 
     /// Keyboard shortcuts and window events, turned into messages or view-state changes.
@@ -394,8 +397,10 @@ impl eframe::App for TrellisApp {
         if !wanted.is_empty() {
             msgs.push(Msg::WantAvatars(wanted));
         }
-        // Views edit settings in place (Preferences); persist any change.
-        msgs.push(Msg::SettingsEdited);
+        // Only Preferences edits settings in place; persist any change (also on the frame it closes).
+        if self.st.prefs.is_some() {
+            msgs.push(Msg::SettingsEdited);
+        }
 
         for msg in msgs {
             self.dispatch(ctx, msg);

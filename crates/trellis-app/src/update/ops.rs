@@ -302,7 +302,7 @@ pub(super) fn finish_job(
     let status = if ok { "done" } else { "FAILED" };
     let text = format!("{} {status}\n{output}", job.label);
     if job.quiet {
-        st.log.push(crate::state::LogEntry { ok, text });
+        st.log_quiet(ok, text);
     } else {
         let headline = headline.unwrap_or_else(|| {
             if ok { format!("{} succeeded", job.label) } else { format!("{} failed: {}", job.label, last_line(&output)) }

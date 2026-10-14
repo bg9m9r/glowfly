@@ -96,6 +96,9 @@ pub struct RunningJob {
     pub keeps_undo: bool,
 }
 
+/// The most entries the activity log keeps.
+pub const LOG_LIMIT: usize = 500;
+
 pub struct LogEntry {
     pub ok: bool,
     pub text: String,
@@ -389,9 +392,18 @@ impl AppState {
     }
 
     pub fn log(&mut self, ok: bool, text: impl Into<String>) {
-        self.log.push(LogEntry { ok, text: text.into() });
+        self.log_quiet(ok, text);
         if !ok {
             self.view.show_log = true;
+        }
+    }
+
+    /// Adds to the activity log without opening it, dropping the oldest entries past
+    /// `LOG_LIMIT` (auto-fetch adds one a minute for as long as the app runs).
+    pub fn log_quiet(&mut self, ok: bool, text: impl Into<String>) {
+        self.log.push(LogEntry { ok, text: text.into() });
+        if self.log.len() > LOG_LIMIT {
+            self.log.drain(..self.log.len() - LOG_LIMIT);
         }
     }
 

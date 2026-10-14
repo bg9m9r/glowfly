@@ -3,8 +3,8 @@
 
 use crate::effect::{Effect, WatchTarget};
 use crate::msg::Msg;
+use crate::state::AppState;
 use crate::state::watch::WATCH_SETTLE;
-use crate::state::{AppState, LogEntry};
 use std::time::Instant;
 
 const FAILED: &str = "Trellis can't watch this repository for changes, so changes made outside Trellis show up when its window regains focus or you press F5.";
@@ -37,8 +37,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             // Reported once per repository; it is retried (silently) when its tab is selected again.
             if st.watch.failed.insert(workdir.clone()) {
                 st.toast(false, FAILED, now);
-                // Pushed directly: this shouldn't pop the activity log open.
-                st.log.push(LogEntry { ok: false, text: format!("File watching stopped for {}: {error}", workdir.display()) });
+                // Quiet: this shouldn't pop the activity log open.
+                st.log_quiet(false, format!("File watching stopped for {}: {error}", workdir.display()));
             }
         }
         _ => {}

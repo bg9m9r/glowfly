@@ -96,6 +96,8 @@ mod palette_stash_tests;
 #[cfg(test)]
 mod palette_tests;
 #[cfg(test)]
+mod perf_tests;
+#[cfg(test)]
 mod pr_checkout_tests;
 #[cfg(test)]
 mod publish_tests;
