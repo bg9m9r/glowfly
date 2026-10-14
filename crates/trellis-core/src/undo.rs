@@ -293,7 +293,7 @@ pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
         // Only this file's bytes change, so a merge or rebase in progress doesn't matter.
         return saved::plan(workdir, path, *before, *after, redo);
     }
-    let mut repo = Repository::open(workdir)?;
+    let repo = Repository::open(workdir)?;
     if let Some(op) = busy_name(repo.state()) {
         return Ok(Plan::Refuse(Refusal::Busy(format!("Finish or abort the {op} in progress first."))));
     }
@@ -375,14 +375,7 @@ pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
             if !clean {
                 return Ok(dirty());
             }
-            let mut index = None;
-            repo.stash_foreach(|i, _, oid| {
-                if oid == stash {
-                    index = Some(i);
-                }
-                index.is_none()
-            })?;
-            match index {
+            match reset::stash_index(workdir, *stash)? {
                 Some(n) => Plan::Run(vec![args(&["stash", "pop", "--index", &format!("stash@{{{n}}}")])]),
                 None => stale("The discarded-changes stash was dropped"),
             }
