@@ -358,7 +358,7 @@ fn file_history_stays_single_file() {
 
 fn synthetic() -> AppState {
     let mut st = state();
-    st.diff = Some((unstaged("f.txt"), three_hunks()));
+    st.diff = Some((unstaged("f.txt"), three_hunks().into()));
     st
 }
 

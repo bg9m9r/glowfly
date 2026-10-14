@@ -317,7 +317,7 @@ pub(super) fn with_history(name: &str, theme: ThemeChoice, limit: usize, select:
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     st.history = Some(view);
     (st, dir)
 }

@@ -201,7 +201,7 @@ fn delete_staged_new_file_asks_to_unstage() {
 fn unstage_delete_results() {
     let (mut st, dir) = loaded("wf-unstage-delete-done");
     let op = || FileOp::UnstageDelete { path: "s.txt".into(), mode: DeleteMode::Permanent };
-    st.diff = Some((DiffTarget::Staged("s.txt".into()), empty_diff()));
+    st.diff = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
     let fx = run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Deleted(Deleted::Permanently)) });
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Deleted s.txt and removed it from the staging area."));
     assert!(st.diff.is_none(), "the staged diff of the deleted file is closed");
@@ -251,11 +251,11 @@ fn rename_or_delete_closes_the_old_paths_diff() {
         (FileOp::Delete { path: "a.txt".into(), mode: DeleteMode::Trash }, WorkFileOk::Deleted(Deleted::Trashed)),
         (FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: false }, WorkFileOk::Written { ignored: false }),
     ] {
-        st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff()));
+        st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
         run(&mut st, Msg::WorkFileDone { op: op.clone(), result: Ok(ok) });
         assert!(st.diff.is_none(), "{op:?}");
 
-        st.diff = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff()));
+        st.diff = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));
         run(&mut st, Msg::WorkFileDone { op, result: Ok(ok) });
         assert!(st.diff.is_some());
     }

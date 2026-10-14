@@ -103,7 +103,7 @@ fn medium_file_opens_colored_then_corrects() {
 fn adopt_requires_same_old_text() {
     let (mut st, dir, _) = opened("hlc-adopt", 2_450);
     // On screen: the same hunks, finished, but each parsed on its own.
-    let (_, d) = st.diff.as_mut().unwrap();
+    let d = std::sync::Arc::make_mut(&mut st.diff.as_mut().unwrap().1);
     d.highlight = highlight::highlight_diff("a.rs", d, None);
     assert!(d.highlight.as_ref().is_some_and(|h| !h.is_pending()));
     let per_hunk = d.highlight.clone();

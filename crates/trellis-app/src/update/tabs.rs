@@ -288,7 +288,7 @@ fn unpark(st: &mut AppState, p: Parked) {
         Some((_, d)) if p.diff_mode != mode => {
             let h = super::diff::hunk_at_top(d, p.diff_mode, p.diff_layout, p.diff_top_row, ex);
             if mode == DiffMode::Hunks {
-                d.whole = None;
+                std::sync::Arc::make_mut(d).whole = None;
             }
             super::diff::opening_row(d, &st.settings, h, ex)
         }

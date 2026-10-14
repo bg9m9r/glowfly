@@ -252,7 +252,8 @@ pub struct AppState {
     pub loading: bool,
     pub selection: Selection,
     pub detail: Option<CommitDetail>,
-    pub diff: Option<(DiffTarget, FileDiff)>,
+    /// Shared with effects that read it (a reload, a highlight) instead of copied for them.
+    pub diff: Option<(DiffTarget, std::sync::Arc<FileDiff>)>,
     /// Incremented for every diff request and whenever the diff on screen goes stale (closed,
     /// replaced, or changed by a hunk operation); results of older requests are ignored.
     pub diff_gen: u64,

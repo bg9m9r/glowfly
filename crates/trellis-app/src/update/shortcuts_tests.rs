@@ -37,7 +37,7 @@ fn with_repo(name: &str, target: DiffTarget) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.diff = Some((target, one_hunk()));
+    st.diff = Some((target, one_hunk().into()));
     (st, dir)
 }
 
@@ -88,14 +88,14 @@ fn u_unstages_the_file_or_the_selected_lines() {
 fn s_and_u_ignore_other_diffs_and_views() {
     let (mut st, dir) = with_repo("keys-ignored", staged());
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S on a staged diff");
-    st.diff = Some((unstaged(), one_hunk()));
+    st.diff = Some((unstaged(), one_hunk().into()));
     assert!(key(&mut st, KeyAction::Unstage).is_empty(), "U on an unstaged diff");
-    st.diff = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), one_hunk()));
+    st.diff = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), one_hunk().into()));
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S on a commit diff");
     st.diff = None;
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S with no diff");
 
-    st.diff = Some((unstaged(), one_hunk()));
+    st.diff = Some((unstaged(), one_hunk().into()));
     st.conflict = Some(ConflictView::loading("f.txt".into()));
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S under the conflict view");
     st.conflict = None;
@@ -160,11 +160,11 @@ fn only_the_sheet_key_works_under_preferences_or_a_credential_prompt() {
     let snap = st.snap.as_mut().unwrap();
     snap.staged = snap.unstaged.clone();
     let quiet = |st: &mut AppState, what: &str| {
-        st.diff = Some((unstaged(), one_hunk()));
+        st.diff = Some((unstaged(), one_hunk().into()));
         for a in [KeyAction::Stage, KeyAction::StageAll, KeyAction::UnstageAll, KeyAction::FocusMessage] {
             assert!(key(st, a).is_empty(), "{a:?} under {what}");
         }
-        st.diff = Some((staged(), one_hunk()));
+        st.diff = Some((staged(), one_hunk().into()));
         assert!(key(st, KeyAction::Unstage).is_empty(), "Unstage under {what}");
         assert!(!st.view.focus_message, "FocusMessage under {what}");
         assert_eq!(st.selection, Selection::None, "FocusMessage under {what}");

@@ -18,7 +18,7 @@ fn pending(d: &FileDiff) -> bool {
 /// diff it sent along as `previous` was still pending), if both were computed on the same basis
 /// (syntax and old text: per-hunk spans never stand in for in-context ones, nor spans from an
 /// older old text). Likewise for the whole file.
-pub(super) fn keep_finished(shown: Option<&(DiffTarget, FileDiff)>, target: &DiffTarget, new: &mut FileDiff) {
+pub(super) fn keep_finished(shown: Option<&(DiffTarget, std::sync::Arc<FileDiff>)>, target: &DiffTarget, new: &mut FileDiff) {
     let Some((_, old)) = shown.filter(|(t, _)| t == target) else { return };
     adopt(old, new);
     if let (Some(ow), Some(nw)) = (old.whole.as_deref(), new.whole.as_deref_mut()) {
@@ -41,7 +41,7 @@ fn adopt(old: &FileDiff, new: &mut FileDiff) {
 pub(super) fn schedule(st: &AppState, fx: &mut Vec<Effect>) {
     let (Some(workdir), Some((target, d))) = (st.workdir(), st.diff.as_ref()) else { return };
     if pending(d) || d.whole.as_deref().is_some_and(|w| pending(&w.diff)) {
-        fx.push(Effect::HighlightDiff { workdir, target: target.clone(), generation: st.diff_shown_gen, diff: Box::new(d.clone()) });
+        fx.push(Effect::HighlightDiff { workdir, target: target.clone(), generation: st.diff_shown_gen, diff: std::sync::Arc::clone(d) });
     }
 }
 
@@ -54,6 +54,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg) {
         return;
     }
     let Some((_, d)) = st.diff.as_mut().filter(|(t, _)| *t == target) else { return };
+    // Copies the diff only if a reload in flight still shares it.
+    let d = std::sync::Arc::make_mut(d);
     if let Some(h) = hunks {
         attach(d, h);
     }

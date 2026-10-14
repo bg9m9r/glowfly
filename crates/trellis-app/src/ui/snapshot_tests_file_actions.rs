@@ -187,7 +187,7 @@ fn working_tree_diff_header_unchanged() {
     // The commit that changed app.txt and its parent.
     let fix = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit");
     let (newer, older) = (fix.oid, fix.parents[0]);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Stage file").is_some());
@@ -196,7 +196,7 @@ fn working_tree_diff_header_unchanged() {
     // Comparing two commits.
     let target = DiffTarget::Between(older, newer, "app.txt".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
-    h.state_mut().0.diff = Some((target, diff));
+    h.state_mut().0.diff = Some((target, diff.into()));
     h.run();
     assert!(h.query_by_label("Close  (Esc)").is_some(), "the header is drawn");
     assert!(h.query_by_label(OPEN_SHORT).is_none() && h.query_by_label(RESTORE_SHORT).is_none());

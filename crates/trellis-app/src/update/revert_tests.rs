@@ -27,7 +27,7 @@ fn with_diff(name: &str, target: DiffTarget, diff: FileDiff) -> (AppState, PathB
     let dir = scratch_repo(name);
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     (st, dir)
 }
 
@@ -51,7 +51,7 @@ fn expect_effect(st: &mut AppState, target: &DiffTarget) {
 fn revert_sends_the_effect_for_the_shown_commit_diff() {
     let (mut st, dir) = with_diff("revert-commit", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     let target = DiffTarget::Commit(head(&st), "a.txt".into());
-    st.diff = Some((target.clone(), one_hunk()));
+    st.diff = Some((target.clone(), one_hunk().into()));
     expect_effect(&mut st, &target);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -60,7 +60,7 @@ fn revert_sends_the_effect_for_the_shown_commit_diff() {
 fn revert_works_on_a_comparison() {
     let (mut st, dir) = with_diff("revert-between", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     let target = DiffTarget::Between(head(&st), head(&st), "a.txt".into());
-    st.diff = Some((target.clone(), one_hunk()));
+    st.diff = Some((target.clone(), one_hunk().into()));
     expect_effect(&mut st, &target);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -68,7 +68,7 @@ fn revert_works_on_a_comparison() {
 #[test]
 fn stale_generation_is_refused() {
     let (mut st, dir) = with_diff("revert-stale", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk()));
+    st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk().into()));
     let generation = st.hunk_ops_gen().unwrap() + 1;
     assert!(run(&mut st, Msg::RevertHunk { index: 0, generation }).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("diff changed")));
@@ -78,13 +78,13 @@ fn stale_generation_is_refused() {
 #[test]
 fn whitespace_blocks_revert() {
     let (mut st, dir) = with_diff("revert-ws", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk()));
+    st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk().into()));
     st.settings.diff_ignore_whitespace = true;
     assert_eq!(st.hunk_ops_blocked(), Some(WHITESPACE_BLOCKS_REVERT));
     assert!(revert(&mut st, 0).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == WHITESPACE_BLOCKS_REVERT));
 
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk()));
+    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
     assert_eq!(st.hunk_ops_blocked(), Some(WHITESPACE_BLOCKS_HUNK_OPS));
     st.diff = None;
     assert_eq!(st.hunk_ops_blocked(), None);
@@ -95,9 +95,9 @@ fn whitespace_blocks_revert() {
 fn working_tree_or_missing_hunk_is_ignored() {
     let (mut st, dir) = with_diff("revert-ignored", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     assert!(revert(&mut st, 0).is_empty(), "working-tree diffs have no revert");
-    st.diff = Some((DiffTarget::Staged("a.txt".into()), one_hunk()));
+    st.diff = Some((DiffTarget::Staged("a.txt".into()), one_hunk().into()));
     assert!(revert(&mut st, 0).is_empty());
-    st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk()));
+    st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk().into()));
     assert!(revert(&mut st, 1).is_empty(), "no such hunk");
     assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -124,7 +124,7 @@ fn whole_file_mode_uses_the_normal_hunk() {
     let whole_hunk = diff.whole.as_ref().expect("whole file loaded").diff.hunks[0].clone();
     let want = diff.hunks[1].clone();
     assert_ne!(want, whole_hunk);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     let fx = revert(&mut st, 1);
     assert!(matches!(&fx[..], [Effect::RevertHunk { index: 1, expected, .. }] if *expected == want), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);

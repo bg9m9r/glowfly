@@ -136,7 +136,7 @@ pub enum Effect {
         reload: bool,
         generation: u64,
         /// On a reload, the diff on screen: unchanged hunks keep its highlighting.
-        previous: Option<FileDiff>,
+        previous: Option<std::sync::Arc<FileDiff>>,
         /// Hide whitespace-only changes (the diff_ignore_whitespace setting when the request was made).
         ignore_whitespace: bool,
         /// Also load the whole file (the diff_mode setting when the request was made).
@@ -149,7 +149,7 @@ pub enum Effect {
         workdir: PathBuf,
         target: DiffTarget,
         generation: u64,
-        diff: Box<FileDiff>,
+        diff: std::sync::Arc<FileDiff>,
     },
     LoadConflict {
         workdir: PathBuf,

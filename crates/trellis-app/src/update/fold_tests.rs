@@ -131,7 +131,7 @@ fn folds_reset_only_for_another_file() {
     run(&mut st, Msg::CloseDiff);
     assert!(st.view.diff_expanded.is_empty(), "the diff closed");
 
-    st.diff = Some((g.clone(), three_changes(true)));
+    st.diff = Some((g.clone(), three_changes(true).into()));
     open(&mut st);
     arrive(&mut st, g, true, Err("no changes".into()));
     assert!(st.diff.is_none());
@@ -174,7 +174,7 @@ fn stepping_counts_folds() {
         }
 
         // A file that starts with a fold opens on its first block, counted with it closed.
-        st.diff = Some((f_txt(), late_changes()));
+        st.diff = Some((f_txt(), late_changes().into()));
         let key = first_fold(&st).key;
         run(&mut st, Msg::ExpandUnchanged(key));
         assert!(!st.view.diff_expanded.is_empty());
@@ -195,7 +195,7 @@ fn folds_are_parked_with_their_tab() {
     drive(&mut st, Msg::Open(dir.clone()));
     st.settings.diff_mode = DiffMode::WholeFile;
     st.settings.diff_layout = DiffLayout::Inline;
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), three_changes(true)));
+    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), three_changes(true).into()));
     let key = first_fold(&st).key;
     run(&mut st, Msg::ExpandUnchanged(key));
     st.view.diff_top_row = block_rows(whole(&st), DiffLayout::Inline, &st.view.diff_expanded)[2];

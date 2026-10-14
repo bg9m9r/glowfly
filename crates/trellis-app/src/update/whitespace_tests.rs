@@ -54,7 +54,7 @@ fn toggle_saves_and_reloads_the_open_diff() {
     let dir = scratch_repo("ws-toggle");
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk()));
+    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
     assert!(run(&mut st, Msg::SelectDiffLine { hunk: 0, line: 1, how: Only }).is_empty());
     assert!(!st.view.diff_lines.is_empty());
     assert!(st.hunk_ops_gen().is_some());
@@ -200,7 +200,7 @@ fn a_load_started_before_the_toggle_is_dropped() {
 #[test]
 fn hunk_ops_are_not_blocked_with_whitespace_shown() {
     let mut st = state();
-    st.diff = Some((DiffTarget::Staged("f.txt".into()), one_hunk()));
+    st.diff = Some((DiffTarget::Staged("f.txt".into()), one_hunk().into()));
     assert_eq!(st.hunk_ops_blocked(), None);
     st.settings.diff_ignore_whitespace = true;
     assert!(st.hunk_ops_blocked().is_some());

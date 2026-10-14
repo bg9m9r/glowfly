@@ -58,7 +58,7 @@ fn loaded(st: &AppState, h: FileHistory) -> Msg {
 #[test]
 fn opening_file_history_requests_a_walk() {
     let (mut st, dir) = opened("history-open");
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff()));
+    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
     st.conflict = Some(ConflictView::loading("a.txt".into()));
     let fx = update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
     let limit = st.settings.commit_limit();
@@ -218,7 +218,7 @@ fn other_views_close_file_history() {
     assert!(st.history.is_none() && st.history_gen > before);
 
     reopen(&mut st);
-    st.diff = Some((DiffTarget::Commit(head, "a.txt".into()), empty_diff()));
+    st.diff = Some((DiffTarget::Commit(head, "a.txt".into()), empty_diff().into()));
     update(&mut st, Msg::CloseFileHistory, Instant::now());
     assert!(st.history.is_none() && st.diff.is_none());
     let _ = std::fs::remove_dir_all(&dir);

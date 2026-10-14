@@ -163,7 +163,7 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
         DiffMode::Hunks => {
             // The normal hunks are already loaded, and still current for hunk operations.
             let Some((_, d)) = st.diff.as_mut() else { return };
-            d.whole = None;
+            std::sync::Arc::make_mut(d).whole = None;
             let row = h.and_then(|h| header_rows(d, layout).get(h).copied()).unwrap_or(0);
             st.view.diff_scroll_to_row = Some(row);
             st.view.diff_top_row = row;

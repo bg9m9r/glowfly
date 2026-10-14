@@ -57,7 +57,7 @@ pub struct Parked {
     pub snap: Option<Snapshot>,
     pub selection: Selection,
     pub detail: Option<CommitDetail>,
-    pub diff: Option<(DiffTarget, FileDiff)>,
+    pub diff: Option<(DiffTarget, std::sync::Arc<FileDiff>)>,
     /// The open conflict with its picks (a load in flight is requested again on return).
     pub conflict: Option<ConflictView>,
     /// The open file history (a request in flight is sent again on return).

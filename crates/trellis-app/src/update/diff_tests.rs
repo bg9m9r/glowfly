@@ -24,7 +24,7 @@ pub(super) fn three_hunks() -> FileDiff {
 
 fn with_diff() -> AppState {
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_hunks()));
+    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_hunks().into()));
     st
 }
 
@@ -193,7 +193,7 @@ fn turning_highlighting_off_saves_and_keeps_the_spans() {
     d.highlight = trellis_core::highlight::highlight_diff("f.rs", &d, None);
     assert!(d.highlight.is_some());
     let want = d.highlight.clone();
-    st.diff = Some((DiffTarget::Unstaged("f.rs".into()), d));
+    st.diff = Some((DiffTarget::Unstaged("f.rs".into()), d.into()));
 
     st.settings.syntax_highlighting = false;
     let fx = run(&mut st, Msg::SettingsEdited);

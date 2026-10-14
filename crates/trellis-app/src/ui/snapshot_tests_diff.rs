@@ -20,7 +20,7 @@ pub(super) fn with_diff(layout: DiffLayout, name: &str) -> (AppState, PathBuf) {
     let target = DiffTarget::Unstaged("app.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -83,7 +83,7 @@ fn main() {
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     assert!(diff.highlight.is_some(), "main.rs is highlighted as Rust");
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -124,7 +124,7 @@ fn greet(name: &str) -> String {
     diff.intraline = intraline::intraline(&diff);
     assert!(diff.hunks[0].header.contains("fn greet"), "{}", diff.hunks[0].header);
     assert!(diff.highlight.as_ref().is_some_and(|h| !h.header(0).is_empty()), "the context is highlighted");
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -157,7 +157,7 @@ fn with_word_diff(layout: DiffLayout, theme: ThemeChoice) -> (AppState, PathBuf)
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     (st, dir)
 }
@@ -189,7 +189,7 @@ fn with_hidden_whitespace(name: &str, file: &str, before: &str, after: &str) -> 
     let mut diff = repo::load_diff_with(&dir, &target, repo::LoadDiffOptions { ignore_whitespace: true, whole_file: false }).unwrap();
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     st.settings.diff_ignore_whitespace = true;
     (st, dir)
 }
@@ -229,7 +229,7 @@ fn diff_nav_first_file() {
     let target = DiffTarget::Unstaged("app.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     use crate::state::diff_nav::{StepKind, step};
     assert_eq!([step(&st, -1).kind(), step(&st, 1).kind()], [StepKind::End, StepKind::File]);
     render("diff_nav_first_file", st, true);

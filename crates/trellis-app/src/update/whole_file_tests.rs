@@ -48,7 +48,7 @@ pub(super) fn with_diff(name: &str, diff: FileDiff) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), diff));
+    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), diff.into()));
     (st, dir)
 }
 
@@ -133,7 +133,7 @@ fn set_diff_mode_hunks_needs_no_reload() {
 fn jump_to_change_steps_blocks_in_whole_mode() {
     for layout in [DiffLayout::Inline, DiffLayout::Split] {
         let mut st = state();
-        st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true)));
+        st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
         st.settings.diff_mode = DiffMode::WholeFile;
         st.settings.diff_layout = layout;
         let rows = blocks(&three_changes(true), layout);
@@ -152,7 +152,7 @@ fn jump_to_change_steps_blocks_in_whole_mode() {
 
     // Switching the layout keeps the same block at the top.
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true)));
+    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
     st.settings.diff_mode = DiffMode::WholeFile;
     let (inline, split) = (blocks(&three_changes(true), DiffLayout::Inline), blocks(&three_changes(true), DiffLayout::Split));
     assert_ne!(inline[1], split[1]);
@@ -295,7 +295,7 @@ fn file_history_honours_whole_mode() {
 #[test]
 fn a_parked_diff_follows_a_mode_change_made_in_another_tab() {
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true)));
+    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
     st.settings.diff_mode = DiffMode::WholeFile;
     st.view.diff_top_row = blocks(&three_changes(true), DiffLayout::Inline)[2];
 

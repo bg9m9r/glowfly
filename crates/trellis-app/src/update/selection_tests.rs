@@ -212,7 +212,7 @@ fn selection_change_closes_views() {
     let (mut st, f) = fixture("multi-closes");
     up(&mut st, Msg::SelectCommit(f.c(5)));
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty));
+    st.diff = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty.into()));
     st.conflict = Some(ConflictView::loading("f.txt".into()));
     st.history = Some(FileHistoryView::loading("f.txt".into(), None));
     let gen_before = st.diff_gen;

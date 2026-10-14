@@ -21,7 +21,7 @@ pub(super) fn with_commit_diff(name: &str, theme: ThemeChoice, layout: DiffLayou
     let target = DiffTarget::Commit(oid, "app.txt".into());
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
-    st.diff = Some((target, diff));
+    st.diff = Some((target, diff.into()));
     st.settings.diff_layout = layout;
     st.settings.diff_ignore_whitespace = ignore_ws;
     (st, dir)

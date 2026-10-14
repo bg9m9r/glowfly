@@ -42,7 +42,7 @@ fn esc(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Vec<Msg> {
 fn esc_in_a_text_field_leaves_it_before_closing_the_diff() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-typing");
     let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
-    st.diff = Some((DiffTarget::Unstaged("README.md".into()), diff));
+    st.diff = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
     st.view.focus_message = true;
     let mut h = app_harness(st);
     h.run();

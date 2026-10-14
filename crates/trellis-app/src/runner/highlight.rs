@@ -17,12 +17,12 @@ pub(super) fn load_job(
     target: DiffTarget,
     reload: bool,
     generation: u64,
-    previous: Option<FileDiff>,
+    previous: Option<std::sync::Arc<FileDiff>>,
     opts: LoadDiffOptions,
 ) -> Msg {
     let result = repo::load_diff_for_view(&workdir, &target, opts)
         .map(|mut v| {
-            decorate_in_context(target.path(), v.language.as_deref(), &mut v.diff, previous.as_ref(), v.old.as_ref());
+            decorate_in_context(target.path(), v.language.as_deref(), &mut v.diff, previous.as_deref(), v.old.as_ref());
             let d = &v.diff;
             let context = v.old.is_some();
             let language = v.language.as_deref().unwrap_or("-");

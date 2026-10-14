@@ -140,7 +140,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     if reload {
                         super::highlight::keep_finished(st.diff.as_ref(), &target, &mut d);
                     }
-                    st.diff = Some((target, d));
+                    st.diff = Some((target, std::sync::Arc::new(d)));
                     st.diff_shown_gen = generation;
                     super::highlight::schedule(st, fx);
                 }
@@ -242,7 +242,7 @@ fn request_diff(st: &mut AppState, fx: &mut Vec<Effect>, reload: bool) {
     if let (Some(workdir), Some((target, diff))) = (st.workdir(), st.diff.as_ref()) {
         let target = target.clone();
         let highlighted = diff.highlight.is_some() || diff.whole.as_ref().is_some_and(|w| w.diff.highlight.is_some());
-        let previous = highlighted.then(|| diff.clone());
+        let previous = highlighted.then(|| std::sync::Arc::clone(diff));
         let generation = next_diff_gen(st);
         let ignore_whitespace = st.settings.diff_ignore_whitespace;
         let whole_file = st.settings.diff_mode == DiffMode::WholeFile;

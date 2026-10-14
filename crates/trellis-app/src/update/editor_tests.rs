@@ -29,7 +29,7 @@ fn tabbed_diff() -> FileDiff {
 /// A state with `tabbed_diff` open and the settings as saved.
 fn with_diff() -> AppState {
     let mut st = state();
-    st.diff = Some((DiffTarget::Unstaged("f.rs".into()), tabbed_diff()));
+    st.diff = Some((DiffTarget::Unstaged("f.rs".into()), tabbed_diff().into()));
     // Bring the saved copy in line with the settings, so only the edits below count.
     run(&mut st, Msg::SettingsEdited);
     st
@@ -69,7 +69,7 @@ fn changing_tab_size_does_not_reload() {
     st.settings.tab_size = 2;
     let fx = run(&mut st, Msg::SettingsEdited);
     assert!(only_saves(&fx), "{fx:?}");
-    assert_eq!(st.diff.as_ref().unwrap().1, tabbed_diff(), "raw tabs kept; only the painting changes");
+    assert_eq!(st.diff.as_ref().unwrap().1, tabbed_diff().into(), "raw tabs kept; only the painting changes");
 }
 
 #[test]

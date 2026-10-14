@@ -31,7 +31,7 @@ fn unstaged() -> DiffTarget {
 
 fn with_diff(target: DiffTarget) -> AppState {
     let mut st = state();
-    st.diff = Some((target, two_hunks()));
+    st.diff = Some((target, two_hunks().into()));
     st
 }
 
@@ -186,7 +186,7 @@ fn reload_keeps_identical_clears_changed() {
     loaded(&mut st, unstaged(), true, Ok(changed));
     assert_eq!(selected(&st), None, "a changed reload clears it");
 
-    st.diff = Some((unstaged(), two_hunks()));
+    st.diff = Some((unstaged(), two_hunks().into()));
     select(&mut st);
     loaded(&mut st, unstaged(), false, Ok(two_hunks()));
     assert_eq!(selected(&st), None, "opening a diff clears it");
@@ -195,7 +195,7 @@ fn reload_keeps_identical_clears_changed() {
     run(&mut st, Msg::CloseDiff);
     assert_eq!(selected(&st), None);
 
-    st.diff = Some((unstaged(), two_hunks()));
+    st.diff = Some((unstaged(), two_hunks().into()));
     select(&mut st);
     loaded(&mut st, unstaged(), true, Err("no changes in f.txt".into()));
     assert!(st.diff.is_none() && selected(&st).is_none(), "a reload that finds nothing closes it");

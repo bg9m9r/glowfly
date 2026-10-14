@@ -41,7 +41,8 @@ fn each_tab_keeps_its_own_repository_and_draft() {
     // A's open diff, scrolled down a few rows.
     st.diff = Some((
         DiffTarget::Unstaged("a.txt".into()),
-        trellis_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None },
+        trellis_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
+            .into(),
     ));
     st.view.diff_top_row = 6;
 
