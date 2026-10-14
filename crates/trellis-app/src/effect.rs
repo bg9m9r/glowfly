@@ -18,7 +18,7 @@ pub enum LoadKind {
     Refresh,
 }
 
-/// Quick index/working-tree edits done through libgit2.
+/// Quick index/working-tree edits (through libgit2, or git where filters must run).
 #[derive(Debug, PartialEq)]
 pub enum LocalOp {
     StageFile(String),
@@ -30,6 +30,8 @@ pub enum LocalOp {
         op: HunkOp,
         path: String,
         index: usize,
+        /// The hunk as displayed; the operation is refused if the file's hunk differs now.
+        expected: Hunk,
     },
     /// Lines `lines` (sorted) of hunk `hunk`, whose header must still be `header`.
     Lines {

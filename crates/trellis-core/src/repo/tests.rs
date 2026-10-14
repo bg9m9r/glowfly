@@ -91,7 +91,7 @@ fn stage_unstage_discard_hunks() {
     assert_eq!(untracked.hunks[0].lines[0].text, "brand new");
 
     // Stage only the second hunk.
-    apply_hunk(&dir, "f.txt", 1, HunkOp::Stage).unwrap();
+    apply_hunk(&dir, "f.txt", 1, &diff.hunks[1], HunkOp::Stage).unwrap();
     let staged = load_diff(&dir, &DiffTarget::Staged("f.txt".into())).unwrap();
     assert_eq!(staged.hunks.len(), 1);
     assert!(staged.hunks[0].lines.iter().any(|l| l.text == "line 28 changed"));
@@ -100,11 +100,11 @@ fn stage_unstage_discard_hunks() {
     assert!(unstaged.hunks[0].lines.iter().any(|l| l.text == "line 2 changed"));
 
     // Unstage it again.
-    apply_hunk(&dir, "f.txt", 0, HunkOp::Unstage).unwrap();
+    apply_hunk(&dir, "f.txt", 0, &staged.hunks[0], HunkOp::Unstage).unwrap();
     assert!(load_diff(&dir, &DiffTarget::Staged("f.txt".into())).is_err());
 
     // Discard the first hunk from the working tree.
-    apply_hunk(&dir, "f.txt", 0, HunkOp::Discard).unwrap();
+    apply_hunk(&dir, "f.txt", 0, &unstaged.hunks[0], HunkOp::Discard).unwrap();
     let on_disk = std::fs::read_to_string(dir.join("f.txt")).unwrap();
     assert!(!on_disk.contains("line 2 changed") && on_disk.contains("line 28 changed"));
 

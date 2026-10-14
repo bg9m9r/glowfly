@@ -287,7 +287,7 @@ fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<()> {
         LocalOp::StageAll => repo::stage_all(workdir),
         LocalOp::UnstagePaths(paths) => repo::unstage_paths(workdir, &paths),
         LocalOp::DiscardFile(path) => repo::discard_file(workdir, &path),
-        LocalOp::Hunk { op, path, index } => repo::apply_hunk(workdir, &path, index, op),
+        LocalOp::Hunk { op, path, index, expected } => repo::apply_hunk(workdir, &path, index, &expected, op),
         LocalOp::Lines { op, path, hunk, expected, lines } => repo::apply_lines(workdir, &path, hunk, &expected, &lines, op),
         LocalOp::ResolveConflict { path, contents, expected } => repo::write_resolution(workdir, &path, &contents, &expected),
         LocalOp::ResolveWithSide { path, side, expected } => repo::resolve_with_side(workdir, &path, side, &expected),

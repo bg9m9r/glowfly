@@ -178,7 +178,7 @@ fn stage_by_block_hunk_index() {
     let target = DiffTarget::Unstaged("f.txt".into());
     let d = load_diff_with(&dir, &target, WHOLE).unwrap();
     let second = whole(&d).blocks[1].hunk;
-    apply_hunk(&dir, "f.txt", second, HunkOp::Stage).unwrap();
+    apply_hunk(&dir, "f.txt", second, &d.hunks[second], HunkOp::Stage).unwrap();
 
     let staged = load_diff(&dir, &DiffTarget::Staged("f.txt".into())).unwrap();
     let staged: Vec<_> = staged.hunks.iter().flat_map(|h| changes(&h.lines)).map(|(o, t)| format!("{o}{t}")).collect();

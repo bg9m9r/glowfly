@@ -19,15 +19,27 @@ fn git(workdir: &Path, a: &[&str]) -> Result<()> {
 
 /// Stages, unstages or discards a single hunk (by index within the displayed diff). The index
 /// counts hunks of the unfiltered diff, so callers must not pass an index taken from a
-/// `load_diff_with` diff that ignores whitespace.
-pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, op: HunkOp) -> Result<()> {
+/// `load_diff_with` diff that ignores whitespace. `expected` is that hunk as the user saw it:
+/// unless git produces exactly the same hunk now (header and every line), the index may name
+/// another hunk, so the operation is refused as stale with `NotFound` and nothing changes.
+pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk, op: HunkOp) -> Result<()> {
     let repo = Repository::open(workdir)?;
     if op != HunkOp::Unstage {
         // Unstaging only moves blobs between HEAD and the index, where no conversion applies.
         attrs::refuse_converted(&repo, path, if op == HunkOp::Stage { "staging" } else { "discarding" })?;
     }
+    // The forward diff `load_diff` shows, to check the hunk; the one applied may be reversed.
+    let shown = match op {
+        HunkOp::Stage | HunkOp::Discard => repo.diff_index_to_workdir(None, Some(&mut workdir_opts(path)))?,
+        HunkOp::Unstage => repo.diff_tree_to_index(head_tree(&repo).as_ref(), None, Some(&mut path_opts(path)))?,
+    };
+    let stale = || Error::NotFound("the diff changed; try again on the updated diff".into());
+    let patch = diff::file_patch(&shown, path)?.ok_or_else(stale)?;
+    if hunk_index >= patch.num_hunks() || diff::hunk_of(&patch, hunk_index)? != *expected {
+        return Err(stale());
+    }
     let (diff, location) = match op {
-        HunkOp::Stage => (repo.diff_index_to_workdir(None, Some(&mut workdir_opts(path)))?, ApplyLocation::Index),
+        HunkOp::Stage => (shown, ApplyLocation::Index),
         HunkOp::Discard => {
             let mut o = workdir_opts(path);
             o.reverse(true);

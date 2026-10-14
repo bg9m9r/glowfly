@@ -89,7 +89,7 @@ fn hunk_and_line_edits_of_converted_files_are_refused() {
     let diff = load_diff(&dir, &DiffTarget::Unstaged("a.up".into())).unwrap();
     let hunk = diff.hunks[0].clone();
     for op in [HunkOp::Stage, HunkOp::Discard] {
-        match apply_hunk(&dir, "a.up", 0, op) {
+        match apply_hunk(&dir, "a.up", 0, &hunk, op) {
             Err(Error::Unsupported(m)) => assert!(m.contains("filter=upper"), "{m}"),
             other => panic!("{op:?}: expected a refusal, got {other:?}"),
         }

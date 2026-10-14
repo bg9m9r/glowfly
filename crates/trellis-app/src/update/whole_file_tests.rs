@@ -180,8 +180,10 @@ fn line_ops_blocked_in_whole_mode() {
 
     // A block's buttons send the normal hunk index.
     let generation = st.hunk_ops_gen().expect("enabled");
+    let shown = st.diff.as_ref().unwrap().1.hunks[2].clone();
     let fx = run(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "f.txt".into(), index: 2, generation });
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 2, .. }, .. }]), "{fx:?}");
+    // With the hunk as shown, so core can refuse it if the file changed since.
+    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 2, expected, .. }, .. }] if *expected == shown), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

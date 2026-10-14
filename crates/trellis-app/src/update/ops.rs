@@ -40,9 +40,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 st.log(false, "The diff changed before the hunk operation ran, so nothing was changed. Try again on the updated diff.");
                 return;
             }
+            // Core refuses the operation unless git still produces this hunk at `index`.
+            let Some(expected) = st.diff.as_ref().and_then(|(_, d)| d.hunks.get(index)).cloned() else { return };
             // Its hunks are stale from now until the reload that follows the operation lands.
             st.diff_gen += 1;
-            local(st, LocalOp::Hunk { op, path, index }, fx);
+            local(st, LocalOp::Hunk { op, path, index, expected }, fx);
         }
         Msg::ApplyLines(op) => apply_lines(st, op, fx),
         Msg::RevertHunk { index, generation } => revert_hunk(st, index, generation, fx),
