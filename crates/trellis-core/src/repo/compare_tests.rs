@@ -84,7 +84,7 @@ fn between_diff_combines_intermediate_commits() {
     let c4 = commit_all(&dir, "c4");
     let ws = DiffTarget::Between(c1, c4, "f.txt".into());
     assert!(changed_lines(&load_diff(&dir, &ws).unwrap()).contains(&"+line   6  ".to_owned()));
-    let filtered = load_diff_with(&dir, &ws, LoadDiffOptions { ignore_whitespace: true }).unwrap();
+    let filtered = load_diff_with(&dir, &ws, LoadDiffOptions { ignore_whitespace: true, whole_file: false }).unwrap();
     assert_eq!(changed_lines(&filtered), ["-line 2", "+line two", "-line 11", "+line eleven"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
