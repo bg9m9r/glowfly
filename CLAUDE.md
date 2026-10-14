@@ -47,6 +47,9 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/tr
   `ci:`, `chore:`); release-please derives versions and the CHANGELOG from them. Don't edit
   the version in `Cargo.toml`, `version.txt` or `CHANGELOG.md` by hand.
 
+- When you tick an item in `TODO.md`, add a line at the top of its "Recent changes" list:
+  `- YYYY-MM-DD HH:MM · **<top-level TODO item>**: <what was done> (\`<commit>\`)`, in local
+  time, and drop the oldest line past 20.
 - Keep files under ~400 lines; split by responsibility rather than growing a file.
 - Tests: core logic uses fixture repos (see the `scratch_repo` helper); behavior uses headless
   `update` tests; views use `egui_kittest` snapshots.

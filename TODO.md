@@ -9,6 +9,34 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 
 ---
 
+## Recent changes
+
+The last 20 completed TODO items, newest first: when (local time), which item, and what was
+done. Add a line at the top when ticking an item, and drop the oldest past 20.
+
+- 2026-10-14 07:33 · **File actions**: Open, show in folder and restore from the file history and commit diff header (`a5878a0`)
+- 2026-10-14 07:27 · **Diff viewer upgrade**: Language overrides from linguist-language gitattributes; highlight .jsx (`c15779a`)
+- 2026-10-14 07:22 · **Command palette (fuzzy finder)**: Apply, pop or delete a chosen stash and stash with a message (`ae3ed3a`)
+- 2026-10-14 06:59 · **Diff viewer upgrade**: Highlight TOML, TypeScript, PowerShell, Dockerfile, Kotlin and Swift (`a1b840e`)
+- 2026-10-14 06:53 · **Command palette (fuzzy finder)**: Check out remote branches and tags (`c11355d`)
+- 2026-10-14 06:48 · **File actions**: Move untracked files that Discard deletes to the Recycle Bin or Trash (`db4c49b`)
+- 2026-10-14 06:32 · **File actions**: Move deleted files to the Recycle Bin or Trash (`cf2bec8`)
+- 2026-10-14 06:24 · **Diff viewer upgrade**: Color the function context in hunk headers (`e9759bb`)
+- 2026-10-14 06:23 · **Command palette (fuzzy finder)**: Check tag names live and push new tags to a remote (`f1cdb72`)
+- 2026-10-14 05:59 · **Diff viewer upgrade**: Highlight hunks from the lines before them (`a3c4e1a`)
+- 2026-10-14 05:51 · **File actions**: Unstage and delete staged renames and already-deleted new files (`27b09a4`)
+- 2026-10-14 05:46 · **Branch operations / Command palette (fuzzy finder)**: Stash, undo, tab, diff and toolbar commands, and a Refresh entry (`f3e52f4`)
+- 2026-10-14 05:30 · **Diff viewer upgrade**: Fold opened unchanged runs again, and expand or collapse all folds (`8ecf2e8`)
+- 2026-10-14 05:24 · **File actions**: Restore from comparison rows and unstage-and-delete staged new files (`16dbb7a`)
+- 2026-10-14 05:20 · **Command palette (fuzzy finder)**: Create tag and annotated tag, and shortcut hints on entries (`da0f378`)
+- 2026-10-14 05:05 · **Diff viewer upgrade**: Finish syntax highlighting of large diffs in the background (`16ad558`)
+- 2026-10-14 04:57 · **File actions**: New file in this folder, and staged renames with git mv (`e0a8b9d`)
+- 2026-10-14 04:59 · **File history and blame / Command palette (fuzzy finder)**: File finder for file history (`ddf25d9`)
+- 2026-10-14 04:31 · **File actions**: Create, rename and delete working-tree files from the WIP panel (`653dc52`)
+- 2026-10-14 04:21 · **Diff viewer upgrade**: Fold long unchanged runs in the whole-file view (`e8f3925`)
+
+---
+
 ## Done
 
 - Commit graph with lanes and merge curves, a BRANCH/TAG column, avatar nodes, a WIP row, and
