@@ -1,6 +1,6 @@
 //! Author avatar lookup. GitHub noreply addresses use GitHub's
 //! avatar service; everything else asks Gravatar (by SHA-256 of the email, never the address
-//! itself). Images and misses are cached under `%APPDATA%\Trellis\avatars`.
+//! itself). Images and misses are cached in `avatars` under the config folder.
 
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;

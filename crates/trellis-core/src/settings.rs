@@ -1,15 +1,16 @@
-//! App preferences persisted to `%APPDATA%\Trellis\settings.json` (or the XDG config dir).
+//! App preferences persisted to `settings.json` in the config folder (see `paths`).
 
 use crate::forge::{Account, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
-use std::path::{Path, PathBuf};
 
 mod file;
 mod graph_filter;
+mod paths;
 pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
+pub use paths::{config_dir, migrate_old_config_dir};
 
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ThemeChoice {
@@ -243,30 +244,6 @@ pub const DEFAULT_DIFF_FONT_SIZE: f32 = 12.5;
 pub const DIFF_FONT_SIZES: RangeInclusive<f32> = 8.0..=24.0;
 /// The tab sizes Preferences > Editor offers.
 pub const TAB_SIZES: RangeInclusive<u8> = 1..=16;
-
-fn config_base() -> Option<PathBuf> {
-    std::env::var_os("APPDATA")
-        .or_else(|| std::env::var_os("XDG_CONFIG_HOME"))
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
-}
-
-pub fn config_dir() -> Option<PathBuf> {
-    config_base().map(|b| b.join("Trellis"))
-}
-
-/// The app was called Riffle before. Moves its settings folder (settings, recent repositories,
-/// tabs, avatar cache) to the new name, once, if there is nothing under the new name yet.
-pub fn migrate_old_config_dir() -> std::io::Result<()> {
-    match config_base() {
-        Some(base) => move_dir_if_new_missing(&base.join("Riffle"), &base.join("Trellis")),
-        None => Ok(()),
-    }
-}
-
-fn move_dir_if_new_missing(old: &Path, new: &Path) -> std::io::Result<()> {
-    if old.is_dir() && !new.exists() { std::fs::rename(old, new) } else { Ok(()) }
-}
 
 impl Settings {
     pub fn connection(&self, account: &Account) -> Option<&Connection> {

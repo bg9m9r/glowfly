@@ -104,7 +104,9 @@ sub-list, and forms with right-aligned labels.
 - **Repo-specific**: identity override (local `user.name` / `user.email`), `core.hooksPath`, and
   the issue tracker.
 
-App settings live in `%APPDATA%\Trellis\settings.json`. Git settings are written straight to git
+App settings live in `settings.json` in `%APPDATA%\Trellis` on Windows,
+`~/Library/Application Support/Trellis` on macOS and `$XDG_CONFIG_HOME/trellis` (usually
+`~/.config/trellis`) on Linux. Git settings are written straight to git
 config. Tokens go to the Windows Credential Manager.
 
 ## Architecture

@@ -51,7 +51,7 @@ fn main() -> eframe::Result {
         .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "trellis=info".into()))
         .init();
     if let Err(e) = trellis_core::settings::migrate_old_config_dir() {
-        tracing::warn!("could not move the settings folder from the app's old name (Riffle): {e}");
+        tracing::warn!("could not move the settings folder from where an earlier version kept it: {e}");
     }
     let start = std::env::args().nth(1).map(PathBuf::from);
     let options = eframe::NativeOptions {

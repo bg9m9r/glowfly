@@ -3,23 +3,6 @@
 use super::*;
 
 #[test]
-fn old_config_dir_moves_once() {
-    let base = std::env::temp_dir().join(format!("trellis-migrate-{}", std::process::id()));
-    let (old, new) = (base.join("Riffle"), base.join("Trellis"));
-    std::fs::create_dir_all(&old).unwrap();
-    std::fs::write(old.join("recent.txt"), "C:/repo").unwrap();
-    move_dir_if_new_missing(&old, &new).unwrap();
-    assert!(!old.exists());
-    assert_eq!(std::fs::read_to_string(new.join("recent.txt")).unwrap(), "C:/repo");
-
-    // An existing new folder is never overwritten.
-    std::fs::create_dir_all(&old).unwrap();
-    move_dir_if_new_missing(&old, &new).unwrap();
-    assert!(old.exists());
-    let _ = std::fs::remove_dir_all(&base);
-}
-
-#[test]
 fn settings_roundtrip_and_defaults() {
     // Missing fields fall back to defaults so old settings files keep working.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5, "date_format": "Iso"}"#).unwrap_or_default();
