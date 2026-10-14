@@ -279,6 +279,10 @@ fn visible_tips(repo: &Repository, opts: &LoadOptions, head_branch: Option<&str>
     }
     let mut out: Vec<String> = Vec::new();
     let mut add = |name: String| {
+        // Hidden refs are not walked as smart tips; HEAD is pushed separately.
+        if opts.hidden.contains(&name) {
+            return;
+        }
         if !out.contains(&name) && repo.revparse_single(&name).is_ok() {
             out.push(name);
         }

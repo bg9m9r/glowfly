@@ -1,6 +1,7 @@
 //! Right-click menus for commits and remote branches (local branches: `branch_menu.rs`).
 
 use super::common::{menu_item, short};
+use super::ref_visibility;
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::ForgeState;
@@ -8,6 +9,7 @@ use crate::state::selection::MultiSelection;
 use eframe::egui::{self, RichText};
 use git2::Oid;
 use trellis_core::rebase::RebaseBase;
+use trellis_core::settings::GraphFilter;
 
 pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Msg>) {
     let sha = oid.to_string();
@@ -72,7 +74,15 @@ pub(super) fn copy_shas(m: &MultiSelection) -> Msg {
     ))
 }
 
-pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, current: &str, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
+pub fn remote_branch_menu(
+    ui: &mut egui::Ui,
+    remote: &str,
+    name: &str,
+    current: &str,
+    fs: Option<&ForgeState>,
+    filter: &GraphFilter,
+    msgs: &mut Vec<Msg>,
+) {
     let full = format!("{remote}/{name}");
     menu_item(msgs, ui, format!("Checkout {full}"), Msg::git("Checkout", &["checkout", "--track", &full]));
     if !current.is_empty() {
@@ -87,6 +97,8 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, current: 
         }
     }
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(full.clone()));
+    ui.separator();
+    ref_visibility::menu_items(ui, &format!("refs/remotes/{full}"), &full, filter, false, msgs);
     ui.separator();
     menu_item(
         msgs,

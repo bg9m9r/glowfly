@@ -7,6 +7,7 @@ mod branches;
 mod conflict;
 mod diff;
 mod forge;
+mod graph_filter;
 mod history;
 mod ops;
 mod prefs;
@@ -28,6 +29,8 @@ mod conflict_tests;
 mod diff_tests;
 #[cfg(test)]
 mod editor_tests;
+#[cfg(test)]
+mod graph_filter_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]
@@ -177,6 +180,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::FastForwardBranch(_)
         | Msg::DeleteBranchAndRemote(_)
         | Msg::PushBranch { .. } => branches::handle(st, msg, &mut fx),
+        Msg::GraphFilter(_) => graph_filter::handle(st, msg, &mut fx),
         Msg::RepoChanged { .. } | Msg::WatchFailed { .. } => watch::handle(st, msg, now, &mut fx),
 
         // hosting services

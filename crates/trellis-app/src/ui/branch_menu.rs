@@ -1,8 +1,9 @@
 //! The right-click menu of a local branch: checkout, merge and rebase, fast-forward, push,
-//! pull requests, rename, upstream and delete. Disabled items say why on hover, with the same
+//! pull requests, rename, upstream, hide or solo in the graph, and delete. Disabled items say why on hover, with the same
 //! text `update` logs when it refuses a late message.
 
 use super::common::{menu_item, menu_item_if};
+use super::ref_visibility;
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::ForgeState;
@@ -10,8 +11,16 @@ use crate::state::branches::{self, NO_REMOTES};
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{BranchInfo, Snapshot};
+use trellis_core::settings::GraphFilter;
 
-pub fn local_branch_menu(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
+pub fn local_branch_menu(
+    ui: &mut egui::Ui,
+    b: &BranchInfo,
+    snap: &Snapshot,
+    fs: Option<&ForgeState>,
+    filter: &GraphFilter,
+    msgs: &mut Vec<Msg>,
+) {
     let name = b.name.as_str();
     let current = snap.head_branch.as_deref().unwrap_or_default();
     if !b.is_head {
@@ -48,6 +57,8 @@ pub fn local_branch_menu(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, fs:
         menu_item(msgs, ui, "Unset upstream", Msg::UnsetUpstream(name.to_owned()));
     }
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(name.to_owned()));
+    ui.separator();
+    ref_visibility::menu_items(ui, &format!("refs/heads/{name}"), name, filter, b.is_head, msgs);
     if !b.is_head {
         ui.separator();
         delete_items(ui, b, snap.head_branch.as_deref(), msgs);

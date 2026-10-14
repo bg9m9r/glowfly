@@ -6,6 +6,8 @@ use trellis_core::branch_ops::{FastForward, fast_forward_state};
 use trellis_core::repo::{BranchInfo, Snapshot, Tracking};
 
 pub const NO_REMOTES: &str = "This repository has no remotes.";
+/// Why the checked-out branch can't be hidden: HEAD is always walked, so only its label would go.
+pub const HEAD_ALWAYS_SHOWN: &str = "The checked-out branch is always shown in the graph.";
 
 /// The remote a branch without a remote upstream is pushed to: origin if present, else the
 /// first remote.

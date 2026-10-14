@@ -3,12 +3,14 @@
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, state_color};
 use super::menus::remote_branch_menu;
+use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use eframe::egui::{self, RichText};
 use trellis_core::forge;
+use trellis_core::settings::GraphFilter;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     egui::SidePanel::left("refs")
@@ -29,11 +31,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 );
             });
             ui.add_space(8.0);
-            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, msgs));
+            let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.workdir)).unwrap_or_default();
+            ref_visibility::banner(ui, &filter, msgs);
+            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));
         });
 }
 
-fn sections(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
     let filter = st.view.ref_filter.to_lowercase();
     let shown = |name: &str| filter.is_empty() || name.to_lowercase().contains(&filter);
@@ -74,7 +78,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             {
                 msgs.push(Msg::JumpTo(o));
             }
-            r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, msgs));
+            ref_visibility::row_marker(ui, &r, 13.0, &format!("refs/heads/{}", b.name), &b.name, graph, msgs);
+            r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, graph, msgs));
         }
     }
 
@@ -97,7 +102,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 } else if r.clicked() {
                     msgs.push(Msg::JumpTo(*oid));
                 }
-                r.context_menu(|ui| remote_branch_menu(ui, remote, name, &current, fs, msgs));
+                ref_visibility::row_marker(ui, &r, 20.0, &format!("refs/remotes/{full}"), &full, graph, msgs);
+                r.context_menu(|ui| remote_branch_menu(ui, remote, name, &current, fs, graph, msgs));
             }
         }
     }

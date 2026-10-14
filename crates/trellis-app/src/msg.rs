@@ -11,7 +11,7 @@ use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
 use trellis_core::rebase::{Outcome, RebaseAction, RebaseBase, RebasePlan};
 use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, Side, Snapshot};
-use trellis_core::settings::{DiffLayout, DiffMode, TrackerChoice};
+use trellis_core::settings::{DiffLayout, DiffMode, FilterOp, TrackerChoice};
 
 /// What a folder picker was opened for.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -221,6 +221,8 @@ pub enum Msg {
     },
 
     // ---- branches
+    /// Hide, show or solo a ref in the active repository's graph (saved per repository).
+    GraphFilter(FilterOp),
     /// Open the rename dialog for local branch `.0`.
     RenameBranchDialog(String),
     /// `git branch -m old new`.

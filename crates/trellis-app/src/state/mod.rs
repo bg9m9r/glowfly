@@ -21,7 +21,7 @@ pub use tabs::Tab;
 use crate::msg::Msg;
 use git2::Oid;
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, LoadOptions, Snapshot};
 use trellis_core::settings::{BranchVisibility, DiffMode, Settings};
@@ -340,11 +340,13 @@ impl AppState {
         self.workdir().unwrap_or_else(std::env::temp_dir)
     }
 
-    pub fn load_options(&self) -> LoadOptions {
+    /// How to load the repository at `workdir`, with the hidden and soloed refs saved for it.
+    pub fn load_options(&self, workdir: &Path) -> LoadOptions {
         let smart = self.settings.branch_visibility == BranchVisibility::Smart;
         // Smart visibility also keeps branches that have open pull requests.
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
-        LoadOptions { max_commits: self.settings.commit_limit(), smart, extra_tips, ..Default::default() }
+        let f = self.settings.graph_filter_for(workdir);
+        LoadOptions { max_commits: self.settings.commit_limit(), smart, extra_tips, hidden: f.hidden, solo: f.solo }
     }
 
     pub fn log(&mut self, ok: bool, text: impl Into<String>) {

@@ -6,6 +6,9 @@ use std::collections::HashMap;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
+mod graph_filter;
+pub use graph_filter::{FilterOp, GraphFilter};
+
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ThemeChoice {
     Dark,
@@ -173,6 +176,9 @@ pub struct Settings {
     pub connections: Vec<Connection>,
     /// Issue tracker per repository working directory.
     pub repo_trackers: HashMap<String, TrackerChoice>,
+    /// Hidden and soloed refs per repository working directory.
+    #[serde(default)]
+    pub graph_filters: HashMap<String, GraphFilter>,
 }
 
 impl Default for Settings {
@@ -209,6 +215,7 @@ impl Default for Settings {
             diff_word_highlights: true,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
+            graph_filters: HashMap::new(),
         }
     }
 }

@@ -51,7 +51,8 @@ crates/
                           bitbucket, azure, jira); model and trait in mod.rs, plus remote
                           (URL detection), auth (credentials), refs (issue references), http,
                           publish (creating a repository on the service)
-    settings.rs, dates.rs, spell.rs, signing.rs, avatars.rs (fetching)
+    settings.rs, dates.rs, spell.rs, signing.rs, avatars.rs (fetching); settings/graph_filter
+                          (hidden and soloed refs per repository)
   trellis-app/             binary
     state/                AppState (plain data), ForgeState, PrefsState, tabs (parked per-repo
                           data for inactive tabs), undo (per-tab undo history), lines (diff
@@ -72,7 +73,7 @@ crates/
                           undo, diff, conflict, history, watch, selection (several commits:
                           the two-commit comparison, cherry-picking them), branches (the local
                           branch menu's operations), rebase (the interactive rebase panel and
-                          its job)
+                          its job), graph_filter (hidden and soloed refs, saved per repository)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, details_multi (several commits), diff/ (header,
@@ -81,6 +82,7 @@ crates/
                           conflict, history, rebase/ (the interactive rebase panel; rows:
                           actions, message editor, drag to reorder), modals, menus,
                           branch_menu (local branch menu), branch_dialogs (rename, upstream),
+                          ref_visibility (hide/solo menu items, row markers and banner),
                           status, prefs/ (editor: the Editor page), theme, widgets
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,

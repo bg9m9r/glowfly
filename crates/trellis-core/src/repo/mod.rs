@@ -274,6 +274,8 @@ mod history_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
+mod load_filter_tests;
+#[cfg(test)]
 mod resolve_tests;
 #[cfg(test)]
 mod revert_tests;

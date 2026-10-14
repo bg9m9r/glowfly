@@ -110,6 +110,11 @@ pub(super) fn with_repo(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
+/// Loads the fixture at `dir` into `st` again with `opts` (hidden or soloed refs, say).
+pub(super) fn reload(st: &mut AppState, dir: &Path, opts: &LoadOptions) {
+    st.snap = Some(repo::load(dir, opts).unwrap());
+}
+
 /// Removes the folder `with_repo` made for `dir`.
 pub(super) fn remove_fixture(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());

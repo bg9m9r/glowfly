@@ -17,6 +17,7 @@ mod modals;
 mod prefs;
 mod publish;
 mod rebase;
+mod ref_visibility;
 mod sidebar;
 mod spell_edit;
 mod status;

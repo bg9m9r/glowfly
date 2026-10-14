@@ -153,7 +153,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
 pub(super) fn load(st: &mut AppState, path: PathBuf, kind: LoadKind, fx: &mut Vec<Effect>) {
     st.load_gen += 1;
     st.loading = true;
-    fx.push(Effect::LoadRepo { path, opts: st.load_options(), generation: st.load_gen, kind });
+    let opts = st.load_options(&path);
+    fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind });
 }
 
 pub(super) fn refresh(st: &mut AppState, fx: &mut Vec<Effect>) {
@@ -281,6 +282,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
         }
     }
     super::forge::detect(st, &snap);
+    let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     st.snap = Some(snap);
     super::watch::sync(st, fx);
     if kind == LoadKind::Open {
@@ -291,6 +293,9 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::forge::resolve_pr_heads(st);
     reload_diff(st, fx);
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
+    if reload {
+        refresh(st, fx);
+    }
 }
 
 pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut Vec<Effect>) {

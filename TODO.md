@@ -310,9 +310,20 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     (e.g. fast-forward a local branch from its remote row)
   - [ ] Rename a branch from a command palette or shortcut
   - [ ] Delete local + remote when the branch isn't merged into HEAD (force), in one step
-- [ ] **Hide / solo branches in the graph**
-  Hide or show refs and solo one branch. The core already supports it (`LoadOptions.hidden` and
-  `solo`); this needs the menus, a way to unhide, and per-repo persistence.
+- [x] **Hide / solo branches in the graph**
+  Hide or show local and remote branches and solo one or more of them from the left panel's
+  branch menus. Hidden rows stay listed, dimmed, with a marker that shows them again; soloed rows
+  get a marker that stops soloing; a banner under the filter box says what is filtered, with
+  Stop soloing and Show all. Saved per repository; refs that no longer exist are dropped.
+  - [ ] Hide / solo from the graph's BRANCH/TAG ref-label menus
+  - [ ] Hide tags (and stashes) in the graph, with hidden markers on TAGS rows
+  - [ ] Hide, solo or stop soloing several selected branches at once (multi-select in the left
+    panel)
+  - [ ] Hide all / show all per section (LOCAL, REMOTE, TAGS) from the section header menu
+  - [ ] Hover toggles (hide / solo) on rows that are not hidden or soloed
+  - [ ] A graph-header button listing hidden branches and tags, to unhide them from there
+  - [ ] Keep the hidden/solo state when a branch is renamed (rename the entry instead of
+    dropping it)
 - [ ] **Commit panel extras**
   - Commit template
   - "Push after committing" checkbox
