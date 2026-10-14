@@ -7,7 +7,7 @@ use trellis_core::repo::SubmoduleInfo;
 pub enum SubmoduleMsg {
     /// Open the initialized submodule at `path` (repo-relative) as a repository in a tab.
     Open(String),
-    /// `git submodule update --init -- <path>` as a job; out of sync asks first (`confirmed: false`).
+    /// `git submodule update --init --checkout -- <path>` as a job; out of sync asks first (`confirmed: false`).
     Update { path: String, confirmed: bool },
     /// The submodule at `path` read again before asking to update it (`Effect::CheckSubmodule`);
     /// None when it is gone.

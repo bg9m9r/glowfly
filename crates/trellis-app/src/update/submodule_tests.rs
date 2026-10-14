@@ -157,6 +157,19 @@ fn out_of_sync_update_asks_first() {
     cleanup(&[&parent, &lib]);
 }
 
+#[test]
+fn update_checks_out_recorded_commit_whatever_the_update_mode() {
+    let (mut st, parent, lib) = opened("sm-update-mode");
+    // Rebase would keep the commit made inside (it already contains the recorded one).
+    git(&parent, &["config", "submodule.libs/lib.update", "rebase"]);
+    commit_inside(&mut st, &parent);
+    drive(&mut st, msg(PATH, true));
+    let sm = sub(&st);
+    assert_eq!(sm.state, SubmoduleState::InSync);
+    assert_eq!(sm.checked_out, Some(sm.recorded));
+    cleanup(&[&parent, &lib]);
+}
+
 /// The commit `git submodule update` leaves: HEAD detached at the recorded commit, then a commit
 /// made there. Returns its id.
 fn commit_detached(parent: &Path, text: &str) -> Oid {
