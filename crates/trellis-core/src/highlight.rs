@@ -1,7 +1,9 @@
 //! Syntax highlighting of diff lines with syntect, reduced to a few token kinds that the UI maps
 //! to its own palette (no syntect themes). It runs where diffs are loaded, off the UI thread.
 //! The syntax set is syntect's defaults plus extra bundled definitions (TOML, TypeScript,
-//! PowerShell, Dockerfile, Kotlin, Swift and more), dumped at build time (see `syntaxes`).
+//! PowerShell, Dockerfile, Kotlin, Swift and more), dumped at build time (see `syntaxes`). The
+//! language comes from a `linguist-language` gitattribute override (`SyntaxHint::language`) when
+//! it names a bundled syntax, else it is detected from the path or the first line.
 //!
 //! The old file (context and `-` lines) and the new file (context and `+` lines) are parsed in
 //! separate passes. Hunks are parsed in context: `repo::load_diff_for_view` loads the old file's
@@ -36,12 +38,14 @@ use syntect::parsing::SyntaxReference;
 
 mod context;
 mod header;
+mod linguist;
 mod parse;
 mod reuse;
 mod syntaxes;
 
 pub use context::OldText;
 pub use header::context_start;
+pub use linguist::SyntaxHint;
 pub use syntaxes::syntax_name;
 
 // Parsing costs roughly 90 ms per 1,000 short lines and 1.4 ms per KB of text (release build),
@@ -139,8 +143,8 @@ impl DiffHighlight {
 
 /// Token spans for every line of `diff`, each hunk parsed on its own (no old text): see
 /// `highlight_in_context`.
-pub fn highlight_diff(path: &str, diff: &FileDiff, previous: Option<&FileDiff>) -> Option<DiffHighlight> {
-    highlight_in_context(path, diff, previous, None)
+pub fn highlight_diff<'a>(file: impl Into<SyntaxHint<'a>>, diff: &FileDiff, previous: Option<&FileDiff>) -> Option<DiffHighlight> {
+    highlight_in_context(file, diff, previous, None)
 }
 
 /// Token spans for every line of `diff`, or `None` to show it plain: binary, empty, an unknown
@@ -157,7 +161,12 @@ pub fn highlight_diff(path: &str, diff: &FileDiff, previous: Option<&FileDiff>) 
 /// spans instead of being parsed again (their spans depend only on their own lines), and only
 /// the other hunks count toward the inline limits. Over those limits nothing is parsed: the
 /// result is pending, with spans carried by line text from `previous`.
-pub fn highlight_in_context(path: &str, diff: &FileDiff, previous: Option<&FileDiff>, old: Option<&Arc<OldText>>) -> Option<DiffHighlight> {
+pub fn highlight_in_context<'a>(
+    file: impl Into<SyntaxHint<'a>>,
+    diff: &FileDiff,
+    previous: Option<&FileDiff>,
+    old: Option<&Arc<OldText>>,
+) -> Option<DiffHighlight> {
     if diff.binary || diff.hunks.is_empty() {
         return None;
     }
@@ -167,7 +176,7 @@ pub fn highlight_in_context(path: &str, diff: &FileDiff, previous: Option<&FileD
         diff.hunks[0].lines.iter().find(|l| origins.contains(&l.origin)).filter(|l| number(l) == Some(1)).map(|l| l.text.as_str())
     };
     let first_line = first_of(&[' ', '+'], |l| l.new).or_else(|| first_of(&[' ', '-'], |l| l.old)).or_else(|| old.and_then(|o| o.first()));
-    let syntax = find_syntax(path, first_line)?;
+    let syntax = find_syntax(file.into(), first_line)?;
 
     let ctx = old
         .and_then(|o| Some((o, o.gaps(&diff.hunks)?)))
@@ -292,6 +301,8 @@ mod context_tests;
 mod header_tests;
 #[cfg(test)]
 mod language_tests;
+#[cfg(test)]
+mod linguist_tests;
 #[cfg(test)]
 mod notice_tests;
 #[cfg(test)]

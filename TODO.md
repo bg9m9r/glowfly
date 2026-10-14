@@ -143,8 +143,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
         to per-hunk colors)
     - [x] More languages than syntect's defaults (TOML, TypeScript/TSX, PowerShell,
       Dockerfile, Kotlin, Swift) by bundling extra syntax definitions
-      - [ ] Highlight `.jsx` files (the JavaScript (Babel) grammar is left out of the
-        fancy-regex set): map `.jsx` to the TSX grammar or bundle a compatible JSX grammar
+      - [x] Highlight `.jsx` files with the bundled TSX grammar (the JavaScript (Babel) grammar
+        is left out of the fancy-regex set)
       - [ ] PowerShell: color `$(...)` subexpressions inside strings as code, splatting
         (`@params`), method and static member calls (`[Math]::Round`, `.Trim()`), and
         here-strings that don't start at the end of a line
@@ -155,7 +155,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       - [ ] Trim the bundled syntax set to the languages Trellis wants, if the extra ~0.6 MB
         of binary size matters
       - [ ] Show the third-party notices inside the app (an About dialog)
-    - [ ] Language overrides from `.gitattributes` (`linguist-language`) or a per-file picker
+    - [x] Language overrides from `.gitattributes` (`linguist-language=<name>`: GitHub language
+      names and common aliases, any case; `Text` turns highlighting off; unknown names fall back
+      to detection)
+      - [ ] A per-file language picker (e.g. in the diff header), remembered per path
+      - [ ] For commit diffs, read the attributes stored in the commit instead of the working
+        tree's
     - [x] Color the function context after `@@` in hunk headers
       - [ ] Take the context from `.gitattributes` diff drivers (`diff=<lang>`, `xfuncname`)
         rather than only libgit2's default (lines starting with a letter, `_` or `$`)

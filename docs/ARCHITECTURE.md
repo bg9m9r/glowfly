@@ -35,7 +35,8 @@ crates/
                           gone), noclobber (a move that never replaces an existing file),
                           removal (a deleted working copy goes to the OS trash through the
                           `trash` crate, or is removed for good; links never go to the trash),
-                          tracked (the paths in the index, for the palette's file finder)
+                          tracked (the paths in the index, for the palette's file finder),
+                          attrs (gitattribute lookups: linguist-language)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -67,7 +68,9 @@ crates/
                           (highlight/header.rs), and the syntax set and scope rules
                           (highlight/syntaxes.rs), dumped at build time by build.rs from
                           the two-face set plus Trellis's own grammars in
-                          crates/trellis-core/syntaxes/
+                          crates/trellis-core/syntaxes/; language overrides from the
+                          linguist-language gitattribute and the .jsx mapping
+                          (highlight/linguist.rs)
     intraline.rs          word-level changes inside paired removed/added diff lines
     tabs.rs               tab stops for drawing diff text (lines keep raw tabs), with a byte
                           map so syntax spans and changed-word ranges follow the expansion
@@ -110,7 +113,7 @@ crates/
                           (starting the credential-prompt listener, answering prompts), os
                           (URLs, terminals, opening files and showing them in the file manager),
                           files (creating, renaming and deleting a working-tree file; listing
-                          the tracked files), highlight.rs: decorate + background highlighting
+                          the tracked files), highlight.rs: load + decorate + background highlighting
                           (a newer HighlightDiff cancels the older)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)

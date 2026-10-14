@@ -3,27 +3,66 @@
 //! newer `Effect::HighlightDiff` cancels the older one.
 
 use crate::msg::Msg;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
-use trellis_core::highlight::{self, DiffHighlight, OldText};
+use trellis_core::highlight::{self, DiffHighlight, OldText, SyntaxHint};
 use trellis_core::intraline;
-use trellis_core::repo::{DiffTarget, FileDiff};
+use trellis_core::repo::{self, DiffTarget, FileDiff, LoadDiffOptions};
+
+/// Loads a diff for the viewer (`Effect::LoadDiff`) and decorates it, with the language its
+/// gitattributes name, if any.
+pub(super) fn load_job(
+    workdir: PathBuf,
+    target: DiffTarget,
+    reload: bool,
+    generation: u64,
+    previous: Option<FileDiff>,
+    opts: LoadDiffOptions,
+) -> Msg {
+    let result = repo::load_diff_for_view(&workdir, &target, opts)
+        .map(|mut v| {
+            decorate_in_context(target.path(), v.language.as_deref(), &mut v.diff, previous.as_ref(), v.old.as_ref());
+            let d = &v.diff;
+            let context = v.old.is_some();
+            let language = v.language.as_deref().unwrap_or("-");
+            let syntax = d.highlight.as_ref().map_or("plain", |h| h.syntax.as_str());
+            let marked = (0..d.hunks.len())
+                .map(|h| (0..d.hunks[h].lines.len()).filter(|&l| !d.intraline.line(h, l).is_empty()).count())
+                .sum::<usize>();
+            let whole = d.whole.is_some();
+            let pending = d.highlight.as_ref().is_some_and(|h| h.is_pending());
+            let ignore_whitespace = opts.ignore_whitespace;
+            tracing::debug!(path = target.path(), syntax, language, pending, context, marked, ignore_whitespace, whole, "diff highlighted");
+            v.diff
+        })
+        .map_err(|e| e.to_string());
+    Msg::DiffLoaded { target, reload, generation, result }
+}
 
 /// Syntax spans and word marks for a loaded diff and its whole file, reusing `previous`'s spans,
 /// with each hunk highlighted on its own (`decorate_in_context` without old text).
 #[cfg(test)]
 pub(crate) fn decorate(path: &str, d: &mut FileDiff, previous: Option<&FileDiff>) {
-    decorate_in_context(path, d, previous, None);
+    decorate_in_context(path, None, d, previous, None);
 }
 
 /// Syntax spans and word marks for a loaded diff and its whole file, reusing `previous`'s spans.
-/// With `old` (the old file's text), the hunks are highlighted in context; the whole file needs
-/// none. Large diffs come back with a pending highlight, for `finish_job`.
-pub(crate) fn decorate_in_context(path: &str, d: &mut FileDiff, previous: Option<&FileDiff>, old: Option<&Arc<OldText>>) {
-    d.highlight = highlight::highlight_in_context(path, d, previous, old);
+/// `language` is the path's `linguist-language` gitattribute (an override of the detected
+/// language for both). With `old` (the old file's text), the hunks are highlighted in context;
+/// the whole file needs none. Large diffs come back with a pending highlight, for `finish_job`.
+pub(crate) fn decorate_in_context(
+    path: &str,
+    language: Option<&str>,
+    d: &mut FileDiff,
+    previous: Option<&FileDiff>,
+    old: Option<&Arc<OldText>>,
+) {
+    let hint = SyntaxHint { path, language };
+    d.highlight = highlight::highlight_in_context(hint, d, previous, old);
     d.intraline = intraline::intraline(d);
     if let Some(w) = d.whole.as_mut() {
-        w.diff.highlight = highlight::highlight_diff(path, &w.diff, previous.and_then(|p| p.whole.as_deref()).map(|w| &w.diff));
+        w.diff.highlight = highlight::highlight_diff(hint, &w.diff, previous.and_then(|p| p.whole.as_deref()).map(|w| &w.diff));
         w.diff.intraline = intraline::intraline(&w.diff);
     }
 }
@@ -84,7 +123,7 @@ mod tests {
         let old = OldText::new(text.as_bytes(), std::slice::from_ref(&hunk)).map(Arc::new);
         assert!(old.is_some());
         let mut d = FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole: None };
-        decorate_in_context("a.rs", &mut d, None, old.as_ref());
+        decorate_in_context("a.rs", None, &mut d, None, old.as_ref());
         assert!(d.highlight.as_ref().is_some_and(DiffHighlight::is_pending));
         let target = DiffTarget::Unstaged("a.rs".into());
         let Some(Msg::DiffHighlighted { hunks: Some(h), .. }) = finish_job(target, 1, &d, &|| false) else {

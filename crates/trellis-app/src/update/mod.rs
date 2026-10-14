@@ -58,6 +58,8 @@ mod highlight_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]
+mod language_override_tests;
+#[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
 mod palette_checkout_tests;

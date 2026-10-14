@@ -158,25 +158,36 @@ const WHOLE_FILE_CONTEXT: u32 = 1 << 24;
 /// same edit script as the normal hunks (xdiff's context doesn't change which lines are
 /// changed), which is what lets `WholeFile::new` map each hunk onto it.
 pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<FileDiff> {
-    load(workdir, target, opts, false).map(|(d, _)| d)
+    load(workdir, target, opts, false).map(|v| v.diff)
+}
+
+/// A diff loaded for the viewer, with what highlighting it needs.
+#[derive(Debug)]
+pub struct ViewDiff {
+    pub diff: FileDiff,
+    /// The old file's text, for highlighting the hunks in context (see `old_text`).
+    pub old: Option<Arc<OldText>>,
+    /// The path's `linguist-language` gitattribute, raw (resolved by `highlight::SyntaxHint`).
+    pub language: Option<String>,
 }
 
 /// `load_diff_with` plus the old file's text, for highlighting the hunks in context
-/// (`highlight::highlight_in_context`). The text is `None` for added, untracked or binary files,
-/// a whole-file load (its one hunk is the whole file), an old blob over
-/// `highlight::OLD_TEXT_MAX_BYTES`, or one that doesn't match the hunks.
-pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<(FileDiff, Option<Arc<OldText>>)> {
+/// (`highlight::highlight_in_context`), and the path's `linguist-language` gitattribute (from
+/// the working tree, then the index; `None` for binary files). The text is `None` for added,
+/// untracked or binary files, a whole-file load (its one hunk is the whole file), an old blob
+/// over `highlight::OLD_TEXT_MAX_BYTES`, or one that doesn't match the hunks.
+pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<ViewDiff> {
     load(workdir, target, opts, true)
 }
 
-fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bool) -> Result<(FileDiff, Option<Arc<OldText>>)> {
+fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bool) -> Result<ViewDiff> {
     let repo = Repository::open(workdir)?;
     let path = target.path();
     let diff = target_diff(&repo, target, opts, None)?;
     let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
-        return Ok((out, None));
+        return Ok(ViewDiff { diff: out, old: None, language: None });
     };
     out.binary = patch.delta().flags().is_binary();
     for h in 0..patch.num_hunks() {
@@ -193,7 +204,8 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     }
     // `patch` is still the first load's (the whole-file block's is scoped to it).
     let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
-    Ok((out, old))
+    let language = if with_old && !out.binary { super::attrs::linguist_language(&repo, path) } else { None };
+    Ok(ViewDiff { diff: out, old, language })
 }
 
 /// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the

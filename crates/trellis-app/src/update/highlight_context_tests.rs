@@ -109,9 +109,9 @@ fn adopt_requires_same_old_text() {
     let per_hunk = d.highlight.clone();
 
     // A reload arrives pending, to be parsed in context: the per-hunk spans don't stand in.
-    let (mut fresh, old) = repo::load_diff_for_view(&dir, &target(), LoadDiffOptions::default()).unwrap();
+    let repo::ViewDiff { diff: mut fresh, old, .. } = repo::load_diff_for_view(&dir, &target(), LoadDiffOptions::default()).unwrap();
     assert!(old.is_some());
-    runner::decorate_in_context("a.rs", &mut fresh, None, old.as_ref());
+    runner::decorate_in_context("a.rs", None, &mut fresh, None, old.as_ref());
     assert!(hl(&fresh).is_pending());
     let msg = Msg::DiffLoaded { target: target(), reload: true, generation: st.diff_gen, result: Ok(fresh) };
     let fx = update(&mut st, msg, Instant::now());

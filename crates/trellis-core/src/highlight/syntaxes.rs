@@ -4,8 +4,13 @@
 //! plus TOML, TypeScript, Dockerfile, Kotlin, Swift and many more) merged with Trellis's own
 //! grammars in `crates/trellis-core/syntaxes/` (PowerShell). Loading the dump takes under 1 ms;
 //! regexes compile lazily, the first time a language is parsed.
+//!
+//! Detection: a language override from gitattributes comes first (`linguist`), then the file's
+//! name, then its first line. `.jsx` uses the TSX grammar, as the JavaScript (Babel) grammar
+//! doesn't compile under fancy-regex.
 
 use super::TokenKind;
+use super::linguist::{SyntaxHint, by_language};
 use std::sync::LazyLock;
 use syntect::parsing::{Scope, SyntaxReference, SyntaxSet};
 
@@ -58,29 +63,38 @@ pub(super) static SYNTAXES: LazyLock<Syntaxes> = LazyLock::new(|| {
     Syntaxes { set, rules }
 });
 
-pub(super) fn find_syntax(path: &str, first_line: Option<&str>) -> Option<&'static SyntaxReference> {
+/// See `syntax_name`.
+pub(super) fn find_syntax(file: SyntaxHint<'_>, first_line: Option<&str>) -> Option<&'static SyntaxReference> {
     let set = &SYNTAXES.set;
+    let path = file.path;
     let name = path.rsplit('/').next().unwrap_or(path);
-    let found = set
-        .find_syntax_by_extension(name)
-        .or_else(|| name.rsplit_once('.').and_then(|(_, ext)| set.find_syntax_by_extension(ext)))
-        .or_else(|| alias(name))
-        .or_else(|| first_line.and_then(|l| set.find_syntax_by_first_line(l)))?;
+    let found = file.language.and_then(by_language).or_else(|| {
+        set.find_syntax_by_extension(name)
+            .or_else(|| name.rsplit_once('.').and_then(|(_, ext)| set.find_syntax_by_extension(ext)))
+            .or_else(|| alias(name))
+            .or_else(|| first_line.and_then(|l| set.find_syntax_by_first_line(l)))
+    })?;
     (found.name != "Plain Text").then_some(found)
 }
 
-/// Container files the bundled set doesn't name: `Dockerfile` in any case, `Dockerfile.dev`,
-/// `Containerfile` and `Containerfile.prod`.
+/// Files the bundled set doesn't name: `Dockerfile` in any case, `Dockerfile.dev`,
+/// `Containerfile` and `Containerfile.prod`; and `.jsx`, highlighted with the TSX grammar (the
+/// JavaScript (Babel) grammar doesn't compile under fancy-regex, so it isn't bundled).
 fn alias(name: &str) -> Option<&'static SyntaxReference> {
     let lower = name.to_ascii_lowercase();
+    if lower.rsplit_once('.').is_some_and(|(_, ext)| ext == "jsx") {
+        return SYNTAXES.set.find_syntax_by_name("TypeScriptReact");
+    }
     let docker = ["dockerfile", "containerfile"].iter().any(|n| lower == *n || lower.strip_prefix(n).is_some_and(|r| r.starts_with('.')));
     docker.then(|| SYNTAXES.set.find_syntax_by_name("Dockerfile")).flatten()
 }
 
-/// The language for `path`: by whole file name (`Makefile`, `Dockerfile`, `CMakeLists.txt`),
-/// then by extension, then container-file names (`Containerfile`, `Dockerfile.dev`), then by the
-/// file's first line (shebangs, `FROM image`). Never touches the disk. `None` for unknown or
-/// plain text.
-pub fn syntax_name(path: &str, first_line: Option<&str>) -> Option<&'static str> {
-    find_syntax(path, first_line).map(|s| s.name.as_str())
+/// The language for a file: a `linguist-language` override (`SyntaxHint::language`) first,
+/// when it names a bundled syntax (see `linguist`); else by whole file name (`Makefile`,
+/// `Dockerfile`, `CMakeLists.txt`), then by extension, then container-file names
+/// (`Containerfile`, `Dockerfile.dev`) and `.jsx` (the TSX grammar), then by the file's first
+/// line (shebangs, `FROM image`). Never touches the disk. `None` for unknown or plain text (so a
+/// `Text` override shows the file plain). Takes a path (`&str`) or a `SyntaxHint`.
+pub fn syntax_name<'a>(file: impl Into<SyntaxHint<'a>>, first_line: Option<&str>) -> Option<&'static str> {
+    find_syntax(file.into(), first_line).map(|s| s.name.as_str())
 }

@@ -38,7 +38,7 @@ pub(super) fn changed(name: &str, file: &str, before: &str, after: &str) -> Path
 
 /// The unstaged diff of `file` with its old text.
 pub(super) fn unstaged(dir: &Path, file: &str) -> (FileDiff, Option<Arc<OldText>>) {
-    repo::load_diff_for_view(dir, &DiffTarget::Unstaged(file.into()), LoadDiffOptions::default()).unwrap()
+    repo::load_diff_for_view(dir, &DiffTarget::Unstaged(file.into()), LoadDiffOptions::default()).map(|v| (v.diff, v.old)).unwrap()
 }
 
 fn only(spans: &[Span], kind: TokenKind) -> bool {
@@ -282,7 +282,7 @@ fn shebang_from_old_text() {
 #[test]
 fn ignore_whitespace_load_highlights() {
     let opts = LoadDiffOptions { ignore_whitespace: true, whole_file: false };
-    let load = |dir: &Path| repo::load_diff_for_view(dir, &DiffTarget::Unstaged("a.rs".into()), opts).unwrap();
+    let load = |dir: &Path| repo::load_diff_for_view(dir, &DiffTarget::Unstaged("a.rs".into()), opts).map(|v| (v.diff, v.old)).unwrap();
     let before = commented(|_, l| l);
     let edit = |ws_in_context: bool| {
         commented(move |n, l| match n {
@@ -344,7 +344,7 @@ fn old_text_per_target() {
     git(&dir, &["add", "staged_new.rs"]);
     write(&dir, "b.bin", "a\0c\n");
 
-    let view = |t: DiffTarget, opts: LoadDiffOptions| repo::load_diff_for_view(&dir, &t, opts).unwrap();
+    let view = |t: DiffTarget, opts: LoadDiffOptions| repo::load_diff_for_view(&dir, &t, opts).map(|v| (v.diff, v.old)).unwrap();
     let old = |t: DiffTarget| view(t, LoadDiffOptions::default()).1;
     assert!(old(DiffTarget::Unstaged("f.rs".into())).is_some(), "the index blob");
     assert!(old(DiffTarget::Staged("f.rs".into())).is_some(), "the HEAD blob");
