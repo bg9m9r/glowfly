@@ -16,6 +16,7 @@ use std::path::PathBuf;
 mod attrs;
 mod conflict;
 mod diff;
+mod graph_cache;
 mod history;
 mod index;
 mod lines;
@@ -29,6 +30,7 @@ mod revert;
 mod submodules;
 mod template;
 mod tracked;
+mod walk;
 mod workfile;
 mod workfile_mv;
 mod workfile_rm;
@@ -120,7 +122,8 @@ pub struct BranchInfo {
     /// `upstream` is None.
     pub upstream_ref: Option<String>,
     /// Whether HEAD contains the branch tip, so deleting the branch loses no commits. True for
-    /// the checked-out branch; false when HEAD is unborn.
+    /// the checked-out branch; false when HEAD is unborn. Worked out only for branches whose
+    /// upstream is a remote-tracking ref (deleting both is what asks); false for the others.
     pub merged: bool,
 }
 
@@ -368,6 +371,8 @@ mod template_tests;
 mod tests;
 #[cfg(test)]
 mod tracked_tests;
+#[cfg(test)]
+mod walk_tests;
 #[cfg(test)]
 mod whole_tests;
 #[cfg(test)]

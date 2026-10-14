@@ -1,9 +1,10 @@
 //! Loading a repository: history, refs, stashes and working-tree status.
 
+use super::graph_cache;
 use super::*;
 use crate::error::{Error, Result};
 use crate::graph;
-use git2::{BranchType, Oid, Repository, RepositoryState, Sort, StatusOptions};
+use git2::{BranchType, Oid, Repository, RepositoryState, StatusOptions};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -98,15 +99,17 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         let (upstream, upstream_ref, ahead, behind) = match b.upstream() {
             Ok(u) => {
                 let (a, bh) = match (oid, u.get().target()) {
-                    (Some(x), Some(y)) => repo.graph_ahead_behind(x, y).unwrap_or((0, 0)),
+                    (Some(x), Some(y)) => graph_cache::ahead_behind(&repo, x, y),
                     _ => (0, 0),
                 };
                 (u.name().ok().flatten().map(str::to_owned), u.get().name().map(str::to_owned), a, bh)
             }
             Err(_) => (None, None, 0, 0),
         };
+        // Only deleting a branch together with its remote branch asks, and the walk can be long.
+        let remote_upstream = upstream_ref.as_deref().is_some_and(|r| r.starts_with("refs/remotes/"));
         let merged = match (oid, head_oid) {
-            (Some(tip), Some(head)) => tip == head || repo.graph_descendant_of(head, tip).unwrap_or(false),
+            (Some(tip), Some(head)) => tip == head || (remote_upstream && graph_cache::contains(&repo, head, tip)),
             _ => false,
         };
         locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref, merged });
@@ -145,17 +148,13 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
     let submodules = submodules::list(&repo);
     let worktrees = worktrees::list(&repo);
 
-    let mut walk = repo.revwalk()?;
-    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
-    if head_oid.is_some() {
-        walk.push_head()?;
-    }
+    let mut starts: Vec<Oid> = head_oid.into_iter().collect();
     let tips = visible_tips(&repo, opts, head_branch.as_deref(), &locals);
     match &tips {
         Some(list) => {
             for full in list {
                 if let Ok(c) = repo.revparse_single(full).and_then(|o| o.peel_to_commit()) {
-                    walk.push(c.id())?;
+                    starts.push(c.id());
                 }
             }
         }
@@ -167,7 +166,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
                     continue;
                 }
                 if let Ok(c) = r.peel_to_commit() {
-                    walk.push(c.id())?;
+                    starts.push(c.id());
                 }
             }
         }
@@ -179,25 +178,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
         }
         refs.retain(|_, v| !v.is_empty());
     }
-    let mut commits = Vec::new();
-    let mut truncated = false;
-    for oid in walk {
-        let oid = oid?;
-        if commits.len() >= max_commits {
-            truncated = true;
-            break;
-        }
-        let c = repo.find_commit(oid)?;
-        commits.push(CommitInfo {
-            oid,
-            summary: c.summary().unwrap_or_default().to_owned(),
-            body: flatten_body(c.body().unwrap_or_default()),
-            author: c.author().name().unwrap_or_default().to_owned(),
-            email: c.author().email().unwrap_or_default().to_owned(),
-            time: c.time().seconds(),
-            parents: c.parent_ids().collect(),
-        });
-    }
+    let (commits, truncated) = super::walk::newest_commits(&repo, &starts, max_commits)?;
     let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
     let dirty = !unstaged.is_empty() || !staged.is_empty();
     let graph = graph::layout(&commits, head_oid, dirty);
@@ -350,21 +331,6 @@ fn visible_tips(repo: &Repository, opts: &LoadOptions, head_branch: Option<&str>
         }
     }
     Some(out)
-}
-
-fn flatten_body(body: &str) -> String {
-    let mut out = String::new();
-    for word in body.split_whitespace() {
-        if out.len() > 240 {
-            out.push('…');
-            break;
-        }
-        if !out.is_empty() {
-            out.push(' ');
-        }
-        out.push_str(word);
-    }
-    out
 }
 
 /// Messages of commits reachable from `source` but not from `target` (newest first, capped).

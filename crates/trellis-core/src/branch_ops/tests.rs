@@ -261,11 +261,15 @@ fn merged_means_head_contains_the_branch() {
     local_commit(&work, "main", "main moves on");
     git(&work, &["branch", "side"]);
     local_commit(&work, "side", "only on side");
+    git(&work, &["branch", "local-only", "behind"]);
+    git(&work, &["push", "-q", "-u", "origin", "behind", "side"]);
     let s = load(&work, &LoadOptions::all(100)).unwrap();
     let merged = |n: &str| s.locals.iter().find(|b| b.name == n).unwrap().merged;
     assert!(merged("main"), "the checked-out branch");
     assert!(merged("behind"), "an ancestor of HEAD");
     assert!(!merged("side"));
+    // Only deleting a branch with its remote branch asks, so others aren't walked.
+    assert!(!merged("local-only"), "not worked out without a remote upstream");
     cleanup(&[&work, &bare]);
 }
 
