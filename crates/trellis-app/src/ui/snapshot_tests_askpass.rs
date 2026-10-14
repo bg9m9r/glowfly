@@ -5,6 +5,7 @@ use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::askpass::PendingPrompt;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use trellis_core::askpass::Prompt;
@@ -32,7 +33,7 @@ fn credential_prompt_sign_in() {
     st.askpass.secret = "hunter2".into();
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("credential_prompt_sign_in");
+    h.check_snapshot("credential_prompt_sign_in");
     assert!(h.query_by_label_contains("hunter2").is_none(), "the password is masked");
     assert!(h.query_by_label_contains("were not accepted").is_some());
     let sign_in = h.get_by_label("Sign in");
@@ -50,7 +51,7 @@ fn credential_prompt_passphrase_retry_light() {
     prompt(&mut st, "Enter passphrase for key '~/.ssh/id_ed25519': ", true, false);
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("credential_prompt_passphrase_retry_light");
+    h.check_snapshot("credential_prompt_passphrase_retry_light");
     assert!(h.get_by_label("Unlock").is_disabled(), "nothing typed yet");
     assert!(h.query_by_label_contains("didn't unlock the key").is_some());
     h.press_key(egui::Key::Escape);
@@ -67,7 +68,7 @@ fn credential_prompt_host_key() {
     prompt(&mut st, HOST_KEY, false, false);
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("credential_prompt_host_key");
+    h.check_snapshot("credential_prompt_host_key");
     assert!(h.query_by_label("Yes").is_some_and(|n| !n.is_disabled()));
     h.get_by_label("No").click();
     h.run();

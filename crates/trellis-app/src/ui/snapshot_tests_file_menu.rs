@@ -10,6 +10,7 @@ use super::file_menu::{
 };
 use super::theme::{apply_theme, color};
 use crate::msg::Msg;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -91,7 +92,7 @@ fn entry(path: &str, status: char) -> FileEntry {
 fn file_menu_commit() {
     let mut h = harness(entry("src/app.txt", 'M'), Menu::Commit { in_workdir: true }, true);
     h.run();
-    h.snapshot("file_menu_commit");
+    h.check_snapshot("file_menu_commit");
     assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(!h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
@@ -102,7 +103,7 @@ fn file_menu_commit() {
 fn file_menu_commit_deleted_light() {
     let mut h = harness(entry("old/notes.txt", 'D'), Menu::Commit { in_workdir: false }, false);
     h.run();
-    h.snapshot("file_menu_commit_deleted_light");
+    h.check_snapshot("file_menu_commit_deleted_light");
     assert!(h.query_by_label("Restore the deleted file…").is_some());
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
@@ -113,7 +114,7 @@ fn file_menu_commit_deleted_light() {
 fn file_menu_between_deleted() {
     let mut h = harness(entry("old/notes.txt", 'D'), Menu::Between { in_workdir: false }, true);
     h.run();
-    h.snapshot("file_menu_between_deleted");
+    h.check_snapshot("file_menu_between_deleted");
     assert!(h.query_by_label("Restore the version from 3f2a9c4…").is_some(), "the older commit, which has the file");
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
@@ -139,7 +140,7 @@ fn file_menu_between_restores_the_right_commit() {
 fn file_menu_wip() {
     let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
-    h.snapshot("file_menu_wip");
+    h.check_snapshot("file_menu_wip");
     for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, NEW_FILE_HERE, RENAME, DELETE] {
         assert!(!h.get_by_label(label).is_disabled(), "{label}");
     }
@@ -150,7 +151,7 @@ fn file_menu_wip() {
 fn file_menu_wip_missing() {
     let mut h = harness(entry("src/gone.txt", 'D'), Menu::Wip { missing: true, unstages: false }, true);
     h.run();
-    h.snapshot("file_menu_wip_missing");
+    h.check_snapshot("file_menu_wip_missing");
     for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME, DELETE] {
         assert!(h.get_by_label(label).is_disabled(), "{label}");
     }
@@ -183,7 +184,7 @@ fn click_unstage_delete(mut h: Harness<'static, Vec<Msg>>, path: &str) {
 fn file_menu_wip_staged_new() {
     let mut h = harness(entry("src/new.txt", 'A'), Menu::Wip { missing: false, unstages: true }, true);
     h.run();
-    h.snapshot("file_menu_wip_staged_new");
+    h.check_snapshot("file_menu_wip_staged_new");
     assert!(!h.get_by_label(UNSTAGE_DELETE).is_disabled());
     assert!(h.query_by_label(DELETE).is_none());
     for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, NEW_FILE_HERE, RENAME] {
@@ -196,7 +197,7 @@ fn file_menu_wip_staged_new() {
 fn file_menu_wip_staged_new_gone() {
     let mut h = harness(entry("src/new.txt", 'D'), Menu::Wip { missing: true, unstages: true }, true);
     h.run();
-    h.snapshot("file_menu_wip_staged_new_gone");
+    h.check_snapshot("file_menu_wip_staged_new_gone");
     for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME] {
         assert!(h.get_by_label(label).is_disabled(), "{label}");
     }

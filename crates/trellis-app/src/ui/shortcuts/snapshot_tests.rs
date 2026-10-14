@@ -4,6 +4,7 @@
 
 use crate::msg::Msg;
 use crate::state::{Modal, Selection};
+use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
@@ -15,7 +16,7 @@ fn shortcut_sheet() {
     st.modal = Some(Modal::Shortcuts { filter: String::new() });
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("shortcut_sheet");
+    h.check_snapshot("shortcut_sheet");
     for label in ["Staging and committing", "Navigation", "Stage all files", "Go to the commit message"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
@@ -31,7 +32,7 @@ fn shortcut_sheet_filtered_light() {
     st.modal = Some(Modal::Shortcuts { filter: "stage".into() });
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("shortcut_sheet_filtered_light");
+    h.check_snapshot("shortcut_sheet_filtered_light");
     assert!(h.query_by_label("Stage all files").is_some());
     assert!(h.query_by_label("New tab").is_none());
     drop(h);

@@ -3,6 +3,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::state::{AppState, PrefPage, PrefsState, RunningJob};
+use crate::ui::snapshot_check::CheckSnapshot;
 use std::path::PathBuf;
 use trellis_core::lfs::{LfsPattern, LfsStatus};
 use trellis_core::settings::ThemeChoice;
@@ -81,6 +82,6 @@ fn prefs_lfs_busy() {
     // advances by a fixed step) keeps the image reproducible. The page itself draws no spinner.
     let mut h = harness(st, true);
     h.run_steps(4);
-    h.snapshot("prefs_lfs_busy");
+    h.check_snapshot("prefs_lfs_busy");
     remove_fixture(&dir);
 }

@@ -5,6 +5,7 @@ use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
 use crate::state::selection::MultiSelection;
 use crate::state::{AppState, Selection};
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -101,7 +102,7 @@ fn graph_multi_menu() {
     let mut h = harness(st, true);
     h.run();
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
-    h.snapshot("graph_multi_menu");
+    h.check_snapshot("graph_multi_menu");
     // The details panel has the same button; the menu's is the one over the graph.
     let in_menu = h.get_all_by_label("Cherry-pick 2 commits").find(|n| n.bounding_box().is_some_and(|b| b.x0 < 1000.0));
     in_menu.expect("the menu item").click();

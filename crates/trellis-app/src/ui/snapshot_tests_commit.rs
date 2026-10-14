@@ -5,6 +5,7 @@
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use crate::msg::Msg;
 use crate::state::AppState;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::Harness;
@@ -28,7 +29,7 @@ fn commit_box_options() {
     st.draft.skip_hooks = true;
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("commit_box_options");
+    h.check_snapshot("commit_box_options");
     assert!(h.query_by_label_contains("and push (skip hooks)").is_some(), "the button names both options");
     drop(h);
     remove_fixture(&dir);
@@ -41,7 +42,7 @@ fn commit_box_template_light() {
     st.draft.apply_template(&t);
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("commit_box_template_light");
+    h.check_snapshot("commit_box_template_light");
     assert!(h.query_by_label_contains("left out of the message").is_some());
     drop(h);
     remove_fixture(&dir);

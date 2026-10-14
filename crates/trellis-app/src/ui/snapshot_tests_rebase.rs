@@ -7,6 +7,7 @@ use super::{UiCache, avatars::Avatars, draw, theme::color};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::rebase::RebasePanel;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Key, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -65,7 +66,7 @@ fn rebase_panel() {
     assert_eq!(blocker, None, "Start is enabled");
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("rebase_panel");
+    h.check_snapshot("rebase_panel");
     drop(h);
     remove_fixture(&dir);
 }
@@ -78,7 +79,7 @@ fn rebase_panel_blocked_light() {
     assert_eq!(blocker.as_deref(), Some(trellis_core::rebase::FIRST_COMBINES));
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("rebase_panel_blocked_light");
+    h.check_snapshot("rebase_panel_blocked_light");
     h.get_by_label("Start rebase").click();
     h.run();
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::StartRebase { .. })), "a disabled Start sends nothing");
@@ -162,7 +163,7 @@ fn row_drag_moves_and_snapshots() {
     h.step();
     h.run();
     assert!(h.state().1.is_empty(), "nothing is sent while dragging");
-    h.snapshot("rebase_dragging");
+    h.check_snapshot("rebase_dragging");
 
     pointer(&mut h, over, Some(false));
     h.run();

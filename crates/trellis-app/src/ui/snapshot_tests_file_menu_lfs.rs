@@ -8,6 +8,7 @@ use super::theme::{apply_theme, color};
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::state::lfs::{LfsInstall, NOT_INSTALLED_MENU, ONLY_THIS_FILE, TrackContext, TrackItem, track_items};
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -75,7 +76,7 @@ fn file_menu_wip_lfs() {
     }
     h.run();
     assert!(h.query_by_label(TRACK_IN_LFS).is_some());
-    h.snapshot("file_menu_wip_lfs");
+    h.check_snapshot("file_menu_wip_lfs");
 }
 
 #[test]
@@ -84,7 +85,7 @@ fn file_menu_lfs_track() {
     assert_eq!(lfs.iter().map(|i| i.label.as_str()).collect::<Vec<_>>(), [ONLY_THIS_FILE, "Every .psd file", "Everything in assets/"]);
     let mut h = body(lfs, true);
     h.run();
-    h.snapshot("file_menu_lfs_track");
+    h.check_snapshot("file_menu_lfs_track");
     assert!(!h.get_by_label(ONLY_THIS_FILE).is_disabled());
     assert!(h.get_by_label("Every .psd file").is_disabled());
     assert!(!h.get_by_label("Everything in assets/").is_disabled());
@@ -106,7 +107,7 @@ fn file_menu_lfs_not_installed_light() {
     assert!(lfs.iter().all(|i| i.blocked.as_deref() == Some(NOT_INSTALLED_MENU)));
     let mut h = body(lfs, false);
     h.run();
-    h.snapshot("file_menu_lfs_not_installed_light");
+    h.check_snapshot("file_menu_lfs_not_installed_light");
     for label in [ONLY_THIS_FILE, "Every .psd file", "Everything in assets/"] {
         assert!(h.get_by_label(label).is_disabled(), "{label}");
     }

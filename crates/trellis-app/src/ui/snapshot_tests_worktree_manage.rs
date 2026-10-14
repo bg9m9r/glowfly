@@ -9,6 +9,7 @@ use super::snapshot_tests_worktrees::{H, center, p, pushed, with_worktrees};
 use crate::msg::Msg;
 use crate::state::worktree_manage::{LockForm, RemoveForm};
 use crate::state::{AppState, Modal};
+use crate::ui::snapshot_check::CheckSnapshot;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
@@ -41,7 +42,7 @@ fn worktree_remove_dialog() {
     let (st, dir) = remove_dialog(ThemeChoice::Dark, "worktree-remove", "feature-login", |f| f.delete_branch = true);
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("worktree_remove_dialog");
+    h.check_snapshot("worktree_remove_dialog");
     assert!(h.query_by_label("Also delete branch feature/login").is_some());
     h.get_by_label("Remove and delete branch").click();
     h.run();
@@ -57,7 +58,7 @@ fn worktree_remove_force_light() {
     });
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("worktree_remove_force_light");
+    h.check_snapshot("worktree_remove_force_light");
     assert!(h.query_by_label_contains("It has 3 changed or untracked files.").is_some());
     assert!(h.query_by_label("Force remove").is_some());
     drop(h);
@@ -73,7 +74,7 @@ fn worktree_remove_locked() {
     st.modal = Some(Modal::RemoveWorktree(form));
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("worktree_remove_locked");
+    h.check_snapshot("worktree_remove_locked");
     assert!(h.query_by_label_contains("This worktree is locked (on usb).").is_some());
     assert!(h.query_by_label_contains("Also delete branch").is_none(), "a detached worktree has no branch to delete");
     assert!(!h.get_by_label("Force remove").is_disabled());
@@ -100,7 +101,7 @@ fn worktree_lock_dialog() {
     st.modal = Some(Modal::LockWorktree(LockForm::new(&wt)));
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("worktree_lock_dialog");
+    h.check_snapshot("worktree_lock_dialog");
     assert!(h.query_by_label("Lock worktree feature-login").is_some());
     h.get_by_label("Lock").click();
     h.run();
@@ -131,7 +132,7 @@ fn worktree_menu_manage() {
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Unlock(x)) if *x == old)));
 
     menu_at(&mut h, "gone");
-    h.snapshot("worktree_menu_manage");
+    h.check_snapshot("worktree_menu_manage");
     assert!(!h.get_by_label("Prune missing worktrees").is_disabled());
     assert!(!h.get_by_label("Remove…").is_disabled(), "a missing worktree can be removed");
     escape(&mut h);
@@ -144,7 +145,7 @@ fn worktree_menu_manage() {
     let row = center(&h, "✔  app");
     let header = pos2(row.x, row.y - 27.0);
     click(&mut h, header, PointerButton::Secondary);
-    h.snapshot("worktree_header_menu");
+    h.check_snapshot("worktree_header_menu");
     h.get_by_label("Prune missing worktrees").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Prune))));

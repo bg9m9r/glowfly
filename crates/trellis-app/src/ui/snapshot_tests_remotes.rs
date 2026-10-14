@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::RemoteForm;
 use crate::state::{AppState, Modal, RunningJob};
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
@@ -66,7 +67,7 @@ fn remote_add_dialog() {
     h.run();
     assert!(h.query_by_label("A remote named origin already exists.").is_some());
     assert!(h.get_by_role_and_label(Role::Button, "Add remote").is_disabled());
-    h.snapshot("remote_add_dialog");
+    h.check_snapshot("remote_add_dialog");
 
     form(&mut h).name = "backup2".into();
     h.run();
@@ -89,7 +90,7 @@ fn remote_edit_dialog_light() {
     h.run();
     assert!(h.query_by_label("Renaming also renames its remote-tracking branches and updates the branches that track it.").is_some());
     assert!(!h.get_by_label("Save").is_disabled());
-    h.snapshot("remote_edit_dialog_light");
+    h.check_snapshot("remote_edit_dialog_light");
 
     form(&mut h).name = "origin".into();
     h.run();
@@ -109,7 +110,7 @@ fn remote_group_menu() {
     for item in ["Fetch origin", "Edit remote…", "Copy fetch URL", "Copy push URL", "Remove remote…"] {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
-    h.snapshot("remote_group_menu");
+    h.check_snapshot("remote_group_menu");
     h.get_by_label("Fetch origin").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::Fetch(n)) if n == "origin")));

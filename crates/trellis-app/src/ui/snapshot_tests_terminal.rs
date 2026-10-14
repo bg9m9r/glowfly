@@ -8,6 +8,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::terminal::{SessionStatus, TermSession};
 use crate::terminal::TerminalMsg;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -52,7 +53,7 @@ fn terminal_panel_dark() {
     let (st, dir) = with_session(ThemeChoice::Dark, "terminal-panel", SessionStatus::Running);
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("terminal_panel");
+    h.check_snapshot("terminal_panel");
     assert!(pushed(&h, |t| matches!(t, TerminalMsg::Resize { .. })), "the grid is not 24x80");
     assert!(h.query_by_label("Kill").is_some());
     assert!(h.query_by_label("Restart").is_none());
@@ -66,7 +67,7 @@ fn terminal_exited_light() {
     let (st, dir) = with_session(ThemeChoice::Light, "terminal-exited", SessionStatus::Exited(Some(0)));
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("terminal_exited_light");
+    h.check_snapshot("terminal_exited_light");
     assert!(h.query_by_label("Process exited with code 0").is_some());
     assert!(h.query_by_label("Kill").is_none());
     h.query_all_by_label("Restart").next().expect("Restart").click();

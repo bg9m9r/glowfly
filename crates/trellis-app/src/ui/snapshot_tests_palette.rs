@@ -9,6 +9,7 @@ use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::palette::{Items, Mode, Palette, PaletteCommand, Pick, PickKind};
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -41,7 +42,7 @@ fn palette_tags_and_hints() {
     st.palette = Some(Palette { query: "tag".into(), ..Default::default() });
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("palette_tags");
+    h.check_snapshot("palette_tags");
     assert!(h.query_by_label("Create tag at HEAD…").is_some());
     h.get_by_label("Create annotated tag at HEAD…").click();
     h.run();
@@ -60,7 +61,7 @@ fn palette_checkout_refs() {
     st.palette = Some(Palette { query: "checkout".into(), ..Default::default() });
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("palette_checkout_refs");
+    h.check_snapshot("palette_checkout_refs");
     for present in ["Checkout origin/feature/sidebar", "Checkout upstream/release-2.0", "Checkout tag v0.1.0"] {
         assert!(h.query_by_label(present).is_some(), "{present}");
     }
@@ -102,7 +103,7 @@ fn palette_more() {
     st.palette = Some(Palette { query: "tab".into(), ..Default::default() });
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("palette_more");
+    h.check_snapshot("palette_more");
     h.get_by_label("Reopen closed tab").click();
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::ReopenClosedTab))));
@@ -262,7 +263,7 @@ fn palette_files_filtered_light() {
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label_contains("Showing 200 of 250 files").is_some());
-    h.snapshot("palette_files_filtered_light");
+    h.check_snapshot("palette_files_filtered_light");
     drop(h);
     remove_fixture(&dir);
 }

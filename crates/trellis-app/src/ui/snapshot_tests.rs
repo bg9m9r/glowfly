@@ -5,6 +5,7 @@
 use super::{UiCache, avatars::Avatars, draw, theme::color};
 use crate::msg::Msg;
 use crate::state::{AppState, PrefPage, PrefsState, Selection, Tab};
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use std::path::{Path, PathBuf};
@@ -101,7 +102,7 @@ pub(super) fn harness(mut st: AppState, dark: bool) -> Harness<'static, (AppStat
 pub(super) fn render(name: &str, st: AppState, dark: bool) {
     let mut harness = harness(st, dark);
     harness.run();
-    harness.snapshot(name);
+    harness.check_snapshot(name);
 }
 
 pub(super) fn with_repo(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {

@@ -6,6 +6,7 @@ use super::snapshot_tests::{harness, reload, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
 use crate::msg::Msg;
 use crate::state::{AppState, Modal};
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
@@ -39,7 +40,7 @@ fn rename_branch_dialog() {
     st.modal = Some(Modal::RenameBranch { old: "search".into(), name: "login-page".into() });
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("rename_branch_dialog");
+    h.check_snapshot("rename_branch_dialog");
     assert!(h.query_by_label_contains("A branch named login-page already exists.").is_some());
     assert!(h.get_by_label("Rename").is_disabled());
     drop(h);
@@ -70,7 +71,7 @@ fn branch_menu() {
     let mut h = harness(st, true);
     h.run();
     open_menu(&mut h);
-    h.snapshot("branch_menu");
+    h.check_snapshot("branch_menu");
     h.get_by_label("Fast-forward search to origin/search").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::FastForwardBranch(b) if b == "search")));
@@ -134,7 +135,7 @@ fn sidebar_hidden_solo() {
     let (st, dir) = hidden_solo("hidden-solo");
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("sidebar_hidden_solo");
+    h.check_snapshot("sidebar_hidden_solo");
     assert!(h.query_by_label("Stop soloing").is_some());
     assert!(h.query_by_label("Show all").is_some());
     assert!(h.query_by_label("Show origin/main in graph").is_some());

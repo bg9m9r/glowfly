@@ -9,6 +9,7 @@ use super::snapshot_tests_select::{click, row_y};
 use crate::msg::Msg;
 use crate::state::worktrees::WorktreeForm;
 use crate::state::{AppState, Modal};
+use crate::ui::snapshot_check::CheckSnapshot;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
@@ -79,7 +80,7 @@ fn worktrees_section() {
     h.run();
     assert!(h.query_by_label("WORKTREES").is_some() || h.query_by_label("feature-login").is_some());
     assert!(h.query_by_label("✔  app").is_some(), "the current worktree is marked");
-    h.snapshot("worktrees_section");
+    h.check_snapshot("worktrees_section");
     drop(h);
     let (st, _) = with_worktrees(ThemeChoice::Light, "worktrees");
     render("worktrees_section_light", st, false);
@@ -104,7 +105,7 @@ fn worktrees_filtered() {
     for other in ["✔  app", "feature-login", "old", "gone"] {
         assert!(h.query_by_label(other).is_none(), "{other}");
     }
-    h.snapshot("worktrees_filtered");
+    h.check_snapshot("worktrees_filtered");
     drop(h);
     remove_fixture(&dir);
 }
@@ -116,7 +117,7 @@ fn worktree_menu() {
     h.run();
     let at = center(&h, "feature-login");
     click(&mut h, at, PointerButton::Secondary);
-    h.snapshot("worktree_menu");
+    h.check_snapshot("worktree_menu");
     h.get_by_label("Open in new tab").click();
     h.run();
     assert!(opens(&h, "C:/work/app-worktrees/feature-login"));
@@ -180,7 +181,7 @@ fn worktree_dialog_branch() {
     let mut h = harness(st, true);
     h.run();
     assert_eq!(PathBuf::from(&form(&mut h).folder), p("C:/work/app-worktrees/search"));
-    h.snapshot("worktree_dialog_branch");
+    h.check_snapshot("worktree_dialog_branch");
     assert!(!h.get_by_label("Create worktree").is_disabled());
 
     // Typing a new branch name moves the folder along, until the folder is edited.
@@ -204,7 +205,7 @@ fn worktree_dialog_checked_out() {
     });
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("worktree_dialog_checked_out");
+    h.check_snapshot("worktree_dialog_checked_out");
     assert!(h.query_by_label_contains("is checked out in this worktree").is_some());
     assert!(h.get_by_label("Create worktree").is_disabled());
     drop(h);
@@ -222,7 +223,7 @@ fn worktree_dialog_commit_light() {
     f.folder = p("C:/work/app/wt").display().to_string();
     f.folder_edited = true;
     h.run();
-    h.snapshot("worktree_dialog_commit_light");
+    h.check_snapshot("worktree_dialog_commit_light");
     assert!(h.query_by_label_contains("Create worktree at").is_some());
     assert!(h.query_by_label_contains("This folder is inside the worktree at").is_some());
     assert!(!h.get_by_label("Create worktree").is_disabled(), "a warning doesn't block");
@@ -238,7 +239,7 @@ fn worktree_dialog_folder_error() {
     let message = FolderProblem::NotEmpty.message(&f.folder);
     f.error = Some((f.folder.clone(), message.clone()));
     h.run();
-    h.snapshot("worktree_dialog_folder_error");
+    h.check_snapshot("worktree_dialog_folder_error");
     assert!(h.query_by_label(&message).is_some());
     assert!(h.get_by_label("Create worktree").is_disabled());
 

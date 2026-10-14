@@ -7,6 +7,7 @@ use super::snapshot_tests_select::click;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::submodule::SubmoduleMsg;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -65,7 +66,7 @@ fn submodules_section() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("libs/core").is_some());
-    h.snapshot("submodules_section");
+    h.check_snapshot("submodules_section");
     drop(h);
     let (st, _) = with_submodules(ThemeChoice::Light, "submodules");
     render("submodules_section_light", st, false);
@@ -80,7 +81,7 @@ fn submodules_filtered() {
     h.run();
     assert!(h.query_by_label("vendor/json").is_some() && h.query_by_label("vendor/zlib").is_some());
     assert!(h.query_by_label("libs/core").is_none());
-    h.snapshot("submodules_filtered");
+    h.check_snapshot("submodules_filtered");
     drop(h);
     remove_fixture(&dir);
 }
@@ -91,7 +92,7 @@ fn submodule_menu() {
     let mut h = harness(st, true);
     h.run();
     open_menu(&mut h, "libs/ui");
-    h.snapshot("submodule_menu");
+    h.check_snapshot("submodule_menu");
     h.get_by_label("Update to recorded commit").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::Update { path, confirmed: false }) if path == "libs/ui")));

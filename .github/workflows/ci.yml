@@ -22,15 +22,18 @@ jobs:
         shell: pwsh
         run: ./scripts/check.ps1
 
-  # Trellis is developed on Windows. These make sure it keeps building elsewhere, and run the
-  # core tests (the UI snapshots are rendered on Windows only).
+  # Trellis is developed on Windows. These run the same lint and tests on macOS and Linux;
+  # only the image comparisons in the view tests are skipped (the approved images are rendered
+  # on Windows), and the rest of each view test still runs.
   build:
-    name: Build (${{ matrix.os }})
+    name: Test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, macos-14]
     runs-on: ${{ matrix.os }}
+    env:
+      TRELLIS_SKIP_SNAPSHOTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -45,6 +48,7 @@ jobs:
           git config --global user.name "CI"
           git config --global user.email "ci@example.com"
       - name: Clippy
-        run: cargo clippy --workspace --locked -- -D warnings
-      - name: Core tests
-        run: cargo test -p trellis-core --locked
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Tests
+        run: cargo test --workspace --locked
+

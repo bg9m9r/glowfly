@@ -13,6 +13,7 @@ use super::snapshot_tests_revert::with_commit_diff;
 use super::theme::{apply_theme, color};
 use crate::msg::Msg;
 use crate::state::AppState;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -44,7 +45,7 @@ fn file_history_header_buttons() {
     for label in [RESTORE, OPEN_DEFAULT, SHOW_IN_FOLDER] {
         assert!(!h.get_by_label(label).is_disabled(), "{label}");
     }
-    h.snapshot("file_history_header_buttons");
+    h.check_snapshot("file_history_header_buttons");
     drop(h);
     remove_fixture(&dir);
 }
@@ -59,7 +60,7 @@ fn file_history_not_on_disk_light() {
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(RESTORE).is_disabled(), "restoring brings it back");
-    h.snapshot("file_history_not_on_disk_light");
+    h.check_snapshot("file_history_not_on_disk_light");
     drop(h);
     remove_fixture(&dir);
 }
@@ -155,7 +156,7 @@ fn diff_commit_header_buttons() {
     let oid = st.detail.as_ref().unwrap().oid;
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("diff_commit_header_buttons");
+    h.check_snapshot("diff_commit_header_buttons");
     let msgs = click(&mut h, RESTORE_SHORT);
     assert!(
         matches!(&msgs[..], [Msg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false }] if *o == oid && path == "app.txt"),

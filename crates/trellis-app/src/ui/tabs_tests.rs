@@ -3,6 +3,7 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
 use crate::state::{AppState, Tab};
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -44,7 +45,7 @@ fn tab_drag_moves_and_snapshots() {
     h.step();
     h.run();
     assert!(h.state().1.is_empty(), "nothing is sent while dragging");
-    h.snapshot("tabs_dragging");
+    h.check_snapshot("tabs_dragging");
 
     pointer(&mut h, over, Some((PointerButton::Primary, false)));
     h.run();
@@ -68,7 +69,7 @@ fn tab_context_menu() {
         h.run();
     };
     right_click(&mut h, 1);
-    h.snapshot("tabs_menu");
+    h.check_snapshot("tabs_menu");
     h.get_by_label("Close other tabs").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseOtherTabs(1))));

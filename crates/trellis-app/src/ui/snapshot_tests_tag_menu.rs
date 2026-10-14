@@ -11,6 +11,7 @@ use crate::msg::Msg;
 use crate::state::tags::delete_remote_confirm;
 use crate::state::{AppState, Modal};
 use crate::tag::TagMsg;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
@@ -60,7 +61,7 @@ fn tag_row_menu() {
     for item in ITEMS {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
-    h.snapshot("tag_menu");
+    h.check_snapshot("tag_menu");
     h.get_by_label("Delete from all remotes").click();
     h.run();
     let want = TagMsg::DeleteRemote { tag: "v0.1.0".into(), remotes: both() };
@@ -133,7 +134,7 @@ fn tag_delete_remote_confirm_light() {
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label_contains("Your local tag stays").is_some());
-    h.snapshot("tag_delete_remote_confirm_light");
+    h.check_snapshot("tag_delete_remote_confirm_light");
     h.get_by_label("Delete from all remotes").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmAccepted)));

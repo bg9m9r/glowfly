@@ -6,6 +6,7 @@ use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
 use crate::state::tags::TagForm;
 use crate::state::{AppState, Modal};
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -45,7 +46,7 @@ fn new_tag_dialog_annotated() {
     st.modal = Some(form(&sha, "v1.2.0", true));
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("new_tag_dialog_annotated");
+    h.check_snapshot("new_tag_dialog_annotated");
     assert!(h.query_by_label_contains("New annotated tag at").is_some());
     assert!(h.get_by_label("Create tag").is_disabled());
 
@@ -71,7 +72,7 @@ fn new_tag_dialog_plain_light() {
     st.modal = Some(form(&sha, "", false));
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("new_tag_dialog_plain_light");
+    h.check_snapshot("new_tag_dialog_plain_light");
     assert!(h.query_by_label_contains("New tag at").is_some());
     assert!(h.get_by_label("Create tag").is_disabled());
 
@@ -111,7 +112,7 @@ fn new_tag_dialog_invalid_name() {
     st.modal = Some(form(&sha, "release 1.0", false));
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("new_tag_dialog_invalid_name");
+    h.check_snapshot("new_tag_dialog_invalid_name");
     assert!(h.query_by_label("Tag names can't contain spaces.").is_some());
     assert!(h.get_by_label("Create tag").is_disabled());
     h.press_key(Key::Enter);
@@ -129,7 +130,7 @@ fn new_tag_dialog_existing_name() {
     st.modal = Some(form(&sha, "v0.1.0", false));
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("new_tag_dialog_existing_light");
+    h.check_snapshot("new_tag_dialog_existing_light");
     let exists = "Tag v0.1.0 already exists.";
     assert!(h.query_by_label(exists).is_some());
     assert!(h.get_by_label("Create tag").is_disabled());
@@ -159,7 +160,7 @@ fn new_tag_dialog_push_remotes() {
     }));
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("new_tag_dialog_push");
+    h.check_snapshot("new_tag_dialog_push");
     assert!(h.query_by_label("Push to").is_some());
     assert!(h.query_by_label("origin").is_some());
     h.get_by_label("Create tag").click();

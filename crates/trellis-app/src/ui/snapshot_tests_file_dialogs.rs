@@ -7,6 +7,7 @@ use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
 use crate::state::Modal;
 use crate::state::files::PathForm;
+use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Toggled;
 use egui_kittest::kittest::Queryable;
 use trellis_core::repo::FileEntry;
@@ -18,7 +19,7 @@ fn new_file_dialog() {
     st.modal = Some(Modal::NewFile(PathForm::new("docs/notes.md")));
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("new_file_dialog");
+    h.check_snapshot("new_file_dialog");
     assert!(!h.get_by_label("Create").is_disabled());
     assert!(h.query_by_label_contains("already exists").is_none());
     h.get_by_label("Create").click();
@@ -40,7 +41,7 @@ fn new_file_dialog_folder_prefill() {
     st.modal = Some(Modal::NewFile(PathForm::new("docs/")));
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("new_file_dialog_folder");
+    h.check_snapshot("new_file_dialog_folder");
     assert!(h.query_by_label_contains("not a folder").is_none());
     assert!(h.get_by_label("Create").is_disabled());
     drop(h);
@@ -60,7 +61,7 @@ fn new_file_dialog_invalid_light() {
     st.modal = Some(Modal::NewFile(PathForm::new(".git/hooks/x")));
     let mut h = harness(st, false);
     h.run();
-    h.snapshot("new_file_dialog_invalid_light");
+    h.check_snapshot("new_file_dialog_invalid_light");
     assert!(h.query_by_label_contains("inside the .git folder").is_some());
     assert!(h.get_by_label("Create").is_disabled());
     drop(h);
@@ -115,7 +116,7 @@ fn rename_file_dialog() {
     st.modal = Some(Modal::RenameFile { old: "README.md".into(), form: PathForm::new("notes.txt") });
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("rename_file_dialog");
+    h.check_snapshot("rename_file_dialog");
     assert!(h.query_by_label_contains("notes.txt already exists.").is_some());
     assert!(h.get_by_label("Rename").is_disabled());
     assert!(h.query_by_label_contains("until you stage both").is_some(), "README.md is tracked");
@@ -143,7 +144,7 @@ fn rename_file_dialog_staged() {
     st.modal = Some(Modal::RenameFile { old: "README.md".into(), form: PathForm::new("docs/README.md") });
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("rename_file_dialog_staged");
+    h.check_snapshot("rename_file_dialog_staged");
     assert_eq!(h.get_by_label(STAGE).toggled(), Some(Toggled::True));
     assert!(h.query_by_label_contains("until you stage both").is_none());
     h.get_by_label("Rename").click();
@@ -186,7 +187,7 @@ fn confirm_delete_trash() {
     assert!(matches!(&st.modal, Some(Modal::Confirm { .. })));
     let mut h = harness(st, true);
     h.run();
-    h.snapshot("confirm_delete_trash");
+    h.check_snapshot("confirm_delete_trash");
     let button = format!("Move to {}", crate::state::files::TRASH);
     h.get_by_label(&button).click();
     h.run();
