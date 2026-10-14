@@ -1,0 +1,37 @@
+name: Bug report
+description: Something in Trellis doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a repository with ...
+        2. Right-click ...
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Activity log
+      description: The git commands and output from the activity log panel, if relevant. Remove anything private.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Trellis version or commit
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and git version
+      placeholder: Windows 11 24H2, git 2.47.1

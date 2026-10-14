@@ -1,0 +1,29 @@
+[package]
+name = "trellis"
+description = "Trellis: a native Git client."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "trellis"
+path = "src/main.rs"
+
+[dependencies]
+trellis-core.workspace = true
+chrono.workspace = true
+git2.workspace = true
+serde_json.workspace = true
+sys-locale.workspace = true
+eframe = "0.31"
+open = "5"
+rfd = "0.15"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[dev-dependencies]
+egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }

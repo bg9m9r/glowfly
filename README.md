@@ -1,0 +1,123 @@
+# Trellis
+
+A fast, native Git GUI written in Rust (egui + libgit2): a central commit graph, a
+branch/remote/tag/stash sidebar, and a right-hand panel for commit details or staging and
+committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps and Jira for pull requests
+and issues.
+
+Trellis is an independent project. It is not affiliated with or endorsed by any other Git client
+or hosting service; product names are used only to describe compatibility.
+
+## Getting started
+
+Trellis is developed and tested on Windows. You need a recent stable Rust toolchain and Git on
+your `PATH`.
+
+```
+cargo run --release -- C:\path\to\repo
+```
+
+With no path it reopens the last repository. See [TODO.md](TODO.md) for the roadmap.
+
+## What it does
+
+- **Commit graph**: lane layout with merge/fork curves, branch, remote and tag badges, a
+  `// WIP` node above HEAD when the tree is dirty, ↑/↓ keyboard navigation, and commit search
+  (Enter jumps to the next match).
+- **Sidebar**: local branches (ahead/behind counts), remotes, tags and stashes. Click jumps to the
+  commit, double-click checks out, and right-click opens merge, rebase, delete, push-tag,
+  apply/pop/drop.
+- **Staging**: stage or unstage single files, whole lists, or individual hunks. You can discard a
+  file or hunk. "Discard all" moves changes into a stash so they can be recovered.
+- **Commit**: summary with a 72-char counter, description, and amend. Runs through `git commit`,
+  so hooks and GPG signing apply.
+- **Commit context menu**: create branch/tag here, checkout (detached), cherry-pick, revert,
+  reset soft/mixed/hard.
+- **Remote operations**: fetch, pull (ff / ff-only / rebase), push (sets upstream automatically,
+  force-with-lease behind a confirmation), plus clone and init.
+- **Merge/rebase/cherry-pick in progress**: a banner with Continue/Skip/Abort, and conflicted
+  files are marked with `!`.
+- **Activity log** with the exact git commands run and their output. Auto-refreshes when the
+  window regains focus, or on F5.
+
+## Hosting services and issue trackers
+
+| Service | Pull/merge requests | Issues | Sign-in |
+|---|---|---|---|
+| GitHub / GitHub Enterprise Server | ✔ (with review states) | GitHub Issues | GCM, `GITHUB_TOKEN`/`GH_TOKEN`, PAT |
+| GitLab / GitLab Self-Managed | ✔ merge requests (with approvals) | GitLab Issues | GCM, `GITLAB_TOKEN`, PAT |
+| Bitbucket Cloud | ✔ | Bitbucket Issues | GCM, username + app password |
+| Bitbucket Data Center | ✔ | (use Jira) | GCM, HTTP access token |
+| Azure DevOps | ✔ | Azure Boards | GCM, `AZURE_DEVOPS_EXT_PAT`, PAT |
+| Jira Cloud / Jira Data Center | — | ✔ | email + API token / PAT |
+
+The code host is detected from the remote URL (`origin` preferred). Self-hosted servers are
+recognized once connected in Preferences, or by common URL shapes (`gitlab.*`, `github.*`,
+`/scm/` for Bitbucket). The issue tracker defaults to the host's own issues, and can be switched
+to a connected Jira site (optionally one project) under Repo-Specific Preferences > Issue
+Tracker.
+
+- **Pull requests**: a PULL REQUESTS (or MERGE REQUESTS) sidebar section with drafts, approval
+  counts and a reviewer tooltip, plus badges on the head commit in the graph. You can open,
+  check out, and create them from the toolbar **PR** button or a branch's context menu. The
+  target defaults to the repo's default branch.
+- **Issues**: the ISSUES section lists open issues assigned to you. "Create branch from issue"
+  names the branch `123-title` / `PROJ-12-title`. Commits that mention `#123`, `AB#123` or
+  `PROJ-123` show issue chips, and on an issue branch the commit panel offers to add the mention.
+- **Linking**: a new PR links the issues mentioned on its branch. Azure Boards links through the
+  API, GitHub and GitLab get `Closes #n`, Bitbucket gets `Resolves #n`, and Jira gets the key.
+- **Credentials**: an environment variable, then a token saved in the Windows Credential Manager,
+  then Git Credential Manager (the same sign-in `git push` uses). Background refreshes (every 5
+  minutes) never show a sign-in window.
+- **Live check**: `TRELLIS_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture` runs
+  read-only API calls against a real service.
+
+## Preferences
+
+Open it with the gear button or Ctrl+, (Esc closes it): a navigation column, an Integrations
+sub-list, and forms with right-aligned labels.
+
+- **General**: auto-fetch interval (0–60 min) and auto-prune, default branch name for new repos,
+  initial commits in the graph (minimum 500), reopen last repository, `core.longpaths`,
+  `core.autocrlf`, and "Forget All" for connections. A second button also signs Git Credential
+  Manager out of those hosts, after a confirmation.
+- **Profile**: global `user.name` / `user.email`.
+- **Integrations**: one page per service (GitHub, GitHub Enterprise Server, GitLab, GitLab
+  Self-Managed, Bitbucket, Bitbucket Data Center, Azure DevOps, Jira Cloud, Jira Data Center).
+  Each has a connection card with "Connect to …" (signs in through Git Credential Manager), or a
+  host domain plus token. Credentials are verified before being saved.
+- **UI Customization**: author/date columns and date format (ISO, long, relative).
+- **Commit Signing**: `commit.gpgsign`, `gpg.format`, `user.signingkey`.
+- **Repo-specific**: identity override (local `user.name` / `user.email`), `core.hooksPath`, and
+  the issue tracker.
+
+App settings live in `%APPDATA%\Trellis\settings.json`. Git settings are written straight to git
+config. Tokens go to the Windows Credential Manager.
+
+## Architecture
+
+Two crates: `trellis-core` (git, hosting services, settings; no UI) and `trellis-app` (the egui
+app, built as an Elm-style message/update loop with background effects).
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the layout and the rules that keep it
+tidy.
+
+## Contributing
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first; in short, run
+`pwsh scripts/check.ps1` before sending a pull request. By taking part you agree to the
+[Code of Conduct](CODE_OF_CONDUCT.md). Report security problems as described in
+[SECURITY.md](SECURITY.md).
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
+  <https://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <https://opensource.org/licenses/MIT>)
+
+at your option.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in
+the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without
+any additional terms or conditions.

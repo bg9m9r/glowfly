@@ -1,0 +1,27 @@
+[package]
+name = "trellis-core"
+description = "Git, hosting-service and settings logic for Trellis (no UI)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+chrono.workspace = true
+git2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sys-locale.workspace = true
+base64 = "0.23.1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
+sha2 = "0.11.1"
+syntect = { version = "5.2", default-features = false, features = ["default-syntaxes", "regex-fancy"] }
+ureq = { version = "2", features = ["json"] }
+thiserror = "2"
+
+[target."cfg(windows)".dependencies]
+windows = { version = "0.61", features = ["Win32_Globalization", "Win32_System_Com"] }

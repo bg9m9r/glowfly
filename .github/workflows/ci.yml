@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Configure git for tests
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+      - name: Check
+        shell: pwsh
+        run: ./scripts/check.ps1

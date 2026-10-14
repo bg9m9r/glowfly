@@ -1,0 +1,254 @@
+//! Side effects requested by `update`. The runner executes them off the UI thread and reports
+//! back with `Msg`s; the few that need the window (`UiEffect`) are handled by the UI shell.
+
+use crate::msg::{FilePurpose, FolderPurpose};
+use git2::Oid;
+use std::path::PathBuf;
+use trellis_core::forge::{Account, Auth, Issue, NewPullRequest, NewRepo, PullRequest, Target};
+use trellis_core::repo::{DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions};
+use trellis_core::settings::Settings;
+use trellis_core::undo::{Action, UndoKind};
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum LoadKind {
+    Open,
+    Refresh,
+}
+
+/// Quick index/working-tree edits done through libgit2.
+#[derive(Debug, PartialEq)]
+pub enum LocalOp {
+    StageFile(String),
+    StageAll,
+    UnstagePaths(Vec<String>),
+    DiscardFile {
+        path: String,
+        untracked: bool,
+    },
+    Hunk {
+        op: HunkOp,
+        path: String,
+        index: usize,
+    },
+    /// Lines `lines` (sorted) of hunk `hunk`, whose header must still be `header`.
+    Lines {
+        op: HunkOp,
+        path: String,
+        hunk: usize,
+        /// The hunk as displayed; the operation is refused if the file's hunk differs now.
+        expected: Hunk,
+        lines: Vec<usize>,
+    },
+}
+
+/// What to ask a hosting service.
+#[derive(Debug)]
+pub enum ForgeCall {
+    /// Pull requests (plus the default branch and, when the host is also the tracker, issues).
+    Refresh {
+        need_default: bool,
+        with_issues: bool,
+    },
+    MyIssues,
+    Issues(Vec<String>),
+    Create(NewPullRequest),
+}
+
+/// A hosting-service failure, flagged when signing in again could fix it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ForgeError {
+    pub message: String,
+    pub auth: bool,
+}
+
+impl From<trellis_core::error::Error> for ForgeError {
+    fn from(e: trellis_core::error::Error) -> Self {
+        ForgeError { auth: e.is_auth(), message: e.to_string() }
+    }
+}
+
+#[derive(Debug)]
+pub enum ForgeResult {
+    AuthFailed(String),
+    Prs(Result<Vec<PullRequest>, ForgeError>),
+    MyIssues(Result<Vec<Issue>, ForgeError>),
+    Issues(Vec<String>, Result<Vec<Issue>, ForgeError>),
+    DefaultBranch(Option<String>),
+    Created(Result<PullRequest, ForgeError>),
+}
+
+#[derive(Debug)]
+pub struct ForgeReply {
+    pub target: Target,
+    pub auth: Option<Auth>,
+    pub results: Vec<ForgeResult>,
+}
+
+#[derive(Debug)]
+pub enum Effect {
+    LoadRepo {
+        path: PathBuf,
+        opts: LoadOptions,
+        generation: u64,
+        kind: LoadKind,
+    },
+    LoadStatus {
+        workdir: PathBuf,
+        generation: u64,
+    },
+    LoadDetail {
+        workdir: PathBuf,
+        oid: Oid,
+    },
+    LoadDiff {
+        workdir: PathBuf,
+        target: DiffTarget,
+        reload: bool,
+        generation: u64,
+        /// On a reload, the diff on screen: unchanged hunks keep its highlighting.
+        previous: Option<FileDiff>,
+    },
+    LocalOp {
+        workdir: PathBuf,
+        op: LocalOp,
+    },
+    /// Runs git commands in order, stopping at the first failure. `write_file` is written first
+    /// (used for commit messages). With `record`, the state before and after is compared and
+    /// the resulting undoable action reported back.
+    RunGit {
+        cwd: PathBuf,
+        cmds: Vec<Vec<String>>,
+        write_file: Option<(PathBuf, String)>,
+        record: Option<UndoKind>,
+    },
+    /// Undoes (or redoes) `action` after checking the repository still matches it. Unscoped like
+    /// `RunGit`: the job's result must reach `update` even if its tab is no longer active.
+    UndoRedo {
+        cwd: PathBuf,
+        action: Action,
+        redo: bool,
+    },
+    Forge {
+        target: Target,
+        cwd: PathBuf,
+        auth: Option<Auth>,
+        interactive: bool,
+        call: ForgeCall,
+    },
+    /// Where the signed-in user can create repositories (their login, then organizations).
+    RepoOwners {
+        account: Account,
+        cwd: PathBuf,
+    },
+    /// Creates a repository for `workdir`; the result carries what is needed to push to it.
+    CreateRepo {
+        account: Account,
+        cwd: PathBuf,
+        user: String,
+        repo: NewRepo,
+        branch: String,
+    },
+    Connect {
+        account: Account,
+        user: Option<String>,
+        token: Option<String>,
+        cwd: PathBuf,
+    },
+    SaveToken {
+        account: Account,
+        user: Option<String>,
+        token: String,
+    },
+    DeleteToken(Account),
+    ForgetCredentialManager {
+        accounts: Vec<Account>,
+        cwd: PathBuf,
+    },
+    Stats {
+        workdir: PathBuf,
+        oids: Vec<Oid>,
+    },
+    /// Downloads (or reads from the disk cache) avatars one after another.
+    FetchAvatars(Vec<String>),
+    ReadGitConfig {
+        cwd: PathBuf,
+        has_repo: bool,
+    },
+    SetGitConfig {
+        cwd: PathBuf,
+        global: bool,
+        key: String,
+        value: Option<String>,
+    },
+    SaveSettings(Box<Settings>),
+    SaveRecent(Vec<PathBuf>),
+    /// The open tabs (repositories) and which one is active, for the next start.
+    SaveTabs {
+        paths: Vec<PathBuf>,
+        active: usize,
+    },
+    OpenUrl(String),
+    OpenTerminal(PathBuf),
+    OpenFolder(PathBuf),
+    PickFolder {
+        title: String,
+        purpose: FolderPurpose,
+    },
+    PickFile {
+        title: String,
+        purpose: FilePurpose,
+    },
+    ListSigningKeys {
+        format: trellis_core::signing::SigningFormat,
+        program: String,
+    },
+    GenerateGpgKey {
+        program: String,
+        name: String,
+        email: String,
+        passphrase: String,
+    },
+    ExportPublicKey {
+        format: trellis_core::signing::SigningFormat,
+        program: String,
+        key: String,
+    },
+    Ui(UiEffect),
+}
+
+impl Effect {
+    /// The repository whose tab a result belongs to: results for a tab that is no longer
+    /// active are dropped (the tab reloads when it is selected again).
+    pub fn scope(&self) -> Option<&PathBuf> {
+        match self {
+            Effect::LoadStatus { workdir, .. }
+            | Effect::LoadDetail { workdir, .. }
+            | Effect::LoadDiff { workdir, .. }
+            | Effect::LocalOp { workdir, .. }
+            | Effect::Stats { workdir, .. } => Some(workdir),
+            Effect::Forge { cwd, .. } => Some(cwd),
+            _ => None,
+        }
+    }
+}
+
+/// What a git job means for the undo history.
+#[derive(Debug)]
+pub enum UndoResult {
+    /// An undoable job ran; `None` when it changed nothing that can be undone.
+    Recorded(Option<Action>),
+    /// An undo or redo ran. `before` is the history entry and `after` the entry as it stands now
+    /// (they differ only for a redone discard, which makes a new stash).
+    Done { redo: bool, before: Action, after: Action },
+    /// The reversing git commands failed; the entry stays.
+    Failed { redo: bool },
+    /// The undo or redo was refused before running anything; a stale history is cleared.
+    Refused { redo: bool, stale: bool },
+}
+
+/// Effects that need the window, carried out by the UI shell.
+#[derive(Debug, PartialEq)]
+pub enum UiEffect {
+    CopyText(String),
+    SetTitle(String),
+}

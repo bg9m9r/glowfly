@@ -1,0 +1,175 @@
+//! Full-window Preferences: a navigation column, an optional
+//! sub-list (Integrations), and a form with right-aligned labels and help text.
+
+mod appearance;
+mod general;
+mod git;
+mod integrations;
+mod signing;
+
+use super::theme::color;
+use super::widgets::{self, Icon};
+use crate::msg::Msg;
+use crate::state::{AppState, PrefPage};
+use eframe::egui::{self, Align2, Color32, FontId, RichText, Sense, Stroke, Ui, pos2, vec2};
+use trellis_core::forge::Provider;
+
+pub(super) const LABEL_W: f32 = 240.0;
+
+/// One form row: right-aligned label, then the control(s) and help text underneath.
+pub(super) fn row(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui)) {
+    ui.horizontal_top(|ui| {
+        let (r, _) = ui.allocate_exact_size(vec2(LABEL_W, 24.0), Sense::hover());
+        ui.painter().text(pos2(r.right(), r.center().y), Align2::RIGHT_CENTER, label, FontId::proportional(13.5), color::text());
+        ui.add_space(18.0);
+        ui.vertical(|ui| {
+            ui.set_max_width(480.0);
+            add(ui);
+        });
+    });
+    ui.add_space(18.0);
+}
+
+pub(super) fn help(ui: &mut Ui, text: &str) {
+    ui.add(egui::Label::new(RichText::new(text).size(12.0).color(color::weak())).wrap());
+}
+
+pub(super) fn warn(ui: &mut Ui, text: &str) {
+    ui.horizontal_top(|ui| {
+        let (r, _) = ui.allocate_exact_size(vec2(12.0, 14.0), Sense::hover());
+        let c = r.center();
+        ui.painter().add(egui::Shape::convex_polygon(
+            vec![pos2(c.x, c.y - 5.0), pos2(c.x + 5.5, c.y + 4.5), pos2(c.x - 5.5, c.y + 4.5)],
+            Color32::TRANSPARENT,
+            Stroke::new(1.3_f32, color::amber()),
+        ));
+        ui.add(egui::Label::new(RichText::new(text).size(12.0).color(color::weak())).wrap());
+    });
+}
+
+pub(super) fn caption(ui: &mut Ui, text: &str) {
+    ui.horizontal(|ui| {
+        ui.add_space(12.0);
+        ui.label(RichText::new(text).size(12.5).color(color::weak()));
+    });
+    ui.add_space(4.0);
+}
+
+pub(super) fn text_field(ui: &mut Ui, value: &mut String, hint: &str) -> egui::Response {
+    ui.add(egui::TextEdit::singleline(value).hint_text(hint).desired_width(320.0).margin(vec2(8.0, 5.0)))
+}
+
+pub(super) fn primary_button(ui: &mut Ui, text: &str, enabled: bool) -> egui::Response {
+    let fill = if enabled { color::primary() } else { color::primary_off() };
+    let fg = if enabled { Color32::WHITE } else { color::faint() };
+    ui.add_enabled(
+        enabled,
+        egui::Button::new(RichText::new(text).color(fg)).fill(fill).stroke(Stroke::new(1.0_f32, color::primary_border())),
+    )
+}
+
+pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    let Some(page) = st.prefs.as_ref().map(|p| p.page) else { return };
+    let repo_name = st.snap.as_ref().map(|s| s.name.clone());
+    nav(ctx, page, repo_name.as_deref(), st, msgs);
+    if page == PrefPage::Integrations {
+        providers(ctx, st, msgs);
+    }
+
+    let settings = &mut st.settings;
+    let Some(prefs) = st.prefs.as_mut() else { return };
+    let fs = st.forge.as_ref();
+    let workdir = st.snap.as_ref().map(|s| s.workdir.clone());
+    let now = (st.view.now, st.view.utc_offset);
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
+        .show(ctx, |ui| {
+            let title = if page == PrefPage::Integrations { prefs.int_provider.name() } else { page.title() };
+            ui.label(RichText::new(title).size(21.0).color(color::text()));
+            ui.add_space(18.0);
+            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                ui.spacing_mut().item_spacing.y = 6.0;
+                let needs_git = matches!(page, PrefPage::Profile | PrefPage::Signing | PrefPage::RepoIdentity | PrefPage::RepoHooks);
+                if page == PrefPage::Signing && prefs.git.is_some() {
+                    signing::signing_page(ui, prefs, msgs);
+                    return;
+                }
+                if needs_git && prefs.git.is_none() {
+                    ui.horizontal(|ui| {
+                        ui.add(egui::Spinner::new());
+                        ui.label(RichText::new("Reading git configuration…").color(color::weak()));
+                    });
+                    return;
+                }
+                match page {
+                    PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), msgs),
+                    PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
+                    PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
+                    PrefPage::Ui => appearance::ui_page(ui, settings, now),
+                    _ => {
+                        let Some(git) = prefs.git.as_mut() else { return };
+                        match page {
+                            PrefPage::Profile => git::profile_page(ui, git, msgs),
+                            PrefPage::RepoIdentity => git::identity_page(ui, git, msgs),
+                            _ => git::hooks_page(ui, git, msgs),
+                        }
+                    }
+                }
+            });
+        });
+}
+
+fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    egui::SidePanel::left("prefs-nav").exact_width(250.0).resizable(false).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        ui.add_space(6.0);
+        if widgets::nav_row(ui, Some(Icon::Back), "Exit Preferences", false, 15.0).on_hover_text("Esc").clicked() {
+            msgs.push(Msg::ClosePrefs);
+        }
+        ui.add_space(12.0);
+        caption(ui, "Preferences");
+        let mut go = |ui: &mut Ui, pg: PrefPage, icon: Icon, label: &str| {
+            if widgets::nav_row(ui, Some(icon), label, page == pg, 15.0).clicked()
+                && let Some(p) = st.prefs.as_mut()
+            {
+                p.page = pg;
+            }
+        };
+        go(ui, PrefPage::General, Icon::Gear, "General");
+        go(ui, PrefPage::Profile, Icon::User, "Profile");
+        go(ui, PrefPage::Integrations, Icon::Plug, "Integrations");
+        go(ui, PrefPage::Ui, Icon::Brush, "UI Customization");
+        go(ui, PrefPage::Signing, Icon::Key, "Commit Signing");
+        if let Some(name) = repo_name {
+            ui.add_space(20.0);
+            caption(ui, "Repo-Specific Preferences");
+            ui.horizontal(|ui| {
+                ui.add_space(12.0);
+                ui.label(RichText::new(format!("Repo: {name}")).size(12.0).color(color::faint()));
+            });
+            ui.add_space(4.0);
+            go(ui, PrefPage::RepoIdentity, Icon::Identity, "Identity");
+            go(ui, PrefPage::RepoHooks, Icon::Hook, "Git Hooks");
+            go(ui, PrefPage::RepoTracker, Icon::Activity, "Issue Tracker");
+        }
+    });
+}
+
+/// The Integrations sub-list of hosting services.
+fn providers(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
+    let current = st.prefs.as_ref().map(|p| p.int_provider);
+    let connected: Vec<Provider> = st.settings.connections.iter().map(|c| c.account.provider).collect();
+    egui::SidePanel::left("prefs-integrations").exact_width(230.0).resizable(false).frame(egui::Frame::new().fill(color::toolbar())).show(
+        ctx,
+        |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            ui.add_space(8.0);
+            for p in Provider::ALL {
+                let label = if connected.contains(&p) { format!("{}  ✔", p.name()) } else { p.name().to_owned() };
+                if widgets::nav_row(ui, None, &label, current == Some(p), 14.0).clicked() {
+                    msgs.push(Msg::SelectIntegration(p));
+                }
+            }
+        },
+    );
+}

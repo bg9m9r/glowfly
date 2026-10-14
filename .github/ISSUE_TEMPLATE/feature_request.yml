@@ -1,0 +1,21 @@
+name: Feature request
+description: Suggest something Trellis should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to do
+      description: The workflow or problem, rather than a specific design.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How Trellis could help
+  - type: checkboxes
+    id: todo
+    attributes:
+      label: Roadmap
+      options:
+        - label: I checked TODO.md and this isn't already listed (or I'm adding detail to an item there)

@@ -1,0 +1,89 @@
+//! Operating-system integration: the recent-repositories file, terminals, file managers.
+
+use std::path::{Path, PathBuf};
+
+fn recent_file() -> Option<PathBuf> {
+    trellis_core::settings::config_dir().map(|d| d.join("recent.txt"))
+}
+
+/// Recently opened repositories that still exist, newest first.
+pub fn load_recent() -> Vec<PathBuf> {
+    recent_file()
+        .and_then(|f| std::fs::read_to_string(f).ok())
+        .map(|s| s.lines().filter(|l| !l.is_empty()).map(PathBuf::from).filter(|p| p.exists()).collect())
+        .unwrap_or_default()
+}
+
+pub fn save_recent(list: &[PathBuf]) {
+    let Some(f) = recent_file() else { return };
+    if let Some(dir) = f.parent()
+        && let Err(e) = std::fs::create_dir_all(dir)
+    {
+        tracing::warn!("could not create {}: {e}", dir.display());
+        return;
+    }
+    let text: Vec<String> = list.iter().map(|p| p.display().to_string()).collect();
+    if let Err(e) = std::fs::write(&f, text.join("\n")) {
+        tracing::warn!("could not save recent repositories: {e}");
+    }
+}
+
+fn tabs_file() -> Option<PathBuf> {
+    trellis_core::settings::config_dir().map(|d| d.join("tabs.txt"))
+}
+
+/// The tabs open when Trellis last closed (those that still exist) and the index of the active
+/// one. The first line of the file is the active index; each further line is a repository.
+pub fn load_tabs() -> (Vec<PathBuf>, usize) {
+    let Some(text) = tabs_file().and_then(|f| std::fs::read_to_string(f).ok()) else { return (Vec::new(), 0) };
+    let mut lines = text.lines();
+    let active: usize = lines.next().and_then(|l| l.trim().parse().ok()).unwrap_or(0);
+    let mut paths = Vec::new();
+    let mut new_active = 0;
+    for (i, line) in lines.filter(|l| !l.is_empty()).enumerate() {
+        let p = PathBuf::from(line);
+        if p.exists() {
+            if i <= active {
+                new_active = paths.len();
+            }
+            paths.push(p);
+        }
+    }
+    (paths, new_active)
+}
+
+pub fn save_tabs(paths: &[PathBuf], active: usize) {
+    let Some(f) = tabs_file() else { return };
+    let mut text = active.to_string();
+    for p in paths {
+        text.push('\n');
+        text.push_str(&p.display().to_string());
+    }
+    if let Err(e) = f.parent().map_or(Ok(()), std::fs::create_dir_all).and_then(|_| std::fs::write(&f, text)) {
+        tracing::warn!("could not save open tabs: {e}");
+    }
+}
+
+pub fn open_terminal(dir: &Path) {
+    #[cfg(windows)]
+    let r = std::process::Command::new("cmd").args(["/C", "start", "cmd"]).current_dir(dir).spawn();
+    #[cfg(target_os = "macos")]
+    let r = std::process::Command::new("open").args(["-a", "Terminal"]).arg(dir).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let r = std::process::Command::new("x-terminal-emulator").current_dir(dir).spawn();
+    if let Err(e) = r {
+        tracing::warn!("could not open a terminal: {e}");
+    }
+}
+
+pub fn open_in_file_manager(dir: &Path) {
+    #[cfg(windows)]
+    let cmd = "explorer";
+    #[cfg(target_os = "macos")]
+    let cmd = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let cmd = "xdg-open";
+    if let Err(e) = std::process::Command::new(cmd).arg(dir).spawn() {
+        tracing::warn!("could not open the file manager: {e}");
+    }
+}

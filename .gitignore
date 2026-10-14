@@ -1,0 +1,10 @@
+/target
+# egui_kittest working files (approved images are the plain .png)
+*.new.png
+*.old.png
+*.diff.png
+
+# Local scratch files and assistant workflows
+/temp/
+/.claude/workflows/
+/.claude/settings.local.json

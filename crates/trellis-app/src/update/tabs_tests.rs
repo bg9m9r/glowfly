@@ -1,0 +1,141 @@
+//! Headless tests for tabs: each repository keeps its own state, results for other tabs are
+//! dropped, and tabs close, reopen and restore as expected.
+
+use super::tests::{drive, scratch_repo, state};
+use super::update;
+use crate::effect::{Effect, LoadKind};
+use crate::msg::Msg;
+use crate::state::AppState;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+use trellis_core::repo::DiffTarget;
+
+fn active_is(st: &AppState, dir: &Path) -> bool {
+    st.tabs[st.active_tab].is(dir) && st.snap.as_ref().is_some_and(|s| crate::state::tabs::same_path(&s.workdir, dir))
+}
+
+fn two_repos(name: &str) -> (AppState, PathBuf, PathBuf) {
+    let (a, b) = (scratch_repo(&format!("{name}-a")), scratch_repo(&format!("{name}-b")));
+    let mut st = state();
+    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Open(b.clone()));
+    (st, a, b)
+}
+
+fn cleanup(dirs: &[&Path]) {
+    for d in dirs {
+        let _ = std::fs::remove_dir_all(d);
+    }
+}
+
+#[test]
+fn each_tab_keeps_its_own_repository_and_draft() {
+    let a = scratch_repo("tabs-own-a");
+    let mut st = state();
+    drive(&mut st, Msg::Open(a.clone()));
+    assert_eq!(st.tabs.len(), 1, "the empty start tab is reused");
+    st.draft.summary = "work in a".into();
+    // A's open diff, scrolled down a few rows.
+    st.diff =
+        Some((DiffTarget::Unstaged("a.txt".into()), trellis_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None }));
+    st.view.diff_top_row = 6;
+
+    let b = scratch_repo("tabs-own-b");
+    drive(&mut st, Msg::Open(b.clone()));
+    assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
+    assert!(active_is(&st, &b));
+    assert!(st.draft.summary.is_empty());
+    assert!(st.diff.is_none() && st.view.diff_scroll_to_row.is_none());
+
+    // Switching back shows A immediately (then refreshes it) with its draft intact.
+    let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
+    assert!(active_is(&st, &a));
+    assert_eq!(st.draft.summary, "work in a");
+    assert_eq!(st.view.diff_scroll_to_row, Some(6), "A's diff reopens where it was scrolled");
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
+
+    // Opening an already open repository selects its tab.
+    drive(&mut st, Msg::Open(b.clone()));
+    assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
+    // Ctrl+Tab wraps around.
+    update(&mut st, Msg::CycleTab(1), Instant::now());
+    assert_eq!(st.active_tab, 0);
+    update(&mut st, Msg::CycleTab(-1), Instant::now());
+    assert_eq!(st.active_tab, 1);
+    cleanup(&[&a, &b]);
+}
+
+#[test]
+fn results_for_other_tabs_are_dropped() {
+    let (mut st, a, b) = two_repos("tabs-scope");
+    let diff = Msg::DiffLoaded { target: DiffTarget::Unstaged("a.txt".into()), reload: false, generation: 0, result: Err("from A".into()) };
+    update(&mut st, Msg::Scoped { workdir: a.clone(), msg: Box::new(diff) }, Instant::now());
+    assert!(!st.log.iter().any(|l| l.text == "from A"), "tab A's diff result must not reach tab B");
+
+    // A git job started in A finishes after switching to B: B is not refreshed, A's draft is
+    // cleared, and the result is still reported.
+    drive(&mut st, Msg::SelectTab(0));
+    st.draft.summary = "commit me".into();
+    update(&mut st, Msg::Commit, Instant::now());
+    update(&mut st, Msg::SelectTab(1), Instant::now());
+    let fx = update(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None }, Instant::now());
+    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Commit succeeded"));
+    let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
+    assert!(parked.draft.summary.is_empty());
+    cleanup(&[&a, &b]);
+}
+
+#[test]
+fn close_and_reopen_tabs() {
+    let (mut st, a, b) = two_repos("tabs-close");
+    drive(&mut st, Msg::CloseTab(usize::MAX));
+    assert_eq!(st.tabs.len(), 1);
+    assert!(active_is(&st, &a));
+
+    drive(&mut st, Msg::ReopenClosedTab);
+    assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
+    assert!(active_is(&st, &b));
+
+    // Closing an inactive tab keeps the active one.
+    drive(&mut st, Msg::CloseTab(0));
+    assert_eq!((st.tabs.len(), st.active_tab), (1, 0));
+    assert!(active_is(&st, &b));
+
+    // Closing the last tab leaves an empty one (the welcome screen).
+    drive(&mut st, Msg::CloseTab(0));
+    assert_eq!(st.tabs.len(), 1);
+    assert!(st.snap.is_none() && st.tabs[0].path.is_none());
+    cleanup(&[&a, &b]);
+}
+
+#[test]
+fn a_failed_open_returns_to_the_previous_tab() {
+    let a = scratch_repo("tabs-fail");
+    let mut st = state();
+    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Open(a.join("no-such-folder")));
+    assert_eq!(st.tabs.len(), 1);
+    assert!(active_is(&st, &a));
+    assert!(st.log.last().is_some_and(|l| !l.ok));
+    cleanup(&[&a]);
+}
+
+#[test]
+fn restored_tabs_load_when_first_selected() {
+    let (a, b) = (scratch_repo("tabs-restore-a"), scratch_repo("tabs-restore-b"));
+    let mut st = state();
+    let fx = update(&mut st, Msg::RestoreTabs { paths: vec![a.clone(), b.clone()], active: 1 }, Instant::now());
+    assert_eq!((st.tabs.len(), st.active_tab), (2, 1), "the empty start tab is replaced");
+    let loads: Vec<&PathBuf> = fx.iter().filter_map(|e| if let Effect::LoadRepo { path, .. } = e { Some(path) } else { None }).collect();
+    assert_eq!(loads, [&b], "only the active tab loads at startup");
+    assert_eq!(st.tabs[0].name, a.file_name().unwrap().to_string_lossy());
+
+    let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, kind: LoadKind::Open, .. } if path == &a)));
+    match fx.iter().find_map(|e| if let Effect::SaveTabs { paths, active } = e { Some((paths, *active)) } else { None }) {
+        Some((paths, active)) => assert_eq!((paths.len(), active), (2, 0)),
+        None => panic!("switching tabs saves the session"),
+    }
+    cleanup(&[&a, &b]);
+}
