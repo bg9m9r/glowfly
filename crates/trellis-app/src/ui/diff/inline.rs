@@ -1,4 +1,5 @@
-//! The inline layout: one column of hunks, each line with its old and new number.
+//! The inline layout: one column of hunks (or of the whole file), each line with its old and
+//! new number.
 
 use super::syntax::paint_code;
 use super::{DiffView, ROW_H, hunk_header, line_click, mono, paint_mark};
@@ -7,12 +8,13 @@ use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
 use trellis_core::diff_rows::{DiffRow, inline_rows};
 use trellis_core::highlight::Span;
+use trellis_core::whole_file;
 
 /// Draws the rows and returns the first visible one.
 pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> usize {
-    let diff = v.diff;
-    // Uniform rows so huge diffs stay fast.
-    let rows = inline_rows(diff);
+    let diff = v.lines();
+    // Uniform rows so huge diffs stay fast. In the whole-file view `hunk` is always 0.
+    let rows = v.whole.map_or_else(|| inline_rows(v.diff), whole_file::inline_rows);
     let widest = diff.hunks.iter().flat_map(|h| &h.lines).map(|l| l.text.chars().count()).max().unwrap_or(0);
     let mono = mono();
     let char_w = ui.fonts(|f| f.glyph_width(&mono, 'M'));
@@ -23,7 +25,8 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
         let sense = if v.sel.is_some() && matches!(rows[i], DiffRow::Line { .. }) { Sense::click() } else { Sense::hover() };
         let (rect, resp) = ui.allocate_exact_size(vec2(width, ROW_H), sense);
         match rows[i] {
-            DiffRow::Header(h) => hunk_header(ui, rect, v, h, msgs),
+            // A change block's action row acts on its normal hunk, like that hunk's header.
+            DiffRow::Header(h) | DiffRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
             DiffRow::Line { hunk, line } => {
                 let dl = &diff.hunks[hunk].lines[line];
                 let selected = v.is_selected(hunk, line);

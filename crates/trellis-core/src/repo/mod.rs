@@ -187,6 +187,9 @@ pub struct FileDiff {
     pub highlight: Option<crate::highlight::DiffHighlight>,
     /// Filled in by `intraline::intraline`; empty means no word marks.
     pub intraline: crate::intraline::Intraline,
+    /// With LoadDiffOptions::whole_file: every line of the file and its change blocks. None
+    /// otherwise, or when it couldn't be mapped onto the hunks.
+    pub whole: Option<Box<crate::whole_file::WholeFile>>,
 }
 
 /// How `load_diff_with` builds a file diff.
@@ -195,6 +198,9 @@ pub struct LoadDiffOptions {
     /// Hide changes in the amount of whitespace and at line ends (git `-b --ignore-space-at-eol`).
     /// Hunk indexes then no longer match `apply_hunk` / `apply_lines`.
     pub ignore_whitespace: bool,
+    /// Also load the file with unlimited context into FileDiff::whole (the whole-file view).
+    /// The normal hunks are loaded as always, so hunk indexes still match apply_hunk.
+    pub whole_file: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -238,3 +244,5 @@ mod lines_tests;
 mod resolve_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod whole_tests;

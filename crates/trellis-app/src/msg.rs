@@ -10,7 +10,7 @@ use std::time::Instant;
 use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
 use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, Side, Snapshot};
-use trellis_core::settings::{DiffLayout, TrackerChoice};
+use trellis_core::settings::{DiffLayout, DiffMode, TrackerChoice};
 
 /// What a folder picker was opened for.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -52,6 +52,8 @@ pub enum Msg {
     CloseDiff,
     /// Switch the diff between one column and side by side (saved in settings).
     SetDiffLayout(DiffLayout),
+    /// Switch the diff between hunks only and the whole file (saved in settings).
+    SetDiffMode(DiffMode),
     /// Diff header toggle: hide whitespace-only changes and reload the open diff.
     SetIgnoreWhitespace(bool),
     /// Scroll the diff to the next (1) or previous (-1) hunk.

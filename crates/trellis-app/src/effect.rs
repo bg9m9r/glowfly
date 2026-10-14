@@ -134,6 +134,8 @@ pub enum Effect {
         previous: Option<FileDiff>,
         /// Hide whitespace-only changes (the diff_ignore_whitespace setting when the request was made).
         ignore_whitespace: bool,
+        /// Also load the whole file (the diff_mode setting when the request was made).
+        whole_file: bool,
     },
     LoadConflict {
         workdir: PathBuf,

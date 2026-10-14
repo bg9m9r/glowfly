@@ -22,7 +22,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, LoadOptions, Snapshot};
-use trellis_core::settings::{BranchVisibility, Settings};
+use trellis_core::settings::{BranchVisibility, DiffMode, Settings};
 
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
@@ -30,6 +30,10 @@ pub const TOAST_LIFETIME: Duration = Duration::from_secs(5);
 /// Why hunk and line operations are off while the diff hides whitespace changes.
 pub const WHITESPACE_BLOCKS_HUNK_OPS: &str =
     "Turn off Ignore whitespace to stage, unstage or discard hunks and lines. The hidden whitespace changes are part of each hunk.";
+
+/// Why selecting and applying single lines is refused in the whole-file view.
+pub const WHOLE_FILE_BLOCKS_LINE_OPS: &str =
+    "Line staging isn't available in the whole-file view yet. Switch to Hunks to stage single lines.";
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub enum Selection {
@@ -142,6 +146,9 @@ pub struct ViewState {
     pub diff_top_row: usize,
     /// Scroll the diff so this row is at the top on the next frame (set by `update`).
     pub diff_scroll_to_row: Option<usize>,
+    /// Put this hunk at the top of the next freshly opened diff (its header row, or its change
+    /// block in the whole-file view); set when the view mode changes.
+    pub diff_open_hunk: Option<usize>,
     /// Branch tip under the pointer (sidebar or BRANCH/TAG column), for row highlighting.
     pub hover_tip: Option<Oid>,
     pub hover_tip_next: Option<Oid>,
@@ -176,6 +183,7 @@ impl Default for ViewState {
             graph_scroll: (0.0, 0.0),
             diff_top_row: 0,
             diff_scroll_to_row: None,
+            diff_open_hunk: None,
             hover_tip: None,
             hover_tip_next: None,
             highlight: None,
@@ -297,6 +305,12 @@ impl AppState {
     pub fn hunk_ops_blocked(&self) -> Option<&'static str> {
         let working_tree = matches!(self.diff, Some((DiffTarget::Unstaged(_) | DiffTarget::Staged(_), _)));
         (self.settings.diff_ignore_whitespace && working_tree).then_some(WHITESPACE_BLOCKS_HUNK_OPS)
+    }
+
+    /// Why selecting and applying single lines is refused: whatever blocks hunk operations, or
+    /// the whole-file view.
+    pub fn line_ops_blocked(&self) -> Option<&'static str> {
+        self.hunk_ops_blocked().or((self.settings.diff_mode == DiffMode::WholeFile).then_some(WHOLE_FILE_BLOCKS_LINE_OPS))
     }
 
     pub fn workdir(&self) -> Option<PathBuf> {

@@ -10,6 +10,7 @@ use std::ops::Range;
 use trellis_core::diff_rows::{SplitRow, split_rows};
 use trellis_core::highlight::Span;
 use trellis_core::repo::DiffLine;
+use trellis_core::whole_file;
 
 /// A line with its syntax spans and changed-word ranges.
 type CellLine<'a> = (&'a DiffLine, &'a [Span], &'a [Range<u32>]);
@@ -22,8 +23,9 @@ enum Side {
 
 /// Draws the rows and returns the first visible one.
 pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> usize {
-    let diff = v.diff;
-    let rows = split_rows(diff);
+    let diff = v.lines();
+    // In the whole-file view `hunk` is always 0.
+    let rows = v.whole.map_or_else(|| split_rows(v.diff), whole_file::split_rows);
     let widest = diff.hunks.iter().flat_map(|h| &h.lines).map(|l| l.text.chars().count()).max().unwrap_or(0);
     let mono = mono();
     let char_w = ui.fonts(|f| f.glyph_width(&mono, 'M'));
@@ -34,7 +36,8 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
     super::scroll(ui, rows.len(), scroll_to, |ui, i| {
         let (rect, _) = ui.allocate_exact_size(vec2(width, ROW_H), Sense::hover());
         match rows[i] {
-            SplitRow::Header(h) => hunk_header(ui, rect, v, h, msgs),
+            // A change block's action row acts on its normal hunk, like that hunk's header.
+            SplitRow::Header(h) | SplitRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
             SplitRow::Pair { hunk, old, new } => {
                 let lines = &diff.hunks[hunk].lines;
                 let left = Rect::from_min_max(rect.min, pos2(rect.left() + half, rect.bottom()));

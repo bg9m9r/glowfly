@@ -7,6 +7,7 @@ use git2::Oid;
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, Snapshot};
+use trellis_core::settings::DiffMode;
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -102,10 +103,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     if !same {
                         st.view.diff_lines.clear();
                     }
-                    // A different file opens at the top; a reload after a hunk operation keeps its place.
+                    // A different file opens at the top (or its first change block, or the hunk kept
+                    // through a view mode switch); a reload after a hunk operation keeps its place.
                     if !reload {
-                        st.view.diff_scroll_to_row = Some(0);
-                        st.view.diff_top_row = 0;
+                        let row = super::diff::opening_row(&d, &st.settings, st.view.diff_open_hunk.take());
+                        st.view.diff_scroll_to_row = Some(row);
+                        st.view.diff_top_row = row;
                     }
                     st.diff = Some((target, d));
                     st.diff_shown_gen = generation;
@@ -114,9 +117,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 Err(_) if reload => {
                     st.diff = None;
                     st.view.diff_lines.clear();
+                    st.view.diff_open_hunk = None;
                 }
                 Err(e) => {
                     st.view.diff_lines.clear();
+                    st.view.diff_open_hunk = None;
                     st.log(false, e);
                     // The diff still on screen was marked stale by this request: re-read it. Not
                     // `reload_diff`, which would ask again for a file history entry that failed.
@@ -171,8 +176,9 @@ pub(super) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
     reload_shown_diff(st, fx);
 }
 
-/// Opens the diff on screen again, as if newly opened (top of the file, no line selection),
-/// e.g. after the diff options changed. Does nothing when no diff is open.
+/// Opens the diff on screen again, as if newly opened (at the top, or at its first change
+/// block in the whole-file view; no line selection), e.g. after the diff options changed.
+/// Does nothing when no diff is open.
 pub(super) fn reopen_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
     if open_missing_history_diff(st, fx) {
         return;
@@ -201,10 +207,12 @@ fn reload_shown_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
 fn request_diff(st: &mut AppState, fx: &mut Vec<Effect>, reload: bool) {
     if let (Some(workdir), Some((target, diff))) = (st.workdir(), st.diff.as_ref()) {
         let target = target.clone();
-        let previous = diff.highlight.is_some().then(|| diff.clone());
+        let highlighted = diff.highlight.is_some() || diff.whole.as_ref().is_some_and(|w| w.diff.highlight.is_some());
+        let previous = highlighted.then(|| diff.clone());
         let generation = next_diff_gen(st);
         let ignore_whitespace = st.settings.diff_ignore_whitespace;
-        fx.push(Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace });
+        let whole_file = st.settings.diff_mode == DiffMode::WholeFile;
+        fx.push(Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file });
     }
 }
 
@@ -218,10 +226,13 @@ fn next_diff_gen(st: &mut AppState) -> u64 {
 /// Opens `target` in the diff viewer (closing a conflict view).
 pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
     super::conflict::close(st);
+    // A different file opens: the hunk kept through a view mode switch doesn't apply to it.
+    st.view.diff_open_hunk = None;
     if let Some(workdir) = st.workdir() {
         let generation = next_diff_gen(st);
         let ignore_whitespace = st.settings.diff_ignore_whitespace;
-        fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None, ignore_whitespace });
+        let whole_file = st.settings.diff_mode == DiffMode::WholeFile;
+        fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None, ignore_whitespace, whole_file });
     }
 }
 
@@ -229,6 +240,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
 pub(super) fn close_diff(st: &mut AppState) {
     st.diff = None;
     st.view.diff_lines.clear();
+    st.view.diff_open_hunk = None;
     next_diff_gen(st);
 }
 

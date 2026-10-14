@@ -8,6 +8,7 @@ use crate::state::conflict::ConflictView;
 use crate::state::tabs::{MAX_CLOSED_TABS, Parked, index_after_move};
 use crate::state::{AppState, Selection, Tab};
 use std::path::PathBuf;
+use trellis_core::settings::DiffMode;
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
     match msg {
@@ -239,6 +240,7 @@ fn park(st: &mut AppState) -> Parked {
         graph_scroll: st.view.graph_scroll.0,
         diff_top_row: st.view.diff_top_row,
         diff_layout: st.settings.diff_layout,
+        diff_mode: st.settings.diff_mode,
     }
 }
 
@@ -250,8 +252,17 @@ fn unpark(st: &mut AppState, p: Parked) {
     // Diff results for this tab were dropped while it was parked: its hunks stay disabled
     // until the refresh that follows the switch reloads the diff.
     st.diff_gen += 1;
-    let top = match &st.diff {
-        Some((_, d)) => super::diff::same_hunk_row(d, p.diff_layout, st.settings.diff_layout, p.diff_top_row),
+    let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
+    let top = match st.diff.as_mut() {
+        // The view mode changed while parked: open on the hunk that was at the top.
+        Some((_, d)) if p.diff_mode != mode => {
+            let h = super::diff::hunk_at_top(d, p.diff_mode, p.diff_layout, p.diff_top_row);
+            if mode == DiffMode::Hunks {
+                d.whole = None;
+            }
+            super::diff::opening_row(d, &st.settings, h)
+        }
+        Some((_, d)) => super::diff::same_change_row(d, mode, p.diff_layout, layout, p.diff_top_row),
         None => 0,
     };
     st.view.diff_scroll_to_row = st.diff.is_some().then_some(top);

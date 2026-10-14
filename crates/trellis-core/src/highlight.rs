@@ -4,7 +4,8 @@
 //! The old file (context and `-` lines) and the new file (context and `+` lines) are parsed in
 //! separate passes, and each hunk starts from a fresh parse state. Known limitation: a hunk that
 //! starts inside a block comment or a multi-line string is colored as code until the delimiter
-//! closes; highlighting from the whole old and new files would fix that.
+//! closes; highlighting from the whole old and new files would fix that. The whole-file view
+//! (`whole_file`) does: its one hunk is the whole file, within the size limits below.
 
 use crate::repo::{DiffLine, FileDiff, Hunk};
 use std::collections::HashMap;

@@ -1,0 +1,306 @@
+//! Headless tests for the whole-file diff view: switching modes, opening on the kept hunk,
+//! stepping between change blocks, hunk actions on blocks and line operations being off.
+
+use super::diff_tests::drive_holding_diffs;
+use super::tests::{drive, git, scratch_repo, state};
+use super::update;
+use crate::effect::{Effect, LocalOp};
+use crate::msg::Msg;
+use crate::state::history::FileHistoryView;
+use crate::state::lines::LineClick::Only;
+use crate::state::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+use trellis_core::diff_rows::header_rows;
+use trellis_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileHistory, HistoryEntry, Hunk, HunkOp, LoadOptions};
+use trellis_core::settings::{DiffLayout, DiffMode};
+use trellis_core::whole_file::{WholeFile, block_rows};
+
+fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+    update(st, msg, Instant::now())
+}
+
+/// Lines 1..=30 with lines 2, 15 and 28 replaced: three hunks, and the whole file when `whole`.
+fn three_changes(whole: bool) -> FileDiff {
+    let ctx = |n: u32| DiffLine { origin: ' ', old: Some(n), new: Some(n), text: format!("line {n}") };
+    let del = |n: u32| DiffLine { origin: '-', old: Some(n), new: None, text: format!("line {n}") };
+    let add = |n: u32| DiffLine { origin: '+', old: None, new: Some(n), text: format!("changed {n}") };
+    let lines = |from: u32, to: u32| -> Vec<DiffLine> {
+        (from..=to).flat_map(|n| if [2, 15, 28].contains(&n) { vec![del(n), add(n)] } else { vec![ctx(n)] }).collect()
+    };
+    let hunk = |from: u32, to: u32| Hunk { header: format!("@@ -{from} +{from} @@"), lines: lines(from, to) };
+    let hunks = vec![hunk(1, 5), hunk(12, 18), hunk(25, 30)];
+    let mut d = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None };
+    if whole {
+        d.whole = WholeFile::new(&d.hunks, hunk(1, 30)).map(Box::new);
+        assert_eq!(d.whole.as_ref().map(|w| w.blocks.len()), Some(3));
+    }
+    d
+}
+
+fn blocks(d: &FileDiff, layout: DiffLayout) -> Vec<usize> {
+    block_rows(d.whole.as_deref().expect("whole file"), layout)
+}
+
+/// An open repository (so diffs can be requested) with `diff` on screen as f.txt's unstaged diff.
+fn with_diff(name: &str, diff: FileDiff) -> (AppState, PathBuf) {
+    let dir = scratch_repo(name);
+    let mut st = state();
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
+    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), diff));
+    (st, dir)
+}
+
+/// Delivers `d` as the result of the diff request in flight.
+fn arrive(st: &mut AppState, target: DiffTarget, d: FileDiff) {
+    let generation = st.diff_gen;
+    run(st, Msg::DiffLoaded { target, reload: false, generation, result: Ok(d) });
+}
+
+#[test]
+fn set_diff_mode_whole_reloads_and_keeps_hunk() {
+    let (mut st, dir) = with_diff("whole-switch", three_changes(false));
+    run(&mut st, Msg::SelectDiffLine { hunk: 1, line: 3, how: Only });
+    assert!(!st.view.diff_lines.is_empty());
+    st.view.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1];
+
+    let fx = run(&mut st, Msg::SetDiffMode(DiffMode::WholeFile));
+    assert_eq!(st.settings.diff_mode, DiffMode::WholeFile);
+    assert!(
+        matches!(&fx[..], [Effect::SaveSettings(s), Effect::LoadDiff { whole_file: true, reload: false, .. }]
+            if s.diff_mode == DiffMode::WholeFile),
+        "{fx:?}"
+    );
+    assert_eq!(st.view.diff_open_hunk, Some(1));
+    assert!(st.view.diff_lines.is_empty());
+    assert_eq!(st.hunk_ops_gen(), None, "hunk buttons wait for the whole file");
+    assert!(run(&mut st, Msg::SetDiffMode(DiffMode::WholeFile)).is_empty(), "no change, nothing to do");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn diff_loaded_in_whole_mode_scrolls_to_kept_block() {
+    let (mut st, dir) = with_diff("whole-open", three_changes(false));
+    st.view.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1] + 2;
+    run(&mut st, Msg::SetDiffMode(DiffMode::WholeFile));
+    let target = DiffTarget::Unstaged("f.txt".into());
+    arrive(&mut st, target, three_changes(true));
+    let rows = blocks(&three_changes(true), DiffLayout::Inline);
+    assert_eq!(st.view.diff_scroll_to_row, Some(rows[1]));
+    assert_eq!(st.view.diff_top_row, rows[1]);
+    assert_eq!(st.view.diff_open_hunk, None, "used once");
+    assert!(st.hunk_ops_gen().is_some());
+
+    // Another file opens on its first change block.
+    let other = DiffTarget::Unstaged("g.txt".into());
+    let fx = run(&mut st, Msg::OpenDiff(other.clone()));
+    assert!(matches!(&fx[..], [Effect::LoadDiff { whole_file: true, .. }]), "{fx:?}");
+    arrive(&mut st, other.clone(), three_changes(true));
+    assert_eq!(st.view.diff_scroll_to_row, Some(rows[0]));
+
+    // The hunk view still opens at the top.
+    st.settings.diff_mode = DiffMode::Hunks;
+    let fx = run(&mut st, Msg::OpenDiff(other.clone()));
+    assert!(matches!(&fx[..], [Effect::LoadDiff { whole_file: false, .. }]), "{fx:?}");
+    arrive(&mut st, other, three_changes(false));
+    assert_eq!(st.view.diff_scroll_to_row, Some(0));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn set_diff_mode_hunks_needs_no_reload() {
+    for layout in [DiffLayout::Inline, DiffLayout::Split] {
+        let (mut st, dir) = with_diff("whole-back", three_changes(true));
+        st.settings.diff_mode = DiffMode::WholeFile;
+        st.settings.diff_layout = layout;
+        st.view.diff_top_row = blocks(&three_changes(true), layout)[2] + 3;
+        let shown = st.hunk_ops_gen();
+        assert!(shown.is_some());
+
+        let fx = run(&mut st, Msg::SetDiffMode(DiffMode::Hunks));
+        assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_mode == DiffMode::Hunks), "{fx:?}");
+        let (_, d) = st.diff.as_ref().unwrap();
+        assert!(d.whole.is_none());
+        let header = header_rows(&three_changes(false), layout)[2];
+        assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (Some(header), header), "{layout:?}");
+        assert_eq!(st.hunk_ops_gen(), shown, "the hunks didn't change");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
+fn jump_to_change_steps_blocks_in_whole_mode() {
+    for layout in [DiffLayout::Inline, DiffLayout::Split] {
+        let mut st = state();
+        st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true)));
+        st.settings.diff_mode = DiffMode::WholeFile;
+        st.settings.diff_layout = layout;
+        let rows = blocks(&three_changes(true), layout);
+        let step = |st: &mut AppState, n: isize| {
+            assert!(run(st, Msg::JumpToChange(n)).is_empty());
+            st.view.diff_scroll_to_row.take()
+        };
+        assert_eq!(step(&mut st, 1), Some(rows[0]), "{layout:?}");
+        assert_eq!(step(&mut st, 1), Some(rows[1]), "{layout:?}");
+        assert_eq!(step(&mut st, 1), Some(rows[2]), "{layout:?}");
+        assert_eq!(step(&mut st, 1), None, "{layout:?}: no wrap");
+        assert_eq!(step(&mut st, -1), Some(rows[1]), "{layout:?}");
+        assert_eq!(step(&mut st, -1), Some(rows[0]), "{layout:?}");
+        assert_eq!(step(&mut st, -1), None, "{layout:?}: no wrap");
+    }
+
+    // Switching the layout keeps the same block at the top.
+    let mut st = state();
+    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true)));
+    st.settings.diff_mode = DiffMode::WholeFile;
+    let (inline, split) = (blocks(&three_changes(true), DiffLayout::Inline), blocks(&three_changes(true), DiffLayout::Split));
+    assert_ne!(inline[1], split[1]);
+    st.view.diff_top_row = inline[1] + 1;
+    run(&mut st, Msg::SetDiffLayout(DiffLayout::Split));
+    assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
+}
+
+#[test]
+fn line_ops_blocked_in_whole_mode() {
+    let (mut st, dir) = with_diff("whole-lines", three_changes(true));
+    st.settings.diff_mode = DiffMode::WholeFile;
+    assert_eq!(st.line_ops_blocked(), Some(WHOLE_FILE_BLOCKS_LINE_OPS));
+    assert_eq!(st.hunk_ops_blocked(), None, "hunk buttons stay on");
+    assert!(run(&mut st, Msg::SelectDiffLine { hunk: 0, line: 1, how: Only }).is_empty());
+    assert!(st.view.diff_lines.is_empty());
+
+    // A selection made in the hunk view, applied after the setting changed (a stale message).
+    st.settings.diff_mode = DiffMode::Hunks;
+    run(&mut st, Msg::SelectDiffLine { hunk: 0, line: 1, how: Only });
+    assert!(!st.view.diff_lines.is_empty());
+    st.settings.diff_mode = DiffMode::WholeFile;
+    assert!(run(&mut st, Msg::ApplyLines(HunkOp::Stage)).is_empty());
+    assert!(st.log.iter().any(|l| !l.ok && l.text == WHOLE_FILE_BLOCKS_LINE_OPS));
+
+    // A block's buttons send the normal hunk index.
+    let generation = st.hunk_ops_gen().expect("enabled");
+    let fx = run(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "f.txt".into(), index: 2, generation });
+    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 2, .. }, .. }]), "{fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A Rust file of 30 lines with lines 3 and 27 edited, committed and changed in `dir`.
+fn rust_repo(name: &str) -> PathBuf {
+    let dir = scratch_repo(name);
+    git(&dir, &["config", "core.autocrlf", "false"]);
+    let body = |a: &str, b: &str| -> String {
+        (1..=30)
+            .map(|i| match i {
+                3 => format!("    let a = {a};\n"),
+                27 => format!("    let b = {b};\n"),
+                _ => format!("    let x{i} = {i};\n"),
+            })
+            .collect()
+    };
+    std::fs::write(dir.join("main.rs"), format!("fn main() {{\n{}}}\n", body("1", "2"))).unwrap();
+    git(&dir, &["add", "main.rs"]);
+    git(&dir, &["commit", "-q", "-m", "rust"]);
+    std::fs::write(dir.join("main.rs"), format!("fn main() {{\n{}}}\n", body("10", "\"two\""))).unwrap();
+    dir
+}
+
+fn shape(d: &FileDiff) -> Vec<usize> {
+    d.hunks.iter().map(|h| h.lines.len()).collect()
+}
+
+fn staged(dir: &Path) -> Vec<String> {
+    let d = repo::load_diff(dir, &DiffTarget::Staged("main.rs".into())).unwrap();
+    d.hunks.iter().flat_map(|h| &h.lines).filter(|l| matches!(l.origin, '+' | '-')).map(|l| format!("{}{}", l.origin, l.text)).collect()
+}
+
+#[test]
+fn whole_file_stage_block_end_to_end() {
+    let dir = rust_repo("whole-e2e");
+    let mut st = state();
+    st.settings.diff_mode = DiffMode::WholeFile;
+    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("main.rs".into())));
+    let (_, d) = st.diff.as_ref().expect("diff open");
+    let w = d.whole.as_deref().expect("whole file loaded");
+    assert_eq!(w.blocks.len(), 2);
+    let hl = w.diff.highlight.as_ref().expect("the whole file is highlighted");
+    assert_eq!(hl.hunk_lens(), shape(&w.diff));
+    assert_eq!(w.diff.intraline.hunk_lens(), shape(&w.diff));
+    assert_eq!(st.view.diff_scroll_to_row, Some(block_rows(w, DiffLayout::Inline)[0]));
+
+    let index = w.blocks[0].hunk;
+    let generation = st.hunk_ops_gen().expect("enabled");
+    let held = drive_holding_diffs(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index, generation });
+    assert!(
+        held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, whole_file: true, previous: Some(p), .. } if p.whole.is_some())),
+        "{held:?}"
+    );
+    for e in held {
+        if let Some(msg) = crate::runner::execute(e) {
+            drive(&mut st, msg);
+        }
+    }
+    let (_, d) = st.diff.as_ref().expect("the second change is still unstaged");
+    let w = d.whole.as_deref().expect("still the whole file");
+    assert_eq!(w.blocks.len(), 1);
+    assert!(w.diff.highlight.is_some());
+    assert_eq!(staged(&dir), ["-    let a = 1;", "+    let a = 10;"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn whole_file_with_ignore_whitespace_blocks_hunks() {
+    let dir = rust_repo("whole-ws");
+    let mut st = state();
+    st.settings.diff_mode = DiffMode::WholeFile;
+    st.settings.diff_ignore_whitespace = true;
+    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("main.rs".into())));
+    assert!(st.diff.as_ref().and_then(|(_, d)| d.whole.as_ref()).is_some());
+    let why = st.hunk_ops_blocked().expect("blocked while whitespace is hidden");
+    let generation = st.hunk_ops_gen().expect("loaded");
+    assert!(run(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }).is_empty());
+    assert!(st.log.iter().any(|l| !l.ok && l.text == why));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn file_history_honours_whole_mode() {
+    let dir = scratch_repo("whole-history");
+    let mut st = state();
+    drive(&mut st, Msg::Open(dir.clone()));
+    st.settings.diff_mode = DiffMode::WholeFile;
+    let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
+    let entry = HistoryEntry {
+        oid: head,
+        summary: "first".into(),
+        author: "Test".into(),
+        email: "test@example.com".into(),
+        time: 1_700_000_000,
+        path: "a.txt".into(),
+        old_path: None,
+        status: 'A',
+    };
+    let mut view = FileHistoryView::loading("a.txt".into(), None);
+    view.append(FileHistory { entries: vec![entry], from_head: true, ..Default::default() });
+    st.history = Some(view);
+    let fx = run(&mut st, Msg::SelectHistoryEntry(0));
+    assert!(matches!(&fx[..], [Effect::LoadDiff { target: DiffTarget::Commit(o, _), whole_file: true, .. }] if *o == head), "{fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_parked_diff_follows_a_mode_change_made_in_another_tab() {
+    let mut st = state();
+    st.diff = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true)));
+    st.settings.diff_mode = DiffMode::WholeFile;
+    st.view.diff_top_row = blocks(&three_changes(true), DiffLayout::Inline)[2];
+
+    run(&mut st, Msg::NewTab);
+    run(&mut st, Msg::SetDiffMode(DiffMode::Hunks));
+    run(&mut st, Msg::SelectTab(0));
+    let (_, d) = st.diff.as_ref().unwrap();
+    assert!(d.whole.is_none(), "the hunk view shows the normal hunks");
+    let header = header_rows(&three_changes(false), DiffLayout::Inline)[2];
+    assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (Some(header), header), "the same hunk stays at the top");
+}

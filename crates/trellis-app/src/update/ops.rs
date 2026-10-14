@@ -138,7 +138,7 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     if sel.is_empty() || sel.target.as_ref() != Some(target) || !fits {
         return;
     }
-    if let Some(why) = st.hunk_ops_blocked() {
+    if let Some(why) = st.line_ops_blocked() {
         st.log(false, why);
         return;
     }

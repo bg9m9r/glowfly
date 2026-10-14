@@ -40,6 +40,8 @@ mod undo_tests;
 mod watch_tests;
 #[cfg(test)]
 mod whitespace_tests;
+#[cfg(test)]
+mod whole_file_tests;
 
 pub use repo::commit_matches;
 
@@ -69,6 +71,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::DiffLoaded { .. }
         | Msg::StatsLoaded(_) => repo::handle(st, msg, now, &mut fx),
         Msg::SetDiffLayout(_)
+        | Msg::SetDiffMode(_)
         | Msg::SetIgnoreWhitespace(_)
         | Msg::JumpToChange(_)
         | Msg::SelectDiffLine { .. }

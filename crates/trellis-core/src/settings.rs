@@ -103,6 +103,16 @@ pub enum DiffLayout {
     Split,
 }
 
+/// How much of a file the diff viewer shows.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
+pub enum DiffMode {
+    /// Only the changes, with a few lines of context.
+    #[default]
+    Hunks,
+    /// Every line of the file, changes marked in place.
+    WholeFile,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -139,6 +149,9 @@ pub struct Settings {
     // Diff viewer
     #[serde(default)]
     pub diff_layout: DiffLayout,
+    /// Hunks only or the whole file (diff header toggle).
+    #[serde(default)]
+    pub diff_mode: DiffMode,
     /// Color diff text by language (Preferences > UI Customization).
     pub syntax_highlighting: bool,
     /// Hide whitespace-only changes in diffs (diff header toggle).
@@ -177,6 +190,7 @@ impl Default for Settings {
             branch_visibility: BranchVisibility::All,
             columns: GraphColumns::default(),
             diff_layout: DiffLayout::Inline,
+            diff_mode: DiffMode::Hunks,
             syntax_highlighting: true,
             diff_ignore_whitespace: false,
             connections: Vec::new(),
@@ -330,5 +344,15 @@ mod tests {
         let off = Settings { watch_files: false, ..Settings::default() };
         let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
         assert!(!back.watch_files);
+    }
+
+    #[test]
+    fn diff_mode_defaults_to_hunks() {
+        // Files written before the toggle existed show hunks only.
+        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+        assert_eq!(s.diff_mode, DiffMode::Hunks);
+        let whole = Settings { diff_mode: DiffMode::WholeFile, ..Settings::default() };
+        let back: Settings = serde_json::from_str(&serde_json::to_string(&whole).unwrap()).unwrap();
+        assert_eq!(back.diff_mode, DiffMode::WholeFile);
     }
 }

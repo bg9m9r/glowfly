@@ -9,7 +9,7 @@ use git2::Oid;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, Snapshot};
-use trellis_core::settings::DiffLayout;
+use trellis_core::settings::{DiffLayout, DiffMode};
 
 /// Closed tabs remembered for "Reopen closed tab".
 pub const MAX_CLOSED_TABS: usize = 10;
@@ -62,6 +62,8 @@ pub struct Parked {
     /// shared by all tabs and may change while this one is parked).
     pub diff_top_row: usize,
     pub diff_layout: DiffLayout,
+    /// The view mode `diff_top_row` was counted in (shared by all tabs, like the layout).
+    pub diff_mode: DiffMode,
 }
 
 /// Where the tab at index `i` ends up after moving the tab at `from` to `to`.

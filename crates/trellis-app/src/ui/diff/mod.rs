@@ -1,20 +1,21 @@
-//! The diff viewer: one column (inline) or old and new side by side (split), with hunk- and
-//! line-level stage, unstage and discard, and next/previous change navigation.
+//! The diff viewer: one column (inline) or old and new side by side (split), showing the hunks
+//! or the whole file, with hunk- and line-level stage, unstage and discard, and next/previous
+//! change navigation.
 
+mod header;
 mod inline;
 mod split;
 mod syntax;
 
-use super::common::short;
 use super::theme::color;
-use super::widgets::{Icon, icon_button};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::lines::{LineClick, LineSelection};
-use eframe::egui::{self, Align, Align2, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{DiffTarget, FileDiff, HunkOp};
 use trellis_core::settings::DiffLayout;
+use trellis_core::whole_file::{self, WholeFile};
 
 pub(super) const ROW_H: f32 = 19.0;
 
@@ -26,11 +27,15 @@ pub(super) fn mono() -> FontId {
 pub(super) struct DiffView<'a> {
     pub target: &'a DiffTarget,
     pub diff: &'a FileDiff,
+    /// Some in the whole-file view: rows and lines come from `whole.diff`; `diff` still
+    /// supplies hunk headers and hunk indexes for the action rows.
+    pub whole: Option<&'a WholeFile>,
+    /// Syntax spans of the diff the lines come from (`lines()`), `None` to paint plain.
     pub hl: Option<&'a DiffHighlight>,
     /// The diff's generation, or `None` while a reload is on its way (see `hunk_header`).
     pub hunk_gen: Option<u64>,
-    /// The line selection; `None` when lines can't be selected (commit diffs, or while hunk
-    /// and line operations are blocked).
+    /// The line selection; `None` when lines can't be selected (commit diffs, the whole-file
+    /// view, or while hunk and line operations are blocked).
     pub sel: Option<&'a LineSelection>,
     /// Why hunk and line operations are off for reasons other than a pending reload (e.g.
     /// whitespace hidden).
@@ -38,23 +43,25 @@ pub(super) struct DiffView<'a> {
 }
 
 impl DiffView<'_> {
+    /// The diff whose hunks hold the drawn lines: the whole file, or the normal hunks.
+    pub fn lines(&self) -> &FileDiff {
+        self.whole.map_or(self.diff, |w| &w.diff)
+    }
+
     pub fn is_selected(&self, hunk: usize, line: usize) -> bool {
         self.sel.is_some_and(|s| s.contains(self.target, hunk, line))
     }
 }
 
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    let layout = st.settings.diff_layout;
-    let colored = st.settings.syntax_highlighting;
     let scroll_to = st.view.diff_scroll_to_row.take();
-    let hunk_gen = st.hunk_ops_gen();
     let ignore_ws = st.settings.diff_ignore_whitespace;
-    let blocked = st.hunk_ops_blocked();
-    let top = {
+    {
         let Some((target, diff)) = &st.diff else { return };
         let has_rows = !diff.binary && !diff.hunks.is_empty();
         ui.add_space(6.0);
-        header_bar(ui, target, has_rows.then_some(layout), (!diff.binary).then_some(ignore_ws), msgs);
+        let rows = has_rows.then_some((st.settings.diff_layout, st.settings.diff_mode));
+        header::header_bar(ui, target, rows, (!diff.binary).then_some(ignore_ws), msgs);
         ui.separator();
         if diff.binary {
             ui.label(RichText::new("Binary file not shown.").color(color::weak()));
@@ -69,89 +76,28 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(text).color(color::weak()));
             return;
         }
-        // Highlighting always comes with the diff; the setting only decides whether to paint it.
-        let hl = diff.highlight.as_ref().filter(|_| colored);
-        let selectable = target.is_working_tree() && blocked.is_none();
-        let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines), blocked };
-        match layout {
-            DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
-            DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
-        }
-    };
-    st.view.diff_top_row = top;
+    }
+    let blocked = st.hunk_ops_blocked();
+    if let Some(top) = rows(ui, st, blocked, scroll_to, msgs) {
+        st.view.diff_top_row = top;
+    }
 }
 
-/// Path and kind on the left; on the right (listed from the edge inwards) Close, the file
-/// action, next/previous change, the layout toggle and the whitespace toggle. `layout` is
-/// `None` when there are no rows to lay out or navigate (binary or empty diffs); `ignore_ws`
-/// is the whitespace setting, `None` for binary diffs. The whitespace toggle shows even with
-/// no rows, so a file it hid entirely can be shown again.
-fn header_bar(ui: &mut Ui, target: &DiffTarget, layout: Option<DiffLayout>, ignore_ws: Option<bool>, msgs: &mut Vec<Msg>) {
-    ui.horizontal(|ui| {
-        ui.add_space(8.0);
-        let kind = match target {
-            DiffTarget::Commit(o, _) => format!("commit {}", short(*o)),
-            DiffTarget::Unstaged(_) => "unstaged".into(),
-            DiffTarget::Staged(_) => "staged".into(),
-            DiffTarget::Between(a, b, _) => format!("{}..{}", short(*a), short(*b)),
-        };
-        ui.label(RichText::new(target.path()).strong().size(15.0).color(color::text()));
-        ui.label(RichText::new(kind).color(color::weak()));
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.button("Close  (Esc)").clicked() {
-                msgs.push(Msg::CloseDiff);
-            }
-            match target {
-                DiffTarget::Unstaged(p) => {
-                    if ui.button("Stage file").clicked() {
-                        msgs.push(Msg::StageFile(p.clone()));
-                    }
-                }
-                DiffTarget::Staged(p) => {
-                    if ui.button("Unstage file").clicked() {
-                        msgs.push(Msg::UnstageFile(p.clone()));
-                    }
-                }
-                DiffTarget::Commit(..) | DiffTarget::Between(..) => {}
-            }
-            if let Some(layout) = layout {
-                ui.add_space(10.0);
-                // Arrows are painted: the bundled fonts have no arrow glyphs.
-                if icon_button(ui, Icon::NextChange, "Next change (F7)").clicked() {
-                    msgs.push(Msg::JumpToChange(1));
-                }
-                if icon_button(ui, Icon::PrevChange, "Previous change (Shift+F7)").clicked() {
-                    msgs.push(Msg::JumpToChange(-1));
-                }
-                ui.add_space(10.0);
-                // A two-button segmented control; right to left, so Split is added first.
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 0.0;
-                    let options =
-                        [(DiffLayout::Split, "Split", "Old and new side by side"), (DiffLayout::Inline, "Inline", "Changes in one column")];
-                    for (value, label, tip) in options {
-                        let selected = layout == value;
-                        if ui.selectable_label(selected, label).on_hover_text(tip).clicked() && !selected {
-                            msgs.push(Msg::SetDiffLayout(value));
-                        }
-                    }
-                });
-            }
-            if let Some(on) = ignore_ws {
-                ui.add_space(10.0);
-                let what = "Hide changes that only add or remove trailing whitespace or change the amount of existing \
-                            whitespace (such as re-indenting)";
-                let tip = if on {
-                    format!("{what}. Hunk and line staging is unavailable while whitespace changes are hidden.")
-                } else {
-                    what.to_owned()
-                };
-                if ui.selectable_label(on, "Ignore whitespace").on_hover_text(tip).clicked() {
-                    msgs.push(Msg::SetIgnoreWhitespace(!on));
-                }
-            }
-        });
-    });
+/// Draws the open diff's rows in the current layout and view mode (hunks, or the whole file
+/// when it loaded) and returns the first visible row. Lines are selectable in working-tree
+/// diffs unless line operations are blocked.
+fn rows(ui: &mut Ui, st: &AppState, blocked: Option<&'static str>, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> Option<usize> {
+    let (target, diff) = st.diff.as_ref()?;
+    let whole = whole_file::shown(diff, st.settings.diff_mode);
+    // Highlighting always comes with the diff; the setting only decides whether to paint it.
+    let hl = whole.map_or(diff.highlight.as_ref(), |w| w.diff.highlight.as_ref()).filter(|_| st.settings.syntax_highlighting);
+    let selectable = target.is_working_tree() && st.line_ops_blocked().is_none();
+    let sel = selectable.then_some(&st.view.diff_lines);
+    let view = DiffView { target, diff, whole, hl, hunk_gen: st.hunk_ops_gen(), sel, blocked };
+    Some(match st.settings.diff_layout {
+        DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
+        DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
+    })
 }
 
 /// A hunk header row: the `@@` line, plus Stage / Unstage / Discard Hunk buttons pinned to the
@@ -267,15 +213,11 @@ pub(super) fn scroll(ui: &mut Ui, rows: usize, scroll_to: Option<usize>, mut add
 }
 
 /// The diff's rows without the header bar, for views that embed a commit's diff of a file (the
-/// file history). Commit diffs have no hunk buttons or line selection. `show` could delegate to
-/// this once the header bar changes in flight have landed.
+/// file history). Commit diffs have no hunk buttons or line selection.
 pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    let layout = st.settings.diff_layout;
-    let colored = st.settings.syntax_highlighting;
     let scroll_to = st.view.diff_scroll_to_row.take();
-    let hunk_gen = st.hunk_ops_gen();
-    let top = {
-        let Some((target, diff)) = &st.diff else { return };
+    {
+        let Some((_, diff)) = &st.diff else { return };
         if diff.binary {
             ui.label(RichText::new("Binary file not shown.").color(color::weak()));
             return;
@@ -284,13 +226,8 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new("No textual changes (mode or empty file).").color(color::weak()));
             return;
         }
-        let hl = diff.highlight.as_ref().filter(|_| colored);
-        let selectable = target.is_working_tree();
-        let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines), blocked: None };
-        match layout {
-            DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
-            DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
-        }
-    };
-    st.view.diff_top_row = top;
+    }
+    if let Some(top) = rows(ui, st, None, scroll_to, msgs) {
+        st.view.diff_top_row = top;
+    }
 }

@@ -19,7 +19,7 @@ fn three_hunks() -> FileDiff {
         Hunk { header: "@@ -9,3 +9,2 @@".into(), lines: vec![line('-', "d"), line('-', "e"), line('-', "f"), line('+', "g")] },
         Hunk { header: "@@ -20 +19,2 @@".into(), lines: vec![line('+', "h"), line('+', "i")] },
     ];
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default() }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
 }
 
 fn with_diff() -> AppState {
@@ -202,7 +202,7 @@ fn turning_highlighting_off_saves_and_keeps_the_spans() {
 }
 
 /// Like `drive`, but diff loads are held back and returned, to act in the gap before they land.
-fn drive_holding_diffs(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn drive_holding_diffs(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     let mut held = Vec::new();
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {

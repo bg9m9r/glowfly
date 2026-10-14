@@ -14,7 +14,7 @@ fn hunk(lines: &[(char, &str)]) -> Hunk {
 }
 
 fn diff(hunks: Vec<Hunk>) -> FileDiff {
-    FileDiff { binary: false, hunks, highlight: None, intraline: Intraline::default() }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Intraline::default(), whole: None }
 }
 
 #[test]

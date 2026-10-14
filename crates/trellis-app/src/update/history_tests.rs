@@ -31,7 +31,7 @@ fn entry(n: u8, path: &str) -> HistoryEntry {
 }
 
 fn empty_diff() -> FileDiff {
-    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default() }
+    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
 }
 
 /// A scratch repository opened in the app.

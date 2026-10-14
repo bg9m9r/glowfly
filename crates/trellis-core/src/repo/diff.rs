@@ -105,22 +105,25 @@ pub fn load_diff(workdir: &Path, target: &DiffTarget) -> Result<FileDiff> {
     load_diff_with(workdir, target, LoadDiffOptions::default())
 }
 
+/// Context for the whole-file load: more lines than any real file has, so libgit2 returns one
+/// hunk covering the whole file. Not u32::MAX: xdiff keeps the context in a C long (32 bits on
+/// Windows) and doubles it.
+const WHOLE_FILE_CONTEXT: u32 = 1 << 24;
+
 /// `load_diff` with options. With whitespace ignored, a modified file whose changes are all
 /// whitespace comes back with `hunks` empty rather than an error: the delta stays (deltas compare
 /// blob ids) and only the patch loses its hunks. Hunk indexes from such a diff don't match
 /// `apply_hunk` or `apply_lines`, which always work on the unfiltered diff.
+///
+/// With `whole_file`, the file is loaded a second time with unlimited context into
+/// `FileDiff::whole`. That load uses the same whitespace options, so its changed lines are the
+/// same edit script as the normal hunks (xdiff's context doesn't change which lines are
+/// changed), which is what lets `WholeFile::new` map each hunk onto it.
 pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<FileDiff> {
     let repo = Repository::open(workdir)?;
     let path = target.path();
-    let diff = match target {
-        DiffTarget::Commit(oid, _) => commit_diff(&repo, *oid, Some(whitespace_opts(&mut DiffOptions::new(), opts)))?,
-        DiffTarget::Between(from, to, _) => trees_diff(&repo, *from, *to, Some(whitespace_opts(&mut DiffOptions::new(), opts)))?,
-        DiffTarget::Unstaged(p) => repo.diff_index_to_workdir(None, Some(whitespace_opts(&mut workdir_opts(p), opts)))?,
-        DiffTarget::Staged(p) => {
-            repo.diff_tree_to_index(head_tree(&repo).as_ref(), None, Some(whitespace_opts(&mut path_opts(p), opts)))?
-        }
-    };
-    let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default() };
+    let diff = target_diff(&repo, target, opts, None)?;
+    let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
         return Ok(out);
@@ -129,7 +132,36 @@ pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions
     for h in 0..patch.num_hunks() {
         out.hunks.push(hunk_of(&patch, h)?);
     }
+    if opts.whole_file && !out.binary && !out.hunks.is_empty() {
+        let diff = target_diff(&repo, target, opts, Some(WHOLE_FILE_CONTEXT))?;
+        if let Some(patch) = file_patch(&diff, path)?
+            && patch.num_hunks() == 1
+        {
+            let whole = hunk_of(&patch, 0)?;
+            out.whole = crate::whole_file::WholeFile::new(&out.hunks, whole).map(Box::new);
+        }
+    }
     Ok(out)
+}
+
+/// The diff behind `target`, with `context` lines around each change when set (and hunks
+/// never merged because of nearby changes, so one hunk spans the file).
+fn target_diff<'r>(repo: &'r Repository, target: &DiffTarget, opts: LoadDiffOptions, context: Option<u32>) -> Result<Diff<'r>> {
+    let mut o = match target {
+        DiffTarget::Commit(..) | DiffTarget::Between(..) => DiffOptions::new(),
+        DiffTarget::Unstaged(p) => workdir_opts(p),
+        DiffTarget::Staged(p) => path_opts(p),
+    };
+    whitespace_opts(&mut o, opts);
+    if let Some(n) = context {
+        o.context_lines(n).interhunk_lines(0);
+    }
+    Ok(match target {
+        DiffTarget::Commit(oid, _) => commit_diff(repo, *oid, Some(&mut o))?,
+        DiffTarget::Between(from, to, _) => trees_diff(repo, *from, *to, Some(&mut o))?,
+        DiffTarget::Unstaged(_) => repo.diff_index_to_workdir(None, Some(&mut o))?,
+        DiffTarget::Staged(_) => repo.diff_tree_to_index(head_tree(repo).as_ref(), None, Some(&mut o))?,
+    })
 }
 
 /// Hunk `h` of `patch` as the viewer shows it.

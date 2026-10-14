@@ -88,7 +88,7 @@ fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
     drive(&mut st, Msg::Open(dir.clone()));
     st.diff = Some((
         DiffTarget::Unstaged("a.txt".into()),
-        FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default() },
+        FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None },
     ));
     let fx = update(&mut st, Msg::OpenConflict("a.txt".into()), Instant::now());
     match &fx[..] {

@@ -127,16 +127,16 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
         Effect::LoadCompare { workdir, from, to } => {
             Some(Msg::CompareLoaded { from, to, result: repo::compare_files(&workdir, from, to).map_err(err) })
         }
-        Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace } => {
-            let result = repo::load_diff_with(&workdir, &target, repo::LoadDiffOptions { ignore_whitespace })
+        Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file } => {
+            let result = repo::load_diff_with(&workdir, &target, repo::LoadDiffOptions { ignore_whitespace, whole_file })
                 .map(|mut d| {
-                    d.highlight = highlight::highlight_diff(target.path(), &d, previous.as_ref());
-                    d.intraline = intraline::intraline(&d);
+                    decorate(target.path(), &mut d, previous.as_ref());
                     let syntax = d.highlight.as_ref().map_or("plain", |h| h.syntax.as_str());
                     let marked = (0..d.hunks.len())
                         .map(|h| (0..d.hunks[h].lines.len()).filter(|&l| !d.intraline.line(h, l).is_empty()).count())
                         .sum::<usize>();
-                    tracing::debug!(path = target.path(), syntax, marked, ignore_whitespace, "diff highlighted");
+                    let whole = d.whole.is_some();
+                    tracing::debug!(path = target.path(), syntax, marked, ignore_whitespace, whole, "diff highlighted");
                     d
                 })
                 .map_err(err);
@@ -270,6 +270,16 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             tracing::warn!("watch effect reached a worker; it is handled by Runner::run");
             None
         }
+    }
+}
+
+/// Syntax spans and word marks for a loaded diff and its whole file, reusing `previous`'s spans.
+pub(crate) fn decorate(path: &str, d: &mut repo::FileDiff, previous: Option<&repo::FileDiff>) {
+    d.highlight = highlight::highlight_diff(path, d, previous);
+    d.intraline = intraline::intraline(d);
+    if let Some(w) = d.whole.as_mut() {
+        w.diff.highlight = highlight::highlight_diff(path, &w.diff, previous.and_then(|p| p.whole.as_deref()).map(|w| &w.diff));
+        w.diff.intraline = intraline::intraline(&w.diff);
     }
 }
 

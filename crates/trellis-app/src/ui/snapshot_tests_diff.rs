@@ -144,7 +144,7 @@ fn with_hidden_whitespace(name: &str, file: &str, before: &str, after: &str) -> 
     std::fs::write(dir.join(file), after).unwrap();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
     let target = DiffTarget::Unstaged(file.into());
-    let mut diff = repo::load_diff_with(&dir, &target, repo::LoadDiffOptions { ignore_whitespace: true }).unwrap();
+    let mut diff = repo::load_diff_with(&dir, &target, repo::LoadDiffOptions { ignore_whitespace: true, whole_file: false }).unwrap();
     diff.highlight = highlight::highlight_diff(target.path(), &diff, None);
     diff.intraline = intraline::intraline(&diff);
     st.diff = Some((target, diff));

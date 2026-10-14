@@ -29,6 +29,8 @@ mod snapshot_tests_diff;
 #[cfg(test)]
 mod snapshot_tests_select;
 #[cfg(test)]
+mod snapshot_tests_whole;
+#[cfg(test)]
 mod tabs_tests;
 
 use crate::effect::{Effect, UiEffect};

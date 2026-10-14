@@ -14,6 +14,8 @@ pub enum DiffRow {
     Header(usize),
     /// Line `line` of hunk `hunk`.
     Line { hunk: usize, line: usize },
+    /// The action row of the whole-file change block for normal hunk `.0` (whole-file view only).
+    Block(usize),
 }
 
 /// A row of the side-by-side layout.
@@ -24,6 +26,8 @@ pub enum SplitRow {
     /// Line indices into `hunks[hunk].lines` for the old (left) and new (right) side. A context
     /// line is the same index on both sides; `None` is an empty cell.
     Pair { hunk: usize, old: Option<usize>, new: Option<usize> },
+    /// The action row of the whole-file change block for normal hunk `.0` (whole-file view only).
+    Block(usize),
 }
 
 /// One header row per hunk, then one row per line.
@@ -136,7 +140,7 @@ mod tests {
     }
 
     fn diff(hunks: Vec<Hunk>) -> FileDiff {
-        FileDiff { binary: false, hunks, highlight: None, intraline: Default::default() }
+        FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
     }
 
     fn pair(old: Option<usize>, new: Option<usize>) -> SplitRow {

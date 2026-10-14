@@ -30,6 +30,7 @@ crates/
                           plans the git commands that reverse it (checked against the repo)
     graph.rs              lane layout for the commit graph
     diff_rows.rs          inline and side-by-side row layout of a diff
+    whole_file.rs         whole-file view: change blocks mapped onto hunks, and their rows
     conflict_rows.rs      row layout of the conflict view (aligned ours/theirs panes, output)
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds
     intraline.rs          word-level changes inside paired removed/added diff lines
@@ -57,11 +58,11 @@ crates/
                           the two-commit comparison, cherry-picking them)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
-                          arrow keys), details, details_multi (several commits), diff/ (inline,
-                          split, syntax),
+                          arrow keys), details, details_multi (several commits), diff/ (header,
+                          inline, split, syntax),
                           conflict, history, modals, menus,
                           status, prefs/, theme, widgets (+ snapshot_tests.rs, snapshot_tests_diff.rs,
-                          snapshot_tests_select.rs)
+                          snapshot_tests_select.rs, snapshot_tests_whole.rs)
     platform.rs           OS integration (recent repos, terminal, file manager)
   trellis-app/tests/snapshots/   approved UI images
   trellis-app/tests/layering.rs  fails if a view under ui/ does I/O itself (see Rules)

@@ -5,7 +5,7 @@ use crate::testutil::*;
 use git2::{Oid, Repository};
 use std::path::Path;
 
-const IGNORE: LoadDiffOptions = LoadDiffOptions { ignore_whitespace: true };
+const IGNORE: LoadDiffOptions = LoadDiffOptions { ignore_whitespace: true, whole_file: false };
 
 fn head(dir: &Path) -> Oid {
     Repository::open(dir).unwrap().head().unwrap().peel_to_commit().unwrap().id()

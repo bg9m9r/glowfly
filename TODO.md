@@ -152,7 +152,16 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Editor preferences page: monospace font, font size, tab size (a tab is 4 spaces today),
     line numbers on/off, end-of-line character, and the syntax highlighting toggle (now under
     UI Customization)
-  - [ ] Whole-file view (all lines, changes marked in place), keeping hunk actions on change blocks
+  - [x] Whole-file view (all lines, changes marked in place), keeping hunk actions on change blocks
+    (Hunks | Whole file toggle in the diff header, saved in settings; works with Inline and
+    Split, and in the File history view)
+    - [ ] Line selection and single-line stage/unstage/discard in the whole-file view (map
+      whole-file line indexes back to the normal hunk and line)
+    - [ ] Collapse long unchanged runs into expandable "N unchanged lines" rows
+    - [ ] Hunks / Whole file and Inline / Split toggles in the File history header, and a command
+      or shortcut for the view mode toggle
+    - [ ] Syntax colors for whole files over the highlight size limit (see the background
+      highlighting item above)
   - [ ] Diff view vs file view toggle (plain file, or a rendered preview for Markdown/images)
   - [ ] Revert a hunk or selected lines of a commit diff into the working tree
   - [ ] Next/previous change continues to the next/previous changed file at either end
