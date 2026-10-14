@@ -60,6 +60,9 @@ pub enum Msg {
     /// Scroll the diff to the next (1) or previous (-1) change; at either end, open the next or
     /// previous changed file of the list the diff came from (on its first or last change).
     JumpToChange(isize),
+    /// A click on a whole-file "N unchanged lines" row: show the lines of the fold with this key
+    /// in place.
+    ExpandUnchanged(u32),
     /// A click on line `line` of hunk `hunk` in the open diff (line-level staging).
     SelectDiffLine {
         hunk: usize,

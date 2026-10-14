@@ -3,7 +3,7 @@
 
 use super::style::DiffStyle;
 use super::syntax::paint_line;
-use super::{DiffView, hunk_header, line_click, paint_mark};
+use super::{DiffView, fold, hunk_header, line_click, paint_mark};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
@@ -26,7 +26,7 @@ enum Side {
 pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> (usize, usize) {
     let diff = v.lines();
     // In the whole-file view `hunk` is always 0.
-    let rows = v.whole.map_or_else(|| split_rows(v.diff), whole_file::split_rows);
+    let rows = v.whole.map_or_else(|| split_rows(v.diff), |w| whole_file::split_rows(w, v.expanded));
     let st = &v.style;
     let widest = diff.hunks.iter().flat_map(|h| &h.lines).map(|l| tabs::columns(&l.text, st.tab)).max().unwrap_or(0);
     let char_w = ui.fonts(|f| f.glyph_width(&st.font, 'M'));
@@ -39,6 +39,11 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
         match rows[i] {
             // A change block's action row acts on its normal hunk, like that hunk's header.
             SplitRow::Header(h) | SplitRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
+            // Spans both columns, with no divider, like an action row.
+            SplitRow::Fold(f) => {
+                let cols = st.split_cols();
+                fold::fold_row(ui, rect, v, f, cols.sign, cols.text, msgs)
+            }
             SplitRow::Pair { hunk, old, new } => {
                 let lines = &diff.hunks[hunk].lines;
                 let left = Rect::from_min_max(rect.min, pos2(rect.left() + half, rect.bottom()));

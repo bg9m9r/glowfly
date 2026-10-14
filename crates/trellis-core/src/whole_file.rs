@@ -2,7 +2,13 @@
 //! changed region (its change block) found in it, and the rows the viewer draws from them.
 //!
 //! The normal hunks stay the ones staging works on, so each block keeps its hunk's index and
-//! the action row above it acts on that hunk.
+//! the action row above it acts on that hunk. Long unchanged runs between blocks are folded
+//! (`folds.rs`) into one "N unchanged lines" row each until opened, so every function that
+//! turns the file into rows takes the set of opened folds.
+
+mod folds;
+
+pub use folds::{Expanded, FOLD_CONTEXT, Fold, MIN_FOLD, collapsed, folds};
 
 use crate::diff_rows::{self, DiffRow, SplitRow, header_rows};
 use crate::repo::{DiffLine, FileDiff, Hunk};
@@ -76,31 +82,54 @@ pub fn change_blocks(hunks: &[Hunk], whole: &[DiffLine]) -> Option<Vec<ChangeBlo
     Some(blocks)
 }
 
-/// Inline rows of the whole file: no hunk headers, every line, and each block's action row
-/// right above its first changed line.
-pub fn inline_rows(w: &WholeFile) -> Vec<DiffRow> {
-    let lines = w.diff.hunks.first().map_or(0, |h| h.lines.len());
+/// Inline rows of the whole file: no hunk headers, every line, each block's action row right
+/// above its first changed line, and one row per fold not in `ex` in place of its lines.
+pub fn inline_rows(w: &WholeFile, ex: &Expanded) -> Vec<DiffRow> {
+    let n = w.diff.hunks.first().map_or(0, |h| h.lines.len());
     let mut blocks = w.blocks.iter().peekable();
-    let mut rows = Vec::with_capacity(lines + w.blocks.len());
-    for line in 0..lines {
+    let mut folds = collapsed(w, ex).into_iter().peekable();
+    let mut rows = Vec::with_capacity(n + w.blocks.len());
+    let mut line = 0;
+    while line < n {
+        // Folds lie outside blocks and keep context before one, so never start at a block.
+        if let Some(f) = folds.next_if(|f| f.start == line) {
+            rows.push(DiffRow::Fold(f));
+            line = f.end;
+            continue;
+        }
         if let Some(b) = blocks.next_if(|b| b.start == line) {
             rows.push(DiffRow::Block(b.hunk));
         }
         rows.push(DiffRow::Line { hunk: 0, line });
+        line += 1;
     }
     rows
 }
 
 /// Split rows of the whole file: removed and added runs paired as in `diff_rows::split_rows`,
-/// without its hunk header, and each block's action row before the pair holding its first
-/// line. A block starts after context or at the top of the file, so its first line opens a new
-/// removed/added run and sits in that run's first pair.
-pub fn split_rows(w: &WholeFile) -> Vec<SplitRow> {
+/// without its hunk header, each block's action row before the pair holding its first line,
+/// and one row per fold not in `ex` in place of its pairs. A block starts after context or at
+/// the top of the file, so its first line opens a new removed/added run and sits in that run's
+/// first pair. Fold lines are all context, so each is a pair of one line on both sides.
+pub fn split_rows(w: &WholeFile, ex: &Expanded) -> Vec<SplitRow> {
     let pairs = diff_rows::split_rows(&w.diff);
     let mut blocks = w.blocks.iter().peekable();
+    let mut folds = collapsed(w, ex).into_iter().peekable();
     let mut rows = Vec::with_capacity(pairs.len() + w.blocks.len());
     for row in pairs {
         let SplitRow::Pair { old, new, .. } = row else { continue };
+        if let (Some(i), Some(j), Some(&f)) = (old, new, folds.peek())
+            && i == j
+            && (f.start..f.end).contains(&i)
+        {
+            if i == f.start {
+                rows.push(SplitRow::Fold(f));
+            }
+            if i + 1 == f.end {
+                folds.next();
+            }
+            continue;
+        }
         if let Some(b) = blocks.next_if(|b| old == Some(b.start) || new == Some(b.start)) {
             rows.push(SplitRow::Block(b.hunk));
         }
@@ -109,12 +138,13 @@ pub fn split_rows(w: &WholeFile) -> Vec<SplitRow> {
     rows
 }
 
-/// The row index of each block's action row in `layout`, in block order.
-pub fn block_rows(w: &WholeFile, layout: DiffLayout) -> Vec<usize> {
+/// The row index of each block's action row in `layout`, in block order, counted with the
+/// folds not in `ex` closed.
+pub fn block_rows(w: &WholeFile, layout: DiffLayout, ex: &Expanded) -> Vec<usize> {
     let at = |is_block: Vec<bool>| is_block.iter().enumerate().filter(|(_, b)| **b).map(|(i, _)| i).collect();
     match layout {
-        DiffLayout::Inline => at(inline_rows(w).iter().map(|r| matches!(r, DiffRow::Block(_))).collect()),
-        DiffLayout::Split => at(split_rows(w).iter().map(|r| matches!(r, SplitRow::Block(_))).collect()),
+        DiffLayout::Inline => at(inline_rows(w, ex).iter().map(|r| matches!(r, DiffRow::Block(_))).collect()),
+        DiffLayout::Split => at(split_rows(w, ex).iter().map(|r| matches!(r, SplitRow::Block(_))).collect()),
     }
 }
 
@@ -126,10 +156,11 @@ pub fn shown(d: &FileDiff, mode: DiffMode) -> Option<&WholeFile> {
 
 /// The rows that next/previous change steps between: each block's action row in the whole-file
 /// view, else each hunk header. Entry i is hunk i in the hunk view and `blocks[i].hunk` in the
-/// whole-file view.
-pub fn change_rows(d: &FileDiff, mode: DiffMode, layout: DiffLayout) -> Vec<usize> {
+/// whole-file view. The whole-file rows are counted with the folds not in `ex` closed; the hunk
+/// view ignores `ex`.
+pub fn change_rows(d: &FileDiff, mode: DiffMode, layout: DiffLayout, ex: &Expanded) -> Vec<usize> {
     match shown(d, mode) {
-        Some(w) => block_rows(w, layout),
+        Some(w) => block_rows(w, layout, ex),
         None => header_rows(d, layout),
     }
 }
@@ -150,5 +181,7 @@ pub fn change_of_hunk(d: &FileDiff, mode: DiffMode, h: usize) -> Option<usize> {
     }
 }
 
+#[cfg(test)]
+mod fold_tests;
 #[cfg(test)]
 mod tests;

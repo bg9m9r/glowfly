@@ -41,6 +41,8 @@ mod editor_tests;
 #[cfg(test)]
 mod files_tests;
 #[cfg(test)]
+mod fold_tests;
+#[cfg(test)]
 mod graph_filter_tests;
 #[cfg(test)]
 mod history_tests;
@@ -100,6 +102,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::SetDiffMode(_)
         | Msg::SetIgnoreWhitespace(_)
         | Msg::JumpToChange(_)
+        | Msg::ExpandUnchanged(_)
         | Msg::SelectDiffLine { .. }
         | Msg::ClearLineSelection => diff::handle(st, msg, &mut fx),
         Msg::ToggleCommit(_) | Msg::SelectCommitRange(_) | Msg::CollapseSelection | Msg::CherryPick(_) | Msg::CompareLoaded { .. } => {

@@ -139,6 +139,10 @@ pub struct ViewState {
     /// The change row next/previous change last moved to. Steps continue from it while it is
     /// on screen, because a change near the end can't scroll to the top.
     pub diff_cursor: Option<usize>,
+    /// The folds opened in the whole-file view of the open diff, by key. Changed only by
+    /// `update`; cleared when a different target's diff arrives or the diff closes; parked with
+    /// its tab.
+    pub diff_expanded: trellis_core::whole_file::Expanded,
     /// How many diff rows fit in the viewport, recorded by the view.
     pub diff_visible_rows: usize,
     /// Branch tip under the pointer (sidebar or BRANCH/TAG column), for row highlighting.
@@ -178,6 +182,7 @@ impl Default for ViewState {
             diff_open_hunk: None,
             diff_landing: None,
             diff_cursor: None,
+            diff_expanded: Default::default(),
             diff_visible_rows: 0,
             hover_tip: None,
             hover_tip_next: None,

@@ -1,7 +1,9 @@
 //! The diff viewer: one column (inline) or old and new side by side (split), showing the hunks
 //! or the whole file, with hunk- and line-level stage, unstage and discard, and Revert Hunk on
-//! commit diffs, and next/previous change navigation.
+//! commit diffs, and next/previous change navigation. In the whole-file view long unchanged
+//! runs are folded into "N unchanged lines" rows that open in place when clicked.
 
+mod fold;
 mod header;
 mod inline;
 mod split;
@@ -19,7 +21,7 @@ use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{DiffTarget, FileDiff, HunkOp};
 use trellis_core::settings::DiffLayout;
 use trellis_core::tabs;
-use trellis_core::whole_file::{self, WholeFile};
+use trellis_core::whole_file::{self, Expanded, WholeFile};
 
 /// The default row height and font, which the conflict view keeps; the diff viewer draws
 /// with `DiffStyle` from the settings.
@@ -36,6 +38,8 @@ pub(super) struct DiffView<'a> {
     /// Some in the whole-file view: rows and lines come from `whole.diff`; `diff` still
     /// supplies hunk headers and hunk indexes for the action rows.
     pub whole: Option<&'a WholeFile>,
+    /// The folds opened in the whole-file view; the others are drawn as fold rows.
+    pub expanded: &'a Expanded,
     /// Syntax spans of the diff the lines come from (`lines()`), `None` to paint plain.
     pub hl: Option<&'a DiffHighlight>,
     /// The diff's generation, or `None` while a reload is on its way (see `hunk_header`).
@@ -116,7 +120,8 @@ fn rows(
     let selectable = target.is_working_tree() && st.line_ops_blocked().is_none();
     let sel = selectable.then_some(&st.view.diff_lines);
     let style = DiffStyle::new(&st.settings);
-    let view = DiffView { target, diff, whole, hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
+    let expanded = &st.view.diff_expanded;
+    let view = DiffView { target, diff, whole, expanded, hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
     Some(match st.settings.diff_layout {
         DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),

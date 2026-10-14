@@ -171,11 +171,11 @@ fn whole_file_mode_landing() {
     st.settings.diff_mode = DiffMode::WholeFile;
     drive(&mut st, Msg::OpenDiff(unstaged("c.txt")));
     assert!(diff(&st).whole.is_some());
-    let c_rows = change_rows(diff(&st), DiffMode::WholeFile, st.settings.diff_layout);
+    let c_rows = change_rows(diff(&st), DiffMode::WholeFile, st.settings.diff_layout, &st.view.diff_expanded);
 
     drive(&mut st, Msg::JumpToChange(-1));
     assert_eq!(shown(&st), Some(&unstaged("a.txt")));
-    let a_rows = change_rows(diff(&st), DiffMode::WholeFile, st.settings.diff_layout);
+    let a_rows = change_rows(diff(&st), DiffMode::WholeFile, st.settings.diff_layout, &st.view.diff_expanded);
     assert_eq!(a_rows.len(), 2);
     assert_eq!(st.view.diff_scroll_to_row, a_rows.last().copied());
     assert_ne!(a_rows.last(), header_rows(diff(&st), st.settings.diff_layout).last(), "change block rows, not hunk headers");
@@ -262,7 +262,7 @@ fn landing_dropped_by_other_open_and_close() {
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the stale b.bin result is ignored");
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
-    let row = super::diff::opening_row(diff(&st), &st.settings, None);
+    let row = super::diff::opening_row(diff(&st), &st.settings, None, &st.view.diff_expanded);
     assert_eq!((st.view.diff_scroll_to_row, st.view.diff_cursor), (Some(row), None));
 
     pending_step(&mut st);

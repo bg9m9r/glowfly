@@ -1,26 +1,26 @@
 use super::*;
 
-fn l(origin: char, old: Option<u32>, new: Option<u32>, text: &str) -> DiffLine {
+pub(super) fn l(origin: char, old: Option<u32>, new: Option<u32>, text: &str) -> DiffLine {
     DiffLine { origin, old, new, text: text.into() }
 }
 
-fn ctx(old: u32, new: u32) -> DiffLine {
+pub(super) fn ctx(old: u32, new: u32) -> DiffLine {
     l(' ', Some(old), Some(new), &format!("line {old}"))
 }
 
-fn hunk(lines: Vec<DiffLine>) -> Hunk {
+pub(super) fn hunk(lines: Vec<DiffLine>) -> Hunk {
     Hunk { header: "@@ -1 +1 @@".into(), lines }
 }
 
-fn diff(hunks: Vec<Hunk>) -> FileDiff {
+pub(super) fn diff(hunks: Vec<Hunk>) -> FileDiff {
     FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
 }
 
-const EOFNL: &str = "\\ No newline at end of file";
+pub(super) const EOFNL: &str = "\\ No newline at end of file";
 
 /// Context, a replaced line, ten context lines, an added line and a last context line, plus
 /// the two normal hunks (3 lines of context) that cover it.
-fn two_changes() -> (Vec<Hunk>, Hunk) {
+pub(super) fn two_changes() -> (Vec<Hunk>, Hunk) {
     let mut whole = vec![ctx(1, 1), l('-', Some(2), None, "old two"), l('+', None, Some(2), "new two")];
     whole.extend((3..=12).map(|n| ctx(n, n)));
     whole.push(l('+', None, Some(13), "added"));
@@ -30,7 +30,7 @@ fn two_changes() -> (Vec<Hunk>, Hunk) {
     (vec![first, second], hunk(whole))
 }
 
-fn whole_file() -> WholeFile {
+pub(super) fn whole_file() -> WholeFile {
     let (hunks, whole) = two_changes();
     let mut d = diff(hunks);
     d.whole = WholeFile::new(&d.hunks, whole).map(Box::new);
@@ -81,7 +81,8 @@ fn unmappable_hunk_returns_none() {
 #[test]
 fn whole_inline_rows() {
     let w = whole_file();
-    let rows = inline_rows(&w);
+    let all = Expanded::all(&w);
+    let rows = inline_rows(&w, &all);
     assert_eq!(rows.len(), w.diff.hunks[0].lines.len() + w.blocks.len());
     assert!(!rows.iter().any(|r| matches!(r, DiffRow::Header(_))));
     for b in &w.blocks {
@@ -89,52 +90,56 @@ fn whole_inline_rows() {
         assert_eq!(rows[at + 1], DiffRow::Line { hunk: 0, line: b.start });
     }
     assert_eq!(rows[0], DiffRow::Line { hunk: 0, line: 0 });
-    assert_eq!(block_rows(&w, DiffLayout::Inline), [1, 14]);
+    assert_eq!(block_rows(&w, DiffLayout::Inline, &all), [1, 14]);
 }
 
 /// The whole file of one normal hunk that is exactly `lines`.
-fn single(lines: Vec<DiffLine>) -> WholeFile {
+pub(super) fn single(lines: Vec<DiffLine>) -> WholeFile {
     WholeFile::new(&[hunk(lines.clone())], hunk(lines)).expect("maps")
 }
 
 #[test]
 fn whole_split_rows() {
     let w = whole_file();
-    let rows = split_rows(&w);
+    let all = Expanded::all(&w);
+    let rows = split_rows(&w, &all);
     assert!(!rows.iter().any(|r| matches!(r, SplitRow::Header(_))), "the leading header is dropped");
     let pair = |old: Option<usize>, new: Option<usize>| SplitRow::Pair { hunk: 0, old, new };
     assert_eq!(&rows[..4], [pair(Some(0), Some(0)), SplitRow::Block(0), pair(Some(1), Some(2)), pair(Some(3), Some(3))]);
     let at = rows.iter().position(|r| *r == SplitRow::Block(1)).unwrap();
     assert_eq!(rows[at + 1], pair(None, Some(13)));
     let blocks: Vec<usize> = rows.iter().enumerate().filter(|(_, r)| matches!(r, SplitRow::Block(_))).map(|(i, _)| i).collect();
-    assert_eq!(block_rows(&w, DiffLayout::Split), blocks);
+    assert_eq!(block_rows(&w, DiffLayout::Split, &all), blocks);
     assert_eq!(blocks, [1, at]);
 
     // Pure add and pure delete blocks.
     let added = single(vec![l('+', None, Some(1), "a"), l('+', None, Some(2), "b")]);
-    assert_eq!(split_rows(&added), [SplitRow::Block(0), pair(None, Some(0)), pair(None, Some(1))]);
+    let none = Expanded::default();
+    assert_eq!(split_rows(&added, &none), [SplitRow::Block(0), pair(None, Some(0)), pair(None, Some(1))]);
     let deleted = single(vec![ctx(1, 1), l('-', Some(2), None, "a")]);
-    assert_eq!(split_rows(&deleted), [pair(Some(0), Some(0)), SplitRow::Block(0), pair(Some(1), None)]);
-    assert_eq!(block_rows(&deleted, DiffLayout::Inline), [1]);
-    assert_eq!(block_rows(&deleted, DiffLayout::Split), [1]);
+    assert_eq!(split_rows(&deleted, &none), [pair(Some(0), Some(0)), SplitRow::Block(0), pair(Some(1), None)]);
+    assert_eq!(block_rows(&deleted, DiffLayout::Inline, &none), [1]);
+    assert_eq!(block_rows(&deleted, DiffLayout::Split, &none), [1]);
 }
 
 #[test]
 fn change_rows_by_mode() {
     let (hunks, whole) = two_changes();
     let mut d = diff(hunks);
+    let none = Expanded::default();
     for layout in [DiffLayout::Inline, DiffLayout::Split] {
-        assert_eq!(change_rows(&d, DiffMode::Hunks, layout), header_rows(&d, layout));
-        assert_eq!(change_rows(&d, DiffMode::WholeFile, layout), header_rows(&d, layout), "no whole file loaded");
+        assert_eq!(change_rows(&d, DiffMode::Hunks, layout, &none), header_rows(&d, layout));
+        assert_eq!(change_rows(&d, DiffMode::WholeFile, layout, &none), header_rows(&d, layout), "no whole file loaded");
     }
     assert_eq!(hunk_of_change(&d, DiffMode::WholeFile, 1), Some(1));
     assert_eq!(hunk_of_change(&d, DiffMode::Hunks, 2), None);
 
     d.whole = WholeFile::new(&d.hunks, whole).map(Box::new);
     let w = d.whole.as_deref().unwrap();
+    let all = Expanded::all(w);
     for layout in [DiffLayout::Inline, DiffLayout::Split] {
-        assert_eq!(change_rows(&d, DiffMode::WholeFile, layout), block_rows(w, layout));
-        assert_eq!(change_rows(&d, DiffMode::Hunks, layout), header_rows(&d, layout), "the setting decides");
+        assert_eq!(change_rows(&d, DiffMode::WholeFile, layout, &all), block_rows(w, layout, &all));
+        assert_eq!(change_rows(&d, DiffMode::Hunks, layout, &all), header_rows(&d, layout), "the setting decides");
     }
     for mode in [DiffMode::Hunks, DiffMode::WholeFile] {
         for i in 0..2 {

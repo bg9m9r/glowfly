@@ -163,7 +163,16 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     Split, and in the File history view)
     - [ ] Line selection and single-line stage/unstage/discard in the whole-file view (map
       whole-file line indexes back to the normal hunk and line)
-    - [ ] Collapse long unchanged runs into expandable "N unchanged lines" rows
+    - [x] Collapse long unchanged runs into expandable "N unchanged lines" rows
+      - [ ] Collapse an opened run again (a fold-back control on its first line), and Expand all
+        / Collapse all in the diff header
+      - [ ] Open part of a fold (N more lines above or below) instead of all of it at once
+      - [ ] Keep folds open when a reload shifts their lines (follow them through the edit)
+        instead of closing them again
+      - [ ] Editor preferences for the context kept around changes and the minimum fold size,
+        or turning folding off
+      - [ ] Keyboard access to fold rows (open the fold at or after the top row)
+      - [ ] Fill in the unchanged lines between hunks in the hunk view
     - [ ] Hunks / Whole file and Inline / Split toggles in the File history header, and a command
       or shortcut for the view mode toggle
     - [ ] Syntax colors for whole files over the highlight size limit (see the background

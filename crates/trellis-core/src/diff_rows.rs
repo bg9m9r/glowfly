@@ -16,6 +16,8 @@ pub enum DiffRow {
     Line { hunk: usize, line: usize },
     /// The action row of the whole-file change block for normal hunk `.0` (whole-file view only).
     Block(usize),
+    /// An "N unchanged lines" row standing for the fold's lines (whole-file view only).
+    Fold(crate::whole_file::Fold),
 }
 
 /// A row of the side-by-side layout.
@@ -28,6 +30,8 @@ pub enum SplitRow {
     Pair { hunk: usize, old: Option<usize>, new: Option<usize> },
     /// The action row of the whole-file change block for normal hunk `.0` (whole-file view only).
     Block(usize),
+    /// An "N unchanged lines" row standing for the fold's lines (whole-file view only).
+    Fold(crate::whole_file::Fold),
 }
 
 /// One header row per hunk, then one row per line.

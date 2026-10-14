@@ -112,14 +112,18 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     if !same {
                         st.view.diff_lines.clear();
                     }
+                    // Folds opened in another file don't apply to this one.
+                    if !matches!(&st.diff, Some((t, _)) if *t == target) {
+                        st.view.diff_expanded.clear();
+                    }
                     // A different file opens at the top (or its first change block, or the hunk kept
                     // through a view mode switch, or the change a step lands on); a reload after a
                     // hunk operation keeps its place, but its change rows may have moved.
                     if !reload {
                         let hunk = st.view.diff_open_hunk.take();
                         let row = match landing {
-                            Some(l) => super::diff::landing_row(&d, &st.settings, l),
-                            None => super::diff::opening_row(&d, &st.settings, hunk),
+                            Some(l) => super::diff::landing_row(&d, &st.settings, l, &st.view.diff_expanded),
+                            None => super::diff::opening_row(&d, &st.settings, hunk, &st.view.diff_expanded),
                         };
                         st.view.diff_scroll_to_row = Some(row);
                         st.view.diff_top_row = row;
@@ -134,6 +138,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 Err(_) if reload => {
                     st.diff = None;
                     st.view.diff_lines.clear();
+                    st.view.diff_expanded.clear();
                     st.view.diff_open_hunk = None;
                 }
                 Err(e) => {
@@ -260,6 +265,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
 pub(super) fn close_diff(st: &mut AppState) {
     st.diff = None;
     st.view.diff_lines.clear();
+    st.view.diff_expanded.clear();
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;
     st.view.diff_cursor = None;

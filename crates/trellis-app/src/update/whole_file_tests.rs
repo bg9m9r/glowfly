@@ -14,14 +14,14 @@ use std::time::Instant;
 use trellis_core::diff_rows::header_rows;
 use trellis_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileHistory, HistoryEntry, Hunk, HunkOp, LoadOptions};
 use trellis_core::settings::{DiffLayout, DiffMode};
-use trellis_core::whole_file::{WholeFile, block_rows};
+use trellis_core::whole_file::{Expanded, WholeFile, block_rows};
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
 /// Lines 1..=30 with lines 2, 15 and 28 replaced: three hunks, and the whole file when `whole`.
-fn three_changes(whole: bool) -> FileDiff {
+pub(super) fn three_changes(whole: bool) -> FileDiff {
     let ctx = |n: u32| DiffLine { origin: ' ', old: Some(n), new: Some(n), text: format!("line {n}") };
     let del = |n: u32| DiffLine { origin: '-', old: Some(n), new: None, text: format!("line {n}") };
     let add = |n: u32| DiffLine { origin: '+', old: None, new: Some(n), text: format!("changed {n}") };
@@ -38,12 +38,13 @@ fn three_changes(whole: bool) -> FileDiff {
     d
 }
 
-fn blocks(d: &FileDiff, layout: DiffLayout) -> Vec<usize> {
-    block_rows(d.whole.as_deref().expect("whole file"), layout)
+/// The block rows of `d`'s whole file with every fold closed.
+pub(super) fn blocks(d: &FileDiff, layout: DiffLayout) -> Vec<usize> {
+    block_rows(d.whole.as_deref().expect("whole file"), layout, &Expanded::default())
 }
 
 /// An open repository (so diffs can be requested) with `diff` on screen as f.txt's unstaged diff.
-fn with_diff(name: &str, diff: FileDiff) -> (AppState, PathBuf) {
+pub(super) fn with_diff(name: &str, diff: FileDiff) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
@@ -226,7 +227,7 @@ fn whole_file_stage_block_end_to_end() {
     let hl = w.diff.highlight.as_ref().expect("the whole file is highlighted");
     assert_eq!(hl.hunk_lens(), shape(&w.diff));
     assert_eq!(w.diff.intraline.hunk_lens(), shape(&w.diff));
-    assert_eq!(st.view.diff_scroll_to_row, Some(block_rows(w, DiffLayout::Inline)[0]));
+    assert_eq!(st.view.diff_scroll_to_row, Some(block_rows(w, DiffLayout::Inline, &Expanded::default())[0]));
 
     let index = w.blocks[0].hunk;
     let generation = st.hunk_ops_gen().expect("enabled");

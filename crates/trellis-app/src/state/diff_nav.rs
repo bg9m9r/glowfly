@@ -4,7 +4,7 @@ use super::{AppState, Selection, ViewState};
 use trellis_core::diff_rows::step_change;
 use trellis_core::repo::{DiffTarget, FileDiff};
 use trellis_core::settings::Settings;
-use trellis_core::whole_file;
+use trellis_core::whole_file::{self, Expanded};
 
 /// The change a file opened by stepping lands on.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -67,15 +67,16 @@ pub fn position(v: &ViewState) -> usize {
     }
 }
 
-/// The rows next/previous change stops at in `d`; none for a binary diff.
-pub fn change_rows_of(d: &FileDiff, s: &Settings) -> Vec<usize> {
-    if d.binary { Vec::new() } else { whole_file::change_rows(d, s.diff_mode, s.diff_layout) }
+/// The rows next/previous change stops at in `d`, counted with the whole-file folds in `ex`
+/// open; none for a binary diff.
+pub fn change_rows_of(d: &FileDiff, s: &Settings, ex: &Expanded) -> Vec<usize> {
+    if d.binary { Vec::new() } else { whole_file::change_rows(d, s.diff_mode, s.diff_layout, ex) }
 }
 
 /// Where a step of `dir` (1 next, -1 previous) from the open diff goes.
 pub fn step(st: &AppState, dir: isize) -> Step {
     let Some((target, d)) = st.diff.as_ref().filter(|_| dir != 0) else { return Step::End };
-    if let Some(row) = step_change(&change_rows_of(d, &st.settings), position(&st.view), dir) {
+    if let Some(row) = step_change(&change_rows_of(d, &st.settings, &st.view.diff_expanded), position(&st.view), dir) {
         return Step::Row(row);
     }
     match next_file(st, target, dir) {

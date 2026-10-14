@@ -2,7 +2,7 @@
 //! new number (unless line numbers are off).
 
 use super::syntax::paint_line;
-use super::{DiffView, hunk_header, line_click, paint_mark};
+use super::{DiffView, fold, hunk_header, line_click, paint_mark};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
@@ -14,7 +14,7 @@ use trellis_core::{tabs, whole_file};
 pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> (usize, usize) {
     let diff = v.lines();
     // Uniform rows so huge diffs stay fast. In the whole-file view `hunk` is always 0.
-    let rows = v.whole.map_or_else(|| inline_rows(v.diff), whole_file::inline_rows);
+    let rows = v.whole.map_or_else(|| inline_rows(v.diff), |w| whole_file::inline_rows(w, v.expanded));
     let st = &v.style;
     let cols = st.inline_cols();
     let widest = diff.hunks.iter().flat_map(|h| &h.lines).map(|l| tabs::columns(&l.text, st.tab)).max().unwrap_or(0);
@@ -29,6 +29,7 @@ pub(super) fn show(ui: &mut Ui, v: &DiffView, scroll_to: Option<usize>, msgs: &m
         match rows[i] {
             // A change block's action row acts on its normal hunk, like that hunk's header.
             DiffRow::Header(h) | DiffRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
+            DiffRow::Fold(f) => fold::fold_row(ui, rect, v, f, cols.sign, cols.text, msgs),
             DiffRow::Line { hunk, line } => {
                 let dl = &diff.hunks[hunk].lines[line];
                 let selected = v.is_selected(hunk, line);

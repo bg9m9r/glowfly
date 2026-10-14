@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, Snapshot};
 use trellis_core::settings::{DiffLayout, DiffMode};
+use trellis_core::whole_file::Expanded;
 
 /// Closed tabs remembered for "Reopen closed tab".
 pub const MAX_CLOSED_TABS: usize = 10;
@@ -62,11 +63,14 @@ pub struct Parked {
     pub ref_filter: String,
     pub graph_scroll: f32,
     /// First visible row of the open diff, counted in `diff_layout` (the layout setting is
-    /// shared by all tabs and may change while this one is parked).
+    /// shared by all tabs and may change while this one is parked) with `diff_expanded`'s folds
+    /// open.
     pub diff_top_row: usize,
     pub diff_layout: DiffLayout,
     /// The view mode `diff_top_row` was counted in (shared by all tabs, like the layout).
     pub diff_mode: DiffMode,
+    /// The whole-file folds opened in the open diff.
+    pub diff_expanded: Expanded,
 }
 
 /// Where the tab at index `i` ends up after moving the tab at `from` to `to`.

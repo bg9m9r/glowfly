@@ -1,6 +1,7 @@
 //! Whole-file diff snapshots: every line with changes in place and an action row above each
-//! change block, in both layouts, for a commit and with whitespace hidden. Shares the fixture
-//! repository and renderer with `snapshot_tests`.
+//! change block, in both layouts, for a commit and with whitespace hidden, and long unchanged
+//! runs folded into "N unchanged lines" rows. Shares the fixture repository and renderer with
+//! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
@@ -9,6 +10,7 @@ use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use trellis_core::repo::{self, DiffTarget, LoadDiffOptions, LoadOptions};
 use trellis_core::settings::{DiffLayout, DiffMode, ThemeChoice};
+use trellis_core::whole_file::{Expanded, folds};
 
 const BEFORE: &str = "/// Shapes and their areas.
 struct Rect {
@@ -35,7 +37,7 @@ fn after() -> String {
 /// shapes.rs committed as `BEFORE` and changed to `after`, then opened in the whole-file view as
 /// the runner loads it (highlighted and word-marked). With `commit` the change is committed
 /// and the commit's diff is shown; with `ignore_ws` it also re-spaces the area formula and
-/// loads with whitespace hidden.
+/// loads with whitespace hidden. Every fold is open, so the whole file shows.
 fn with_whole(name: &str, theme: ThemeChoice, layout: DiffLayout, commit: bool, ignore_ws: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let d = "2026-01-11T10:00:00+00:00";
@@ -58,6 +60,7 @@ fn with_whole(name: &str, theme: ThemeChoice, layout: DiffLayout, commit: bool, 
     let w = diff.whole.as_deref().expect("the whole file loads");
     assert_eq!(w.blocks.len(), 2);
     assert!(w.diff.highlight.is_some(), "shapes.rs is highlighted as Rust");
+    st.view.diff_expanded = Expanded::all(w);
     st.diff = Some((target, diff));
     st.settings.diff_layout = layout;
     st.settings.diff_mode = DiffMode::WholeFile;
@@ -109,6 +112,78 @@ fn whole_file_revert_targets_the_blocks_hunk() {
         .filter_map(|m| if let Msg::RevertHunk { index, generation } = m { Some((*index, *generation)) } else { None })
         .collect();
     assert_eq!(sent, [(1, generation)]);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// notes.txt, 40 lines of "line N", committed with lines 12 and 30 then edited, and opened as
+/// an unstaged change in the whole-file view with every fold closed: a leading fold of 8 lines,
+/// a middle one of 11 and a trailing one of 7.
+fn with_notes(name: &str, theme: ThemeChoice, layout: DiffLayout) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_repo(theme, name);
+    let d = "2026-01-11T10:00:00+00:00";
+    let text = |edit: bool| -> String {
+        (1..=40)
+            .map(|n| {
+                if edit && (n == 12 || n == 30) {
+                    format!(
+                        "line {n}, edited
+"
+                    )
+                } else {
+                    format!(
+                        "line {n}
+"
+                    )
+                }
+            })
+            .collect()
+    };
+    std::fs::write(dir.join("notes.txt"), text(false)).unwrap();
+    git(&dir, &["add", "notes.txt"], d);
+    git(&dir, &["commit", "-q", "-m", "Add notes"], d);
+    std::fs::write(dir.join("notes.txt"), text(true)).unwrap();
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    let target = DiffTarget::Unstaged("notes.txt".into());
+    let opts = LoadDiffOptions { ignore_whitespace: false, whole_file: true };
+    let mut diff = repo::load_diff_with(&dir, &target, opts).unwrap();
+    crate::runner::decorate(target.path(), &mut diff, None);
+    let w = diff.whole.as_deref().expect("the whole file loads");
+    assert_eq!(w.blocks.len(), 2);
+    assert_eq!(folds(w).iter().map(|f| f.len()).collect::<Vec<_>>(), [8, 11, 7]);
+    st.diff = Some((target, diff));
+    st.settings.diff_layout = layout;
+    st.settings.diff_mode = DiffMode::WholeFile;
+    (st, dir)
+}
+
+/// The key of notes.txt's middle fold.
+fn middle_key(st: &AppState) -> u32 {
+    folds(st.diff.as_ref().unwrap().1.whole.as_deref().unwrap())[1].key
+}
+
+#[test]
+fn diff_whole_folded() {
+    let (st, dir) = with_notes("whole-folded", ThemeChoice::Dark, DiffLayout::Inline);
+    render("diff_whole_folded", st, true);
+    remove_fixture(&dir);
+    let (mut st, dir) = with_notes("whole-folded-split", ThemeChoice::Light, DiffLayout::Split);
+    let key = middle_key(&st);
+    st.view.diff_expanded.insert(key);
+    render("diff_whole_folded_split_light", st, false);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn fold_row_click_sends_expand() {
+    let (st, dir) = with_notes("whole-fold-click", ThemeChoice::Dark, DiffLayout::Inline);
+    let key = middle_key(&st);
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("11 unchanged lines").click();
+    h.run();
+    let sent: Vec<u32> = h.state().1.iter().filter_map(|m| if let Msg::ExpandUnchanged(k) = m { Some(*k) } else { None }).collect();
+    assert_eq!(sent, [key]);
     drop(h);
     remove_fixture(&dir);
 }
