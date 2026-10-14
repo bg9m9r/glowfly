@@ -264,7 +264,8 @@ fn conflict_binary() {
 /// `limit` commits per request.
 fn with_history(name: &str, theme: ThemeChoice, limit: usize, select: usize) -> (AppState, PathBuf) {
     use crate::state::history::FileHistoryView;
-    use trellis_core::repo::HistoryStart;
+    use trellis_core::repo::{DiffTarget, HistoryStart};
+    use trellis_core::{highlight, intraline};
     let (mut st, dir) = with_repo(theme, name);
     let lines: Vec<String> = ["app", "fix"].into_iter().map(String::from).chain((3..=12).map(|i| format!("setting_{i} = {i}"))).collect();
     let text = |l: &[String]| l.join("\n") + "\n";

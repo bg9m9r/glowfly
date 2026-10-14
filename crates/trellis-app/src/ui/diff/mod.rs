@@ -285,7 +285,7 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         }
         let hl = diff.highlight.as_ref().filter(|_| colored);
         let selectable = !matches!(target, DiffTarget::Commit(..));
-        let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines) };
+        let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines), blocked: None };
         match layout {
             DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
             DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
