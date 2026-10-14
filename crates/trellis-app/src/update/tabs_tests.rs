@@ -12,7 +12,9 @@ use std::time::Instant;
 use trellis_core::repo::DiffTarget;
 
 fn active_is(st: &AppState, dir: &Path) -> bool {
-    st.tabs[st.active_tab].is(dir) && st.snap.as_ref().is_some_and(|s| crate::state::tabs::same_path(&s.workdir, dir))
+    let tab = &st.tabs[st.active_tab];
+    let same = super::tests::same_place;
+    tab.path.as_deref().is_some_and(|p| same(p, dir)) && st.snap.as_ref().is_some_and(|s| same(&s.workdir, dir))
 }
 
 fn two_repos(name: &str) -> (AppState, PathBuf, PathBuf) {
@@ -162,6 +164,15 @@ fn a_repository_opened_through_a_link_is_the_same_tab() {
     assert!(active_is(&st, &a) && active_is(&st, &link));
     drive(&mut st, Msg::Open(a.clone()));
     assert_eq!(st.tabs.len(), 1, "opening the real folder switches to the same tab");
+
+    // The other way round, from a new tab: the link's name matches nothing until it loads,
+    // then its tab gives way to the one already showing the folder.
+    let mut st = state();
+    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::NewTab);
+    drive(&mut st, Msg::Open(link.clone()));
+    assert_eq!(st.tabs.len(), 1, "the link's tab closes in favour of the real folder's");
+    assert!(active_is(&st, &a) && st.tabs[0].real.is_some());
     #[cfg(windows)]
     let _ = std::fs::remove_dir(&link);
     #[cfg(not(windows))]
@@ -257,10 +268,10 @@ fn close_other_tabs_keeping_an_inactive_tab() {
     assert_eq!(st.tabs.len(), 1);
     assert!(active_is(&st, &a), "A's parked snapshot is restored");
     assert_eq!(st.closed_tabs.len(), 1);
-    assert!(crate::state::tabs::same_path(&st.closed_tabs[0], &b));
+    assert!(super::tests::same_place(&st.closed_tabs[0], &b));
     let saves = saved(&fx);
     assert_eq!(saves.len(), 1);
-    assert!(saves[0].0.len() == 1 && crate::state::tabs::same_path(&saves[0].0[0], &a));
+    assert!(saves[0].0.len() == 1 && super::tests::same_place(&saves[0].0[0], &a));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
     cleanup(&[&a, &b]);
 }

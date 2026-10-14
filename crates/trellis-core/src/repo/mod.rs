@@ -134,6 +134,10 @@ pub struct StashInfo {
 
 pub struct Snapshot {
     pub workdir: PathBuf,
+    /// `workdir` resolved on disk when it was loaded (links, junctions and short 8.3 names
+    /// followed), so callers can tell two paths to one repository apart without touching the
+    /// disk again. `workdir` itself when it can't be resolved.
+    pub real_workdir: PathBuf,
     pub git_dir: PathBuf,
     pub name: String,
     /// (remote name, fetch URL)

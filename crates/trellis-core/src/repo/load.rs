@@ -23,6 +23,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
     })?;
 
     let workdir = repo.workdir().ok_or_else(|| Error::Unsupported("repository has no working directory".into()))?.to_path_buf();
+    let real_workdir = std::fs::canonicalize(&workdir).unwrap_or_else(|_| workdir.clone());
     let git_dir = repo.path().to_path_buf();
     let name = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| workdir.display().to_string());
     let state = repo.state();
@@ -203,6 +204,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
 
     Ok(Snapshot {
         workdir,
+        real_workdir,
         git_dir,
         name,
         remote_urls,

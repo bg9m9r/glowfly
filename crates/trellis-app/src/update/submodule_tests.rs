@@ -2,13 +2,13 @@
 //! be done, initializing and updating one as a job (asking first when out of sync, naming the
 //! commits on no branch that it would leave behind), and keeping the undo history across an update.
 
+use super::tests::same_place as same_path;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
 use crate::runner;
 use crate::state::submodules::update_args;
-use crate::state::tabs::same_path;
 use crate::state::{AppState, Modal, RunningJob};
 use crate::submodule::SubmoduleMsg;
 use git2::Oid;

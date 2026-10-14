@@ -284,6 +284,9 @@ pub(super) fn close_diff(st: &mut AppState) {
 }
 
 fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
+    if kind == LoadKind::Open && super::tabs::open_elsewhere(st, &snap, fx) {
+        return;
+    }
     st.view.base_set = None;
     st.view.highlight = None;
     match kind {

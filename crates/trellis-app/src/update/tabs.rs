@@ -8,6 +8,7 @@ use crate::state::conflict::ConflictView;
 use crate::state::tabs::{MAX_CLOSED_TABS, Parked, index_after_move};
 use crate::state::{AppState, Selection, Tab};
 use std::path::PathBuf;
+use trellis_core::repo::Snapshot;
 use trellis_core::settings::DiffMode;
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
@@ -98,9 +99,25 @@ pub(super) fn opened(st: &mut AppState) -> Effect {
     st.tab_return = None;
     if let (Some(snap), Some(tab)) = (&st.snap, st.tabs.get_mut(st.active_tab)) {
         tab.path = Some(snap.workdir.clone());
+        tab.real = Some(snap.real_workdir.clone());
         tab.name = snap.name.clone();
     }
     save(st)
+}
+
+/// The repository `snap` just loaded for the active tab is already open in another tab, under
+/// another name for the same folder (a link, a junction, a short 8.3 name): closes the active tab
+/// and selects that one instead. Returns whether it did.
+pub(super) fn open_elsewhere(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>) -> bool {
+    let here = st.active_tab;
+    let Some(there) = (0..st.tabs.len()).find(|&j| j != here && st.tabs[j].shows(snap)) else { return false };
+    tracing::debug!(path = %snap.workdir.display(), "already open in another tab");
+    st.tab_return = None;
+    park(st); // discarded with the tab
+    st.tabs.remove(here);
+    st.active_tab = usize::MAX;
+    activate(st, if there > here { there - 1 } else { there }, fx);
+    true
 }
 
 fn switch(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {

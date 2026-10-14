@@ -3,12 +3,12 @@
 //! check, then `git worktree add` as a job, then the new tab); the refusals the form and the disk
 //! check give; Browse…; and the section's text rules.
 
+use super::tests::same_place as same_path;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::{FolderPurpose, Msg};
 use crate::runner;
-use crate::state::tabs::same_path;
 use crate::state::worktrees::{WorktreeForm, checked_out_in, folder_warning, right_text, section_shown};
 use crate::state::{AppState, Modal, RunningJob};
 use crate::worktree::{NewWorktree, WorktreeMsg};

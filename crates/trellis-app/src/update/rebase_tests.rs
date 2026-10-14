@@ -289,7 +289,7 @@ fn drops_are_confirmed_before_starting() {
     }
     let fx = up(&mut st, Msg::ConfirmAccepted);
     let [Effect::InteractiveRebase { cwd, request }] = &fx[..] else { panic!("expected one rebase, got {fx:?}") };
-    assert!(crate::state::tabs::same_path(cwd, &dir));
+    assert!(super::tests::same_place(cwd, &dir));
     assert_eq!(request.head, head(&dir));
     assert_eq!(request.upstream, Upstream::Commit(st.snap.as_ref().unwrap().commits[3].oid));
     let oids: Vec<Oid> = request.items.iter().map(|i| i.oid).collect();

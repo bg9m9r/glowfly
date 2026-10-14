@@ -37,6 +37,15 @@ pub(super) fn scratch_repo(name: &str) -> PathBuf {
     dir
 }
 
+/// Whether `a` and `b` are the same folder on disk (tests compare a fixture's path, which may be
+/// a short 8.3 name on CI, with the one libgit2 reports).
+pub(super) fn same_place(a: &Path, b: &Path) -> bool {
+    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        (Ok(x), Ok(y)) => x == y,
+        _ => crate::state::tabs::same_path(a, b),
+    }
+}
+
 /// Runs `msg` and every resulting effect to completion, as the app would (minus the window).
 pub(super) fn drive(st: &mut AppState, msg: Msg) {
     let mut queue = vec![msg];
