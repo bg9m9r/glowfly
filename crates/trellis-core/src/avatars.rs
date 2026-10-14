@@ -7,6 +7,9 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 const SIZE: u32 = 64;
+/// The largest avatar download accepted, and the largest image decoded from it.
+const MAX_BYTES: u64 = 2 * 1024 * 1024;
+const MAX_SIDE: u32 = 1024;
 /// How long a "no avatar" answer is trusted before asking again.
 const MISS_TTL: Duration = Duration::from_secs(7 * 24 * 3600);
 
@@ -48,7 +51,16 @@ impl std::fmt::Debug for Image {
 }
 
 fn decode(bytes: &[u8]) -> Option<Image> {
-    let img = image::load_from_memory(bytes).ok()?.to_rgba8();
+    if bytes.len() as u64 > MAX_BYTES {
+        return None;
+    }
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes)).with_guessed_format().ok()?;
+    let mut limits = image::Limits::default();
+    limits.max_image_width = Some(MAX_SIDE);
+    limits.max_image_height = Some(MAX_SIDE);
+    limits.max_alloc = Some(64 * 1024 * 1024);
+    reader.limits(limits);
+    let img = reader.decode().ok()?.to_rgba8();
     Some(Image { width: img.width() as usize, height: img.height() as usize, rgba: img.into_raw() })
 }
 
@@ -73,11 +85,8 @@ pub fn fetch(email: &str) -> Option<Image> {
     }
     let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(10)).build();
     let bytes = match agent.get(&url_for(email)).call() {
-        Ok(resp) => {
-            let mut buf = Vec::new();
-            std::io::Read::read_to_end(&mut resp.into_reader(), &mut buf).ok()?;
-            Some(buf)
-        }
+        // Oversized images are treated as "no avatar" (and cached as such).
+        Ok(resp) => crate::forge::read_capped(resp.into_reader(), MAX_BYTES).ok(),
         Err(ureq::Error::Status(404, _)) => None,
         // Network errors: don't cache, try again next session.
         Err(_) => return None,
@@ -108,5 +117,19 @@ mod tests {
         assert!(g.starts_with("https://gravatar.com/avatar/") && g.ends_with("?s=64&d=404"));
         assert_eq!(g, url_for("ada@example.com"), "normalized before hashing");
         assert!(!g.contains("example"), "the address itself is never sent");
+    }
+
+    fn png(w: u32, h: u32) -> Vec<u8> {
+        let mut out = Vec::new();
+        image::RgbaImage::new(w, h).write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png).unwrap();
+        out
+    }
+
+    #[test]
+    fn decodes_small_images_and_refuses_huge_ones() {
+        let img = decode(&png(64, 64)).expect("a normal avatar");
+        assert_eq!((img.width, img.height, img.rgba.len()), (64, 64, 64 * 64 * 4));
+        assert!(decode(&png(MAX_SIDE + 1, 1)).is_none(), "too wide");
+        assert!(decode(b"not an image").is_none());
     }
 }

@@ -21,6 +21,7 @@ pub use auth::{
     Auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact, resolve_auth,
     save_token,
 };
+pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
 pub use links::https_host;
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};

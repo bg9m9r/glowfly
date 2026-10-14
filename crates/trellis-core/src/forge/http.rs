@@ -3,7 +3,27 @@
 use super::*;
 use crate::error::{Error, Result};
 use serde::de::DeserializeOwned;
+use std::io::Read;
 use std::time::Duration;
+
+/// The most of an API response Trellis reads; a larger answer is refused.
+const MAX_JSON: u64 = 10 * 1024 * 1024;
+/// The most of an error response read, for its message.
+const MAX_ERROR: u64 = 64 * 1024;
+
+/// Reads at most `limit` bytes of a response body, failing when there is more.
+pub(crate) fn read_capped(reader: impl Read, limit: u64) -> Result<Vec<u8>> {
+    let mut buf = Vec::new();
+    reader.take(limit + 1).read_to_end(&mut buf)?;
+    if buf.len() as u64 > limit {
+        return Err(Error::Other(format!("the server's response was larger than {} MB", limit / (1024 * 1024))));
+    }
+    Ok(buf)
+}
+
+fn read_json<T: DeserializeOwned>(resp: ureq::Response) -> Result<T> {
+    Ok(serde_json::from_slice(&read_capped(resp.into_reader(), MAX_JSON)?)?)
+}
 
 pub(crate) fn dec(s: &str) -> String {
     let bytes = s.as_bytes();
@@ -59,7 +79,9 @@ pub(super) fn request(method: &str, auth: &Auth, url: &str) -> ureq::Request {
 }
 
 fn read_error(code: u16, resp: ureq::Response) -> Error {
-    let body = resp.into_string().unwrap_or_default();
+    let mut body = Vec::new();
+    let _ = resp.into_reader().take(MAX_ERROR).read_to_end(&mut body);
+    let body = String::from_utf8_lossy(&body);
     let msg = serde_json::from_str::<serde_json::Value>(&body)
         .ok()
         .and_then(|v| {
@@ -91,7 +113,7 @@ pub(super) fn finish<T: DeserializeOwned>(r: std::result::Result<ureq::Response,
             if resp.status() == 203 || !resp.content_type().contains("json") {
                 return Err(Error::Auth("the server answered with a sign-in page".into()));
             }
-            Ok(resp.into_json()?)
+            read_json(resp)
         }
         Err(ureq::Error::Status(code, resp)) => Err(read_error(code, resp)),
         Err(e) => Err(Error::Network(e.to_string())),
@@ -104,7 +126,7 @@ pub(crate) fn get<T: DeserializeOwned>(auth: &Auth, url: &str) -> Result<T> {
 
 pub(crate) fn get_text(auth: &Auth, url: &str) -> Result<String> {
     match request("GET", auth, url).call() {
-        Ok(resp) => Ok(resp.into_string()?),
+        Ok(resp) => Ok(String::from_utf8_lossy(&read_capped(resp.into_reader(), MAX_JSON)?).into_owned()),
         Err(ureq::Error::Status(code, resp)) => Err(read_error(code, resp)),
         Err(e) => Err(Error::Network(e.to_string())),
     }
@@ -112,4 +134,16 @@ pub(crate) fn get_text(auth: &Auth, url: &str) -> Result<String> {
 
 pub(crate) fn post<T: DeserializeOwned>(auth: &Auth, url: &str, body: serde_json::Value) -> Result<T> {
     finish(request("POST", auth, url).send_json(body))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn response_bodies_are_capped() {
+        assert_eq!(read_capped(&b"12345"[..], 5).unwrap(), b"12345");
+        let err = read_capped(std::io::repeat(b'x'), 2 * 1024 * 1024).unwrap_err();
+        assert!(err.to_string().contains("larger than 2 MB"), "{err}");
+    }
 }
