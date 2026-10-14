@@ -201,6 +201,20 @@ fn edit_rename_and_push_url() {
 }
 
 #[test]
+fn edit_refuses_case_only_rename() {
+    // git remote rename origin Origin stops halfway on Windows and macOS, so it never runs.
+    let (mut st, work, bare) = with_origin("remote-edit-case");
+    run(&mut st, RemoteMsg::EditDialog("origin".into()));
+    form(&mut st).name = "Origin".into();
+    assert!(run(&mut st, RemoteMsg::Submit).is_empty());
+    assert_eq!(last_log(&st), "Changing only the letter case isn't supported. Rename to another name first, then to this one.");
+    assert!(matches!(st.modal, Some(Modal::Remote(_))));
+    assert!(st.job.is_none());
+    assert!(info(&st, "origin").is_some());
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
 fn edit_clears_push_url() {
     let (mut st, work, bare) = with_origin("remote-edit-clear");
     git(&work, &["remote", "set-url", "--push", "origin", "https://h/x+y(1).git"]);

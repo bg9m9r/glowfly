@@ -25,6 +25,9 @@ pub enum RemoteNameProblem {
     Invalid(&'static str),
     /// A remote with this name exists, possibly with different letter case.
     Exists(String),
+    /// A rename that changes only letter case: git's rename stops halfway where
+    /// refs/remotes/<old> and refs/remotes/<new> are the same folder (Windows, macOS).
+    CaseOnly,
 }
 
 impl RemoteNameProblem {
@@ -34,6 +37,9 @@ impl RemoteNameProblem {
             RemoteNameProblem::Empty => "Enter a remote name.".to_owned(),
             RemoteNameProblem::Invalid(reason) => (*reason).to_owned(),
             RemoteNameProblem::Exists(other) => format!("A remote named {other} already exists."),
+            RemoteNameProblem::CaseOnly => {
+                "Changing only the letter case isn't supported. Rename to another name first, then to this one.".to_owned()
+            }
         }
     }
 }
@@ -66,8 +72,9 @@ fn invalid_reason(name: &str) -> &'static str {
 
 /// Checks `name` (already trimmed) against git's rules and the `existing` remote names, leaving
 /// out `renaming` (the remote being edited). Names are compared case-insensitively because the
-/// refs/remotes/<name> folders collide on Windows and macOS. Git allows `a` next to `a/b`, so
-/// there is no folder-clash rule.
+/// refs/remotes/<name> folders collide on Windows and macOS; for the same reason a rename that
+/// changes only letter case is refused. Git allows `a` next to `a/b`, so there is no
+/// folder-clash rule.
 pub fn check_remote_name(name: &str, existing: &[&str], renaming: Option<&str>) -> Result<(), RemoteNameProblem> {
     if name.is_empty() {
         return Err(RemoteNameProblem::Empty);
@@ -76,6 +83,9 @@ pub fn check_remote_name(name: &str, existing: &[&str], renaming: Option<&str>) 
         return Err(RemoteNameProblem::Invalid(invalid_reason(name)));
     }
     let lower = name.to_lowercase();
+    if renaming.is_some_and(|r| r != name && r.to_lowercase() == lower) {
+        return Err(RemoteNameProblem::CaseOnly);
+    }
     match existing.iter().find(|o| Some(**o) != renaming && o.to_lowercase() == lower) {
         Some(other) => Err(RemoteNameProblem::Exists((*other).to_owned())),
         None => Ok(()),

@@ -41,7 +41,10 @@ fn remote_name_checks() {
     assert_eq!(check_remote_name("ORIGIN", &["origin"], None), Err(RemoteNameProblem::Exists("origin".into())));
     assert_eq!(RemoteNameProblem::Exists("origin".into()).message(), "A remote named origin already exists.");
     assert_eq!(RemoteNameProblem::Empty.message(), "Enter a remote name.");
-    assert_eq!(check_remote_name("Origin", &["origin", "b"], Some("origin")), Ok(()));
+    // A case-only rename would leave refs and config half-moved on Windows and macOS.
+    assert_eq!(check_remote_name("Origin", &["origin", "b"], Some("origin")), Err(RemoteNameProblem::CaseOnly));
+    assert_eq!(check_remote_name("ORIGIN", &["origin", "b"], Some("origin")), Err(RemoteNameProblem::CaseOnly));
+    assert_eq!(check_remote_name("Origin2", &["origin", "b"], Some("origin")), Ok(()));
     assert_eq!(check_remote_name("origin", &["origin", "b"], Some("origin")), Ok(()));
     assert_eq!(check_remote_name("B", &["origin", "b"], Some("origin")), Err(RemoteNameProblem::Exists("b".into())));
 }
@@ -87,7 +90,6 @@ fn edit_cmds_lines() {
     let edit = |name, url, push| RemoteEdit { name, url, push_url: push };
     assert!(edit_cmds(&one, &edit("origin", "u1", None)).is_empty());
     assert_eq!(edit_cmds(&one, &edit("up", "u1", None)), vec![v(&["remote", "rename", "origin", "up"])]);
-    assert_eq!(edit_cmds(&one, &edit("Origin", "u1", None)), vec![v(&["remote", "rename", "origin", "Origin"])]);
     assert_eq!(edit_cmds(&one, &edit("origin", "u2", None)), vec![v(&["remote", "set-url", "origin", "u2"])]);
     let two = info("origin", &["u.1", "u2"], &[]);
     assert_eq!(edit_cmds(&two, &edit("origin", "u3", None)), vec![v(&["remote", "set-url", "origin", "u3", r"^u\.1$"])]);
