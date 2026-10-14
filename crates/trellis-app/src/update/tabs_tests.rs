@@ -166,3 +166,26 @@ fn a_repository_opened_through_a_link_is_the_same_tab() {
     let _ = std::fs::remove_file(&link);
     cleanup(&[&a]);
 }
+
+#[test]
+fn conflict_view_survives_tab_switch() {
+    use trellis_core::repo::{Choice, Side};
+    let a = super::conflict_tests::conflicted_repo("tabs-conflict-a");
+    let b = scratch_repo("tabs-conflict-b");
+    let mut st = state();
+    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::OpenConflict("a.txt".into()));
+    update(&mut st, Msg::ConflictToggle { chunk: 0, side: Side::Theirs }, Instant::now());
+    drive(&mut st, Msg::Open(b.clone()));
+    assert!(st.conflict.is_none(), "the other tab has no conflict open");
+    drive(&mut st, Msg::SelectTab(0));
+    assert_eq!(st.conflict.as_ref().map(|c| c.choices.clone()), Some(vec![Choice::Theirs]), "picks survive the switch");
+
+    // A load still in flight when the tab is parked is requested again on return.
+    update(&mut st, Msg::OpenConflict("a.txt".into()), Instant::now());
+    drive(&mut st, Msg::SelectTab(1));
+    let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
+    let generation = st.conflict_gen;
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadConflict { path, generation: g, .. } if path == "a.txt" && *g == generation)));
+    cleanup(&[&a, &b]);
+}

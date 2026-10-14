@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
-use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, HunkOp, Snapshot};
+use trellis_core::repo::{CommitDetail, ConflictFile, DiffTarget, FileDiff, FileEntry, HunkOp, Side, Snapshot};
 use trellis_core::settings::{DiffLayout, TrackerChoice};
 
 /// What a folder picker was opened for.
@@ -58,6 +58,33 @@ pub enum Msg {
     WantStats(Vec<Oid>),
     /// Views asked for these authors' avatars (lowercased emails, each asked for once).
     WantAvatars(Vec<String>),
+
+    // ---- conflicts
+    OpenConflict(String),
+    CloseConflict,
+    /// Tick or untick a side of chunk `chunk` in the open conflict.
+    ConflictToggle {
+        chunk: usize,
+        side: Side,
+    },
+    ConflictTakeAll(Side),
+    ConflictReset,
+    /// Make the next (1) or previous (-1) chunk current.
+    ConflictStep(isize),
+    /// Make chunk `i` current (a click on it) without scrolling.
+    ConflictSelect(usize),
+    /// Write the output to the file and stage it.
+    SaveConflict,
+    /// Binary or deleted files: resolve with one side's whole version.
+    ResolveWithSide {
+        path: String,
+        side: Side,
+    },
+    ConflictLoaded {
+        path: String,
+        generation: u64,
+        result: Result<ConflictFile, String>,
+    },
 
     // ---- tabs
     NewTab,

@@ -36,6 +36,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             if let Err(e) = result {
                 st.log(false, e);
             }
+            // A save that failed can be tried again; one that worked closes the view once the
+            // status shows the file resolved.
+            if let Some(c) = st.conflict.as_mut() {
+                c.saving = false;
+            }
             super::repo::refresh_status(st, fx);
         }
         Msg::Commit => commit(st, fx),
@@ -141,7 +146,7 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines }, fx);
 }
 
-fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) {
+pub(super) fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) {
     if let Some(workdir) = st.workdir() {
         fx.push(Effect::LocalOp { workdir, op });
     }

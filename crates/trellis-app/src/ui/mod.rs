@@ -4,6 +4,7 @@
 
 mod avatars;
 mod common;
+mod conflict;
 mod details;
 mod diff;
 mod graph;
@@ -117,8 +118,14 @@ impl TrellisApp {
             undo_shortcuts(ctx, msgs);
         }
         // Text fields (the commit message) keep Alt+arrows.
-        if self.st.diff.is_some() && self.st.prefs.is_none() && self.st.modal.is_none() && !ctx.wants_keyboard_input() {
-            diff_shortcuts(ctx, msgs);
+        let stepping = self.st.conflict.is_some() || self.st.diff.is_some();
+        if stepping
+            && self.st.prefs.is_none()
+            && self.st.modal.is_none()
+            && !ctx.wants_keyboard_input()
+            && let Some(step) = step_shortcuts(ctx)
+        {
+            msgs.push(if self.st.conflict.is_some() { Msg::ConflictStep(step) } else { Msg::JumpToChange(step) });
         }
         if f5 {
             msgs.push(Msg::Refresh);
@@ -132,6 +139,8 @@ impl TrellisApp {
         if esc && self.st.modal.is_none() {
             if self.st.prefs.is_some() {
                 msgs.push(Msg::ClosePrefs);
+            } else if self.st.conflict.is_some() {
+                msgs.push(Msg::CloseConflict);
             } else if self.st.diff.is_some() {
                 // Esc first drops a line selection, then closes the diff.
                 msgs.push(if self.st.view.diff_lines.is_empty() { Msg::CloseDiff } else { Msg::ClearLineSelection });
@@ -184,23 +193,20 @@ fn undo_shortcuts(ctx: &egui::Context, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// F7 / Shift+F7 and Alt+Down / Alt+Up: next and previous change in the open diff.
-fn diff_shortcuts(ctx: &egui::Context, msgs: &mut Vec<Msg>) {
+/// F7 / Shift+F7 and Alt+Down / Alt+Up: the next (1) or previous (-1) change in the open diff,
+/// or conflict in the conflict view.
+fn step_shortcuts(ctx: &egui::Context) -> Option<isize> {
     use egui::Modifiers;
     ctx.input_mut(|i| {
         // Shift first: consume_key ignores extra Shift, so F7 would also match Shift+F7.
-        if i.consume_key(Modifiers::SHIFT, Key::F7) {
-            msgs.push(Msg::JumpToChange(-1));
-        } else if i.consume_key(Modifiers::NONE, Key::F7) {
-            msgs.push(Msg::JumpToChange(1));
+        if i.consume_key(Modifiers::SHIFT, Key::F7) || i.consume_key(Modifiers::ALT, Key::ArrowUp) {
+            Some(-1)
+        } else if i.consume_key(Modifiers::NONE, Key::F7) || i.consume_key(Modifiers::ALT, Key::ArrowDown) {
+            Some(1)
+        } else {
+            None
         }
-        if i.consume_key(Modifiers::ALT, Key::ArrowUp) {
-            msgs.push(Msg::JumpToChange(-1));
-        }
-        if i.consume_key(Modifiers::ALT, Key::ArrowDown) {
-            msgs.push(Msg::JumpToChange(1));
-        }
-    });
+    })
 }
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
@@ -219,6 +225,8 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |ui| {
             if st.snap.is_none() {
                 common::welcome(ui, st, msgs);
+            } else if st.conflict.is_some() {
+                conflict::show(ui, st, msgs);
             } else if st.diff.is_some() {
                 diff::show(ui, st, msgs);
             } else {

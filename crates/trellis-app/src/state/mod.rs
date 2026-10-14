@@ -1,6 +1,7 @@
 //! Application state: plain data, no egui types. Only `update` changes it, except for
 //! transient view state (`ViewState`) and text buffers that views edit in place.
 
+pub mod conflict;
 mod forge;
 pub mod lines;
 pub mod prefs;
@@ -136,6 +137,8 @@ pub struct ViewState {
     pub avatars_loaded: Vec<(String, Option<trellis_core::avatars::Image>)>,
     /// Lines selected in the open diff for line-level staging (changed only by `update`).
     pub diff_lines: lines::LineSelection,
+    /// Scroll the conflict panes and output to this chunk on the next frame (set by `update`).
+    pub conflict_scroll_to: Option<usize>,
 }
 
 impl Default for ViewState {
@@ -161,6 +164,7 @@ impl Default for ViewState {
             utc_offset: 0,
             avatars_loaded: Vec::new(),
             diff_lines: lines::LineSelection::default(),
+            conflict_scroll_to: None,
         }
     }
 }
@@ -190,6 +194,11 @@ pub struct AppState {
     /// The request that produced the diff on screen. Hunk operations only run while this is
     /// `diff_gen`: otherwise a reload is on its way and the hunk indexes may no longer match.
     pub diff_shown_gen: u64,
+    /// The conflict being resolved; shown instead of the graph or a diff.
+    pub conflict: Option<conflict::ConflictView>,
+    /// Incremented for every conflict load request and whenever the view closes; older
+    /// `ConflictLoaded` results are ignored.
+    pub conflict_gen: u64,
     pub draft: CommitDraft,
     pub job: Option<RunningJob>,
     /// The active tab's undo history.
@@ -225,6 +234,8 @@ impl AppState {
             diff: None,
             diff_gen: 0,
             diff_shown_gen: 0,
+            conflict: None,
+            conflict_gen: 0,
             draft: CommitDraft::default(),
             job: None,
             undo: undo::UndoHistory::default(),

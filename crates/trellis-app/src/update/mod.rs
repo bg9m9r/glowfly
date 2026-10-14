@@ -3,6 +3,7 @@
 //! touches disk, network or the window, which keeps it fully testable.
 
 mod avatars;
+mod conflict;
 mod diff;
 mod forge;
 mod ops;
@@ -12,6 +13,8 @@ mod repo;
 mod tabs;
 mod undo;
 
+#[cfg(test)]
+mod conflict_tests;
 #[cfg(test)]
 mod diff_tests;
 #[cfg(test)]
@@ -56,6 +59,18 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             diff::handle(st, msg, &mut fx)
         }
         Msg::WantAvatars(_) | Msg::AvatarsLoaded(_) => avatars::handle(st, msg, &mut fx),
+
+        // conflicts
+        Msg::OpenConflict(_)
+        | Msg::CloseConflict
+        | Msg::ConflictToggle { .. }
+        | Msg::ConflictTakeAll(_)
+        | Msg::ConflictReset
+        | Msg::ConflictStep(_)
+        | Msg::ConflictSelect(_)
+        | Msg::SaveConflict
+        | Msg::ResolveWithSide { .. }
+        | Msg::ConflictLoaded { .. } => conflict::handle(st, msg, &mut fx),
 
         // tabs
         Msg::NewTab | Msg::SelectTab(_) | Msg::CycleTab(_) | Msg::CloseTab(_) | Msg::ReopenClosedTab | Msg::RestoreTabs { .. } => {

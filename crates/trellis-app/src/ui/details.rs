@@ -37,14 +37,26 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
 
 fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
-    let open = st.diff.as_ref().map(|(t, _)| t);
+    let open = OpenFile { diff: st.diff.as_ref().map(|(t, _)| t), conflict: st.conflict.as_ref().map(|c| c.path.as_str()) };
 
-    if let Some((name, actions)) = state_actions(snap.state) {
+    // An operation in progress, or conflicts left by one that has none (a stash apply).
+    let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
+    let in_progress = state_actions(snap.state);
+    if in_progress.is_some() || !conflicted.is_empty() {
         egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
-            ui.label(RichText::new(format!("{name} in progress")).strong());
-            if snap.unstaged.iter().any(|f| f.status == '!') {
-                ui.label("Resolve conflicts, then stage the files to mark them resolved.");
+            if let Some((name, _)) = in_progress {
+                ui.label(RichText::new(format!("{name} in progress")).strong());
             }
+            if let Some(first) = conflicted.first() {
+                ui.horizontal(|ui| {
+                    let n = conflicted.len();
+                    ui.label(format!("{n} conflicted file{}", if n == 1 { "" } else { "s" }));
+                    if ui.button("View conflicts").clicked() {
+                        msgs.push(Msg::OpenConflict(first.path.clone()));
+                    }
+                });
+            }
+            let Some((_, actions)) = in_progress else { return };
             ui.horizontal(|ui| {
                 for (label, a) in actions {
                     if ui.button(*label).clicked() {
@@ -57,9 +69,9 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     }
 
     let list_h = ((ui.available_height() - 300.0) / 2.0).max(80.0);
-    file_list(ui, "Unstaged Files", &snap.unstaged, false, open, list_h, msgs);
+    file_list(ui, "Unstaged Files", &snap.unstaged, false, &open, list_h, msgs);
     ui.add_space(8.0);
-    file_list(ui, "Staged Files", &snap.staged, true, open, list_h, msgs);
+    file_list(ui, "Staged Files", &snap.staged, true, &open, list_h, msgs);
 
     ui.add_space(6.0);
     ui.separator();
@@ -178,15 +190,13 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     });
 }
 
-fn file_list(
-    ui: &mut egui::Ui,
-    title: &str,
-    files: &[FileEntry],
-    staged: bool,
-    open: Option<&DiffTarget>,
-    max_h: f32,
-    msgs: &mut Vec<Msg>,
-) {
+/// What the central panel shows, so its file row is drawn selected.
+struct OpenFile<'a> {
+    diff: Option<&'a DiffTarget>,
+    conflict: Option<&'a str>,
+}
+
+fn file_list(ui: &mut egui::Ui, title: &str, files: &[FileEntry], staged: bool, open: &OpenFile, max_h: f32, msgs: &mut Vec<Msg>) {
     egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new(format!("{title} ({})", files.len())).strong().color(color::text()));
@@ -225,19 +235,30 @@ fn file_list(
         for f in files {
             let target = if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
             let toggle = || if staged { Msg::UnstageFile(f.path.clone()) } else { Msg::StageFile(f.path.clone()) };
+            // A conflicted file opens in the conflict view; staging it marks it resolved.
+            let conflicted = !staged && f.status == '!';
             ui.horizontal(|ui| {
                 ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
-                let action = if staged { "Unstage" } else { "Stage" };
+                let action = match (staged, conflicted) {
+                    (true, _) => "Unstage",
+                    (false, true) => "Mark resolved",
+                    (false, false) => "Stage",
+                };
                 if ui.small_button(action).clicked() {
                     msgs.push(toggle());
                 }
-                let r = ui.selectable_label(open == Some(&target), &f.path);
+                let selected = if conflicted { open.conflict == Some(f.path.as_str()) } else { open.diff == Some(&target) };
+                let r = ui.selectable_label(selected, &f.path);
                 if r.clicked() {
-                    msgs.push(Msg::OpenDiff(target.clone()));
+                    msgs.push(if conflicted { Msg::OpenConflict(f.path.clone()) } else { Msg::OpenDiff(target.clone()) });
                 }
                 r.context_menu(|ui| {
+                    if conflicted {
+                        menu_item(msgs, ui, "Open conflict", Msg::OpenConflict(f.path.clone()));
+                    }
                     menu_item(msgs, ui, action, toggle());
-                    if !staged {
+                    // Checking out the index version of a conflicted path means nothing.
+                    if !staged && !conflicted {
                         let untracked = f.status == '?';
                         let what = if untracked { "Delete untracked file" } else { "Discard changes to" };
                         menu_item(

@@ -3,6 +3,7 @@
 
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::Msg;
+use crate::state::conflict::ConflictView;
 use crate::state::tabs::{MAX_CLOSED_TABS, Parked};
 use crate::state::{AppState, Selection, Tab};
 use std::path::PathBuf;
@@ -122,6 +123,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     fx.push(Effect::Ui(UiEffect::SetTitle(title)));
     if st.snap.is_some() {
         super::repo::refresh(st, fx);
+        super::conflict::reload_pending(st, fx);
     } else if let Some(path) = st.tabs[i].path.clone() {
         super::repo::load(st, path, LoadKind::Open, fx);
     }
@@ -167,6 +169,8 @@ fn park(st: &mut AppState) -> Parked {
         selection: std::mem::take(&mut st.selection),
         detail: st.detail.take(),
         diff: st.diff.take(),
+        // A save in flight reports to this tab only if it is still active, so don't wait for it.
+        conflict: st.conflict.take().map(|c| ConflictView { saving: false, ..c }),
         draft: std::mem::take(&mut st.draft),
         undo: std::mem::take(&mut st.undo),
         forge: st.forge.take(),
@@ -194,6 +198,10 @@ fn unpark(st: &mut AppState, p: Parked) {
     };
     st.view.diff_scroll_to_row = st.diff.is_some().then_some(top);
     st.view.diff_top_row = top;
+    st.conflict = p.conflict;
+    // Conflict results for this tab were dropped while it was parked.
+    st.conflict_gen += 1;
+    st.view.conflict_scroll_to = st.conflict.as_ref().filter(|c| c.file.is_some()).map(|c| c.current);
     st.draft = p.draft;
     st.undo = p.undo;
     st.forge = p.forge;

@@ -1,6 +1,7 @@
 //! Open repository tabs. The active tab's data lives directly in `AppState` (where views read
 //! it); every other tab keeps its data parked here until it is selected again.
 
+use super::conflict::ConflictView;
 use super::undo::UndoHistory;
 use super::{CommitDraft, ForgeState, Selection};
 use git2::Oid;
@@ -44,6 +45,8 @@ pub struct Parked {
     pub selection: Selection,
     pub detail: Option<CommitDetail>,
     pub diff: Option<(DiffTarget, FileDiff)>,
+    /// The open conflict with its picks (a load in flight is requested again on return).
+    pub conflict: Option<ConflictView>,
     pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,

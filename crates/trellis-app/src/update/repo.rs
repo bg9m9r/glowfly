@@ -54,6 +54,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     } else {
                         reload_diff(st, fx);
                     }
+                    super::conflict::status_changed(st, now);
                 }
                 Err(e) => {
                     st.log(false, e);
@@ -87,6 +88,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
         }
         Msg::OpenDiff(target) => {
+            super::conflict::close(st);
             if let Some(workdir) = st.workdir() {
                 let generation = next_diff_gen(st);
                 fx.push(Effect::LoadDiff { workdir, target, reload: false, generation, previous: None });
@@ -181,7 +183,7 @@ fn next_diff_gen(st: &mut AppState) -> u64 {
 }
 
 /// Closes the diff; a load still in flight must not reopen it.
-fn close_diff(st: &mut AppState) {
+pub(super) fn close_diff(st: &mut AppState) {
     st.diff = None;
     st.view.diff_lines.clear();
     next_diff_gen(st);
@@ -200,6 +202,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
             st.detail = None;
             close_diff(st);
+            super::conflict::close(st);
             st.draft = CommitDraft::default();
             st.undo = Default::default();
             st.view.scroll_to_row = Some(0);
@@ -220,6 +223,8 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     st.snap = Some(snap);
     if kind == LoadKind::Open {
         fx.push(super::tabs::opened(st));
+    } else {
+        super::conflict::status_changed(st, now);
     }
     super::forge::resolve_pr_heads(st);
     reload_diff(st, fx);
@@ -230,6 +235,7 @@ fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut Vec<Effect>
     let Some(workdir) = st.workdir() else { return };
     st.selection = Selection::Commit(oid);
     close_diff(st);
+    super::conflict::close(st);
     fx.push(Effect::LoadDetail { workdir, oid });
     if scroll
         && let Some(snap) = &st.snap

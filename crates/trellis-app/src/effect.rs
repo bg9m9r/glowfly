@@ -5,7 +5,7 @@ use crate::msg::{FilePurpose, FolderPurpose};
 use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::forge::{Account, Auth, Issue, NewPullRequest, NewRepo, PullRequest, Target};
-use trellis_core::repo::{DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions};
+use trellis_core::repo::{ConflictIds, DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions, Side};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
 
@@ -38,6 +38,18 @@ pub enum LocalOp {
         /// The hunk as displayed; the operation is refused if the file's hunk differs now.
         expected: Hunk,
         lines: Vec<usize>,
+    },
+    /// Writes a resolved conflict's output and stages it, if the conflict is still `expected`.
+    ResolveConflict {
+        path: String,
+        contents: String,
+        expected: ConflictIds,
+    },
+    /// Resolves a conflict with one side's whole version (or its deletion).
+    ResolveWithSide {
+        path: String,
+        side: Side,
+        expected: ConflictIds,
     },
 }
 
@@ -107,6 +119,11 @@ pub enum Effect {
         generation: u64,
         /// On a reload, the diff on screen: unchanged hunks keep its highlighting.
         previous: Option<FileDiff>,
+    },
+    LoadConflict {
+        workdir: PathBuf,
+        path: String,
+        generation: u64,
     },
     LocalOp {
         workdir: PathBuf,
@@ -224,6 +241,7 @@ impl Effect {
             Effect::LoadStatus { workdir, .. }
             | Effect::LoadDetail { workdir, .. }
             | Effect::LoadDiff { workdir, .. }
+            | Effect::LoadConflict { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::Stats { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),

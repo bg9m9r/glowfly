@@ -21,12 +21,14 @@ crates/
   trellis-core/            library: no egui, no app state
     repo/                 repository model on libgit2: types (mod.rs), load (history, refs,
                           status), diff (details, file diffs, line counts), index (staging),
-                          lines (partial patches for line staging)
+                          lines (partial patches for line staging), conflict (reading an index
+                          conflict into chunks), resolve (picks, output, write and stage)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing)
     undo.rs               undo/redo of Trellis's own operations: records state around a job,
                           plans the git commands that reverse it (checked against the repo)
     graph.rs              lane layout for the commit graph
     diff_rows.rs          inline and side-by-side row layout of a diff
+    conflict_rows.rs      row layout of the conflict view (aligned ours/theirs panes, output)
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds
     intraline.rs          word-level changes inside paired removed/added diff lines
     forge/                hosting services behind the `Forge` trait (github, gitlab,
@@ -37,15 +39,15 @@ crates/
   trellis-app/             binary
     state/                AppState (plain data), ForgeState, PrefsState, tabs (parked per-repo
                           data for inactive tabs), undo (per-tab undo history), lines (diff
-                          line selection)
+                          line selection), conflict (the open conflict and its picks)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner.rs             executes effects on worker threads, reports back as Msg
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
-                          undo, diff
+                          undo, diff, conflict
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/, details, diff/ (inline, split, syntax),
-                          modals, menus,
+                          conflict, modals, menus,
                           status, prefs/, theme, widgets (+ snapshot_tests.rs)
     platform.rs           OS integration (recent repos, terminal, file manager)
   trellis-app/tests/snapshots/   approved UI images

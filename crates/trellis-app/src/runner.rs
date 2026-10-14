@@ -61,6 +61,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::LoadStatus { .. } => "load-status",
         Effect::LoadDetail { .. } => "load-detail",
         Effect::LoadDiff { .. } => "load-diff",
+        Effect::LoadConflict { .. } => "load-conflict",
         Effect::LocalOp { .. } => "local-op",
         Effect::RunGit { .. } => "git",
         Effect::UndoRedo { .. } => "undo-redo",
@@ -129,6 +130,9 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
                 })
                 .map_err(err);
             Some(Msg::DiffLoaded { target, reload, generation, result })
+        }
+        Effect::LoadConflict { workdir, path, generation } => {
+            Some(Msg::ConflictLoaded { path: path.clone(), generation, result: repo::load_conflict(&workdir, &path).map_err(err) })
         }
         Effect::LocalOp { workdir, op } => Some(Msg::LocalOpDone(local_op(&workdir, op).map_err(err))),
         Effect::RunGit { cwd, cmds, write_file, record } => {
@@ -257,6 +261,8 @@ fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<()> {
         LocalOp::DiscardFile { path, untracked } => repo::discard_file(workdir, &path, untracked),
         LocalOp::Hunk { op, path, index } => repo::apply_hunk(workdir, &path, index, op),
         LocalOp::Lines { op, path, hunk, expected, lines } => repo::apply_lines(workdir, &path, hunk, &expected, &lines, op),
+        LocalOp::ResolveConflict { path, contents, expected } => repo::write_resolution(workdir, &path, &contents, &expected),
+        LocalOp::ResolveWithSide { path, side, expected } => repo::resolve_with_side(workdir, &path, side, &expected),
     }
 }
 

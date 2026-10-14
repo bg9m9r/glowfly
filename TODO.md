@@ -156,10 +156,26 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Keep the line selection across tab switches
   - [ ] Remove the index entry, rather than leaving an empty file, when every line of an added
     or deleted file is unstaged or staged line by line
-- [ ] **Merge conflict tool**
-  Three-pane view (ours / theirs / output), take a whole side or individual lines,
-  auto-resolve trivial conflicts, save and mark resolved. Also a "Resolve in external merge tool"
-  option.
+- [x] **Merge conflict tool**
+  Three-pane view (ours / theirs / output), take a whole side per conflict, save and mark
+  resolved. Opens from a conflicted file in the WIP panel or "View conflicts" in the banner;
+  binary, deleted and special files take a whole version.
+  - [ ] Take or untake individual lines from either side of a conflict
+  - [ ] Auto-resolve trivial conflicts (whitespace-only, or one side equal to the base), with a
+    note that they were resolved automatically
+  - [ ] Edit the output pane directly before saving
+  - [ ] Resolve in an external merge tool (needs P1 External tools: a configured merge tool
+    command, launched with base/ours/theirs/output files)
+  - [ ] Save the output while keeping conflict markers for chunks not picked yet
+  - [ ] Mark several selected files resolved, Mark all resolved, and Mark conflicted
+    (un-resolve, e.g. `git checkout -m <path>`)
+  - [ ] Split the WIP file list into Conflicted Files (N) and Resolved Files (N), with
+    per-file conflict counts
+  - [ ] Step to the next conflicted file after saving one
+  - [ ] Undo and redo of a saved resolution through the undo history
+  - [ ] Collapse long unchanged runs in the panes; a resizable split between panes and output
+  - [ ] Syntax highlighting in the conflict panes
+  - [ ] Warn before Mark resolved when the working file still contains conflict markers
 - [ ] **File history and blame**
   File history (commits that touched a path, following renames) with links to the graph;
   blame gutter with author, date and commit.

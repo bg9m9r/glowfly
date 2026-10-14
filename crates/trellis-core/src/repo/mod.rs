@@ -7,16 +7,20 @@ use git2::{Oid, RepositoryState};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+mod conflict;
 mod diff;
 mod index;
 mod lines;
 mod load;
+mod resolve;
 
+pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{commit_detail, commit_stats, load_diff};
 use diff::{head_tree, path_opts, workdir_opts};
 pub use index::{apply_hunk, discard_file, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
 pub use load::{load, messages_between, status_at};
+pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -60,7 +64,7 @@ pub struct BranchInfo {
 #[derive(Clone)]
 pub struct FileEntry {
     pub path: String,
-    /// M, A, D, R, T, ? (untracked) or ! (conflicted).
+    /// M, A, D, R, T, ? (untracked) or ! (conflicted: see `load_conflict`).
     pub status: char,
 }
 
@@ -202,6 +206,8 @@ impl LoadOptions {
     }
 }
 
+#[cfg(test)]
+mod conflict_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]

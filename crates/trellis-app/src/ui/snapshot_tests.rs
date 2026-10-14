@@ -19,6 +19,11 @@ const SIZE: egui::Vec2 = egui::vec2(1400.0, 820.0);
 
 /// Fixed identity and dates keep commit SHAs and the rendering identical between runs.
 fn git(dir: &Path, a: &[&str], date: &str) {
+    let (ok, out) = try_git(dir, a, date);
+    assert!(ok, "git {a:?} failed: {out}");
+}
+
+fn try_git(dir: &Path, a: &[&str], date: &str) -> (bool, String) {
     let env = [
         ("GIT_AUTHOR_NAME", "Ada Lovelace"),
         ("GIT_AUTHOR_EMAIL", "ada@example.com"),
@@ -27,8 +32,7 @@ fn git(dir: &Path, a: &[&str], date: &str) {
         ("GIT_AUTHOR_DATE", date),
         ("GIT_COMMITTER_DATE", date),
     ];
-    let (ok, out) = run_with_input(dir, &args(a), "", &env);
-    assert!(ok, "git {a:?} failed: {out}");
+    run_with_input(dir, &args(a), "", &env)
 }
 
 /// A small repository with a merged feature branch, an open branch, a tag and a modified file.
@@ -309,4 +313,62 @@ fn ghost_branch_on_the_current_commit() {
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("HEAD");
     st.selection = Selection::Commit(head);
     render("graph_ghost_branch", st, true);
+}
+
+/// The fixture in the middle of merging `theme-tweaks`, which conflicts with main in `file`
+/// (written by `content` for each side: "base", "ours" or "theirs"). The view is open on it.
+fn with_conflict(name: &str, file: &str, content: impl Fn(&str) -> Vec<u8>) -> (AppState, PathBuf) {
+    use crate::state::conflict::ConflictView;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
+    let d = "2026-01-11T10:00:00+00:00";
+    for (side, branch) in
+        [("base", None), ("theirs", Some(["checkout", "-q", "-b", "theme-tweaks"])), ("ours", Some(["checkout", "-q", "main", ""]))]
+    {
+        if let Some(cmd) = branch {
+            let cmd: Vec<&str> = cmd.into_iter().filter(|a| !a.is_empty()).collect();
+            git(&dir, &cmd, d);
+        }
+        std::fs::write(dir.join(file), content(side)).unwrap();
+        git(&dir, &["add", file], d);
+        git(&dir, &["commit", "-q", "-m", &format!("Settings: {side}")], d);
+    }
+    assert!(!try_git(&dir, &["merge", "theme-tweaks"], d).0, "the merge conflicts");
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    let mut view = ConflictView::loading(file.into());
+    view.set_file(repo::load_conflict(&dir, file).unwrap());
+    st.conflict = Some(view);
+    (st, dir)
+}
+
+#[test]
+fn conflict_view() {
+    let settings = |side: &str| {
+        let mut lines: Vec<String> = (1..=12).map(|i| format!("setting_{i} = {i}")).collect();
+        match side {
+            "ours" => {
+                lines[2] = "theme = \"dark\"".into();
+                lines[8] = "font_size = 13".into();
+            }
+            "theirs" => {
+                lines[2] = "theme = \"solarized\"\naccent = \"teal\"".into();
+                lines[8] = "font_size = 14".into();
+            }
+            _ => {}
+        }
+        (lines.join("\n") + "\n").into_bytes()
+    };
+    let (mut st, dir) = with_conflict("conflict", "settings.txt", settings);
+    let view = st.conflict.as_mut().unwrap();
+    assert_eq!(view.chunk_count(), 2);
+    view.choices[0] = trellis_core::repo::Choice::Ours;
+    render("conflict_view", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+#[test]
+fn conflict_binary() {
+    let (st, dir) = with_conflict("conflict-binary", "logo.bin", |side| format!("{side}\0image").into_bytes());
+    assert_eq!(st.conflict.as_ref().unwrap().file.as_ref().unwrap().content, trellis_core::repo::ConflictContent::Binary);
+    render("conflict_binary", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
