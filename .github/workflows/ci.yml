@@ -6,6 +6,7 @@ on:
 
 jobs:
   check:
+    name: Check (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,3 +21,30 @@ jobs:
       - name: Check
         shell: pwsh
         run: ./scripts/check.ps1
+
+  # Trellis is developed on Windows. These make sure it keeps building elsewhere, and run the
+  # core tests (the UI snapshots are rendered on Windows only).
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: ./scripts/linux-deps.sh
+      - name: Configure git for tests
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+      - name: Clippy
+        run: cargo clippy --workspace --locked -- -D warnings
+      - name: Core tests
+        run: cargo test -p trellis-core --locked

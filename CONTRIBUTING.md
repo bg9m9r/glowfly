@@ -13,7 +13,8 @@ Thanks for your interest! Bug reports, ideas and pull requests are all welcome.
 ## Building and checking
 
 You need a recent stable Rust toolchain, Git, and PowerShell 7 (`pwsh`). Trellis is developed on
-Windows; other platforms may build but are not tested yet.
+Windows; CI also builds it on macOS and Linux, where it is less tested. On Debian or Ubuntu,
+`scripts/linux-deps.sh` installs the system libraries the build needs.
 
 ```
 cargo run --release -- <repo path>     # run the app
@@ -45,9 +46,32 @@ Trellis implements features that many Git clients share, but every line of code,
 image must be your own or come from a dependency with a compatible license. Don't copy code,
 strings, screenshots or assets from other Git clients, including closed-source ones.
 
+## Commit messages and releases
+
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/), because
+releases are cut from them automatically:
+
+```
+feat: rebase onto a commit from the graph's context menu
+fix(diff): keep the scroll position when a hunk is staged
+docs: explain the snapshot tests
+```
+
+- `feat:` adds a feature and bumps the minor version (0.1.0 to 0.2.0).
+- `fix:` and `perf:` bump the patch version (0.1.0 to 0.1.1).
+- `feat!:` or a `BREAKING CHANGE:` footer marks a breaking change (a minor bump while the
+  version is below 1.0).
+- `docs:`, `refactor:`, `test:`, `build:`, `ci:` and `chore:` don't trigger a release.
+
+After each push to `main`, [release-please](https://github.com/googleapis/release-please) keeps
+a release pull request open with the next version and its CHANGELOG entry. Merging it tags the
+release, and the Release workflow builds Windows, macOS and Linux downloads and attaches them.
+Pull requests are squash-merged, so the pull request title is the commit message that counts.
+
 ## Pull requests
 
 - Keep each pull request focused on one change, with tests.
-- Write commit messages that say what changed and why.
+- Give the pull request a Conventional Commit title, and say in the description what changed and
+  why.
 - By submitting a contribution you agree that it is licensed under the project's terms: MIT OR
   Apache-2.0, as described in the [README](README.md#license).

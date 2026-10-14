@@ -41,6 +41,10 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/tr
 
 ## Conventions
 
+- Commit messages use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`,
+  `ci:`, `chore:`); release-please derives versions and the CHANGELOG from them. Don't edit
+  the version in `Cargo.toml`, `version.txt` or `CHANGELOG.md` by hand.
+
 - Keep files under ~400 lines; split by responsibility rather than growing a file.
 - Tests: core logic uses fixture repos (see the `scratch_repo` helper); behavior uses headless
   `update` tests; views use `egui_kittest` snapshots.

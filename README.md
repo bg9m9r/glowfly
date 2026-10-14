@@ -8,10 +8,18 @@ and issues.
 Trellis is an independent project. It is not affiliated with or endorsed by any other Git client
 or hosting service; product names are used only to describe compatibility.
 
-## Getting started
+## Download
 
-Trellis is developed and tested on Windows. You need a recent stable Rust toolchain and Git on
-your `PATH`.
+Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
+[Releases](https://github.com/bg9m9r/trellis/releases) page. Git must be installed and on your
+`PATH`. The builds aren't code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn
+the first time you open them.
+
+## Building from source
+
+Trellis is developed and tested on Windows; macOS and Linux builds are less tested. You need a
+recent stable Rust toolchain and Git on your `PATH` (on Debian or Ubuntu, also run
+`scripts/linux-deps.sh`).
 
 ```
 cargo run --release -- C:\path\to\repo
