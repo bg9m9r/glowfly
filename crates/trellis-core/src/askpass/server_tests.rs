@@ -1,6 +1,6 @@
 use super::client::{HelperError, Outcome, ask};
 use super::prompt::PromptKind;
-use super::server::{Event, Server, start_with};
+use super::server::{Event, MAX_CONNECTIONS, REQUEST_TIMEOUT, Server, start_with};
 use super::{Reply, Secret};
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -90,4 +90,31 @@ fn strangers_get_nothing() {
         l.local_addr().unwrap().to_string()
     };
     assert!(matches!(ask(&addr, "t", "p", None, WAIT), Err(HelperError::Unreachable(_))));
+}
+
+#[test]
+fn connections_beyond_the_cap_are_closed() {
+    let (s, events) = server(Duration::from_secs(60));
+    // Idle connections hold every slot until they send a request or time out.
+    let idle: Vec<TcpStream> = (0..MAX_CONNECTIONS).map(|_| TcpStream::connect(s.addr()).unwrap()).collect();
+    let mut extra = TcpStream::connect(s.addr()).unwrap();
+    extra.set_read_timeout(Some(WAIT)).unwrap();
+    let started = std::time::Instant::now();
+    let mut buf = Vec::new();
+    let _ = extra.read_to_end(&mut buf);
+    assert!(buf.is_empty());
+    assert!(started.elapsed() < REQUEST_TIMEOUT / 2, "closed at once, not after the request timeout");
+
+    // Once the idle ones go away, prompts work again.
+    drop(idle);
+    let mut answered = false;
+    for _ in 0..100 {
+        let _result = ask_async(&s, s.token(), "Username for 'https://github.com': ");
+        if let Ok(Event::Asked { id, .. }) = events.recv_timeout(Duration::from_millis(100)) {
+            assert!(s.answer(id, Reply::Cancel));
+            answered = true;
+            break;
+        }
+    }
+    assert!(answered, "slots were freed");
 }

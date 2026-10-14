@@ -6,13 +6,16 @@ use super::{PROMPT_TIMEOUT, Prompt, Reply};
 use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::Duration;
 
 /// How long a connection may take to send its request.
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+pub(super) const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+/// Connections served at once; more are closed straight away, so a local process flooding
+/// the port can't make the app start unbounded threads.
+pub(super) const MAX_CONNECTIONS: usize = 8;
 
 /// What the listener reports to the app.
 #[derive(Debug, PartialEq)]
@@ -49,13 +52,22 @@ pub fn start_with(timeout: Duration, on_event: impl Fn(Event) + Send + Sync + 's
         timeout,
         pending: Arc::downgrade(&server.pending),
         next_id: AtomicU64::new(0),
+        active: AtomicUsize::new(0),
         on_event: Arc::new(on_event),
     });
     std::thread::Builder::new().name("trellis-askpass".into()).spawn(move || {
         for stream in listener.incoming().flatten() {
-            let shared = shared.clone();
-            let spawned = std::thread::Builder::new().name("trellis-askpass-conn".into()).spawn(move || shared.serve(stream));
+            if shared.active.fetch_add(1, Ordering::SeqCst) >= MAX_CONNECTIONS {
+                shared.active.fetch_sub(1, Ordering::SeqCst);
+                continue; // dropping the stream closes it
+            }
+            let conn = shared.clone();
+            let spawned = std::thread::Builder::new().name("trellis-askpass-conn".into()).spawn(move || {
+                conn.serve(stream);
+                conn.active.fetch_sub(1, Ordering::SeqCst);
+            });
             if let Err(e) = spawned {
+                shared.active.fetch_sub(1, Ordering::SeqCst);
                 eprintln!("trellis: could not start a thread for a credential prompt: {e}");
             }
         }
@@ -87,6 +99,8 @@ struct Shared {
     timeout: Duration,
     pending: Weak<Pending>,
     next_id: AtomicU64,
+    /// Connections being served now.
+    active: AtomicUsize,
     on_event: OnEvent,
 }
 
