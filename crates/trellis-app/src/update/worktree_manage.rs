@@ -170,8 +170,8 @@ pub(super) fn unlock(st: &mut AppState, path: PathBuf, fx: &mut Vec<Effect>) {
 
 pub(super) fn prune(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(snap) = st.snap.as_ref() else { return };
-    if prune_blocked(snap).is_some() {
-        return st.log(false, "Nothing to prune: every worktree's folder is present, or it is locked.");
+    if let Some(why) = prune_blocked(snap) {
+        return st.log(false, format!("Can't prune: {why}"));
     }
     ops::start_job(st, JobSpec::new("Prune worktrees".into(), vec![prune_cmd()]), fx);
 }

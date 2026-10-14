@@ -5,7 +5,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::msg::Msg;
-use crate::state::worktree_manage::{LockForm, RemoveForm, needs_force_text};
+use crate::state::worktree_manage::{LockForm, RemoveForm, needs_force_text, prune_blocked};
 use crate::state::worktrees::find;
 use crate::state::{AppState, Modal, RunningJob};
 use crate::worktree::{RemoveRequest, WorktreeMsg};
@@ -305,6 +305,8 @@ fn prune() {
     assert!(entry(&st, &kept).is_some(), "a locked missing worktree survives");
 
     assert!(update(&mut st, wt(WorktreeMsg::Prune), Instant::now()).is_empty());
-    assert_eq!(last_log(&st).1, "Nothing to prune: every worktree's folder is present, or it is locked.");
+    let why = prune_blocked(st.snap.as_ref().unwrap()).unwrap();
+    assert_eq!(last_log(&st).1, format!("Can't prune: {why}"), "the refusal uses the disabled menu item's words");
+    assert!(why.starts_with("No worktree records to prune"), "{why}");
     cleanup(&dir, &root);
 }
