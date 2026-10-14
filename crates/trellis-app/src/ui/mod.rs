@@ -48,6 +48,8 @@ mod snapshot_tests_diff;
 #[cfg(test)]
 mod snapshot_tests_editor;
 #[cfg(test)]
+mod snapshot_tests_esc;
+#[cfg(test)]
 mod snapshot_tests_file_actions;
 #[cfg(test)]
 mod snapshot_tests_file_dialogs;
@@ -201,13 +203,15 @@ impl TrellisApp {
 /// Esc closes the innermost thing open: Preferences, the conflict view, the file history, the
 /// diff (a line selection first), the interactive rebase panel (its message editor first), then
 /// a multi-selection, and finally the search bar. Dialogs (a credential prompt included) and the
-/// command palette handle Esc themselves.
+/// command palette handle Esc themselves. In a text field Esc only leaves the field, and in the
+/// terminal it goes to the shell.
 fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !ctx.input(|i| i.key_pressed(Key::Escape))
         || st.modal.is_some()
         || st.askpass.showing()
         || st.palette.is_some()
         || st.terminal.focused
+        || st.view.was_typing
     {
         return;
     }
@@ -293,6 +297,8 @@ fn step_shortcuts(ctx: &egui::Context) -> Option<isize> {
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     status::status_bar(ctx, st, msgs);
     if st.prefs.is_some() {
+        // The terminal isn't drawn, so it can't hold the keyboard (and Esc closes Preferences).
+        st.terminal.focused = false;
         prefs::show(ctx, st, msgs);
     } else {
         tabs::show(ctx, st, msgs);
@@ -302,6 +308,8 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
             sidebar::show(ctx, st, msgs);
             details::show(ctx, st, cache, msgs);
             terminal::show(ctx, st, msgs);
+        } else {
+            st.terminal.focused = false;
         }
         egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |ui| {
             if st.snap.is_none() {
@@ -325,6 +333,12 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     // After the other dialogs, so a credential prompt stacks on top of them.
     askpass::show(ctx, st, msgs);
     status::toasts(ctx, st);
+    st.view.was_typing = text_field_focused(ctx);
+}
+
+/// Whether the widget with the keyboard focus is a text field.
+fn text_field_focused(ctx: &egui::Context) -> bool {
+    ctx.memory(|m| m.focused()).is_some_and(|id| egui::text_edit::TextEditState::load(ctx, id).is_some())
 }
 
 impl eframe::App for TrellisApp {

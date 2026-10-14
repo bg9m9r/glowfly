@@ -162,6 +162,9 @@ pub struct ViewState {
     pub highlight: Option<(Oid, HashSet<Oid>)>,
     pub base_set: Option<HashSet<Oid>>,
     pub was_focused: bool,
+    /// A text field had the keyboard when the last frame was drawn. egui takes the focus
+    /// away when Esc is pressed before the shell sees the key, so Esc checks this instead.
+    pub was_typing: bool,
     /// Wall-clock time (Unix seconds) for this frame, set by the shell; fixed in tests.
     pub now: i64,
     /// UTC offset (seconds) used to display times; the local zone in the app, fixed in tests.
@@ -204,6 +207,7 @@ impl Default for ViewState {
             highlight: None,
             base_set: None,
             was_focused: true,
+            was_typing: false,
             now: 0,
             utc_offset: 0,
             avatars_loaded: Vec::new(),

@@ -1,0 +1,74 @@
+//! Esc against the keyboard focus: in a text field it only leaves the field, and a terminal
+//! hidden under Preferences doesn't keep it from closing them. Runs the shell's Esc handling
+//! before drawing, in the app's order.
+
+use super::snapshot_tests::{remove_fixture, with_repo};
+use super::{UiCache, avatars::Avatars, draw, escape_key, theme::color};
+use crate::msg::Msg;
+use crate::state::terminal::{SessionStatus, TermSession};
+use crate::state::{AppState, PrefPage, PrefsState};
+use eframe::egui::{self, Key};
+use egui_kittest::Harness;
+use trellis_core::repo::{DiffTarget, FileDiff};
+use trellis_core::settings::ThemeChoice;
+use trellis_core::spell::Speller;
+use trellis_core::terminal::TermScreen;
+
+fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
+    let mut cache: Option<UiCache> = None;
+    Harness::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+        move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
+            color::set_dark(true);
+            escape_key(ctx, st, msgs);
+            let cache = cache.get_or_insert_with(|| UiCache { avatars: Avatars::default(), speller: Speller::new() });
+            draw(ctx, st, cache, msgs);
+        },
+        (st, Vec::new()),
+    )
+}
+
+fn esc(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Vec<Msg> {
+    h.state_mut().1.clear();
+    h.press_key(Key::Escape);
+    h.run();
+    std::mem::take(&mut h.state_mut().1)
+}
+
+#[test]
+fn esc_in_a_text_field_leaves_it_before_closing_the_diff() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-typing");
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    st.diff = Some((DiffTarget::Unstaged("README.md".into()), diff));
+    st.view.focus_message = true;
+    let mut h = app_harness(st);
+    h.run();
+    assert!(h.state().0.view.was_typing, "the commit summary has the keyboard");
+
+    let msgs = esc(&mut h);
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::CloseDiff)), "the first Esc only leaves the field");
+    assert!(!h.state().0.view.was_typing);
+    assert!(esc(&mut h).iter().any(|m| matches!(m, Msg::CloseDiff)), "the next closes the diff");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn esc_closes_preferences_opened_while_the_terminal_had_focus() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-terminal-prefs");
+    let workdir = st.snap.as_ref().unwrap().workdir.clone();
+    let screen = TermScreen::new(24, 80);
+    st.terminal.sessions.push(TermSession { id: 1, workdir, program: "pwsh".into(), screen, status: SessionStatus::Running });
+    st.terminal.next_id = 2;
+    st.terminal.open = true;
+    st.terminal.focus_requested = true;
+    let mut h = app_harness(st);
+    h.run();
+    assert!(h.state().0.terminal.focused);
+
+    // As Ctrl+comma does from the terminal.
+    h.state_mut().0.prefs = Some(PrefsState::new(PrefPage::General));
+    h.run();
+    assert!(esc(&mut h).iter().any(|m| matches!(m, Msg::ClosePrefs)), "Esc closes Preferences");
+    drop(h);
+    remove_fixture(&dir);
+}
