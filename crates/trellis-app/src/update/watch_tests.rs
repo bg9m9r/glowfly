@@ -27,7 +27,7 @@ fn job(workdir: Option<PathBuf>) -> RunningJob {
 }
 
 fn is_status(fx: &[Effect], st: &AppState, workdir: &Path) -> bool {
-    matches!(fx, [Effect::LoadStatus { workdir: w, generation }] if w == workdir && *generation == st.load_gen)
+    matches!(fx, [Effect::LoadStatus { workdir: w, generation, .. }] if w == workdir && *generation == st.load_gen)
 }
 
 fn watches(fx: &[Effect]) -> Vec<Option<WatchTarget>> {

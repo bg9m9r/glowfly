@@ -115,6 +115,8 @@ pub enum Effect {
     LoadStatus {
         workdir: PathBuf,
         generation: u64,
+        /// The last load found submodules: read them again even without a .gitmodules.
+        submodules: bool,
     },
     LoadDetail {
         workdir: PathBuf,

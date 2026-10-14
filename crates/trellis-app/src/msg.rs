@@ -452,6 +452,8 @@ pub enum Msg {
     StatusLoaded {
         generation: u64,
         result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
+        /// The submodules read again; None when the repository has none (or they couldn't be read).
+        submodules: Option<Vec<trellis_core::repo::SubmoduleInfo>>,
     },
     DetailLoaded {
         oid: Oid,

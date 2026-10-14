@@ -86,6 +86,16 @@ pub fn submodules_at(workdir: &Path) -> Result<Vec<SubmoduleInfo>> {
     Ok(list(&repo))
 }
 
+/// The submodules of the repository at `workdir` for a status reload: None without a
+/// .gitmodules unless `known` (the last load found some, e.g. a gitlink without an entry there),
+/// so a repository without submodules pays nothing.
+pub fn submodules_if_any(workdir: &Path, known: bool) -> Result<Option<Vec<SubmoduleInfo>>> {
+    if !known && !workdir.join(".gitmodules").exists() {
+        return Ok(None);
+    }
+    submodules_at(workdir).map(Some)
+}
+
 /// Compares ids rather than trusting WD_MODIFIED, so a failed status call still tells in sync
 /// from out of sync.
 fn classify(flags: SubmoduleStatus, recorded: Oid, checked_out: Option<Oid>) -> SubmoduleState {

@@ -38,7 +38,7 @@ pub use removal::{Deleted, Removal, Trasher, os_trash};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
-pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at};
+pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
 pub use tracked::tracked_paths;
 pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
@@ -156,7 +156,8 @@ pub struct Snapshot {
     pub stashes: Vec<StashInfo>,
     pub unstaged: Vec<FileEntry>,
     pub staged: Vec<FileEntry>,
-    /// The index's submodules sorted by path; refreshed by full loads only.
+    /// The index's submodules sorted by path; refreshed by full loads and by status reloads when
+    /// the repository has any (`submodules_if_any`).
     pub submodules: Vec<SubmoduleInfo>,
     /// The main worktree first, then linked ones by path; refreshed by full loads only.
     pub worktrees: Vec<WorktreeInfo>,

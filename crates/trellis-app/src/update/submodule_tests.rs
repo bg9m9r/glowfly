@@ -170,6 +170,25 @@ fn update_checks_out_recorded_commit_whatever_the_update_mode() {
     cleanup(&[&parent, &lib]);
 }
 
+#[test]
+fn status_reload_refreshes_submodules() {
+    let (mut st, parent, lib) = opened("sm-status-reload");
+    // Already dirty, so the reload below stays a status reload rather than a full load.
+    std::fs::write(parent.join("untracked.txt"), "x\n").unwrap();
+    drive(&mut st, Msg::Refresh);
+    let dir = parent.join(PATH);
+    std::fs::write(dir.join("a.txt"), "inside\n").unwrap();
+    git(&dir, &["commit", "-q", "-am", "inside"]);
+    assert_eq!(sub(&st).state, SubmoduleState::InSync);
+    let fx = update(&mut st, Msg::LocalOpDone(Ok(())), Instant::now());
+    assert!(matches!(&fx[..], [Effect::LoadStatus { submodules: true, .. }]), "{fx:?}");
+    let loaded = fx.into_iter().filter_map(runner::execute).collect::<Vec<_>>();
+    let fx: Vec<Effect> = loaded.into_iter().flat_map(|m| update(&mut st, m, Instant::now())).collect();
+    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
+    assert_eq!(sub(&st).state, SubmoduleState::OutOfSync);
+    cleanup(&[&parent, &lib]);
+}
+
 /// The commit `git submodule update` leaves: HEAD detached at the recorded commit, then a commit
 /// made there. Returns its id.
 fn commit_detached(parent: &Path, text: &str) -> Oid {

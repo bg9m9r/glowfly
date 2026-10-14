@@ -7,6 +7,19 @@ use crate::testutil::*;
 use git2::Repository;
 use std::path::Path;
 
+#[test]
+fn status_reload_reads_submodules_only_when_there_are_any() {
+    let plain = scratch_repo("sm-if-any-plain");
+    assert_eq!(submodules_if_any(&plain, false).unwrap(), None);
+    assert_eq!(submodules_if_any(&plain, true).unwrap(), Some(Vec::new()));
+    let _ = std::fs::remove_dir_all(&plain);
+
+    let (parent, _sub) = with_submodule("sm-if-any");
+    let list = submodules_if_any(&parent, false).unwrap().expect("a .gitmodules is there");
+    assert_eq!(list, subs(&parent));
+    cleanup(&parent);
+}
+
 fn head(dir: &Path) -> Oid {
     Repository::open(dir).unwrap().head().unwrap().target().unwrap()
 }

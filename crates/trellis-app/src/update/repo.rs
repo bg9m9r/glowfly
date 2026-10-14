@@ -38,7 +38,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 }
             }
         }
-        Msg::StatusLoaded { generation, result } => {
+        Msg::StatusLoaded { generation, result, submodules } => {
             if generation != st.load_gen {
                 return;
             }
@@ -49,6 +49,10 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     snap.unstaged = unstaged;
                     snap.staged = staged;
                     snap.state = state;
+                    // A commit or checkout inside a submodule changes its row, not the history.
+                    if let Some(list) = submodules {
+                        snap.submodules = list;
+                    }
                     // Clean <-> dirty changes the graph (the WIP row): reload fully.
                     if was_dirty != snap.is_dirty() {
                         refresh(st, fx);
@@ -194,7 +198,8 @@ pub(super) fn refresh(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Re-reads only the working-tree status (after staging, discarding…).
 pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
     if let Some(workdir) = st.workdir() {
-        fx.push(Effect::LoadStatus { workdir, generation: st.load_gen });
+        let submodules = st.snap.as_ref().is_some_and(|s| !s.submodules.is_empty());
+        fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules });
     }
 }
 

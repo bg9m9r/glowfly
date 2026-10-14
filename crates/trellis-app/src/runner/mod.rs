@@ -112,8 +112,10 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
             let result = repo::load(&path, &opts).map(Box::new).map_err(|e| format!("Could not open {}: {e}", path.display()));
             Some(Msg::RepoLoaded { generation, kind, result })
         }
-        Effect::LoadStatus { workdir, generation } => {
-            Some(Msg::StatusLoaded { generation, result: repo::status_at(&workdir).map_err(err) })
+        Effect::LoadStatus { workdir, generation, submodules } => {
+            let result = repo::status_at(&workdir).map_err(err);
+            let submodules = repo::submodules_if_any(&workdir, submodules).ok().flatten();
+            Some(Msg::StatusLoaded { generation, result, submodules })
         }
         Effect::LoadDetail { workdir, oid } => Some(Msg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }),
         Effect::LoadCompare { workdir, from, to } => {

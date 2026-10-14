@@ -30,8 +30,8 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, fx: &mut Vec<Effect>)
                 return;
             }
             if sm.is_out_of_sync() && !confirmed {
-                // Submodule status is only read on full loads, so a commit made inside since
-                // then (on a detached HEAD, say) would be missing from the warning.
+                // Read it again: the commits left behind are only listed on loads, so one made
+                // inside since then (on a detached HEAD, say) could be missing from the warning.
                 let Some(workdir) = st.workdir() else { return };
                 fx.push(Effect::CheckSubmodule { workdir, path });
                 return;
