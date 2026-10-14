@@ -102,3 +102,21 @@ fn unstage_gone_refusals() {
     assert_eq!(status(&dir), before);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn unstage_gone_treats_glob_characters_literally() {
+    let dir = scratch_repo("wfgone-glob");
+    commit(&dir, &[("a.txt", "one\n"), ("b.txt", "one\n")], "one");
+    write(&dir, "a.txt", "staged\n");
+    write(&dir, "b.txt", "staged\n");
+    git(&dir, &["add", "a.txt", "b.txt"]);
+    let (a, b) = (index_id(&dir, "a.txt"), index_id(&dir, "b.txt"));
+    write(&dir, "[ab].txt", "new\n");
+    git(&dir, &["--literal-pathspecs", "add", "[ab].txt"]);
+    std::fs::remove_file(dir.join("[ab].txt")).unwrap();
+
+    unstage_gone_new_file(&dir, "[ab].txt").unwrap();
+    assert_eq!(index_id(&dir, "[ab].txt"), None);
+    assert_eq!((index_id(&dir, "a.txt"), index_id(&dir, "b.txt")), (a, b), "other staged edits stay");
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -218,3 +218,41 @@ fn case_only_staged_rename() {
     assert_eq!(status(&dir), " D readme.md");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// `a.txt` has a staged edit and a further unstaged one; returns the staged blob's id.
+fn with_staged_edit(dir: &Path) -> Option<git2::Oid> {
+    write(dir, "a.txt", "staged\n");
+    git(dir, &["add", "a.txt"]);
+    write(dir, "a.txt", "worktree\n");
+    index_id(dir, "a.txt")
+}
+
+#[test]
+fn glob_characters_in_the_new_path_are_literal() {
+    let dir = scratch_repo("wfrm-glob");
+    commit(&dir, &[("a.txt", "one\n")], "one");
+    let staged = with_staged_edit(&dir);
+    write(&dir, "[ab].txt", "new\n");
+    git(&dir, &["--literal-pathspecs", "add", "[ab].txt"]);
+
+    delete_staged_new_file(&dir, "[ab].txt").unwrap();
+    assert_eq!(index_id(&dir, "[ab].txt"), None);
+    assert_eq!(index_id(&dir, "a.txt"), staged, "a path the name matches as a glob keeps its staged edit");
+    assert_eq!(status(&dir), "MM a.txt");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn glob_characters_in_the_rename_source_are_literal() {
+    let dir = scratch_repo("wfrm-glob-src");
+    commit(&dir, &[("a.txt", "one\n"), ("[ab].txt", "one\ntwo\nthree\nfour\n")], "one");
+    let head = index_id(&dir, "[ab].txt");
+    let staged = with_staged_edit(&dir);
+    git(&dir, &["mv", "[ab].txt", "moved.txt"]);
+
+    delete_staged_new_file(&dir, "moved.txt").unwrap();
+    assert_eq!(index_id(&dir, "[ab].txt"), head);
+    assert_eq!(index_id(&dir, "moved.txt"), None);
+    assert_eq!(index_id(&dir, "a.txt"), staged, "a path the source matches as a glob keeps its staged edit");
+    let _ = std::fs::remove_dir_all(&dir);
+}

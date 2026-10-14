@@ -2,12 +2,12 @@
 //! its index entries together, and taking one whose working copy is already gone out of the index.
 //!
 //! The index entries are changed with libgit2 rather than the git CLI: no hooks, config or
-//! credentials apply to taking a path out of the index (as with `unstage_paths`).
+//! credentials apply to taking a path out of the index.
 
 use super::head_tree;
 use super::workfile::contained;
 use crate::error::{Error, Result};
-use git2::{Delta, DiffFindOptions, Repository};
+use git2::{Delta, DiffFindOptions, IndexEntry, IndexTime, Repository};
 use std::path::Path;
 
 /// Deletes the working-tree file `path`, which is staged as a new file or as the new path of a
@@ -84,14 +84,36 @@ fn rename_source(repo: &Repository, path: &str) -> Result<Option<String>> {
 
 /// Takes `path` out of the index and gives `source` back its HEAD entry, in one index write.
 ///
-/// A rename that only changes case is the exception: with `core.ignorecase` libgit2 treats both
-/// spellings as one index path, so unstaging them together drops both. The new path goes
-/// first and the source is restored from HEAD in a second write.
+/// Both are exact index edits rather than `unstage_paths`: that reads its paths as pathspecs, so
+/// a name such as `[id].tsx` would also reset every path it matches as a glob (`i.tsx`,
+/// `d.tsx`) and lose their staged changes.
 fn unstage(workdir: &Path, path: &str, source: Option<&str>) -> Result<()> {
-    let unstage = |paths: &[&str]| super::index::unstage_paths(workdir, &paths.iter().map(|p| (*p).to_owned()).collect::<Vec<_>>());
-    match source {
-        Some(s) if s.eq_ignore_ascii_case(path) => unstage(&[path]).and_then(|()| unstage(&[s])),
-        Some(s) => unstage(&[path, s]),
-        None => unstage(&[path]),
+    let repo = Repository::open(workdir)?;
+    let mut index = repo.index()?;
+    index.remove(Path::new(path), 0)?;
+    if let Some(source) = source {
+        // A rename source is in HEAD's tree: that is how status paired it.
+        let tree = head_tree(&repo).ok_or_else(|| Error::Other("HEAD has no tree".into()))?;
+        let entry = tree.get_path(Path::new(source))?;
+        // With `core.ignorecase`, a case-only rename's source and new path are one index path;
+        // the new path's entry is already gone, so adding the source can't replace anything else.
+        let zero = IndexTime::new(0, 0);
+        index.add(&IndexEntry {
+            // No cached stat data, so the working file is always compared by content.
+            ctime: zero,
+            mtime: zero,
+            dev: 0,
+            ino: 0,
+            mode: u32::try_from(entry.filemode()).map_err(|_| Error::Other(format!("{source} has an unknown mode in HEAD")))?,
+            uid: 0,
+            gid: 0,
+            file_size: 0,
+            id: entry.id(),
+            flags: 0,
+            flags_extended: 0,
+            path: source.as_bytes().to_vec(),
+        })?;
     }
+    index.write()?;
+    Ok(())
 }
