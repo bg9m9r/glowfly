@@ -140,7 +140,8 @@ fn push_after_commit_sets_upstream() {
     drive(&mut st, Msg::StageFile("a.txt".into()));
     st.draft.summary = "Main work".into();
     drive(&mut st, Msg::Commit);
-    assert_eq!(head_summary(&st), "Main work");
+    // Both commits can share a timestamp, so the graph may list either first: ask git.
+    assert_eq!(head_message(&work), "Main work");
     assert_eq!(st.snap.as_ref().unwrap().head_info().map(|b| b.ahead), Some(0));
     cleanup(&work);
     cleanup(&bare);
@@ -206,6 +207,23 @@ fn template_prefills_and_strips_comments() {
     st.draft.description.clear();
     drive(&mut st, Msg::Refresh);
     assert!(st.draft.is_empty());
+    cleanup(&dir);
+}
+
+#[test]
+fn template_keeps_issue_mentions() {
+    let dir = scratch_repo("commit-template-mention");
+    set_template(&dir, "\n\n# Explain why\n");
+    git(&dir, &["config", "commit.cleanup", "strip"]);
+    let mut st = state();
+    drive(&mut st, Msg::Open(dir.clone()));
+    st.draft.summary = "#42 Fix login".into();
+    // What the "Link #123" button sends.
+    drive(&mut st, Msg::AppendToDescription("#123".into()));
+    assert_eq!(st.draft.description, "# Explain why\n\n#123");
+    drive(&mut st, Msg::StageFile("a.txt".into()));
+    drive(&mut st, Msg::Commit);
+    assert_eq!(head_message(&dir), "#42 Fix login\n\n#123", "only the template's comment is left out");
     cleanup(&dir);
 }
 

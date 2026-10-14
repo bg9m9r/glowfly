@@ -345,7 +345,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Keep the hidden/solo state when a branch is renamed (rename the entry instead of
     dropping it)
 - [x] **Commit panel extras**
-  - [x] Commit template (`commit.template` prefills an empty draft; comment lines are left out)
+  - [x] Commit template (`commit.template` prefills an empty draft; the template's comment lines are left out)
   - [x] "Push after committing" checkbox
   - [x] Skip hooks (`--no-verify`)
   - [x] Stage-all-and-commit shortcut (Ctrl+Shift+Enter; Ctrl+Enter commits)

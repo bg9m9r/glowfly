@@ -12,7 +12,7 @@ pub const MAX_TEMPLATE_BYTES: u64 = 64 * 1024;
 pub struct CommitTemplate {
     pub summary: String,
     pub description: String,
-    /// Lines starting with this are left out of the message (`core.commentChar`).
+    /// The template's lines starting with this are left out of the message (`core.commentChar`).
     pub comment_char: char,
 }
 

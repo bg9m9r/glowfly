@@ -14,18 +14,24 @@ pub struct CommitDraft {
     pub amend: bool,
     /// --no-verify for this commit; resets with the draft after a successful commit.
     pub skip_hooks: bool,
-    /// The template the draft was prefilled with. Some => commit with --cleanup=strip and
-    /// don't prefill again.
+    /// The template the draft was prefilled with. Some => leave its comment lines out of the
+    /// message and don't prefill again.
     pub template: Option<CommitTemplate>,
 }
 
 impl CommitDraft {
-    /// The full commit message: summary, blank line, description.
+    /// The full commit message: summary, blank line, description. The comment lines of the
+    /// draft's template are left out; every line the user wrote is kept, including one that
+    /// starts with the comment char (an issue mention such as "#123").
     pub fn message(&self) -> String {
+        let description = match &self.template {
+            Some(t) => without_template_comments(&self.description, t),
+            None => self.description.clone(),
+        };
         let mut m = self.summary.trim().to_owned();
-        if !self.description.trim().is_empty() {
+        if !description.trim().is_empty() {
             m.push_str("\n\n");
-            m.push_str(self.description.trim());
+            m.push_str(description.trim());
         }
         m
     }
@@ -90,9 +96,10 @@ impl CommitDraft {
         if self.skip_hooks {
             cmd.push("--no-verify".into());
         }
-        // With -F git only trims whitespace by default, which would keep the comment lines.
+        // The template's comment lines are already gone from the message. Everything else must
+        // stay even when commit.cleanup is "strip", which would drop a "#123" line.
         if self.template.is_some() {
-            cmd.push("--cleanup=strip".into());
+            cmd.push("--cleanup=whitespace".into());
         }
         let mut cmds = Vec::new();
         if stage_all {
@@ -101,6 +108,14 @@ impl CommitDraft {
         cmds.push(cmd);
         cmds
     }
+}
+
+/// `description` without the lines that are comment lines of `t` (compared without trailing
+/// whitespace).
+fn without_template_comments(description: &str, t: &CommitTemplate) -> String {
+    let comment = |l: &str| l.starts_with(t.comment_char);
+    let template: Vec<&str> = t.description.lines().filter(|l| comment(l)).map(str::trim_end).collect();
+    description.lines().filter(|l| !(comment(l) && template.contains(&l.trim_end()))).collect::<Vec<_>>().join("\n")
 }
 
 /// Why committing (or staging everything and committing) can't start now; None when it can.
@@ -161,8 +176,23 @@ mod tests {
         d.apply_template(&template());
         assert_eq!(
             d.commit_cmds(f, true),
-            vec![args(&["add", "--all"]), args(&["commit", "-F", &file, "--amend", "--no-verify", "--cleanup=strip"])]
+            vec![args(&["add", "--all"]), args(&["commit", "-F", &file, "--amend", "--no-verify", "--cleanup=whitespace"])]
         );
+    }
+
+    #[test]
+    fn message_drops_only_the_template_comments() {
+        let mut d = CommitDraft::default();
+        d.apply_template(&template());
+        d.summary = "#42 Fix login".into();
+        d.description = "# why  \nBecause.\n\n#123\n# my own note".into();
+        assert_eq!(d.message(), "#42 Fix login\n\nBecause.\n\n#123\n# my own note");
+        d.description = "# why\n\n#123".into();
+        assert_eq!(d.message(), "#42 Fix login\n\n#123", "a mention added below the template is kept");
+        d.description = "# why".into();
+        assert_eq!(d.message(), "#42 Fix login");
+        d.template = None;
+        assert_eq!(d.message(), "#42 Fix login\n\n# why", "without a template nothing is dropped");
     }
 
     #[test]

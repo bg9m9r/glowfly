@@ -51,7 +51,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     ui.label(RichText::new(format!("{len}/72")).small().color(c));
     let d = spell_text_edit(ui, &mut st.draft.description, "Description", 4, &mut cache.speller, spell);
     if let Some(t) = &st.draft.template {
-        let note = format!("Lines starting with {} are left out of the message", t.comment_char);
+        let note = format!("The template's lines starting with {} are left out of the message", t.comment_char);
         ui.label(RichText::new(note).small().color(color::faint()));
     }
 
