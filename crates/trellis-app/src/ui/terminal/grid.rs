@@ -33,11 +33,15 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
     }
     let focused = resp.has_focus();
     st.terminal.focused = focused;
+    if !focused {
+        // Its key's release now goes elsewhere.
+        st.terminal.clip_pending = None;
+    }
     if focused {
         // Tab, arrows and Esc belong to the shell, not to egui's focus navigation.
         let filter = EventFilter { tab: true, horizontal_arrows: true, vertical_arrows: true, escape: true };
         ui.memory_mut(|m| m.set_focus_lock_filter(id, filter));
-        let inputs = input::collect(&ui.input(|i| i.events.clone()));
+        let inputs = input::collect(&ui.input(|i| i.events.clone()), &mut st.terminal.clip_pending);
         if !inputs.is_empty() {
             msgs.push(Msg::Terminal(TerminalMsg::Input(inputs)));
         }

@@ -21,6 +21,16 @@ pub struct TerminalPanel {
     pub focused: bool,
     /// Give the terminal the keyboard on the next frame; set by update, cleared by the view.
     pub focus_requested: bool,
+    /// Copy or cut commands waiting for their key's release, with how many arrived; view state.
+    pub clip_pending: Option<(Clip, u32)>,
+}
+
+/// egui's copy and cut commands. On Windows they come from Ctrl+Insert and Shift+Delete as
+/// well as Ctrl+C and Ctrl+X, without the key, so the terminal waits for the key's release.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Clip {
+    Copy,
+    Cut,
 }
 
 #[derive(Clone, Debug, PartialEq)]
