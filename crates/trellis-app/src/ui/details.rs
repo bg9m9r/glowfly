@@ -243,19 +243,21 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
                     menu_item(msgs, ui, action, toggle());
                     // Checking out the index version of a conflicted path means nothing.
                     if !staged && !conflicted {
-                        let untracked = f.status == '?';
-                        let what = if untracked { "Delete untracked file" } else { "Discard changes to" };
-                        menu_item(
-                            msgs,
-                            ui,
-                            "Discard changes",
-                            Msg::confirm(
+                        if f.status == '?' {
+                            menu_item(msgs, ui, "Discard changes", Msg::DiscardUntracked(f.path.clone()));
+                        } else {
+                            menu_item(
+                                msgs,
+                                ui,
                                 "Discard changes",
-                                format!("{what} {}? This cannot be undone.", f.path),
-                                "Discard",
-                                Msg::DiscardFile(f.path.clone(), untracked),
-                            ),
-                        );
+                                Msg::confirm(
+                                    "Discard changes",
+                                    format!("Discard changes to {}? This cannot be undone.", f.path),
+                                    "Discard",
+                                    Msg::DiscardFile(f.path.clone()),
+                                ),
+                            );
+                        }
                     }
                     if f.status != '?' {
                         menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: None });

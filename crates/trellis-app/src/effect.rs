@@ -24,10 +24,8 @@ pub enum LocalOp {
     StageFile(String),
     StageAll,
     UnstagePaths(Vec<String>),
-    DiscardFile {
-        path: String,
-        untracked: bool,
-    },
+    /// Checks out the index version of a tracked file.
+    DiscardFile(String),
     Hunk {
         op: HunkOp,
         path: String,
@@ -174,7 +172,7 @@ pub enum Effect {
         path: String,
         overwrite: bool,
     },
-    /// Creates, renames or deletes a working-tree file; the index is untouched, except for
+    /// Creates, renames, deletes or discards (untracked) a working-tree file; the index is untouched, except for
     /// UnstageDelete, UnstageGone (index only) and a staged rename.
     WorkFile {
         workdir: PathBuf,

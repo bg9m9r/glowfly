@@ -8,12 +8,12 @@ use crate::error::Error;
 use crate::testutil::*;
 use std::path::{Path, PathBuf};
 
-fn test_bin() -> PathBuf {
+pub(super) fn test_bin() -> PathBuf {
     std::env::temp_dir().join(format!("trellis-test-bin-{}", std::process::id()))
 }
 
 /// Moves the file into this process's stand-in bin under a unique name.
-fn fake_bin(full: &Path) -> Result<(), String> {
+pub(super) fn fake_bin(full: &Path) -> Result<(), String> {
     let bin = test_bin();
     std::fs::create_dir_all(&bin).map_err(|e| e.to_string())?;
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
@@ -21,7 +21,7 @@ fn fake_bin(full: &Path) -> Result<(), String> {
     std::fs::rename(full, bin.join(format!("{nanos}-{name}"))).map_err(|e| e.to_string())
 }
 
-fn no_bin(_: &Path) -> Result<(), String> {
+pub(super) fn no_bin(_: &Path) -> Result<(), String> {
     Err("no bin here".into())
 }
 
@@ -30,12 +30,12 @@ fn removes_then_errors(full: &Path) -> Result<(), String> {
     Err("lost track".into())
 }
 
-fn never_called(full: &Path) -> Result<(), String> {
+pub(super) fn never_called(full: &Path) -> Result<(), String> {
     panic!("the trash was asked to take {}", full.display())
 }
 
 /// Whether the stand-in bin holds a file named `name` with `contents`.
-fn in_bin(name: &str, contents: &str) -> bool {
+pub(super) fn in_bin(name: &str, contents: &str) -> bool {
     std::fs::read_dir(test_bin()).into_iter().flatten().flatten().any(|e| {
         e.file_name().to_string_lossy().ends_with(&format!("-{name}")) && std::fs::read_to_string(e.path()).is_ok_and(|t| t == contents)
     })

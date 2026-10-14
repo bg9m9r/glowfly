@@ -90,6 +90,8 @@ mod whitespace_tests;
 #[cfg(test)]
 mod whole_file_tests;
 #[cfg(test)]
+mod work_files_discard_tests;
+#[cfg(test)]
 mod work_files_stage_tests;
 #[cfg(test)]
 mod work_files_tests;
@@ -210,7 +212,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::UnstageFile(_)
         | Msg::StageAll
         | Msg::UnstageAll
-        | Msg::DiscardFile(..)
+        | Msg::DiscardFile(_)
         | Msg::Hunk { .. }
         | Msg::ApplyLines(_)
         | Msg::RevertHunk { .. }
@@ -236,6 +238,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::RenameFile { .. }
         | Msg::SetRenameStages(_)
         | Msg::DeleteFile { .. }
+        | Msg::DiscardUntracked(_)
         | Msg::DeleteConfirmed(_)
         | Msg::TrashRefused { .. }
         | Msg::WorkFileDone { .. } => files::handle(st, msg, now, &mut fx),

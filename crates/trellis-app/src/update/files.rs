@@ -67,6 +67,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         | Msg::RenameFile { .. }
         | Msg::SetRenameStages(_)
         | Msg::DeleteFile { .. }
+        | Msg::DiscardUntracked(_)
         | Msg::DeleteConfirmed(_)
         | Msg::TrashRefused { .. }
         | Msg::WorkFileDone { .. } => super::work_files::handle(st, msg, now, fx),

@@ -35,7 +35,7 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     });
     row(ui, "Deleting Files", |ui| {
         ui.checkbox(&mut s.delete_to_trash, format!("Move deleted files to the {TRASH}"));
-        help(ui, "When off, Delete… removes files from disk straight away and they can't be recovered.");
+        help(ui, "When off, Delete… and discarding an untracked file remove it from disk straight away, and it can't be recovered.");
     });
     if let Some(git) = git {
         row(ui, "Longpaths", |ui| {

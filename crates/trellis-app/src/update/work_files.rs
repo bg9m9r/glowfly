@@ -1,9 +1,9 @@
-//! Creating, renaming and deleting working-tree files: the New file and Rename dialogs (checked
-//! against the snapshot before anything runs), running the delete a confirmation agreed to (the
-//! confirmations themselves are in `work_files_delete`), and the results (a toast, the dialog's
-//! inline error, or a log line).
+//! Creating, renaming, deleting and discarding (untracked) working-tree files: the New file and
+//! Rename dialogs (checked against the snapshot before anything runs), running the delete or
+//! discard a confirmation agreed to (the confirmations themselves are in `work_files_delete`), and
+//! the results (a toast, the dialog's inline error, or a log line).
 
-use super::work_files_delete::{ask_delete, deleted_text, trash_refused};
+use super::work_files_delete::{ask_delete, ask_discard, deleted_text, trash_refused};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
 use crate::state::files::{PathForm, listed, tracked};
@@ -26,6 +26,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             fx.push(super::prefs::save_settings(st));
         }
         Msg::DeleteFile { path, confirmed: false } => ask_delete(st, path),
+        Msg::DiscardUntracked(path) => ask_discard(st, path),
         Msg::DeleteFile { path, confirmed: true } => {
             if let Some(workdir) = st.workdir() {
                 let mode = DeleteMode::for_settings(&st.settings);
@@ -33,7 +34,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
         }
         Msg::DeleteConfirmed(op) => match op {
-            FileOp::Delete { .. } | FileOp::UnstageDelete { .. } | FileOp::UnstageGone(_) => {
+            FileOp::Delete { .. } | FileOp::UnstageDelete { .. } | FileOp::UnstageGone(_) | FileOp::Discard { .. } => {
                 if let Some(workdir) = st.workdir() {
                     fx.push(Effect::WorkFile { workdir, op });
                 }
@@ -95,6 +96,7 @@ fn success_text(op: &FileOp, ok: WorkFileOk) -> String {
         FileOp::Delete { path, mode } => return deleted_text(path, *mode, deleted, false),
         FileOp::UnstageDelete { path, mode } => return deleted_text(path, *mode, deleted, true),
         FileOp::UnstageGone(p) => return format!("Removed {p} from the staging area."),
+        FileOp::Discard { path, mode } => return deleted_text(path, *mode, deleted, false),
     };
     if ignored {
         text.push_str(" Git ignores it, so it isn't listed with your changes.");
@@ -108,6 +110,7 @@ fn failure(op: &FileOp, e: &str) -> String {
         FileOp::Rename { from, .. } => format!("Could not rename {from}: {e}"),
         FileOp::Delete { path: p, .. } | FileOp::UnstageDelete { path: p, .. } => format!("Could not delete {p}: {e}"),
         FileOp::UnstageGone(p) => format!("Could not unstage {p}: {e}"),
+        FileOp::Discard { path: p, .. } => format!("Could not discard {p}: {e}"),
     }
 }
 
@@ -121,7 +124,8 @@ fn succeeded(st: &mut AppState, op: &FileOp, ok: WorkFileOk, now: Instant) {
         FileOp::Rename { from, .. }
         | FileOp::Delete { path: from, .. }
         | FileOp::UnstageDelete { path: from, .. }
-        | FileOp::UnstageGone(from) => from,
+        | FileOp::UnstageGone(from)
+        | FileOp::Discard { path: from, .. } => from,
         FileOp::Create(_) => return,
     };
     if matches!(&st.diff, Some((DiffTarget::Unstaged(p) | DiffTarget::Staged(p), _)) if p == old) {

@@ -1,5 +1,5 @@
-//! Creating, renaming and deleting a working-tree file (`Effect::WorkFile`), and listing the
-//! tracked files (`Effect::LoadTrackedPaths`).
+//! Creating, renaming, deleting and discarding (untracked) a working-tree file
+//! (`Effect::WorkFile`), and listing the tracked files (`Effect::LoadTrackedPaths`).
 
 use crate::effect::{DeleteMode, FileOp, WorkFileOk};
 use crate::msg::Msg;
@@ -41,7 +41,8 @@ fn removal(mode: DeleteMode) -> repo::Removal {
 /// Runs `op` in `workdir`. A create or plain rename reports whether git ignores the new path (a
 /// staged rename's new path stays tracked); a delete reports how the working copy went. A staged
 /// rename goes through git mv; UnstageDelete also takes the file out of the index, and
-/// UnstageGone only does that. When the trash refuses a file, nothing has changed and the result
+/// UnstageGone only does that. Discard deletes an untracked file, refusing one that is tracked by
+/// then. When the trash refuses a file, nothing has changed and the result
 /// is `Msg::TrashRefused`, so the user can be asked about deleting it permanently.
 pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
     let r = match &op {
@@ -53,6 +54,7 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
         FileOp::Delete { path, mode } => repo::delete_file(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
         FileOp::UnstageDelete { path, mode } => repo::delete_staged_new_file(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
         FileOp::UnstageGone(p) => repo::unstage_gone_new_file(workdir, p).map(|()| WorkFileOk::Unstaged),
+        FileOp::Discard { path, mode } => repo::discard_untracked(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
     };
     match r {
         Err(Error::NoTrash(reason)) => Msg::TrashRefused { op, reason },

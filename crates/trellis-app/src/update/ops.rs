@@ -19,7 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             let paths = st.snap.as_ref().map(|s| s.staged.iter().map(|f| f.path.clone()).collect()).unwrap_or_default();
             local(st, LocalOp::UnstagePaths(paths), fx);
         }
-        Msg::DiscardFile(path, untracked) => local(st, LocalOp::DiscardFile { path, untracked }, fx),
+        Msg::DiscardFile(path) => local(st, LocalOp::DiscardFile(path), fx),
         Msg::Hunk { op, path, index, generation } => {
             // A confirm dialog or a message sent before whitespace was hidden can still arrive.
             if let Some(why) = st.hunk_ops_blocked() {

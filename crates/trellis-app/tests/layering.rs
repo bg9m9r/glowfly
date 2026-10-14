@@ -28,6 +28,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "stage_all",
             "unstage_paths",
             "discard_file",
+            "discard_untracked",
             "load_conflict",
             "file_history",
             "write_resolution",

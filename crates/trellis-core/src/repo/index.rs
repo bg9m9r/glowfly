@@ -1,7 +1,7 @@
 //! Index and working-tree edits: staging, unstaging and discarding files and hunks.
 
 use super::*;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use git2::{ApplyLocation, ApplyOptions, IndexAddOption, Repository, build::CheckoutBuilder};
 use std::path::Path;
 
@@ -72,15 +72,28 @@ pub fn unstage_paths(workdir: &Path, paths: &[String]) -> Result<()> {
     Ok(())
 }
 
-/// Reverts a file's unstaged changes to the index version, or deletes it if untracked.
-pub fn discard_file(workdir: &Path, path: &str, untracked: bool) -> Result<()> {
-    if untracked {
-        std::fs::remove_file(workdir.join(path))?;
-        return Ok(());
-    }
+/// Reverts a tracked file's unstaged changes to the index version.
+pub fn discard_file(workdir: &Path, path: &str) -> Result<()> {
     let repo = Repository::open(workdir)?;
     let mut cb = CheckoutBuilder::new();
     cb.force().path(path);
     repo.checkout_index(None, Some(&mut cb))?;
     Ok(())
+}
+
+/// Discards the untracked file `path`: deletes it the way `removal` asks (to the trash, or
+/// for good) and prunes the folders it leaves empty. Refused, changing nothing, when `path`
+/// has an index entry (it is tracked or staged now), when the trash can't take it
+/// (`Error::NoTrash`), and for every reason `delete_file` refuses.
+pub fn discard_untracked(workdir: &Path, path: &str, removal: Removal) -> Result<Deleted> {
+    let rel = workfile::contained(path)?;
+    let repo = Repository::open(workdir)?;
+    let idx = repo.index()?;
+    if (0..=3).any(|s| idx.get_path(Path::new(rel), s).is_some()) {
+        return Err(Error::Other(format!("{rel} is tracked now; refresh and try again")));
+    }
+    // Windows keeps files locked while they are held open.
+    drop(idx);
+    drop(repo);
+    workfile::delete_file(workdir, rel, removal)
 }

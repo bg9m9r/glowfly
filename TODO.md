@@ -390,7 +390,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Delete several selected files at once (needs multi-select in file lists)
   - [x] Move deleted files to the Recycle Bin / Trash (Delete… and Unstage and delete…; asks
     before deleting permanently when the trash can't take a file; a General preference turns it off)
-    - [ ] Move untracked files that Discard deletes to the Recycle Bin / Trash too
+    - [x] Move untracked files that Discard deletes to the Recycle Bin / Trash too
     - [ ] Show a button in the toast that opens the Recycle Bin / Trash or restores the file
     - [ ] Respect a drive's "remove files immediately" Recycle Bin setting on Windows
     - [ ] On Linux, offer the home trash when a mount has no usable trash folder, instead of

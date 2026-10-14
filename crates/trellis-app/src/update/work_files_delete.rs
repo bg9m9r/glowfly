@@ -1,6 +1,7 @@
-//! Deleting working-tree files: the confirmations (worded by what status says about the path and
-//! by whether the file goes to the Recycle Bin / Trash), the follow-up that offers a permanent
-//! delete when the trash can't take a file, and the toasts that say how the file went.
+//! Deleting working-tree files and discarding untracked ones: the confirmations (worded by what
+//! status says about the path and by whether the file goes to the Recycle Bin / Trash), the
+//! follow-up that offers a permanent delete when the trash can't take a file, and the toasts that
+//! say how the file went.
 //!
 //! The trash-or-permanent choice is made when a confirmation opens and travels inside it, so
 //! changing the preference while it is up doesn't change what runs or what the text promised.
@@ -54,6 +55,30 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
         body,
         button: if trash { format!("Move to {TRASH}") } else { "Delete".into() },
         then: Box::new(Msg::DeleteConfirmed(FileOp::Delete { path, mode })),
+    });
+}
+
+/// Opens the confirmation for discarding the untracked file `path`, worded by whether it goes
+/// to the Recycle Bin / Trash. The choice is fixed here and carried by the confirmation.
+pub(super) fn ask_discard(st: &mut AppState, path: String) {
+    let mode = DeleteMode::for_settings(&st.settings);
+    let untracked = st.snap.as_ref().is_some_and(|snap| snap.unstaged.iter().any(|f| f.path == path && f.status == '?'));
+    if !untracked {
+        return st.log(false, format!("{path} is no longer an untracked file; refresh and try again."));
+    }
+    let (body, button) = if mode == DeleteMode::Trash {
+        (
+            format!("{path} isn't tracked by git. Discarding it moves it to the {TRASH}, so you can restore it from there."),
+            format!("Move to {TRASH}"),
+        )
+    } else {
+        (format!("Delete untracked file {path}? This cannot be undone."), "Discard".to_owned())
+    };
+    st.modal = Some(Modal::Confirm {
+        title: "Discard changes".into(),
+        body,
+        button,
+        then: Box::new(Msg::DeleteConfirmed(FileOp::Discard { path, mode })),
     });
 }
 

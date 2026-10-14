@@ -3,8 +3,9 @@
 use trellis_core::repo::Deleted;
 use trellis_core::settings::Settings;
 
-/// How Delete… and Unstage and delete… remove the working copy. Chosen when the confirmation
-/// opens and carried in it, so changing the preference meanwhile doesn't change what runs.
+/// How Delete…, Unstage and delete… and Discard of an untracked file remove the working copy.
+/// Chosen when the confirmation opens and carried in it, so changing the preference meanwhile
+/// doesn't change what runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DeleteMode {
     /// To the Recycle Bin / Trash.
@@ -43,13 +44,18 @@ pub enum FileOp {
     /// Takes a staged new file or staged rename's new path that is already gone from the working
     /// tree out of the index; the working tree is not touched.
     UnstageGone(String),
+    /// Discards the untracked file `path`: removed the way `mode` says. Refused if it is tracked by then.
+    Discard {
+        path: String,
+        mode: DeleteMode,
+    },
 }
 
 impl FileOp {
-    /// The path of a Delete or UnstageDelete.
+    /// The path of a Delete, UnstageDelete or Discard.
     pub fn delete_path(&self) -> Option<&str> {
         match self {
-            FileOp::Delete { path, .. } | FileOp::UnstageDelete { path, .. } => Some(path),
+            FileOp::Delete { path, .. } | FileOp::UnstageDelete { path, .. } | FileOp::Discard { path, .. } => Some(path),
             _ => None,
         }
     }
@@ -60,6 +66,7 @@ impl FileOp {
         match self {
             FileOp::Delete { path, .. } => FileOp::Delete { path, mode: DeleteMode::PermanentNoTrash },
             FileOp::UnstageDelete { path, .. } => FileOp::UnstageDelete { path, mode: DeleteMode::PermanentNoTrash },
+            FileOp::Discard { path, .. } => FileOp::Discard { path, mode: DeleteMode::PermanentNoTrash },
             op => op,
         }
     }
@@ -70,7 +77,7 @@ impl FileOp {
 pub enum WorkFileOk {
     /// Created or renamed; whether git ignores the new path.
     Written { ignored: bool },
-    /// Deleted (UnstageDelete also unstaged); how the working copy went.
+    /// Deleted or discarded (UnstageDelete also unstaged); how the working copy went.
     Deleted(Deleted),
     /// UnstageGone: only the index changed.
     Unstaged,

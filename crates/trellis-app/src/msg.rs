@@ -194,7 +194,10 @@ pub enum Msg {
     UnstageFile(String),
     StageAll,
     UnstageAll,
-    DiscardFile(String, bool),
+    /// Revert tracked `path` to its index version (the view has confirmed).
+    DiscardFile(String),
+    /// Open the confirmation for discarding the untracked file `path`; it goes to the Recycle Bin / Trash or is deleted the way the preference says.
+    DiscardUntracked(String),
     /// Stage, unstage or discard hunk `index` of the diff shown at `generation`
     /// (`AppState::hunk_ops_gen`); refused if the diff has changed since.
     Hunk {
@@ -244,7 +247,7 @@ pub enum Msg {
         path: String,
         confirmed: bool,
     },
-    /// Run the delete-family op a confirmation agreed to (Delete, UnstageDelete or UnstageGone),
+    /// Run the delete-family op a confirmation agreed to (Delete, UnstageDelete, UnstageGone or Discard),
     /// exactly as the confirmation described it.
     DeleteConfirmed(FileOp),
     Commit,

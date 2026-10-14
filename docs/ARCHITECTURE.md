@@ -115,9 +115,10 @@ crates/
                           its job), graph_filter (hidden and soloed refs, saved per repository),
                           askpass (queueing, answering and cancelling credential prompts; what a
                           finished job clears), files (restoring a file from a commit, opening
-                          or showing a working-tree file; work_files: create, rename, delete;
-                          work_files_delete: the delete confirmations, the permanent fallback
-                          when the trash refuses a file, the delete toasts),
+                          or showing a working-tree file; work_files: create, rename, delete,
+                          discard an untracked file; work_files_delete: the delete and discard
+                          confirmations, the permanent fallback when the trash refuses a file,
+                          the delete toasts),
                           commit (committing, stage-all-and-commit, push after committing, the
                           template prefill), palette (opening the command palette, moving,
                           running a command, entering and leaving a sub-list and loading its
