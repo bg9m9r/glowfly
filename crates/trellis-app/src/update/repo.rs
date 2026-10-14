@@ -265,6 +265,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     }
     super::forge::detect(st, &snap);
     st.snap = Some(snap);
+    super::watch::sync(st, fx);
     if kind == LoadKind::Open {
         fx.push(super::tabs::opened(st));
     } else {

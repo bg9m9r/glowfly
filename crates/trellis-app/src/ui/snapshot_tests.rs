@@ -146,6 +146,16 @@ fn preferences_ui_customization() {
 }
 
 #[test]
+fn preferences_general() {
+    use crate::state::prefs::GitConfigValues;
+    let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
+    let mut prefs = PrefsState::new(PrefPage::General);
+    prefs.git = Some(GitConfigValues::default());
+    st.prefs = Some(prefs);
+    render("prefs_general", st, true);
+}
+
+#[test]
 fn preferences_commit_signing() {
     use crate::state::prefs::GitConfigValues;
     use trellis_core::signing::SigningKey;

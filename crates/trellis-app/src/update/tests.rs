@@ -48,7 +48,7 @@ pub(super) fn drive(st: &mut AppState, msg: Msg) {
                 Effect::Forge { .. } | Effect::Connect { .. } | Effect::SaveToken { .. } | Effect::DeleteToken(_) => {}
                 Effect::RepoOwners { .. } | Effect::CreateRepo { .. } => {}
                 Effect::ForgetCredentialManager { .. } | Effect::SaveSettings(_) | Effect::SaveRecent(_) => {}
-                Effect::SaveTabs { .. } => {}
+                Effect::SaveTabs { .. } | Effect::Watch(_) => {}
                 other => queue.extend(runner::execute(other)),
             }
         }

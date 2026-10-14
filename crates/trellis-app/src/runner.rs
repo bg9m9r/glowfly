@@ -29,15 +29,20 @@ impl Waker for eframe::egui::Context {
 pub struct Runner<W: Waker + Clone> {
     tx: Sender<Msg>,
     waker: W,
+    watch: crate::watcher::WatchSlot,
 }
 
 impl<W: Waker + Clone> Runner<W> {
     pub fn new(tx: Sender<Msg>, waker: W) -> Self {
-        Self { tx, waker }
+        Self { tx, waker, watch: Default::default() }
     }
 
     /// Starts `effect` on a worker thread. UI effects must be handled by the caller instead.
     pub fn run(&self, effect: Effect) {
+        if let Effect::Watch(target) = effect {
+            self.watch.set(target, self.tx.clone(), self.waker.clone());
+            return;
+        }
         let tx = self.tx.clone();
         let waker = self.waker.clone();
         let name = effect_name(&effect);
@@ -88,6 +93,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::ListSigningKeys { .. } => "list-keys",
         Effect::GenerateGpgKey { .. } => "generate-key",
         Effect::ExportPublicKey { .. } => "export-key",
+        Effect::Watch(_) => "watch",
         Effect::Ui(_) => "ui",
     }
 }
@@ -254,6 +260,10 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
         }
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
+            None
+        }
+        Effect::Watch(_) => {
+            tracing::warn!("watch effect reached a worker; it is handled by Runner::run");
             None
         }
     }

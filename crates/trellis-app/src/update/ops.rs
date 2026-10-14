@@ -46,6 +46,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             if let Some(c) = st.conflict.as_mut() {
                 c.saving = false;
             }
+            super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
         Msg::Commit => commit(st, fx),
@@ -247,6 +248,7 @@ fn job_done(st: &mut AppState, ok: bool, output: String, undo: Option<UndoResult
     if !here {
         return; // that tab refreshes when it is selected again
     }
+    super::watch::settled(st, now);
     super::repo::refresh(st, fx);
     // Pushes and branch changes affect pull requests; auto-fetch uses the normal interval.
     if !job.quiet {

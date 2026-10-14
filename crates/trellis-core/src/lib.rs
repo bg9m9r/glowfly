@@ -18,3 +18,4 @@ pub mod spell;
 #[cfg(test)]
 pub(crate) mod testutil;
 pub mod undo;
+pub mod watch;

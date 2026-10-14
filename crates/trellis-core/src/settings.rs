@@ -112,6 +112,8 @@ pub struct Settings {
     pub default_branch: String,
     pub initial_commits: usize,
     pub reopen_last_repo: bool,
+    /// Refresh when files change outside Trellis (Preferences > General).
+    pub watch_files: bool,
 
     // UI customization
     pub theme: ThemeChoice,
@@ -158,6 +160,7 @@ impl Default for Settings {
             default_branch: "main".into(),
             initial_commits: 2000,
             reopen_last_repo: true,
+            watch_files: true,
             theme: ThemeChoice::Dark,
             notification_location: Corner::BottomLeft,
             date_locale: "system".into(),
@@ -317,5 +320,15 @@ mod tests {
         let on = Settings { diff_ignore_whitespace: true, ..Settings::default() };
         let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
         assert!(back.diff_ignore_whitespace);
+    }
+
+    #[test]
+    fn watch_files_defaults_on() {
+        // Files written before the setting existed get live updates.
+        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+        assert!(s.watch_files);
+        let off = Settings { watch_files: false, ..Settings::default() };
+        let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+        assert!(!back.watch_files);
     }
 }

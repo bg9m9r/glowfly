@@ -28,6 +28,10 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     row(ui, "Reopen Last Repository", |ui| {
         ui.checkbox(&mut s.reopen_last_repo, "Reopen the tabs from last time when Trellis starts");
     });
+    row(ui, "Watch for File Changes", |ui| {
+        ui.checkbox(&mut s.watch_files, "Refresh the working tree as soon as files change outside Trellis");
+        help(ui, "When off, Trellis refreshes when its window regains focus or you press F5.");
+    });
     if let Some(git) = git {
         row(ui, "Longpaths", |ui| {
             if ui.checkbox(&mut git.longpaths, "").changed() {

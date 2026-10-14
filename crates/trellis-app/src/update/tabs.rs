@@ -117,6 +117,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     st.active_tab = i;
     let parked = st.tabs[i].parked.take().map(|p| *p).unwrap_or_default();
     unpark(st, parked);
+    super::watch::sync(st, fx);
     // Results still in flight for the previous tab are now stale.
     st.load_gen += 1;
     st.loading = false;

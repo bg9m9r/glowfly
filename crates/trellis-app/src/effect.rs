@@ -96,6 +96,13 @@ pub struct ForgeReply {
     pub results: Vec<ForgeResult>,
 }
 
+/// A repository for the file watcher.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WatchTarget {
+    pub workdir: PathBuf,
+    pub git_dir: PathBuf,
+}
+
 #[derive(Debug)]
 pub enum Effect {
     LoadRepo {
@@ -240,6 +247,9 @@ pub enum Effect {
         program: String,
         key: String,
     },
+    /// Watch this repository for outside changes, replacing any previous watch; None stops
+    /// watching. Handled by `Runner::run` itself (the watcher outlives a worker thread).
+    Watch(Option<WatchTarget>),
     Ui(UiEffect),
 }
 

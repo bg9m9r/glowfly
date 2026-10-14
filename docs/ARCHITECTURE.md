@@ -33,6 +33,8 @@ crates/
     conflict_rows.rs      row layout of the conflict view (aligned ours/theirs panes, output)
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds
     intraline.rs          word-level changes inside paired removed/added diff lines
+    watch.rs              which file changes in a repository matter (status or full reload),
+                          and a cache of folders .gitignore ignores
     forge/                hosting services behind the `Forge` trait (github, gitlab,
                           bitbucket, azure, jira); model and trait in mod.rs, plus remote
                           (URL detection), auth (credentials), refs (issue references), http,
@@ -42,12 +44,15 @@ crates/
     state/                AppState (plain data), ForgeState, PrefsState, tabs (parked per-repo
                           data for inactive tabs), undo (per-tab undo history), lines (diff
                           line selection), conflict (the open conflict and its picks),
-                          history (the open file history)
+                          history (the open file history), watch (what the file watcher
+                          follows)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner.rs             executes effects on worker threads, reports back as Msg
+    watcher.rs            notify watcher for the active tab's repository, debounced in its own
+                          thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
-                          undo, diff, conflict, history
+                          undo, diff, conflict, history, watch
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/, details, diff/ (inline, split, syntax),
                           conflict, history, modals, menus,

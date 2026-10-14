@@ -213,9 +213,19 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Multi-select commits**
   Ctrl/Shift-click in the graph; diff between two commits or between a commit and the WIP;
   cherry-pick several at once.
-- [ ] **Live working-tree updates**
-  Watch the working directory with the `notify` crate and refresh the WIP row instantly. Trellis
-  currently refreshes only on window focus, F5, and after its own operations.
+- [x] **Live working-tree updates**
+  The active tab's repository is watched with the `notify` crate (Preferences > General, on by
+  default): outside edits re-read the status and ref or HEAD changes reload everything, within
+  about 0.3 s. Window focus and F5 still refresh as before.
+  - [ ] Notice a watcher that started but receives no events (a probe after starting) and warn
+    once, suggesting a restart
+  - [ ] Watch the common git dir's refs for linked worktrees (their refs live outside the
+    worktree's own git dir)
+  - [ ] Watch inactive tabs so their state updates in the background
+  - [ ] Treat `.git/config` changes (remotes added or removed outside Trellis) as a full refresh
+  - [ ] Status-bar indicator showing whether live updates are active for the repository
+  - [ ] Reflect submodule HEAD changes live in the parent's status (paths under a nested `.git`
+    are ignored for now)
 - [ ] **Credential prompts**
   Trellis runs git with `GIT_TERMINAL_PROMPT=0`, so HTTPS without Git Credential Manager, SSH
   keys with passphrases, and GPG passphrases all fail. Add an askpass helper (`GIT_ASKPASS` /

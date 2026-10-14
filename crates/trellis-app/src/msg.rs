@@ -294,6 +294,18 @@ pub enum Msg {
         workdir: PathBuf,
         msg: Box<Msg>,
     },
+    /// Files changed outside Trellis (debounced). Sent wrapped in `Msg::Scoped` for the watched
+    /// repository; `full` when HEAD, refs or a merge/rebase state changed; `last_event` is when
+    /// the burst's last relevant event arrived.
+    RepoChanged {
+        full: bool,
+        last_event: Instant,
+    },
+    /// The file watcher could not start or stopped working for `workdir`.
+    WatchFailed {
+        workdir: PathBuf,
+        error: String,
+    },
     /// A line for the activity log from a background effect.
     Logged {
         ok: bool,

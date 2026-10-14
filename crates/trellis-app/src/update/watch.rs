@@ -1,0 +1,67 @@
+//! Live working-tree updates: keeping the file watcher on the active tab's repository, and
+//! refreshing when it reports changes made outside Trellis.
+
+use crate::effect::{Effect, WatchTarget};
+use crate::msg::Msg;
+use crate::state::watch::WATCH_SETTLE;
+use crate::state::{AppState, LogEntry};
+use std::time::Instant;
+
+const FAILED: &str = "Trellis can't watch this repository for changes, so changes made outside Trellis show up when its window regains focus or you press F5.";
+
+pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+    match msg {
+        // Only arrives through `Msg::Scoped`, so it is for the active tab.
+        Msg::RepoChanged { full, last_event } => {
+            if !st.settings.watch_files || st.snap.is_none() {
+                return;
+            }
+            // Trellis' own job refreshes when it is done.
+            let here = st.workdir();
+            if let (Some(job), Some(here)) = (st.job.as_ref().and_then(|j| j.workdir.as_deref()), here.as_deref())
+                && crate::state::tabs::same_path(job, here)
+            {
+                return;
+            }
+            if st.watch.quiet_until.is_some_and(|q| last_event <= q) {
+                return; // caused by a job or local op that already refreshed
+            }
+            if full {
+                super::repo::refresh(st, fx);
+            } else {
+                super::repo::refresh_status(st, fx);
+            }
+        }
+        Msg::WatchFailed { workdir, error } => {
+            tracing::warn!("file watching failed for {}: {error}", workdir.display());
+            // Reported once per repository; it is retried (silently) when its tab is selected again.
+            if st.watch.failed.insert(workdir.clone()) {
+                st.toast(false, FAILED, now);
+                // Pushed directly: this shouldn't pop the activity log open.
+                st.log.push(LogEntry { ok: false, text: format!("File watching stopped for {}: {error}", workdir.display()) });
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Points the watcher at the active tab's repository, or stops it (no repository, or the
+/// preference is off). Does nothing when it already watches the right one.
+pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let want = if st.settings.watch_files {
+        st.snap.as_ref().map(|s| WatchTarget { workdir: s.workdir.clone(), git_dir: s.git_dir.clone() })
+    } else {
+        None
+    };
+    let workdir = want.as_ref().map(|t| t.workdir.clone());
+    if workdir != st.watch.target {
+        st.watch.target = workdir;
+        st.watch.quiet_until = None;
+        fx.push(Effect::Watch(want));
+    }
+}
+
+/// Trellis just changed the repository itself (and refreshes): events up to now are its own.
+pub(super) fn settled(st: &mut AppState, now: Instant) {
+    st.watch.quiet_until = Some(now + WATCH_SETTLE);
+}

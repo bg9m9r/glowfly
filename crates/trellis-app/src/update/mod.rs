@@ -13,6 +13,7 @@ mod publish;
 mod repo;
 mod tabs;
 mod undo;
+mod watch;
 
 #[cfg(test)]
 mod conflict_tests;
@@ -30,6 +31,8 @@ mod tabs_tests;
 mod tests;
 #[cfg(test)]
 mod undo_tests;
+#[cfg(test)]
+mod watch_tests;
 #[cfg(test)]
 mod whitespace_tests;
 
@@ -126,6 +129,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::LocalOpDone(_)
         | Msg::JobDone { .. } => ops::handle(st, msg, now, &mut fx),
         Msg::Undo | Msg::Redo => undo::handle(st, msg, now, &mut fx),
+        Msg::RepoChanged { .. } | Msg::WatchFailed { .. } => watch::handle(st, msg, now, &mut fx),
 
         // hosting services
         Msg::ForgeRefresh { .. }

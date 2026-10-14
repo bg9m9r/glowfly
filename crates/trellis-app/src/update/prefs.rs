@@ -35,6 +35,10 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.saved_settings.as_str()) {
                 fx.push(save_settings(st));
             }
+            if st.settings.watch_files != st.watch.enabled {
+                st.watch.enabled = st.settings.watch_files;
+                super::watch::sync(st, fx);
+            }
         }
         Msg::GitConfigLoaded(values) => {
             if let Some(p) = st.prefs.as_mut() {

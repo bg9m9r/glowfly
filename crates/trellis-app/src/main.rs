@@ -13,6 +13,7 @@ mod runner;
 mod state;
 mod ui;
 mod update;
+mod watcher;
 
 use eframe::egui;
 use std::path::PathBuf;

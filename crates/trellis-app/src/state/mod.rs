@@ -9,6 +9,7 @@ pub mod prefs;
 pub mod publish;
 pub mod tabs;
 pub mod undo;
+pub mod watch;
 
 pub use forge::{ForgeState, Status};
 pub use prefs::{PrefPage, PrefsState, host_text};
@@ -224,12 +225,15 @@ pub struct AppState {
     pub stats: HashMap<Oid, (usize, usize, usize)>,
     pub stats_pending: HashSet<Oid>,
     pub last_fetch: Instant,
+    /// The file watcher for the active tab.
+    pub watch: watch::WatchState,
     pub view: ViewState,
 }
 
 impl AppState {
     pub fn new(settings: Settings, recent: Vec<PathBuf>, now: Instant) -> Self {
         let saved_settings = serde_json::to_string(&settings).unwrap_or_default();
+        let watch = watch::WatchState { enabled: settings.watch_files, ..Default::default() };
         Self {
             settings,
             saved_settings,
@@ -261,6 +265,7 @@ impl AppState {
             stats: HashMap::new(),
             stats_pending: HashSet::new(),
             last_fetch: now,
+            watch,
             view: ViewState::default(),
         }
     }
