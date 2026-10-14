@@ -103,16 +103,32 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Fetch => Msg::git("Fetch all", &["fetch", "--all", "--prune"]),
         C::Pull => Msg::git("Pull", &["pull", "--ff"]),
         C::Push => Msg::Push { force: false },
+        C::Stash => Msg::git("Stash", &["stash", "push", "-u"]),
+        C::PopStash => Msg::git("Pop stash", &["stash", "pop"]),
         C::StageAll => Msg::StageAll,
         C::UnstageAll => Msg::UnstageAll,
+        C::Undo => Msg::Undo,
+        C::Redo => Msg::Redo,
         C::CreateBranch => Msg::NewBranch { start: selected_commit(st).map(|o| o.to_string()), name: String::new() },
         C::CreateTag { annotated } => {
             let Some(at) = selected_commit(st).or_else(|| st.snap.as_ref().and_then(|s| s.head_oid)) else { return };
             Msg::NewTag { at: at.to_string(), annotated }
         }
+        C::RenameBranch(name) => Msg::RenameBranchDialog(name),
+        C::Refresh => Msg::Refresh,
+        C::OpenTerminal => Msg::OpenTerminal,
+        C::ShowInFileManager => {
+            let Some(w) = st.workdir() else { return };
+            Msg::OpenFolder(w)
+        }
+        C::DiffLayout(l) => Msg::SetDiffLayout(l),
+        C::IgnoreWhitespace(on) => Msg::SetIgnoreWhitespace(on),
         C::OpenRepo => Msg::PickRepo,
+        C::NewTab => Msg::NewTab,
+        C::ReopenClosedTab => Msg::ReopenClosedTab,
         C::CloseTab => Msg::CloseTab(usize::MAX),
         C::OpenPrefs => Msg::OpenPrefs(PrefPage::General),
+        C::ToolbarLabels(on) => Msg::SetToolbarLabels(on),
         C::Theme(t) => Msg::SetTheme(t),
         C::Checkout(name) => Msg::git("Checkout", &["checkout", &name]),
         C::OpenRecent(path) => Msg::Open(path),

@@ -54,6 +54,8 @@ mod history_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
+mod palette_more_tests;
+#[cfg(test)]
 mod palette_pick_tests;
 #[cfg(test)]
 mod palette_tests;
@@ -269,7 +271,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::GpgKeyGenerated(_)
         | Msg::CopyPublicKey
         | Msg::PublicKeyExported(_)
-        | Msg::SetTheme(_) => prefs::handle(st, msg, now, &mut fx),
+        | Msg::SetTheme(_)
+        | Msg::SetToolbarLabels(_) => prefs::handle(st, msg, now, &mut fx),
 
         // command palette
         Msg::TogglePalette

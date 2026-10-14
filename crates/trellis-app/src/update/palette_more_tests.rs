@@ -1,0 +1,218 @@
+//! Headless tests for the palette's stash, undo, branch, refresh, terminal, tab, diff and
+//! toolbar commands: when each is offered, and that running it does what its button does.
+
+use super::palette_tests::repo_with_topic;
+use super::tests::{drive, git, scratch_repo, state};
+use super::update;
+use crate::effect::{Effect, LoadKind};
+use crate::msg::Msg;
+use crate::state::palette::{Entry, PaletteCommand as C, entries, shown};
+use crate::state::palette_commands::SHOW_REPO_FOLDER;
+use crate::state::{AppState, Modal};
+use std::time::Instant;
+use trellis_core::settings::DiffLayout;
+
+fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+    update(st, msg, Instant::now())
+}
+
+fn find(st: &AppState, label: &str) -> Option<Entry> {
+    entries(st).into_iter().find(|e| e.label == label)
+}
+
+fn has(st: &AppState, label: &str) -> bool {
+    find(st, label).is_some()
+}
+
+fn matches(st: &AppState, query: &str, label: &str) -> bool {
+    shown(st, query).iter().any(|s| s.entry.label == label)
+}
+
+fn open_palette(st: &mut AppState) {
+    run(st, Msg::TogglePalette);
+    assert!(st.palette.is_some());
+}
+
+#[test]
+fn stash_and_pop_entries() {
+    let (mut st, dir) = repo_with_topic("palette-more-stash");
+    assert!(has(&st, "Stash changes"));
+    assert!(!has(&st, "Pop stash"));
+
+    open_palette(&mut st);
+    drive(&mut st, Msg::RunPaletteCommand(C::Stash));
+    assert!(st.palette.is_none());
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!(snap.stashes.len(), 1);
+    assert!(!snap.is_dirty());
+    assert!(!has(&st, "Stash changes"));
+    let pop = find(&st, "Pop stash").expect("Pop stash");
+    assert!(pop.detail.as_deref().is_some_and(|d| d.contains("main")), "{:?}", pop.detail);
+
+    drive(&mut st, Msg::RunPaletteCommand(C::PopStash));
+    let snap = st.snap.as_ref().unwrap();
+    assert!(snap.stashes.is_empty());
+    assert!(snap.unstaged.iter().any(|f| f.path == "a.txt"));
+    assert!(has(&st, "Stash changes"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn undo_redo_entries_follow_history() {
+    let (mut st, dir) = repo_with_topic("palette-more-undo");
+    assert!(!has(&st, "Undo"));
+    assert!(!has(&st, "Redo"));
+
+    drive(&mut st, Msg::RunPaletteCommand(C::Checkout("topic".into())));
+    let undo = find(&st, "Undo").expect("Undo");
+    assert_eq!(undo.detail.as_deref(), Some("checkout of topic"));
+    assert_eq!(undo.shortcut, Some("Ctrl+Z"));
+
+    drive(&mut st, Msg::RunPaletteCommand(C::Undo));
+    assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("main"));
+    let redo = find(&st, "Redo").expect("Redo");
+    assert_eq!(redo.shortcut, Some("Ctrl+Y"));
+
+    drive(&mut st, Msg::RunPaletteCommand(C::Redo));
+    assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("topic"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn rename_branch_entry() {
+    let (mut st, dir) = repo_with_topic("palette-more-rename");
+    assert!(has(&st, "Rename branch main…"));
+    open_palette(&mut st);
+    run(&mut st, Msg::RunPaletteCommand(C::RenameBranch("main".into())));
+    assert!(st.palette.is_none());
+    assert!(matches!(&st.modal, Some(Modal::RenameBranch { old, name }) if old == "main" && name == "main"));
+
+    st.modal = None;
+    git(&dir, &["checkout", "-q", "--detach"]);
+    drive(&mut st, Msg::Refresh);
+    assert!(st.snap.as_ref().unwrap().head_branch.is_none());
+    assert!(!entries(&st).iter().any(|e| e.label.starts_with("Rename branch")));
+
+    assert!(!entries(&state()).iter().any(|e| e.label.starts_with("Rename branch")));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn refresh_entry() {
+    let (mut st, dir) = repo_with_topic("palette-more-refresh");
+    assert_eq!(find(&st, "Refresh").expect("Refresh").shortcut, Some("F5"));
+    open_palette(&mut st);
+    let fx = run(&mut st, Msg::RunPaletteCommand(C::Refresh));
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
+    assert!(st.palette.is_none());
+
+    assert!(!has(&state(), "Refresh"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn terminal_and_file_manager_entries() {
+    let (mut st, dir) = repo_with_topic("palette-more-terminal");
+    let workdir = st.snap.as_ref().unwrap().workdir.clone();
+    assert!(has(&st, "Open in terminal"));
+    assert!(has(&st, SHOW_REPO_FOLDER));
+
+    let fx = run(&mut st, Msg::RunPaletteCommand(C::OpenTerminal));
+    assert!(matches!(&fx[..], [Effect::OpenTerminal(d)] if *d == workdir), "{fx:?}");
+    let fx = run(&mut st, Msg::RunPaletteCommand(C::ShowInFileManager));
+    assert!(matches!(&fx[..], [Effect::OpenFolder(d)] if *d == workdir), "{fx:?}");
+
+    let empty = state();
+    assert!(!has(&empty, "Open in terminal"));
+    assert!(!has(&empty, SHOW_REPO_FOLDER));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn tab_entries() {
+    let mut st = state();
+    assert_eq!(find(&st, "New tab").expect("New tab").shortcut, Some("Ctrl+T"));
+    assert!(!has(&st, "Reopen closed tab"));
+    open_palette(&mut st);
+    run(&mut st, Msg::RunPaletteCommand(C::NewTab));
+    assert!(st.palette.is_none());
+    assert_eq!(st.tabs.len(), 2);
+
+    let mut st = state();
+    st.closed_tabs = vec!["C:/work/old-repo".into()];
+    let reopen = find(&st, "Reopen closed tab").expect("Reopen closed tab");
+    assert_eq!(reopen.detail.as_deref(), Some("old-repo"));
+    assert_eq!(reopen.shortcut, Some("Ctrl+Shift+T"));
+
+    let dir = scratch_repo("palette-more-reopen");
+    st.closed_tabs = vec![dir.clone()];
+    drive(&mut st, Msg::RunPaletteCommand(C::ReopenClosedTab));
+    assert!(st.closed_tabs.is_empty());
+    assert!(st.snap.as_ref().is_some_and(|s| s.workdir == st.workdir().unwrap()));
+    assert!(st.tabs.iter().any(|t| t.is(&dir)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn diff_toggles_name_the_next_state() {
+    let (mut st, dir) = repo_with_topic("palette-more-diff");
+    assert_eq!(st.settings.diff_layout, DiffLayout::Inline);
+    assert!(!st.settings.diff_ignore_whitespace);
+    assert!(has(&st, "Use split diff layout"));
+    assert!(has(&st, "Ignore whitespace changes"));
+
+    let fx = run(&mut st, Msg::RunPaletteCommand(C::DiffLayout(DiffLayout::Split)));
+    assert_eq!(st.settings.diff_layout, DiffLayout::Split);
+    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(has(&st, "Use inline diff layout"));
+    assert!(!has(&st, "Use split diff layout"));
+
+    run(&mut st, Msg::RunPaletteCommand(C::IgnoreWhitespace(true)));
+    assert!(st.settings.diff_ignore_whitespace);
+    assert!(has(&st, "Show whitespace changes"));
+    assert!(!has(&st, "Ignore whitespace changes"));
+
+    let empty = state();
+    for label in ["Use split diff layout", "Use inline diff layout", "Ignore whitespace changes", "Show whitespace changes"] {
+        assert!(!has(&empty, label), "{label}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn toolbar_labels_toggle_saves_once() {
+    let mut st = state();
+    assert!(st.settings.toolbar_labels);
+    assert!(has(&st, "Hide toolbar labels"));
+    open_palette(&mut st);
+    let fx = run(&mut st, Msg::RunPaletteCommand(C::ToolbarLabels(false)));
+    assert!(!st.settings.toolbar_labels);
+    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if !s.toolbar_labels), "{fx:?}");
+    assert!(st.palette.is_none());
+    // Nothing left for the per-frame settings check to save.
+    assert!(run(&mut st, Msg::SettingsEdited).is_empty());
+    assert!(has(&st, "Show toolbar labels"));
+    assert!(!has(&st, "Hide toolbar labels"));
+    assert!(run(&mut st, Msg::SetToolbarLabels(false)).is_empty());
+}
+
+#[test]
+fn keywords_match_synonyms() {
+    let (mut st, dir) = repo_with_topic("palette-more-keywords");
+    // A stash, then a dirty tree again.
+    drive(&mut st, Msg::git("Stash", &["stash", "push", "-u"]));
+    std::fs::write(dir.join("b.txt"), "new\n").unwrap();
+    drive(&mut st, Msg::Refresh);
+    let snap = st.snap.as_ref().unwrap();
+    assert!(!snap.stashes.is_empty() && snap.is_dirty());
+
+    assert!(matches(&st, "shelve", "Stash changes"));
+    assert!(matches(&st, "unstash", "Pop stash"));
+    assert!(matches(&st, "console", "Open in terminal"));
+    assert!(matches(&st, "finder", SHOW_REPO_FOLDER));
+    assert!(matches(&st, "reload", "Refresh"));
+    assert!(matches(&st, "side by side", "Use split diff layout"));
+    assert!(matches(&st, "indentation", "Ignore whitespace changes"));
+    assert!(matches(&st, "captions", "Hide toolbar labels"));
+    let _ = std::fs::remove_dir_all(&dir);
+}

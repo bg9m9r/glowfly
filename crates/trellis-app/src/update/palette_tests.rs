@@ -6,6 +6,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::palette::{PaletteCommand, shown};
+use crate::state::palette_commands::SHOW_REPO_FOLDER;
 use crate::state::{AppState, Modal, PrefPage, PrefsState, Selection, Tab};
 use std::time::Instant;
 use trellis_core::repo::DiffTarget;
@@ -69,13 +70,16 @@ fn toggle_ignored_under_dialogs() {
 fn entries_without_repo() {
     let mut st = state();
     st.settings.theme = ThemeChoice::Dark;
-    assert_eq!(labels(&st, ""), ["Open repository…", "Open Preferences", "Theme: Dark", "Theme: Light", "Theme: Follow system"]);
+    assert_eq!(
+        labels(&st, ""),
+        ["Open repository…", "New tab", "Open Preferences", "Hide toolbar labels", "Theme: Dark", "Theme: Light", "Theme: Follow system"]
+    );
     let list = shown(&st, "");
-    assert_eq!(list[2].entry.detail.as_deref(), Some("current"));
-    assert!(list[3].entry.detail.is_none() && list[4].entry.detail.is_none());
+    assert_eq!(list[4].entry.detail.as_deref(), Some("current"));
+    assert!(list[5].entry.detail.is_none() && list[6].entry.detail.is_none());
 
     st.settings.theme = ThemeChoice::System;
-    assert_eq!(shown(&st, "")[4].entry.detail.as_deref(), Some("current"));
+    assert_eq!(shown(&st, "")[6].entry.detail.as_deref(), Some("current"));
 
     st.tabs.push(Tab::empty());
     assert!(has(&st, "Close tab"));
@@ -108,10 +112,8 @@ fn entries_with_repo() {
     st.recent = vec![dir.clone(), "C:/elsewhere/other-repo".into()];
     let all = labels(&st, "");
     assert!(all.contains(&"Open other-repo".to_owned()));
-    assert_eq!(
-        all.iter().filter(|l| l.starts_with("Open ") && l.as_str() != "Open repository…" && l.as_str() != "Open Preferences").count(),
-        1
-    );
+    let not_recent = ["Open repository…", "Open Preferences", "Open in terminal", SHOW_REPO_FOLDER];
+    assert_eq!(all.iter().filter(|l| l.starts_with("Open ") && !not_recent.contains(&l.as_str())).count(), 1);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -119,10 +121,10 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 5);
+    assert_eq!(shown(&st, "").len(), 7);
     run(&mut st, Msg::PaletteMove(-1));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 4);
+    assert_eq!(p.selected, 6);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::PaletteMove(1));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
@@ -306,7 +308,9 @@ fn shortcut_hints() {
     assert_eq!(hint("Search commits"), Some("Ctrl+F"));
     assert_eq!(hint("Close tab"), Some("Ctrl+W"));
     assert_eq!(hint("Open Preferences"), Some("Ctrl+,"));
-    for label in ["Push", "Stage all files", "Create tag at HEAD…", "Checkout topic"] {
+    assert_eq!(hint("Refresh"), Some("F5"));
+    assert_eq!(hint("New tab"), Some("Ctrl+T"));
+    for label in ["Push", "Stash changes", "Stage all files", "Create tag at HEAD…", "Checkout topic"] {
         assert_eq!(hint(label), None, "{label}");
     }
     // F5 refreshes; it doesn't fetch.

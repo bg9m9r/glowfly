@@ -381,6 +381,8 @@ pub enum Msg {
     PickFile(FilePurpose),
     /// Switch the colour theme (saved in settings).
     SetTheme(ThemeChoice),
+    /// Show or hide the text under toolbar buttons (saved in settings).
+    SetToolbarLabels(bool),
 
     // ---- command palette
     TogglePalette,

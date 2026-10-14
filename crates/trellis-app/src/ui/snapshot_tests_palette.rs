@@ -1,7 +1,7 @@
 //! The command palette over the main window: the full list (with shortcut hints), a filtered
-//! list with matched characters highlighted, the tag commands, no matches, the file finder (its
-//! rows, loading and error states), and the keys and clicks it turns into messages. Shares the
-//! fixture repository and renderer with `snapshot_tests`.
+//! list with matched characters highlighted, the tag commands, the tab commands, no matches,
+//! the file finder (its rows, loading and error states), and the keys and clicks it turns into
+//! messages. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
@@ -44,6 +44,32 @@ fn palette_tags_and_hints() {
     h.get_by_label("Create annotated tag at HEAD…").click();
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true }))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn palette_more() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-more");
+    st.closed_tabs = vec!["C:/work/old-repo".into()];
+    st.palette = Some(Palette { query: "tab".into(), ..Default::default() });
+    let mut h = harness(st, true);
+    h.run();
+    h.snapshot("palette_more");
+    h.get_by_label("Reopen closed tab").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::ReopenClosedTab))));
+
+    h.state_mut().1.clear();
+    if let Some(p) = h.state_mut().0.palette.as_mut() {
+        p.query = "refresh".into();
+        p.selected = 0;
+    }
+    h.run();
+    assert!(h.query_by_label("Refresh").is_some());
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Refresh))));
     drop(h);
     remove_fixture(&dir);
 }

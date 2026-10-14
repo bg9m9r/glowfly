@@ -80,10 +80,10 @@ crates/
                           prompts waiting for the user; global, not parked with a tab),
                           diff_nav (next/previous change across files: the file list a
                           diff came from, where a step lands), commit (the commit draft, its
-                          readiness rules, button label and command line), palette (the
-                          command palette: open state, the commands available now, and its
-                          modes: the command list or a command's sub-list, such as tracked
-                          files, ranked per query), files (the
+                          readiness rules, button label and command line), palette (open
+                          state and modes: the command list or a command's sub-list, ranked
+                          per query), palette_commands (the commands available now: labels,
+                          hidden keywords, details and shortcut hints), files (the
                           New file and Rename file dialogs' path form)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process

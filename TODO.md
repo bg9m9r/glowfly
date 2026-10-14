@@ -337,7 +337,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Choose a local branch as the upstream in the Set upstream dialog
   - [ ] The same operations from the graph's BRANCH/TAG labels and the remote branch menu
     (e.g. fast-forward a local branch from its remote row)
-  - [ ] Rename a branch from a command palette or shortcut
+  - [x] Rename the checked-out branch from the command palette
+    - [ ] A shortcut, and any branch through a two-step palette entry
   - [ ] Delete local + remote when the branch isn't merged into HEAD (force), in one step
 - [x] **Hide / solo branches in the graph**
   Hide or show local and remote branches and solo one or more of them from the left panel's
@@ -401,24 +402,31 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 
 - [ ] **Command palette (fuzzy finder)**
   Exists: Ctrl+P / Ctrl+Shift+P opens a fuzzy-searched list (hidden keywords match synonyms):
-  fetch all, pull, push, stage/unstage all, create branch, tag or annotated tag (at HEAD or the
-  selected commit), search commits, open a repository or a recent one, close tab, Preferences,
+  fetch all, pull, push, stash and pop, stage/unstage all, undo/redo, create branch, tag or
+  annotated tag (at HEAD or the selected commit), rename the checked-out branch, search commits,
+  refresh, open in terminal and in the file manager, diff layout and whitespace toggles, open a
+  repository or a recent one, new and reopened tabs, close tab, Preferences, toolbar labels,
   theme, and checkout of local branches, and a file finder for file history. Entries whose
-  command also has a global key show it dimmed at the right (Ctrl+F, Ctrl+W, Ctrl+,).
+  command also has a global key show it dimmed at the right (Ctrl+F, Ctrl+W, F5, Ctrl+Z/Y,
+  Ctrl+T, Ctrl+Shift+T and Ctrl+,).
   - [x] File finder: pick any tracked file to open its history (blame waits for the blame gutter)
   - [x] Create tag and annotated tag
     - [ ] Check tag names live in the New tag dialog (ref-format rules, an existing tag)
     - [ ] Push the new tag to a remote right after creating it
   - [x] Shortcut hints next to entries (Ctrl+F, Ctrl+, Ctrl+W)
-    - [ ] A Refresh entry carrying the F5 hint
+    - [x] A Refresh entry carrying the F5 hint
     - [ ] Cmd-style labels on macOS for the hints and tooltips
   - [ ] Two-step entries: pick a command, then a sub-list with its own prompt (branches,
     themes, repositories)
   - [ ] Check out remote branches (creating a tracking branch) and tags
   - [ ] A toolbar button that opens the palette, with the shortcut in its tooltip
   - [ ] Rank recently run commands first
-  - [ ] More commands: stash and pop, rename branch, undo and redo, new tab and reopen closed
+  - [x] More commands: stash and pop, rename branch, undo and redo, new tab and reopen closed
     tab, diff layout and whitespace toggles, toolbar labels, open in terminal and file manager
+    - [ ] Syntax highlighting on/off (re-highlighting the open diff when flipped)
+    - [ ] Show the working directory changes (select the WIP row)
+    - [ ] Diff mode (whole file / hunks) toggle
+    - [ ] Apply, pop or drop a chosen stash through a stash sub-list, and stash with a message
   - [ ] Create, delete and edit files
   - [ ] PageUp/PageDown/Home/End in the list, and the selection following the mouse
 - [ ] **Keyboard shortcuts**

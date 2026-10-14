@@ -51,6 +51,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 fx.push(save_settings(st));
             }
         }
+        Msg::SetToolbarLabels(on) => {
+            if st.settings.toolbar_labels != on {
+                st.settings.toolbar_labels = on;
+                fx.push(save_settings(st));
+            }
+        }
         Msg::GitConfigLoaded(values) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.git = Some(values);

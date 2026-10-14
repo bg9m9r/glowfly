@@ -1,16 +1,13 @@
 //! The command palette (Ctrl+P): whether it is open, what is typed, which row is selected, and
-//! the commands it offers right now. App-wide, never parked with a tab. The view, `update` and
-//! the tests all build the list through `entries` and `shown`. Some commands open a second
-//! step (`Mode::Pick`): a list of items for that command, such as tracked files. Commands that
-//! also have a global key show it as a hint (`PaletteCommand::shortcut`).
+//! the commands it lists for the query. App-wide, never parked with a tab. The view, `update`
+//! and the tests all build the list through `entries` and `shown`; the commands themselves are
+//! in `palette_commands`. Some commands open a second step (`Mode::Pick`): a list of items for
+//! that command, such as tracked files.
 
-use super::{AppState, Selection};
-use std::path::{Path, PathBuf};
+pub use super::palette_commands::{Entry, PaletteCommand, entries};
+
+use super::AppState;
 use trellis_core::fuzzy;
-use trellis_core::settings::ThemeChoice;
-
-/// Recent repositories offered by the palette.
-const MAX_RECENT: usize = 10;
 
 #[derive(Default)]
 pub struct Palette {
@@ -196,143 +193,10 @@ impl Pick {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum PaletteCommand {
-    Fetch,
-    Pull,
-    Push,
-    StageAll,
-    UnstageAll,
-    CreateBranch,
-    /// Opens the New tag dialog at the selected commit or HEAD.
-    CreateTag {
-        annotated: bool,
-    },
-    SearchCommits,
-    OpenRepo,
-    CloseTab,
-    OpenPrefs,
-    Theme(ThemeChoice),
-    Checkout(String),
-    OpenRecent(PathBuf),
-    /// Enter the file finder; picking a file runs `OpenFileHistory`.
-    FileHistory,
-    OpenFileHistory(String),
-}
-
-impl PaletteCommand {
-    /// The sub-list this command opens instead of running at once.
-    pub fn pick_kind(&self) -> Option<PickKind> {
-        match self {
-            PaletteCommand::FileHistory => Some(PickKind::FileHistory),
-            _ => None,
-        }
-    }
-
-    /// The global binding in `ui/mod.rs` that does the same thing; keep the two in step.
-    pub fn shortcut(&self) -> Option<&'static str> {
-        match self {
-            PaletteCommand::SearchCommits => Some("Ctrl+F"),
-            PaletteCommand::CloseTab => Some("Ctrl+W"),
-            PaletteCommand::OpenPrefs => Some("Ctrl+,"),
-            _ => None,
-        }
-    }
-}
-
-pub struct Entry {
-    pub command: PaletteCommand,
-    pub label: String,
-    /// Dim text at the right of the row.
-    pub detail: Option<String>,
-    /// Hidden words that also match the entry.
-    pub keywords: &'static str,
-    /// The global key that does the same, drawn dim at the far right.
-    pub shortcut: Option<&'static str>,
-}
-
 /// An entry as listed for the current query, with the label's matched char indexes.
 pub struct Shown {
     pub entry: Entry,
     pub matched: Vec<usize>,
-}
-
-fn entry(command: PaletteCommand, label: impl Into<String>, keywords: &'static str) -> Entry {
-    let shortcut = command.shortcut();
-    Entry { command, label: label.into(), detail: None, keywords, shortcut }
-}
-
-/// What Create branch and Create tag start at: the selected commit's short sha, else HEAD.
-fn at_label(st: &AppState) -> String {
-    match &st.selection {
-        Selection::Commit(oid) => oid.to_string()[..7].to_owned(),
-        _ => "HEAD".to_owned(),
-    }
-}
-
-/// Every command available now, in the order shown for an empty query.
-pub fn entries(st: &AppState) -> Vec<Entry> {
-    use PaletteCommand as C;
-    let mut out = Vec::new();
-    if let Some(snap) = &st.snap {
-        if !snap.remote_urls.is_empty() {
-            out.push(entry(C::Fetch, "Fetch all remotes", "remote update download"));
-            out.push(entry(C::Pull, "Pull", "fast-forward merge update"));
-        }
-        if snap.head_branch.is_some() {
-            out.push(entry(C::Push, "Push", "upload publish"));
-        }
-        if !snap.unstaged.is_empty() {
-            out.push(entry(C::StageAll, "Stage all files", "add everything"));
-        }
-        if !snap.staged.is_empty() {
-            out.push(entry(C::UnstageAll, "Unstage all files", "reset everything"));
-        }
-        if snap.head_oid.is_some() {
-            let at = at_label(st);
-            out.push(entry(C::CreateBranch, format!("Create branch at {at}…"), "new branch"));
-            out.push(entry(C::CreateTag { annotated: false }, format!("Create tag at {at}…"), "new tag release version label"));
-            out.push(entry(
-                C::CreateTag { annotated: true },
-                format!("Create annotated tag at {at}…"),
-                "new tag release version message annotate",
-            ));
-        }
-        if !snap.commits.is_empty() && st.conflict.is_none() && st.history.is_none() && st.rebase.is_none() {
-            out.push(entry(C::SearchCommits, "Search commits", "find message author sha"));
-        }
-        if can_pick_file(st) {
-            out.push(entry(C::FileHistory, "File history…", "find open file path log"));
-        }
-    }
-    out.push(entry(C::OpenRepo, "Open repository…", "folder add"));
-    if st.snap.is_some() || st.tabs.len() > 1 {
-        out.push(entry(C::CloseTab, "Close tab", "close repository"));
-    }
-    out.push(entry(C::OpenPrefs, "Open Preferences", "settings options configure"));
-    for (choice, name) in [(ThemeChoice::Dark, "Dark"), (ThemeChoice::Light, "Light"), (ThemeChoice::System, "Follow system")] {
-        let mut e = entry(C::Theme(choice), format!("Theme: {name}"), "appearance colour color");
-        e.detail = (st.settings.theme == choice).then(|| "current".to_owned());
-        out.push(e);
-    }
-    if let Some(snap) = &st.snap {
-        for b in snap.locals.iter().filter(|b| !b.is_head) {
-            let mut e = entry(C::Checkout(b.name.clone()), format!("Checkout {}", b.name), "switch branch");
-            e.detail = b.upstream.clone();
-            out.push(e);
-        }
-    }
-    let active = st.workdir();
-    for path in st.recent.iter().take(MAX_RECENT) {
-        if active.as_deref().is_some_and(|w| same_folder(w, path)) {
-            continue;
-        }
-        let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string());
-        let mut e = entry(C::OpenRecent(path.clone()), format!("Open {name}"), "recent repository");
-        e.detail = Some(path.display().to_string());
-        out.push(e);
-    }
-    out
 }
 
 /// `entries` filtered and ranked for `query`.
@@ -363,15 +227,4 @@ pub fn row_count(st: &mut AppState) -> usize {
     let Some(Palette { mode: Mode::Pick(pick), .. }) = st.palette.as_mut() else { return 0 };
     pick.refresh(&query);
     pick.ranked().map_or(0, |r| r.hits.len())
-}
-
-/// Whether two paths name the same folder, compared by their text only (separators, trailing
-/// separators and, on Windows, case don't matter). Runs every frame, so it never touches disk.
-fn same_folder(a: &Path, b: &Path) -> bool {
-    if cfg!(windows) {
-        let norm = |p: &Path| p.components().map(|c| c.as_os_str().to_string_lossy().to_lowercase()).collect::<Vec<_>>();
-        norm(a) == norm(b)
-    } else {
-        a.components().eq(b.components())
-    }
 }
