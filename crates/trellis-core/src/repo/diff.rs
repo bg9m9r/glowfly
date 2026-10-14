@@ -2,9 +2,11 @@
 
 use super::*;
 use crate::error::{Error, Result};
+use crate::highlight::{self, OldText};
 use git2::{Delta, Diff, DiffOptions, Oid, Patch, Repository, Tree};
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::Arc;
 
 /// Lines added and removed, and files changed, for each commit (against its first parent).
 pub fn commit_stats(workdir: &Path, oids: &[Oid]) -> Vec<(Oid, usize, usize, usize)> {
@@ -156,13 +158,25 @@ const WHOLE_FILE_CONTEXT: u32 = 1 << 24;
 /// same edit script as the normal hunks (xdiff's context doesn't change which lines are
 /// changed), which is what lets `WholeFile::new` map each hunk onto it.
 pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<FileDiff> {
+    load(workdir, target, opts, false).map(|(d, _)| d)
+}
+
+/// `load_diff_with` plus the old file's text, for highlighting the hunks in context
+/// (`highlight::highlight_in_context`). The text is `None` for added, untracked or binary files,
+/// a whole-file load (its one hunk is the whole file), an old blob over
+/// `highlight::OLD_TEXT_MAX_BYTES`, or one that doesn't match the hunks.
+pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<(FileDiff, Option<Arc<OldText>>)> {
+    load(workdir, target, opts, true)
+}
+
+fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bool) -> Result<(FileDiff, Option<Arc<OldText>>)> {
     let repo = Repository::open(workdir)?;
     let path = target.path();
     let diff = target_diff(&repo, target, opts, None)?;
     let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
-        return Ok(out);
+        return Ok((out, None));
     };
     out.binary = patch.delta().flags().is_binary();
     for h in 0..patch.num_hunks() {
@@ -177,7 +191,23 @@ pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions
             out.whole = crate::whole_file::WholeFile::new(&out.hunks, whole).map(Box::new);
         }
     }
-    Ok(out)
+    // `patch` is still the first load's (the whole-file block's is scoped to it).
+    let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
+    Ok((out, old))
+}
+
+/// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the
+/// first parent or `from` for commits, at the old path for renames), checked against `hunks`.
+fn old_text(repo: &Repository, patch: &Patch<'_>, hunks: &[Hunk]) -> Option<Arc<OldText>> {
+    let id = patch.delta().old_file().id();
+    if id.is_zero() || hunks.is_empty() {
+        return None;
+    }
+    let blob = repo.find_blob(id).ok()?;
+    if blob.is_binary() || blob.size() > highlight::OLD_TEXT_MAX_BYTES {
+        return None;
+    }
+    OldText::new(blob.content(), hunks).map(Arc::new)
 }
 
 /// The diff behind `target`, with `context` lines around each change when set (and hunks

@@ -3,6 +3,7 @@
 
 use super::tests::{assert_covers, diff, hunk, kinds};
 use super::*;
+use crate::repo::Hunk;
 use std::cell::Cell;
 
 fn shape(d: &FileDiff) -> Vec<usize> {

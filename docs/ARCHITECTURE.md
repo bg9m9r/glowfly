@@ -57,7 +57,9 @@ crates/
                           so fold changes keep the view in place (anchor.rs)
     conflict_rows.rs      row layout of the conflict view (aligned ours/theirs panes, output)
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds:
-                          inline and background passes, reuse/carry in highlight/reuse.rs
+                          inline and background passes, hunks parsed in context from the
+                          old text (highlight/context.rs, parse.rs), reuse/carry in
+                          highlight/reuse.rs
     intraline.rs          word-level changes inside paired removed/added diff lines
     tabs.rs               tab stops for drawing diff text (lines keep raw tabs), with a byte
                           map so syntax spans and changed-word ranges follow the expansion

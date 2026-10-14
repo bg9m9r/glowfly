@@ -21,7 +21,9 @@ mod highlight;
 mod os;
 mod rebase;
 
+#[cfg(test)]
 pub(crate) use highlight::decorate;
+pub(crate) use highlight::decorate_in_context;
 
 /// Wakes the UI when a result arrives (so it can process the message promptly).
 pub trait Waker: Send + Sync + 'static {
@@ -160,16 +162,17 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
             Some(Msg::CompareLoaded { from, to, result: repo::compare(&workdir, from, to).map_err(err) })
         }
         Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file } => {
-            let result = repo::load_diff_with(&workdir, &target, repo::LoadDiffOptions { ignore_whitespace, whole_file })
-                .map(|mut d| {
-                    decorate(target.path(), &mut d, previous.as_ref());
+            let result = repo::load_diff_for_view(&workdir, &target, repo::LoadDiffOptions { ignore_whitespace, whole_file })
+                .map(|(mut d, old)| {
+                    decorate_in_context(target.path(), &mut d, previous.as_ref(), old.as_ref());
+                    let context = old.is_some();
                     let syntax = d.highlight.as_ref().map_or("plain", |h| h.syntax.as_str());
                     let marked = (0..d.hunks.len())
                         .map(|h| (0..d.hunks[h].lines.len()).filter(|&l| !d.intraline.line(h, l).is_empty()).count())
                         .sum::<usize>();
                     let whole = d.whole.is_some();
                     let pending = d.highlight.as_ref().is_some_and(|h| h.is_pending());
-                    tracing::debug!(path = target.path(), syntax, pending, marked, ignore_whitespace, whole, "diff highlighted");
+                    tracing::debug!(path = target.path(), syntax, pending, context, marked, ignore_whitespace, whole, "diff highlighted");
                     d
                 })
                 .map_err(err);

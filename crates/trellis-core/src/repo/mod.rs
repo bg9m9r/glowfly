@@ -24,7 +24,7 @@ mod workfile_mv;
 mod workfile_rm;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
-pub use diff::{Comparison, commit_detail, commit_stats, compare, compare_files, load_diff, load_diff_with};
+pub use diff::{Comparison, commit_detail, commit_stats, compare, compare_files, load_diff, load_diff_for_view, load_diff_with};
 use diff::{head_tree, path_opts, workdir_opts};
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, stage_all, stage_file, unstage_paths};

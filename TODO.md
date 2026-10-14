@@ -127,9 +127,20 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [x] Highlight in a second background pass, so diffs over the size limit (2,000 lines,
       100 KB, or a line over 1,000 bytes) show plain at once and gain colors later, with no
       plain flash on reload
-    - [ ] Highlight from the whole old and new files instead of per-hunk fragments, so hunks
+    - [x] Highlight from the whole old and new files instead of per-hunk fragments, so hunks
       that start inside a block comment or multi-line string color correctly (with the
       whole-file view)
+      - [ ] In the whole-file view, derive the hunk spans from the whole-file highlight (or
+        load the old text too), so switching back to Hunks without a reload keeps in-context
+        colors
+      - [ ] Keep parse states per hunk across reloads (or checkpoint states by line), so
+        staging one hunk of a large file doesn't re-parse the whole prefix in the background
+      - [ ] Count the lines before a hunk twice when an earlier hunk leaves the two sides in
+        different states (the cost now assumes they are parsed once)
+      - [ ] Take the new side's unchanged lines from the new file instead of the old one when
+        whitespace is ignored (they can differ in whitespace only; context text inside hunks
+        then comes from the new side and doesn't match the old text, so such diffs fall back
+        to per-hunk colors)
     - [ ] More languages than syntect's defaults (TOML, TypeScript/TSX, PowerShell,
       Dockerfile, Kotlin, Swift) by bundling extra syntax definitions
     - [ ] Language overrides from `.gitattributes` (`linguist-language`) or a per-file picker

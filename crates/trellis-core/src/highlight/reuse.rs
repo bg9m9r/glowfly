@@ -23,6 +23,18 @@ impl Cost {
         cost
     }
 
+    /// Adds the unchanged lines before each hunk, parsed for an in-context highlight. They count
+    /// once: while both sides are in the same state (the usual case) a gap is parsed once. When a
+    /// hunk leaves the sides in different states, the later gaps are parsed twice, so the true
+    /// cost can reach about twice this.
+    pub(super) fn plus_gaps(mut self, gaps: &[&[String]]) -> Cost {
+        for l in gaps.iter().flat_map(|g| g.iter()).filter(|l| l.len() <= MAX_LINE_BYTES) {
+            self.lines += 1;
+            self.bytes += l.len();
+        }
+        self
+    }
+
     pub(super) fn within(&self, max_lines: usize, max_bytes: usize) -> bool {
         self.lines <= max_lines && self.bytes <= max_bytes
     }
@@ -60,7 +72,8 @@ impl<'a> Previous<'a> {
         prev
     }
 
-    /// The finished spans of a hunk with exactly these lines, if there was one.
+    /// The finished spans of a hunk with exactly these lines, if there was one. They also serve as
+    /// provisional spans while an in-context pass is pending.
     pub(super) fn exact(&self, hunk: &Hunk) -> Option<&'a Vec<Vec<Span>>> {
         self.exact.get(&hunk_key(hunk)).copied()
     }

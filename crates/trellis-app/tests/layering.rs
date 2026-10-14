@@ -21,6 +21,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "commit_detail",
             "load_diff",
             "load_diff_with",
+            "load_diff_for_view",
             "apply_hunk",
             "apply_lines",
             "stage_file",

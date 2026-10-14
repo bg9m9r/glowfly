@@ -14,7 +14,9 @@ fn pending(d: &FileDiff) -> bool {
 
 /// On a reload that brings back the same hunks: keeps the finished highlight on screen instead
 /// of a pending one (a background result can land after the reload was requested, while the
-/// diff it sent along as `previous` was still pending). Likewise for the whole file.
+/// diff it sent along as `previous` was still pending), if both were computed on the same basis
+/// (syntax and old text: per-hunk spans never stand in for in-context ones, nor spans from an
+/// older old text). Likewise for the whole file.
 pub(super) fn keep_finished(shown: Option<&(DiffTarget, FileDiff)>, target: &DiffTarget, new: &mut FileDiff) {
     let Some((_, old)) = shown.filter(|(t, _)| t == target) else { return };
     adopt(old, new);
@@ -27,7 +29,7 @@ fn adopt(old: &FileDiff, new: &mut FileDiff) {
     if let (Some(o), Some(n)) = (old.highlight.as_ref(), new.highlight.as_ref())
         && !o.is_pending()
         && n.is_pending()
-        && o.syntax == n.syntax
+        && o.same_basis(n)
         && old.hunks == new.hunks
     {
         new.highlight = Some(o.clone());
