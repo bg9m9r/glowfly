@@ -261,6 +261,9 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
                     st.detail = None;
                 }
             }
+            if matches!(st.selection, Selection::Commits(_)) {
+                super::selection::refreshed(st, &snap, fx);
+            }
         }
     }
     super::forge::detect(st, &snap);

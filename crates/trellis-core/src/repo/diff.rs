@@ -1,4 +1,4 @@
-//! Commit details, file diffs and per-commit line counts.
+//! Commit details, comparisons between two commits, file diffs and per-commit line counts.
 
 use super::*;
 use crate::error::{Error, Result};
@@ -40,6 +40,32 @@ fn commit_diff<'r>(repo: &'r Repository, oid: Oid, opts: Option<&mut DiffOptions
     Ok(diff)
 }
 
+/// The tree-to-tree diff from commit `from` to commit `to`, with renames detected.
+fn trees_diff<'r>(repo: &'r Repository, from: Oid, to: Oid, opts: Option<&mut DiffOptions>) -> Result<Diff<'r>> {
+    let from_tree = repo.find_commit(from)?.tree()?;
+    let to_tree = repo.find_commit(to)?.tree()?;
+    let mut diff = repo.diff_tree_to_tree(Some(&from_tree), Some(&to_tree), opts)?;
+    diff.find_similar(None)?;
+    Ok(diff)
+}
+
+/// One entry per delta, named by its new path (the old one for a deletion).
+fn file_entries(diff: &Diff) -> Vec<FileEntry> {
+    diff.deltas()
+        .map(|d| FileEntry {
+            path: d.new_file().path().or(d.old_file().path()).map(|p| p.to_string_lossy().into_owned()).unwrap_or_default(),
+            status: delta_char(d.status()),
+        })
+        .collect()
+}
+
+/// The files that differ from commit `from` to commit `to`: a file only in `to` is 'A', only in
+/// `from` is 'D', and a rename is 'R' under its new path. In libgit2 path order.
+pub fn compare_files(workdir: &Path, from: Oid, to: Oid) -> Result<Vec<FileEntry>> {
+    let repo = Repository::open(workdir)?;
+    Ok(file_entries(&trees_diff(&repo, from, to, None)?))
+}
+
 pub(super) fn path_opts(path: &str) -> DiffOptions {
     let mut o = DiffOptions::new();
     o.pathspec(path).disable_pathspec_match(true);
@@ -60,13 +86,7 @@ pub(super) fn workdir_opts(path: &str) -> DiffOptions {
 pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     let repo = Repository::open(workdir)?;
     let c = repo.find_commit(oid)?;
-    let files = commit_diff(&repo, oid, None)?
-        .deltas()
-        .map(|d| FileEntry {
-            path: d.new_file().path().or(d.old_file().path()).map(|p| p.to_string_lossy().into_owned()).unwrap_or_default(),
-            status: delta_char(d.status()),
-        })
-        .collect();
+    let files = file_entries(&commit_diff(&repo, oid, None)?);
     Ok(CommitDetail {
         oid,
         message: c.message().unwrap_or_default().trim_end().to_owned(),
@@ -94,6 +114,7 @@ pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions
     let path = target.path();
     let diff = match target {
         DiffTarget::Commit(oid, _) => commit_diff(&repo, *oid, Some(whitespace_opts(&mut DiffOptions::new(), opts)))?,
+        DiffTarget::Between(from, to, _) => trees_diff(&repo, *from, *to, Some(whitespace_opts(&mut DiffOptions::new(), opts)))?,
         DiffTarget::Unstaged(p) => repo.diff_index_to_workdir(None, Some(whitespace_opts(&mut workdir_opts(p), opts)))?,
         DiffTarget::Staged(p) => {
             repo.diff_tree_to_index(head_tree(&repo).as_ref(), None, Some(whitespace_opts(&mut path_opts(p), opts)))?

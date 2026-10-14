@@ -11,10 +11,13 @@ mod ops;
 mod prefs;
 mod publish;
 mod repo;
+mod selection;
 mod tabs;
 mod undo;
 mod watch;
 
+#[cfg(test)]
+mod cherry_pick_tests;
 #[cfg(test)]
 mod conflict_tests;
 #[cfg(test)]
@@ -25,6 +28,8 @@ mod history_tests;
 mod lines_tests;
 #[cfg(test)]
 mod publish_tests;
+#[cfg(test)]
+mod selection_tests;
 #[cfg(test)]
 mod tabs_tests;
 #[cfg(test)]
@@ -68,6 +73,9 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::JumpToChange(_)
         | Msg::SelectDiffLine { .. }
         | Msg::ClearLineSelection => diff::handle(st, msg, &mut fx),
+        Msg::ToggleCommit(_) | Msg::SelectCommitRange(_) | Msg::CollapseSelection | Msg::CherryPick(_) | Msg::CompareLoaded { .. } => {
+            selection::handle(st, msg, &mut fx)
+        }
         Msg::WantAvatars(_) | Msg::AvatarsLoaded(_) => avatars::handle(st, msg, &mut fx),
 
         // conflicts

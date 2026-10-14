@@ -210,9 +210,24 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Rebase onto a commit, and branch context menus on the graph's ref labels
   - [ ] History editing from the graph: reword, squash with parent, or drop commits from the
     context menu (several at once needs multi-select)
-- [ ] **Multi-select commits**
-  Ctrl/Shift-click in the graph; diff between two commits or between a commit and the WIP;
-  cherry-pick several at once.
+- [x] **Multi-select commits**
+  Ctrl-click toggles a commit and Shift-click selects a range of graph rows; Esc returns to one
+  commit. The details panel lists the selection; with exactly two commits it lists the files that
+  differ between them and opens their diff. Cherry-pick the selection (oldest first) and copy
+  their SHAs from the panel or the context menu.
+  - [ ] Compare a selected commit with the working directory (including Ctrl-clicking the WIP
+    row into a selection)
+  - [ ] Combined diff of a contiguous range of three or more commits (the oldest's parent to the
+    newest), explaining when the selection isn't contiguous
+  - [ ] Extend the selection from the keyboard: Shift+Up/Down and Ctrl+A
+  - [ ] Swap the compare direction (newer to older) in the two-commit view
+  - [ ] Revert several commits; squash, drop, move or reword several (interactive rebase);
+    create a patch from several commits
+  - [ ] When a multi-commit cherry-pick stops on a conflict, select the WIP row, and add Skip
+    commit (`cherry-pick --skip`) to the cherry-pick banner
+  - [ ] Cherry-pick merge commits (choose the mainline parent with `-m`)
+  - [ ] Undo and redo for cherry-picks (one commit or several)
+  - [ ] Highlight the sidebar branches whose tips are in a multi-selection
 - [x] **Live working-tree updates**
   The active tab's repository is watched with the `notify` crate (Preferences > General, on by
   default): outside edits re-read the status and ref or HEAD changes reload everything, within

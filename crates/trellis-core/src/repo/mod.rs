@@ -16,7 +16,7 @@ mod load;
 mod resolve;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
-pub use diff::{commit_detail, commit_stats, load_diff, load_diff_with};
+pub use diff::{commit_detail, commit_stats, compare_files, load_diff, load_diff_with};
 use diff::{head_tree, path_opts, workdir_opts};
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, stage_all, stage_file, unstage_paths};
@@ -63,7 +63,7 @@ pub struct BranchInfo {
     pub behind: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct FileEntry {
     pub path: String,
     /// M, A, D, R, T, ? (untracked) or ! (conflicted: see `load_conflict`).
@@ -147,13 +147,21 @@ pub enum DiffTarget {
     Commit(Oid, String),
     Unstaged(String),
     Staged(String),
+    /// `path` as it differs from commit `.0` (older) to commit `.1` (newer), tree to tree with
+    /// renames detected.
+    Between(Oid, Oid, String),
 }
 
 impl DiffTarget {
     pub fn path(&self) -> &str {
         match self {
-            DiffTarget::Commit(_, p) | DiffTarget::Unstaged(p) | DiffTarget::Staged(p) => p,
+            DiffTarget::Commit(_, p) | DiffTarget::Unstaged(p) | DiffTarget::Staged(p) | DiffTarget::Between(_, _, p) => p,
         }
+    }
+
+    /// A diff of the working tree or index. Only these targets support hunk and line operations.
+    pub fn is_working_tree(&self) -> bool {
+        matches!(self, DiffTarget::Unstaged(_) | DiffTarget::Staged(_))
     }
 }
 
@@ -216,6 +224,8 @@ impl LoadOptions {
     }
 }
 
+#[cfg(test)]
+mod compare_tests;
 #[cfg(test)]
 mod conflict_tests;
 #[cfg(test)]

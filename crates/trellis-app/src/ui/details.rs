@@ -8,6 +8,7 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, vec2};
+use git2::Oid;
 use trellis_core::repo::{DiffTarget, FileEntry};
 use trellis_core::undo::DISCARD_STASH_MESSAGE;
 
@@ -22,6 +23,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
             match st.selection {
                 Selection::Wip => wip_panel(ui, st, cache, msgs),
                 Selection::Commit(_) => commit_panel(ui, st, cache, msgs),
+                Selection::Commits(_) => super::details_multi::panel(ui, st, msgs),
                 Selection::None => {
                     ui.label(RichText::new("Select a commit to see its details.").color(color::weak()));
                     if st.snap.as_ref().is_some_and(|s| s.is_dirty()) {
@@ -177,19 +179,31 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     ui.label(RichText::new(format!("{n} changed file{}", if n == 1 { "" } else { "s" })).strong().color(color::text()));
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         for f in &d.files {
-            let target = DiffTarget::Commit(d.oid, f.path.clone());
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
-                let r = ui.selectable_label(open == Some(&target), &f.path);
-                if r.clicked() {
-                    msgs.push(Msg::OpenDiff(target));
-                }
-                r.context_menu(|ui| {
-                    menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: Some(d.oid) });
-                    menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
-                });
-            });
+            changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, msgs);
         }
+    });
+}
+
+/// A file changed by a commit (or between two): its status and path, which opens `target`.
+/// Its menu opens the file's history as seen from `history_at`.
+pub(super) fn changed_file_row(
+    ui: &mut egui::Ui,
+    f: &FileEntry,
+    target: DiffTarget,
+    open: Option<&DiffTarget>,
+    history_at: Oid,
+    msgs: &mut Vec<Msg>,
+) {
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
+        let r = ui.selectable_label(open == Some(&target), &f.path);
+        if r.clicked() {
+            msgs.push(Msg::OpenDiff(target));
+        }
+        r.context_menu(|ui| {
+            menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: Some(history_at) });
+            menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
+        });
     });
 }
 

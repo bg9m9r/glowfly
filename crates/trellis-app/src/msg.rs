@@ -39,6 +39,14 @@ pub enum Msg {
     Tick(Instant),
     SelectWip,
     SelectCommit(Oid),
+    /// Ctrl/Cmd-click on a graph row: add or remove the commit from the selection.
+    ToggleCommit(Oid),
+    /// Shift-click on a graph row: select every row from the anchor to this commit.
+    SelectCommitRange(Oid),
+    /// Esc: back to the one commit the multi-selection started from.
+    CollapseSelection,
+    /// Cherry-pick these commits onto HEAD, oldest first (the order is decided in update).
+    CherryPick(Vec<Oid>),
     JumpTo(Oid),
     OpenDiff(DiffTarget),
     CloseDiff,
@@ -254,6 +262,12 @@ pub enum Msg {
     DetailLoaded {
         oid: Oid,
         result: Result<CommitDetail, String>,
+    },
+    /// The files that differ from commit `from` (older) to `to` (newer).
+    CompareLoaded {
+        from: Oid,
+        to: Oid,
+        result: Result<Vec<FileEntry>, String>,
     },
     DiffLoaded {
         target: DiffTarget,

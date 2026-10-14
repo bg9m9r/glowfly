@@ -65,6 +65,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::LoadRepo { .. } => "load-repo",
         Effect::LoadStatus { .. } => "load-status",
         Effect::LoadDetail { .. } => "load-detail",
+        Effect::LoadCompare { .. } => "load-compare",
         Effect::LoadDiff { .. } => "load-diff",
         Effect::LoadConflict { .. } => "load-conflict",
         Effect::LoadFileHistory { .. } => "file-history",
@@ -123,6 +124,9 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             Some(Msg::StatusLoaded { generation, result: repo::status_at(&workdir).map_err(err) })
         }
         Effect::LoadDetail { workdir, oid } => Some(Msg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }),
+        Effect::LoadCompare { workdir, from, to } => {
+            Some(Msg::CompareLoaded { from, to, result: repo::compare_files(&workdir, from, to).map_err(err) })
+        }
         Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace } => {
             let result = repo::load_diff_with(&workdir, &target, repo::LoadDiffOptions { ignore_whitespace })
                 .map(|mut d| {

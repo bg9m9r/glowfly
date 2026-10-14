@@ -7,6 +7,7 @@ pub mod history;
 pub mod lines;
 pub mod prefs;
 pub mod publish;
+pub mod selection;
 pub mod tabs;
 pub mod undo;
 pub mod watch;
@@ -30,12 +31,25 @@ pub const TOAST_LIFETIME: Duration = Duration::from_secs(5);
 pub const WHITESPACE_BLOCKS_HUNK_OPS: &str =
     "Turn off Ignore whitespace to stage, unstage or discard hunks and lines. The hidden whitespace changes are part of each hunk.";
 
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub enum Selection {
     #[default]
     None,
     Wip,
     Commit(Oid),
+    /// Two or more commits (Ctrl- or Shift-click in the graph).
+    Commits(selection::MultiSelection),
+}
+
+impl Selection {
+    /// Whether commit `oid` is selected, alone or as part of a multi-selection.
+    pub fn includes(&self, oid: Oid) -> bool {
+        match self {
+            Selection::Commit(o) => *o == oid,
+            Selection::Commits(m) => m.contains(oid),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Default)]

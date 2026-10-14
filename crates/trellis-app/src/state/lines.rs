@@ -50,10 +50,11 @@ impl LineSelection {
         *self = Self::default();
     }
 
-    /// Applies a click on line `line` of hunk `hunk` in `diff`. Commit diffs can't be selected;
-    /// a plain click on any other line clears the selection, Shift or Ctrl on one does nothing.
+    /// Applies a click on line `line` of hunk `hunk` in `diff`. Only working-tree diffs can be
+    /// selected; a plain click on any other line clears the selection, Shift or Ctrl on one does
+    /// nothing.
     pub fn click(&mut self, target: &DiffTarget, diff: &FileDiff, hunk: usize, line: usize, how: LineClick) {
-        if matches!(target, DiffTarget::Commit(..)) {
+        if !target.is_working_tree() {
             return;
         }
         let Some(h) = diff.hunks.get(hunk) else { return };

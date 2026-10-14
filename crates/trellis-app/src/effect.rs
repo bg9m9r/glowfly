@@ -119,6 +119,12 @@ pub enum Effect {
         workdir: PathBuf,
         oid: Oid,
     },
+    /// The files that differ between two commits (older `from`, newer `to`).
+    LoadCompare {
+        workdir: PathBuf,
+        from: Oid,
+        to: Oid,
+    },
     LoadDiff {
         workdir: PathBuf,
         target: DiffTarget,
@@ -260,6 +266,7 @@ impl Effect {
         match self {
             Effect::LoadStatus { workdir, .. }
             | Effect::LoadDetail { workdir, .. }
+            | Effect::LoadCompare { workdir, .. }
             | Effect::LoadDiff { workdir, .. }
             | Effect::LoadConflict { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }

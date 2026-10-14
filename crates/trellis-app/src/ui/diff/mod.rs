@@ -71,7 +71,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         }
         // Highlighting always comes with the diff; the setting only decides whether to paint it.
         let hl = diff.highlight.as_ref().filter(|_| colored);
-        let selectable = !matches!(target, DiffTarget::Commit(..)) && blocked.is_none();
+        let selectable = target.is_working_tree() && blocked.is_none();
         let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines), blocked };
         match layout {
             DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
@@ -93,6 +93,7 @@ fn header_bar(ui: &mut Ui, target: &DiffTarget, layout: Option<DiffLayout>, igno
             DiffTarget::Commit(o, _) => format!("commit {}", short(*o)),
             DiffTarget::Unstaged(_) => "unstaged".into(),
             DiffTarget::Staged(_) => "staged".into(),
+            DiffTarget::Between(a, b, _) => format!("{}..{}", short(*a), short(*b)),
         };
         ui.label(RichText::new(target.path()).strong().size(15.0).color(color::text()));
         ui.label(RichText::new(kind).color(color::weak()));
@@ -111,7 +112,7 @@ fn header_bar(ui: &mut Ui, target: &DiffTarget, layout: Option<DiffLayout>, igno
                         msgs.push(Msg::UnstageFile(p.clone()));
                     }
                 }
-                DiffTarget::Commit(..) => {}
+                DiffTarget::Commit(..) | DiffTarget::Between(..) => {}
             }
             if let Some(layout) = layout {
                 ui.add_space(10.0);
@@ -167,7 +168,7 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     let ops: &[HunkOp] = match v.target {
         DiffTarget::Unstaged(_) => &[HunkOp::Discard, HunkOp::Stage],
         DiffTarget::Staged(_) => &[HunkOp::Unstage],
-        DiffTarget::Commit(..) => &[],
+        DiffTarget::Commit(..) | DiffTarget::Between(..) => &[],
     };
     let small = TextStyle::Small.resolve(ui.style());
     let mut x = ui.clip_rect().right() - 8.0;
@@ -284,7 +285,7 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             return;
         }
         let hl = diff.highlight.as_ref().filter(|_| colored);
-        let selectable = !matches!(target, DiffTarget::Commit(..));
+        let selectable = target.is_working_tree();
         let view = DiffView { target, diff, hl, hunk_gen, sel: selectable.then_some(&st.view.diff_lines), blocked: None };
         match layout {
             DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),

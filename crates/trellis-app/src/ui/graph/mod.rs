@@ -2,12 +2,13 @@
 //! date), avatars, ghost refs, and branch highlighting.
 
 mod paint;
+mod select;
 
 pub use paint::draw_avatar;
 
 use super::UiCache;
 use super::common::lane_color;
-use super::menus::commit_menu;
+use super::menus::{commit_menu, multi_commit_menu};
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
@@ -66,35 +67,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             return;
         }
 
-        // Keyboard navigation through history.
-        let typing = ui.ctx().memory(|m| m.focused().is_some());
-        if !typing {
-            let step = ui.input(|i| {
-                if i.key_pressed(Key::ArrowDown) {
-                    1i64
-                } else if i.key_pressed(Key::ArrowUp) {
-                    -1
-                } else {
-                    0
-                }
-            });
-            if step != 0 {
-                let current = match st.selection {
-                    Selection::Wip => Some(0),
-                    Selection::Commit(o) => snap.row_of.get(&o).map(|r| r + has_wip as usize),
-                    Selection::None => None,
-                };
-                let next = current.map_or(0, |c| (c as i64 + step).clamp(0, total as i64 - 1) as usize);
-                msgs.push(if has_wip && next == 0 { Msg::SelectWip } else { Msg::SelectCommit(snap.commits[next - has_wip as usize].oid) });
-                let (offset, height) = st.view.graph_scroll;
-                let top = next as f32 * ROW_H;
-                if top < offset {
-                    st.view.scroll_offset = Some(top);
-                } else if top + ROW_H > offset + height {
-                    st.view.scroll_offset = Some(top + ROW_H - height);
-                }
-            }
-        }
+        select::keyboard_nav(ui, &st.selection, snap, &mut st.view, total, has_wip, msgs);
 
         // Column header.
         let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::hover());
@@ -166,7 +139,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         } else if let Some(off) = st.view.scroll_offset.take() {
             area = area.vertical_scroll_offset(off);
         }
-        let selection = st.selection;
+        let selection = &st.selection;
         let settings = &st.settings;
         let now = st.view.now;
         let offset = st.view.utc_offset;
@@ -183,9 +156,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let is_wip = has_wip && row == 0;
                 let commit = if is_wip { None } else { Some(&snap.commits[row - has_wip as usize]) };
                 let g = if is_wip { snap.graph.wip.as_ref().unwrap() } else { &snap.graph.rows[row - has_wip as usize] };
-                let selected = match (&selection, commit) {
+                let selected = match (selection, commit) {
                     (Selection::Wip, None) => true,
-                    (Selection::Commit(o), Some(c)) => *o == c.oid,
+                    (s, Some(c)) => s.includes(c.oid),
                     _ => false,
                 };
                 let hovered = resp.hovered();
@@ -362,10 +335,18 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     _ => resp,
                 };
                 if resp.clicked() {
+                    let mods = ui.input(|i| i.modifiers);
                     let on_ghost = ghost_rect.zip(pointer).is_some_and(|(r, p)| r.contains(p));
-                    msgs.push(if on_ghost { Msg::NewBranch { start: None, name: String::new() } } else { Msg::SelectCommit(c.oid) });
+                    msgs.push(if on_ghost && mods.is_none() {
+                        Msg::NewBranch { start: None, name: String::new() }
+                    } else {
+                        select::row_click(c.oid, mods)
+                    });
                 }
-                resp.context_menu(|ui| commit_menu(ui, c.oid, &c.summary, msgs));
+                resp.context_menu(|ui| match selection {
+                    Selection::Commits(m) if m.contains(c.oid) => multi_commit_menu(ui, m, msgs),
+                    _ => commit_menu(ui, c.oid, &c.summary, msgs),
+                });
             }
         });
         st.view.graph_scroll = (out.state.offset.y, out.inner_rect.height());

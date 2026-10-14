@@ -1,9 +1,11 @@
 //! Right-click menus for commits and branches.
 
 use super::common::{menu_item, short};
+use super::theme::color;
 use crate::msg::Msg;
 use crate::state::ForgeState;
-use eframe::egui;
+use crate::state::selection::MultiSelection;
+use eframe::egui::{self, RichText};
 use git2::Oid;
 use trellis_core::repo::BranchInfo;
 
@@ -34,6 +36,39 @@ pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Ms
     ui.separator();
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(sha.clone()));
     menu_item(msgs, ui, "Copy commit message", Msg::Copy(summary.to_owned()));
+}
+
+/// The menu for a row of a multi-selection: actions on all the selected commits.
+pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) {
+    ui.label(RichText::new(format!("{} commits selected", m.len())).color(color::weak()));
+    ui.separator();
+    if cherry_pick_button(ui, m, msgs) {
+        ui.close_menu();
+    }
+    menu_item(msgs, ui, "Copy SHAs", copy_shas(m));
+}
+
+/// "Cherry-pick N commits", disabled with the reason on hover when blocked. Returns whether it
+/// was clicked.
+pub(super) fn cherry_pick_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
+    let button = egui::Button::new(format!("Cherry-pick {} commits", m.len()));
+    let mut r = ui.add_enabled(m.pick_blocked.is_none(), button);
+    if let Some(why) = m.pick_blocked {
+        r = r.on_disabled_hover_text(why);
+    }
+    let clicked = r.clicked();
+    if clicked {
+        msgs.push(Msg::CherryPick(m.oids.clone()));
+    }
+    clicked
+}
+
+/// Copies the selected commits' full SHAs, one per line, newest first.
+pub(super) fn copy_shas(m: &MultiSelection) -> Msg {
+    Msg::Copy(m.oids.iter().map(|o| o.to_string()).collect::<Vec<_>>().join(
+        "
+",
+    ))
 }
 
 pub fn local_branch_menu(ui: &mut egui::Ui, b: &BranchInfo, current: &str, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {

@@ -73,7 +73,7 @@ const RAW_IO: &[&str] = &[
     ".save()",
 ];
 
-const EXEMPT: &[&str] = &["mod.rs", "snapshot_tests.rs", "snapshot_tests_diff.rs"];
+const EXEMPT: &[&str] = &["mod.rs", "snapshot_tests.rs", "snapshot_tests_diff.rs", "snapshot_tests_select.rs"];
 
 /// Problems in one file's source, as "what: line".
 fn violations(src: &str) -> Vec<String> {

@@ -37,7 +37,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let filter = st.view.ref_filter.to_lowercase();
     let shown = |name: &str| filter.is_empty() || name.to_lowercase().contains(&filter);
     let current = snap.head_branch.clone().unwrap_or_default();
-    let sel = st.selection;
+    let sel = st.selection.clone();
     let fs = st.forge.as_ref();
     let sections = &mut st.view.sections;
     let hover_next = &mut st.view.hover_tip_next;
@@ -104,7 +104,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let title = if f.pr_noun() == "merge request" { "MERGE REQUESTS" } else { "PULL REQUESTS" };
         widgets::section_header(ui, title, Some(f.prs.len()), &mut sections.prs);
         if sections.prs {
-            pull_requests(ui, f, sel, &shown, msgs);
+            pull_requests(ui, f, &sel, &shown, msgs);
         }
     }
     if let Some(f) = fs.filter(|f| f.tracker.is_some()) {
@@ -164,7 +164,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     ui.add_space(12.0);
 }
 
-fn pull_requests(ui: &mut egui::Ui, f: &ForgeState, sel: Selection, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
+fn pull_requests(ui: &mut egui::Ui, f: &ForgeState, sel: &Selection, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
     if let Status::Error(e) = &f.host_status {
         forge_error_rows(ui, e, msgs);
     } else if f.prs.is_empty() {
@@ -175,7 +175,7 @@ fn pull_requests(ui: &mut egui::Ui, f: &ForgeState, sel: Selection, shown: &dyn 
         let votes = pr.approvals();
         let right = format!("{}{}", f.pr_label(pr.id), if votes > 0 { format!(" ✔{votes}") } else { String::new() });
         let tip = f.pr_heads.get(&pr.id).copied();
-        let selected = tip.is_some_and(|o| sel == Selection::Commit(o));
+        let selected = tip.is_some_and(|o| *sel == Selection::Commit(o));
         let r = widgets::list_row(ui, 26.0, &title, Some((&right, color::purple())), selected, false);
         let mut tooltip = format!("{} → {}\nby {}", pr.source, pr.target, pr.author);
         for rv in &pr.reviewers {

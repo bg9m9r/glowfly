@@ -3,9 +3,10 @@
 //! effects that need the window.
 
 mod avatars;
-mod common;
+pub(crate) mod common;
 mod conflict;
 mod details;
+mod details_multi;
 mod diff;
 mod graph;
 mod history;
@@ -25,6 +26,8 @@ pub mod widgets;
 mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_diff;
+#[cfg(test)]
+mod snapshot_tests_select;
 #[cfg(test)]
 mod tabs_tests;
 
@@ -107,13 +110,8 @@ impl TrellisApp {
             msgs.push(Msg::WindowFocused);
         }
         self.st.view.was_focused = focused;
-        let (f5, find, prefs, esc) = ctx.input(|i| {
-            (
-                i.key_pressed(Key::F5),
-                i.modifiers.command && i.key_pressed(Key::F),
-                i.modifiers.command && i.key_pressed(Key::Comma),
-                i.key_pressed(Key::Escape),
-            )
+        let (f5, find, prefs) = ctx.input(|i| {
+            (i.key_pressed(Key::F5), i.modifiers.command && i.key_pressed(Key::F), i.modifiers.command && i.key_pressed(Key::Comma))
         });
         if self.st.prefs.is_none() {
             tab_shortcuts(ctx, self.st.tabs.len(), msgs);
@@ -141,20 +139,29 @@ impl TrellisApp {
         if prefs && self.st.prefs.is_none() {
             msgs.push(Msg::OpenPrefs(crate::state::PrefPage::General));
         }
-        if esc && self.st.modal.is_none() {
-            if self.st.prefs.is_some() {
-                msgs.push(Msg::ClosePrefs);
-            } else if self.st.conflict.is_some() {
-                msgs.push(Msg::CloseConflict);
-            } else if self.st.history.is_some() {
-                msgs.push(Msg::CloseFileHistory);
-            } else if self.st.diff.is_some() {
-                // Esc first drops a line selection, then closes the diff.
-                msgs.push(if self.st.view.diff_lines.is_empty() { Msg::CloseDiff } else { Msg::ClearLineSelection });
-            } else {
-                self.st.view.show_search = false;
-            }
-        }
+        escape_key(ctx, &mut self.st, msgs);
+    }
+}
+
+/// Esc closes the innermost thing open: Preferences, the conflict view, the file history, the
+/// diff (a line selection first), then a multi-selection, and finally the search bar.
+fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    if !ctx.input(|i| i.key_pressed(Key::Escape)) || st.modal.is_some() {
+        return;
+    }
+    if st.prefs.is_some() {
+        msgs.push(Msg::ClosePrefs);
+    } else if st.conflict.is_some() {
+        msgs.push(Msg::CloseConflict);
+    } else if st.history.is_some() {
+        msgs.push(Msg::CloseFileHistory);
+    } else if st.diff.is_some() {
+        // Esc first drops a line selection, then closes the diff.
+        msgs.push(if st.view.diff_lines.is_empty() { Msg::CloseDiff } else { Msg::ClearLineSelection });
+    } else if matches!(st.selection, crate::state::Selection::Commits(_)) {
+        msgs.push(Msg::CollapseSelection);
+    } else {
+        st.view.show_search = false;
     }
 }
 
