@@ -8,25 +8,39 @@ const PRS: &str = r#"[
    "user":{"login":"eve"},"head":{"ref":"x","sha":""},"base":{"ref":"main","sha":"x"}}
 ]"#;
 
-const REVIEWS_4: &str = r#"[{"user":{"login":"grace"},"state":"CHANGES_REQUESTED"},{"user":{"login":"grace"},"state":"APPROVED"},
-  {"user":{"login":"bob"},"state":"COMMENTED"},{"user":null,"state":"APPROVED"}]"#;
+const REVIEWS: &str = r#"{"data":{"repository":{
+  "p4":{"reviews":{"nodes":[{"author":{"login":"grace"},"state":"CHANGES_REQUESTED"},{"author":{"login":"grace"},"state":"APPROVED"},
+    {"author":{"login":"bob"},"state":"COMMENTED"},{"author":null,"state":"APPROVED"}]}},
+  "p5":{"reviews":{"nodes":[]}}}}}"#;
 
-fn pr_server(api_host: &'static str, prefix: &'static str) -> Mock {
+/// `graphql` is the GraphQL endpoint's route.
+fn pr_server(api_host: &'static str, prefix: &'static str, graphql: &'static str) -> Mock {
     Mock::start(move |r| {
         let route = r.route();
-        let Some(path) = route.strip_prefix(&format!("GET {api_host}{prefix}/repos/o/r")) else { return Reply::not_found() };
-        match path {
-            "/pulls?state=open&per_page=100" => Reply::json(PRS),
-            "/pulls/4/reviews?per_page=100" => Reply::json(REVIEWS_4),
-            "/pulls/5/reviews?per_page=100" => Reply::json("[]"),
+        if route == graphql {
+            return Reply::json(REVIEWS);
+        }
+        match route.strip_prefix(&format!("GET {api_host}{prefix}/repos/o/r")) {
+            Some("/pulls?state=open&per_page=100") => Reply::json(PRS),
             _ => Reply::not_found(),
         }
     })
 }
 
+/// A list of `count` pull requests, each with one requested reviewer.
+fn many_prs(count: usize) -> String {
+    let pr = |n: usize| {
+        format!(
+            r#"{{"number":{n},"title":"P","html_url":"https://github.com/o/r/pull/{n}","user":{{"login":"a"}},
+            "head":{{"ref":"b","sha":""}},"base":{{"ref":"main","sha":""}},"requested_reviewers":[{{"login":"linus"}}]}}"#
+        )
+    };
+    format!("[{}]", (1..=count).map(pr).collect::<Vec<_>>().join(","))
+}
+
 #[test]
 fn lists_pull_requests_with_review_states() {
-    let m = pr_server("api.github.com", "");
+    let m = pr_server("api.github.com", "", "POST api.github.com/graphql");
     let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
     assert_eq!(prs.len(), 2);
     let p = &prs[0];
@@ -42,17 +56,49 @@ fn lists_pull_requests_with_review_states() {
     assert_eq!(list.header("Authorization"), Some("Bearer tok"));
     assert_eq!(list.header("X-GitHub-Api-Version"), Some("2022-11-28"));
     assert_eq!(list.header("Accept"), Some("application/json"));
+    // Every pull request's reviews came in one GraphQL call, with owner and repository passed
+    // as variables rather than written into the query.
+    assert_eq!(routes(&m).len(), 2);
+    let sent = find(&m, "POST api.github.com/graphql").json();
+    let query = sent["query"].as_str().unwrap();
+    assert!(query.contains("p4: pullRequest(number: 4)") && query.contains("p5: pullRequest(number: 5)"), "{query}");
+    assert_eq!(sent["variables"], serde_json::json!({"owner":"o","repo":"r"}));
+}
+
+#[test]
+fn reviews_are_batched_and_a_failed_lookup_leaves_votes_empty() {
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET api.github.com/repos/o/r/pulls?state=open&per_page=100" => Reply::json(many_prs(120)),
+        "POST api.github.com/graphql" => Reply::json(r#"{"data":{"repository":{}}}"#),
+        _ => Reply::not_found(),
+    });
+    let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
+    assert_eq!(prs.len(), 120);
+    // 120 pull requests: three calls of up to 50.
+    assert_eq!(routes(&m).iter().filter(|r| r.contains("graphql")).count(), 3);
+    drop(m);
+
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET api.github.com/repos/o/r/pulls?state=open&per_page=100" => Reply::json(many_prs(120)),
+        "POST api.github.com/graphql" => Reply::status(502, "bad gateway"),
+        _ => Reply::not_found(),
+    });
+    let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
+    assert!(prs.iter().all(|p| p.reviewers.len() == 1 && p.reviewers[0].state == "requested"));
+    // The first batch failed, so the rest weren't asked for.
+    assert_eq!(routes(&m).iter().filter(|r| r.contains("graphql")).count(), 1);
 }
 
 #[test]
 fn enterprise_server_uses_its_own_host_and_api_path() {
-    let m = pr_server("github.acme.io", "/api/v3");
+    let m = pr_server("github.acme.io", "/api/v3", "POST github.acme.io/api/graphql");
     let t = remote("https://github.acme.io/o/r.git");
     assert_eq!(t.provider, Provider::GitHubEnterprise);
     let prs = pull_requests(&t, &token(Provider::GitHubEnterprise)).unwrap();
     // github.com links don't belong to this server.
     assert_eq!((prs.len(), prs[0].url.as_str()), (2, ""));
-    assert!(routes(&m).iter().all(|r| r.starts_with("GET github.acme.io/api/v3/repos/o/r/pulls")), "{:?}", routes(&m));
+    assert_eq!(routes(&m), ["GET github.acme.io/api/v3/repos/o/r/pulls?state=open&per_page=100", "POST github.acme.io/api/graphql"]);
+    assert_eq!(prs[0].approvals(), 1);
 }
 
 #[test]

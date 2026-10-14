@@ -36,15 +36,15 @@ fn github_follows_next_links_on_the_api_host_only() {
         } else if route.starts_with("GET api.github.com/repositories/1/pulls?") {
             // The last page points somewhere else; that is never followed.
             Reply::json(array((3..=4).map(gh_pr))).header("Link", r#"<https://evil.example/steal?page=3>; rel="next""#)
-        } else if route.contains("/reviews") {
-            Reply::json("[]")
+        } else if route == "POST api.github.com/graphql" {
+            Reply::json(r#"{"data":{"repository":{}}}"#)
         } else {
             Reply::not_found()
         }
     });
     let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
     assert_eq!(prs.iter().map(|p| p.id).collect::<Vec<_>>(), [1, 2, 3, 4]);
-    assert!(routes(&m).iter().all(|r| r.starts_with("GET api.github.com/")), "{:?}", routes(&m));
+    assert!(routes(&m).iter().all(|r| r.split_once(' ').is_some_and(|(_, url)| url.starts_with("api.github.com/"))), "{:?}", routes(&m));
     // The token went to the second page too.
     assert_eq!(find(&m, "GET api.github.com/repositories/1/pulls?").header("Authorization"), Some("Bearer tok"));
 }

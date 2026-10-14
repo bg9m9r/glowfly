@@ -4,9 +4,17 @@ use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, Reviewe
 use crate::error::Result;
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
+
+/// Pull requests whose reviews are asked for in one GraphQL call.
+const REVIEW_BATCH: usize = 50;
 
 pub(super) fn api(host: &str, provider: Provider) -> String {
     if provider == Provider::GitHub { "https://api.github.com".into() } else { format!("https://{host}/api/v3") }
+}
+
+fn graphql_url(t: &Target) -> String {
+    if t.provider == Provider::GitHub { "https://api.github.com/graphql".into() } else { format!("https://{}/api/graphql", t.host) }
 }
 
 fn repo_api(t: &Target) -> String {
@@ -60,6 +68,8 @@ struct ApiPr {
 
 #[derive(Deserialize)]
 struct Review {
+    /// `user` in REST answers, `author` in GraphQL ones; null for deleted accounts.
+    #[serde(alias = "author")]
     user: Option<Login>,
     state: String,
 }
@@ -100,17 +110,37 @@ fn convert(p: ApiPr, reviews: Vec<Review>) -> PullRequest {
 
 pub fn pull_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
     let prs: Vec<ApiPr> = page::by_link(auth, format!("{}/pulls?state=open&per_page=100", repo_api(t)))?;
-    let mut out = Vec::with_capacity(prs.len());
-    for (i, p) in prs.into_iter().enumerate() {
-        // Review states need one call per PR; keep it bounded.
-        let reviews = if i < 25 {
-            get(auth, &format!("{}/pulls/{}/reviews?per_page=100", repo_api(t), p.number)).unwrap_or_default()
-        } else {
-            Vec::new()
-        };
-        out.push(convert(p, reviews));
+    let numbers: Vec<u64> = prs.iter().map(|p| p.number).collect();
+    let mut reviews = reviews(t, auth, &numbers);
+    Ok(prs
+        .into_iter()
+        .map(|p| {
+            let r = reviews.remove(&p.number).unwrap_or_default();
+            convert(p, r)
+        })
+        .collect())
+}
+
+/// Each pull request's reviews, asked for in a few GraphQL calls rather than one REST call per
+/// pull request. Pull requests whose reviews can't be read are left out (and show no votes).
+fn reviews(t: &Target, auth: &Auth, numbers: &[u64]) -> HashMap<u64, Vec<Review>> {
+    let mut out = HashMap::new();
+    for chunk in numbers.chunks(REVIEW_BATCH) {
+        let fields: String = chunk
+            .iter()
+            .map(|n| format!("p{n}: pullRequest(number: {n}) {{ reviews(first: 100) {{ nodes {{ author {{ login }} state }} }} }} "))
+            .collect();
+        let query = format!("query($owner: String!, $repo: String!) {{ repository(owner: $owner, name: $repo) {{ {fields}}} }}");
+        let body = json!({ "query": query, "variables": { "owner": t.owner, "repo": t.repo } });
+        let Ok(answer) = post::<serde_json::Value>(auth, &graphql_url(t), body) else { break };
+        let repo = &answer["data"]["repository"];
+        for n in chunk {
+            if let Ok(r) = serde_json::from_value::<Vec<Review>>(repo[format!("p{n}")]["reviews"]["nodes"].clone()) {
+                out.insert(*n, r);
+            }
+        }
     }
-    Ok(out)
+    out
 }
 
 pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
