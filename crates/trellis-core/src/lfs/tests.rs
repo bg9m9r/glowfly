@@ -7,7 +7,7 @@ fn displays(s: &LfsStatus) -> Vec<&str> {
 }
 
 fn pat(raw: &str) -> LfsPattern {
-    LfsPattern { raw: raw.into(), display: raw.replace("[[:space:]]", " "), lockable: false }
+    LfsPattern { raw: raw.into(), display: unescape_pattern(raw), lockable: false }
 }
 
 /// git-lfs's version, or None (with a note) so tests that need it can skip.
@@ -44,6 +44,9 @@ fn attributes_parsing() {
     assert!(!p[0].lockable);
     assert!(p[1].lockable);
     assert_eq!(p[2].display, "my dir/*.bin");
+    let hashed = parse_attributes("my[[:space:]]x\\#y filter=lfs\n");
+    assert_eq!((hashed[0].raw.as_str(), hashed[0].display.as_str()), (r"my[[:space:]]x\#y", "my x#y"));
+    assert_eq!(escape_pattern("my x#y"), hashed[0].raw);
 
     let later = "*.psd filter=lfs -text\n*.zip filter=lfs\n*.psd -filter\n*.zip filter=lfs lockable\n*.a filter=lfs\n*.a filter=other\n*.b filter=lfs\n*.b !filter\n";
     let p = parse_attributes(later);
@@ -67,6 +70,9 @@ fn pattern_checks() {
     assert_eq!(dup, PatternProblem::AlreadyTracked("my dir/*.bin".into()));
     assert_eq!(dup.message(), "my dir/*.bin is already tracked.");
     assert_eq!(check_pattern(" *.zip ", &existing), Ok("*.zip".into()));
+    let hashed = [pat(r"a\#b")];
+    assert_eq!(hashed[0].display, "a#b");
+    assert_eq!(check_pattern("a#b", &hashed), Err(PatternProblem::AlreadyTracked("a#b".into())));
     assert_eq!(PatternProblem::Empty.message(), "Enter a pattern.");
 }
 
@@ -79,6 +85,7 @@ fn command_lines() {
     assert_eq!(LfsCommand::Checkout.args(None), ["lfs", "checkout"]);
     assert_eq!(track_args("-x"), ["lfs", "track", "--", "-x"]);
     assert_eq!(untrack_args("*.a"), ["lfs", "untrack", "--", "*.a"]);
+    assert_eq!(untrack_args(r"my[[:space:]]x\#y"), ["lfs", "untrack", "--", "my x#y"]);
     assert_eq!(install_args(), ["lfs", "install", "--local"]);
     let remote: Vec<_> = LfsCommand::ALL.iter().filter(|c| c.needs_remote()).copied().collect();
     assert_eq!(remote, [LfsCommand::Fetch, LfsCommand::Pull, LfsCommand::Push]);
@@ -131,6 +138,24 @@ fn install_track_untrack() {
     assert!(s.has_gitattributes);
     ok(&dir, untrack_args(&s.patterns[1].raw));
     assert_eq!(displays(&status(&dir).unwrap()), ["*.bin"]);
+}
+
+#[test]
+fn track_and_untrack_a_hash_pattern() {
+    if lfs_or_skip("track_and_untrack_a_hash_pattern").is_none() {
+        return;
+    }
+    let dir = scratch_repo("lfs-track-hash");
+    ok(&dir, install_args());
+    ok(&dir, track_args("a#b"));
+    ok(&dir, track_args("my dir/x#y z"));
+    let s = status(&dir).unwrap();
+    assert_eq!(displays(&s), ["a#b", "my dir/x#y z"]);
+    assert_eq!(check_pattern("a#b", &s.patterns), Err(PatternProblem::AlreadyTracked("a#b".into())));
+    ok(&dir, untrack_args(&s.patterns[0].raw));
+    assert_eq!(displays(&status(&dir).unwrap()), ["my dir/x#y z"]);
+    ok(&dir, untrack_args(&status(&dir).unwrap().patterns[0].raw));
+    assert!(status(&dir).unwrap().patterns.is_empty());
 }
 
 #[test]

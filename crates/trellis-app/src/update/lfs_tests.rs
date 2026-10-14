@@ -37,7 +37,7 @@ fn cleanup(dir: &Path) {
 }
 
 fn pattern(raw: &str) -> LfsPattern {
-    LfsPattern { raw: raw.into(), display: raw.replace("[[:space:]]", " "), lockable: false }
+    LfsPattern { raw: raw.into(), display: trellis_core::lfs::unescape_pattern(raw), lockable: false }
 }
 
 fn status(installed: bool, initialized: bool, patterns: &[&str]) -> LfsStatus {
@@ -158,12 +158,16 @@ fn track_and_untrack_need_git_lfs() {
 }
 
 #[test]
-fn untrack_passes_the_raw_pattern() {
+fn untrack_passes_the_typed_pattern() {
     let (mut st, dir) = open("lfs-untrack");
-    page_with(&mut st, status(true, true, &["my[[:space:]]dir/*.bin"]));
+    page_with(&mut st, status(true, true, &["my[[:space:]]dir/*.bin", r"a\#b"]));
     let fx = lfs(&mut st, LfsMsg::Untrack("my[[:space:]]dir/*.bin".into()));
-    assert_eq!(git_cmds(&fx), Some(vec![args(&["lfs", "untrack", "--", "my[[:space:]]dir/*.bin"])]));
+    assert_eq!(git_cmds(&fx), Some(vec![args(&["lfs", "untrack", "--", "my dir/*.bin"])]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Untrack my dir/*.bin"));
+    st.job = None;
+    let fx = lfs(&mut st, LfsMsg::Untrack(r"a\#b".into()));
+    assert_eq!(git_cmds(&fx), Some(vec![args(&["lfs", "untrack", "--", "a#b"])]));
+    assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Untrack a#b"));
     cleanup(&dir);
 }
 

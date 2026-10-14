@@ -12,9 +12,9 @@ use std::path::{Path, PathBuf};
 /// A pattern `.gitattributes` stores in LFS.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LfsPattern {
-    /// As written in `.gitattributes`; passed back to `git lfs untrack`.
+    /// As written in `.gitattributes`.
     pub raw: String,
-    /// `raw` with `[[:space:]]` shown as a space.
+    /// `raw` as typed: see [`unescape_pattern`].
     pub display: String,
     pub lockable: bool,
 }
@@ -92,6 +92,18 @@ fn filters_configured(workdir: &Path) -> bool {
     })
 }
 
+/// A typed pattern as git-lfs writes it to `.gitattributes`: a space becomes `[[:space:]]`
+/// and `#` becomes `\#`.
+pub fn escape_pattern(typed: &str) -> String {
+    typed.replace(' ', "[[:space:]]").replace('#', r"\#")
+}
+
+/// The reverse of [`escape_pattern`]: the pattern as typed. git-lfs escapes the pattern it is
+/// given before comparing, so this is also what `git lfs untrack` needs.
+pub fn unescape_pattern(raw: &str) -> String {
+    raw.replace("[[:space:]]", " ").replace(r"\#", "#")
+}
+
 /// Splits a `.gitattributes` line into its pattern and attribute tokens. A quoted pattern is
 /// unescaped (backslash-quote and backslash-backslash).
 fn split_line(line: &str) -> Option<(String, Vec<&str>)> {
@@ -142,7 +154,7 @@ pub fn parse_attributes(text: &str) -> Vec<LfsPattern> {
         let existing = patterns.iter().position(|p| p.raw == raw);
         match (lfs, existing) {
             (Some(true), at) => {
-                let p = LfsPattern { display: raw.replace("[[:space:]]", " "), lockable: attrs.contains(&"lockable"), raw };
+                let p = LfsPattern { display: unescape_pattern(&raw), lockable: attrs.contains(&"lockable"), raw };
                 match at {
                     Some(i) => patterns[i] = p,
                     None => patterns.push(p),
@@ -236,8 +248,9 @@ pub fn track_args(pattern: &str) -> Vec<String> {
     args(&["lfs", "track", "--", pattern])
 }
 
-pub fn untrack_args(pattern: &str) -> Vec<String> {
-    args(&["lfs", "untrack", "--", pattern])
+/// Untracks a pattern as written in `.gitattributes` (git-lfs escapes it again itself).
+pub fn untrack_args(raw: &str) -> Vec<String> {
+    args(&["lfs", "untrack", "--", &unescape_pattern(raw)])
 }
 
 /// Why a new pattern can't be tracked.
@@ -283,7 +296,7 @@ pub fn check_pattern(input: &str, existing: &[LfsPattern]) -> Result<String, Pat
     if [".gitattributes", ".gitignore", ".lfsconfig"].contains(&p) {
         return Err(PatternProblem::GitFile);
     }
-    let escaped = p.replace(' ', "[[:space:]]");
+    let escaped = escape_pattern(p);
     if existing.iter().any(|e| e.raw == escaped) {
         return Err(PatternProblem::AlreadyTracked(p.to_owned()));
     }

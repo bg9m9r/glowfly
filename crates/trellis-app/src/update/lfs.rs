@@ -33,7 +33,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
             if refuse_without_lfs(st) {
                 return;
             }
-            let label = format!("Untrack {}", raw.replace("[[:space:]]", " "));
+            let label = format!("Untrack {}", lfs::unescape_pattern(&raw));
             start_job(st, JobSpec::new(label, vec![lfs::untrack_args(&raw)]), fx);
         }
         LfsMsg::Run { command: LfsCommand::Prune, confirmed: false } => {

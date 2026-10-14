@@ -8,7 +8,7 @@ use trellis_core::lfs::{LfsPattern, LfsStatus};
 use trellis_core::settings::ThemeChoice;
 
 fn pattern(raw: &str, lockable: bool) -> LfsPattern {
-    LfsPattern { raw: raw.into(), display: raw.replace("[[:space:]]", " "), lockable }
+    LfsPattern { raw: raw.into(), display: trellis_core::lfs::unescape_pattern(raw), lockable }
 }
 
 fn patterns() -> Vec<LfsPattern> {
