@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-14 13:11 · **Submodules**: SUBMODULES section in the left panel with status, open in a new tab, initialize/update to the recorded commit and copy URL (`83937e7`)
 - 2026-10-14 12:04 · **Built-in terminal**: Terminal panel with a shell per repository tab, toggled from the toolbar, the palette or Ctrl+` (`d520497`)
 - 2026-10-14 11:56 · **Keyboard shortcuts**: S/U stage and unstage, Ctrl+Shift+S/U for all, Ctrl+Shift+M to focus the message, and a Ctrl+/ shortcut sheet (`ea70ddd`)
 - 2026-10-14 07:33 · **File actions**: Open, show in folder and restore from the file history and commit diff header (`a5878a0`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 05:20 · **Command palette (fuzzy finder)**: Create tag and annotated tag, and shortcut hints on entries (`da0f378`)
 - 2026-10-14 05:05 · **Diff viewer upgrade**: Finish syntax highlighting of large diffs in the background (`16ad558`)
 - 2026-10-14 04:57 · **File actions**: New file in this folder, and staged renames with git mv (`e0a8b9d`)
-- 2026-10-14 04:59 · **File history and blame / Command palette (fuzzy finder)**: File finder for file history (`ddf25d9`)
 
 ---
 
