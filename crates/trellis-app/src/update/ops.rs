@@ -243,10 +243,16 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
         return;
     };
     let has_upstream = snap.head_info().is_some_and(|b| b.upstream.is_some());
-    let mut cmd = args(&["push"]);
     if force {
-        cmd.push("--force-with-lease".into());
+        let Some(cmd) = snap.head_info().and_then(|b| force_push_cmd(b, snap)) else {
+            // No remote to push to: offer to create the repository on GitHub.
+            super::publish::open(st, fx);
+            return;
+        };
+        start_job(st, JobSpec::new("Force push".into(), vec![cmd]), fx);
+        return;
     }
+    let mut cmd = args(&["push"]);
     if !has_upstream {
         let Some(remote) = default_remote(snap) else {
             // Nowhere to push yet: offer to create the repository on GitHub.
@@ -255,7 +261,23 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
         };
         cmd.extend(["-u".to_owned(), remote, branch]);
     }
-    start_job(st, JobSpec::new(if force { "Force push" } else { "Push" }.into(), vec![cmd]), fx);
+    start_job(st, JobSpec::new("Push".into(), vec![cmd]), fx);
+}
+
+/// A force push of `b` that only replaces the remote branch if it still is where the snapshot
+/// last saw it (or still doesn't exist): bare `--force-with-lease` compares against the
+/// remote-tracking ref, which background fetches keep moving, so it would overwrite commits
+/// the user never saw. `--force-if-includes` also requires that tip to be in `b`'s reflog.
+pub(super) fn force_push_cmd(b: &trellis_core::repo::BranchInfo, snap: &Snapshot) -> Option<Vec<String>> {
+    let (remote, dest, set_upstream) = crate::state::branches::push_target(b, snap, None)?;
+    let seen = snap.remotes.iter().find(|(r, _)| *r == remote).and_then(|(_, bs)| bs.iter().find(|(n, _)| *n == dest)).map(|(_, o)| *o);
+    let expect = seen.map(|o| o.to_string()).unwrap_or_default();
+    let mut cmd = args(&["push", &format!("--force-with-lease=refs/heads/{dest}:{expect}"), "--force-if-includes"]);
+    if set_upstream {
+        cmd.push("-u".into());
+    }
+    cmd.extend([remote, format!("refs/heads/{}:refs/heads/{dest}", b.name)]);
+    Some(cmd)
 }
 
 /// The active job ended: logs and toasts it (`headline`, or "<label> succeeded" / "<label>

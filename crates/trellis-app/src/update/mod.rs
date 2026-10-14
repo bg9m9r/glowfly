@@ -59,6 +59,8 @@ mod files_tests;
 #[cfg(test)]
 mod fold_tests;
 #[cfg(test)]
+mod force_push_tests;
+#[cfg(test)]
 mod gitflow_finish_tests;
 #[cfg(test)]
 mod gitflow_tests;
