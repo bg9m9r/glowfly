@@ -91,3 +91,11 @@ fn finds_issue_references() {
     assert_eq!(link_line(Provider::AzureDevOps, Provider::AzureDevOps, "5"), None);
     assert_eq!(link_line(Provider::BitbucketDataCenter, Provider::JiraDataCenter, "AB-1").as_deref(), Some("AB-1"));
 }
+
+#[test]
+fn issue_links_encode_owner_repo_and_key() {
+    let t = parse_remote("https://gitlab.com/group/%2E%2E/sub/proj", &[]).unwrap();
+    assert_eq!(t.issue_url("7"), "https://gitlab.com/group/%2E%2E/sub/proj/-/issues/7");
+    let t = parse_remote("https://bitbucket.org/..%2Fteam/app", &[]).unwrap();
+    assert_eq!(t.issue_url("3?x"), "https://bitbucket.org/..%2Fteam/app/issues/3%3Fx");
+}

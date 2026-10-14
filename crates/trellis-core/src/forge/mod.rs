@@ -21,7 +21,7 @@ pub use auth::{
     Auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact, resolve_auth,
     save_token,
 };
-use http::{dec, enc, get, get_text, post};
+use http::{dec, enc, enc_path, get, get_text, post};
 pub use links::https_host;
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, mention};
@@ -220,13 +220,14 @@ impl Target {
     }
 
     pub fn issue_url(&self, key: &str) -> String {
-        let (h, o, r) = (&self.host, &self.owner, &self.repo);
+        let (h, o, r, key) = (&self.host, enc_path(&self.owner), enc(&self.repo), enc(key));
         match self.provider {
-            Provider::GitHub | Provider::GitHubEnterprise => format!("https://{h}/{o}/{r}/issues/{key}"),
+            // A GitHub owner is one path segment; a GitLab namespace can be several.
+            Provider::GitHub | Provider::GitHubEnterprise => format!("https://{h}/{}/{r}/issues/{key}", enc(&self.owner)),
             Provider::GitLab | Provider::GitLabSelfManaged => format!("https://{h}/{o}/{r}/-/issues/{key}"),
-            Provider::Bitbucket => format!("https://bitbucket.org/{o}/{r}/issues/{key}"),
+            Provider::Bitbucket => format!("https://bitbucket.org/{}/{r}/issues/{key}", enc(&self.owner)),
             Provider::BitbucketDataCenter => String::new(),
-            Provider::AzureDevOps => azure::work_item_url(self, key),
+            Provider::AzureDevOps => azure::work_item_url(self, &key),
             Provider::JiraCloud | Provider::JiraDataCenter => format!("https://{h}/browse/{key}"),
         }
     }

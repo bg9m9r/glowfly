@@ -24,7 +24,12 @@ pub(crate) fn dec(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// Percent-encodes one URL path segment or query value. `.` and `..` are encoded too, so a
+/// segment can never step up the path.
 pub(crate) fn enc(s: &str) -> String {
+    if s == "." || s == ".." {
+        return s.replace('.', "%2E");
+    }
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
         if b.is_ascii_alphanumeric() || b"-._~".contains(&b) {
@@ -34,6 +39,11 @@ pub(crate) fn enc(s: &str) -> String {
         }
     }
     out
+}
+
+/// Encodes each `/`-separated segment of a path such as a GitLab `group/subgroup`.
+pub(crate) fn enc_path(s: &str) -> String {
+    s.split('/').map(enc).collect::<Vec<_>>().join("/")
 }
 
 fn agent() -> ureq::Agent {

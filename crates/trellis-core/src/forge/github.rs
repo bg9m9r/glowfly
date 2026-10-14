@@ -10,7 +10,7 @@ pub(super) fn api(host: &str, provider: Provider) -> String {
 }
 
 fn repo_api(t: &Target) -> String {
-    format!("{}/repos/{}/{}", api(&t.host, t.provider), t.owner, enc(&t.repo))
+    format!("{}/repos/{}/{}", api(&t.host, t.provider), enc(&t.owner), enc(&t.repo))
 }
 
 #[derive(Deserialize)]
@@ -231,5 +231,16 @@ mod tests {
         assert_eq!(mine.len(), 1);
         assert_eq!((mine[0].key.as_str(), mine[0].kind.as_str()), ("9", "bug"));
         assert_eq!(api("github.acme.io", Provider::GitHubEnterprise), "https://github.acme.io/api/v3");
+    }
+
+    #[test]
+    fn owner_and_repo_are_encoded_in_api_paths() {
+        // %2F and %2E%2E in the remote URL are decoded when it is parsed; they must not become
+        // real path separators or parent-directory steps in API calls.
+        let t = super::super::parse_remote("https://github.com/..%2F..%2Fuser/r%3Fx", &[]).unwrap();
+        assert_eq!(repo_api(&t), "https://api.github.com/repos/..%2F..%2Fuser/r%3Fx");
+        let t = super::super::parse_remote("https://github.com/%2E%2E/r", &[]).unwrap();
+        assert_eq!(repo_api(&t), "https://api.github.com/repos/%2E%2E/r");
+        assert_eq!(t.issue_url("1/../x"), "https://github.com/%2E%2E/r/issues/1%2F..%2Fx");
     }
 }
