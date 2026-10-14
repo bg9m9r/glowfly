@@ -323,7 +323,7 @@ fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::Path
     }
     let mut output = String::new();
     for c in cmds {
-        output.push_str(&format!("$ git {}\n", c.join(" ")));
+        output.push_str(&format!("$ git {}\n", trellis_core::text::redact_credentials(&c.join(" "))));
         let (success, text) = gitcli::run_with_input(cwd, c, "", if prompts { &[] } else { gitcli::NO_PROMPTS });
         if !text.is_empty() {
             output.push_str(&text);

@@ -304,3 +304,14 @@ fn unreadable_settings_are_reported_once() {
     assert!(st.view.show_log);
     assert_eq!(st.toasts.len(), 1);
 }
+
+#[test]
+fn job_output_hides_credentials_in_urls() {
+    let dir = scratch_repo("redact");
+    let cmds = vec![args(&["remote", "add", "x", "https://ada:TOKEN123@example.com/o/r.git"])];
+    let effect = Effect::RunGit { cwd: dir.clone(), cmds, write_file: None, record: None, prompts: false, expect: None };
+    let Some(Msg::JobDone { ok, output, .. }) = runner::execute(effect) else { panic!("expected JobDone") };
+    assert!(ok, "{output}");
+    assert!(!output.contains("TOKEN123") && output.contains("https://***@example.com/o/r.git"), "{output}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
