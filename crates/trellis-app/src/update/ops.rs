@@ -58,21 +58,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
-        Msg::Commit => commit(st, fx),
-        Msg::PrefillAmend => {
-            // Pre-fill from HEAD's message, when the user hasn't typed anything yet.
-            if st.draft.summary.trim().is_empty()
-                && let Some(m) = st.snap.as_ref().and_then(|s| s.head_message.clone())
-            {
-                st.draft.fill_from(&m);
-            }
-        }
-        Msg::AppendToDescription(text) => {
-            if !st.draft.description.trim().is_empty() {
-                st.draft.description.push_str("\n\n");
-            }
-            st.draft.description.push_str(&text);
-        }
         Msg::Git { label, cmds } => {
             let record = if cmds.len() == 1 { UndoKind::classify(&cmds[0]) } else { None };
             start_job(st, JobSpec { record, ..JobSpec::new(label, cmds) }, fx);
@@ -101,6 +86,8 @@ pub(super) struct JobSpec {
     pub cwd: Option<PathBuf>,
     pub quiet: bool,
     pub clear_commit: bool,
+    /// Push the branch once the job (a commit) succeeds.
+    pub then_push: bool,
     pub then_open: Option<PathBuf>,
     pub write_file: Option<(PathBuf, String)>,
     /// Record the job for undo when it is this kind of operation.
@@ -109,7 +96,17 @@ pub(super) struct JobSpec {
 
 impl JobSpec {
     pub fn new(label: String, cmds: Vec<Vec<String>>) -> Self {
-        Self { label, cmds, cwd: None, quiet: false, clear_commit: false, then_open: None, write_file: None, record: None }
+        Self {
+            label,
+            cmds,
+            cwd: None,
+            quiet: false,
+            clear_commit: false,
+            then_push: false,
+            then_open: None,
+            write_file: None,
+            record: None,
+        }
     }
 }
 
@@ -127,6 +124,7 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         workdir: None,
         quiet: spec.quiet,
         clear_commit: spec.clear_commit,
+        then_push: spec.then_push,
         then_open: spec.then_open,
         keeps_undo: super::undo::keeps_history(&spec.cmds),
     };
@@ -139,7 +137,8 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
 /// Makes a job labelled `label` the active one in the active tab's repository, unless another
 /// job is running (said in the log). Returns the folder to run it in.
 pub(super) fn begin_job(st: &mut AppState, label: &str, keeps_undo: bool) -> Option<PathBuf> {
-    let job = RunningJob { label: label.into(), workdir: None, quiet: false, clear_commit: false, then_open: None, keeps_undo };
+    let job =
+        RunningJob { label: label.into(), workdir: None, quiet: false, clear_commit: false, then_push: false, then_open: None, keeps_undo };
     claim(st, job, None)
 }
 
@@ -212,30 +211,12 @@ pub(super) fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) {
     }
 }
 
-fn commit(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(snap) = &st.snap else { return };
-    let file = snap.git_dir.join("TRELLIS_COMMIT_EDITMSG");
-    let mut cmd = args(&["commit", "-F"]);
-    cmd.push(file.display().to_string());
-    if st.draft.amend {
-        cmd.push("--amend".into());
-    }
-    let label = if st.draft.amend { "Amend" } else { "Commit" };
-    let spec = JobSpec {
-        clear_commit: true,
-        write_file: Some((file, st.draft.message() + "\n")),
-        record: Some(UndoKind::Commit { amend: st.draft.amend }),
-        ..JobSpec::new(label.into(), vec![cmd])
-    };
-    start_job(st, spec, fx);
-}
-
 /// The remote to push a new branch to: origin if present, else the first remote.
 pub(super) fn default_remote(snap: &Snapshot) -> Option<String> {
     crate::state::branches::default_remote(snap)
 }
 
-fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
+pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let Some(branch) = snap.head_branch.clone() else {
         st.log(false, "Push is not available in detached HEAD.");
@@ -305,6 +286,9 @@ pub(super) fn finish_job(
         }
     }
     if !here {
+        if ok && job.then_push {
+            st.log(true, "Push after committing was skipped: that repository's tab is no longer active.");
+        }
         return; // that tab refreshes when it is selected again
     }
     super::watch::settled(st, now);
@@ -312,6 +296,10 @@ pub(super) fn finish_job(
     // Pushes and branch changes affect pull requests; auto-fetch uses the normal interval.
     if !job.quiet {
         super::forge::refresh(st, true, false, now, fx);
+    }
+    // Push after committing, from the snapshot before the commit: the upstream is unchanged.
+    if ok && job.then_push {
+        push(st, false, fx);
     }
 }
 

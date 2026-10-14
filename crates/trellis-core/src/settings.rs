@@ -171,6 +171,9 @@ pub struct Settings {
     /// Changed-word fills on paired -/+ lines (Preferences > Editor).
     pub diff_word_highlights: bool,
 
+    /// Push the branch after each successful commit (commit box checkbox).
+    pub push_after_commit: bool,
+
     /// Connected services. Secrets live in the OS credential store or Git Credential
     /// Manager, never here.
     pub connections: Vec<Connection>,
@@ -213,6 +216,7 @@ impl Default for Settings {
             tab_size: 4,
             diff_line_numbers: true,
             diff_word_highlights: true,
+            push_after_commit: false,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),

@@ -211,6 +211,10 @@ pub enum Msg {
         overwrite: bool,
     },
     Commit,
+    /// Ctrl+Shift+Enter in the commit message: stage everything (git add --all) and commit in one job.
+    StageAllAndCommit,
+    /// The commit box's "Push after committing" checkbox (saved in settings).
+    SetPushAfterCommit(bool),
     PrefillAmend,
     AppendToDescription(String),
 

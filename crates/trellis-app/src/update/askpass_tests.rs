@@ -34,7 +34,15 @@ fn answers(fx: &[Effect]) -> Vec<(u64, Option<String>)> {
 }
 
 fn start_job(st: &mut AppState, label: &str) {
-    st.job = Some(RunningJob { label: label.into(), workdir: None, quiet: false, clear_commit: false, then_open: None, keeps_undo: true });
+    st.job = Some(RunningJob {
+        label: label.into(),
+        workdir: None,
+        quiet: false,
+        clear_commit: false,
+        then_push: false,
+        then_open: None,
+        keeps_undo: true,
+    });
 }
 
 fn finish(st: &mut AppState, ok: bool) -> Vec<Effect> {

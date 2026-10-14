@@ -23,7 +23,7 @@ fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
 }
 
 fn job(workdir: Option<PathBuf>) -> RunningJob {
-    RunningJob { label: "Fetch".into(), workdir, quiet: false, clear_commit: false, then_open: None, keeps_undo: true }
+    RunningJob { label: "Fetch".into(), workdir, quiet: false, clear_commit: false, then_push: false, then_open: None, keeps_undo: true }
 }
 
 fn is_status(fx: &[Effect], st: &AppState, workdir: &Path) -> bool {

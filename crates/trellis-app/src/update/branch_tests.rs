@@ -16,7 +16,7 @@ use trellis_core::undo::{Action, UndoKind};
 
 /// A repository opened in `st` with a bare `origin` next to it; `main` and `feature` are pushed
 /// with their upstreams set. Returns (state, working repository, bare repository).
-fn with_origin(name: &str) -> (AppState, PathBuf, PathBuf) {
+pub(super) fn with_origin(name: &str) -> (AppState, PathBuf, PathBuf) {
     let work = scratch_repo(name);
     let bare = work.with_file_name(format!("{}-origin.git", work.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&bare);

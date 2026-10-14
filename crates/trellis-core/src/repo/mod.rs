@@ -16,6 +16,7 @@ mod load;
 mod resolve;
 mod restore;
 mod revert;
+mod template;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{commit_detail, commit_stats, compare_files, load_diff, load_diff_with};
@@ -27,6 +28,7 @@ pub use load::{load, messages_between, status_at};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
+pub use template::{CommitTemplate, commit_template};
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -121,6 +123,8 @@ pub struct Snapshot {
     pub head_oid: Option<Oid>,
     /// HEAD's full commit message (used to pre-fill "amend").
     pub head_message: Option<String>,
+    /// The commit.template text to prefill an empty draft with.
+    pub commit_template: Option<CommitTemplate>,
     pub state: RepositoryState,
     pub commits: Vec<CommitInfo>,
     pub row_of: HashMap<Oid, usize>,
@@ -302,6 +306,8 @@ mod resolve_tests;
 mod restore_tests;
 #[cfg(test)]
 mod revert_tests;
+#[cfg(test)]
+mod template_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

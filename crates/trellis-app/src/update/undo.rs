@@ -27,6 +27,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         workdir: Some(cwd.clone()),
         quiet: false,
         clear_commit: false,
+        then_push: false,
         then_open: None,
         keeps_undo: true,
     });
@@ -68,9 +69,10 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
             }
         }
         Some(UndoResult::Done { redo: false, before, .. }) => {
-            // An undone commit's message comes back into an empty draft, ready to commit again.
+            // An undone commit's message comes back into an empty draft (or one holding only the
+            // untouched template), ready to commit again.
             if let Action::Commit { message, amend: false, .. } = &before
-                && draft.is_empty()
+                && draft.is_blank()
             {
                 draft.fill_from(message);
             }

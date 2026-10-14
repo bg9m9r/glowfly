@@ -78,6 +78,7 @@ fn results_for_other_tabs_are_dropped() {
     // A git job started in A finishes after switching to B: B is not refreshed, A's draft is
     // cleared, and the result is still reported.
     drive(&mut st, Msg::SelectTab(0));
+    drive(&mut st, Msg::StageFile("a.txt".into()));
     st.draft.summary = "commit me".into();
     update(&mut st, Msg::Commit, Instant::now());
     update(&mut st, Msg::SelectTab(1), Instant::now());

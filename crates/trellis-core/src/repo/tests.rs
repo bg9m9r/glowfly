@@ -289,3 +289,13 @@ fn unborn_repo_and_conflict_state() {
     assert!(s.unstaged.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn load_reads_commit_template() {
+    let dir = scratch_repo("load-template");
+    assert_eq!(load(&dir, &LoadOptions::all(10)).unwrap().commit_template, None);
+    write(&dir, "msg.txt", "chore: \n\n# details\n");
+    git(&dir, &["config", "commit.template", "msg.txt"]);
+    let t = load(&dir, &LoadOptions::all(10)).unwrap().commit_template.expect("template loaded");
+    assert_eq!((t.summary.as_str(), t.description.as_str(), t.comment_char), ("chore:", "# details", '#'));
+}

@@ -27,7 +27,7 @@ crates/
                           comparison hunk's inverse applied to the working tree), restore (one
                           file written from a commit, or its parent, into the working tree), conflict
                           (reading an index conflict into chunks), resolve (picks, output, write
-                          and stage)
+                          and stage), template (commit.template: the prefill and its comment char)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -69,7 +69,8 @@ crates/
                           edited and the rules for starting it), askpass (credential
                           prompts waiting for the user; global, not parked with a tab),
                           diff_nav (next/previous change across files: the file list a
-                          diff came from, where a step lands)
+                          diff came from, where a step lands), commit (the commit draft, its
+                          readiness rules, button label and command line)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
@@ -86,10 +87,12 @@ crates/
                           its job), graph_filter (hidden and soloed refs, saved per repository),
                           askpass (queueing, answering and cancelling credential prompts; what a
                           finished job clears), files (restoring a file from a commit, opening
-                          or showing a working-tree file)
+                          or showing a working-tree file), commit (committing,
+                          stage-all-and-commit, push after committing, the template prefill)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
-                          arrow keys), details, details_multi (several commits), diff/ (header,
+                          arrow keys), details, commit_box (the WIP commit message, options,
+                          button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
                           inline, split, syntax, style: font, row height and gutters from
                           Preferences > Editor),
                           conflict, history, rebase/ (the interactive rebase panel; rows:
@@ -103,7 +106,7 @@ crates/
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
                           snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
                           snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
-                          snapshot_tests_file_menu.rs)
+                          snapshot_tests_file_menu.rs, snapshot_tests_commit.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

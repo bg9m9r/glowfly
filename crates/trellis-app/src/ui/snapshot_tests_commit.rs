@@ -1,0 +1,85 @@
+//! The commit box: its options row and button suffixes, the commit template note, and the
+//! Ctrl+Enter / Ctrl+Shift+Enter shortcuts. Shares the fixture repository and renderer with
+//! `snapshot_tests`.
+
+use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
+use crate::msg::Msg;
+use crate::state::AppState;
+use eframe::egui::accesskit::Role;
+use eframe::egui::{Key, Modifiers};
+use egui_kittest::Harness;
+use egui_kittest::kittest::{By, Queryable};
+use trellis_core::repo::{CommitTemplate, LoadOptions};
+use trellis_core::settings::ThemeChoice;
+
+type H = Harness<'static, (AppState, Vec<Msg>)>;
+
+fn count(h: &H, want: fn(&Msg) -> bool) -> usize {
+    h.state().1.iter().filter(|m| want(m)).count()
+}
+
+#[test]
+fn commit_box_options() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-options");
+    git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    st.draft.summary = "Add login form".into();
+    st.settings.push_after_commit = true;
+    st.draft.skip_hooks = true;
+    let mut h = harness(st, true);
+    h.run();
+    h.snapshot("commit_box_options");
+    assert!(h.query_by_label_contains("and push (skip hooks)").is_some(), "the button names both options");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn commit_box_template_light() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "commit-template");
+    let t = CommitTemplate::parse("\n# Why is this change needed?\n# What does it change?\n", '#').unwrap();
+    st.draft.apply_template(&t);
+    let mut h = harness(st, false);
+    h.run();
+    h.snapshot("commit_box_template_light");
+    assert!(h.query_by_label_contains("left out of the message").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn commit_shortcuts() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-shortcuts");
+    st.draft.summary = "Add login".into();
+    let mut h = harness(st, true);
+    h.run();
+    h.get(By::new().role(Role::TextInput).value("Add login")).type_text(" form");
+    h.run();
+    assert_eq!(h.state().0.draft.summary, "Add login form", "the summary field has focus");
+
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit)), 1);
+    assert_eq!(h.state().0.draft.summary, "Add login form", "no newline or lost text");
+
+    h.state_mut().1.clear();
+    h.press_key_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::Enter);
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, Msg::StageAllAndCommit)), 1);
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit)), 0, "Shift is matched first");
+
+    // Without focus in the message fields the shortcuts do nothing.
+    h.state_mut().1.clear();
+    h.get_by_label_contains("Unstaged Files").simulate_click();
+    h.run();
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit | Msg::StageAllAndCommit)), 0);
+
+    h.get_by_label("Push after committing").click();
+    h.run();
+    assert_eq!(count(&h, |m| matches!(m, Msg::SetPushAfterCommit(true))), 1);
+    assert!(!h.state().0.settings.push_after_commit, "only update changes the setting");
+    drop(h);
+    remove_fixture(&dir);
+}

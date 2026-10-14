@@ -241,6 +241,7 @@ fn undo_requires_idle_and_history() {
         workdir: st.workdir(),
         quiet: false,
         clear_commit: false,
+        then_push: false,
         then_open: None,
         keeps_undo: true,
     });

@@ -305,6 +305,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::forge::detect(st, &snap);
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     st.snap = Some(snap);
+    super::commit::apply_template(st);
     super::watch::sync(st, fx);
     if kind == LoadKind::Open {
         fx.push(super::tabs::opened(st));

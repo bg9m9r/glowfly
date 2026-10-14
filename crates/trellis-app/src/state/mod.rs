@@ -3,6 +3,7 @@
 
 pub mod askpass;
 pub mod branches;
+pub mod commit;
 pub mod conflict;
 pub mod diff_nav;
 mod forge;
@@ -16,6 +17,7 @@ pub mod tabs;
 pub mod undo;
 pub mod watch;
 
+pub use commit::CommitDraft;
 pub use forge::{ForgeState, Status};
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use tabs::Tab;
@@ -64,36 +66,6 @@ impl Selection {
     }
 }
 
-#[derive(Default)]
-pub struct CommitDraft {
-    pub summary: String,
-    pub description: String,
-    pub amend: bool,
-}
-
-impl CommitDraft {
-    /// The full commit message: summary, blank line, description.
-    pub fn message(&self) -> String {
-        let mut m = self.summary.trim().to_owned();
-        if !self.description.trim().is_empty() {
-            m.push_str("\n\n");
-            m.push_str(self.description.trim());
-        }
-        m
-    }
-
-    /// Fills the summary and description from a full commit message.
-    pub fn fill_from(&mut self, message: &str) {
-        let (first, rest) = message.split_once('\n').unwrap_or((message, ""));
-        self.summary = first.to_owned();
-        self.description = rest.trim().to_owned();
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.summary.trim().is_empty() && self.description.trim().is_empty()
-    }
-}
-
 /// A git command sequence that is running.
 pub struct RunningJob {
     pub label: String,
@@ -103,6 +75,8 @@ pub struct RunningJob {
     pub quiet: bool,
     pub clear_commit: bool,
     pub then_open: Option<PathBuf>,
+    /// Run the push flow when this (commit) job succeeds.
+    pub then_push: bool,
     /// The job can't make the undo history wrong (fetch, push, or an undo/redo itself).
     pub keeps_undo: bool,
 }

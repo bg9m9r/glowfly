@@ -4,11 +4,10 @@ use super::UiCache;
 use super::common::{issue_chip, lane_color, menu_item, short, state_actions, status_color, status_label};
 use super::file_menu;
 use super::graph::draw_avatar;
-use super::spell_edit::spell_text_edit;
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::{AppState, Selection};
-use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, vec2};
+use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
 use git2::Oid;
 use trellis_core::repo::{DiffTarget, FileEntry, Snapshot};
 use trellis_core::undo::DISCARD_STASH_MESSAGE;
@@ -71,55 +70,11 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
         ui.add_space(6.0);
     }
 
-    let list_h = ((ui.available_height() - 300.0) / 2.0).max(80.0);
+    let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / 2.0).max(80.0);
     file_list(ui, snap, false, &open, list_h, msgs);
     ui.add_space(8.0);
     file_list(ui, snap, true, &open, list_h, msgs);
-
-    ui.add_space(6.0);
-    ui.separator();
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Commit").strong().color(color::text()));
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.checkbox(&mut st.draft.amend, "Amend").changed() && st.draft.amend {
-                msgs.push(Msg::PrefillAmend);
-            }
-        });
-    });
-
-    // Link the issue encoded in the branch name (e.g. 1234-login or PROJ-12-crash).
-    if let Some((fs, key)) = st.forge.as_ref().and_then(|f| Some((f, f.branch_issue(snap.head_branch.as_deref()?)?))) {
-        let tag = fs.mention(&key);
-        let mentioned = st.draft.summary.contains(&tag) || st.draft.description.contains(&tag);
-        ui.horizontal(|ui| {
-            issue_chip(ui, fs, &key, msgs);
-            if !mentioned && ui.small_button(format!("Link {tag}")).on_hover_text("Adds the mention to the description").clicked() {
-                msgs.push(Msg::AppendToDescription(tag.clone()));
-            }
-        });
-    }
-
-    let spell = st.settings.spellcheck;
-    spell_text_edit(ui, &mut st.draft.summary, "Commit summary", 1, &mut cache.speller, spell);
-    let len = st.draft.summary.chars().count();
-    let c = if len > 72 { color::red() } else { color::faint() };
-    ui.label(RichText::new(format!("{len}/72")).small().color(c));
-    spell_text_edit(ui, &mut st.draft.description, "Description", 4, &mut cache.speller, spell);
-    let n = snap.staged.len();
-    let label = if st.draft.amend {
-        "Amend previous commit".to_owned()
-    } else if n == 0 {
-        "Stage files to commit".to_owned()
-    } else {
-        format!("Commit changes to {n} file{}", if n == 1 { "" } else { "s" })
-    };
-    let enabled = st.job.is_none() && !st.draft.summary.trim().is_empty() && (n > 0 || st.draft.amend);
-    let button = egui::Button::new(RichText::new(label).strong().color(if enabled { Color32::WHITE } else { color::faint() }))
-        .fill(if enabled { color::primary() } else { color::toolbar() })
-        .min_size(vec2(ui.available_width(), 34.0));
-    if ui.add_enabled(enabled, button).clicked() {
-        msgs.push(Msg::Commit);
-    }
+    super::commit_box::show(ui, st, cache, msgs);
 }
 
 fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {

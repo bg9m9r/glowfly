@@ -344,11 +344,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] A graph-header button listing hidden branches and tags, to unhide them from there
   - [ ] Keep the hidden/solo state when a branch is renamed (rename the entry instead of
     dropping it)
-- [ ] **Commit panel extras**
-  - Commit template
-  - "Push after committing" checkbox
-  - Skip hooks (`--no-verify`)
-  - Stage-all-and-commit shortcut
+- [x] **Commit panel extras**
+  - [x] Commit template (`commit.template` prefills an empty draft; comment lines are left out)
+  - [x] "Push after committing" checkbox
+  - [x] Skip hooks (`--no-verify`)
+  - [x] Stage-all-and-commit shortcut (Ctrl+Shift+Enter; Ctrl+Enter commits)
+  - [ ] Repo-specific Commit preferences page: edit and save the template, skip hooks by default, push after commit by default
 - [ ] **File actions**
   - [x] Restore a file from a commit (commit details and file history menus; a deleted file
     comes back from the parent)

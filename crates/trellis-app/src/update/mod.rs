@@ -5,6 +5,7 @@
 mod askpass;
 mod avatars;
 mod branches;
+mod commit;
 mod conflict;
 mod diff;
 mod files;
@@ -27,6 +28,8 @@ mod askpass_tests;
 mod branch_tests;
 #[cfg(test)]
 mod cherry_pick_tests;
+#[cfg(test)]
+mod commit_tests;
 #[cfg(test)]
 mod conflict_tests;
 #[cfg(test)]
@@ -173,9 +176,6 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::Hunk { .. }
         | Msg::ApplyLines(_)
         | Msg::RevertHunk { .. }
-        | Msg::Commit
-        | Msg::PrefillAmend
-        | Msg::AppendToDescription(_)
         | Msg::Git { .. }
         | Msg::Push { .. }
         | Msg::InitRepo
@@ -183,6 +183,9 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::LocalOpDone(_)
         | Msg::HunkReverted { .. }
         | Msg::JobDone { .. } => ops::handle(st, msg, now, &mut fx),
+        Msg::Commit | Msg::StageAllAndCommit | Msg::PrefillAmend | Msg::AppendToDescription(_) | Msg::SetPushAfterCommit(_) => {
+            commit::handle(st, msg, now, &mut fx)
+        }
         Msg::Undo | Msg::Redo => undo::handle(st, msg, now, &mut fx),
         Msg::RestoreFile { .. }
         | Msg::FileRestored { .. }

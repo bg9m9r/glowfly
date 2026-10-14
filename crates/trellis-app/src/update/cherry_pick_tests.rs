@@ -42,6 +42,7 @@ fn cherry_pick_refusals() {
         workdir: Some(f.dir.clone()),
         quiet: false,
         clear_commit: false,
+        then_push: false,
         then_open: None,
         keeps_undo: true,
     });

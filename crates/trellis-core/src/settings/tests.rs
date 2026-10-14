@@ -112,3 +112,13 @@ fn editor_values_are_clamped() {
     assert_eq!(tab(200), 16);
     assert_eq!(tab(4), 4);
 }
+
+#[test]
+fn push_after_commit_defaults_off() {
+    // Files written before the checkbox existed don't push after committing.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.push_after_commit);
+    let on = Settings { push_after_commit: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.push_after_commit);
+}
