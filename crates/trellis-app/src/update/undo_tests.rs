@@ -273,3 +273,21 @@ fn worktree_add_keeps_history_without_a_new_branch() {
     assert!(keeps(&["worktree", "add", "--detach", "C:/w/abc", "abc1234"]));
     assert!(!keeps(&["worktree", "add", "-b", "x", "C:/w/x", "main"]));
 }
+
+#[test]
+fn discarded_file_comes_back_with_undo() {
+    let (mut st, dir) = committed("undo-discard-file");
+    std::fs::write(dir.join("a.txt"), "work in progress\n").unwrap();
+    drive(&mut st, Msg::DiscardFile("a.txt".into()));
+    assert_ne!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
+    assert!(matches!(st.undo.undo.last(), Some(Action::Discard { path, .. }) if path == "a.txt"), "{:?}", st.undo.undo);
+    assert_eq!(st.undo.undo_tooltip(), "Undo discard in a.txt (Ctrl+Z)");
+
+    drive(&mut st, Msg::Undo);
+    assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
+    assert!(st.job.is_none() && st.undo.redo.len() == 1, "{:?}", st.undo);
+    drive(&mut st, Msg::Redo);
+    assert_ne!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
+    assert!(matches!(st.undo.undo.last(), Some(Action::Discard { .. })));
+    cleanup(&[&dir]);
+}

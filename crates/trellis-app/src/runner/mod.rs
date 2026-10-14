@@ -281,16 +281,26 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
     }
 }
 
-fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<()> {
+/// Runs a local op. Discards save the file's contents first and return the undo action.
+fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<Option<Action>> {
+    use trellis_core::repo::HunkOp::Discard;
+    let saving = |path: &str, f: &dyn Fn() -> trellis_core::error::Result<()>| undo::discard_saving(workdir, path, f);
+    let done = |r: trellis_core::error::Result<()>| r.map(|()| None);
     match op {
-        LocalOp::StageFile(p) => repo::stage_file(workdir, &p),
-        LocalOp::StageAll => repo::stage_all(workdir),
-        LocalOp::UnstagePaths(paths) => repo::unstage_paths(workdir, &paths),
-        LocalOp::DiscardFile(path) => repo::discard_file(workdir, &path),
-        LocalOp::Hunk { op, path, index, expected } => repo::apply_hunk(workdir, &path, index, &expected, op),
-        LocalOp::Lines { op, path, hunk, expected, lines } => repo::apply_lines(workdir, &path, hunk, &expected, &lines, op),
-        LocalOp::ResolveConflict { path, contents, expected } => repo::write_resolution(workdir, &path, &contents, &expected),
-        LocalOp::ResolveWithSide { path, side, expected } => repo::resolve_with_side(workdir, &path, side, &expected),
+        LocalOp::StageFile(p) => done(repo::stage_file(workdir, &p)),
+        LocalOp::StageAll => done(repo::stage_all(workdir)),
+        LocalOp::UnstagePaths(paths) => done(repo::unstage_paths(workdir, &paths)),
+        LocalOp::DiscardFile(path) => saving(&path, &|| repo::discard_file(workdir, &path)),
+        LocalOp::Hunk { op: Discard, path, index, expected } => {
+            saving(&path, &|| repo::apply_hunk(workdir, &path, index, &expected, Discard))
+        }
+        LocalOp::Hunk { op, path, index, expected } => done(repo::apply_hunk(workdir, &path, index, &expected, op)),
+        LocalOp::Lines { op: Discard, path, hunk, expected, lines } => {
+            saving(&path, &|| repo::apply_lines(workdir, &path, hunk, &expected, &lines, Discard))
+        }
+        LocalOp::Lines { op, path, hunk, expected, lines } => done(repo::apply_lines(workdir, &path, hunk, &expected, &lines, op)),
+        LocalOp::ResolveConflict { path, contents, expected } => done(repo::write_resolution(workdir, &path, &contents, &expected)),
+        LocalOp::ResolveWithSide { path, side, expected } => done(repo::resolve_with_side(workdir, &path, side, &expected)),
     }
 }
 
@@ -302,6 +312,13 @@ fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
         Ok(Plan::Refuse(r)) => {
             Msg::JobDone { ok: false, output: r.message().into(), undo: Some(UndoResult::Refused { redo, stale: r.is_stale() }) }
         }
+        Ok(Plan::Write { path, content }) => match undo::write_saved(cwd, &path, content) {
+            Ok(()) => {
+                let output = format!("{} {path}", if redo { "Discarded the changes in" } else { "Restored" });
+                Msg::JobDone { ok: true, output, undo: Some(UndoResult::Done { redo, before: action.clone(), after: action }) }
+            }
+            Err(e) => failed(format!("Could not write {path}: {e}")),
+        },
         Ok(Plan::Run(cmds)) => {
             let (ok, output) = run_git(cwd, &cmds, None, true);
             if !ok {

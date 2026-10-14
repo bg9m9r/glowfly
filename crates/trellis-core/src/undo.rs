@@ -8,6 +8,9 @@ use crate::gitcli::args;
 use git2::{BranchType, Oid, Repository, RepositoryState};
 use std::path::Path;
 
+mod saved;
+pub use saved::{Saved, discard_saving, write as write_saved};
+
 /// The message of the stash that "Discard all" moves uncommitted changes into.
 pub const DISCARD_STASH_MESSAGE: &str = "Trellis: discarded changes";
 
@@ -49,7 +52,9 @@ pub enum HeadPos {
     Detached(Oid),
 }
 
-/// A recorded operation that can be undone (and then redone).
+/// A recorded operation that can be undone (and then redone). `Discard` is one file's unstaged
+/// changes (all, a hunk or some lines) discarded: `before` is its content then and `after` what
+/// the discard left (`None`: absent).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     Checkout { from: HeadPos, to: HeadPos },
@@ -57,6 +62,7 @@ pub enum Action {
     Reset { mode: ResetMode, branch: Option<String>, from: Oid, to: Oid },
     DeleteBranch { name: String, oid: Oid, upstream: Option<String> },
     DiscardAll { stash: Oid, head: Oid },
+    Discard { path: String, before: Option<Saved>, after: Option<Saved> },
 }
 
 /// Repository state captured before an operation runs (opaque to callers).
@@ -95,6 +101,11 @@ impl Refusal {
 pub enum Plan {
     /// Git commands to run in order.
     Run(Vec<Vec<String>>),
+    /// Make the working-tree file `path` hold `content` exactly (`None`: delete it).
+    Write {
+        path: String,
+        content: Option<Saved>,
+    },
     Refuse(Refusal),
 }
 
@@ -151,6 +162,7 @@ impl Action {
             Action::Reset { mode, to, .. } => format!("{} reset to {}", mode.name(), short(*to)),
             Action::DeleteBranch { name, .. } => format!("delete of branch {name}"),
             Action::DiscardAll { .. } => "Discard all changes".to_owned(),
+            Action::Discard { path, .. } => format!("discard in {path}"),
         }
     }
 }
@@ -267,6 +279,10 @@ fn gone() -> Plan {
 /// The git commands that undo `action` (or redo it, after an undo), or why they can't run.
 /// Checks the repository as it is now, not as a snapshot showed it.
 pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
+    if let Action::Discard { path, before, after } = action {
+        // Only this file's bytes change, so a merge or rebase in progress doesn't matter.
+        return saved::plan(workdir, path, *before, *after, redo);
+    }
     let mut repo = Repository::open(workdir)?;
     if let Some(op) = busy_name(repo.state()) {
         return Ok(Plan::Refuse(Refusal::Busy(format!("Finish or abort the {op} in progress first."))));
@@ -370,6 +386,7 @@ pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
                 None => stale("The discarded-changes stash was dropped"),
             }
         }
+        Action::Discard { .. } => unreachable!("planned above"),
     })
 }
 
@@ -392,5 +409,7 @@ pub fn redone(workdir: &Path, action: Action) -> Result<Action> {
     })
 }
 
+#[cfg(test)]
+mod saved_tests;
 #[cfg(test)]
 mod tests;

@@ -92,7 +92,7 @@ fn own_job_suppresses_watch_events() {
 
     // The same after a local operation (staging).
     let t = Instant::now() + Duration::from_secs(5);
-    update(&mut st, Msg::Scoped { workdir: workdir.clone(), msg: Box::new(Msg::LocalOpDone(Ok(()))) }, t);
+    update(&mut st, Msg::Scoped { workdir: workdir.clone(), msg: Box::new(Msg::LocalOpDone(Ok(None))) }, t);
     assert!(update(&mut st, changed(&workdir, false, t + Duration::from_millis(100)), t).is_empty());
     let fx = update(&mut st, changed(&workdir, false, t + Duration::from_millis(300)), t);
     assert!(is_status(&fx, &st, &workdir), "{fx:?}");

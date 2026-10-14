@@ -237,11 +237,11 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         let m = if selected > 0 { Msg::ApplyLines(op) } else { Msg::Hunk { op, path: path.to_owned(), index: h, generation } };
         msgs.push(match (op, selected) {
             (HunkOp::Discard, 0) => {
-                Msg::confirm("Discard hunk", format!("Discard this change in {path}? This cannot be undone."), "Discard", m)
+                Msg::confirm("Discard hunk", format!("Discard this change in {path}? You can bring it back with Undo."), "Discard", m)
             }
             (HunkOp::Discard, n) => {
                 let what = if n == 1 { "the selected line".to_owned() } else { format!("the {n} selected lines") };
-                Msg::confirm("Discard lines", format!("Discard {what} in {path}? This cannot be undone."), "Discard", m)
+                Msg::confirm("Discard lines", format!("Discard {what} in {path}? You can bring them back with Undo."), "Discard", m)
             }
             _ => m,
         });

@@ -239,8 +239,17 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {
                 fx.extend(update(st, *msg, now));
-            } else if let Msg::LocalOpDone(Err(e)) = *msg {
-                st.log(false, e);
+            } else if let Msg::LocalOpDone(result) = *msg {
+                match result {
+                    Err(e) => st.log(false, e),
+                    // A discard in a tab switched away from: its undo belongs to that tab.
+                    Ok(Some(a)) => {
+                        if let Some(p) = st.tabs.iter_mut().find(|t| t.is(&workdir)).and_then(|t| t.parked.as_mut()) {
+                            p.undo.record(a);
+                        }
+                    }
+                    Ok(None) => {}
+                }
             } else if let Msg::HunkReverted { path, result: Err(e) } = *msg {
                 st.log(false, format!("Could not revert the hunk in {path}: {e}"));
             } else if let Msg::FileRestored { path, result: Err(e), .. } = *msg {

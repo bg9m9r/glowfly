@@ -43,6 +43,7 @@ pub use revert::revert_hunk;
 pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
 pub use tracked::tracked_paths;
+pub(crate) use workfile::contained;
 pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
 pub use workfile_mv::rename_file_staged;
 pub use workfile_rm::{delete_staged_new_file, unstage_gone_new_file};

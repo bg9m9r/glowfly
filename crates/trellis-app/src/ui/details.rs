@@ -277,7 +277,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
                         "Discard changes",
                         Msg::confirm(
                             "Discard changes",
-                            format!("Discard changes to {}? This cannot be undone.", f.path),
+                            format!("Discard changes to {}? You can bring them back with Undo.", f.path),
                             "Discard",
                             Msg::DiscardFile(f.path.clone()),
                         ),

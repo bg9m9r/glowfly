@@ -57,8 +57,10 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::repo::refresh_status(st, fx);
         }
         Msg::LocalOpDone(result) => {
-            if let Err(e) = result {
-                st.log(false, e);
+            match result {
+                Err(e) => st.log(false, e),
+                Ok(Some(action)) => st.undo.record(action),
+                Ok(None) => {}
             }
             // A save that failed can be tried again; one that worked closes the view once the
             // status shows the file resolved.

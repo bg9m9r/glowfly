@@ -489,7 +489,8 @@ pub enum Msg {
         hunks: Option<DiffHighlight>,
         whole: Option<DiffHighlight>,
     },
-    LocalOpDone(Result<(), String>),
+    /// A LocalOp finished; a discard that can be undone carries its undo action.
+    LocalOpDone(Result<Option<trellis_core::undo::Action>, String>),
     /// A RevertHunk finished; `path` is the file it was for.
     HunkReverted {
         path: String,

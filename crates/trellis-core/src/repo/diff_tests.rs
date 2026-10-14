@@ -114,7 +114,8 @@ fn apply_hunk_refuses_a_hunk_that_changed() {
     let target = DiffTarget::Unstaged("f.txt".into());
     write(&dir, "f.txt", &base.replace("line 15\n", "line 15 changed\n").replace("line 28\n", "line 28 changed\n"));
     let seen = load_diff(&dir, &target).unwrap();
-    let edited = base.replace("line 2\n", "line 2 new\n").replace("line 15\n", "line 15 changed\n").replace("line 28\n", "line 28 changed\n");
+    let edited =
+        base.replace("line 2\n", "line 2 new\n").replace("line 15\n", "line 15 changed\n").replace("line 28\n", "line 28 changed\n");
     write(&dir, "f.txt", &edited);
 
     for op in [HunkOp::Discard, HunkOp::Stage] {
