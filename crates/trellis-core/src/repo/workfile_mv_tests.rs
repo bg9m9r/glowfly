@@ -124,3 +124,53 @@ fn staged_rename_git_failure_removes_created_folders() {
     std::fs::remove_file(&lock).unwrap();
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn staged_rename_refuses_to_drop_index_entries_above_or_below_the_target() {
+    let dir = scratch_repo("wfmv-dirfile");
+    commit(&dir, &[("a.txt", "a\n"), ("b.txt", "b\n"), ("src/x.txt", "x\n")], "one");
+    // Staged edits whose only copy is the index, then the files go from disk.
+    write(&dir, "a.txt", "a2\n");
+    write(&dir, "src/x.txt", "x2\n");
+    git(&dir, &["add", "a.txt", "src/x.txt"]);
+    std::fs::remove_file(dir.join("a.txt")).unwrap();
+    std::fs::remove_dir_all(dir.join("src")).unwrap();
+    let before = status(&dir);
+    let ids = || ["a.txt", "b.txt", "src/x.txt"].map(|p| index_id(&dir, p));
+    let ids_before = ids();
+
+    let e = rename_file_staged(&dir, "b.txt", "a.txt/b.txt").unwrap_err();
+    assert!(e.to_string().contains("a.txt is still in the index"), "{e}");
+    let e = rename_file_staged(&dir, "b.txt", "src").unwrap_err();
+    assert!(e.to_string().contains("src/x.txt is still in the index"), "{e}");
+
+    assert_eq!(status(&dir), before);
+    assert_eq!(ids(), ids_before);
+    assert!(!dir.join("a.txt").exists() && !dir.join("src").exists());
+    assert_eq!(text(&dir, "b.txt"), "b\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn staged_case_change_refuses_a_separate_entry_on_a_case_sensitive_repo() {
+    let dir = scratch_repo("wfmv-casesens");
+    commit(&dir, &[("readme.md", "hi\n")], "one");
+    git(&dir, &["config", "core.ignorecase", "false"]);
+    // A second entry whose name differs only by case, as on a case-sensitive file system,
+    // that exists only in the index.
+    let repo = Repository::open(&dir).unwrap();
+    let mut index = repo.index().unwrap();
+    let mut entry = index.get_path(Path::new("readme.md"), 0).unwrap();
+    entry.path = b"README.md".to_vec();
+    entry.flags = (entry.flags & !0xfff) | 9;
+    index.add(&entry).unwrap();
+    index.write().unwrap();
+    drop((index, repo));
+    let ids_before = [index_id(&dir, "readme.md"), index_id(&dir, "README.md")];
+
+    let e = rename_file_staged(&dir, "readme.md", "README.md").unwrap_err();
+    assert!(e.to_string().contains("README.md is still in the index"), "{e}");
+    assert_eq!([index_id(&dir, "readme.md"), index_id(&dir, "README.md")], ids_before);
+    assert_eq!(names(&dir), [".git", "readme.md"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
