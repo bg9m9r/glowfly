@@ -20,6 +20,7 @@ pub fn revert_hunk(workdir: &Path, target: &DiffTarget, hunk_index: usize, expec
     }
     let repo = Repository::open(workdir)?;
     let path = target.path();
+    super::attrs::refuse_converted(&repo, path, "reverting")?;
     // The same unfiltered diff, renames detected, that the viewer shows, so the index matches.
     let diff = target_diff(&repo, target, LoadDiffOptions::default(), None)?;
     let patch = file_patch(&diff, path)?.ok_or_else(|| Error::Unsupported("binary files can't be reverted by hunk".into()))?;

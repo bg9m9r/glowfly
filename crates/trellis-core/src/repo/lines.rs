@@ -15,6 +15,9 @@ use std::path::Path;
 /// diff, Unstage on the staged one.
 pub fn apply_lines(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk, lines: &[usize], op: HunkOp) -> Result<()> {
     let repo = Repository::open(workdir)?;
+    if op != HunkOp::Unstage {
+        super::attrs::refuse_converted(&repo, path, if op == HunkOp::Stage { "staging" } else { "discarding" })?;
+    }
     // Always the forward diff that `load_diff` shows, so the line indexes match; the patch
     // builder swaps the roles of `+` and `-` when the patch goes the other way.
     let (diff, location, reverse) = match op {

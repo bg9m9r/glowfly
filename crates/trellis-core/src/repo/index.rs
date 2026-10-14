@@ -2,14 +2,30 @@
 
 use super::*;
 use crate::error::{Error, Result};
-use git2::{ApplyLocation, ApplyOptions, IndexAddOption, Repository, build::CheckoutBuilder};
+use crate::gitcli::{NO_PROMPTS, args, run_with_input};
+use git2::{ApplyLocation, ApplyOptions, Repository};
 use std::path::Path;
+
+/// Runs `git --literal-pathspecs <a>` in `workdir`, so paths are never read as globs. Staging
+/// and discarding whole files goes through git rather than libgit2 because only git runs the
+/// external clean/smudge filters (Git LFS, git-crypt) and `working-tree-encoding` conversions:
+/// without them, staging an LFS file would store its binary content instead of the pointer.
+fn git(workdir: &Path, a: &[&str]) -> Result<()> {
+    let mut argv = args(&["--literal-pathspecs"]);
+    argv.extend(args(a));
+    let (ok, out) = run_with_input(workdir, &argv, "", NO_PROMPTS);
+    if ok { Ok(()) } else { Err(Error::Other(if out.is_empty() { format!("git {} failed", a.join(" ")) } else { out })) }
+}
 
 /// Stages, unstages or discards a single hunk (by index within the displayed diff). The index
 /// counts hunks of the unfiltered diff, so callers must not pass an index taken from a
 /// `load_diff_with` diff that ignores whitespace.
 pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, op: HunkOp) -> Result<()> {
     let repo = Repository::open(workdir)?;
+    if op != HunkOp::Unstage {
+        // Unstaging only moves blobs between HEAD and the index, where no conversion applies.
+        attrs::refuse_converted(&repo, path, if op == HunkOp::Stage { "staging" } else { "discarding" })?;
+    }
     let (diff, location) = match op {
         HunkOp::Stage => (repo.diff_index_to_workdir(None, Some(&mut workdir_opts(path)))?, ApplyLocation::Index),
         HunkOp::Discard => {
@@ -35,25 +51,14 @@ pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, op: HunkOp) -> 
     Ok(())
 }
 
+/// Stages `path` as `git add` does: its new content, or its removal when it is gone.
 pub fn stage_file(workdir: &Path, path: &str) -> Result<()> {
-    let repo = Repository::open(workdir)?;
-    let mut index = repo.index()?;
-    if workdir.join(path).exists() {
-        index.add_path(Path::new(path))?;
-    } else {
-        index.remove_path(Path::new(path))?;
-    }
-    index.write()?;
-    Ok(())
+    git(workdir, &["add", "--all", "--", path])
 }
 
+/// Stages every change in the working tree, new files included (ignored ones are skipped).
 pub fn stage_all(workdir: &Path) -> Result<()> {
-    let repo = Repository::open(workdir)?;
-    let mut index = repo.index()?;
-    index.add_all(["*"], IndexAddOption::DEFAULT, None)?;
-    index.update_all(["*"], None)?;
-    index.write()?;
-    Ok(())
+    git(workdir, &["add", "--all"])
 }
 
 pub fn unstage_paths(workdir: &Path, paths: &[String]) -> Result<()> {
@@ -74,11 +79,7 @@ pub fn unstage_paths(workdir: &Path, paths: &[String]) -> Result<()> {
 
 /// Reverts a tracked file's unstaged changes to the index version.
 pub fn discard_file(workdir: &Path, path: &str) -> Result<()> {
-    let repo = Repository::open(workdir)?;
-    let mut cb = CheckoutBuilder::new();
-    cb.force().path(path);
-    repo.checkout_index(None, Some(&mut cb))?;
-    Ok(())
+    git(workdir, &["restore", "--worktree", "--", path])
 }
 
 /// Discards the untracked file `path`: deletes it the way `removal` asks (to the trash, or
