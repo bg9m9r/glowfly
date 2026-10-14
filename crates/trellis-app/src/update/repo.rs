@@ -118,8 +118,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 Err(e) => {
                     st.view.diff_lines.clear();
                     st.log(false, e);
-                    // The diff still on screen was marked stale by this request: re-read it.
-                    reload_diff(st, fx);
+                    // The diff still on screen was marked stale by this request: re-read it. Not
+                    // `reload_diff`, which would ask again for a file history entry that failed.
+                    reload_shown_diff(st, fx);
                 }
             }
         }
@@ -164,13 +165,37 @@ pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 pub(super) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
-    request_diff(st, fx, true);
+    if open_missing_history_diff(st, fx) {
+        return;
+    }
+    reload_shown_diff(st, fx);
 }
 
 /// Opens the diff on screen again, as if newly opened (top of the file, no line selection),
 /// e.g. after the diff options changed. Does nothing when no diff is open.
 pub(super) fn reopen_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if open_missing_history_diff(st, fx) {
+        return;
+    }
     request_diff(st, fx, false);
+}
+
+/// The file history's selected entry may not be on screen yet (its request still in flight
+/// or dropped with a tab switch): ask for it, as a request for the previous entry would
+/// supersede it. Returns whether it did.
+fn open_missing_history_diff(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
+    match super::history::missing_diff(st) {
+        Some(target) => {
+            open_diff(st, target, fx);
+            true
+        }
+        None => false,
+    }
+}
+
+/// Re-reads the diff on screen, whatever the file history has selected.
+fn reload_shown_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
+    request_diff(st, fx, true);
 }
 
 fn request_diff(st: &mut AppState, fx: &mut Vec<Effect>, reload: bool) {

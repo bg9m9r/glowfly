@@ -257,3 +257,58 @@ fn tab_switch_parks_file_history() {
     let _ = std::fs::remove_dir_all(&a);
     let _ = std::fs::remove_dir_all(&b);
 }
+
+/// The target of the selected entry's diff.
+fn selected_target(st: &AppState) -> DiffTarget {
+    let v = st.history.as_ref().expect("view open");
+    let e = &v.entries[v.selected.expect("an entry selected")];
+    DiffTarget::Commit(e.oid, e.path.clone())
+}
+
+/// Runs `effect` and feeds its results back, as `drive` does.
+fn run(st: &mut AppState, effect: Effect) {
+    if let Some(m) = crate::runner::execute(effect) {
+        drive(st, m);
+    }
+}
+
+#[test]
+fn tab_switch_reloads_the_selected_entrys_diff() {
+    let (a, b) = (scratch_repo("history-tab-diff-a"), scratch_repo("history-tab-diff-b"));
+    let mut st = state();
+    drive(&mut st, Msg::Open(a.clone()));
+    let fx = update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
+    // The walk lands, selecting entry 0 and asking for its diff, which is still in flight
+    // when the user switches tabs: its result is dropped.
+    let walk = fx.into_iter().find(|e| matches!(e, Effect::LoadFileHistory { .. })).unwrap();
+    if let Some(m) = crate::runner::execute(walk) {
+        update(&mut st, m, Instant::now());
+    }
+    assert_eq!(st.history.as_ref().unwrap().selected, Some(0));
+    assert!(st.diff.is_none());
+    drive(&mut st, Msg::Open(b.clone()));
+    let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
+    let want = selected_target(&st);
+    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { target, .. } if *target == want));
+    run(&mut st, load.expect("the selected entry's diff is asked for again"));
+    assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&want));
+    let _ = std::fs::remove_dir_all(&a);
+    let _ = std::fs::remove_dir_all(&b);
+}
+
+#[test]
+fn a_refresh_does_not_supersede_the_selected_entrys_diff() {
+    let dir = scratch_repo("history-refresh-diff");
+    git(&dir, &["commit", "-q", "-am", "edit a"]);
+    let mut st = state();
+    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None });
+    assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 0 on screen");
+    // Entry 1's diff is in flight when a refresh (window focus, file watcher) reloads the diff.
+    let fx = update(&mut st, Msg::SelectHistoryEntry(1), Instant::now());
+    let [pending] = <[Effect; 1]>::try_from(fx).unwrap();
+    drive(&mut st, Msg::Refresh);
+    run(&mut st, pending);
+    assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 1 on screen");
+    let _ = std::fs::remove_dir_all(&dir);
+}

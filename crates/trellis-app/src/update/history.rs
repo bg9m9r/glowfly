@@ -101,8 +101,20 @@ pub(super) fn close(st: &mut AppState) {
     }
 }
 
-/// After a tab switch: a request dropped while the tab was parked is sent again.
+/// The selected entry's diff, when it is not the diff on screen.
+pub(super) fn missing_diff(st: &AppState) -> Option<DiffTarget> {
+    let view = st.history.as_ref()?;
+    let e = view.entries.get(view.selected?)?;
+    let target = DiffTarget::Commit(e.oid, e.path.clone());
+    st.diff.as_ref().is_none_or(|(t, _)| *t != target).then_some(target)
+}
+
+/// After a tab switch: requests dropped while the tab was parked (the walk, and the selected
+/// entry's diff) are sent again.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if let Some(target) = missing_diff(st) {
+        super::repo::open_diff(st, target, fx);
+    }
     let Some(view) = st.history.as_ref().filter(|v| v.loading) else { return };
     let start = if view.entries.is_empty() {
         view.at.map_or(HistoryStart::Head, HistoryStart::At)
