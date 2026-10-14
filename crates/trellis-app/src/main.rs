@@ -18,13 +18,24 @@ mod watcher;
 use eframe::egui;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use trellis_core::askpass::{self, HelperError, Outcome};
 
 fn main() -> eframe::Result {
     // Git runs Trellis as the sequence editor of an interactive rebase: install the prepared
     // todo list and exit, without opening a window.
     let argv: Vec<OsString> = std::env::args_os().collect();
+    // Checked first: the sequence editor runs under git, so it inherits the askpass variables.
     if argv.get(1).is_some_and(|a| a == "--write-todo") {
         std::process::exit(write_todo(&argv[2..]));
+    }
+    // git or ssh asks for credentials: answer through the running app, without a window.
+    // git runs the askpass program with the prompt as its only argument, so the environment
+    // variable gitcli sets is what selects this mode; `--askpass <prompt>` is the explicit form.
+    if argv.get(1).is_some_and(|a| a == "--askpass") {
+        std::process::exit(askpass_helper(argv.get(2)));
+    }
+    if std::env::var_os(askpass::ENV_ADDR).is_some() {
+        std::process::exit(askpass_helper(argv.get(1)));
     }
     // RUST_LOG=trellis=debug shows background effects as they run.
     tracing_subscriber::fmt()
@@ -61,6 +72,46 @@ fn write_todo(args: &[OsString]) -> i32 {
                 eprintln!("{e} (and could not write {}: {w})", Path::new(&error_file).display());
             }
             1
+        }
+    }
+}
+
+/// Askpass helper mode: asks the app to show `prompt` and prints the answer for git or ssh.
+/// Exits 0 with the answer, 1 when the prompt was cancelled, timed out or closed, and 2 when
+/// the app can't be reached.
+fn askpass_helper(prompt: Option<&OsString>) -> i32 {
+    use std::io::Write;
+    // An informational notice (e.g. touch a security key): ssh doesn't read an answer.
+    if std::env::var(askpass::SSH_HINT_ENV).is_ok_and(|h| h == "none") {
+        return 0;
+    }
+    let Some(prompt) = prompt else {
+        eprintln!("usage: trellis --askpass <prompt> (with {} and {} set)", askpass::ENV_ADDR, askpass::ENV_TOKEN);
+        return 2;
+    };
+    match askpass::ask_from_env(&prompt.to_string_lossy()) {
+        Ok(Outcome::Answer(s)) => {
+            let mut out = std::io::stdout().lock();
+            if writeln!(out, "{}", s.expose()).and_then(|()| out.flush()).is_err() {
+                return 1;
+            }
+            0
+        }
+        Ok(Outcome::Cancelled) => {
+            eprintln!("Trellis: the credential prompt was cancelled.");
+            1
+        }
+        Ok(Outcome::TimedOut) => {
+            eprintln!("Trellis: the credential prompt timed out.");
+            1
+        }
+        Err(HelperError::Closed) => {
+            eprintln!("Trellis closed the credential prompt before it was answered.");
+            1
+        }
+        Err(e) => {
+            eprintln!("Trellis: could not reach the app for a credential prompt: {e}");
+            2
         }
     }
 }

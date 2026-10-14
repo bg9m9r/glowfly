@@ -1,0 +1,86 @@
+//! Credential prompts from git and ssh (through the askpass helper) waiting for the user.
+//! Global, not parked with a tab: a prompt belongs to the running job, whichever tab is shown.
+
+use std::collections::{HashSet, VecDeque};
+use trellis_core::askpass::{self, Prompt, PromptKind, Secret};
+
+/// A prompt waiting in the queue.
+#[derive(Clone, Debug)]
+pub struct PendingPrompt {
+    pub id: u64,
+    pub prompt: Prompt,
+    /// The same prompt was already answered in this job: the answer didn't work.
+    pub retry: bool,
+    /// The last job that used credentials Trellis supplied for this host failed.
+    pub rejected_before: bool,
+}
+
+/// How the current job's prompting ended early.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PromptEnd {
+    Cancelled,
+    TimedOut,
+}
+
+/// The password typed with a username, kept for git's follow-up password prompt.
+pub struct Carry {
+    pub host: String,
+    pub user: String,
+    pub password: Secret,
+}
+
+#[derive(Default)]
+pub struct CredentialPrompts {
+    /// Oldest first; the front one is shown.
+    pub queue: VecDeque<PendingPrompt>,
+    /// The dialog's text buffers (edited by the view).
+    pub user: String,
+    pub secret: String,
+    /// View state: show the masked field's text; focus the first field on the next frame.
+    pub reveal: bool,
+    pub focus_pending: bool,
+    pub carry: Option<Carry>,
+    /// Prompt texts answered during the current job.
+    pub answered: Vec<String>,
+    /// Hosts Trellis supplied credentials for during the current job.
+    pub answered_hosts: HashSet<String>,
+    /// Hosts whose last job failed after Trellis supplied credentials (kept across jobs).
+    pub failed_hosts: HashSet<String>,
+    pub ended: Option<PromptEnd>,
+}
+
+impl CredentialPrompts {
+    pub fn showing(&self) -> bool {
+        !self.queue.is_empty()
+    }
+
+    pub fn front(&self) -> Option<&PendingPrompt> {
+        self.queue.front()
+    }
+
+    /// Whether `prompt` is git's password prompt for the host and user just entered, so the
+    /// kept password answers it.
+    pub fn carry_answers(&self, prompt: &Prompt) -> bool {
+        let Some(c) = &self.carry else { return false };
+        let PromptKind::Password { user: Some(user), .. } = &prompt.kind else { return false };
+        *user == c.user && askpass::host(&prompt.kind).is_some_and(|h| h == c.host)
+    }
+
+    /// Whether the shown prompt can be answered with what is typed.
+    pub fn can_submit(&self) -> bool {
+        match self.front().map(|p| &p.prompt.kind) {
+            None => false,
+            Some(PromptKind::Username { .. }) => !self.user.trim().is_empty(),
+            Some(PromptKind::Confirm | PromptKind::Other { secret: false }) => true,
+            Some(_) => !self.secret.is_empty(),
+        }
+    }
+
+    /// Empties the text buffers (overwriting the secret) for the next prompt.
+    pub fn clear_buffers(&mut self) {
+        askpass::wipe(&mut self.user);
+        askpass::wipe(&mut self.secret);
+        self.reveal = false;
+        self.focus_pending = true;
+    }
+}

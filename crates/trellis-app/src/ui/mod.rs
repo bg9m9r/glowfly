@@ -2,6 +2,7 @@
 //! background results through `update`, runs the resulting effects, and handles the few
 //! effects that need the window.
 
+mod askpass;
 mod avatars;
 mod branch_dialogs;
 mod branch_menu;
@@ -28,6 +29,8 @@ pub mod widgets;
 
 #[cfg(test)]
 mod snapshot_tests;
+#[cfg(test)]
+mod snapshot_tests_askpass;
 #[cfg(test)]
 mod snapshot_tests_branch;
 #[cfg(test)]
@@ -88,6 +91,8 @@ impl TrellisApp {
             runner: Runner::new(tx, cc.egui_ctx.clone()),
             results,
         };
+        // git and ssh ask for missing credentials through a dialog from now on.
+        app.runner.start_askpass();
         if !paths.is_empty() {
             app.dispatch(&cc.egui_ctx, Msg::RestoreTabs { paths, active });
         }
@@ -102,6 +107,12 @@ impl TrellisApp {
             match effect {
                 Effect::Ui(UiEffect::CopyText(text)) => ctx.copy_text(text),
                 Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
+                Effect::Ui(UiEffect::RequestAttention) => {
+                    if !ctx.input(|i| i.focused) {
+                        let attention = egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational);
+                        ctx.send_viewport_cmd(attention);
+                    }
+                }
                 other => self.runner.run(other),
             }
         }
@@ -130,15 +141,16 @@ impl TrellisApp {
         if self.st.prefs.is_none() {
             tab_shortcuts(ctx, self.st.tabs.len(), msgs);
         }
-        // Text fields keep Ctrl+Z for their own undo.
-        if self.st.prefs.is_none() && self.st.modal.is_none() && !ctx.wants_keyboard_input() {
+        // Text fields keep Ctrl+Z for their own undo; nothing reaches the views under a dialog.
+        let dialog = self.st.modal.is_some() || self.st.askpass.showing();
+        if self.st.prefs.is_none() && !dialog && !ctx.wants_keyboard_input() {
             undo_shortcuts(ctx, msgs);
         }
         // Text fields (the commit message) keep Alt+arrows.
         let stepping = self.st.conflict.is_some() || self.st.diff.is_some();
         if stepping
             && self.st.prefs.is_none()
-            && self.st.modal.is_none()
+            && !dialog
             && !ctx.wants_keyboard_input()
             && let Some(step) = step_shortcuts(ctx)
         {
@@ -159,9 +171,10 @@ impl TrellisApp {
 
 /// Esc closes the innermost thing open: Preferences, the conflict view, the file history, the
 /// diff (a line selection first), the interactive rebase panel (its message editor first), then
-/// a multi-selection, and finally the search bar.
+/// a multi-selection, and finally the search bar. Dialogs (a credential prompt included) handle
+/// Esc themselves.
 fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    if !ctx.input(|i| i.key_pressed(Key::Escape)) || st.modal.is_some() {
+    if !ctx.input(|i| i.key_pressed(Key::Escape)) || st.modal.is_some() || st.askpass.showing() {
         return;
     }
     if st.prefs.is_some() {
@@ -271,6 +284,8 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         });
     }
     modals::show(ctx, st, msgs);
+    // After the other dialogs, so a credential prompt stacks on top of them.
+    askpass::show(ctx, st, msgs);
     status::toasts(ctx, st);
 }
 

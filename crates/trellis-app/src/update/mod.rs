@@ -2,6 +2,7 @@
 //! and a message, mutates the state, and returns the effects to run. Nothing here blocks or
 //! touches disk, network or the window, which keeps it fully testable.
 
+mod askpass;
 mod avatars;
 mod branches;
 mod conflict;
@@ -19,6 +20,8 @@ mod tabs;
 mod undo;
 mod watch;
 
+#[cfg(test)]
+mod askpass_tests;
 #[cfg(test)]
 mod branch_tests;
 #[cfg(test)]
@@ -182,6 +185,11 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::PushBranch { .. } => branches::handle(st, msg, &mut fx),
         Msg::GraphFilter(_) => graph_filter::handle(st, msg, &mut fx),
         Msg::RepoChanged { .. } | Msg::WatchFailed { .. } => watch::handle(st, msg, now, &mut fx),
+
+        // credential prompts
+        Msg::CredentialPrompt { .. } | Msg::CredentialPromptExpired(_) | Msg::AnswerCredentials | Msg::CancelCredentials => {
+            askpass::handle(st, msg, now, &mut fx)
+        }
 
         // hosting services
         Msg::ForgeRefresh { .. }

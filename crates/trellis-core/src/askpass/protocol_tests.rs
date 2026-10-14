@@ -1,0 +1,49 @@
+use super::Secret;
+use super::protocol::*;
+
+#[test]
+fn requests_and_responses_round_trip_on_one_line() {
+    let prompt = "Host key for \"example.com\"\nfingerprint: ✓ é\nContinue (yes/no)? ";
+    let line = encode_request("abc", prompt, Some("confirm"));
+    assert_eq!(line.matches('\n').count(), 1, "one line: {line}");
+    assert!(line.ends_with('\n'));
+    let req = decode_request(&line).unwrap();
+    assert_eq!((req.token.as_str(), req.prompt.as_str(), req.hint.as_deref()), ("abc", prompt, Some("confirm")));
+
+    for r in [Response::Answer("pa\"ss\nwörd".into()), Response::Cancelled, Response::TimedOut, Response::Rejected] {
+        let line = encode_response(&r);
+        assert_eq!(line.matches('\n').count(), 1);
+        assert!(decode_response(&line).unwrap() == r);
+    }
+}
+
+#[test]
+fn decoding_rejects_bad_input() {
+    let v2 = r#"{"v":2,"token":"a","prompt":"p","hint":null}"#;
+    assert!(matches!(decode_request(v2), Err(ProtocolError::Version(2))));
+    assert!(matches!(decode_request("not json\n"), Err(ProtocolError::Json(_))));
+    let long = encode_request("a", &"x".repeat(MAX_LINE as usize), None);
+    assert!(matches!(decode_request(&long), Err(ProtocolError::TooLong)));
+}
+
+#[test]
+fn tokens() {
+    assert!(token_matches("abcd", "abcd"));
+    assert!(!token_matches("abcd", "abce"));
+    assert!(!token_matches("abcd", "abc"));
+    let (a, b) = (new_token().unwrap(), new_token().unwrap());
+    assert_eq!(a.len(), 32);
+    assert!(a.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+    assert_ne!(a, b);
+}
+
+#[test]
+fn secrets_are_redacted() {
+    let s = Secret::new("hunter2");
+    assert!(!format!("{s:?}").contains("hunter2"));
+    assert!(!format!("{:?}", super::Reply::Answer(s.clone())).contains("hunter2"));
+    assert_eq!(s.expose(), "hunter2");
+    let mut buf = String::from("hunter2");
+    super::wipe(&mut buf);
+    assert!(buf.is_empty());
+}

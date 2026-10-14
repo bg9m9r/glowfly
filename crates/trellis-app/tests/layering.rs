@@ -57,6 +57,8 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("signing", &["list_gpg_keys", "list_ssh_keys", "generate_gpg_key", "export_public_key"]),
     ("undo", &["before", "after", "plan", "redone"]),
     ("rebase", &["plan", "start", "stopped_at", "install_todo"]),
+    ("askpass", &["start", "start_with", "ask", "ask_from_env"]),
+    ("server", &["start", "start_with"]),
     ("platform", &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager"]),
 ];
 
@@ -66,6 +68,9 @@ const RAW_IO: &[&str] = &[
     "thread::spawn",
     "std::process",
     "Command::new",
+    "std::net",
+    "TcpStream",
+    "TcpListener",
     "std::fs",
     "ureq::",
     "keyring::",
@@ -155,4 +160,8 @@ fn the_check_catches_io() {
     assert!(violations("std::thread::spawn(move || {});").len() == 2);
     assert!(violations("let a = args(&[\"tag\"]); // repo::load(here) is only a comment").is_empty());
     assert!(violations("use trellis_core::repo::{self, DiffTarget, Snapshot};").is_empty());
+    assert_eq!(violations("let s = askpass::server::start_with(t, f);").len(), 1);
+    assert_eq!(violations("askpass::ask_from_env(p)").len(), 1);
+    assert_eq!(violations("let s = std::net::TcpStream::connect(a);").len(), 2);
+    assert!(violations("use trellis_core::askpass::{PromptKind, host};").is_empty());
 }

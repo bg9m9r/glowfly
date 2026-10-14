@@ -27,7 +27,11 @@ crates/
                           comparison hunk's inverse applied to the working tree), conflict
                           (reading an index conflict into chunks), resolve (picks, output, write
                           and stage)
-    gitcli.rs             the git CLI (commands that honour hooks, credentials, signing)
+    gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
+                          passes the askpass environment to every git child once enabled
+    askpass/              credential prompts: prompt (classifying what git or ssh asks),
+                          protocol (the helper's JSON line protocol and token), server (the
+                          app's loopback listener), client (the helper's side)
     branch_ops.rs         branch command lines (rename, upstream, fast-forward without
                           checkout, push, delete with the remote branch), name checks,
                           fast-forward state
@@ -61,19 +65,23 @@ crates/
                           follows), selection (several selected commits: Ctrl/Shift-click
                           rules, cherry-pick checks), branches (why branch actions are blocked,
                           push targets), rebase (the interactive rebase panel: the list being
-                          edited and the rules for starting it)
+                          edited and the rules for starting it), askpass (credential
+                          prompts waiting for the user; global, not parked with a tab)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
                           config (reading git config), rebase (loading and running an
-                          interactive rebase, with Trellis as the sequence editor)
+                          interactive rebase, with Trellis as the sequence editor), askpass
+                          (starting the credential-prompt listener, answering prompts)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
                           undo, diff, conflict, history, watch, selection (several commits:
                           the two-commit comparison, cherry-picking them), branches (the local
                           branch menu's operations), rebase (the interactive rebase panel and
-                          its job), graph_filter (hidden and soloed refs, saved per repository)
+                          its job), graph_filter (hidden and soloed refs, saved per repository),
+                          askpass (queueing, answering and cancelling credential prompts; what a
+                          finished job clears)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, details_multi (several commits), diff/ (header,
@@ -83,18 +91,23 @@ crates/
                           actions, message editor, drag to reorder), modals, menus,
                           branch_menu (local branch menu), branch_dialogs (rename, upstream),
                           ref_visibility (hide/solo menu items, row markers and banner),
+                          askpass (the credential prompt, drawn above every other dialog),
                           status, prefs/ (editor: the Editor page), theme, widgets
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
                           snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
-                          snapshot_tests_editor.rs)
+                          snapshot_tests_editor.rs, snapshot_tests_askpass.rs)
     platform.rs           OS integration (recent repos, terminal, file manager)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead
-                          installs a prepared todo list for git (no window) and exits
+                          installs a prepared todo list for git (no window) and exits; with
+                          TRELLIS_ASKPASS set (or `--askpass <prompt>`) it is git's and ssh's
+                          askpass helper: asks the running app and prints the answer
   trellis-app/tests/snapshots/   approved UI images
   trellis-app/tests/layering.rs  fails if a view under ui/ does I/O itself (see Rules)
   trellis-app/tests/sequence_editor.rs  runs a rebase with the built executable as the
                                  sequence editor
+  trellis-app/tests/askpass.rs   runs the built executable as the askpass helper, alone and
+                                 under `git credential fill`
 ```
 
 ### Data flow (Elm-style)
@@ -131,7 +144,9 @@ crates/
 4. No global mutable state; pass values in. The one exception is the active palette
    (`ui::theme::color`): a thread-local flag the shell sets at the start of each frame, so
    renders on different threads (parallel snapshot tests) can't affect each other. Immutable
-   data loaded once (the syntax definitions in `highlight.rs`) is not mutable state.
+   data loaded once (the syntax definitions in `highlight.rs`) is not mutable state, and
+   neither is the askpass environment in `gitcli` (`enable_askpass`): set once by the app
+   shell at startup, never changed afterwards and never set in tests.
 5. Each hosting provider implements `Forge`; the UI never matches on provider-specific types.
 6. `scripts/check.ps1` (fmt, clippy -D warnings, tests) must pass before committing.
 7. `trellis-core` returns `trellis_core::error::Error` (typed, via `thiserror`); decide behaviour

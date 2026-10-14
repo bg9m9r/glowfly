@@ -4,6 +4,7 @@
 use crate::msg::{FilePurpose, FolderPurpose};
 use git2::Oid;
 use std::path::PathBuf;
+use trellis_core::askpass::Reply;
 use trellis_core::forge::{Account, Auth, Issue, NewPullRequest, NewRepo, PullRequest, Target};
 use trellis_core::rebase::{RebaseBase, StartRequest};
 use trellis_core::repo::{ConflictIds, DiffTarget, FileDiff, HistoryStart, Hunk, HunkOp, LoadOptions, Side};
@@ -165,12 +166,14 @@ pub enum Effect {
     },
     /// Runs git commands in order, stopping at the first failure. `write_file` is written first
     /// (used for commit messages). With `record`, the state before and after is compared and
-    /// the resulting undoable action reported back.
+    /// the resulting undoable action reported back. Without `prompts` (background jobs) git
+    /// fails rather than open a credential prompt.
     RunGit {
         cwd: PathBuf,
         cmds: Vec<Vec<String>>,
         write_file: Option<(PathBuf, String)>,
         record: Option<UndoKind>,
+        prompts: bool,
     },
     /// The commits an interactive rebase from `base` would replay.
     LoadRebasePlan {
@@ -279,6 +282,12 @@ pub enum Effect {
     /// Watch this repository for outside changes, replacing any previous watch; None stops
     /// watching. Handled by `Runner::run` itself (the watcher outlives a worker thread).
     Watch(Option<WatchTarget>),
+    /// Answers credential prompt `id`. Handled by `Runner::run` itself, which owns the
+    /// listener the helper is waiting on. The answer's `Debug` output is redacted.
+    AnswerPrompt {
+        id: u64,
+        reply: Reply,
+    },
     Ui(UiEffect),
 }
 
@@ -322,4 +331,6 @@ pub enum UndoResult {
 pub enum UiEffect {
     CopyText(String),
     SetTitle(String),
+    /// A credential prompt opened: flash the taskbar entry if the window isn't focused.
+    RequestAttention,
 }

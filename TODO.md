@@ -292,10 +292,22 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Status-bar indicator showing whether live updates are active for the repository
   - [ ] Reflect submodule HEAD changes live in the parent's status (paths under a nested `.git`
     are ignored for now)
-- [ ] **Credential prompts**
-  Trellis runs git with `GIT_TERMINAL_PROMPT=0`, so HTTPS without Git Credential Manager, SSH
-  keys with passphrases, and GPG passphrases all fail. Add an askpass helper (`GIT_ASKPASS` /
-  `SSH_ASKPASS`) that shows an in-app dialog.
+- [x] **Credential prompts**
+  Trellis is git's and ssh's askpass helper: HTTPS sign-in (username and password or token in
+  one dialog), SSH key passphrases, SSH passwords and host-key confirmations open an in-app
+  prompt, with retry and rejected-credentials notices, cancel and a 5-minute timeout.
+  Background jobs and hosting-service sign-in never prompt.
+  - [ ] GPG passphrases for commit signing (a Trellis pinentry, or loopback pinentry)
+  - [ ] Remember entered HTTPS credentials through `git credential approve` / the OS
+    credential store, and reject them when they fail
+  - [ ] Caps Lock warning on password fields (egui doesn't expose Caps Lock state yet)
+  - [ ] Choose between a password, personal access token or app password per hosting
+    service, with a link to create a token
+  - [ ] A non-blocking notice for SSH security-key touch requests (`SSH_ASKPASS_PROMPT=none`)
+  - [ ] OpenSSH older than 8.4 on Linux/macOS (no `SSH_ASKPASS_REQUIRE`; needs `DISPLAY`)
+  - [ ] Auto-fetch that needs credentials: a "sign in needed" notice instead of failing quietly
+  - [ ] Hosting-service sign-in without Git Credential Manager through the prompt
+    (Preferences > Integrations)
 - [x] **Branch operations**
   From the local branch menu: rename, set and unset the upstream (also to a branch not on the
   remote yet), fast-forward without checkout, delete local + remote in one step when the

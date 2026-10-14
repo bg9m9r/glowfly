@@ -16,6 +16,7 @@ serde.workspace = true
 serde_json.workspace = true
 sys-locale.workspace = true
 base64 = "0.23.1"
+getrandom = "0.3"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 keyring = { version = "3", features = ["windows-native", "apple-native"] }
 sha2 = "0.11.1"

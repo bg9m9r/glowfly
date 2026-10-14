@@ -130,7 +130,8 @@ fn credential_request(account: &Account) -> String {
 
 /// Asks Git Credential Manager (or whichever git credential helper is configured) for a token.
 pub fn from_credential_manager(account: &Account, cwd: &Path, interactive: bool) -> Result<Auth> {
-    let mut env = vec![];
+    // Sign-in never opens Trellis's own credential prompt; GCM shows its own window.
+    let mut env = crate::gitcli::NO_PROMPTS.to_vec();
     if !interactive {
         env.push(("GCM_INTERACTIVE", "never"));
     }
@@ -156,6 +157,11 @@ pub fn from_credential_manager(account: &Account, cwd: &Path, interactive: bool)
 /// Removes the sign-in Git Credential Manager stored for an account's host. Note this also
 /// signs git itself out of that host.
 pub fn forget_credential_manager(account: &Account, cwd: &Path) -> Result<()> {
-    let (ok, out) = crate::gitcli::run_with_input(cwd, &crate::gitcli::args(&["credential", "reject"]), &credential_request(account), &[]);
+    let (ok, out) = crate::gitcli::run_with_input(
+        cwd,
+        &crate::gitcli::args(&["credential", "reject"]),
+        &credential_request(account),
+        crate::gitcli::NO_PROMPTS,
+    );
     if ok { Ok(()) } else { Err(Error::Other(format!("git credential reject failed: {out}"))) }
 }

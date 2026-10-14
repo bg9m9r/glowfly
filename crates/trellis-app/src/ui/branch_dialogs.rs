@@ -11,13 +11,16 @@ fn branch<'a>(snap: Option<&'a Snapshot>, name: &str) -> Option<&'a BranchInfo> 
     snap?.locals.iter().find(|b| b.name == name)
 }
 
-/// The rename dialog; returns true when it should close.
-pub fn rename(ui: &mut egui::Ui, old: &str, name: &mut String, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
+/// The rename dialog; returns true when it should close. Its field keeps the keyboard focus
+/// unless `focus` is false (a credential prompt is open above it).
+pub fn rename(ui: &mut egui::Ui, old: &str, name: &mut String, snap: Option<&Snapshot>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
     let mut close = false;
     ui.heading(format!("Rename branch {old}"));
     ui.add_space(6.0);
     let r = ui.add(egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
-    r.request_focus();
+    if focus {
+        r.request_focus();
+    }
     let new = name.trim();
     let unchanged = new == old;
     let existing: Vec<&str> = snap.map(|s| s.locals.iter().map(|b| b.name.as_str()).collect()).unwrap_or_default();

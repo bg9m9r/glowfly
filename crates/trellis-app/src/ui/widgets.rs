@@ -36,6 +36,9 @@ pub enum Icon {
     Grip,
     /// Angle brackets around a slash: code (Preferences > Editor).
     Code,
+    /// Show / hide a masked field's text.
+    Eye,
+    EyeOff,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -160,6 +163,17 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         Icon::Brush => {
             line(pos2(c.x + 8.0, c.y - 8.0), pos2(c.x - 1.0, c.y + 1.0));
             p.circle_filled(pos2(c.x - 4.0, c.y + 4.0), 4.0, col);
+        }
+        Icon::Eye | Icon::EyeOff => {
+            let (l, r) = (pos2(c.x - 8.0, c.y), pos2(c.x + 8.0, c.y));
+            for dy in [-7.0, 7.0] {
+                let lid = [l, pos2(c.x, c.y + dy), r];
+                p.add(egui::epaint::QuadraticBezierShape::from_points_stroke(lid, false, Color32::TRANSPARENT, s));
+            }
+            p.circle_stroke(c, 2.2, s);
+            if icon == Icon::EyeOff {
+                line(pos2(c.x - 7.0, c.y + 6.0), pos2(c.x + 7.0, c.y - 6.0));
+            }
         }
         Icon::Key => {
             p.circle_stroke(pos2(c.x - 4.0, c.y), 4.0, s);

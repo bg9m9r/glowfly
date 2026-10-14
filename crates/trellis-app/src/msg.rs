@@ -321,6 +321,19 @@ pub enum Msg {
     CopyPublicKey,
     PickFile(FilePurpose),
 
+    // ---- credential prompts (state/askpass.rs)
+    /// git or ssh asks for input through the askpass helper (from the listener; unscoped).
+    CredentialPrompt {
+        id: u64,
+        prompt: trellis_core::askpass::Prompt,
+    },
+    /// Prompt `id` was not answered in time and has been closed.
+    CredentialPromptExpired(u64),
+    /// Sign in / OK / Unlock / Yes: answer the shown prompt from the dialog's text buffers.
+    AnswerCredentials,
+    /// Cancel, No or Esc.
+    CancelCredentials,
+
     // ---- results from effects
     RepoLoaded {
         generation: u64,

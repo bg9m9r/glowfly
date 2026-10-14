@@ -48,7 +48,7 @@ pub(super) fn drive(st: &mut AppState, msg: Msg) {
                 Effect::Forge { .. } | Effect::Connect { .. } | Effect::SaveToken { .. } | Effect::DeleteToken(_) => {}
                 Effect::RepoOwners { .. } | Effect::CreateRepo { .. } => {}
                 Effect::ForgetCredentialManager { .. } | Effect::SaveSettings(_) | Effect::SaveRecent(_) => {}
-                Effect::SaveTabs { .. } | Effect::Watch(_) => {}
+                Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. } => {}
                 other => queue.extend(runner::execute(other)),
             }
         }
@@ -104,7 +104,10 @@ fn auto_fetch_runs_quietly_on_its_interval() {
     assert!(update(&mut st, Msg::Tick(start + Duration::from_secs(30)), Instant::now()).is_empty(), "too early");
     let fx = update(&mut st, Msg::Tick(start + Duration::from_secs(61)), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(cmds[0], args(&["fetch", "--all", "--prune"])),
+        [Effect::RunGit { cmds, prompts, .. }] => {
+            assert_eq!(cmds[0], args(&["fetch", "--all", "--prune"]));
+            assert!(!prompts, "background jobs never open a credential prompt");
+        }
         other => panic!("expected a fetch, got {other:?}"),
     }
     // A failed background fetch is logged but doesn't pop the log open or toast.
@@ -223,7 +226,10 @@ fn push_sets_upstream_for_new_branches() {
     drive(&mut st, Msg::Open(dir.clone()));
     let fx = update(&mut st, Msg::Push { force: false }, Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(cmds[0], args(&["push", "-u", "origin", "main"])),
+        [Effect::RunGit { cmds, prompts, .. }] => {
+            assert_eq!(cmds[0], args(&["push", "-u", "origin", "main"]));
+            assert!(prompts, "user-started jobs may ask for credentials");
+        }
         other => panic!("expected a push, got {other:?}"),
     }
     let _ = std::fs::remove_dir_all(&dir);

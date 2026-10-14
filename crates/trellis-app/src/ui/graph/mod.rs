@@ -44,7 +44,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         .hint_text("Search commit messages, authors and SHAs, then press Enter")
                         .desired_width(420.0),
                 );
-                if !r.has_focus() && st.view.search.is_empty() {
+                // A credential prompt above keeps the keyboard.
+                if !r.has_focus() && st.view.search.is_empty() && !st.askpass.showing() {
                     r.request_focus();
                 }
                 if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {

@@ -1,6 +1,7 @@
 //! Application state: plain data, no egui types. Only `update` changes it, except for
 //! transient view state (`ViewState`) and text buffers that views edit in place.
 
+pub mod askpass;
 pub mod branches;
 pub mod conflict;
 mod forge;
@@ -263,6 +264,8 @@ pub struct AppState {
     pub last_fetch: Instant,
     /// The file watcher for the active tab.
     pub watch: watch::WatchState,
+    /// Credential prompts from git (global, not per tab).
+    pub askpass: askpass::CredentialPrompts,
     pub view: ViewState,
 }
 
@@ -304,6 +307,7 @@ impl AppState {
             stats_pending: HashSet::new(),
             last_fetch: now,
             watch,
+            askpass: Default::default(),
             view: ViewState::default(),
         }
     }

@@ -12,6 +12,8 @@ use trellis_core::gitcli::args;
 use trellis_core::repo::Snapshot;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    // Under a credential prompt, Esc and clicks belong to the prompt.
+    let prompting = st.askpass.showing();
     let Some(modal) = st.modal.as_mut() else { return };
     let snap = st.snap.as_ref();
     let fs = st.forge.as_ref();
@@ -43,7 +45,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.heading(heading);
                 ui.add_space(6.0);
                 let r = ui.add(egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
-                r.request_focus();
+                // Not under a credential prompt: its fields need the keyboard.
+                if !prompting {
+                    r.request_focus();
+                }
                 ui.checkbox(checkout, "Check out after creating");
                 ui.add_space(8.0);
                 let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
@@ -135,7 +140,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             }
             Modal::RenameBranch { old, name } => {
-                if super::branch_dialogs::rename(ui, old, name, snap, msgs) {
+                if super::branch_dialogs::rename(ui, old, name, snap, !prompting, msgs) {
                     close = true;
                 }
             }
@@ -146,7 +151,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
         }
     });
-    if close || resp.should_close() {
+    if close || (!prompting && resp.should_close()) {
         msgs.push(Msg::CloseModal);
     }
 }

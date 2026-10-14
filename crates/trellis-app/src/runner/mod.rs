@@ -14,6 +14,7 @@ use trellis_core::repo;
 use trellis_core::signing::{self, SigningFormat};
 use trellis_core::undo::{self, Action, Plan};
 
+mod askpass;
 mod config;
 mod rebase;
 
@@ -32,19 +33,22 @@ pub struct Runner<W: Waker + Clone> {
     tx: Sender<Msg>,
     waker: W,
     watch: crate::watcher::WatchSlot,
+    /// The credential-prompt listener, once started (never in tests).
+    askpass: Option<std::sync::Arc<trellis_core::askpass::Server>>,
 }
 
 impl<W: Waker + Clone> Runner<W> {
     pub fn new(tx: Sender<Msg>, waker: W) -> Self {
-        Self { tx, waker, watch: Default::default() }
+        Self { tx, waker, watch: Default::default(), askpass: None }
     }
 
     /// Starts `effect` on a worker thread. UI effects must be handled by the caller instead.
     pub fn run(&self, effect: Effect) {
-        if let Effect::Watch(target) = effect {
-            self.watch.set(target, self.tx.clone(), self.waker.clone());
-            return;
-        }
+        let effect = match effect {
+            Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
+            Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
+            other => other,
+        };
         let tx = self.tx.clone();
         let waker = self.waker.clone();
         let name = effect_name(&effect);
@@ -100,6 +104,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::GenerateGpgKey { .. } => "generate-key",
         Effect::ExportPublicKey { .. } => "export-key",
         Effect::Watch(_) => "watch",
+        Effect::AnswerPrompt { .. } => "answer-prompt",
         Effect::Ui(_) => "ui",
     }
 }
@@ -160,9 +165,9 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
             Some(Msg::HunkReverted { path: target.path().to_owned(), result })
         }
-        Effect::RunGit { cwd, cmds, write_file, record } => {
+        Effect::RunGit { cwd, cmds, write_file, record, prompts } => {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
-            let (ok, output) = run_git(&cwd, &cmds, write_file);
+            let (ok, output) = run_git(&cwd, &cmds, write_file, prompts);
             let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
             let undo = record.map(|k| UndoResult::Recorded(recorded(k)));
             Some(Msg::JobDone { ok, output, undo })
@@ -277,8 +282,8 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None
         }
-        Effect::Watch(_) => {
-            tracing::warn!("watch effect reached a worker; it is handled by Runner::run");
+        Effect::Watch(_) | Effect::AnswerPrompt { .. } => {
+            tracing::warn!("watch or prompt effect reached a worker; it is handled by Runner::run");
             None
         }
     }
@@ -316,7 +321,7 @@ fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
             Msg::JobDone { ok: false, output: r.message().into(), undo: Some(UndoResult::Refused { redo, stale: r.is_stale() }) }
         }
         Ok(Plan::Run(cmds)) => {
-            let (ok, output) = run_git(cwd, &cmds, None);
+            let (ok, output) = run_git(cwd, &cmds, None, true);
             if !ok {
                 return failed(output);
             }
@@ -326,7 +331,9 @@ fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
     }
 }
 
-fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::PathBuf, String)>) -> (bool, String) {
+/// Runs `cmds` in order, stopping at the first failure. Without `prompts`, git fails rather than
+/// open a credential prompt.
+fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::PathBuf, String)>, prompts: bool) -> (bool, String) {
     if let Some((path, contents)) = write_file
         && let Err(e) = std::fs::write(&path, contents)
     {
@@ -335,7 +342,7 @@ fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::Path
     let mut output = String::new();
     for c in cmds {
         output.push_str(&format!("$ git {}\n", c.join(" ")));
-        let (success, text) = gitcli::run(cwd, c);
+        let (success, text) = gitcli::run_with_input(cwd, c, "", if prompts { &[] } else { gitcli::NO_PROMPTS });
         if !text.is_empty() {
             output.push_str(&text);
             output.push('\n');

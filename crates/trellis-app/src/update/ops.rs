@@ -131,7 +131,9 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         keeps_undo: super::undo::keeps_history(&spec.cmds),
     };
     let Some(cwd) = claim(st, job, spec.cwd) else { return };
-    fx.push(Effect::RunGit { cwd, cmds: spec.cmds, write_file: spec.write_file, record: spec.record });
+    // Background jobs fail rather than pop up a credential prompt.
+    let prompts = !spec.quiet;
+    fx.push(Effect::RunGit { cwd, cmds: spec.cmds, write_file: spec.write_file, record: spec.record, prompts });
 }
 
 /// Makes a job labelled `label` the active one in the active tab's repository, unless another
@@ -256,7 +258,7 @@ fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
 }
 
 /// The active job ended: logs and toasts it (`headline`, or "<label> succeeded" / "<label>
-/// failed: <reason>"), updates the undo history of the tab it ran in, and refreshes that tab if
+/// failed: <reason>"), closes the credential prompts it left, updates the undo history of the tab it ran in, and refreshes that tab if
 /// it is still active.
 pub(super) fn finish_job(
     st: &mut AppState,
@@ -268,6 +270,8 @@ pub(super) fn finish_job(
     fx: &mut Vec<Effect>,
 ) {
     let Some(job) = st.job.take() else { return };
+    // A cancelled or timed-out credential prompt explains a failure better than git's output.
+    let headline = super::askpass::job_finished(st, ok, &job.label, fx).or(headline);
     let status = if ok { "done" } else { "FAILED" };
     let text = format!("{} {status}\n{output}", job.label);
     if job.quiet {
