@@ -128,7 +128,8 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
         ui.spacing_mut().item_spacing.y = 0.0;
         for (i, shown) in list.iter().enumerate() {
             let selected = sel == Some(i);
-            let r = row(ui, &shown.entry.label, shown.entry.detail.as_deref(), &shown.matched, 0, selected);
+            let e = &shown.entry;
+            let r = row(ui, &e.label, e.detail.as_deref(), e.shortcut, &shown.matched, 0, selected);
             if r.clicked() {
                 msgs.push(Msg::RunPaletteCommand(shown.entry.command.clone()));
             }
@@ -162,7 +163,7 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
                         let label = pk.label(hit.index);
                         // The folder part (through the last '/') is dimmed.
                         let dim = label.rfind('/').map_or(0, |b| label[..=b].chars().count());
-                        let resp = row(ui, label, None, &hit.matched, dim, i == sel);
+                        let resp = row(ui, label, None, None, &hit.matched, dim, i == sel);
                         if resp.clicked() {
                             msgs.push(Msg::RunPaletteCommand(kind.command(label)));
                         }
@@ -192,8 +193,17 @@ fn note(ui: &mut Ui, text: &str, col: Color32) {
 }
 
 /// One row: the label with its matched characters in the accent colour (the chars before
-/// `dim_before` dimmed otherwise), and the detail in dim text at the right.
-fn row(ui: &mut Ui, label: &str, detail: Option<&str>, matched: &[usize], dim_before: usize, selected: bool) -> Response {
+/// `dim_before` dimmed otherwise), then at the right in dim text the detail and, at the far
+/// right, the shortcut. The label is clipped before both.
+fn row(
+    ui: &mut Ui,
+    label: &str,
+    detail: Option<&str>,
+    shortcut: Option<&str>,
+    matched: &[usize],
+    dim_before: usize,
+    selected: bool,
+) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
@@ -204,10 +214,19 @@ fn row(ui: &mut Ui, label: &str, detail: Option<&str>, matched: &[usize], dim_be
         p.rect_filled(rect, 3.0, color::hover());
     }
     let mut right_w = 0.0;
-    if let Some(detail) = detail {
-        let g = p.layout_no_wrap(detail.to_owned(), FontId::proportional(12.0), color::weak());
+    if let Some(keys) = shortcut {
+        let g = p.layout_no_wrap(keys.to_owned(), FontId::proportional(12.0), color::weak());
         right_w = g.size().x + 18.0;
         p.galley(pos2(rect.right() - g.size().x - 10.0, rect.center().y - g.size().y / 2.0), g, color::weak());
+    }
+    if let Some(detail) = detail {
+        let g = p.layout_no_wrap(detail.to_owned(), FontId::proportional(12.0), color::weak());
+        // 10px in from the row's edge, or 14px left of the shortcut (`right_w` already holds
+        // 8px of space to its left).
+        let gap = if shortcut.is_some() { 6.0 } else { 10.0 };
+        let x = rect.right() - right_w - g.size().x - gap;
+        right_w += g.size().x + gap + 8.0;
+        p.galley(pos2(x, rect.center().y - g.size().y / 2.0), g, color::weak());
     }
     let g = ui.fonts(|f| f.layout_job(label_job(label, matched, dim_before)));
     let text_rect = Rect::from_min_max(pos2(rect.left() + 10.0, rect.top()), pos2(rect.right() - right_w, rect.bottom()));

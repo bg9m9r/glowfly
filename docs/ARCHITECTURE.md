@@ -120,7 +120,7 @@ crates/
                           ref_visibility (hide/solo menu items, row markers and banner),
                           file_menu (file actions in file rows' menus: restore, open, show,
                           new file in this folder, rename, delete), file_dialogs (new file,
-                          rename file),
+                          rename file), tag_dialog (new tag, plain or annotated),
                           askpass (the credential prompt, drawn above every other dialog),
                           palette (the Ctrl+P command palette overlay),
                           status, prefs/ (editor: the Editor page), theme, widgets
@@ -129,7 +129,8 @@ crates/
                           snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
                           snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
                           snapshot_tests_file_menu.rs, snapshot_tests_commit.rs,
-                          snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs)
+                          snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
+                          snapshot_tests_tag.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

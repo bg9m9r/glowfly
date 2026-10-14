@@ -15,7 +15,7 @@ pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Ms
     let sha = oid.to_string();
     let s = short(oid);
     menu_item(msgs, ui, "Create branch here…", Msg::NewBranch { start: Some(sha.clone()), name: String::new() });
-    menu_item(msgs, ui, "Create tag here…", Msg::NewTag(sha.clone()));
+    menu_item(msgs, ui, "Create tag here…", Msg::NewTag { at: sha.clone(), annotated: false });
     menu_item(msgs, ui, "Checkout this commit (detached)", Msg::git("Checkout", &["checkout", &sha]));
     ui.separator();
     menu_item(msgs, ui, "Cherry-pick commit", Msg::git("Cherry-pick", &["cherry-pick", &sha]));

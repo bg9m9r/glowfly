@@ -284,7 +284,9 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         }
         Msg::CloseModal => st.modal = None,
         Msg::NewBranch { start, name } => st.modal = Some(crate::state::Modal::NewBranch { start, name, checkout: true }),
-        Msg::NewTag(at) => st.modal = Some(crate::state::Modal::NewTag { at, name: String::new(), message: String::new() }),
+        Msg::NewTag { at, annotated } => {
+            st.modal = Some(crate::state::Modal::NewTag { at, name: String::new(), message: String::new(), annotated })
+        }
         Msg::CloneDialog => {
             let parent = st.recent.first().and_then(|p| p.parent()).map(|p| p.display().to_string()).unwrap_or_default();
             st.modal = Some(crate::state::Modal::Clone { url: String::new(), parent });

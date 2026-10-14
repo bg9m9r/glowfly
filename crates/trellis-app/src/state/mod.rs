@@ -96,7 +96,7 @@ pub struct Toast {
 
 pub enum Modal {
     NewBranch { start: Option<String>, name: String, checkout: bool },
-    NewTag { at: String, name: String, message: String },
+    NewTag { at: String, name: String, message: String, annotated: bool },
     Confirm { title: String, body: String, button: String, then: Box<Msg> },
     Clone { url: String, parent: String },
     CreatePr { source: String, target: String, targets: Vec<String>, title: String, description: String, draft: bool, items: String },

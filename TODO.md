@@ -392,12 +392,17 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 
 - [ ] **Command palette (fuzzy finder)**
   Exists: Ctrl+P / Ctrl+Shift+P opens a fuzzy-searched list (hidden keywords match synonyms):
-  fetch all, pull, push, stage/unstage all, create branch (at HEAD or the selected commit),
-  search commits, open a repository or a recent one, close tab, Preferences, theme, and
-  checkout of local branches, and a file finder for file history.
+  fetch all, pull, push, stage/unstage all, create branch, tag or annotated tag (at HEAD or the
+  selected commit), search commits, open a repository or a recent one, close tab, Preferences,
+  theme, and checkout of local branches, and a file finder for file history. Entries whose
+  command also has a global key show it dimmed at the right (Ctrl+F, Ctrl+W, Ctrl+,).
   - [x] File finder: pick any tracked file to open its history (blame waits for the blame gutter)
-  - [ ] Create tag and annotated tag
-  - [ ] Shortcut hints next to entries (Ctrl+F, Ctrl+, F5, Ctrl+W …)
+  - [x] Create tag and annotated tag
+    - [ ] Check tag names live in the New tag dialog (ref-format rules, an existing tag)
+    - [ ] Push the new tag to a remote right after creating it
+  - [x] Shortcut hints next to entries (Ctrl+F, Ctrl+, Ctrl+W)
+    - [ ] A Refresh entry carrying the F5 hint
+    - [ ] Cmd-style labels on macOS for the hints and tooltips
   - [ ] Two-step entries: pick a command, then a sub-list with its own prompt (branches,
     themes, repositories)
   - [ ] Check out remote branches (creating a tracking branch) and tags

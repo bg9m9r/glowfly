@@ -27,6 +27,7 @@ mod sidebar;
 mod spell_edit;
 mod status;
 mod tabs;
+mod tag_dialog;
 pub mod theme;
 mod toolbar;
 pub mod widgets;
@@ -55,6 +56,8 @@ mod snapshot_tests_rebase;
 mod snapshot_tests_revert;
 #[cfg(test)]
 mod snapshot_tests_select;
+#[cfg(test)]
+mod snapshot_tests_tag;
 #[cfg(test)]
 mod snapshot_tests_whole;
 #[cfg(test)]

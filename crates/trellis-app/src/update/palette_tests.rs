@@ -90,6 +90,11 @@ fn entries_with_repo() {
     assert!(has(&st, "Stage all files"));
     assert!(!has(&st, "Unstage all files"));
     assert!(has(&st, "Create branch at HEAD…"));
+    assert!(has(&st, "Create tag at HEAD…"));
+    assert!(has(&st, "Create annotated tag at HEAD…"));
+    let all = labels(&st, "");
+    let at = all.iter().position(|l| l == "Create branch at HEAD…").unwrap();
+    assert_eq!(all[at + 1..at + 3], ["Create tag at HEAD…", "Create annotated tag at HEAD…"]);
     assert!(has(&st, "Search commits"));
     assert!(has(&st, "Close tab"));
     assert!(has(&st, "Checkout topic"));
@@ -236,4 +241,75 @@ fn run_prefs_close_tab_open_repo() {
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch all"));
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&bare);
+}
+
+#[test]
+fn tag_entries_follow_selection() {
+    let (mut st, dir) = repo_with_topic("palette-tag-entries");
+    let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
+    let short = &oid.to_string()[..7];
+    st.selection = Selection::Commit(oid);
+    assert!(has(&st, &format!("Create tag at {short}…")));
+    assert!(has(&st, &format!("Create annotated tag at {short}…")));
+    st.selection = Selection::Wip;
+    assert!(has(&st, "Create tag at HEAD…"));
+    assert!(has(&st, "Create annotated tag at HEAD…"));
+
+    let st = state();
+    assert!(!labels(&st, "").iter().any(|l| l.contains("tag at")));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn run_create_tag_opens_dialog() {
+    let (mut st, dir) = repo_with_topic("palette-tag-run");
+    let head = st.snap.as_ref().unwrap().head_oid.unwrap();
+    st.selection = Selection::Wip;
+    open_palette(&mut st);
+    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: false }));
+    assert!(st.palette.is_none());
+    assert!(matches!(
+        &st.modal,
+        Some(Modal::NewTag { at, name, message, annotated: false }) if *at == head.to_string() && name.is_empty() && message.is_empty()
+    ));
+
+    st.modal = None;
+    // Any selected commit is used as it is, not HEAD.
+    let oid = git2::Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
+    st.selection = Selection::Commit(oid);
+    open_palette(&mut st);
+    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true }));
+    assert!(matches!(&st.modal, Some(Modal::NewTag { at, annotated: true, .. }) if *at == oid.to_string()));
+
+    let mut st = state();
+    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: false }));
+    assert!(st.modal.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn new_tag_msg_opens_modal() {
+    let mut st = state();
+    let sha = "0123456789abcdef0123456789abcdef01234567".to_owned();
+    run(&mut st, Msg::NewTag { at: sha.clone(), annotated: true });
+    assert!(matches!(
+        &st.modal,
+        Some(Modal::NewTag { at, name, message, annotated: true }) if *at == sha && name.is_empty() && message.is_empty()
+    ));
+}
+
+#[test]
+fn shortcut_hints() {
+    let (st, dir) = repo_with_topic("palette-hints");
+    let list = shown(&st, "");
+    let hint = |label: &str| list.iter().find(|s| s.entry.label == label).map(|s| s.entry.shortcut).expect(label);
+    assert_eq!(hint("Search commits"), Some("Ctrl+F"));
+    assert_eq!(hint("Close tab"), Some("Ctrl+W"));
+    assert_eq!(hint("Open Preferences"), Some("Ctrl+,"));
+    for label in ["Push", "Stage all files", "Create tag at HEAD…", "Checkout topic"] {
+        assert_eq!(hint(label), None, "{label}");
+    }
+    // F5 refreshes; it doesn't fetch.
+    assert_eq!(PaletteCommand::Fetch.shortcut(), None);
+    let _ = std::fs::remove_dir_all(&dir);
 }

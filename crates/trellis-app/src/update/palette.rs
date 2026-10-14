@@ -105,12 +105,10 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Push => Msg::Push { force: false },
         C::StageAll => Msg::StageAll,
         C::UnstageAll => Msg::UnstageAll,
-        C::CreateBranch => {
-            let start = match &st.selection {
-                Selection::Commit(o) => Some(o.to_string()),
-                _ => None,
-            };
-            Msg::NewBranch { start, name: String::new() }
+        C::CreateBranch => Msg::NewBranch { start: selected_commit(st).map(|o| o.to_string()), name: String::new() },
+        C::CreateTag { annotated } => {
+            let Some(at) = selected_commit(st).or_else(|| st.snap.as_ref().and_then(|s| s.head_oid)) else { return };
+            Msg::NewTag { at: at.to_string(), annotated }
         }
         C::OpenRepo => Msg::PickRepo,
         C::CloseTab => Msg::CloseTab(usize::MAX),
@@ -123,4 +121,12 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::FileHistory => return,
     };
     fx.extend(super::update(st, msg, now));
+}
+
+/// The single selected commit, if any (WIP, nothing or several commits give None).
+fn selected_commit(st: &AppState) -> Option<git2::Oid> {
+    match &st.selection {
+        Selection::Commit(o) => Some(*o),
+        _ => None,
+    }
 }

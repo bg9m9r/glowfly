@@ -1,7 +1,7 @@
-//! The command palette over the main window: the full list, a filtered list with matched
-//! characters highlighted, no matches, the file finder (its rows, loading and error states),
-//! and the keys and clicks it turns into messages. Shares the fixture repository and renderer
-//! with `snapshot_tests`.
+//! The command palette over the main window: the full list (with shortcut hints), a filtered
+//! list with matched characters highlighted, the tag commands, no matches, the file finder (its
+//! rows, loading and error states), and the keys and clicks it turns into messages. Shares the
+//! fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
@@ -30,6 +30,21 @@ fn palette_filtered_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "palette-light");
     st.palette = Some(Palette { query: "ch".into(), selected: 1, scroll_to_selected: false, ..Default::default() });
     render("palette_filtered_light", st, false);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn palette_tags_and_hints() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-tags");
+    st.palette = Some(Palette { query: "tag".into(), ..Default::default() });
+    let mut h = harness(st, true);
+    h.run();
+    h.snapshot("palette_tags");
+    assert!(h.query_by_label("Create tag at HEAD…").is_some());
+    h.get_by_label("Create annotated tag at HEAD…").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true }))));
+    drop(h);
     remove_fixture(&dir);
 }
 

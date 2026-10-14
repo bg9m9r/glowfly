@@ -1,7 +1,8 @@
 //! The command palette (Ctrl+P): whether it is open, what is typed, which row is selected, and
 //! the commands it offers right now. App-wide, never parked with a tab. The view, `update` and
 //! the tests all build the list through `entries` and `shown`. Some commands open a second
-//! step (`Mode::Pick`): a list of items for that command, such as tracked files.
+//! step (`Mode::Pick`): a list of items for that command, such as tracked files. Commands that
+//! also have a global key show it as a hint (`PaletteCommand::shortcut`).
 
 use super::{AppState, Selection};
 use std::path::{Path, PathBuf};
@@ -203,6 +204,10 @@ pub enum PaletteCommand {
     StageAll,
     UnstageAll,
     CreateBranch,
+    /// Opens the New tag dialog at the selected commit or HEAD.
+    CreateTag {
+        annotated: bool,
+    },
     SearchCommits,
     OpenRepo,
     CloseTab,
@@ -223,6 +228,16 @@ impl PaletteCommand {
             _ => None,
         }
     }
+
+    /// The global binding in `ui/mod.rs` that does the same thing; keep the two in step.
+    pub fn shortcut(&self) -> Option<&'static str> {
+        match self {
+            PaletteCommand::SearchCommits => Some("Ctrl+F"),
+            PaletteCommand::CloseTab => Some("Ctrl+W"),
+            PaletteCommand::OpenPrefs => Some("Ctrl+,"),
+            _ => None,
+        }
+    }
 }
 
 pub struct Entry {
@@ -232,6 +247,8 @@ pub struct Entry {
     pub detail: Option<String>,
     /// Hidden words that also match the entry.
     pub keywords: &'static str,
+    /// The global key that does the same, drawn dim at the far right.
+    pub shortcut: Option<&'static str>,
 }
 
 /// An entry as listed for the current query, with the label's matched char indexes.
@@ -241,7 +258,16 @@ pub struct Shown {
 }
 
 fn entry(command: PaletteCommand, label: impl Into<String>, keywords: &'static str) -> Entry {
-    Entry { command, label: label.into(), detail: None, keywords }
+    let shortcut = command.shortcut();
+    Entry { command, label: label.into(), detail: None, keywords, shortcut }
+}
+
+/// What Create branch and Create tag start at: the selected commit's short sha, else HEAD.
+fn at_label(st: &AppState) -> String {
+    match &st.selection {
+        Selection::Commit(oid) => oid.to_string()[..7].to_owned(),
+        _ => "HEAD".to_owned(),
+    }
 }
 
 /// Every command available now, in the order shown for an empty query.
@@ -263,11 +289,14 @@ pub fn entries(st: &AppState) -> Vec<Entry> {
             out.push(entry(C::UnstageAll, "Unstage all files", "reset everything"));
         }
         if snap.head_oid.is_some() {
-            let label = match &st.selection {
-                Selection::Commit(oid) => format!("Create branch at {}…", &oid.to_string()[..7]),
-                _ => "Create branch at HEAD…".to_owned(),
-            };
-            out.push(entry(C::CreateBranch, label, "new branch"));
+            let at = at_label(st);
+            out.push(entry(C::CreateBranch, format!("Create branch at {at}…"), "new branch"));
+            out.push(entry(C::CreateTag { annotated: false }, format!("Create tag at {at}…"), "new tag release version label"));
+            out.push(entry(
+                C::CreateTag { annotated: true },
+                format!("Create annotated tag at {at}…"),
+                "new tag release version message annotate",
+            ));
         }
         if !snap.commits.is_empty() && st.conflict.is_none() && st.history.is_none() && st.rebase.is_none() {
             out.push(entry(C::SearchCommits, "Search commits", "find message author sha"));

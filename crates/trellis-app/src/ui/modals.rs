@@ -1,6 +1,6 @@
-//! Dialogs: confirmation, new branch/tag, clone, create pull request, publish (drawn by
-//! `publish.rs`), renaming a branch or setting its upstream (drawn by `branch_dialogs.rs`), and
-//! creating or renaming a working-tree file (drawn by `file_dialogs.rs`).
+//! Dialogs: confirmation, new branch, new tag (drawn by `tag_dialog.rs`), clone, create pull
+//! request, publish (drawn by `publish.rs`), renaming a branch or setting its upstream (drawn by
+//! `branch_dialogs.rs`), and creating or renaming a working-tree file (drawn by `file_dialogs.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys, repo_name_from_url};
 use super::theme::color;
@@ -69,32 +69,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     }
                 });
             }
-            Modal::NewTag { at, name, message } => {
-                ui.heading(format!("New tag at {}", &at[..7.min(at.len())]));
-                ui.add_space(6.0);
-                ui.add(egui::TextEdit::singleline(name).hint_text("v1.0.0").desired_width(f32::INFINITY));
-                ui.add(
-                    egui::TextEdit::multiline(message)
-                        .hint_text("Message (optional, makes an annotated tag)")
-                        .desired_rows(3)
-                        .desired_width(f32::INFINITY),
-                );
-                ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    let valid = !name.trim().is_empty() && !name.contains(' ');
-                    if ui.add_enabled(valid, egui::Button::new("Create tag")).clicked() {
-                        let cmd = if message.trim().is_empty() {
-                            args(&["tag", name.trim(), at])
-                        } else {
-                            args(&["tag", "-a", name.trim(), at, "-m", message.trim()])
-                        };
-                        msgs.push(Msg::Git { label: "Create tag".into(), cmds: vec![cmd] });
-                        close = true;
-                    }
-                    if ui.button("Cancel").clicked() {
-                        close = true;
-                    }
-                });
+            Modal::NewTag { at, name, message, annotated } => {
+                if super::tag_dialog::new_tag(ui, at, name, message, *annotated, !prompting, msgs) {
+                    close = true;
+                }
             }
             Modal::Clone { url, parent } => {
                 ui.heading("Clone a repository");

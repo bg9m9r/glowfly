@@ -303,7 +303,11 @@ pub enum Msg {
         start: Option<String>,
         name: String,
     },
-    NewTag(String),
+    /// Opens the New tag dialog at commit `at` (a full sha); `annotated` makes the message required.
+    NewTag {
+        at: String,
+        annotated: bool,
+    },
     CloneDialog,
     PickFolder(FolderPurpose),
 
