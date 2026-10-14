@@ -94,7 +94,12 @@ impl ForgeState {
     }
 
     pub fn issue_url(&self, key: &str) -> String {
-        self.cache.get(key).map(|i| i.url.clone()).or_else(|| self.tracker.as_ref().map(|t| t.issue_url(key))).unwrap_or_default()
+        self.cache
+            .get(key)
+            .map(|i| i.url.clone())
+            .filter(|u| !u.is_empty())
+            .or_else(|| self.tracker.as_ref().map(|t| t.issue_url(key)))
+            .unwrap_or_default()
     }
 
     pub fn issue_noun(&self) -> &'static str {

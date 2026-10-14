@@ -29,6 +29,7 @@ pub mod tag_ops;
 pub mod terminal;
 #[cfg(test)]
 pub(crate) mod testutil;
+pub mod text;
 pub mod undo;
 pub mod watch;
 pub mod whole_file;

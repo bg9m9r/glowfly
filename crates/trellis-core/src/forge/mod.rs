@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 mod auth;
 mod http;
+mod links;
 mod publish;
 mod refs;
 mod remote;
@@ -21,6 +22,7 @@ pub use auth::{
     save_token,
 };
 use http::{dec, enc, get, get_text, post};
+pub use links::https_host;
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, mention};
 pub use remote::{Connection, parse_host, parse_remote};
@@ -270,6 +272,7 @@ pub struct PullRequest {
     /// Head commit SHA (Bitbucket Cloud reports only a 12-character prefix).
     pub head: Option<String>,
     pub merge_status: Option<String>,
+    /// Web page; empty when the service sent no usable link.
     pub url: String,
 }
 
@@ -336,8 +339,9 @@ pub fn verify(account: &Account, auth: &Auth) -> Result<String> {
     service(account.provider).verify(account, auth)
 }
 
+// Links in results are checked here, once for every service (see `links`).
 pub fn pull_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
-    service(t.provider).pull_requests(t, auth)
+    service(t.provider).pull_requests(t, auth).map(|prs| links::prs(t, prs))
 }
 
 pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
@@ -345,18 +349,18 @@ pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
 }
 
 pub fn create_pull_request(t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
-    service(t.provider).create_pull_request(t, auth, pr)
+    service(t.provider).create_pull_request(t, auth, pr).map(|p| links::pr(t, p))
 }
 
 pub fn my_issues(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-    service(t.provider).my_issues(t, auth)
+    service(t.provider).my_issues(t, auth).map(|i| links::issues(t, i))
 }
 
 pub fn issues(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
     if keys.is_empty() {
         return Ok(Vec::new());
     }
-    service(t.provider).issues(t, auth, keys)
+    service(t.provider).issues(t, auth, keys).map(|i| links::issues(t, i))
 }
 
 /// Text appended to a PR description to link an issue, for trackers linked by mention.

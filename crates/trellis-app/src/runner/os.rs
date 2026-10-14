@@ -13,7 +13,17 @@ fn missing(p: &Path) -> Option<Msg> {
     p.symlink_metadata().is_err().then(|| Msg::Logged { ok: false, text: format!("{} is not in the working tree", p.display()) })
 }
 
+/// Opens an `https://` link in the browser. Anything else (other schemes, file paths, links
+/// with odd characters, an empty link) is refused, since links can come from a server.
 pub(super) fn open_url(url: &str) -> Option<Msg> {
+    if trellis_core::forge::https_host(url).is_none() {
+        let shown = trellis_core::text::printable(url);
+        return failed(if shown.is_empty() {
+            "There is no link to open.".into()
+        } else {
+            format!("Refused to open {shown}: not an https link")
+        });
+    }
     open::that_detached(url).err().and_then(|e| failed(format!("Could not open {url}: {e}")))
 }
 
@@ -51,6 +61,15 @@ mod tests {
         match m {
             Some(Msg::Logged { ok, text }) => (ok, text),
             _ => panic!("expected a log line"),
+        }
+    }
+
+    #[test]
+    fn only_https_links_are_opened() {
+        for url in ["", "file:///C:/Windows/System32/calc.exe", "javascript:alert(1)", r"C:\Windows\notepad.exe", "https://x.example/a b"] {
+            let (ok, text) = logged(open_url(url));
+            assert!(!ok, "{url}");
+            assert!(text.contains("no link") || text.contains("not an https link"), "{text}");
         }
     }
 
