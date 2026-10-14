@@ -14,6 +14,7 @@ mod index;
 mod lines;
 mod load;
 mod noclobber;
+mod removal;
 mod resolve;
 mod restore;
 mod revert;
@@ -30,6 +31,7 @@ pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
 pub use load::{load, messages_between, status_at};
+pub use removal::{Deleted, Removal, Trasher, os_trash};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
@@ -310,6 +312,8 @@ mod history_tests;
 mod lines_tests;
 #[cfg(test)]
 mod load_filter_tests;
+#[cfg(test)]
+mod removal_tests;
 #[cfg(test)]
 mod resolve_tests;
 #[cfg(test)]

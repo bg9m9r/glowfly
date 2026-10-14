@@ -22,7 +22,7 @@ fn spaced_repo(name: &str) -> std::path::PathBuf {
 #[test]
 fn delete_removes_the_listed_name_not_a_trimmed_one() {
     let dir = spaced_repo("wf-exact-delete");
-    delete_file(&dir, " notes.txt").unwrap();
+    assert_eq!(delete_file(&dir, " notes.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(dir.join(" notes.txt").symlink_metadata().is_err());
     assert_eq!(text(&dir, "notes.txt"), "plain\n");
     let _ = std::fs::remove_dir_all(&dir);
@@ -42,7 +42,7 @@ fn rename_moves_the_listed_name_not_a_trimmed_one() {
 fn malformed_existing_paths_are_refused() {
     let dir = spaced_repo("wf-exact-malformed");
     for p in ["", "/notes.txt", "./notes.txt", "a//notes.txt", "notes.txt/", "../notes.txt", ".git/config"] {
-        assert!(delete_file(&dir, p).is_err(), "{p:?}");
+        assert!(delete_file(&dir, p, Removal::Permanent).is_err(), "{p:?}");
         assert!(rename_file(&dir, p, "moved.txt").is_err(), "{p:?}");
     }
     assert_eq!(text(&dir, "notes.txt"), "plain\n");
@@ -59,7 +59,7 @@ fn backslash_names_the_file_it_spells() {
     write(&dir, "a/b", "nested\n");
     write(&dir, "a\\b", "flat\n");
     write(&dir, "c\\d", "other\n");
-    delete_file(&dir, "a\\b").unwrap();
+    assert_eq!(delete_file(&dir, "a\\b", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(dir.join("a\\b").symlink_metadata().is_err());
     rename_file(&dir, "c\\d", "e.txt").unwrap();
     assert_eq!(text(&dir, "e.txt"), "other\n");
@@ -75,7 +75,7 @@ fn names_windows_would_rewrite_are_refused() {
     std::fs::create_dir_all(dir.join("a")).unwrap();
     write(&dir, "a/b", "nested\n");
     for p in ["a\\b", "notes.txt ", "notes.txt.", "notes.txt:x", "C:notes.txt"] {
-        assert!(delete_file(&dir, p).is_err(), "{p:?}");
+        assert!(delete_file(&dir, p, Removal::Permanent).is_err(), "{p:?}");
         assert!(rename_file(&dir, p, "moved.txt").is_err(), "{p:?}");
     }
     assert_eq!(text(&dir, "a/b"), "nested\n");

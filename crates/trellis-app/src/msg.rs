@@ -1,6 +1,6 @@
 //! Everything that can happen: user intents from views and results from background effects.
 
-use crate::effect::{FileOp, ForgeReply, LoadKind, UndoResult};
+use crate::effect::{FileOp, ForgeReply, LoadKind, UndoResult, WorkFileOk};
 use crate::state::PrefPage;
 use crate::state::lines::LineClick;
 use crate::state::prefs::GitConfigValues;
@@ -238,17 +238,15 @@ pub enum Msg {
     },
     /// The rename dialog's "Stage the rename" checkbox (saved in settings).
     SetRenameStages(bool),
-    /// Delete the working-tree file `path`; `confirmed: false` opens the confirmation first.
+    /// Delete the working-tree file `path`: `confirmed: false` opens the confirmation, and
+    /// `confirmed: true` deletes straight away the way the preference says.
     DeleteFile {
         path: String,
         confirmed: bool,
     },
-    /// Delete the staged new file (or staged rename's new path) `.0` and remove it from the index,
-    /// unstaging a rename's source too (sent by the confirmation).
-    DeleteStagedNewFile(String),
-    /// Remove the staged new file (or staged rename's new path) `.0`, already gone from the
-    /// working tree, from the index (sent by the confirmation).
-    UnstageGoneFile(String),
+    /// Run the delete-family op a confirmation agreed to (Delete, UnstageDelete or UnstageGone),
+    /// exactly as the confirmation described it.
+    DeleteConfirmed(FileOp),
     Commit,
     /// Ctrl+Shift+Enter in the commit message: stage everything (git add --all) and commit in one job.
     StageAllAndCommit,
@@ -480,11 +478,15 @@ pub enum Msg {
         oid: Oid,
         reason: String,
     },
-    /// A WorkFile effect finished. `Ok(true)` means git ignores the new path (always false for
-    /// a deletion).
+    /// A WorkFile effect finished.
     WorkFileDone {
         op: FileOp,
-        result: Result<bool, String>,
+        result: Result<WorkFileOk, String>,
+    },
+    /// The trash refused `op`'s file; nothing changed.
+    TrashRefused {
+        op: FileOp,
+        reason: String,
     },
     JobDone {
         ok: bool,

@@ -21,7 +21,7 @@ fn removes_file_folder_and_index_entry() {
     write(&dir, "sub/n.txt", "new\n");
     git(&dir, &["add", "sub/n.txt"]);
 
-    delete_staged_new_file(&dir, "sub/n.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "sub/n.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(!dir.join("sub/n.txt").exists());
     assert!(!dir.join("sub").exists(), "the emptied folder is pruned");
     assert_eq!(index_id(&dir, "sub/n.txt"), None);
@@ -38,7 +38,7 @@ fn removes_file_with_unstaged_edits() {
     git(&dir, &["add", "n.txt"]);
     write(&dir, "n.txt", "new\nmore\n");
 
-    delete_staged_new_file(&dir, "n.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "n.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(!dir.join("n.txt").exists());
     assert_eq!(index_id(&dir, "n.txt"), None);
     assert!(not_in_status(&dir, "n.txt"));
@@ -51,7 +51,7 @@ fn unborn_head_counts_every_staged_file_as_new() {
     write(&dir, "first.txt", "x\n");
     git(&dir, &["add", "first.txt"]);
 
-    delete_staged_new_file(&dir, "first.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "first.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(!dir.join("first.txt").exists());
     assert_eq!(index_id(&dir, "first.txt"), None);
     assert!(not_in_status(&dir, "first.txt"));
@@ -66,7 +66,7 @@ fn refuses_file_in_the_last_commit() {
     git(&dir, &["add", "t.txt"]);
     let staged = index_id(&dir, "t.txt");
 
-    let e = delete_staged_new_file(&dir, "t.txt").unwrap_err();
+    let e = delete_staged_new_file(&dir, "t.txt", Removal::Permanent).unwrap_err();
     assert!(e.to_string().contains("last commit"), "{e}");
     assert_eq!(std::fs::read_to_string(dir.join("t.txt")).unwrap(), "two\n");
     assert_eq!(index_id(&dir, "t.txt"), staged);
@@ -79,7 +79,7 @@ fn refuses_untracked_file() {
     commit(&dir, &[("a.txt", "a\n")], "one");
     write(&dir, "u.txt", "u\n");
 
-    let e = delete_staged_new_file(&dir, "u.txt").unwrap_err();
+    let e = delete_staged_new_file(&dir, "u.txt", Removal::Permanent).unwrap_err();
     assert!(e.to_string().contains("isn't staged"), "{e}");
     assert!(dir.join("u.txt").exists());
     let _ = std::fs::remove_dir_all(&dir);
@@ -94,7 +94,7 @@ fn missing_working_copy_keeps_the_index_entry() {
     let staged = index_id(&dir, "n.txt");
     std::fs::remove_file(dir.join("n.txt")).unwrap();
 
-    let e = delete_staged_new_file(&dir, "n.txt").unwrap_err();
+    let e = delete_staged_new_file(&dir, "n.txt", Removal::Permanent).unwrap_err();
     assert!(e.is_not_found(), "{e}");
     assert!(staged.is_some());
     assert_eq!(index_id(&dir, "n.txt"), staged, "still staged");
@@ -107,7 +107,7 @@ fn refuses_conflicted_path() {
     let before = std::fs::read_to_string(dir.join("f.txt")).unwrap();
     let status_before = status(&dir);
 
-    assert!(delete_staged_new_file(&dir, "f.txt").is_err());
+    assert!(delete_staged_new_file(&dir, "f.txt", Removal::Permanent).is_err());
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap(), before);
     assert_eq!(status(&dir), status_before);
     let _ = std::fs::remove_dir_all(&dir);
@@ -127,7 +127,7 @@ fn staged_rename_unstages_the_source() {
     let (dir, head) = with_old("wfrm-rename");
     git(&dir, &["mv", "old.txt", "new.txt"]);
 
-    delete_staged_new_file(&dir, "new.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "new.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(!dir.join("new.txt").exists());
     assert_eq!(index_id(&dir, "new.txt"), None);
     assert_eq!(index_id(&dir, "old.txt"), head);
@@ -141,7 +141,7 @@ fn staged_rename_into_folder_prunes_and_unstages() {
     std::fs::create_dir_all(dir.join("sub")).unwrap();
     git(&dir, &["mv", "old.txt", "sub/new.txt"]);
 
-    delete_staged_new_file(&dir, "sub/new.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "sub/new.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(!dir.join("sub").exists(), "the emptied folder is pruned");
     assert_eq!(index_id(&dir, "old.txt"), head);
     assert_eq!(status(&dir), " D old.txt");
@@ -156,7 +156,7 @@ fn staged_rename_with_staged_edits() {
     git(&dir, &["add", "new.txt"]);
     assert!(status(&dir).starts_with('R'), "status pairs the rename");
 
-    delete_staged_new_file(&dir, "new.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "new.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert_eq!(index_id(&dir, "old.txt"), head);
     assert_eq!(index_id(&dir, "new.txt"), None);
     assert_eq!(status(&dir), " D old.txt");
@@ -169,7 +169,7 @@ fn staged_rename_keeps_a_recreated_source() {
     git(&dir, &["mv", "old.txt", "new.txt"]);
     write(&dir, "old.txt", "something else\n");
 
-    delete_staged_new_file(&dir, "new.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "new.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert_eq!(text(&dir, "old.txt"), "something else\n");
     assert_eq!(index_id(&dir, "old.txt"), head);
     assert_eq!(status(&dir), " M old.txt");
@@ -182,7 +182,7 @@ fn rename_found_with_diff_renames_off() {
     git(&dir, &["config", "diff.renames", "false"]);
     git(&dir, &["mv", "old.txt", "new.txt"]);
 
-    delete_staged_new_file(&dir, "new.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "new.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert_eq!(index_id(&dir, "old.txt"), head);
     assert_eq!(status(&dir), " D old.txt");
     let _ = std::fs::remove_dir_all(&dir);
@@ -196,7 +196,7 @@ fn unrelated_staged_deletion_stays_staged() {
     write(&dir, "new.txt", "something entirely different\n");
     git(&dir, &["add", "new.txt"]);
 
-    delete_staged_new_file(&dir, "new.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "new.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert_eq!(index_id(&dir, "new.txt"), None);
     assert_eq!(index_id(&dir, "gone.txt"), None);
     assert_eq!(status(&dir), "D  gone.txt");
@@ -210,7 +210,7 @@ fn case_only_staged_rename() {
     let head = index_id(&dir, "readme.md");
     rename_file_staged(&dir, "readme.md", "README.md").unwrap();
 
-    delete_staged_new_file(&dir, "README.md").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "README.md", Removal::Permanent).unwrap(), Deleted::Permanently);
     let index = git2::Repository::open(&dir).unwrap().index().unwrap();
     let paths: Vec<String> = index.iter().map(|e| String::from_utf8_lossy(&e.path).into_owned()).collect();
     assert_eq!(paths, ["readme.md"]);
@@ -235,7 +235,7 @@ fn glob_characters_in_the_new_path_are_literal() {
     write(&dir, "[ab].txt", "new\n");
     git(&dir, &["--literal-pathspecs", "add", "[ab].txt"]);
 
-    delete_staged_new_file(&dir, "[ab].txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "[ab].txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert_eq!(index_id(&dir, "[ab].txt"), None);
     assert_eq!(index_id(&dir, "a.txt"), staged, "a path the name matches as a glob keeps its staged edit");
     assert_eq!(status(&dir), "MM a.txt");
@@ -250,7 +250,7 @@ fn glob_characters_in_the_rename_source_are_literal() {
     let staged = with_staged_edit(&dir);
     git(&dir, &["mv", "[ab].txt", "moved.txt"]);
 
-    delete_staged_new_file(&dir, "moved.txt").unwrap();
+    assert_eq!(delete_staged_new_file(&dir, "moved.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert_eq!(index_id(&dir, "[ab].txt"), head);
     assert_eq!(index_id(&dir, "moved.txt"), None);
     assert_eq!(index_id(&dir, "a.txt"), staged, "a path the source matches as a glob keeps its staged edit");

@@ -143,3 +143,13 @@ fn push_new_tags_defaults_off() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
     assert!(back.push_new_tags);
 }
+
+#[test]
+fn delete_to_trash_defaults_on() {
+    // Files written before the preference existed move deleted files to the trash.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.delete_to_trash);
+    let off = Settings { delete_to_trash: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.delete_to_trash);
+}

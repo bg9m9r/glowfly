@@ -178,6 +178,8 @@ pub struct Settings {
     /// Push a new tag to a remote right after creating it (New tag dialog checkbox).
     #[serde(default)]
     pub push_new_tags: bool,
+    /// Delete… moves files to the OS trash instead of removing them (Preferences > General).
+    pub delete_to_trash: bool,
 
     /// Connected services. Secrets live in the OS credential store or Git Credential
     /// Manager, never here.
@@ -224,6 +226,7 @@ impl Default for Settings {
             push_after_commit: false,
             stage_renames: true,
             push_new_tags: false,
+            delete_to_trash: true,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),

@@ -1,6 +1,7 @@
 //! Side effects requested by `update`. The runner executes them off the UI thread and reports
 //! back with `Msg`s; the few that need the window (`UiEffect`) are handled by the UI shell.
 
+pub use crate::file_op::{DeleteMode, FileOp, WorkFileOk};
 use crate::msg::{FilePurpose, FolderPurpose};
 use git2::Oid;
 use std::path::PathBuf;
@@ -103,24 +104,6 @@ pub struct ForgeReply {
 pub struct WatchTarget {
     pub workdir: PathBuf,
     pub git_dir: PathBuf,
-}
-
-/// A working-tree file operation (`Effect::WorkFile`). Paths are repo-relative.
-#[derive(Clone, Debug, PartialEq)]
-pub enum FileOp {
-    Create(String),
-    Rename {
-        from: String,
-        to: String,
-        stage: bool,
-    },
-    Delete(String),
-    /// Deletes a file staged as new, or the new path of a staged rename, and takes it out of the
-    /// index (a rename's source is unstaged too).
-    UnstageDelete(String),
-    /// Takes a staged new file or staged rename's new path that is already gone from the working
-    /// tree out of the index; the working tree is not touched.
-    UnstageGone(String),
 }
 
 #[derive(Debug)]

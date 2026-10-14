@@ -33,6 +33,8 @@ crates/
                           (deleting a staged new file or a staged rename's new path with its
                           index entries, and unstaging one whose working copy is already
                           gone), noclobber (a move that never replaces an existing file),
+                          removal (a deleted working copy goes to the OS trash through the
+                          `trash` crate, or is removed for good; links never go to the trash),
                           tracked (the paths in the index, for the palette's file finder)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
@@ -94,6 +96,8 @@ crates/
                           dialog's form, its name check and push remote)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
+    file_op.rs            FileOp (a working-tree file operation), DeleteMode (trash or
+                          permanent, fixed when the confirmation opens), WorkFileOk (its result)
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
                           config (reading git config), rebase (loading and running an
                           interactive rebase, with Trellis as the sequence editor), askpass
@@ -111,7 +115,9 @@ crates/
                           its job), graph_filter (hidden and soloed refs, saved per repository),
                           askpass (queueing, answering and cancelling credential prompts; what a
                           finished job clears), files (restoring a file from a commit, opening
-                          or showing a working-tree file; work_files: create, rename, delete),
+                          or showing a working-tree file; work_files: create, rename, delete;
+                          work_files_delete: the delete confirmations, the permanent fallback
+                          when the trash refuses a file, the delete toasts),
                           commit (committing, stage-all-and-commit, push after committing, the
                           template prefill), palette (opening the command palette, moving,
                           running a command, entering and leaving a sub-list and loading its

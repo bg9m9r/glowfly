@@ -4,13 +4,13 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, FileOp};
+use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
 use crate::state::files::PathForm;
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
-use trellis_core::repo::{self, DiffTarget, FileDiff, FileEntry, LoadOptions};
+use trellis_core::repo::{self, Deleted, DiffTarget, FileDiff, FileEntry, LoadOptions};
 
 pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
@@ -141,6 +141,8 @@ pub(super) fn confirm(st: &AppState) -> (&str, &str, &str, &Msg) {
 #[test]
 fn delete_asks_first() {
     let (mut st, dir) = loaded("wf-delete-ask");
+    // The permanent texts; the trash ones are in work_files_trash_tests.
+    st.settings.delete_to_trash = false;
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged = vec![entry("new.txt", '?'), entry("a.txt", 'M'), entry("c.txt", '!')];
     snap.staged = vec![entry("s.txt", 'M')];
@@ -149,7 +151,7 @@ fn delete_asks_first() {
     let (title, body, button, then) = confirm(&st);
     assert_eq!((title, button), ("Delete file", "Delete"));
     assert!(body.contains("isn't tracked"), "{body}");
-    assert!(matches!(then, Msg::DeleteFile { path, confirmed: true } if path == "new.txt"));
+    assert!(matches!(then, Msg::DeleteConfirmed(FileOp::Delete { path, mode: DeleteMode::Permanent }) if path == "new.txt"));
 
     run(&mut st, Msg::DeleteFile { path: "a.txt".into(), confirmed: false });
     assert!(confirm(&st).1.contains("changes to a.txt are lost"), "{}", confirm(&st).1);
@@ -163,13 +165,14 @@ fn delete_asks_first() {
 
     run(&mut st, Msg::DeleteFile { path: "new.txt".into(), confirmed: false });
     let fx = run(&mut st, Msg::ConfirmAccepted);
-    assert_eq!(work_ops(&fx), [FileOp::Delete("new.txt".into())]);
+    assert_eq!(work_ops(&fx), [FileOp::Delete { path: "new.txt".into(), mode: DeleteMode::Permanent }]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn delete_staged_new_file_asks_to_unstage() {
     let (mut st, dir) = loaded("wf-delete-new");
+    st.settings.delete_to_trash = false;
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged = Vec::new();
     snap.staged = vec![entry("s.txt", 'A')];
@@ -179,9 +182,10 @@ fn delete_staged_new_file_asks_to_unstage() {
     assert_eq!((title, button), ("Delete new file", "Unstage and delete"));
     assert!(body.contains("s.txt") && body.contains("staging area"), "{body}");
     assert!(!body.contains("unstaged edits"), "{body}");
-    assert!(matches!(then, Msg::DeleteStagedNewFile(p) if p == "s.txt"));
+    let op = FileOp::UnstageDelete { path: "s.txt".into(), mode: DeleteMode::Permanent };
+    assert!(matches!(then, Msg::DeleteConfirmed(o) if *o == op));
     let fx = run(&mut st, Msg::ConfirmAccepted);
-    assert_eq!(work_ops(&fx), [FileOp::UnstageDelete("s.txt".into())]);
+    assert_eq!(work_ops(&fx), [op]);
     assert_eq!(fx[0].scope(), Some(&dir));
 
     // Further edits to the new file aren't staged: they go too.
@@ -196,9 +200,9 @@ fn delete_staged_new_file_asks_to_unstage() {
 #[test]
 fn unstage_delete_results() {
     let (mut st, dir) = loaded("wf-unstage-delete-done");
-    let op = || FileOp::UnstageDelete("s.txt".into());
+    let op = || FileOp::UnstageDelete { path: "s.txt".into(), mode: DeleteMode::Permanent };
     st.diff = Some((DiffTarget::Staged("s.txt".into()), empty_diff()));
-    let fx = run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(false) });
+    let fx = run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Deleted(Deleted::Permanently)) });
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Deleted s.txt and removed it from the staging area."));
     assert!(st.diff.is_none(), "the staged diff of the deleted file is closed");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
@@ -214,12 +218,12 @@ fn create_result_closes_or_shows_the_error() {
     let create = || FileOp::Create("docs/a.md".into());
     run(&mut st, Msg::NewFileDialog("docs/a.md".into()));
     run(&mut st, Msg::CreateFile("docs/a.md".into()));
-    let fx = run(&mut st, Msg::WorkFileDone { op: create(), result: Ok(false) });
+    let fx = run(&mut st, Msg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: false }) });
     assert!(st.modal.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Created docs/a.md."));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
 
-    run(&mut st, Msg::WorkFileDone { op: create(), result: Ok(true) });
+    run(&mut st, Msg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: true }) });
     assert!(st.toasts.last().unwrap().text.contains("Git ignores it"));
 
     run(&mut st, Msg::NewFileDialog("docs/a.md".into()));
@@ -243,13 +247,16 @@ pub(super) fn empty_diff() -> FileDiff {
 #[test]
 fn rename_or_delete_closes_the_old_paths_diff() {
     let (mut st, dir) = loaded("wf-close-diff");
-    for op in [FileOp::Delete("a.txt".into()), FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: false }] {
+    for (op, ok) in [
+        (FileOp::Delete { path: "a.txt".into(), mode: DeleteMode::Trash }, WorkFileOk::Deleted(Deleted::Trashed)),
+        (FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: false }, WorkFileOk::Written { ignored: false }),
+    ] {
         st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff()));
-        run(&mut st, Msg::WorkFileDone { op: op.clone(), result: Ok(false) });
+        run(&mut st, Msg::WorkFileDone { op: op.clone(), result: Ok(ok) });
         assert!(st.diff.is_none(), "{op:?}");
 
         st.diff = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff()));
-        run(&mut st, Msg::WorkFileDone { op, result: Ok(false) });
+        run(&mut st, Msg::WorkFileDone { op, result: Ok(ok) });
         assert!(st.diff.is_some());
     }
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Renamed a.txt to b.txt."));
@@ -269,11 +276,11 @@ fn result_for_inactive_tab() {
     assert_eq!(last_log(&st), "Could not create x.txt: in the way");
 
     for (result, want) in [
-        (Ok(false), "Deleted s.txt and removed it from the staging area."),
+        (Ok(WorkFileOk::Deleted(Deleted::Permanently)), "Deleted s.txt and removed it from the staging area."),
         (Err("in the way".to_owned()), "Could not delete s.txt: in the way"),
     ] {
         let ok = result.is_ok();
-        let msg = Msg::WorkFileDone { op: FileOp::UnstageDelete("s.txt".into()), result };
+        let msg = Msg::WorkFileDone { op: FileOp::UnstageDelete { path: "s.txt".into(), mode: DeleteMode::Permanent }, result };
         assert!(run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) }).is_empty());
         let text = if ok { st.toasts.last().map(|t| t.text.as_str()) } else { st.log.last().map(|l| l.text.as_str()) };
         assert_eq!(text, Some(want));
@@ -285,6 +292,7 @@ fn result_for_inactive_tab() {
 fn end_to_end_create_delete_rename() {
     let dir = scratch_repo("wf-e2e");
     let mut st = state();
+    st.settings.delete_to_trash = false;
     drive(&mut st, Msg::Open(dir.clone()));
     drive(&mut st, Msg::NewFileDialog(String::new()));
     drive(&mut st, Msg::CreateFile("notes/todo.txt".into()));
@@ -315,6 +323,7 @@ fn end_to_end_unstage_and_delete() {
     .unwrap();
     git(&dir, &["add", "new.txt"]);
     let mut st = state();
+    st.settings.delete_to_trash = false;
     drive(&mut st, Msg::Open(dir.clone()));
     assert!(st.snap.as_ref().unwrap().staged.contains(&entry("new.txt", 'A')));
 

@@ -1,4 +1,5 @@
-//! Creating, renaming and deleting one working-tree file, and checking a typed path.
+//! Creating, renaming and deleting one working-tree file, and checking a typed path. A deletion
+//! goes to the OS trash unless asked to remove the file permanently (see `removal`).
 //!
 //! Working tree only: nothing here touches the index or HEAD, so a renamed or deleted tracked
 //! file shows up as an unstaged change. The file operations use plain `std::fs`, because no git
@@ -12,6 +13,7 @@
 //! checkout-able there.
 
 use super::noclobber::rename_noclobber;
+use super::removal::{Deleted, Removal, remove_working_copy};
 use crate::error::{Error, Result};
 use git2::Repository;
 use std::fs::{Metadata, OpenOptions};
@@ -326,31 +328,27 @@ fn rename_via_temp(from: &Path, to: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Deletes the working-tree file (or symbolic link) `path` and the folders it leaves empty. The
-/// index is untouched, so a tracked file shows up as an unstaged deletion.
-pub fn delete_file(workdir: &Path, path: &str) -> Result<()> {
+/// Deletes the working-tree file (or symbolic link) `path` the way `removal` asks, and the
+/// folders it leaves empty. The index is untouched, so a tracked file shows up as an unstaged
+/// deletion. When the trash can't take the file, nothing changes (`Error::NoTrash`).
+pub fn delete_file(workdir: &Path, path: &str, removal: Removal) -> Result<Deleted> {
     let rel = contained(path)?;
     let (repo, root) = open_root(workdir)?;
     check_parents(&root, rel)?;
     let m = existing(&root, rel)?;
     conflicted(&repo, rel)?;
-    remove(&root.join(rel), &m)?;
-    prune_empty_parents(&root, rel);
-    Ok(())
-}
-
-fn remove(full: &Path, m: &Metadata) -> std::io::Result<()> {
-    match std::fs::remove_file(full) {
-        // A link to a folder (or a junction) is removed as a folder on Windows; its target stays.
-        Err(e) if cfg!(windows) && m.file_type().is_symlink() => std::fs::remove_dir(full).map_err(|_| e),
-        Err(e) if cfg!(windows) && e.kind() == ErrorKind::PermissionDenied && m.permissions().readonly() => {
-            let mut p = m.permissions();
-            // Only on Windows, where this just clears the read-only attribute.
-            #[allow(clippy::permissions_set_readonly_false)]
-            p.set_readonly(false);
-            std::fs::set_permissions(full, p)?;
-            std::fs::remove_file(full)
+    // Windows keeps files locked while they are held open; let go before the shell moves one.
+    drop(repo);
+    match remove_working_copy(&root, rel, &m, removal) {
+        Ok(how) => {
+            prune_empty_parents(&root, rel);
+            Ok(how)
         }
-        r => r,
+        // The trash reported an error, but the file went: its folders are pruned all the same.
+        Err(e @ Error::Other(_)) if root.join(rel).symlink_metadata().is_err() => {
+            prune_empty_parents(&root, rel);
+            Err(e)
+        }
+        Err(e) => Err(e),
     }
 }

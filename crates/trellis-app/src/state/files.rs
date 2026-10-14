@@ -1,5 +1,8 @@
 //! The New file and Rename file dialogs' form: the typed path, the last error and whether a
-//! request is running.
+//! request is running; what status says about a path being deleted, and the trash's name.
+
+/// The platform's name for where deleted files go.
+pub const TRASH: &str = if cfg!(windows) { "Recycle Bin" } else { "Trash" };
 
 /// A path field with the outcome of its last submission.
 #[derive(Clone, Debug, Default, PartialEq)]

@@ -168,11 +168,11 @@ fn refuses_to_go_through_a_symlinked_folder() {
         assert!(matches!(e, Error::Unsupported(_)), "{e}");
         assert!(rename_file(&dir, "a.txt", "link/a.txt").is_err());
         assert!(rename_file(&dir, "link/victim.txt", "b.txt").is_err());
-        assert!(delete_file(&dir, "link/victim.txt").is_err());
+        assert!(delete_file(&dir, "link/victim.txt", Removal::Permanent).is_err());
         assert_eq!(names(&outside), ["victim.txt"]);
         assert_eq!(text(&dir, "a.txt"), "a\n");
         // The link itself can be deleted; its target stays.
-        delete_file(&dir, "link").unwrap();
+        assert_eq!(delete_file(&dir, "link", Removal::Permanent).unwrap(), Deleted::Permanently);
         assert!(dir.join("link").symlink_metadata().is_err());
         assert_eq!(names(&outside), ["victim.txt"]);
     }
@@ -237,7 +237,7 @@ fn conflicted_paths_are_refused() {
     let dir = conflicted_repo("wf-conflict");
     let before = text(&dir, "f.txt");
     assert!(rename_file(&dir, "f.txt", "g.txt").unwrap_err().to_string().contains("conflicts"));
-    assert!(delete_file(&dir, "f.txt").unwrap_err().to_string().contains("conflicts"));
+    assert!(delete_file(&dir, "f.txt", Removal::Permanent).unwrap_err().to_string().contains("conflicts"));
     assert_eq!(text(&dir, "f.txt"), before);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -262,15 +262,15 @@ fn deletes_and_prunes_empty_folders() {
     write(&dir, "notes/deep/n.txt", "n\n");
     std::fs::create_dir_all(dir.join("keep/deep")).unwrap();
     write(&dir, "keep/deep/u.txt", "u\n");
-    delete_file(&dir, "notes/deep/n.txt").unwrap();
+    assert_eq!(delete_file(&dir, "notes/deep/n.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(!dir.join("notes").exists());
-    delete_file(&dir, "keep/deep/u.txt").unwrap();
+    assert_eq!(delete_file(&dir, "keep/deep/u.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(!dir.join("keep/deep").exists());
     assert!(dir.join("keep/k.txt").exists(), "a non-empty folder stays");
     assert!(dir.exists());
 
     let before = index_id(&dir, "a.txt");
-    delete_file(&dir, "a.txt").unwrap();
+    assert_eq!(delete_file(&dir, "a.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert_eq!(status(&dir), " D a.txt");
     assert_eq!(index_id(&dir, "a.txt"), before);
     let _ = std::fs::remove_dir_all(&dir);
@@ -280,10 +280,10 @@ fn deletes_and_prunes_empty_folders() {
 fn delete_refusals() {
     let dir = scratch_repo("wf-delete-refuse");
     commit(&dir, &[("d/x.txt", "x\n")], "one");
-    assert!(matches!(delete_file(&dir, "d"), Err(Error::Unsupported(_))));
-    assert!(delete_file(&dir, "gone.txt").unwrap_err().is_not_found());
-    assert!(delete_file(&dir, "../x").is_err());
-    assert!(delete_file(&dir, ".git/config").is_err());
+    assert!(matches!(delete_file(&dir, "d", Removal::Permanent), Err(Error::Unsupported(_))));
+    assert!(delete_file(&dir, "gone.txt", Removal::Permanent).unwrap_err().is_not_found());
+    assert!(delete_file(&dir, "../x", Removal::Permanent).is_err());
+    assert!(delete_file(&dir, ".git/config", Removal::Permanent).is_err());
     assert_eq!(text(&dir, "d/x.txt"), "x\n");
     assert!(dir.join(".git/config").exists());
     let _ = std::fs::remove_dir_all(&dir);
@@ -296,10 +296,10 @@ fn deletes_an_oddly_named_file() {
     write(&dir, "ends with dot.", "x\n");
     if cfg!(windows) {
         // Windows saved it as "ends with dot", so that name would reach another file: refused.
-        assert!(delete_file(&dir, "ends with dot.").is_err());
+        assert!(delete_file(&dir, "ends with dot.", Removal::Permanent).is_err());
         assert_eq!(text(&dir, "ends with dot"), "x\n");
     } else {
-        delete_file(&dir, "ends with dot.").unwrap();
+        assert_eq!(delete_file(&dir, "ends with dot.", Removal::Permanent).unwrap(), Deleted::Permanently);
         assert!(dir.join("ends with dot.").symlink_metadata().is_err());
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -313,7 +313,7 @@ fn deletes_a_read_only_file() {
     let mut p = std::fs::metadata(dir.join("ro.txt")).unwrap().permissions();
     p.set_readonly(true);
     std::fs::set_permissions(dir.join("ro.txt"), p).unwrap();
-    delete_file(&dir, "ro.txt").unwrap();
+    assert_eq!(delete_file(&dir, "ro.txt", Removal::Permanent).unwrap(), Deleted::Permanently);
     assert!(!dir.join("ro.txt").exists());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -326,6 +326,6 @@ fn bare_repository_is_unsupported() {
     git(&dir, &["init", "-q", "--bare"]);
     assert!(matches!(create_file(&dir, "a.txt"), Err(Error::Unsupported(_))));
     assert!(matches!(rename_file(&dir, "a.txt", "b.txt"), Err(Error::Unsupported(_))));
-    assert!(matches!(delete_file(&dir, "a.txt"), Err(Error::Unsupported(_))));
+    assert!(matches!(delete_file(&dir, "a.txt", Removal::Permanent), Err(Error::Unsupported(_))));
     let _ = std::fs::remove_dir_all(&dir);
 }

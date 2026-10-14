@@ -388,7 +388,17 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] New file in this folder… on file rows (WIP and commit file menus), prefilled with the folder
   - [ ] New file in this folder… on folder rows (folder rows wait for a tree view in file lists)
   - [ ] Delete several selected files at once (needs multi-select in file lists)
-  - [ ] Move deleted files to the OS trash or recycle bin, or make Delete undoable with Ctrl+Z
+  - [x] Move deleted files to the Recycle Bin / Trash (Delete… and Unstage and delete…; asks
+    before deleting permanently when the trash can't take a file; a General preference turns it off)
+    - [ ] Move untracked files that Discard deletes to the Recycle Bin / Trash too
+    - [ ] Show a button in the toast that opens the Recycle Bin / Trash or restores the file
+    - [ ] Respect a drive's "remove files immediately" Recycle Bin setting on Windows
+    - [ ] On Linux, offer the home trash when a mount has no usable trash folder, instead of
+      asking to delete permanently
+    - [ ] Send several selected files to the Recycle Bin / Trash at once (needs multi-select in
+      file lists)
+  - [ ] Make Delete undoable with Ctrl+Z (restore the working copy from the Recycle Bin / Trash,
+    or keep a copy as Discard does)
   - [x] Rename tracked files with git mv so the rename is staged (option in the rename dialog, remembered)
   - [x] Unstage and delete a staged new file in one step (Delete… on a file staged as new asks
     once and also removes it from the index)

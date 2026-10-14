@@ -5,7 +5,7 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::work_files_tests::{confirm, empty_diff, entry, last_log, loaded, run, work_ops};
-use crate::effect::{Effect, FileOp};
+use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
 use crate::state::Modal;
 use std::path::PathBuf;
@@ -14,6 +14,8 @@ use trellis_core::repo::DiffTarget;
 #[test]
 fn delete_staged_rename_asks_to_unstage_the_rename() {
     let (mut st, dir) = loaded("wfu-rename");
+    // The permanent texts; the trash ones are in work_files_trash_tests.
+    st.settings.delete_to_trash = false;
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged = Vec::new();
     snap.staged = vec![entry("new.txt", 'R')];
@@ -23,9 +25,10 @@ fn delete_staged_rename_asks_to_unstage_the_rename() {
     assert_eq!((title, button), ("Delete renamed file", "Unstage and delete"));
     assert!(body.contains("new.txt") && body.contains("rename"), "{body}");
     assert!(!body.contains("unstaged edits"), "{body}");
-    assert!(matches!(then, Msg::DeleteStagedNewFile(p) if p == "new.txt"));
+    let op = FileOp::UnstageDelete { path: "new.txt".into(), mode: DeleteMode::Permanent };
+    assert!(matches!(then, Msg::DeleteConfirmed(o) if *o == op));
     let fx = run(&mut st, Msg::ConfirmAccepted);
-    assert_eq!(work_ops(&fx), [FileOp::UnstageDelete("new.txt".into())]);
+    assert_eq!(work_ops(&fx), [op]);
     assert_eq!(fx[0].scope(), Some(&dir));
 
     st.snap.as_mut().unwrap().unstaged = vec![entry("new.txt", 'M')];
@@ -50,7 +53,7 @@ fn delete_gone_staged_new_file_asks_to_unstage() {
         assert_eq!((title, button), ("Unstage deleted file", "Unstage"), "{status}");
         assert!(body.contains("s.txt") && body.contains(mentions), "{body}");
         assert!(!body.contains("unstaged edits"), "{body}");
-        assert!(matches!(then, Msg::UnstageGoneFile(p) if p == "s.txt"));
+        assert!(matches!(then, Msg::DeleteConfirmed(FileOp::UnstageGone(p)) if p == "s.txt"));
         let fx = run(&mut st, Msg::ConfirmAccepted);
         assert_eq!(work_ops(&fx), [FileOp::UnstageGone("s.txt".into())]);
         assert_eq!(fx[0].scope(), Some(&dir));
@@ -77,7 +80,7 @@ fn unstage_gone_results() {
     let (mut st, dir) = loaded("wfu-done");
     let op = || FileOp::UnstageGone("s.txt".into());
     st.diff = Some((DiffTarget::Staged("s.txt".into()), empty_diff()));
-    let fx = run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(false) });
+    let fx = run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Unstaged) });
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Removed s.txt from the staging area."));
     assert!(st.diff.is_none(), "the staged diff of the unstaged file is closed");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
@@ -85,9 +88,10 @@ fn unstage_gone_results() {
     run(&mut st, Msg::WorkFileDone { op: op(), result: Err("boom".into()) });
     assert_eq!(last_log(&st), "Could not unstage s.txt: boom");
 
-    for (result, want) in
-        [(Ok(false), "Removed s.txt from the staging area."), (Err("in the way".to_owned()), "Could not unstage s.txt: in the way")]
-    {
+    for (result, want) in [
+        (Ok(WorkFileOk::Unstaged), "Removed s.txt from the staging area."),
+        (Err("in the way".to_owned()), "Could not unstage s.txt: in the way"),
+    ] {
         let ok = result.is_ok();
         let msg = Msg::WorkFileDone { op: op(), result };
         assert!(run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) }).is_empty());

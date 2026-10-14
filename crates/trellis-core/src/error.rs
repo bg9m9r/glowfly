@@ -31,6 +31,10 @@ pub enum Error {
     /// the text says why. Asking the user and retrying with overwriting allowed is the remedy.
     #[error("{0}")]
     WouldOverwrite(String),
+    /// The system trash couldn't take a file; nothing was removed. Asking and retrying a
+    /// permanent delete is the remedy.
+    #[error("{0}")]
+    NoTrash(String),
     #[error("{0}")]
     Other(String),
 }

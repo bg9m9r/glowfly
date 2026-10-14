@@ -25,6 +25,7 @@ mod tags;
 mod undo;
 mod watch;
 mod work_files;
+mod work_files_delete;
 
 #[cfg(test)]
 mod askpass_tests;
@@ -92,6 +93,8 @@ mod whole_file_tests;
 mod work_files_stage_tests;
 #[cfg(test)]
 mod work_files_tests;
+#[cfg(test)]
+mod work_files_trash_tests;
 #[cfg(test)]
 mod work_files_unstage_tests;
 
@@ -194,6 +197,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 st.log(false, format!("Did not restore {path}: {reason}."));
             } else if let Msg::WorkFileDone { op, result } = *msg {
                 work_files::inactive_result(st, op, result, now);
+            } else if let Msg::TrashRefused { op, reason } = *msg {
+                st.log(false, work_files_delete::not_deleted(&op, &reason));
             } else {
                 tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display());
             }
@@ -231,8 +236,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::RenameFile { .. }
         | Msg::SetRenameStages(_)
         | Msg::DeleteFile { .. }
-        | Msg::DeleteStagedNewFile(_)
-        | Msg::UnstageGoneFile(_)
+        | Msg::DeleteConfirmed(_)
+        | Msg::TrashRefused { .. }
         | Msg::WorkFileDone { .. } => files::handle(st, msg, now, &mut fx),
         Msg::RenameBranchDialog(_)
         | Msg::RenameBranch { .. }

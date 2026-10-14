@@ -16,7 +16,7 @@ use trellis_core::undo::{self, Action, Plan};
 
 mod askpass;
 mod config;
-mod files;
+pub(crate) mod files;
 mod highlight;
 mod os;
 mod rebase;

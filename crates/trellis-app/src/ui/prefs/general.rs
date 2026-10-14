@@ -2,6 +2,7 @@
 
 use super::{help, row, text_field, warn};
 use crate::msg::Msg;
+use crate::state::files::TRASH;
 use crate::state::prefs::GitConfigValues;
 use crate::ui::theme::color;
 use eframe::egui::{self, Color32, RichText, Ui};
@@ -31,6 +32,10 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     row(ui, "Watch for File Changes", |ui| {
         ui.checkbox(&mut s.watch_files, "Refresh the working tree as soon as files change outside Trellis");
         help(ui, "When off, Trellis refreshes when its window regains focus or you press F5.");
+    });
+    row(ui, "Deleting Files", |ui| {
+        ui.checkbox(&mut s.delete_to_trash, format!("Move deleted files to the {TRASH}"));
+        help(ui, "When off, Delete… removes files from disk straight away and they can't be recovered.");
     });
     if let Some(git) = git {
         row(ui, "Longpaths", |ui| {

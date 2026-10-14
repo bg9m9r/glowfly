@@ -4,7 +4,7 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{empty_diff, entry, loaded, new_form, rename_form, run, work_ops};
-use crate::effect::{Effect, FileOp};
+use crate::effect::{Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
 use crate::state::Modal;
 use crate::state::files::{PathForm, folder_prefill};
@@ -35,12 +35,12 @@ fn staged_rename_result_toast_and_diff() {
     let (mut st, dir) = loaded("wf-stage-done");
     let op = || FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: true };
     st.diff = Some((DiffTarget::Staged("a.txt".into()), empty_diff()));
-    run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(false) });
+    run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Written { ignored: false }) });
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Renamed a.txt to b.txt and staged the rename."));
     assert!(st.diff.is_none());
 
     // Never "ignored": the new path stays tracked.
-    run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(true) });
+    run(&mut st, Msg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Written { ignored: true }) });
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Renamed a.txt to b.txt and staged the rename."));
 
     st.snap.as_mut().unwrap().unstaged = vec![entry("a.txt", 'M')];

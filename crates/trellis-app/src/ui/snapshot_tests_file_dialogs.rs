@@ -1,7 +1,7 @@
 //! The New file and Rename file dialogs over the whole window: a valid path, a refused one, a
 //! bare folder prefill, a rename onto a listed path, the staged-rename checkbox, a running
-//! request, and the messages the buttons and the checkbox send. Shares the
-//! fixture repository and renderer with `snapshot_tests`.
+//! request, the messages the buttons and the checkbox send, and the delete-to-trash
+//! confirmation. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
@@ -173,6 +173,24 @@ fn rename_untracked_has_no_stage_option() {
     h.run();
     let sent = |m: &Msg| matches!(m, Msg::RenameFile { from, stage: false, .. } if from == "notes.txt");
     assert!(h.state().1.iter().any(sent));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn confirm_delete_trash() {
+    // The trash confirmation for an untracked file: the longer body wraps and the button fits.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "confirm-delete-trash");
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "notes/scratch.txt".into(), status: '?' });
+    crate::update::update(&mut st, Msg::DeleteFile { path: "notes/scratch.txt".into(), confirmed: false }, std::time::Instant::now());
+    assert!(matches!(&st.modal, Some(Modal::Confirm { .. })));
+    let mut h = harness(st, true);
+    h.run();
+    h.snapshot("confirm_delete_trash");
+    let button = format!("Move to {}", crate::state::files::TRASH);
+    h.get_by_label(&button).click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmAccepted)), "the button accepts");
     drop(h);
     remove_fixture(&dir);
 }

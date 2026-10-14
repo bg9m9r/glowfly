@@ -5,32 +5,35 @@
 //! credentials apply to taking a path out of the index.
 
 use super::head_tree;
+use super::removal::{Deleted, Removal};
 use super::workfile::contained;
 use crate::error::{Error, Result};
 use git2::{Delta, DiffFindOptions, IndexEntry, IndexTime, Repository};
 use std::path::Path;
 
 /// Deletes the working-tree file `path`, which is staged as a new file or as the new path of a
-/// staged rename, and removes its index entry, so the path leaves both the staged and unstaged
-/// lists. For a rename, the source's index entry is put back from HEAD, so the source's
-/// deletion is no longer staged: it stays an unstaged deletion, which discarding undoes. Empty
-/// parent folders are pruned as `delete_file` does.
+/// staged rename, the way `removal` asks, and removes its index entry, so the path leaves both
+/// the staged and unstaged lists. For a rename, the source's index entry is put back from HEAD,
+/// so the source's deletion is no longer staged: it stays an unstaged deletion, which discarding
+/// undoes. Empty parent folders are pruned as `delete_file` does.
 ///
 /// Refused, changing nothing, when `path` has no stage-0 index entry (untracked, or
 /// conflicted) or is in HEAD's tree (then it isn't new and only its working copy should go),
-/// and for every reason `delete_file` refuses.
+/// when the trash can't take it (`Error::NoTrash`), and for every other reason `delete_file`
+/// refuses.
 ///
 /// The working copy goes first: when that fails nothing has changed, and when changing the
 /// index afterwards fails the result is what a plain delete leaves (a staged new file deleted
 /// from the working tree), which discarding the unstaged deletion brings back.
-pub fn delete_staged_new_file(workdir: &Path, path: &str) -> Result<()> {
+pub fn delete_staged_new_file(workdir: &Path, path: &str, removal: Removal) -> Result<Deleted> {
     let source = {
         let repo = Repository::open(workdir)?;
         check_staged_new(&repo, path)?
         // The repository is dropped here: Windows locks files that are held open.
     };
-    super::workfile::delete_file(workdir, path)?;
-    unstage(workdir, path, source.as_deref()).map_err(|e| Error::Other(format!("{path} was deleted but is still staged: {e}")))
+    let how = super::workfile::delete_file(workdir, path, removal)?;
+    unstage(workdir, path, source.as_deref()).map_err(|e| Error::Other(format!("{path} was deleted but is still staged: {e}")))?;
+    Ok(how)
 }
 
 /// Takes `path`, staged as a new file or as the new path of a staged rename but already gone
