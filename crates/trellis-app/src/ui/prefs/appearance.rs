@@ -98,13 +98,6 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32)) {
             "Underlines misspellings in the commit summary and description; right-click for suggestions. Uses the Windows spell checker in your system language.",
         );
     });
-    row(ui, "Syntax highlighting in diffs", |ui| {
-        ui.checkbox(&mut s.syntax_highlighting, "");
-        help(
-            ui,
-            "Colors code in the diff viewer by its language, worked out from the file name or, for scripts, the first line. Diffs with more than 2,000 lines or 100 KB of text, or with very long lines, are shown without colors.",
-        );
-    });
     row(ui, "Display author initials instead of avatars", |ui| {
         ui.checkbox(&mut s.use_initials, "");
         help(

@@ -3,6 +3,7 @@
 use crate::forge::{Account, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
@@ -152,11 +153,20 @@ pub struct Settings {
     /// Hunks only or the whole file (diff header toggle).
     #[serde(default)]
     pub diff_mode: DiffMode,
-    /// Color diff text by language (Preferences > UI Customization).
+    /// Color diff text by language (Preferences > Editor).
     pub syntax_highlighting: bool,
     /// Hide whitespace-only changes in diffs (diff header toggle).
     #[serde(default)]
     pub diff_ignore_whitespace: bool,
+    /// Diff text size in points (Preferences > Editor); read through `diff_font_px()`.
+    pub diff_font_size: f32,
+    /// Columns per tab stop when drawing diff text (Preferences > Editor); read through
+    /// `tab_columns()`.
+    pub tab_size: u8,
+    /// Old/new line numbers in the diff gutters (Preferences > Editor).
+    pub diff_line_numbers: bool,
+    /// Changed-word fills on paired -/+ lines (Preferences > Editor).
+    pub diff_word_highlights: bool,
 
     /// Connected services. Secrets live in the OS credential store or Git Credential
     /// Manager, never here.
@@ -193,6 +203,10 @@ impl Default for Settings {
             diff_mode: DiffMode::Hunks,
             syntax_highlighting: true,
             diff_ignore_whitespace: false,
+            diff_font_size: DEFAULT_DIFF_FONT_SIZE,
+            tab_size: 4,
+            diff_line_numbers: true,
+            diff_word_highlights: true,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
         }
@@ -200,6 +214,12 @@ impl Default for Settings {
 }
 
 pub const MIN_INITIAL_COMMITS: usize = 500;
+/// The diff viewer's text size when nothing else is set.
+pub const DEFAULT_DIFF_FONT_SIZE: f32 = 12.5;
+/// The diff text sizes Preferences > Editor offers.
+pub const DIFF_FONT_SIZES: RangeInclusive<f32> = 8.0..=24.0;
+/// The tab sizes Preferences > Editor offers.
+pub const TAB_SIZES: RangeInclusive<u8> = 1..=16;
 
 fn config_base() -> Option<PathBuf> {
     std::env::var_os("APPDATA")
@@ -261,6 +281,20 @@ impl Settings {
         self.initial_commits.max(MIN_INITIAL_COMMITS)
     }
 
+    /// The diff text size, kept within `DIFF_FONT_SIZES` (the default for a non-number from a
+    /// hand-edited file).
+    pub fn diff_font_px(&self) -> f32 {
+        if !self.diff_font_size.is_finite() {
+            return DEFAULT_DIFF_FONT_SIZE;
+        }
+        self.diff_font_size.clamp(*DIFF_FONT_SIZES.start(), *DIFF_FONT_SIZES.end())
+    }
+
+    /// Columns per tab stop, kept within `TAB_SIZES`.
+    pub fn tab_columns(&self) -> usize {
+        self.tab_size.clamp(*TAB_SIZES.start(), *TAB_SIZES.end()) as usize
+    }
+
     /// Graph and list dates: the Date/Time format, or relative ("3 hours ago") to `now`.
     pub fn format_time(&self, secs: i64, now: i64, utc_offset: i32) -> String {
         if self.relative_dates {
@@ -276,83 +310,4 @@ impl Settings {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn old_config_dir_moves_once() {
-        let base = std::env::temp_dir().join(format!("trellis-migrate-{}", std::process::id()));
-        let (old, new) = (base.join("Riffle"), base.join("Trellis"));
-        std::fs::create_dir_all(&old).unwrap();
-        std::fs::write(old.join("recent.txt"), "C:/repo").unwrap();
-        move_dir_if_new_missing(&old, &new).unwrap();
-        assert!(!old.exists());
-        assert_eq!(std::fs::read_to_string(new.join("recent.txt")).unwrap(), "C:/repo");
-
-        // An existing new folder is never overwritten.
-        std::fs::create_dir_all(&old).unwrap();
-        move_dir_if_new_missing(&old, &new).unwrap();
-        assert!(old.exists());
-        let _ = std::fs::remove_dir_all(&base);
-    }
-
-    #[test]
-    fn settings_roundtrip_and_defaults() {
-        // Missing fields fall back to defaults so old settings files keep working.
-        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5, "date_format": "Iso"}"#).unwrap_or_default();
-        assert_eq!(s.auto_fetch_minutes, 5);
-        assert_eq!(s.default_branch, "main");
-        assert_eq!(s.columns, GraphColumns::default());
-        assert_eq!(Settings { initial_commits: 10, ..Settings::default() }.commit_limit(), MIN_INITIAL_COMMITS);
-    }
-
-    #[test]
-    fn diff_layout_defaults() {
-        // Files written before the diff layout existed open in the inline layout.
-        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
-        assert_eq!(s.diff_layout, DiffLayout::Inline);
-        let split = Settings { diff_layout: DiffLayout::Split, ..Settings::default() };
-        let back: Settings = serde_json::from_str(&serde_json::to_string(&split).unwrap()).unwrap();
-        assert_eq!(back.diff_layout, DiffLayout::Split);
-    }
-
-    #[test]
-    fn syntax_highlighting_defaults_on() {
-        // Files written before the setting existed keep highlighting on.
-        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
-        assert!(s.syntax_highlighting);
-        let off = Settings { syntax_highlighting: false, ..Settings::default() };
-        let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
-        assert!(!back.syntax_highlighting);
-    }
-
-    #[test]
-    fn ignore_whitespace_defaults_off() {
-        // Files written before the toggle existed show every whitespace change.
-        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
-        assert!(!s.diff_ignore_whitespace);
-        let on = Settings { diff_ignore_whitespace: true, ..Settings::default() };
-        let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
-        assert!(back.diff_ignore_whitespace);
-    }
-
-    #[test]
-    fn watch_files_defaults_on() {
-        // Files written before the setting existed get live updates.
-        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
-        assert!(s.watch_files);
-        let off = Settings { watch_files: false, ..Settings::default() };
-        let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
-        assert!(!back.watch_files);
-    }
-
-    #[test]
-    fn diff_mode_defaults_to_hunks() {
-        // Files written before the toggle existed show hunks only.
-        let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
-        assert_eq!(s.diff_mode, DiffMode::Hunks);
-        let whole = Settings { diff_mode: DiffMode::WholeFile, ..Settings::default() };
-        let back: Settings = serde_json::from_str(&serde_json::to_string(&whole).unwrap()).unwrap();
-        assert_eq!(back.diff_mode, DiffMode::WholeFile);
-    }
-}
+mod tests;

@@ -247,3 +247,16 @@ fn changed_lines_under_the_same_header_are_refused() {
     assert_eq!(read(&dir, "f.txt"), changed.as_bytes());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn staging_a_tab_indented_line_still_matches() {
+    // The hunk as displayed keeps raw tabs, as does the fresh one it is compared against.
+    let dir = scratch_repo("lines-tabs");
+    write(&dir, "f.rs", "fn f() {\n\tx();\n}\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-m", "base"]);
+    write(&dir, "f.rs", "fn f() {\n\tx();\n\t\ty();\n\tz();\n}\n");
+    apply(&dir, "f.rs", HunkOp::Stage, &[('+', "\t\ty();")]);
+    assert_eq!(index_text(&dir, "f.rs"), "fn f() {\n\tx();\n\t\ty();\n}\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}

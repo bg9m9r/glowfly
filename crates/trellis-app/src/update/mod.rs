@@ -27,6 +27,8 @@ mod conflict_tests;
 #[cfg(test)]
 mod diff_tests;
 #[cfg(test)]
+mod editor_tests;
+#[cfg(test)]
 mod history_tests;
 #[cfg(test)]
 mod lines_tests;

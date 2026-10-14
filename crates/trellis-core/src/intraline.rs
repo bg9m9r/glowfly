@@ -1,6 +1,6 @@
 //! Word-level changes between the removed and added lines that the split layout pairs, as byte
-//! ranges into `DiffLine::text` (the drawn text, with tabs already turned into spaces). Pure: no
-//! git, no UI.
+//! ranges into `DiffLine::text` (the raw line, tabs included; the viewer maps them onto the
+//! tab-expanded text with `tabs::expand`). Pure: no git, no UI.
 //!
 //! Each line is cut into tokens (a run of word characters, a run of whitespace, or a single
 //! other character), the common prefix and suffix tokens are stripped, and the rest is compared

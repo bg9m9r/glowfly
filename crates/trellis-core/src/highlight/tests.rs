@@ -198,3 +198,14 @@ fn reload_reuses_unchanged_hunks() {
     let other = highlight_diff("a.py", &after, Some(&before)).unwrap();
     assert_ne!(other.line(0, 0), [Span { start: 0, end: 1, kind: TokenKind::Attribute }]);
 }
+
+#[test]
+fn tab_indented_lines_are_covered_raw() {
+    // Lines keep their tabs; spans index the raw text, tabs included.
+    let d = diff(vec![hunk(&[(' ', "fn f() {"), ('-', "\tlet x = 1;"), ('+', "\t\tlet x = \"two\";"), (' ', "}")])]);
+    let hl = highlight_diff("tabs.rs", &d, None).expect("rust is highlighted");
+    for (l, dl) in d.hunks[0].lines.iter().enumerate() {
+        assert_covers(hl.line(0, l), &dl.text);
+    }
+    assert!(kinds(hl.line(0, 2)).contains(&TokenKind::String), "{:?}", hl.line(0, 2));
+}

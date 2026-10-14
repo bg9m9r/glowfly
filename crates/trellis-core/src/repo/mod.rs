@@ -202,6 +202,7 @@ pub struct DiffLine {
     pub origin: char,
     pub old: Option<u32>,
     pub new: Option<u32>,
+    /// The line without its terminator; tabs are kept and expanded when drawn (`tabs::expand`).
     pub text: String,
 }
 

@@ -17,6 +17,7 @@ pub mod repo;
 pub mod settings;
 pub mod signing;
 pub mod spell;
+pub mod tabs;
 #[cfg(test)]
 pub(crate) mod testutil;
 pub mod undo;

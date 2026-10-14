@@ -78,6 +78,7 @@ const EXEMPT: &[&str] = &[
     "mod.rs",
     "snapshot_tests.rs",
     "snapshot_tests_diff.rs",
+    "snapshot_tests_editor.rs",
     "snapshot_tests_revert.rs",
     "snapshot_tests_select.rs",
     "snapshot_tests_whole.rs",

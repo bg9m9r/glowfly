@@ -47,7 +47,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Notifications | ◐ location under UI Customization | Desktop notifications (P1 Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
 | Commit Signing | ✔ Commit Signing | Signature badge on commits (P1) |
-| Editor | ✘ | Font, font size, tab size, line numbers, word wrap, EOL character; syntax highlighting is a toggle under UI Customization > Interface until this page exists |
+| Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights) | Font family, word wrap, EOL character |
 | In-App Terminal | ✘ | Needs the built-in terminal (P1) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
@@ -134,10 +134,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       Dockerfile, Kotlin, Swift) by bundling extra syntax definitions
     - [ ] Language overrides from `.gitattributes` (`linguist-language`) or a per-file picker
     - [ ] Color the function context after `@@` in hunk headers
-    - [ ] A command or shortcut for the toggle (it moves with the Editor preferences page)
+    - [ ] A command or shortcut for the toggle (now on the Editor preferences page)
     - [ ] User-selectable syntax color themes beyond the dark and light palettes
   - [x] Word-level intraline highlights
-    - [ ] A preference to turn them off (with the Editor preferences page)
+    - [x] A preference to turn them off (Preferences > Editor)
     - [ ] Pair removed and added lines by similarity instead of by position
   - [x] Ignore leading/trailing whitespace (diff header toggle, saved in settings; hunk and line
     operations are off while it is on, since `apply_hunk` counts the unfiltered hunks)
@@ -152,9 +152,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       files whose only changes are whitespace)
     - [ ] Ignore blank-line-only changes as a separate option
   - [ ] Word wrap toggle (header and editor preference); needs rows of varying height
-  - [ ] Editor preferences page: monospace font, font size, tab size (a tab is 4 spaces today),
-    line numbers on/off, end-of-line character, and the syntax highlighting toggle (now under
-    UI Customization)
+  - [x] Editor preferences page: font size, tab size (tab stops, was a fixed 4 spaces), line
+    numbers on/off, syntax highlighting (moved from UI Customization) and word-level highlights
+    - [ ] Monospace font family choice
+    - [ ] End-of-line character (LF/CRLF)
+    - [ ] Word wrap preference (with the header toggle)
+    - [ ] Use the editor font size, tab size and line numbers in the conflict view
   - [x] Whole-file view (all lines, changes marked in place), keeping hunk actions on change blocks
     (Hunks | Whole file toggle in the diff header, saved in settings; works with Inline and
     Split, and in the File history view)

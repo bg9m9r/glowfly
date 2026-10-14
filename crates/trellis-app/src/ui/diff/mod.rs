@@ -5,6 +5,7 @@
 mod header;
 mod inline;
 mod split;
+mod style;
 mod syntax;
 
 use super::theme::color;
@@ -12,11 +13,15 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::lines::{LineClick, LineSelection};
 use eframe::egui::{self, Align2, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
+use style::DiffStyle;
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{DiffTarget, FileDiff, HunkOp};
 use trellis_core::settings::DiffLayout;
+use trellis_core::tabs;
 use trellis_core::whole_file::{self, WholeFile};
 
+/// The default row height and font, which the conflict view keeps; the diff viewer draws
+/// with `DiffStyle` from the settings.
 pub(super) const ROW_H: f32 = 19.0;
 
 pub(super) fn mono() -> FontId {
@@ -40,6 +45,8 @@ pub(super) struct DiffView<'a> {
     /// Why hunk and line operations (including Revert Hunk) are off for reasons other than a
     /// pending reload (e.g. whitespace hidden).
     pub blocked: Option<&'static str>,
+    /// Font, row height and gutters from Preferences > Editor.
+    pub style: DiffStyle,
 }
 
 impl DiffView<'_> {
@@ -93,7 +100,8 @@ fn rows(ui: &mut Ui, st: &AppState, blocked: Option<&'static str>, scroll_to: Op
     let hl = whole.map_or(diff.highlight.as_ref(), |w| w.diff.highlight.as_ref()).filter(|_| st.settings.syntax_highlighting);
     let selectable = target.is_working_tree() && st.line_ops_blocked().is_none();
     let sel = selectable.then_some(&st.view.diff_lines);
-    let view = DiffView { target, diff, whole, hl, hunk_gen: st.hunk_ops_gen(), sel, blocked };
+    let style = DiffStyle::new(&st.settings);
+    let view = DiffView { target, diff, whole, hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
     Some(match st.settings.diff_layout {
         DiffLayout::Inline => inline::show(ui, &view, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, scroll_to, msgs),
@@ -117,7 +125,8 @@ enum HunkButton {
 pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs: &mut Vec<Msg>) {
     let p = ui.painter();
     p.rect_filled(rect, 0.0, color::hunk_bg());
-    p.text(pos2(rect.left() + 8.0, rect.center().y), Align2::LEFT_CENTER, &v.diff.hunks[h].header, mono(), color::hunk_fg());
+    let header = tabs::expand(&v.diff.hunks[h].header, v.style.tab);
+    p.text(pos2(rect.left() + 8.0, rect.center().y), Align2::LEFT_CENTER, header.text, v.style.font.clone(), color::hunk_fg());
     let path = v.target.path();
     let selected = v.sel.map_or(0, |s| s.count_in(v.target, h));
     let buttons: &[HunkButton] = match v.target {
@@ -145,7 +154,7 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         };
         let text_w = ui.fonts(|f| f.layout_no_wrap(label.clone(), small.clone(), color::text()).size().x);
         let w = (text_w + 16.0).max(96.0);
-        let r = Rect::from_min_size(pos2(x - w, rect.top() + 1.0), vec2(w, ROW_H - 2.0));
+        let r = Rect::from_min_size(pos2(x - w, rect.top() + 1.0), vec2(w, v.style.row_h - 2.0));
         x -= w + 6.0;
         let mut builder = egui::UiBuilder::new().max_rect(r).layout(Layout::centered_and_justified(egui::Direction::TopDown));
         let reason = v.blocked.or(v.hunk_gen.is_none().then_some("Updating the diff..."));
@@ -220,20 +229,20 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
 }
 
 /// Uniform rows in a scroll area shared by both layouts (one id, so switching layout doesn't
-/// leave a stale second scroll state). Scrolls `scroll_to` to the top if set, and returns the
-/// first visible row.
-pub(super) fn scroll(ui: &mut Ui, rows: usize, scroll_to: Option<usize>, mut add_row: impl FnMut(&mut Ui, usize)) -> usize {
+/// leave a stale second scroll state), each `row_h` high. Scrolls `scroll_to` to the top if set,
+/// and returns the first visible row.
+pub(super) fn scroll(ui: &mut Ui, rows: usize, row_h: f32, scroll_to: Option<usize>, mut add_row: impl FnMut(&mut Ui, usize)) -> usize {
     ui.spacing_mut().item_spacing.y = 0.0;
     let mut area = egui::ScrollArea::both().id_salt("diff").auto_shrink([false, false]);
     if let Some(row) = scroll_to {
-        area = area.vertical_scroll_offset(row as f32 * ROW_H);
+        area = area.vertical_scroll_offset(row as f32 * row_h);
     }
-    let out = area.show_rows(ui, ROW_H, rows, |ui, range| {
+    let out = area.show_rows(ui, row_h, rows, |ui, range| {
         for i in range {
             add_row(ui, i);
         }
     });
-    (out.state.offset.y / ROW_H).round() as usize
+    (out.state.offset.y / row_h).round() as usize
 }
 
 /// The diff's rows without the header bar, for views that embed a commit's diff of a file (the

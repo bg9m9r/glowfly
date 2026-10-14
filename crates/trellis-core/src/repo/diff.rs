@@ -174,7 +174,7 @@ pub(super) fn hunk_of(patch: &Patch<'_>, h: usize) -> Result<Hunk> {
             origin: line.origin(),
             old: line.old_lineno(),
             new: line.new_lineno(),
-            text: String::from_utf8_lossy(line.content()).trim_end_matches(['\n', '\r']).replace('\t', "    "),
+            text: String::from_utf8_lossy(line.content()).trim_end_matches(['\n', '\r']).to_owned(),
         });
     }
     Ok(Hunk { header: String::from_utf8_lossy(hunk.header()).trim_end().to_owned(), lines })

@@ -12,7 +12,7 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 /// The fixture's app.txt with an uneven edit: one line replaced, one added. `name` keeps
 /// tests running in parallel apart.
-fn with_diff(layout: DiffLayout, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_diff(layout: DiffLayout, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, &format!("{name}-{layout:?}"));
     std::fs::write(dir.join("app.txt"), "app\nfixed build\nnew line\n").unwrap();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap()); // lists app.txt as changed

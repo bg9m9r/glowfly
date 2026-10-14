@@ -35,8 +35,8 @@ pub enum TokenKind {
     Attribute,
 }
 
-/// A run of one token kind: byte offsets into `DiffLine::text` (the drawn text, after tabs
-/// became spaces).
+/// A run of one token kind: byte offsets into `DiffLine::text` (the raw line, tabs included;
+/// the viewer maps them onto the tab-expanded text with `tabs::expand`).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Span {
     pub start: u32,

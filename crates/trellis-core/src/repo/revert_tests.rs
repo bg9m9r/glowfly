@@ -225,3 +225,14 @@ fn working_tree_targets_are_unsupported() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn reverts_a_tab_indented_hunk() {
+    let dir = scratch_repo("revert-tabs");
+    let before = "fn f() {\n\tx();\n}\n";
+    commit(&dir, &[("f.rs", before)], "base");
+    let c = commit(&dir, &[("f.rs", "fn f() {\n\tx();\n\t\ty();\n}\n")], "add a tab-indented line");
+    revert(&dir, &DiffTarget::Commit(c, "f.rs".into()), 0).unwrap();
+    assert_eq!(text(&dir, "f.rs"), before);
+    let _ = std::fs::remove_dir_all(&dir);
+}

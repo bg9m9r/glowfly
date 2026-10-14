@@ -43,6 +43,8 @@ crates/
     conflict_rows.rs      row layout of the conflict view (aligned ours/theirs panes, output)
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds
     intraline.rs          word-level changes inside paired removed/added diff lines
+    tabs.rs               tab stops for drawing diff text (lines keep raw tabs), with a byte
+                          map so syntax spans and changed-word ranges follow the expansion
     watch.rs              which file changes in a repository matter (status or full reload),
                           and a cache of folders .gitignore ignores
     forge/                hosting services behind the `Forge` trait (github, gitlab,
@@ -74,13 +76,16 @@ crates/
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, details_multi (several commits), diff/ (header,
-                          inline, split, syntax),
+                          inline, split, syntax, style: font, row height and gutters from
+                          Preferences > Editor),
                           conflict, history, rebase/ (the interactive rebase panel; rows:
                           actions, message editor, drag to reorder), modals, menus,
                           branch_menu (local branch menu), branch_dialogs (rename, upstream),
-                          status, prefs/, theme, widgets (+ snapshot_tests.rs, snapshot_tests_diff.rs,
-                          snapshot_tests_revert.rs, snapshot_tests_select.rs, snapshot_tests_whole.rs,
-                          snapshot_tests_branch.rs, snapshot_tests_rebase.rs)
+                          status, prefs/ (editor: the Editor page), theme, widgets
+                          (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
+                          snapshot_tests_select.rs, snapshot_tests_whole.rs,
+                          snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
+                          snapshot_tests_editor.rs)
     platform.rs           OS integration (recent repos, terminal, file manager)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead
                           installs a prepared todo list for git (no window) and exits

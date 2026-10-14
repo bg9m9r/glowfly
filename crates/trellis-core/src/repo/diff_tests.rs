@@ -89,3 +89,15 @@ fn apply_hunk_counts_unfiltered_hunks() {
     let staged = changed_lines(&load_diff(&dir, &DiffTarget::Staged("f.txt".into())).unwrap());
     assert_eq!(staged, ["-line 2", "+line 2   "]);
 }
+
+#[test]
+fn diff_lines_keep_tabs() {
+    let dir = scratch_repo("diff-tabs");
+    write(&dir, "f.rs", "fn f() {\n\tx();\n}\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-m", "base"]);
+    write(&dir, "f.rs", "fn f() {\n\t\ty();\n}\n");
+    let d = load_diff(&dir, &DiffTarget::Unstaged("f.rs".into())).unwrap();
+    assert_eq!(changed_lines(&d), ["-\tx();", "+\t\ty();"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

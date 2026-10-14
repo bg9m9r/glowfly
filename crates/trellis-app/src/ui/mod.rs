@@ -32,6 +32,8 @@ mod snapshot_tests_branch;
 #[cfg(test)]
 mod snapshot_tests_diff;
 #[cfg(test)]
+mod snapshot_tests_editor;
+#[cfg(test)]
 mod snapshot_tests_rebase;
 #[cfg(test)]
 mod snapshot_tests_revert;

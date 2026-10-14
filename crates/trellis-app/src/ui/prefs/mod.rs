@@ -2,6 +2,7 @@
 //! sub-list (Integrations), and a form with right-aligned labels and help text.
 
 mod appearance;
+mod editor;
 mod general;
 mod git;
 mod integrations;
@@ -106,6 +107,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
                     PrefPage::Ui => appearance::ui_page(ui, settings, now),
+                    PrefPage::Editor => editor::editor_page(ui, settings),
                     _ => {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {
@@ -139,6 +141,7 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         go(ui, PrefPage::Profile, Icon::User, "Profile");
         go(ui, PrefPage::Integrations, Icon::Plug, "Integrations");
         go(ui, PrefPage::Ui, Icon::Brush, "UI Customization");
+        go(ui, PrefPage::Editor, Icon::Code, "Editor");
         go(ui, PrefPage::Signing, Icon::Key, "Commit Signing");
         if let Some(name) = repo_name {
             ui.add_space(20.0);

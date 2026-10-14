@@ -96,6 +96,8 @@ sub-list, and forms with right-aligned labels.
   Each has a connection card with "Connect to …" (signs in through Git Credential Manager), or a
   host domain plus token. Credentials are verified before being saved.
 - **UI Customization**: author/date columns and date format (ISO, long, relative).
+- **Editor**: how the diff viewer draws text: font size, tab size (tab stops), line numbers,
+  syntax highlighting and word-level highlights. Changes apply at once, without reloading.
 - **Commit Signing**: `commit.gpgsign`, `gpg.format`, `user.signingkey`.
 - **Repo-specific**: identity override (local `user.name` / `user.email`), `core.hooksPath`, and
   the issue tracker.

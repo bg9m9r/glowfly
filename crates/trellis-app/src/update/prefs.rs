@@ -26,6 +26,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         }
         Msg::ClosePrefs => {
             st.prefs = None;
+            // The diff's scroll offset is in pixels: keep the same top row if the editor font
+            // size (and so the row height) changed.
+            if st.diff.is_some() {
+                st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
+            }
             // The commit limit or branch visibility may have changed.
             super::repo::refresh(st, fx);
         }

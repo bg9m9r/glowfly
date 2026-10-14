@@ -34,6 +34,8 @@ pub enum Icon {
     NextChange,
     /// Two columns of three dots: a drag handle.
     Grip,
+    /// Angle brackets around a slash: code (Preferences > Editor).
+    Code,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -167,6 +169,13 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         }
         Icon::Hook => {
             p.text(c, Align2::CENTER_CENTER, "{ }", FontId::monospace(13.0), col);
+        }
+        Icon::Code => {
+            line(pos2(c.x - 5.0, c.y - 5.0), pos2(c.x - 9.0, c.y));
+            line(pos2(c.x - 9.0, c.y), pos2(c.x - 5.0, c.y + 5.0));
+            line(pos2(c.x + 2.0, c.y - 7.0), pos2(c.x - 2.0, c.y + 7.0));
+            line(pos2(c.x + 5.0, c.y - 5.0), pos2(c.x + 9.0, c.y));
+            line(pos2(c.x + 9.0, c.y), pos2(c.x + 5.0, c.y + 5.0));
         }
         Icon::Back => {
             line(pos2(c.x + 7.0, c.y), pos2(c.x - 7.0, c.y));

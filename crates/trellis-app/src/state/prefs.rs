@@ -9,6 +9,8 @@ pub enum PrefPage {
     Profile,
     Integrations,
     Ui,
+    /// Diff text: font size, tab size, line numbers, syntax and word highlights.
+    Editor,
     Signing,
     RepoIdentity,
     RepoHooks,
@@ -22,6 +24,7 @@ impl PrefPage {
             PrefPage::Profile => "Profile",
             PrefPage::Integrations => "Integrations",
             PrefPage::Ui => "UI Customization",
+            PrefPage::Editor => "Editor",
             PrefPage::Signing => "Commit Signing",
             PrefPage::RepoIdentity => "Identity",
             PrefPage::RepoHooks => "Git Hooks",

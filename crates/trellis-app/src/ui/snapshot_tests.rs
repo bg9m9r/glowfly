@@ -68,7 +68,7 @@ fn fixture_repo(name: &str) -> PathBuf {
     dir
 }
 
-fn settings(theme: ThemeChoice) -> Settings {
+pub(super) fn settings(theme: ThemeChoice) -> Settings {
     // Fixed locale and initials (no network) for reproducible images.
     Settings { theme, date_locale: "en_US".into(), use_initials: true, auto_fetch_minutes: 0, ..Settings::default() }
 }
