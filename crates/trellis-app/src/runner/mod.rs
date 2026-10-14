@@ -19,9 +19,11 @@ mod askpass;
 mod config;
 mod expect;
 pub(crate) mod files;
+mod guard;
 mod highlight;
 mod names;
 mod os;
+mod queue;
 mod rebase;
 mod saves;
 mod submodules;
@@ -54,6 +56,8 @@ pub struct Runner<W: Waker + Clone> {
     terminals: terminal::Terminals,
     /// Keeps saves of each settings file in order.
     saves: saves::Saves,
+    /// Effects that change a repository run one at a time per repository.
+    queues: Arc<queue::RepoQueues>,
 }
 
 impl<W: Waker + Clone> Runner<W> {
@@ -66,10 +70,13 @@ impl<W: Waker + Clone> Runner<W> {
             highlight_epoch: Default::default(),
             terminals: Default::default(),
             saves: Default::default(),
+            queues: Default::default(),
         }
     }
 
-    /// Starts `effect` on a worker thread. UI effects must be handled by the caller instead.
+    /// Starts `effect` on a worker thread, or queues it behind the earlier effects that change the
+    /// same repository. UI effects must be handled by the caller instead. A panic in the effect
+    /// is reported as its failure, so a job it was running ends.
     pub fn run(&self, effect: Effect) {
         let effect = match effect {
             Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
@@ -85,16 +92,25 @@ impl<W: Waker + Clone> Runner<W> {
         let name = names::effect_name(&effect);
         let epoch = &self.highlight_epoch;
         let ticket = matches!(effect, Effect::HighlightDiff { .. }).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
-        let spawned = std::thread::Builder::new().name(format!("trellis-{name}")).spawn(move || {
+        let repo = queue::repo_of(&effect).map(Path::to_owned);
+        let recovery = guard::Recovery::of(&effect, name);
+        let job: queue::Job = Box::new(move || {
             let _span = tracing::debug_span!("effect", name).entered();
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
-            if let Some(msg) = execute_with(effect, &cancelled)
+            if let Some(msg) = guard::guarded(recovery, || execute_with(effect, &cancelled))
                 && tx.send(msg).is_ok()
             {
                 waker.wake();
             }
         });
-        if let Err(e) = spawned {
+        let job = match repo {
+            Some(repo) => match self.queues.submit(&repo, job) {
+                Ok(()) => return,
+                Err(job) => job,
+            },
+            None => job,
+        };
+        if let Err(e) = std::thread::Builder::new().name(format!("trellis-{name}")).spawn(job) {
             tracing::error!("could not start a worker thread for {name}: {e}");
         }
     }
