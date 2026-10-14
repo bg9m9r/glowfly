@@ -2,7 +2,7 @@
 //! panel.
 
 use crate::error::Result;
-use git2::{Oid, Repository, SubmoduleIgnore, SubmoduleStatus};
+use git2::{Oid, Repository, Sort, Submodule, SubmoduleIgnore, SubmoduleStatus};
 use std::path::Path;
 
 /// How a submodule's checkout relates to the commit the parent records for it.
@@ -34,7 +34,15 @@ pub struct SubmoduleInfo {
     /// The submodule's HEAD; None when uninitialized.
     pub checked_out: Option<Oid>,
     pub state: SubmoduleState,
+    /// Commits (id, summary), newest first and at most `LEFT_BEHIND_MAX`, that the checkout
+    /// reaches but no branch, tag or remote-tracking branch inside the submodule nor the
+    /// recorded commit contains. Updating to the recorded commit leaves them reachable only from
+    /// the submodule's reflog. Usually commits made on the detached HEAD a previous update left.
+    pub left_behind: Vec<(Oid, String)>,
 }
+
+/// The most commits `SubmoduleInfo::left_behind` lists.
+pub const LEFT_BEHIND_MAX: usize = 50;
 
 impl SubmoduleInfo {
     pub fn is_initialized(&self) -> bool {
@@ -64,7 +72,8 @@ pub(super) fn list(repo: &Repository) -> Vec<SubmoduleInfo> {
             let checked_out = sm.workdir_id();
             let flags = repo.submodule_status(&name, SubmoduleIgnore::None).unwrap_or(SubmoduleStatus::empty());
             let state = classify(flags, recorded, checked_out);
-            Some(SubmoduleInfo { name, path, url: sm.url().map(str::to_owned), recorded, checked_out, state })
+            let left_behind = left_behind(sm, recorded, checked_out);
+            Some(SubmoduleInfo { name, path, url: sm.url().map(str::to_owned), recorded, checked_out, state, left_behind })
         })
         .collect();
     out.sort_by(|a, b| a.path.cmp(&b.path));
@@ -91,4 +100,30 @@ fn classify(flags: SubmoduleStatus, recorded: Oid, checked_out: Option<Oid>) -> 
         (true, false) => SubmoduleState::Dirty,
         (true, true) => SubmoduleState::DirtyOutOfSync,
     }
+}
+
+/// See `SubmoduleInfo::left_behind`; empty when in sync, uninitialized or unreadable.
+fn left_behind(sm: &Submodule, recorded: Oid, checked_out: Option<Oid>) -> Vec<(Oid, String)> {
+    let Some(head) = checked_out.filter(|&c| c != recorded) else { return Vec::new() };
+    let Ok(repo) = sm.open() else { return Vec::new() };
+    walk_unreferenced(&repo, head, recorded).unwrap_or_default()
+}
+
+fn walk_unreferenced(repo: &Repository, head: Oid, recorded: Oid) -> std::result::Result<Vec<(Oid, String)>, git2::Error> {
+    let mut walk = repo.revwalk()?;
+    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
+    walk.push(head)?;
+    // The recorded commit may not have been fetched into the submodule; then only refs hide.
+    let _ = walk.hide(recorded);
+    // Globs skip refs that don't point at a commit (a tag of a tree, say).
+    for glob in ["refs/heads", "refs/tags", "refs/remotes"] {
+        walk.hide_glob(glob)?;
+    }
+    walk.take(LEFT_BEHIND_MAX)
+        .map(|id| {
+            let id = id?;
+            let summary = repo.find_commit(id)?.summary().unwrap_or_default().to_owned();
+            Ok((id, summary))
+        })
+        .collect()
 }

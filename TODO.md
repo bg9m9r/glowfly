@@ -575,8 +575,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   changes, changes and out of sync, not initialized. The tooltip explains the state and shows
   the URL, the recorded commit and the checked-out commit. Double-click or Open in new tab opens
   an initialized submodule as a repository; Initialize / Update to recorded commit runs
-  `git submodule update --init` for it as a job (asking first when it is out of sync); Copy URL
-  copies the .gitmodules URL. The left-panel filter also filters the section.
+  `git submodule update --init` for it as a job (asking first when it is out of sync, and naming
+  any commits inside that no branch or tag contains, which the update would leave behind); Copy
+  URL copies the .gitmodules URL. The left-panel filter also filters the section.
   - [ ] Add a submodule: URL, path and optional branch, through `git submodule add`, with checks
     for a path that already exists or is already in the index
   - [ ] Set a submodule's URL (`git submodule set-url`, then `git submodule sync`) and edit its

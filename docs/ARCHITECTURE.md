@@ -39,7 +39,8 @@ crates/
                           tracked (the paths in the index, for the palette's file finder),
                           attrs (gitattribute lookups: linguist-language), submodules (the
                           index's submodules: recorded and checked-out commits, classified in
-                          sync / out of sync / dirty / uninitialized)
+                          sync / out of sync / dirty / uninitialized, and the commits on no
+                          branch or tag that updating would leave behind)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -112,7 +113,8 @@ crates/
                           dialog's form, its name check and push remote), terminal (the
                           built-in terminal panel: one shell session per repository; global,
                           not parked with a tab), submodules (status words, tooltips, why
-                          open/update/copy are blocked, the update command)
+                          open/update/copy are blocked, the update confirmation, the update
+                          command)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
                           the shortcut sheet, palette hints and tooltips
@@ -131,7 +133,8 @@ crates/
                           the tracked files), highlight.rs: load + decorate + background highlighting
                           (a newer HighlightDiff cancels the older), terminal (one thread per
                           shell session owning its PTY; Effect::Terminal is handled by
-                          Runner::run itself)
+                          Runner::run itself), submodules (reading one submodule again before
+                          its update is confirmed)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
@@ -155,7 +158,8 @@ crates/
                           staging, stage-all, focus-message and sheet keys), terminal (showing
                           the panel, starting one shell per repository, input, resizing, output
                           and exit; stopping a closed tab's shell), submodules (open in a
-                          tab, initialize/update as a job, with a confirmation when out of sync)
+                          tab, initialize/update as a job; out of sync reads the submodule again,
+                          then confirms, naming commits the update would leave behind)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
                           update/terminal_tests.rs, update/submodule_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and

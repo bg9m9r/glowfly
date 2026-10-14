@@ -25,7 +25,15 @@ fn info(path: &str, state: SubmoduleState, url: Option<&str>) -> SubmoduleInfo {
         SubmoduleState::OutOfSync | SubmoduleState::DirtyOutOfSync => Some(oid('b')),
         _ => Some(oid('a')),
     };
-    SubmoduleInfo { name: path.into(), path: path.into(), url: url.map(str::to_owned), recorded: oid('a'), checked_out, state }
+    SubmoduleInfo {
+        name: path.into(),
+        path: path.into(),
+        url: url.map(str::to_owned),
+        recorded: oid('a'),
+        checked_out,
+        state,
+        left_behind: Vec::new(),
+    }
 }
 
 /// The shared fixture with one submodule per state.

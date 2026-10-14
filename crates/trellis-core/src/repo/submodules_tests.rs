@@ -83,6 +83,7 @@ fn out_of_sync_submodule() {
     assert_eq!(sm.state, SubmoduleState::OutOfSync);
     assert_eq!((sm.checked_out, sm.recorded), (Some(new), recorded));
     assert!(sm.is_out_of_sync() && !sm.is_dirty());
+    assert!(sm.left_behind.is_empty(), "the commit is on the submodule's main branch");
 
     write(&sub, "extra.txt", "untracked\n");
     let sm = only(&parent);
@@ -95,6 +96,38 @@ fn out_of_sync_submodule() {
     let sm = only(&parent);
     assert_eq!(sm.state, SubmoduleState::InSync);
     assert_eq!(sm.recorded, new);
+    cleanup(&parent);
+}
+
+#[test]
+fn detached_commits_are_left_behind() {
+    let (parent, sub) = with_submodule("sm-left-behind");
+    // As `git submodule update` leaves it: HEAD detached at the recorded commit.
+    git(&sub, &["checkout", "-q", "--detach"]);
+    assert!(only(&parent).left_behind.is_empty(), "in sync");
+    write(&sub, "lib.txt", "two\n");
+    git(&sub, &["commit", "-q", "-am", "first inside"]);
+    let first = head(&sub);
+    write(&sub, "lib.txt", "three\n");
+    git(&sub, &["commit", "-q", "-am", "second inside"]);
+    let second = head(&sub);
+    let sm = only(&parent);
+    assert_eq!(sm.state, SubmoduleState::OutOfSync);
+    assert_eq!(sm.left_behind, vec![(second, "second inside".to_owned()), (first, "first inside".to_owned())]);
+
+    git(&sub, &["tag", "keep-first", &first.to_string()]);
+    assert_eq!(only(&parent).left_behind, vec![(second, "second inside".to_owned())], "a tag keeps the first");
+    git(&sub, &["branch", "keep"]);
+    assert!(only(&parent).left_behind.is_empty(), "a branch keeps both");
+    git(&sub, &["branch", "-q", "-D", "keep"]);
+    git(&sub, &["tag", "-d", "keep-first"]);
+
+    // Recording the second, then checking out the first: the recorded commit still reaches it.
+    git(&parent, &["add", "libs/lib"]);
+    git(&sub, &["checkout", "-q", &first.to_string()]);
+    let sm = only(&parent);
+    assert_eq!((sm.state, sm.recorded), (SubmoduleState::OutOfSync, second));
+    assert!(sm.left_behind.is_empty(), "{:?}", sm.left_behind);
     cleanup(&parent);
 }
 

@@ -20,6 +20,7 @@ pub(crate) mod files;
 mod highlight;
 mod os;
 mod rebase;
+mod submodules;
 mod terminal;
 
 #[cfg(test)]
@@ -96,6 +97,7 @@ fn effect_name(e: &Effect) -> &'static str {
         Effect::RestoreFile { .. } => "restore-file",
         Effect::WorkFile { .. } => "work-file",
         Effect::LoadTrackedPaths { .. } => "tracked-paths",
+        Effect::CheckSubmodule { .. } => "check-submodule",
         Effect::RunGit { .. } => "git",
         Effect::UndoRedo { .. } => "undo-redo",
         Effect::LoadRebasePlan { .. } => "rebase-plan",
@@ -193,6 +195,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
         }),
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
+        Effect::CheckSubmodule { workdir, path } => Some(submodules::check(&workdir, path)),
         Effect::RunGit { cwd, cmds, write_file, record, prompts } => {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             let (ok, output) = run_git(&cwd, &cmds, write_file, prompts);

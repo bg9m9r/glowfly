@@ -183,6 +183,12 @@ pub enum Effect {
         workdir: PathBuf,
         generation: u64,
     },
+    /// Reads the submodule at `path` (repo-relative) again, with the commits an update would
+    /// leave behind, before confirming the update.
+    CheckSubmodule {
+        workdir: PathBuf,
+        path: String,
+    },
     /// The commits that changed `path`, examining at most `limit` commits.
     LoadFileHistory {
         workdir: PathBuf,
@@ -337,6 +343,7 @@ impl Effect {
             | Effect::LoadConflict { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }
             | Effect::LoadTrackedPaths { workdir, .. }
+            | Effect::CheckSubmodule { workdir, .. }
             | Effect::LoadRebasePlan { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::RevertHunk { workdir, .. }

@@ -1,9 +1,13 @@
 //! The SUBMODULES section's text and rules, shared by the view and `update`: the status word,
-//! the tooltip, why open, update and copy are blocked, and the update command.
+//! the tooltip, why open, update and copy are blocked, the update confirmation (with the commits
+//! it would leave behind) and the update command.
 
 use git2::Oid;
 use trellis_core::gitcli::args;
-use trellis_core::repo::{SubmoduleInfo, SubmoduleState};
+use trellis_core::repo::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState};
+
+/// How many left-behind commits the confirmation names.
+const NAMED: usize = 5;
 
 /// The first 7 hex characters of `oid`.
 fn short(oid: Oid) -> String {
@@ -35,6 +39,11 @@ pub fn tooltip(sm: &SubmoduleInfo) -> String {
             );
             if sm.is_dirty() {
                 s.push_str("\nIt also has uncommitted changes or untracked files inside; open it to commit or discard them.");
+            }
+            if !sm.left_behind.is_empty() {
+                let count = commit_count(sm);
+                let (verb, them) = if sm.left_behind.len() == 1 { ("is", "it") } else { ("are", "them") };
+                s.push_str(&format!("\n{count} here {verb} on no branch or tag; updating would leave {them} behind."));
             }
             s
         }
@@ -85,15 +94,53 @@ pub fn job_label(sm: &SubmoduleInfo) -> String {
     if sm.is_initialized() { format!("Update submodule {}", sm.path) } else { format!("Initialize submodule {}", sm.path) }
 }
 
-/// The confirmation before updating a submodule that is checked out at another commit.
+/// "1 commit", "3 commits", or "50 or more commits" when the list was cut off.
+fn commit_count(sm: &SubmoduleInfo) -> String {
+    match sm.left_behind.len() {
+        1 => "1 commit".to_owned(),
+        LEFT_BEHIND_MAX => format!("{LEFT_BEHIND_MAX} or more commits"),
+        n => format!("{n} commits"),
+    }
+}
+
+/// The confirmation before updating a submodule that is checked out at another commit. When
+/// that would leave commits behind, it says so and names them.
 pub fn confirm_update_body(sm: &SubmoduleInfo) -> String {
     let now = sm.checked_out.map(short).unwrap_or_default();
-    format!(
-        "{} is at {now} now. Updating checks out the recorded commit {} (detached HEAD). Branches inside the submodule are \
-         left as they are.",
+    let recorded = short(sm.recorded);
+    if sm.left_behind.is_empty() {
+        return format!(
+            "{} is at {now} now. Updating checks out the recorded commit {recorded} (detached HEAD). Branches inside the \
+             submodule are left as they are.",
+            sm.path
+        );
+    }
+    let one = sm.left_behind.len() == 1;
+    let mut out = format!(
+        "{} is at {now} now. No branch or tag inside it contains {}, so updating to the recorded commit {recorded} leaves {} \
+         behind:\n",
         sm.path,
-        short(sm.recorded)
-    )
+        if one { "that commit" } else { "these commits" },
+        if one { "it" } else { "them" },
+    );
+    for (id, summary) in sm.left_behind.iter().take(NAMED) {
+        out.push_str(&format!("\n    {} {summary}", short(*id)));
+    }
+    if sm.left_behind.len() > NAMED {
+        let at_least = if sm.left_behind.len() == LEFT_BEHIND_MAX { "at least " } else { "" };
+        out.push_str(&format!("\n    and {at_least}{} more", sm.left_behind.len() - NAMED));
+    }
+    out.push_str(&format!(
+        "\n\nAfterwards only the submodule's reflog finds {}, until it expires. To keep {0}, cancel, open the submodule and \
+         create a branch at {now}.",
+        if one { "it" } else { "them" }
+    ));
+    out
+}
+
+/// The confirmation's button: plain, or naming what is left behind.
+pub fn confirm_update_button(sm: &SubmoduleInfo) -> String {
+    if sm.left_behind.is_empty() { "Update".to_owned() } else { format!("Update and leave {} behind", commit_count(sm)) }
 }
 
 /// `git submodule update --init -- <path>`: clones it if needed and checks out the recorded commit.
@@ -118,6 +165,7 @@ mod tests {
             recorded: Oid::from_str(&"a".repeat(40)).unwrap(),
             checked_out,
             state,
+            left_behind: Vec::new(),
         }
     }
 
@@ -159,6 +207,38 @@ mod tests {
         assert!(copy_url_blocked(&ok).is_none() && copy_url_blocked(&info(SubmoduleState::InSync, "x", None)).is_some());
         let body = confirm_update_body(&out);
         assert!(body.contains("bbbbbbb") && body.contains("aaaaaaa") && body.contains("Branches inside"), "{body}");
+        assert_eq!(confirm_update_button(&out), "Update");
         assert_eq!(update_args("libs/core"), ["submodule", "update", "--init", "--", "libs/core"]);
+    }
+
+    fn with_left_behind(n: usize) -> SubmoduleInfo {
+        let mut sm = info(SubmoduleState::OutOfSync, "libs/core", Some("u"));
+        sm.left_behind = (0..n).map(|i| (Oid::from_str(&format!("{:x}", i + 1).repeat(40)[..40]).unwrap(), format!("work {i}"))).collect();
+        sm
+    }
+
+    #[test]
+    fn left_behind_commits_are_named() {
+        let one = with_left_behind(1);
+        let body = confirm_update_body(&one);
+        assert!(body.contains("No branch or tag inside it contains that commit") && !body.contains("Branches inside"), "{body}");
+        assert!(body.contains("\n    1111111 work 0") && body.contains("To keep it, cancel"), "{body}");
+        assert!(body.contains("create a branch at bbbbbbb"), "{body}");
+        assert_eq!(confirm_update_button(&one), "Update and leave 1 commit behind");
+        let t = tooltip(&one);
+        assert!(t.contains("\n1 commit here is on no branch or tag; updating would leave it behind."), "{t}");
+
+        let seven = with_left_behind(7);
+        let body = confirm_update_body(&seven);
+        assert!(body.contains("these commits") && body.contains("\n    5555555 work 4") && !body.contains("work 5"), "{body}");
+        assert!(body.contains("\n    and 2 more\n"), "{body}");
+        assert_eq!(confirm_update_button(&seven), "Update and leave 7 commits behind");
+
+        let many = with_left_behind(LEFT_BEHIND_MAX);
+        let body = confirm_update_body(&many);
+        assert!(body.contains("\n    and at least 45 more\n"), "{body}");
+        assert_eq!(confirm_update_button(&many), "Update and leave 50 or more commits behind");
+        let t = tooltip(&many);
+        assert!(t.contains("\n50 or more commits here are on no branch or tag; updating would leave them behind."), "{t}");
     }
 }

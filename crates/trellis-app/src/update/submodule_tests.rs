@@ -1,6 +1,6 @@
 //! Headless tests for the SUBMODULES section: opening a submodule in a tab, refusing what can't
-//! be done, initializing and updating one as a job (asking first when out of sync), and keeping
-//! the undo history across an update.
+//! be done, initializing and updating one as a job (asking first when out of sync, naming the
+//! commits on no branch that it would leave behind), and keeping the undo history across an update.
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
@@ -138,10 +138,13 @@ fn initialize_runs_job_and_refreshes() {
 fn out_of_sync_update_asks_first() {
     let (mut st, parent, lib) = opened("sm-update");
     commit_inside(&mut st, &parent);
-    assert!(update(&mut st, msg(PATH, false), Instant::now()).is_empty());
+    drive(&mut st, msg(PATH, false));
+    assert!(st.job.is_none());
     match &st.modal {
-        Some(Modal::Confirm { then, title, .. }) => {
+        Some(Modal::Confirm { then, title, body, button }) => {
             assert_eq!(title, "Update submodule");
+            // The commit is on the submodule's main branch, so nothing is left behind.
+            assert!(body.contains("Branches inside") && button == "Update", "{body}");
             assert!(matches!(&**then, Msg::Submodule(SubmoduleMsg::Update { confirmed: true, path }) if path == PATH));
         }
         _ => panic!("expected a confirmation"),
@@ -152,6 +155,77 @@ fn out_of_sync_update_asks_first() {
     assert_eq!(sm.checked_out, Some(sm.recorded));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Update submodule libs/lib succeeded"));
     cleanup(&[&parent, &lib]);
+}
+
+/// The commit `git submodule update` leaves: HEAD detached at the recorded commit, then a commit
+/// made there. Returns its id.
+fn commit_detached(parent: &Path, text: &str) -> Oid {
+    let dir = parent.join(PATH);
+    git(&dir, &["checkout", "-q", "--detach"]);
+    std::fs::write(dir.join("a.txt"), text).unwrap();
+    git(&dir, &["commit", "-q", "-am", text.trim()]);
+    git2::Repository::open(&dir).unwrap().head().unwrap().target().unwrap()
+}
+
+#[test]
+fn update_names_commits_it_would_leave_behind() {
+    let (mut st, parent, lib) = opened("sm-left-behind");
+    let first = commit_detached(&parent, "first\n");
+    drive(&mut st, Msg::Refresh);
+    assert_eq!(sub(&st).left_behind, vec![(first, "first".to_owned())]);
+    // A second commit after the last full load: the snapshot doesn't know it yet.
+    let second = commit_detached(&parent, "second\n");
+    assert_eq!(sub(&st).left_behind.len(), 1);
+
+    let fx = update(&mut st, msg(PATH, false), Instant::now());
+    assert!(matches!(&fx[..], [Effect::CheckSubmodule { path, .. }] if path == PATH), "{fx:?}");
+    assert!(st.modal.is_none() && st.job.is_none());
+    finish_checks(&mut st, fx);
+    let left = sub(&st).left_behind;
+    assert_eq!(left.iter().map(|c| c.0).collect::<Vec<_>>(), vec![second, first], "the row is read again");
+    match &st.modal {
+        Some(Modal::Confirm { body, button, then, .. }) => {
+            let short = |o: Oid| o.to_string()[..7].to_owned();
+            assert!(body.contains(&format!("\n    {} second", short(second))), "{body}");
+            assert!(body.contains(&format!("\n    {} first", short(first))), "{body}");
+            assert!(!body.contains("Branches inside"), "{body}");
+            assert_eq!(button, "Update and leave 2 commits behind");
+            assert!(matches!(&**then, Msg::Submodule(SubmoduleMsg::Update { confirmed: true, .. })));
+        }
+        _ => panic!("expected a confirmation"),
+    }
+    // Cancelling runs nothing; a branch inside then keeps the commits, and the warning goes.
+    st.modal = None;
+    git(&parent.join(PATH), &["branch", "keep"]);
+    drive(&mut st, msg(PATH, false));
+    match &st.modal {
+        Some(Modal::Confirm { body, button, .. }) => {
+            assert!(body.contains("Branches inside") && button == "Update", "{body}");
+        }
+        _ => panic!("expected a confirmation"),
+    }
+    cleanup(&[&parent, &lib]);
+}
+
+#[test]
+fn checked_submodule_gone_or_unreadable_is_logged() {
+    let (mut st, parent, lib) = opened("sm-checked-gone");
+    let checked = |result| Msg::Submodule(SubmoduleMsg::Checked { path: PATH.into(), result });
+    assert!(update(&mut st, checked(Ok(None)), Instant::now()).is_empty());
+    assert!(last_log(&st).1.contains("no longer in this repository"));
+    assert!(update(&mut st, checked(Err("boom".into())), Instant::now()).is_empty());
+    assert_eq!(last_log(&st), (false, "Could not read submodule libs/lib: boom".to_owned()));
+    assert!(st.modal.is_none());
+    cleanup(&[&parent, &lib]);
+}
+
+/// Runs the `CheckSubmodule` effects in `fx` and handles their results.
+fn finish_checks(st: &mut AppState, fx: Vec<Effect>) {
+    for e in fx.into_iter().filter(|e| matches!(e, Effect::CheckSubmodule { .. })) {
+        if let Some(m) = runner::execute(e) {
+            drive(st, m);
+        }
+    }
 }
 
 #[test]
