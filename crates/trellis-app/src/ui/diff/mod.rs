@@ -11,6 +11,7 @@ mod split;
 mod style;
 mod syntax;
 
+use super::file_buttons::CommitFile;
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -90,7 +91,21 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 header::FoldCounts { open, closed: all.len() - open }
             })
             .filter(|c| c.open + c.closed > 0 && has_rows);
-        header::header_bar(ui, target, rows, nav, (!diff.binary).then_some(ignore_ws), fold_counts, msgs);
+        // Restore, Open and Show for a commit's file, when the open detail lists it.
+        let commit_file = match target {
+            DiffTarget::Commit(oid, path) => st.detail.as_ref().filter(|d| d.oid == *oid).and_then(|d| {
+                d.files.iter().find(|f| f.path == *path).map(|f| CommitFile {
+                    oid: *oid,
+                    path: &f.path,
+                    status: f.status,
+                    open_path: &f.path,
+                    in_workdir: d.in_workdir(&f.path),
+                })
+            }),
+            _ => None,
+        };
+        let ws = (!diff.binary).then_some(ignore_ws);
+        header::header_bar(ui, target, commit_file.as_ref(), rows, nav, ws, fold_counts, msgs);
         ui.separator();
         if diff.binary {
             ui.label(RichText::new("Binary file not shown.").color(color::weak()));

@@ -175,3 +175,27 @@ fn history_of_an_unborn_repository_is_empty() {
     assert!(h.entries.is_empty() && h.resume.is_empty() && h.searched_until.is_none() && h.from_head);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn history_reports_whether_the_path_is_on_disk() {
+    let dir = scratch_repo("history-on-disk");
+    commit(&dir, "a.txt", "a\n", "add a");
+    assert!(file_history(&dir, "a.txt", &HistoryStart::Head, 100).unwrap().on_disk);
+    std::fs::remove_file(dir.join("a.txt")).unwrap();
+    assert!(!file_history(&dir, "a.txt", &HistoryStart::Head, 100).unwrap().on_disk, "deleted, not committed");
+
+    let add = commit(&dir, "b.txt", "b\n", "add b");
+    git(&dir, &["rm", "-q", "b.txt"]);
+    git(&dir, &["commit", "-q", "-m", "remove b"]);
+    let h = file_history(&dir, "b.txt", &HistoryStart::At(add), 100).unwrap();
+    assert!(!h.entries.is_empty() && !h.from_head && !h.on_disk);
+
+    commit(&dir, "c.txt", "1\n", "c1");
+    commit(&dir, "c.txt", "2\n", "c2");
+    commit(&dir, "c.txt", "3\n", "c3");
+    let h = file_history(&dir, "c.txt", &HistoryStart::Head, 1).unwrap();
+    assert!(h.on_disk && !h.resume.is_empty());
+    let more = file_history(&dir, "c.txt", &HistoryStart::Resume(h.resume), 100).unwrap();
+    assert!(more.on_disk && !more.entries.is_empty(), "a resumed batch reports it too");
+    let _ = std::fs::remove_dir_all(&dir);
+}

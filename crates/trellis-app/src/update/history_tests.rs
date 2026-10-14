@@ -154,6 +154,7 @@ fn searching_further_appends_without_duplicates() {
         from_head: true,
         searched_until: Some((oid(4), 9)),
         resume: vec![(oid(5), "older.txt".into())],
+        on_disk: true,
     };
     let m = loaded(&st, batch);
     let fx = update(&mut st, m, Instant::now());
@@ -310,5 +311,41 @@ fn a_refresh_does_not_supersede_the_selected_entrys_diff() {
     drive(&mut st, Msg::Refresh);
     run(&mut st, pending);
     assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 1 on screen");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn loaded_history_records_on_disk() {
+    let (mut st, dir) = opened("history-on-disk");
+    update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
+    let first = FileHistory { entries: vec![entry(1, "a.txt")], on_disk: true, ..Default::default() };
+    let m = loaded(&st, first);
+    update(&mut st, m, Instant::now());
+    assert!(st.history.as_ref().unwrap().on_disk);
+    let later = FileHistory { entries: vec![entry(2, "a.txt")], on_disk: false, ..Default::default() };
+    let m = loaded(&st, later);
+    update(&mut st, m, Instant::now());
+    assert!(!st.history.as_ref().unwrap().on_disk, "the latest batch wins");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn history_in_workdir_prefers_status() {
+    let dir = scratch_repo("history-in-workdir");
+    std::fs::remove_file(dir.join("a.txt")).unwrap();
+    std::fs::write(dir.join("new.txt"), "new\n").unwrap();
+    let snap = repo::load(&dir, &LoadOptions::all(100)).unwrap();
+    assert!(snap.unstaged.iter().any(|f| f.path == "a.txt" && f.status == 'D'), "a.txt deleted");
+    let view = |path: &str, on_disk: bool| FileHistoryView { on_disk, ..FileHistoryView::loading(path.into(), None) };
+
+    assert!(!view("a.txt", true).in_workdir(Some(&snap)), "an unstaged deletion wins over on_disk");
+    assert!(view("new.txt", false).in_workdir(Some(&snap)), "any other status entry means present");
+    assert!(view("other.txt", true).in_workdir(Some(&snap)) && !view("other.txt", false).in_workdir(Some(&snap)));
+    assert!(view("a.txt", true).in_workdir(None) && !view("a.txt", false).in_workdir(None));
+
+    git(&dir, &["add", "new.txt"]);
+    let snap = repo::load(&dir, &LoadOptions::all(100)).unwrap();
+    assert!(snap.staged.iter().any(|f| f.path == "new.txt" && f.status == 'A'));
+    assert!(view("new.txt", false).in_workdir(Some(&snap)), "a staged addition means present");
     let _ = std::fs::remove_dir_all(&dir);
 }

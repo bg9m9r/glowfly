@@ -1,7 +1,9 @@
 //! The file history view: the commits that changed one file on the left (newest first,
-//! following renames), and the selected commit with its diff of the file on the right.
+//! following renames), and the selected commit with its diff of the file on the right. Each
+//! commit can restore its version of the file; Open and Show act on the file as it is today.
 
 use super::common::{menu_item, short, status_color};
+use super::file_buttons::{self, CommitFile, Labels};
 use super::file_menu;
 use super::theme::color;
 use crate::msg::Msg;
@@ -63,6 +65,7 @@ fn paint_line(ui: &Ui, pos: Pos2, text: &str, font: FontId, c: Color32, max_w: f
 fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.history else { return };
     keyboard(ui, view, msgs);
+    let in_wd = view.in_workdir(st.snap.as_ref());
     egui::ScrollArea::vertical().id_salt("file-history").auto_shrink([false, false]).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (i, e) in view.entries.iter().enumerate() {
@@ -86,17 +89,22 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             if resp.clicked() {
                 msgs.push(Msg::SelectHistoryEntry(i));
             }
-            resp.context_menu(|ui| {
-                menu_item(msgs, ui, "View on graph", Msg::ShowInGraph(e.oid));
-                menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));
-                ui.separator();
-                file_menu::restore_item(ui, msgs, e.oid, &e.path, e.status);
-            });
+            resp.context_menu(|ui| entry_menu(ui, msgs, e, &view.path, in_wd));
             ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
         }
         ui.add_space(8.0);
         footer(ui, st, view, msgs);
     });
+}
+
+/// A history row's menu: View on graph, Copy commit SHA, then Restore for the entry's version
+/// and Open / Show for `open_path` (the file as it is named today), disabled unless `in_workdir`.
+pub(super) fn entry_menu(ui: &mut Ui, msgs: &mut Vec<Msg>, e: &HistoryEntry, open_path: &str, in_workdir: bool) {
+    menu_item(msgs, ui, "View on graph", Msg::ShowInGraph(e.oid));
+    menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));
+    ui.separator();
+    file_menu::restore_item(ui, msgs, e.oid, &e.path, e.status);
+    file_menu::open_items(ui, msgs, open_path, (!in_workdir).then_some(file_menu::NOT_IN_WORKDIR));
 }
 
 /// Line 1: short SHA and summary. Line 2: status, author (and the old path of a rename), with
@@ -169,9 +177,12 @@ fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
     msgs.push(Msg::SelectHistoryEntry(next));
 }
 
-/// The selected commit: summary, author and date, links, then its diff of the file.
+/// The selected commit: summary, author and date, links, file buttons (Restore this version,
+/// Open, Show), then its diff of the file.
 fn selected(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.history else { return };
+    let open_path = view.path.clone();
+    let in_wd = view.in_workdir(st.snap.as_ref());
     let Some(e) = view.selected_entry().cloned() else {
         if !view.loading && !view.entries.is_empty() {
             ui.add_space(10.0);
@@ -195,6 +206,9 @@ fn selected(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 msgs.push(Msg::Copy(e.oid.to_string()));
             }
         });
+        ui.add_space(4.0);
+        let file = CommitFile { oid: e.oid, path: &e.path, status: e.status, open_path: &open_path, in_workdir: in_wd };
+        ui.horizontal_wrapped(|ui| file_buttons::show(ui, msgs, &file, Labels::Full));
     });
     ui.separator();
     let target = DiffTarget::Commit(e.oid, e.path.clone());

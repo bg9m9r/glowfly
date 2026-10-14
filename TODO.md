@@ -440,8 +440,18 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Make Restore undoable (keep the overwritten working copy, as Discard does)
   - [ ] Honour smudge filters (Git LFS) when restoring, by writing through `git restore --source`
   - [ ] Explain when a restored or opened path is outside a sparse checkout
-  - [ ] Open with default app and show in folder from the file history view and the diff header
-  - [ ] Restore button in the file history's selected-commit header and the commit diff header
+  - [x] Open with default app and show in folder from the file history view and the diff header
+  - [x] Restore button in the file history's selected-commit header and the commit diff header
+    - [ ] Restore, Open and Show buttons in the diff header for two-commit comparisons
+      (restoring the newer commit's version, as the comparison rows do)
+    - [ ] Open and Show for the file history's current file in its top header, independent of
+      the selected commit
+    - [ ] Re-check whether the file history's file is on disk after status refreshes and file
+      watcher events (an untracked file deleted outside Trellis keeps Open enabled)
+    - [ ] Open the commit's version of a file (a temporary copy) when it is no longer in the
+      working tree
+    - [ ] Name the file in the show-in-folder tooltip and the open failure message
+    - [ ] Painted icons for Open and Show in the diff header to save room (split widgets.rs first)
 
 ## P1: power features
 

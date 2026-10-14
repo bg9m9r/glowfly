@@ -96,10 +96,12 @@ pub fn compare(workdir: &Path, from: Oid, to: Oid) -> Result<Comparison> {
 /// The paths of `files` with nothing at them in the working tree (all of them in a bare
 /// repository). One stat per file, so views can tell which ones can be opened.
 fn absent_paths(repo: &Repository, files: &[FileEntry]) -> HashSet<String> {
-    match repo.workdir() {
-        Some(root) => files.iter().filter(|f| root.join(&f.path).symlink_metadata().is_err()).map(|f| f.path.clone()).collect(),
-        None => files.iter().map(|f| f.path.clone()).collect(),
-    }
+    files.iter().filter(|f| !on_disk(repo, &f.path)).map(|f| f.path.clone()).collect()
+}
+
+/// Whether something is at `path` in the working tree (never in a bare repository).
+pub(super) fn on_disk(repo: &Repository, path: &str) -> bool {
+    repo.workdir().is_some_and(|root| root.join(path).symlink_metadata().is_ok())
 }
 
 pub(super) fn path_opts(path: &str) -> DiffOptions {

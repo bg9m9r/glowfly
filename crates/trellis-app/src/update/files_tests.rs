@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::state::history::FileHistoryView;
 use crate::state::selection::MultiSelection;
 use crate::state::{AppState, Modal, Selection};
 use git2::{Oid, Repository};
@@ -123,6 +124,22 @@ fn restored_toasts_and_refreshes() {
     let fx = run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) });
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore a.txt: boom"));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn restore_marks_history_file_on_disk() {
+    let (mut st, dir) = loaded("files-restored-history");
+    let oid = head(&dir);
+    st.history = Some(FileHistoryView::loading("a.txt".into(), None));
+    let on_disk = |st: &AppState| st.history.as_ref().unwrap().on_disk;
+
+    run(&mut st, Msg::FileRestored { path: "old.txt".into(), oid, result: Ok(RestoredFrom::Commit) });
+    assert!(!on_disk(&st), "another path");
+    run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) });
+    assert!(!on_disk(&st), "a failed restore");
+    run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) });
+    assert!(on_disk(&st), "Open and Show become available in the history");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -12,7 +12,7 @@ use trellis_core::repo::{self, DiffTarget};
 use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 /// The fixture with the "Fix build on Windows" commit selected and its diff of app.txt open.
-fn with_commit_diff(name: &str, theme: ThemeChoice, layout: DiffLayout, ignore_ws: bool) -> (AppState, PathBuf) {
+pub(super) fn with_commit_diff(name: &str, theme: ThemeChoice, layout: DiffLayout, ignore_ws: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_ref().unwrap();
     let oid = snap.commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit").oid;

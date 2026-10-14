@@ -46,9 +46,15 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                         RestoredFrom::Parent(_) => format!("Restored {path} as it was before {}.", short(oid)),
                     };
                     st.toast(true, text, now);
-                    // The file is back, so Open and Show become available without reselecting.
+                    // The file is back, so Open and Show become available without reselecting,
+                    // in the commit detail, a comparison and the file history.
                     if let Some(d) = st.detail.as_mut() {
                         d.absent.remove(&path);
+                    }
+                    if let Some(h) = st.history.as_mut()
+                        && h.path == path
+                    {
+                        h.on_disk = true;
                     }
                     if let Selection::Commits(m) = &mut st.selection
                         && let Some(Ok(c)) = &mut m.changes

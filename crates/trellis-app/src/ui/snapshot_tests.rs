@@ -277,7 +277,7 @@ fn conflict_binary() {
 /// The fixture's app.txt grown to a dozen lines, moved to src/app.txt with an edit, then
 /// edited again; the file history is open on it with entry `select` shown, walked with
 /// `limit` commits per request.
-fn with_history(name: &str, theme: ThemeChoice, limit: usize, select: usize) -> (AppState, PathBuf) {
+pub(super) fn with_history(name: &str, theme: ThemeChoice, limit: usize, select: usize) -> (AppState, PathBuf) {
     use crate::state::history::FileHistoryView;
     use trellis_core::repo::{DiffTarget, HistoryStart};
     use trellis_core::{highlight, intraline};

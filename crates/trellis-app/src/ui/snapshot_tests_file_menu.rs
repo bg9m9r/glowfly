@@ -74,7 +74,7 @@ fn harness(f: FileEntry, menu: Menu, dark: bool) -> Harness<'static, Vec<Msg>> {
 }
 
 /// What egui does to a context menu's style, so the items look as they do in the app.
-fn menu_style(style: &mut egui::Style) {
+pub(super) fn menu_style(style: &mut egui::Style) {
     style.wrap_mode = Some(egui::TextWrapMode::Extend);
     style.spacing.button_padding = egui::vec2(2.0, 0.0);
     style.visuals.widgets.active.bg_stroke = egui::Stroke::NONE;

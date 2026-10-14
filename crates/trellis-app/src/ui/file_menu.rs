@@ -2,7 +2,8 @@
 //! rows, or the rows comparing two selected commits), open it in its default program, show it in
 //! the file manager, start a new file in its folder, and (working-tree rows) rename or delete it.
 //! Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
-//! opening a popup.
+//! opening a popup. `file_buttons` reuses the labels, reasons and restore message for the same
+//! actions as header buttons.
 
 use super::common::{menu_item, menu_item_if, short};
 use crate::msg::Msg;
@@ -20,7 +21,7 @@ pub(super) const SHOW_IN_FOLDER: &str = if cfg!(windows) {
     "Open containing folder"
 };
 pub(super) const OPEN_DEFAULT: &str = "Open with default app";
-const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
+pub(super) const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
 const DELETED_IN_WORKDIR: &str = "Not in your working tree (deleted)";
 const CONFLICTED: &str = "Resolve the conflict first";
 pub(super) const NEW_FILE_HERE: &str = "New file in this folder…";
@@ -37,11 +38,20 @@ pub(super) enum RowSource {
     Between { older: Oid, newer: Oid },
 }
 
+/// The restore action's label, for a file the commit `deleted` or one it kept.
+pub(super) fn restore_label(deleted: bool) -> &'static str {
+    if deleted { "Restore the deleted file…" } else { "Restore this version…" }
+}
+
+/// Asks to restore `path` from `oid` (from before it when `status` is 'D'), through the
+/// confirmation.
+pub(super) fn restore_msg(oid: Oid, path: &str, status: char) -> Msg {
+    Msg::RestoreFile { oid, path: path.to_owned(), deleted: status == 'D', confirmed: false, overwrite: false }
+}
+
 /// Restore `path` from `oid`; for a file the commit deleted (`status` 'D'), from before it.
 pub(super) fn restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, oid: Oid, path: &str, status: char) {
-    let deleted = status == 'D';
-    let label = if deleted { "Restore the deleted file…" } else { "Restore this version…" };
-    menu_item(msgs, ui, label, Msg::RestoreFile { oid, path: path.to_owned(), deleted, confirmed: false, overwrite: false });
+    menu_item(msgs, ui, restore_label(status == 'D'), restore_msg(oid, path, status));
 }
 
 /// Restore a comparison row's file from the newer commit, or from the older one when the newer

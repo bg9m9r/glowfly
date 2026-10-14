@@ -2,7 +2,7 @@
 //! walk stopped.
 
 use git2::Oid;
-use trellis_core::repo::{FileHistory, HistoryEntry};
+use trellis_core::repo::{FileHistory, HistoryEntry, Snapshot};
 
 #[derive(Clone, Debug)]
 pub struct FileHistoryView {
@@ -21,6 +21,9 @@ pub struct FileHistoryView {
     /// Where "Search further" continues from; empty when the walk is complete.
     pub resume: Vec<(Oid, String)>,
     pub error: Option<String>,
+    /// Something was at `path` in the working tree when the last batch loaded (or the file was
+    /// restored since).
+    pub on_disk: bool,
 }
 
 impl FileHistoryView {
@@ -35,6 +38,7 @@ impl FileHistoryView {
             searched_until: None,
             resume: Vec::new(),
             error: None,
+            on_disk: false,
         }
     }
 
@@ -56,6 +60,21 @@ impl FileHistoryView {
         }
         self.resume = h.resume;
         self.searched_until = h.searched_until;
+        self.on_disk = h.on_disk;
         self.loading = false;
+    }
+
+    /// Whether the file is in the working tree under `path`: what status says when it lists the
+    /// path, else what the last walk saw on disk.
+    pub fn in_workdir(&self, snap: Option<&Snapshot>) -> bool {
+        if let Some(s) = snap {
+            if s.missing_from_workdir(&self.path) {
+                return false;
+            }
+            if s.unstaged.iter().chain(&s.staged).any(|f| f.path == self.path) {
+                return true;
+            }
+        }
+        self.on_disk
     }
 }

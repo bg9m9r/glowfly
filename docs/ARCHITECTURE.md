@@ -22,7 +22,8 @@ crates/
     repo/                 repository model on libgit2: types (mod.rs), load (history, refs,
                           status), diff (details, comparisons between two commits, file
                           diffs with optional whitespace filtering, line counts), history
-                          (commits that changed a file, following renames), index (staging),
+                          (commits that changed a file, following renames, and whether the
+                          path is on disk), index (staging),
                           lines (partial patches for line staging), revert (a commit or
                           comparison hunk's inverse applied to the working tree), restore (one
                           file written from a commit, or its parent, into the working tree), conflict
@@ -147,7 +148,9 @@ crates/
                           ref_visibility (hide/solo menu items, row markers and banner),
                           file_menu (file actions in file rows' menus, commit and comparison
                           rows included: restore, open, show, new file in this folder, rename,
-                          delete), file_dialogs (new file, rename file), tag_dialog (new tag,
+                          delete), file_buttons (Restore / Open / Show buttons in the file
+                          history's selected-commit header and the commit diff header),
+                          file_dialogs (new file, rename file), tag_dialog (new tag,
                           plain or annotated, name checks, push to a remote),
                           askpass (the credential prompt, drawn above every other dialog),
                           palette (the Ctrl+P command palette overlay),
@@ -158,7 +161,8 @@ crates/
                           snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
                           snapshot_tests_file_menu.rs, snapshot_tests_commit.rs,
                           snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
-                          snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs)
+                          snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
+                          snapshot_tests_file_actions.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

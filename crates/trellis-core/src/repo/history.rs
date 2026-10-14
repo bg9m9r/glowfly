@@ -2,7 +2,8 @@
 //!
 //! The walk follows git's default history simplification: a commit whose file equals one
 //! parent's is skipped and only that parent is followed. It examines at most `limit` commits
-//! per call and reports where it stopped, so the caller can resume it.
+//! per call and reports where it stopped, so the caller can resume it. Each call also reports
+//! whether the path is on disk in the working tree.
 
 use crate::error::Result;
 use git2::{Commit, Delta, DiffFindOptions, ObjectType, Oid, Repository, Tree};
@@ -37,6 +38,9 @@ pub struct FileHistory {
     /// The commits still to examine, with the file's path in each, newest first. Empty when the
     /// walk is complete.
     pub resume: Vec<(Oid, String)>,
+    /// Whether something is at `path` (the path the walk was asked about) in the working tree;
+    /// false in a bare repository.
+    pub on_disk: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -152,6 +156,7 @@ pub fn file_history(workdir: &Path, path: &str, start: &HistoryStart, limit: usi
         out.searched_until = last;
         out.resume = queue.remaining();
     }
+    out.on_disk = super::diff::on_disk(&repo, path);
     Ok(out)
 }
 
