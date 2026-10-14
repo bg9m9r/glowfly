@@ -42,7 +42,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ✘ | Editor, diff tool, merge tool, terminal (P1 External tools) |
-| Notifications | ✘ | Notification location, desktop notifications (P1 Notifications) |
+| Notifications | ◐ location under UI Customization | Desktop notifications (P1 Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
 | Commit Signing | ✔ Commit Signing | Signature badge on commits (P1) |
 | Editor | ✘ | Font, font size, tab size, line numbers, word wrap, EOL character; syntax highlighting is a toggle under UI Customization > Interface until this page exists |
@@ -66,22 +66,21 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [x] **Theme** dropdown (dark, light, more)
 - [x] **Notification location** (bottom left, top right, …), once toasts exist
 - [x] **Date/Time section**: date/time locale (system or a chosen locale) and four custom format
-      strings with live previews: *Date* (`MM/DD/YYYY`), *Date word*
-      (`MMMM D, YYYY`), *Date/Time* (`MM/DD/YYYY @ h:mm A`), and *Date verbose*
-      (`MMMM D, YYYY h:mm A`).
-      Map moment-style tokens to chrono, and use each format where it applies: graph date
-      column, commit detail, tooltips.
+      strings with live previews: *Date* (`MM/DD/YYYY`), *Date word* (`MMMM D, YYYY`),
+      *Date/Time* (`MM/DD/YYYY @ h:mm A`, the graph's date column) and *Date verbose*
+      (`MMMM D, YYYY h:mm A`, commit details).
+  - [ ] Use the *Date* and *Date word* formats somewhere (they can be edited but nothing shows
+    them yet), and add date tooltips
 - [ ] **Default group color / reset all to default**,
       for repo groups in the repository manager. (Workspace color belongs to cloud Workspaces,
       which are out of scope.)
 - [ ] **Automatically group worktree tabs together**, after tabs and worktrees
 - [x] **Show toolbar icon labels**
 - [x] **Enable spell checking** in commit messages
-- [x] **Author initials vs avatars**: Trellis always
-      shows initials. Add real avatars (Gravatar or the hosting service's avatar, cached on disk)
-      and make initials the opt-in.
-- [x] **Show ghost branch/tag on hover or selection**:
-      preview a commit's refs in the BRANCH/TAG column when hovering or selecting it
+- [x] **Author initials vs avatars**: real avatars (Gravatar or the hosting service's
+      avatar, cached on disk), with initials as the opt-in.
+- [x] **Show ghost branch on the current commit**: a faded "+ branch" after the checked-out
+      commit's labels when it is hovered or selected; click it to branch from the current branch
 - [x] **Highlight associated rows when hovering a branch**
 - [x] **Branch visibility in commit graph**: All / Smart.
       Smart shows only the current branch, its upstream and target, and branches with PRs.
@@ -111,18 +110,18 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   the repository no longer matches or local changes would be overwritten.
   - [ ] Undo per-file, per-hunk and per-line discard (needs a safety stash or blob backup first)
   - [ ] Undo across restarts by rebuilding actions from the HEAD, branch and stash reflogs
-  - [ ] Offer to stash local changes when undoing/redoing a hard reset or Discard all
   - [ ] Undo merge, rebase, pull, cherry-pick, revert, create branch/tag, stash, pop and apply
-  - [ ] Safety stash before `reset --hard`, so undoing the reset restores discarded changes
+  - [ ] Safety stash before `reset --hard`, so undoing the reset restores discarded changes;
+    offer to stash local changes when undoing or redoing a hard reset or Discard all
   - [ ] When undoing `checkout --track` / `checkout -b`, offer to delete the created branch
   - [ ] Edit menu entries for Undo/Redo, once Trellis has a menu bar
 - [ ] **Diff viewer upgrade**
   - [x] Split (side-by-side) vs inline view
   - [x] Next/previous change (F7 / Shift+F7, Alt+Down / Alt+Up)
   - [x] Syntax highlighting (`syntect`)
-    - [ ] Highlight in a second background pass, so diffs over the size limit (5,000 lines, or
-      a line over 1,000 bytes) show plain at once and gain colors later; needs a diff
-      generation counter to drop stale results and no plain flash on reload
+    - [ ] Highlight in a second background pass, so diffs over the size limit (2,000 lines,
+      100 KB, or a line over 1,000 bytes) show plain at once and gain colors later, with no
+      plain flash on reload
     - [ ] Highlight from the whole old and new files instead of per-hunk fragments, so hunks
       that start inside a block comment or multi-line string color correctly (with the
       whole-file view)
@@ -130,28 +129,28 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       Dockerfile, Kotlin, Swift) by bundling extra syntax definitions
     - [ ] Language overrides from `.gitattributes` (`linguist-language`) or a per-file picker
     - [ ] Color the function context after `@@` in hunk headers
-    - [ ] Move the toggle to the Editor preferences page; add a command or shortcut for it
+    - [ ] A command or shortcut for the toggle (it moves with the Editor preferences page)
     - [ ] User-selectable syntax color themes beyond the dark and light palettes
   - [ ] Word-level intraline highlights
   - [ ] Ignore leading/trailing whitespace: hunk stage/discard must then be disabled or mapped
     back to the unfiltered diff, since `apply_hunk` counts the unfiltered hunks
   - [ ] Word wrap toggle (header and editor preference); needs rows of varying height
   - [ ] Editor preferences page: monospace font, font size, tab size (a tab is 4 spaces today),
-    line numbers on/off, end-of-line character
+    line numbers on/off, end-of-line character, and the syntax highlighting toggle (now under
+    UI Customization)
   - [ ] Whole-file view (all lines, changes marked in place), keeping hunk actions on change blocks
   - [ ] Diff view vs file view toggle (plain file, or a rendered preview for Markdown/images)
-  - [ ] Revert hunk on commit diffs (apply the hunk's inverse to the working tree)
+  - [ ] Revert a hunk or selected lines of a commit diff into the working tree
   - [ ] Next/previous change continues to the next/previous changed file at either end
   - [ ] Cache the computed diff rows instead of rebuilding them every frame
 - [x] **Line-level staging**
   Select lines in a hunk to stage, unstage or discard (click, Shift-click for a range,
   Ctrl/Cmd-click to toggle; Esc clears). Working-tree diffs only, one hunk at a time.
   - [ ] Per-line hover buttons (stage / unstage / discard this line)
-  - [ ] Keyboard shortcuts to stage or unstage the current file and the selected lines
-
   - [ ] Drag to select a range of lines
   - [ ] Selections spanning several hunks
-  - [ ] Revert selected lines of a commit diff into the working tree
+  - [ ] Keyboard shortcuts (see P1 Keyboard shortcuts); reverting lines of a commit diff is
+    under the diff viewer
   - [ ] Keep the line selection across tab switches
   - [ ] Remove the index entry, rather than leaving an empty file, when every line of an added
     or deleted file is unstaged or staged line by line
@@ -164,9 +163,11 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   blame gutter with author, date and commit.
 - [ ] **Interactive rebase**
   Drag-to-reorder list with pick, reword, squash, drop and edit, driven through
-  `GIT_SEQUENCE_EDITOR`.
-- [ ] **Commit history editing from the graph**
-  Reword, squash with parent, or drop one or more commits directly from the context menu.
+  `GIT_SEQUENCE_EDITOR` (Trellis as the editor: the same helper-process plumbing as credential
+  prompts). "Edit" stops reuse the Continue/Skip/Abort banner.
+  - [ ] Rebase onto a commit, and branch context menus on the graph's ref labels
+  - [ ] History editing from the graph: reword, squash with parent, or drop commits from the
+    context menu (several at once needs multi-select)
 - [ ] **Multi-select commits**
   Ctrl/Shift-click in the graph; diff between two commits or between a commit and the WIP;
   cherry-pick several at once.
@@ -181,13 +182,13 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Rename, set upstream, fast-forward without checkout, delete local + remote, push a non-HEAD
   branch, push to a chosen remote, pin a branch to the left.
 - [ ] **Hide / solo branches in the graph**
-  Hide or show refs, solo one branch, and "smart" branch visibility.
+  Hide or show refs and solo one branch. The core already supports it (`LoadOptions.hidden` and
+  `solo`); this needs the menus, a way to unhide, and per-repo persistence.
 - [ ] **Commit panel extras**
   - Commit template
   - "Push after committing" checkbox
   - Skip hooks (`--no-verify`)
   - Stage-all-and-commit shortcut
-  - Spellcheck
 - [ ] **File actions**
   Restore a file from a commit, open in an external editor or the default program, show in
   folder, create/delete/rename a file, and edit in place.
@@ -198,8 +199,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Ctrl+P: checkout, create branch/tag, open repo, stage/unstage all, blame/history for a file,
   open settings, switch theme, search commits.
 - [ ] **Keyboard shortcuts**
-  Stage/unstage (S/U), stage all, commit (Ctrl+Enter), focus the message, topological
-  next/previous, tab switching, a shortcut reference sheet, and customization.
+  Exist: tabs, undo/redo, F5, Ctrl+F, Ctrl+, and diff navigation. Missing: stage/unstage the
+  file or selected lines (S/U), stage all, commit (Ctrl+Enter), focus the message, topological
+  next/previous, a shortcut reference sheet, and customization.
 - [ ] **Built-in terminal**
   Bottom terminal panel with tabs (`portable-pty` plus a terminal widget). Trellis currently only
   launches an external terminal.
@@ -224,8 +226,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Publish to GitLab, Bitbucket and Azure DevOps
   - [ ] Add an existing remote URL from the same dialog
 - [ ] **Tag management**
-  Annotate an existing tag, delete from one or all remotes, push to all remotes, hide tags,
-  sign tags.
+  Annotate an existing tag, delete from one or all remotes, push to all remotes, hide tags.
+  (Push a tag and delete it locally exist; tag signing is on the Commit Signing page.)
 - [ ] **Stash improvements**
   Stash selected files only, a stash message field, rename a stash, hide stashes.
 - [ ] **Clone and init options**
@@ -237,11 +239,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Scan project folders for repos, favorites with shortcuts, a recent list with removal, and
   fetch or pull across many repos.
 - [ ] **Graph columns and loading**
-  - Show/hide/resize columns, plus SHA and +/- change-count columns
-  - Compact layout
-  - Highlight rows when hovering a ref
-  - Lazy-load more history when scrolling past the commit limit
-  - Jump to a pinned branch
+  Column toggles, compact layout and row highlighting are done (UI Customization). Missing:
+  - Resize columns (widths are fixed)
+  - Lazy-load more history when scrolling past the commit limit (the General page's "lazy
+    loading"); jumping to a pinned branch goes with pinning in Branch operations
 - [ ] **Search and filter**
   Filter the graph to matches (not just dim them), filter by author, search by file path,
   background indexing for large repos.
@@ -263,8 +264,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Choose an editor, diff tool, merge tool and terminal (with custom commands); open the repo in
   the editor.
 - [ ] **Notifications**
-  Success toasts (pushed, merged, cherry-picked…), optional desktop notifications, and
-  "N commits behind" alerts after auto-fetch.
+  Toasts for every operation exist. Missing: optional desktop notifications and "N commits
+  behind" alerts after auto-fetch.
 
 ## P2: integrations depth
 
@@ -301,21 +302,23 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 
 ## P3: app polish and platform
 
-- [ ] **Themes**: light theme, theme switching, custom themes
-- [ ] **Zoom** in/out/reset; **toolbar labels** toggle; show/hide left, detail and toolbar panels
-- [ ] **Menu bar** (File / Edit / View / Window / Help) and a shortcuts help screen
-- [ ] **Date formats**: word-style relative dates; add **language/locale**
-- [ ] **Logs**: viewers for activity, error and performance logs; extended logging; persist the activity log across sessions
-- [ ] **Command-line companion**: at minimum `trellis <path>` (exists) and
-      `trellis .`; consider history/diff/status subcommands
+- [ ] **Custom themes** (dark, light and follow-the-system exist)
+- [ ] **Zoom** in/out/reset; show/hide the left, detail and toolbar panels
+- [ ] **Menu bar** (File / Edit / View / Window / Help), including Undo/Redo under Edit
+- [ ] **Language**: translate the UI (date locale and relative dates already exist)
+- [ ] **Logs**: keep the activity log across sessions; error and performance logs; extended
+      logging (the in-session activity log exists)
+- [ ] **Command-line companion**: `trellis <path>` and `trellis .` work; consider
+      history/diff/status subcommands
 - [ ] **Deep links**: `trellis://` links to a repo, branch, commit or tag (with
       clone/locate when not found)
-- [ ] **Packaging and updates**: Windows installer, app icon, file association, auto-update
-     , release notes view
+- [ ] **Packaging and updates**: the Release workflow publishes zip/tar.gz downloads. Missing:
+      installers, an app icon, code signing, file association, auto-update and a release notes
+      view
 - [ ] **Git engine choice**: choose
       which git executable to use and show its version
-- [ ] **Performance**: load repos off the UI thread (`repo::load` currently blocks a frame on
-      open/refresh); incremental status for very large working trees
+- [ ] **Performance**: incremental status for very large working trees (loading already runs
+      off the UI thread)
 - [ ] **Input reliability**: the first click after the window gains focus was dropped while
       testing with synthetic input; check with real input
 - [ ] **Onboarding**: first-run welcome and tutorial
