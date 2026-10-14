@@ -75,12 +75,20 @@ fn agent() -> &'static ureq::Agent {
     })
 }
 
+/// Headers only one service understands, sent to that service alone.
+pub(super) fn service_headers(provider: Provider) -> &'static [(&'static str, &'static str)] {
+    match provider {
+        Provider::GitHub | Provider::GitHubEnterprise => &[("X-GitHub-Api-Version", "2022-11-28")],
+        _ => &[],
+    }
+}
+
 pub(super) fn request(method: &str, auth: &Auth, url: &str) -> ureq::Request {
-    agent()
-        .request(method, url)
-        .set("Authorization", &auth.header)
-        .set("Accept", "application/json")
-        .set("X-GitHub-Api-Version", "2022-11-28")
+    let mut req = agent().request(method, url).set("Authorization", &auth.header).set("Accept", "application/json");
+    for (name, value) in service_headers(auth.provider) {
+        req = req.set(name, value);
+    }
+    req
 }
 
 /// The error message in a failed response's body, cleaned of control and bidi characters,
@@ -162,6 +170,20 @@ mod tests {
         assert_eq!(read_capped(&b"12345"[..], 5).unwrap(), b"12345");
         let err = read_capped(std::io::repeat(b'x'), 2 * 1024 * 1024).unwrap_err();
         assert!(err.to_string().contains("larger than 2 MB"), "{err}");
+    }
+
+    #[test]
+    fn service_headers_go_to_their_own_service_only() {
+        for p in Provider::ALL {
+            let headers = service_headers(p);
+            let github = matches!(p, Provider::GitHub | Provider::GitHubEnterprise);
+            assert_eq!(headers.iter().any(|(n, _)| n.starts_with("X-GitHub")), github, "{p:?}");
+        }
+        let auth = Auth::from_token(Provider::GitLab, None, "t", "test");
+        let req = request("GET", &auth, "https://gitlab.com/api/v4/user");
+        assert_eq!(req.header("X-GitHub-Api-Version"), None);
+        let auth = Auth::from_token(Provider::GitHubEnterprise, None, "t", "test");
+        assert_eq!(request("GET", &auth, "https://git.acme.io/api/v3/user").header("X-GitHub-Api-Version"), Some("2022-11-28"));
     }
 
     #[test]

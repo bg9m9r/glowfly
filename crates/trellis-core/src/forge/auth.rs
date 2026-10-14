@@ -9,33 +9,35 @@ use std::path::Path;
 #[derive(Clone)]
 pub struct Auth {
     pub(super) header: String,
+    /// The service the credential belongs to, which decides its service-specific headers.
+    pub(super) provider: Provider,
     pub source: String,
 }
 
 /// Never prints the credential itself.
 impl std::fmt::Debug for Auth {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Auth").field("header", &"<redacted>").field("source", &self.source).finish()
+        f.debug_struct("Auth").field("header", &"<redacted>").field("provider", &self.provider).field("source", &self.source).finish()
     }
 }
 
 impl Auth {
-    fn bearer(token: &str, source: &str) -> Auth {
-        Auth { header: format!("Bearer {}", token.trim()), source: source.into() }
+    fn bearer(provider: Provider, token: &str, source: &str) -> Auth {
+        Auth { header: format!("Bearer {}", token.trim()), provider, source: source.into() }
     }
 
-    fn basic(user: &str, pass: &str, source: &str) -> Auth {
+    fn basic(provider: Provider, user: &str, pass: &str, source: &str) -> Auth {
         let b = base64::engine::general_purpose::STANDARD.encode(format!("{user}:{}", pass.trim()));
-        Auth { header: format!("Basic {b}"), source: source.into() }
+        Auth { header: format!("Basic {b}"), provider, source: source.into() }
     }
 
     /// Builds the right header for a token (and optional username) on a given service.
     pub fn from_token(provider: Provider, user: Option<&str>, token: &str, source: &str) -> Auth {
         match (provider, user.filter(|u| !u.is_empty())) {
-            (Provider::AzureDevOps, _) => Auth::basic("", token, source),
-            (Provider::JiraCloud, Some(email)) => Auth::basic(email, token, source),
-            (Provider::Bitbucket, Some(u)) => Auth::basic(u, token, source),
-            _ => Auth::bearer(token, source),
+            (Provider::AzureDevOps, _) => Auth::basic(provider, "", token, source),
+            (Provider::JiraCloud, Some(email)) => Auth::basic(provider, email, token, source),
+            (Provider::Bitbucket, Some(u)) => Auth::basic(provider, u, token, source),
+            _ => Auth::bearer(provider, token, source),
         }
     }
 }
@@ -177,15 +179,15 @@ pub fn from_credential_manager(account: &Account, cwd: &Path, interactive: bool)
     let field = |k: &str| out.stdout.lines().find_map(|l| l.strip_prefix(&format!("{k}="))).map(str::to_owned);
     let password = field("password").ok_or_else(|| Error::Auth("the credential helper returned no token".into()))?;
     let user = field("username").unwrap_or_default();
-    let source = "Git Credential Manager";
-    Ok(match account.provider {
+    let (p, source) = (account.provider, "Git Credential Manager");
+    Ok(match p {
         // Microsoft Entra access tokens are JWTs; anything else is a PAT used with Basic auth.
-        Provider::AzureDevOps if password.starts_with("eyJ") => Auth::bearer(&password, source),
-        Provider::AzureDevOps => Auth::basic(&user, &password, source),
+        Provider::AzureDevOps if password.starts_with("eyJ") => Auth::bearer(p, &password, source),
+        Provider::AzureDevOps => Auth::basic(p, &user, &password, source),
         // Bitbucket app passwords pair with the username; OAuth tokens are bearer tokens.
-        Provider::Bitbucket if password.starts_with("ATBB") || password.len() <= 24 => Auth::basic(&user, &password, source),
-        Provider::BitbucketDataCenter if password.len() < 30 => Auth::basic(&user, &password, source),
-        _ => Auth::bearer(&password, source),
+        Provider::Bitbucket if password.starts_with("ATBB") || password.len() <= 24 => Auth::basic(p, &user, &password, source),
+        Provider::BitbucketDataCenter if password.len() < 30 => Auth::basic(p, &user, &password, source),
+        _ => Auth::bearer(p, &password, source),
     })
 }
 
