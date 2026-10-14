@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-14 16:36 · **Tag management**: Delete a tag from one or all remotes and push it to all remotes, from the TAGS row menu (`4f5c0a5`)
 - 2026-10-14 16:05 · **Remote management**: Add, edit and remove remotes and fetch one remote from the REMOTE section (`fc64d34`)
 - 2026-10-14 15:43 · **Git Flow**: Finish feature, release and hotfix from a dialog, the palette and the Git Flow page: --no-ff merges, version tag, delete or keep the branch (`d0f1c9b`)
 - 2026-10-14 15:14 · **Worktrees**: Remove, lock, unlock and prune worktrees from the WORKTREES section (`714c150`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 06:32 · **File actions**: Move deleted files to the Recycle Bin or Trash (`cf2bec8`)
 - 2026-10-14 06:24 · **Diff viewer upgrade**: Color the function context in hunk headers (`e9759bb`)
 - 2026-10-14 06:23 · **Command palette (fuzzy finder)**: Check tag names live and push new tags to a remote (`f1cdb72`)
-- 2026-10-14 05:59 · **Diff viewer upgrade**: Highlight hunks from the lines before them (`a3c4e1a`)
 
 ---
 
