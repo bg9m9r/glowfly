@@ -227,3 +227,30 @@ fn deleted_refs_are_pruned() {
     assert!(has_commit(&st, "keep work") && has_label(&st, "keep"));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn hovering_a_ref_highlights_its_branch_rows_in_update() {
+    let (mut st, dir) = opened("graph-hover", &["topic"]);
+    let snap = st.snap.as_ref().unwrap();
+    let topic = snap.locals.iter().find(|b| b.name == "topic").and_then(|b| b.oid).unwrap();
+    let main = snap.locals.iter().find(|b| b.name == "main").and_then(|b| b.oid).unwrap();
+    update(&mut st, Msg::HoverRef(Some(topic)), Instant::now());
+    let (tip, rows) = st.view.highlight.clone().expect("the hovered branch is highlighted");
+    assert_eq!(tip, topic);
+    assert!(rows.contains(&topic) && !rows.contains(&main), "only the branch's own commits: {rows:?}");
+    assert!(st.view.base_set.as_ref().is_some_and(|b| b.contains(&main)), "the default branch's history is kept");
+    update(&mut st, Msg::HoverRef(None), Instant::now());
+    assert!(st.view.highlight.is_none());
+    // A reload walks the default branch again on the next hover.
+    drive(&mut st, Msg::Refresh);
+    assert!(st.view.base_set.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn clearing_the_activity_log_is_a_message() {
+    let mut st = state();
+    st.log(true, "one");
+    update(&mut st, Msg::ClearLog, Instant::now());
+    assert!(st.log.is_empty());
+}

@@ -300,7 +300,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     } else {
         tabs::show(ctx, st, msgs);
         toolbar::show(ctx, st, msgs);
-        status::activity_log(ctx, st);
+        status::activity_log(ctx, st, msgs);
         if st.snap.is_some() {
             sidebar::show(ctx, st, msgs);
             details::show(ctx, st, cache, msgs);

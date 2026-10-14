@@ -19,6 +19,7 @@ pub mod palette_kinds;
 pub mod prefs;
 pub mod publish;
 pub mod rebase;
+pub mod ref_rows;
 pub mod remotes;
 pub mod selection;
 pub mod submodules;
@@ -168,7 +169,11 @@ pub struct ViewState {
     /// Branch tip under the pointer (sidebar or BRANCH/TAG column), for row highlighting.
     pub hover_tip: Option<Oid>,
     pub hover_tip_next: Option<Oid>,
+    /// The hovered ref's tip and the commits on its branch, for row highlighting. Set by
+    /// `update` (`Msg::HoverRef`); the graph only reads it.
     pub highlight: Option<(Oid, HashSet<Oid>)>,
+    /// The commits reachable from the default branch, walked on the first hover after a load
+    /// (`ref_rows::default_ancestry`); cleared when a new snapshot or tab arrives.
     pub base_set: Option<HashSet<Oid>>,
     pub was_focused: bool,
     /// A text field had the keyboard when the last frame was drawn. egui takes the focus

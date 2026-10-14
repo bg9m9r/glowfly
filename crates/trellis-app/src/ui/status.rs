@@ -46,7 +46,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
         });
 }
 
-pub fn activity_log(ctx: &egui::Context, st: &mut AppState) {
+pub fn activity_log(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !st.view.show_log {
         return;
     }
@@ -54,7 +54,7 @@ pub fn activity_log(ctx: &egui::Context, st: &mut AppState) {
         ui.horizontal(|ui| {
             ui.strong("Activity");
             if ui.small_button("Clear").clicked() {
-                st.log.clear();
+                msgs.push(Msg::ClearLog);
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if ui.small_button("Hide").clicked() {

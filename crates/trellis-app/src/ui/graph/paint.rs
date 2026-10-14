@@ -1,5 +1,4 @@
-//! Drawing helpers for the commit graph: column layout, lanes, nodes, ref labels, and the
-//! branch-membership calculations used for row highlighting.
+//! Drawing helpers for the commit graph: column layout, lanes, nodes and ref labels.
 
 use super::{LANE_W, REF_COL_W};
 use crate::ui::avatars::Avatars;
@@ -7,8 +6,7 @@ use crate::ui::common::lane_color;
 use crate::ui::theme::color;
 use crate::ui::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
-use git2::Oid;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use trellis_core::graph::GraphRow;
 use trellis_core::repo::{self, RefKind, Snapshot};
 use trellis_core::settings::GraphColumns;
@@ -153,43 +151,4 @@ pub fn wip_counts(snap: &Snapshot) -> (usize, usize, usize) {
         }
     }
     counts
-}
-
-/// Commits that belong to the branch whose tip is `tip`: its first-parent chain, down to where
-/// it joins the default branch's history.
-pub fn branch_rows(snap: &Snapshot, tip: Oid, base: &HashSet<Oid>) -> HashSet<Oid> {
-    let mut out = HashSet::new();
-    let on_base = base.contains(&tip);
-    let mut cur = Some(tip);
-    while let Some(oid) = cur {
-        if !on_base && base.contains(&oid) {
-            break;
-        }
-        let Some(&row) = snap.row_of.get(&oid) else { break };
-        out.insert(oid);
-        cur = snap.commits[row].parents.first().copied();
-        if out.len() > 5000 {
-            break;
-        }
-    }
-    out
-}
-
-/// All commits reachable (within the loaded history) from the default branch tip.
-pub fn default_ancestry(snap: &Snapshot) -> (Option<Oid>, HashSet<Oid>) {
-    let tip = ["main", "master", "develop", "trunk"]
-        .iter()
-        .find_map(|n| snap.locals.iter().find(|b| b.name == *n).and_then(|b| b.oid))
-        .or(snap.head_oid);
-    let mut seen = HashSet::new();
-    let mut stack: Vec<Oid> = tip.into_iter().collect();
-    while let Some(o) = stack.pop() {
-        if !seen.insert(o) {
-            continue;
-        }
-        if let Some(&row) = snap.row_of.get(&o) {
-            stack.extend(snap.commits[row].parents.iter().copied());
-        }
-    }
-    (tip, seen)
 }

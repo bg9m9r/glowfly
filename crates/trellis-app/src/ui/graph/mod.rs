@@ -16,7 +16,7 @@ use crate::state::{AppState, Selection};
 use crate::update::commit_matches;
 use eframe::egui::{self, Align2, CornerRadius, FontId, Key, Rect, RichText, Sense, Stroke, pos2, vec2};
 use git2::Oid;
-use paint::{Columns, branch_rows, default_ancestry, draw_lanes, draw_ref_labels, lane_x, paint_pencil, wip_counts};
+use paint::{Columns, draw_lanes, draw_ref_labels, lane_x, paint_pencil, wip_counts};
 use std::collections::HashMap;
 use trellis_core::settings::DescriptionMode;
 
@@ -122,19 +122,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             })
             .unwrap_or_default();
 
-        // Rows belonging to the hovered branch.
-        if st.settings.highlight_ref_rows {
-            match st.view.hover_tip {
-                Some(tip) if st.view.highlight.as_ref().map(|(t, _)| *t) != Some(tip) => {
-                    if st.view.base_set.is_none() {
-                        st.view.base_set = Some(default_ancestry(snap).1);
-                    }
-                    let rows = branch_rows(snap, tip, st.view.base_set.as_ref().unwrap());
-                    st.view.highlight = Some((tip, rows));
-                }
-                None => st.view.highlight = None,
-                _ => {}
-            }
+        // Rows belonging to the hovered branch: update works them out, then the next frame shows them.
+        if st.settings.highlight_ref_rows && st.view.highlight.as_ref().map(|(t, _)| *t) != st.view.hover_tip {
+            msgs.push(Msg::HoverRef(st.view.hover_tip));
+            ui.ctx().request_repaint();
         }
         let highlight = st.view.highlight.as_ref().filter(|_| st.settings.highlight_ref_rows).map(|(_, s)| s);
 
@@ -160,8 +151,16 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let painter = ui.painter_at(rect);
                 let cols = Columns::new(rect, graph_w, &cols_cfg);
                 let is_wip = has_wip && row == 0;
-                let commit = if is_wip { None } else { Some(&snap.commits[row - has_wip as usize]) };
-                let g = if is_wip { snap.graph.wip.as_ref().unwrap() } else { &snap.graph.rows[row - has_wip as usize] };
+                let (commit, g) = match row.checked_sub(has_wip as usize) {
+                    Some(i) if !is_wip => match (snap.commits.get(i), snap.graph.rows.get(i)) {
+                        (Some(c), Some(g)) => (Some(c), g),
+                        _ => continue, // a layout that doesn't match the history draws nothing
+                    },
+                    _ => match snap.graph.wip.as_ref() {
+                        Some(g) => (None, g),
+                        None => continue,
+                    },
+                };
                 let selected = match (selection, commit) {
                     (Selection::Wip, None) => true,
                     (s, Some(c)) => s.includes(c.oid),

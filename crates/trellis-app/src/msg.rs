@@ -572,6 +572,10 @@ pub enum Msg {
     },
     /// The settings file couldn't be read at startup (it was backed up); shown once.
     SettingsUnreadable(String),
+    /// The ref under the pointer changed (`None`: no ref): highlight its branch's rows.
+    HoverRef(Option<Oid>),
+    /// The activity log's Clear button.
+    ClearLog,
     /// A line for the activity log from a background effect.
     Logged {
         ok: bool,

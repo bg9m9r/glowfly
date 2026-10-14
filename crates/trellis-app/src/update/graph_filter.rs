@@ -1,5 +1,6 @@
 //! Hidden and soloed refs in the graph, saved per repository: changing them saves the settings
-//! and reloads; each load drops refs that no longer exist.
+//! and reloads; each load drops refs that no longer exist. Also the rows highlighted for the ref
+//! under the pointer.
 
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
@@ -66,4 +67,15 @@ fn ref_exists(snap: &Snapshot, r: &str) -> bool {
         // Nothing else can be hidden or soloed; leave what this can't judge.
         true
     }
+}
+
+/// Highlights the rows of the branch whose tip is `tip` (none for `None`). The default branch's
+/// history is walked once per snapshot, on the first hover.
+pub(super) fn hover_ref(st: &mut AppState, tip: Option<git2::Oid>) {
+    let (Some(tip), Some(snap)) = (tip, st.snap.as_ref()) else {
+        st.view.highlight = None;
+        return;
+    };
+    let base = st.view.base_set.get_or_insert_with(|| crate::state::ref_rows::default_ancestry(snap).1);
+    st.view.highlight = Some((tip, crate::state::ref_rows::branch_rows(snap, tip, base)));
 }
