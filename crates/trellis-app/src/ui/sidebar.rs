@@ -102,27 +102,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         }
     }
 
-    widgets::section_header(ui, "TAGS", Some(snap.tags.len()), &mut sections.tags);
-    if sections.tags {
-        for (name, oid) in snap.tags.iter().filter(|(n, _)| shown(n)) {
-            let r = widgets::list_row(ui, 26.0, name, None, sel == Selection::Commit(*oid), false);
-            if r.clicked() {
-                msgs.push(Msg::JumpTo(*oid));
-            }
-            r.context_menu(|ui| {
-                menu_item(msgs, ui, "Checkout (detached)", Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]));
-                for (remote, _) in &snap.remotes {
-                    menu_item(msgs, ui, format!("Push to {remote}"), Msg::git("Push tag", &["push", remote, &format!("refs/tags/{name}")]));
-                }
-                menu_item(
-                    msgs,
-                    ui,
-                    "Delete",
-                    Msg::confirm("Delete tag", format!("Delete local tag {name}?"), "Delete", Msg::git("Delete tag", &["tag", "-d", name])),
-                );
-            });
-        }
-    }
+    let rows = super::tags::Rows { shown: &shown, sel: &sel, idle };
+    super::tags::section(ui, snap, &mut sections.tags, rows, msgs);
 
     widgets::section_header(ui, "STASHES", Some(snap.stashes.len()), &mut sections.stashes);
     if sections.stashes {

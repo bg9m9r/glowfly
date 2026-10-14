@@ -35,6 +35,7 @@ mod status;
 mod submodules;
 mod tabs;
 mod tag_dialog;
+mod tags;
 mod terminal;
 pub mod theme;
 mod toolbar;
@@ -85,6 +86,8 @@ mod snapshot_tests_select;
 mod snapshot_tests_submodules;
 #[cfg(test)]
 mod snapshot_tests_tag;
+#[cfg(test)]
+mod snapshot_tests_tag_menu;
 #[cfg(test)]
 mod snapshot_tests_terminal;
 #[cfg(test)]

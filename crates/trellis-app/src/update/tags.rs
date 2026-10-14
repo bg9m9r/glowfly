@@ -1,13 +1,15 @@
 //! The New tag dialog: opening it, creating the tag (and pushing it in the same job), and the
-//! push checkbox's setting.
+//! push checkbox's setting. Also the TAGS row menu's remote push and delete: one job with a
+//! command per remote, and the headline that names the remote when it ends.
 
 use super::ops::{self, JobSpec};
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::state::branches::default_remote;
-use crate::state::tags::{TagForm, tag_problem};
+use crate::state::tags::{RemoteTagJob, RemoteTagOp, TagForm, job_label, tag_problem};
 use crate::state::{AppState, Modal};
-use trellis_core::tag_ops::{push_tag_cmd, tag_cmd};
+use crate::tag::TagMsg;
+use trellis_core::tag_ops::{delete_remote_tag_cmd, is_valid_tag_name, push_tag_cmd, tag_cmd};
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
     match msg {
@@ -56,4 +58,67 @@ fn create(st: &mut AppState, at: &str, name: &str, message: &str, push: Option<S
     if fx.len() > before && matches!(st.modal, Some(Modal::NewTag(_))) {
         st.modal = None;
     }
+}
+
+pub(super) fn remote(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
+    match msg {
+        TagMsg::Push { tag, remotes } => start_remote(st, RemoteTagOp::Push, tag, remotes, fx),
+        TagMsg::DeleteRemote { tag, remotes } => start_remote(st, RemoteTagOp::Delete, tag, remotes, fx),
+    }
+}
+
+/// Checks the request against the current snapshot and starts one job with a command per
+/// remote. The remotes come from the message, so one added after a confirmation is never
+/// touched. A refusal is logged (an empty list silently) and starts nothing.
+fn start_remote(st: &mut AppState, op: RemoteTagOp, tag: String, remotes: Vec<String>, fx: &mut Vec<Effect>) {
+    let Some(snap) = st.snap.as_ref() else { return };
+    if !is_valid_tag_name(&tag) {
+        st.log(false, "Not a valid tag name.");
+        return;
+    }
+    let mut targets: Vec<String> = Vec::new();
+    for r in remotes {
+        if !targets.contains(&r) {
+            targets.push(r);
+        }
+    }
+    if targets.is_empty() {
+        return;
+    }
+    if let Some(r) = targets.iter().find(|r| !snap.remotes.iter().any(|(n, _)| n == *r)) {
+        let text = format!("There is no remote named {r}.");
+        st.log(false, text);
+        return;
+    }
+    let local = snap.tags.iter().any(|(n, _)| *n == tag) || snap.other_tags.contains(&tag);
+    if op == RemoteTagOp::Push && !local {
+        st.log(false, format!("Tag {tag} no longer exists."));
+        return;
+    }
+    if ops::busy(st, false) {
+        return;
+    }
+    let cmds = targets
+        .iter()
+        .map(|r| match op {
+            RemoteTagOp::Push => push_tag_cmd(r, &tag),
+            RemoteTagOp::Delete => delete_remote_tag_cmd(r, &tag),
+        })
+        .collect();
+    let label = job_label(op, &tag, &targets);
+    // Remote tags aren't undoable, so nothing is recorded.
+    ops::start_job(st, JobSpec::new(label.clone(), cmds), fx);
+    if st.job.as_ref().is_some_and(|j| j.label == label) {
+        st.tag_job = Some(RemoteTagJob { label, op, tag, remotes: targets });
+    }
+}
+
+/// The headline of the job that just ended, when it is the pending remote tag job. Always
+/// clears the pending job.
+pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<String> {
+    let pending = st.tag_job.take()?;
+    if st.job.as_ref().is_none_or(|j| j.label != pending.label) {
+        return None;
+    }
+    Some(if ok { pending.done() } else { pending.failed(output) })
 }

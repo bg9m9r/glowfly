@@ -361,6 +361,8 @@ pub enum Msg {
     Worktree(crate::worktree::WorktreeMsg),
     /// The REMOTE section and the Add/Edit remote dialog (remote.rs).
     Remote(crate::remote::RemoteMsg),
+    /// The TAGS section's remote push and delete (tag.rs).
+    Tag(crate::tag::TagMsg),
 
     // ---- hosting services
     ForgeRefresh {

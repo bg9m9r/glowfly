@@ -53,7 +53,8 @@ crates/
                           checkout, push, delete with the remote branch), name checks,
                           fast-forward state
     tag_ops.rs            tag name checks (ref-format rules with a reason, existing and
-                          clashing tags) and the tag and tag-push command lines
+                          clashing tags), the tag and tag-push command lines, and deleting a
+                          tag from a remote
     remote_ops.rs         adding, editing, fetching and removing a remote: name checks (ref-format
                           rules with a reason, taken names compared case-insensitively), URL checks,
                           the anchored old-URL pattern for `git remote set-url`, the add/edit/fetch/
@@ -140,7 +141,8 @@ crates/
                           commands available now (checkouts of local and remote branches and
                           tags): labels, hidden keywords, details and shortcut hints), files (the
                           New file and Rename file dialogs' path form), tags (the New tag
-                          dialog's form, its name check and push remote), terminal (the
+                          dialog's form, its name check and push remote; the remote tag job's
+                          labels, headlines and delete confirmation), terminal (the
                           built-in terminal panel: one shell session per repository; global,
                           not parked with a tab), submodules (status words, tooltips, why
                           open/update/copy are blocked, the update confirmation, the update
@@ -173,6 +175,8 @@ crates/
     submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
     remote.rs             RemoteMsg: the REMOTE section's and the Add/Edit remote dialog's
                           messages (one Msg variant)
+    tag.rs                TagMsg: the TAGS section's remote push and delete messages (one Msg
+                          variant)
     worktree.rs           WorktreeMsg, NewWorktree and RemoveRequest: the WORKTREES section's,
                           Create worktree dialog's and Remove/Lock dialogs' messages (one Msg
                           variant), a create request and a remove request
@@ -209,7 +213,9 @@ crates/
                           items, stash sub-lists and the stash message step), highlight (starting the background highlighting pass,
                           attaching its result if the same diff is still shown), tags
                           (opening the New tag dialog, creating the tag and pushing it in
-                          one job, the push setting), shortcuts (checking and routing the
+                          one job, the push setting; the TAGS menu's push to and delete from
+                          remotes, checked again, as one job, with a headline naming the
+                          failing remote), shortcuts (checking and routing the
                           staging, stage-all, focus-message and sheet keys), terminal (showing
                           the panel, starting one shell per repository, input, resizing, output
                           and exit; stopping a closed tab's shell), submodules (open in a
@@ -235,7 +241,7 @@ crates/
                           update/lfs_tests.rs, update/lfs_track_tests.rs, update/gitflow_tests.rs,
                           update/gitflow_finish_tests.rs,
                           update/worktree_tests.rs, update/worktree_manage_tests.rs,
-                          update/remote_tests.rs)
+                          update/remote_tests.rs, update/tag_remote_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -263,6 +269,7 @@ crates/
                           gitflow_finish_dialog (the Git Flow Finish dialog), remotes/ (the
                           REMOTE section: remote group rows, tooltips, header and row menus;
                           dialog: Add/Edit remote),
+                          tags (the TAGS section: rows and row menu),
                           status, prefs/ (editor: the Editor page; lfs: the Git LFS page;
                           gitflow: the Git Flow page),
                           theme, widgets, icons (painting of the newer icons)

@@ -83,7 +83,10 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             );
         }
         Msg::JobDone { ok, output, undo } => {
-            let headline = super::gitflow_finish::headline(st, ok, &output);
+            let flow = super::gitflow_finish::headline(st, ok, &output);
+            // Always called so a stale pending tag job is cleared.
+            let tag = super::tags::headline(st, ok, &output);
+            let headline = flow.or(tag);
             finish_job(st, ok, output, headline.clone(), undo, now, fx);
             // Toasts fade after a few seconds; the log keeps what a stopped Finish left to do.
             if let (false, Some(h)) = (ok, headline) {

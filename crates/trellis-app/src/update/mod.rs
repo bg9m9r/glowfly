@@ -107,6 +107,8 @@ mod submodule_tests;
 #[cfg(test)]
 mod tabs_tests;
 #[cfg(test)]
+mod tag_remote_tests;
+#[cfg(test)]
 mod tag_tests;
 #[cfg(test)]
 mod terminal_tests;
@@ -363,6 +365,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
         Msg::Remote(m) => remotes::handle(st, m, &mut fx),
+        Msg::Tag(m) => tags::remote(st, m, &mut fx),
         Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
         Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
     }

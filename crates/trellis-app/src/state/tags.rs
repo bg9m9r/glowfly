@@ -1,6 +1,9 @@
-//! The New tag dialog's form, and the name and remote checks its view and `update` share.
+//! The New tag dialog's form, and the name and remote checks its view and `update` share; the
+//! TAGS row menu's remote push and delete: the confirmation, job labels and headlines. Pure.
 
 use super::branches::default_remote;
+use crate::msg::Msg;
+use crate::tag::TagMsg;
 use trellis_core::repo::Snapshot;
 use trellis_core::tag_ops::{TagNameProblem, check_tag_name};
 
@@ -29,4 +32,103 @@ pub fn tag_problem(snap: Option<&Snapshot>, name: &str) -> Option<TagNameProblem
 /// remote; None when there are no remotes.
 pub fn push_remote(snap: &Snapshot, form_remote: &str) -> Option<String> {
     if snap.remotes.iter().any(|(r, _)| r == form_remote) { Some(form_remote.to_owned()) } else { default_remote(snap) }
+}
+
+/// Whether a remote tag job pushes the tag or deletes it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RemoteTagOp {
+    Push,
+    Delete,
+}
+
+/// The running remote tag job, kept so its end can be told in words that name the remotes.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RemoteTagJob {
+    pub label: String,
+    pub op: RemoteTagOp,
+    pub tag: String,
+    /// The remotes in the order their commands run.
+    pub remotes: Vec<String>,
+}
+
+/// "a", "a and b", or "a, b and c".
+pub fn remote_list(remotes: &[String]) -> String {
+    match remotes {
+        [] => String::new(),
+        [one] => one.clone(),
+        [init @ .., last] => format!("{} and {last}", init.join(", ")),
+    }
+}
+
+/// The job's label: "Push tag v1 to origin" or "Delete tag v1 from origin and backup".
+pub fn job_label(op: RemoteTagOp, tag: &str, remotes: &[String]) -> String {
+    let list = remote_list(remotes);
+    match op {
+        RemoteTagOp::Push => format!("Push tag {tag} to {list}"),
+        RemoteTagOp::Delete => format!("Delete tag {tag} from {list}"),
+    }
+}
+
+impl RemoteTagJob {
+    /// The headline when every remote succeeded.
+    pub fn done(&self) -> String {
+        let list = remote_list(&self.remotes);
+        match self.op {
+            RemoteTagOp::Push => format!("Pushed tag {} to {list}.", self.tag),
+            RemoteTagOp::Delete => format!("Deleted tag {} from {list}.", self.tag),
+        }
+    }
+
+    /// The headline when a remote failed: which one and why, then the remotes already done and
+    /// those not tried. The runner echoes each command as "$ git …", so the number of echoes is
+    /// the failed remote's number.
+    pub fn failed(&self, output: &str) -> String {
+        let echoes = output.lines().filter(|l| l.starts_with("$ git ")).count();
+        let at = echoes.clamp(1, self.remotes.len().max(1)) - 1;
+        let failed = self.remotes.get(at).map(String::as_str).unwrap_or("");
+        let done = self.remotes.get(..at).unwrap_or_default();
+        let rest = self.remotes.get(at + 1..).unwrap_or_default();
+        let why = failure_reason(output);
+        let mut text = match self.op {
+            RemoteTagOp::Push => format!("Could not push tag {} to {failed}: {why}.", self.tag),
+            RemoteTagOp::Delete => format!("Could not delete tag {} from {failed}: {why}.", self.tag),
+        };
+        if !done.is_empty() {
+            let verb = if self.op == RemoteTagOp::Push { "Pushed to" } else { "Deleted from" };
+            text.push_str(&format!(" {verb} {}.", remote_list(done)));
+        }
+        if !rest.is_empty() {
+            text.push_str(&format!(" Not tried: {}.", remote_list(rest)));
+        }
+        text
+    }
+}
+
+/// Why the last command failed, from its output (what follows the last "$ git " echo).
+fn failure_reason(output: &str) -> String {
+    let lines: Vec<&str> = output.lines().collect();
+    let start = lines.iter().rposition(|l| l.starts_with("$ git ")).map_or(0, |i| i + 1);
+    let section = &lines[start..];
+    if section.iter().any(|l| l.contains("remote ref does not exist")) {
+        return "the remote has no such tag".to_owned();
+    }
+    if section.iter().any(|l| l.contains("(already exists)")) {
+        return "the remote already has a different tag with that name".to_owned();
+    }
+    let error = section.iter().find_map(|l| l.strip_prefix("error: ").or_else(|| l.strip_prefix("fatal: ")));
+    let line = error.or_else(|| lines.iter().rfind(|l| !l.starts_with("$ ")).copied()).unwrap_or("");
+    line.trim().trim_end_matches('.').to_owned()
+}
+
+/// The confirmation before deleting `tag` from `remotes`; accepting sends `TagMsg::DeleteRemote`.
+pub fn delete_remote_confirm(tag: &str, remotes: Vec<String>) -> Msg {
+    let (title, button) = match &remotes[..] {
+        [one] => ("Delete tag from remote", format!("Delete from {one}")),
+        _ => ("Delete tag from all remotes", "Delete from all remotes".to_owned()),
+    };
+    let body = format!(
+        "Delete tag {tag} from {}? Your local tag stays, and anyone who already fetched it keeps their copy.",
+        remote_list(&remotes)
+    );
+    Msg::confirm(title, body, &button, Msg::Tag(TagMsg::DeleteRemote { tag: tag.to_owned(), remotes }))
 }

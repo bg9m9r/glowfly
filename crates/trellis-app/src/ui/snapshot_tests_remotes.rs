@@ -43,7 +43,7 @@ fn form(h: &mut H) -> &mut RemoteForm {
     }
 }
 
-fn running(st: &mut AppState) {
+pub(super) fn running(st: &mut AppState) {
     st.job = Some(RunningJob {
         label: "Fetch all".into(),
         workdir: None,
@@ -129,7 +129,7 @@ fn remote_group_menu() {
 
 /// A click at `pos` stepped frame by frame: a running job's spinner keeps repainting, so
 /// `Harness::run` would never settle.
-fn click_steps(h: &mut H, pos: Pos2, button: PointerButton) {
+pub(super) fn click_steps(h: &mut H, pos: Pos2, button: PointerButton) {
     for pressed in [true, false] {
         let events = &mut h.input_mut().events;
         events.push(Event::PointerMoved(pos));

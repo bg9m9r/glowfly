@@ -260,8 +260,7 @@ pub struct AppState {
     /// Incremented for every history request and whenever the view closes; older
     /// `FileHistoryLoaded` results are ignored.
     pub history_gen: u64,
-    /// The interactive rebase panel; shown instead of the graph (below a diff, the file
-    /// history and a conflict).
+    /// The interactive rebase panel; shown instead of the graph (below a diff, the file history and a conflict).
     pub rebase: Option<rebase::RebasePanel>,
     /// Incremented for every rebase list request and whenever the panel closes; older
     /// `RebasePlanLoaded` results are ignored.
@@ -283,18 +282,18 @@ pub struct AppState {
     pub watch: watch::WatchState,
     /// Credential prompts from git (global, not per tab).
     pub askpass: askpass::CredentialPrompts,
-    /// Whether git-lfs is installed (global, not per tab): checked at startup and whenever
-    /// Preferences > Git LFS reads its status.
+    /// Whether git-lfs is installed (global, not per tab): checked at startup and whenever Preferences > Git LFS reads its status.
     pub lfs_install: lfs::LfsInstall,
     /// The command palette, while open (global, not per tab).
     pub palette: Option<palette::Palette>,
-    /// Incremented for every palette list request; older `TrackedPathsLoaded` results are
-    /// ignored.
+    /// Incremented for every palette list request; older `TrackedPathsLoaded` results are ignored.
     pub palette_gen: u64,
     /// The built-in terminal panel (global, not per tab).
     pub terminal: terminal::TerminalPanel,
     /// The running Git Flow Finish job's steps (update/gitflow_finish.rs).
     pub gitflow_finish: Option<gitflow::FinishJob>,
+    /// The running remote tag push or delete (update/tags.rs), for its headline.
+    pub tag_job: Option<tags::RemoteTagJob>,
     pub view: ViewState,
 }
 
@@ -342,6 +341,7 @@ impl AppState {
             palette_gen: 0,
             terminal: Default::default(),
             gitflow_finish: None,
+            tag_job: None,
             view: ViewState::default(),
         }
     }

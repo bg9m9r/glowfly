@@ -17,6 +17,7 @@ mod remote;
 mod runner;
 mod state;
 mod submodule;
+mod tag;
 mod terminal;
 mod ui;
 mod update;
