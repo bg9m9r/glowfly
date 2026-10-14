@@ -124,7 +124,7 @@ fn dialog_defaults() {
     let root = wt_root(&dir);
     drive(&mut st, wt(WorktreeMsg::CreateDialog(WorktreeBase::Branch("side".into()))));
     let f = form(&mut st).clone();
-    assert!(f.open && f.branch.is_empty() && !f.folder_edited && !f.busy);
+    assert!(f.open && f.branch.is_empty() && !f.folder_edited && !f.busy());
     assert_eq!(PathBuf::from(&f.folder), root.join("side"));
     assert!(Path::new(&f.folder).starts_with(dir.parent().unwrap()));
     cleanup(&dir);
@@ -211,7 +211,7 @@ fn folder_not_empty_stays_open() {
     let message = trellis_core::worktree_ops::FolderProblem::NotEmpty.message(&text);
     assert_eq!(f.error, Some((text, message.clone())));
     assert_eq!(f.current_error(), Some(message.as_str()));
-    assert!(!f.busy);
+    assert!(!f.busy());
     form(&mut st).folder.push('2');
     assert_eq!(form(&mut st).current_error(), None, "hidden once the field changes");
     cleanup(&dir);
@@ -253,9 +253,10 @@ fn busy_and_stale_tab() {
     });
     assert!(update(&mut st, wt(WorktreeMsg::Submit), Instant::now()).is_empty());
     assert_eq!(last_log(&st), (false, "Another operation is still running.".to_owned()));
-    assert!(st.modal.is_some() && !form(&mut st).busy);
+    assert!(st.modal.is_some() && !form(&mut st).busy());
     st.job = None;
 
+    // The dialog is waiting for a request whose tab is no longer the active one.
     let request = NewWorktree {
         repo: std::env::temp_dir().join("trellis-elsewhere"),
         base: WorktreeBase::Branch("side".into()),
@@ -263,10 +264,63 @@ fn busy_and_stale_tab() {
         branch: None,
         open: true,
     };
+    form(&mut st).pending = Some(request.clone());
     let fx = update(&mut st, wt(WorktreeMsg::FolderChecked { request, result: Ok(()) }), Instant::now());
     assert!(fx.is_empty());
     assert_eq!(last_log(&st), (false, "The worktree was not created: its repository's tab is no longer active.".to_owned()));
     assert!(st.modal.is_none());
+    cleanup(&dir);
+}
+
+/// The disk check's result arrives after Cancel, or after the dialog was opened again for
+/// another request: nothing is created and the open dialog is left alone.
+#[test]
+fn folder_check_after_cancel_is_dropped() {
+    let (mut st, dir) = opened("wt-cancel");
+    let checked = |st: &mut AppState| {
+        let fx = update(st, wt(WorktreeMsg::Submit), Instant::now());
+        let [Effect::CheckWorktreeFolder(req)] = &fx[..] else { panic!("{fx:?}") };
+        let req = req.clone();
+        let Some(Msg::Worktree(WorktreeMsg::FolderChecked { result, .. })) = runner::execute(fx.into_iter().next().unwrap()) else {
+            panic!("no folder check result")
+        };
+        (req, result)
+    };
+    let result_for = |request: &NewWorktree, result: &Result<(), String>| {
+        wt(WorktreeMsg::FolderChecked { request: request.clone(), result: result.clone() })
+    };
+    let root = wt_root(&dir);
+    drive(&mut st, wt(WorktreeMsg::CreateDialog(WorktreeBase::Branch("main".into()))));
+    form(&mut st).branch = "cancelled".into();
+    form(&mut st).folder = root.join("cancelled").display().to_string();
+    let (first, first_checked) = checked(&mut st);
+    assert!(form(&mut st).busy());
+    drive(&mut st, Msg::CloseModal);
+    let logged = st.log.len();
+    assert!(update(&mut st, result_for(&first, &first_checked), Instant::now()).is_empty(), "no job after Cancel");
+    assert!(st.modal.is_none() && st.job.is_none());
+    assert_eq!(st.log.len(), logged, "nothing to report: the user cancelled");
+
+    // A newer dialog waiting for its own request ignores the old result.
+    drive(&mut st, wt(WorktreeMsg::CreateDialog(WorktreeBase::Branch("main".into()))));
+    form(&mut st).branch = "newer".into();
+    form(&mut st).folder = root.join("newer").display().to_string();
+    let (second, second_checked) = checked(&mut st);
+    assert_ne!(first, second);
+    assert!(update(&mut st, result_for(&first, &first_checked), Instant::now()).is_empty());
+    assert!(st.job.is_none());
+    assert_eq!(form(&mut st).pending.as_ref(), Some(&second), "still waiting for its own check");
+
+    // Its own result creates the worktree and closes it.
+    let fx = update(&mut st, result_for(&second, &second_checked), Instant::now());
+    let ran = run(&mut st, fx);
+    assert_eq!(ran, [args_of(&["worktree", "add", "-b", "newer", &second.folder.display().to_string(), "main"])]);
+    assert!(st.modal.is_none());
+    let names: Vec<_> = st.snap.as_ref().unwrap().worktrees.iter().filter_map(|w| w.branch.clone()).collect();
+    assert!(names.contains(&"newer".to_owned()) && !names.contains(&"cancelled".to_owned()), "{names:?}");
+    assert!(!first.folder.exists(), "the cancelled worktree was not created");
+    let repo = git2::Repository::open(&dir).unwrap();
+    assert!(repo.find_branch("cancelled", git2::BranchType::Local).is_err(), "nor its branch");
     cleanup(&dir);
 }
 

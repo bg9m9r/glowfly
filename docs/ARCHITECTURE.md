@@ -96,7 +96,8 @@ crates/
                           map so syntax spans and changed-word ranges follow the expansion
     watch.rs              which file changes in a repository matter (status or full reload; a
                           linked worktree added, removed, locked or moved to another HEAD reloads
-                          in full), and a cache of folders .gitignore ignores
+                          in full, but not the folder modifies its index writes cause), and a
+                          cache of folders .gitignore ignores
     forge/                hosting services behind the `Forge` trait (github, gitlab,
                           bitbucket, azure, jira); model and trait in mod.rs, plus remote
                           (URL detection), auth (credentials), refs (issue references), http,

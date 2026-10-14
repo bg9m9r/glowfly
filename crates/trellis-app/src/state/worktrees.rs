@@ -23,16 +23,22 @@ pub struct WorktreeForm {
     /// (folder text it was for, message) from the runner's disk check; shown only while the
     /// field holds that text.
     pub error: Option<(String, String)>,
-    /// The disk check is running.
-    pub busy: bool,
+    /// The request whose disk check is running. Only that check's result may create the
+    /// worktree, and only while this dialog is still open.
+    pub pending: Option<NewWorktree>,
 }
 
 impl WorktreeForm {
     pub fn new(snap: &Snapshot, base: WorktreeBase) -> Self {
         let mut form =
-            Self { base, folder: String::new(), folder_edited: false, branch: String::new(), open: true, error: None, busy: false };
+            Self { base, folder: String::new(), folder_edited: false, branch: String::new(), open: true, error: None, pending: None };
         form.folder = default_folder(snap, &form.slug());
         form
+    }
+
+    /// Whether the disk check is running.
+    pub fn busy(&self) -> bool {
+        self.pending.is_some()
     }
 
     /// The disk check's error, while the folder field still holds the text it was for.

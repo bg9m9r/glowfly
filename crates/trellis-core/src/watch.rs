@@ -16,6 +16,16 @@ pub enum Change {
     Full,
 }
 
+/// What happened to a path, as far as classification cares.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Touch {
+    /// Its contents or metadata changed. On Windows a folder reports this whenever an entry
+    /// inside it is written, so for a folder it says nothing about the folder itself.
+    Modified,
+    /// It was created, removed or renamed, or the platform didn't say what happened.
+    Other,
+}
+
 /// The roots a watcher reports paths under.
 pub struct WatchPaths {
     workdirs: Vec<PathBuf>,
@@ -39,12 +49,12 @@ impl WatchPaths {
         Self { workdirs: with_canonical(workdir), git_dirs: with_canonical(git_dir) }
     }
 
-    /// What a change to `path` calls for. `ignored` answers whether a work-tree path (relative,
+    /// What `touch` on `path` calls for. `ignored` answers whether a work-tree path (relative,
     /// '/'-separated) is ignored by `.gitignore` or `info/exclude`.
-    pub fn classify(&self, path: &Path, ignored: &mut impl FnMut(&str) -> bool) -> Change {
+    pub fn classify(&self, path: &Path, touch: Touch, ignored: &mut impl FnMut(&str) -> bool) -> Change {
         // The git dir usually sits inside the workdir, so it is checked first.
         if let Some(rel) = self.git_dirs.iter().find_map(|g| path.strip_prefix(g).ok()) {
-            return git_change(rel);
+            return git_change(rel, touch);
         }
         let Some(rel) = self.workdirs.iter().find_map(|w| path.strip_prefix(w).ok()) else {
             return Change::None;
@@ -58,8 +68,8 @@ impl WatchPaths {
     }
 }
 
-/// What a change to `rel`, a path relative to the git dir, calls for.
-pub fn git_change(rel: &Path) -> Change {
+/// What `touch` on `rel`, a path relative to the git dir, calls for.
+pub fn git_change(rel: &Path, touch: Touch) -> Change {
     let parts: Vec<&str> = rel
         .components()
         .filter_map(|c| match c {
@@ -75,8 +85,11 @@ pub fn git_change(rel: &Path) -> Change {
         return Change::Full;
     }
     match parts.as_slice() {
-        // A linked worktree added, removed, moved, locked or switched to another HEAD.
-        ["worktrees", _] | ["worktrees", _, "HEAD" | "locked" | "gitdir"] => Change::Full,
+        // A linked worktree added, removed, moved, locked or switched to another HEAD. The
+        // folders count only when they come or go: every index write in a linked worktree
+        // modifies `worktrees/<name>` on Windows.
+        ["worktrees"] | ["worktrees", _] if touch != Touch::Modified => Change::Full,
+        ["worktrees", _, "HEAD" | "locked" | "gitdir"] => Change::Full,
         ["HEAD" | "packed-refs" | "MERGE_HEAD" | "CHERRY_PICK_HEAD" | "REVERT_HEAD" | "REBASE_HEAD" | "BISECT_LOG"] => Change::Full,
         ["index"] | ["info", "exclude"] => Change::Status,
         _ => Change::None,
@@ -136,10 +149,10 @@ mod tests {
 
     #[test]
     fn git_internals_are_classified() {
-        let c = |p: &str| git_change(Path::new(p));
+        let c = |p: &str| git_change(Path::new(p), Touch::Modified);
         assert_eq!(c("index"), Change::Status);
         assert_eq!(c("info/exclude"), Change::Status);
-        for full in ["worktrees/wt", "worktrees/wt/HEAD", "worktrees/wt/locked", "worktrees/wt/gitdir"] {
+        for full in ["worktrees/wt/HEAD", "worktrees/wt/locked", "worktrees/wt/gitdir"] {
             assert_eq!(c(full), Change::Full, "{full}");
         }
         for none in ["worktrees/wt/index", "worktrees/wt/logs/HEAD", "worktrees/wt/ORIG_HEAD"] {
@@ -179,6 +192,24 @@ mod tests {
     }
 
     #[test]
+    fn linked_worktree_folders_count_only_when_they_come_or_go() {
+        let c = |p: &str, touch| git_change(Path::new(p), touch);
+        // Windows reports these folders modified on every index write in a linked worktree.
+        for p in ["worktrees", "worktrees/wt"] {
+            assert_eq!(c(p, Touch::Modified), Change::None, "{p}");
+            assert_eq!(c(p, Touch::Other), Change::Full, "{p}");
+        }
+        // The files inside are judged the same way whatever happened to them.
+        for touch in [Touch::Modified, Touch::Other] {
+            assert_eq!(c("worktrees/wt/gitdir", touch), Change::Full);
+            assert_eq!(c("worktrees/wt/index", touch), Change::None);
+            assert_eq!(c("worktrees/wt/index.lock", touch), Change::None);
+            assert_eq!(c("refs/heads/main", touch), Change::Full);
+            assert_eq!(c("index", touch), Change::Status);
+        }
+    }
+
+    #[test]
     fn worktree_paths_are_classified() {
         let wd = std::env::temp_dir().join("trellis-watch-classify-missing").join("wd");
         let paths = WatchPaths::new(&wd, &wd.join(".git"));
@@ -187,20 +218,20 @@ mod tests {
             seen.push(rel.to_owned());
             rel.starts_with("target/")
         };
-        assert_eq!(paths.classify(&wd.join("src").join("a.rs"), &mut ignored), Change::Status);
-        assert_eq!(paths.classify(&wd, &mut ignored), Change::None);
-        assert_eq!(paths.classify(&wd.join("vendor/sub/.git/HEAD"), &mut ignored), Change::None);
-        assert_eq!(paths.classify(&wd.join(".git").join("index"), &mut ignored), Change::Status, "the git rule wins");
-        assert_eq!(paths.classify(&wd.join("target").join("debug").join("x.o"), &mut ignored), Change::None);
+        assert_eq!(paths.classify(&wd.join("src").join("a.rs"), Touch::Modified, &mut ignored), Change::Status);
+        assert_eq!(paths.classify(&wd, Touch::Modified, &mut ignored), Change::None);
+        assert_eq!(paths.classify(&wd.join("vendor/sub/.git/HEAD"), Touch::Modified, &mut ignored), Change::None);
+        assert_eq!(paths.classify(&wd.join(".git").join("index"), Touch::Modified, &mut ignored), Change::Status, "the git rule wins");
+        assert_eq!(paths.classify(&wd.join("target").join("debug").join("x.o"), Touch::Modified, &mut ignored), Change::None);
         let outside = std::env::temp_dir().join("trellis-watch-elsewhere").join("a.rs");
-        assert_eq!(paths.classify(&outside, &mut ignored), Change::None);
+        assert_eq!(paths.classify(&outside, Touch::Modified, &mut ignored), Change::None);
         assert_eq!(seen, ["src/a.rs", "target/debug/x.o"], "relative and '/'-separated");
 
         // A linked worktree: the git dir lives elsewhere and `.git` is a file in the workdir.
         let gd = std::env::temp_dir().join("trellis-watch-classify-missing").join("main").join(".git").join("worktrees").join("wd");
         let linked = WatchPaths::new(&wd, &gd);
-        assert_eq!(linked.classify(&gd.join("HEAD"), &mut |_| false), Change::Full);
-        assert_eq!(linked.classify(&wd.join(".git"), &mut |_| false), Change::None);
+        assert_eq!(linked.classify(&gd.join("HEAD"), Touch::Modified, &mut |_| false), Change::Full);
+        assert_eq!(linked.classify(&wd.join(".git"), Touch::Modified, &mut |_| false), Change::None);
 
         assert_eq!(Change::Status.max(Change::Full), Change::Full);
         assert_eq!(Change::None.max(Change::Status), Change::Status);

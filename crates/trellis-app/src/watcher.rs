@@ -5,12 +5,13 @@
 use crate::effect::WatchTarget;
 use crate::msg::Msg;
 use crate::runner::Waker;
+use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
 use std::path::Path;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use trellis_core::watch::{Change, Ignores, WatchPaths};
+use trellis_core::watch::{Change, Ignores, Touch, WatchPaths};
 
 /// A burst fires this long after its last relevant event…
 pub const QUIET: Duration = Duration::from_millis(300);
@@ -128,18 +129,28 @@ fn classify(ev: &Event, paths: &WatchPaths, ignores: &mut Ignores) -> Change {
         return Change::Full; // the OS dropped events
     }
     let mut change = Change::None;
+    let what = touch(&ev.kind);
     for p in &ev.paths {
         let name = p.file_name().and_then(|n| n.to_str());
         let parent = p.parent().and_then(|d| d.file_name()).and_then(|n| n.to_str());
         if name == Some(".gitignore") || (name == Some("exclude") && parent == Some("info")) {
             ignores.clear();
         }
-        change = change.max(paths.classify(p, &mut |rel| ignores.is_ignored(rel)));
+        change = change.max(paths.classify(p, what, &mut |rel| ignores.is_ignored(rel)));
         if change == Change::Full {
             break;
         }
     }
     change
+}
+
+/// A content or metadata change, as opposed to a path coming, going or being renamed.
+fn touch(kind: &EventKind) -> Touch {
+    match kind {
+        EventKind::Modify(ModifyKind::Name(_)) => Touch::Other,
+        EventKind::Modify(_) => Touch::Modified,
+        _ => Touch::Other,
+    }
 }
 
 /// Relevant events waiting to be reported as one change.
@@ -234,6 +245,28 @@ mod tests {
         assert_eq!(b.take_due(t0 + 300 * MS), Some((Change::Status, t0)), "None doesn't extend it");
     }
 
+    #[test]
+    fn linked_worktree_folder_modifies_are_quiet() {
+        use notify::event::{CreateKind, DataChange, MetadataKind, RemoveKind, RenameMode};
+        let wd = std::env::temp_dir().join("trellis-watch-kinds-missing");
+        let gd = wd.join(".git");
+        let paths = WatchPaths::new(&wd, &gd);
+        let mut ignores = Ignores::open(&wd);
+        let mut c = |kind, rel: &str| classify(&Event::new(kind).add_path(gd.join(rel)), &paths, &mut ignores);
+        // What Windows reports for `.git/worktrees/wt` on every index write in that worktree.
+        assert_eq!(c(EventKind::Modify(ModifyKind::Any), "worktrees/wt"), Change::None);
+        assert_eq!(c(EventKind::Modify(ModifyKind::Metadata(MetadataKind::Any)), "worktrees/wt"), Change::None);
+        assert_eq!(c(EventKind::Modify(ModifyKind::Data(DataChange::Any)), "worktrees/wt/index"), Change::None);
+        // A worktree added, removed or renamed, and the files that describe it.
+        assert_eq!(c(EventKind::Create(CreateKind::Folder), "worktrees/wt"), Change::Full);
+        assert_eq!(c(EventKind::Remove(RemoveKind::Any), "worktrees/wt"), Change::Full);
+        assert_eq!(c(EventKind::Create(CreateKind::Any), "worktrees"), Change::Full);
+        assert_eq!(c(EventKind::Modify(ModifyKind::Name(RenameMode::Any)), "worktrees/wt"), Change::Full);
+        assert_eq!(c(EventKind::Any, "worktrees/wt"), Change::Full);
+        assert_eq!(c(EventKind::Modify(ModifyKind::Any), "worktrees/wt/locked"), Change::Full);
+        assert_eq!(c(EventKind::Modify(ModifyKind::Any), "index"), Change::Status);
+    }
+
     #[derive(Clone)]
     struct NoWake;
     impl Waker for NoWake {
@@ -257,19 +290,24 @@ mod tests {
         }
     }
 
+    /// A fresh repository at `dir` with `a.txt` and a `.gitignore` for `target/` committed.
+    fn init_repo(dir: &Path) {
+        let _ = std::fs::remove_dir_all(dir);
+        std::fs::create_dir_all(dir).unwrap();
+        git(dir, &["init", "-q", "-b", "main"]);
+        git(dir, &["config", "user.name", "Test"]);
+        git(dir, &["config", "user.email", "test@example.com"]);
+        git(dir, &["config", "commit.gpgsign", "false"]);
+        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
+        std::fs::write(dir.join(".gitignore"), "target/\n").unwrap();
+        git(dir, &["add", "."]);
+        git(dir, &["commit", "-q", "-m", "first"]);
+    }
+
     #[test]
     fn watcher_reports_an_outside_edit() {
         let dir: PathBuf = std::env::temp_dir().join(format!("trellis-app-test-watch-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        git(&dir, &["init", "-q", "-b", "main"]);
-        git(&dir, &["config", "user.name", "Test"]);
-        git(&dir, &["config", "user.email", "test@example.com"]);
-        git(&dir, &["config", "commit.gpgsign", "false"]);
-        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
-        std::fs::write(dir.join(".gitignore"), "target/\n").unwrap();
-        git(&dir, &["add", "."]);
-        git(&dir, &["commit", "-q", "-m", "first"]);
+        init_repo(&dir);
 
         let (tx, rx) = std::sync::mpsc::channel();
         let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
@@ -292,6 +330,36 @@ mod tests {
         // Dropping the watcher ends its thread, which drops the message sender.
         drop(watcher);
         assert!(matches!(rx.recv_timeout(Duration::from_secs(10)), Err(RecvTimeoutError::Disconnected)));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn index_writes_in_a_linked_worktree_stay_quiet() {
+        let dir: PathBuf = std::env::temp_dir().join(format!("trellis-app-test-watch-wt-{}", std::process::id()));
+        let linked = dir.with_file_name(format!("trellis-app-test-watch-wt-{}-linked", std::process::id()));
+        let _ = std::fs::remove_dir_all(&linked);
+        init_repo(&dir);
+        git(&dir, &["worktree", "add", "-q", "-b", "linked", &linked.display().to_string()]);
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
+        let watcher = start(&target, tx, NoWake).expect("watcher starts");
+        std::thread::sleep(Duration::from_millis(300));
+        while next_change(&rx, &dir, Duration::from_millis(500)).is_some() {}
+
+        // Staging and status in the linked worktree rewrite `.git/worktrees/<name>/index`.
+        for i in 0..3 {
+            std::fs::write(linked.join("a.txt"), format!("edit {i}\n")).unwrap();
+            git(&linked, &["add", "a.txt"]);
+            git(&linked, &["status", "--porcelain"]);
+        }
+        assert_eq!(next_change(&rx, &dir, Duration::from_secs(1)), None, "the main repository's tab doesn't reload");
+
+        git(&dir, &["worktree", "lock", &linked.display().to_string()]);
+        assert_eq!(next_change(&rx, &dir, Duration::from_secs(10)), Some(true), "locking it reloads in full");
+
+        drop(watcher);
+        let _ = std::fs::remove_dir_all(&linked);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

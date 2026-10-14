@@ -41,7 +41,7 @@ fn open(st: &mut AppState, path: PathBuf, fx: &mut Vec<Effect>) {
 /// The dialog's Create worktree: checks the form again, then asks the runner about the folder.
 fn submit(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(Modal::NewWorktree(form)) = st.modal.as_ref() else { return };
-    if form.busy {
+    if form.busy() {
         return;
     }
     let Some(snap) = st.snap.as_ref() else { return };
@@ -53,14 +53,20 @@ fn submit(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     if let Some(Modal::NewWorktree(form)) = st.modal.as_mut() {
-        form.busy = true;
+        form.pending = Some(req.clone());
     }
     fx.push(Effect::CheckWorktreeFolder(req));
 }
 
+/// The disk check's result. It acts only while the dialog that asked is still open and waiting
+/// for this request: after Cancel, or for an older request than the open dialog's, it is dropped.
 fn folder_checked(st: &mut AppState, req: NewWorktree, result: Result<(), String>, fx: &mut Vec<Effect>) {
-    if let Some(Modal::NewWorktree(form)) = st.modal.as_mut() {
-        form.busy = false;
+    match st.modal.as_mut() {
+        Some(Modal::NewWorktree(form)) if form.pending.as_ref() == Some(&req) => form.pending = None,
+        _ => {
+            tracing::debug!(folder = %req.folder.display(), "dropped a folder check: its dialog was closed");
+            return;
+        }
     }
     let here = st.workdir().is_some_and(|w| crate::state::tabs::same_path(&w, &req.repo));
     if !here {

@@ -70,7 +70,7 @@ pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Sn
     ui.add_space(4.0);
     ui.checkbox(&mut form.open, "Open in a new tab");
     ui.add_space(8.0);
-    let valid = snap.is_some() && folder_bad.is_none() && branch_bad.is_none() && !form.busy;
+    let valid = snap.is_some() && folder_bad.is_none() && branch_bad.is_none() && !form.busy();
     ui.horizontal(|ui| {
         if ui.add_enabled(valid, egui::Button::new("Create worktree")).clicked() || (enter && valid) {
             msgs.push(Msg::Worktree(WorktreeMsg::Submit));
