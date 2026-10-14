@@ -41,6 +41,8 @@ pub enum Icon {
     EyeOff,
     /// A database cylinder: Git LFS storage (Preferences).
     Storage,
+    /// Trunk with a side branch that leaves and rejoins: Git Flow (Preferences).
+    Flow,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -194,7 +196,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             ];
             p.add(egui::Shape::closed_line(pts, s));
         }
-        Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage => {} // icons.rs
+        Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow => {} // icons.rs
     }
 }
 

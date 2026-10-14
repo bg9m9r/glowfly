@@ -15,6 +15,7 @@ mod diff;
 mod file_buttons;
 mod file_dialogs;
 mod file_menu;
+mod gitflow_dialog;
 mod graph;
 mod history;
 mod icons;
@@ -57,6 +58,8 @@ mod snapshot_tests_file_actions;
 mod snapshot_tests_file_dialogs;
 #[cfg(test)]
 mod snapshot_tests_file_menu;
+#[cfg(test)]
+mod snapshot_tests_gitflow;
 #[cfg(test)]
 mod snapshot_tests_lfs;
 #[cfg(test)]

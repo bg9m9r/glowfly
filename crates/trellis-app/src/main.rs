@@ -8,6 +8,7 @@
 
 mod effect;
 mod file_op;
+mod gitflow;
 mod keymap;
 mod lfs;
 mod msg;

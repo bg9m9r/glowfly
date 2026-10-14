@@ -79,7 +79,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | In-App Terminal | ✘ | Shell, font, cursor style and dimming for the built-in terminal (P1 Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
-| *Repo:* Gitflow | ✘ | P1 Git Flow |
+| *Repo:* Gitflow | ◐ Git Flow page and Start | Finish, Git Flow panel, branch from issue (P1 Git Flow) |
 | *Repo:* Git Hooks | ✔ hooks path | — |
 | *Repo:* Commit | ✘ | Commit template, push after commit, skip hooks per repo |
 | *Repo:* Agents | — | Out of scope |
@@ -634,6 +634,26 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Git Flow**
   Initialize with prefixes; start/finish feature, release and hotfix; a Git Flow panel; and
   "create Git Flow branch from issue".
+  - [x] Preferences > Git Flow (repo-specific), with plain git and the git-flow config keys:
+    production and development branches (missing ones created from the remote or from
+    production), feature/release/hotfix and version-tag prefixes with live checks, Initialize
+    and Save; Start feature, release and hotfix (`checkout -b` from develop or production, with
+    the next version suggested from the tags); palette 'Configure Git Flow…' and 'Start Git
+    Flow feature/release/hotfix…'
+  - [ ] Finish feature, release and hotfix: merge back into develop (and production for
+    release and hotfix) with --no-ff, tag the version with a message, delete the branch (or
+    keep it), optionally rebase on develop first, squash and push
+  - [ ] A Git Flow panel listing feature, release and hotfix branches by type with Start and
+    Finish, a palette entry to open it, and a Git Flow group in the left panel
+  - [ ] Create a feature, release or hotfix branch from an issue (issue menu and palette)
+  - [ ] Branch-menu and graph-menu entries for flow branches (finish this feature, start a
+    hotfix from here)
+  - [ ] Confirm before deleting the configured production or development branch
+  - [ ] Bugfix and support branch types on the page (their default prefixes are already
+    written)
+  - [ ] Fetch before Start, and publish or track flow branches on the remote
+  - [ ] Read the newer per-branch config layout (gitflow.branch.<name>.type / parent) and
+    gitflow.origin
 - [ ] **Remote management**
   Add/edit/remove remotes (separate pull and push URLs), fetch one remote, view a remote in the
   browser, add a teammate's fork, fork on the service.

@@ -5,6 +5,7 @@ mod appearance;
 mod editor;
 mod general;
 mod git;
+mod gitflow;
 mod integrations;
 mod lfs;
 mod signing;
@@ -83,6 +84,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         remote: st.snap.as_ref().and_then(crate::state::lfs::lfs_remote),
         job: st.job.as_ref().map(|j| j.label.clone()),
     };
+    let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some() };
     let settings = &mut st.settings;
     let Some(prefs) = st.prefs.as_mut() else { return };
     let fs = st.forge.as_ref();
@@ -115,6 +117,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Ui => appearance::ui_page(ui, settings, now),
                     PrefPage::Editor => editor::editor_page(ui, settings),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
+                    PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
                     _ => {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {
@@ -164,6 +167,10 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
             // Not `go`: the page reads its status when it opens.
             if widgets::nav_row(ui, Some(Icon::Storage), "Git LFS", page == PrefPage::RepoLfs, 15.0).clicked() {
                 msgs.push(Msg::Lfs(crate::lfs::LfsMsg::ShowPage));
+            }
+            // Not `go`: the page fills its form from the snapshot.
+            if widgets::nav_row(ui, Some(Icon::Flow), "Git Flow", page == PrefPage::RepoGitFlow, 15.0).clicked() {
+                msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ShowPage));
             }
         }
     });

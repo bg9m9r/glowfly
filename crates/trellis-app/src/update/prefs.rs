@@ -19,6 +19,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 prefs.jira_project = project;
             }
             st.prefs = Some(prefs);
+            if page == PrefPage::RepoGitFlow {
+                super::gitflow::fill(st);
+            }
             if page == PrefPage::RepoLfs {
                 super::lfs::load(st, fx);
             }

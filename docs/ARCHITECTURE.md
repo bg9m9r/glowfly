@@ -55,6 +55,11 @@ crates/
                           filters, read without running git-lfs commands that write), tracked
                           patterns parsed from .gitattributes, pattern checks and the LFS
                           command lines
+    gitflow.rs            Git Flow with plain git: the gitflow.* config (read_config, read with
+                          libgit2 during load into Snapshot::gitflow), defaults, the branch plan
+                          and Initialize/Save command lines; gitflow/ checks (the settings
+                          form), start (Start's checks and command line), version (the next
+                          release or hotfix version from the tags)
     terminal/             the built-in terminal: screen (the VT screen model as styled rows,
                           answering cursor-position and status queries), keys (key and paste
                           encoding), pty (shell choice and PTY sessions with reader and exit
@@ -118,7 +123,9 @@ crates/
                           built-in terminal panel: one shell session per repository; global,
                           not parked with a tab), submodules (status words, tooltips, why
                           open/update/copy are blocked, the update confirmation, the update
-                          command), lfs (the Git LFS page: status, pattern buffer, push remote)
+                          command), lfs (the Git LFS page: status, pattern buffer, push remote),
+                          gitflow (the Git Flow page's form, filled from the snapshot; the
+                          Start dialog's form)
     msg.rs                Msg: user intents and background results
     keymap.rs             the keyboard binding table: groups, labels, chords, contexts; shared by
                           the shortcut sheet, palette hints and tooltips
@@ -126,6 +133,8 @@ crates/
     file_op.rs            FileOp (a working-tree file operation), DeleteMode (trash or
                           permanent, fixed when the confirmation opens), WorkFileOk (its result)
     lfs.rs                LfsMsg: the Git LFS preferences page's messages (one Msg variant)
+    gitflow.rs            GitFlowMsg: the Git Flow page's and Start dialog's messages (one Msg
+                          variant)
     terminal.rs           TerminalMsg and TerminalEffect: the built-in terminal panel's messages
                           and its shells' effects (one Msg and one Effect variant each)
     submodule.rs          SubmoduleMsg: the SUBMODULES section's messages (one Msg variant)
@@ -167,10 +176,12 @@ crates/
                           tab, initialize/update as a job; out of sync reads the submodule again,
                           then confirms, naming commits the update would leave behind), lfs (the
                           Git LFS page: reading its status, Initialize, Track and Untrack, the LFS
-                          commands, reloading after a job and the pull offer after Initialize)
+                          commands, reloading after a job and the pull offer after Initialize),
+                          gitflow (filling the Git Flow form and refilling it on new snapshots,
+                          Initialize/Save and Start as git jobs, the Start dialog's prefill)
                           (+ headless tests in update/tests.rs, update/palette_stash_tests.rs,
                           update/terminal_tests.rs, update/submodule_tests.rs,
-                          update/lfs_tests.rs)
+                          update/lfs_tests.rs, update/gitflow_tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
                           button and Ctrl+Enter shortcuts), details_multi (several commits), diff/ (header,
@@ -192,7 +203,9 @@ crates/
                           Ctrl+/ shortcut sheet), terminal/ (the built-in terminal panel:
                           header, grid painting, egui input mapping, colours), submodules
                           (the SUBMODULES section: rows, status markers, menu),
-                          status, prefs/ (editor: the Editor page; lfs: the Git LFS page),
+                          gitflow_dialog (the Git Flow Start dialog),
+                          status, prefs/ (editor: the Editor page; lfs: the Git LFS page;
+                          gitflow: the Git Flow page),
                           theme, widgets, icons (painting of the newer icons)
                           (+ snapshot_tests.rs, snapshot_tests_diff.rs, snapshot_tests_revert.rs,
                           snapshot_tests_select.rs, snapshot_tests_whole.rs,
@@ -202,7 +215,8 @@ crates/
                           snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs,
                           snapshot_tests_tag.rs, snapshot_tests_palette_stash.rs,
                           snapshot_tests_file_actions.rs, snapshot_tests_terminal.rs,
-                          snapshot_tests_submodules.rs, snapshot_tests_lfs.rs)
+                          snapshot_tests_submodules.rs, snapshot_tests_lfs.rs,
+                          snapshot_tests_gitflow.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead

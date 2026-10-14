@@ -11,6 +11,7 @@ pub mod error;
 pub mod forge;
 pub mod fuzzy;
 pub mod gitcli;
+pub mod gitflow;
 pub mod graph;
 pub mod highlight;
 pub mod intraline;

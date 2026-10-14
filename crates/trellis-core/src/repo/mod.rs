@@ -139,6 +139,8 @@ pub struct Snapshot {
     pub head_message: Option<String>,
     /// The commit.template text to prefill an empty draft with.
     pub commit_template: Option<CommitTemplate>,
+    /// The gitflow.* settings (Preferences > Git Flow, palette Start entries).
+    pub gitflow: crate::gitflow::GitFlowConfig,
     pub state: RepositoryState,
     pub commits: Vec<CommitInfo>,
     pub row_of: HashMap<Oid, usize>,

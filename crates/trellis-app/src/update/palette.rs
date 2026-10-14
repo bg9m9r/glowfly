@@ -173,6 +173,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::RenameBranch(name) => Msg::RenameBranchDialog(name),
         C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),
         C::ConfigureLfs => Msg::OpenPrefs(PrefPage::RepoLfs),
+        C::ConfigureGitFlow => Msg::OpenPrefs(PrefPage::RepoGitFlow),
+        C::StartGitFlow(k) => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartDialog(k)),
         C::Refresh => Msg::Refresh,
         C::OpenTerminal => Msg::OpenTerminal,
         C::ToggleTerminal => Msg::Terminal(crate::terminal::TerminalMsg::Toggle),

@@ -10,6 +10,7 @@ mod conflict;
 mod diff;
 mod files;
 mod forge;
+mod gitflow;
 mod graph_filter;
 mod highlight;
 mod history;
@@ -51,6 +52,8 @@ mod editor_tests;
 mod files_tests;
 #[cfg(test)]
 mod fold_tests;
+#[cfg(test)]
+mod gitflow_tests;
 #[cfg(test)]
 mod graph_filter_tests;
 #[cfg(test)]
@@ -345,6 +348,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
         Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
+        Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
     }
     fx
 }

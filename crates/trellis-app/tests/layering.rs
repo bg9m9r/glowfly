@@ -71,6 +71,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("server", &["start", "start_with"]),
     ("pty", &["spawn", "default_shell"]),
     ("lfs", &["status", "installed", "hook_state"]),
+    ("gitflow", &["read_config"]),
     (
         "platform",
         &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager", "reveal_in_file_manager"],

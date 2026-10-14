@@ -1,4 +1,4 @@
-//! Painting of the newer icons (code, eye, storage), called from `widgets::paint_icon`.
+//! Painting of the newer icons (code, eye, storage, flow), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Stroke, pos2, vec2};
@@ -40,6 +40,17 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             };
             lower_arc((top + bottom) / 2.0);
             lower_arc(bottom);
+        }
+        Icon::Flow => {
+            // A trunk with a side branch that leaves it and joins it again lower down.
+            let (x, r) = (c.x - 4.0, 1.8);
+            p.circle_stroke(pos2(x, c.y - 8.0), r, s);
+            p.circle_stroke(pos2(x, c.y + 8.0), r, s);
+            line(pos2(x, c.y - 8.0 + r), pos2(x, c.y + 8.0 - r));
+            let commit = pos2(c.x + 4.0, c.y + 1.0);
+            p.circle_stroke(commit, r, s);
+            line(pos2(x, c.y - 4.0), pos2(commit.x, commit.y - r));
+            line(pos2(commit.x, commit.y + r), pos2(x, c.y + 6.0));
         }
         _ => return false,
     }

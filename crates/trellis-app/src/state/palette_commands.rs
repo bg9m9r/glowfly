@@ -57,6 +57,10 @@ pub enum PaletteCommand {
     InitializeLfs,
     /// Open Preferences on the Git LFS page.
     ConfigureLfs,
+    /// Open Preferences on the Git Flow page.
+    ConfigureGitFlow,
+    /// Open the Start dialog for this kind.
+    StartGitFlow(trellis_core::gitflow::FlowKind),
     Refresh,
     OpenTerminal,
     /// Show or hide the built-in terminal panel.
@@ -254,6 +258,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         "Configure Git LFS…",
         "lfs large file storage track patterns gitattributes fetch pull push prune preferences settings",
     ));
+    gitflow_entries(snap, out);
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));
     let toggle = if st.terminal.open { "Hide terminal panel" } else { "Show terminal panel" };
@@ -266,6 +271,25 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     let ignoring = st.settings.diff_ignore_whitespace;
     let label = if ignoring { "Show whitespace changes" } else { "Ignore whitespace changes" };
     out.push(entry(C::IgnoreWhitespace(!ignoring), label, "whitespace spaces indentation trailing hide diff"));
+}
+
+/// Configure Git Flow, and a Start entry per branch kind once the repository is set up.
+fn gitflow_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
+    use trellis_core::gitflow::FlowKind;
+    out.push(entry(
+        PaletteCommand::ConfigureGitFlow,
+        "Configure Git Flow…",
+        "gitflow git-flow flow branching model develop feature release hotfix prefixes initialize setup preferences settings",
+    ));
+    let Some(s) = snap.gitflow.settings() else { return };
+    for (k, keywords) in [
+        (FlowKind::Feature, "gitflow git-flow new branch feature"),
+        (FlowKind::Release, "gitflow git-flow new branch release version"),
+        (FlowKind::Hotfix, "gitflow git-flow new branch hotfix fix patch production"),
+    ] {
+        let e = entry(PaletteCommand::StartGitFlow(k), format!("Start Git Flow {}…", k.noun()), keywords);
+        out.push(with_detail(e, Some(format!("from {}", s.base(k)))));
+    }
 }
 
 /// Commands that work with or without a repository: tabs, Preferences and appearance.

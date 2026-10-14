@@ -1,7 +1,8 @@
 //! Dialogs: confirmation, new branch, new tag (drawn by `tag_dialog.rs`), clone, create pull
 //! request, publish (drawn by `publish.rs`), renaming a branch or setting its upstream (drawn by
 //! `branch_dialogs.rs`), creating or renaming a working-tree file (drawn by `file_dialogs.rs`),
-//! and the keyboard shortcut sheet (drawn by `shortcuts/sheet.rs`).
+//! starting a Git Flow branch (drawn by `gitflow_dialog.rs`) and the keyboard shortcut sheet
+//! (drawn by `shortcuts/sheet.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys, repo_name_from_url};
 use super::theme::color;
@@ -138,6 +139,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::RenameFile { old, form } => {
                 if super::file_dialogs::rename_file(ui, old, form, snap, stage_renames, !prompting, msgs) {
+                    close = true;
+                }
+            }
+            Modal::GitFlowStart(form) => {
+                if super::gitflow_dialog::start(ui, form, snap, !prompting, msgs) {
                     close = true;
                 }
             }

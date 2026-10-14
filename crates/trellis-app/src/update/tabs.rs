@@ -255,6 +255,7 @@ fn park(st: &mut AppState) -> Parked {
 
 fn unpark(st: &mut AppState, p: Parked) {
     st.snap = p.snap;
+    super::gitflow::snapshot_changed(st);
     st.selection = if st.snap.is_some() { p.selection } else { Selection::None };
     st.detail = p.detail;
     st.diff = p.diff;

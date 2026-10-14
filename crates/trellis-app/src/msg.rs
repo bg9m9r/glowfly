@@ -392,6 +392,8 @@ pub enum Msg {
     // ---- preferences
     /// The Git LFS preferences page (lfs.rs).
     Lfs(crate::lfs::LfsMsg),
+    /// The Git Flow page and Start dialog (gitflow.rs).
+    GitFlow(crate::gitflow::GitFlowMsg),
     OpenPrefs(PrefPage),
     ClosePrefs,
     SelectIntegration(trellis_core::forge::Provider),

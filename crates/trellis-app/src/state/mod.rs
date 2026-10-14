@@ -8,6 +8,7 @@ pub mod conflict;
 pub mod diff_nav;
 pub mod files;
 mod forge;
+pub mod gitflow;
 pub mod history;
 pub mod lfs;
 pub mod lines;
@@ -114,6 +115,7 @@ pub enum Modal {
     NewFile(files::PathForm),
     RenameFile { old: String, form: files::PathForm },
     Shortcuts { filter: String },
+    GitFlowStart(gitflow::StartForm),
 }
 
 pub struct Sections {
