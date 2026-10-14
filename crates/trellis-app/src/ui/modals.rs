@@ -1,5 +1,6 @@
 //! Dialogs: confirmation, new branch/tag, clone, create pull request, publish (drawn by
-//! `publish.rs`), and renaming a branch or setting its upstream (drawn by `branch_dialogs.rs`).
+//! `publish.rs`), renaming a branch or setting its upstream (drawn by `branch_dialogs.rs`), and
+//! creating or renaming a working-tree file (drawn by `file_dialogs.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys, repo_name_from_url};
 use super::theme::color;
@@ -146,6 +147,16 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::SetUpstream { branch, remote, name } => {
                 if super::branch_dialogs::upstream(ui, branch, remote, name, snap, msgs) {
+                    close = true;
+                }
+            }
+            Modal::NewFile(form) => {
+                if super::file_dialogs::new_file(ui, form, snap, !prompting, msgs) {
+                    close = true;
+                }
+            }
+            Modal::RenameFile { old, form } => {
+                if super::file_dialogs::rename_file(ui, old, form, snap, !prompting, msgs) {
                     close = true;
                 }
             }

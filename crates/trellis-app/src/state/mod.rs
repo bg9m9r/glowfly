@@ -6,6 +6,7 @@ pub mod branches;
 pub mod commit;
 pub mod conflict;
 pub mod diff_nav;
+pub mod files;
 mod forge;
 pub mod history;
 pub mod lines;
@@ -102,6 +103,8 @@ pub enum Modal {
     Publish(Box<publish::PublishForm>),
     RenameBranch { old: String, name: String },
     SetUpstream { branch: String, remote: String, name: String },
+    NewFile(files::PathForm),
+    RenameFile { old: String, form: files::PathForm },
 }
 
 pub struct Sections {

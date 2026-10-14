@@ -12,6 +12,7 @@ mod conflict;
 mod details;
 mod details_multi;
 mod diff;
+mod file_dialogs;
 mod file_menu;
 mod graph;
 mod history;
@@ -42,6 +43,8 @@ mod snapshot_tests_commit;
 mod snapshot_tests_diff;
 #[cfg(test)]
 mod snapshot_tests_editor;
+#[cfg(test)]
+mod snapshot_tests_file_dialogs;
 #[cfg(test)]
 mod snapshot_tests_file_menu;
 #[cfg(test)]

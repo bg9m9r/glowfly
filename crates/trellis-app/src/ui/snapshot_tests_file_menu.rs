@@ -1,8 +1,9 @@
 //! The file actions in file rows' context menus, drawn as menu bodies in a small window: a
-//! commit's modified file, a file the commit deleted (not in the working tree), and a working-tree
-//! row whose file is gone. Clicks check the messages the items send.
+//! commit's modified file, a file the commit deleted (not in the working tree), and working-tree
+//! rows (a modified file, one whose file is gone, a conflicted one). Clicks check the messages
+//! the items send.
 
-use super::file_menu::{OPEN_DEFAULT, SHOW_IN_FOLDER, commit_file_items, wip_file_items};
+use super::file_menu::{DELETE, OPEN_DEFAULT, RENAME, SHOW_IN_FOLDER, commit_file_items, wip_file_items};
 use super::theme::{apply_theme, color};
 use crate::msg::Msg;
 use eframe::egui;
@@ -25,7 +26,7 @@ fn oid() -> Oid {
 
 /// A small window drawing the extra items for `f` inside a menu frame, as the popup would.
 fn harness(f: FileEntry, menu: Menu, dark: bool) -> Harness<'static, Vec<Msg>> {
-    Harness::builder().with_size(egui::vec2(260.0, 180.0)).build_ui_state(
+    Harness::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(dark);
             apply_theme(ui.ctx());
@@ -81,12 +82,32 @@ fn file_menu_commit_deleted_light() {
 }
 
 #[test]
+fn file_menu_wip() {
+    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false }, true);
+    h.run();
+    h.snapshot("file_menu_wip");
+    for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME, DELETE] {
+        assert!(!h.get_by_label(label).is_disabled(), "{label}");
+    }
+}
+
+#[test]
 fn file_menu_wip_missing() {
     let mut h = harness(entry("src/gone.txt", 'D'), Menu::Wip { missing: true }, true);
     h.run();
     h.snapshot("file_menu_wip_missing");
-    assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
-    assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
+    for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME, DELETE] {
+        assert!(h.get_by_label(label).is_disabled(), "{label}");
+    }
+}
+
+#[test]
+fn file_menu_wip_conflicted() {
+    let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false }, true);
+    h.run();
+    assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
+    assert!(h.get_by_label(RENAME).is_disabled());
+    assert!(h.get_by_label(DELETE).is_disabled());
 }
 
 #[test]
@@ -105,6 +126,20 @@ fn file_menu_clicks_send_msgs() {
     h.get_by_label(SHOW_IN_FOLDER).click();
     h.run();
     assert!(matches!(&h.state()[..], [Msg::ShowWorkingFile(p)] if p == "src/app.txt"));
+    drop(h);
+
+    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false }, true);
+    h.run();
+    h.get_by_label(RENAME).click();
+    h.run();
+    assert!(matches!(&h.state()[..], [Msg::RenameFileDialog(p)] if p == "src/app.txt"));
+    drop(h);
+
+    let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false }, true);
+    h.run();
+    h.get_by_label(DELETE).click();
+    h.run();
+    assert!(matches!(&h.state()[..], [Msg::DeleteFile { path, confirmed: false }] if path == "src/app.txt"));
     drop(h);
 
     // A disabled item sends nothing.

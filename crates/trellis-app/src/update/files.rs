@@ -1,5 +1,6 @@
 //! File actions from file menus: restoring a file as it was in a commit (after a confirmation),
-//! and opening a working-tree file in its default program or showing it in the file manager.
+//! opening a working-tree file in its default program or showing it in the file manager, and
+//! creating, renaming and deleting working-tree files (in `work_files.rs`).
 
 use crate::effect::Effect;
 use crate::msg::Msg;
@@ -55,6 +56,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
+        Msg::NewFileDialog(_)
+        | Msg::CreateFile(_)
+        | Msg::RenameFileDialog(_)
+        | Msg::RenameFile { .. }
+        | Msg::DeleteFile { .. }
+        | Msg::WorkFileDone { .. } => super::work_files::handle(st, msg, now, fx),
         Msg::OpenWorkingFile(p) => {
             if let Some(w) = st.workdir() {
                 fx.push(Effect::OpenPath(w.join(&p)));

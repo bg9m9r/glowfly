@@ -105,6 +105,14 @@ pub struct WatchTarget {
     pub git_dir: PathBuf,
 }
 
+/// A working-tree file operation (`Effect::WorkFile`). Paths are repo-relative.
+#[derive(Clone, Debug, PartialEq)]
+pub enum FileOp {
+    Create(String),
+    Rename { from: String, to: String },
+    Delete(String),
+}
+
 #[derive(Debug)]
 pub enum Effect {
     LoadRepo {
@@ -163,6 +171,11 @@ pub enum Effect {
         oid: Oid,
         path: String,
         overwrite: bool,
+    },
+    /// Creates, renames or deletes a working-tree file; the index is untouched.
+    WorkFile {
+        workdir: PathBuf,
+        op: FileOp,
     },
     /// The commits that changed `path`, examining at most `limit` commits.
     LoadFileHistory {
@@ -318,6 +331,7 @@ impl Effect {
             | Effect::LocalOp { workdir, .. }
             | Effect::RevertHunk { workdir, .. }
             | Effect::RestoreFile { workdir, .. }
+            | Effect::WorkFile { workdir, .. }
             | Effect::Stats { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             _ => None,

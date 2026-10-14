@@ -22,6 +22,7 @@ mod selection;
 mod tabs;
 mod undo;
 mod watch;
+mod work_files;
 
 #[cfg(test)]
 mod askpass_tests;
@@ -73,6 +74,8 @@ mod watch_tests;
 mod whitespace_tests;
 #[cfg(test)]
 mod whole_file_tests;
+#[cfg(test)]
+mod work_files_tests;
 
 pub use repo::commit_matches;
 
@@ -167,6 +170,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 st.log(false, format!("Could not restore {path}: {e}"));
             } else if let Msg::RestoreWouldOverwrite { path, reason, .. } = *msg {
                 st.log(false, format!("Did not restore {path}: {reason}."));
+            } else if let Msg::WorkFileDone { op, result } = *msg {
+                work_files::inactive_result(st, op, result, now);
             } else {
                 tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display());
             }
@@ -197,7 +202,13 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::FileRestored { .. }
         | Msg::RestoreWouldOverwrite { .. }
         | Msg::OpenWorkingFile(_)
-        | Msg::ShowWorkingFile(_) => files::handle(st, msg, now, &mut fx),
+        | Msg::ShowWorkingFile(_)
+        | Msg::NewFileDialog(_)
+        | Msg::CreateFile(_)
+        | Msg::RenameFileDialog(_)
+        | Msg::RenameFile { .. }
+        | Msg::DeleteFile { .. }
+        | Msg::WorkFileDone { .. } => files::handle(st, msg, now, &mut fx),
         Msg::RenameBranchDialog(_)
         | Msg::RenameBranch { .. }
         | Msg::SetUpstreamDialog(_)

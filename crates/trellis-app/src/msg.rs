@@ -1,6 +1,6 @@
 //! Everything that can happen: user intents from views and results from background effects.
 
-use crate::effect::{ForgeReply, LoadKind, UndoResult};
+use crate::effect::{FileOp, ForgeReply, LoadKind, UndoResult};
 use crate::state::PrefPage;
 use crate::state::lines::LineClick;
 use crate::state::prefs::GitConfigValues;
@@ -213,6 +213,22 @@ pub enum Msg {
         confirmed: bool,
         overwrite: bool,
     },
+    /// Open the New file dialog with this text in its field.
+    NewFileDialog(String),
+    /// Create an empty file at the typed path (checked and normalized in update).
+    CreateFile(String),
+    /// Open the rename dialog for the working-tree file `.0`.
+    RenameFileDialog(String),
+    /// Move the working-tree file `from` to the typed path `to`; the index is untouched.
+    RenameFile {
+        from: String,
+        to: String,
+    },
+    /// Delete the working-tree file `path`; `confirmed: false` opens the confirmation first.
+    DeleteFile {
+        path: String,
+        confirmed: bool,
+    },
     Commit,
     /// Ctrl+Shift+Enter in the commit message: stage everything (git add --all) and commit in one job.
     StageAllAndCommit,
@@ -411,6 +427,12 @@ pub enum Msg {
         path: String,
         oid: Oid,
         reason: String,
+    },
+    /// A WorkFile effect finished. `Ok(true)` means git ignores the new path (always false for
+    /// a deletion).
+    WorkFileDone {
+        op: FileOp,
+        result: Result<bool, String>,
     },
     JobDone {
         ok: bool,

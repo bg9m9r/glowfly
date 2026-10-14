@@ -365,7 +365,19 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Open a file in the default program and show it in Explorer / Finder (WIP and commit
     file rows)
   - [ ] Open in an external editor (needs P1 External tools)
-  - [ ] Create, delete and rename a file
+  - [x] Create, delete and rename a file (WIP panel: New file… in the Unstaged Files header,
+    Rename… and Delete… in working-tree file rows' menus)
+  - [ ] Create, rename and delete from the command palette
+  - [ ] New file in this folder… on file rows and folder rows, prefilled with the folder
+  - [ ] Delete several selected files at once (needs multi-select in file lists)
+  - [ ] Move deleted files to the OS trash or recycle bin, or make Delete undoable with Ctrl+Z
+  - [ ] Rename tracked files with `git mv` so the rename is staged (option in the rename dialog)
+  - [ ] Unstage and delete a staged new file in one step
+  - [ ] Open the newly created file in the editor or default app after creating it
+  - [ ] Create a file from a template, or with initial contents
+  - [ ] Rename or delete folders and submodules
+  - [ ] Explain when a created path is inside a nested repository or submodule, so the parent's
+    status won't list it
   - [ ] Edit a file in place
   - [ ] Restore several selected files from a commit at once (needs multi-select in file lists)
   - [ ] Restore from comparison rows (two commits selected): the newer commit's version

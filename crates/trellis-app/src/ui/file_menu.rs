@@ -1,6 +1,7 @@
 //! File actions added to file rows' context menus: restore a file from a commit, open it in its
-//! default program, and show it in the file manager. Menu bodies only, each drawing into the
-//! open menu's `Ui`, so tests can render them without opening a popup.
+//! default program, show it in the file manager, and (working-tree rows) rename or delete it.
+//! Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
+//! opening a popup.
 
 use super::common::{menu_item, menu_item_if};
 use crate::msg::Msg;
@@ -19,6 +20,9 @@ pub(super) const SHOW_IN_FOLDER: &str = if cfg!(windows) {
 pub(super) const OPEN_DEFAULT: &str = "Open with default app";
 const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
 const DELETED_IN_WORKDIR: &str = "Not in your working tree (deleted)";
+const CONFLICTED: &str = "Resolve the conflict first";
+pub(super) const RENAME: &str = "Rename…";
+pub(super) const DELETE: &str = "Delete…";
 
 /// Restore `path` from `oid`; for a file the commit deleted (`status` 'D'), from before it.
 pub(super) fn restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, oid: Oid, path: &str, status: char) {
@@ -40,8 +44,14 @@ pub(super) fn commit_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, oid: Oid
     open_items(ui, msgs, &f.path, (!in_workdir).then_some(NOT_IN_WORKDIR));
 }
 
-/// Extra items for a working-tree row: separator, open items (disabled when `missing`).
+/// Extra items for a working-tree row: separator, open items (disabled when `missing`), then
+/// separator, rename and delete (also disabled while the row is conflicted).
 pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEntry, missing: bool) {
     ui.separator();
-    open_items(ui, msgs, &f.path, missing.then_some(DELETED_IN_WORKDIR));
+    let gone = missing.then_some(DELETED_IN_WORKDIR);
+    open_items(ui, msgs, &f.path, gone);
+    ui.separator();
+    let blocked = gone.or((f.status == '!').then_some(CONFLICTED));
+    menu_item_if(msgs, ui, RENAME, blocked, Msg::RenameFileDialog(f.path.clone()));
+    menu_item_if(msgs, ui, DELETE, blocked, Msg::DeleteFile { path: f.path.clone(), confirmed: false });
 }

@@ -182,14 +182,13 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
         ui.horizontal(|ui| {
             ui.label(RichText::new(format!("{title} ({})", files.len())).strong().color(color::text()));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if files.is_empty() {
-                    return;
-                }
                 if staged {
-                    if ui.small_button("Unstage all").clicked() {
+                    if !files.is_empty() && ui.small_button("Unstage all").clicked() {
                         msgs.push(Msg::UnstageAll);
                     }
-                } else {
+                    return;
+                }
+                if !files.is_empty() {
                     if ui.small_button("Stage all").clicked() {
                         msgs.push(Msg::StageAll);
                     }
@@ -205,6 +204,10 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
                             Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]),
                         ));
                     }
+                }
+                // Drawn last, so it sits leftmost; shown even when nothing has changed.
+                if ui.small_button("New file…").clicked() {
+                    msgs.push(Msg::NewFileDialog(String::new()));
                 }
             });
         });

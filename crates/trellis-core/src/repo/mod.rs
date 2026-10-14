@@ -17,6 +17,7 @@ mod resolve;
 mod restore;
 mod revert;
 mod template;
+mod workfile;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{commit_detail, commit_stats, compare_files, load_diff, load_diff_with};
@@ -29,6 +30,7 @@ pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
 pub use template::{CommitTemplate, commit_template};
+pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -312,3 +314,5 @@ mod template_tests;
 mod tests;
 #[cfg(test)]
 mod whole_tests;
+#[cfg(test)]
+mod workfile_tests;

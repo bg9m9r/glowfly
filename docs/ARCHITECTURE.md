@@ -27,7 +27,9 @@ crates/
                           comparison hunk's inverse applied to the working tree), restore (one
                           file written from a commit, or its parent, into the working tree), conflict
                           (reading an index conflict into chunks), resolve (picks, output, write
-                          and stage), template (commit.template: the prefill and its comment char)
+                          and stage), template (commit.template: the prefill and its comment char),
+                          workfile (creating, renaming and deleting a working-tree file; path
+                          checks)
     gitcli.rs             the git CLI (commands that honour hooks, credentials, signing);
                           passes the askpass environment to every git child once enabled
     askpass/              credential prompts: prompt (classifying what git or ssh asks),
@@ -74,14 +76,16 @@ crates/
                           diff_nav (next/previous change across files: the file list a
                           diff came from, where a step lands), commit (the commit draft, its
                           readiness rules, button label and command line), palette (the
-                          command palette: open state, the commands available now)
+                          command palette: open state, the commands available now), files (the
+                          New file and Rename file dialogs' path form)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
                           config (reading git config), rebase (loading and running an
                           interactive rebase, with Trellis as the sequence editor), askpass
                           (starting the credential-prompt listener, answering prompts), os
-                          (URLs, terminals, opening files and showing them in the file manager)
+                          (URLs, terminals, opening files and showing them in the file manager),
+                          files (creating, renaming and deleting a working-tree file)
     watcher.rs            notify watcher for the active tab's repository, debounced in its own
                           thread, owned by the runner (Effect::Watch)
     update/               update(state, msg, now) -> Vec<Effect>: repo, ops, forge, prefs, tabs,
@@ -91,9 +95,10 @@ crates/
                           its job), graph_filter (hidden and soloed refs, saved per repository),
                           askpass (queueing, answering and cancelling credential prompts; what a
                           finished job clears), files (restoring a file from a commit, opening
-                          or showing a working-tree file), commit (committing,
-                          stage-all-and-commit, push after committing, the template prefill),
-                          palette (opening the command palette, moving, running a command)
+                          or showing a working-tree file; work_files: create, rename, delete),
+                          commit (committing, stage-all-and-commit, push after committing, the
+                          template prefill), palette (opening the command palette, moving,
+                          running a command)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
@@ -104,7 +109,8 @@ crates/
                           actions, message editor, drag to reorder), modals, menus,
                           branch_menu (local branch menu), branch_dialogs (rename, upstream),
                           ref_visibility (hide/solo menu items, row markers and banner),
-                          file_menu (file actions in file rows' menus: restore, open, show),
+                          file_menu (file actions in file rows' menus: restore, open, show,
+                          rename, delete), file_dialogs (new file, rename file),
                           askpass (the credential prompt, drawn above every other dialog),
                           palette (the Ctrl+P command palette overlay),
                           status, prefs/ (editor: the Editor page), theme, widgets
@@ -113,7 +119,7 @@ crates/
                           snapshot_tests_branch.rs, snapshot_tests_rebase.rs,
                           snapshot_tests_editor.rs, snapshot_tests_askpass.rs,
                           snapshot_tests_file_menu.rs, snapshot_tests_commit.rs,
-                          snapshot_tests_palette.rs)
+                          snapshot_tests_palette.rs, snapshot_tests_file_dialogs.rs)
     platform.rs           OS integration (recent repos, terminal, file manager, showing a
                           file selected in it)
     main.rs               starts the window; `trellis --write-todo <prepared> <todo>` instead
