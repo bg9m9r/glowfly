@@ -93,20 +93,52 @@ fn saved_token(account: &Account) -> Option<Secret> {
     serde_json::from_str(&raw).ok()
 }
 
-/// Finds credentials, in order: the provider's environment variable, a token saved in the OS
-/// credential store, then Git Credential Manager (the same sign-in `git push` uses). GCM may
-/// show its sign-in window only when `interactive` is set.
-pub fn resolve_auth(account: &Account, cwd: &Path, interactive: bool) -> Result<Auth> {
-    if let Some(var) = account.provider.env_var() {
-        let alt = if var == "GITHUB_TOKEN" { std::env::var("GH_TOKEN").ok() } else { None };
-        if let Some(token) = std::env::var(var).ok().or(alt).filter(|t| !t.trim().is_empty()) {
-            return Ok(Auth::from_token(account.provider, None, &token, var));
-        }
+/// Hosts run by the hosting service itself rather than self-hosted servers. Only these get
+/// tokens from environment variables, and only these are contacted without a saved connection.
+pub fn is_public_host(account: &Account) -> bool {
+    let h = account.host.as_str();
+    match account.provider {
+        Provider::GitHub | Provider::GitLab | Provider::Bitbucket => account.provider.fixed_host() == Some(h),
+        Provider::AzureDevOps => h == "dev.azure.com" || h.ends_with(".visualstudio.com"),
+        _ => false,
+    }
+}
+
+/// Whether Trellis may call this account's API: a public host, or one the user connected in
+/// Preferences. A self-hosted server guessed from a remote URL alone is never contacted.
+pub fn may_contact(account: &Account, connections: &[Connection]) -> bool {
+    is_public_host(account) || is_connected(account, connections)
+}
+
+pub fn is_connected(account: &Account, connections: &[Connection]) -> bool {
+    connections.iter().any(|c| c.account == *account)
+}
+
+/// The provider's environment-variable token, for public hosts only: a token meant for
+/// github.com must never reach a server that merely calls itself `github.<something>`.
+fn env_token(account: &Account, var: impl Fn(&str) -> Option<String>) -> Option<(String, &'static str)> {
+    let name = account.provider.env_var().filter(|_| is_public_host(account))?;
+    let found = |n: &'static str| var(n).filter(|t| !t.trim().is_empty()).map(|t| (t, n));
+    found(name).or_else(|| if name == "GITHUB_TOKEN" { found("GH_TOKEN") } else { None })
+}
+
+/// Git Credential Manager is asked only for public hosts and hosts the user connected.
+fn may_ask_gcm(account: &Account, connected: bool) -> bool {
+    account.provider.supports_gcm() && (connected || is_public_host(account))
+}
+
+/// Finds credentials, in order: the provider's environment variable (public hosts only), a
+/// token saved in the OS credential store, then Git Credential Manager (the same sign-in
+/// `git push` uses; public hosts, or self-hosted ones the user `connected`). GCM may show its
+/// sign-in window only when `interactive` is set.
+pub fn resolve_auth(account: &Account, cwd: &Path, interactive: bool, connected: bool) -> Result<Auth> {
+    if let Some((token, var)) = env_token(account, |n| std::env::var(n).ok()) {
+        return Ok(Auth::from_token(account.provider, None, &token, var));
     }
     if let Some(s) = saved_token(account) {
         return Ok(Auth::from_token(account.provider, s.user.as_deref(), &s.token, "saved token"));
     }
-    if account.provider.supports_gcm() {
+    if may_ask_gcm(account, connected) {
         return from_credential_manager(account, cwd, interactive);
     }
     Err(Error::Auth(format!("not connected to {}", account.provider.name())))
@@ -167,4 +199,58 @@ pub fn forget_credential_manager(account: &Account, cwd: &Path) -> Result<()> {
         crate::gitcli::NO_PROMPTS,
     );
     if ok { Ok(()) } else { Err(Error::Other(format!("git credential reject failed: {out}"))) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn acct(provider: Provider, host: &str) -> Account {
+        Account { provider, host: host.into(), org: String::new() }
+    }
+
+    fn env(name: &str) -> Option<String> {
+        matches!(name, "GITHUB_TOKEN" | "GITLAB_TOKEN" | "GH_TOKEN").then(|| format!("secret-{name}"))
+    }
+
+    #[test]
+    fn environment_tokens_go_to_public_hosts_only() {
+        let gh = env_token(&acct(Provider::GitHub, "github.com"), env).unwrap();
+        assert_eq!(gh, ("secret-GITHUB_TOKEN".to_owned(), "GITHUB_TOKEN"));
+        assert!(env_token(&acct(Provider::GitLab, "gitlab.com"), env).is_some());
+        let gh_only = |n: &str| (n == "GH_TOKEN").then(|| "t".to_owned());
+        assert_eq!(env_token(&acct(Provider::GitHub, "github.com"), gh_only).unwrap().1, "GH_TOKEN");
+        // Look-alike and self-hosted hosts never see an environment token.
+        for a in [
+            acct(Provider::GitHubEnterprise, "github.evil.example"),
+            acct(Provider::GitLabSelfManaged, "gitlab.evil.example"),
+            acct(Provider::GitLabSelfManaged, "mygitlab.corp"),
+            acct(Provider::GitHub, "github.com.evil.example"),
+        ] {
+            assert_eq!(env_token(&a, env), None, "{a:?}");
+        }
+    }
+
+    #[test]
+    fn credential_manager_is_asked_only_for_public_or_connected_hosts() {
+        assert!(may_ask_gcm(&acct(Provider::GitHub, "github.com"), false));
+        assert!(may_ask_gcm(&acct(Provider::AzureDevOps, "dev.azure.com"), false));
+        assert!(may_ask_gcm(&acct(Provider::AzureDevOps, "contoso.visualstudio.com"), false));
+        let ghe = acct(Provider::GitHubEnterprise, "github.evil.example");
+        assert!(!may_ask_gcm(&ghe, false));
+        assert!(may_ask_gcm(&ghe, true));
+        assert!(!may_ask_gcm(&acct(Provider::JiraCloud, "x.atlassian.net"), true), "Jira has no GCM sign-in");
+    }
+
+    #[test]
+    fn only_public_or_connected_hosts_may_be_contacted() {
+        let ghe = acct(Provider::GitHubEnterprise, "github.acme.io");
+        assert!(!may_contact(&ghe, &[]));
+        let conn = Connection { account: ghe.clone(), user: "ada".into(), method: "access token".into() };
+        assert!(may_contact(&ghe, std::slice::from_ref(&conn)));
+        // A connection to the same host under another provider doesn't count.
+        assert!(!may_contact(&acct(Provider::GitLabSelfManaged, "github.acme.io"), &[conn]));
+        assert!(may_contact(&acct(Provider::Bitbucket, "bitbucket.org"), &[]));
+        assert!(!may_contact(&acct(Provider::BitbucketDataCenter, "bitbucket.acme.io"), &[]));
+    }
 }

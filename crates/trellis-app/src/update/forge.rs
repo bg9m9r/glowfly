@@ -90,12 +90,26 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
     };
 }
 
+/// Calls the service, unless it is a self-hosted server only guessed from the remote URL: those
+/// are contacted (and sent credentials) only once the user connects them in Preferences.
 fn request(st: &mut AppState, target: Target, interactive: bool, call: ForgeCall, fx: &mut Vec<Effect>) {
     let cwd = st.any_dir();
+    let account = target.account();
+    let connected = forge::is_connected(&account, &st.settings.connections);
     let Some(fs) = st.forge.as_mut() else { return };
+    if !forge::may_contact(&account, &st.settings.connections) {
+        let msg = format!("not connected to {} at {}", account.provider.name(), account.display());
+        if fs.host.as_ref() == Some(&target) {
+            fs.host_status = Status::Error(msg.clone());
+        }
+        if fs.tracker.as_ref() == Some(&target) {
+            fs.tracker_status = Status::Error(msg);
+        }
+        return;
+    }
     fs.loading += 1;
-    let auth = if interactive { None } else { fs.auth.get(&target.account().key()).cloned() };
-    fx.push(Effect::Forge { target, cwd, auth, interactive, call });
+    let auth = if interactive { None } else { fs.auth.get(&account.key()).cloned() };
+    fx.push(Effect::Forge { target, cwd, auth, interactive, connected, call });
 }
 
 /// Refreshes pull requests and issues; `force` ignores the interval and earlier failures.

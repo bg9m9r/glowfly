@@ -184,16 +184,16 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool) -> Option<Msg>
         Effect::UndoRedo { cwd, action, redo } => Some(undo_redo(&cwd, action, redo)),
         Effect::LoadRebasePlan { workdir, base, generation } => Some(rebase::load_plan(&workdir, &base, generation)),
         Effect::InteractiveRebase { cwd, request } => Some(rebase::start(&cwd, &request)),
-        Effect::Forge { target, cwd, auth, interactive, call } => {
-            Some(Msg::ForgeReplied(forge_call(target, &cwd, auth, interactive, call)))
+        Effect::Forge { target, cwd, auth, interactive, connected, call } => {
+            Some(Msg::ForgeReplied(forge_call(target, &cwd, auth, interactive, connected, call)))
         }
         Effect::RepoOwners { account, cwd } => {
-            let result = forge::resolve_auth(&account, &cwd, true).and_then(|a| forge::repo_owners(&account, &a)).map_err(err);
+            let result = forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::repo_owners(&account, &a)).map_err(err);
             Some(Msg::PublishOwners { account, result })
         }
         Effect::CreateRepo { account, cwd, user, repo, branch } => {
             let result =
-                forge::resolve_auth(&account, &cwd, true).and_then(|a| forge::create_repo(&account, &a, &user, &repo)).map_err(err);
+                forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::create_repo(&account, &a, &user, &repo)).map_err(err);
             Some(Msg::Published { workdir: cwd, branch, result })
         }
         Effect::Connect { account, user, token, cwd } => {
@@ -336,10 +336,17 @@ fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::Path
     (true, output.trim_end().to_owned())
 }
 
-fn forge_call(target: trellis_core::forge::Target, cwd: &Path, auth: Option<Auth>, interactive: bool, call: ForgeCall) -> ForgeReply {
+fn forge_call(
+    target: trellis_core::forge::Target,
+    cwd: &Path,
+    auth: Option<Auth>,
+    interactive: bool,
+    connected: bool,
+    call: ForgeCall,
+) -> ForgeReply {
     let auth = match auth {
         Some(a) => a,
-        None => match forge::resolve_auth(&target.account(), cwd, interactive) {
+        None => match forge::resolve_auth(&target.account(), cwd, interactive, connected) {
             Ok(a) => a,
             Err(e) => return ForgeReply { target, auth: None, results: vec![ForgeResult::AuthFailed(err(e))] },
         },

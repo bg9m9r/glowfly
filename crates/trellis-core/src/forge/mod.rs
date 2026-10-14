@@ -16,7 +16,10 @@ mod publish;
 mod refs;
 mod remote;
 
-pub use auth::{Auth, delete_token, forget_credential_manager, from_credential_manager, resolve_auth, save_token};
+pub use auth::{
+    Auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact, resolve_auth,
+    save_token,
+};
 use http::{dec, enc, get, get_text, post};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, mention};
@@ -117,7 +120,7 @@ impl Provider {
         }
     }
 
-    /// Environment variable checked before saved credentials.
+    /// Environment variable checked before saved credentials (on the public host only).
     pub fn env_var(self) -> Option<&'static str> {
         match self {
             Provider::GitHub | Provider::GitHubEnterprise => Some("GITHUB_TOKEN"),

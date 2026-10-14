@@ -251,6 +251,8 @@ pub enum Effect {
         cwd: PathBuf,
         auth: Option<Auth>,
         interactive: bool,
+        /// The user connected this account in Preferences (lets GCM sign in to a self-hosted server).
+        connected: bool,
         call: ForgeCall,
     },
     /// Where the signed-in user can create repositories (their login, then organizations).

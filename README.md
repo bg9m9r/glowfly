@@ -62,7 +62,9 @@ With no path it reopens the last repository. See [TODO.md](TODO.md) for the road
 
 The code host is detected from the remote URL (`origin` preferred). Self-hosted servers are
 recognized once connected in Preferences, or by common URL shapes (`gitlab.*`, `github.*`,
-`/scm/` for Bitbucket). The issue tracker defaults to the host's own issues, and can be switched
+`/scm/` for Bitbucket); a server recognized only by its URL shape is not contacted until you
+connect it. The `*_TOKEN` environment variables are used only for github.com, gitlab.com and
+Azure DevOps, never for self-hosted servers. The issue tracker defaults to the host's own issues, and can be switched
 to a connected Jira site (optionally one project) under Repo-Specific Preferences > Issue
 Tracker.
 
