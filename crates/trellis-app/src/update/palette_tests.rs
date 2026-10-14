@@ -272,7 +272,7 @@ fn run_create_tag_opens_dialog() {
     assert!(st.palette.is_none());
     assert!(matches!(
         &st.modal,
-        Some(Modal::NewTag { at, name, message, annotated: false }) if *at == head.to_string() && name.is_empty() && message.is_empty()
+        Some(Modal::NewTag(f)) if f.at == head.to_string() && f.name.is_empty() && f.message.is_empty() && !f.annotated
     ));
 
     st.modal = None;
@@ -281,7 +281,7 @@ fn run_create_tag_opens_dialog() {
     st.selection = Selection::Commit(oid);
     open_palette(&mut st);
     run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true }));
-    assert!(matches!(&st.modal, Some(Modal::NewTag { at, annotated: true, .. }) if *at == oid.to_string()));
+    assert!(matches!(&st.modal, Some(Modal::NewTag(f)) if f.annotated && f.at == oid.to_string()));
 
     let mut st = state();
     run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: false }));
@@ -296,7 +296,7 @@ fn new_tag_msg_opens_modal() {
     run(&mut st, Msg::NewTag { at: sha.clone(), annotated: true });
     assert!(matches!(
         &st.modal,
-        Some(Modal::NewTag { at, name, message, annotated: true }) if *at == sha && name.is_empty() && message.is_empty()
+        Some(Modal::NewTag(f)) if f.at == sha && f.name.is_empty() && f.message.is_empty() && f.annotated
     ));
 }
 

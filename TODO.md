@@ -424,8 +424,14 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Ctrl+T, Ctrl+Shift+T and Ctrl+,).
   - [x] File finder: pick any tracked file to open its history (blame waits for the blame gutter)
   - [x] Create tag and annotated tag
-    - [ ] Check tag names live in the New tag dialog (ref-format rules, an existing tag)
-    - [ ] Push the new tag to a remote right after creating it
+    - [x] Check tag names live in the New tag dialog (ref-format rules, an existing tag)
+    - [x] Push the new tag to a remote right after creating it
+    - [ ] Push an existing tag to a remote from the sidebar TAGS menu and the graph's tag labels
+    - [ ] Remember the last remote picked for tag pushes per repository
+    - [ ] Warn (without blocking) when a new tag name matches a branch name
+    - [ ] Replace (force-move) an existing tag from the New tag dialog
+    - [ ] Catch existing tags that point at non-commit objects before running git
+    - [ ] A Preferences control for pushing new tags by default
   - [x] Shortcut hints next to entries (Ctrl+F, Ctrl+, Ctrl+W)
     - [x] A Refresh entry carrying the F5 hint
     - [ ] Cmd-style labels on macOS for the hints and tooltips

@@ -20,6 +20,7 @@ pub mod settings;
 pub mod signing;
 pub mod spell;
 pub mod tabs;
+pub mod tag_ops;
 #[cfg(test)]
 pub(crate) mod testutil;
 pub mod undo;

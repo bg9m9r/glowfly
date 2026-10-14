@@ -132,3 +132,14 @@ fn stage_renames_defaults_on() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
     assert!(!back.stage_renames);
 }
+
+#[test]
+fn push_new_tags_defaults_off() {
+    assert!(!Settings::default().push_new_tags);
+    // Files written before the checkbox existed don't push new tags.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.push_new_tags);
+    let on = Settings { push_new_tags: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.push_new_tags);
+}

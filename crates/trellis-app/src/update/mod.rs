@@ -21,6 +21,7 @@ mod rebase;
 mod repo;
 mod selection;
 mod tabs;
+mod tags;
 mod undo;
 mod watch;
 mod work_files;
@@ -73,6 +74,8 @@ mod revert_tests;
 mod selection_tests;
 #[cfg(test)]
 mod tabs_tests;
+#[cfg(test)]
+mod tag_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
@@ -296,9 +299,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         }
         Msg::CloseModal => st.modal = None,
         Msg::NewBranch { start, name } => st.modal = Some(crate::state::Modal::NewBranch { start, name, checkout: true }),
-        Msg::NewTag { at, annotated } => {
-            st.modal = Some(crate::state::Modal::NewTag { at, name: String::new(), message: String::new(), annotated })
-        }
+        Msg::NewTag { .. } | Msg::CreateTag { .. } | Msg::SetPushNewTags(_) => tags::handle(st, msg, &mut fx),
         Msg::CloneDialog => {
             let parent = st.recent.first().and_then(|p| p.parent()).map(|p| p.display().to_string()).unwrap_or_default();
             st.modal = Some(crate::state::Modal::Clone { url: String::new(), parent });

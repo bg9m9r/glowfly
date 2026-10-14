@@ -20,6 +20,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let fs = st.forge.as_ref();
     let idle = st.job.is_none();
     let stage_renames = st.settings.stage_renames;
+    let push_tags = st.settings.push_new_tags;
     let mut close = false;
     let resp = egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
         ui.set_width(460.0);
@@ -69,8 +70,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     }
                 });
             }
-            Modal::NewTag { at, name, message, annotated } => {
-                if super::tag_dialog::new_tag(ui, at, name, message, *annotated, !prompting, msgs) {
+            Modal::NewTag(form) => {
+                if super::tag_dialog::new_tag(ui, form, snap, push_tags, !prompting, msgs) {
                     close = true;
                 }
             }

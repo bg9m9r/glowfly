@@ -323,6 +323,16 @@ pub enum Msg {
         at: String,
         annotated: bool,
     },
+    /// Creates tag `name` at commit `at` (a full sha), annotated when `message` isn't empty,
+    /// then pushes it to remote `push`.
+    CreateTag {
+        at: String,
+        name: String,
+        message: String,
+        push: Option<String>,
+    },
+    /// The New tag dialog's push checkbox, saved in settings.
+    SetPushNewTags(bool),
     CloneDialog,
     PickFolder(FolderPurpose),
 

@@ -42,6 +42,8 @@ crates/
     branch_ops.rs         branch command lines (rename, upstream, fast-forward without
                           checkout, push, delete with the remote branch), name checks,
                           fast-forward state
+    tag_ops.rs            tag name checks (ref-format rules with a reason, existing and
+                          clashing tags) and the tag and tag-push command lines
     rebase/               interactive rebase: types (mod.rs), plan (the commits to replay),
                           todo (checking and writing the todo list, reword message files, and
                           installing it over git's as the sequence-editor helper), run
@@ -87,7 +89,8 @@ crates/
                           state and modes: the command list or a command's sub-list, ranked
                           per query), palette_commands (the commands available now: labels,
                           hidden keywords, details and shortcut hints), files (the
-                          New file and Rename file dialogs' path form)
+                          New file and Rename file dialogs' path form), tags (the New tag
+                          dialog's form, its name check and push remote)
     msg.rs                Msg: user intents and background results
     effect.rs             Effect: everything slow or outside the process
     runner/               executes effects on worker threads, reports back as Msg (mod.rs);
@@ -112,7 +115,9 @@ crates/
                           template prefill), palette (opening the command palette, moving,
                           running a command, entering and leaving a sub-list and loading its
                           items), highlight (starting the background highlighting pass,
-                          attaching its result if the same diff is still shown)
+                          attaching its result if the same diff is still shown), tags
+                          (opening the New tag dialog, creating the tag and pushing it in
+                          one job, the push setting)
                           (+ headless tests in update/tests.rs)
     ui/                   egui views: toolbar, sidebar, graph/ (select: click modifiers and
                           arrow keys), details, commit_box (the WIP commit message, options,
@@ -126,7 +131,7 @@ crates/
                           file_menu (file actions in file rows' menus, commit and comparison
                           rows included: restore, open, show, new file in this folder, rename,
                           delete), file_dialogs (new file, rename file), tag_dialog (new tag,
-                          plain or annotated),
+                          plain or annotated, name checks, push to a remote),
                           askpass (the credential prompt, drawn above every other dialog),
                           palette (the Ctrl+P command palette overlay),
                           status, prefs/ (editor: the Editor page), theme, widgets

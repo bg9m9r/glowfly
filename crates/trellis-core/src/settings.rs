@@ -175,6 +175,9 @@ pub struct Settings {
     pub push_after_commit: bool,
     /// Rename tracked files with git mv so the rename is staged (rename dialog checkbox).
     pub stage_renames: bool,
+    /// Push a new tag to a remote right after creating it (New tag dialog checkbox).
+    #[serde(default)]
+    pub push_new_tags: bool,
 
     /// Connected services. Secrets live in the OS credential store or Git Credential
     /// Manager, never here.
@@ -220,6 +223,7 @@ impl Default for Settings {
             diff_word_highlights: true,
             push_after_commit: false,
             stage_renames: true,
+            push_new_tags: false,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),
