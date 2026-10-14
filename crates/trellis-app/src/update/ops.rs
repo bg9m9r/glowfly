@@ -14,7 +14,15 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         Msg::Tick(t) => auto_fetch(st, t, fx),
         Msg::StageFile(p) => local(st, LocalOp::StageFile(p), fx),
         Msg::UnstageFile(p) => local(st, LocalOp::UnstagePaths(vec![p]), fx),
-        Msg::StageAll => local(st, LocalOp::StageAll, fx),
+        Msg::StageAll => {
+            // Staging a conflicted file marks it resolved, markers and all, so that is done
+            // file by file in the conflict view. A toast, not the log: Ctrl+Shift+S sends this.
+            if st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.status == '!')) {
+                st.toast(false, "Resolve the conflicted files in the conflict view before staging everything.", now);
+                return;
+            }
+            local(st, LocalOp::StageAll, fx);
+        }
         Msg::UnstageAll => {
             let paths = st.snap.as_ref().map(|s| s.staged.iter().map(|f| f.path.clone()).collect()).unwrap_or_default();
             local(st, LocalOp::UnstagePaths(paths), fx);

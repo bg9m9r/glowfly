@@ -143,6 +143,18 @@ fn stage_and_unstage_all_need_files() {
 }
 
 #[test]
+fn stage_all_refuses_while_files_are_conflicted() {
+    let (mut st, dir) = with_repo("keys-all-conflict", unstaged());
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "f.txt".into(), status: '!' });
+    assert!(key(&mut st, KeyAction::StageAll).is_empty(), "the key stages nothing");
+    assert!(update(&mut st, Msg::StageAll, Instant::now()).is_empty(), "nor does the button");
+    let toast = st.toasts.last().expect("a toast says why");
+    assert!(!toast.ok && toast.text.contains("conflict view"), "{}", toast.text);
+    assert!(st.log.is_empty(), "a keypress doesn't open the log");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn only_the_sheet_key_works_under_preferences_or_a_credential_prompt() {
     let (mut st, dir) = with_repo("keys-covered", unstaged());
     let snap = st.snap.as_mut().unwrap();
