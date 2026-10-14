@@ -201,11 +201,14 @@ pub enum Msg {
     },
     /// Write `path` as of commit `oid` into the working tree (its parent's version when `deleted`,
     /// i.e. the commit deleted it). `confirmed: false` opens the confirmation first.
+    /// `overwrite` is set once the user was warned that the file's current contents will be lost;
+    /// without it, core refuses to write over contents that discarding couldn't bring back.
     RestoreFile {
         oid: Oid,
         path: String,
         deleted: bool,
         confirmed: bool,
+        overwrite: bool,
     },
     Commit,
     PrefillAmend,
@@ -384,6 +387,13 @@ pub enum Msg {
         path: String,
         oid: Oid,
         result: Result<RestoredFrom, String>,
+    },
+    /// A RestoreFile without `overwrite` found contents at `path` that only the working tree
+    /// holds (`reason` says why), so it wrote nothing.
+    RestoreWouldOverwrite {
+        path: String,
+        oid: Oid,
+        reason: String,
     },
     JobDone {
         ok: bool,

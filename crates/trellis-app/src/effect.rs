@@ -157,10 +157,12 @@ pub enum Effect {
         expected: Hunk,
     },
     /// Writes `path` from commit `oid` (or its parent) into the working tree only.
+    /// Without `overwrite`, refuses when the file's current contents would be lost.
     RestoreFile {
         workdir: PathBuf,
         oid: Oid,
         path: String,
+        overwrite: bool,
     },
     /// The commits that changed `path`, examining at most `limit` commits.
     LoadFileHistory {

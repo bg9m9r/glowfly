@@ -24,7 +24,7 @@ const DELETED_IN_WORKDIR: &str = "Not in your working tree (deleted)";
 pub(super) fn restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, oid: Oid, path: &str, status: char) {
     let deleted = status == 'D';
     let label = if deleted { "Restore the deleted file…" } else { "Restore this version…" };
-    menu_item(msgs, ui, label, Msg::RestoreFile { oid, path: path.to_owned(), deleted, confirmed: false });
+    menu_item(msgs, ui, label, Msg::RestoreFile { oid, path: path.to_owned(), deleted, confirmed: false, overwrite: false });
 }
 
 /// Open with default app and show in folder, disabled with `missing` as the reason.

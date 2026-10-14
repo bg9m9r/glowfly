@@ -27,6 +27,10 @@ pub enum Error {
     Keyring(#[from] keyring::Error),
     #[error("{0}")]
     Unsupported(String),
+    /// A write was refused because it would destroy working-tree contents nothing else holds;
+    /// the text says why. Asking the user and retrying with overwriting allowed is the remedy.
+    #[error("{0}")]
+    WouldOverwrite(String),
     #[error("{0}")]
     Other(String),
 }

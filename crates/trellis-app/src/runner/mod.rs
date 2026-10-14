@@ -169,9 +169,10 @@ fn execute_unscoped(effect: Effect) -> Option<Msg> {
             let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
             Some(Msg::HunkReverted { path: target.path().to_owned(), result })
         }
-        Effect::RestoreFile { workdir, oid, path } => {
-            Some(Msg::FileRestored { result: repo::restore_file(&workdir, oid, &path).map_err(err), path, oid })
-        }
+        Effect::RestoreFile { workdir, oid, path, overwrite } => Some(match repo::restore_file(&workdir, oid, &path, overwrite) {
+            Err(trellis_core::error::Error::WouldOverwrite(reason)) => Msg::RestoreWouldOverwrite { path, oid, reason },
+            result => Msg::FileRestored { result: result.map_err(err), path, oid },
+        }),
         Effect::RunGit { cwd, cmds, write_file, record, prompts } => {
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             let (ok, output) = run_git(&cwd, &cmds, write_file, prompts);

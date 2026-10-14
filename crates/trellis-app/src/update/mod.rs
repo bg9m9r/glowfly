@@ -156,6 +156,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 st.log(false, format!("Could not revert the hunk in {path}: {e}"));
             } else if let Msg::FileRestored { path, result: Err(e), .. } = *msg {
                 st.log(false, format!("Could not restore {path}: {e}"));
+            } else if let Msg::RestoreWouldOverwrite { path, reason, .. } = *msg {
+                st.log(false, format!("Did not restore {path}: {reason}."));
             } else {
                 tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display());
             }
@@ -182,9 +184,11 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::HunkReverted { .. }
         | Msg::JobDone { .. } => ops::handle(st, msg, now, &mut fx),
         Msg::Undo | Msg::Redo => undo::handle(st, msg, now, &mut fx),
-        Msg::RestoreFile { .. } | Msg::FileRestored { .. } | Msg::OpenWorkingFile(_) | Msg::ShowWorkingFile(_) => {
-            files::handle(st, msg, now, &mut fx)
-        }
+        Msg::RestoreFile { .. }
+        | Msg::FileRestored { .. }
+        | Msg::RestoreWouldOverwrite { .. }
+        | Msg::OpenWorkingFile(_)
+        | Msg::ShowWorkingFile(_) => files::handle(st, msg, now, &mut fx),
         Msg::RenameBranchDialog(_)
         | Msg::RenameBranch { .. }
         | Msg::SetUpstreamDialog(_)

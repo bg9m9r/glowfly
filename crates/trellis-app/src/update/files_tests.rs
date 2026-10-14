@@ -32,7 +32,7 @@ fn short(oid: Oid) -> String {
 }
 
 fn ask(oid: Oid, path: &str, deleted: bool) -> Msg {
-    Msg::RestoreFile { oid, path: path.into(), deleted, confirmed: false }
+    Msg::RestoreFile { oid, path: path.into(), deleted, confirmed: false, overwrite: false }
 }
 
 fn confirm_body(st: &AppState) -> &str {
@@ -53,7 +53,9 @@ fn restore_asks_first() {
     assert_eq!(button, "Restore");
     assert!(body.contains(&short(oid)) && body.contains("left unstaged"), "{body}");
     assert!(!body.contains("overwritten"));
-    assert!(matches!(&**then, Msg::RestoreFile { oid: o, path, deleted: false, confirmed: true } if *o == oid && path == "a.txt"));
+    assert!(
+        matches!(&**then, Msg::RestoreFile { oid: o, path, deleted: false, confirmed: true, overwrite: false } if *o == oid && path == "a.txt")
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -92,7 +94,7 @@ fn confirmed_restore_sends_effect() {
     run(&mut st, ask(oid, "a.txt", false));
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert!(
-        matches!(&fx[..], [Effect::RestoreFile { workdir, oid: o, path }] if *workdir == dir && *o == oid && path == "a.txt"),
+        matches!(&fx[..], [Effect::RestoreFile { workdir, oid: o, path, overwrite: true }] if *workdir == dir && *o == oid && path == "a.txt"),
         "{fx:?}"
     );
     assert_eq!(fx[0].scope(), Some(&dir));
@@ -142,7 +144,7 @@ fn end_to_end_restore() {
     let mut st = state();
     drive(&mut st, Msg::Open(dir.clone()));
     assert!(st.snap.as_ref().unwrap().unstaged.is_empty());
-    drive(&mut st, Msg::RestoreFile { oid: first, path: "a.txt".into(), deleted: false, confirmed: true });
+    drive(&mut st, Msg::RestoreFile { oid: first, path: "a.txt".into(), deleted: false, confirmed: true, overwrite: false });
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
     assert!(st.snap.as_ref().unwrap().unstaged.iter().any(|f| f.path == "a.txt"), "shows as an unstaged change");
     assert!(st.snap.as_ref().unwrap().staged.is_empty(), "nothing staged");
@@ -162,5 +164,47 @@ fn open_and_show_build_absolute_paths() {
     let fx = run(&mut st, Msg::ShowWorkingFile("src/a.txt".into()));
     assert!(matches!(&fx[..], [Effect::RevealPath(p)] if *p == dir.join("src/a.txt")), "{fx:?}");
     assert_eq!(fx[0].scope(), None, "not tied to a tab");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn ignored_file_is_not_overwritten_without_a_warning() {
+    // .env was committed once, then untracked and ignored; the local copy holds secrets.
+    // Status never lists it, so the first confirmation can't warn, and core must catch it.
+    let dir = scratch_repo("files-ignored");
+    git(&dir, &["config", "core.autocrlf", "false"]);
+    std::fs::write(dir.join(".env"), "TOKEN=old\n").unwrap();
+    git(&dir, &["add", ".env"]);
+    git(&dir, &["commit", "-q", "-m", "env"]);
+    let old = head(&dir);
+    git(&dir, &["rm", "-q", "--cached", ".env"]);
+    std::fs::write(dir.join(".gitignore"), ".env\n").unwrap();
+    git(&dir, &["add", ".gitignore"]);
+    git(&dir, &["commit", "-q", "-m", "ignore env"]);
+    std::fs::write(dir.join(".env"), "TOKEN=secret\n").unwrap();
+    let mut st = state();
+    drive(&mut st, Msg::Open(dir.clone()));
+
+    drive(&mut st, ask(old, ".env", false));
+    assert!(!confirm_body(&st).contains("overwritten"), "status shows nothing to warn about");
+    drive(&mut st, Msg::ConfirmAccepted);
+    assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=secret\n", "nothing written");
+    let Some(Modal::Confirm { body, then, .. }) = &st.modal else { panic!("asks again") };
+    assert!(body.contains("ignored") && body.contains("can't be recovered") && body.contains(&short(old)), "{body}");
+    assert!(matches!(&**then, Msg::RestoreFile { confirmed: true, overwrite: true, .. }));
+
+    drive(&mut st, Msg::ConfirmAccepted);
+    assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=old\n", "written once the user agreed");
+    assert!(st.toasts.last().is_some_and(|t| t.ok));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn would_overwrite_for_inactive_tab_is_logged() {
+    let (mut st, dir) = loaded("files-scoped-overwrite");
+    let msg = Msg::RestoreWouldOverwrite { path: ".env".into(), oid: head(&dir), reason: ".env is ignored by git".into() };
+    run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) });
+    assert!(st.modal.is_none());
+    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Did not restore .env: .env is ignored by git."));
     let _ = std::fs::remove_dir_all(&dir);
 }

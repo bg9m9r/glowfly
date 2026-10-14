@@ -14,12 +14,26 @@ fn short(oid: Oid) -> String {
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::RestoreFile { oid, path, deleted, confirmed: false } => ask_restore(st, oid, path, deleted),
-        Msg::RestoreFile { oid, path, confirmed: true, .. } => {
+        Msg::RestoreFile { oid, path, deleted, confirmed: false, .. } => ask_restore(st, oid, path, deleted),
+        Msg::RestoreFile { oid, path, confirmed: true, overwrite, .. } => {
             // `deleted` only shapes the wording; core decides which version to write.
             if let Some(workdir) = st.workdir() {
-                fx.push(Effect::RestoreFile { workdir, oid, path });
+                fx.push(Effect::RestoreFile { workdir, oid, path, overwrite });
             }
+        }
+        Msg::RestoreWouldOverwrite { path, oid, reason } => {
+            // Status said the file was clean, but the disk disagrees (an ignored file, edits git
+            // skips, or a stale status). Ask again, this time saying what will be lost.
+            st.modal = Some(Modal::Confirm {
+                title: "Restore file".into(),
+                body: format!(
+                    "{reason}.\n\nRestoring the version from commit {} replaces it, and its current contents can't be recovered.",
+                    short(oid)
+                ),
+                button: "Restore anyway".into(),
+                then: Box::new(Msg::RestoreFile { oid, path, deleted: false, confirmed: true, overwrite: true }),
+            });
+            super::repo::refresh_status(st, fx);
         }
         Msg::FileRestored { path, oid, result } => {
             match result {
@@ -55,8 +69,10 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
     }
 }
 
-/// Opens the confirmation for restoring `path` from `oid`, warning when it has uncommitted
-/// changes. A conflicted path is refused instead.
+/// Opens the confirmation for restoring `path` from `oid`, warning when status shows uncommitted
+/// changes. Status can miss some (ignored files, edits git skips), so without that warning the
+/// restore runs with `overwrite: false` and core checks the disk before writing. A conflicted
+/// path is refused instead.
 fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
     let Some(snap) = &st.snap else { return };
     if snap.unstaged.iter().any(|f| f.path == path && f.status == '!') {
@@ -79,6 +95,6 @@ fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
         title: "Restore file".into(),
         body: format!("{source}\n\n{note}"),
         button: "Restore".into(),
-        then: Box::new(Msg::RestoreFile { oid, path, deleted, confirmed: true }),
+        then: Box::new(Msg::RestoreFile { oid, path, deleted, confirmed: true, overwrite: dirty }),
     });
 }

@@ -96,7 +96,7 @@ fn file_menu_clicks_send_msgs() {
     h.get_by_label("Restore this version…").click();
     h.run();
     assert!(
-        matches!(&h.state()[..], [Msg::RestoreFile { oid: o, path, deleted: false, confirmed: false }] if *o == oid() && path == "src/app.txt")
+        matches!(&h.state()[..], [Msg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false }] if *o == oid() && path == "src/app.txt")
     );
     drop(h);
 
