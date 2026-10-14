@@ -141,8 +141,20 @@ Done except the two items that wait on other features (repo groups, tabs and wor
         whitespace is ignored (they can differ in whitespace only; context text inside hunks
         then comes from the new side and doesn't match the old text, so such diffs fall back
         to per-hunk colors)
-    - [ ] More languages than syntect's defaults (TOML, TypeScript/TSX, PowerShell,
+    - [x] More languages than syntect's defaults (TOML, TypeScript/TSX, PowerShell,
       Dockerfile, Kotlin, Swift) by bundling extra syntax definitions
+      - [ ] Highlight `.jsx` files (the JavaScript (Babel) grammar is left out of the
+        fancy-regex set): map `.jsx` to the TSX grammar or bundle a compatible JSX grammar
+      - [ ] PowerShell: color `$(...)` subexpressions inside strings as code, splatting
+        (`@params`), method and static member calls (`[Math]::Round`, `.Trim()`), and
+        here-strings that don't start at the end of a line
+      - [ ] Color Kotlin annotations (`@Suppress(...)`), which the bundled grammar leaves
+        unscoped
+      - [ ] Color Dockerfile `RUN` commands as shell (the hidden "Dockerfile (with bash)"
+        grammar)
+      - [ ] Trim the bundled syntax set to the languages Trellis wants, if the extra ~0.6 MB
+        of binary size matters
+      - [ ] Show the third-party notices inside the app (an About dialog)
     - [ ] Language overrides from `.gitattributes` (`linguist-language`) or a per-file picker
     - [x] Color the function context after `@@` in hunk headers
       - [ ] Take the context from `.gitattributes` diff drivers (`diff=<lang>`, `xfuncname`)

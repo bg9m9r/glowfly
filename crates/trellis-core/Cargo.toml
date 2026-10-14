@@ -20,10 +20,17 @@ getrandom = "0.3"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 keyring = { version = "3", features = ["windows-native", "apple-native"] }
 sha2 = "0.11.1"
-syntect = { version = "5.2", default-features = false, features = ["default-syntaxes", "regex-fancy"] }
+syntect = { version = "5.3", default-features = false, features = ["parsing", "dump-load", "regex-fancy"] }
 ureq = { version = "2", features = ["json"] }
 thiserror = "2"
 trash = "5.2"
+
+[build-dependencies]
+syntect = { version = "5.3", default-features = false, features = ["parsing", "yaml-load", "dump-create", "regex-fancy"] }
+two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
+
+[dev-dependencies]
+two-face = { version = "0.5.2", default-features = false, features = ["syntect-fancy"] }
 
 # Linux: save tokens in the desktop keyring (GNOME Keyring, KWallet) through the Secret Service.
 [target."cfg(target_os = \"linux\")".dependencies]

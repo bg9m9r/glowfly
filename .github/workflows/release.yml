@@ -93,7 +93,7 @@ jobs:
         run: |
           name="trellis-$TAG-${{ matrix.target }}"
           mkdir "$name"
-          cp LICENSE-MIT LICENSE-APACHE README.md "$name"/
+          cp LICENSE-MIT LICENSE-APACHE README.md THIRD-PARTY-NOTICES.md "$name"/
           if [ -f CHANGELOG.md ]; then cp CHANGELOG.md "$name"/; fi
           if [ "$RUNNER_OS" = Windows ]; then
             cp "target/${{ matrix.target }}/release/trellis.exe" "$name"/

@@ -1,5 +1,7 @@
 //! Syntax highlighting of diff lines with syntect, reduced to a few token kinds that the UI maps
 //! to its own palette (no syntect themes). It runs where diffs are loaded, off the UI thread.
+//! The syntax set is syntect's defaults plus extra bundled definitions (TOML, TypeScript,
+//! PowerShell, Dockerfile, Kotlin, Swift and more), dumped at build time (see `syntaxes`).
 //!
 //! The old file (context and `-` lines) and the new file (context and `+` lines) are parsed in
 //! separate passes. Hunks are parsed in context: `repo::load_diff_for_view` loads the old file's
@@ -28,16 +30,19 @@ use crate::repo::{DiffLine, FileDiff};
 use header::parse_headers;
 use parse::{Classifier, Stop, parse_hunk, parse_in_context};
 use reuse::{Cost, Previous};
-use std::sync::{Arc, LazyLock};
-use syntect::parsing::{Scope, SyntaxReference, SyntaxSet};
+use std::sync::Arc;
+use syntaxes::{SYNTAXES, find_syntax};
+use syntect::parsing::SyntaxReference;
 
 mod context;
 mod header;
 mod parse;
 mod reuse;
+mod syntaxes;
 
 pub use context::OldText;
 pub use header::context_start;
+pub use syntaxes::syntax_name;
 
 // Parsing costs roughly 90 ms per 1,000 short lines and 1.4 ms per KB of text (release build),
 // so the inline limits keep a load's worst case near 150-200 ms, and the background limits near
@@ -130,58 +135,6 @@ impl DiffHighlight {
     fn hunk_pending(&self, hunk: usize) -> bool {
         self.pending.get(hunk).copied().unwrap_or(false)
     }
-}
-
-/// Immutable data loaded once on first use: the bundled syntax definitions and the
-/// scope-to-kind rules.
-struct Syntaxes {
-    set: SyntaxSet,
-    rules: Vec<(Scope, TokenKind)>,
-}
-
-static SYNTAXES: LazyLock<Syntaxes> = LazyLock::new(|| {
-    use TokenKind::*;
-    let table: &[(&[&str], TokenKind)] = &[
-        (&["comment"], Comment),
-        (&["string", "markup.raw"], String),
-        (&["constant.numeric"], Number),
-        (&["constant", "support.constant", "variable.language"], Constant),
-        (&["keyword", "storage", "entity.name.tag", "markup.heading"], Keyword),
-        (
-            &[
-                "entity.name.type",
-                "entity.name.class",
-                "entity.name.struct",
-                "entity.name.enum",
-                "entity.name.trait",
-                "entity.name.union",
-                "entity.name.interface",
-                "entity.other.inherited-class",
-                "support.type",
-                "support.class",
-            ],
-            Type,
-        ),
-        (&["entity.name.function", "support.function", "variable.function"], Function),
-        (&["entity.other.attribute-name", "meta.annotation"], Attribute),
-    ];
-    let rules = table.iter().flat_map(|(scopes, kind)| scopes.iter().map(move |s| (Scope::new(s).expect("valid scope"), *kind))).collect();
-    Syntaxes { set: SyntaxSet::load_defaults_newlines(), rules }
-});
-
-fn find_syntax(path: &str, first_line: Option<&str>) -> Option<&'static SyntaxReference> {
-    let set = &SYNTAXES.set;
-    let name = path.rsplit('/').next().unwrap_or(path);
-    let by_ext = name.rsplit_once('.').and_then(|(_, ext)| set.find_syntax_by_extension(ext));
-    let found =
-        by_ext.or_else(|| set.find_syntax_by_extension(name)).or_else(|| first_line.and_then(|l| set.find_syntax_by_first_line(l)))?;
-    (found.name != "Plain Text").then_some(found)
-}
-
-/// The language for `path`: by extension, then by whole file name (`Makefile`), then by the
-/// file's first line (shebangs). Never touches the disk. `None` for unknown or plain text.
-pub fn syntax_name(path: &str, first_line: Option<&str>) -> Option<&'static str> {
-    find_syntax(path, first_line).map(|s| s.name.as_str())
 }
 
 /// Token spans for every line of `diff`, each hunk parsed on its own (no old text): see
@@ -337,5 +290,9 @@ mod background_tests;
 mod context_tests;
 #[cfg(test)]
 mod header_tests;
+#[cfg(test)]
+mod language_tests;
+#[cfg(test)]
+mod notice_tests;
 #[cfg(test)]
 mod tests;

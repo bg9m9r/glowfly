@@ -63,8 +63,11 @@ crates/
     highlight.rs          syntax highlighting of diff lines (syntect), as token kinds:
                           inline and background passes, hunks parsed in context from the
                           old text (highlight/context.rs, parse.rs), reuse/carry in
-                          highlight/reuse.rs, and the function context of hunk headers
-                          (highlight/header.rs)
+                          highlight/reuse.rs, the function context of hunk headers
+                          (highlight/header.rs), and the syntax set and scope rules
+                          (highlight/syntaxes.rs), dumped at build time by build.rs from
+                          the two-face set plus Trellis's own grammars in
+                          crates/trellis-core/syntaxes/
     intraline.rs          word-level changes inside paired removed/added diff lines
     tabs.rs               tab stops for drawing diff text (lines keep raw tabs), with a byte
                           map so syntax spans and changed-word ranges follow the expansion
@@ -199,8 +202,8 @@ crates/
 4. No global mutable state; pass values in. The one exception is the active palette
    (`ui::theme::color`): a thread-local flag the shell sets at the start of each frame, so
    renders on different threads (parallel snapshot tests) can't affect each other. Immutable
-   data loaded once (the syntax definitions in `highlight.rs`) is not mutable state, and
-   neither is the askpass environment in `gitcli` (`enable_askpass`): set once by the app
+   data loaded once (the syntax definitions in `highlight/syntaxes.rs`) is not mutable state,
+   and neither is the askpass environment in `gitcli` (`enable_askpass`): set once by the app
    shell at startup, never changed afterwards and never set in tests.
 5. Each hosting provider implements `Forge`; the UI never matches on provider-specific types.
 6. `scripts/check.ps1` (fmt, clippy -D warnings, tests) must pass before committing.

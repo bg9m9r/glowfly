@@ -168,7 +168,7 @@ impl Classifier {
 
     /// The innermost scope that some rule matches decides; scopes no rule covers (punctuation,
     /// meta, source, plain variables) are skipped, so `//` resolves to its comment.
-    fn classify(&mut self, stack: &[Scope]) -> TokenKind {
+    pub(super) fn classify(&mut self, stack: &[Scope]) -> TokenKind {
         for &scope in stack.iter().rev() {
             let rules = self.rules;
             let kind = *self.cache.entry(scope).or_insert_with(|| rules.iter().find(|(r, _)| r.is_prefix_of(scope)).map(|(_, k)| *k));

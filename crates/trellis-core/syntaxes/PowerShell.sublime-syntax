@@ -1,0 +1,109 @@
+%YAML 1.2
+---
+# PowerShell syntax for diff highlighting, written for Trellis.
+# Licensed under MIT OR Apache-2.0, like the rest of the project.
+#
+# It covers what diff coloring needs: comments, strings with interpolation, keywords,
+# declarations, variables, type literals, attributes, operators, cmdlet names and numbers.
+# Patterns must compile under fancy-regex (no possessive quantifiers or atomic groups).
+name: PowerShell
+scope: source.powershell
+file_extensions:
+  - ps1
+  - psm1
+  - psd1
+first_line_match: '^#!.*\b(?:pwsh|powershell)\b'
+
+variables:
+  id: '[A-Za-z_][A-Za-z0-9_]*'
+  # Not part of a longer word, variable or cmdlet name.
+  open: '(?<![\w$-])'
+  close: '(?![\w-])'
+
+contexts:
+  main:
+    - include: comments
+    - include: strings
+    # function Get-Thing, filter Keep-Even, workflow Run-All
+    - match: '(?i){{open}}(function|filter|workflow)\s+([\w-]+)'
+      captures:
+        1: keyword.declaration.function.powershell
+        2: entity.name.function.powershell
+    # class Point, enum Color
+    - match: '(?i){{open}}(class|enum)\s+({{id}})'
+      captures:
+        1: storage.type.powershell
+        2: entity.name.type.powershell
+    - match: '(?i)\$(?:true|false|null)\b'
+      scope: constant.language.powershell
+    - match: '(?i)\$(?:_|this|psitem|args|input|pscmdlet|psscriptroot|pscommandpath|psboundparameters|myinvocation)\b'
+      scope: variable.language.powershell
+    - match: '(?i)\$(?:global|local|script|private|using|env):{{id}}|\$\{[^}]*\}|\$\w+'
+      scope: variable.other.readwrite.powershell
+    # The closing lookahead keeps `ForEach-Object` from matching as `foreach`.
+    - match: '(?i){{open}}(?:begin|break|catch|continue|data|do|dynamicparam|else|elseif|end|exit|finally|for|foreach|if|in|param|process|return|switch|throw|trap|try|until|using|while){{close}}'
+      scope: keyword.control.powershell
+    # [CmdletBinding()], [Parameter(Mandatory)]
+    - match: '(?<=\[){{id}}(?:\.{{id}})*(?=\()'
+      scope: meta.annotation.powershell
+    # [string], [System.IO.File], [int[]]
+    - match: '(?<=\[){{id}}(?:\.{{id}})*(?:\[\])?(?=\])'
+      scope: support.type.powershell
+    # -eq, -ceq, -inotlike, -match, -f
+    - match: '(?i)-[ci]?(?:eq|ne|gt|ge|lt|le|like|notlike|match|notmatch|contains|notcontains|in|notin|replace|split|join|is|isnot|as|and|or|xor|not|band|bor|bxor|bnot|shl|shr|f)\b'
+      scope: keyword.operator.powershell
+    # Verb-Noun command names
+    - match: '{{open}}[A-Za-z]+-[A-Za-z]\w*{{close}}'
+      scope: support.function.powershell
+    # -Path, -NoNewline
+    - match: '(?<=\s)-{{id}}'
+      scope: variable.parameter.powershell
+    # 42, 3.5, 1e3, 0xFF, 10MB, 7d, 9L
+    - match: '(?i)\b0x[0-9a-f]+l?\b|\b\d+(?:\.\d+)?(?:e[+-]?\d+)?(?:kb|mb|gb|tb|pb|d|l)?\b'
+      scope: constant.numeric.powershell
+
+  comments:
+    - match: '<#'
+      push:
+        - meta_scope: comment.block.powershell
+        - match: '#>'
+          pop: true
+    - match: '#'
+      push:
+        - meta_scope: comment.line.number-sign.powershell
+        - match: '$'
+          pop: true
+
+  strings:
+    # Here-strings: the opening quote ends its line and the closing one starts a line.
+    - match: '@"\s*$'
+      push:
+        - meta_scope: string.unquoted.heredoc.powershell
+        - match: '^"@'
+          pop: true
+        - include: interpolation
+    - match: "@'\\s*$"
+      push:
+        - meta_scope: string.unquoted.heredoc.powershell
+        - match: "^'@"
+          pop: true
+    - match: '"'
+      push:
+        - meta_scope: string.quoted.double.powershell
+        # Before the closing quote, so that `""` is an escaped quote.
+        - include: interpolation
+        - match: '"'
+          pop: true
+    - match: "'"
+      push:
+        - meta_scope: string.quoted.single.powershell
+        - match: "''"
+          scope: constant.character.escape.powershell
+        - match: "'"
+          pop: true
+
+  interpolation:
+    - match: '`.|""'
+      scope: constant.character.escape.powershell
+    - match: '(?i)\$(?:{{id}}:)?{{id}}|\$\{[^}]*\}'
+      scope: variable.other.readwrite.powershell
