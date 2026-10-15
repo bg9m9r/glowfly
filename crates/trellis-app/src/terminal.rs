@@ -4,6 +4,25 @@
 use std::path::PathBuf;
 use trellis_core::terminal::TermInput;
 
+/// Carried by an `Output` message: dropping it tells the session's output thread that the
+/// message was handled (runner/terminal_out.rs). The default does nothing.
+#[derive(Default)]
+pub struct Ack(Option<Box<dyn FnOnce() + Send>>);
+
+impl Ack {
+    pub fn new(on_drop: impl FnOnce() + Send + 'static) -> Self {
+        Self(Some(Box::new(on_drop)))
+    }
+}
+
+impl Drop for Ack {
+    fn drop(&mut self) {
+        if let Some(f) = self.0.take() {
+            f();
+        }
+    }
+}
+
 pub enum TerminalMsg {
     /// Show or hide the panel (toolbar button, palette, Ctrl+`).
     Toggle,
@@ -28,6 +47,8 @@ pub enum TerminalMsg {
     Output {
         id: u64,
         bytes: Vec<u8>,
+        /// Dropped once the output has been handled: the session then sends what came since.
+        ack: Ack,
     },
     /// Session `id`'s shell ended; `code` is None when it is unknown.
     Exited {

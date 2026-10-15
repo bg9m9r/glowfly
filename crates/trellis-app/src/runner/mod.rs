@@ -35,6 +35,7 @@ mod saves;
 mod stats;
 mod submodules;
 mod terminal;
+mod terminal_out;
 mod worktrees;
 
 #[cfg(test)]

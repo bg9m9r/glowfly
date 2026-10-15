@@ -158,17 +158,10 @@ fn session<W: Waker + Clone>(id: u64, cwd: &Path, (rows, cols): (u16, u16), ch: 
     let Channels { rx, ctl, kill } = ch;
     let shell = pty::default_shell();
     let (out, exit) = (report.clone(), report.clone());
-    let spawned = pty::spawn(
-        cwd,
-        rows,
-        cols,
-        &shell,
-        move |bytes| out.send(TerminalMsg::Output { id, bytes }),
-        move |code| {
-            exit.send(TerminalMsg::Exited { id, code });
-            let _ = ctl.send(Control::Closed);
-        },
-    );
+    let spawned = pty::spawn(cwd, rows, cols, &shell, super::terminal_out::forward(id, move |m| out.send(m)), move |code| {
+        exit.send(TerminalMsg::Exited { id, code });
+        let _ = ctl.send(Control::Closed);
+    });
     let mut pty = match spawned {
         Ok(p) => p,
         Err(e) => return report.send(TerminalMsg::SpawnFailed { id, error: e.to_string() }),

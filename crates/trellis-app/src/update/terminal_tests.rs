@@ -81,18 +81,18 @@ fn toggle_without_a_repository_does_nothing() {
 fn output_feeds_the_screen_and_marks_running() {
     let (mut st, dir, id) = open_with_panel("term-output");
     run(&mut st, T::Started { id, program: "pwsh".into() });
-    assert!(run(&mut st, T::Output { id, bytes: b"hello\r\n\x1b[32mok".to_vec() }).is_empty());
+    assert!(run(&mut st, T::Output { id, bytes: b"hello\r\n\x1b[32mok".to_vec(), ack: Default::default() }).is_empty());
     let s = &st.terminal.sessions[0];
     assert_eq!((s.status.clone(), s.program.as_str()), (SessionStatus::Running, "pwsh"));
     assert!(s.screen.text().starts_with("hello\nok"), "{:?}", s.screen.text());
     assert_eq!(s.screen.rows()[1].spans[0].style.fg, TermColor::Indexed(2));
 
     let before = s.screen.text();
-    assert!(run(&mut st, T::Output { id: 99, bytes: b"zzz".to_vec() }).is_empty());
+    assert!(run(&mut st, T::Output { id: 99, bytes: b"zzz".to_vec(), ack: Default::default() }).is_empty());
     assert_eq!(st.terminal.sessions[0].screen.text(), before, "unknown sessions are ignored");
 
     // A cursor position query is answered through the PTY.
-    let fx = terminal(run(&mut st, T::Output { id, bytes: b"\x1b[6n".to_vec() }));
+    let fx = terminal(run(&mut st, T::Output { id, bytes: b"\x1b[6n".to_vec(), ack: Default::default() }));
     assert!(matches!(&fx[..], [E::Write { bytes, .. }] if bytes == b"\x1b[2;3R"), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -105,11 +105,11 @@ fn input_is_encoded_for_the_active_session() {
         other => panic!("{other:?}"),
     };
     assert_eq!(write(run(&mut st, T::Input(vec![TermInput::Text("ls".into()), key(TermKey::Enter)]))), b"ls\r");
-    run(&mut st, T::Output { id, bytes: b"\x1b[?1h".to_vec() });
+    run(&mut st, T::Output { id, bytes: b"\x1b[?1h".to_vec(), ack: Default::default() });
     assert_eq!(write(run(&mut st, T::Input(vec![key(TermKey::Up)]))), b"\x1bOA");
     let ctrl_c = TermInput::Key { key: TermKey::Char('c'), mods: KeyMods { ctrl: true, ..Default::default() } };
     assert_eq!(write(run(&mut st, T::Input(vec![ctrl_c]))), [0x03]);
-    run(&mut st, T::Output { id, bytes: b"\x1b[?2004h".to_vec() });
+    run(&mut st, T::Output { id, bytes: b"\x1b[?2004h".to_vec(), ack: Default::default() });
     assert_eq!(write(run(&mut st, T::Input(vec![TermInput::Paste("a\nb".into())]))), b"\x1b[200~a\rb\x1b[201~");
     assert!(run(&mut st, T::Input(Vec::new())).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -192,7 +192,7 @@ fn switching_tabs_starts_the_other_repos_shell_and_closing_kills_it() {
     assert!(terminal(update(&mut st, Msg::Refresh, Instant::now())).is_empty(), "one shell per repository");
 
     // The hidden tab's shell keeps running and its output is still parsed.
-    run(&mut st, T::Output { id: id1, bytes: b"from a".to_vec() });
+    run(&mut st, T::Output { id: id1, bytes: b"from a".to_vec(), ack: Default::default() });
     assert_eq!(st.terminal.for_workdir(&wa).unwrap().screen.text(), "from a");
 
     let fx = terminal(update(&mut st, Msg::CloseTab(1), Instant::now()));

@@ -70,10 +70,12 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
                 }
             }
         }
-        TerminalMsg::Output { id, bytes } => {
+        TerminalMsg::Output { id, bytes, ack } => {
             // Fed whichever tab the session belongs to, and even after its exit was reported.
             let Some(s) = session_mut(st, id) else { return };
             let reply = s.screen.feed(&bytes);
+            // Handled: the session may send what has come since.
+            drop(ack);
             if s.status == SessionStatus::Starting {
                 s.status = SessionStatus::Running;
             }
