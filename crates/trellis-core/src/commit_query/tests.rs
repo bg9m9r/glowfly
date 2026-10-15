@@ -70,6 +70,28 @@ fn author_values_match_name_or_email() {
 }
 
 #[test]
+fn a_full_address_matches_only_that_email() {
+    let ann = commit("one", "Ann", "ann@example.com");
+    let joann = commit("two", "Joann", "joann@example.com");
+    let a = commit("three", "A", "A@X.com");
+    let ba = commit("four", "Ba", "ba@x.com");
+    let commits = [ann.clone(), joann, a, ba];
+    // As the picker writes it, and in any case.
+    assert_eq!(CommitQuery::parse(&with_author("", Some("ann@example.com"))).matching_rows(&commits), [0]);
+    assert_eq!(CommitQuery::parse("author:ANN@Example.COM").matching_rows(&commits), [0]);
+    assert_eq!(CommitQuery::parse("author:a@x.com").matching_rows(&commits), [2]);
+    assert_eq!(CommitQuery::parse("author:joann@example.com").matching_rows(&commits), [1]);
+    // A longer domain is a different address.
+    assert!(!CommitQuery::parse("author:ann@example.co").matches(&ann));
+    // Partial addresses still match as text.
+    for q in ["author:ann@", "author:@example.com", "author:ann@example"] {
+        assert_eq!(CommitQuery::parse(q).matching_rows(&commits), [0, 1], "{q}");
+    }
+    // Several picked addresses: either, exactly.
+    assert_eq!(CommitQuery::parse("author:ann@example.com author:a@x.com").matching_rows(&commits), [0, 2]);
+}
+
+#[test]
 fn free_text_ignores_case_and_matches_id_prefixes() {
     let c = CommitInfo {
         oid: Oid::from_str("0abcdef1234567890abcdef1234567890abcdef1").unwrap(),

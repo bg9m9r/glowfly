@@ -6,7 +6,9 @@
 //! term; its value may be quoted to hold spaces (`author:"Ada Lovelace"`), and a quote left open
 //! runs to the end of the query. Every other word is free text, matched as one phrase (words
 //! joined by single spaces) against the summary, body and author name, or as a prefix of the
-//! commit id. Several author terms are alternatives; text and authors must both match.
+//! commit id. An author value that looks like a full email address (as the author picker writes
+//! it) must equal the commit's email; any other value is found in the author name or email.
+//! Several author terms are alternatives; text and authors must both match.
 
 use crate::matching::{contains_lower, hex_starts_with};
 use crate::repo::CommitInfo;
@@ -92,8 +94,8 @@ impl CommitQuery {
     }
 
     /// Whether commit `c` matches: the free text (if any) is in its summary, body or author
-    /// name, or starts its id, and its author name or email contains one of the author values
-    /// (if any).
+    /// name, or starts its id, and one of the author values (if any) matches its author (see
+    /// [`author_matches`]).
     pub fn matches(&self, c: &CommitInfo) -> bool {
         let q = self.text.as_str();
         let text = q.is_empty()
@@ -101,7 +103,7 @@ impl CommitQuery {
             || contains_lower(&c.body, q)
             || contains_lower(&c.author, q)
             || hex_starts_with(c.oid.as_bytes(), q);
-        text && (self.authors.is_empty() || self.authors.iter().any(|a| contains_lower(&c.author, a) || contains_lower(&c.email, a)))
+        text && (self.authors.is_empty() || self.authors.iter().any(|a| author_matches(a, c)))
     }
 
     /// Indexes of the matching commits, ascending; empty for an empty query.
@@ -110,6 +112,31 @@ impl CommitQuery {
             return Vec::new();
         }
         commits.iter().enumerate().filter(|(_, c)| self.matches(c)).map(|(i, _)| i).collect()
+    }
+}
+
+/// Whether `value` (lowercase) is a whole email address: one `@` with text on both sides, a
+/// domain holding a dot that isn't its first or last character, and no whitespace.
+fn is_full_address(value: &str) -> bool {
+    let Some((local, domain)) = value.split_once('@') else {
+        return false;
+    };
+    !local.is_empty()
+        && !domain.contains('@')
+        && domain.contains('.')
+        && !domain.starts_with('.')
+        && !domain.ends_with('.')
+        && !value.contains(char::is_whitespace)
+}
+
+/// Whether author value `value` (lowercase) matches commit `c`: a full address must equal its
+/// email ignoring case, so picking `ann@example.com` leaves out `joann@example.com`; any other
+/// value need only be in its author name or email.
+fn author_matches(value: &str, c: &CommitInfo) -> bool {
+    if is_full_address(value) {
+        c.email.chars().flat_map(char::to_lowercase).eq(value.chars())
+    } else {
+        contains_lower(&c.author, value) || contains_lower(&c.email, value)
     }
 }
 
