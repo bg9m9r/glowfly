@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-15 17:54 · **Local patches**: Create patch… from one commit or a multi-selection in the graph menus (one mbox-style file, oldest first, binary-safe) and Apply patch… from the palette, checked first so nothing changes when it fails (`56ae4b4`)
 - 2026-10-15 17:46 · **Search and filter**: Filter the graph to search matches (Filter toggle, Ctrl+Shift+F) with a live match count, and narrow by author with author: terms and an author picker (`b922cb6`)
 - 2026-10-15 17:37 · **SSH key management**: SSH page in Preferences: list the key pairs in ~/.ssh with fingerprints, copy a public key, and generate an Ed25519 key with ssh-keygen, asking before replacing one (`cac1207`)
 - 2026-10-15 16:54 · **Signing beyond config**: Signature badge for the selected commit in the details panel: verified, unverified, unknown key or bad signature, checked with git and cached per commit (`07ab360`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 16:33 · **Clone and init options**: Shallow clone in the Clone dialog by commit count or since a date, with an optional branch (`ea485b4`)
 - 2026-10-14 16:05 · **Remote management**: Add, edit and remove remotes and fetch one remote from the REMOTE section (`fc64d34`)
 - 2026-10-14 15:43 · **Git Flow**: Finish feature, release and hotfix from a dialog, the palette and the Git Flow page: --no-ff merges, version tag, delete or keep the branch (`d0f1c9b`)
-- 2026-10-14 15:14 · **Worktrees**: Remove, lock, unlock and prune worktrees from the WORKTREES section (`714c150`)
 
 ---
 
