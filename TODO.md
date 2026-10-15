@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-15 17:37 · **SSH key management**: SSH page in Preferences: list the key pairs in ~/.ssh with fingerprints, copy a public key, and generate an Ed25519 key with ssh-keygen, asking before replacing one (`cac1207`)
 - 2026-10-15 16:54 · **Signing beyond config**: Signature badge for the selected commit in the details panel: verified, unverified, unknown key or bad signature, checked with git and cached per commit (`07ab360`)
 - 2026-10-15 16:43 · **Repository management**: Favorite repositories above Recent on the welcome screen and in the repository menu, remove one recent entry or clear the list, and missing folders marked (`59fc992`)
 - 2026-10-15 16:02 · **Sparse checkout**: Sparse Checkout page in Preferences: turn on with folders or patterns, save, reapply and turn off; palette entry; libgit2 status hides left-out files (`0969dcf`)
@@ -33,8 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 15:43 · **Git Flow**: Finish feature, release and hotfix from a dialog, the palette and the Git Flow page: --no-ff merges, version tag, delete or keep the branch (`d0f1c9b`)
 - 2026-10-14 15:14 · **Worktrees**: Remove, lock, unlock and prune worktrees from the WORKTREES section (`714c150`)
 - 2026-10-14 15:09 · **Git LFS**: Track in Git LFS submenu on file rows for the file, its extension or its folder (`6b98a2b`)
-- 2026-10-14 14:40 · **Worktrees**: WORKTREES section with open in a new tab and Create worktree from a branch or commit (`a661ce2`)
-- 2026-10-14 14:34 · **Git Flow**: Git Flow preferences page with initialize, branch and prefix settings, and start feature/release/hotfix (`f6dd571`)
 
 ---
 
