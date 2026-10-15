@@ -53,6 +53,11 @@ pub enum FileOp {
 
 impl FileOp {
     /// The path of a Delete, UnstageDelete or Discard.
+    /// The log line for a refused delete that arrives for a tab that is no longer active.
+    pub fn not_deleted(&self, reason: &str) -> String {
+        format!("Did not delete {}: {}.", self.delete_path().unwrap_or_default(), reason.trim_end_matches('.'))
+    }
+
     pub fn delete_path(&self) -> Option<&str> {
         match self {
             FileOp::Delete { path, .. } | FileOp::UnstageDelete { path, .. } | FileOp::Discard { path, .. } => Some(path),

@@ -17,3 +17,13 @@ pub enum TagMsg {
     /// The New tag dialog's push checkbox, saved in settings.
     SetPushNewTags(bool),
 }
+
+impl TagMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::Push { .. } | Self::DeleteRemote { .. } | Self::NewTag { .. } | Self::CreateTag { .. } | Self::SetPushNewTags(..) => None,
+        }
+    }
+}

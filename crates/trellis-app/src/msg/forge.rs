@@ -19,6 +19,16 @@ pub enum CredentialMsg {
     CancelCredentials,
 }
 
+impl CredentialMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::CredentialPrompt { .. } | Self::CredentialPromptExpired(..) | Self::AnswerCredentials | Self::CancelCredentials => None,
+        }
+    }
+}
+
 /// Hosting services: refreshing pull requests and issues, creating a pull request, and
 /// connecting accounts (update/forge.rs).
 pub enum ForgeMsg {
@@ -48,6 +58,24 @@ pub enum ForgeMsg {
     },
 }
 
+impl ForgeMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::ForgeRefresh { .. }
+            | Self::Connect { .. }
+            | Self::Disconnect(..)
+            | Self::ForgetTokens { .. }
+            | Self::SetTracker(..)
+            | Self::CreatePrDialog(..)
+            | Self::CreatePr(..)
+            | Self::ForgeReplied(..)
+            | Self::Connected { .. } => None,
+        }
+    }
+}
+
 /// Creating a hosted repository for a repository with no remote, then pushing to it
 /// (update/publish.rs).
 pub enum PublishMsg {
@@ -64,4 +92,14 @@ pub enum PublishMsg {
         branch: String,
         result: Result<CreatedRepo, String>,
     },
+}
+
+impl PublishMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::PublishDialog | Self::PublishAccount(..) | Self::PublishOwners { .. } | Self::Publish | Self::Published { .. } => None,
+        }
+    }
 }

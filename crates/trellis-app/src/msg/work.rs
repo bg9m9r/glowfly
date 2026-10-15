@@ -1,6 +1,7 @@
 //! Messages for staging, committing and running git jobs (update/ops.rs, update/commit.rs,
 //! update/undo.rs, update/stash.rs).
 
+use super::Inactive;
 use crate::effect::UndoResult;
 use git2::Oid;
 use trellis_core::repo::HunkOp;
@@ -40,6 +41,29 @@ pub enum StageMsg {
     },
 }
 
+impl StageMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<Inactive> {
+        match self {
+            Self::StageFile(..)
+            | Self::UnstageFile(..)
+            | Self::StageAll
+            | Self::UnstageAll
+            | Self::DiscardFile(..)
+            | Self::Hunk { .. }
+            | Self::ApplyLines(..)
+            | Self::RevertHunk { .. }
+            | Self::LocalOpDone(Ok(None))
+            | Self::HunkReverted { result: Ok(()), .. } => None,
+            Self::LocalOpDone(Err(e)) => Some(Inactive::Log(e)),
+            // A discard in a tab switched away from: its undo belongs to that tab.
+            Self::LocalOpDone(Ok(Some(action))) => Some(Inactive::Undo(action)),
+            Self::HunkReverted { path, result: Err(e) } => Some(Inactive::Log(format!("Could not revert the hunk in {path}: {e}"))),
+        }
+    }
+}
+
 /// The commit box (update/commit.rs).
 pub enum CommitMsg {
     Commit,
@@ -49,6 +73,18 @@ pub enum CommitMsg {
     SetPushAfterCommit(bool),
     PrefillAmend,
     AppendToDescription(String),
+}
+
+impl CommitMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<Inactive> {
+        match self {
+            Self::Commit | Self::StageAllAndCommit | Self::SetPushAfterCommit(..) | Self::PrefillAmend | Self::AppendToDescription(..) => {
+                None
+            }
+        }
+    }
 }
 
 /// Git commands run as the active job, undo and redo, and the job's end (update/ops.rs,
@@ -76,4 +112,14 @@ pub enum JobMsg {
         output: String,
         undo: Option<UndoResult>,
     },
+}
+
+impl JobMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<Inactive> {
+        match self {
+            Self::Git { .. } | Self::Stash { .. } | Self::Push { .. } | Self::Undo | Self::Redo | Self::JobDone { .. } => None,
+        }
+    }
 }

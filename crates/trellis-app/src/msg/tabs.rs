@@ -27,3 +27,21 @@ pub enum TabsMsg {
         active: usize,
     },
 }
+
+impl TabsMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::NewTab
+            | Self::SelectTab(..)
+            | Self::CycleTab(..)
+            | Self::CloseTab(..)
+            | Self::ReopenClosedTab
+            | Self::MoveTab { .. }
+            | Self::CloseOtherTabs(..)
+            | Self::CloseTabsToRight(..)
+            | Self::RestoreTabs { .. } => None,
+        }
+    }
+}

@@ -20,6 +20,20 @@ pub enum SelectionMsg {
     CompareLoaded { from: Oid, to: Oid, result: Result<Comparison, String> },
 }
 
+impl SelectionMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::ToggleCommit(..)
+            | Self::SelectCommitRange(..)
+            | Self::CollapseSelection
+            | Self::CherryPick(..)
+            | Self::CompareLoaded { .. } => None,
+        }
+    }
+}
+
 /// Hidden and soloed refs, and the ref under the pointer (update/graph_filter.rs).
 pub enum GraphMsg {
     /// Hide, show or solo a ref in the active repository's graph (saved per repository).
@@ -28,10 +42,30 @@ pub enum GraphMsg {
     HoverRef(Option<Oid>),
 }
 
+impl GraphMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::GraphFilter(..) | Self::HoverRef(..) => None,
+        }
+    }
+}
+
 /// Author avatars: requests from the views and fetched images (update/avatars.rs).
 pub enum AvatarMsg {
     /// Views asked for these authors' avatars (lowercased emails, each asked for once).
     WantAvatars(Vec<String>),
     /// Fetched avatars; `None` when an author has none (the view shows initials).
     AvatarsLoaded(Vec<(String, Option<trellis_core::avatars::Image>)>),
+}
+
+impl AvatarMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::WantAvatars(..) | Self::AvatarsLoaded(..) => None,
+        }
+    }
 }

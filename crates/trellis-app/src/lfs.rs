@@ -33,3 +33,23 @@ pub enum LfsMsg {
         result: Result<LfsStatus, String>,
     },
 }
+
+impl LfsMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::ShowPage
+            | Self::Reload
+            | Self::Initialize
+            | Self::InitializeWhenReady
+            | Self::Track(..)
+            | Self::Untrack(..)
+            | Self::Run { .. }
+            | Self::Detect
+            | Self::TrackPath(..)
+            | Self::Detected(..)
+            | Self::Loaded { .. } => None,
+        }
+    }
+}

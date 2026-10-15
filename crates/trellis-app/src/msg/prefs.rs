@@ -65,6 +65,34 @@ pub enum PrefsMsg {
     SettingsUnreadable(String),
 }
 
+impl PrefsMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::PickFolder(..)
+            | Self::OpenPrefs(..)
+            | Self::ClosePrefs
+            | Self::SelectIntegration(..)
+            | Self::GitConfig { .. }
+            | Self::SettingsEdited
+            | Self::LoadSigningKeys
+            | Self::GenerateGpgKey
+            | Self::CopyPublicKey
+            | Self::PickFile(..)
+            | Self::SetTheme(..)
+            | Self::SetToolbarLabels(..)
+            | Self::GitConfigLoaded(..)
+            | Self::FilePicked { .. }
+            | Self::SigningKeysLoaded(..)
+            | Self::GpgKeyGenerated(..)
+            | Self::PublicKeyExported(..)
+            | Self::FolderPicked { .. }
+            | Self::SettingsUnreadable(..) => None,
+        }
+    }
+}
+
 /// The command palette (update/palette.rs).
 pub enum PaletteMsg {
     TogglePalette,
@@ -79,4 +107,19 @@ pub enum PaletteMsg {
         generation: u64,
         result: Result<Vec<String>, String>,
     },
+}
+
+impl PaletteMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::TogglePalette
+            | Self::ClosePalette
+            | Self::PaletteMove(..)
+            | Self::RunPaletteCommand(..)
+            | Self::PaletteBack
+            | Self::TrackedPathsLoaded { .. } => None,
+        }
+    }
 }

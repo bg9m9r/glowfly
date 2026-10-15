@@ -37,3 +37,23 @@ pub enum RebaseMsg {
         result: Result<Outcome, String>,
     },
 }
+
+impl RebaseMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::OpenRebase(..)
+            | Self::CloseRebase
+            | Self::RebaseSetAction { .. }
+            | Self::RebaseMove { .. }
+            | Self::RebaseEditMessage(..)
+            | Self::RebaseSaveMessage
+            | Self::RebaseCancelMessage
+            | Self::RebaseReset
+            | Self::StartRebase { .. }
+            | Self::RebasePlanLoaded { .. }
+            | Self::RebaseFinished { .. } => None,
+        }
+    }
+}

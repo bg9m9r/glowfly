@@ -44,6 +44,32 @@ pub enum RepoMsg {
     StatsDropped(Vec<Oid>),
 }
 
+impl RepoMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::PickRepo
+            | Self::Open(..)
+            | Self::Refresh
+            | Self::WindowFocused
+            | Self::SelectWip
+            | Self::SelectCommit(..)
+            | Self::JumpTo(..)
+            | Self::OpenDiff(..)
+            | Self::CloseDiff
+            | Self::SearchNext
+            | Self::WantStats(..)
+            | Self::InitRepo
+            | Self::RepoLoaded { .. }
+            | Self::DetailLoaded { .. }
+            | Self::DiffLoaded { .. }
+            | Self::StatsLoaded(..)
+            | Self::StatsDropped(..) => None,
+        }
+    }
+}
+
 /// A refresh's results, and loading more of the history (update/refresh.rs).
 pub enum LoadMsg {
     /// Show more of the history than the commit limit (the graph's "Load more").
@@ -67,6 +93,16 @@ pub enum LoadMsg {
     },
 }
 
+impl LoadMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::LoadMoreCommits | Self::RepoUnchanged { .. } | Self::StatusLoaded { .. } => None,
+        }
+    }
+}
+
 /// The file watcher's reports (update/watch.rs).
 pub enum WatchMsg {
     /// Files changed outside Trellis (debounced). Sent wrapped in `Msg::Scoped` for the watched
@@ -75,4 +111,14 @@ pub enum WatchMsg {
     RepoChanged { full: bool, last_event: Instant },
     /// The file watcher could not start or stopped working for `workdir`.
     WatchFailed { workdir: PathBuf, error: String },
+}
+
+impl WatchMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::RepoChanged { .. } | Self::WatchFailed { .. } => None,
+        }
+    }
 }

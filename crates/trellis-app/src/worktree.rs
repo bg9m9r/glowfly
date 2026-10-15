@@ -58,3 +58,23 @@ pub enum WorktreeMsg {
     /// Prune the records of missing, unlocked worktrees.
     Prune,
 }
+
+impl WorktreeMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::Open(..)
+            | Self::CreateDialog(..)
+            | Self::Submit
+            | Self::FolderChecked { .. }
+            | Self::RemoveDialog(..)
+            | Self::Remove
+            | Self::Removed { .. }
+            | Self::LockDialog(..)
+            | Self::Lock
+            | Self::Unlock(..)
+            | Self::Prune => None,
+        }
+    }
+}

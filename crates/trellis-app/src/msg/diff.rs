@@ -50,6 +50,26 @@ pub enum DiffMsg {
     },
 }
 
+impl DiffMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::SetDiffLayout(..)
+            | Self::SetDiffMode(..)
+            | Self::SetIgnoreWhitespace(..)
+            | Self::JumpToChange(..)
+            | Self::ExpandUnchanged(..)
+            | Self::CollapseUnchanged(..)
+            | Self::ExpandAllUnchanged
+            | Self::CollapseAllUnchanged
+            | Self::SelectDiffLine { .. }
+            | Self::ClearLineSelection
+            | Self::DiffHighlighted { .. } => None,
+        }
+    }
+}
+
 /// The conflict view: choosing sides chunk by chunk, saving, and resolving with one side
 /// (update/conflict.rs).
 pub enum ConflictMsg {
@@ -80,6 +100,25 @@ pub enum ConflictMsg {
     },
 }
 
+impl ConflictMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::OpenConflict(..)
+            | Self::CloseConflict
+            | Self::ConflictToggle { .. }
+            | Self::ConflictTakeAll(..)
+            | Self::ConflictReset
+            | Self::ConflictStep(..)
+            | Self::ConflictSelect(..)
+            | Self::SaveConflict
+            | Self::ResolveWithSide { .. }
+            | Self::ConflictLoaded { .. } => None,
+        }
+    }
+}
+
 /// The history of one file (update/history.rs).
 pub enum HistoryMsg {
     /// The commits that changed `path`, from HEAD (`at: None`) or as seen from commit `at`.
@@ -99,4 +138,19 @@ pub enum HistoryMsg {
         generation: u64,
         result: Result<FileHistory, String>,
     },
+}
+
+impl HistoryMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::OpenFileHistory { .. }
+            | Self::CloseFileHistory
+            | Self::SelectHistoryEntry(..)
+            | Self::MoreFileHistory
+            | Self::ShowInGraph(..)
+            | Self::FileHistoryLoaded { .. } => None,
+        }
+    }
 }

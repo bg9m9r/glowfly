@@ -157,14 +157,15 @@ mod worktree_tests;
 pub use repo::commit_matches;
 
 use crate::effect::{Effect, UiEffect};
-use crate::msg::{FilesMsg, Msg, StageMsg, WorkFileMsg};
+use crate::msg::{Inactive, Msg};
 use crate::state::AppState;
+use std::path::Path;
 use std::time::Instant;
 
 pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     let mut fx = Vec::new();
     match msg {
-        // repository and selection
+        // Each area's messages go to its handler, which matches them exhaustively.
         Msg::Repo(m) => repo::handle(st, m, now, &mut fx),
         Msg::Load(m) => refresh::handle(st, m, now, &mut fx),
         Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
@@ -172,71 +173,40 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Graph(m) => graph_filter::handle(st, m, &mut fx),
         Msg::Avatars(m) => avatars::handle(st, m, &mut fx),
         Msg::Diff(m) => diff::handle(st, m, &mut fx),
-
-        // conflicts
         Msg::Conflict(m) => conflict::handle(st, m, &mut fx),
-
-        // file history
         Msg::History(m) => history::handle(st, m, now, &mut fx),
-
-        // interactive rebase
         Msg::Rebase(m) => rebase::handle(st, m, now, &mut fx),
-
-        // tabs
         Msg::Tabs(m) => tabs::handle(st, m, &mut fx),
-        Msg::Scoped { workdir, msg } => {
-            if st.workdir().is_some_and(|w| w == workdir) {
-                fx.extend(update(st, *msg, now));
-            } else if let Msg::Stage(StageMsg::LocalOpDone(result)) = *msg {
-                match result {
-                    Err(e) => st.log(false, e),
-                    // A discard in a tab switched away from: its undo belongs to that tab.
-                    Ok(Some(a)) => {
-                        if let Some(p) = st.tabs.iter_mut().find(|t| t.is(&workdir)).and_then(|t| t.parked.as_mut()) {
-                            p.undo.record(a);
-                        }
-                    }
-                    Ok(None) => {}
-                }
-            } else if let Msg::Stage(StageMsg::HunkReverted { path, result: Err(e) }) = *msg {
-                st.log(false, format!("Could not revert the hunk in {path}: {e}"));
-            } else if let Msg::Files(FilesMsg::FileRestored { path, result: Err(e), .. }) = *msg {
-                st.log(false, format!("Could not restore {path}: {e}"));
-            } else if let Msg::Files(FilesMsg::RestoreWouldOverwrite { path, reason, .. }) = *msg {
-                st.log(false, format!("Did not restore {path}: {reason}."));
-            } else if let Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result }) = *msg {
-                work_files::inactive_result(st, op, result, now);
-            } else if let Msg::WorkFile(WorkFileMsg::TrashRefused { op, reason }) = *msg {
-                st.log(false, work_files_delete::not_deleted(&op, &reason));
-            } else {
-                tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display());
-            }
-        }
-
-        // working tree and git commands
-        Msg::Tick(t) => ops::auto_fetch(st, t, &mut fx),
         Msg::Stage(m) => ops::stage(st, m, now, &mut fx),
-        Msg::Job(m) => ops::job(st, m, now, &mut fx),
         Msg::Commit(m) => commit::handle(st, m, now, &mut fx),
-        Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
+        Msg::Job(m) => ops::job(st, m, now, &mut fx),
         Msg::Files(m) => files::handle(st, m, now, &mut fx),
         Msg::WorkFile(m) => work_files::handle(st, m, now, &mut fx),
         Msg::Branch(m) => branches::handle(st, m, &mut fx),
-
-        // credential prompts
-        Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),
-
-        // hosting services
+        Msg::Clone(m) => clone::handle(st, m, &mut fx),
+        Msg::Tag(m) => tags::handle(st, m, &mut fx),
+        Msg::Remote(m) => remotes::handle(st, m, &mut fx),
+        Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
+        Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
+        Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
         Msg::Publish(m) => publish::handle(st, m, &mut fx),
-
-        // preferences
+        Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),
         Msg::Prefs(m) => prefs::handle(st, m, now, &mut fx),
-
-        // command palette
+        Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
+        Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
         Msg::Palette(m) => palette::handle(st, m, now, &mut fx),
+        Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
-        // dialogs and the outside world
+        // Cross-cutting messages, handled here (see `Msg`).
+        Msg::Tick(t) => ops::auto_fetch(st, t, &mut fx),
+        Msg::Scoped { workdir, msg } => {
+            if st.workdir().is_some_and(|w| w == workdir) {
+                fx.extend(update(st, *msg, now));
+            } else {
+                inactive(st, &workdir, *msg, now);
+            }
+        }
         Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then }),
         Msg::ConfirmAccepted => {
             if let Some(crate::state::Modal::Confirm { then, .. }) = st.modal.take() {
@@ -244,7 +214,6 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             }
         }
         Msg::CloseModal => st.modal = None,
-        Msg::Clone(m) => clone::handle(st, m, &mut fx),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),
         Msg::OpenTerminal => {
@@ -255,13 +224,21 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::ClearLog => st.log.clear(),
-        Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
-        Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
-        Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
-        Msg::Remote(m) => remotes::handle(st, m, &mut fx),
-        Msg::Tag(m) => tags::handle(st, m, &mut fx),
-        Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
-        Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
     }
     fx
+}
+
+/// A result for the repository at `workdir`, whose tab is no longer active: only what its area
+/// says still matters (`Msg::on_inactive`) is applied.
+fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant) {
+    match msg.on_inactive() {
+        Some(Inactive::Log(text)) => st.log(false, text),
+        Some(Inactive::Undo(action)) => {
+            if let Some(p) = st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()) {
+                p.undo.record(action);
+            }
+        }
+        Some(Inactive::WorkFile { op, result }) => work_files::inactive_result(st, op, result, now),
+        None => tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display()),
+    }
 }

@@ -1,6 +1,7 @@
 //! Messages of the file menus: restoring a file from a commit, opening and showing working-tree
 //! files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
 
+use super::Inactive;
 use crate::effect::{FileOp, WorkFileOk};
 use git2::Oid;
 use trellis_core::repo::RestoredFrom;
@@ -22,6 +23,20 @@ pub enum FilesMsg {
     /// A RestoreFile without `overwrite` found contents at `path` that only the working tree
     /// holds (`reason` says why), so it wrote nothing.
     RestoreWouldOverwrite { path: String, oid: Oid, reason: String },
+}
+
+impl FilesMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<Inactive> {
+        match self {
+            Self::RestoreFile { .. } | Self::OpenWorkingFile(..) | Self::ShowWorkingFile(..) | Self::FileRestored { result: Ok(_), .. } => {
+                None
+            }
+            Self::FileRestored { path, result: Err(e), .. } => Some(Inactive::Log(format!("Could not restore {path}: {e}"))),
+            Self::RestoreWouldOverwrite { path, reason, .. } => Some(Inactive::Log(format!("Did not restore {path}: {reason}."))),
+        }
+    }
 }
 
 /// Creating, renaming, deleting and discarding (untracked) working-tree files, and the results
@@ -50,4 +65,23 @@ pub enum WorkFileMsg {
     WorkFileDone { op: FileOp, result: Result<WorkFileOk, String> },
     /// The trash refused `op`'s file; nothing changed.
     TrashRefused { op: FileOp, reason: String },
+}
+
+impl WorkFileMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<Inactive> {
+        match self {
+            Self::DiscardUntracked(..)
+            | Self::NewFileDialog(..)
+            | Self::CreateFile(..)
+            | Self::RenameFileDialog(..)
+            | Self::RenameFile { .. }
+            | Self::SetRenameStages(..)
+            | Self::DeleteFile { .. }
+            | Self::DeleteConfirmed(..) => None,
+            Self::WorkFileDone { op, result } => Some(Inactive::WorkFile { op, result }),
+            Self::TrashRefused { op, reason } => Some(Inactive::Log(op.not_deleted(&reason))),
+        }
+    }
 }

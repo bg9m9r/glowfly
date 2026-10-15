@@ -13,3 +13,13 @@ pub enum SubmoduleMsg {
     /// None when it is gone.
     Checked { path: String, result: Result<Option<SubmoduleInfo>, String> },
 }
+
+impl SubmoduleMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::Open(..) | Self::Update { .. } | Self::Checked { .. } => None,
+        }
+    }
+}

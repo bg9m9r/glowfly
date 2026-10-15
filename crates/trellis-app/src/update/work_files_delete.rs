@@ -145,11 +145,6 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, reason: String) {
     });
 }
 
-/// The log line for a refusal that arrives for a tab that is no longer active.
-pub(super) fn not_deleted(op: &FileOp, reason: &str) -> String {
-    format!("Did not delete {}: {}.", op.delete_path().unwrap_or_default(), reason.trim_end_matches('.'))
-}
-
 /// The toast after `path` was deleted (and, when `unstaged`, taken out of the index).
 pub(super) fn deleted_text(path: &str, mode: DeleteMode, deleted: Deleted, unstaged: bool) -> String {
     let also = if unstaged { " and removed it from the staging area" } else { "" };

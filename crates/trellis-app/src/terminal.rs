@@ -61,6 +61,25 @@ pub enum TerminalMsg {
     },
 }
 
+impl TerminalMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::Toggle
+            | Self::Hide
+            | Self::Kill
+            | Self::Restart
+            | Self::Input(..)
+            | Self::Resize { .. }
+            | Self::Started { .. }
+            | Self::Output { .. }
+            | Self::Exited { .. }
+            | Self::SpawnFailed { .. } => None,
+        }
+    }
+}
+
 /// Work on the terminal sessions' shells, carried out by the runner's session threads.
 /// `Write` bytes may be secrets the user typed: never log them (the effect is only ever named
 /// "terminal").

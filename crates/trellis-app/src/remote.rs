@@ -16,3 +16,13 @@ pub enum RemoteMsg {
     /// Confirmed: `git remote remove <remote>`.
     Remove(String),
 }
+
+impl RemoteMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::AddDialog | Self::EditDialog(..) | Self::Submit | Self::Fetch(..) | Self::RemoveDialog(..) | Self::Remove(..) => None,
+        }
+    }
+}

@@ -20,3 +20,19 @@ pub enum GitFlowMsg {
     /// Merge, tag and delete as planned by core::gitflow::check_finish.
     Finish { branch: String, options: trellis_core::gitflow::FinishOptions },
 }
+
+impl GitFlowMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::ShowPage
+            | Self::Apply
+            | Self::Discard
+            | Self::StartDialog(..)
+            | Self::Start { .. }
+            | Self::FinishDialog(..)
+            | Self::Finish { .. } => None,
+        }
+    }
+}

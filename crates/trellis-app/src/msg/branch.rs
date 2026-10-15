@@ -34,6 +34,24 @@ pub enum BranchMsg {
     },
 }
 
+impl BranchMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::RenameBranchDialog(..)
+            | Self::RenameBranch { .. }
+            | Self::SetUpstreamDialog(..)
+            | Self::SetUpstream { .. }
+            | Self::UnsetUpstream(..)
+            | Self::FastForwardBranch(..)
+            | Self::DeleteBranchAndRemote(..)
+            | Self::PushBranch { .. }
+            | Self::NewBranch { .. } => None,
+        }
+    }
+}
+
 /// The Clone dialog and the clone it starts (update/clone.rs).
 pub enum CloneMsg {
     /// Open the Clone dialog.
@@ -44,4 +62,14 @@ pub enum CloneMsg {
     ParentChecked { parent: String, is_dir: bool },
     /// Clone a repository into a folder (the Clone dialog's request, options included).
     Start(crate::state::clone::CloneRequest),
+}
+
+impl CloneMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            Self::Dialog | Self::ParentEdited | Self::ParentChecked { .. } | Self::Start(..) => None,
+        }
+    }
 }
