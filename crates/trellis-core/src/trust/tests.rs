@@ -138,3 +138,76 @@ fn init_output_tells_a_new_repository_apart() {
     assert!(!init_created_new("Reinitialized existing Git repository in /x/.git/\n"));
     assert!(!init_created_new(""));
 }
+
+#[test]
+fn rewriting_urls_to_a_command_transport_is_listed() {
+    let dir = scratch_repo("trust-insteadof");
+    git(&dir, &["config", "remote.origin.url", "https://example.invalid/r.git"]);
+    git(&dir, &["config", "url.https://mirror.invalid/.insteadOf", "https://example.invalid/"]);
+    assert!(scan_at(&dir).unwrap().is_empty(), "a plain rewrite runs nothing");
+    git(&dir, &["config", "url.ext::sh -c x.insteadOf", "https://example.invalid/"]);
+    git(&dir, &["config", "url.EXT::sh -c y.pushInsteadOf", "https://example.invalid/"]);
+    git(&dir, &["config", "protocol.ext.allow", "always"]);
+    git(&dir, &["config", "protocol.file.allow", "always"]);
+    git(&dir, &["config", "branch.main.remote", "ext::sh -c z"]);
+    let s = scan_at(&dir).unwrap();
+    assert_eq!(
+        keys(&s),
+        [
+            ("url.ext::sh -c x.insteadOf", "https://example.invalid/"),
+            ("url.EXT::sh -c y.pushInsteadOf", "https://example.invalid/"),
+            ("protocol.ext.allow", "always"),
+            ("branch.main.remote", "ext::sh -c z"),
+        ]
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn includes_libgit2_cannot_evaluate_are_listed() {
+    let dir = scratch_repo("trust-includeif");
+    std::fs::write(dir.join(".git/evil.cfg"), "[core]\n\tfsmonitor = .git/fsmon.sh\n").unwrap();
+    git(&dir, &["config", "remote.origin.url", "https://example.invalid/r.git"]);
+    git(&dir, &["config", "includeIf.onbranch:main.path", "missing.cfg"]);
+    git(&dir, &["config", "includeIf.gitdir:/nowhere/.path", "missing.cfg"]);
+    assert!(scan_at(&dir).unwrap().is_empty(), "conditions libgit2 evaluates are followed, not listed");
+    git(&dir, &["config", "includeIf.hasconfig:remote.*.url:https://**.path", "evil.cfg"]);
+    assert_eq!(keys(&scan_at(&dir).unwrap()), [("includeIf.hasconfig:remote.*.url:https://**.path", "evil.cfg")]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(windows)]
+#[test]
+fn windows_hooks_match_any_case_and_an_exe_suffix() {
+    let dir = scratch_repo("trust-hooks-exe");
+    let hooks = dir.join(".git/hooks");
+    hook(&hooks, "reference-transaction.exe");
+    hook(&hooks, "Pre-Commit");
+    hook(&hooks, "pre-push.sample.exe");
+    assert_eq!(scan_at(&dir).unwrap().hooks, ["Pre-Commit", "reference-transaction.exe"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn checked_out_submodules_are_scanned_too() {
+    let (top, sub) = (scratch_repo("trust-sub-top"), scratch_repo("trust-sub-lib"));
+    write(&sub, "lib.txt", "lib\n");
+    git(&sub, &["add", "."]);
+    git(&sub, &["commit", "-q", "-m", "lib"]);
+    let url = sub.display().to_string();
+    git(&top, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, "deps/lib"]);
+    git(&top.join("deps/lib"), &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, "inner"]);
+    assert!(scan_at(&top).unwrap().is_empty(), "{:?}", scan_at(&top).unwrap());
+
+    git(&top.join("deps/lib"), &["config", "core.fsmonitor", ".git/fsmon.sh"]);
+    hook(&top.join(".git/modules/deps/lib/modules/inner/hooks"), "post-merge");
+    let s = scan_at(&top).unwrap();
+    assert!(s.config.is_empty() && s.hooks.is_empty(), "{s:?}");
+    let paths: Vec<&str> = s.submodules.iter().map(|m| m.path.as_str()).collect();
+    assert_eq!(paths, ["deps/lib", "deps/lib/inner"]);
+    assert_eq!(keys(&s.submodules[0].scan), [("core.fsmonitor", ".git/fsmon.sh")]);
+    assert_eq!(s.submodules[1].scan.hooks, ["post-merge"]);
+    assert!(!s.is_empty());
+    let _ = std::fs::remove_dir_all(&top);
+    let _ = std::fs::remove_dir_all(&sub);
+}

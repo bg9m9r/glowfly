@@ -63,15 +63,8 @@ fn an_untrusted_fsmonitor_hook_never_runs() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "first"]);
     let marker = dir.join("ran.txt");
-    let slashes = |p: &std::path::Path| p.display().to_string().replace('\\', "/");
-    let hook = dir.join(".git/fsmon.sh");
-    std::fs::write(&hook, format!("#!/bin/sh\ntouch \"{}\"\nexit 1\n", slashes(&marker))).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
-    git(&dir, &["config", "core.fsmonitor", &slashes(&hook)]);
+    let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
+    git(&dir, &["config", "core.fsmonitor", &hook]);
 
     status_at(&dir, false).unwrap();
     load(&dir, &LoadOptions::all(100)).unwrap();
@@ -79,5 +72,60 @@ fn an_untrusted_fsmonitor_hook_never_runs() {
     // The same read with git allowed does run it, so the check above means something.
     status_at(&dir, true).unwrap();
     assert!(marker.exists(), "git ran the fsmonitor hook");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Writes a hook script that creates `marker`, and returns its path with forward slashes.
+fn marker_script(path: &std::path::Path, marker: &std::path::Path) -> String {
+    let slashes = |p: &std::path::Path| p.display().to_string().replace('\\', "/");
+    std::fs::write(path, format!("#!/bin/sh\ntouch \"{}\"\nexit 1\n", slashes(marker))).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    slashes(path)
+}
+
+#[test]
+fn a_submodule_s_fsmonitor_hook_never_runs_untrusted() {
+    let (top, sub) = (scratch_repo("status-sub-top"), scratch_repo("status-sub-lib"));
+    write(&sub, "lib.txt", "lib\n");
+    git(&sub, &["add", "."]);
+    git(&sub, &["commit", "-q", "-m", "lib"]);
+    git(&top, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &sub.display().to_string(), "lib"]);
+    git(&top, &["commit", "-q", "-m", "add lib"]);
+    // Nothing flagged in the top repository, and set up so that git reads its status.
+    git(&top, &["config", "core.untrackedCache", "true"]);
+    let marker = top.join("ran.txt");
+    let hook = marker_script(&top.join(".git/modules/lib/fsmon.sh"), &marker);
+    git(&top.join("lib"), &["config", "core.fsmonitor", &hook]);
+
+    let snap = load(&top, &LoadOptions::all(100)).unwrap();
+    assert_eq!(snap.trust_scan.submodules.len(), 1, "{:?}", snap.trust_scan);
+    assert!(!marker.exists(), "an untrusted load doesn't let git step into the submodule");
+    status_at(&top, true).unwrap();
+    assert!(marker.exists(), "git's status ran the submodule's hook");
+    let _ = std::fs::remove_dir_all(&top);
+    let _ = std::fs::remove_dir_all(&sub);
+}
+
+#[test]
+fn a_hasconfig_include_s_fsmonitor_hook_never_runs_untrusted() {
+    let dir = scratch_repo("status-hasconfig");
+    write(&dir, "a.txt", "a\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    git(&dir, &["config", "remote.origin.url", "https://example.invalid/r.git"]);
+    git(&dir, &["config", "core.untrackedCache", "true"]);
+    let marker = dir.join("ran.txt");
+    let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
+    std::fs::write(dir.join(".git/evil.cfg"), format!("[core]\n\tfsmonitor = {hook}\n")).unwrap();
+    git(&dir, &["config", "includeIf.hasconfig:remote.*.url:https://**.path", "evil.cfg"]);
+
+    assert!(!load(&dir, &LoadOptions::all(100)).unwrap().trust_scan.is_empty());
+    assert!(!marker.exists(), "an untrusted load doesn't let git read the status");
+    status_at(&dir, true).unwrap();
+    assert!(marker.exists(), "git followed the include and ran the hook");
     let _ = std::fs::remove_dir_all(&dir);
 }

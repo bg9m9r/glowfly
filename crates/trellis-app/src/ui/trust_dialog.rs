@@ -6,7 +6,9 @@ use super::widgets::{self, Icon};
 use crate::msg::{Msg, TrustMsg};
 use crate::state::trust::{TrustPrompt, hooks_label, shown_value};
 use eframe::egui::{self, RichText, Ui};
+use std::path::Path;
 use trellis_core::text::printable;
+use trellis_core::trust::TrustScan;
 
 /// Draws the prompt; returns true when the dialog should close (never: the buttons send a
 /// decision and update closes it).
@@ -21,26 +23,11 @@ pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     );
     ui.add_space(8.0);
     egui::ScrollArea::vertical().max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
-        if !p.scan.config.is_empty() {
-            ui.label(RichText::new("Settings that run commands").strong());
-            for c in &p.scan.config {
-                let row = format!("{} = {}", printable(&c.key), shown_value(&c.value));
-                ui.add(egui::Label::new(RichText::new(row).monospace()).wrap());
-            }
-            ui.add_space(6.0);
-        }
-        if !p.scan.hooks.is_empty() {
-            ui.horizontal(|ui| {
-                let (rect, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
-                widgets::paint_icon(ui.painter(), rect.center(), Icon::Hook, color::text());
-                ui.label(RichText::new("Hooks").strong());
-                if let Some(dir) = &p.scan.hooks_dir {
-                    ui.label(RichText::new(format!("in {}", hooks_label(dir, &p.workdir))).color(color::weak()));
-                }
-            });
-            for h in &p.scan.hooks {
-                ui.label(RichText::new(printable(h)).monospace());
-            }
+        findings(ui, &p.scan, &p.workdir);
+        for m in &p.scan.submodules {
+            ui.add_space(4.0);
+            ui.label(RichText::new(format!("In submodule {}", printable(&m.path))).strong());
+            ui.indent(("trust-submodule", &m.path), |ui| findings(ui, &m.scan, &p.workdir));
         }
     });
     ui.add_space(8.0);
@@ -60,4 +47,29 @@ pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
         }
     });
     false
+}
+
+/// The settings and hooks of one repository (the top one or a submodule).
+fn findings(ui: &mut Ui, scan: &TrustScan, workdir: &Path) {
+    if !scan.config.is_empty() {
+        ui.label(RichText::new("Settings that run commands").strong());
+        for c in &scan.config {
+            let row = format!("{} = {}", printable(&c.key), shown_value(&c.value));
+            ui.add(egui::Label::new(RichText::new(row).monospace()).wrap());
+        }
+        ui.add_space(6.0);
+    }
+    if !scan.hooks.is_empty() {
+        ui.horizontal(|ui| {
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
+            widgets::paint_icon(ui.painter(), rect.center(), Icon::Hook, color::text());
+            ui.label(RichText::new("Hooks").strong());
+            if let Some(dir) = &scan.hooks_dir {
+                ui.label(RichText::new(format!("in {}", hooks_label(dir, workdir))).color(color::weak()));
+            }
+        });
+        for h in &scan.hooks {
+            ui.label(RichText::new(printable(h)).monospace());
+        }
+    }
 }

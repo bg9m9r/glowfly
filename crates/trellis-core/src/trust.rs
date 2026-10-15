@@ -26,12 +26,23 @@ pub struct TrustScan {
     /// The folder `hooks` were found in; None when hooks come from the user's own (global or
     /// system) core.hooksPath, or from a path that can't be resolved without the shell.
     pub hooks_dir: Option<PathBuf>,
+    /// Checked-out submodules, nested ones included, whose own config or hooks run programs:
+    /// git's status and fetch run git inside each of them. Their own `submodules` are empty.
+    pub submodules: Vec<SubmoduleScan>,
+}
+
+/// What `scan` found in one submodule.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SubmoduleScan {
+    /// Where it is checked out, relative to the top repository's working directory.
+    pub path: String,
+    pub scan: TrustScan,
 }
 
 impl TrustScan {
     /// Nothing in the repository makes git run a program.
     pub fn is_empty(&self) -> bool {
-        self.config.is_empty() && self.hooks.is_empty()
+        self.config.is_empty() && self.hooks.is_empty() && self.submodules.is_empty()
     }
 }
 
@@ -85,9 +96,20 @@ const COMMAND_KEYS: &[(&str, &str)] = &[
     ("gpg.ssh.defaultkeycommand", "gpg.ssh.defaultKeyCommand"),
 ];
 
-/// Lists what in `repo`'s own config and hooks would make git run programs. Settings from the
-/// user's own config (global, XDG, system) are left out: the user put them there.
+/// How deep `scan` follows submodules inside submodules.
+const MAX_SUBMODULE_DEPTH: usize = 8;
+
+/// Lists what in `repo`'s own config and hooks, and in those of its checked-out submodules, would
+/// make git run programs. Settings from the user's own config (global, XDG, system) are left
+/// out: the user put them there.
 pub fn scan(repo: &Repository) -> TrustScan {
+    let mut out = scan_own(repo);
+    scan_submodules(repo, "", 0, &mut out.submodules);
+    out
+}
+
+/// `scan` of `repo` alone, without its submodules.
+fn scan_own(repo: &Repository) -> TrustScan {
     let mut out = TrustScan::default();
     let config = repo.config().ok();
     let mut local_hooks_path = None;
@@ -112,6 +134,33 @@ pub fn scan(repo: &Repository) -> TrustScan {
     out
 }
 
+/// Adds the submodules of `repo` (at `prefix` in the top repository) that run programs. Like
+/// git's status, this takes every gitlink in the index whose folder holds a repository, listed
+/// in .gitmodules or not.
+fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<SubmoduleScan>) {
+    let (Some(workdir), Ok(index)) = (repo.workdir(), repo.index()) else { return };
+    if depth >= MAX_SUBMODULE_DEPTH {
+        return;
+    }
+    let mut last: Option<Vec<u8>> = None;
+    for e in index.iter() {
+        // A conflicted gitlink has an entry per side.
+        if e.mode != 0o160000 || last.as_ref() == Some(&e.path) {
+            continue;
+        }
+        last = Some(e.path.clone());
+        let Ok(rel) = std::str::from_utf8(&e.path) else { continue };
+        // Doesn't search upward, so a folder that isn't checked out finds nothing.
+        let Ok(sub) = Repository::open(workdir.join(rel)) else { continue };
+        let path = if prefix.is_empty() { rel.to_owned() } else { format!("{prefix}/{rel}") };
+        let own = scan_own(&sub);
+        if !own.is_empty() {
+            out.push(SubmoduleScan { path: path.clone(), scan: own });
+        }
+        scan_submodules(&sub, &path, depth + 1, out);
+    }
+}
+
 /// `scan` of the repository at `path`.
 pub fn scan_at(path: &Path) -> crate::error::Result<TrustScan> {
     Ok(scan(&Repository::open(path)?))
@@ -131,6 +180,9 @@ fn command_key(name: &str, value: &str) -> Option<String> {
     if let Some((_, shown)) = COMMAND_KEYS.iter().find(|(k, _)| *k == name) {
         return Some((*shown).to_owned());
     }
+    if name == "protocol.allow" {
+        return value.eq_ignore_ascii_case("always").then(|| name.to_owned());
+    }
     if name == "core.fsmonitor" {
         // A boolean means git's built-in daemon; anything else is a hook's path.
         return Config::parse_bool(value).is_err().then(|| name.to_owned());
@@ -139,17 +191,39 @@ fn command_key(name: &str, value: &str) -> Option<String> {
     if first == last {
         return None;
     }
-    let (section, key) = (&name[..first], &name[last + 1..]);
+    let (section, sub, key) = (&name[..first], &name[first + 1..last], &name[last + 1..]);
     let runs = match section {
         "credential" => key == "helper",
         "diff" => matches!(key, "command" | "textconv"),
         "merge" => key == "driver",
         "filter" => matches!(key, "clean" | "smudge" | "process"),
         "difftool" | "mergetool" => key == "cmd",
-        "remote" => matches!(key, "uploadpack" | "receivepack") || (matches!(key, "url" | "pushurl") && value.starts_with("ext::")),
+        "remote" => matches!(key, "uploadpack" | "receivepack") || (matches!(key, "url" | "pushurl") && runs_transport(value)),
+        // A branch's remote can be a URL.
+        "branch" => matches!(key, "remote" | "pushremote") && runs_transport(value),
+        // Rewrites matching URLs to the subsection.
+        "url" => matches!(key, "insteadof" | "pushinsteadof") && runs_transport(sub),
+        // Lets ext:: run, including for submodule URLs from .gitmodules.
+        "protocol" => sub == "ext" && key == "allow" && value != "never",
+        // libgit2 reads a conditional include only for the conditions it knows; git may read
+        // others (hasconfig:), so what such a file sets is unseen.
+        "includeif" => key == "path" && !["gitdir:", "gitdir/i:", "onbranch:"].iter().any(|c| sub.starts_with(c)),
         _ => false,
     };
-    runs.then(|| name.to_owned())
+    if !runs {
+        return None;
+    }
+    Some(match section {
+        "includeif" => format!("includeIf.{sub}.path"),
+        "url" => format!("url.{sub}.{}", if key == "insteadof" { "insteadOf" } else { "pushInsteadOf" }),
+        _ => name.to_owned(),
+    })
+}
+
+/// Whether git reaching `url` runs a command: the ext:: transport (any case, since a Windows
+/// file system finds its helper under any spelling).
+fn runs_transport(url: &str) -> bool {
+    url.get(..5).is_some_and(|p| p.eq_ignore_ascii_case("ext::"))
 }
 
 /// The folder git takes hooks from. `local` is the repository's own core.hooksPath, if set.
@@ -180,7 +254,7 @@ fn active_hooks(dir: &Path) -> Vec<String> {
         .flatten()
         .filter_map(|e| {
             let name = e.file_name().to_str()?.to_owned();
-            if !HOOK_NAMES.contains(&name.as_str()) {
+            if !is_hook_name(&name) {
                 return None;
             }
             // Follows links: a link to a script runs the script.
@@ -190,6 +264,14 @@ fn active_hooks(dir: &Path) -> Vec<String> {
         .collect();
     hooks.sort();
     hooks
+}
+
+/// Whether git runs a file called `file` in a hooks folder. Windows and macOS file names ignore
+/// case, and Git for Windows also runs `<hook>.exe`.
+fn is_hook_name(file: &str) -> bool {
+    let name = if cfg!(any(windows, target_os = "macos")) { file.to_ascii_lowercase() } else { file.to_owned() };
+    let base = if cfg!(windows) { name.strip_suffix(".exe").unwrap_or(&name) } else { &name };
+    HOOK_NAMES.contains(&base)
 }
 
 /// Git skips hooks without an execute bit on Unix; on Windows it runs any file.

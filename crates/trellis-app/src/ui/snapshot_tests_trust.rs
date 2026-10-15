@@ -9,7 +9,7 @@ use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::settings::ThemeChoice;
-use trellis_core::trust::{ConfigCommand, TrustScan};
+use trellis_core::trust::{ConfigCommand, SubmoduleScan, TrustScan};
 
 fn with_prompt(theme: ThemeChoice, scan: TrustScan) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
@@ -32,6 +32,7 @@ fn trust_prompt() {
         ],
         hooks: vec!["post-checkout".into(), "pre-commit".into()],
         hooks_dir: Some(PathBuf::from("C:/work/tools/.git/hooks")),
+        submodules: Vec::new(),
     };
     let mut h = harness(with_prompt(ThemeChoice::Dark, scan), true);
     h.run();
@@ -50,6 +51,7 @@ fn trust_prompt_hooks_only() {
         config: vec![setting("core.hooksPath", ".githooks"), setting("core.sshCommand", &format!("ssh {}", "x".repeat(196)))],
         hooks: vec!["pre-push".into()],
         hooks_dir: Some(PathBuf::from("C:/work/tools/.githooks")),
+        submodules: Vec::new(),
     };
     let mut h = harness(with_prompt(ThemeChoice::Light, scan), false);
     h.run();
@@ -59,4 +61,29 @@ fn trust_prompt_hooks_only() {
     h.get_by_label("Trust").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::Decide { trusted: true, .. }))));
+}
+
+#[test]
+fn trust_prompt_submodules() {
+    // Nothing in the top repository; one submodule sets an fsmonitor hook, a nested one has a hook.
+    let lib = TrustScan { config: vec![setting("core.fsmonitor", ".git/fsmon.sh")], ..TrustScan::default() };
+    let inner = TrustScan {
+        hooks: vec!["post-merge".into()],
+        hooks_dir: Some(PathBuf::from("C:/work/tools/.git/modules/deps/lib/modules/inner/hooks")),
+        ..TrustScan::default()
+    };
+    let scan = TrustScan {
+        hooks_dir: Some(PathBuf::from("C:/work/tools/.git/hooks")),
+        submodules: vec![
+            SubmoduleScan { path: "deps/lib".into(), scan: lib },
+            SubmoduleScan { path: "deps/lib/inner".into(), scan: inner },
+        ],
+        ..TrustScan::default()
+    };
+    let mut h = harness(with_prompt(ThemeChoice::Dark, scan), true);
+    h.run();
+    h.check_snapshot("trust_prompt_submodules");
+    assert!(h.query_by_label("In submodule deps/lib").is_some());
+    assert!(h.query_by_label("core.fsmonitor = .git/fsmon.sh").is_some());
+    assert!(h.query_by_label("in .git/modules/deps/lib/modules/inner/hooks").is_some());
 }
