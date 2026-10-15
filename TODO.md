@@ -69,7 +69,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 |---|---|---|
 | General | ✔ General | Missing: delete `.orig` files after merge, keep submodules updated, show all commits, lazy loading, path to `sh.exe`, extended logging, conflict detection |
 | Profiles | ◐ Profile (git identity only) | Several named profiles with switching (P1 Profiles) |
-| SSH | ✘ | Key generation and selection, use local agent (P1 SSH key management) |
+| SSH | ◐ SSH page (list key pairs, copy a public key, generate an Ed25519 key) | Choose the key git uses, use local agent, add a key to a hosting service (P1 SSH key management) |
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ✘ | Editor, diff tool, merge tool, terminal (P1 External tools) |
@@ -848,6 +848,16 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **SSH key management**
   Generate a key, choose the key pair, use the local agent, copy the public key (and add it to
   a connected service).
+  - [x] Preferences > SSH: list the key pairs in ~/.ssh with type, comment and fingerprint, copy a public key, generate an Ed25519 key (asking before replacing one)
+  - [ ] Choose the key pair git uses for SSH remotes (core.sshCommand with `-i <key> -o IdentitiesOnly=yes`, globally or per repository), show the current choice and stop using it
+  - [ ] Use local SSH agent: detect a running agent (ssh-add -l, the Windows OpenSSH agent service or a Pageant-style agent), add the selected key to it, and leave core.sshCommand unset while it is on
+  - [ ] Add the public key to a connected hosting service through its API (optional key title, check whether it is already registered, fallback: copy the key and open the service's SSH key settings page)
+  - [ ] Generate RSA or ECDSA keys, and change an existing key's passphrase or comment (ssh-keygen -p / -c)
+  - [ ] Browse buttons for picking a private key file and the save location
+  - [ ] Show in folder and delete a key locally from its row
+  - [ ] Flag encrypted private keys and keys whose file permissions are too open for ssh on their row
+  - [ ] Palette entry for the SSH page (palette_commands.rs needs splitting first)
+  - [ ] Keys outside ~/.ssh (IdentityFile entries in ~/.ssh/config, agent-only keys)
 - [ ] **Profiles**
   Several named profiles (identity, integrations, preferences) with quick switching.
 - [ ] **Local patches**

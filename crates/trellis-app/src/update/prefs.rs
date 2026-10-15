@@ -29,6 +29,9 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             if page == PrefPage::RepoSparse {
                 super::sparse::load(st, fx);
             }
+            if page == PrefPage::Ssh {
+                super::ssh::load(st, fx);
+            }
             // Start the Integrations page on the open repository's service.
             let provider = st.forge.as_ref().and_then(|f| f.host_provider()).unwrap_or(Provider::GitHub);
             select_integration(st, provider);
@@ -71,6 +74,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         }
         PrefsMsg::GitConfigLoaded(values) => {
             if let Some(p) = st.prefs.as_mut() {
+                p.ssh.prefill_comment(&values.user_email);
                 p.git = Some(values);
             }
             load_signing_keys(st, fx);

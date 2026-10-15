@@ -10,6 +10,7 @@ mod integrations;
 mod lfs;
 mod signing;
 mod sparse;
+mod ssh;
 
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -122,6 +123,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
                     PrefPage::RepoSparse => sparse::sparse_page(ui, &mut prefs.sparse, &sparse_cx, msgs),
+                    PrefPage::Ssh => ssh::ssh_page(ui, &mut prefs.ssh, msgs),
                     _ => {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {
@@ -157,6 +159,10 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         go(ui, PrefPage::Ui, Icon::Brush, "UI Customization");
         go(ui, PrefPage::Editor, Icon::Code, "Editor");
         go(ui, PrefPage::Signing, Icon::Key, "Commit Signing");
+        // Not `go`: the page reads ~/.ssh when it opens.
+        if widgets::nav_row(ui, Some(Icon::Lock), "SSH", page == PrefPage::Ssh, 15.0).clicked() {
+            msgs.push(Msg::Ssh(crate::ssh::SshMsg::ShowPage));
+        }
         if let Some(name) = repo_name {
             ui.add_space(20.0);
             caption(ui, "Repo-Specific Preferences");

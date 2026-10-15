@@ -8,6 +8,7 @@ use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
+use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 
@@ -26,6 +27,10 @@ enum Kind {
     /// A repository load or status read: the UI waits for it before starting another.
     Load(u64, LoadKind),
     Status(u64),
+    /// Reading ~/.ssh for Preferences > SSH: the page shows a spinner until it ends.
+    SshList(u64),
+    /// Generating an SSH key: the page shows Generating until it ends.
+    SshGenerate,
     Log,
 }
 
@@ -39,6 +44,8 @@ impl Recovery {
             Effect::LocalOp { .. } => Kind::LocalOp,
             Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
             Effect::LoadStatus { generation, .. } => Kind::Status(*generation),
+            Effect::Ssh(SshEffect::List { generation }) => Kind::SshList(*generation),
+            Effect::Ssh(SshEffect::Generate { .. }) => Kind::SshGenerate,
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -54,6 +61,8 @@ impl Recovery {
             Kind::Status(generation) => {
                 Msg::Load(LoadMsg::StatusLoaded { generation, result: Err(text), submodules: None, open_stamp: None })
             }
+            Kind::SshList(generation) => Msg::Ssh(SshMsg::Loaded { generation, result: Err(text) }),
+            Kind::SshGenerate => Msg::Ssh(SshMsg::Generated(Err(GenerateFailure::Failed(text)))),
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {
@@ -161,5 +170,31 @@ mod tests {
         let msg = guarded(Recovery::of(&effect, "load-status"), || panic!("boom")).unwrap();
         let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
         assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), .. })));
+    }
+
+    #[test]
+    fn a_panicking_ssh_effect_ends_the_page_state() {
+        use crate::state::{PrefPage, PrefsState};
+        use trellis_core::ssh_keys::NewKey;
+        let key = NewKey { path: "C:/h/.ssh/id".into(), comment: String::new(), passphrase: "s3cret".into() };
+        let effect = Effect::Ssh(SshEffect::Generate { keygen: "C:/ssh-keygen.exe".into(), key, overwrite: false });
+        assert!(effect.scope().is_none(), "unscoped: the page gets its answer whichever tab is active");
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+        assert!(
+            matches!(&msg, Msg::Ssh(SshMsg::Generated(Err(GenerateFailure::Failed(e)))) if e.contains("boom") && e.contains("ssh-keygen"))
+        );
+        let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+        let mut prefs = PrefsState::new(PrefPage::Ssh);
+        prefs.ssh.generating = true;
+        prefs.ssh.generation = 3;
+        st.prefs = Some(prefs);
+        update(&mut st, msg, Instant::now());
+        assert!(!st.prefs.as_ref().unwrap().ssh.generating, "Generate can run again");
+
+        let effect = Effect::Ssh(SshEffect::List { generation: 3 });
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+        assert!(matches!(&msg, Msg::Ssh(SshMsg::Loaded { generation: 3, result: Err(_) })));
+        update(&mut st, msg, Instant::now());
+        assert!(st.prefs.as_ref().unwrap().ssh.error.as_deref().is_some_and(|e| e.contains("boom")), "the spinner gives way to the error");
     }
 }

@@ -103,6 +103,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::ListSigningKeys { .. }
         | Effect::GenerateGpgKey { .. }
         | Effect::ExportPublicKey { .. }
+        | Effect::Ssh(_)
         | Effect::Watch(_)
         | Effect::AnswerPrompt { .. }
         | Effect::Terminal(_)

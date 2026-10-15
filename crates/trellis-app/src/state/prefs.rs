@@ -12,6 +12,8 @@ pub enum PrefPage {
     /// Diff text: font size, tab size, line numbers, syntax and word highlights.
     Editor,
     Signing,
+    /// SSH key pairs in ~/.ssh and generating one.
+    Ssh,
     RepoIdentity,
     RepoHooks,
     RepoTracker,
@@ -29,6 +31,7 @@ impl PrefPage {
             PrefPage::Ui => "UI Customization",
             PrefPage::Editor => "Editor",
             PrefPage::Signing => "Commit Signing",
+            PrefPage::Ssh => "SSH",
             PrefPage::RepoIdentity => "Identity",
             PrefPage::RepoHooks => "Git Hooks",
             PrefPage::RepoTracker => "Issue Tracker",
@@ -95,6 +98,7 @@ pub struct PrefsState {
     pub lfs: crate::state::lfs::LfsPage,
     pub gitflow: crate::state::gitflow::GitFlowPage,
     pub sparse: crate::state::sparse::SparsePage,
+    pub ssh: crate::state::ssh::SshPage,
 }
 
 impl PrefsState {
@@ -113,6 +117,7 @@ impl PrefsState {
             lfs: Default::default(),
             gitflow: Default::default(),
             sparse: Default::default(),
+            ssh: Default::default(),
         }
     }
 }

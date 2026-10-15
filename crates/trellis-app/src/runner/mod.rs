@@ -46,6 +46,7 @@ mod rebase;
 mod saves;
 mod signatures;
 mod sparse;
+mod ssh;
 mod stashes;
 mod stats;
 mod submodules;
@@ -311,6 +312,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::ListSigningKeys { format, program } => Some(keys::list(format, &program)),
         Effect::GenerateGpgKey { program, name, email, passphrase } => Some(keys::generate_gpg(&program, &name, &email, &passphrase)),
         Effect::ExportPublicKey { format, program, key } => Some(keys::export_public(format, &program, &key)),
+        Effect::Ssh(e) => Some(ssh::run(e)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

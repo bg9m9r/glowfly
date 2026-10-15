@@ -310,6 +310,8 @@ pub enum Effect {
         id: u64,
         reply: Reply,
     },
+    /// Listing and generating SSH keys (ssh.rs); unscoped, outside any repository.
+    Ssh(crate::ssh::SshEffect),
     /// The built-in terminal panel's shells; handled by Runner::run, never a worker.
     Terminal(crate::terminal::TerminalEffect),
     Ui(UiEffect),
@@ -374,6 +376,7 @@ impl Effect {
             | Effect::ListSigningKeys { .. }
             | Effect::GenerateGpgKey { .. }
             | Effect::ExportPublicKey { .. }
+            | Effect::Ssh(_)
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }
             | Effect::Terminal(_)

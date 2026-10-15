@@ -1,5 +1,5 @@
-//! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close), called from
-//! `widgets::paint_icon`.
+//! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
+//! lock), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -105,6 +105,20 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
                 }
             }
             p.add(egui::Shape::closed_line(pts, s));
+        }
+        Icon::Lock => {
+            // A rounded body, slightly low, under a half-circle shackle, with a keyhole dot.
+            let body = Rect::from_center_size(pos2(c.x, c.y + 3.0), vec2(12.0, 9.0));
+            p.rect_stroke(body, 2.0, s, egui::StrokeKind::Middle);
+            let (r, base) = (4.0, body.top());
+            let mut pts: Vec<Pos2> = vec![pos2(c.x - r, base)];
+            pts.extend((0..=16).map(|i| {
+                let a = std::f32::consts::PI * i as f32 / 16.0;
+                pos2(c.x - r * a.cos(), base - 2.0 - r * a.sin())
+            }));
+            pts.push(pos2(c.x + r, base));
+            p.add(egui::Shape::line(pts, s));
+            p.circle_filled(pos2(c.x, body.center().y), 1.3, s.color);
         }
         Icon::Close => {
             line(pos2(c.x - 4.5, c.y - 4.5), pos2(c.x + 4.5, c.y + 4.5));

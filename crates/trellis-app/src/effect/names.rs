@@ -58,6 +58,7 @@ impl Effect {
             Effect::ListSigningKeys { .. } => "list-keys",
             Effect::GenerateGpgKey { .. } => "generate-key",
             Effect::ExportPublicKey { .. } => "export-key",
+            Effect::Ssh(e) => e.name(),
             Effect::Watch(_) => "watch",
             Effect::AnswerPrompt { .. } => "answer-prompt",
             Effect::Terminal(_) => "terminal",

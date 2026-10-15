@@ -32,6 +32,7 @@ mod shallow;
 mod shortcuts;
 mod signatures;
 mod sparse;
+mod ssh;
 mod stash;
 mod submodules;
 mod tabs;
@@ -141,6 +142,8 @@ mod signature_tests;
 #[cfg(test)]
 mod sparse_tests;
 #[cfg(test)]
+mod ssh_tests;
+#[cfg(test)]
 mod stash_rename_tests;
 #[cfg(test)]
 mod stash_tests;
@@ -227,6 +230,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
         Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
         Msg::Sparse(m) => sparse::handle(st, m, now, &mut fx),
+        Msg::Ssh(m) => ssh::handle(st, m, now, &mut fx),
         Msg::Palette(m) => palette::handle(st, m, now, &mut fx),
         Msg::Trust(m) => trust::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),

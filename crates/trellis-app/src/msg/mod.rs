@@ -1,8 +1,8 @@
 //! Everything that can happen: user intents from views and results from background effects.
 //!
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
-//! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule` and
-//! `terminal`). Each area's enum goes to one handler in `update/`, which matches it
+//! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
+//! `terminal` and `ssh`). Each area's enum goes to one handler in `update/`, which matches it
 //! exhaustively, and says through `on_inactive` what its results still need when they arrive
 //! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
 
@@ -108,6 +108,8 @@ pub enum Msg {
     GitFlow(crate::gitflow::GitFlowMsg),
     /// The Sparse Checkout preferences page (update/sparse.rs).
     Sparse(SparseMsg),
+    /// Preferences > SSH: key pairs and generating a key (ssh.rs).
+    Ssh(crate::ssh::SshMsg),
     /// The command palette (update/palette.rs).
     Palette(PaletteMsg),
     /// The repository trust prompt (update/trust.rs).
@@ -200,6 +202,7 @@ impl Msg {
             Msg::Lfs(m) => m.on_inactive(),
             Msg::GitFlow(m) => m.on_inactive(),
             Msg::Sparse(m) => m.on_inactive(),
+            Msg::Ssh(m) => m.on_inactive(),
             Msg::Palette(m) => m.on_inactive(),
             Msg::Trust(m) => m.on_inactive(),
             Msg::Tick(_)

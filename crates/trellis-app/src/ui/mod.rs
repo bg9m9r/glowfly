@@ -107,6 +107,8 @@ mod snapshot_tests_signature;
 #[cfg(test)]
 mod snapshot_tests_sparse;
 #[cfg(test)]
+mod snapshot_tests_ssh;
+#[cfg(test)]
 mod snapshot_tests_stash;
 #[cfg(test)]
 mod snapshot_tests_submodules;

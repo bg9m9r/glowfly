@@ -54,6 +54,8 @@ pub enum Icon {
     StarFilled,
     /// A small diagonal cross: remove an entry from a list.
     Close,
+    /// A padlock: SSH keys (Preferences).
+    Lock,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -208,7 +210,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             p.add(egui::Shape::closed_line(pts, s));
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
-        Icon::Star | Icon::StarFilled | Icon::Close => {}                                                                      // icons.rs
+        Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock => {}                                                         // icons.rs
     }
 }
 

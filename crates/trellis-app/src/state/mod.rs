@@ -28,6 +28,7 @@ pub mod selection;
 pub mod shallow;
 pub mod signatures;
 pub mod sparse;
+pub mod ssh;
 pub mod stashes;
 pub mod submodules;
 pub mod tabs;

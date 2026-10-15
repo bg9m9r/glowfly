@@ -15,6 +15,7 @@ mod msg;
 mod platform;
 mod remote;
 mod runner;
+mod ssh;
 mod state;
 mod submodule;
 mod tag;

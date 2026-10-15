@@ -81,7 +81,9 @@ impl SigningKey {
     }
 }
 
-fn command(program: &str) -> Command {
+/// A command for `program` with stdin closed and output captured (and no console window on
+/// Windows).
+pub(crate) fn command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     let mut cmd = Command::new(program);
     cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
     #[cfg(windows)]
