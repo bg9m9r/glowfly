@@ -183,6 +183,8 @@ pub struct Snapshot {
     pub tags: Vec<(String, Oid)>,
     /// Tags that point at a tree or blob instead of a commit: not shown, but their names are taken.
     pub other_tags: Vec<String>,
+    /// Names in `tags` whose ref points straight at the commit (no tag object): lightweight tags.
+    pub lightweight_tags: HashSet<String>,
     pub stashes: Vec<StashInfo>,
     pub unstaged: Vec<FileEntry>,
     pub staged: Vec<FileEntry>,

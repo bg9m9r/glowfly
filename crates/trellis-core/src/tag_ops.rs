@@ -1,4 +1,5 @@
-//! Command lines and checks for creating a tag, pushing it and deleting it from a remote.
+//! Command lines and checks for creating a tag, annotating a lightweight one, pushing it and
+//! deleting it from a remote.
 //! Everything here is pure; the app runs the commands through `gitcli` so hooks, credentials and
 //! the user's git config apply.
 
@@ -89,6 +90,13 @@ pub fn check_tag_name(name: &str, existing: &[&str]) -> Result<(), TagNameProble
 /// `git tag <name> <at>`, or with a message an annotated `git tag -a <name> <at> -m <message>`.
 pub fn tag_cmd(name: &str, at: &str, message: &str) -> Vec<String> {
     if message.is_empty() { args(&["tag", name, at]) } else { args(&["tag", "-a", name, at, "-m", message]) }
+}
+
+/// Replaces tag `name` with an annotated tag at commit `at` (a full sha):
+/// `git tag -a -f <name> <at> -m <message>`. Run through `gitcli`, so tag.gpgSign signs it and
+/// hooks apply; if building or signing the tag object fails, git leaves the old ref untouched.
+pub fn annotate_tag_cmd(name: &str, at: &str, message: &str) -> Vec<String> {
+    args(&["tag", "-a", "-f", name, at, "-m", message])
 }
 
 /// Pushes tag `name` to `remote`. The full refspec keeps a branch with the same name from being

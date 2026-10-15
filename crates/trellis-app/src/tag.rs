@@ -1,5 +1,5 @@
-//! Messages of the New tag dialog and the TAGS section's remote actions (state/tags.rs, update/tags.rs,
-//! ui/tags.rs, ui/tag_dialog.rs).
+//! Messages of the New tag and Annotate dialogs and the TAGS section's remote actions
+//! (state/tags.rs, update/tags.rs, update/tag_annotate.rs, ui/tags.rs, ui/tag_dialog.rs).
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TagMsg {
@@ -16,6 +16,12 @@ pub enum TagMsg {
     CreateTag { at: String, name: String, message: String, push: Option<String> },
     /// The New tag dialog's push checkbox, saved in settings.
     SetPushNewTags(bool),
+    /// From the TAGS row menu: opens the Annotate dialog for lightweight tag `tag`, at the commit
+    /// the snapshot has for it.
+    OpenAnnotate { tag: String },
+    /// From the Annotate dialog: replaces `tag` with an annotated tag at `at` (a full sha)
+    /// carrying `message`.
+    Annotate { tag: String, at: String, message: String },
 }
 
 impl TagMsg {
@@ -23,7 +29,13 @@ impl TagMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::Push { .. } | Self::DeleteRemote { .. } | Self::NewTag { .. } | Self::CreateTag { .. } | Self::SetPushNewTags(..) => None,
+            Self::Push { .. }
+            | Self::DeleteRemote { .. }
+            | Self::NewTag { .. }
+            | Self::CreateTag { .. }
+            | Self::SetPushNewTags(..)
+            | Self::OpenAnnotate { .. }
+            | Self::Annotate { .. } => None,
         }
     }
 }

@@ -1,5 +1,6 @@
 //! The New tag dialog's form, and the name and remote checks its view and `update` share; the
-//! TAGS row menu's remote push and delete: the confirmation, job labels and headlines. Pure.
+//! Annotate dialog's form and its check; the TAGS row menu's remote push and delete: the
+//! confirmation, job labels and headlines. Pure.
 
 use super::branches::default_remote;
 use crate::msg::Msg;
@@ -32,6 +33,33 @@ pub fn tag_problem(snap: Option<&Snapshot>, name: &str) -> Option<TagNameProblem
 /// remote; None when there are no remotes.
 pub fn push_remote(snap: &Snapshot, form_remote: &str) -> Option<String> {
     if snap.remotes.iter().any(|(r, _)| r == form_remote) { Some(form_remote.to_owned()) } else { default_remote(snap) }
+}
+
+/// What the Annotate dialog is editing: a lightweight tag to replace with an annotated one.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AnnotateForm {
+    pub tag: String,
+    /// The full sha of the commit the lightweight tag pointed at when the dialog opened.
+    pub at: String,
+    pub message: String,
+}
+
+/// Why lightweight tag `tag` at commit `at` (a full sha) can't be annotated any more, given the
+/// snapshot; None when it can (or there is no snapshot to tell).
+pub fn annotate_problem(snap: Option<&Snapshot>, tag: &str, at: &str) -> Option<String> {
+    let snap = snap?;
+    let Some((_, oid)) = snap.tags.iter().find(|(n, _)| n == tag) else {
+        return Some(format!("Tag {tag} no longer exists."));
+    };
+    if !snap.lightweight_tags.contains(tag) {
+        return Some(format!("Tag {tag} is already annotated."));
+    }
+    let now = oid.to_string();
+    if now != at {
+        let short = &now[..7.min(now.len())];
+        return Some(format!("Tag {tag} has moved to {short}. Open Annotate again from the TAGS list."));
+    }
+    None
 }
 
 /// Whether a remote tag job pushes the tag or deletes it.

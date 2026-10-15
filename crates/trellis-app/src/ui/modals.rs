@@ -1,11 +1,12 @@
-//! Dialogs: confirmation, new branch, new tag (drawn by `tag_dialog.rs`), create worktree (drawn
-//! by `worktree_dialog.rs`), remove and lock worktree (drawn by `worktree_manage_dialog.rs`),
-//! clone (drawn by `clone_dialog.rs`), create pull request, publish (drawn by `publish.rs`),
-//! renaming a branch or setting its upstream (drawn by `branch_dialogs.rs`), creating or renaming
-//! a working-tree file (drawn by `file_dialogs.rs`), starting a Git Flow branch (drawn by
-//! `gitflow_dialog.rs`), finishing one (drawn by `gitflow_finish_dialog.rs`), adding or editing a
-//! remote (drawn by `remotes/dialog.rs`), the keyboard shortcut sheet (drawn by
-//! `shortcuts/sheet.rs`) and the repository trust prompt (drawn by `trust_dialog.rs`).
+//! Dialogs: confirmation, new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
+//! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
+//! `worktree_manage_dialog.rs`), clone (drawn by `clone_dialog.rs`), create pull request, publish
+//! (drawn by `publish.rs`), renaming a branch or setting its upstream (drawn by
+//! `branch_dialogs.rs`), creating or renaming a working-tree file (drawn by `file_dialogs.rs`),
+//! starting a Git Flow branch (drawn by `gitflow_dialog.rs`), finishing one (drawn by
+//! `gitflow_finish_dialog.rs`), adding or editing a remote (drawn by `remotes/dialog.rs`), the
+//! keyboard shortcut sheet (drawn by `shortcuts/sheet.rs`) and the repository trust prompt (drawn
+//! by `trust_dialog.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -79,6 +80,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::NewTag(form) => {
                 if super::tag_dialog::new_tag(ui, form, snap, push_tags, !prompting, msgs) {
+                    close = true;
+                }
+            }
+            Modal::AnnotateTag(form) => {
+                if super::tag_dialog::annotate_tag(ui, form, snap, !prompting, msgs) {
                     close = true;
                 }
             }

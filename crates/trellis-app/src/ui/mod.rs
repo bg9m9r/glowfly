@@ -98,6 +98,8 @@ mod snapshot_tests_submodules;
 #[cfg(test)]
 mod snapshot_tests_tag;
 #[cfg(test)]
+mod snapshot_tests_tag_annotate;
+#[cfg(test)]
 mod snapshot_tests_tag_menu;
 #[cfg(test)]
 mod snapshot_tests_terminal;

@@ -753,9 +753,16 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Annotate an existing tag, delete from one or all remotes, push to all remotes, hide tags.
   (Push a tag and delete it locally exist; tag signing is on the Commit Signing page.)
   - [x] Delete a tag from one or all remotes and push it to all remotes, from the TAGS row menu
-  - [ ] Annotate an existing lightweight tag (replace it with an annotated tag at the same commit)
+  - [x] Annotate an existing lightweight tag (replace it with an annotated tag at the same commit)
   - [ ] After deleting a tag locally, offer to delete it from the remotes too
   - [ ] Hide tags in the graph (see Hide/solo)
+  - [ ] Offer Annotate… from the graph's tag labels and from the command palette (two steps: pick a
+    lightweight tag, then the message)
+  - [ ] Edit the message of an already annotated tag (re-annotate with the old message prefilled)
+  - [ ] Push the annotated tag over a remote's lightweight copy (force-push one tag, after a
+    confirmation)
+  - [ ] Honour tag.forceSignAnnotated too (git applies it only without -a), and say in the Annotate
+    dialog when the tag will be signed
 - [ ] **Stash improvements**
   Stash selected files only, a stash message field, rename a stash, hide stashes.
   - [ ] Rename (edit the message of) an existing stash, from the sidebar and the palette

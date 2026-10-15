@@ -119,6 +119,7 @@ pub struct Toast {
 pub enum Modal {
     NewBranch { start: Option<String>, name: String, checkout: bool },
     NewTag(tags::TagForm),
+    AnnotateTag(tags::AnnotateForm),
     NewWorktree(worktrees::WorktreeForm),
     RemoveWorktree(worktree_manage::RemoveForm),
     LockWorktree(worktree_manage::LockForm),

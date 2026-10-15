@@ -5,7 +5,7 @@ use super::*;
 use crate::error::{Error, Result};
 use crate::graph;
 use git2::{BranchType, Oid, Repository};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 /// Loads the repository at (or above) `path`.
@@ -143,10 +143,20 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let remote_info = super::remotes::remote_info(&repo, &names);
     let remote_urls = remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
 
-    let (mut tags, mut other_tags) = (Vec::new(), Vec::new());
+    let (mut tags, mut other_tags, mut lightweight_tags) = (Vec::new(), Vec::new(), HashSet::new());
     for t in repo.tag_names(None)?.iter().flatten() {
-        match repo.revparse_single(&format!("refs/tags/{t}")).and_then(|o| o.peel_to_commit()) {
-            Ok(c) => tags.push((t.to_owned(), c.id())),
+        // A ref that names the commit itself has no tag object: a lightweight tag.
+        let found = repo.revparse_single(&format!("refs/tags/{t}")).and_then(|o| {
+            let light = o.kind() == Some(git2::ObjectType::Commit);
+            o.peel_to_commit().map(|c| (c, light))
+        });
+        match found {
+            Ok((c, light)) => {
+                if light {
+                    lightweight_tags.insert(t.to_owned());
+                }
+                tags.push((t.to_owned(), c.id()));
+            }
             Err(_) => other_tags.push(t.to_owned()),
         }
     }
@@ -217,6 +227,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         remote_info,
         tags,
         other_tags,
+        lightweight_tags,
         stashes,
         unstaged,
         staged,

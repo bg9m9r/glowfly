@@ -1,5 +1,5 @@
-//! The TAGS row menu: push to each remote or all of them, delete locally, delete from each
-//! remote or all of them, which items show for one remote or none, the remote items disabled
+//! The TAGS row menu: annotate (lightweight tags only), push to each remote or all of them,
+//! delete locally, delete from each remote or all of them, which items show for one remote or none, the remote items disabled
 //! while a job runs, and the remote delete confirmation. Remotes are injected into the shared
 //! fixture's snapshot so the images are deterministic.
 
@@ -17,8 +17,9 @@ use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use trellis_core::settings::ThemeChoice;
 
-const ITEMS: [&str; 8] = [
+const ITEMS: [&str; 9] = [
     "Checkout (detached)",
+    "Annotate…",
     "Push to origin",
     "Push to backup",
     "Push to all remotes",
@@ -77,6 +78,12 @@ fn tag_row_menu() {
     h.get_by_label("Push to backup").click();
     h.run();
     let want = TagMsg::Push { tag: "v0.1.0".into(), remotes: vec!["backup".into()] };
+    assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
+
+    open_menu(&mut h);
+    h.get_by_label("Annotate…").click();
+    h.run();
+    let want = TagMsg::OpenAnnotate { tag: "v0.1.0".into() };
     assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
     drop(h);
     remove_fixture(&dir);
@@ -138,6 +145,20 @@ fn tag_delete_remote_confirm_light() {
     h.get_by_label("Delete from all remotes").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmAccepted)));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn tag_row_menu_annotated_tag() {
+    // The fixture's v0.1.0 is lightweight; as an annotated tag it offers no Annotate item.
+    let (mut st, dir) = with_tags(ThemeChoice::Dark, "tag-row-menu-annotated", &["origin"]);
+    st.snap.as_mut().unwrap().lightweight_tags.remove("v0.1.0");
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h);
+    assert!(h.query_by_label("Checkout (detached)").is_some());
+    assert!(h.query_by_label("Annotate…").is_none());
     drop(h);
     remove_fixture(&dir);
 }

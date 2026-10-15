@@ -1,6 +1,6 @@
 //! The TAGS section of the left panel: one row per tag (a click jumps to its commit) and the row
-//! menu: checkout, push to each remote or all of them, delete locally, and delete from each
-//! remote or all of them (asked first).
+//! menu: checkout, annotate a lightweight tag, push to each remote or all of them, delete
+//! locally, and delete from each remote or all of them (asked first).
 
 use super::common::{menu_item, menu_item_if};
 use super::widgets;
@@ -12,6 +12,8 @@ use crate::state::tags::delete_remote_confirm;
 use crate::tag::TagMsg;
 use eframe::egui;
 use trellis_core::repo::Snapshot;
+
+const ANNOTATE_HINT: &str = "Replace this lightweight tag with an annotated tag on the same commit";
 
 /// What the rows are drawn against: the left-panel filter, the selection, and whether no job is
 /// running (the remote items are disabled while one is).
@@ -44,6 +46,11 @@ fn menu(ui: &mut egui::Ui, name: &str, snap: &Snapshot, idle: bool, msgs: &mut V
     let blocked = (!idle).then_some(JOB_RUNNING);
     let tag = || name.to_owned();
     menu_item(msgs, ui, "Checkout (detached)", Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]));
+    // Stays enabled while a job runs, like Delete locally: update checks when the job would start.
+    if snap.lightweight_tags.contains(name) && ui.button("Annotate…").on_hover_text(ANNOTATE_HINT).clicked() {
+        msgs.push(Msg::Tag(TagMsg::OpenAnnotate { tag: tag() }));
+        ui.close_menu();
+    }
     if !remotes.is_empty() {
         ui.separator();
         for r in &remotes {

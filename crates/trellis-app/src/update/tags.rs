@@ -1,6 +1,7 @@
 //! The New tag dialog: opening it, creating the tag (and pushing it in the same job), and the
 //! push checkbox's setting. Also the TAGS row menu's remote push and delete: one job with a
-//! command per remote, and the headline that names the remote when it ends.
+//! command per remote, and the headline that names the remote when it ends. Annotating a
+//! lightweight tag is in `tag_annotate.rs`.
 
 use super::ops::{self, JobSpec};
 use crate::effect::Effect;
@@ -24,6 +25,8 @@ pub(super) fn handle(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
         TagMsg::SetPushNewTags(_) => {}
         TagMsg::Push { tag, remotes } => start_remote(st, RemoteTagOp::Push, tag, remotes, fx),
         TagMsg::DeleteRemote { tag, remotes } => start_remote(st, RemoteTagOp::Delete, tag, remotes, fx),
+        TagMsg::OpenAnnotate { tag } => super::tag_annotate::open(st, tag),
+        TagMsg::Annotate { tag, at, message } => super::tag_annotate::annotate(st, &tag, &at, &message, fx),
     }
 }
 

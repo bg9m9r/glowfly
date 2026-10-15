@@ -30,6 +30,7 @@ mod shortcuts;
 mod stash;
 mod submodules;
 mod tabs;
+mod tag_annotate;
 mod tags;
 mod terminal;
 mod trust;
@@ -130,6 +131,8 @@ mod stash_tests;
 mod submodule_tests;
 #[cfg(test)]
 mod tabs_tests;
+#[cfg(test)]
+mod tag_annotate_tests;
 #[cfg(test)]
 mod tag_remote_tests;
 #[cfg(test)]

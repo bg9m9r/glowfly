@@ -1,11 +1,12 @@
 //! The New tag dialog: a plain tag, or an annotated one whose message is required. The name is
-//! checked as it is typed, and the new tag can be pushed to a remote in the same job.
+//! checked as it is typed, and the new tag can be pushed to a remote in the same job. Also the
+//! Annotate dialog, which replaces a lightweight tag with an annotated one on the same commit.
 
 use super::theme::color;
 use crate::msg::Msg;
-use crate::state::tags::{TagForm, push_remote, tag_problem};
+use crate::state::tags::{AnnotateForm, TagForm, annotate_problem, push_remote, tag_problem};
 use crate::tag::TagMsg;
-use eframe::egui::{self, Id, Key, RichText};
+use eframe::egui::{self, Id, Key, Modifiers, RichText};
 use trellis_core::repo::Snapshot;
 use trellis_core::tag_ops::TagNameProblem;
 
@@ -90,4 +91,51 @@ fn push_row(ui: &mut egui::Ui, form: &mut TagForm, snap: &Snapshot, push_on: boo
     if changed {
         msgs.push(Msg::Tag(TagMsg::SetPushNewTags(on)));
     }
+}
+
+/// The Annotate dialog for `form`; returns true when Cancel closes it (`update` closes it once the
+/// job starts). The message field keeps the keyboard focus unless `focus` is false (a credential
+/// prompt is open above it); Ctrl+Enter submits, plain Enter adds a line.
+pub fn annotate_tag(ui: &mut egui::Ui, form: &mut AnnotateForm, snap: Option<&Snapshot>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
+    let mut close = false;
+    let short = &form.at[..7.min(form.at.len())];
+    ui.heading(format!("Annotate tag {}", form.tag));
+    let what = format!("Replaces the lightweight tag with an annotated one on commit {short}. The name and commit stay the same.");
+    ui.label(RichText::new(what).color(color::weak()));
+    if snap.is_some_and(|s| !s.remotes.is_empty()) {
+        ui.label(RichText::new("Copies already pushed to remotes stay lightweight.").color(color::weak()));
+    }
+    ui.add_space(6.0);
+    let id = Id::new("trellis-annotate-tag-message");
+    let problem = annotate_problem(snap, &form.tag, &form.at);
+    // Taken before the field draws, so Ctrl+Enter never reaches it as a new line.
+    let submit = problem.is_none()
+        && !form.message.trim().is_empty()
+        && ui.memory(|m| m.has_focus(id))
+        && ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter));
+    let r = ui.add(
+        egui::TextEdit::multiline(&mut form.message)
+            .id(id)
+            .hint_text("Tag message (required)")
+            .desired_rows(4)
+            .desired_width(f32::INFINITY),
+    );
+    if focus && !r.has_focus() {
+        r.request_focus();
+    }
+    if let Some(p) = &problem {
+        ui.add_space(4.0);
+        ui.label(RichText::new(p).color(color::red()));
+    }
+    let valid = problem.is_none() && !form.message.trim().is_empty();
+    ui.add_space(8.0);
+    ui.horizontal(|ui| {
+        if ui.add_enabled(valid, egui::Button::new("Annotate")).clicked() || submit {
+            msgs.push(Msg::Tag(TagMsg::Annotate { tag: form.tag.clone(), at: form.at.clone(), message: form.message.trim().into() }));
+        }
+        if ui.button("Cancel").clicked() {
+            close = true;
+        }
+    });
+    close
 }
