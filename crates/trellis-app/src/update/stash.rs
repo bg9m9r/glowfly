@@ -1,14 +1,20 @@
-//! Apply, pop and drop of one stash (sidebar STASHES menu and palette). The stash list is
-//! numbered from the newest entry, so a stash made or dropped elsewhere since the snapshot
-//! shifts every `stash@{N}`: the job names the entry by position for git but carries the
-//! commit the user picked, and the runner refuses it if that position now holds another stash.
+//! Apply, pop and drop of one stash (sidebar STASHES menu and palette), and renaming one. The
+//! stash list is numbered from the newest entry, so a stash made or dropped elsewhere since the
+//! snapshot shifts every `stash@{N}`: the job names the entry by position for git but carries
+//! the commit the user picked, and the runner refuses it if that position now holds another stash.
 
-use super::ops::{JobSpec, start_job};
+use super::ops::{self, JobSpec, start_job};
 use crate::effect::Effect;
-use crate::state::AppState;
+use crate::msg::StashMsg;
 use crate::state::palette::StashAction;
+use crate::state::stashes::RenameStashForm;
+use crate::state::{AppState, Modal};
 use git2::Oid;
 use trellis_core::gitcli::args;
+use trellis_core::repo::StashInfo;
+use trellis_core::stash_ops::edited_message;
+
+const GONE: &str = "That stash no longer exists.";
 
 pub(super) fn run(st: &mut AppState, action: StashAction, index: usize, oid: Oid, fx: &mut Vec<Effect>) {
     let refname = format!("stash@{{{index}}}");
@@ -17,4 +23,52 @@ pub(super) fn run(st: &mut AppState, action: StashAction, index: usize, oid: Oid
     // again (`git stash apply <sha>`) until it is garbage-collected.
     let spec = JobSpec { expect: Some((refname, oid)), ..JobSpec::new(action.job_label().into(), vec![cmd]) };
     start_job(st, spec, fx);
+}
+
+pub(super) fn handle(st: &mut AppState, msg: StashMsg, fx: &mut Vec<Effect>) {
+    match msg {
+        StashMsg::RenameDialog { oid } => match find(st, oid) {
+            Some(s) => st.modal = Some(Modal::RenameStash(RenameStashForm::new(&s))),
+            None => st.log(false, GONE),
+        },
+        StashMsg::Rename { oid, message } => rename(st, oid, &message, fx),
+    }
+}
+
+/// The stash with commit `oid` in the current snapshot.
+fn find(st: &AppState, oid: Oid) -> Option<StashInfo> {
+    st.snap.as_ref()?.stashes.iter().find(|s| s.oid == oid).cloned()
+}
+
+fn close_dialog(st: &mut AppState) {
+    if matches!(st.modal, Some(Modal::RenameStash(_))) {
+        st.modal = None;
+    }
+}
+
+/// Starts renaming the stash with commit `oid` to the dialog's text `body`, found again by its
+/// commit since the list may have shifted. The dialog stays open on a blank text or while
+/// another job runs.
+fn rename(st: &mut AppState, oid: Oid, body: &str, fx: &mut Vec<Effect>) {
+    let Some(s) = find(st, oid) else {
+        st.log(false, GONE);
+        close_dialog(st);
+        return;
+    };
+    let Some(message) = edited_message(&s.message, body) else {
+        st.log(false, "Enter a message for the stash.");
+        return;
+    };
+    if message == s.message {
+        st.log(false, "That stash already has this message.");
+        close_dialog(st);
+        return;
+    }
+    if ops::busy(st, false) {
+        return;
+    }
+    // Recorded undo actions find stashes by commit, which a rename keeps.
+    let Some(cwd) = ops::begin_job(st, "Rename stash", true) else { return };
+    close_dialog(st);
+    fx.push(Effect::RenameStash { cwd, index: s.index, oid, message });
 }

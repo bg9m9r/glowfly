@@ -40,6 +40,13 @@ pub enum PaletteCommand {
         action: StashAction,
         oid: git2::Oid,
     },
+    /// Enter the stash sub-list for renaming; choosing a stash runs `RenameStash`.
+    ChooseStashToRename,
+    /// Open the Rename stash dialog for the stash with this commit, found again in the current
+    /// snapshot.
+    RenameStash {
+        oid: git2::Oid,
+    },
     /// Enter the stash message step; Enter runs `StashWithMessage`.
     StashMessage,
     /// Stash every change, untracked files included, under this message.
@@ -109,6 +116,7 @@ impl PaletteCommand {
         match self {
             PaletteCommand::FileHistory => Some(PickKind::FileHistory),
             PaletteCommand::ChooseStash(a) => Some(PickKind::Stash(*a)),
+            PaletteCommand::ChooseStashToRename => Some(PickKind::RenameStash),
             _ => None,
         }
     }
@@ -231,6 +239,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         for (action, label, keywords) in choose {
             out.push(with_detail(entry(C::ChooseStash(action), label, keywords), Some(n.clone())));
         }
+        out.push(with_detail(entry(C::ChooseStashToRename, "Rename stash…", "edit reword message describe name stash"), Some(n)));
     }
     if !snap.unstaged.is_empty() {
         out.push(entry(C::StageAll, "Stage all files", "add everything"));

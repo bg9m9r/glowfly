@@ -10,6 +10,7 @@ use crate::msg::BranchMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StashMsg;
 use crate::state::palette::StashAction;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use eframe::egui;
@@ -127,6 +128,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             r.context_menu(|ui| {
                 menu_item(msgs, ui, "Apply", stash(StashAction::Apply));
                 menu_item(msgs, ui, "Pop", stash(StashAction::Pop));
+                menu_item(msgs, ui, "Rename…", Msg::Stash(StashMsg::RenameDialog { oid: s.oid }));
                 menu_item(
                     msgs,
                     ui,

@@ -136,6 +136,14 @@ pub enum Effect {
     /// Runs `git worktree remove` then, if asked, `git branch -d`. Unscoped like RunGit: it ends
     /// the active job.
     RemoveWorktree(crate::worktree::RemoveRequest),
+    /// Renames the stash list entry stash@{index} (only if it still is commit `oid`) to
+    /// `message`, keeping its position. Unscoped like RunGit: it ends the active job.
+    RenameStash {
+        cwd: PathBuf,
+        index: usize,
+        oid: Oid,
+        message: String,
+    },
     /// Git LFS status for the preferences page: installed version, set up or not, tracked patterns.
     LoadLfs {
         workdir: PathBuf,
@@ -315,6 +323,7 @@ impl Effect {
             | Effect::CheckCloneParent { .. }
             | Effect::DetectLfs { .. }
             | Effect::RemoveWorktree(_)
+            | Effect::RenameStash { .. }
             | Effect::RunGit { .. }
             | Effect::UndoRedo { .. }
             | Effect::InteractiveRebase { .. }

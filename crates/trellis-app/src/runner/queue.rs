@@ -56,6 +56,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
         Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } | Effect::InteractiveRebase { cwd, .. } => Some(cwd),
         Effect::RemoveWorktree(r) => Some(&r.repo),
+        Effect::RenameStash { cwd, .. } => Some(cwd),
         // Reads, network calls, Trellis's own files (ordered by `saves`), git config (which no
         // queued job reads mid-way) and work outside the process. Listed one by one so a new
         // effect has to decide.
@@ -217,6 +218,7 @@ mod tests {
                 force: trellis_core::worktree_ops::RemoveForce::None,
                 delete_branch: None,
             }),
+            Effect::RenameStash { cwd: w.clone(), index: 0, oid: git2::Oid::zero(), message: "On main: x".into() },
         ];
         for e in &changing {
             assert_eq!(repo_of(e), Some(w.as_path()), "{} must run on its repository's queue", e.name());

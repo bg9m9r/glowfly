@@ -24,6 +24,7 @@ pub mod ref_rows;
 pub mod refresh;
 pub mod remotes;
 pub mod selection;
+pub mod stashes;
 pub mod submodules;
 pub mod tabs;
 pub mod tags;
@@ -128,6 +129,7 @@ pub enum Modal {
     CreatePr { source: String, target: String, targets: Vec<String>, title: String, description: String, draft: bool, items: String },
     Publish(Box<publish::PublishForm>),
     RenameBranch { old: String, name: String },
+    RenameStash(stashes::RenameStashForm),
     SetUpstream { branch: String, remote: String, name: String },
     NewFile(files::PathForm),
     RenameFile { old: String, form: files::PathForm },

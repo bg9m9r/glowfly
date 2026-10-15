@@ -89,8 +89,17 @@ impl Pick {
 
     /// A stash sub-list over `list`, labelled by the stash messages.
     pub fn stashes(action: StashAction, list: &[StashInfo]) -> Self {
+        Self::over_stashes(PickKind::Stash(action), list)
+    }
+
+    /// The stash sub-list for renaming over `list`, the same rows as `stashes`.
+    pub fn stashes_to_rename(list: &[StashInfo]) -> Self {
+        Self::over_stashes(PickKind::RenameStash, list)
+    }
+
+    fn over_stashes(kind: PickKind, list: &[StashInfo]) -> Self {
         let items = Items::Ready(list.iter().map(|s| s.message.clone()).collect());
-        Self { kind: PickKind::Stash(action), items, stashes: list.to_vec(), ranked: None }
+        Self { kind, items, stashes: list.to_vec(), ranked: None }
     }
 
     /// The dim text at the right of item `index`: a stash's ref.
@@ -103,6 +112,7 @@ impl Pick {
         match self.kind {
             PickKind::FileHistory => Some(PaletteCommand::OpenFileHistory(self.label(index).to_owned())),
             PickKind::Stash(action) => self.stashes.get(index).map(|s| PaletteCommand::StashOp { action, oid: s.oid }),
+            PickKind::RenameStash => self.stashes.get(index).map(|s| PaletteCommand::RenameStash { oid: s.oid }),
         }
     }
 

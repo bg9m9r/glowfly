@@ -126,6 +126,8 @@ mod selection_tests;
 #[cfg(test)]
 mod shortcuts_tests;
 #[cfg(test)]
+mod stash_rename_tests;
+#[cfg(test)]
 mod stash_tests;
 #[cfg(test)]
 mod submodule_tests;
@@ -192,6 +194,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Stage(m) => ops::stage(st, m, now, &mut fx),
         Msg::Commit(m) => commit::handle(st, m, now, &mut fx),
         Msg::Job(m) => ops::job(st, m, now, &mut fx),
+        Msg::Stash(m) => stash::handle(st, m, &mut fx),
         Msg::Files(m) => files::handle(st, m, now, &mut fx),
         Msg::WorkFile(m) => work_files::handle(st, m, now, &mut fx),
         Msg::Branch(m) => branches::handle(st, m, &mut fx),

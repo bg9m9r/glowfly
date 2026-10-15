@@ -32,6 +32,7 @@ mod remotes;
 mod shortcuts;
 mod sidebar;
 mod spell_edit;
+mod stash_dialog;
 mod status;
 mod submodules;
 mod tabs;
@@ -93,6 +94,8 @@ mod snapshot_tests_remotes;
 mod snapshot_tests_revert;
 #[cfg(test)]
 mod snapshot_tests_select;
+#[cfg(test)]
+mod snapshot_tests_stash;
 #[cfg(test)]
 mod snapshot_tests_submodules;
 #[cfg(test)]

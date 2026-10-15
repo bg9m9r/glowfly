@@ -36,6 +36,8 @@ impl StashAction {
 pub enum PickKind {
     FileHistory,
     Stash(StashAction),
+    /// Choose a stash to open the Rename stash dialog for.
+    RenameStash,
 }
 
 impl PickKind {
@@ -46,6 +48,7 @@ impl PickKind {
             PickKind::Stash(StashAction::Apply) => "Apply stash",
             PickKind::Stash(StashAction::Pop) => "Pop stash",
             PickKind::Stash(StashAction::Drop) => "Delete stash",
+            PickKind::RenameStash => "Rename stash",
         }
     }
 
@@ -56,13 +59,14 @@ impl PickKind {
             PickKind::Stash(StashAction::Apply) => "Find a stash to apply",
             PickKind::Stash(StashAction::Pop) => "Find a stash to pop",
             PickKind::Stash(StashAction::Drop) => "Find a stash to delete",
+            PickKind::RenameStash => "Find a stash to rename",
         }
     }
 
     pub fn loading(self) -> &'static str {
         match self {
             PickKind::FileHistory => "Loading files…",
-            PickKind::Stash(_) => "Loading stashes…",
+            PickKind::Stash(_) | PickKind::RenameStash => "Loading stashes…",
         }
     }
 
@@ -70,7 +74,7 @@ impl PickKind {
     pub fn none_text(self) -> &'static str {
         match self {
             PickKind::FileHistory => "No matching files",
-            PickKind::Stash(_) => "No matching stashes",
+            PickKind::Stash(_) | PickKind::RenameStash => "No matching stashes",
         }
     }
 
@@ -78,7 +82,7 @@ impl PickKind {
     pub fn empty_text(self) -> &'static str {
         match self {
             PickKind::FileHistory => "This repository has no tracked files",
-            PickKind::Stash(_) => "This repository has no stashes",
+            PickKind::Stash(_) | PickKind::RenameStash => "This repository has no stashes",
         }
     }
 
@@ -90,6 +94,7 @@ impl PickKind {
                 StashAction::Pop => "Up/Down to choose, Enter to pop, Backspace or Esc to go back",
                 StashAction::Drop => "Up/Down to choose, Enter to delete, Backspace or Esc to go back",
             },
+            PickKind::RenameStash => "Up/Down to choose, Enter to rename, Backspace or Esc to go back",
         }
     }
 
@@ -97,7 +102,7 @@ impl PickKind {
     pub fn more_text(self, shown: usize, total: usize) -> String {
         let noun = match self {
             PickKind::FileHistory => "files",
-            PickKind::Stash(_) => "stashes",
+            PickKind::Stash(_) | PickKind::RenameStash => "stashes",
         };
         format!("Showing {shown} of {total} {noun}. Type more to narrow the list.")
     }

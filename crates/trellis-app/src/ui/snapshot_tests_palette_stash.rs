@@ -19,7 +19,7 @@ fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Msg) -> bool) ->
 }
 
 /// Three made-up stashes, on the first three commits of the fixture (distinct oids).
-fn fixture_stashes(st: &AppState) -> Vec<StashInfo> {
+pub(super) fn fixture_stashes(st: &AppState) -> Vec<StashInfo> {
     let snap = st.snap.as_ref().unwrap();
     let oid = |i: usize| snap.commits[i].oid;
     vec![

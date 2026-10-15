@@ -765,7 +765,16 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     dialog when the tag will be signed
 - [ ] **Stash improvements**
   Stash selected files only, a stash message field, rename a stash, hide stashes.
-  - [ ] Rename (edit the message of) an existing stash, from the sidebar and the palette
+  - [x] Rename (edit the message of) an existing stash, from the sidebar and the palette
+    - [ ] Edit the stash message inline from the commit details panel when a stash is selected,
+      and show the stash list message there (the stash commit's own message keeps its old text)
+    - [ ] Keep the original reflog dates of the stash entries above the renamed one
+    - [ ] Move apply, pop and drop (`JobMsg::Stash`) into `StashMsg`, so all stash actions share
+      one message enum
+    - [ ] Share one stash-action message builder between the sidebar and the palette, Rename…
+      included
+    - [ ] Undo a stash rename (record the old message so Ctrl+Z restores it)
+    - [ ] Rank recently picked stashes first in the rename sub-list
   - [ ] Stash only staged changes or selected files, with a message, from the palette too
 - [ ] **Clone and init options**
   Shallow and sparse clone; init with a `.gitignore` template and a license; create the hosting-service repo and push on init; clone from a list of

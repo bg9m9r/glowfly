@@ -24,6 +24,7 @@ impl Effect {
             Effect::CheckCloneParent { .. } => "check-clone-parent",
             Effect::DetectLfs { .. } => "lfs-detect",
             Effect::RemoveWorktree(_) => "remove-worktree",
+            Effect::RenameStash { .. } => "rename-stash",
             Effect::LoadLfs { .. } => "lfs-status",
             Effect::RunGit { .. } => "git",
             Effect::UndoRedo { .. } => "undo-redo",

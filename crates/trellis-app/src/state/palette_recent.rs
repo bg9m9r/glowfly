@@ -57,6 +57,8 @@ impl PaletteCommand {
             C::ChooseStash(StashAction::Pop) => "stash-pop",
             C::ChooseStash(StashAction::Drop) => "stash-drop",
             C::StashOp { .. } => return None,
+            C::ChooseStashToRename => "stash-rename",
+            C::RenameStash { .. } => return None,
             C::StashMessage => "stash-message",
             C::StashWithMessage(_) => return None,
             C::StageAll => "stage-all",

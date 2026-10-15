@@ -21,6 +21,7 @@ mod graph;
 mod prefs;
 mod rebase;
 mod repo;
+mod stash;
 mod tabs;
 mod trust;
 mod work;
@@ -33,6 +34,7 @@ pub use graph::{AvatarMsg, GraphMsg, SelectionMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
+pub use stash::StashMsg;
 pub use tabs::TabsMsg;
 pub use trust::TrustMsg;
 pub use work::{CommitMsg, JobMsg, StageMsg};
@@ -66,6 +68,8 @@ pub enum Msg {
     Commit(CommitMsg),
     /// Git jobs: commands, push, stash, undo and redo, and their end (update/ops.rs).
     Job(JobMsg),
+    /// Renaming a stash (update/stash.rs).
+    Stash(StashMsg),
     /// Restoring a file from a commit, opening or showing a working-tree file (update/files.rs).
     Files(FilesMsg),
     /// Creating, renaming, deleting and discarding working-tree files (update/work_files.rs).
@@ -170,6 +174,7 @@ impl Msg {
             Msg::Stage(m) => m.on_inactive(),
             Msg::Commit(m) => m.on_inactive(),
             Msg::Job(m) => m.on_inactive(),
+            Msg::Stash(m) => m.on_inactive(),
             Msg::Files(m) => m.on_inactive(),
             Msg::WorkFile(m) => m.on_inactive(),
             Msg::Branch(m) => m.on_inactive(),

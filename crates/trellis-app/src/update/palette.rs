@@ -2,7 +2,7 @@
 //! through the message that the rest of the app already uses for it (remembering plain
 //! commands among the recently run ones), and the second steps that
 //! two-step commands open: the file finder (loading its items in the background), the stash
-//! sub-lists and the stash message step.
+//! sub-lists (apply, pop, delete and rename) and the stash message step.
 
 use crate::effect::Effect;
 use crate::msg::BranchMsg;
@@ -14,6 +14,7 @@ use crate::msg::PaletteMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
+use crate::msg::StashMsg;
 use crate::msg::TabsMsg;
 use crate::msg::TrustMsg;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
@@ -132,6 +133,13 @@ fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
             let list = st.snap.as_ref().map(|s| s.stashes.clone()).unwrap_or_default();
             open_step(st, Mode::Pick(Pick::stashes(action, &list)));
         }
+        PickKind::RenameStash => {
+            if !palette::can_pick_stash(st) {
+                return;
+            }
+            let list = st.snap.as_ref().map(|s| s.stashes.clone()).unwrap_or_default();
+            open_step(st, Mode::Pick(Pick::stashes_to_rename(&list)));
+        }
     }
 }
 
@@ -168,6 +176,13 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
                 return;
             };
             stash_msg(action, &s)
+        }
+        C::RenameStash { oid } => {
+            if !st.snap.as_ref().is_some_and(|s| s.stashes.iter().any(|x| x.oid == oid)) {
+                st.log(false, "That stash no longer exists.");
+                return;
+            }
+            Msg::Stash(StashMsg::RenameDialog { oid })
         }
         C::StashWithMessage(text) => {
             let t = text.trim();
@@ -219,7 +234,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             Msg::Trust(TrustMsg::Ask { real: s.real_workdir.clone() })
         }
         // Opens a step in `handle`; never run directly.
-        C::FileHistory | C::ChooseStash(_) | C::StashMessage => return,
+        C::FileHistory | C::ChooseStash(_) | C::ChooseStashToRename | C::StashMessage => return,
     };
     fx.extend(super::update(st, msg, now));
 }
