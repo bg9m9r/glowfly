@@ -16,6 +16,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 - 2026-10-15 19:55 · **Conflict prediction**: Dry-run merge of the checked-out branch against its upstream or default branch with git merge-tree after loads and fetches: toolbar warning with the conflicting files, Merge/Rebase from its popover, and on-demand checks from the branch menus (`62f321b`)
 - 2026-10-15 19:44 · **External tools**: Preferences > External Tools: choose an editor (open a file from file rows, or the repository from the palette) with argument templates, and a custom terminal for Open in terminal (`e7ea38a`)
+- 2026-10-15 19:30 · **Profiles**: Named identity profiles in Preferences > Profile: add (copying the current identity), rename, delete (asking first) and switch from the page or the palette, writing user.name/email/signingkey to the global config; the first is seeded from the global identity (`c9c2e37`)
 - 2026-10-15 17:54 · **Local patches**: Create patch… from one commit or a multi-selection in the graph menus (one mbox-style file, oldest first, binary-safe) and Apply patch… from the palette, checked first so nothing changes when it fails (`56ae4b4`)
 - 2026-10-15 17:46 · **Search and filter**: Filter the graph to search matches (Filter toggle, Ctrl+Shift+F) with a live match count, and narrow by author with author: terms and an author picker (`b922cb6`)
 - 2026-10-15 17:37 · **SSH key management**: SSH page in Preferences: list the key pairs in ~/.ssh with fingerprints, copy a public key, and generate an Ed25519 key with ssh-keygen, asking before replacing one (`cac1207`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 12:14 · **Diff viewer upgrade**: Cache the computed diff rows (done by the rows cache; the Previous/Next button state is left as a follow-up) (`bdc1893`)
 - 2026-10-15 11:55 · **Command palette (fuzzy finder)**: Commands button in the toolbar, and recently run commands listed first (`f3b5231`)
 - 2026-10-14 16:36 · **Tag management**: Delete a tag from one or all remotes and push it to all remotes, from the TAGS row menu (`4f5c0a5`)
-- 2026-10-14 16:33 · **Clone and init options**: Shallow clone in the Clone dialog by commit count or since a date, with an optional branch (`ea485b4`)
 
 ---
 
