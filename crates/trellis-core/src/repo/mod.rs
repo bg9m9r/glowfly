@@ -259,6 +259,8 @@ pub struct CommitDetail {
     /// Paths of `files` missing from the working tree when the detail was loaded (deleted,
     /// renamed or never checked out). Views use it to disable Open / Show in folder.
     pub absent: HashSet<String>,
+    /// The format of the commit's signature, if it has one (header only; not checked).
+    pub signature: Option<crate::signing::SigningFormat>,
 }
 
 impl CommitDetail {

@@ -86,6 +86,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::DeleteToken(_)
         | Effect::ForgetCredentialManager { .. }
         | Effect::Stats { .. }
+        | Effect::VerifySignature { .. }
         | Effect::FetchAvatars(_)
         | Effect::ReadGitConfig { .. }
         | Effect::SetGitConfig { .. }

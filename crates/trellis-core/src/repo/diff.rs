@@ -146,6 +146,7 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
         parents: c.parent_ids().collect(),
         files,
         absent,
+        signature: crate::signature_check::signature_format(&repo, oid),
     })
 }
 

@@ -42,6 +42,7 @@ binary (package `trellis`).
 | `settings.rs`, `settings/` | Preferences, graph column widths, per-repository graph filters and repository trust decisions. |
 | `persist.rs` | Crash-safe writes of Trellis's own files. |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
+| `signature_check.rs` | Checking commit signatures through git (`%G?`), so the user's signing programs, keyrings and allowed signers file apply. |
 
 ### trellis-app (`crates/trellis-app/src/`)
 

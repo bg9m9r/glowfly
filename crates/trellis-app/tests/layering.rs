@@ -125,6 +125,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
         ],
     ),
     ("avatars", &["fetch"]),
+    ("signature_check", &["verify_commit", "signature_format"]),
     ("signing", &["list_gpg_keys", "list_ssh_keys", "generate_gpg_key", "export_public_key"]),
     ("undo", &["before", "after", "plan", "redone", "discard_saving", "restore_saving", "write_saved"]),
     ("rebase", &["plan", "start", "stopped_at", "install_todo"]),

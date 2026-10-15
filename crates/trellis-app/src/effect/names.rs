@@ -40,6 +40,7 @@ impl Effect {
             Effect::DeleteToken(_) => "delete-token",
             Effect::ForgetCredentialManager { .. } => "forget-gcm",
             Effect::Stats { .. } => "stats",
+            Effect::VerifySignature { .. } => "verify-signature",
             Effect::FetchAvatars(_) => "avatars",
             Effect::ReadGitConfig { .. } => "read-config",
             Effect::SetGitConfig { .. } => "set-config",

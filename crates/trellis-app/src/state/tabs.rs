@@ -68,6 +68,7 @@ pub struct Parked {
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,
     pub stats: HashMap<Oid, (usize, usize, usize)>,
+    pub signatures: crate::state::signatures::Signatures,
     pub search: String,
     pub search_cursor: usize,
     pub ref_filter: String,

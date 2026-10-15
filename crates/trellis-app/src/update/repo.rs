@@ -18,6 +18,8 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         }
         RepoMsg::Open(path) => super::tabs::open(st, path, fx),
         RepoMsg::Refresh => {
+            // Keys or allowed signers may have changed outside Trellis.
+            st.signatures.clear();
             super::refresh::reload(st, fx);
             super::forge::refresh(st, true, false, now, fx);
         }
@@ -60,6 +62,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 Ok(d) => {
                     let keys = st.forge.as_ref().map(|f| f.issue_refs(&d.message)).unwrap_or_default();
                     st.detail = Some(d);
+                    super::signatures::want(st, oid, fx);
                     super::forge::want_issues(st, keys, fx);
                 }
                 Err(e) => {
@@ -158,6 +161,9 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 st.stats.insert(oid, (files, adds, dels));
             }
         }
+        RepoMsg::WantSignature(oid) => super::signatures::want(st, oid, fx),
+        RepoMsg::CheckSignatureAgain(oid) => super::signatures::again(st, oid, fx),
+        RepoMsg::SignatureChecked { oid, generation, result } => super::signatures::checked(st, oid, generation, result),
     }
 }
 
@@ -266,6 +272,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             st.view.scroll_to_row = Some(0);
             st.stats.clear();
             st.stats_pending.clear();
+            st.signatures.clear();
         }
         LoadKind::Refresh => {
             if let Selection::Commit(oid) = st.selection {

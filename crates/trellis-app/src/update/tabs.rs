@@ -261,6 +261,7 @@ fn park(st: &mut AppState) -> Parked {
         undo: std::mem::take(&mut st.undo),
         forge: st.forge.take(),
         stats: std::mem::take(&mut st.stats),
+        signatures: st.signatures.parked(),
         search: std::mem::take(&mut st.view.search),
         search_cursor: std::mem::take(&mut st.view.search_cursor),
         ref_filter: std::mem::take(&mut st.view.ref_filter),
@@ -318,6 +319,7 @@ fn unpark(st: &mut AppState, p: Parked) {
         f.loading = 0;
     }
     st.stats = p.stats;
+    st.signatures = p.signatures;
     st.view.search = p.search;
     st.view.search_cursor = p.search_cursor;
     st.view.ref_filter = p.ref_filter;

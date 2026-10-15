@@ -36,6 +36,8 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         }
         PrefsMsg::ClosePrefs => {
             st.prefs = None;
+            // The Commit Signing page may have changed the program or the allowed signers file.
+            st.signatures.clear();
             // The diff's scroll offset is in pixels: keep the same top row if the editor font
             // size (and so the row height) changed.
             if st.diff.is_some() {

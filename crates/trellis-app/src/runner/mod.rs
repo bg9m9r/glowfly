@@ -7,7 +7,7 @@
 //! folder's per-area files (`files`, `worktrees`, `rebase`, `highlight`, …); the git, file and
 //! network code itself lives in `trellis-core`.
 
-use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, LocalOp, UndoResult};
+use crate::effect::{Effect, LocalOp, UndoResult};
 use crate::lfs::LfsMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::ConflictMsg;
@@ -27,22 +27,24 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use trellis_core::avatars;
-use trellis_core::forge::{self, Auth};
+use trellis_core::forge;
 use trellis_core::gitcli::{self, args};
 use trellis_core::repo;
-use trellis_core::signing::{self, SigningFormat};
 use trellis_core::undo::{self, Action, Plan};
 
 mod askpass;
 mod config;
 mod expect;
 pub(crate) mod files;
+mod forge_calls;
 mod guard;
 mod highlight;
+mod keys;
 mod os;
 mod queue;
 mod rebase;
 mod saves;
+mod signatures;
 mod sparse;
 mod stashes;
 mod stats;
@@ -246,7 +248,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::LoadRebasePlan { workdir, base, generation } => Some(rebase::load_plan(&workdir, &base, generation)),
         Effect::InteractiveRebase { cwd, request } => Some(rebase::start(&cwd, &request)),
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
-            Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_call(target, &cwd, auth, interactive, connected, call))))
+            Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))
         }
         Effect::RepoOwners { account, cwd } => {
             let result = forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::repo_owners(&account, &a)).map_err(err);
@@ -257,17 +259,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::create_repo(&account, &a, &user, &repo)).map_err(err);
             Some(Msg::Publish(PublishMsg::Published { workdir: cwd, branch, result }))
         }
-        Effect::Connect { account, user, token, cwd } => {
-            let (method, auth, saved) = match token {
-                Some(t) => {
-                    let auth = Auth::from_token(account.provider, user.as_deref(), &t, "saved token");
-                    ("access token".to_owned(), Ok(auth), Some((user, t)))
-                }
-                None => ("Git Credential Manager".to_owned(), forge::from_credential_manager(&account, &cwd, true), None),
-            };
-            let result = auth.and_then(|a| forge::verify(&account, &a)).map_err(err);
-            Some(Msg::Forge(ForgeMsg::Connected { account, method, token: saved, result }))
-        }
+        Effect::Connect { account, user, token, cwd } => Some(forge_calls::connect(account, user, token, &cwd)),
         Effect::SaveToken { account, user, token } => forge::save_token(&account, user.as_deref(), &token)
             .err()
             .map(|e| Msg::Logged { ok: false, text: format!("Connected, but the token could not be saved: {e}") }),
@@ -280,6 +272,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             (!failures.is_empty()).then(|| Msg::Logged { ok: false, text: failures.join("\n") })
         }
         Effect::Stats { workdir, oids } => Some(Msg::Repo(RepoMsg::StatsLoaded(repo::commit_stats(&workdir, &oids)))),
+        Effect::VerifySignature { workdir, oid, format, generation } => Some(signatures::verify(&workdir, oid, format, generation)),
         Effect::FetchAvatars(emails) => Some(Msg::Avatars(AvatarMsg::AvatarsLoaded(
             emails
                 .into_iter()
@@ -315,23 +308,9 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             let path = rfd::FileDialog::new().set_title(title).pick_file();
             Some(Msg::Prefs(PrefsMsg::FilePicked { purpose, path }))
         }
-        Effect::ListSigningKeys { format, program } => {
-            let now = chrono::Utc::now().timestamp();
-            let result = match format {
-                SigningFormat::Ssh => Ok(signing::home_dir().map(|h| signing::list_ssh_keys(&h)).unwrap_or_default()),
-                SigningFormat::OpenPgp => signing::list_gpg_keys(&program, now).map_err(err),
-                // X.509 certificates are chosen by id; listing them through gpgsm isn't supported yet.
-                SigningFormat::X509 => Ok(Vec::new()),
-            };
-            Some(Msg::Prefs(PrefsMsg::SigningKeysLoaded(result)))
-        }
-        Effect::GenerateGpgKey { program, name, email, passphrase } => {
-            let now = chrono::Utc::now().timestamp();
-            Some(Msg::Prefs(PrefsMsg::GpgKeyGenerated(signing::generate_gpg_key(&program, &name, &email, &passphrase, now).map_err(err))))
-        }
-        Effect::ExportPublicKey { format, program, key } => {
-            Some(Msg::Prefs(PrefsMsg::PublicKeyExported(signing::export_public_key(format, &program, &key).map_err(err))))
-        }
+        Effect::ListSigningKeys { format, program } => Some(keys::list(format, &program)),
+        Effect::GenerateGpgKey { program, name, email, passphrase } => Some(keys::generate_gpg(&program, &name, &email, &passphrase)),
+        Effect::ExportPublicKey { format, program, key } => Some(keys::export_public(format, &program, &key)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None
@@ -415,41 +394,4 @@ fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::Path
         }
     }
     (true, output.trim_end().to_owned())
-}
-
-fn forge_call(
-    target: trellis_core::forge::Target,
-    cwd: &Path,
-    auth: Option<Auth>,
-    interactive: bool,
-    connected: bool,
-    call: ForgeCall,
-) -> ForgeReply {
-    let auth = match auth {
-        Some(a) => a,
-        None => match forge::resolve_auth(&target.account(), cwd, interactive, connected) {
-            Ok(a) => a,
-            Err(e) => return ForgeReply { target, auth: None, results: vec![ForgeResult::AuthFailed(err(e))] },
-        },
-    };
-    let t = &target;
-    let results = match call {
-        ForgeCall::Refresh { need_default, with_issues } => {
-            let mut r = vec![ForgeResult::Prs(forge::pull_requests(t, &auth).map_err(ForgeError::from))];
-            if need_default {
-                r.push(ForgeResult::DefaultBranch(forge::default_branch(t, &auth).ok().flatten()));
-            }
-            if with_issues {
-                r.push(ForgeResult::MyIssues(forge::my_issues(t, &auth).map_err(ForgeError::from)));
-            }
-            r
-        }
-        ForgeCall::MyIssues => vec![ForgeResult::MyIssues(forge::my_issues(t, &auth).map_err(ForgeError::from))],
-        ForgeCall::Issues(keys) => {
-            let r = forge::issues(t, &auth, &keys).map_err(ForgeError::from);
-            vec![ForgeResult::Issues(keys, r)]
-        }
-        ForgeCall::Create(pr) => vec![ForgeResult::Created(forge::create_pull_request(t, &auth, &pr).map_err(ForgeError::from))],
-    };
-    ForgeReply { target, auth: Some(auth), results }
 }

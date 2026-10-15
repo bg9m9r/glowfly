@@ -32,6 +32,7 @@ mod remotes;
 mod repo_list;
 mod shortcuts;
 mod sidebar;
+mod signature_badge;
 mod spell_edit;
 mod stash_dialog;
 mod status;
@@ -101,6 +102,8 @@ mod snapshot_tests_revert;
 mod snapshot_tests_select;
 #[cfg(test)]
 mod snapshot_tests_shallow;
+#[cfg(test)]
+mod snapshot_tests_signature;
 #[cfg(test)]
 mod snapshot_tests_sparse;
 #[cfg(test)]

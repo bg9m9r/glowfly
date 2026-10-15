@@ -96,6 +96,7 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
         if ui.small_button("Copy SHA").clicked() {
             msgs.push(Msg::Copy(d.oid.to_string()));
         }
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| super::signature_badge::show(ui, st, d, msgs));
     });
     let (summary, body) = d.message.split_once('\n').unwrap_or((&d.message, ""));
     ui.add(egui::Label::new(RichText::new(summary).strong().size(15.0).color(color::text())).wrap());

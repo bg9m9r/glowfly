@@ -74,7 +74,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | External Tools | ✘ | Editor, diff tool, merge tool, terminal (P1 External tools) |
 | Notifications | ◐ location under UI Customization | Desktop notifications (P1 Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
-| Commit Signing | ✔ Commit Signing | Signature badge on commits (P1) |
+| Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
 | Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights) | Font family, word wrap, EOL character |
 | In-App Terminal | ✘ | Shell, font, cursor style and dimming for the built-in terminal (P1 Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
@@ -836,7 +836,14 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [x] **Signing beyond config**
   Done on the Commit Signing page: generate a GPG key, copy the public key, gpg/ssh program
   path, SSH allowed-signers, sign tags.
-  - [ ] Verified/unverified signature badge on commits
+  - [x] Verified/unverified signature badge on commits (the selected commit's details panel)
+    - [ ] Signature badges on graph rows (batch-check visible signed commits, cached by oid, throttled like Stats)
+    - [ ] Signature status in multi-commit views (details_multi, compare) and the file history list
+    - [ ] Flag a verified signature whose signer identity doesn't match the committer's email
+    - [ ] Verify signed tags in the TAGS section and tag tooltips
+    - [ ] Show signatures on merged tags (mergetag headers) of merge commits
+    - [ ] Show the SSH key type and GPG primary user ID / primary-key fingerprint in the badge tooltip
+    - [ ] Warn on the Commit Signing page when gpg.ssh.allowedSignersFile points to a missing file or a repository-local value overrides the global one
 - [ ] **SSH key management**
   Generate a key, choose the key pair, use the local agent, copy the public key (and add it to
   a connected service).

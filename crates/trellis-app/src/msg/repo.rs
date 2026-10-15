@@ -6,6 +6,7 @@ use git2::Oid;
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, Snapshot};
+use trellis_core::signature_check::SignatureCheck;
 
 /// Opening the repository, selecting a commit or the working tree, opening a diff, and their
 /// results (update/repo.rs).
@@ -42,6 +43,16 @@ pub enum RepoMsg {
     /// Stats asked for but not worked out: a newer request came first (the graph scrolled on).
     /// They can be asked for again.
     StatsDropped(Vec<Oid>),
+    /// The details panel shows a signed commit whose check isn't known or on its way (sent by
+    /// the view, like WantStats).
+    WantSignature(Oid),
+    /// Forget the cached check of this commit and run it again (badge menu).
+    CheckSignatureAgain(Oid),
+    SignatureChecked {
+        oid: Oid,
+        generation: u64,
+        result: Result<SignatureCheck, String>,
+    },
 }
 
 impl RepoMsg {
@@ -65,7 +76,11 @@ impl RepoMsg {
             | Self::DetailLoaded { .. }
             | Self::DiffLoaded { .. }
             | Self::StatsLoaded(..)
-            | Self::StatsDropped(..) => None,
+            | Self::StatsDropped(..)
+            // Dropped: parking forgot the pending check, so the view asks again on return.
+            | Self::WantSignature(..)
+            | Self::CheckSignatureAgain(..)
+            | Self::SignatureChecked { .. } => None,
         }
     }
 }

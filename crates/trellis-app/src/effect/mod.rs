@@ -242,6 +242,13 @@ pub enum Effect {
         workdir: PathBuf,
         oids: Vec<Oid>,
     },
+    /// Checks commit `oid`'s signature (in `format`) with git, for the details panel's badge.
+    VerifySignature {
+        workdir: PathBuf,
+        oid: Oid,
+        format: trellis_core::signing::SigningFormat,
+        generation: u64,
+    },
     /// Downloads (or reads from the disk cache) avatars one after another.
     FetchAvatars(Vec<String>),
     ReadGitConfig {
@@ -329,7 +336,8 @@ impl Effect {
             | Effect::RevertHunk { workdir, .. }
             | Effect::RestoreFile { workdir, .. }
             | Effect::WorkFile { workdir, .. }
-            | Effect::Stats { workdir, .. } => Some(workdir),
+            | Effect::Stats { workdir, .. }
+            | Effect::VerifySignature { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.

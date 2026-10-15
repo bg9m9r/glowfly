@@ -25,6 +25,7 @@ pub mod remote_ops;
 pub mod repo;
 pub mod settings;
 pub mod shallow_ops;
+pub mod signature_check;
 pub mod signing;
 pub mod sparse_ops;
 pub mod spell;

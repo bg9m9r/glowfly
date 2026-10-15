@@ -26,6 +26,7 @@ pub mod remotes;
 pub mod repo_lists;
 pub mod selection;
 pub mod shallow;
+pub mod signatures;
 pub mod sparse;
 pub mod stashes;
 pub mod submodules;
@@ -203,6 +204,8 @@ pub struct AppState {
     /// Per-commit (files, added, deleted) for the CHANGES column.
     pub stats: HashMap<Oid, (usize, usize, usize)>,
     pub stats_pending: HashSet<Oid>,
+    /// Signature checks of the active tab's commits (parked with the tab).
+    pub signatures: signatures::Signatures,
     pub last_fetch: Instant,
     /// The file watcher for the active tab.
     pub watch: watch::WatchState,
@@ -265,6 +268,7 @@ impl AppState {
             forge: None,
             stats: HashMap::new(),
             stats_pending: HashSet::new(),
+            signatures: Default::default(),
             last_fetch: now,
             watch,
             askpass: Default::default(),

@@ -30,6 +30,7 @@ mod repo;
 mod selection;
 mod shallow;
 mod shortcuts;
+mod signatures;
 mod sparse;
 mod stash;
 mod submodules;
@@ -135,6 +136,8 @@ mod selection_tests;
 mod shallow_tests;
 #[cfg(test)]
 mod shortcuts_tests;
+#[cfg(test)]
+mod signature_tests;
 #[cfg(test)]
 mod sparse_tests;
 #[cfg(test)]
