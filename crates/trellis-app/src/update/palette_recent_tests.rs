@@ -159,6 +159,7 @@ fn recall_keys_are_unique() {
         C::InitializeLfs,
         C::ConfigureLfs,
         C::ConfigureGitFlow,
+        C::ConfigureSparse,
         C::StartGitFlow(FlowKind::Feature),
         C::StartGitFlow(FlowKind::Release),
         C::StartGitFlow(FlowKind::Hotfix),

@@ -11,6 +11,8 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 #[path = "palette_gitflow.rs"]
 mod palette_gitflow;
+#[path = "palette_setup.rs"]
+mod palette_setup;
 #[path = "palette_shallow.rs"]
 mod palette_shallow;
 
@@ -77,6 +79,8 @@ pub enum PaletteCommand {
     ConfigureLfs,
     /// Open Preferences on the Git Flow page.
     ConfigureGitFlow,
+    /// Open Preferences on the Sparse Checkout page.
+    ConfigureSparse,
     /// Open the Start dialog for this kind.
     StartGitFlow(trellis_core::gitflow::FlowKind),
     /// Open the Finish dialog for this flow branch.
@@ -282,12 +286,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if super::palette::can_pick_file(st) {
         out.push(entry(C::FileHistory, "File history…", "find open file path log"));
     }
-    out.push(entry(C::InitializeLfs, "Initialize Git LFS", "lfs large file storage setup install enable binary assets"));
-    out.push(entry(
-        C::ConfigureLfs,
-        "Configure Git LFS…",
-        "lfs large file storage track patterns gitattributes fetch pull push prune preferences settings",
-    ));
+    palette_setup::setup_entries(out);
     palette_gitflow::gitflow_entries(snap, out);
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));

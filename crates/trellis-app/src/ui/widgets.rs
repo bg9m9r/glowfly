@@ -47,6 +47,8 @@ pub enum Icon {
     Palette,
     /// A shield with an exclamation mark: an untrusted repository (toolbar chip).
     Shield,
+    /// A folder with one solid and one dotted file row: sparse checkout (Preferences).
+    Sparse,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -200,7 +202,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             ];
             p.add(egui::Shape::closed_line(pts, s));
         }
-        Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield => {} // icons.rs
+        Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
     }
 }
 

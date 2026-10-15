@@ -25,6 +25,7 @@ pub mod refresh;
 pub mod remotes;
 pub mod selection;
 pub mod shallow;
+pub mod sparse;
 pub mod stashes;
 pub mod submodules;
 pub mod tabs;

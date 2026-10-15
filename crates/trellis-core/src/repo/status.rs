@@ -94,7 +94,20 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
             unstaged.push(FileEntry { path, status: c });
         }
     }
+    drop_skipped(repo, &mut unstaged)?;
     unstaged.sort_by(|a, b| a.path.cmp(&b.path));
     staged.sort_by(|a, b| a.path.cmp(&b.path));
     Ok((unstaged, staged))
+}
+
+/// Drops unstaged deletions of files a sparse checkout leaves out (skip-worktree): libgit2
+/// reports them as deleted, git doesn't.
+fn drop_skipped(repo: &Repository, unstaged: &mut Vec<FileEntry>) -> Result<()> {
+    if !unstaged.iter().any(|f| f.status == 'D') {
+        return Ok(());
+    }
+    let index = repo.index()?;
+    let skip = git2::IndexEntryExtendedFlag::SKIP_WORKTREE.bits();
+    unstaged.retain(|f| f.status != 'D' || index.get_path(Path::new(&f.path), 0).is_none_or(|e| e.flags_extended & skip == 0));
+    Ok(())
 }

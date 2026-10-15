@@ -324,6 +324,8 @@ mod revert_tests;
 #[cfg(test)]
 mod shallow_tests;
 #[cfg(test)]
+mod sparse_status_tests;
+#[cfg(test)]
 mod status_cli_tests;
 #[cfg(test)]
 mod submodules_tests;

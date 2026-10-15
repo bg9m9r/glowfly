@@ -26,6 +26,9 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             if page == PrefPage::RepoLfs {
                 super::lfs::load(st, fx);
             }
+            if page == PrefPage::RepoSparse {
+                super::sparse::load(st, fx);
+            }
             // Start the Integrations page on the open repository's service.
             let provider = st.forge.as_ref().and_then(|f| f.host_provider()).unwrap_or(Provider::GitHub);
             select_integration(st, provider);

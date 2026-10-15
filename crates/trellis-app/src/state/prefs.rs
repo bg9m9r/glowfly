@@ -17,6 +17,7 @@ pub enum PrefPage {
     RepoTracker,
     RepoLfs,
     RepoGitFlow,
+    RepoSparse,
 }
 
 impl PrefPage {
@@ -33,6 +34,7 @@ impl PrefPage {
             PrefPage::RepoTracker => "Issue Tracker",
             PrefPage::RepoLfs => "Git LFS",
             PrefPage::RepoGitFlow => "Git Flow",
+            PrefPage::RepoSparse => "Sparse Checkout",
         }
     }
 }
@@ -92,6 +94,7 @@ pub struct PrefsState {
     pub signing: SigningState,
     pub lfs: crate::state::lfs::LfsPage,
     pub gitflow: crate::state::gitflow::GitFlowPage,
+    pub sparse: crate::state::sparse::SparsePage,
 }
 
 impl PrefsState {
@@ -109,6 +112,7 @@ impl PrefsState {
             signing: SigningState::default(),
             lfs: Default::default(),
             gitflow: Default::default(),
+            sparse: Default::default(),
         }
     }
 }

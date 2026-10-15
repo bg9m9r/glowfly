@@ -1,4 +1,4 @@
-//! Painting of the newer icons (code, eye, storage, flow, palette, shield), called from
+//! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse), called from
 //! `widgets::paint_icon`.
 
 use super::widgets::Icon;
@@ -77,6 +77,16 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             // The exclamation mark inside.
             line(pos2(x, y - 4.5), pos2(x, y + 1.0));
             p.circle_filled(pos2(x, y + 4.0), 1.1, s.color);
+        }
+        Icon::Sparse => {
+            // A folder (tab on the top left) holding a solid row and a row of three dots.
+            let (l, r, t, b) = (c.x - 8.0, c.x + 8.0, c.y - 4.5, c.y + 6.5);
+            let pts = vec![pos2(l, t - 2.5), pos2(c.x - 3.0, t - 2.5), pos2(c.x - 1.0, t), pos2(r, t), pos2(r, b), pos2(l, b)];
+            p.add(egui::Shape::closed_line(pts, s));
+            line(pos2(c.x - 4.5, c.y - 0.5), pos2(c.x + 4.5, c.y - 0.5));
+            for dx in [-4.0, 0.0, 4.0] {
+                p.circle_filled(pos2(c.x + dx, c.y + 3.5), 1.1, s.color);
+            }
         }
         _ => return false,
     }

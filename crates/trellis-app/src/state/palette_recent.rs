@@ -76,6 +76,7 @@ impl PaletteCommand {
             C::InitializeLfs => "lfs-init",
             C::ConfigureLfs => "lfs-configure",
             C::ConfigureGitFlow => "gitflow-configure",
+            C::ConfigureSparse => "sparse-configure",
             C::StartGitFlow(FlowKind::Feature) => "gitflow-start-feature",
             C::StartGitFlow(FlowKind::Release) => "gitflow-start-release",
             C::StartGitFlow(FlowKind::Hotfix) => "gitflow-start-hotfix",

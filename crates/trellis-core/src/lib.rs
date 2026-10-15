@@ -26,6 +26,7 @@ pub mod repo;
 pub mod settings;
 pub mod shallow_ops;
 pub mod signing;
+pub mod sparse_ops;
 pub mod spell;
 pub mod stash_ops;
 pub mod tabs;

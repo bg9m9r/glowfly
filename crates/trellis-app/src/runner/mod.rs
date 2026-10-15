@@ -42,6 +42,7 @@ mod os;
 mod queue;
 mod rebase;
 mod saves;
+mod sparse;
 mod stashes;
 mod stats;
 mod submodules;
@@ -206,6 +207,8 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             generation,
             result: repo::load_conflict(&workdir, &path).map_err(err),
         })),
+        Effect::LoadSparse { workdir, generation } => Some(sparse::load(&workdir, generation)),
+        Effect::SparseCheckout { cwd, command } => Some(sparse::run(&cwd, &command)),
         Effect::LoadFileHistory { workdir, path, start, limit, generation } => {
             let result =
                 repo::file_history(&workdir, &path, &start, limit).map_err(|e| format!("Could not load the history of {path}: {e}"));

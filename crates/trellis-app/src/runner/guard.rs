@@ -34,7 +34,7 @@ impl Recovery {
         let kind = match effect {
             Effect::RunGit { record, .. } => Kind::Job(record.as_ref().map(|_| UndoResult::Recorded(None))),
             Effect::UndoRedo { redo, .. } => Kind::Job(Some(UndoResult::Failed { redo: *redo })),
-            Effect::RemoveWorktree(_) | Effect::RenameStash { .. } => Kind::Job(None),
+            Effect::RemoveWorktree(_) | Effect::RenameStash { .. } | Effect::SparseCheckout { .. } => Kind::Job(None),
             Effect::InteractiveRebase { .. } => Kind::Rebase,
             Effect::LocalOp { .. } => Kind::LocalOp,
             Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
@@ -125,6 +125,15 @@ mod tests {
         let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
         let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
         assert!(output.contains("boom") && output.contains("rename-stash"), "{output}");
+    }
+
+    #[test]
+    fn a_panicking_sparse_job_ends_its_job() {
+        let effect = Effect::SparseCheckout { cwd: "C:/r".into(), command: trellis_core::sparse_ops::SparseCommand::Disable };
+        assert!(effect.scope().is_none(), "unscoped: the job ends whichever tab is active");
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
+        let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
+        assert!(output.contains("boom") && output.contains("sparse-checkout"), "{output}");
     }
 
     #[test]

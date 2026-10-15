@@ -209,6 +209,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),
         C::ConfigureLfs => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)),
         C::ConfigureGitFlow => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)),
+        C::ConfigureSparse => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoSparse)),
         C::StartGitFlow(k) => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartDialog(k)),
         C::FinishGitFlow(b) => Msg::GitFlow(crate::gitflow::GitFlowMsg::FinishDialog(b)),
         C::Refresh => Msg::Repo(RepoMsg::Refresh),

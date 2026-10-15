@@ -26,6 +26,8 @@ impl Effect {
             Effect::RemoveWorktree(_) => "remove-worktree",
             Effect::RenameStash { .. } => "rename-stash",
             Effect::LoadLfs { .. } => "lfs-status",
+            Effect::LoadSparse { .. } => "sparse-status",
+            Effect::SparseCheckout { .. } => "sparse-checkout",
             Effect::RunGit { .. } => "git",
             Effect::UndoRedo { .. } => "undo-redo",
             Effect::LoadRebasePlan { .. } => "rebase-plan",

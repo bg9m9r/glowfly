@@ -26,7 +26,7 @@ binary (package `trellis`).
 | `repo/` | The repository model on libgit2: loading history, refs and status; diffs; staging, line staging, revert, restore; conflicts and their resolution; working-tree files; submodules, worktrees, remotes, shallow-clone boundaries. |
 | `gitcli.rs` | The git CLI, for commands that honour hooks, credentials and signing. |
 | `askpass/` | Credential prompts: classifying git's and ssh's questions, the helper protocol, the app's listener and the helper's client. |
-| `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `shallow_ops.rs`, `worktree_ops.rs`, `stash_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning, fetching more of a shallow clone's history, worktrees and stashes (renaming a stash list entry by dropping and storing the top of `refs/stash` again). |
+| `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `shallow_ops.rs`, `worktree_ops.rs`, `stash_ops.rs`, `sparse_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning, fetching more of a shallow clone's history, worktrees and stashes (renaming a stash list entry by dropping and storing the top of `refs/stash` again); sparse checkout state, paths and command lines. |
 | `lfs.rs`, `lfs/` | Git LFS: install and setup state, tracked patterns, LFS command lines. |
 | `gitflow.rs`, `gitflow/` | Git Flow with plain git: config, checks, start and finish plans, versions. |
 | `rebase/` | Interactive rebase: the plan, the todo file, running `git rebase -i`. |

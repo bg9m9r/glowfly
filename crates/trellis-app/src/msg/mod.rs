@@ -21,6 +21,7 @@ mod graph;
 mod prefs;
 mod rebase;
 mod repo;
+mod sparse;
 mod stash;
 mod tabs;
 mod trust;
@@ -34,6 +35,7 @@ pub use graph::{AvatarMsg, GraphMsg, SelectionMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
+pub use sparse::SparseMsg;
 pub use stash::StashMsg;
 pub use tabs::TabsMsg;
 pub use trust::TrustMsg;
@@ -100,6 +102,8 @@ pub enum Msg {
     Lfs(crate::lfs::LfsMsg),
     /// The Git Flow page and Start dialog (gitflow.rs).
     GitFlow(crate::gitflow::GitFlowMsg),
+    /// The Sparse Checkout preferences page (update/sparse.rs).
+    Sparse(SparseMsg),
     /// The command palette (update/palette.rs).
     Palette(PaletteMsg),
     /// The repository trust prompt (update/trust.rs).
@@ -190,6 +194,7 @@ impl Msg {
             Msg::Prefs(m) => m.on_inactive(),
             Msg::Lfs(m) => m.on_inactive(),
             Msg::GitFlow(m) => m.on_inactive(),
+            Msg::Sparse(m) => m.on_inactive(),
             Msg::Palette(m) => m.on_inactive(),
             Msg::Trust(m) => m.on_inactive(),
             Msg::Tick(_)

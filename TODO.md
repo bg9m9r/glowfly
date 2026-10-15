@@ -85,7 +85,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | *Repo:* Agents | — | Out of scope |
 | *Repo:* Conflict Prevention | ✘ | P1 Conflict prediction, with per-repo enable and target branch |
 | *Repo:* LFS | ◐ Git LFS page, Track in Git LFS on file rows | LFS-aware auto-fetch (P1 Git LFS) |
-| *Repo:* Sparse Checkout | ✘ | P1 Sparse checkout |
+| *Repo:* Sparse Checkout | ◐ Sparse Checkout page | Sparse clone, indicators (P1 Sparse checkout) |
 | *Repo:* Issue Tracker | ✔ | — |
 | *Repo:* Team | — | Out of scope (cloud teams) |
 
@@ -790,8 +790,25 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Mark the shallow boundary commits in the graph
     - [ ] Unshallow shallow submodules when an update or reset needs missing commits
     - [ ] Confirm before unshallowing a very large repository, and cancel a running fetch
-- [ ] **Sparse checkout**
-  Enable/disable, set/edit patterns, reapply.
+- [x] **Sparse checkout**
+  A repository page in Preferences (Sparse Checkout, also opened by the palette's Configure
+  sparse checkout…) shows whether it is on, in folders (cone) or patterns mode, and how many
+  tracked files are checked out. Turn on / Save paths runs `git sparse-checkout set` with the
+  list typed one path per line (folders are checked and cleaned up first; a sparse index is never
+  created); Reapply and Turn off run `reapply` and `disable`. Each is a job that reloads the tab,
+  and changed files git keeps outside the new paths are named in the toast. The libgit2 status
+  no longer lists the files sparse checkout leaves out as deleted.
+  - [ ] Sparse clone from the Clone dialog (see the sub-item under Clone and init options)
+  - [ ] Show in the toolbar or status bar that the worktree is sparse, and notice sparse changes
+    made outside Trellis on a plain refresh
+  - [ ] Explain when an opened or restored path is outside the sparse checkout (see File
+    actions), and keep left-out files out of the palette's file finder
+  - [ ] Add or remove a folder from the paths from file rows and the commit file tree
+  - [ ] Warn when a folders-mode path names a file, or a folder that doesn't exist at HEAD
+  - [ ] Refill the form from the kept list after Turn off, so turning it on again starts there
+  - [ ] Convert the list between folders and patterns when switching the mode
+  - [ ] Sparse index support (needs libgit2 to read index.sparse directory entries)
+  - [ ] Palette entries that reapply or turn off sparse checkout directly
 - [ ] **Repository management**
   Scan project folders for repos, favorites with shortcuts, a recent list with removal, and
   fetch or pull across many repos.

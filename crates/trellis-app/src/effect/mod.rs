@@ -149,6 +149,17 @@ pub enum Effect {
         workdir: PathBuf,
         generation: u64,
     },
+    /// Sparse checkout state for the preferences page.
+    LoadSparse {
+        workdir: PathBuf,
+        generation: u64,
+    },
+    /// Runs `git sparse-checkout` set, reapply or disable. Unscoped like RunGit: it ends the
+    /// active job.
+    SparseCheckout {
+        cwd: PathBuf,
+        command: trellis_core::sparse_ops::SparseCommand,
+    },
     /// The commits that changed `path`, examining at most `limit` commits.
     LoadFileHistory {
         workdir: PathBuf,
@@ -309,6 +320,7 @@ impl Effect {
             | Effect::LoadTrackedPaths { workdir, .. }
             | Effect::CheckSubmodule { workdir, .. }
             | Effect::LoadLfs { workdir, .. }
+            | Effect::LoadSparse { workdir, .. }
             | Effect::LoadRebasePlan { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::RevertHunk { workdir, .. }
@@ -324,6 +336,7 @@ impl Effect {
             | Effect::DetectLfs { .. }
             | Effect::RemoveWorktree(_)
             | Effect::RenameStash { .. }
+            | Effect::SparseCheckout { .. }
             | Effect::RunGit { .. }
             | Effect::UndoRedo { .. }
             | Effect::InteractiveRebase { .. }
