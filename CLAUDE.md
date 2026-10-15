@@ -32,9 +32,11 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/tr
 
 - Git reads/writes and CLI calls: `trellis-core` (`repo.rs`, `gitcli.rs`). Network APIs:
   `trellis-core/src/forge/`. Nothing in `trellis-core` may depend on egui.
-- New behaviour: add a `Msg` variant, handle it in `update/<area>.rs`, return an `Effect` for
-  anything slow (add the effect to `effect.rs` and execute it in `runner/mod.rs`), and have the
-  runner report back with a result `Msg`. Test it in `update/tests.rs`.
+- New behaviour: add a variant to the area's message enum (`msg/<area>.rs`, e.g. `RepoMsg`;
+  its handler in `update/<area>.rs` matches it exhaustively, and its `on_inactive` decides
+  what a result needs for an inactive tab), return an `Effect` for anything slow (add the
+  effect to `effect/mod.rs` and execute it in `runner/mod.rs`), and have the runner report
+  back with a result message. Test it in `update/tests.rs`.
 - Drawing: `ui/<region>.rs`. Views take `&mut AppState` only for text buffers and `view`
   state, plus `UiCache` for textures, and push `Msg`s for everything else. No I/O in views;
   `tests/layering.rs` checks.

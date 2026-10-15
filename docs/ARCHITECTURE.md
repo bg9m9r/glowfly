@@ -47,9 +47,9 @@ binary (package `trellis`).
 | Module | Holds |
 | --- | --- |
 | `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`) and askpass helper. |
-| `msg.rs` | `Msg`: user intents and background results. |
-| `effect.rs` | `Effect`: everything slow or outside the process. |
-| `lfs.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `file_op.rs` | Per-area message and effect types (one `Msg` variant each). |
+| `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `Logged`, …). |
+| `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`), and `Effect::name` (`names.rs`). |
+| `lfs.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `file_op.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data. |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
 | `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |
@@ -86,7 +86,9 @@ binary (package `trellis`).
   as a `Msg`, waking the UI.
 - **Tabs**: the active tab's repository data lives directly in `AppState`; switching tabs parks
   it in `state::tabs::Parked` and restores the other tab's. Results of repository-scoped effects
-  (`Effect::scope`) come back as `Msg::Scoped` and are dropped if their tab is no longer active.
+  (`Effect::scope`) come back as `Msg::Scoped`. If their tab is no longer active, only what the
+  area's `on_inactive` returns is applied (a log line, an undo entry for that tab, a dialog's
+  result); the rest is dropped.
   Paths are resolved on disk once, when a repository loads (`Snapshot::real_workdir`); `update`
   compares them with the pure `state::tabs::same_path`.
 - **`AppState`** holds no egui types; textures and fonts live in a `UiCache` owned by the UI
@@ -115,16 +117,23 @@ binary (package `trellis`).
 
 ## Recipe: adding a feature
 
-1. **Message.** Add a `Msg` variant for the user's intent in `msg.rs`, or in the area's own
-   message enum (`lfs.rs`, `worktree.rs`, …) when the area has one.
-2. **Update.** Handle it in `update/<area>.rs` and route it from `update/mod.rs`. Change state
-   there. Keep pure rules (checks, labels, why something is blocked) in `state/<area>.rs`.
+1. **Message.** Add a variant for the user's intent to the area's message enum (`RepoMsg` in
+   `msg/repo.rs`, `LfsMsg` in `lfs.rs`, …). A new area gets its own enum, one `Msg` variant
+   carrying it, and an arm in `Msg::on_inactive`; only messages no area owns go in `Msg`
+   itself.
+2. **Update.** Handle it in the area's handler in `update/<area>.rs`, which matches its enum
+   exhaustively (no `_` arm, so nothing is dropped silently); `update/mod.rs` only routes each
+   `Msg` variant to its handler. Change state there. Keep pure rules (checks, labels, why
+   something is blocked) in `state/<area>.rs`.
 3. **Effect.** If the work is slow or leaves the process, add an `Effect` variant in
-   `effect.rs` (and its name in `runner/names.rs`), and return it from `update`.
+   `effect/mod.rs`, give it a name in `effect/names.rs`, decide in `Effect::scope` and the
+   runner's `queue::repo_of` whether it is scoped to a tab and whether it changes the
+   repository (both list every effect), and return it from `update`.
 4. **Runner.** Execute it in `runner/mod.rs`, or in `runner/<area>.rs` for more than a line.
    The real work (git, files, HTTP) goes in `trellis-core`.
-5. **Result.** The runner sends a result `Msg` back. Handle it in the same `update` file. Drop
-   stale results: compare a generation number, or the request with what is still open.
+5. **Result.** The runner sends a result message back. Handle it in the same `update` file.
+   Drop stale results: compare a generation number, or the request with what is still open.
+   Say in the enum's `on_inactive` what the result still needs if its tab is no longer active.
 6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
 7. **Tests.** Write an `update` test (`update/<area>_tests.rs`). Add a core test on a fixture
    repository (see `scratch_repo`) for new git logic, and an `egui_kittest` snapshot for a new
