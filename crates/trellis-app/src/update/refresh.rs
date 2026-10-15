@@ -29,6 +29,8 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 st.snap = Some(snap);
             }
             apply_status(st, result, submodules, open_stamp, now, fx);
+            // A dialog may have been open when the repository loaded.
+            super::trust::maybe_ask(st, false);
             super::forge::refresh(st, false, false, now, fx);
             load_finished(st, fx);
         }
@@ -98,7 +100,13 @@ fn request(st: &mut AppState, depth: Depth, fx: &mut Vec<Effect>) {
     }
     let known = match depth {
         Depth::Checked => {
-            st.snap.as_ref().map(|s| KnownRepo { refs_key: s.refs_key, submodules: !s.submodules.is_empty(), open: open_file(st) })
+            let git_status = st.runs_git_unasked();
+            st.snap.as_ref().map(|s| KnownRepo {
+                refs_key: s.refs_key,
+                submodules: !s.submodules.is_empty(),
+                open: open_file(st),
+                git_status,
+            })
         }
         Depth::Full => None,
     };
@@ -122,7 +130,8 @@ pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     st.refresh.status_busy = true;
     let submodules = st.snap.as_ref().is_some_and(|s| !s.submodules.is_empty());
-    fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules, open: open_file(st) });
+    let git_status = st.runs_git_unasked();
+    fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules, open: open_file(st), git_status });
 }
 
 /// The file whose working-tree or index diff is open.

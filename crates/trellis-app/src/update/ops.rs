@@ -2,6 +2,7 @@
 
 use crate::effect::{Effect, LocalOp, UndoResult};
 use crate::msg::{JobMsg, StageMsg};
+use crate::state::trust::Created;
 use crate::state::{AppState, CommitDraft, RunningJob};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -109,7 +110,11 @@ pub(super) fn clone_repo(st: &mut AppState, req: crate::state::clone::CloneReque
     }
     let dest = req.parent.join(&req.name);
     let cmd = trellis_core::clone_ops::clone_cmd(&req.url, &req.name, &req.options);
-    start_job(st, JobSpec { cwd: Some(req.parent), then_open: Some(dest), ..JobSpec::new("Clone".into(), vec![cmd]) }, fx);
+    start_job(
+        st,
+        JobSpec { cwd: Some(req.parent), then_open: Some((dest, Created::Clone)), ..JobSpec::new("Clone".into(), vec![cmd]) },
+        fx,
+    );
 }
 
 /// A git command sequence to run as the (single) active job.
@@ -121,7 +126,9 @@ pub(super) struct JobSpec {
     pub clear_commit: bool,
     /// Push the branch once the job (a commit) succeeds.
     pub then_push: bool,
-    pub then_open: Option<PathBuf>,
+    /// Open this repository in the active tab once the job succeeds; how it was made decides
+    /// whether it is trusted (update/trust.rs).
+    pub then_open: Option<(PathBuf, Created)>,
     pub write_file: Option<(PathBuf, String)>,
     /// Record the job for undo when it is this kind of operation.
     pub record: Option<UndoKind>,
@@ -338,7 +345,8 @@ pub(super) fn finish_job(
                 parked.draft = CommitDraft::default();
             }
         }
-        if let Some(p) = job.then_open {
+        if let Some((p, how)) = job.then_open {
+            super::trust::created(st, &p, how, &output);
             super::tabs::open(st, p, fx);
             return;
         }
@@ -370,7 +378,8 @@ pub(super) fn last_line(output: &str) -> &str {
 /// Background fetch on the interval from Preferences > General.
 pub(super) fn auto_fetch(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let minutes = st.settings.auto_fetch_minutes;
-    if minutes == 0 || st.snap.as_ref().is_none_or(|s| s.remotes.is_empty()) || st.job.is_some() {
+    // Held until the user trusts a repository whose config or hooks run programs.
+    if minutes == 0 || st.snap.as_ref().is_none_or(|s| s.remotes.is_empty()) || st.job.is_some() || !st.runs_git_unasked() {
         return;
     }
     if now.duration_since(st.last_fetch) < Duration::from_secs(minutes as u64 * 60) {

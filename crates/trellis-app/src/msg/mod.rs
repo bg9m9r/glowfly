@@ -22,6 +22,7 @@ mod prefs;
 mod rebase;
 mod repo;
 mod tabs;
+mod trust;
 mod work;
 
 pub use branch::{BranchMsg, CloneMsg};
@@ -33,6 +34,7 @@ pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 pub use tabs::TabsMsg;
+pub use trust::TrustMsg;
 pub use work::{CommitMsg, JobMsg, StageMsg};
 
 pub enum Msg {
@@ -96,6 +98,8 @@ pub enum Msg {
     GitFlow(crate::gitflow::GitFlowMsg),
     /// The command palette (update/palette.rs).
     Palette(PaletteMsg),
+    /// The repository trust prompt (update/trust.rs).
+    Trust(TrustMsg),
     /// A key from ui/shortcuts.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
@@ -182,6 +186,7 @@ impl Msg {
             Msg::Lfs(m) => m.on_inactive(),
             Msg::GitFlow(m) => m.on_inactive(),
             Msg::Palette(m) => m.on_inactive(),
+            Msg::Trust(m) => m.on_inactive(),
             Msg::Tick(_)
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }

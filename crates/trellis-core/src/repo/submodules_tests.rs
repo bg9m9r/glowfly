@@ -197,6 +197,6 @@ fn broken_gitmodules_does_not_fail_load() {
     let snap = load(&parent, &LoadOptions::all(100)).expect("the repository still loads");
     // The list may be empty or partial; it just must not fail.
     assert!(snap.submodules.len() <= 1);
-    assert!(status_at(&parent).is_ok(), "status reads the files without the submodules");
+    assert!(status_at(&parent, true).is_ok(), "status reads the files without the submodules");
     cleanup(&parent);
 }

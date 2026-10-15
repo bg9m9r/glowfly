@@ -213,3 +213,15 @@ fn save_then_load_roundtrips() {
     assert_eq!((json(&back), problem), (json(&s), None));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn trust_decisions_default_empty_and_round_trip() {
+    // Files written before trust decisions existed load with none.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.repo_trust.is_empty());
+    let mut s = Settings::default();
+    s.repo_trust.insert("C:/a".into(), RepoTrust::Trusted);
+    s.repo_trust.insert("C:/b".into(), RepoTrust::NotTrusted);
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+    assert_eq!(back.repo_trust, s.repo_trust);
+}

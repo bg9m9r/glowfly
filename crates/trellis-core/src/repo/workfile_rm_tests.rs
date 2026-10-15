@@ -9,7 +9,7 @@ use std::path::Path;
 
 /// Neither list from `status_at` mentions `path`.
 fn not_in_status(dir: &Path, path: &str) -> bool {
-    let (unstaged, staged, _) = status_at(dir).unwrap();
+    let (unstaged, staged, _) = status_at(dir, true).unwrap();
     unstaged.iter().chain(&staged).all(|f| f.path != path)
 }
 

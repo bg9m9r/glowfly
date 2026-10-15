@@ -4,8 +4,8 @@
 //! renaming a branch or setting its upstream (drawn by `branch_dialogs.rs`), creating or renaming
 //! a working-tree file (drawn by `file_dialogs.rs`), starting a Git Flow branch (drawn by
 //! `gitflow_dialog.rs`), finishing one (drawn by `gitflow_finish_dialog.rs`), adding or editing a
-//! remote (drawn by `remotes/dialog.rs`) and the keyboard shortcut sheet (drawn by
-//! `shortcuts/sheet.rs`).
+//! remote (drawn by `remotes/dialog.rs`), the keyboard shortcut sheet (drawn by
+//! `shortcuts/sheet.rs`) and the repository trust prompt (drawn by `trust_dialog.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -154,6 +154,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::Shortcuts { filter } => {
                 if super::shortcuts::sheet(ui, filter, !prompting) {
+                    close = true;
+                }
+            }
+            Modal::Trust(p) => {
+                if super::trust_dialog::show(ui, p, msgs) {
                     close = true;
                 }
             }

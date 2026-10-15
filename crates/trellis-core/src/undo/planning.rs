@@ -20,13 +20,14 @@ fn busy_name(state: RepositoryState) -> Option<&'static str> {
     })
 }
 
+// Undo is a job the user starts, so git may read the status as for their other commands.
 pub(super) fn has_staged(workdir: &Path) -> Result<bool> {
-    let (_, staged, _) = crate::repo::status_at(workdir)?;
+    let (_, staged, _) = crate::repo::status_at(workdir, true)?;
     Ok(!staged.is_empty())
 }
 
 pub(super) fn is_clean(workdir: &Path) -> Result<bool> {
-    let (unstaged, staged, _) = crate::repo::status_at(workdir)?;
+    let (unstaged, staged, _) = crate::repo::status_at(workdir, true)?;
     Ok(unstaged.is_empty() && staged.is_empty())
 }
 

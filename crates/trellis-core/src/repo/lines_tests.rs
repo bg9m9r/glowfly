@@ -137,7 +137,7 @@ fn untracked_partial_stage() {
     apply_lines(&dir, "u.txt", 0, &hunk, &[0, 2], HunkOp::Stage).unwrap();
     assert_eq!(index_text(&dir, "u.txt"), "a\nc\n");
     assert_eq!(read(&dir, "u.txt"), b"a\nb\nc\n");
-    let (_, staged, _) = status_at(&dir).unwrap();
+    let (_, staged, _) = status_at(&dir, true).unwrap();
     assert!(staged.iter().any(|f| f.path == "u.txt" && f.status == 'A'));
 
     // Discarding lines of an untracked file edits it in place.

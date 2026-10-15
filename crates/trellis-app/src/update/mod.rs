@@ -32,6 +32,7 @@ mod submodules;
 mod tabs;
 mod tags;
 mod terminal;
+mod trust;
 mod undo;
 mod watch;
 mod work_files;
@@ -138,6 +139,8 @@ mod terminal_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod trust_tests;
+#[cfg(test)]
 mod undo_tests;
 #[cfg(test)]
 mod watch_tests;
@@ -202,6 +205,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
         Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
         Msg::Palette(m) => palette::handle(st, m, now, &mut fx),
+        Msg::Trust(m) => trust::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).

@@ -43,6 +43,9 @@ pub enum Effect {
         submodules: bool,
         /// The file whose working-tree or index diff is open, for `LoadMsg::StatusLoaded::open_stamp`.
         open: Option<String>,
+        /// Let git read the status (fsmonitor, untracked cache); false while the repository
+        /// isn't trusted.
+        git_status: bool,
     },
     LoadDetail {
         workdir: PathBuf,

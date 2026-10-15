@@ -191,6 +191,8 @@ pub struct Snapshot {
     pub submodules: Vec<SubmoduleInfo>,
     /// The main worktree first, then linked ones by path; refreshed by full loads only.
     pub worktrees: Vec<WorktreeInfo>,
+    /// What in this repository's own config and hooks runs programs; read at every full load.
+    pub trust_scan: crate::trust::TrustScan,
     pub graph: Layout,
     /// `refs_key` when the load started: a later equal key means only the status can differ.
     pub refs_key: u64,
@@ -341,6 +343,9 @@ pub struct LoadOptions {
     pub hidden: Vec<String>,
     /// When set, show only these full ref names (plus HEAD).
     pub solo: Vec<String>,
+    /// The user trusts this repository: git may read its status even when the scan finds
+    /// commands. Default false.
+    pub trusted: bool,
 }
 
 impl LoadOptions {

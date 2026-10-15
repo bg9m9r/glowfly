@@ -110,12 +110,12 @@ fn stage_unstage_discard_hunks() {
 
     // Whole-file operations.
     stage_file(&dir, "new.txt").unwrap();
-    let (_, staged, _) = status_at(&dir).unwrap();
+    let (_, staged, _) = status_at(&dir, true).unwrap();
     assert!(staged.iter().any(|f| f.path == "new.txt" && f.status == 'A'));
     unstage_paths(&dir, &["new.txt".into()]).unwrap();
     discard_untracked(&dir, "new.txt", Removal::Permanent).unwrap();
     discard_file(&dir, "f.txt").unwrap();
-    let (unstaged, staged, _) = status_at(&dir).unwrap();
+    let (unstaged, staged, _) = status_at(&dir, true).unwrap();
     assert!(unstaged.is_empty() && staged.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }

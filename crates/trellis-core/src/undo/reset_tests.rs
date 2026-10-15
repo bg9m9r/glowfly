@@ -62,7 +62,7 @@ fn undo_of_a_hard_reset_restores_uncommitted_changes() {
     assert_eq!(head_oid(&dir), c2);
     assert_eq!(read(&dir, "a.txt"), "one\ntwo\nstaged\nunstaged\n");
     assert_eq!(read(&dir, "b.txt"), "b edited\n");
-    let (_, staged, _) = crate::repo::status_at(&dir).unwrap();
+    let (_, staged, _) = crate::repo::status_at(&dir, true).unwrap();
     assert!(staged.iter().any(|f| f.path == "a.txt"), "the staged change is staged again");
 
     // Redo stashes the changes again rather than refusing or losing them.

@@ -139,7 +139,7 @@ mod tests {
         update(&mut st, msg, Instant::now());
         assert!(!st.loading, "the next refresh isn't left waiting for it");
 
-        let effect = Effect::LoadStatus { workdir: "C:/r".into(), generation: 3, submodules: false, open: None };
+        let effect = Effect::LoadStatus { workdir: "C:/r".into(), generation: 3, submodules: false, open: None, git_status: true };
         let msg = guarded(Recovery::of(&effect, "load-status"), || panic!("boom")).unwrap();
         let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
         assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), .. })));

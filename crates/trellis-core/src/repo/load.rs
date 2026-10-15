@@ -152,7 +152,11 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     }
     tags.reverse();
 
-    let (unstaged, staged) = super::status::load_status(&repo)?;
+    // Git's own status read can run the repository's fsmonitor hook or filters: only once the
+    // user trusts it, or when nothing in it would run.
+    let trust_scan = crate::trust::scan(&repo);
+    let git_status = opts.trusted || trust_scan.is_empty();
+    let (unstaged, staged) = super::status::load_status(&repo, git_status)?;
     let submodules = submodules::list(&repo);
     let worktrees = worktrees::list(&repo);
 
@@ -218,6 +222,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         staged,
         submodules,
         worktrees,
+        trust_scan,
         graph,
         refs_key,
         loaded_with,

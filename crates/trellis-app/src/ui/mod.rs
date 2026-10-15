@@ -40,6 +40,7 @@ mod tags;
 mod terminal;
 pub mod theme;
 mod toolbar;
+mod trust_dialog;
 pub mod widgets;
 mod worktree_dialog;
 mod worktree_manage_dialog;
@@ -99,6 +100,8 @@ mod snapshot_tests_tag;
 mod snapshot_tests_tag_menu;
 #[cfg(test)]
 mod snapshot_tests_terminal;
+#[cfg(test)]
+mod snapshot_tests_trust;
 #[cfg(test)]
 mod snapshot_tests_whole;
 #[cfg(test)]

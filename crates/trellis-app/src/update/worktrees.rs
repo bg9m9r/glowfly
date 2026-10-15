@@ -99,7 +99,10 @@ fn folder_checked(st: &mut AppState, req: NewWorktree, result: Result<(), String
         return;
     }
     let cmd = add_cmd(&req.folder, &req.base, req.branch.as_deref());
-    let spec = JobSpec { then_open: req.open.then(|| req.folder.clone()), ..JobSpec::new("Create worktree".into(), vec![cmd]) };
+    let spec = JobSpec {
+        then_open: req.open.then(|| (req.folder.clone(), crate::state::trust::Created::Worktree)),
+        ..JobSpec::new("Create worktree".into(), vec![cmd])
+    };
     let before = fx.len();
     ops::start_job(st, spec, fx);
     if fx.len() > before {

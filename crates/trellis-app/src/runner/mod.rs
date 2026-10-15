@@ -171,7 +171,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 && repo::refs_key(&path).is_ok_and(|key| key == k.refs_key)
             {
                 let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
-                let result = repo::status_at(&path).map_err(err);
+                let result = repo::status_at(&path, k.git_status).map_err(err);
                 let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
                 return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp }));
             }
@@ -179,9 +179,9 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 repo::load_cached(&path, &opts, graph_cache).map(Box::new).map_err(|e| format!("Could not open {}: {e}", path.display()));
             Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result }))
         }
-        Effect::LoadStatus { workdir, generation, submodules, open } => {
+        Effect::LoadStatus { workdir, generation, submodules, open, git_status } => {
             let open_stamp = open.and_then(|p| repo::open_file_stamp(&workdir, &p));
-            let result = repo::status_at(&workdir).map_err(err);
+            let result = repo::status_at(&workdir, git_status).map_err(err);
             let submodules = repo::submodules_if_any(&workdir, submodules).ok().flatten();
             Some(Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp }))
         }

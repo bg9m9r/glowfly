@@ -92,6 +92,11 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
 /// Calls the service, unless it is a self-hosted server only guessed from the remote URL: those
 /// are contacted (and sent credentials) only once the user connects them in Preferences.
 fn request(st: &mut AppState, target: Target, interactive: bool, call: ForgeCall, fx: &mut Vec<Effect>) {
+    // Signing in (resolve_auth) may ask the repository's own credential helper.
+    if !st.runs_git_unasked() {
+        tracing::debug!("forge request held: repository not trusted");
+        return;
+    }
     let cwd = st.any_dir();
     let account = target.account();
     let connected = forge::is_connected(&account, &st.settings.connections);

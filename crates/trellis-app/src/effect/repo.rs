@@ -51,6 +51,9 @@ pub struct KnownRepo {
     pub submodules: bool,
     /// The file whose working-tree or index diff is open, for `LoadMsg::RepoUnchanged::open_stamp`.
     pub open: Option<String>,
+    /// Let git read the status (fsmonitor, untracked cache); false while the repository isn't
+    /// trusted.
+    pub git_status: bool,
 }
 
 /// A repository for the file watcher.

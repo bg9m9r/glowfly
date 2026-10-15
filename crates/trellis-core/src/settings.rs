@@ -8,9 +8,11 @@ use std::ops::RangeInclusive;
 mod file;
 mod graph_filter;
 mod paths;
+mod trust;
 pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{config_dir, migrate_old_config_dir};
+pub use trust::RepoTrust;
 
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ThemeChoice {
@@ -192,6 +194,10 @@ pub struct Settings {
     /// Hidden and soloed refs per repository working directory.
     #[serde(default)]
     pub graph_filters: HashMap<String, GraphFilter>,
+    /// Trust decisions per repository, keyed by its resolved working directory
+    /// (`Snapshot::real_workdir`); a repository with no entry is undecided.
+    #[serde(default)]
+    pub repo_trust: HashMap<String, RepoTrust>,
 }
 
 impl Default for Settings {
@@ -233,6 +239,7 @@ impl Default for Settings {
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),
+            repo_trust: HashMap::new(),
         }
     }
 }

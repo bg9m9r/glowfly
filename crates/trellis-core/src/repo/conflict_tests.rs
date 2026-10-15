@@ -120,7 +120,7 @@ fn write_resolution_stages_and_clears_conflict() {
     assert_eq!(read(&dir, "f.txt"), out);
     let repo = Repository::open(&dir).unwrap();
     assert!(!repo.index().unwrap().has_conflicts());
-    let (unstaged, staged, state) = status_at(&dir).unwrap();
+    let (unstaged, staged, state) = status_at(&dir, true).unwrap();
     assert!(staged.iter().any(|e| e.path == "f.txt" && e.status == 'M'));
     assert!(!unstaged.iter().any(|e| e.path == "f.txt" && e.status == '!'));
     assert_eq!(state, RepositoryState::Merge);

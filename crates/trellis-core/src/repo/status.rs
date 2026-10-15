@@ -5,17 +5,21 @@ use crate::error::Result;
 use git2::{Repository, RepositoryState, StatusOptions};
 use std::path::Path;
 
-/// Working-tree status only: (unstaged, staged, repository state).
-pub fn status_at(workdir: &Path) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState)> {
+/// Working-tree status only: (unstaged, staged, repository state). `git_status` false: libgit2
+/// only, so no fsmonitor hook or filter runs (repositories not trusted).
+pub fn status_at(workdir: &Path, git_status: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState)> {
     let repo = Repository::open(workdir)?;
-    let (unstaged, staged) = load_status(&repo)?;
+    let (unstaged, staged) = load_status(&repo, git_status)?;
     Ok((unstaged, staged, repo.state()))
 }
 
 /// (unstaged, staged), each sorted by path. Read by git itself when the repository is set up for
 /// a fast status (fsmonitor, the untracked cache) or its index is large: libgit2 uses neither.
-pub(super) fn load_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
+/// `git_status` false: libgit2 only, so no fsmonitor hook or filter runs (repositories not
+/// trusted).
+pub(super) fn load_status(repo: &Repository, git_status: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     if let Some(workdir) = repo.workdir()
+        && git_status
         && wants_git(repo)
         && let Some(lists) = super::status_cli::status(workdir)
     {

@@ -107,7 +107,7 @@ fn commit_undo_and_redo() {
     assert_eq!(undo, cmds(&[&["reset", "--soft", &base.to_string()]]));
     run_plan(&dir, undo);
     assert_eq!(head_oid(&dir), base);
-    let (_, staged, _) = status_at(&dir).unwrap();
+    let (_, staged, _) = status_at(&dir, true).unwrap();
     assert_eq!(staged.len(), 1, "the undone commit's changes stay staged");
 
     let redo = plan(&dir, &action, true).unwrap();
@@ -223,7 +223,7 @@ fn discard_all_round_trip() {
     write(&dir, "b.txt", "b unstaged\n");
     write(&dir, "c.txt", "untracked\n");
     let split = |dir: &Path| {
-        let (unstaged, staged, _) = status_at(dir).unwrap();
+        let (unstaged, staged, _) = status_at(dir, true).unwrap();
         let names = |v: Vec<crate::repo::FileEntry>| v.into_iter().map(|f| format!("{}{}", f.status, f.path)).collect::<Vec<_>>();
         (names(unstaged), names(staged))
     };

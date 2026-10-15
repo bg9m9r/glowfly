@@ -72,7 +72,7 @@ fn full_clone_runs_one_job_in_the_parent() {
     assert!(prompts, "a clone can ask for credentials");
     let running = st.job.as_ref().unwrap();
     assert_eq!(running.label, "Clone");
-    assert_eq!(running.then_open, Some(req.parent.join("app")));
+    assert_eq!(running.then_open, Some((req.parent.join("app"), crate::state::trust::Created::Clone)));
 }
 
 #[test]

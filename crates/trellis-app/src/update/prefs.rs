@@ -181,7 +181,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 let cmd = if branch.is_empty() { args(&["init"]) } else { args(&["init", "-b", &branch]) };
                 let spec = super::ops::JobSpec {
                     cwd: Some(path.clone()),
-                    then_open: Some(path),
+                    then_open: Some((path, crate::state::trust::Created::Init)),
                     ..super::ops::JobSpec::new("Init".into(), vec![cmd])
                 };
                 super::ops::start_job(st, spec, fx);

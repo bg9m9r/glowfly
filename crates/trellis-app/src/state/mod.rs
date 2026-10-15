@@ -28,6 +28,7 @@ pub mod submodules;
 pub mod tabs;
 pub mod tags;
 pub mod terminal;
+pub mod trust;
 pub mod undo;
 mod view;
 pub mod watch;
@@ -92,7 +93,7 @@ pub struct RunningJob {
     /// Background jobs (auto-fetch) don't pop the activity log open or show toasts.
     pub quiet: bool,
     pub clear_commit: bool,
-    pub then_open: Option<PathBuf>,
+    pub then_open: Option<(PathBuf, trust::Created)>,
     /// Run the push flow when this (commit) job succeeds.
     pub then_push: bool,
     /// The job can't make the undo history wrong (fetch, push, or an undo/redo itself).
@@ -133,6 +134,7 @@ pub enum Modal {
     GitFlowStart(gitflow::StartForm),
     GitFlowFinish(gitflow::FinishForm),
     Remote(remotes::RemoteForm),
+    Trust(trust::TrustPrompt),
 }
 
 /// Purely visual state that views may change directly.
@@ -312,6 +314,8 @@ pub struct AppState {
     pub gitflow_finish: Option<gitflow::FinishJob>,
     /// The running remote tag push or delete (update/tags.rs), for its headline.
     pub tag_job: Option<tags::RemoteTagJob>,
+    /// Repository trust prompts asked and repositories just created, this session.
+    pub trust: trust::TrustSession,
     pub view: ViewState,
 }
 
@@ -362,6 +366,7 @@ impl AppState {
             terminal: Default::default(),
             gitflow_finish: None,
             tag_job: None,
+            trust: Default::default(),
             view: ViewState::default(),
         }
     }
@@ -405,7 +410,7 @@ impl AppState {
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
         let f = self.settings.graph_filter_for(workdir);
         let max_commits = (self.settings.commit_limit() + self.refresh.extra_commits).min(MAX_COMMITS.max(self.settings.commit_limit()));
-        LoadOptions { max_commits, smart, extra_tips, hidden: f.hidden, solo: f.solo }
+        LoadOptions { max_commits, smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted: self.trusts(workdir) }
     }
 
     pub fn log(&mut self, ok: bool, text: impl Into<String>) {

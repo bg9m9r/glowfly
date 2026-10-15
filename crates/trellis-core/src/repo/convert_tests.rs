@@ -72,12 +72,12 @@ fn stage_file_stages_a_removal_and_reads_paths_literally() {
     write(&dir, "a[b].txt", "star 2\n");
     write(&dir, "ab.txt", "b 2\n");
     stage_file(&dir, "a[b].txt").unwrap();
-    let (unstaged, staged, _) = status_at(&dir).unwrap();
+    let (unstaged, staged, _) = status_at(&dir, true).unwrap();
     assert_eq!(staged.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["a[b].txt"], "not a glob");
     assert!(unstaged.iter().any(|f| f.path == "ab.txt"));
     std::fs::remove_file(dir.join("ab.txt")).unwrap();
     stage_file(&dir, "ab.txt").unwrap();
-    let (_, staged, _) = status_at(&dir).unwrap();
+    let (_, staged, _) = status_at(&dir, true).unwrap();
     assert!(staged.iter().any(|f| f.path == "ab.txt" && f.status == 'D'));
     let _ = std::fs::remove_dir_all(&dir);
 }

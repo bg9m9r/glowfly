@@ -37,8 +37,9 @@ binary (package `trellis`).
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; which removed line sits beside which added line; tab stops. |
 | `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds. |
 | `watch.rs` | Which file changes in a repository matter. |
+| `trust.rs` | Repository trust: config keys and hooks that make git run programs (read with libgit2 only, at every full load). |
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
-| `settings.rs`, `settings/` | Preferences and per-repository graph filters. |
+| `settings.rs`, `settings/` | Preferences, per-repository graph filters and repository trust decisions. |
 | `persist.rs` | Crash-safe writes of Trellis's own files. |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
 
