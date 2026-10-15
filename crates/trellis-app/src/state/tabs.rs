@@ -69,6 +69,8 @@ pub struct Parked {
     pub forge: Option<ForgeState>,
     pub stats: HashMap<Oid, (usize, usize, usize)>,
     pub signatures: crate::state::signatures::Signatures,
+    /// The last conflict check (one in flight is asked for again on return).
+    pub conflict_checks: crate::state::conflict_check::ConflictChecks,
     pub search: String,
     pub commit_search: crate::state::search::CommitSearch,
     pub ref_filter: String,

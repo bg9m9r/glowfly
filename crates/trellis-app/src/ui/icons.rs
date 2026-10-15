@@ -1,5 +1,5 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench), called from `widgets::paint_icon`.
+//! lock, wrench, warning), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -135,6 +135,14 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
                 })
                 .collect();
             p.add(egui::Shape::line(pts, s));
+        Icon::Warning => {
+            // A triangle about 16px wide around an exclamation mark.
+            let (top, left, right) = (pos2(c.x, c.y - 7.5), pos2(c.x - 8.0, c.y + 7.0), pos2(c.x + 8.0, c.y + 7.0));
+            line(top, left);
+            line(left, right);
+            line(right, top);
+            line(pos2(c.x, c.y - 3.0), pos2(c.x, c.y + 2.0));
+            p.circle_filled(pos2(c.x, c.y + 4.6), 1.1, s.color);
         }
         Icon::Close => {
             line(pos2(c.x - 4.5, c.y - 4.5), pos2(c.x + 4.5, c.y + 4.5));

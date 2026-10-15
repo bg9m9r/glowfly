@@ -66,26 +66,33 @@ pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
     let mut fx = fx;
     loop {
         for effect in fx {
-            match effect {
-                // These need a user or the network; tests don't exercise them here.
-                Effect::Ui(_) | Effect::PickFolder { .. } | Effect::OpenUrl(_) | Effect::OpenTerminal(_) | Effect::OpenFolder(_) => {}
-                Effect::Forge { .. } | Effect::Connect { .. } | Effect::SaveToken { .. } | Effect::DeleteToken(_) => {}
-                Effect::RepoOwners { .. } | Effect::CreateRepo { .. } => {}
-                Effect::ForgetCredentialManager { .. } | Effect::SaveSettings(_) | Effect::SaveRecent(_) => {}
-                Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. } => {}
-                // Shells are never started by these tests.
-                Effect::Terminal(_) => {}
-                Effect::OpenPath(_) | Effect::RevealPath(_) => {}
-                // OS dialogs would wait for a user.
-                Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. }) => {}
-                // Never start programs or open dialogs from tests.
-                Effect::Tool(_) => {}
-                other => queue.extend(runner::execute(other)),
+            if !skipped(&effect) {
+                queue.extend(runner::execute(effect));
             }
         }
         let Some(m) = queue.pop() else { return };
         fx = update(st, m, Instant::now());
     }
+}
+
+/// Effects `finish` doesn't run: they need a user, the network, a shell or the window.
+pub(super) fn skipped(effect: &Effect) -> bool {
+    matches!(
+        effect,
+        // These need a user or the network; tests don't exercise them here.
+        Effect::Ui(_) | Effect::PickFolder { .. } | Effect::OpenUrl(_) | Effect::OpenTerminal(_) | Effect::OpenFolder(_)
+            | Effect::Forge { .. } | Effect::Connect { .. } | Effect::SaveToken { .. } | Effect::DeleteToken(_)
+            | Effect::RepoOwners { .. } | Effect::CreateRepo { .. }
+            | Effect::ForgetCredentialManager { .. } | Effect::SaveSettings(_) | Effect::SaveRecent(_)
+            | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. }
+            // Shells are never started by these tests.
+            | Effect::Terminal(_)
+            | Effect::OpenPath(_) | Effect::RevealPath(_)
+            // OS dialogs would wait for a user.
+            | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
+            // Never start programs or open dialogs from tests.
+            | Effect::Tool(_)
+    )
 }
 
 #[test]

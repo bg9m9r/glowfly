@@ -6,6 +6,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod conflict_check;
 mod effect;
 mod file_op;
 mod gitflow;

@@ -212,6 +212,26 @@ fn wait(child: &mut Child, timeout: Option<Duration>) -> std::io::Result<(Option
     }
 }
 
+/// The installed git's version (`git version`), or None when git can't be run or prints
+/// something unexpected.
+pub fn version(cwd: &Path) -> Option<(u32, u32, u32)> {
+    parse_version(&read(cwd, &args(&["version"])).stdout)
+}
+
+/// Reads "git version 2.54.0.windows.1", "git version 2.39.3 (Apple Git-146)" or
+/// "git version 2.38.0.rc1" as (major, minor, patch); a missing patch number is 0.
+pub fn parse_version(s: &str) -> Option<(u32, u32, u32)> {
+    let rest = s.trim().strip_prefix("git version ")?;
+    let word = rest.split_whitespace().next()?;
+    let mut parts = word.split('.');
+    let mut number = |required: bool| match parts.next().map(|p| p.parse::<u32>()) {
+        Some(Ok(n)) => Some(n),
+        _ if required => None,
+        _ => Some(0),
+    };
+    Some((number(true)?, number(true)?, number(false)?))
+}
+
 /// Converts a list of string slices into an owned argument vector.
 pub fn args(a: &[&str]) -> Vec<String> {
     a.iter().map(|s| s.to_string()).collect()
@@ -295,6 +315,25 @@ mod tests {
         let out = output(&dir, &a, &input, &[], Some(Duration::from_secs(60)));
         assert!(out.ok, "{}", out.stderr);
         assert_eq!(out.stdout.len(), input.len());
+    }
+
+    #[test]
+    fn reads_git_versions() {
+        assert_eq!(
+            parse_version(
+                "git version 2.54.0.windows.1
+"
+            ),
+            Some((2, 54, 0))
+        );
+        assert_eq!(parse_version("git version 2.39.3 (Apple Git-146)"), Some((2, 39, 3)));
+        assert_eq!(parse_version("git version 2.38.0.rc1"), Some((2, 38, 0)));
+        assert_eq!(parse_version("git version 2.40"), Some((2, 40, 0)));
+        for bad in ["", "hello", "git version", "git version x.y.z", "git version 2"] {
+            assert_eq!(parse_version(bad), None, "{bad}");
+        }
+        let v = version(&std::env::temp_dir()).expect("git runs");
+        assert!((v.0, v.1) >= crate::conflict_check::MIN_GIT, "{v:?}");
     }
 
     #[test]

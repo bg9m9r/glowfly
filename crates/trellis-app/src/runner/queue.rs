@@ -109,6 +109,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Terminal(_)
         | Effect::Patch(_)
         | Effect::Tool(_)
+        | Effect::CheckConflicts(_)
         | Effect::Ui(_) => None,
     }
 }
@@ -188,6 +189,18 @@ mod tests {
         let export = crate::patch::PatchEffect::Export { workdir: w.clone(), oids: Vec::new(), dest: "C:/x.patch".into() };
         assert_eq!(repo_of(&Effect::Patch(export)), None);
         assert_eq!(repo_of(&Effect::Tool(crate::tools::ToolEffect::PickProgram(crate::tools::ToolKind::Editor))), None);
+        // A conflict check writes only unreferenced objects.
+        let request = crate::conflict_check::CheckRequest {
+            branch: "feature".into(),
+            ours: git2::Oid::zero(),
+            target: trellis_core::conflict_check::MergeTarget {
+                name: "main".into(),
+                oid: git2::Oid::zero(),
+                kind: trellis_core::conflict_check::TargetKind::DefaultBranch,
+            },
+        };
+        let job = crate::conflict_check::CheckJob { workdir: w.clone(), request, manual: false, generation: 0 };
+        assert_eq!(repo_of(&Effect::CheckConflicts(job)), None);
     }
 
     #[test]

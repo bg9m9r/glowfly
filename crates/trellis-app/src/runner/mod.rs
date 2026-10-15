@@ -34,6 +34,7 @@ use trellis_core::undo::{self, Action, Plan};
 
 mod askpass;
 mod config;
+mod conflict_check;
 mod expect;
 pub(crate) mod files;
 mod forge_calls;
@@ -317,6 +318,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Ssh(e) => Some(ssh::run(e)),
         Effect::Patch(p) => Some(patches::run(p)),
         Effect::Tool(t) => tools::run(t),
+        Effect::CheckConflicts(job) => Some(conflict_check::run(job)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

@@ -184,6 +184,9 @@ pub struct Snapshot {
     /// Every configured remote with its raw fetch and push URLs, in `remotes` order (also remotes
     /// without branches). `remote_urls` keeps libgit2's rewritten fetch URLs for forge detection.
     pub remote_info: Vec<RemoteInfo>,
+    /// Each remote's default branch from `refs/remotes/<remote>/HEAD`, as (remote, branch
+    /// without prefix), in `remotes` order; remotes without one are left out.
+    pub remote_heads: Vec<(String, String)>,
     pub tags: Vec<(String, Oid)>,
     /// Tags that point at a tree or blob instead of a commit: not shown, but their names are taken.
     pub other_tags: Vec<String>,

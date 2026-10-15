@@ -6,6 +6,7 @@ pub mod branches;
 pub mod clone;
 pub mod commit;
 pub mod conflict;
+pub mod conflict_check;
 pub mod diff_nav;
 pub mod files;
 mod forge;
@@ -125,7 +126,7 @@ pub struct Toast {
 }
 
 /// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter
-/// field.
+/// field. `ConflictReport` is a conflict check the user asked for (branch menus, Check again).
 pub enum Modal {
     NewBranch { start: Option<String>, name: String, checkout: bool },
     NewTag(tags::TagForm),
@@ -147,6 +148,7 @@ pub enum Modal {
     GitFlowFinish(gitflow::FinishForm),
     Remote(remotes::RemoteForm),
     Trust(trust::TrustPrompt),
+    ConflictReport(conflict_check::ConflictReport),
 }
 
 /// The most commits "Load more" goes up to.
@@ -211,6 +213,8 @@ pub struct AppState {
     pub stats_pending: HashSet<Oid>,
     /// Signature checks of the active tab's commits (parked with the tab).
     pub signatures: signatures::Signatures,
+    /// Predicted merge conflicts of the checked-out branch (parked with the tab).
+    pub conflict_checks: conflict_check::ConflictChecks,
     /// The active tab's commit search; parked with the tab.
     pub search: search::CommitSearch,
     pub last_fetch: Instant,
@@ -278,6 +282,7 @@ impl AppState {
             stats: HashMap::new(),
             stats_pending: HashSet::new(),
             signatures: Default::default(),
+            conflict_checks: Default::default(),
             search: Default::default(),
             last_fetch: now,
             watch,

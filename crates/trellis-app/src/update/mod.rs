@@ -8,6 +8,7 @@ mod branches;
 mod clone;
 mod commit;
 mod conflict;
+mod conflict_check;
 mod diff;
 mod files;
 mod forge;
@@ -60,6 +61,8 @@ mod cherry_pick_tests;
 mod clone_tests;
 #[cfg(test)]
 mod commit_tests;
+#[cfg(test)]
+mod conflict_check_tests;
 #[cfg(test)]
 mod conflict_tests;
 #[cfg(test)]
@@ -233,6 +236,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
         Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
+        Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
         Msg::Publish(m) => publish::handle(st, m, &mut fx),
         Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),

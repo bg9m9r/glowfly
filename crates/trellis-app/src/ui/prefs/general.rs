@@ -35,6 +35,14 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         ui.checkbox(&mut s.watch_files, "Refresh the working tree as soon as files change outside Trellis");
         help(ui, "When off, Trellis refreshes when its window regains focus or you press F5.");
     });
+    row(ui, "Conflict Prediction", |ui| {
+        ui.checkbox(&mut s.conflict_check, "Check the current branch for conflicts with its upstream or default branch");
+        help(
+            ui,
+            "Runs after each refresh and fetch with git merge-tree, without touching your files. Needs git 2.38 or newer. \
+             Branch menus can still check on demand when this is off.",
+        );
+    });
     row(ui, "Deleting Files", |ui| {
         ui.checkbox(&mut s.delete_to_trash, format!("Move deleted files to the {TRASH}"));
         help(ui, "When off, Delete… and discarding an untracked file remove it from disk straight away, and it can't be recovered.");

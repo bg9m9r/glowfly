@@ -152,6 +152,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         super::conflict::reload_pending(st, fx);
         super::history::reload_pending(st, fx);
         super::rebase::reload_pending(st, fx);
+        super::conflict_check::want(st, fx);
     } else if let Some(path) = st.tabs[i].path.clone() {
         super::repo::load(st, path, LoadKind::Open, fx);
     }
@@ -262,6 +263,7 @@ fn park(st: &mut AppState) -> Parked {
         forge: st.forge.take(),
         stats: std::mem::take(&mut st.stats),
         signatures: st.signatures.parked(),
+        conflict_checks: st.conflict_checks.parked(),
         search: std::mem::take(&mut st.view.search),
         commit_search: std::mem::take(&mut st.search),
         ref_filter: std::mem::take(&mut st.view.ref_filter),
@@ -320,6 +322,7 @@ fn unpark(st: &mut AppState, p: Parked) {
     }
     st.stats = p.stats;
     st.signatures = p.signatures;
+    st.conflict_checks = p.conflict_checks;
     st.view.search = p.search;
     // The matches belong to the parked snapshot, restored above.
     st.search = p.commit_search;

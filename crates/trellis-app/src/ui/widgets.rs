@@ -58,6 +58,8 @@ pub enum Icon {
     Lock,
     /// A wrench: external tools (Preferences).
     Tools,
+    /// A triangle with an exclamation mark: predicted merge conflicts (toolbar chip).
+    Warning,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -212,7 +214,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             p.add(egui::Shape::closed_line(pts, s));
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
-        Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools => {}                                           // icons.rs
+        Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning => {} // icons.rs
     }
 }
 

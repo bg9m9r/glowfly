@@ -59,6 +59,14 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 st.watch.enabled = st.settings.watch_files;
                 super::watch::sync(st, fx);
             }
+            // Sent every frame while Preferences is open: both branches are no-ops when nothing changed.
+            if !st.settings.conflict_check {
+                if !st.conflict_checks.is_empty() {
+                    st.conflict_checks.clear();
+                }
+            } else {
+                super::conflict_check::want(st, fx);
+            }
         }
         PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {

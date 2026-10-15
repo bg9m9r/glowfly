@@ -83,7 +83,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | *Repo:* Git Hooks | ✔ hooks path | — |
 | *Repo:* Commit | ✘ | Commit template, push after commit, skip hooks per repo |
 | *Repo:* Agents | — | Out of scope |
-| *Repo:* Conflict Prevention | ✘ | P1 Conflict prediction, with per-repo enable and target branch |
+| *Repo:* Conflict Prevention | ✘ (on/off is under General) | Per-repo enable and target branch rules (P1 Conflict prediction) |
 | *Repo:* LFS | ◐ Git LFS page, Track in Git LFS on file rows | LFS-aware auto-fetch (P1 Git LFS) |
 | *Repo:* Sparse Checkout | ◐ Sparse Checkout page | Sparse clone, indicators (P1 Sparse checkout) |
 | *Repo:* Issue Tracker | ✔ | — |
@@ -880,9 +880,24 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Show in folder from the toast after saving a patch
   - [ ] Drop a `.patch` file on the window to apply it, and preview the files a patch touches
     before applying
-- [ ] **Conflict prediction**
+- [x] **Conflict prediction**
   Local-only version: dry-run merge the branch against its target/upstream (`git merge-tree`)
   and warn about overlapping files before you merge or open a PR.
+  - [ ] A per-repository page to turn the check on or off for one repository, overriding the
+    General setting (with a note when it is off there)
+  - [ ] Rules for the branches to compare with: include and exclude patterns (`origin/main`,
+    `origin/**`, `!origin/legacy`) and branches never checked
+  - [ ] Prefer an open pull request's target branch as the merge target
+  - [ ] Per file: the overlapping line ranges and the kind of conflict (content, modify/delete,
+    rename) from merge-tree's messages; open a file's predicted result from the list
+  - [ ] A marker on the current branch's LOCAL row, a Check for conflicts entry on remote branch
+    menus, and a palette command
+  - [ ] Check other local branches against their targets in the background and mark them in the
+    sidebar
+  - [ ] Suggest fetching first when the target's remote-tracking branch is old, and pushing when
+    the conflicting commits are only local
+  - [ ] Ignore warnings for one branch, or stop comparing with one remote, from the popover
+  - [ ] Calm states in the toolbar ("up to date with main", "no conflicts") instead of nothing
 - [x] **External tools**
   Choose an editor, diff tool, merge tool and terminal (with custom commands); open the repo in
   the editor.

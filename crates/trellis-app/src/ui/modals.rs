@@ -6,7 +6,8 @@
 //! working-tree file (drawn by `file_dialogs.rs`), starting a Git Flow branch (drawn by
 //! `gitflow_dialog.rs`), finishing one (drawn by `gitflow_finish_dialog.rs`), adding or editing a
 //! remote (drawn by `remotes/dialog.rs`), the keyboard shortcut sheet (drawn by
-//! `shortcuts/sheet.rs`) and the repository trust prompt (drawn by `trust_dialog.rs`).
+//! `shortcuts/sheet.rs`), the repository trust prompt (drawn by `trust_dialog.rs`) and a conflict
+//! check's report (drawn by `conflict_check.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -170,6 +171,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::Trust(p) => {
                 if super::trust_dialog::show(ui, p, msgs) {
+                    close = true;
+                }
+            }
+            Modal::ConflictReport(r) => {
+                let remote = snap.is_some_and(|s| crate::state::conflict_check::is_remote(s, &r.request.target));
+                if super::conflict_check::report_modal(ui, r, remote, idle, msgs) {
                     close = true;
                 }
             }

@@ -53,6 +53,17 @@ fn watch_files_defaults_on() {
 }
 
 #[test]
+fn conflict_check_defaults_on() {
+    assert!(Settings::default().conflict_check);
+    // Files written before the setting existed check for conflicts.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.conflict_check);
+    let off = Settings { conflict_check: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.conflict_check);
+}
+
+#[test]
 fn diff_mode_defaults_to_hunks() {
     // Files written before the toggle existed show hunks only.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

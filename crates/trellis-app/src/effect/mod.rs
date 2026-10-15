@@ -318,6 +318,8 @@ pub enum Effect {
     Patch(crate::patch::PatchEffect),
     /// Launching the external editor or a custom terminal, and their program pickers (tools.rs); unscoped.
     Tool(crate::tools::ToolEffect),
+    /// Dry-runs a merge with git merge-tree (conflict_check.rs); reads only.
+    CheckConflicts(crate::conflict_check::CheckJob),
     Ui(UiEffect),
 }
 
@@ -345,6 +347,7 @@ impl Effect {
             | Effect::Stats { workdir, .. }
             | Effect::VerifySignature { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
+            Effect::CheckConflicts(j) => Some(&j.workdir),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
             Effect::LoadRepo { .. }

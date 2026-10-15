@@ -137,6 +137,9 @@ pub struct Settings {
     pub reopen_last_repo: bool,
     /// Refresh when files change outside Trellis (Preferences > General).
     pub watch_files: bool,
+    /// Dry-run merge the current branch against its upstream or default branch after loads and
+    /// fetches (Preferences > General).
+    pub conflict_check: bool,
 
     // UI customization
     pub theme: ThemeChoice,
@@ -223,6 +226,7 @@ impl Default for Settings {
             initial_commits: 2000,
             reopen_last_repo: true,
             watch_files: true,
+            conflict_check: true,
             theme: ThemeChoice::Dark,
             notification_location: Corner::BottomLeft,
             date_locale: "system".into(),

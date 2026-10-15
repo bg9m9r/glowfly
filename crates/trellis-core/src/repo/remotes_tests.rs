@@ -66,3 +66,13 @@ fn remote_names_with_slash_and_dot() {
     assert_eq!(url("a.b").as_deref(), Some("https://h/ab.git"));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn remote_heads_come_from_the_remote_head_ref() {
+    let (work, bare) = with_origin("remotes-heads");
+    assert!(snap(&work).remote_heads.is_empty(), "a push records no remote HEAD");
+    git(&work, &["remote", "set-head", "origin", "main"]);
+    assert_eq!(snap(&work).remote_heads, vec![("origin".to_owned(), "main".to_owned())]);
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&bare);
+}

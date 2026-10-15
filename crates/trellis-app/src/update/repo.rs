@@ -20,6 +20,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         RepoMsg::Refresh => {
             // Keys or allowed signers may have changed outside Trellis.
             st.signatures.clear();
+            st.conflict_checks.invalidate();
             super::refresh::reload(st, fx);
             super::forge::refresh(st, true, false, now, fx);
         }
@@ -272,6 +273,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             st.stats.clear();
             st.stats_pending.clear();
             st.signatures.clear();
+            st.conflict_checks.clear();
         }
         LoadKind::Refresh => {
             if let Selection::Commit(oid) = st.selection {
@@ -293,6 +295,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     st.snap = Some(snap);
     super::search::snapshot_changed(st);
     super::trust::loaded(st, kind, fx);
+    super::conflict_check::want(st, fx);
     super::gitflow::snapshot_changed(st);
     super::commit::apply_template(st);
     super::watch::sync(st, fx);

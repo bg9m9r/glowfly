@@ -1,10 +1,11 @@
-//! The right-click menu of a local branch: checkout, merge and rebase, fast-forward, push,
-//! pull requests, rename, upstream, hide or solo in the graph, and delete. Disabled items say why on hover, with the same
+//! The right-click menu of a local branch: checkout, merge and rebase, checking for conflicts,
+//! fast-forward, push, pull requests, rename, upstream, hide or solo in the graph, and delete. Disabled items say why on hover, with the same
 //! text `update` logs when it refuses a late message.
 
 use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
+use crate::conflict_check::ConflictCheckMsg;
 use crate::msg::BranchMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::JobMsg;
@@ -12,6 +13,7 @@ use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::state::ForgeState;
 use crate::state::branches::{self, NO_REMOTES};
+use crate::state::conflict_check::NO_TARGET;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use trellis_core::rebase::RebaseBase;
@@ -41,6 +43,15 @@ pub fn local_branch_menu(
             menu_item(msgs, ui, format!("Rebase {current} onto {name}"), Msg::git("Rebase", &["rebase", name]));
             let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch(name.to_owned())));
             menu_item(msgs, ui, format!("Interactive rebase {current} onto {name}…"), onto);
+            let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(name.to_owned()));
+            menu_item(msgs, ui, format!("Check for conflicts with {current}"), check);
+        }
+        ui.separator();
+    } else {
+        let check = Msg::ConflictCheck(ConflictCheckMsg::CheckNow);
+        match trellis_core::conflict_check::target_for(snap) {
+            Some(t) => menu_item(msgs, ui, format!("Check for conflicts with {}", t.name), check),
+            None => menu_item_if(msgs, ui, "Check for conflicts", Some(NO_TARGET), check),
         }
         ui.separator();
     }

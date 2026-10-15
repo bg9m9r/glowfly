@@ -62,6 +62,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     });
                     caret_after(ui, &r.response);
                 });
+                super::conflict_check::indicator(ui, st, msgs);
 
                 ui.add_space(52.0);
                 let idle = st.job.is_none();

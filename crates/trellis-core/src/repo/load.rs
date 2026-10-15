@@ -141,6 +141,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
 
     let names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
     let remote_info = super::remotes::remote_info(&repo, &names);
+    let remote_heads = super::remotes::remote_heads(&repo, &names);
     let remote_urls = remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
 
     let (mut tags, mut other_tags, mut lightweight_tags) = (Vec::new(), Vec::new(), HashSet::new());
@@ -226,6 +227,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         locals,
         remotes,
         remote_info,
+        remote_heads,
         tags,
         other_tags,
         lightweight_tags,

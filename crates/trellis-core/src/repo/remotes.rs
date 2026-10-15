@@ -57,3 +57,18 @@ pub(crate) fn remote_info(repo: &Repository, names: &[&str]) -> Vec<RemoteInfo> 
         })
         .collect()
 }
+
+/// Each of the remotes `names` (in that order) whose `refs/remotes/<remote>/HEAD` names a
+/// branch: (remote, branch without the `refs/remotes/<remote>/` prefix). That is the remote's
+/// default branch as last recorded (by clone or `git remote set-head`).
+pub(crate) fn remote_heads(repo: &Repository, names: &[&str]) -> Vec<(String, String)> {
+    names
+        .iter()
+        .filter_map(|name| {
+            let r = repo.find_reference(&format!("refs/remotes/{name}/HEAD")).ok()?;
+            let target = r.symbolic_target()?;
+            let branch = target.strip_prefix(&format!("refs/remotes/{name}/"))?;
+            (!branch.is_empty()).then(|| ((*name).to_owned(), branch.to_owned()))
+        })
+        .collect()
+}

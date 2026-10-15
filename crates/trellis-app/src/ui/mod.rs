@@ -10,6 +10,7 @@ mod clone_dialog;
 mod commit_box;
 pub(crate) mod common;
 mod conflict;
+mod conflict_check;
 mod details;
 mod details_multi;
 mod diff;
@@ -64,6 +65,8 @@ mod snapshot_tests_clone;
 mod snapshot_tests_columns;
 #[cfg(test)]
 mod snapshot_tests_commit;
+#[cfg(test)]
+mod snapshot_tests_conflict_check;
 #[cfg(test)]
 mod snapshot_tests_diff;
 #[cfg(test)]

@@ -104,7 +104,8 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
             "worktrees_at",
         ],
     ),
-    ("gitcli", &["run", "run_with_input"]),
+    ("gitcli", &["run", "run_with_input", "version"]),
+    ("conflict_check", &["predict"]),
     (
         "forge",
         &[
