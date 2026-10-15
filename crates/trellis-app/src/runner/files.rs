@@ -3,7 +3,9 @@
 //! Clone dialog's parent folder (`Effect::CheckCloneParent`).
 
 use crate::effect::{DeleteMode, FileOp, WorkFileOk};
+use crate::msg::CloneMsg;
 use crate::msg::Msg;
+use crate::msg::WorkFileMsg;
 use std::path::Path;
 use trellis_core::error::Error;
 use trellis_core::repo;
@@ -44,7 +46,7 @@ fn removal(mode: DeleteMode) -> repo::Removal {
 /// rename goes through git mv; UnstageDelete also takes the file out of the index, and
 /// UnstageGone only does that. Discard deletes an untracked file, refusing one that is tracked by
 /// then. When the trash refuses a file, nothing has changed and the result
-/// is `Msg::TrashRefused`, so the user can be asked about deleting it permanently.
+/// is `WorkFileMsg::TrashRefused`, so the user can be asked about deleting it permanently.
 pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
     let r = match &op {
         FileOp::Create(p) => repo::create_file(workdir, p).map(|ignored| WorkFileOk::Written { ignored }),
@@ -58,8 +60,8 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
         FileOp::Discard { path, mode } => repo::discard_untracked(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
     };
     match r {
-        Err(Error::NoTrash(reason)) => Msg::TrashRefused { op, reason },
-        r => Msg::WorkFileDone { op, result: r.map_err(|e| e.to_string()) },
+        Err(Error::NoTrash(reason)) => Msg::WorkFile(WorkFileMsg::TrashRefused { op, reason }),
+        r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|e| e.to_string()) }),
     }
 }
 
@@ -76,5 +78,5 @@ pub(super) fn check_clone_parent(parent: String, delay: std::time::Duration) -> 
         std::thread::sleep(delay);
     }
     let is_dir = Path::new(&parent).is_dir();
-    Msg::CloneParentChecked { parent, is_dir }
+    Msg::Clone(CloneMsg::ParentChecked { parent, is_dir })
 }

@@ -3,6 +3,7 @@
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
+use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -60,14 +61,14 @@ fn commit_shortcuts() {
 
     h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
     h.run();
-    assert_eq!(count(&h, |m| matches!(m, Msg::Commit)), 1);
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::Commit))), 1);
     assert_eq!(h.state().0.draft.summary, "Add login form", "no newline or lost text");
 
     h.state_mut().1.clear();
     h.press_key_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::Enter);
     h.run();
-    assert_eq!(count(&h, |m| matches!(m, Msg::StageAllAndCommit)), 1);
-    assert_eq!(count(&h, |m| matches!(m, Msg::Commit)), 0, "Shift is matched first");
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::StageAllAndCommit))), 1);
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::Commit))), 0, "Shift is matched first");
 
     // Without focus in the message fields the shortcuts do nothing.
     h.state_mut().1.clear();
@@ -75,11 +76,11 @@ fn commit_shortcuts() {
     h.run();
     h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
     h.run();
-    assert_eq!(count(&h, |m| matches!(m, Msg::Commit | Msg::StageAllAndCommit)), 0);
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::Commit) | Msg::Commit(CommitMsg::StageAllAndCommit))), 0);
 
     h.get_by_label("Push after committing").click();
     h.run();
-    assert_eq!(count(&h, |m| matches!(m, Msg::SetPushAfterCommit(true))), 1);
+    assert_eq!(count(&h, |m| matches!(m, Msg::Commit(CommitMsg::SetPushAfterCommit(true)))), 1);
     assert!(!h.state().0.settings.push_after_commit, "only update changes the setting");
     drop(h);
     remove_fixture(&dir);

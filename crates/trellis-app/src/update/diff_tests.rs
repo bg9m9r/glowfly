@@ -7,6 +7,8 @@ use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
+use crate::msg::TabsMsg;
 use crate::state::AppState;
 use std::time::Instant;
 use trellis_core::diff_rows::header_rows;
@@ -120,9 +122,9 @@ fn a_parked_diff_keeps_its_hunk_when_the_layout_changes_elsewhere() {
     let (inline, split) = (header_rows(&d, DiffLayout::Inline), header_rows(&d, DiffLayout::Split));
     st.view.diff_top_row = inline[1];
 
-    run(&mut st, Msg::NewTab);
+    run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
-    run(&mut st, Msg::SelectTab(0));
+    run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert_eq!(st.view.diff_top_row, split[1], "the row is converted to the layout now in use");
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
 }
@@ -163,7 +165,7 @@ fn diffs_arrive_highlighted_including_reloads() {
     // Staging the first hunk reloads the diff with the second one left. The reload hands the
     // diff on screen to the runner so the unchanged hunk keeps its colors, and arrives colored.
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
-    let held = drive_holding_diffs(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation });
+    let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }));
     assert!(held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, previous: Some(p), .. } if p.hunks.len() == 2)), "{held:?}");
     for e in held {
         if let Some(msg) = crate::runner::execute(e) {
@@ -241,13 +243,14 @@ fn hunk_ops_wait_for_the_reload_after_a_hunk_op() {
     let shown = st.hunk_ops_gen().expect("hunk buttons enabled");
 
     // Stage H0. Its reload is held back, so H0, H1 and H2 stay on screen.
-    let held = drive_holding_diffs(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "big.txt".into(), index: 0, generation: shown });
+    let held =
+        drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "big.txt".into(), index: 0, generation: shown }));
     assert_eq!(held.len(), 1, "the unstaged diff reloads");
     assert_eq!(st.diff.as_ref().map(|(_, d)| d.hunks.len()), Some(3));
     assert_eq!(st.hunk_ops_gen(), None, "the buttons are disabled until the reload lands");
 
     // Discard H1 as seen on screen. In the real diff index 1 is now H2, so it must be refused.
-    let discard_h1 = || Msg::Hunk { op: HunkOp::Discard, path: "big.txt".into(), index: 1, generation: shown };
+    let discard_h1 = || Msg::Stage(StageMsg::Hunk { op: HunkOp::Discard, path: "big.txt".into(), index: 1, generation: shown });
     assert!(run(&mut st, discard_h1()).is_empty());
     assert!(st.log.iter().any(|l| !l.ok && l.text.contains("diff changed")));
     // The same click confirmed after the reload lands is refused too.
@@ -262,7 +265,7 @@ fn hunk_ops_wait_for_the_reload_after_a_hunk_op() {
 
     // On the reloaded diff, index 0 is H1: discarding it keeps H2.
     let fresh = st.hunk_ops_gen().expect("enabled again");
-    drive(&mut st, Msg::Hunk { op: HunkOp::Discard, path: "big.txt".into(), index: 0, generation: fresh });
+    drive(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Discard, path: "big.txt".into(), index: 0, generation: fresh }));
     assert_eq!(std::fs::read_to_string(dir.join("big.txt")).unwrap(), numbered(&[2, 28]));
     let _ = std::fs::remove_dir_all(&dir);
 }

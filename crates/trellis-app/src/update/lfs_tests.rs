@@ -6,6 +6,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::lfs::LfsMsg;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::palette::{PaletteCommand as C, entries};
@@ -227,7 +228,7 @@ fn initialize_then_offer_to_pull() {
     add_remote(&mut st, "origin");
     page_with(&mut st, status(true, false, &[]));
     init_job(&mut st);
-    let fx = run(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None });
+    let fx = run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
     assert!(loads(&fx));
     assert!(st.prefs.as_ref().unwrap().lfs.offer_pull);
     let generation = lfs_gen(&st);
@@ -239,7 +240,7 @@ fn initialize_then_offer_to_pull() {
     // No patterns: nothing to pull.
     st.modal = None;
     init_job(&mut st);
-    run(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None });
+    run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
     let generation = lfs_gen(&st);
     lfs(&mut st, LfsMsg::Loaded { generation, result: Ok(status(true, true, &[])) });
     assert!(st.modal.is_none());
@@ -247,7 +248,7 @@ fn initialize_then_offer_to_pull() {
     // Preferences closed: no reload.
     run(&mut st, Msg::ClosePrefs);
     init_job(&mut st);
-    assert!(!loads(&run(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None })));
+    assert!(!loads(&run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }))));
     cleanup(&dir);
 }
 
@@ -259,7 +260,7 @@ fn finished_jobs_keep_the_page_and_auto_fetch_leaves_it_alone() {
     let generation = lfs_gen(&st);
     init_job(&mut st);
     st.job.as_mut().unwrap().quiet = true;
-    let fx = run(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None });
+    let fx = run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
     assert!(!loads(&fx), "{fx:?}");
     let page = &st.prefs.as_ref().unwrap().lfs;
     assert_eq!((page.generation, page.status.is_some(), page.new_pattern.as_str()), (generation, true, "*.ps"));
@@ -268,7 +269,7 @@ fn finished_jobs_keep_the_page_and_auto_fetch_leaves_it_alone() {
     // Another job reloads it, keeping the status and the typed text on screen meanwhile.
     init_job(&mut st);
     st.job.as_mut().unwrap().label = "LFS pull".into();
-    assert!(loads(&run(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None })));
+    assert!(loads(&run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }))));
     let page = &st.prefs.as_ref().unwrap().lfs;
     assert_eq!((page.status.is_some(), page.new_pattern.as_str()), (true, "*.ps"));
     cleanup(&dir);

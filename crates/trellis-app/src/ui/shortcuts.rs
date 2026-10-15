@@ -15,7 +15,9 @@ mod tests;
 pub(super) use sheet::show as sheet;
 
 use crate::keymap::{self, BindingId, Chord, KeyAction, KeyName};
+use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::TabsMsg;
 use crate::state::{AppState, Modal};
 use eframe::egui::{self, Key, Modifiers};
 
@@ -70,26 +72,26 @@ pub(super) fn tab_keys(ctx: &egui::Context, count: usize, msgs: &mut Vec<Msg>) {
     ctx.input_mut(|i| {
         // Shifted chords first: consume_key ignores an extra Shift.
         if pressed(i, BindingId::ReopenTab) {
-            msgs.push(Msg::ReopenClosedTab);
+            msgs.push(Msg::Tabs(TabsMsg::ReopenClosedTab));
         } else if pressed(i, BindingId::NewTab) {
-            msgs.push(Msg::NewTab);
+            msgs.push(Msg::Tabs(TabsMsg::NewTab));
         }
         if pressed(i, BindingId::CloseTab) {
-            msgs.push(Msg::CloseTab(usize::MAX));
+            msgs.push(Msg::Tabs(TabsMsg::CloseTab(usize::MAX)));
         }
         if pressed(i, BindingId::PrevTab) {
-            msgs.push(Msg::CycleTab(-1));
+            msgs.push(Msg::Tabs(TabsMsg::CycleTab(-1)));
         } else if pressed(i, BindingId::NextTab) {
-            msgs.push(Msg::CycleTab(1));
+            msgs.push(Msg::Tabs(TabsMsg::CycleTab(1)));
         }
         // `GoToTab` is a digit range, which `pressed` never matches.
         for (n, key) in DIGITS.into_iter().enumerate() {
             if i.consume_key(Modifiers::COMMAND, key) {
-                msgs.push(Msg::SelectTab(n));
+                msgs.push(Msg::Tabs(TabsMsg::SelectTab(n)));
             }
         }
         if pressed(i, BindingId::LastTab) {
-            msgs.push(Msg::SelectTab(count.saturating_sub(1)));
+            msgs.push(Msg::Tabs(TabsMsg::SelectTab(count.saturating_sub(1))));
         }
     });
 }
@@ -99,9 +101,9 @@ pub(super) fn undo_keys(ctx: &egui::Context, msgs: &mut Vec<Msg>) {
     ctx.input_mut(|i| {
         // Redo first: Cmd+Shift+Z would otherwise also match Undo's Cmd+Z.
         if pressed(i, BindingId::Redo) {
-            msgs.push(Msg::Redo);
+            msgs.push(Msg::Job(JobMsg::Redo));
         } else if pressed(i, BindingId::Undo) {
-            msgs.push(Msg::Undo);
+            msgs.push(Msg::Job(JobMsg::Undo));
         }
     });
 }

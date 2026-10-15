@@ -8,6 +8,7 @@ use crate::effect::Effect;
 use crate::keymap::KeyAction;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::state::{AppState, Modal, Selection};
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, HunkOp};
@@ -21,8 +22,8 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
     let msg = match action {
         KeyAction::Stage => stage_msg(st, true),
         KeyAction::Unstage => stage_msg(st, false),
-        KeyAction::StageAll => st.snap.as_ref().is_some_and(|s| !s.unstaged.is_empty()).then_some(Msg::StageAll),
-        KeyAction::UnstageAll => st.snap.as_ref().is_some_and(|s| !s.staged.is_empty()).then_some(Msg::UnstageAll),
+        KeyAction::StageAll => st.snap.as_ref().is_some_and(|s| !s.unstaged.is_empty()).then_some(Msg::Stage(StageMsg::StageAll)),
+        KeyAction::UnstageAll => st.snap.as_ref().is_some_and(|s| !s.staged.is_empty()).then_some(Msg::Stage(StageMsg::UnstageAll)),
         KeyAction::FocusMessage => {
             focus_message(st, now, fx);
             None
@@ -53,8 +54,12 @@ fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
     let sel = &st.view.diff_lines;
     let lines = !sel.is_empty() && sel.target.as_ref() == Some(target) && st.line_ops_blocked().is_none();
     match (target, stage) {
-        (DiffTarget::Unstaged(p), true) => Some(if lines { Msg::ApplyLines(HunkOp::Stage) } else { Msg::StageFile(p.clone()) }),
-        (DiffTarget::Staged(p), false) => Some(if lines { Msg::ApplyLines(HunkOp::Unstage) } else { Msg::UnstageFile(p.clone()) }),
+        (DiffTarget::Unstaged(p), true) => {
+            Some(if lines { Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)) } else { Msg::Stage(StageMsg::StageFile(p.clone())) })
+        }
+        (DiffTarget::Staged(p), false) => {
+            Some(if lines { Msg::Stage(StageMsg::ApplyLines(HunkOp::Unstage)) } else { Msg::Stage(StageMsg::UnstageFile(p.clone())) })
+        }
         _ => None,
     }
 }

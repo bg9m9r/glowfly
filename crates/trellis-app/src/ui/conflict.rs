@@ -7,6 +7,7 @@ use super::theme::color;
 use super::widgets::{Icon, icon_button};
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
+use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use eframe::egui::{self, Align, Align2, Color32, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
@@ -66,7 +67,7 @@ fn header_bar(ui: &mut Ui, view: &ConflictView, msgs: &mut Vec<Msg>) {
                 msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
             }
             if ui.button("Mark resolved").on_hover_text("Stage the working file as it is now").clicked() {
-                msgs.push(Msg::StageFile(view.path.clone()));
+                msgs.push(Msg::Stage(StageMsg::StageFile(view.path.clone())));
             }
             if !view.file.as_ref().is_some_and(|f| matches!(f.content, ConflictContent::Text(_))) {
                 return;
@@ -340,7 +341,7 @@ fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, content: &Con
             }
         }
         if ui.button("Mark resolved").on_hover_text("Stage the working file as it is now").clicked() {
-            msgs.push(Msg::StageFile(path.clone()));
+            msgs.push(Msg::Stage(StageMsg::StageFile(path.clone())));
         }
     });
 }

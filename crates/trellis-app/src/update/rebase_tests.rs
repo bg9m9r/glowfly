@@ -9,6 +9,7 @@ use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
+use crate::msg::TabsMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::rebase::{RebasePanel, TRACKED_CHANGES, UNCHANGED};
@@ -326,20 +327,20 @@ fn the_panel_is_parked_with_its_tab() {
     let b = super::tests::scratch_repo("rebase-tabs-b");
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert!(st.rebase.is_none(), "B has no panel");
-    drive(&mut st, Msg::SelectTab(0));
+    drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert_eq!(panel(&st).items.len(), 3, "A's panel comes back");
 
     // A list still loading is requested again on return.
     st.rebase.as_mut().unwrap().reload();
-    up(&mut st, Msg::SelectTab(1));
-    let fx = up(&mut st, Msg::SelectTab(0));
+    up(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
+    let fx = up(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     let gen_now = st.rebase_gen;
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRebasePlan { generation, .. } if *generation == gen_now)), "{fx:?}");
 
     // A result for A while B is active closes A's parked panel and leaves B's alone.
     st.job = Some(running_job(&a));
     st.rebase.as_mut().unwrap().starting = true;
-    up(&mut st, Msg::SelectTab(1));
+    up(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     let mut other = RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1)));
     other.fill(fake_plan(2));
     st.rebase = Some(other);

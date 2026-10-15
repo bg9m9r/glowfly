@@ -3,6 +3,7 @@
 
 use super::{help, primary_button, row, text_field, warn};
 use crate::lfs::LfsMsg;
+use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::state::lfs::LfsPage;
 use crate::ui::theme::color;
@@ -150,7 +151,7 @@ fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx
     });
     row(ui, ".gitattributes", |ui| {
         if ui.add_enabled(status.has_gitattributes, egui::Button::new("Open .gitattributes")).clicked() {
-            msgs.push(Msg::OpenWorkingFile(".gitattributes".into()));
+            msgs.push(Msg::Files(FilesMsg::OpenWorkingFile(".gitattributes".into())));
         }
         if !status.has_gitattributes {
             help(ui, "Created when you track the first pattern.");

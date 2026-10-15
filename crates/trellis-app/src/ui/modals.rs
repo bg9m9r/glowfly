@@ -9,6 +9,7 @@
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Modal};
 use eframe::egui::{self, Key, RichText};
@@ -67,7 +68,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         if let Some(s) = start {
                             cmd.push(s.clone());
                         }
-                        msgs.push(Msg::Git { label: "Create branch".into(), cmds: vec![cmd] });
+                        msgs.push(Msg::Job(JobMsg::Git { label: "Create branch".into(), cmds: vec![cmd] }));
                         close = true;
                     }
                     if ui.button("Cancel").clicked() {

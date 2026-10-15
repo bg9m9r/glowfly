@@ -1,0 +1,53 @@
+//! Messages of the file menus: restoring a file from a commit, opening and showing working-tree
+//! files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
+
+use crate::effect::{FileOp, WorkFileOk};
+use git2::Oid;
+use trellis_core::repo::RestoredFrom;
+
+/// Restoring a file as it was in a commit, and opening or showing a working-tree file
+/// (update/files.rs).
+pub enum FilesMsg {
+    /// Write `path` as of commit `oid` into the working tree (its parent's version when `deleted`,
+    /// i.e. the commit deleted it). `confirmed: false` opens the confirmation first.
+    /// `overwrite` is set once the user was warned that the file's current contents will be lost;
+    /// without it, core refuses to write over contents that discarding couldn't bring back.
+    RestoreFile { oid: Oid, path: String, deleted: bool, confirmed: bool, overwrite: bool },
+    /// Open a working-tree file (repo-relative path) in the OS default program.
+    OpenWorkingFile(String),
+    /// Select a working-tree file in the file manager (its folder where selecting isn't supported).
+    ShowWorkingFile(String),
+    /// A RestoreFile finished.
+    FileRestored { path: String, oid: Oid, result: Result<RestoredFrom, String> },
+    /// A RestoreFile without `overwrite` found contents at `path` that only the working tree
+    /// holds (`reason` says why), so it wrote nothing.
+    RestoreWouldOverwrite { path: String, oid: Oid, reason: String },
+}
+
+/// Creating, renaming, deleting and discarding (untracked) working-tree files, and the results
+/// (update/work_files.rs, update/work_files_delete.rs).
+pub enum WorkFileMsg {
+    /// Open the confirmation for discarding the untracked file `path`; it goes to the Recycle Bin / Trash or is deleted the way the preference says.
+    DiscardUntracked(String),
+    /// Open the New file dialog with this text in its field.
+    NewFileDialog(String),
+    /// Create an empty file at the typed path (checked and normalized in update).
+    CreateFile(String),
+    /// Open the rename dialog for the working-tree file `.0`.
+    RenameFileDialog(String),
+    /// Move the working-tree file `from` to the typed path `to`; the index is untouched, or with
+    /// `stage`, through git mv so the index records the rename.
+    RenameFile { from: String, to: String, stage: bool },
+    /// The rename dialog's "Stage the rename" checkbox (saved in settings).
+    SetRenameStages(bool),
+    /// Delete the working-tree file `path`: `confirmed: false` opens the confirmation, and
+    /// `confirmed: true` deletes straight away the way the preference says.
+    DeleteFile { path: String, confirmed: bool },
+    /// Run the delete-family op a confirmation agreed to (Delete, UnstageDelete, UnstageGone or Discard),
+    /// exactly as the confirmation described it.
+    DeleteConfirmed(FileOp),
+    /// A WorkFile effect finished.
+    WorkFileDone { op: FileOp, result: Result<WorkFileOk, String> },
+    /// The trash refused `op`'s file; nothing changed.
+    TrashRefused { op: FileOp, reason: String },
+}

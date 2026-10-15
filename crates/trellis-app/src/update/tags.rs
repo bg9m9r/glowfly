@@ -4,25 +4,26 @@
 
 use super::ops::{self, JobSpec};
 use crate::effect::Effect;
-use crate::msg::Msg;
 use crate::state::branches::default_remote;
 use crate::state::tags::{RemoteTagJob, RemoteTagOp, TagForm, job_label, tag_problem};
 use crate::state::{AppState, Modal};
 use crate::tag::TagMsg;
 use trellis_core::tag_ops::{delete_remote_tag_cmd, is_valid_tag_name, push_tag_cmd, tag_cmd};
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::NewTag { at, annotated } => {
+        TagMsg::NewTag { at, annotated } => {
             let remote = st.snap.as_ref().and_then(default_remote).unwrap_or_default();
             st.modal = Some(Modal::NewTag(TagForm { at, name: String::new(), message: String::new(), annotated, remote }));
         }
-        Msg::CreateTag { at, name, message, push } => create(st, &at, &name, &message, push, fx),
-        Msg::SetPushNewTags(on) if st.settings.push_new_tags != on => {
+        TagMsg::CreateTag { at, name, message, push } => create(st, &at, &name, &message, push, fx),
+        TagMsg::SetPushNewTags(on) if st.settings.push_new_tags != on => {
             st.settings.push_new_tags = on;
             fx.push(super::prefs::save_settings(st));
         }
-        _ => {}
+        TagMsg::SetPushNewTags(_) => {}
+        TagMsg::Push { tag, remotes } => start_remote(st, RemoteTagOp::Push, tag, remotes, fx),
+        TagMsg::DeleteRemote { tag, remotes } => start_remote(st, RemoteTagOp::Delete, tag, remotes, fx),
     }
 }
 
@@ -57,13 +58,6 @@ fn create(st: &mut AppState, at: &str, name: &str, message: &str, push: Option<S
     ops::start_job(st, JobSpec::new(label, cmds), fx);
     if fx.len() > before && matches!(st.modal, Some(Modal::NewTag(_))) {
         st.modal = None;
-    }
-}
-
-pub(super) fn remote(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
-    match msg {
-        TagMsg::Push { tag, remotes } => start_remote(st, RemoteTagOp::Push, tag, remotes, fx),
-        TagMsg::DeleteRemote { tag, remotes } => start_remote(st, RemoteTagOp::Delete, tag, remotes, fx),
     }
 }
 

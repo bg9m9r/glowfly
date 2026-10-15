@@ -11,6 +11,7 @@ use super::snapshot_tests::{harness, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
 use super::snapshot_tests_revert::with_commit_diff;
 use super::theme::{apply_theme, color};
+use crate::msg::FilesMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -76,14 +77,14 @@ fn file_history_buttons_send_msgs() {
     h.run();
     let msgs = click(&mut h, RESTORE);
     assert!(
-        matches!(&msgs[..], [Msg::RestoreFile { oid, path, deleted: false, confirmed: false, overwrite: false }] if *oid == e.oid && path == "app.txt"),
+        matches!(&msgs[..], [Msg::Files(FilesMsg::RestoreFile { oid, path, deleted: false, confirmed: false, overwrite: false })] if *oid == e.oid && path == "app.txt"),
         "restore"
     );
     // Open and Show act on the file as it is named today.
     let msgs = click(&mut h, OPEN_DEFAULT);
-    assert!(matches!(&msgs[..], [Msg::OpenWorkingFile(p)] if p == "src/app.txt"));
+    assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "src/app.txt"));
     let msgs = click(&mut h, SHOW_IN_FOLDER);
-    assert!(matches!(&msgs[..], [Msg::ShowWorkingFile(p)] if p == "src/app.txt"));
+    assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "src/app.txt"));
     // The arrow keys still move through the list after a button click.
     h.press_key(egui::Key::ArrowUp);
     h.run();
@@ -133,7 +134,7 @@ fn history_entry_menu() {
     assert!(!h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     h.get_by_label(OPEN_DEFAULT).click();
     h.run();
-    assert!(matches!(&h.state()[..], [Msg::OpenWorkingFile(p)] if p == "src/app.txt"), "the current path");
+    assert!(matches!(&h.state()[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "src/app.txt"), "the current path");
     drop(h);
 
     let mut h = menu_harness(history_entry('M'), false);
@@ -147,7 +148,7 @@ fn history_entry_menu() {
     h.get_by_label("Restore the deleted file…").click();
     h.run();
     assert!(
-        matches!(&h.state()[..], [Msg::RestoreFile { path, deleted: true, confirmed: false, overwrite: false, .. }] if path == "app.txt")
+        matches!(&h.state()[..], [Msg::Files(FilesMsg::RestoreFile { path, deleted: true, confirmed: false, overwrite: false, .. })] if path == "app.txt")
     );
 }
 
@@ -160,13 +161,13 @@ fn diff_commit_header_buttons() {
     h.check_snapshot("diff_commit_header_buttons");
     let msgs = click(&mut h, RESTORE_SHORT);
     assert!(
-        matches!(&msgs[..], [Msg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false }] if *o == oid && path == "app.txt"),
+        matches!(&msgs[..], [Msg::Files(FilesMsg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false })] if *o == oid && path == "app.txt"),
         "restore"
     );
     let msgs = click(&mut h, OPEN_SHORT);
-    assert!(matches!(&msgs[..], [Msg::OpenWorkingFile(p)] if p == "app.txt"));
+    assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "app.txt"));
     let msgs = click(&mut h, SHOW_IN_FOLDER);
-    assert!(matches!(&msgs[..], [Msg::ShowWorkingFile(p)] if p == "app.txt"));
+    assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "app.txt"));
 
     h.state_mut().0.detail.as_mut().unwrap().absent.insert("app.txt".into());
     h.run();

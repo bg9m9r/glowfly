@@ -4,17 +4,17 @@
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
-use crate::msg::Msg;
+use crate::msg::CommitMsg;
 use crate::state::AppState;
 use crate::state::commit::{commit_blocked, pushes_after};
 use std::time::Instant;
 use trellis_core::undo::UndoKind;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: CommitMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::Commit => commit(st, false, now, fx),
-        Msg::StageAllAndCommit => commit(st, true, now, fx),
-        Msg::PrefillAmend => {
+        CommitMsg::Commit => commit(st, false, now, fx),
+        CommitMsg::StageAllAndCommit => commit(st, true, now, fx),
+        CommitMsg::PrefillAmend => {
             // Pre-fill from HEAD's message, when the user hasn't written anything yet.
             if st.draft.is_blank()
                 && let Some(m) = st.snap.as_ref().and_then(|s| s.head_message.clone())
@@ -22,17 +22,17 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 st.draft.fill_from(&m);
             }
         }
-        Msg::AppendToDescription(text) => {
+        CommitMsg::AppendToDescription(text) => {
             if !st.draft.description.trim().is_empty() {
                 st.draft.description.push_str("\n\n");
             }
             st.draft.description.push_str(&text);
         }
-        Msg::SetPushAfterCommit(on) if st.settings.push_after_commit != on => {
+        CommitMsg::SetPushAfterCommit(on) if st.settings.push_after_commit != on => {
             st.settings.push_after_commit = on;
             fx.push(super::prefs::save_settings(st));
         }
-        _ => {}
+        CommitMsg::SetPushAfterCommit(_) => {}
     }
 }
 

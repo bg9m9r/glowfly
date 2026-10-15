@@ -2,7 +2,7 @@
 //! view only reads the answer). Running the clone itself is a git job (`ops`).
 
 use crate::effect::Effect;
-use crate::msg::Msg;
+use crate::msg::CloneMsg;
 use crate::state::clone::CloneForm;
 use crate::state::{AppState, Modal};
 use std::time::Duration;
@@ -11,22 +11,22 @@ use std::time::Duration;
 /// answers for text that has changed since are dropped.
 pub(super) const PARENT_CHECK_DELAY: Duration = Duration::from_millis(250);
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: CloneMsg, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::CloneDialog => {
+        CloneMsg::Dialog => {
             let parent = st.recent.first().and_then(|p| p.parent()).map(|p| p.display().to_string()).unwrap_or_default();
             st.modal = Some(Modal::Clone(CloneForm::new(parent)));
             check_parent(st, Duration::ZERO, fx);
         }
-        Msg::CloneParentEdited => check_parent(st, PARENT_CHECK_DELAY, fx),
-        Msg::CloneParentChecked { parent, is_dir } => {
+        CloneMsg::ParentEdited => check_parent(st, PARENT_CHECK_DELAY, fx),
+        CloneMsg::ParentChecked { parent, is_dir } => {
             if let Some(Modal::Clone(form)) = st.modal.as_mut()
                 && form.parent.trim() == parent
             {
                 form.parent_checked = Some((parent, is_dir));
             }
         }
-        _ => {}
+        CloneMsg::Start(req) => super::ops::clone_repo(st, req, fx),
     }
 }
 

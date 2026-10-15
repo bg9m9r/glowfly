@@ -6,6 +6,7 @@ use super::UiCache;
 use super::common::issue_chip;
 use super::spell_edit::spell_text_edit;
 use super::theme::color;
+use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::commit::{commit_blocked, pushes_after};
@@ -31,7 +32,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         ui.label(RichText::new("Commit").strong().color(color::text()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.checkbox(&mut st.draft.amend, "Amend").changed() && st.draft.amend {
-                msgs.push(Msg::PrefillAmend);
+                msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
             }
         });
     });
@@ -43,7 +44,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         ui.horizontal(|ui| {
             issue_chip(ui, fs, &key, msgs);
             if !mentioned && ui.small_button(format!("Link {tag}")).on_hover_text("Adds the mention to the description").clicked() {
-                msgs.push(Msg::AppendToDescription(tag.clone()));
+                msgs.push(Msg::Commit(CommitMsg::AppendToDescription(tag.clone())));
             }
         });
     }
@@ -70,7 +71,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
             .on_disabled_hover_text(NO_PUSH_DETACHED);
         // The setting changes through update, which also saves it.
         if r.changed() {
-            msgs.push(Msg::SetPushAfterCommit(push));
+            msgs.push(Msg::Commit(CommitMsg::SetPushAfterCommit(push)));
         }
         ui.checkbox(&mut st.draft.skip_hooks, "Skip hooks").on_hover_text(SKIP_HOOKS_HINT);
     });
@@ -83,7 +84,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         .min_size(vec2(ui.available_width(), 34.0));
     let r = ui.add_enabled(enabled, button).on_hover_text(shortcuts_tip()).on_disabled_hover_text(blocked.unwrap_or_default());
     if r.clicked() {
-        msgs.push(Msg::Commit);
+        msgs.push(Msg::Commit(CommitMsg::Commit));
     }
 
     if s.has_focus() || d.has_focus() {
@@ -93,9 +94,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
             (all, !all && i.consume_key(Modifiers::COMMAND, Key::Enter))
         });
         if all {
-            msgs.push(Msg::StageAllAndCommit);
+            msgs.push(Msg::Commit(CommitMsg::StageAllAndCommit));
         } else if one {
-            msgs.push(Msg::Commit);
+            msgs.push(Msg::Commit(CommitMsg::Commit));
         }
     }
 }

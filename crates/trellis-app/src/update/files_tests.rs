@@ -4,6 +4,7 @@
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::history::FileHistoryView;
@@ -35,7 +36,7 @@ fn short(oid: Oid) -> String {
 }
 
 fn ask(oid: Oid, path: &str, deleted: bool) -> Msg {
-    Msg::RestoreFile { oid, path: path.into(), deleted, confirmed: false, overwrite: false }
+    Msg::Files(FilesMsg::RestoreFile { oid, path: path.into(), deleted, confirmed: false, overwrite: false })
 }
 
 fn confirm_body(st: &AppState) -> &str {
@@ -57,7 +58,7 @@ fn restore_asks_first() {
     assert!(body.contains(&short(oid)) && body.contains("left unstaged"), "{body}");
     assert!(!body.contains("overwritten"));
     assert!(
-        matches!(&**then, Msg::RestoreFile { oid: o, path, deleted: false, confirmed: true, overwrite: false } if *o == oid && path == "a.txt")
+        matches!(&**then, Msg::Files(FilesMsg::RestoreFile { oid: o, path, deleted: false, confirmed: true, overwrite: false }) if *o == oid && path == "a.txt")
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -113,18 +114,18 @@ fn restored_toasts_and_refreshes() {
     detail.absent.insert("a.txt".into());
     st.detail = Some(detail);
 
-    let fx = run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) });
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) }));
     let toast = st.toasts.last().expect("a toast");
     assert!(toast.ok && toast.text.contains("a.txt") && toast.text.contains(&short(oid)), "{}", toast.text);
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     assert!(st.detail.as_ref().unwrap().in_workdir("a.txt"), "Open and Show become available");
     finish(&mut st, fx);
 
-    let fx = run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Parent(oid)) });
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Parent(oid)) }));
     finish(&mut st, fx);
     assert!(st.toasts.last().unwrap().text.contains("before"));
 
-    let fx = run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) });
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) }));
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore a.txt: boom"));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })));
     let _ = std::fs::remove_dir_all(&dir);
@@ -137,11 +138,11 @@ fn restore_marks_history_file_on_disk() {
     st.history = Some(FileHistoryView::loading("a.txt".into(), None));
     let on_disk = |st: &AppState| st.history.as_ref().unwrap().on_disk;
 
-    run(&mut st, Msg::FileRestored { path: "old.txt".into(), oid, result: Ok(RestoredFrom::Commit) });
+    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "old.txt".into(), oid, result: Ok(RestoredFrom::Commit) }));
     assert!(!on_disk(&st), "another path");
-    run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) });
+    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) }));
     assert!(!on_disk(&st), "a failed restore");
-    run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) });
+    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) }));
     assert!(on_disk(&st), "Open and Show become available in the history");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -149,7 +150,7 @@ fn restore_marks_history_file_on_disk() {
 #[test]
 fn scoped_error_for_inactive_tab_is_logged() {
     let (mut st, dir) = loaded("files-scoped");
-    let msg = Msg::FileRestored { path: "b.txt".into(), oid: head(&dir), result: Err("in the way".into()) };
+    let msg = Msg::Files(FilesMsg::FileRestored { path: "b.txt".into(), oid: head(&dir), result: Err("in the way".into()) });
     let fx = run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore b.txt: in the way"));
@@ -165,7 +166,10 @@ fn end_to_end_restore() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.as_ref().unwrap().unstaged.is_empty());
-    drive(&mut st, Msg::RestoreFile { oid: first, path: "a.txt".into(), deleted: false, confirmed: true, overwrite: false });
+    drive(
+        &mut st,
+        Msg::Files(FilesMsg::RestoreFile { oid: first, path: "a.txt".into(), deleted: false, confirmed: true, overwrite: false }),
+    );
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
     assert!(st.snap.as_ref().unwrap().unstaged.iter().any(|f| f.path == "a.txt"), "shows as an unstaged change");
     assert!(st.snap.as_ref().unwrap().staged.is_empty(), "nothing staged");
@@ -183,7 +187,7 @@ fn comparison_restore_clears_absent() {
     st.selection =
         Selection::Commits(MultiSelection { oids: vec![oid, other], anchor: oid, changes: Some(Ok(changes)), pick_blocked: None });
 
-    let fx = run(&mut st, Msg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) });
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) }));
     let Selection::Commits(m) = &st.selection else { panic!("still two commits") };
     let c = m.changes.as_ref().unwrap().as_ref().unwrap();
     assert!(c.in_workdir("a.txt"), "Open and Show become available");
@@ -213,7 +217,10 @@ fn end_to_end_restore_from_comparison() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
 
-    drive(&mut st, Msg::RestoreFile { oid: older, path: "gone.txt".into(), deleted: false, confirmed: true, overwrite: false });
+    drive(
+        &mut st,
+        Msg::Files(FilesMsg::RestoreFile { oid: older, path: "gone.txt".into(), deleted: false, confirmed: true, overwrite: false }),
+    );
     assert_eq!(
         std::fs::read_to_string(dir.join("gone.txt")).unwrap(),
         "v1
@@ -230,13 +237,13 @@ fn end_to_end_restore_from_comparison() {
 #[test]
 fn open_and_show_build_absolute_paths() {
     let mut st = state();
-    assert!(run(&mut st, Msg::OpenWorkingFile("src/a.txt".into())).is_empty(), "no repository open");
-    assert!(run(&mut st, Msg::ShowWorkingFile("src/a.txt".into())).is_empty());
+    assert!(run(&mut st, Msg::Files(FilesMsg::OpenWorkingFile("src/a.txt".into()))).is_empty(), "no repository open");
+    assert!(run(&mut st, Msg::Files(FilesMsg::ShowWorkingFile("src/a.txt".into()))).is_empty());
 
     let (mut st, dir) = loaded("files-open");
-    let fx = run(&mut st, Msg::OpenWorkingFile("src/a.txt".into()));
+    let fx = run(&mut st, Msg::Files(FilesMsg::OpenWorkingFile("src/a.txt".into())));
     assert!(matches!(&fx[..], [Effect::OpenPath(p)] if *p == dir.join("src/a.txt")), "{fx:?}");
-    let fx = run(&mut st, Msg::ShowWorkingFile("src/a.txt".into()));
+    let fx = run(&mut st, Msg::Files(FilesMsg::ShowWorkingFile("src/a.txt".into())));
     assert!(matches!(&fx[..], [Effect::RevealPath(p)] if *p == dir.join("src/a.txt")), "{fx:?}");
     assert_eq!(fx[0].scope(), None, "not tied to a tab");
     let _ = std::fs::remove_dir_all(&dir);
@@ -266,7 +273,7 @@ fn ignored_file_is_not_overwritten_without_a_warning() {
     assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=secret\n", "nothing written");
     let Some(Modal::Confirm { body, then, .. }) = &st.modal else { panic!("asks again") };
     assert!(body.contains("ignored") && body.contains("can't be recovered") && body.contains(&short(old)), "{body}");
-    assert!(matches!(&**then, Msg::RestoreFile { confirmed: true, overwrite: true, .. }));
+    assert!(matches!(&**then, Msg::Files(FilesMsg::RestoreFile { confirmed: true, overwrite: true, .. })));
 
     drive(&mut st, Msg::ConfirmAccepted);
     assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=old\n", "written once the user agreed");
@@ -277,7 +284,7 @@ fn ignored_file_is_not_overwritten_without_a_warning() {
 #[test]
 fn would_overwrite_for_inactive_tab_is_logged() {
     let (mut st, dir) = loaded("files-scoped-overwrite");
-    let msg = Msg::RestoreWouldOverwrite { path: ".env".into(), oid: head(&dir), reason: ".env is ignored by git".into() };
+    let msg = Msg::Files(FilesMsg::RestoreWouldOverwrite { path: ".env".into(), oid: head(&dir), reason: ".env is ignored by git".into() });
     run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) });
     assert!(st.modal.is_none());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Did not restore .env: .env is ignored by git."));

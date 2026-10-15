@@ -8,6 +8,7 @@
 
 use crate::effect::{DeleteMode, FileOp};
 use crate::msg::Msg;
+use crate::msg::WorkFileMsg;
 use crate::state::files::{TRASH, staged_rename, unstages_on_delete};
 use crate::state::{AppState, Modal};
 use trellis_core::repo::Deleted;
@@ -54,7 +55,7 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
         title: "Delete file".into(),
         body,
         button: if trash { format!("Move to {TRASH}") } else { "Delete".into() },
-        then: Box::new(Msg::DeleteConfirmed(FileOp::Delete { path, mode })),
+        then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Delete { path, mode }))),
     });
 }
 
@@ -78,7 +79,7 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
         title: "Discard changes".into(),
         body,
         button,
-        then: Box::new(Msg::DeleteConfirmed(FileOp::Discard { path, mode })),
+        then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode }))),
     });
 }
 
@@ -96,7 +97,7 @@ pub(super) fn unstage_confirm(path: String, renamed: bool, gone: bool, edits: bo
                 "{path} is staged as a new file but is no longer in your working tree. This removes it from the staging area too, so its staged version can't be brought back."
             )
         };
-        let then = Box::new(Msg::DeleteConfirmed(FileOp::UnstageGone(path)));
+        let then = Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::UnstageGone(path))));
         return Modal::Confirm { title: "Unstage deleted file".into(), body, button: "Unstage".into(), then };
     }
     let trash = mode == DeleteMode::Trash;
@@ -122,7 +123,7 @@ pub(super) fn unstage_confirm(path: String, renamed: bool, gone: bool, edits: bo
         });
     }
     let title = if renamed { "Delete renamed file" } else { "Delete new file" };
-    let then = Box::new(Msg::DeleteConfirmed(FileOp::UnstageDelete { path, mode }));
+    let then = Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::UnstageDelete { path, mode })));
     Modal::Confirm { title: title.into(), body, button: "Unstage and delete".into(), then }
 }
 
@@ -140,7 +141,7 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, reason: String) {
         title: "Delete permanently?".into(),
         body,
         button: "Delete permanently".into(),
-        then: Box::new(Msg::DeleteConfirmed(op.permanent())),
+        then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.permanent()))),
     });
 }
 

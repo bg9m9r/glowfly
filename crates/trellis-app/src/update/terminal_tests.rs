@@ -7,6 +7,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::state::terminal::SessionStatus;
 use crate::terminal::{TerminalEffect as E, TerminalMsg as T};
@@ -177,12 +178,12 @@ fn switching_tabs_starts_the_other_repos_shell_and_closing_kills_it() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
-    drive(&mut st, Msg::SelectTab(0));
+    drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     run(&mut st, T::Toggle);
     let wa = workdir(&st);
     let id1 = st.terminal.sessions[0].id;
 
-    let fx = terminal(update(&mut st, Msg::SelectTab(1), Instant::now()));
+    let fx = terminal(update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now()));
     let wb = workdir(&st);
     assert_ne!(wa, wb);
     let id2 = match &fx[..] {
@@ -196,7 +197,7 @@ fn switching_tabs_starts_the_other_repos_shell_and_closing_kills_it() {
     run(&mut st, T::Output { id: id1, bytes: b"from a".to_vec(), ack: Default::default() });
     assert_eq!(st.terminal.for_workdir(&wa).unwrap().screen.text(), "from a");
 
-    let fx = terminal(update(&mut st, Msg::CloseTab(1), Instant::now()));
+    let fx = terminal(update(&mut st, Msg::Tabs(TabsMsg::CloseTab(1)), Instant::now()));
     assert!(matches!(&fx[..], [E::Kill(k), E::Close(c)] if *k == id2 && *c == id2), "{fx:?}");
     assert!(st.terminal.for_workdir(&wb).is_none());
     let s = st.terminal.for_workdir(&wa).expect("tab 1's session stays");
@@ -212,18 +213,18 @@ fn closing_one_of_two_tabs_on_a_workdir_keeps_its_shell() {
     let path = st.tabs[0].path.clone().unwrap();
     st.tabs.push(crate::state::tabs::Tab::unloaded(path.clone()));
 
-    let fx = terminal(update(&mut st, Msg::CloseTab(1), Instant::now()));
+    let fx = terminal(update(&mut st, Msg::Tabs(TabsMsg::CloseTab(1)), Instant::now()));
     assert!(fx.is_empty(), "the other tab still uses the shell: {fx:?}");
     assert_eq!(st.terminal.sessions.len(), 1);
 
     // The active tab, while a second one on the same workdir stays open.
     st.tabs.push(crate::state::tabs::Tab::unloaded(path));
-    let fx = terminal(update(&mut st, Msg::CloseTab(0), Instant::now()));
+    let fx = terminal(update(&mut st, Msg::Tabs(TabsMsg::CloseTab(0)), Instant::now()));
     assert!(!fx.iter().any(|e| matches!(e, E::Kill(_) | E::Close(_))), "{fx:?}");
     assert_eq!(st.terminal.sessions[0].id, id);
 
     // The last tab on it closing stops it.
-    let fx = terminal(update(&mut st, Msg::CloseTab(0), Instant::now()));
+    let fx = terminal(update(&mut st, Msg::Tabs(TabsMsg::CloseTab(0)), Instant::now()));
     assert!(matches!(&fx[..], [E::Kill(k), E::Close(c)] if *k == id && *c == id), "{fx:?}");
     assert!(st.terminal.sessions.is_empty());
     let _ = std::fs::remove_dir_all(&dir);

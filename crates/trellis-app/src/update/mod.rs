@@ -157,7 +157,7 @@ mod worktree_tests;
 pub use repo::commit_matches;
 
 use crate::effect::{Effect, UiEffect};
-use crate::msg::Msg;
+use crate::msg::{FilesMsg, Msg, StageMsg, WorkFileMsg};
 use crate::state::AppState;
 use std::time::Instant;
 
@@ -183,19 +183,11 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Rebase(m) => rebase::handle(st, m, now, &mut fx),
 
         // tabs
-        Msg::NewTab
-        | Msg::SelectTab(_)
-        | Msg::CycleTab(_)
-        | Msg::CloseTab(_)
-        | Msg::ReopenClosedTab
-        | Msg::RestoreTabs { .. }
-        | Msg::MoveTab { .. }
-        | Msg::CloseOtherTabs(_)
-        | Msg::CloseTabsToRight(_) => tabs::handle(st, msg, &mut fx),
+        Msg::Tabs(m) => tabs::handle(st, m, &mut fx),
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {
                 fx.extend(update(st, *msg, now));
-            } else if let Msg::LocalOpDone(result) = *msg {
+            } else if let Msg::Stage(StageMsg::LocalOpDone(result)) = *msg {
                 match result {
                     Err(e) => st.log(false, e),
                     // A discard in a tab switched away from: its undo belongs to that tab.
@@ -206,15 +198,15 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                     }
                     Ok(None) => {}
                 }
-            } else if let Msg::HunkReverted { path, result: Err(e) } = *msg {
+            } else if let Msg::Stage(StageMsg::HunkReverted { path, result: Err(e) }) = *msg {
                 st.log(false, format!("Could not revert the hunk in {path}: {e}"));
-            } else if let Msg::FileRestored { path, result: Err(e), .. } = *msg {
+            } else if let Msg::Files(FilesMsg::FileRestored { path, result: Err(e), .. }) = *msg {
                 st.log(false, format!("Could not restore {path}: {e}"));
-            } else if let Msg::RestoreWouldOverwrite { path, reason, .. } = *msg {
+            } else if let Msg::Files(FilesMsg::RestoreWouldOverwrite { path, reason, .. }) = *msg {
                 st.log(false, format!("Did not restore {path}: {reason}."));
-            } else if let Msg::WorkFileDone { op, result } = *msg {
+            } else if let Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result }) = *msg {
                 work_files::inactive_result(st, op, result, now);
-            } else if let Msg::TrashRefused { op, reason } = *msg {
+            } else if let Msg::WorkFile(WorkFileMsg::TrashRefused { op, reason }) = *msg {
                 st.log(false, work_files_delete::not_deleted(&op, &reason));
             } else {
                 tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display());
@@ -222,50 +214,14 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         }
 
         // working tree and git commands
-        Msg::Tick(_)
-        | Msg::StageFile(_)
-        | Msg::UnstageFile(_)
-        | Msg::StageAll
-        | Msg::UnstageAll
-        | Msg::DiscardFile(_)
-        | Msg::Hunk { .. }
-        | Msg::ApplyLines(_)
-        | Msg::RevertHunk { .. }
-        | Msg::Git { .. }
-        | Msg::Push { .. }
-        | Msg::Stash { .. }
-        | Msg::CloneRepo(_)
-        | Msg::LocalOpDone(_)
-        | Msg::HunkReverted { .. }
-        | Msg::JobDone { .. } => ops::handle(st, msg, now, &mut fx),
-        Msg::Commit | Msg::StageAllAndCommit | Msg::PrefillAmend | Msg::AppendToDescription(_) | Msg::SetPushAfterCommit(_) => {
-            commit::handle(st, msg, now, &mut fx)
-        }
-        Msg::Undo | Msg::Redo => undo::handle(st, msg, now, &mut fx),
+        Msg::Tick(t) => ops::auto_fetch(st, t, &mut fx),
+        Msg::Stage(m) => ops::stage(st, m, now, &mut fx),
+        Msg::Job(m) => ops::job(st, m, now, &mut fx),
+        Msg::Commit(m) => commit::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
-        Msg::RestoreFile { .. }
-        | Msg::FileRestored { .. }
-        | Msg::RestoreWouldOverwrite { .. }
-        | Msg::OpenWorkingFile(_)
-        | Msg::ShowWorkingFile(_)
-        | Msg::NewFileDialog(_)
-        | Msg::CreateFile(_)
-        | Msg::RenameFileDialog(_)
-        | Msg::RenameFile { .. }
-        | Msg::SetRenameStages(_)
-        | Msg::DeleteFile { .. }
-        | Msg::DiscardUntracked(_)
-        | Msg::DeleteConfirmed(_)
-        | Msg::TrashRefused { .. }
-        | Msg::WorkFileDone { .. } => files::handle(st, msg, now, &mut fx),
-        Msg::RenameBranchDialog(_)
-        | Msg::RenameBranch { .. }
-        | Msg::SetUpstreamDialog(_)
-        | Msg::SetUpstream { .. }
-        | Msg::UnsetUpstream(_)
-        | Msg::FastForwardBranch(_)
-        | Msg::DeleteBranchAndRemote(_)
-        | Msg::PushBranch { .. } => branches::handle(st, msg, &mut fx),
+        Msg::Files(m) => files::handle(st, m, now, &mut fx),
+        Msg::WorkFile(m) => work_files::handle(st, m, now, &mut fx),
+        Msg::Branch(m) => branches::handle(st, m, &mut fx),
 
         // credential prompts
         Msg::CredentialPrompt { .. } | Msg::CredentialPromptExpired(_) | Msg::AnswerCredentials | Msg::CancelCredentials => {
@@ -322,9 +278,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             }
         }
         Msg::CloseModal => st.modal = None,
-        Msg::NewBranch { start, name } => st.modal = Some(crate::state::Modal::NewBranch { start, name, checkout: true }),
-        Msg::NewTag { .. } | Msg::CreateTag { .. } | Msg::SetPushNewTags(_) => tags::handle(st, msg, &mut fx),
-        Msg::CloneDialog | Msg::CloneParentEdited | Msg::CloneParentChecked { .. } => clone::handle(st, msg, &mut fx),
+        Msg::Clone(m) => clone::handle(st, m, &mut fx),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),
         Msg::OpenTerminal => {
@@ -340,7 +294,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
         Msg::Remote(m) => remotes::handle(st, m, &mut fx),
-        Msg::Tag(m) => tags::remote(st, m, &mut fx),
+        Msg::Tag(m) => tags::handle(st, m, &mut fx),
         Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
         Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
     }

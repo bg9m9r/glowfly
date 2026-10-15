@@ -121,7 +121,7 @@ pub enum Effect {
     /// `git worktree add` runs. Unscoped: the dialog waits for the answer even if tabs change.
     CheckWorktreeFolder(crate::worktree::NewWorktree),
     /// Whether the Clone dialog's parent folder `parent` exists, checked after `delay` so typing
-    /// doesn't wait on the disk. Reported as `Msg::CloneParentChecked`.
+    /// doesn't wait on the disk. Reported as `CloneMsg::ParentChecked`.
     CheckCloneParent {
         parent: String,
         delay: std::time::Duration,

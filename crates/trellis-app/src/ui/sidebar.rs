@@ -6,6 +6,8 @@ use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_c
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
+use crate::msg::BranchMsg;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::palette::StashAction;
@@ -80,7 +82,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 (None, None) => r,
             };
             if r.double_clicked() {
-                msgs.push(Msg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&b.name)] });
+                msgs.push(Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&b.name)] }));
             } else if r.clicked()
                 && let Some(o) = b.oid
             {
@@ -118,7 +120,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 continue;
             }
             let r = widgets::list_row(ui, 26.0, &s.message, None, sel == Selection::Commit(s.oid), false);
-            let stash = |action| Msg::Stash { action, index: s.index, oid: s.oid };
+            let stash = |action| Msg::Job(JobMsg::Stash { action, index: s.index, oid: s.oid });
             if r.clicked() {
                 msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
             }
@@ -192,7 +194,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
                 Ok(cmd) => (None, vec![cmd]),
                 Err(why) => (Some(why), Vec::new()),
             };
-            let m = Msg::Git { label: "Checkout".into(), cmds };
+            let m = Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds });
             menu_item_if(msgs, ui, format!("Checkout {}", pr.source), blocked.as_deref(), m);
             menu_item(msgs, ui, "Copy link", Msg::Copy(pr.url.clone()));
         });
@@ -220,7 +222,7 @@ fn issues(ui: &mut egui::Ui, f: &ForgeState, shown: &dyn Fn(&str) -> bool, msgs:
                 msgs,
                 ui,
                 format!("Create branch from {}…", f.issue_noun()),
-                Msg::NewBranch { start: None, name: forge::branch_name_for(issue) },
+                Msg::Branch(BranchMsg::NewBranch { start: None, name: forge::branch_name_for(issue) }),
             );
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(issue.url.clone()));
             let m = f.mention(&issue.key);

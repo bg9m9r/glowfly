@@ -5,6 +5,7 @@
 
 use super::theme::color;
 use crate::msg::Msg;
+use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
 use eframe::egui::{self, Key, RichText};
 use trellis_core::repo::{PathProblem, Snapshot, check_new_path};
@@ -16,7 +17,7 @@ pub fn new_file(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>,
     ui.label(RichText::new("A path inside the repository; missing folders are created.").color(color::weak()));
     ui.add_space(6.0);
     let (submit, valid) = path_field(ui, form, snap, None, focus);
-    buttons(ui, form, "Create", submit, valid, || Msg::CreateFile(form.text.clone()), msgs)
+    buttons(ui, form, "Create", submit, valid, || Msg::WorkFile(WorkFileMsg::CreateFile(form.text.clone())), msgs)
 }
 
 const STAGE_HINT: &str = "Moves the file in the index too, so the old and new paths show as one staged rename. The file's other staged and unstaged changes are kept.";
@@ -41,7 +42,7 @@ pub fn rename_file(
         ui.add_space(4.0);
         let mut on = stage_renames;
         if ui.checkbox(&mut on, "Stage the rename (git mv)").on_hover_text(STAGE_HINT).changed() {
-            msgs.push(Msg::SetRenameStages(on));
+            msgs.push(Msg::WorkFile(WorkFileMsg::SetRenameStages(on)));
         }
         let note = if stage_renames {
             "The rename is staged; changes to the file stay as they are."
@@ -50,7 +51,7 @@ pub fn rename_file(
         };
         ui.label(RichText::new(note).color(color::weak()));
     }
-    let msg = || Msg::RenameFile { from: old.to_owned(), to: form.text.clone(), stage: tracked && stage_renames };
+    let msg = || Msg::WorkFile(WorkFileMsg::RenameFile { from: old.to_owned(), to: form.text.clone(), stage: tracked && stage_renames });
     buttons(ui, form, "Rename", submit, valid, msg, msgs)
 }
 

@@ -4,6 +4,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::publish::PublishForm;
@@ -39,7 +40,7 @@ fn pushed_without_remote(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
     let dir = scratch_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let fx = run(&mut st, Msg::Push { force: false });
+    let fx = run(&mut st, Msg::Job(JobMsg::Push { force: false }));
     (st, dir, fx)
 }
 
@@ -133,7 +134,7 @@ fn created_repository_becomes_origin_and_is_pushed() {
     assert!(snap.head_info().is_some_and(|b| b.upstream.is_some()), "main tracks origin/main");
 
     // With a remote now, Push pushes instead of offering to publish again.
-    let fx = run(&mut st, Msg::Push { force: false });
+    let fx = run(&mut st, Msg::Job(JobMsg::Push { force: false }));
     assert!(matches!(&fx[..], [Effect::RunGit { .. }]) && st.modal.is_none(), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&bare);

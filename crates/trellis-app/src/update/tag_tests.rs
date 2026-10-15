@@ -9,6 +9,7 @@ use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, Modal, RunningJob};
+use crate::tag::TagMsg;
 use std::path::Path;
 use std::time::Instant;
 
@@ -21,12 +22,12 @@ fn last_log(st: &AppState) -> String {
 }
 
 fn create(at: &str, name: &str, message: &str, push: Option<&str>) -> Msg {
-    Msg::CreateTag { at: at.into(), name: name.into(), message: message.into(), push: push.map(str::to_owned) }
+    Msg::Tag(TagMsg::CreateTag { at: at.into(), name: name.into(), message: message.into(), push: push.map(str::to_owned) })
 }
 
 fn open_dialog(st: &mut AppState, annotated: bool) {
     let at = head(st);
-    update(st, Msg::NewTag { at, annotated }, Instant::now());
+    update(st, Msg::Tag(TagMsg::NewTag { at, annotated }), Instant::now());
     assert!(matches!(st.modal, Some(Modal::NewTag(_))));
 }
 
@@ -52,7 +53,7 @@ fn new_tag_picks_default_remote() {
 
     // Without a snapshot the dialog still opens.
     let mut st = state();
-    update(&mut st, Msg::NewTag { at: "0123456".into(), annotated: false }, Instant::now());
+    update(&mut st, Msg::Tag(TagMsg::NewTag { at: "0123456".into(), annotated: false }), Instant::now());
     assert!(matches!(&st.modal, Some(Modal::NewTag(f)) if f.at == "0123456" && f.remote.is_empty()));
 }
 
@@ -158,10 +159,10 @@ fn create_tag_unknown_remote_and_busy() {
 #[test]
 fn push_new_tags_setting_saved() {
     let mut st = state();
-    let fx = update(&mut st, Msg::SetPushNewTags(true), Instant::now());
+    let fx = update(&mut st, Msg::Tag(TagMsg::SetPushNewTags(true)), Instant::now());
     assert!(st.settings.push_new_tags);
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.push_new_tags));
-    assert!(update(&mut st, Msg::SetPushNewTags(true), Instant::now()).is_empty());
+    assert!(update(&mut st, Msg::Tag(TagMsg::SetPushNewTags(true)), Instant::now()).is_empty());
 }
 
 #[test]

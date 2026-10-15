@@ -12,6 +12,7 @@ use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
+use crate::msg::TabsMsg;
 use crate::runner;
 use crate::state::diff_nav::{self, Landing, Step, StepKind};
 use crate::state::{AppState, Selection};
@@ -406,8 +407,8 @@ fn layout_switch_clears_cursor() {
 fn tab_park_clears_landing() {
     let (mut st, dir) = nav_repo("park");
     pending_step(&mut st);
-    run(&mut st, Msg::NewTab);
-    run(&mut st, Msg::SelectTab(0));
+    run(&mut st, Msg::Tabs(TabsMsg::NewTab));
+    run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert_eq!(st.view.diff_landing, None);
     assert_eq!(shown(&st), Some(&unstaged("a.txt")));
     let headers = header_rows(diff(&st), st.settings.diff_layout);

@@ -7,7 +7,9 @@
 
 use super::common::{menu_item, menu_item_if, short};
 use crate::lfs::LfsMsg;
+use crate::msg::FilesMsg;
 use crate::msg::Msg;
+use crate::msg::WorkFileMsg;
 use crate::state::files::folder_prefill;
 pub(super) use crate::state::lfs::TRACK_IN_LFS;
 use crate::state::lfs::TrackItem;
@@ -49,7 +51,7 @@ pub(super) fn restore_label(deleted: bool) -> &'static str {
 /// Asks to restore `path` from `oid` (from before it when `status` is 'D'), through the
 /// confirmation.
 pub(super) fn restore_msg(oid: Oid, path: &str, status: char) -> Msg {
-    Msg::RestoreFile { oid, path: path.to_owned(), deleted: status == 'D', confirmed: false, overwrite: false }
+    Msg::Files(FilesMsg::RestoreFile { oid, path: path.to_owned(), deleted: status == 'D', confirmed: false, overwrite: false })
 }
 
 /// Restore `path` from `oid`; for a file the commit deleted (`status` 'D'), from before it.
@@ -68,21 +70,21 @@ fn between_restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, older: Oid, newe
         r = r.on_hover_text(format!("{} doesn't have this file, so this brings back its version from {}.", short(newer), short(older)));
     }
     if r.clicked() {
-        msgs.push(Msg::RestoreFile { oid, path: f.path.clone(), deleted: false, confirmed: false, overwrite: false });
+        msgs.push(Msg::Files(FilesMsg::RestoreFile { oid, path: f.path.clone(), deleted: false, confirmed: false, overwrite: false }));
         ui.close_menu();
     }
 }
 
 /// Open with default app and show in folder, disabled with `missing` as the reason.
 pub(super) fn open_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str, missing: Option<&str>) {
-    menu_item_if(msgs, ui, OPEN_DEFAULT, missing, Msg::OpenWorkingFile(path.to_owned()));
-    menu_item_if(msgs, ui, SHOW_IN_FOLDER, missing, Msg::ShowWorkingFile(path.to_owned()));
+    menu_item_if(msgs, ui, OPEN_DEFAULT, missing, Msg::Files(FilesMsg::OpenWorkingFile(path.to_owned())));
+    menu_item_if(msgs, ui, SHOW_IN_FOLDER, missing, Msg::Files(FilesMsg::ShowWorkingFile(path.to_owned())));
 }
 
 /// Opens the New file dialog prefilled with `path`'s folder. Always enabled: a sibling never
 /// touches the row's file, and missing folders are created.
 fn new_file_here(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str) {
-    menu_item(msgs, ui, NEW_FILE_HERE, Msg::NewFileDialog(folder_prefill(path)));
+    menu_item(msgs, ui, NEW_FILE_HERE, Msg::WorkFile(WorkFileMsg::NewFileDialog(folder_prefill(path))));
 }
 
 /// The Track in Git LFS submenu's entries: each disabled with its reason, or showing on hover
@@ -146,9 +148,9 @@ pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEnt
     new_file_here(ui, msgs, &f.path);
     let conflicted = (f.status == '!').then_some(CONFLICTED);
     let blocked = gone.or(conflicted);
-    menu_item_if(msgs, ui, RENAME, blocked, Msg::RenameFileDialog(f.path.clone()));
+    menu_item_if(msgs, ui, RENAME, blocked, Msg::WorkFile(WorkFileMsg::RenameFileDialog(f.path.clone())));
     let (label, del_blocked) = if unstages { (UNSTAGE_DELETE, conflicted) } else { (DELETE, blocked) };
-    menu_item_if(msgs, ui, label, del_blocked, Msg::DeleteFile { path: f.path.clone(), confirmed: false });
+    menu_item_if(msgs, ui, label, del_blocked, Msg::WorkFile(WorkFileMsg::DeleteFile { path: f.path.clone(), confirmed: false }));
     if !missing {
         lfs_submenu(ui, msgs, lfs);
     }

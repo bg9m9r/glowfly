@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::{Effect, UiEffect};
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::state::askpass::{Carry, PromptEnd};
 use crate::state::{AppState, RunningJob};
@@ -46,7 +47,7 @@ fn start_job(st: &mut AppState, label: &str) {
 }
 
 fn finish(st: &mut AppState, ok: bool) -> Vec<Effect> {
-    send(st, Msg::JobDone { ok, output: "$ git push\nfatal: Authentication failed".into(), undo: None })
+    send(st, Msg::Job(JobMsg::JobDone { ok, output: "$ git push\nfatal: Authentication failed".into(), undo: None }))
 }
 
 #[test]

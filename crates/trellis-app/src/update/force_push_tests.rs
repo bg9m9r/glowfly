@@ -5,6 +5,7 @@ use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, git};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use std::path::Path;
@@ -34,7 +35,7 @@ fn force_push_leases_the_commit_the_snapshot_saw() {
     let (mut st, work, bare) = with_origin("force-lease-cmd");
     rewrite_main(&mut st, &work);
     let seen = rev(&work, "origin/main");
-    let fx = update(&mut st, Msg::Push { force: true }, Instant::now());
+    let fx = update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, .. }] => assert_eq!(
             cmds[..],
@@ -55,7 +56,7 @@ fn force_push_leases_the_commit_the_snapshot_saw() {
 fn force_push_replaces_an_unchanged_remote() {
     let (mut st, work, bare) = with_origin("force-lease-ok");
     rewrite_main(&mut st, &work);
-    drive(&mut st, Msg::Push { force: true });
+    drive(&mut st, Msg::Job(JobMsg::Push { force: true }));
     assert_eq!(rev(&bare, "main"), rev(&work, "main"), "{:?}", st.log.last().map(|l| &l.text));
     cleanup(&[&work, &bare]);
 }
@@ -70,7 +71,7 @@ fn force_push_refuses_when_the_remote_moved_after_the_snapshot() {
     git(&work, &["fetch", "-q", "origin"]);
     let theirs = rev(&bare, "main");
     assert_eq!(rev(&work, "origin/main"), theirs);
-    drive(&mut st, Msg::Push { force: true });
+    drive(&mut st, Msg::Job(JobMsg::Push { force: true }));
     assert_eq!(rev(&bare, "main"), theirs, "their commit survives");
     let log = st.log.last().map(|l| l.text.clone()).unwrap_or_default();
     assert!(log.contains("Force push FAILED") && log.contains("stale info"), "{log}");
@@ -82,7 +83,7 @@ fn force_push_of_a_new_branch_expects_it_absent() {
     let (mut st, work, bare) = with_origin("force-lease-new");
     git(&work, &["switch", "-q", "-c", "topic"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    let fx = update(&mut st, Msg::Push { force: true }, Instant::now());
+    let fx = update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, .. }] => assert_eq!(
             cmds[..],

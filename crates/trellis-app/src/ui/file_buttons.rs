@@ -3,6 +3,7 @@
 //! program, show it in the file manager.
 
 use super::file_menu::{self, NOT_IN_WORKDIR, OPEN_DEFAULT, SHOW_IN_FOLDER};
+use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use eframe::egui;
 use git2::Oid;
@@ -49,8 +50,13 @@ pub(super) fn show(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &CommitFile, label
             None,
             file_menu::restore_msg(f.oid, f.path, f.status),
         ),
-        (if full { OPEN_DEFAULT } else { OPEN_SHORT }, OPEN_DEFAULT.to_owned(), missing, Msg::OpenWorkingFile(open_path.clone())),
-        (SHOW_IN_FOLDER, SHOW_IN_FOLDER.to_owned(), missing, Msg::ShowWorkingFile(open_path)),
+        (
+            if full { OPEN_DEFAULT } else { OPEN_SHORT },
+            OPEN_DEFAULT.to_owned(),
+            missing,
+            Msg::Files(FilesMsg::OpenWorkingFile(open_path.clone())),
+        ),
+        (SHOW_IN_FOLDER, SHOW_IN_FOLDER.to_owned(), missing, Msg::Files(FilesMsg::ShowWorkingFile(open_path))),
     ];
     if ui.layout().prefer_right_to_left() {
         buttons.reverse();

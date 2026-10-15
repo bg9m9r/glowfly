@@ -8,6 +8,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::runner;
 use std::time::Instant;
 use trellis_core::highlight::{self, DiffHighlight, Span, TokenKind};
@@ -87,7 +88,7 @@ fn reload_carries_header_spans() {
     let before = headers(shown(&st));
     assert!(before.iter().all(|s| has(s, TokenKind::Keyword)));
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
-    let held = drive_holding_diffs(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "big.rs".into(), index: 0, generation });
+    let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "big.rs".into(), index: 0, generation }));
     let mut fx = land(&mut st, held);
     let d = shown(&st);
     assert!(hl(d).is_pending());

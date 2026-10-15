@@ -9,6 +9,8 @@ use crate::msg::DiffMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
+use crate::msg::TabsMsg;
 use crate::state::history::FileHistoryView;
 use crate::state::lines::LineClick::Only;
 use crate::state::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
@@ -178,13 +180,13 @@ fn line_ops_blocked_in_whole_mode() {
     run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 1, how: Only }));
     assert!(!st.view.diff_lines.is_empty());
     st.settings.diff_mode = DiffMode::WholeFile;
-    assert!(run(&mut st, Msg::ApplyLines(HunkOp::Stage)).is_empty());
+    assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage))).is_empty());
     assert!(st.log.iter().any(|l| !l.ok && l.text == WHOLE_FILE_BLOCKS_LINE_OPS));
 
     // A block's buttons send the normal hunk index.
     let generation = st.hunk_ops_gen().expect("enabled");
     let shown = st.diff.as_ref().unwrap().1.hunks[2].clone();
-    let fx = run(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "f.txt".into(), index: 2, generation });
+    let fx = run(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "f.txt".into(), index: 2, generation }));
     // With the hunk as shown, so core can refuse it if the file changed since.
     assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 2, expected, .. }, .. }] if *expected == shown), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -236,7 +238,7 @@ fn whole_file_stage_block_end_to_end() {
 
     let index = w.blocks[0].hunk;
     let generation = st.hunk_ops_gen().expect("enabled");
-    let held = drive_holding_diffs(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index, generation });
+    let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index, generation }));
     assert!(
         held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, whole_file: true, previous: Some(p), .. } if p.whole.is_some())),
         "{held:?}"
@@ -265,7 +267,7 @@ fn whole_file_with_ignore_whitespace_blocks_hunks() {
     assert!(st.diff.as_ref().and_then(|(_, d)| d.whole.as_ref()).is_some());
     let why = st.hunk_ops_blocked().expect("blocked while whitespace is hidden");
     let generation = st.hunk_ops_gen().expect("loaded");
-    assert!(run(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }).is_empty());
+    assert!(run(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation })).is_empty());
     assert!(st.log.iter().any(|l| !l.ok && l.text == why));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -302,9 +304,9 @@ fn a_parked_diff_follows_a_mode_change_made_in_another_tab() {
     st.settings.diff_mode = DiffMode::WholeFile;
     st.view.diff_top_row = blocks(&three_changes(true), DiffLayout::Inline)[2];
 
-    run(&mut st, Msg::NewTab);
+    run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
-    run(&mut st, Msg::SelectTab(0));
+    run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     let (_, d) = st.diff.as_ref().unwrap();
     assert!(d.whole.is_none(), "the hunk view shows the normal hunks");
     let header = header_rows(&three_changes(false), DiffLayout::Inline)[2];

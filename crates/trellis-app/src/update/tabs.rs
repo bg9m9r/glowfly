@@ -3,7 +3,7 @@
 //! other's; reordering moves parked data with its tab.
 
 use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::Msg;
+use crate::msg::TabsMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::tabs::{MAX_CLOSED_TABS, Parked, index_after_move};
 use crate::state::{AppState, Selection, Tab};
@@ -11,27 +11,27 @@ use std::path::PathBuf;
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::DiffMode;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::NewTab => {
+        TabsMsg::NewTab => {
             st.tabs.push(Tab::empty());
             switch(st, st.tabs.len() - 1, fx);
         }
-        Msg::SelectTab(i) => switch(st, i, fx),
-        Msg::CycleTab(step) => {
+        TabsMsg::SelectTab(i) => switch(st, i, fx),
+        TabsMsg::CycleTab(step) => {
             let n = st.tabs.len() as isize;
             switch(st, (st.active_tab as isize + step).rem_euclid(n) as usize, fx);
         }
-        Msg::CloseTab(i) => close(st, if i == usize::MAX { st.active_tab } else { i }, fx),
-        Msg::ReopenClosedTab => {
+        TabsMsg::CloseTab(i) => close(st, if i == usize::MAX { st.active_tab } else { i }, fx),
+        TabsMsg::ReopenClosedTab => {
             if let Some(path) = st.closed_tabs.pop() {
                 open(st, path, fx);
             }
         }
-        Msg::MoveTab { from, to } => move_tab(st, from, to, fx),
-        Msg::CloseOtherTabs(i) if i < st.tabs.len() => close_where(st, |j| j == i, i, fx),
-        Msg::CloseTabsToRight(i) if i < st.tabs.len() => close_where(st, |j| j <= i, i, fx),
-        Msg::RestoreTabs { paths, active } => {
+        TabsMsg::MoveTab { from, to } => move_tab(st, from, to, fx),
+        TabsMsg::CloseOtherTabs(i) if i < st.tabs.len() => close_where(st, |j| j == i, i, fx),
+        TabsMsg::CloseTabsToRight(i) if i < st.tabs.len() => close_where(st, |j| j <= i, i, fx),
+        TabsMsg::RestoreTabs { paths, active } => {
             for path in paths {
                 if !st.tabs.iter().any(|t| t.is(&path)) {
                     st.tabs.push(Tab::unloaded(path));
@@ -49,7 +49,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 switch(st, target, fx);
             }
         }
-        _ => {}
+        // Out of range: the tab is gone.
+        TabsMsg::CloseOtherTabs(_) | TabsMsg::CloseTabsToRight(_) => {}
     }
 }
 

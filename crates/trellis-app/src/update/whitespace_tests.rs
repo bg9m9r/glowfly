@@ -7,6 +7,7 @@ use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::lines::LineClick::Only;
 use std::path::{Path, PathBuf};
@@ -120,7 +121,7 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
     let g = st.hunk_ops_gen().expect("the reload landed");
     assert!(st.hunk_ops_blocked().is_some());
 
-    let stage = |generation| Msg::Hunk { op: HunkOp::Stage, path: "a.txt".into(), index: 0, generation };
+    let stage = |generation| Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "a.txt".into(), index: 0, generation });
     assert!(!has_local_op(&run(&mut st, stage(g))));
     assert_eq!(whitespace_refusals(&st), 1);
 
@@ -130,11 +131,11 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
     run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
     assert!(st.view.diff_lines.is_empty());
     st.view.diff_lines.click(&a, &d, 0, two, Only);
-    assert!(!has_local_op(&run(&mut st, Msg::ApplyLines(HunkOp::Stage))));
+    assert!(!has_local_op(&run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)))));
     assert_eq!(whitespace_refusals(&st), 2);
 
     // A discard waiting in a confirmation dialog is refused when accepted.
-    let discard = Msg::Hunk { op: HunkOp::Discard, path: "a.txt".into(), index: 0, generation: g };
+    let discard = Msg::Stage(StageMsg::Hunk { op: HunkOp::Discard, path: "a.txt".into(), index: 0, generation: g });
     run(&mut st, Msg::confirm("Discard hunk", "Discard?".into(), "Discard", discard));
     assert!(!has_local_op(&run(&mut st, Msg::ConfirmAccepted)));
     assert_eq!(whitespace_refusals(&st), 3);
@@ -142,7 +143,7 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
     assert!(repo::load_diff(&dir, &DiffTarget::Staged("a.txt".into())).is_err(), "nothing staged");
 
     // Whole-file operations don't use hunk indexes and still work.
-    assert!(has_local_op(&run(&mut st, Msg::StageFile("a.txt".into()))));
+    assert!(has_local_op(&run(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())))));
 
     // Showing whitespace again re-enables hunk staging on the reloaded diff.
     let mut st = state();

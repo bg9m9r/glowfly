@@ -1,27 +1,33 @@
 //! Everything that can happen: user intents from views and results from background effects.
 
-use crate::effect::{FileOp, ForgeReply, UndoResult, WorkFileOk};
+use crate::effect::ForgeReply;
 use crate::state::PrefPage;
 use crate::state::prefs::GitConfigValues;
 use crate::submodule::SubmoduleMsg;
 use crate::terminal::TerminalMsg;
-use git2::Oid;
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
-use trellis_core::repo::{HunkOp, RestoredFrom};
 use trellis_core::settings::{ThemeChoice, TrackerChoice};
 
+mod branch;
 mod diff;
+mod files;
 mod graph;
 mod rebase;
 mod repo;
+mod tabs;
+mod work;
 
+pub use branch::{BranchMsg, CloneMsg};
 pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
+pub use files::{FilesMsg, WorkFileMsg};
 pub use graph::{AvatarMsg, GraphMsg, SelectionMsg};
 pub use rebase::RebaseMsg;
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
+pub use tabs::TabsMsg;
+pub use work::{CommitMsg, JobMsg, StageMsg};
 
 /// What a folder picker was opened for.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -69,152 +75,34 @@ pub enum Msg {
     Rebase(RebaseMsg),
 
     // ---- tabs
-    NewTab,
-    SelectTab(usize),
-    /// Select the tab this many places to the right (negative: left), wrapping around.
-    CycleTab(isize),
-    /// Close tab `i`; `usize::MAX` closes the active tab.
-    CloseTab(usize),
-    ReopenClosedTab,
-    /// Move tab `from` so it ends up at index `to` (removed, then inserted); the active tab
-    /// stays active.
-    MoveTab {
-        from: usize,
-        to: usize,
-    },
-    /// Close every tab except tab `i`.
-    CloseOtherTabs(usize),
-    /// Close every tab to the right of tab `i`.
-    CloseTabsToRight(usize),
-    /// Tabs saved by the last session; only the active one is loaded now.
-    RestoreTabs {
-        paths: Vec<PathBuf>,
-        active: usize,
-    },
+    /// The tab bar (update/tabs.rs).
+    Tabs(TabsMsg),
 
     // ---- working tree
-    StageFile(String),
-    UnstageFile(String),
-    StageAll,
-    UnstageAll,
-    /// Revert tracked `path` to its index version (the view has confirmed).
-    DiscardFile(String),
-    /// Open the confirmation for discarding the untracked file `path`; it goes to the Recycle Bin / Trash or is deleted the way the preference says.
-    DiscardUntracked(String),
-    /// Stage, unstage or discard hunk `index` of the diff shown at `generation`
-    /// (`AppState::hunk_ops_gen`); refused if the diff has changed since.
-    Hunk {
-        op: HunkOp,
-        path: String,
-        index: usize,
-        generation: u64,
-    },
-    /// Stage, unstage or discard the selected diff lines. Reads the selection when handled,
-    /// so a confirmation whose diff changed meanwhile does nothing.
-    ApplyLines(HunkOp),
+    /// Staging, unstaging and discarding files, hunks and lines (update/ops.rs).
+    Stage(StageMsg),
+    /// Creating, renaming, deleting and discarding working-tree files (update/work_files.rs).
+    WorkFile(WorkFileMsg),
     /// A key from ui/shortcuts.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
     Shortcut(crate::keymap::KeyAction),
-    /// Revert hunk `index` of the commit or comparison diff shown at `generation`
-    /// (AppState::hunk_ops_gen) into the working tree. Refused if the diff changed since.
-    RevertHunk {
-        index: usize,
-        generation: u64,
-    },
-    /// Write `path` as of commit `oid` into the working tree (its parent's version when `deleted`,
-    /// i.e. the commit deleted it). `confirmed: false` opens the confirmation first.
-    /// `overwrite` is set once the user was warned that the file's current contents will be lost;
-    /// without it, core refuses to write over contents that discarding couldn't bring back.
-    RestoreFile {
-        oid: Oid,
-        path: String,
-        deleted: bool,
-        confirmed: bool,
-        overwrite: bool,
-    },
-    /// Open the New file dialog with this text in its field.
-    NewFileDialog(String),
-    /// Create an empty file at the typed path (checked and normalized in update).
-    CreateFile(String),
-    /// Open the rename dialog for the working-tree file `.0`.
-    RenameFileDialog(String),
-    /// Move the working-tree file `from` to the typed path `to`; the index is untouched, or with
-    /// `stage`, through git mv so the index records the rename.
-    RenameFile {
-        from: String,
-        to: String,
-        stage: bool,
-    },
-    /// The rename dialog's "Stage the rename" checkbox (saved in settings).
-    SetRenameStages(bool),
-    /// Delete the working-tree file `path`: `confirmed: false` opens the confirmation, and
-    /// `confirmed: true` deletes straight away the way the preference says.
-    DeleteFile {
-        path: String,
-        confirmed: bool,
-    },
-    /// Run the delete-family op a confirmation agreed to (Delete, UnstageDelete, UnstageGone or Discard),
-    /// exactly as the confirmation described it.
-    DeleteConfirmed(FileOp),
-    Commit,
-    /// Ctrl+Shift+Enter in the commit message: stage everything (git add --all) and commit in one job.
-    StageAllAndCommit,
-    /// The commit box's "Push after committing" checkbox (saved in settings).
-    SetPushAfterCommit(bool),
-    PrefillAmend,
-    AppendToDescription(String),
+    /// Restoring a file from a commit, opening or showing a working-tree file (update/files.rs).
+    Files(FilesMsg),
+    /// The commit box (update/commit.rs).
+    Commit(CommitMsg),
 
     // ---- git commands
-    Git {
-        label: String,
-        cmds: Vec<Vec<String>>,
-    },
-    /// Applies, pops or drops the stash shown at `stash@{index}`, only if that entry still is
-    /// commit `oid` (another tab, worktree or terminal may have pushed or dropped one since).
-    Stash {
-        action: crate::state::palette::StashAction,
-        index: usize,
-        oid: Oid,
-    },
-    Push {
-        force: bool,
-    },
-    /// Undo the active tab's most recent undoable operation.
-    Undo,
-    Redo,
-    /// Clone a repository into a folder (the Clone dialog's request, options included).
-    CloneRepo(crate::state::clone::CloneRequest),
+    /// Git jobs: commands, push, stash, undo and redo, and their end (update/ops.rs).
+    Job(JobMsg),
+    /// The Clone dialog (update/clone.rs).
+    Clone(CloneMsg),
 
     // ---- branches
     /// Hidden and soloed refs and the hovered ref (update/graph_filter.rs).
     Graph(GraphMsg),
-    /// Open the rename dialog for local branch `.0`.
-    RenameBranchDialog(String),
-    /// `git branch -m old new`.
-    RenameBranch {
-        old: String,
-        new: String,
-    },
-    /// Open the upstream dialog for local branch `.0`.
-    SetUpstreamDialog(String),
-    /// Make `branch` track `name` on `remote` (which need not exist yet).
-    SetUpstream {
-        branch: String,
-        remote: String,
-        name: String,
-    },
-    /// Remove the upstream setting of local branch `.0`.
-    UnsetUpstream(String),
-    /// Fast-forward local branch `.0` to its upstream, without checking it out.
-    FastForwardBranch(String),
-    /// Delete local branch `.0` and then its upstream branch on the remote.
-    DeleteBranchAndRemote(String),
-    /// Push local `branch` to `remote`; None means its upstream, or the default remote with -u.
-    PushBranch {
-        branch: String,
-        remote: Option<String>,
-    },
+    /// Branch menus and dialogs (update/branches.rs).
+    Branch(BranchMsg),
 
     // ---- dialogs
     Confirm {
@@ -225,33 +113,6 @@ pub enum Msg {
     },
     ConfirmAccepted,
     CloseModal,
-    NewBranch {
-        start: Option<String>,
-        name: String,
-    },
-    /// Opens the New tag dialog at commit `at` (a full sha); `annotated` makes the message required.
-    NewTag {
-        at: String,
-        annotated: bool,
-    },
-    /// Creates tag `name` at commit `at` (a full sha), annotated when `message` isn't empty,
-    /// then pushes it to remote `push`.
-    CreateTag {
-        at: String,
-        name: String,
-        message: String,
-        push: Option<String>,
-    },
-    /// The New tag dialog's push checkbox, saved in settings.
-    SetPushNewTags(bool),
-    CloneDialog,
-    /// The Clone dialog's parent folder text changed: check it on disk after a short pause.
-    CloneParentEdited,
-    /// Whether the Clone dialog's parent folder (the trimmed text `parent`) is a folder.
-    CloneParentChecked {
-        parent: String,
-        is_dir: bool,
-    },
     PickFolder(FolderPurpose),
 
     // ---- outside the app
@@ -259,10 +120,6 @@ pub enum Msg {
     OpenUrl(String),
     OpenTerminal,
     OpenFolder(PathBuf),
-    /// Open a working-tree file (repo-relative path) in the OS default program.
-    OpenWorkingFile(String),
-    /// Select a working-tree file in the file manager (its folder where selecting isn't supported).
-    ShowWorkingFile(String),
     /// The built-in terminal panel (terminal.rs).
     Terminal(TerminalMsg),
     /// The SUBMODULES section (submodule.rs).
@@ -358,41 +215,6 @@ pub enum Msg {
     CancelCredentials,
 
     // ---- results from effects
-    /// A LocalOp finished; a discard that can be undone carries its undo action.
-    LocalOpDone(Result<Option<trellis_core::undo::Action>, String>),
-    /// A RevertHunk finished; `path` is the file it was for.
-    HunkReverted {
-        path: String,
-        result: Result<(), String>,
-    },
-    /// A RestoreFile finished.
-    FileRestored {
-        path: String,
-        oid: Oid,
-        result: Result<RestoredFrom, String>,
-    },
-    /// A RestoreFile without `overwrite` found contents at `path` that only the working tree
-    /// holds (`reason` says why), so it wrote nothing.
-    RestoreWouldOverwrite {
-        path: String,
-        oid: Oid,
-        reason: String,
-    },
-    /// A WorkFile effect finished.
-    WorkFileDone {
-        op: FileOp,
-        result: Result<WorkFileOk, String>,
-    },
-    /// The trash refused `op`'s file; nothing changed.
-    TrashRefused {
-        op: FileOp,
-        reason: String,
-    },
-    JobDone {
-        ok: bool,
-        output: String,
-        undo: Option<UndoResult>,
-    },
     ForgeReplied(ForgeReply),
     Connected {
         account: Account,
@@ -432,7 +254,7 @@ pub enum Msg {
 
 impl Msg {
     pub fn git(label: &str, a: &[&str]) -> Msg {
-        Msg::Git { label: label.into(), cmds: vec![args(a)] }
+        Msg::Job(JobMsg::Git { label: label.into(), cmds: vec![args(a)] })
     }
 
     pub fn confirm(title: &str, body: String, button: &str, then: Msg) -> Msg {

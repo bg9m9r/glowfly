@@ -16,6 +16,7 @@ use super::file_buttons::CommitFile;
 use super::theme::color;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
+use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
@@ -230,12 +231,16 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         let (true, Some(generation)) = (button.clicked(), v.hunk_gen) else { continue };
         let op = match b {
             HunkButton::Revert => {
-                msgs.push(Msg::RevertHunk { index: h, generation });
+                msgs.push(Msg::Stage(StageMsg::RevertHunk { index: h, generation }));
                 continue;
             }
             HunkButton::Op(op) => op,
         };
-        let m = if selected > 0 { Msg::ApplyLines(op) } else { Msg::Hunk { op, path: path.to_owned(), index: h, generation } };
+        let m = if selected > 0 {
+            Msg::Stage(StageMsg::ApplyLines(op))
+        } else {
+            Msg::Stage(StageMsg::Hunk { op, path: path.to_owned(), index: h, generation })
+        };
         msgs.push(match (op, selected) {
             (HunkOp::Discard, 0) => {
                 Msg::confirm("Discard hunk", format!("Discard this change in {path}? You can bring it back with Undo."), "Discard", m)

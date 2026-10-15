@@ -8,6 +8,7 @@ use crate::msg::ConflictMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::TabsMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::{AppState, Selection};
@@ -250,7 +251,7 @@ fn tab_switch_parks_file_history() {
     let first = st.history_gen;
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert!(st.history.is_none(), "B has no history open");
-    let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
+    let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let v = st.history.as_ref().expect("restored");
     assert!(v.loading && v.path == "a.txt");
     assert!(st.history_gen > first);
@@ -292,7 +293,7 @@ fn tab_switch_reloads_the_selected_entrys_diff() {
     assert_eq!(st.history.as_ref().unwrap().selected, Some(0));
     assert!(st.diff.is_none());
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
-    let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
+    let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let want = selected_target(&st);
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { target, .. } if *target == want));
     run(&mut st, load.expect("the selected entry's diff is asked for again"));

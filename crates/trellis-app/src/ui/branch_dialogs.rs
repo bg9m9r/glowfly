@@ -2,6 +2,7 @@
 //! helpers in `branch_ops`; `update` checks them again before running anything.
 
 use super::theme::color;
+use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use eframe::egui::{self, Key, RichText};
 use trellis_core::branch_ops::{check_branch_name, is_valid_branch_name};
@@ -38,7 +39,7 @@ pub fn rename(ui: &mut egui::Ui, old: &str, name: &mut String, snap: Option<&Sna
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     ui.horizontal(|ui| {
         if ui.add_enabled(valid, egui::Button::new("Rename")).clicked() || (submit && valid) {
-            msgs.push(Msg::RenameBranch { old: old.to_owned(), new: new.to_owned() });
+            msgs.push(Msg::Branch(BranchMsg::RenameBranch { old: old.to_owned(), new: new.to_owned() }));
             close = true;
         }
         if ui.button("Cancel").clicked() {
@@ -92,7 +93,11 @@ pub fn upstream(
     ui.add_space(10.0);
     ui.horizontal(|ui| {
         if ui.add_enabled(valid && !unchanged && !remote.is_empty(), egui::Button::new("Save")).clicked() {
-            msgs.push(Msg::SetUpstream { branch: branch_name.to_owned(), remote: remote.clone(), name: target.to_owned() });
+            msgs.push(Msg::Branch(BranchMsg::SetUpstream {
+                branch: branch_name.to_owned(),
+                remote: remote.clone(),
+                name: target.to_owned(),
+            }));
             close = true;
         }
         if ui.button("Cancel").clicked() {

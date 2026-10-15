@@ -7,6 +7,7 @@ use super::branch_tests::with_origin;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
@@ -66,7 +67,7 @@ fn cleanup(dirs: &[&Path]) {
 
 /// Ends the running job as failed, without running it.
 fn drop_job(st: &mut AppState) {
-    drive(st, Msg::JobDone { ok: false, output: String::new(), undo: None });
+    drive(st, Msg::Job(JobMsg::JobDone { ok: false, output: String::new(), undo: None }));
 }
 
 /// Submits the open dialog and runs the job to completion.

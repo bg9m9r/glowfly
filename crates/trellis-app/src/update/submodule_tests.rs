@@ -8,6 +8,8 @@ use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
+use crate::msg::TabsMsg;
 use crate::runner;
 use crate::state::submodules::update_args;
 use crate::state::{AppState, Modal, RunningJob};
@@ -99,7 +101,7 @@ fn open_submodule_in_new_tab() {
     assert!(same_path(&st.snap.as_ref().unwrap().workdir, &want));
 
     // Opening it again from the parent selects its tab.
-    drive(&mut st, Msg::SelectTab(0));
+    drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     drive(&mut st, open(PATH));
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     cleanup(&[&parent, &lib]);
@@ -181,7 +183,7 @@ fn status_reload_refreshes_submodules() {
     std::fs::write(dir.join("a.txt"), "inside\n").unwrap();
     git(&dir, &["commit", "-q", "-am", "inside"]);
     assert_eq!(sub(&st).state, SubmoduleState::InSync);
-    let fx = update(&mut st, Msg::LocalOpDone(Ok(None)), Instant::now());
+    let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
     assert!(matches!(&fx[..], [Effect::LoadStatus { submodules: true, .. }]), "{fx:?}");
     let loaded = fx.into_iter().filter_map(runner::execute).collect::<Vec<_>>();
     let fx: Vec<Effect> = loaded.into_iter().flat_map(|m| update(&mut st, m, Instant::now())).collect();

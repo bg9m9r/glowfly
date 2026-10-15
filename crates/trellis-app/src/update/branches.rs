@@ -5,24 +5,25 @@
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
-use crate::msg::Msg;
+use crate::msg::BranchMsg;
 use crate::state::branches::{self, NO_REMOTES};
 use crate::state::{AppState, Modal};
 use trellis_core::branch_ops::{self, check_branch_name, is_valid_branch_name};
 use trellis_core::repo::BranchInfo;
 use trellis_core::undo::UndoKind;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::RenameBranchDialog(name) => {
+        BranchMsg::NewBranch { start, name } => st.modal = Some(Modal::NewBranch { start, name, checkout: true }),
+        BranchMsg::RenameBranchDialog(name) => {
             if let Some(b) = find(st, &name) {
                 st.modal = Some(Modal::RenameBranch { old: b.name.clone(), name: b.name });
             }
         }
-        Msg::RenameBranch { old, new } => rename(st, &old, new.trim(), fx),
-        Msg::SetUpstreamDialog(name) => upstream_dialog(st, &name),
-        Msg::SetUpstream { branch, remote, name } => set_upstream(st, &branch, &remote, name.trim(), fx),
-        Msg::UnsetUpstream(name) => {
+        BranchMsg::RenameBranch { old, new } => rename(st, &old, new.trim(), fx),
+        BranchMsg::SetUpstreamDialog(name) => upstream_dialog(st, &name),
+        BranchMsg::SetUpstream { branch, remote, name } => set_upstream(st, &branch, &remote, name.trim(), fx),
+        BranchMsg::UnsetUpstream(name) => {
             let Some(b) = find(st, &name) else { return };
             if b.tracking.is_none() {
                 st.log(false, format!("{name} has no upstream."));
@@ -30,7 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             }
             start_job(st, JobSpec::new("Unset upstream".into(), vec![branch_ops::unset_upstream_cmd(&name)]), fx);
         }
-        Msg::FastForwardBranch(name) => {
+        BranchMsg::FastForwardBranch(name) => {
             let Some(b) = find(st, &name) else { return };
             let state = st.snap.as_ref().map(|s| s.state).unwrap_or(git2::RepositoryState::Clean);
             if let Some(why) = branches::fast_forward_blocked(&b, state) {
@@ -41,9 +42,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 start_job(st, JobSpec::new("Fast-forward".into(), vec![cmd]), fx);
             }
         }
-        Msg::DeleteBranchAndRemote(name) => delete_with_remote(st, &name, fx),
-        Msg::PushBranch { branch, remote } => push(st, &branch, remote.as_deref(), fx),
-        _ => {}
+        BranchMsg::DeleteBranchAndRemote(name) => delete_with_remote(st, &name, fx),
+        BranchMsg::PushBranch { branch, remote } => push(st, &branch, remote.as_deref(), fx),
     }
 }
 

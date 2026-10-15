@@ -2,6 +2,7 @@
 //! the user types with the pure rules in `state::clone`.
 
 use super::theme::color;
+use crate::msg::CloneMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::clone::{CloneForm, LimitKind};
 use chrono::NaiveDate;
@@ -65,7 +66,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, msgs: &mu
                 .desired_width(340.0),
         );
         if edit.changed() {
-            msgs.push(Msg::CloneParentEdited);
+            msgs.push(Msg::Clone(CloneMsg::ParentEdited));
         }
         if ui.button("Browse…").clicked() {
             msgs.push(Msg::PickFolder(FolderPurpose::CloneParent));
@@ -109,7 +110,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, msgs: &mu
         if ui.add_enabled(!p.blocked, egui::Button::new("Clone")).clicked()
             && let Some(req) = form.request(today)
         {
-            msgs.push(Msg::CloneRepo(req));
+            msgs.push(Msg::Clone(CloneMsg::Start(req)));
             close = true;
         }
         if ui.button("Cancel").clicked() {

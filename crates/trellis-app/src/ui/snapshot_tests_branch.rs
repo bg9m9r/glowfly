@@ -4,6 +4,7 @@
 
 use super::snapshot_tests::{harness, reload, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
+use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
 use crate::msg::Msg;
 use crate::state::{AppState, Modal};
@@ -75,7 +76,7 @@ fn branch_menu() {
     h.check_snapshot("branch_menu");
     h.get_by_label("Fast-forward search to origin/search").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::FastForwardBranch(b) if b == "search")));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Branch(BranchMsg::FastForwardBranch(b)) if b == "search")));
     drop(h);
 
     // Diverged: no fast-forward, and the branch can be deleted together with origin/search.

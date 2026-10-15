@@ -11,6 +11,7 @@ use super::common::lane_color;
 use super::menus::{commit_menu, multi_commit_menu};
 use super::theme::color;
 use super::widgets;
+use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
@@ -361,7 +362,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     let mods = ui.input(|i| i.modifiers);
                     let on_ghost = ghost_rect.zip(pointer).is_some_and(|(r, p)| r.contains(p));
                     msgs.push(if on_ghost && mods.is_none() {
-                        Msg::NewBranch { start: None, name: String::new() }
+                        Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() })
                     } else {
                         select::row_click(c.oid, mods)
                     });

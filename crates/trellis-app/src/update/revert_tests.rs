@@ -6,6 +6,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::state::{AppState, WHITESPACE_BLOCKS_HUNK_OPS, WHITESPACE_BLOCKS_REVERT};
 use git2::Oid;
 use std::path::PathBuf;
@@ -38,7 +39,7 @@ fn head(st: &AppState) -> Oid {
 
 fn revert(st: &mut AppState, index: usize) -> Vec<Effect> {
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
-    run(st, Msg::RevertHunk { index, generation })
+    run(st, Msg::Stage(StageMsg::RevertHunk { index, generation }))
 }
 
 fn expect_effect(st: &mut AppState, target: &DiffTarget) {
@@ -71,7 +72,7 @@ fn stale_generation_is_refused() {
     let (mut st, dir) = with_diff("revert-stale", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk().into()));
     let generation = st.hunk_ops_gen().unwrap() + 1;
-    assert!(run(&mut st, Msg::RevertHunk { index: 0, generation }).is_empty());
+    assert!(run(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation })).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("diff changed")));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -142,7 +143,7 @@ fn revert_end_to_end() {
     let target = DiffTarget::Commit(head(&st), "a.txt".into());
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
     let generation = st.hunk_ops_gen().expect("diff on screen");
-    drive(&mut st, Msg::RevertHunk { index: 0, generation });
+    drive(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation }));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
     assert!(st.toasts.iter().any(|t| t.ok && t.text.contains("a.txt")), "{:?}", st.log.last().map(|l| &l.text));
     assert!(st.snap.as_ref().unwrap().unstaged.iter().any(|f| f.path == "a.txt"));
@@ -153,11 +154,11 @@ fn revert_end_to_end() {
 #[test]
 fn hunk_reverted_results() {
     let (mut st, dir) = with_diff("revert-results", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    let fx = run(&mut st, Msg::HunkReverted { path: "a.txt".into(), result: Ok(()) });
+    let fx = run(&mut st, Msg::Stage(StageMsg::HunkReverted { path: "a.txt".into(), result: Ok(()) }));
     assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "{fx:?}");
     finish(&mut st, fx);
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text.contains("Reverted the hunk in a.txt")));
-    let fx = run(&mut st, Msg::HunkReverted { path: "a.txt".into(), result: Err("x".into()) });
+    let fx = run(&mut st, Msg::Stage(StageMsg::HunkReverted { path: "a.txt".into(), result: Err("x".into()) }));
     assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "{fx:?}");
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not revert the hunk in a.txt: x"));
     assert!(st.view.show_log);
@@ -167,7 +168,7 @@ fn hunk_reverted_results() {
 #[test]
 fn scoped_failure_for_inactive_tab_is_logged() {
     let (mut st, dir) = with_diff("revert-scoped", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    let msg = Msg::HunkReverted { path: "a.txt".into(), result: Err("x".into()) };
+    let msg = Msg::Stage(StageMsg::HunkReverted { path: "a.txt".into(), result: Err("x".into()) });
     let fx = run(&mut st, Msg::Scoped { workdir: "C:/elsewhere".into(), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("x") && l.text.contains("a.txt")));

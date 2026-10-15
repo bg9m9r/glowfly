@@ -4,6 +4,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::CloneMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::clone::{CloneForm, CloneRequest, LimitKind};
 use crate::state::{AppState, Modal, RunningJob};
@@ -51,7 +52,7 @@ fn filled() -> CloneForm {
 #[test]
 fn clone_dialog_opens_with_shallow_off() {
     let mut st = AppState::new(Settings::default(), vec![PathBuf::from("C:/work/app")], Instant::now());
-    update(&mut st, Msg::CloneDialog, Instant::now());
+    update(&mut st, Msg::Clone(CloneMsg::Dialog), Instant::now());
     let f = form(&mut st);
     assert!(!f.shallow);
     assert_eq!(f.limit, LimitKind::Depth);
@@ -64,7 +65,7 @@ fn clone_dialog_opens_with_shallow_off() {
 fn full_clone_runs_one_job_in_the_parent() {
     let mut st = state();
     let req = request(CloneOptions::default());
-    let (cwd, cmds, prompts) = job(&update(&mut st, Msg::CloneRepo(req.clone()), Instant::now()));
+    let (cwd, cmds, prompts) = job(&update(&mut st, Msg::Clone(CloneMsg::Start(req.clone())), Instant::now()));
     assert_eq!(cwd, req.parent);
     assert_eq!(cmds, [args(&["clone", "--", URL, "app"])]);
     assert!(prompts, "a clone can ask for credentials");
@@ -77,12 +78,12 @@ fn full_clone_runs_one_job_in_the_parent() {
 fn shallow_clone_commands() {
     let mut st = state();
     let req = request(shallow(HistoryLimit::Depth(3), Some("dev")));
-    let (_, cmds, _) = job(&update(&mut st, Msg::CloneRepo(req), Instant::now()));
+    let (_, cmds, _) = job(&update(&mut st, Msg::Clone(CloneMsg::Start(req)), Instant::now()));
     assert_eq!(cmds, [args(&["clone", "--depth=3", "--single-branch", "--branch=dev", "--", URL, "app"])]);
 
     let mut st = state();
     let req = request(shallow(HistoryLimit::Since(NaiveDate::from_ymd_opt(2026, 1, 5).unwrap()), None));
-    let (_, cmds, _) = job(&update(&mut st, Msg::CloneRepo(req), Instant::now()));
+    let (_, cmds, _) = job(&update(&mut st, Msg::Clone(CloneMsg::Start(req)), Instant::now()));
     assert_eq!(cmds, [args(&["clone", "--shallow-since=2026-01-05T00:00:00", "--single-branch", "--", URL, "app"])]);
 }
 
@@ -98,7 +99,7 @@ fn a_second_clone_waits_for_the_running_job() {
         then_open: None,
         keeps_undo: true,
     });
-    assert!(update(&mut st, Msg::CloneRepo(request(CloneOptions::default())), Instant::now()).is_empty());
+    assert!(update(&mut st, Msg::Clone(CloneMsg::Start(request(CloneOptions::default()))), Instant::now()).is_empty());
     assert_eq!(st.log.last().unwrap().text, "Another operation is still running.");
 }
 
@@ -106,7 +107,7 @@ fn a_second_clone_waits_for_the_running_job() {
 fn a_bad_request_is_refused() {
     let mut st = state();
     let req = CloneRequest { url: "-oops".into(), ..request(CloneOptions::default()) };
-    assert!(update(&mut st, Msg::CloneRepo(req), Instant::now()).is_empty());
+    assert!(update(&mut st, Msg::Clone(CloneMsg::Start(req)), Instant::now()).is_empty());
     assert!(st.job.is_none());
     assert!(st.log.last().unwrap().text.starts_with("Could not clone"));
 }
@@ -199,7 +200,7 @@ fn shallow_clone_end_to_end_opens_the_new_repository() {
         name: "copy".into(),
         options: shallow(HistoryLimit::Depth(1), None),
     };
-    drive(&mut st, Msg::CloneRepo(req));
+    drive(&mut st, Msg::Clone(CloneMsg::Start(req)));
     let dest = parent.join("copy");
     assert!(dest.is_dir(), "log: {:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
     let (ok, out) = run(&dest, &args(&["rev-parse", "--is-shallow-repository"]));
@@ -219,7 +220,7 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     let now = Instant::now();
     let mut st = AppState::new(Settings::default(), vec![dir.join("app")], now);
     // Opening the dialog checks its prefilled folder at once.
-    let fx = update(&mut st, Msg::CloneDialog, now);
+    let fx = update(&mut st, Msg::Clone(CloneMsg::Dialog), now);
     assert!(matches!(&fx[..], [Effect::CheckCloneParent { delay, .. }] if delay.is_zero()), "{fx:?}");
     form(&mut st).url = URL.into();
     form(&mut st).parent = format!(" {} ", dir.display());
@@ -227,12 +228,12 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     assert!(p.blocked && p.folder.is_none(), "unchecked text blocks Clone, without a message");
 
     // An edit asks again after a pause.
-    let fx = update(&mut st, Msg::CloneParentEdited, now);
+    let fx = update(&mut st, Msg::Clone(CloneMsg::ParentEdited), now);
     let [Effect::CheckCloneParent { parent, delay }] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
     assert_eq!((parent.clone(), *delay), (dir.display().to_string(), super::clone::PARENT_CHECK_DELAY));
     let answer = crate::runner::execute(Effect::CheckCloneParent { parent: parent.clone(), delay: Default::default() }).unwrap();
     // An answer for text that has changed since is dropped.
-    update(&mut st, Msg::CloneParentChecked { parent: "elsewhere".into(), is_dir: true }, now);
+    update(&mut st, Msg::Clone(CloneMsg::ParentChecked { parent: "elsewhere".into(), is_dir: true }), now);
     assert_eq!(form(&mut st).parent_is_dir(), None);
     update(&mut st, answer, now);
     assert_eq!(form(&mut st).parent_is_dir(), Some(true));
@@ -241,7 +242,7 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     // A folder that isn't there gets its red line once checked.
     let gone = dir.join("missing");
     form(&mut st).parent = gone.display().to_string();
-    let fx = update(&mut st, Msg::CloneParentEdited, now);
+    let fx = update(&mut st, Msg::Clone(CloneMsg::ParentEdited), now);
     let [Effect::CheckCloneParent { parent, .. }] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
     let answer = crate::runner::execute(Effect::CheckCloneParent { parent: parent.clone(), delay: Default::default() }).unwrap();
     update(&mut st, answer, now);

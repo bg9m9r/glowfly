@@ -5,6 +5,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
+use crate::msg::WorkFileMsg;
 use crate::state::Modal;
 use crate::state::files::PathForm;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -25,7 +26,7 @@ fn new_file_dialog() {
     h.get_by_label("Create").click();
     h.run();
     let msgs = &h.state().1;
-    assert!(msgs.iter().any(|m| matches!(m, Msg::CreateFile(t) if t == "docs/notes.md")));
+    assert!(msgs.iter().any(|m| matches!(m, Msg::WorkFile(WorkFileMsg::CreateFile(t)) if t == "docs/notes.md")));
     assert!(!msgs.iter().any(|m| matches!(m, Msg::CloseModal)), "stays open until the result");
     h.get_by_label("Cancel").click();
     h.run();
@@ -149,13 +150,13 @@ fn rename_file_dialog_staged() {
     assert!(h.query_by_label_contains("until you stage both").is_none());
     h.get_by_label("Rename").click();
     h.run();
-    let sent = |m: &Msg| matches!(m, Msg::RenameFile { from, to, stage: true } if from == "README.md" && to == "docs/README.md");
+    let sent = |m: &Msg| matches!(m, Msg::WorkFile(WorkFileMsg::RenameFile { from, to, stage: true }) if from == "README.md" && to == "docs/README.md");
     assert!(h.state().1.iter().any(sent));
 
     // The checkbox only asks; update saves the setting.
     h.get_by_label(STAGE).click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::SetRenameStages(false))));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::WorkFile(WorkFileMsg::SetRenameStages(false)))));
     assert!(h.state().0.settings.stage_renames);
     drop(h);
     remove_fixture(&dir);
@@ -172,7 +173,7 @@ fn rename_untracked_has_no_stage_option() {
     assert!(h.query_by_label_contains("until you stage both").is_none());
     h.get_by_label("Rename").click();
     h.run();
-    let sent = |m: &Msg| matches!(m, Msg::RenameFile { from, stage: false, .. } if from == "notes.txt");
+    let sent = |m: &Msg| matches!(m, Msg::WorkFile(WorkFileMsg::RenameFile { from, stage: false, .. }) if from == "notes.txt");
     assert!(h.state().1.iter().any(sent));
     drop(h);
     remove_fixture(&dir);
@@ -183,7 +184,11 @@ fn confirm_delete_trash() {
     // The trash confirmation for an untracked file: the longer body wraps and the button fits.
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "confirm-delete-trash");
     st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "notes/scratch.txt".into(), status: '?' });
-    crate::update::update(&mut st, Msg::DeleteFile { path: "notes/scratch.txt".into(), confirmed: false }, std::time::Instant::now());
+    crate::update::update(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::DeleteFile { path: "notes/scratch.txt".into(), confirmed: false }),
+        std::time::Instant::now(),
+    );
     assert!(matches!(&st.modal, Some(Modal::Confirm { .. })));
     let mut h = harness(st, true);
     h.run();

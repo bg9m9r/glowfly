@@ -5,6 +5,7 @@ use super::palette_stash_tests::two_stashes;
 use super::tests::{drive, git};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::state::palette::StashAction;
 use std::time::Instant;
@@ -14,7 +15,7 @@ use trellis_core::gitcli::args;
 fn the_job_names_the_position_and_expects_the_commit() {
     let (mut st, dir) = two_stashes("stash-job");
     let oid = st.snap.as_ref().unwrap().stashes[1].oid;
-    let fx = update(&mut st, Msg::Stash { action: StashAction::Pop, index: 1, oid }, Instant::now());
+    let fx = update(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 1, oid }), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, expect, .. }] => {
             assert_eq!(cmds[..], [args(&["stash", "pop", "stash@{1}"])]);
@@ -33,7 +34,7 @@ fn a_shifted_stash_list_refuses_the_drop() {
     std::fs::write(dir.join("d.txt"), "d\n").unwrap();
     git(&dir, &["stash", "push", "-u", "-m", "third"]);
     for action in [StashAction::Drop, StashAction::Pop, StashAction::Apply] {
-        drive(&mut st, Msg::Stash { action, index: second.index, oid: second.oid });
+        drive(&mut st, Msg::Job(JobMsg::Stash { action, index: second.index, oid: second.oid }));
         let last = st.log.last().unwrap();
         assert!(!last.ok && last.text.contains("stash list changed") && last.text.contains("nothing was done"), "{}", last.text);
     }
@@ -48,7 +49,7 @@ fn a_shifted_stash_list_refuses_the_drop() {
 fn a_drop_logs_the_commit_so_it_can_be_recovered() {
     let (mut st, dir) = two_stashes("stash-dropped");
     let first = st.snap.as_ref().unwrap().stashes[1].clone();
-    drive(&mut st, Msg::Stash { action: StashAction::Drop, index: first.index, oid: first.oid });
+    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: first.index, oid: first.oid }));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 1);
     assert!(snap.stashes[0].message.contains("second"));

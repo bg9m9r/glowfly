@@ -8,6 +8,7 @@ use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
+use crate::msg::TabsMsg;
 use crate::runner;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
@@ -339,7 +340,7 @@ fn multi_selection_survives_tab_switch() {
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     let other = super::tests::scratch_repo("multi-tabs-other");
     drive(&mut st, Msg::Repo(RepoMsg::Open(other.clone())));
-    let fx = up(&mut st, Msg::SelectTab(0));
+    let fx = up(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert_eq!(multi(&st).oids, [f.c(5), f.c(3)]);
     assert!(multi(&st).changes.is_none());
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).expect("the tab refreshes");

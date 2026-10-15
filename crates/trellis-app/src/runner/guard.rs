@@ -2,10 +2,12 @@
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
 use crate::effect::{Effect, LoadKind, UndoResult};
+use crate::msg::JobMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 
@@ -45,9 +47,9 @@ impl Recovery {
     fn message(self, panic: String) -> Msg {
         let text = format!("Trellis hit an internal error ({}): {panic}", self.name);
         let msg = match self.kind {
-            Kind::Job(undo) => Msg::JobDone { ok: false, output: text, undo },
+            Kind::Job(undo) => Msg::Job(JobMsg::JobDone { ok: false, output: text, undo }),
             Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text) }),
-            Kind::LocalOp => Msg::LocalOpDone(Err(text)),
+            Kind::LocalOp => Msg::Stage(StageMsg::LocalOpDone(Err(text))),
             Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(text) }),
             Kind::Status(generation) => {
                 Msg::Load(LoadMsg::StatusLoaded { generation, result: Err(text), submodules: None, open_stamp: None })
@@ -97,7 +99,9 @@ mod tests {
             expect: None,
         };
         let msg = guarded(Recovery::of(&effect, "git"), || panic!("boom {}", 42)).expect("a failure result");
-        let Msg::JobDone { ok: false, output, undo: Some(UndoResult::Recorded(None)) } = &msg else { panic!("not a failed job") };
+        let Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Recorded(None)) }) = &msg else {
+            panic!("not a failed job")
+        };
         assert!(output.contains("boom 42") && output.contains("git"), "{output}");
 
         let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
@@ -119,7 +123,7 @@ mod tests {
         let effect = Effect::LocalOp { workdir: "C:/r".into(), op: crate::effect::LocalOp::StageAll };
         let msg = guarded(Recovery::of(&effect, "local-op"), || panic!("static")).unwrap();
         let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
-        assert!(matches!(*msg, Msg::LocalOpDone(Err(ref e)) if e.contains("static")));
+        assert!(matches!(*msg, Msg::Stage(StageMsg::LocalOpDone(Err(ref e))) if e.contains("static")));
         assert!(guarded(Recovery::of(&effect, "local-op"), || None).is_none(), "no panic, no message");
     }
 

@@ -4,6 +4,9 @@ use super::common::{caret_after, menu_item, short};
 use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::keymap::{self, BindingId};
+use crate::msg::BranchMsg;
+use crate::msg::CloneMsg;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, PrefPage};
@@ -44,15 +47,15 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         for b in &snap.locals {
                             let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
                             if ui.add_enabled(!b.is_head, egui::Button::new(text)).clicked() {
-                                msgs.push(Msg::Git {
+                                msgs.push(Msg::Job(JobMsg::Git {
                                     label: "Checkout".into(),
                                     cmds: vec![crate::state::branches::checkout_local(&b.name)],
-                                });
+                                }));
                                 ui.close_menu();
                             }
                         }
                         ui.separator();
-                        menu_item(msgs, ui, "New branch…", Msg::NewBranch { start: None, name: String::new() });
+                        menu_item(msgs, ui, "New branch…", Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }));
                     });
                     caret_after(ui, &r.response);
                 });
@@ -60,10 +63,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.add_space(52.0);
                 let idle = st.job.is_none();
                 if tool(ui, Icon::Undo, "Undo", idle && !st.undo.undo.is_empty()).on_hover_text(st.undo.undo_tooltip()).clicked() {
-                    msgs.push(Msg::Undo);
+                    msgs.push(Msg::Job(JobMsg::Undo));
                 }
                 if tool(ui, Icon::Redo, "Redo", idle && !st.undo.redo.is_empty()).on_hover_text(st.undo.redo_tooltip()).clicked() {
-                    msgs.push(Msg::Redo);
+                    msgs.push(Msg::Job(JobMsg::Redo));
                 }
                 ui.add_space(6.0);
                 if tool(ui, Icon::Pull, "Pull", idle).on_hover_text("Fast-forward if possible").clicked() {
@@ -82,7 +85,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     }
                 });
                 if tool(ui, Icon::Push, "Push", idle).clicked() {
-                    msgs.push(Msg::Push { force: false });
+                    msgs.push(Msg::Job(JobMsg::Push { force: false }));
                 }
                 dropdown(ui, "push-menu", 200.0, |ui| {
                     if ui.add_enabled(idle, egui::Button::new("Force push (with lease)")).clicked() {
@@ -90,7 +93,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                             "Force push",
                             "Overwrite the remote branch with your local history?".into(),
                             "Force push",
-                            Msg::Push { force: true },
+                            Msg::Job(JobMsg::Push { force: true }),
                         ));
                     }
                     if snap.remotes.is_empty() && ui.add_enabled(idle, egui::Button::new("Publish to GitHub…")).clicked() {
@@ -98,7 +101,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     }
                 });
                 if tool(ui, Icon::Branch, "Branch", idle).clicked() {
-                    msgs.push(Msg::NewBranch { start: None, name: String::new() });
+                    msgs.push(Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }));
                 }
                 if tool(ui, Icon::Stash, "Stash", idle && snap.is_dirty()).clicked() {
                     msgs.push(Msg::git("Stash", &["stash", "push", "-u"]));
@@ -181,7 +184,7 @@ fn dropdown(ui: &mut egui::Ui, id: &str, width: f32, contents: impl FnOnce(&mut 
 fn repo_menu(ui: &mut egui::Ui, recent: &[PathBuf], msgs: &mut Vec<Msg>) {
     ui.set_min_width(260.0);
     menu_item(msgs, ui, "Open…", Msg::Repo(RepoMsg::PickRepo));
-    menu_item(msgs, ui, "Clone…", Msg::CloneDialog);
+    menu_item(msgs, ui, "Clone…", Msg::Clone(CloneMsg::Dialog));
     menu_item(msgs, ui, "Init…", Msg::Repo(RepoMsg::InitRepo));
     if !recent.is_empty() {
         ui.separator();

@@ -5,6 +5,8 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::BranchMsg;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, Modal};
@@ -80,7 +82,7 @@ fn add_local(st: &mut AppState, name: &str) {
 }
 
 fn done(st: &mut AppState, ok: bool) {
-    update(st, Msg::JobDone { ok, output: String::new(), undo: None }, Instant::now());
+    update(st, Msg::Job(JobMsg::JobDone { ok, output: String::new(), undo: None }), Instant::now());
 }
 
 fn dummy() -> Action {
@@ -88,13 +90,13 @@ fn dummy() -> Action {
 }
 
 fn rename(old: &str, new: &str) -> Msg {
-    Msg::RenameBranch { old: old.into(), new: new.into() }
+    Msg::Branch(BranchMsg::RenameBranch { old: old.into(), new: new.into() })
 }
 
 #[test]
 fn rename_dialog_and_checks() {
     let (mut st, work, bare) = with_origin("br-rename");
-    update(&mut st, Msg::RenameBranchDialog("feature".into()), Instant::now());
+    update(&mut st, Msg::Branch(BranchMsg::RenameBranchDialog("feature".into())), Instant::now());
     assert!(matches!(&st.modal, Some(Modal::RenameBranch { old, name }) if old == "feature" && name == "feature"));
     assert_eq!(cmds(&mut st, rename("feature", " feature-2 ")), vec![args(&["branch", "-m", "feature", "feature-2"])]);
     assert!(st.modal.is_none(), "the dialog closes");
@@ -133,14 +135,15 @@ fn upstream_dialog_and_commands() {
     let (mut st, work, bare) = with_origin("br-upstream");
     git(&work, &["branch", "x"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    update(&mut st, Msg::SetUpstreamDialog("x".into()), Instant::now());
+    update(&mut st, Msg::Branch(BranchMsg::SetUpstreamDialog("x".into())), Instant::now());
     assert!(matches!(&st.modal, Some(Modal::SetUpstream { branch, remote, name }) if branch == "x" && remote == "origin" && name == "x"));
     local(&mut st, "feature").tracking = Some(Tracking { remote: "origin".into(), merge: "other".into() });
-    update(&mut st, Msg::SetUpstreamDialog("feature".into()), Instant::now());
+    update(&mut st, Msg::Branch(BranchMsg::SetUpstreamDialog("feature".into())), Instant::now());
     assert!(matches!(&st.modal, Some(Modal::SetUpstream { remote, name, .. }) if remote == "origin" && name == "other"));
     st.modal = None;
 
-    let set = |name: &str, remote: &str| Msg::SetUpstream { branch: "x".into(), remote: remote.into(), name: name.into() };
+    let set =
+        |name: &str, remote: &str| Msg::Branch(BranchMsg::SetUpstream { branch: "x".into(), remote: remote.into(), name: name.into() });
     assert_eq!(cmds(&mut st, set("feature", "origin")), vec![args(&["branch", "--set-upstream-to=origin/feature", "x"])]);
     assert_eq!(
         cmds(&mut st, set("nothere", "origin")),
@@ -157,8 +160,11 @@ fn upstream_dialog_and_commands() {
     done(&mut st, true);
     assert_eq!(st.undo.undo.len(), 1);
 
-    assert_eq!(cmds(&mut st, Msg::UnsetUpstream("feature".into())), vec![args(&["branch", "--unset-upstream", "feature"])]);
-    update(&mut st, Msg::UnsetUpstream("feature".into()), Instant::now());
+    assert_eq!(
+        cmds(&mut st, Msg::Branch(BranchMsg::UnsetUpstream("feature".into()))),
+        vec![args(&["branch", "--unset-upstream", "feature"])]
+    );
+    update(&mut st, Msg::Branch(BranchMsg::UnsetUpstream("feature".into())), Instant::now());
     done(&mut st, true);
     assert_eq!(st.undo.undo.len(), 1, "unset keeps it too");
     cleanup(&[&work, &bare]);
@@ -169,10 +175,10 @@ fn upstream_dialog_needs_a_remote() {
     let dir = scratch_repo("br-noremote");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    update(&mut st, Msg::SetUpstreamDialog("main".into()), Instant::now());
+    update(&mut st, Msg::Branch(BranchMsg::SetUpstreamDialog("main".into())), Instant::now());
     assert!(st.modal.is_none());
     assert_eq!(last_log(&st), "This repository has no remotes.");
-    assert!(cmds(&mut st, Msg::PushBranch { branch: "main".into(), remote: None }).is_empty());
+    assert!(cmds(&mut st, Msg::Branch(BranchMsg::PushBranch { branch: "main".into(), remote: None })).is_empty());
     assert_eq!(last_log(&st), "This repository has no remotes.");
     cleanup(&[&dir]);
 }
@@ -181,7 +187,7 @@ fn upstream_dialog_needs_a_remote() {
 fn fast_forward_commands_and_refusals() {
     let (mut st, work, bare) = with_origin("br-ff");
     local(&mut st, "feature").behind = 2;
-    let ff = |n: &str| Msg::FastForwardBranch(n.into());
+    let ff = |n: &str| Msg::Branch(BranchMsg::FastForwardBranch(n.into()));
     assert_eq!(
         cmds(&mut st, ff("feature")),
         vec![args(&["fetch", "--no-recurse-submodules", ".", "refs/remotes/origin/feature:refs/heads/feature"])]
@@ -228,7 +234,7 @@ fn fast_forward_end_to_end_without_checkout() {
     remote_commit(&bare, "feature", "f2.txt");
     drive(&mut st, Msg::git("Fetch", &["fetch", "origin"]));
     assert_eq!(local(&mut st, "feature").behind, 2);
-    drive(&mut st, Msg::FastForwardBranch("feature".into()));
+    drive(&mut st, Msg::Branch(BranchMsg::FastForwardBranch("feature".into())));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.head_branch.as_deref(), Some("main"));
     let b = snap.locals.iter().find(|b| b.name == "feature").unwrap();
@@ -242,7 +248,7 @@ fn fast_forward_end_to_end_without_checkout() {
 #[test]
 fn delete_with_remote_commands_and_refusals() {
     let (mut st, work, bare) = with_origin("br-delete");
-    let fx = update(&mut st, Msg::DeleteBranchAndRemote("feature".into()), Instant::now());
+    let fx = update(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into())), Instant::now());
     st.job = None;
     match &fx[..] {
         [Effect::RunGit { cmds, record, .. }] => {
@@ -261,27 +267,30 @@ fn delete_with_remote_commands_and_refusals() {
     let b = local(&mut st, "feature");
     b.tracking = Some(Tracking { remote: "origin".into(), merge: "other".into() });
     b.upstream_ref = Some("refs/remotes/origin/other".into());
-    assert_eq!(cmds(&mut st, Msg::DeleteBranchAndRemote("feature".into()))[2], args(&["push", "origin", "--delete", "other"]));
+    assert_eq!(
+        cmds(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into())))[2],
+        args(&["push", "origin", "--delete", "other"])
+    );
 
     // Not merged into HEAD: refused, since both deletes would leave its commits on no branch.
     local(&mut st, "feature").merged = false;
-    assert!(cmds(&mut st, Msg::DeleteBranchAndRemote("feature".into())).is_empty(), "unmerged");
+    assert!(cmds(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into()))).is_empty(), "unmerged");
     assert_eq!(
         last_log(&st),
         "feature has commits that aren't merged into main. Deleting it and origin/other would leave them on no branch."
     );
     local(&mut st, "feature").merged = true;
 
-    assert!(cmds(&mut st, Msg::DeleteBranchAndRemote("main".into())).is_empty(), "checked out");
+    assert!(cmds(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("main".into()))).is_empty(), "checked out");
     let b = local(&mut st, "feature");
     b.tracking = Some(Tracking { remote: ".".into(), merge: "main".into() });
     b.upstream_ref = Some("refs/heads/main".into());
-    assert!(cmds(&mut st, Msg::DeleteBranchAndRemote("feature".into())).is_empty(), "local upstream");
+    assert!(cmds(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into()))).is_empty(), "local upstream");
     assert_eq!(last_log(&st), "feature has no upstream branch on a remote to delete.");
 
     // Through the confirmation.
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    let then = Msg::DeleteBranchAndRemote("feature".into());
+    let then = Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into()));
     update(&mut st, Msg::confirm("Delete local and remote branch", "…".into(), "Delete both", then), Instant::now());
     let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
     assert!(matches!(&fx[..], [Effect::RunGit { cmds, .. }] if cmds.len() == 3));
@@ -293,13 +302,13 @@ fn delete_with_remote_commands_and_refusals() {
 fn delete_with_remote_end_to_end_then_undo() {
     let (mut st, work, bare) = with_origin("br-delete-e2e");
     let tip = local(&mut st, "feature").oid;
-    drive(&mut st, Msg::DeleteBranchAndRemote("feature".into()));
+    drive(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into())));
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.locals.iter().any(|b| b.name == "feature"));
     assert!(!snap.remotes[0].1.iter().any(|(n, _)| n == "feature"), "gone from origin");
     assert_eq!(st.undo.undo.len(), 1);
 
-    drive(&mut st, Msg::Undo);
+    drive(&mut st, Msg::Job(JobMsg::Undo));
     let b = local(&mut st, "feature").clone();
     assert_eq!(b.oid, tip);
     assert_eq!((b.tracking, b.upstream), (None, None), "the remote branch is not restored");
@@ -324,10 +333,10 @@ fn delete_with_remote_keeps_a_pushed_unmerged_branch() {
     let b = local(&mut st, "feature").clone();
     assert_eq!((b.ahead, b.behind, b.merged), (0, 0, false), "pushed, not merged into main");
 
-    assert!(cmds(&mut st, Msg::DeleteBranchAndRemote("feature".into())).is_empty());
+    assert!(cmds(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into()))).is_empty());
     // Even when the snapshot is stale and says merged, the command sequence refuses.
     local(&mut st, "feature").merged = true;
-    drive(&mut st, Msg::DeleteBranchAndRemote("feature".into()));
+    drive(&mut st, Msg::Branch(BranchMsg::DeleteBranchAndRemote("feature".into())));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.locals.iter().find(|l| l.name == "feature").and_then(|l| l.oid), b.oid, "the local branch stays");
     assert!(snap.remotes[0].1.iter().any(|(n, o)| n == "feature" && Some(*o) == b.oid), "origin/feature stays");
@@ -339,7 +348,7 @@ fn delete_with_remote_keeps_a_pushed_unmerged_branch() {
 #[test]
 fn push_targets_and_refusals() {
     let (mut st, work, bare) = with_origin("br-push");
-    let push = |b: &str, r: Option<&str>| Msg::PushBranch { branch: b.into(), remote: r.map(str::to_owned) };
+    let push = |b: &str, r: Option<&str>| Msg::Branch(BranchMsg::PushBranch { branch: b.into(), remote: r.map(str::to_owned) });
     local(&mut st, "feature").ahead = 1;
     assert_eq!(cmds(&mut st, push("feature", None)), vec![args(&["push", "origin", "refs/heads/feature:refs/heads/feature"])]);
 

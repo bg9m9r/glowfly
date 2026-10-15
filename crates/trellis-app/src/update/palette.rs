@@ -4,12 +4,17 @@
 //! sub-lists and the stash message step.
 
 use crate::effect::Effect;
+use crate::msg::BranchMsg;
 use crate::msg::DiffMsg;
 use crate::msg::HistoryMsg;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
+use crate::msg::TabsMsg;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
 use crate::state::{AppState, PrefPage, Selection};
+use crate::tag::TagMsg;
 use std::time::Instant;
 use trellis_core::repo::StashInfo;
 
@@ -147,7 +152,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         }
         C::Fetch => Msg::git("Fetch all", &["fetch", "--all", "--prune"]),
         C::Pull => Msg::git("Pull", &["pull", "--ff"]),
-        C::Push => Msg::Push { force: false },
+        C::Push => Msg::Job(JobMsg::Push { force: false }),
         C::Stash => Msg::git("Stash", &["stash", "push", "-u"]),
         C::PopStash => Msg::git("Pop stash", &["stash", "pop"]),
         C::StashOp { action, oid } => {
@@ -164,16 +169,16 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             }
             Msg::git("Stash", &["stash", "push", "-u", "-m", t])
         }
-        C::StageAll => Msg::StageAll,
-        C::UnstageAll => Msg::UnstageAll,
-        C::Undo => Msg::Undo,
-        C::Redo => Msg::Redo,
-        C::CreateBranch => Msg::NewBranch { start: selected_commit(st).map(|o| o.to_string()), name: String::new() },
+        C::StageAll => Msg::Stage(StageMsg::StageAll),
+        C::UnstageAll => Msg::Stage(StageMsg::UnstageAll),
+        C::Undo => Msg::Job(JobMsg::Undo),
+        C::Redo => Msg::Job(JobMsg::Redo),
+        C::CreateBranch => Msg::Branch(BranchMsg::NewBranch { start: selected_commit(st).map(|o| o.to_string()), name: String::new() }),
         C::CreateTag { annotated } => {
             let Some(at) = selected_commit(st).or_else(|| st.snap.as_ref().and_then(|s| s.head_oid)) else { return };
-            Msg::NewTag { at: at.to_string(), annotated }
+            Msg::Tag(TagMsg::NewTag { at: at.to_string(), annotated })
         }
-        C::RenameBranch(name) => Msg::RenameBranchDialog(name),
+        C::RenameBranch(name) => Msg::Branch(BranchMsg::RenameBranchDialog(name)),
         C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),
         C::ConfigureLfs => Msg::OpenPrefs(PrefPage::RepoLfs),
         C::ConfigureGitFlow => Msg::OpenPrefs(PrefPage::RepoGitFlow),
@@ -189,14 +194,14 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::DiffLayout(l) => Msg::Diff(DiffMsg::SetDiffLayout(l)),
         C::IgnoreWhitespace(on) => Msg::Diff(DiffMsg::SetIgnoreWhitespace(on)),
         C::OpenRepo => Msg::Repo(RepoMsg::PickRepo),
-        C::NewTab => Msg::NewTab,
-        C::ReopenClosedTab => Msg::ReopenClosedTab,
-        C::CloseTab => Msg::CloseTab(usize::MAX),
+        C::NewTab => Msg::Tabs(TabsMsg::NewTab),
+        C::ReopenClosedTab => Msg::Tabs(TabsMsg::ReopenClosedTab),
+        C::CloseTab => Msg::Tabs(TabsMsg::CloseTab(usize::MAX)),
         C::OpenPrefs => Msg::OpenPrefs(PrefPage::General),
         C::KeyboardShortcuts => Msg::Shortcut(crate::keymap::KeyAction::ToggleSheet),
         C::ToolbarLabels(on) => Msg::SetToolbarLabels(on),
         C::Theme(t) => Msg::SetTheme(t),
-        C::Checkout(name) => Msg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&name)] },
+        C::Checkout(name) => Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&name)] }),
         C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
@@ -210,7 +215,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
 
 /// The same messages the sidebar's STASHES menu sends.
 fn stash_msg(action: StashAction, s: &StashInfo) -> Msg {
-    let git = Msg::Stash { action, index: s.index, oid: s.oid };
+    let git = Msg::Job(JobMsg::Stash { action, index: s.index, oid: s.oid });
     match action {
         StashAction::Drop => Msg::confirm("Delete stash", format!("Delete \"{}\"? This cannot be undone.", s.message), "Delete", git),
         StashAction::Apply | StashAction::Pop => git,

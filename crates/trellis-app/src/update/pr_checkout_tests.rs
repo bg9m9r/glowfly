@@ -3,6 +3,7 @@
 
 use super::branch_tests::with_origin;
 use super::tests::{drive, git};
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::branches::{checkout_local, pr_checkout};
@@ -42,7 +43,7 @@ fn a_branch_named_like_a_path_keeps_changes() {
     let (mut st, work, bare) = path_named_branch("pr-checkout-path");
     let cmd = pr_checkout(st.snap.as_ref().unwrap(), "origin", "src").unwrap();
     assert_eq!(cmd, args(&["checkout", "--track", "origin/src", "--"]));
-    drive(&mut st, Msg::Git { label: "Checkout".into(), cmds: vec![cmd] });
+    drive(&mut st, Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![cmd] }));
     assert_eq!(head(&work), "src");
     assert_eq!(std::fs::read_to_string(work.join("src")).unwrap(), "my unsaved work\n");
 
@@ -51,7 +52,7 @@ fn a_branch_named_like_a_path_keeps_changes() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let cmd = pr_checkout(st.snap.as_ref().unwrap(), "origin", "src").unwrap();
     assert_eq!(cmd, checkout_local("src"));
-    drive(&mut st, Msg::Git { label: "Checkout".into(), cmds: vec![cmd] });
+    drive(&mut st, Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![cmd] }));
     assert_eq!(head(&work), "src");
     assert_eq!(std::fs::read_to_string(work.join("src")).unwrap(), "my unsaved work\n");
     cleanup(&[&work, &bare]);

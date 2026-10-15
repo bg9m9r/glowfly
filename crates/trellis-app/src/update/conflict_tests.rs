@@ -6,6 +6,7 @@ use crate::effect::{Effect, LocalOp};
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use std::path::{Path, PathBuf};
@@ -180,7 +181,7 @@ fn saving_resolves_the_file_end_to_end() {
 #[test]
 fn mark_resolved_closes_the_view() {
     let (mut st, dir) = opened("conflict-mark");
-    drive(&mut st, Msg::StageFile("a.txt".into()));
+    drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     assert!(st.conflict.is_none());
     assert!(read(&dir).contains("<<<<<<<"), "marked resolved as it is");
     let _ = std::fs::remove_dir_all(&dir);

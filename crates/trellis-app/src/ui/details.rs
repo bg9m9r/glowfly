@@ -10,6 +10,8 @@ use crate::msg::ConflictMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
+use crate::msg::WorkFileMsg;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
@@ -195,14 +197,14 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
                 if staged {
                     let tip = format!("Unstage every file ({})", hint(BindingId::UnstageAll));
                     if !files.is_empty() && ui.small_button("Unstage all").on_hover_text(tip).clicked() {
-                        msgs.push(Msg::UnstageAll);
+                        msgs.push(Msg::Stage(StageMsg::UnstageAll));
                     }
                     return;
                 }
                 if !files.is_empty() {
                     let tip = format!("Stage every changed file ({})", hint(BindingId::StageAll));
                     if ui.small_button("Stage all").on_hover_text(tip).clicked() {
-                        msgs.push(Msg::StageAll);
+                        msgs.push(Msg::Stage(StageMsg::StageAll));
                     }
                     if ui.small_button("Discard all").clicked() {
                         // Discarding goes through a stash so it can be recovered.
@@ -219,7 +221,7 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
                 }
                 // Drawn last, so it sits leftmost; shown even when nothing has changed.
                 if ui.small_button("New file…").clicked() {
-                    msgs.push(Msg::NewFileDialog(String::new()));
+                    msgs.push(Msg::WorkFile(WorkFileMsg::NewFileDialog(String::new())));
                 }
             });
         });
@@ -241,7 +243,8 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
 /// path (opens its diff, or the conflict view) and its menu.
 fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool, open: &OpenFile, lfs: TrackContext, msgs: &mut Vec<Msg>) {
     let target = || if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
-    let toggle = || if staged { Msg::UnstageFile(f.path.clone()) } else { Msg::StageFile(f.path.clone()) };
+    let toggle =
+        || if staged { Msg::Stage(StageMsg::UnstageFile(f.path.clone())) } else { Msg::Stage(StageMsg::StageFile(f.path.clone())) };
     // A conflicted file opens in the conflict view; staging it marks it resolved.
     let conflicted = !staged && f.status == '!';
     ui.horizontal(|ui| {
@@ -276,7 +279,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
             // Checking out the index version of a conflicted path means nothing.
             if !staged && !conflicted {
                 if f.status == '?' {
-                    menu_item(msgs, ui, "Discard changes", Msg::DiscardUntracked(f.path.clone()));
+                    menu_item(msgs, ui, "Discard changes", Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone())));
                 } else {
                     menu_item(
                         msgs,
@@ -286,7 +289,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
                             "Discard changes",
                             format!("Discard changes to {}? You can bring them back with Undo.", f.path),
                             "Discard",
-                            Msg::DiscardFile(f.path.clone()),
+                            Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
                         ),
                     );
                 }

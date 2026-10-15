@@ -8,6 +8,7 @@ use crate::keymap::KeyAction;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::lines::LineClick;
@@ -149,7 +150,7 @@ fn stage_all_refuses_while_files_are_conflicted() {
     let (mut st, dir) = with_repo("keys-all-conflict", unstaged());
     st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "f.txt".into(), status: '!' });
     assert!(key(&mut st, KeyAction::StageAll).is_empty(), "the key stages nothing");
-    assert!(update(&mut st, Msg::StageAll, Instant::now()).is_empty(), "nor does the button");
+    assert!(update(&mut st, Msg::Stage(StageMsg::StageAll), Instant::now()).is_empty(), "nor does the button");
     let toast = st.toasts.last().expect("a toast says why");
     assert!(!toast.ok && toast.text.contains("conflict view"), "{}", toast.text);
     assert!(st.log.is_empty(), "a keypress doesn't open the log");

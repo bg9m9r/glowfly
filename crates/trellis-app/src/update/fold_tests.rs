@@ -9,6 +9,7 @@ use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::TabsMsg;
 use crate::state::AppState;
 use std::time::Instant;
 use trellis_core::diff_rows::{DiffRow, SplitRow};
@@ -202,13 +203,13 @@ fn folds_are_parked_with_their_tab() {
     run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key)));
     st.view.diff_top_row = block_rows(whole(&st), DiffLayout::Inline, &st.view.diff_expanded)[2];
 
-    run(&mut st, Msg::NewTab);
+    run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     assert_eq!(st.active_tab, 1);
     assert!(st.view.diff_expanded.is_empty(), "a new tab has no folds open");
     // The layout changes while the first tab is parked.
     run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
 
-    run(&mut st, Msg::SelectTab(0));
+    run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert!(st.view.diff_expanded.contains(key), "restored with the tab");
     let split = block_rows(whole(&st), DiffLayout::Split, &st.view.diff_expanded);
     assert_eq!(st.view.diff_top_row, split[2], "the same block, counted with the fold open");

@@ -115,6 +115,7 @@ use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
+use crate::msg::TabsMsg;
 use crate::runner::Runner;
 use crate::state::AppState;
 use crate::update::update;
@@ -165,7 +166,7 @@ impl TrellisApp {
             app.dispatch(&cc.egui_ctx, Msg::SettingsUnreadable(problem.message()));
         }
         if !paths.is_empty() {
-            app.dispatch(&cc.egui_ctx, Msg::RestoreTabs { paths, active });
+            app.dispatch(&cc.egui_ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, active }));
         }
         if let Some(path) = start {
             app.dispatch(&cc.egui_ctx, Msg::Repo(RepoMsg::Open(path)));

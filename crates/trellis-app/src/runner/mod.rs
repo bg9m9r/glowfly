@@ -11,11 +11,14 @@ use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, Loca
 use crate::lfs::LfsMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::ConflictMsg;
+use crate::msg::FilesMsg;
 use crate::msg::HistoryMsg;
+use crate::msg::JobMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
+use crate::msg::StageMsg;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -205,14 +208,14 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 repo::file_history(&workdir, &path, &start, limit).map_err(|e| format!("Could not load the history of {path}: {e}"));
             Some(Msg::History(HistoryMsg::FileHistoryLoaded { path, generation, result }))
         }
-        Effect::LocalOp { workdir, op } => Some(Msg::LocalOpDone(local_op(&workdir, op).map_err(err))),
+        Effect::LocalOp { workdir, op } => Some(Msg::Stage(StageMsg::LocalOpDone(local_op(&workdir, op).map_err(err)))),
         Effect::RevertHunk { workdir, target, index, expected } => {
             let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
-            Some(Msg::HunkReverted { path: target.path().to_owned(), result })
+            Some(Msg::Stage(StageMsg::HunkReverted { path: target.path().to_owned(), result }))
         }
         Effect::RestoreFile { workdir, oid, path, overwrite } => Some(match repo::restore_file(&workdir, oid, &path, overwrite) {
-            Err(trellis_core::error::Error::WouldOverwrite(reason)) => Msg::RestoreWouldOverwrite { path, oid, reason },
-            result => Msg::FileRestored { result: result.map_err(err), path, oid },
+            Err(trellis_core::error::Error::WouldOverwrite(reason)) => Msg::Files(FilesMsg::RestoreWouldOverwrite { path, oid, reason }),
+            result => Msg::Files(FilesMsg::FileRestored { result: result.map_err(err), path, oid }),
         }),
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
@@ -226,13 +229,13 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         }
         Effect::RunGit { cwd, cmds, write_file, record, prompts, expect } => {
             if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
-                return Some(Msg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) });
+                return Some(Msg::Job(JobMsg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) }));
             }
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
             let (ok, output) = run_git(&cwd, &cmds, write_file, prompts);
             let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
             let undo = record.map(|k| UndoResult::Recorded(recorded(k)));
-            Some(Msg::JobDone { ok, output, undo })
+            Some(Msg::Job(JobMsg::JobDone { ok, output, undo }))
         }
         Effect::UndoRedo { cwd, action, redo } => Some(undo_redo(&cwd, action, redo)),
         Effect::LoadRebasePlan { workdir, base, generation } => Some(rebase::load_plan(&workdir, &base, generation)),
@@ -359,16 +362,18 @@ fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<Option<A
 
 /// Checks that `action` still applies, then runs the git commands that undo or redo it.
 fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
-    let failed = |output: String| Msg::JobDone { ok: false, output, undo: Some(UndoResult::Failed { redo }) };
+    let failed = |output: String| Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Failed { redo }) });
     match undo::plan(cwd, &action, redo) {
         Err(e) => failed(e.to_string()),
-        Ok(Plan::Refuse(r)) => {
-            Msg::JobDone { ok: false, output: r.message().into(), undo: Some(UndoResult::Refused { redo, stale: r.is_stale() }) }
-        }
+        Ok(Plan::Refuse(r)) => Msg::Job(JobMsg::JobDone {
+            ok: false,
+            output: r.message().into(),
+            undo: Some(UndoResult::Refused { redo, stale: r.is_stale() }),
+        }),
         Ok(Plan::Write { path, content }) => match undo::write_saved(cwd, &path, content) {
             Ok(()) => {
                 let output = format!("{} {path}", if redo { "Discarded the changes in" } else { "Restored" });
-                Msg::JobDone { ok: true, output, undo: Some(UndoResult::Done { redo, before: action.clone(), after: action }) }
+                Msg::Job(JobMsg::JobDone { ok: true, output, undo: Some(UndoResult::Done { redo, before: action.clone(), after: action }) })
             }
             Err(e) => failed(format!("Could not write {path}: {e}")),
         },
@@ -378,7 +383,7 @@ fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
                 return failed(output);
             }
             let after = if redo { undo::redone(cwd, action.clone()).unwrap_or_else(|_| action.clone()) } else { action.clone() };
-            Msg::JobDone { ok, output, undo: Some(UndoResult::Done { redo, before: action, after }) }
+            Msg::Job(JobMsg::JobDone { ok, output, undo: Some(UndoResult::Done { redo, before: action, after }) })
         }
     }
 }

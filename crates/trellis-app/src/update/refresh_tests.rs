@@ -4,6 +4,7 @@
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
+use crate::msg::JobMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -47,7 +48,7 @@ fn quiet_job(dir: &std::path::Path) -> RunningJob {
 fn a_job_that_changed_no_refs_reads_only_the_status() {
     let (mut st, dir) = opened("refresh-quiet");
     st.job = Some(quiet_job(&st.workdir().unwrap()));
-    let fx = update(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None }, Instant::now());
+    let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }), Instant::now());
     let msg = run_load(fx);
     assert!(matches!(msg, Msg::Load(LoadMsg::RepoUnchanged { .. })), "an auto-fetch that brought nothing doesn't walk the history");
     let fx = update(&mut st, msg, Instant::now());

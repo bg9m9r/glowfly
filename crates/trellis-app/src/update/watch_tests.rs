@@ -4,8 +4,11 @@
 use super::tests::{drive, finish, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind, WatchTarget};
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
+use crate::msg::TabsMsg;
 use crate::msg::WatchMsg;
 use crate::runner;
 use crate::state::{AppState, RunningJob};
@@ -88,7 +91,7 @@ fn own_job_suppresses_watch_events() {
     // Events from before the job finished (plus a grace period) were the job's own.
     st.job = Some(job(Some(workdir.clone())));
     let t = Instant::now();
-    let fx = update(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None }, t);
+    let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }), t);
     finish(&mut st, fx);
     assert!(update(&mut st, changed(&workdir, false, t + Duration::from_millis(100)), t).is_empty());
     let fx = update(&mut st, changed(&workdir, false, t + Duration::from_millis(300)), t);
@@ -97,7 +100,7 @@ fn own_job_suppresses_watch_events() {
 
     // The same after a local operation (staging).
     let t = Instant::now() + Duration::from_secs(5);
-    let fx = update(&mut st, Msg::Scoped { workdir: workdir.clone(), msg: Box::new(Msg::LocalOpDone(Ok(None))) }, t);
+    let fx = update(&mut st, Msg::Scoped { workdir: workdir.clone(), msg: Box::new(Msg::Stage(StageMsg::LocalOpDone(Ok(None)))) }, t);
     finish(&mut st, fx);
     assert!(update(&mut st, changed(&workdir, false, t + Duration::from_millis(100)), t).is_empty());
     let fx = update(&mut st, changed(&workdir, false, t + Duration::from_millis(300)), t);
@@ -133,13 +136,17 @@ fn watcher_follows_the_active_tab() {
 
     step(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     let b_workdir = st.workdir().unwrap();
-    assert_eq!(watched_dir(&update(&mut st, Msg::SelectTab(0), Instant::now())), Some(Some(a_target.workdir.clone())));
-    assert_eq!(watched_dir(&update(&mut st, Msg::NewTab, Instant::now())), Some(None), "an empty tab stops it");
+    assert_eq!(watched_dir(&update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now())), Some(Some(a_target.workdir.clone())));
+    assert_eq!(watched_dir(&update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now())), Some(None), "an empty tab stops it");
     // Closing the active (empty) tab of three selects b's.
-    assert_eq!(watched_dir(&update(&mut st, Msg::CloseTab(usize::MAX), Instant::now())), Some(Some(b_workdir)));
+    assert_eq!(watched_dir(&update(&mut st, Msg::Tabs(TabsMsg::CloseTab(usize::MAX)), Instant::now())), Some(Some(b_workdir)));
     // Closing the active tab of two selects the survivor right away.
-    assert_eq!(watched_dir(&update(&mut st, Msg::CloseTab(usize::MAX), Instant::now())), Some(Some(a_target.workdir)));
-    assert_eq!(watched_dir(&update(&mut st, Msg::CloseTab(usize::MAX), Instant::now())), Some(None), "closing the last tab stops it");
+    assert_eq!(watched_dir(&update(&mut st, Msg::Tabs(TabsMsg::CloseTab(usize::MAX)), Instant::now())), Some(Some(a_target.workdir)));
+    assert_eq!(
+        watched_dir(&update(&mut st, Msg::Tabs(TabsMsg::CloseTab(usize::MAX)), Instant::now())),
+        Some(None),
+        "closing the last tab stops it"
+    );
     let _ = std::fs::remove_dir_all(&a);
     let _ = std::fs::remove_dir_all(&b);
 }

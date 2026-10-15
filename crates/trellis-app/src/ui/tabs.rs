@@ -3,6 +3,7 @@
 
 use super::theme::color;
 use crate::msg::Msg;
+use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::state::tabs::index_after_move;
 use eframe::egui::{self, Align2, Button, CursorIcon, FontId, Id, PointerButton, Rect, Response, Sense, Stroke, StrokeKind, pos2, vec2};
@@ -77,9 +78,9 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                                 None => r,
                             };
                             if close.clicked() || r.middle_clicked() {
-                                msgs.push(Msg::CloseTab(i));
+                                msgs.push(Msg::Tabs(TabsMsg::CloseTab(i)));
                             } else if r.clicked() {
-                                msgs.push(Msg::SelectTab(i));
+                                msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
                             }
                             r.context_menu(|ui| tab_menu(ui, i, st, msgs));
                         }
@@ -121,7 +122,7 @@ fn drag(ui: &egui::Ui, slots: &[Slot], strip_left: f32, pitch: f32, msgs: &mut V
     if slot.r.drag_stopped() {
         ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
         if to != state.from {
-            msgs.push(Msg::MoveTab { from: state.from, to });
+            msgs.push(Msg::Tabs(TabsMsg::MoveTab { from: state.from, to }));
         }
         return None;
     }
@@ -176,19 +177,19 @@ fn new_tab_button(ui: &mut egui::Ui, msgs: &mut Vec<Msg>) {
     ui.painter().line_segment([pos2(c.x - 6.0, c.y), pos2(c.x + 6.0, c.y)], s);
     ui.painter().line_segment([pos2(c.x, c.y - 6.0), pos2(c.x, c.y + 6.0)], s);
     if r.clicked() {
-        msgs.push(Msg::NewTab);
+        msgs.push(Msg::Tabs(TabsMsg::NewTab));
     }
 }
 
 /// The right-click menu of tab `i`. It acts on that tab without selecting it.
 fn tab_menu(ui: &mut egui::Ui, i: usize, st: &AppState, msgs: &mut Vec<Msg>) {
     let n = st.tabs.len();
-    item(ui, msgs, true, Button::new("Close tab"), Msg::CloseTab(i));
-    item(ui, msgs, n > 1, Button::new("Close other tabs"), Msg::CloseOtherTabs(i));
-    item(ui, msgs, i + 1 < n, Button::new("Close tabs to the right"), Msg::CloseTabsToRight(i));
+    item(ui, msgs, true, Button::new("Close tab"), Msg::Tabs(TabsMsg::CloseTab(i)));
+    item(ui, msgs, n > 1, Button::new("Close other tabs"), Msg::Tabs(TabsMsg::CloseOtherTabs(i)));
+    item(ui, msgs, i + 1 < n, Button::new("Close tabs to the right"), Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
     ui.separator();
     let reopen = Button::new("Reopen closed tab").shortcut_text(crate::keymap::hint(crate::keymap::BindingId::ReopenTab));
-    let r = item(ui, msgs, !st.closed_tabs.is_empty(), reopen, Msg::ReopenClosedTab);
+    let r = item(ui, msgs, !st.closed_tabs.is_empty(), reopen, Msg::Tabs(TabsMsg::ReopenClosedTab));
     if let Some(path) = st.closed_tabs.last() {
         r.on_hover_text(path.display().to_string());
     }

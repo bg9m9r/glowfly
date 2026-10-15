@@ -7,6 +7,7 @@
 use super::snapshot_tests::{git, harness, remove_fixture, render, with_repo};
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
+use crate::msg::StageMsg;
 use crate::state::AppState;
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
@@ -111,7 +112,7 @@ fn whole_file_revert_targets_the_blocks_hunk() {
         .state()
         .1
         .iter()
-        .filter_map(|m| if let Msg::RevertHunk { index, generation } = m { Some((*index, *generation)) } else { None })
+        .filter_map(|m| if let Msg::Stage(StageMsg::RevertHunk { index, generation }) = m { Some((*index, *generation)) } else { None })
         .collect();
     assert_eq!(sent, [(1, generation)]);
     drop(h);

@@ -8,6 +8,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::RepoMsg;
+use crate::msg::TabsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::runner;
 use crate::state::worktrees::{WorktreeForm, checked_out_in, folder_warning, right_text, section_shown};
@@ -101,7 +102,7 @@ fn open_linked_current_and_missing() {
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     assert!(same_path(&st.snap.as_ref().unwrap().workdir, &linked));
 
-    drive(&mut st, Msg::SelectTab(0));
+    drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert!(update(&mut st, wt(WorktreeMsg::Open(dir.clone())), Instant::now()).is_empty());
     let (ok, text) = last_log(&st);
     assert!(!ok && text.ends_with("This worktree is open in this tab."), "{text}");
@@ -146,7 +147,7 @@ fn create_from_branch_and_open() {
     assert!(same_path(&snap.workdir, &folder));
     assert_eq!(snap.head_branch.as_deref(), Some("side"));
 
-    drive(&mut st, Msg::SelectTab(0));
+    drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     let snap = st.snap.as_ref().unwrap();
     assert!(same_path(&snap.workdir, &dir));
     assert_eq!(snap.worktrees.len(), 2, "{:?}", snap.worktrees);

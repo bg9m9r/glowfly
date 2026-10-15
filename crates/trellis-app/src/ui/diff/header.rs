@@ -6,6 +6,7 @@ use crate::keymap::{self, BindingId};
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::state::diff_nav::StepKind;
 use crate::ui::common::short;
 use crate::ui::file_buttons::{self, CommitFile, Labels};
@@ -84,14 +85,14 @@ pub(super) fn header_bar(
                     let k = keymap::hint(BindingId::Stage);
                     let tip = format!("Stage this file ({k}). With lines selected, {k} stages only those lines.");
                     if ui.button("Stage file").on_hover_text(tip).clicked() {
-                        msgs.push(Msg::StageFile(p.clone()));
+                        msgs.push(Msg::Stage(StageMsg::StageFile(p.clone())));
                     }
                 }
                 DiffTarget::Staged(p) => {
                     let k = keymap::hint(BindingId::Unstage);
                     let tip = format!("Unstage this file ({k}). With lines selected, {k} unstages only those lines.");
                     if ui.button("Unstage file").on_hover_text(tip).clicked() {
-                        msgs.push(Msg::UnstageFile(p.clone()));
+                        msgs.push(Msg::Stage(StageMsg::UnstageFile(p.clone())));
                     }
                 }
                 DiffTarget::Commit(..) => {

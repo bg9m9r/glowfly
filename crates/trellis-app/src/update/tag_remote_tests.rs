@@ -6,6 +6,7 @@ use super::branch_tests::with_origin;
 use super::tests::{drive, git};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::tags::delete_remote_confirm;
@@ -193,7 +194,7 @@ fn end(st: &mut AppState, msg: Msg, ok: bool, output: &str) {
     st.job = None;
     update(st, msg, Instant::now());
     assert!(st.tag_job.is_some());
-    update(st, Msg::JobDone { ok, output: output.into(), undo: None }, Instant::now());
+    update(st, Msg::Job(JobMsg::JobDone { ok, output: output.into(), undo: None }), Instant::now());
     assert!(st.tag_job.is_none());
 }
 
@@ -234,7 +235,7 @@ fn success_and_stale_headline() {
     st.job = None;
     update(&mut st, delete("v1", &["origin", "backup"]), Instant::now());
     st.tag_job.as_mut().unwrap().label = "Something else".into();
-    update(&mut st, Msg::JobDone { ok: true, output: String::new(), undo: None }, Instant::now());
+    update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }), Instant::now());
     assert_eq!(toast(&st), "Delete tag v1 from origin and backup succeeded");
     assert!(st.tag_job.is_none());
     cleanup(&[&work, &origin, &backup]);

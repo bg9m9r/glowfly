@@ -29,7 +29,7 @@ pub struct CloneForm {
     pub since: String,
     pub branch: String,
     /// The parent folder text last checked on disk (trimmed) and whether it is a folder. Set
-    /// by `update` from `Msg::CloneParentChecked`; views never look at the disk.
+    /// by `update` from `CloneMsg::ParentChecked`; views never look at the disk.
     pub parent_checked: Option<(String, bool)>,
 }
 

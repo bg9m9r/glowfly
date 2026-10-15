@@ -4,6 +4,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
+use crate::msg::StageMsg;
 use crate::state::{AppState, Selection};
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
@@ -44,7 +45,9 @@ fn diff_commit_revert_blocked_light() {
 }
 
 fn reverts(msgs: &[Msg]) -> Vec<(usize, u64)> {
-    msgs.iter().filter_map(|m| if let Msg::RevertHunk { index, generation } = m { Some((*index, *generation)) } else { None }).collect()
+    msgs.iter()
+        .filter_map(|m| if let Msg::Stage(StageMsg::RevertHunk { index, generation }) = m { Some((*index, *generation)) } else { None })
+        .collect()
 }
 
 #[test]

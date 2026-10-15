@@ -1,7 +1,7 @@
 //! Staging, committing, git commands (push, pull, branch…), and auto-fetch.
 
 use crate::effect::{Effect, LocalOp, UndoResult};
-use crate::msg::Msg;
+use crate::msg::{JobMsg, StageMsg};
 use crate::state::{AppState, CommitDraft, RunningJob};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -9,12 +9,11 @@ use trellis_core::gitcli::args;
 use trellis_core::repo::{DiffTarget, HunkOp, Snapshot};
 use trellis_core::undo::{ResetMode, UndoKind};
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::Tick(t) => auto_fetch(st, t, fx),
-        Msg::StageFile(p) => local(st, LocalOp::StageFile(p), fx),
-        Msg::UnstageFile(p) => local(st, LocalOp::UnstagePaths(vec![p]), fx),
-        Msg::StageAll => {
+        StageMsg::StageFile(p) => local(st, LocalOp::StageFile(p), fx),
+        StageMsg::UnstageFile(p) => local(st, LocalOp::UnstagePaths(vec![p]), fx),
+        StageMsg::StageAll => {
             // Staging a conflicted file marks it resolved, markers and all, so that is done
             // file by file in the conflict view. A toast, not the log: Ctrl+Shift+S sends this.
             if st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.status == '!')) {
@@ -23,12 +22,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
             local(st, LocalOp::StageAll, fx);
         }
-        Msg::UnstageAll => {
+        StageMsg::UnstageAll => {
             let paths = st.snap.as_ref().map(|s| s.staged.iter().map(|f| f.path.clone()).collect()).unwrap_or_default();
             local(st, LocalOp::UnstagePaths(paths), fx);
         }
-        Msg::DiscardFile(path) => local(st, LocalOp::DiscardFile(path), fx),
-        Msg::Hunk { op, path, index, generation } => {
+        StageMsg::DiscardFile(path) => local(st, LocalOp::DiscardFile(path), fx),
+        StageMsg::Hunk { op, path, index, generation } => {
             // A confirm dialog or a message sent before whitespace was hidden can still arrive.
             if let Some(why) = st.hunk_ops_blocked() {
                 st.log(false, why);
@@ -46,9 +45,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             st.diff_gen += 1;
             local(st, LocalOp::Hunk { op, path, index, expected }, fx);
         }
-        Msg::ApplyLines(op) => apply_lines(st, op, fx),
-        Msg::RevertHunk { index, generation } => revert_hunk(st, index, generation, fx),
-        Msg::HunkReverted { path, result } => {
+        StageMsg::ApplyLines(op) => apply_lines(st, op, fx),
+        StageMsg::RevertHunk { index, generation } => revert_hunk(st, index, generation, fx),
+        StageMsg::HunkReverted { path, result } => {
             match result {
                 Ok(()) => st.toast(true, format!("Reverted the hunk in {path}. The change is in your working tree."), now),
                 Err(e) => st.log(false, format!("Could not revert the hunk in {path}: {e}")),
@@ -56,7 +55,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
-        Msg::LocalOpDone(result) => {
+        StageMsg::LocalOpDone(result) => {
             match result {
                 Err(e) => st.log(false, e),
                 Ok(Some(action)) => st.undo.record(action),
@@ -70,7 +69,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
-        Msg::Git { label, mut cmds } => {
+    }
+}
+
+pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Effect>) {
+    match msg {
+        JobMsg::Git { label, mut cmds } => {
             let record = if cmds.len() == 1 { UndoKind::classify(&cmds[0]) } else { None };
             // A hard reset stashes uncommitted changes first, so undoing it brings them back.
             if record == Some(UndoKind::Reset(ResetMode::Hard)) {
@@ -78,19 +82,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
             start_job(st, JobSpec { record, ..JobSpec::new(label, cmds) }, fx);
         }
-        Msg::Push { force } => push(st, force, fx),
-        Msg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),
-        Msg::CloneRepo(req) => {
-            // The dialog blocks these; checked again so no other sender can start a bad clone.
-            if req.name.is_empty() || trellis_core::remote_ops::check_url(&req.url).is_err() {
-                st.log(false, format!("Could not clone: {} isn't a URL or folder git can clone.", req.url));
-                return;
-            }
-            let dest = req.parent.join(&req.name);
-            let cmd = trellis_core::clone_ops::clone_cmd(&req.url, &req.name, &req.options);
-            start_job(st, JobSpec { cwd: Some(req.parent), then_open: Some(dest), ..JobSpec::new("Clone".into(), vec![cmd]) }, fx);
-        }
-        Msg::JobDone { ok, output, undo } => {
+        JobMsg::Push { force } => push(st, force, fx),
+        JobMsg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),
+        JobMsg::Undo => super::undo::run(st, false, now, fx),
+        JobMsg::Redo => super::undo::run(st, true, now, fx),
+        JobMsg::JobDone { ok, output, undo } => {
             let flow = super::gitflow_finish::headline(st, ok, &output);
             // Always called so a stale pending tag job is cleared.
             let tag = super::tags::headline(st, ok, &output);
@@ -101,8 +97,19 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 st.log(false, h);
             }
         }
-        _ => {}
     }
+}
+
+/// Starts the Clone dialog's clone as the active job.
+pub(super) fn clone_repo(st: &mut AppState, req: crate::state::clone::CloneRequest, fx: &mut Vec<Effect>) {
+    // The dialog blocks these; checked again so no other sender can start a bad clone.
+    if req.name.is_empty() || trellis_core::remote_ops::check_url(&req.url).is_err() {
+        st.log(false, format!("Could not clone: {} isn't a URL or folder git can clone.", req.url));
+        return;
+    }
+    let dest = req.parent.join(&req.name);
+    let cmd = trellis_core::clone_ops::clone_cmd(&req.url, &req.name, &req.options);
+    start_job(st, JobSpec { cwd: Some(req.parent), then_open: Some(dest), ..JobSpec::new("Clone".into(), vec![cmd]) }, fx);
 }
 
 /// A git command sequence to run as the (single) active job.
@@ -212,7 +219,7 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
 }
 
 /// Reverts a hunk of the open commit or comparison diff into the working tree. Unlike
-/// `Msg::Hunk` this leaves `diff_gen` alone: a commit diff's hunks can't change, so the other
+/// `StageMsg::Hunk` this leaves `diff_gen` alone: a commit diff's hunks can't change, so the other
 /// buttons stay valid (the status refresh that follows reloads the diff anyway).
 fn revert_hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Vec<Effect>) {
     if st.diff.as_ref().is_none_or(|(target, _)| target.is_working_tree()) {
@@ -361,7 +368,7 @@ pub(super) fn last_line(output: &str) -> &str {
 }
 
 /// Background fetch on the interval from Preferences > General.
-fn auto_fetch(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn auto_fetch(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let minutes = st.settings.auto_fetch_minutes;
     if minutes == 0 || st.snap.as_ref().is_none_or(|s| s.remotes.is_empty()) || st.job.is_some() {
         return;

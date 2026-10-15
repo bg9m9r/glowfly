@@ -5,6 +5,8 @@
 use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
+use crate::msg::BranchMsg;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::state::ForgeState;
@@ -31,7 +33,7 @@ pub fn local_branch_menu(
             msgs,
             ui,
             format!("Checkout {name}"),
-            Msg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(name)] },
+            Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(name)] }),
         );
         if !current.is_empty() {
             menu_item(msgs, ui, format!("Merge {name} into {current}"), Msg::git("Merge", &["merge", name]));
@@ -56,7 +58,7 @@ pub fn local_branch_menu(
     }
     ui.separator();
     if let Some(o) = b.oid {
-        menu_item(msgs, ui, "Create branch here…", Msg::NewBranch { start: Some(o.to_string()), name: String::new() });
+        menu_item(msgs, ui, "Create branch here…", Msg::Branch(BranchMsg::NewBranch { start: Some(o.to_string()), name: String::new() }));
         menu_item(
             msgs,
             ui,
@@ -64,11 +66,11 @@ pub fn local_branch_menu(
             Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Branch(name.to_owned()))),
         );
     }
-    menu_item(msgs, ui, format!("Rename {name}…"), Msg::RenameBranchDialog(name.to_owned()));
+    menu_item(msgs, ui, format!("Rename {name}…"), Msg::Branch(BranchMsg::RenameBranchDialog(name.to_owned())));
     let no_remotes = snap.remotes.is_empty().then_some(NO_REMOTES);
-    menu_item_if(msgs, ui, "Set upstream…", no_remotes, Msg::SetUpstreamDialog(name.to_owned()));
+    menu_item_if(msgs, ui, "Set upstream…", no_remotes, Msg::Branch(BranchMsg::SetUpstreamDialog(name.to_owned())));
     if b.tracking.is_some() {
-        menu_item(msgs, ui, "Unset upstream", Msg::UnsetUpstream(name.to_owned()));
+        menu_item(msgs, ui, "Unset upstream", Msg::Branch(BranchMsg::UnsetUpstream(name.to_owned())));
     }
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(name.to_owned()));
     ui.separator();
@@ -87,11 +89,17 @@ fn push_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec
         None => format!("Fast-forward {name}"),
     };
     let ff_blocked = branches::fast_forward_blocked(b, snap.state);
-    menu_item_if(msgs, ui, ff_label, ff_blocked.as_deref(), Msg::FastForwardBranch(name.to_owned()));
+    menu_item_if(msgs, ui, ff_label, ff_blocked.as_deref(), Msg::Branch(BranchMsg::FastForwardBranch(name.to_owned())));
 
     let has_remotes = !snap.remotes.is_empty();
     let push_blocked = branches::push_blocked(b, has_remotes);
-    menu_item_if(msgs, ui, format!("Push {name}"), push_blocked.as_deref(), Msg::PushBranch { branch: name.to_owned(), remote: None });
+    menu_item_if(
+        msgs,
+        ui,
+        format!("Push {name}"),
+        push_blocked.as_deref(),
+        Msg::Branch(BranchMsg::PushBranch { branch: name.to_owned(), remote: None }),
+    );
     if !has_remotes {
         return;
     }
@@ -112,7 +120,13 @@ fn push_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec
             }
             // Only the upstream's state is known; other remotes are left to git to accept or reject.
             let blocked = if is_upstream { push_blocked.as_deref() } else { None };
-            menu_item_if(msgs, ui, job, blocked, Msg::PushBranch { branch: name.to_owned(), remote: Some(remote.clone()) });
+            menu_item_if(
+                msgs,
+                ui,
+                job,
+                blocked,
+                Msg::Branch(BranchMsg::PushBranch { branch: name.to_owned(), remote: Some(remote.clone()) }),
+            );
         }
     });
 }
@@ -149,7 +163,7 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, head: Option<&str>, msgs: &mu
                 "Delete local and remote branch",
                 branches::delete_with_remote_body(b, t),
                 "Delete both",
-                Msg::DeleteBranchAndRemote(name.to_owned()),
+                Msg::Branch(BranchMsg::DeleteBranchAndRemote(name.to_owned())),
             ),
         );
     }

@@ -4,6 +4,7 @@
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::tags::{TagForm, push_remote, tag_problem};
+use crate::tag::TagMsg;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::repo::Snapshot;
 use trellis_core::tag_ops::TagNameProblem;
@@ -51,12 +52,12 @@ pub fn new_tag(ui: &mut egui::Ui, form: &mut TagForm, snap: Option<&Snapshot>, p
     ui.add_space(8.0);
     ui.horizontal(|ui| {
         if ui.add_enabled(valid, egui::Button::new("Create tag")).clicked() || (enter && valid) {
-            msgs.push(Msg::CreateTag {
+            msgs.push(Msg::Tag(TagMsg::CreateTag {
                 at: form.at.clone(),
                 name: form.name.trim().into(),
                 message: form.message.trim().into(),
                 push: (push_on && remotes.is_some()).then(|| form.remote.clone()),
-            });
+            }));
         }
         if ui.button("Cancel").clicked() {
             close = true;
@@ -87,6 +88,6 @@ fn push_row(ui: &mut egui::Ui, form: &mut TagForm, snap: &Snapshot, push_on: boo
         .inner
     };
     if changed {
-        msgs.push(Msg::SetPushNewTags(on));
+        msgs.push(Msg::Tag(TagMsg::SetPushNewTags(on)));
     }
 }

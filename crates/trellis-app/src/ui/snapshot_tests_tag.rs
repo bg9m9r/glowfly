@@ -6,6 +6,7 @@ use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
 use crate::state::tags::TagForm;
 use crate::state::{AppState, Modal};
+use crate::tag::TagMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key};
 use egui_kittest::Harness;
@@ -20,10 +21,10 @@ fn form(at: &str, name: &str, annotated: bool) -> Modal {
     Modal::NewTag(TagForm { at: at.into(), name: name.into(), message: String::new(), annotated, remote: String::new() })
 }
 
-/// The first `Msg::CreateTag` pushed, as (name, message, push), if any.
+/// The first `TagMsg::CreateTag` pushed, as (name, message, push), if any.
 fn created(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Option<(String, String, Option<String>)> {
     h.state().1.iter().find_map(|m| match m {
-        Msg::CreateTag { name, message, push, .. } => Some((name.clone(), message.clone(), push.clone())),
+        Msg::Tag(TagMsg::CreateTag { name, message, push, .. }) => Some((name.clone(), message.clone(), push.clone())),
         _ => None,
     })
 }
@@ -58,7 +59,7 @@ fn new_tag_dialog_annotated() {
     h.get_by_label("Create tag").click();
     h.run();
     assert_eq!(created(&h), Some(("v1.2.0".into(), "Release notes".into(), None)));
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::CreateTag { at, .. } if *at == sha)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tag(TagMsg::CreateTag { at, .. }) if *at == sha)));
     // Update closes the dialog once the job starts.
     assert!(!closed(&h));
     drop(h);
@@ -183,7 +184,7 @@ fn new_tag_dialog_push_single_remote() {
     assert!(matches!(&h.state().0.modal, Some(Modal::NewTag(f)) if f.remote == "origin"));
     h.get_by_label("Push to origin").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::SetPushNewTags(true))));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tag(TagMsg::SetPushNewTags(true)))));
     // The checkbox only asks; until update saves the setting, Create tag doesn't push.
     h.get_by_label("Create tag").click();
     h.run();

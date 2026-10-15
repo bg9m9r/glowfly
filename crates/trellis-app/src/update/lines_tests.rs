@@ -7,6 +7,8 @@ use crate::effect::{Effect, LocalOp};
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
+use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::state::lines::LineClick::{self, Only, Range, Toggle};
 use std::collections::BTreeSet;
@@ -127,13 +129,13 @@ fn commit_diff_lines_not_selectable() {
 #[test]
 fn apply_lines_emits_local_op() {
     let (mut st, dir) = with_repo("lines-apply", unstaged());
-    assert!(run(&mut st, Msg::ApplyLines(HunkOp::Stage)).is_empty(), "nothing selected");
+    assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage))).is_empty(), "nothing selected");
 
     click(&mut st, 0, 5, Only);
     click(&mut st, 0, 2, Toggle);
-    assert!(run(&mut st, Msg::ApplyLines(HunkOp::Unstage)).is_empty(), "unstage doesn't fit an unstaged diff");
+    assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Unstage))).is_empty(), "unstage doesn't fit an unstaged diff");
     assert!(!st.view.diff_lines.is_empty());
-    let fx = run(&mut st, Msg::ApplyLines(HunkOp::Stage));
+    let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
     let expected = st.diff.as_ref().unwrap().1.hunks[0].clone();
     assert_eq!(expected.header, "@@ -1,4 +1,4 @@");
     let want = LocalOp::Lines { op: HunkOp::Stage, path: "f.txt".into(), hunk: 0, expected, lines: vec![2, 5] };
@@ -144,9 +146,9 @@ fn apply_lines_emits_local_op() {
     let mut st = with_diff(DiffTarget::Staged("f.txt".into()));
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     click(&mut st, 1, 1, Only);
-    assert!(run(&mut st, Msg::ApplyLines(HunkOp::Stage)).is_empty(), "stage doesn't fit a staged diff");
-    assert!(run(&mut st, Msg::ApplyLines(HunkOp::Discard)).is_empty());
-    let fx = run(&mut st, Msg::ApplyLines(HunkOp::Unstage));
+    assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage))).is_empty(), "stage doesn't fit a staged diff");
+    assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Discard))).is_empty());
+    let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Unstage)));
     assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Unstage, hunk: 1, .. }, .. }]));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -154,7 +156,7 @@ fn apply_lines_emits_local_op() {
 #[test]
 fn discard_through_confirm() {
     let (mut st, dir) = with_repo("lines-confirm", unstaged());
-    let confirm = || Msg::confirm("Discard lines", "Discard?".into(), "Discard", Msg::ApplyLines(HunkOp::Discard));
+    let confirm = || Msg::confirm("Discard lines", "Discard?".into(), "Discard", Msg::Stage(StageMsg::ApplyLines(HunkOp::Discard)));
     click(&mut st, 0, 4, Only);
     run(&mut st, confirm());
     let fx = run(&mut st, Msg::ConfirmAccepted);
@@ -214,9 +216,9 @@ fn reload_keeps_identical_clears_changed() {
 fn tab_switch_clears_selection() {
     let mut st = with_diff(unstaged());
     click(&mut st, 0, 1, Only);
-    run(&mut st, Msg::NewTab);
+    run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     assert_eq!(selected(&st), None);
-    run(&mut st, Msg::SelectTab(0));
+    run(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert!(st.diff.as_ref().is_some_and(|(t, _)| *t == unstaged()), "the diff comes back");
     assert_eq!(selected(&st), None, "the selection does not");
 }
@@ -231,7 +233,7 @@ fn end_to_end_stage_lines() {
     let (_, d) = st.diff.as_ref().unwrap();
     let two = d.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "two").unwrap();
     drive(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
-    drive(&mut st, Msg::ApplyLines(HunkOp::Stage));
+    drive(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
     assert!(st.view.diff_lines.is_empty());
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.staged.iter().any(|f| f.path == "a.txt"), "a.txt is partly staged");

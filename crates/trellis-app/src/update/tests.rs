@@ -4,8 +4,11 @@
 use super::update;
 use crate::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
 use crate::msg::AvatarMsg;
+use crate::msg::CommitMsg;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::runner;
 use crate::state::{AppState, ForgeState, Modal, Selection, Status};
 use std::path::{Path, PathBuf};
@@ -108,7 +111,7 @@ fn only_one_git_job_runs_at_a_time() {
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("still running")));
 
     // Completion clears the job, toasts, and refreshes.
-    let fx = update(&mut st, Msg::JobDone { ok: true, output: "$ git fetch".into(), undo: None }, Instant::now());
+    let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: "$ git fetch".into(), undo: None }), Instant::now());
     assert!(st.job.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Fetch succeeded"));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
@@ -135,7 +138,7 @@ fn auto_fetch_runs_quietly_on_its_interval() {
         other => panic!("expected a fetch, got {other:?}"),
     }
     // A failed background fetch is logged but doesn't pop the log open or toast.
-    update(&mut st, Msg::JobDone { ok: false, output: "offline".into(), undo: None }, Instant::now());
+    update(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output: "offline".into(), undo: None }), Instant::now());
     assert!(!st.view.show_log);
     assert!(st.toasts.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -215,14 +218,14 @@ fn stage_and_commit_end_to_end() {
     assert_eq!(st.selection, Selection::Wip, "a dirty repo opens on the WIP");
     assert_eq!(snap.unstaged.len(), 1);
 
-    let fx = update(&mut st, Msg::StageFile("a.txt".into()), Instant::now());
+    let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());
     assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::StageFile(p), .. }] if p == "a.txt"));
-    drive(&mut st, Msg::StageFile("a.txt".into()));
+    drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     assert_eq!(st.snap.as_ref().unwrap().staged.len(), 1);
 
     st.draft.summary = "Second line".into();
     st.draft.description = "Adds a line.".into();
-    drive(&mut st, Msg::Commit);
+    drive(&mut st, Msg::Commit(CommitMsg::Commit));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.commits[0].summary, "Second line");
     assert_eq!(snap.commits[0].body, "Adds a line.");
@@ -232,10 +235,10 @@ fn stage_and_commit_end_to_end() {
 
     // Amend pre-fills from HEAD and rewrites it.
     st.draft.amend = true;
-    drive(&mut st, Msg::PrefillAmend);
+    drive(&mut st, Msg::Commit(CommitMsg::PrefillAmend));
     assert_eq!(st.draft.summary, "Second line");
     st.draft.summary = "Second line, amended".into();
-    drive(&mut st, Msg::Commit);
+    drive(&mut st, Msg::Commit(CommitMsg::Commit));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.commits.len(), 2);
     assert_eq!(snap.commits[0].summary, "Second line, amended");
@@ -248,7 +251,7 @@ fn push_sets_upstream_for_new_branches() {
     let mut st = state();
     git(&dir, &["remote", "add", "origin", "https://example.invalid/repo.git"]);
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let fx = update(&mut st, Msg::Push { force: false }, Instant::now());
+    let fx = update(&mut st, Msg::Job(JobMsg::Push { force: false }), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, prompts, .. }] => {
             assert_eq!(cmds[0], args(&["push", "-u", "origin", "main"]));
@@ -331,7 +334,7 @@ fn job_output_hides_credentials_in_urls() {
     let dir = scratch_repo("redact");
     let cmds = vec![args(&["remote", "add", "x", "https://ada:TOKEN123@example.com/o/r.git"])];
     let effect = Effect::RunGit { cwd: dir.clone(), cmds, write_file: None, record: None, prompts: false, expect: None };
-    let Some(Msg::JobDone { ok, output, .. }) = runner::execute(effect) else { panic!("expected JobDone") };
+    let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = runner::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");
     assert!(!output.contains("TOKEN123") && output.contains("https://***@example.com/o/r.git"), "{output}");
     let _ = std::fs::remove_dir_all(&dir);

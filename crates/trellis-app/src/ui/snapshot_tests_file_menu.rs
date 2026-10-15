@@ -9,7 +9,9 @@ use super::file_menu::{
     DELETE, NEW_FILE_HERE, OPEN_DEFAULT, RENAME, RowSource, SHOW_IN_FOLDER, TRACK_IN_LFS, UNSTAGE_DELETE, commit_file_items, wip_file_items,
 };
 use super::theme::{apply_theme, color};
+use crate::msg::FilesMsg;
 use crate::msg::Msg;
+use crate::msg::WorkFileMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
@@ -130,7 +132,7 @@ fn file_menu_between_restores_the_right_commit() {
         h.get_by_label(label).click();
         h.run();
         assert!(
-            matches!(&h.state()[..], [Msg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false }] if *o == want && path == "src/app.txt"),
+            matches!(&h.state()[..], [Msg::Files(FilesMsg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false })] if *o == want && path == "src/app.txt"),
             "{status}"
         );
     }
@@ -177,7 +179,7 @@ fn file_menu_wip_conflicted() {
 fn click_unstage_delete(mut h: Harness<'static, Vec<Msg>>, path: &str) {
     h.get_by_label(UNSTAGE_DELETE).click();
     h.run();
-    assert!(matches!(&h.state()[..], [Msg::DeleteFile { path: p, confirmed: false }] if p == path));
+    assert!(matches!(&h.state()[..], [Msg::WorkFile(WorkFileMsg::DeleteFile { path: p, confirmed: false })] if p == path));
 }
 
 #[test]
@@ -215,7 +217,7 @@ fn file_menu_clicks_send_msgs() {
     h.get_by_label("Restore this version…").click();
     h.run();
     assert!(
-        matches!(&h.state()[..], [Msg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false }] if *o == oid() && path == "src/app.txt")
+        matches!(&h.state()[..], [Msg::Files(FilesMsg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false })] if *o == oid() && path == "src/app.txt")
     );
     drop(h);
 
@@ -223,21 +225,21 @@ fn file_menu_clicks_send_msgs() {
     h.run();
     h.get_by_label(SHOW_IN_FOLDER).click();
     h.run();
-    assert!(matches!(&h.state()[..], [Msg::ShowWorkingFile(p)] if p == "src/app.txt"));
+    assert!(matches!(&h.state()[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "src/app.txt"));
     drop(h);
 
     let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     h.get_by_label(RENAME).click();
     h.run();
-    assert!(matches!(&h.state()[..], [Msg::RenameFileDialog(p)] if p == "src/app.txt"));
+    assert!(matches!(&h.state()[..], [Msg::WorkFile(WorkFileMsg::RenameFileDialog(p))] if p == "src/app.txt"));
     drop(h);
 
     let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     h.get_by_label(DELETE).click();
     h.run();
-    assert!(matches!(&h.state()[..], [Msg::DeleteFile { path, confirmed: false }] if path == "src/app.txt"));
+    assert!(matches!(&h.state()[..], [Msg::WorkFile(WorkFileMsg::DeleteFile { path, confirmed: false })] if path == "src/app.txt"));
     drop(h);
 
     // New file in this folder: the row's folder, "" at the root, and a folder the commit
@@ -251,7 +253,7 @@ fn file_menu_clicks_send_msgs() {
         h.run();
         h.get_by_label(NEW_FILE_HERE).click();
         h.run();
-        assert!(matches!(&h.state()[..], [Msg::NewFileDialog(p)] if p == want), "{path}");
+        assert!(matches!(&h.state()[..], [Msg::WorkFile(WorkFileMsg::NewFileDialog(p))] if p == want), "{path}");
         drop(h);
     }
 

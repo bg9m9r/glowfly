@@ -8,6 +8,7 @@ use super::work_files_tests::{confirm, entry, last_log, loaded, run, work_ops};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::WorkFileMsg;
 use crate::state::Modal;
 use crate::state::files::TRASH;
 use std::path::PathBuf;
@@ -23,9 +24,9 @@ fn unstage_delete(path: &str, mode: DeleteMode) -> FileOp {
 
 /// Opens the confirmation for `path` and returns its body, button and the op it runs.
 fn ask(st: &mut crate::state::AppState, path: &str) -> (String, String, FileOp) {
-    assert!(run(st, Msg::DeleteFile { path: path.into(), confirmed: false }).is_empty());
+    assert!(run(st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: path.into(), confirmed: false })).is_empty());
     let (_, body, button, then) = confirm(st);
-    let Msg::DeleteConfirmed(op) = then else { panic!("expected DeleteConfirmed for {path}") };
+    let Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) = then else { panic!("expected DeleteConfirmed for {path}") };
     (body.to_owned(), button.to_owned(), op.clone())
 }
 
@@ -129,10 +130,10 @@ fn mode_is_fixed_at_ask_time() {
 #[test]
 fn delete_confirmed_only_runs_delete_ops() {
     let (mut st, dir) = loaded("wft-only-deletes");
-    assert!(run(&mut st, Msg::DeleteConfirmed(FileOp::Create("x.txt".into()))).is_empty());
+    assert!(run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Create("x.txt".into())))).is_empty());
     let rename = FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: false };
-    assert!(run(&mut st, Msg::DeleteConfirmed(rename)).is_empty());
-    let fx = run(&mut st, Msg::DeleteConfirmed(delete("a.txt", DeleteMode::Trash)));
+    assert!(run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(rename))).is_empty());
+    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(delete("a.txt", DeleteMode::Trash))));
     assert_eq!(work_ops(&fx), [delete("a.txt", DeleteMode::Trash)]);
     assert_eq!(fx[0].scope(), Some(&dir));
     let _ = std::fs::remove_dir_all(&dir);
@@ -141,7 +142,10 @@ fn delete_confirmed_only_runs_delete_ops() {
 #[test]
 fn trash_refused_offers_permanent() {
     let (mut st, dir) = loaded("wft-refused");
-    let fx = run(&mut st, Msg::TrashRefused { op: delete("a.txt", DeleteMode::Trash), reason: "this drive has no Recycle Bin".into() });
+    let fx = run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::TrashRefused { op: delete("a.txt", DeleteMode::Trash), reason: "this drive has no Recycle Bin".into() }),
+    );
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     let (title, body, button, then) = confirm(&st);
     assert_eq!((title, button), ("Delete permanently?", "Delete permanently"));
@@ -151,14 +155,16 @@ fn trash_refused_offers_permanent() {
             "a.txt couldn't be moved to the {TRASH}: this drive has no Recycle Bin.\n\nDelete it permanently instead? This can't be undone."
         )
     );
-    assert!(matches!(then, Msg::DeleteConfirmed(op) if *op == delete("a.txt", DeleteMode::PermanentNoTrash)));
+    assert!(matches!(then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) if *op == delete("a.txt", DeleteMode::PermanentNoTrash)));
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert_eq!(work_ops(&fx), [delete("a.txt", DeleteMode::PermanentNoTrash)]);
 
-    run(&mut st, Msg::TrashRefused { op: unstage_delete("n.txt", DeleteMode::Trash), reason: "no bin".into() });
+    run(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op: unstage_delete("n.txt", DeleteMode::Trash), reason: "no bin".into() }));
     let (_, body, _, then) = confirm(&st);
     assert!(body.ends_with("This can't be undone. It also leaves the staging area."), "{body}");
-    assert!(matches!(then, Msg::DeleteConfirmed(op) if *op == unstage_delete("n.txt", DeleteMode::PermanentNoTrash)));
+    assert!(
+        matches!(then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) if *op == unstage_delete("n.txt", DeleteMode::PermanentNoTrash))
+    );
 
     // Cancelling changes nothing.
     assert!(run(&mut st, Msg::CloseModal).is_empty());
@@ -206,7 +212,7 @@ fn delete_toasts() {
         ),
     ];
     for (op, how, want) in cases {
-        run(&mut st, Msg::WorkFileDone { op: op.clone(), result: Ok(WorkFileOk::Deleted(how)) });
+        run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op.clone(), result: Ok(WorkFileOk::Deleted(how)) }));
         assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()), "{op:?} {how:?}");
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -215,7 +221,7 @@ fn delete_toasts() {
 #[test]
 fn trash_refused_on_inactive_tab_logs() {
     let (mut st, dir) = loaded("wft-scoped");
-    let msg = Msg::TrashRefused { op: delete("x.txt", DeleteMode::Trash), reason: "no bin".into() };
+    let msg = Msg::WorkFile(WorkFileMsg::TrashRefused { op: delete("x.txt", DeleteMode::Trash), reason: "no bin".into() });
     let fx = run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.modal.is_none());
@@ -230,7 +236,7 @@ fn end_to_end_trash() {
     std::fs::write(dir.join("a.txt"), &contents).unwrap();
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    drive(&mut st, Msg::DeleteFile { path: "a.txt".into(), confirmed: false });
+    drive(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "a.txt".into(), confirmed: false }));
     assert!(matches!(&st.modal, Some(Modal::Confirm { button, .. }) if *button == format!("Move to {TRASH}")));
     drive(&mut st, Msg::ConfirmAccepted);
 

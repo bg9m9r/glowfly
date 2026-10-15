@@ -3,6 +3,7 @@
 //! creating, renaming and deleting working-tree files (in `work_files.rs`).
 
 use crate::effect::Effect;
+use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::state::{AppState, Modal, Selection};
 use git2::Oid;
@@ -13,16 +14,16 @@ fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::RestoreFile { oid, path, deleted, confirmed: false, .. } => ask_restore(st, oid, path, deleted),
-        Msg::RestoreFile { oid, path, confirmed: true, overwrite, .. } => {
+        FilesMsg::RestoreFile { oid, path, deleted, confirmed: false, .. } => ask_restore(st, oid, path, deleted),
+        FilesMsg::RestoreFile { oid, path, confirmed: true, overwrite, .. } => {
             // `deleted` only shapes the wording; core decides which version to write.
             if let Some(workdir) = st.workdir() {
                 fx.push(Effect::RestoreFile { workdir, oid, path, overwrite });
             }
         }
-        Msg::RestoreWouldOverwrite { path, oid, reason } => {
+        FilesMsg::RestoreWouldOverwrite { path, oid, reason } => {
             // Status said the file was clean, but the disk disagrees (an ignored file, edits git
             // skips, or a stale status). Ask again, this time saying what will be lost.
             st.modal = Some(Modal::Confirm {
@@ -32,11 +33,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                     short(oid)
                 ),
                 button: "Restore anyway".into(),
-                then: Box::new(Msg::RestoreFile { oid, path, deleted: false, confirmed: true, overwrite: true }),
+                then: Box::new(Msg::Files(FilesMsg::RestoreFile { oid, path, deleted: false, confirmed: true, overwrite: true })),
             });
             super::repo::refresh_status(st, fx);
         }
-        Msg::FileRestored { path, oid, result } => {
+        FilesMsg::FileRestored { path, oid, result } => {
             match result {
                 Ok(from) => {
                     let text = match from {
@@ -67,27 +68,16 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
-        Msg::NewFileDialog(_)
-        | Msg::CreateFile(_)
-        | Msg::RenameFileDialog(_)
-        | Msg::RenameFile { .. }
-        | Msg::SetRenameStages(_)
-        | Msg::DeleteFile { .. }
-        | Msg::DiscardUntracked(_)
-        | Msg::DeleteConfirmed(_)
-        | Msg::TrashRefused { .. }
-        | Msg::WorkFileDone { .. } => super::work_files::handle(st, msg, now, fx),
-        Msg::OpenWorkingFile(p) => {
+        FilesMsg::OpenWorkingFile(p) => {
             if let Some(w) = st.workdir() {
                 fx.push(Effect::OpenPath(w.join(&p)));
             }
         }
-        Msg::ShowWorkingFile(p) => {
+        FilesMsg::ShowWorkingFile(p) => {
             if let Some(w) = st.workdir() {
                 fx.push(Effect::RevealPath(w.join(&p)));
             }
         }
-        _ => {}
     }
 }
 
@@ -117,6 +107,6 @@ fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
         title: "Restore file".into(),
         body: format!("{source}\n\n{note}"),
         button: "Restore".into(),
-        then: Box::new(Msg::RestoreFile { oid, path, deleted, confirmed: true, overwrite: dirty }),
+        then: Box::new(Msg::Files(FilesMsg::RestoreFile { oid, path, deleted, confirmed: true, overwrite: dirty })),
     });
 }

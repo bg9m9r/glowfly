@@ -5,35 +5,35 @@
 
 use super::work_files_delete::{ask_delete, ask_discard, deleted_text, trash_refused};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
-use crate::msg::Msg;
+use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
 use crate::state::{AppState, Modal};
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, PathProblem, check_new_path};
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::NewFileDialog(prefill) => {
+        WorkFileMsg::NewFileDialog(prefill) => {
             if st.snap.is_some() {
                 st.modal = Some(Modal::NewFile(PathForm::new(prefill)));
             }
         }
-        Msg::CreateFile(text) => create(st, text, fx),
-        Msg::RenameFileDialog(path) => rename_dialog(st, path),
-        Msg::RenameFile { from, to, stage } => rename(st, from, to, stage, fx),
-        Msg::SetRenameStages(on) if st.settings.stage_renames != on => {
+        WorkFileMsg::CreateFile(text) => create(st, text, fx),
+        WorkFileMsg::RenameFileDialog(path) => rename_dialog(st, path),
+        WorkFileMsg::RenameFile { from, to, stage } => rename(st, from, to, stage, fx),
+        WorkFileMsg::SetRenameStages(on) if st.settings.stage_renames != on => {
             st.settings.stage_renames = on;
             fx.push(super::prefs::save_settings(st));
         }
-        Msg::DeleteFile { path, confirmed: false } => ask_delete(st, path),
-        Msg::DiscardUntracked(path) => ask_discard(st, path),
-        Msg::DeleteFile { path, confirmed: true } => {
+        WorkFileMsg::DeleteFile { path, confirmed: false } => ask_delete(st, path),
+        WorkFileMsg::DiscardUntracked(path) => ask_discard(st, path),
+        WorkFileMsg::DeleteFile { path, confirmed: true } => {
             if let Some(workdir) = st.workdir() {
                 let mode = DeleteMode::for_settings(&st.settings);
                 fx.push(Effect::WorkFile { workdir, op: FileOp::Delete { path, mode } });
             }
         }
-        Msg::DeleteConfirmed(op) => match op {
+        WorkFileMsg::DeleteConfirmed(op) => match op {
             FileOp::Delete { .. } | FileOp::UnstageDelete { .. } | FileOp::UnstageGone(_) | FileOp::Discard { .. } => {
                 if let Some(workdir) = st.workdir() {
                     fx.push(Effect::WorkFile { workdir, op });
@@ -41,12 +41,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
             op => tracing::debug!("ignored a confirmed {op:?}, which isn't a delete"),
         },
-        Msg::TrashRefused { op, reason } => {
+        WorkFileMsg::TrashRefused { op, reason } => {
             trash_refused(st, op, reason);
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
-        Msg::WorkFileDone { op, result } => {
+        WorkFileMsg::WorkFileDone { op, result } => {
             match result {
                 Ok(ok) => succeeded(st, &op, ok, now),
                 Err(e) => match form_for(&mut st.modal, &op) {
@@ -60,7 +60,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
-        _ => {}
+        WorkFileMsg::SetRenameStages(_) => {}
     }
 }
 

@@ -8,6 +8,7 @@ use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::runner;
 use crate::state::AppState;
 use crate::state::lines::LineClick;
@@ -215,7 +216,7 @@ fn reload_keeps_colors_without_plain_flash() {
     assert_colored(shown(&st));
     let before = spans_of(shown(&st));
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
-    let held = drive_holding_diffs(&mut st, Msg::Hunk { op: HunkOp::Stage, path: "big.rs".into(), index: 0, generation });
+    let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "big.rs".into(), index: 0, generation }));
     let mut fx = land(&mut st, held);
     assert!(pending(shown(&st).highlight.as_ref()));
     let after = spans_of(shown(&st));

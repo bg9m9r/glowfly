@@ -6,6 +6,7 @@ use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::palette::{InputKind, Items, Mode, Pick, PickKind, StashAction, row_count, shown};
@@ -232,7 +233,7 @@ fn delete_chosen_stash_confirms() {
     assert!(body.contains("On main: first") && body.contains("cannot be undone"), "{body}");
     let first = st.snap.as_ref().unwrap().stashes[1].oid;
     assert!(
-        matches!(then.as_ref(), Msg::Stash { action: StashAction::Drop, index: 1, oid } if *oid == first),
+        matches!(then.as_ref(), Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid }) if *oid == first),
         "the confirmation doesn't drop the stash"
     );
     drive(&mut st, Msg::ConfirmAccepted);

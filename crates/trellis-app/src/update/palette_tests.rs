@@ -5,10 +5,12 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::RepoMsg;
+use crate::msg::StageMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::palette::{PaletteCommand, shown};
 use crate::state::palette_commands::SHOW_REPO_FOLDER;
 use crate::state::{AppState, Modal, PrefPage, PrefsState, Selection, Tab};
+use crate::tag::TagMsg;
 use std::time::Instant;
 use trellis_core::repo::DiffTarget;
 use trellis_core::settings::ThemeChoice;
@@ -115,7 +117,7 @@ fn entries_with_repo() {
     assert!(has(&st, "Checkout topic"));
     assert!(!has(&st, "Checkout main"), "the checked-out branch is skipped");
 
-    drive(&mut st, Msg::StageAll);
+    drive(&mut st, Msg::Stage(StageMsg::StageAll));
     assert!(has(&st, "Unstage all files"));
     assert!(!has(&st, "Stage all files"));
 
@@ -304,7 +306,7 @@ fn run_create_tag_opens_dialog() {
 fn new_tag_msg_opens_modal() {
     let mut st = state();
     let sha = "0123456789abcdef0123456789abcdef01234567".to_owned();
-    run(&mut st, Msg::NewTag { at: sha.clone(), annotated: true });
+    run(&mut st, Msg::Tag(TagMsg::NewTag { at: sha.clone(), annotated: true }));
     assert!(matches!(
         &st.modal,
         Some(Modal::NewTag(f)) if f.at == sha && f.name.is_empty() && f.message.is_empty() && f.annotated

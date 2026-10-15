@@ -7,6 +7,7 @@ use crate::effect::Effect;
 use crate::msg::GraphMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::TabsMsg;
 use crate::runner;
 use crate::state::AppState;
 use crate::state::branches::HEAD_ALWAYS_SHOWN;
@@ -176,7 +177,7 @@ fn filters_are_per_repository_across_tabs() {
     run(&mut st, fx);
     assert!(has_label(&st, "feature"));
 
-    let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
+    let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert_eq!(load_opts(&fx).hidden, [heads("feature")], "A's filter comes back with its tab");
     run(&mut st, fx);
     assert!(!has_label(&st, "feature"));

@@ -2,6 +2,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
+use crate::msg::TabsMsg;
 use crate::state::{AppState, Tab};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
@@ -50,8 +51,11 @@ fn tab_drag_moves_and_snapshots() {
     pointer(&mut h, over, Some((PointerButton::Primary, false)));
     h.run();
     let msgs = &h.state().1;
-    assert!(msgs.iter().any(|m| matches!(m, Msg::MoveTab { from: 0, to: 1 })), "dropping between tabs 1 and 2 moves tab 0 to 1");
-    assert!(!msgs.iter().any(|m| matches!(m, Msg::SelectTab(_))), "dragging does not select the tab");
+    assert!(
+        msgs.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 1 }))),
+        "dropping between tabs 1 and 2 moves tab 0 to 1"
+    );
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::SelectTab(_)))), "dragging does not select the tab");
     drop(h);
     remove_fixture(&dir);
 }
@@ -72,14 +76,14 @@ fn tab_context_menu() {
     h.check_snapshot("tabs_menu");
     h.get_by_label("Close other tabs").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseOtherTabs(1))));
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::SelectTab(_))), "right-clicking does not select the tab");
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::CloseOtherTabs(1)))));
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::SelectTab(_)))), "right-clicking does not select the tab");
 
     // On the last tab, "Close tabs to the right" is disabled.
     right_click(&mut h, 2);
     h.get_by_label("Close tabs to the right").click();
     h.run();
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::CloseTabsToRight(_))));
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::CloseTabsToRight(_)))));
     drop(h);
     remove_fixture(&dir);
 }

@@ -3,7 +3,9 @@
 //! these run anywhere: Cmd-or-Ctrl chords answer to the first two, Ctrl-only ones (tab cycling,
 //! the terminal) to real Ctrl on both.
 
+use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::terminal::TerminalMsg;
 use eframe::egui::{Event, Key, Modifiers};
@@ -44,13 +46,13 @@ fn harness() -> Harness<'static, Keys> {
 
 fn name(m: &Msg) -> String {
     match m {
-        Msg::NewTab => "new tab".into(),
-        Msg::ReopenClosedTab => "reopen tab".into(),
-        Msg::CloseTab(_) => "close tab".into(),
-        Msg::CycleTab(d) => format!("cycle {d}"),
-        Msg::SelectTab(n) => format!("tab {n}"),
-        Msg::Undo => "undo".into(),
-        Msg::Redo => "redo".into(),
+        Msg::Tabs(TabsMsg::NewTab) => "new tab".into(),
+        Msg::Tabs(TabsMsg::ReopenClosedTab) => "reopen tab".into(),
+        Msg::Tabs(TabsMsg::CloseTab(_)) => "close tab".into(),
+        Msg::Tabs(TabsMsg::CycleTab(d)) => format!("cycle {d}"),
+        Msg::Tabs(TabsMsg::SelectTab(n)) => format!("tab {n}"),
+        Msg::Job(JobMsg::Undo) => "undo".into(),
+        Msg::Job(JobMsg::Redo) => "redo".into(),
         Msg::Terminal(TerminalMsg::Toggle) => "terminal".into(),
         Msg::Shortcut(a) => format!("{a:?}"),
         _ => "other".into(),

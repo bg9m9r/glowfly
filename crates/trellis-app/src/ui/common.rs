@@ -2,6 +2,7 @@
 
 use super::theme::color;
 use super::widgets;
+use crate::msg::CloneMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
@@ -205,7 +206,7 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::Repo(RepoMsg::PickRepo));
         }
         if ui.add(egui::Button::new("Clone a repository").min_size(size)).clicked() {
-            msgs.push(Msg::CloneDialog);
+            msgs.push(Msg::Clone(CloneMsg::Dialog));
         }
         if ui.add(egui::Button::new("Start a new repository").min_size(size)).clicked() {
             msgs.push(Msg::Repo(RepoMsg::InitRepo));

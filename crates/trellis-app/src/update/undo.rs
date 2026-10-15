@@ -2,14 +2,13 @@
 //! step with the git jobs that finish in it.
 
 use crate::effect::{Effect, UndoResult};
-use crate::msg::Msg;
 use crate::state::undo::UndoHistory;
 use crate::state::{AppState, CommitDraft, RunningJob};
 use std::time::Instant;
 use trellis_core::undo::Action;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
-    let redo = matches!(msg, Msg::Redo);
+/// Undoes (or, with `redo`, redoes) the active tab's most recent operation.
+pub(super) fn run(st: &mut AppState, redo: bool, now: Instant, fx: &mut Vec<Effect>) {
     let top = if redo { st.undo.redo.last() } else { st.undo.undo.last() }.cloned();
     let Some(action) = top else {
         // Say why when the last operation can't be undone; otherwise there is nothing to do.

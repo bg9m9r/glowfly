@@ -4,8 +4,10 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::TabsMsg;
 use crate::state::worktree_manage::{LockForm, RemoveForm, needs_force_text, prune_blocked};
 use crate::state::worktrees::find;
 use crate::state::{AppState, Modal, RunningJob};
@@ -103,7 +105,7 @@ fn remove_clean_and_delete_branch() {
     assert_eq!(last_toast(&st), (true, "Removed worktree wt1 and deleted branch wt1".to_owned()));
     assert_eq!(st.undo.undo.len(), 1, "the branch delete is undoable");
 
-    drive(&mut st, Msg::Undo);
+    drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(has_branch(&st, "wt1"), "undo restored the branch");
     cleanup(&dir, &root);
 }
@@ -228,7 +230,7 @@ fn refusals() {
         assert!(st.modal.is_none());
         assert!(last_log(&st).1.ends_with("This worktree is open in this tab."), "{}", last_log(&st).1);
     }
-    drive(&mut st, Msg::SelectTab(0));
+    drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     drive(&mut st, wt(WorktreeMsg::RemoveDialog(linked.clone())));
     assert!(st.modal.is_none());
     assert!(last_log(&st).1.ends_with("It is open in another tab. Close that tab first."));
