@@ -61,7 +61,7 @@ fn edge(p: &egui::Painter, a: egui::Pos2, b: egui::Pos2, c: Color32) {
 pub fn draw_lanes(p: &egui::Painter, graph_x: f32, rect: Rect, g: &GraphRow) {
     let (top, mid, bottom) = (rect.top(), rect.center().y, rect.bottom());
     let x = |i| lane_x(graph_x, i);
-    for &i in &g.through {
+    for i in g.through.iter() {
         edge(p, pos2(x(i), top), pos2(x(i), bottom), lane_color(i));
     }
     for &(i, c) in &g.top {
