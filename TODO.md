@@ -33,7 +33,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 06:59 · **Diff viewer upgrade**: Highlight TOML, TypeScript, PowerShell, Dockerfile, Kotlin and Swift (`a1b840e`)
 - 2026-10-14 06:53 · **Command palette (fuzzy finder)**: Check out remote branches and tags (`c11355d`)
 - 2026-10-14 06:48 · **File actions**: Move untracked files that Discard deletes to the Recycle Bin or Trash (`db4c49b`)
-- 2026-10-14 06:24 · **Diff viewer upgrade**: Color the function context in hunk headers (`e9759bb`)
+- 2026-10-14 06:32 · **File actions**: Move deleted files to the Recycle Bin or Trash (`cf2bec8`)
 
 ---
 
