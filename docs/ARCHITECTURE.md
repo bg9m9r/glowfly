@@ -40,7 +40,8 @@ binary (package `trellis`).
 | `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
 | `commit_query.rs` | Commit search queries: author terms, matching rows, the author list. |
-| `settings.rs`, `settings/` | Preferences, graph column widths, per-repository graph filters and repository trust decisions. |
+| `settings.rs`, `settings/` | Preferences, graph column widths, per-repository graph filters, repository trust decisions and named identity profiles (seeding, syncing with git, name checks). |
+| `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; writing an identity to the global config in order. |
 | `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches). |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
 | `ssh_keys.rs`, `ssh_keys/` | SSH key pairs in `~/.ssh`: listing them with `ssh-keygen` fingerprints, and generating Ed25519 keys with `ssh-keygen` (written under a temporary name, then moved into place). |
@@ -55,7 +56,7 @@ binary (package `trellis`).
 | `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`) and askpass helper. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `Logged`, …). |
 | `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`), and `Effect::name` (`names.rs`). |
-| `lfs.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
+| `lfs.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data. |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
 | `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |

@@ -17,10 +17,12 @@ pub mod lines;
 pub mod palette;
 pub mod palette_commands;
 pub mod palette_kinds;
+pub mod palette_profiles;
 pub mod palette_recent;
 pub mod palette_tools;
 pub mod patch;
 pub mod prefs;
+pub mod profiles;
 pub mod publish;
 pub mod rebase;
 pub mod ref_rows;
@@ -238,6 +240,9 @@ pub struct AppState {
     pub tag_job: Option<tags::RemoteTagJob>,
     /// The running Apply patch job (update/patch.rs), for its headline.
     pub patch_apply: Option<patch::PendingApply>,
+    /// The profile a switch is writing to the global git config (app-wide: the config is
+    /// global).
+    pub profile_switch: Option<trellis_core::settings::ProfileId>,
     /// Repository trust prompts asked and repositories just created, this session.
     pub trust: trust::TrustSession,
     pub view: ViewState,
@@ -295,6 +300,7 @@ impl AppState {
             gitflow_finish: None,
             tag_job: None,
             patch_apply: None,
+            profile_switch: None,
             trust: Default::default(),
             view: ViewState::default(),
         }

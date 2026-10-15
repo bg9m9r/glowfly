@@ -23,6 +23,7 @@ mod ops;
 mod palette;
 mod patch;
 mod prefs;
+mod profiles;
 mod publish;
 mod rebase;
 mod recent;
@@ -114,6 +115,8 @@ mod palette_more_tests;
 #[cfg(test)]
 mod palette_pick_tests;
 #[cfg(test)]
+mod palette_profile_tests;
+#[cfg(test)]
 mod palette_recent_tests;
 #[cfg(test)]
 mod palette_stash_tests;
@@ -125,6 +128,8 @@ mod patch_tests;
 mod perf_tests;
 #[cfg(test)]
 mod pr_checkout_tests;
+#[cfg(test)]
+mod profiles_tests;
 #[cfg(test)]
 mod publish_tests;
 #[cfg(test)]
@@ -245,6 +250,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
         Msg::Sparse(m) => sparse::handle(st, m, now, &mut fx),
         Msg::Ssh(m) => ssh::handle(st, m, now, &mut fx),
+        Msg::Profile(m) => profiles::handle(st, m, now, &mut fx),
         Msg::Palette(m) => palette::handle(st, m, now, &mut fx),
         Msg::Trust(m) => trust::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),

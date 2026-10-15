@@ -312,6 +312,8 @@ pub enum Effect {
     },
     /// Listing and generating SSH keys (ssh.rs); unscoped, outside any repository.
     Ssh(crate::ssh::SshEffect),
+    /// Writing a profile's identity to the global git config (profile.rs); unscoped.
+    Profile(crate::profile::ProfileEffect),
     /// The built-in terminal panel's shells; handled by Runner::run, never a worker.
     Terminal(crate::terminal::TerminalEffect),
     /// Patch dialogs and saving commits as a patch (patch.rs); unscoped, each carries its repository.
@@ -384,6 +386,7 @@ impl Effect {
             | Effect::GenerateGpgKey { .. }
             | Effect::ExportPublicKey { .. }
             | Effect::Ssh(_)
+            | Effect::Profile(_)
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }
             | Effect::Terminal(_)

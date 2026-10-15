@@ -10,12 +10,14 @@ mod file;
 mod graph_filter;
 mod paths;
 mod tools;
+mod profiles;
 mod trust;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{config_dir, migrate_old_config_dir};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
+pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use trust::RepoTrust;
 
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
@@ -215,6 +217,13 @@ pub struct Settings {
     /// Preferences > External Tools.
     #[serde(default)]
     pub external_tools: ExternalTools,
+    /// Named author identities (Preferences > Profile); seeded from the global git identity
+    /// when the page first opens.
+    #[serde(default)]
+    pub profiles: Vec<Profile>,
+    /// The profile whose identity is in the global git config.
+    #[serde(default)]
+    pub active_profile: Option<ProfileId>,
 }
 
 impl Default for Settings {
@@ -261,6 +270,8 @@ impl Default for Settings {
             repo_trust: HashMap::new(),
             favorite_repos: Vec::new(),
             external_tools: ExternalTools::default(),
+            profiles: Vec::new(),
+            active_profile: None,
         }
     }
 }

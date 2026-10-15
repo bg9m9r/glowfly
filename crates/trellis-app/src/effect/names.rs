@@ -59,6 +59,7 @@ impl Effect {
             Effect::GenerateGpgKey { .. } => "generate-key",
             Effect::ExportPublicKey { .. } => "export-key",
             Effect::Ssh(e) => e.name(),
+            Effect::Profile(e) => e.name(),
             Effect::Watch(_) => "watch",
             Effect::AnswerPrompt { .. } => "answer-prompt",
             Effect::Terminal(_) => "terminal",

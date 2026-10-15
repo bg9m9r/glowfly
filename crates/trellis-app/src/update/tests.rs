@@ -92,6 +92,8 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
             // Never start programs or open dialogs from tests.
             | Effect::Tool(_)
+            // Would write the developer's global git config.
+            | Effect::Profile(_)
     )
 }
 

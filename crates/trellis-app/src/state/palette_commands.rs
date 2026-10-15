@@ -1,7 +1,7 @@
 //! The command palette's commands: which are available now, their labels, hidden keywords,
 //! details and the global keys that do the same (from the binding table in `keymap.rs`).
 
-use super::palette_kinds::{InputKind, PickKind, StashAction};
+use super::palette_kinds::StashAction;
 use super::{AppState, Selection};
 use crate::keymap::BindingId;
 use std::collections::HashSet;
@@ -124,28 +124,13 @@ pub enum PaletteCommand {
     ApplyPatch,
     /// External editor actions (tools.rs).
     Tools(crate::tools::ToolsMsg),
+    /// Enter the profile sub-list; choosing a profile runs SwitchProfile.
+    ChooseProfile,
+    /// Write this profile's identity to the global git config and make it current.
+    SwitchProfile(trellis_core::settings::ProfileId),
 }
 
 impl PaletteCommand {
-    /// The sub-list this command opens instead of running at once.
-    pub fn pick_kind(&self) -> Option<PickKind> {
-        match self {
-            PaletteCommand::FileHistory => Some(PickKind::FileHistory),
-            PaletteCommand::ChooseStash(a) => Some(PickKind::Stash(*a)),
-            PaletteCommand::ChooseStashToRename => Some(PickKind::RenameStash),
-            _ => None,
-        }
-    }
-
-    /// The free-text step this command opens instead of running at once.
-    pub fn input_kind(&self) -> Option<InputKind> {
-        match self {
-            PaletteCommand::StashMessage => Some(InputKind::StashMessage),
-            PaletteCommand::FetchMoreCommits => Some(InputKind::DeepenBy),
-            _ => None,
-        }
-    }
-
     /// The key that does the same thing, from the binding table.
     pub fn shortcut(&self) -> Option<&'static str> {
         self.binding().map(crate::keymap::hint)
@@ -320,6 +305,7 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
         out.push(entry(C::CloseTab, "Close tab", "close repository"));
     }
     out.push(entry(C::OpenPrefs, "Open Preferences", "settings options configure"));
+    super::palette_profiles::profile_entries(st, out);
     out.push(entry(C::KeyboardShortcuts, "Keyboard shortcuts", "keys keyboard bindings hotkeys help reference list"));
     let labels = st.settings.toolbar_labels;
     let label = if labels { "Hide toolbar labels" } else { "Show toolbar labels" };

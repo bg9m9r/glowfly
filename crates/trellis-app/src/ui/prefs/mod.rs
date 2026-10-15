@@ -8,6 +8,7 @@ mod git;
 mod gitflow;
 mod integrations;
 mod lfs;
+mod profiles;
 mod signing;
 mod sparse;
 mod ssh;
@@ -90,6 +91,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     };
     let sparse_cx = sparse::SparseContext { repo_name: repo_name.clone(), job: st.job.as_ref().map(|j| j.label.clone()) };
     let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some() };
+    let switching = st.profile_switch;
     let settings = &mut st.settings;
     let Some(prefs) = st.prefs.as_mut() else { return };
     let fs = st.forge.as_ref();
@@ -129,7 +131,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     _ => {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {
-                            PrefPage::Profile => git::profile_page(ui, git, msgs),
+                            PrefPage::Profile => profiles::profile_page(ui, &*settings, &mut prefs.profiles, git, switching, msgs),
                             PrefPage::RepoIdentity => git::identity_page(ui, git, msgs),
                             _ => git::hooks_page(ui, git, msgs),
                         }
@@ -156,7 +158,10 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
             }
         };
         go(ui, PrefPage::General, Icon::Gear, "General");
-        go(ui, PrefPage::Profile, Icon::User, "Profile");
+        // Not `go`: the page seeds and fills its profiles when it opens.
+        if widgets::nav_row(ui, Some(Icon::User), "Profile", page == PrefPage::Profile, 15.0).clicked() {
+            msgs.push(Msg::Profile(crate::profile::ProfileMsg::ShowPage));
+        }
         go(ui, PrefPage::Integrations, Icon::Plug, "Integrations");
         go(ui, PrefPage::Ui, Icon::Brush, "UI Customization");
         go(ui, PrefPage::Editor, Icon::Code, "Editor");

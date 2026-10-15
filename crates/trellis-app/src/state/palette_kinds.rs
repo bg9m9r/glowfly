@@ -1,8 +1,31 @@
-//! The palette's second steps: the sub-lists a command opens (tracked files, stashes) and
-//! free-text steps (a stash message, a commit count), with their titles, prompts and footers.
+//! The palette's second steps: the sub-lists a command opens (tracked files, stashes,
+//! profiles) and free-text steps (a stash message, a commit count), with their titles, prompts
+//! and footers, and which command opens which step.
 
 use super::palette_commands::PaletteCommand;
 use trellis_core::clone_ops::parse_depth;
+
+impl PaletteCommand {
+    /// The sub-list this command opens instead of running at once.
+    pub fn pick_kind(&self) -> Option<PickKind> {
+        match self {
+            PaletteCommand::FileHistory => Some(PickKind::FileHistory),
+            PaletteCommand::ChooseStash(a) => Some(PickKind::Stash(*a)),
+            PaletteCommand::ChooseStashToRename => Some(PickKind::RenameStash),
+            PaletteCommand::ChooseProfile => Some(PickKind::Profile),
+            _ => None,
+        }
+    }
+
+    /// The free-text step this command opens instead of running at once.
+    pub fn input_kind(&self) -> Option<InputKind> {
+        match self {
+            PaletteCommand::StashMessage => Some(InputKind::StashMessage),
+            PaletteCommand::FetchMoreCommits => Some(InputKind::DeepenBy),
+            _ => None,
+        }
+    }
+}
 
 /// What a stash sub-list does with the chosen stash.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,6 +62,8 @@ pub enum PickKind {
     Stash(StashAction),
     /// Choose a stash to open the Rename stash dialog for.
     RenameStash,
+    /// Choose a profile to switch to.
+    Profile,
 }
 
 impl PickKind {
@@ -50,6 +75,7 @@ impl PickKind {
             PickKind::Stash(StashAction::Pop) => "Pop stash",
             PickKind::Stash(StashAction::Drop) => "Delete stash",
             PickKind::RenameStash => "Rename stash",
+            PickKind::Profile => "Switch profile",
         }
     }
 
@@ -61,6 +87,7 @@ impl PickKind {
             PickKind::Stash(StashAction::Pop) => "Find a stash to pop",
             PickKind::Stash(StashAction::Drop) => "Find a stash to delete",
             PickKind::RenameStash => "Find a stash to rename",
+            PickKind::Profile => "Find a profile to switch to",
         }
     }
 
@@ -68,6 +95,7 @@ impl PickKind {
         match self {
             PickKind::FileHistory => "Loading files…",
             PickKind::Stash(_) | PickKind::RenameStash => "Loading stashes…",
+            PickKind::Profile => "Loading profiles…",
         }
     }
 
@@ -76,6 +104,7 @@ impl PickKind {
         match self {
             PickKind::FileHistory => "No matching files",
             PickKind::Stash(_) | PickKind::RenameStash => "No matching stashes",
+            PickKind::Profile => "No matching profiles",
         }
     }
 
@@ -84,6 +113,7 @@ impl PickKind {
         match self {
             PickKind::FileHistory => "This repository has no tracked files",
             PickKind::Stash(_) | PickKind::RenameStash => "This repository has no stashes",
+            PickKind::Profile => "No profiles yet",
         }
     }
 
@@ -96,6 +126,7 @@ impl PickKind {
                 StashAction::Drop => "Up/Down to choose, Enter to delete, Backspace or Esc to go back",
             },
             PickKind::RenameStash => "Up/Down to choose, Enter to rename, Backspace or Esc to go back",
+            PickKind::Profile => "Up/Down to choose, Enter to switch, Backspace or Esc to go back",
         }
     }
 
@@ -104,6 +135,7 @@ impl PickKind {
         let noun = match self {
             PickKind::FileHistory => "files",
             PickKind::Stash(_) | PickKind::RenameStash => "stashes",
+            PickKind::Profile => "profiles",
         };
         format!("Showing {shown} of {total} {noun}. Type more to narrow the list.")
     }

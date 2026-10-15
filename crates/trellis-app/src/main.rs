@@ -15,6 +15,7 @@ mod lfs;
 mod msg;
 mod patch;
 mod platform;
+mod profile;
 mod remote;
 mod runner;
 mod ssh;

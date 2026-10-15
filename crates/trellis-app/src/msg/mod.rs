@@ -2,7 +2,7 @@
 //!
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
-//! `terminal`, `ssh`, `patch`, `tools` and `conflict_check`). Each area's enum goes to one handler in `update/`, which matches it
+//! `terminal`, `ssh`, `profile`, `patch`, `tools` and `conflict_check`). Each area's enum goes to one handler in `update/`, which matches it
 //! exhaustively, and says through `on_inactive` what its results still need when they arrive
 //! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
 
@@ -118,6 +118,8 @@ pub enum Msg {
     Sparse(SparseMsg),
     /// Preferences > SSH: key pairs and generating a key (ssh.rs).
     Ssh(crate::ssh::SshMsg),
+    /// Named identity profiles: Preferences > Profile and switching (update/profiles.rs).
+    Profile(crate::profile::ProfileMsg),
     /// The command palette (update/palette.rs).
     Palette(PaletteMsg),
     /// The repository trust prompt (update/trust.rs).
@@ -215,6 +217,7 @@ impl Msg {
             Msg::GitFlow(m) => m.on_inactive(),
             Msg::Sparse(m) => m.on_inactive(),
             Msg::Ssh(m) => m.on_inactive(),
+            Msg::Profile(m) => m.on_inactive(),
             Msg::Palette(m) => m.on_inactive(),
             Msg::Trust(m) => m.on_inactive(),
             Msg::Tick(_)

@@ -84,6 +84,9 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             if let Some(p) = st.prefs.as_mut() {
                 p.ssh.prefill_comment(&values.user_email);
                 p.git = Some(values);
+                if p.page == PrefPage::Profile {
+                    super::profiles::on_config(st, fx);
+                }
             }
             load_signing_keys(st, fx);
         }

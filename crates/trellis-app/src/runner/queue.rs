@@ -90,6 +90,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::FetchAvatars(_)
         | Effect::ReadGitConfig { .. }
         | Effect::SetGitConfig { .. }
+        | Effect::Profile(_)
         | Effect::SaveSettings(_)
         | Effect::SaveRecent(_)
         | Effect::SaveTabs { .. }
@@ -201,6 +202,11 @@ mod tests {
         };
         let job = crate::conflict_check::CheckJob { workdir: w.clone(), request, manual: false, generation: 0 };
         assert_eq!(repo_of(&Effect::CheckConflicts(job)), None);
+        // Switching profiles writes the global git config only.
+        let identity = trellis_core::identity::Identity::default();
+        let apply =
+            crate::profile::ProfileEffect::Apply { cwd: w.clone(), has_repo: true, id: trellis_core::settings::ProfileId(1), identity };
+        assert_eq!(repo_of(&Effect::Profile(apply)), None);
     }
 
     #[test]

@@ -2,8 +2,8 @@
 //! through the message that the rest of the app already uses for it (remembering plain
 //! commands among the recently run ones), and the second steps that
 //! two-step commands open: the file finder (loading its items in the background), the stash
-//! sub-lists (apply, pop, delete and rename), the stash message step and the commit count of a
-//! shallow clone's fetch.
+//! sub-lists (apply, pop, delete and rename), the profile sub-list (switching profiles), the
+//! stash message step and the commit count of a shallow clone's fetch.
 
 use crate::effect::Effect;
 use crate::msg::BranchMsg;
@@ -116,7 +116,8 @@ fn open_step(st: &mut AppState, mode: Mode) -> bool {
 }
 
 /// Switches the palette to the sub-list for `kind` (opening it if closed) and fills it: the
-/// tracked files load in the background, the stashes come from the snapshot.
+/// tracked files load in the background, the stashes come from the snapshot, the profiles from
+/// settings.
 fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
     match kind {
         PickKind::FileHistory => {
@@ -141,6 +142,13 @@ fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
             }
             let list = st.snap.as_ref().map(|s| s.stashes.clone()).unwrap_or_default();
             open_step(st, Mode::Pick(Pick::stashes_to_rename(&list)));
+        }
+        PickKind::Profile => {
+            if st.settings.profiles.len() < 2 || st.profile_switch.is_some() {
+                return;
+            }
+            let pick = Pick::profiles(&st.settings);
+            open_step(st, Mode::Pick(pick));
         }
     }
 }
@@ -237,12 +245,13 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Remote(m) => Msg::Remote(m),
         C::Tools(m) => Msg::Tools(m),
         C::ApplyPatch => Msg::Patch(crate::patch::PatchMsg::PickToApply),
+        C::SwitchProfile(id) => Msg::Profile(crate::profile::ProfileMsg::Switch(id)),
         C::ReviewTrust => {
             let Some(s) = &st.snap else { return };
             Msg::Trust(TrustMsg::Ask { real: s.real_workdir.clone() })
         }
         // Opens a step in `handle`; never run directly.
-        C::FileHistory | C::ChooseStash(_) | C::ChooseStashToRename | C::StashMessage | C::FetchMoreCommits => return,
+        C::FileHistory | C::ChooseStash(_) | C::ChooseStashToRename | C::ChooseProfile | C::StashMessage | C::FetchMoreCommits => return,
     };
     fx.extend(super::update(st, msg, now));
 }

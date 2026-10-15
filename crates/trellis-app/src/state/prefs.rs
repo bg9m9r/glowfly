@@ -102,6 +102,7 @@ pub struct PrefsState {
     pub gitflow: crate::state::gitflow::GitFlowPage,
     pub sparse: crate::state::sparse::SparsePage,
     pub ssh: crate::state::ssh::SshPage,
+    pub profiles: crate::state::profiles::ProfilesPage,
 }
 
 impl PrefsState {
@@ -121,6 +122,7 @@ impl PrefsState {
             gitflow: Default::default(),
             sparse: Default::default(),
             ssh: Default::default(),
+            profiles: Default::default(),
         }
     }
 }

@@ -1,0 +1,124 @@
+//! Preferences > Profile: which profile the page edits, the text buffers of its fields, the
+//! inline rename and New profile forms, and the texts the page, its dialog and toasts show.
+
+use crate::state::prefs::GitConfigValues;
+use trellis_core::identity::Identity;
+use trellis_core::settings::{ProfileId, Settings};
+
+pub const DELETE_TITLE: &str = "Delete profile";
+pub const DELETE_BUTTON: &str = "Delete";
+pub const STILL_SWITCHING: &str = "A profile switch is still running.";
+pub const GONE_AFTER_SWITCH: &str = "Switched Git identity, but that profile no longer exists.";
+
+pub const LIST_LABEL: &str = "Profiles";
+pub const LIST_HELP: &str = "Each profile keeps an author identity. Switching writes it to your global Git config.";
+pub const CURRENT_CHIP: &str = "Current profile";
+pub const NO_IDENTITY: &str = "No author identity";
+pub const SWITCH_BUTTON: &str = "Switch to this profile";
+pub const RENAME_BUTTON: &str = "Rename";
+pub const DELETE_DISABLED: &str = "Switch to another profile before deleting this one";
+pub const ADD_BUTTON: &str = "Add profile";
+pub const NEW_LABEL: &str = "New profile";
+pub const NAME_LABEL: &str = "Profile name";
+pub const NEW_NAME_HINT: &str = "Work";
+pub const COPY_CURRENT: &str = "Copy the identity of the current profile";
+pub const CURRENT_HELP: &str = "Changes to the current profile are saved to your global Git config (user.name / user.email / user.signingkey) when you leave the field.";
+pub const OTHER_HELP: &str = "Saved with the profile. Written to your global Git config when you switch to it.";
+pub const KEY_HELP: &str = "Leave empty to keep whatever key Git has when you switch to this profile.";
+
+pub fn delete_body(name: &str) -> String {
+    format!("Delete the profile \"{name}\"? Your Git config is not changed. This can't be undone.")
+}
+
+pub fn switched(name: &str) -> String {
+    format!("Switched to profile {name}")
+}
+
+pub fn switch_failed(name: &str, e: &str) -> String {
+    format!("Could not switch to profile {name}: {e}")
+}
+
+/// The caption over the selected profile's fields.
+pub fn editing_caption(name: &str, current: bool) -> String {
+    if current { format!("Editing {name} (current)") } else { format!("Editing {name}") }
+}
+
+/// The Signing Key field's hint: git's key when the profile has none of its own.
+pub fn key_hint(profile_key: Option<&str>, git_key: &str) -> String {
+    if profile_key.is_none() && !git_key.trim().is_empty() { format!("uses Git's key {}", git_key.trim()) } else { "optional".into() }
+}
+
+/// The profile row's second line.
+pub fn identity_line(name: &str, email: &str) -> Option<String> {
+    match (name.trim(), email.trim()) {
+        ("", "") => None,
+        (n, "") => Some(n.to_owned()),
+        ("", e) => Some(format!("<{e}>")),
+        (n, e) => Some(format!("{n} <{e}>")),
+    }
+}
+
+/// The global identity in `v`, its signing key only when set.
+pub fn git_identity(v: &GitConfigValues) -> Identity {
+    let key = v.signing_key.trim();
+    Identity { name: v.user_name.clone(), email: v.user_email.clone(), signing_key: (!key.is_empty()).then(|| key.to_owned()) }
+}
+
+#[derive(Default)]
+pub struct ProfilesPage {
+    /// The profile whose fields the page shows.
+    pub selected: Option<ProfileId>,
+    /// The fields' text buffers.
+    pub author_name: String,
+    pub author_email: String,
+    pub signing_key: String,
+    pub renaming: Option<RenameForm>,
+    pub adding: Option<AddForm>,
+}
+
+/// A row's inline rename field.
+pub struct RenameForm {
+    pub id: ProfileId,
+    pub name: String,
+    pub error: Option<String>,
+    /// Ask the view to focus the field once.
+    pub focus: bool,
+}
+
+impl RenameForm {
+    pub fn new(id: ProfileId, name: &str) -> Self {
+        Self { id, name: name.to_owned(), error: None, focus: true }
+    }
+}
+
+/// The New profile form.
+pub struct AddForm {
+    pub name: String,
+    pub copy_current: bool,
+    pub error: Option<String>,
+}
+
+impl AddForm {
+    pub fn new() -> Self {
+        Self { name: String::new(), copy_current: true, error: None }
+    }
+}
+
+impl Default for AddForm {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ProfilesPage {
+    /// Selects `select`, else the kept selection while it exists, else the current profile,
+    /// and fills the fields from it.
+    pub fn fill(&mut self, settings: &Settings, select: Option<ProfileId>) {
+        let exists = |id: &ProfileId| settings.profile(*id).is_some();
+        self.selected = select.filter(exists).or(self.selected.filter(exists)).or(settings.active_profile().map(|p| p.id));
+        let p = self.selected.and_then(|id| settings.profile(id));
+        self.author_name = p.map(|p| p.author_name.clone()).unwrap_or_default();
+        self.author_email = p.map(|p| p.author_email.clone()).unwrap_or_default();
+        self.signing_key = p.and_then(|p| p.signing_key.clone()).unwrap_or_default();
+    }
+}

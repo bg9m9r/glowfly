@@ -3,7 +3,7 @@
 //! and the tests all build the list through `entries` and `listed` (or `shown`), which keep at
 //! most `MAX_COMMAND_ROWS` of the ranked matches; the commands themselves are
 //! in `palette_commands`. Some commands open a second step: a list of items for that command
-//! (`Mode::Pick`), such as tracked files or stashes, or a free-text field (`Mode::Input`), such
+//! (`Mode::Pick`), such as tracked files, stashes or profiles, or a free-text field (`Mode::Input`), such
 //! as a stash message. The steps' texts are in `palette_kinds`. With an empty query, recently
 //! run commands (`palette_recent`) come first; with a query, recency only breaks score ties.
 
@@ -11,8 +11,10 @@ pub use super::palette_commands::{Entry, PaletteCommand, entries};
 pub use super::palette_kinds::{InputKind, PickKind, StashAction};
 
 use super::AppState;
+use super::palette_profiles::{ProfileRow, profile_rows};
 use trellis_core::fuzzy;
 use trellis_core::repo::StashInfo;
+use trellis_core::settings::Settings;
 
 #[derive(Default)]
 pub struct Palette {
@@ -61,6 +63,8 @@ pub struct Pick {
     /// The stashes behind the items of a stash sub-list (empty for other kinds), as the
     /// snapshot listed them when the sub-list opened.
     stashes: Vec<StashInfo>,
+    /// The profiles behind the items of the profile sub-list (empty for other kinds).
+    profiles: Vec<ProfileRow>,
     /// The ranking for the last query, kept until the query or the items change.
     ranked: Option<Ranked>,
 }
@@ -84,7 +88,7 @@ pub struct Hit {
 
 impl Pick {
     pub fn new(kind: PickKind) -> Self {
-        Self { kind, items: Items::Loading, stashes: Vec::new(), ranked: None }
+        Self { kind, items: Items::Loading, stashes: Vec::new(), profiles: Vec::new(), ranked: None }
     }
 
     /// A stash sub-list over `list`, labelled by the stash messages.
@@ -99,12 +103,22 @@ impl Pick {
 
     fn over_stashes(kind: PickKind, list: &[StashInfo]) -> Self {
         let items = Items::Ready(list.iter().map(|s| s.message.clone()).collect());
-        Self { kind, items, stashes: list.to_vec(), ranked: None }
+        Self { kind, items, stashes: list.to_vec(), profiles: Vec::new(), ranked: None }
     }
 
-    /// The dim text at the right of item `index`: a stash's ref.
+    /// The profile sub-list, labelled by the profile names in settings order.
+    pub fn profiles(settings: &Settings) -> Self {
+        let (names, profiles) = profile_rows(settings);
+        Self { kind: PickKind::Profile, items: Items::Ready(names), stashes: Vec::new(), profiles, ranked: None }
+    }
+
+    /// The dim text at the right of item `index`: a stash's ref, or a profile's email.
     pub fn detail(&self, index: usize) -> Option<String> {
-        self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index))
+        match self.kind {
+            PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
+            PickKind::Profile => self.profiles.get(index).map(|r| r.detail.clone()),
+            PickKind::FileHistory => None,
+        }
     }
 
     /// What choosing item `index` runs.
@@ -113,6 +127,7 @@ impl Pick {
             PickKind::FileHistory => Some(PaletteCommand::OpenFileHistory(self.label(index).to_owned())),
             PickKind::Stash(action) => self.stashes.get(index).map(|s| PaletteCommand::StashOp { action, oid: s.oid }),
             PickKind::RenameStash => self.stashes.get(index).map(|s| PaletteCommand::RenameStash { oid: s.oid }),
+            PickKind::Profile => self.profiles.get(index).map(|r| PaletteCommand::SwitchProfile(r.id)),
         }
     }
 
@@ -136,13 +151,17 @@ impl Pick {
 
     /// Ranks the items for `query`, unless they already are. A query that extends the last one
     /// only searches the last matches: whatever matches the longer query matches the shorter.
-    /// Details (a stash's ref) match as hidden keywords.
+    /// Details (a stash's ref, a profile's email) match as hidden keywords.
     pub fn refresh(&mut self, query: &str) {
         if self.ranked.as_ref().is_some_and(|r| r.query == query) {
             return;
         }
-        let details: Vec<String> = (0..self.stashes.len()).filter_map(|i| self.detail(i)).collect();
         let Items::Ready(items) = &self.items else { return };
+        // One per item, so a detail can't land on another item (none at all for files).
+        let details: Vec<String> = match self.kind {
+            PickKind::FileHistory => Vec::new(),
+            _ => (0..items.len()).map(|i| self.detail(i).unwrap_or_default()).collect(),
+        };
         let squash = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
         let ranked = if squash(query).is_empty() {
             let hits = (0..items.len().min(MAX_PICK_ROWS)).map(|index| Hit { index, matched: Vec::new() }).collect();

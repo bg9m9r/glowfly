@@ -51,7 +51,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - Fetch, Pull (ff / ff-only / rebase), Push (sets upstream automatically, force-with-lease),
   Stash and Pop, Clone, Init, and search
 - Merge/rebase/cherry-pick in-progress banner with Continue/Skip/Abort
-- Preferences: General, Profile (git identity), Integrations, UI, Commit Signing, plus
+- Preferences: General, Profile (named identity profiles), Integrations, UI, Commit Signing, plus
   repo-specific Identity, Hooks and Issue Tracker
 - Integrations: GitHub, GitHub Enterprise Server, GitLab, GitLab Self-Managed, Bitbucket,
   Bitbucket Data Center, Azure DevOps, Jira Cloud, and Jira Data Center. Each supports listing
@@ -67,7 +67,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Page | Trellis | Gap |
 |---|---|---|
 | General | ✔ General | Missing: delete `.orig` files after merge, keep submodules updated, show all commits, lazy loading, path to `sh.exe`, extended logging, conflict detection |
-| Profiles | ◐ Profile (git identity only) | Several named profiles with switching (P1 Profiles) |
+| Profiles | ◐ Profile (named identity profiles, switching) | Per-profile integrations and preferences (P1 Profiles) |
 | SSH | ◐ SSH page (list key pairs, copy a public key, generate an Ed25519 key) | Choose the key git uses, use local agent, add a key to a hosting service (P1 SSH key management) |
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
@@ -863,6 +863,19 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Keys outside ~/.ssh (IdentityFile entries in ~/.ssh/config, agent-only keys)
 - [ ] **Profiles**
   Several named profiles (identity, integrations, preferences) with quick switching.
+  - [x] Named identity profiles: add, rename, delete (asking first), switch from Preferences >
+    Profile or the palette (writes user.name/email/signingkey to the global config); the first
+    is seeded from the global identity
+  - [ ] Per-profile integrations: each profile keeps its own connected hosting-service accounts
+  - [ ] Per-profile app preferences: theme, UI customization, editor and general settings
+    switch with the profile
+  - [ ] Per-profile signing format and program (gpg.format, gpg.program, commit.gpgsign) and
+    SSH key (core.sshCommand)
+  - [ ] Profile icon or avatar picker, and a profile switcher in the toolbar or status bar
+  - [ ] Automatic per-repository or per-folder profiles (includeIf / local identity applied on
+    open)
+  - [ ] Import and export of profiles, and sharing them between machines
+  - [ ] A keyboard shortcut for Switch profile
 - [x] **Local patches**
   Export commits, files or the WIP to a `.patch` file; open and apply a patch.
   - [x] Create patch… from one commit or a multi-selection in the graph menus (one mbox-style

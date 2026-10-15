@@ -18,6 +18,7 @@ pub mod gitcli;
 pub mod gitflow;
 pub mod graph;
 pub mod highlight;
+pub mod identity;
 pub mod intraline;
 pub mod lfs;
 pub mod line_pairs;

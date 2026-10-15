@@ -28,7 +28,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use trellis_core::avatars;
 use trellis_core::forge;
-use trellis_core::gitcli::{self, args};
+use trellis_core::gitcli;
 use trellis_core::repo;
 use trellis_core::undo::{self, Action, Plan};
 
@@ -43,6 +43,7 @@ mod highlight;
 mod keys;
 mod os;
 mod patches;
+mod profiles;
 mod queue;
 mod rebase;
 mod saves;
@@ -287,16 +288,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 .collect(),
         ))),
         Effect::ReadGitConfig { cwd, has_repo } => Some(Msg::Prefs(PrefsMsg::GitConfigLoaded(config::read_git_config(&cwd, has_repo)))),
-        Effect::SetGitConfig { cwd, global, key, value } => {
-            let scope = if global { "--global" } else { "--local" };
-            let a = match &value {
-                Some(v) => args(&["config", scope, &key, v]),
-                None => args(&["config", scope, "--unset", &key]),
-            };
-            let (ok, out) = gitcli::run(&cwd, &a);
-            // `--unset` of a missing key exits 5; that's fine.
-            (!ok && value.is_some()).then(|| Msg::Logged { ok: false, text: format!("git config {key} failed: {out}") })
-        }
+        Effect::SetGitConfig { cwd, global, key, value } => config::set(&cwd, global, &key, value.as_deref()),
         save @ (Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. }) => saves::save_now(save),
         Effect::CheckRepoFolders(paths) => Some(Msg::Recent(RecentMsg::FoldersChecked(crate::platform::missing_folders(&paths)))),
         Effect::OpenUrl(url) => os::open_url(&url),
@@ -316,6 +308,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::GenerateGpgKey { program, name, email, passphrase } => Some(keys::generate_gpg(&program, &name, &email, &passphrase)),
         Effect::ExportPublicKey { format, program, key } => Some(keys::export_public(format, &program, &key)),
         Effect::Ssh(e) => Some(ssh::run(e)),
+        Effect::Profile(e) => Some(profiles::run(e)),
         Effect::Patch(p) => Some(patches::run(p)),
         Effect::Tool(t) => tools::run(t),
         Effect::CheckConflicts(job) => Some(conflict_check::run(job)),

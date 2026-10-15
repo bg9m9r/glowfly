@@ -1,8 +1,14 @@
-//! Reading the git configuration values Preferences shows.
+//! Reading the git configuration values Preferences shows, and writing one.
 
+use crate::msg::Msg;
 use crate::state::prefs::GitConfigValues;
 use std::path::Path;
 use trellis_core::gitcli::{self, args};
+
+/// Sets or (for None) unsets one config value; a failure goes to the activity log.
+pub(super) fn set(cwd: &Path, global: bool, key: &str, value: Option<&str>) -> Option<Msg> {
+    trellis_core::identity::set_config(cwd, global, key, value, &[]).err().map(|text| Msg::Logged { ok: false, text })
+}
 
 pub(super) fn read_git_config(cwd: &Path, has_repo: bool) -> GitConfigValues {
     let read = |global: bool, key: &str| {
