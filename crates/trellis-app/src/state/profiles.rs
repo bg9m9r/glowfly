@@ -38,6 +38,10 @@ pub fn switch_failed(name: &str, e: &str) -> String {
     format!("Could not switch to profile {name}: {e}")
 }
 
+pub fn rewrite_failed(name: &str, e: &str) -> String {
+    format!("Could not write profile {name}'s identity to your Git config: {e}")
+}
+
 /// The caption over the selected profile's fields.
 pub fn editing_caption(name: &str, current: bool) -> String {
     if current { format!("Editing {name} (current)") } else { format!("Editing {name}") }

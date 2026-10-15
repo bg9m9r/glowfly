@@ -12,5 +12,9 @@ pub(super) fn run(e: ProfileEffect) -> Msg {
             let result = identity::write_global(&cwd, &identity, &[]).map(|()| config::read_git_config(&cwd, has_repo));
             Msg::Profile(ProfileMsg::Applied { id, result })
         }
+        ProfileEffect::Rewrite { cwd, has_repo, id, identity } => {
+            let result = identity::write_global(&cwd, &identity, &[]).map(|()| config::read_git_config(&cwd, has_repo));
+            Msg::Profile(ProfileMsg::Rewritten { id, result })
+        }
     }
 }

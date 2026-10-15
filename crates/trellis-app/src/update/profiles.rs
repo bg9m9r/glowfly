@@ -8,7 +8,7 @@ use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::profile::{IdentityField, ProfileEffect, ProfileMsg};
 use crate::state::profiles::{
-    DELETE_BUTTON, DELETE_TITLE, GONE_AFTER_SWITCH, STILL_SWITCHING, delete_body, git_identity, switch_failed, switched,
+    DELETE_BUTTON, DELETE_TITLE, GONE_AFTER_SWITCH, STILL_SWITCHING, delete_body, git_identity, rewrite_failed, switch_failed, switched,
 };
 use crate::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
@@ -110,14 +110,16 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
             fx.push(Effect::Profile(ProfileEffect::Apply { cwd: st.any_dir(), has_repo: st.snap.is_some(), id, identity }));
         }
         ProfileMsg::Applied { id, result } => applied(st, id, result, now, fx),
+        ProfileMsg::Rewritten { id, result } => rewritten(st, id, result, now, fx),
     }
 }
 
 /// Fresh git config reached the open Profile page: seed the first profile or bring the current
-/// one in step with git, then fill the page.
+/// one in step with git, then fill the page. Not while a switch writes the config: a read then
+/// may hold some of the other profile's values, and the current profile would take them.
 pub(super) fn on_config(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(git) = st.prefs.as_ref().and_then(|p| p.git.as_ref()).map(git_identity) else { return };
-    if st.settings.seed_or_sync_profiles(&git) {
+    if st.profile_switch.is_none() && st.settings.seed_or_sync_profiles(&git) {
         fx.push(save_settings(st));
     }
     if let Some(p) = st.prefs.as_mut() {
@@ -126,7 +128,9 @@ pub(super) fn on_config(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// Stores an edited field. The current profile's identity is git's, so its changes are written
-/// to the global config as well; clearing its key only forgets it here.
+/// to the global config as well; clearing its key only forgets it here. While a switch runs,
+/// that write waits for it (two writers would fight over the file, and the switch's would win
+/// or lose at random): the profile that ends up current gets its identity written afterwards.
 fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityField, value: &str, fx: &mut Vec<Effect>) {
     let Some(profile) = st.settings.profile_mut(id) else { return };
     let changed = match field {
@@ -138,6 +142,12 @@ fn set_identity(st: &mut AppState, id: ProfileId, field: IdentityField, value: &
         return;
     }
     fx.push(save_settings(st));
+    if st.profile_switch.is_some() {
+        if (st.settings.active_profile == Some(id) || st.profile_switch == Some(id)) && !st.profile_switch_edits.contains(&id) {
+            st.profile_switch_edits.push(id);
+        }
+        return;
+    }
     if st.settings.active_profile != Some(id) || (field == IdentityField::SigningKey && value.is_empty()) {
         return;
     }
@@ -171,8 +181,8 @@ fn applied(
     now: Instant,
     fx: &mut Vec<Effect>,
 ) {
-    st.profile_switch = None;
     let name = st.settings.profile(id).map(|p| p.name.clone());
+    let failed = result.is_err();
     match result {
         Ok(values) => {
             match &name {
@@ -192,9 +202,51 @@ fn applied(
             let text = switch_failed(name.as_deref().unwrap_or("(deleted)"), &e);
             st.log(false, text.clone());
             st.toast(false, text, now);
-            if st.prefs.is_some() {
-                fx.push(Effect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() });
-            }
         }
     }
+    // A failed switch put git's earlier values back; the read shows them.
+    if !finish_switch(st, fx) && failed && st.prefs.is_some() {
+        fx.push(Effect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() });
+    }
+}
+
+/// The current profile's identity, edited during a switch, was written (or not).
+fn rewritten(
+    st: &mut AppState,
+    id: ProfileId,
+    result: Result<crate::state::prefs::GitConfigValues, String>,
+    now: Instant,
+    fx: &mut Vec<Effect>,
+) {
+    let failed = result.is_err();
+    match result {
+        Ok(values) => {
+            if let Some(p) = st.prefs.as_mut() {
+                p.git = Some(values);
+                p.profiles.fill(&st.settings, None);
+            }
+        }
+        Err(e) => {
+            let name = st.settings.profile(id).map(|p| p.name.clone()).unwrap_or_else(|| "(deleted)".into());
+            let text = rewrite_failed(&name, &e);
+            st.log(false, text.clone());
+            st.toast(false, text, now);
+        }
+    }
+    if !finish_switch(st, fx) && failed && st.prefs.is_some() {
+        fx.push(Effect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() });
+    }
+}
+
+/// Ends the running switch's writes. When the profile that is now current was edited
+/// meanwhile, its identity is written next (the switch stays busy until then); returns
+/// whether it was.
+fn finish_switch(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
+    st.profile_switch = None;
+    let edits = std::mem::take(&mut st.profile_switch_edits);
+    let Some(current) = st.settings.active_profile().filter(|p| edits.contains(&p.id)) else { return false };
+    let (id, identity) = (current.id, current.identity());
+    st.profile_switch = Some(id);
+    fx.push(Effect::Profile(ProfileEffect::Rewrite { cwd: st.any_dir(), has_repo: st.snap.is_some(), id, identity }));
+    true
 }

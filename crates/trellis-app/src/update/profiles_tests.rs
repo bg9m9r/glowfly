@@ -262,3 +262,90 @@ fn a_failed_switch_keeps_the_current_profile() {
     assert!(st.toasts.iter().any(|t| !t.ok && t.text == text));
     assert!(matches!(&fx[..], [Effect::ReadGitConfig { .. }]), "{fx:?}");
 }
+
+fn rewrite(fx: &[Effect]) -> Option<(ProfileId, Identity)> {
+    fx.iter().find_map(|e| match e {
+        Effect::Profile(ProfileEffect::Rewrite { id, identity, .. }) => Some((*id, identity.clone())),
+        _ => None,
+    })
+}
+
+#[test]
+fn config_read_during_a_switch_leaves_the_current_profile_alone() {
+    let mut st = two_profiles();
+    profile(&mut st, ProfileMsg::Switch(PERSONAL));
+    // Read while the switch had written Personal's name but not yet its email.
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values("Ada L", "ada@work.example"))));
+    assert_eq!(saves(&fx), 0);
+    let fx = profile(&mut st, ProfileMsg::ShowPage);
+    assert_eq!(saves(&fx), 0);
+    let work = st.settings.profile(WORK).unwrap();
+    assert_eq!((work.author_name.as_str(), work.author_email.as_str()), ("Ada", "ada@work.example"));
+
+    // The switch failed (git's earlier values were put back): the read afterwards syncs again.
+    let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Err("could not lock config file".into()) });
+    assert!(matches!(&fx[..], [Effect::ReadGitConfig { .. }]), "{fx:?}");
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values("Ada", "ada@work.example"))));
+    assert_eq!(saves(&fx), 0, "nothing changed");
+    assert_eq!(st.settings.profile(WORK).unwrap().author_name, "Ada");
+}
+
+#[test]
+fn editing_the_current_profile_during_a_switch_waits_for_it() {
+    // The Switch click and the field losing focus land in the same frame.
+    let mut st = two_profiles();
+    profile(&mut st, ProfileMsg::Switch(PERSONAL));
+    let edit = ProfileMsg::SetIdentity { id: WORK, field: IdentityField::AuthorEmail, value: "ada@new.example".into() };
+    let fx = profile(&mut st, edit.clone());
+    assert!(git_writes(&fx).is_empty(), "no write races the switch: {fx:?}");
+    assert_eq!(saves(&fx), 1);
+    assert_eq!(st.prefs.as_ref().unwrap().git.as_ref().unwrap().user_email, "ada@work.example", "git's mirror stays");
+
+    // The switch worked: Work isn't git's identity any more, so nothing more is written.
+    let after = GitConfigValues { signing_key: "HOMEKEY".into(), ..values("Ada L", "ada@home.example") };
+    let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Ok(after) });
+    assert_eq!(rewrite(&fx), None, "{fx:?}");
+    assert_eq!(st.profile_switch, None);
+    assert_eq!(st.settings.profile(WORK).unwrap().author_email, "ada@new.example");
+    assert_eq!(st.settings.profile(PERSONAL).unwrap().author_email, "ada@home.example");
+
+    // The same edit, then a failed switch: Work stays current and its edited identity is written.
+    let mut st = two_profiles();
+    profile(&mut st, ProfileMsg::Switch(PERSONAL));
+    profile(&mut st, edit);
+    let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Err("could not lock config file".into()) });
+    assert_eq!(st.settings.active_profile, Some(WORK));
+    let (id, identity) = rewrite(&fx).expect("a rewrite");
+    assert_eq!((id, identity.email.as_str()), (WORK, "ada@new.example"));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })), "the rewrite reads back: {fx:?}");
+    assert_eq!(st.profile_switch, Some(WORK), "busy until written");
+    assert!(profile(&mut st, ProfileMsg::Switch(PERSONAL)).is_empty());
+
+    let fx = profile(&mut st, ProfileMsg::Rewritten { id: WORK, result: Ok(values("Ada", "ada@new.example")) });
+    assert!(fx.is_empty(), "{fx:?}");
+    assert_eq!(st.profile_switch, None);
+    assert_eq!(st.prefs.as_ref().unwrap().git.as_ref().unwrap().user_email, "ada@new.example");
+    assert_eq!(st.settings.profile(WORK).unwrap().author_email, "ada@new.example");
+}
+
+#[test]
+fn editing_the_target_during_a_switch_writes_it_once_current() {
+    let mut st = two_profiles();
+    profile(&mut st, ProfileMsg::Switch(PERSONAL));
+    let fx = profile(&mut st, ProfileMsg::SetIdentity { id: PERSONAL, field: IdentityField::AuthorName, value: "Ada Lovelace".into() });
+    assert!(git_writes(&fx).is_empty());
+    // The switch wrote Personal's identity from before the edit.
+    let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Ok(values("Ada L", "ada@home.example")) });
+    assert_eq!(st.settings.active_profile, Some(PERSONAL));
+    let (id, identity) = rewrite(&fx).expect("a rewrite");
+    assert_eq!((id, identity.name.as_str()), (PERSONAL, "Ada Lovelace"));
+    // Its read-back doesn't undo the edit.
+    run(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values("Ada L", "ada@home.example"))));
+    assert_eq!(st.settings.profile(PERSONAL).unwrap().author_name, "Ada Lovelace");
+
+    let fx = profile(&mut st, ProfileMsg::Rewritten { id: PERSONAL, result: Err("could not lock config file".into()) });
+    assert_eq!(st.profile_switch, None);
+    let text = "Could not write profile Personal's identity to your Git config: could not lock config file";
+    assert!(st.log.iter().any(|l| !l.ok && l.text == text));
+    assert!(matches!(&fx[..], [Effect::ReadGitConfig { .. }]), "{fx:?}");
+}

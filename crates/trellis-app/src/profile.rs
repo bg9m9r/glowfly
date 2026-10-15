@@ -33,6 +33,8 @@ pub enum ProfileMsg {
     // ---- from the runner
     /// The switch's writes finished: the config as read back afterwards, or git's error.
     Applied { id: ProfileId, result: Result<GitConfigValues, String> },
+    /// The current profile's identity, edited while a switch ran, was written afterwards.
+    Rewritten { id: ProfileId, result: Result<GitConfigValues, String> },
 }
 
 /// One of a profile's identity fields on the page.
@@ -67,7 +69,8 @@ impl ProfileMsg {
             | Self::AskDelete(_)
             | Self::Delete(_)
             | Self::Switch(_)
-            | Self::Applied { .. } => None,
+            | Self::Applied { .. }
+            | Self::Rewritten { .. } => None,
         }
     }
 }
@@ -76,12 +79,16 @@ impl ProfileMsg {
 pub enum ProfileEffect {
     /// Write `identity` to the global git config, then read the config back.
     Apply { cwd: PathBuf, has_repo: bool, id: ProfileId, identity: Identity },
+    /// Write the current profile's `identity` again (edited during a switch), then read the
+    /// config back.
+    Rewrite { cwd: PathBuf, has_repo: bool, id: ProfileId, identity: Identity },
 }
 
 impl ProfileEffect {
     pub fn name(&self) -> &'static str {
         match self {
             ProfileEffect::Apply { .. } => "apply-profile",
+            ProfileEffect::Rewrite { .. } => "rewrite-profile",
         }
     }
 }

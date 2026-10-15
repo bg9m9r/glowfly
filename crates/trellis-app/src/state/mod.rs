@@ -243,6 +243,9 @@ pub struct AppState {
     /// The profile a switch is writing to the global git config (app-wide: the config is
     /// global).
     pub profile_switch: Option<trellis_core::settings::ProfileId>,
+    /// The profiles (the current one or the switch's target) whose fields were edited while a
+    /// switch ran: their git writes wait until it ends.
+    pub profile_switch_edits: Vec<trellis_core::settings::ProfileId>,
     /// Repository trust prompts asked and repositories just created, this session.
     pub trust: trust::TrustSession,
     pub view: ViewState,
@@ -301,6 +304,7 @@ impl AppState {
             tag_job: None,
             patch_apply: None,
             profile_switch: None,
+            profile_switch_edits: Vec::new(),
             trust: Default::default(),
             view: ViewState::default(),
         }

@@ -37,13 +37,40 @@ pub fn set_config(cwd: &Path, global: bool, key: &str, value: Option<&str>, env:
     if ok || value.is_none() { Ok(()) } else { Err(format!("git config {key} failed: {out}")) }
 }
 
-/// Writes `id` to the global config (see `writes`), stopping at the first failure. One write
-/// at a time: parallel `git config` runs on the same file fight over its lock.
+/// Writes `id` to the global config (see `writes`), one write at a time: parallel `git config`
+/// runs on the same file fight over its lock. All or nothing: when a write fails, the keys
+/// written before it get their earlier global values back, so git never keeps half of `id`.
 pub fn write_global(cwd: &Path, id: &Identity, env: &[(&str, &str)]) -> Result<(), String> {
-    for (key, value) in writes(id) {
-        set_config(cwd, true, key, value.as_deref(), env)?;
+    write_global_all(cwd, &writes(id), env)
+}
+
+/// Applies `writes` to the global config in order, undoing the done ones on the first failure.
+fn write_global_all(cwd: &Path, writes: &[(&str, Option<String>)], env: &[(&str, &str)]) -> Result<(), String> {
+    let mut done: Vec<(&str, Option<String>)> = Vec::new();
+    for (key, value) in writes {
+        let step = global_value(cwd, key, env).and_then(|before| {
+            set_config(cwd, true, key, value.as_deref(), env)?;
+            Ok(before)
+        });
+        match step {
+            Ok(before) => done.push((key, before)),
+            Err(e) => {
+                let undone = done.iter().rev().all(|(k, v)| set_config(cwd, true, k, v.as_deref(), env).is_ok());
+                return Err(if undone { e } else { format!("{e} (the values written before it could not be put back)") });
+            }
+        }
     }
     Ok(())
+}
+
+/// `key`'s value in the global config, None when it isn't set.
+fn global_value(cwd: &Path, key: &str, env: &[(&str, &str)]) -> Result<Option<String>, String> {
+    let out = gitcli::output(cwd, &args(&["config", "--global", "--get", key]), "", env, None);
+    match (out.ok, out.code) {
+        (true, _) => Ok(Some(out.stdout.trim_end_matches(['\r', '\n']).to_owned())),
+        (false, Some(1)) => Ok(None),
+        _ => Err(format!("git config {key} failed: {}", out.combined())),
+    }
 }
 
 #[cfg(test)]
@@ -115,6 +142,23 @@ mod tests {
         let env = borrowed(&env);
         let err = write_global(&dir, &id("Ada", "ada@example.com", None), &env).unwrap_err();
         assert!(err.contains("user.name"), "{err}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_failed_write_puts_the_earlier_ones_back() {
+        let dir = scratch_repo("identity-undo");
+        let env = empty_global_config(&dir);
+        let env = borrowed(&env);
+        write_global(&dir, &id("Ada", "ada@work.example", None), &env).unwrap();
+        let s = |v: &str| Some(v.to_owned());
+        // The name and a key that wasn't set land, then the next write fails (an invalid key).
+        let writes = [("user.name", s("Ada L")), ("user.signingkey", s("HOMEKEY")), ("not a key", s("x"))];
+        let err = write_global_all(&dir, &writes, &env).unwrap_err();
+        assert!(err.contains("not a key") && !err.contains("put back"), "{err}");
+        assert_eq!(get(&dir, &env, "--global", "user.name").as_deref(), Some("Ada"));
+        assert_eq!(get(&dir, &env, "--global", "user.email").as_deref(), Some("ada@work.example"));
+        assert_eq!(get(&dir, &env, "--global", "user.signingkey"), None, "unset again");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
