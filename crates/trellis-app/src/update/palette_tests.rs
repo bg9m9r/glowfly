@@ -4,6 +4,8 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::PaletteMsg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::{FolderPurpose, Msg};
@@ -28,7 +30,7 @@ fn has(st: &AppState, label: &str) -> bool {
 }
 
 fn open_palette(st: &mut AppState) {
-    run(st, Msg::TogglePalette);
+    run(st, Msg::Palette(PaletteMsg::TogglePalette));
     assert!(st.palette.is_some());
 }
 
@@ -45,14 +47,14 @@ pub(super) fn repo_with_topic(name: &str) -> (AppState, std::path::PathBuf) {
 #[test]
 fn toggle_opens_and_closes() {
     let mut st = state();
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     let p = st.palette.as_ref().expect("open");
     assert!(p.query.is_empty());
     assert_eq!(p.selected, 0);
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     assert!(st.palette.is_none());
     open_palette(&mut st);
-    run(&mut st, Msg::ClosePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::ClosePalette));
     assert!(st.palette.is_none());
 }
 
@@ -61,12 +63,12 @@ fn toggle_ignored_under_dialogs() {
     let mut st = state();
     st.modal =
         Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     assert!(st.palette.is_none());
 
     let mut st = state();
     st.prefs = Some(PrefsState::new(PrefPage::General));
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     assert!(st.palette.is_none());
 }
 
@@ -135,31 +137,31 @@ fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
     assert_eq!(shown(&st, "").len(), 8);
-    run(&mut st, Msg::PaletteMove(-1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
     assert_eq!(p.selected, 7);
     assert!(p.scroll_to_selected);
-    run(&mut st, Msg::PaletteMove(1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
 
     // Three theme entries match "theme".
     st.palette.as_mut().unwrap().query = "theme".into();
     for _ in 0..3 {
-        run(&mut st, Msg::PaletteMove(1));
+        run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     }
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     // A selection past the end is clamped to the last row, then moved.
     st.palette.as_mut().unwrap().selected = 7;
-    run(&mut st, Msg::PaletteMove(1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     // No matches: stays on 0.
     st.palette.as_mut().unwrap().query = "zzzz".into();
-    run(&mut st, Msg::PaletteMove(1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
 
     // Closed: ignored.
     st.palette = None;
-    run(&mut st, Msg::PaletteMove(1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert!(st.palette.is_none());
 }
 
@@ -167,7 +169,7 @@ fn move_wraps_and_resets() {
 fn run_closes_palette_and_stages() {
     let (mut st, dir) = repo_with_topic("palette-stage");
     open_palette(&mut st);
-    drive(&mut st, Msg::RunPaletteCommand(PaletteCommand::StageAll));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::StageAll)));
     assert!(st.palette.is_none());
     assert!(st.snap.as_ref().unwrap().staged.iter().any(|f| f.path == "a.txt"));
     let _ = std::fs::remove_dir_all(&dir);
@@ -177,7 +179,7 @@ fn run_closes_palette_and_stages() {
 fn run_checkout_switches_branch() {
     let (mut st, dir) = repo_with_topic("palette-checkout");
     // Checkout keeps the modified a.txt (topic is at the same commit).
-    drive(&mut st, Msg::RunPaletteCommand(PaletteCommand::Checkout("topic".into())));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Checkout("topic".into()))));
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("topic"));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -187,13 +189,13 @@ fn run_theme_saves_once() {
     let mut st = state();
     st.settings.theme = ThemeChoice::Dark;
     open_palette(&mut st);
-    let fx = run(&mut st, Msg::RunPaletteCommand(PaletteCommand::Theme(ThemeChoice::Light)));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Theme(ThemeChoice::Light))));
     assert_eq!(st.settings.theme, ThemeChoice::Light);
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.theme == ThemeChoice::Light));
     assert!(st.palette.is_none());
-    assert!(run(&mut st, Msg::SetTheme(ThemeChoice::Light)).is_empty());
+    assert!(run(&mut st, Msg::Prefs(PrefsMsg::SetTheme(ThemeChoice::Light))).is_empty());
     // Nothing left for the per-frame settings check to save.
-    assert!(run(&mut st, Msg::SettingsEdited).is_empty());
+    assert!(run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
 }
 
 #[test]
@@ -202,7 +204,7 @@ fn run_search_commits_closes_diff_and_focuses() {
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     assert!(st.diff.is_some());
     open_palette(&mut st);
-    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::SearchCommits));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::SearchCommits)));
     assert!(st.diff.is_none());
     assert!(st.view.show_search);
     assert!(st.view.focus_search);
@@ -217,12 +219,12 @@ fn run_create_branch_uses_selected_commit() {
     st.selection = Selection::Commit(oid);
     let short = &oid.to_string()[..7];
     assert!(has(&st, &format!("Create branch at {short}…")));
-    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateBranch));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateBranch)));
     assert!(matches!(&st.modal, Some(Modal::NewBranch { start: Some(s), name, .. }) if *s == oid.to_string() && name.is_empty()));
 
     st.modal = None;
     st.selection = Selection::Wip;
-    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateBranch));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateBranch)));
     assert!(matches!(&st.modal, Some(Modal::NewBranch { start: None, .. })));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -230,15 +232,15 @@ fn run_create_branch_uses_selected_commit() {
 #[test]
 fn run_prefs_close_tab_open_repo() {
     let mut st = state();
-    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::OpenPrefs));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenPrefs)));
     assert!(st.prefs.is_some());
 
     let mut st = state();
     st.tabs.push(Tab::empty());
-    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CloseTab));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CloseTab)));
     assert_eq!(st.tabs.len(), 1);
 
-    let fx = run(&mut st, Msg::RunPaletteCommand(PaletteCommand::OpenRepo));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenRepo)));
     assert!(matches!(&fx[..], [Effect::PickFolder { purpose: FolderPurpose::OpenRepo, .. }]));
 
     // Fetch on a repository with a remote (a bare clone of itself).
@@ -251,7 +253,7 @@ fn run_prefs_close_tab_open_repo() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(has(&st, "Fetch all remotes"));
     assert!(has(&st, "Pull"));
-    let fx = run(&mut st, Msg::RunPaletteCommand(PaletteCommand::Fetch));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Fetch)));
     assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch all"));
     let _ = std::fs::remove_dir_all(&dir);
@@ -281,7 +283,7 @@ fn run_create_tag_opens_dialog() {
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
     st.selection = Selection::Wip;
     open_palette(&mut st);
-    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: false }));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: false })));
     assert!(st.palette.is_none());
     assert!(matches!(
         &st.modal,
@@ -293,11 +295,11 @@ fn run_create_tag_opens_dialog() {
     let oid = git2::Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
     st.selection = Selection::Commit(oid);
     open_palette(&mut st);
-    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true }));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true })));
     assert!(matches!(&st.modal, Some(Modal::NewTag(f)) if f.annotated && f.at == oid.to_string()));
 
     let mut st = state();
-    run(&mut st, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: false }));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: false })));
     assert!(st.modal.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -5,8 +5,10 @@ use super::update;
 use crate::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
 use crate::msg::AvatarMsg;
 use crate::msg::CommitMsg;
+use crate::msg::ForgeMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::runner;
@@ -161,11 +163,11 @@ fn confirmation_runs_the_wrapped_message() {
 #[test]
 fn settings_are_saved_only_when_changed() {
     let mut st = state();
-    assert!(update(&mut st, Msg::SettingsEdited, Instant::now()).is_empty());
+    assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
     st.settings.toolbar_labels = !st.settings.toolbar_labels;
-    let fx = update(&mut st, Msg::SettingsEdited, Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
     assert!(matches!(&fx[..], [Effect::SaveSettings(_)]));
-    assert!(update(&mut st, Msg::SettingsEdited, Instant::now()).is_empty(), "saved once");
+    assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "saved once");
 }
 
 #[test]
@@ -188,14 +190,14 @@ fn forge_replies_update_pull_requests_and_errors() {
         url: "u".into(),
     };
     let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
-    update(&mut st, Msg::ForgeReplied(reply), Instant::now());
+    update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
     let fs = st.forge.as_ref().unwrap();
     assert_eq!(fs.prs.len(), 1);
     assert_eq!(fs.host_status, Status::Ok);
     assert_eq!(fs.pr_label(7), "#7");
 
     let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::AuthFailed("not signed in".into())] };
-    update(&mut st, Msg::ForgeReplied(reply), Instant::now());
+    update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
     let fs = st.forge.as_ref().unwrap();
     assert_eq!(fs.host_status, Status::Error("not signed in".into()));
 
@@ -203,7 +205,7 @@ fn forge_replies_update_pull_requests_and_errors() {
     let other = Target { repo: "elsewhere".into(), ..target };
     update(
         &mut st,
-        Msg::ForgeReplied(ForgeReply { target: other, auth: None, results: vec![ForgeResult::Prs(Ok(Vec::new()))] }),
+        Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target: other, auth: None, results: vec![ForgeResult::Prs(Ok(Vec::new()))] })),
         Instant::now(),
     );
     assert_eq!(st.forge.as_ref().unwrap().prs.len(), 1);
@@ -269,7 +271,7 @@ fn commit_signing_flow() {
     use trellis_core::signing::{SigningFormat, SigningKey};
 
     let mut st = state();
-    let fx = update(&mut st, Msg::OpenPrefs(PrefPage::Signing), Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })));
 
     // Config arrives → the key list for the configured format is requested.
@@ -279,18 +281,18 @@ fn commit_signing_flow() {
         signing_format: "openpgp".into(),
         ..Default::default()
     };
-    let fx = update(&mut st, Msg::GitConfigLoaded(values), Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values)), Instant::now());
     match &fx[..] {
         [Effect::ListSigningKeys { format, program }] => assert_eq!((*format, program.as_str()), (SigningFormat::OpenPgp, "gpg")),
         other => panic!("expected a key listing, got {other:?}"),
     }
     let key = SigningKey { id: "ABCD".into(), label: "Ada <ada@example.com>".into(), expires: None, expired: false };
-    update(&mut st, Msg::SigningKeysLoaded(Ok(vec![key])), Instant::now());
+    update(&mut st, Msg::Prefs(PrefsMsg::SigningKeysLoaded(Ok(vec![key]))), Instant::now());
     assert_eq!(st.prefs.as_ref().unwrap().signing.keys.as_ref().map(Vec::len), Some(1));
 
     // Generating uses the profile identity and the typed passphrase (then forgets it).
     st.prefs.as_mut().unwrap().signing.passphrase = "s3cret".into();
-    let fx = update(&mut st, Msg::GenerateGpgKey, Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::GenerateGpgKey), Instant::now());
     match &fx[..] {
         [Effect::GenerateGpgKey { name, email, passphrase, .. }] => {
             assert_eq!((name.as_str(), email.as_str(), passphrase.as_str()), ("Ada", "ada@example.com", "s3cret"))
@@ -301,7 +303,7 @@ fn commit_signing_flow() {
     assert!(st.prefs.as_ref().unwrap().signing.generating);
 
     // The new key becomes the signing key.
-    let fx = update(&mut st, Msg::GpgKeyGenerated(Ok("NEWKEY".into())), Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::GpgKeyGenerated(Ok("NEWKEY".into()))), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::SetGitConfig { key, value: Some(v), .. } if key == "user.signingkey" && v == "NEWKEY")));
     assert_eq!(st.prefs.as_ref().unwrap().git.as_ref().unwrap().signing_key, "NEWKEY");
     assert!(!st.prefs.as_ref().unwrap().signing.generating);
@@ -322,7 +324,7 @@ fn avatars_are_fetched_in_batches_and_handed_to_the_shell() {
 #[test]
 fn unreadable_settings_are_reported_once() {
     let mut st = state();
-    let fx = update(&mut st, Msg::SettingsUnreadable("Settings could not be read".into()), Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable("Settings could not be read".into())), Instant::now());
     assert!(fx.is_empty(), "{fx:?}");
     assert!(st.log.iter().any(|l| !l.ok && l.text == "Settings could not be read"));
     assert!(st.view.show_log);

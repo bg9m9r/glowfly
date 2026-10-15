@@ -2,6 +2,7 @@
 //! askpass helper as `Msg`s and hands the dialog's answers back to the waiting helper.
 
 use super::{Runner, Waker};
+use crate::msg::CredentialMsg;
 use crate::msg::Msg;
 use trellis_core::askpass::{self, Event, Reply};
 use trellis_core::gitcli::{self, AskpassEnv};
@@ -17,8 +18,8 @@ impl<W: Waker + Clone> Runner<W> {
         let (tx, waker) = (self.tx.clone(), self.waker.clone());
         let started = askpass::server::start(move |ev| {
             let msg = match ev {
-                Event::Asked { id, prompt } => Msg::CredentialPrompt { id, prompt },
-                Event::Expired { id } => Msg::CredentialPromptExpired(id),
+                Event::Asked { id, prompt } => Msg::Credentials(CredentialMsg::CredentialPrompt { id, prompt }),
+                Event::Expired { id } => Msg::Credentials(CredentialMsg::CredentialPromptExpired(id)),
             };
             if tx.send(msg).is_ok() {
                 waker.wake();

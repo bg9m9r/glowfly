@@ -8,6 +8,8 @@ use crate::effect::Effect;
 use crate::lfs::LfsMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::palette::{PaletteCommand as C, entries};
 use crate::state::{AppState, Modal, PrefPage, RunningJob};
@@ -58,7 +60,7 @@ fn lfs_gen(st: &AppState) -> u64 {
 
 /// Opens the page and delivers `s` as the status.
 fn page_with(st: &mut AppState, s: LfsStatus) -> Vec<Effect> {
-    run(st, Msg::OpenPrefs(PrefPage::RepoLfs));
+    run(st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)));
     let generation = lfs_gen(st);
     lfs(st, LfsMsg::Loaded { generation, result: Ok(s) })
 }
@@ -85,19 +87,19 @@ fn add_remote(st: &mut AppState, name: &str) {
 #[test]
 fn opening_the_page_reads_the_status() {
     let (mut st, dir) = open("lfs-open");
-    let fx = run(&mut st, Msg::OpenPrefs(PrefPage::RepoLfs));
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadLfs { workdir, generation: 1 } if *workdir == dir)));
     assert!(st.prefs.as_ref().unwrap().lfs.status.is_none());
     cleanup(&dir);
 
     let mut st = state();
-    assert!(!loads(&run(&mut st, Msg::OpenPrefs(PrefPage::RepoLfs))));
+    assert!(!loads(&run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)))));
 }
 
 #[test]
 fn show_page_and_loaded_results() {
     let (mut st, dir) = open("lfs-show");
-    run(&mut st, Msg::OpenPrefs(PrefPage::General));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
     let fx = lfs(&mut st, LfsMsg::ShowPage);
     assert_eq!(st.prefs.as_ref().unwrap().page, PrefPage::RepoLfs);
     assert!(loads(&fx));
@@ -112,7 +114,7 @@ fn show_page_and_loaded_results() {
     let page = &st.prefs.as_ref().unwrap().lfs;
     assert_eq!((page.status.is_none(), page.error.as_deref()), (true, Some("boom")));
 
-    run(&mut st, Msg::ClosePrefs);
+    run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
     lfs(&mut st, LfsMsg::Loaded { generation: current, result: Ok(status(true, true, &[])) });
     assert!(st.prefs.is_none());
     cleanup(&dir);
@@ -121,7 +123,7 @@ fn show_page_and_loaded_results() {
 #[test]
 fn scoped_result_for_another_tab_is_dropped() {
     let (mut st, dir) = open("lfs-scoped");
-    run(&mut st, Msg::OpenPrefs(PrefPage::RepoLfs));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)));
     let msg = Msg::Lfs(LfsMsg::Loaded { generation: 1, result: Ok(status(true, true, &[])) });
     run(&mut st, Msg::Scoped { workdir: dir.join("elsewhere"), msg: Box::new(msg) });
     assert!(st.prefs.as_ref().unwrap().lfs.status.is_none());
@@ -246,7 +248,7 @@ fn initialize_then_offer_to_pull() {
     assert!(st.modal.is_none());
 
     // Preferences closed: no reload.
-    run(&mut st, Msg::ClosePrefs);
+    run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
     init_job(&mut st);
     assert!(!loads(&run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }))));
     cleanup(&dir);
@@ -315,8 +317,8 @@ fn palette_entries() {
     let labels: Vec<String> = entries(&st).into_iter().map(|e| e.label).collect();
     let at = |l: &str| labels.iter().position(|x| x == l).unwrap_or_else(|| panic!("{l} missing"));
     assert!(at("Initialize Git LFS") < at("Refresh") && at("Configure Git LFS…") < at("Refresh"));
-    run(&mut st, Msg::TogglePalette);
-    let fx = run(&mut st, Msg::RunPaletteCommand(C::ConfigureLfs));
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ConfigureLfs)));
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::RepoLfs));
     assert!(loads(&fx));
     let empty = state();
@@ -331,7 +333,7 @@ fn set_up_and_track_end_to_end() {
         return;
     }
     let (mut st, dir) = open("lfs-e2e");
-    drive(&mut st, Msg::OpenPrefs(PrefPage::RepoLfs));
+    drive(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)));
     let s = st.prefs.as_ref().unwrap().lfs.status.clone().expect("status");
     assert!(s.installed() && !s.initialized);
     drive(&mut st, Msg::Lfs(LfsMsg::Initialize));

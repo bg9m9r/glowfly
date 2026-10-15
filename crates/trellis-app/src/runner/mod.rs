@@ -12,10 +12,13 @@ use crate::lfs::LfsMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::ConflictMsg;
 use crate::msg::FilesMsg;
+use crate::msg::ForgeMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::JobMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
+use crate::msg::PublishMsg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::msg::StageMsg;
@@ -241,16 +244,16 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::LoadRebasePlan { workdir, base, generation } => Some(rebase::load_plan(&workdir, &base, generation)),
         Effect::InteractiveRebase { cwd, request } => Some(rebase::start(&cwd, &request)),
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
-            Some(Msg::ForgeReplied(forge_call(target, &cwd, auth, interactive, connected, call)))
+            Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_call(target, &cwd, auth, interactive, connected, call))))
         }
         Effect::RepoOwners { account, cwd } => {
             let result = forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::repo_owners(&account, &a)).map_err(err);
-            Some(Msg::PublishOwners { account, result })
+            Some(Msg::Publish(PublishMsg::PublishOwners { account, result }))
         }
         Effect::CreateRepo { account, cwd, user, repo, branch } => {
             let result =
                 forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::create_repo(&account, &a, &user, &repo)).map_err(err);
-            Some(Msg::Published { workdir: cwd, branch, result })
+            Some(Msg::Publish(PublishMsg::Published { workdir: cwd, branch, result }))
         }
         Effect::Connect { account, user, token, cwd } => {
             let (method, auth, saved) = match token {
@@ -261,7 +264,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 None => ("Git Credential Manager".to_owned(), forge::from_credential_manager(&account, &cwd, true), None),
             };
             let result = auth.and_then(|a| forge::verify(&account, &a)).map_err(err);
-            Some(Msg::Connected { account, method, token: saved, result })
+            Some(Msg::Forge(ForgeMsg::Connected { account, method, token: saved, result }))
         }
         Effect::SaveToken { account, user, token } => forge::save_token(&account, user.as_deref(), &token)
             .err()
@@ -284,7 +287,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 })
                 .collect(),
         ))),
-        Effect::ReadGitConfig { cwd, has_repo } => Some(Msg::GitConfigLoaded(config::read_git_config(&cwd, has_repo))),
+        Effect::ReadGitConfig { cwd, has_repo } => Some(Msg::Prefs(PrefsMsg::GitConfigLoaded(config::read_git_config(&cwd, has_repo)))),
         Effect::SetGitConfig { cwd, global, key, value } => {
             let scope = if global { "--global" } else { "--local" };
             let a = match &value {
@@ -303,11 +306,11 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::RevealPath(p) => os::reveal(&p),
         Effect::PickFolder { title, purpose } => {
             let path = rfd::FileDialog::new().set_title(title).pick_folder();
-            Some(Msg::FolderPicked { purpose, path })
+            Some(Msg::Prefs(PrefsMsg::FolderPicked { purpose, path }))
         }
         Effect::PickFile { title, purpose } => {
             let path = rfd::FileDialog::new().set_title(title).pick_file();
-            Some(Msg::FilePicked { purpose, path })
+            Some(Msg::Prefs(PrefsMsg::FilePicked { purpose, path }))
         }
         Effect::ListSigningKeys { format, program } => {
             let now = chrono::Utc::now().timestamp();
@@ -317,14 +320,14 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 // X.509 certificates are chosen by id; listing them through gpgsm isn't supported yet.
                 SigningFormat::X509 => Ok(Vec::new()),
             };
-            Some(Msg::SigningKeysLoaded(result))
+            Some(Msg::Prefs(PrefsMsg::SigningKeysLoaded(result)))
         }
         Effect::GenerateGpgKey { program, name, email, passphrase } => {
             let now = chrono::Utc::now().timestamp();
-            Some(Msg::GpgKeyGenerated(signing::generate_gpg_key(&program, &name, &email, &passphrase, now).map_err(err)))
+            Some(Msg::Prefs(PrefsMsg::GpgKeyGenerated(signing::generate_gpg_key(&program, &name, &email, &passphrase, now).map_err(err))))
         }
         Effect::ExportPublicKey { format, program, key } => {
-            Some(Msg::PublicKeyExported(signing::export_public_key(format, &program, &key).map_err(err)))
+            Some(Msg::Prefs(PrefsMsg::PublicKeyExported(signing::export_public_key(format, &program, &key).map_err(err))))
         }
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");

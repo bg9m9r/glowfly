@@ -13,6 +13,7 @@ mod signing;
 use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::state::{AppState, PrefPage};
 use eframe::egui::{self, Align2, Color32, FontId, RichText, Sense, Stroke, Ui, pos2, vec2};
 use trellis_core::forge::Provider;
@@ -136,7 +137,7 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         ui.spacing_mut().item_spacing.y = 0.0;
         ui.add_space(6.0);
         if widgets::nav_row(ui, Some(Icon::Back), "Exit Preferences", false, 15.0).on_hover_text("Esc").clicked() {
-            msgs.push(Msg::ClosePrefs);
+            msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
         }
         ui.add_space(12.0);
         caption(ui, "Preferences");
@@ -188,7 +189,7 @@ fn providers(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
             for p in Provider::ALL {
                 let label = if connected.contains(&p) { format!("{}  ✔", p.name()) } else { p.name().to_owned() };
                 if widgets::nav_row(ui, None, &label, current == Some(p), 14.0).clicked() {
-                    msgs.push(Msg::SelectIntegration(p));
+                    msgs.push(Msg::Prefs(PrefsMsg::SelectIntegration(p)));
                 }
             }
         },

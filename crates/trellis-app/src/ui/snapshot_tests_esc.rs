@@ -5,6 +5,7 @@
 use super::snapshot_tests::{remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, escape_key, theme::color};
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::terminal::{SessionStatus, TermSession};
 use crate::state::{AppState, PrefPage, PrefsState};
@@ -73,7 +74,7 @@ fn esc_closes_preferences_opened_while_the_terminal_had_focus() {
     // As Ctrl+comma does from the terminal.
     h.state_mut().0.prefs = Some(PrefsState::new(PrefPage::General));
     h.run();
-    assert!(esc(&mut h).iter().any(|m| matches!(m, Msg::ClosePrefs)), "Esc closes Preferences");
+    assert!(esc(&mut h).iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::ClosePrefs))), "Esc closes Preferences");
     drop(h);
     remove_fixture(&dir);
 }

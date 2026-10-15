@@ -7,6 +7,7 @@ use super::tests::same_place as same_path;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
 use crate::msg::{FolderPurpose, Msg};
@@ -329,7 +330,7 @@ fn folder_check_after_cancel_is_dropped() {
 #[test]
 fn browse_picks_the_parent() {
     let (mut st, dir) = opened("wt-browse");
-    let fx = update(&mut st, Msg::PickFolder(FolderPurpose::WorktreeParent), Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::WorktreeParent)), Instant::now());
     match &fx[..] {
         [Effect::PickFolder { title, purpose: FolderPurpose::WorktreeParent }] => assert_eq!(title, "Create the worktree in…"),
         other => panic!("{other:?}"),
@@ -337,7 +338,7 @@ fn browse_picks_the_parent() {
     drive(&mut st, wt(WorktreeMsg::CreateDialog(WorktreeBase::Branch("side".into()))));
     form(&mut st).branch = "feature/x".into();
     let parent = std::env::temp_dir().join("picked");
-    drive(&mut st, Msg::FolderPicked { purpose: FolderPurpose::WorktreeParent, path: Some(parent.clone()) });
+    drive(&mut st, Msg::Prefs(PrefsMsg::FolderPicked { purpose: FolderPurpose::WorktreeParent, path: Some(parent.clone()) }));
     let f = form(&mut st);
     assert_eq!(PathBuf::from(&f.folder), parent.join("feature-x"));
     assert!(f.folder_edited);

@@ -4,6 +4,7 @@
 
 use super::theme::color;
 use super::widgets::{self, Icon};
+use crate::msg::CredentialMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::askpass::PendingPrompt;
@@ -174,9 +175,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new("Trellis doesn't save what you type here.").color(color::weak()).size(12.0));
         }
         if cancel {
-            msgs.push(Msg::CancelCredentials);
+            msgs.push(Msg::Credentials(CredentialMsg::CancelCredentials));
         } else if submit && valid {
-            msgs.push(Msg::AnswerCredentials);
+            msgs.push(Msg::Credentials(CredentialMsg::AnswerCredentials));
         }
     });
 }

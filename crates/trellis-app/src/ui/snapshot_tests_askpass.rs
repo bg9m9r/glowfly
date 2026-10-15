@@ -2,6 +2,7 @@
 //! confirmation. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::msg::CredentialMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::askpass::PendingPrompt;
@@ -40,7 +41,7 @@ fn credential_prompt_sign_in() {
     assert!(!sign_in.is_disabled());
     sign_in.click();
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::AnswerCredentials)));
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -56,8 +57,8 @@ fn credential_prompt_passphrase_retry_light() {
     assert!(h.query_by_label_contains("didn't unlock the key").is_some());
     h.press_key(egui::Key::Escape);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::CancelCredentials)));
-    assert!(!pushed(&h, |m| matches!(m, Msg::AnswerCredentials)));
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
+    assert!(!pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -72,7 +73,7 @@ fn credential_prompt_host_key() {
     assert!(h.query_by_label("Yes").is_some_and(|n| !n.is_disabled()));
     h.get_by_label("No").click();
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::CancelCredentials)));
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
     drop(h);
     remove_fixture(&dir);
 }

@@ -4,6 +4,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::state::AppState;
 use crate::state::palette::{InputKind, Mode, Palette, PaletteCommand, Pick, StashAction};
 use eframe::egui::Key;
@@ -74,7 +75,7 @@ fn palette_stash_keys() {
     st.palette = Some(stash_list(&st, StashAction::Apply, "", 0));
     let mut h = harness(st, true);
     h.run();
-    let applies = |want: Oid| move |m: &Msg| matches!(m, Msg::RunPaletteCommand(PaletteCommand::StashOp { action: StashAction::Apply, oid }) if *oid == want);
+    let applies = |want: Oid| move |m: &Msg| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::StashOp { action: StashAction::Apply, oid })) if *oid == want);
     h.press_key(Key::Enter);
     h.run();
     assert!(pushed(&h, applies(stashes[0].oid)));
@@ -88,13 +89,13 @@ fn palette_stash_keys() {
     h.state_mut().1.clear();
     h.press_key(Key::Backspace);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::PaletteBack)));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
 
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::PaletteBack)));
-    assert!(!pushed(&h, |m| matches!(m, Msg::ClosePalette)), "Esc goes back rather than closing");
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
+    assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::ClosePalette))), "Esc goes back rather than closing");
 
     // Backspace with text in the field edits the text.
     h.state_mut().0.palette.as_mut().unwrap().query = "x".into();
@@ -102,7 +103,7 @@ fn palette_stash_keys() {
     h.state_mut().1.clear();
     h.press_key(Key::Backspace);
     h.run();
-    assert!(!pushed(&h, |m| matches!(m, Msg::PaletteBack)));
+    assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -116,23 +117,23 @@ fn palette_stash_message_keys() {
     assert!(h.query_by_label_contains("untracked files included").is_some());
     h.press_key(Key::Enter);
     h.run();
-    assert!(!pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(_))), "a blank message runs nothing");
+    assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(_)))), "a blank message runs nothing");
     h.press_key(Key::Backspace);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::PaletteBack)));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
 
     h.state_mut().1.clear();
     h.state_mut().0.palette = Some(message_step("wip"));
     h.run();
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::StashWithMessage(t)) if t == "wip")));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::StashWithMessage(t))) if t == "wip")));
 
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::PaletteBack)));
-    assert!(!pushed(&h, |m| matches!(m, Msg::ClosePalette)));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
+    assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::ClosePalette))));
 
     // Under a credential prompt the step takes no keys.
     h.state_mut().0.palette = Some(message_step(""));
@@ -143,7 +144,10 @@ fn palette_stash_message_keys() {
     h.press_key(Key::Escape);
     h.press_key(Key::Backspace);
     h.run();
-    assert!(!pushed(&h, |m| matches!(m, Msg::PaletteBack | Msg::ClosePalette | Msg::RunPaletteCommand(_))));
+    assert!(!pushed(&h, |m| matches!(
+        m,
+        Msg::Palette(PaletteMsg::PaletteBack) | Msg::Palette(PaletteMsg::ClosePalette) | Msg::Palette(PaletteMsg::RunPaletteCommand(_))
+    )));
     drop(h);
     remove_fixture(&dir);
 }

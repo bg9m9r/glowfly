@@ -3,17 +3,17 @@
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
-use crate::msg::Msg;
+use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
 use crate::state::tabs::same_path;
 use crate::state::{AppState, Modal};
 use trellis_core::forge::{self, Account, NewRepo, Provider};
 use trellis_core::gitcli::args;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::PublishDialog => open(st, fx),
-        Msg::PublishAccount(i) => {
+        PublishMsg::PublishDialog => open(st, fx),
+        PublishMsg::PublishAccount(i) => {
             let Some(f) = form(st) else { return };
             if i == f.account || i >= f.accounts.len() {
                 return;
@@ -24,7 +24,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             f.owner.clear();
             load_owners(st, fx);
         }
-        Msg::PublishOwners { account, result } => {
+        PublishMsg::PublishOwners { account, result } => {
             let Some(f) = form(st).filter(|f| f.account() == Some(&account)) else { return };
             f.loading = false;
             match result {
@@ -39,7 +39,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 Err(e) => f.error = Some(format!("Couldn't sign in to {}: {e}", account.display())),
             }
         }
-        Msg::Publish => {
+        PublishMsg::Publish => {
             let idle = st.job.is_none();
             let Some(f) = form(st) else { return };
             let (Some(account), Some(user)) = (f.account().cloned(), f.user.clone()) else { return };
@@ -52,7 +52,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             let repo = NewRepo { owner: f.owner.clone(), name, description: f.description.trim().to_owned(), private: f.private };
             fx.push(Effect::CreateRepo { account, cwd: f.workdir.clone(), user, repo, branch: f.branch.clone() });
         }
-        Msg::Published { workdir, branch, result } => match result {
+        PublishMsg::Published { workdir, branch, result } => match result {
             Ok(repo) => {
                 if form(st).is_some_and(|f| same_path(&f.workdir, &workdir)) {
                     st.modal = None;
@@ -73,7 +73,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 None => st.log(false, format!("Creating the GitHub repository failed: {e}")),
             },
         },
-        _ => {}
     }
 }
 

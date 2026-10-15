@@ -1,6 +1,7 @@
 //! Preferences > Integrations (one page per hosting service) and Repo > Issue Tracker.
 
 use super::{LABEL_W, help, primary_button, row, text_field};
+use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::state::{ForgeState, PrefsState};
 use crate::ui::theme::color;
@@ -30,7 +31,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
                             RichText::new(format!("{} · {} via {}", c.account.display(), c.user, c.method)).size(12.0).color(color::weak()),
                         );
                         if ui.small_button("Disconnect").clicked() {
-                            msgs.push(Msg::Disconnect(c.account.clone()));
+                            msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
                         }
                     }
                     None => {
@@ -50,7 +51,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
                                 if primary_button(ui, &label, enabled).on_hover_text(tip).clicked()
                                     && let Some(a) = &account
                                 {
-                                    msgs.push(Msg::Connect { account: a.clone(), user: None, token: None });
+                                    msgs.push(Msg::Forge(ForgeMsg::Connect { account: a.clone(), user: None, token: None }));
                                 }
                                 if prefs.int_busy {
                                     ui.add(egui::Spinner::new().size(14.0));
@@ -105,7 +106,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
             && let Some(a) = &account
         {
             let user = Some(prefs.int_user.trim().to_owned()).filter(|u| !u.is_empty());
-            msgs.push(Msg::Connect { account: a.clone(), user, token: Some(prefs.int_token.trim().to_owned()) });
+            msgs.push(Msg::Forge(ForgeMsg::Connect { account: a.clone(), user, token: Some(prefs.int_token.trim().to_owned()) }));
         }
         if prefs.int_busy {
             ui.add(egui::Spinner::new().size(14.0));
@@ -136,7 +137,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
                     ui.label(RichText::new(c.account.display()).color(color::text()));
                     ui.label(RichText::new(format!("{} · {}", c.user, c.method)).size(12.0).color(color::weak()));
                     if ui.small_button("Disconnect").clicked() {
-                        msgs.push(Msg::Disconnect(c.account.clone()));
+                        msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
                     }
                 });
             }
@@ -174,16 +175,19 @@ pub fn tracker_page(
             None => "Automatic (remote not recognized)".to_owned(),
         };
         if ui.radio(current == TrackerChoice::Auto, auto_label).clicked() {
-            msgs.push(Msg::SetTracker(TrackerChoice::Auto));
+            msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Auto)));
         }
         for a in &jira {
             let selected = matches!(&current, TrackerChoice::Jira { account, .. } if account == a);
             if ui.radio(selected, format!("{} · {}", a.provider.name(), a.host)).clicked() {
-                msgs.push(Msg::SetTracker(TrackerChoice::Jira { account: a.clone(), project: prefs.jira_project.trim().to_owned() }));
+                msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Jira {
+                    account: a.clone(),
+                    project: prefs.jira_project.trim().to_owned(),
+                })));
             }
         }
         if ui.radio(current == TrackerChoice::None, "None").clicked() {
-            msgs.push(Msg::SetTracker(TrackerChoice::None));
+            msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::None)));
         }
         if jira.is_empty() {
             help(ui, "Connect Jira Cloud or Jira Data Center under Integrations to use it here.");
@@ -193,10 +197,10 @@ pub fn tracker_page(
         row(ui, "Jira Project", |ui| {
             let r = text_field(ui, &mut prefs.jira_project, "all projects");
             if r.lost_focus() && prefs.jira_project.trim() != project {
-                msgs.push(Msg::SetTracker(TrackerChoice::Jira {
+                msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Jira {
                     account: account.clone(),
                     project: prefs.jira_project.trim().to_uppercase(),
-                }));
+                })));
             }
             help(
                 ui,

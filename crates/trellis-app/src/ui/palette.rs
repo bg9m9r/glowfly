@@ -6,6 +6,7 @@
 use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::state::AppState;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette};
 use eframe::egui::{self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, pos2, text::LayoutJob, vec2};
@@ -24,7 +25,7 @@ pub fn shortcut(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     ctx.input_mut(|i| {
         // Shift first: consume_key ignores extra Shift, so Ctrl+P would also match Ctrl+Shift+P.
         if i.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::P) || i.consume_key(Modifiers::COMMAND, Key::P) {
-            msgs.push(Msg::TogglePalette);
+            msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
         }
     });
 }
@@ -43,10 +44,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         if !prompting {
             ui.input_mut(|i| {
                 if i.consume_key(Modifiers::NONE, Key::ArrowDown) {
-                    msgs.push(Msg::PaletteMove(1));
+                    msgs.push(Msg::Palette(PaletteMsg::PaletteMove(1)));
                 }
                 if i.consume_key(Modifiers::NONE, Key::ArrowUp) {
-                    msgs.push(Msg::PaletteMove(-1));
+                    msgs.push(Msg::Palette(PaletteMsg::PaletteMove(-1)));
                 }
                 run_selected = i.consume_key(Modifiers::NONE, Key::Enter);
                 // In a second step, Backspace on an empty field and Esc go back to the commands.
@@ -55,7 +56,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     (empty && i.consume_key(Modifiers::NONE, Key::Backspace)) | i.consume_key(Modifiers::NONE, Key::Escape)
                 };
                 if stepping && back(i) {
-                    msgs.push(Msg::PaletteBack);
+                    msgs.push(Msg::Palette(PaletteMsg::PaletteBack));
                 }
             });
         }
@@ -74,7 +75,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         ui.label(RichText::new(footer).size(12.0).color(color::weak()));
     });
     if resp.should_close() && !prompting {
-        msgs.push(Msg::ClosePalette);
+        msgs.push(Msg::Palette(PaletteMsg::ClosePalette));
     }
 }
 
@@ -118,7 +119,7 @@ fn back_and_title(ui: &mut Ui, title: &str, msgs: &mut Vec<Msg>) {
     let col = if r.hovered() { color::text() } else { color::weak() };
     widgets::paint_icon(ui.painter(), rect.center(), Icon::Back, col);
     if r.on_hover_text("Back to commands (Backspace)").clicked() {
-        msgs.push(Msg::PaletteBack);
+        msgs.push(Msg::Palette(PaletteMsg::PaletteBack));
     }
     ui.label(RichText::new(title).size(12.5).color(color::weak()));
 }
@@ -128,7 +129,7 @@ fn back_and_title(ui: &mut Ui, title: &str, msgs: &mut Vec<Msg>) {
 fn input_step(ui: &mut Ui, kind: InputKind, query: &str, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
     note(ui, kind.note(), color::weak());
     if run_selected && let Some(cmd) = kind.command(query) {
-        msgs.push(Msg::RunPaletteCommand(cmd));
+        msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     }
     kind.footer()
 }
@@ -141,7 +142,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
     let Some(p) = st.palette.as_mut() else { return };
     let sel = p.selected_in(list.len());
     if run_selected && let Some(s) = sel {
-        msgs.push(Msg::RunPaletteCommand(list[s].entry.command.clone()));
+        msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(list[s].entry.command.clone())));
     }
     if list.is_empty() {
         note(ui, "No matching commands", color::weak());
@@ -154,7 +155,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
             let e = &shown.entry;
             let r = row(ui, &e.label, e.detail.as_deref(), e.shortcut, &shown.matched, 0, selected);
             if r.clicked() {
-                msgs.push(Msg::RunPaletteCommand(shown.entry.command.clone()));
+                msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(shown.entry.command.clone())));
             }
             if selected && p.scroll_to_selected {
                 r.scroll_to_me(None);
@@ -183,7 +184,7 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
             Some(r) if !r.hits.is_empty() => {
                 let sel = selected.min(r.hits.len() - 1);
                 if run_selected && let Some(c) = pk.command(r.hits[sel].index) {
-                    msgs.push(Msg::RunPaletteCommand(c));
+                    msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(c)));
                 }
                 egui::ScrollArea::vertical().id_salt("trellis-palette-items").max_height(LIST_MAX_H).show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 0.0;
@@ -196,7 +197,7 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
                         if resp.clicked()
                             && let Some(c) = pk.command(hit.index)
                         {
-                            msgs.push(Msg::RunPaletteCommand(c));
+                            msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(c)));
                         }
                         if i == sel && scroll {
                             resp.scroll_to_me(None);

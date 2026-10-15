@@ -9,6 +9,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
 use crate::state::palette::{PaletteCommand, entries};
@@ -356,11 +357,15 @@ fn palette_remote_entries() {
     let pos = |l: &str| labels.iter().position(|x| *x == l).unwrap();
     assert!(pos("Fetch all remotes") < pos("Fetch origin"));
 
-    let fx = update(&mut st, Msg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::Fetch("origin".into()))), Instant::now());
+    let fx = update(
+        &mut st,
+        Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::Fetch("origin".into())))),
+        Instant::now(),
+    );
     assert_eq!(git_cmds(&fx), v(&[&["fetch", "--prune", "origin"]]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch origin"));
     drop_job(&mut st);
-    update(&mut st, Msg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog)), Instant::now());
+    update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog))), Instant::now());
     assert!(matches!(st.modal, Some(Modal::Remote(_))));
     cleanup(&[&work, &bare]);
 }

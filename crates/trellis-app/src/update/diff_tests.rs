@@ -6,6 +6,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::TabsMsg;
@@ -200,7 +201,7 @@ fn turning_highlighting_off_saves_and_keeps_the_spans() {
     st.diff = Some((DiffTarget::Unstaged("f.rs".into()), d.into()));
 
     st.settings.syntax_highlighting = false;
-    let fx = run(&mut st, Msg::SettingsEdited);
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if !s.syntax_highlighting));
     assert_eq!(st.diff.as_ref().unwrap().1.highlight, want, "only painting is gated, so turning it back on needs no reload");
 }

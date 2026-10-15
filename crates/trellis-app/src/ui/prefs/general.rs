@@ -1,7 +1,9 @@
 //! Preferences > General.
 
 use super::{help, row, text_field, warn};
+use crate::msg::ForgeMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::state::files::TRASH;
 use crate::state::prefs::GitConfigValues;
 use crate::ui::theme::color;
@@ -40,7 +42,11 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     if let Some(git) = git {
         row(ui, "Longpaths", |ui| {
             if ui.checkbox(&mut git.longpaths, "").changed() {
-                msgs.push(Msg::GitConfig { global: true, key: "core.longpaths".into(), value: Some(git.longpaths.to_string()) });
+                msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
+                    global: true,
+                    key: "core.longpaths".into(),
+                    value: Some(git.longpaths.to_string()),
+                }));
             }
             help(
                 ui,
@@ -49,7 +55,11 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         });
         row(ui, "AutoCRLF", |ui| {
             if ui.checkbox(&mut git.autocrlf, "").changed() {
-                msgs.push(Msg::GitConfig { global: true, key: "core.autocrlf".into(), value: Some(git.autocrlf.to_string()) });
+                msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
+                    global: true,
+                    key: "core.autocrlf".into(),
+                    value: Some(git.autocrlf.to_string()),
+                }));
             }
             help(ui, "Sets core.autocrlf in your global Git config.");
         });
@@ -65,7 +75,7 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         };
         ui.horizontal(|ui| {
             if ui.add_enabled(n > 0, danger("Forget All", n > 0)).clicked() {
-                msgs.push(Msg::ForgetTokens { gcm: false });
+                msgs.push(Msg::Forge(ForgeMsg::ForgetTokens { gcm: false }));
             }
             let gcm_hosts = s.connections.iter().filter(|c| c.account.provider.supports_gcm()).count();
             if ui.add_enabled(gcm_hosts > 0, danger("Forget All + Git Credential Manager", gcm_hosts > 0)).clicked() {
@@ -77,7 +87,7 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
                         if gcm_hosts == 1 { "" } else { "s" }
                     ),
                     "Forget All",
-                    Msg::ForgetTokens { gcm: true },
+                    Msg::Forge(ForgeMsg::ForgetTokens { gcm: true }),
                 ));
             }
         });

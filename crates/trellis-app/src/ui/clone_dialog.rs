@@ -3,6 +3,7 @@
 
 use super::theme::color;
 use crate::msg::CloneMsg;
+use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::clone::{CloneForm, LimitKind};
 use chrono::NaiveDate;
@@ -69,7 +70,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, msgs: &mu
             msgs.push(Msg::Clone(CloneMsg::ParentEdited));
         }
         if ui.button("Browse…").clicked() {
-            msgs.push(Msg::PickFolder(FolderPurpose::CloneParent));
+            msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::CloneParent)));
         }
     });
     problem(ui, form.problems_now(today).folder.as_ref());

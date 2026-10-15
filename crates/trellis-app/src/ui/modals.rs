@@ -9,6 +9,7 @@
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
+use crate::msg::ForgeMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Modal};
@@ -233,14 +234,14 @@ fn create_pr(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&Snapsh
                 }
                 body.push_str(&links.join("\n"));
             }
-            msgs.push(Msg::CreatePr(NewPullRequest {
+            msgs.push(Msg::Forge(ForgeMsg::CreatePr(NewPullRequest {
                 source: f.source.clone(),
                 target: f.target.clone(),
                 title: f.title.trim().to_owned(),
                 description: body,
                 draft: *f.draft,
                 issues: keys.clone(),
-            }));
+            })));
             close = true;
         }
         if ui.button("Cancel").clicked() {

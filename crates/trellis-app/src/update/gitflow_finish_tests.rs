@@ -8,6 +8,8 @@ use super::gitflow_tests::{cleanup, flow, git_job, initialized, job_label, last_
 use super::tests::{drive, git};
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::palette::{PaletteCommand as C, entries};
 use crate::state::{AppState, Modal, PrefPage};
@@ -123,7 +125,7 @@ fn finish_refusals() {
 #[test]
 fn finish_cmds() {
     let (mut st, dir) = ready("cmds");
-    run(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
     flow(&mut st, GitFlowMsg::FinishDialog("feature/login".into()));
     let fx = run(&mut st, finish_msg("feature/login", FinishOptions::default()));
     assert_eq!(
@@ -247,7 +249,7 @@ fn palette_entries() {
             (C::FinishGitFlow("release/1.2.0".into()), "Finish Git Flow release 1.2.0…".into(), into("main and develop")),
         ]
     );
-    run(&mut st, Msg::RunPaletteCommand(C::FinishGitFlow("release/1.2.0".into())));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::FinishGitFlow("release/1.2.0".into()))));
     assert!(matches!(&st.modal, Some(Modal::GitFlowFinish(f)) if f.branch == "release/1.2.0"));
     cleanup(&dir);
 }

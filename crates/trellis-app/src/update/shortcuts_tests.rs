@@ -5,8 +5,10 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LocalOp};
 use crate::keymap::KeyAction;
+use crate::msg::CredentialMsg;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::state::conflict::ConflictView;
@@ -175,7 +177,7 @@ fn only_the_sheet_key_works_under_preferences_or_a_credential_prompt() {
     st.prefs = Some(PrefsState::new(PrefPage::General));
     quiet(&mut st, "Preferences");
     st.prefs = None;
-    update(&mut st, Msg::CredentialPrompt { id: 1, prompt: Prompt::new("Password: ", None) }, Instant::now());
+    update(&mut st, Msg::Credentials(CredentialMsg::CredentialPrompt { id: 1, prompt: Prompt::new("Password: ", None) }), Instant::now());
     assert!(st.askpass.showing());
     quiet(&mut st, "a credential prompt");
 
@@ -213,7 +215,7 @@ fn sheet_open(st: &AppState) -> bool {
 #[test]
 fn ctrl_slash_toggles_the_sheet() {
     let mut st = state();
-    update(&mut st, Msg::TogglePalette, Instant::now());
+    update(&mut st, Msg::Palette(PaletteMsg::TogglePalette), Instant::now());
     assert!(st.palette.is_some());
     key(&mut st, KeyAction::ToggleSheet);
     assert!(sheet_open(&st));
@@ -231,7 +233,7 @@ fn ctrl_slash_toggles_the_sheet() {
     assert!(st.modal.is_none(), "not over Preferences");
 
     let mut st = state();
-    update(&mut st, Msg::CredentialPrompt { id: 1, prompt: Prompt::new("Password: ", None) }, Instant::now());
+    update(&mut st, Msg::Credentials(CredentialMsg::CredentialPrompt { id: 1, prompt: Prompt::new("Password: ", None) }), Instant::now());
     assert!(st.askpass.showing());
     key(&mut st, KeyAction::ToggleSheet);
     assert!(st.modal.is_none(), "not under a credential prompt");
@@ -256,8 +258,8 @@ fn palette_entry_and_hints_come_from_the_table() {
     #[cfg(not(target_os = "macos"))]
     assert_eq!(find(&st, "Unstage all files").unwrap().shortcut, Some("Ctrl+Shift+U"));
 
-    update(&mut st, Msg::TogglePalette, Instant::now());
-    update(&mut st, Msg::RunPaletteCommand(C::KeyboardShortcuts), Instant::now());
+    update(&mut st, Msg::Palette(PaletteMsg::TogglePalette), Instant::now());
+    update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::KeyboardShortcuts)), Instant::now());
     assert!(st.palette.is_none());
     assert!(sheet_open(&st));
     let _ = std::fs::remove_dir_all(&dir);

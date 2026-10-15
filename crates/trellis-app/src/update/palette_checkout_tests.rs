@@ -8,6 +8,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::palette::{Entry, MAX_COMMAND_ROWS, PaletteCommand as C, entries, listed, shown};
@@ -29,7 +30,7 @@ fn find(st: &AppState, label: &str) -> Option<Entry> {
 }
 
 fn open_palette(st: &mut AppState) {
-    run(st, Msg::TogglePalette);
+    run(st, Msg::Palette(PaletteMsg::TogglePalette));
     assert!(st.palette.is_some());
 }
 
@@ -78,7 +79,7 @@ fn remote_entry_runs_checkout_track() {
     let (mut st, work, bare) = with_more_remotes("pal-co-track");
     let cmd = C::CheckoutRemote { remote: "origin".into(), branch: "other".into() };
     open_palette(&mut st);
-    let fx = run(&mut st, Msg::RunPaletteCommand(cmd.clone()));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd.clone())));
     assert!(st.palette.is_none());
     let (cmds, record) = run_git(&fx);
     assert_eq!(cmds, vec![args(&["checkout", "--track", "origin/other"])]);
@@ -86,7 +87,7 @@ fn remote_entry_runs_checkout_track() {
 
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(work.clone())));
-    drive(&mut st, Msg::RunPaletteCommand(cmd));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.head_branch.as_deref(), Some("other"));
     assert_eq!(snap.head_info().and_then(|b| b.upstream.as_deref()), Some("origin/other"));
@@ -104,7 +105,7 @@ fn remote_name_with_slash() {
     let cmd = C::CheckoutRemote { remote: "team/fork".into(), branch: "fix/x".into() };
     assert_eq!(e.command, cmd);
     assert!(find(&st, "Checkout team/fork/topic").is_none(), "local topic exists");
-    let (cmds, _) = run_git(&run(&mut st, Msg::RunPaletteCommand(cmd)));
+    let (cmds, _) = run_git(&run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd))));
     assert_eq!(cmds, vec![args(&["checkout", "--track", "team/fork/fix/x"])]);
     cleanup(&[&dir]);
 }
@@ -127,12 +128,12 @@ fn tag_entries_check_out_detached() {
     let v2 = find(&st, "Checkout tag v2.0").expect("v2.0 at HEAD, listed while on a branch");
     assert_eq!(v2.detail, Some(format!("detached at {}", &head.to_string()[..7])));
 
-    let (cmds, record) = run_git(&run(&mut st, Msg::RunPaletteCommand(C::CheckoutTag("v1.0".into()))));
+    let (cmds, record) = run_git(&run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::CheckoutTag("v1.0".into())))));
     assert_eq!(cmds, vec![args(&["checkout", "refs/tags/v1.0"])]);
     assert_eq!(record, Some(UndoKind::Checkout));
     st.job = None;
 
-    drive(&mut st, Msg::RunPaletteCommand(C::CheckoutTag("v1.0".into())));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::CheckoutTag("v1.0".into()))));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.head_branch, None);
     assert_eq!(snap.head_oid, Some(first));
@@ -190,7 +191,7 @@ fn many_refs_are_capped() {
     assert_eq!(labels(&st, "v2999").first().map(String::as_str), Some("Checkout tag v2999"));
 
     open_palette(&mut st);
-    run(&mut st, Msg::PaletteMove(-1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, MAX_COMMAND_ROWS - 1);
     cleanup(&[&dir]);
 }

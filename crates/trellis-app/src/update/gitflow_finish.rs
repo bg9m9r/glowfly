@@ -6,6 +6,7 @@ use super::gitflow::NOT_SET_UP;
 use super::ops::{JobSpec, busy, last_line, start_job};
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::state::gitflow::{FinishForm, FinishJob};
 use crate::state::{AppState, Modal};
 use std::time::Instant;
@@ -62,7 +63,7 @@ pub(super) fn finish(st: &mut AppState, branch: &str, options: FinishOptions, no
         st.modal = None;
     }
     if st.prefs.is_some() {
-        fx.extend(super::update(st, Msg::ClosePrefs, now));
+        fx.extend(super::update(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
     }
     let label = plan.label();
     start_job(st, JobSpec::new(label.clone(), plan.cmds()), fx);

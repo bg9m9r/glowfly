@@ -9,6 +9,8 @@ use crate::msg::DiffMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::TabsMsg;
@@ -18,23 +20,23 @@ use crate::tag::TagMsg;
 use std::time::Instant;
 use trellis_core::repo::StashInfo;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::TogglePalette => {
+        PaletteMsg::TogglePalette => {
             if st.palette.is_some() {
                 st.palette = None;
             } else if may_open(st) {
                 st.palette = Some(Palette::default());
             }
         }
-        Msg::ClosePalette => st.palette = None,
-        Msg::PaletteMove(step) => {
+        PaletteMsg::ClosePalette => st.palette = None,
+        PaletteMsg::PaletteMove(step) => {
             let len = palette::row_count(st);
             let Some(p) = st.palette.as_mut() else { return };
             p.selected = if len == 0 { 0 } else { (p.selected.min(len - 1) as isize + step).rem_euclid(len as isize) as usize };
             p.scroll_to_selected = true;
         }
-        Msg::RunPaletteCommand(cmd) => {
+        PaletteMsg::RunPaletteCommand(cmd) => {
             if let Some(kind) = cmd.pick_kind() {
                 enter_pick(st, kind, fx);
                 return;
@@ -52,7 +54,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             st.palette = None;
             run(st, cmd, now, fx);
         }
-        Msg::PaletteBack => {
+        PaletteMsg::PaletteBack => {
             if let Some(p) = st.palette.as_mut()
                 && !matches!(p.mode, Mode::Commands)
             {
@@ -61,7 +63,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 p.selected = 0;
             }
         }
-        Msg::TrackedPathsLoaded { generation, result } => {
+        PaletteMsg::TrackedPathsLoaded { generation, result } => {
             if generation != st.palette_gen {
                 return;
             }
@@ -78,7 +80,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 }
             }
         }
-        _ => {}
     }
 }
 
@@ -180,8 +181,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         }
         C::RenameBranch(name) => Msg::Branch(BranchMsg::RenameBranchDialog(name)),
         C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),
-        C::ConfigureLfs => Msg::OpenPrefs(PrefPage::RepoLfs),
-        C::ConfigureGitFlow => Msg::OpenPrefs(PrefPage::RepoGitFlow),
+        C::ConfigureLfs => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)),
+        C::ConfigureGitFlow => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)),
         C::StartGitFlow(k) => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartDialog(k)),
         C::FinishGitFlow(b) => Msg::GitFlow(crate::gitflow::GitFlowMsg::FinishDialog(b)),
         C::Refresh => Msg::Repo(RepoMsg::Refresh),
@@ -197,10 +198,10 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::NewTab => Msg::Tabs(TabsMsg::NewTab),
         C::ReopenClosedTab => Msg::Tabs(TabsMsg::ReopenClosedTab),
         C::CloseTab => Msg::Tabs(TabsMsg::CloseTab(usize::MAX)),
-        C::OpenPrefs => Msg::OpenPrefs(PrefPage::General),
+        C::OpenPrefs => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)),
         C::KeyboardShortcuts => Msg::Shortcut(crate::keymap::KeyAction::ToggleSheet),
-        C::ToolbarLabels(on) => Msg::SetToolbarLabels(on),
-        C::Theme(t) => Msg::SetTheme(t),
+        C::ToolbarLabels(on) => Msg::Prefs(PrefsMsg::SetToolbarLabels(on)),
+        C::Theme(t) => Msg::Prefs(PrefsMsg::SetTheme(t)),
         C::Checkout(name) => Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&name)] }),
         C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),

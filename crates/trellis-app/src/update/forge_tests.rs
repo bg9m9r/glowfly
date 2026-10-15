@@ -3,6 +3,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Status};
 use std::time::Instant;
@@ -34,7 +35,7 @@ fn guessed_self_hosted_servers_are_never_contacted() {
     for t in [target(Provider::GitHubEnterprise, "github.evil.example"), target(Provider::GitLabSelfManaged, "gitlab.evil.example")] {
         let mut st = with_host(&t);
         for interactive in [false, true] {
-            assert!(forge_calls(&mut st, Msg::ForgeRefresh { interactive }).is_empty(), "{t:?}");
+            assert!(forge_calls(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive })).is_empty(), "{t:?}");
         }
         let fs = st.forge.as_ref().unwrap();
         assert!(matches!(&fs.host_status, Status::Error(e) if e.contains("not connected")), "{:?}", fs.host_status);
@@ -47,8 +48,8 @@ fn connected_self_hosted_servers_and_public_hosts_are_contacted() {
     let ghe = target(Provider::GitHubEnterprise, "github.acme.io");
     let mut st = with_host(&ghe);
     st.settings.connections.push(Connection { account: ghe.account(), user: "ada".into(), method: "access token".into() });
-    assert_eq!(forge_calls(&mut st, Msg::ForgeRefresh { interactive: false }), [true]);
+    assert_eq!(forge_calls(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false })), [true]);
 
     let mut st = with_host(&target(Provider::GitHub, "github.com"));
-    assert_eq!(forge_calls(&mut st, Msg::ForgeRefresh { interactive: false }), [false], "public, not connected");
+    assert_eq!(forge_calls(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false })), [false], "public, not connected");
 }

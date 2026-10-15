@@ -1,6 +1,7 @@
 //! Preferences > Profile, and Repo > Identity and Git Hooks.
 
 use super::{help, row, text_field};
+use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::prefs::GitConfigValues;
 use eframe::egui::Ui;
@@ -8,20 +9,20 @@ use eframe::egui::Ui;
 pub fn profile_page(ui: &mut Ui, git: &mut GitConfigValues, msgs: &mut Vec<Msg>) {
     row(ui, "Name", |ui| {
         if text_field(ui, &mut git.user_name, "Your Name").lost_focus() {
-            msgs.push(Msg::GitConfig {
+            msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
                 global: true,
                 key: "user.name".into(),
                 value: Some(git.user_name.trim().to_owned()).filter(|v| !v.is_empty()),
-            });
+            }));
         }
     });
     row(ui, "Email", |ui| {
         if text_field(ui, &mut git.user_email, "you@example.com").lost_focus() {
-            msgs.push(Msg::GitConfig {
+            msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
                 global: true,
                 key: "user.email".into(),
                 value: Some(git.user_email.trim().to_owned()).filter(|v| !v.is_empty()),
-            });
+            }));
         }
         help(
             ui,
@@ -36,21 +37,21 @@ pub fn identity_page(ui: &mut Ui, git: &mut GitConfigValues, msgs: &mut Vec<Msg>
     row(ui, "Name", |ui| {
         let hint = if global_name.is_empty() { "not set".to_owned() } else { format!("inherits {global_name}") };
         if text_field(ui, &mut git.repo_name, &hint).lost_focus() {
-            msgs.push(Msg::GitConfig {
+            msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
                 global: false,
                 key: "user.name".into(),
                 value: Some(git.repo_name.trim().to_owned()).filter(|v| !v.is_empty()),
-            });
+            }));
         }
     });
     row(ui, "Email", |ui| {
         let hint = if global_email.is_empty() { "not set".to_owned() } else { format!("inherits {global_email}") };
         if text_field(ui, &mut git.repo_email, &hint).lost_focus() {
-            msgs.push(Msg::GitConfig {
+            msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
                 global: false,
                 key: "user.email".into(),
                 value: Some(git.repo_email.trim().to_owned()).filter(|v| !v.is_empty()),
-            });
+            }));
         }
         help(ui, "Overrides your profile for this repository only (local Git config). Leave empty to use your profile.");
     });
@@ -62,15 +63,15 @@ pub fn hooks_page(ui: &mut Ui, git: &mut GitConfigValues, msgs: &mut Vec<Msg>) {
         ui.horizontal(|ui| {
             commit = text_field(ui, &mut git.hooks_path, ".git/hooks").lost_focus();
             if ui.button("Browse").clicked() {
-                msgs.push(Msg::PickFolder(FolderPurpose::HooksPath));
+                msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::HooksPath)));
             }
         });
         if commit {
-            msgs.push(Msg::GitConfig {
+            msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
                 global: false,
                 key: "core.hooksPath".into(),
                 value: Some(git.hooks_path.trim().to_owned()).filter(|v| !v.is_empty()),
-            });
+            }));
         }
         help(
             ui,

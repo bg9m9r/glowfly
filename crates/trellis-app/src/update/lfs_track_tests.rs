@@ -7,6 +7,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::lfs::{CHECKING, LfsInstall, NOT_INSTALLED_MENU, ONLY_THIS_FILE, TrackContext, track_items};
 use crate::state::{AppState, PrefPage};
@@ -67,7 +68,7 @@ fn detect_and_page_refresh() {
     assert_eq!(st.lfs_install, LfsInstall::Missing);
 
     let (mut st, dir) = open("lfs-track-detect");
-    update(&mut st, Msg::OpenPrefs(PrefPage::RepoLfs), Instant::now());
+    update(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)), Instant::now());
     let generation = st.prefs.as_ref().unwrap().lfs.generation;
     lfs(&mut st, LfsMsg::Loaded { generation, result: Ok(status(Some("3.7.1"))) });
     assert_eq!(st.lfs_install, installed());

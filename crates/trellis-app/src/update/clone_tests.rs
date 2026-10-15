@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::CloneMsg;
+use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::clone::{CloneForm, CloneRequest, LimitKind};
 use crate::state::{AppState, Modal, RunningJob};
@@ -116,7 +117,11 @@ fn a_bad_request_is_refused() {
 fn picked_folder_fills_the_form_and_keeps_its_options() {
     let mut st = state();
     st.modal = Some(Modal::Clone(CloneForm { shallow: true, depth: "7".into(), branch: "dev".into(), ..filled() }));
-    update(&mut st, Msg::FolderPicked { purpose: FolderPurpose::CloneParent, path: Some(PathBuf::from("D:/src")) }, Instant::now());
+    update(
+        &mut st,
+        Msg::Prefs(PrefsMsg::FolderPicked { purpose: FolderPurpose::CloneParent, path: Some(PathBuf::from("D:/src")) }),
+        Instant::now(),
+    );
     let f = form(&mut st);
     assert_eq!(Path::new(&f.parent), Path::new("D:/src"));
     assert!(f.shallow);
@@ -249,7 +254,7 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     assert_eq!(form(&mut st).problems_now(today()).folder.as_deref(), Some("That folder doesn't exist."));
 
     // A picked folder is checked at once.
-    let fx = update(&mut st, Msg::FolderPicked { purpose: FolderPurpose::CloneParent, path: Some(dir.clone()) }, now);
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::FolderPicked { purpose: FolderPurpose::CloneParent, path: Some(dir.clone()) }), now);
     assert!(matches!(&fx[..], [Effect::CheckCloneParent { delay, .. }] if delay.is_zero()), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

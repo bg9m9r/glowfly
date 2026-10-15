@@ -6,8 +6,11 @@ use super::widgets::{self, Icon};
 use crate::keymap::{self, BindingId};
 use crate::msg::BranchMsg;
 use crate::msg::CloneMsg;
+use crate::msg::ForgeMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
+use crate::msg::PublishMsg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
@@ -97,7 +100,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         ));
                     }
                     if snap.remotes.is_empty() && ui.add_enabled(idle, egui::Button::new("Publish to GitHub…")).clicked() {
-                        msgs.push(Msg::PublishDialog);
+                        msgs.push(Msg::Publish(PublishMsg::PublishDialog));
                     }
                 });
                 if tool(ui, Icon::Branch, "Branch", idle).clicked() {
@@ -119,7 +122,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     if tool(ui, Icon::PullRequest, "PR", can_pr).on_hover_text(tip).clicked()
                         && let Some(b) = &snap.head_branch
                     {
-                        msgs.push(Msg::CreatePrDialog(b.clone()));
+                        msgs.push(Msg::Forge(ForgeMsg::CreatePrDialog(b.clone())));
                     }
                 }
                 ui.add_space(6.0);
@@ -135,7 +138,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         .on_hover_text(format!("Preferences ({})", keymap::hint(BindingId::Prefs)))
                         .clicked()
                     {
-                        msgs.push(Msg::OpenPrefs(PrefPage::General));
+                        msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
                     }
                     if tool(ui, Icon::Search, "Search", true).on_hover_text(keymap::hint(BindingId::Search)).clicked() {
                         st.view.show_search = !st.view.show_search;

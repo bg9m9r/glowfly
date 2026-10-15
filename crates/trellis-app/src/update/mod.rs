@@ -224,51 +224,17 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Branch(m) => branches::handle(st, m, &mut fx),
 
         // credential prompts
-        Msg::CredentialPrompt { .. } | Msg::CredentialPromptExpired(_) | Msg::AnswerCredentials | Msg::CancelCredentials => {
-            askpass::handle(st, msg, now, &mut fx)
-        }
+        Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),
 
         // hosting services
-        Msg::ForgeRefresh { .. }
-        | Msg::Connect { .. }
-        | Msg::Disconnect(_)
-        | Msg::ForgetTokens { .. }
-        | Msg::SetTracker(_)
-        | Msg::CreatePrDialog(_)
-        | Msg::CreatePr(_)
-        | Msg::ForgeReplied(_)
-        | Msg::Connected { .. } => forge::handle(st, msg, now, &mut fx),
-        Msg::PublishDialog | Msg::PublishAccount(_) | Msg::PublishOwners { .. } | Msg::Publish | Msg::Published { .. } => {
-            publish::handle(st, msg, &mut fx)
-        }
+        Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
+        Msg::Publish(m) => publish::handle(st, m, &mut fx),
 
         // preferences
-        Msg::OpenPrefs(_)
-        | Msg::ClosePrefs
-        | Msg::SelectIntegration(_)
-        | Msg::GitConfig { .. }
-        | Msg::SettingsEdited
-        | Msg::GitConfigLoaded(_)
-        | Msg::FolderPicked { .. }
-        | Msg::PickFolder(_)
-        | Msg::PickFile(_)
-        | Msg::FilePicked { .. }
-        | Msg::LoadSigningKeys
-        | Msg::SigningKeysLoaded(_)
-        | Msg::GenerateGpgKey
-        | Msg::GpgKeyGenerated(_)
-        | Msg::CopyPublicKey
-        | Msg::PublicKeyExported(_)
-        | Msg::SetTheme(_)
-        | Msg::SetToolbarLabels(_) => prefs::handle(st, msg, now, &mut fx),
+        Msg::Prefs(m) => prefs::handle(st, m, now, &mut fx),
 
         // command palette
-        Msg::TogglePalette
-        | Msg::ClosePalette
-        | Msg::PaletteMove(_)
-        | Msg::RunPaletteCommand(_)
-        | Msg::PaletteBack
-        | Msg::TrackedPathsLoaded { .. } => palette::handle(st, msg, now, &mut fx),
+        Msg::Palette(m) => palette::handle(st, m, now, &mut fx),
 
         // dialogs and the outside world
         Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then }),
@@ -289,7 +255,6 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::ClearLog => st.log.clear(),
-        Msg::SettingsUnreadable(text) => prefs::unreadable(st, text, now),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),

@@ -6,6 +6,7 @@ use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::state::lfs::{INIT_LABEL, LfsInstall, lfs_remote};
 use crate::state::{AppState, PrefPage};
 use std::time::Instant;
@@ -24,7 +25,7 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
         LfsMsg::Reload => load(st, fx),
         LfsMsg::Initialize => initialize(st, fx),
         LfsMsg::InitializeWhenReady => {
-            fx.extend(super::update(st, Msg::OpenPrefs(PrefPage::RepoLfs), now));
+            fx.extend(super::update(st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)), now));
             if let Some(p) = st.prefs.as_mut() {
                 p.lfs.init_when_ready = true;
             }

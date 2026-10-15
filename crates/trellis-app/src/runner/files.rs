@@ -5,6 +5,7 @@
 use crate::effect::{DeleteMode, FileOp, WorkFileOk};
 use crate::msg::CloneMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::msg::WorkFileMsg;
 use std::path::Path;
 use trellis_core::error::Error;
@@ -68,7 +69,7 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
 /// The paths in the index, for the palette's file finder.
 pub(super) fn tracked_paths(workdir: &Path, generation: u64) -> Msg {
     let result = repo::tracked_paths(workdir).map_err(|e| format!("Could not list the repository's files: {e}"));
-    Msg::TrackedPathsLoaded { generation, result }
+    Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result })
 }
 
 /// Whether `parent` is a folder, looked at after `delay` (`update` drops answers for text the

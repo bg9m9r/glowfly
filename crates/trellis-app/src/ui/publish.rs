@@ -3,6 +3,7 @@
 
 use super::theme::color;
 use crate::msg::Msg;
+use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
 use eframe::egui::{self, RichText};
 use trellis_core::forge;
@@ -21,7 +22,7 @@ pub fn form(ui: &mut egui::Ui, f: &mut PublishForm, idle: bool, msgs: &mut Vec<M
             egui::ComboBox::from_id_salt("publish-account").selected_text(current).width(260.0).show_ui(ui, |ui| {
                 for (i, a) in f.accounts.iter().enumerate() {
                     if ui.selectable_label(i == f.account, a.display()).clicked() {
-                        msgs.push(Msg::PublishAccount(i));
+                        msgs.push(Msg::Publish(PublishMsg::PublishAccount(i)));
                     }
                 }
             });
@@ -61,7 +62,7 @@ pub fn form(ui: &mut egui::Ui, f: &mut PublishForm, idle: bool, msgs: &mut Vec<M
         let ready = idle && !f.loading && !f.creating && f.user.is_some() && !f.owner.is_empty() && forge::valid_repo_name(name);
         let label = if f.creating { "Creating…" } else { "Create and push" };
         if ui.add_enabled(ready, egui::Button::new(RichText::new(label).strong())).clicked() {
-            msgs.push(Msg::Publish);
+            msgs.push(Msg::Publish(PublishMsg::Publish));
         }
         if ui.button("Cancel").clicked() {
             close = true;

@@ -112,6 +112,7 @@ use crate::msg::ConflictMsg;
 use crate::msg::DiffMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
@@ -163,7 +164,7 @@ impl TrellisApp {
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
         if let Some(problem) = problem {
             tracing::warn!("settings: {}", problem.message());
-            app.dispatch(&cc.egui_ctx, Msg::SettingsUnreadable(problem.message()));
+            app.dispatch(&cc.egui_ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem.message())));
         }
         if !paths.is_empty() {
             app.dispatch(&cc.egui_ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, active }));
@@ -247,7 +248,7 @@ impl TrellisApp {
             self.st.view.show_search = !self.st.view.show_search;
         }
         if prefs && self.st.prefs.is_none() && !palette {
-            msgs.push(Msg::OpenPrefs(crate::state::PrefPage::General));
+            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(crate::state::PrefPage::General)));
         }
         escape_key(ctx, &mut self.st, msgs);
     }
@@ -269,7 +270,7 @@ fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         return;
     }
     if st.prefs.is_some() {
-        msgs.push(Msg::ClosePrefs);
+        msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
     } else if st.conflict.is_some() {
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.history.is_some() {
@@ -374,7 +375,7 @@ impl eframe::App for TrellisApp {
         }
         // Only Preferences edits settings in place; persist any change (also on the frame it closes).
         if self.st.prefs.is_some() {
-            msgs.push(Msg::SettingsEdited);
+            msgs.push(Msg::Prefs(PrefsMsg::SettingsEdited));
         }
 
         for msg in msgs {

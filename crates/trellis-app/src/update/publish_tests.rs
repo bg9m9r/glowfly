@@ -6,6 +6,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PublishMsg;
 use crate::msg::RepoMsg;
 use crate::state::publish::PublishForm;
 use crate::state::{AppState, Modal};
@@ -54,25 +55,25 @@ fn push_without_a_remote_offers_github() {
     assert!(matches!(&fx[..], [Effect::RepoOwners { account, .. }] if *account == github()));
 
     // Owners arrive: the user's login is selected and creation becomes possible.
-    run(&mut st, Msg::PublishOwners { account: github(), result: Ok(vec!["ada".into(), "acme".into()]) });
+    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Ok(vec!["ada".into(), "acme".into()]) }));
     let f = form(&st);
     assert_eq!((f.user.as_deref(), f.owner.as_str(), f.loading), (Some("ada"), "ada", false));
 
     form_mut(&mut st).owner = "acme".into();
     form_mut(&mut st).name = "demo".into();
     form_mut(&mut st).description = "  A demo  ".into();
-    let fx = run(&mut st, Msg::Publish);
+    let fx = run(&mut st, Msg::Publish(PublishMsg::Publish));
     let want = NewRepo { owner: "acme".into(), name: "demo".into(), description: "A demo".into(), private: true };
     assert!(
         matches!(&fx[..], [Effect::CreateRepo { user, repo, branch, .. }] if user == "ada" && *repo == want && branch == "main"),
         "{fx:?}"
     );
     assert!(form(&st).creating);
-    assert!(run(&mut st, Msg::Publish).is_empty(), "only one create at a time");
+    assert!(run(&mut st, Msg::Publish(PublishMsg::Publish)).is_empty(), "only one create at a time");
 
     // A failure (e.g. the name is taken) stays in the dialog so the name can be changed.
     let workdir = form(&st).workdir.clone();
-    run(&mut st, Msg::Published { workdir, branch: "main".into(), result: Err("name already exists".into()) });
+    run(&mut st, Msg::Publish(PublishMsg::Published { workdir, branch: "main".into(), result: Err("name already exists".into()) }));
     let f = form(&st);
     assert!(!f.creating && f.error.as_deref() == Some("name already exists"));
     let _ = std::fs::remove_dir_all(&dir);
@@ -81,16 +82,16 @@ fn push_without_a_remote_offers_github() {
 #[test]
 fn invalid_names_and_sign_in_failures_create_nothing() {
     let (mut st, dir, _) = pushed_without_remote("publish-invalid");
-    assert!(run(&mut st, Msg::Publish).is_empty(), "owners not loaded yet");
-    run(&mut st, Msg::PublishOwners { account: github(), result: Ok(vec!["ada".into()]) });
+    assert!(run(&mut st, Msg::Publish(PublishMsg::Publish)).is_empty(), "owners not loaded yet");
+    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Ok(vec!["ada".into()]) }));
     form_mut(&mut st).name = "has space".into();
-    assert!(run(&mut st, Msg::Publish).is_empty());
+    assert!(run(&mut st, Msg::Publish(PublishMsg::Publish)).is_empty());
 
     // Owners for an account no longer selected are ignored; a sign-in failure is shown.
     let other = Account { provider: Provider::GitHubEnterprise, host: "git.acme.io".into(), org: String::new() };
-    run(&mut st, Msg::PublishOwners { account: other, result: Ok(vec!["x".into()]) });
+    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: other, result: Ok(vec!["x".into()]) }));
     assert_eq!(form(&st).owners, ["ada"]);
-    run(&mut st, Msg::PublishOwners { account: github(), result: Err("401".into()) });
+    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Err("401".into()) }));
     assert!(form(&st).error.as_deref().is_some_and(|e| e.contains("401")));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -105,10 +106,10 @@ fn connected_accounts_are_offered_github_com_first() {
         st.settings.connections.push(Connection { account: a.clone(), user: "ada".into(), method: "token".into() });
     }
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    run(&mut st, Msg::PublishDialog);
+    run(&mut st, Msg::Publish(PublishMsg::PublishDialog));
     assert_eq!(form(&st).accounts, [github(), ghe.clone()], "GitHub accounts only");
 
-    let fx = run(&mut st, Msg::PublishAccount(1));
+    let fx = run(&mut st, Msg::Publish(PublishMsg::PublishAccount(1)));
     assert!(matches!(&fx[..], [Effect::RepoOwners { account, .. }] if *account == ghe));
     assert!(form(&st).user.is_none() && form(&st).loading);
     let _ = std::fs::remove_dir_all(&dir);
@@ -126,7 +127,7 @@ fn created_repository_becomes_origin_and_is_pushed() {
         clone_url: bare.to_string_lossy().into_owned(),
         html_url: "https://github.com/ada/demo".into(),
     };
-    drive(&mut st, Msg::Published { workdir: dir.clone(), branch: "main".into(), result: Ok(created) });
+    drive(&mut st, Msg::Publish(PublishMsg::Published { workdir: dir.clone(), branch: "main".into(), result: Ok(created) }));
     assert!(st.modal.is_none(), "the dialog closes");
     assert!(st.log.iter().any(|l| l.text.contains("https://github.com/ada/demo")));
     let snap = st.snap.as_ref().unwrap();
@@ -148,7 +149,7 @@ fn nothing_to_publish_without_commits() {
     git(&dir, &["init", "-q", "-b", "main"]);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    run(&mut st, Msg::PublishDialog);
+    run(&mut st, Msg::Publish(PublishMsg::PublishDialog));
     assert!(st.modal.is_none());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("Make a commit")));
     let _ = std::fs::remove_dir_all(&dir);

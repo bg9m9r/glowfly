@@ -2,6 +2,7 @@
 //! key generation, and signing defaults.
 
 use super::{help, primary_button, row, text_field, warn};
+use crate::msg::PrefsMsg;
 use crate::msg::{FilePurpose, Msg};
 use crate::state::PrefsState;
 use crate::ui::theme::color;
@@ -13,7 +14,7 @@ const RENEW_HELP: &str = "https://docs.github.com/en/authentication/managing-com
 
 fn set(msgs: &mut Vec<Msg>, key: &str, value: &str) {
     let value = value.trim();
-    msgs.push(Msg::GitConfig { global: true, key: key.into(), value: (!value.is_empty()).then(|| value.to_owned()) });
+    msgs.push(Msg::Prefs(PrefsMsg::GitConfig { global: true, key: key.into(), value: (!value.is_empty()).then(|| value.to_owned()) }));
 }
 
 pub fn signing_page(ui: &mut Ui, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
@@ -31,7 +32,7 @@ pub fn signing_page(ui: &mut Ui, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
         if chosen != format {
             git.signing_format = chosen.config_value().to_owned();
             set(msgs, "gpg.format", chosen.config_value());
-            msgs.push(Msg::LoadSigningKeys);
+            msgs.push(Msg::Prefs(PrefsMsg::LoadSigningKeys));
         }
     });
 
@@ -49,10 +50,10 @@ pub fn signing_page(ui: &mut Ui, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
             };
             if text_field(ui, value, format.default_program()).lost_focus() {
                 set(msgs, format.program_key(), value);
-                msgs.push(Msg::LoadSigningKeys);
+                msgs.push(Msg::Prefs(PrefsMsg::LoadSigningKeys));
             }
             if ui.button("Browse").clicked() {
-                msgs.push(Msg::PickFile(FilePurpose::SigningProgram));
+                msgs.push(Msg::Prefs(PrefsMsg::PickFile(FilePurpose::SigningProgram)));
             }
         });
         let text = match format {
@@ -89,10 +90,10 @@ pub fn signing_page(ui: &mut Ui, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
                 set(msgs, "user.signingkey", &id);
             }
             if widgets::icon_button(ui, Icon::Refresh, "Reload keys").clicked() {
-                msgs.push(Msg::LoadSigningKeys);
+                msgs.push(Msg::Prefs(PrefsMsg::LoadSigningKeys));
             }
             if ui.add_enabled(!git.signing_key.is_empty(), egui::Button::new("Copy public key")).clicked() {
-                msgs.push(Msg::CopyPublicKey);
+                msgs.push(Msg::Prefs(PrefsMsg::CopyPublicKey));
             }
         });
         if let Some(e) = &signing.keys_error {
@@ -121,7 +122,7 @@ pub fn signing_page(ui: &mut Ui, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
                 );
                 let can = !signing.generating && !git.user_name.is_empty() && !git.user_email.is_empty();
                 if primary_button(ui, "Generate", can).clicked() {
-                    msgs.push(Msg::GenerateGpgKey);
+                    msgs.push(Msg::Prefs(PrefsMsg::GenerateGpgKey));
                 }
                 if signing.generating {
                     ui.add(egui::Spinner::new().size(14.0));
@@ -144,7 +145,7 @@ pub fn signing_page(ui: &mut Ui, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
                     set(msgs, "gpg.ssh.allowedSignersFile", &git.ssh_allowed_signers);
                 }
                 if ui.button("Browse").clicked() {
-                    msgs.push(Msg::PickFile(FilePurpose::SshAllowedSigners));
+                    msgs.push(Msg::Prefs(PrefsMsg::PickFile(FilePurpose::SshAllowedSigners)));
                 }
             });
             help(ui, "Lists trusted signers so git can verify SSH signatures (gpg.ssh.allowedSignersFile).");

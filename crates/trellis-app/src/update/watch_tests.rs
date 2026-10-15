@@ -6,6 +6,7 @@ use super::update;
 use crate::effect::{Effect, LoadKind, WatchTarget};
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::TabsMsg;
@@ -154,15 +155,15 @@ fn watcher_follows_the_active_tab() {
 #[test]
 fn preference_toggle_starts_and_stops_watching() {
     let (mut st, dir, workdir) = opened("watch-pref");
-    assert!(update(&mut st, Msg::SettingsEdited, Instant::now()).is_empty(), "nothing changed");
+    assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "nothing changed");
     st.settings.watch_files = false;
-    let fx = update(&mut st, Msg::SettingsEdited, Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
     assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Watch(None)]), "{fx:?}");
     assert!(update(&mut st, changed(&workdir, false, Instant::now()), Instant::now()).is_empty(), "ignored while off");
     st.settings.watch_files = true;
-    let fx = update(&mut st, Msg::SettingsEdited, Instant::now());
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
     assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Watch(Some(t))] if t.workdir == workdir), "{fx:?}");
-    assert!(update(&mut st, Msg::SettingsEdited, Instant::now()).is_empty());
+    assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

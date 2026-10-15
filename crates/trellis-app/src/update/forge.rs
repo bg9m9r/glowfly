@@ -1,7 +1,7 @@
 //! Hosting services: detection, refresh, replies, pull request creation, connections.
 
 use crate::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
-use crate::msg::Msg;
+use crate::msg::ForgeMsg;
 use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, Modal, Status};
 use git2::Oid;
 use std::time::Instant;
@@ -9,32 +9,32 @@ use trellis_core::forge::{self, Account, Connection, Target};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::TrackerChoice;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::ForgeRefresh { interactive } => {
+        ForgeMsg::ForgeRefresh { interactive } => {
             if let Some(fs) = st.forge.as_mut() {
                 fs.host_status = Status::Idle;
                 fs.tracker_status = Status::Idle;
             }
             refresh(st, true, interactive, now, fx);
         }
-        Msg::ForgeReplied(reply) => replied(st, reply, now),
-        Msg::CreatePrDialog(source) => open_create_pr(st, source, fx),
-        Msg::CreatePr(pr) => {
+        ForgeMsg::ForgeReplied(reply) => replied(st, reply, now),
+        ForgeMsg::CreatePrDialog(source) => open_create_pr(st, source, fx),
+        ForgeMsg::CreatePr(pr) => {
             if let Some(target) = st.forge.as_ref().and_then(|f| f.host.clone()) {
                 request(st, target, false, ForgeCall::Create(pr), fx);
             }
         }
-        Msg::Connect { account, user, token } => {
+        ForgeMsg::Connect { account, user, token } => {
             if let Some(p) = st.prefs.as_mut() {
                 p.int_busy = true;
                 p.int_error = None;
             }
             fx.push(Effect::Connect { account, user, token, cwd: st.any_dir() });
         }
-        Msg::Connected { account, method, token, result } => connected(st, account, method, token, result, now, fx),
-        Msg::Disconnect(account) => disconnect(st, &account, fx),
-        Msg::ForgetTokens { gcm } => {
+        ForgeMsg::Connected { account, method, token, result } => connected(st, account, method, token, result, now, fx),
+        ForgeMsg::Disconnect(account) => disconnect(st, &account, fx),
+        ForgeMsg::ForgetTokens { gcm } => {
             let accounts: Vec<Account> = st.settings.connections.iter().map(|c| c.account.clone()).collect();
             for a in &accounts {
                 disconnect(st, a, fx);
@@ -46,7 +46,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             let extra = if gcm { " and signed Git Credential Manager out of those hosts" } else { "" };
             st.log(true, format!("Removed {} connection{}{extra}.", accounts.len(), if accounts.len() == 1 { "" } else { "s" }));
         }
-        Msg::SetTracker(choice) => {
+        ForgeMsg::SetTracker(choice) => {
             let Some(w) = st.workdir() else { return };
             st.settings.repo_trackers.insert(w.display().to_string(), choice);
             fx.push(super::prefs::save_settings(st));
@@ -56,7 +56,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
             refresh(st, true, false, now, fx);
         }
-        _ => {}
     }
 }
 

@@ -7,6 +7,7 @@
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::{click, row_y};
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::state::worktrees::WorktreeForm;
 use crate::state::{AppState, Modal};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -193,7 +194,7 @@ fn worktree_dialog_branch() {
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Submit))));
     h.get_by_label("Browse…").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::PickFolder(crate::msg::FolderPurpose::WorktreeParent))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Prefs(PrefsMsg::PickFolder(crate::msg::FolderPurpose::WorktreeParent)))));
     drop(h);
     remove_fixture(&dir);
 }

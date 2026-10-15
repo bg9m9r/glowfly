@@ -1,7 +1,8 @@
 //! Preferences: opening/closing, settings persistence, git config, folder pickers.
 
 use crate::effect::Effect;
-use crate::msg::{FilePurpose, FolderPurpose, Msg};
+use crate::msg::PrefsMsg;
+use crate::msg::{FilePurpose, FolderPurpose};
 use crate::state::{AppState, Modal, PrefPage, PrefsState, host_text};
 use std::time::Instant;
 use trellis_core::forge::Provider;
@@ -9,9 +10,9 @@ use trellis_core::gitcli::args;
 use trellis_core::settings::TrackerChoice;
 use trellis_core::signing::SigningFormat;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::OpenPrefs(page) => {
+        PrefsMsg::OpenPrefs(page) => {
             let mut prefs = PrefsState::new(page);
             if let Some(w) = st.workdir()
                 && let TrackerChoice::Jira { project, .. } = st.settings.tracker_for(&w)
@@ -30,7 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             select_integration(st, provider);
             fx.push(Effect::ReadGitConfig { cwd: st.any_dir(), has_repo: st.snap.is_some() });
         }
-        Msg::ClosePrefs => {
+        PrefsMsg::ClosePrefs => {
             st.prefs = None;
             // The diff's scroll offset is in pixels: keep the same top row if the editor font
             // size (and so the row height) changed.
@@ -40,9 +41,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             // The commit limit or branch visibility may have changed.
             super::repo::refresh(st, fx);
         }
-        Msg::SelectIntegration(p) => select_integration(st, p),
-        Msg::GitConfig { global, key, value } => fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global, key, value }),
-        Msg::SettingsEdited => {
+        PrefsMsg::SelectIntegration(p) => select_integration(st, p),
+        PrefsMsg::GitConfig { global, key, value } => fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global, key, value }),
+        PrefsMsg::SettingsEdited => {
             if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.saved_settings.as_str()) {
                 fx.push(save_settings(st));
             }
@@ -51,26 +52,26 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 super::watch::sync(st, fx);
             }
         }
-        Msg::SetTheme(t) => {
+        PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {
                 st.settings.theme = t;
                 fx.push(save_settings(st));
             }
         }
-        Msg::SetToolbarLabels(on) => {
+        PrefsMsg::SetToolbarLabels(on) => {
             if st.settings.toolbar_labels != on {
                 st.settings.toolbar_labels = on;
                 fx.push(save_settings(st));
             }
         }
-        Msg::GitConfigLoaded(values) => {
+        PrefsMsg::GitConfigLoaded(values) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.git = Some(values);
             }
             load_signing_keys(st, fx);
         }
-        Msg::LoadSigningKeys => load_signing_keys(st, fx),
-        Msg::SigningKeysLoaded(result) => {
+        PrefsMsg::LoadSigningKeys => load_signing_keys(st, fx),
+        PrefsMsg::SigningKeysLoaded(result) => {
             if let Some(p) = st.prefs.as_mut() {
                 match result {
                     Ok(keys) => {
@@ -84,7 +85,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 }
             }
         }
-        Msg::GenerateGpgKey => {
+        PrefsMsg::GenerateGpgKey => {
             let Some(p) = st.prefs.as_mut() else { return };
             let Some(git) = p.git.as_ref() else { return };
             let program = non_empty(&git.gpg_program, "gpg");
@@ -96,7 +97,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 passphrase: std::mem::take(&mut p.signing.passphrase),
             });
         }
-        Msg::GpgKeyGenerated(result) => {
+        PrefsMsg::GpgKeyGenerated(result) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.signing.generating = false;
             }
@@ -117,7 +118,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 Err(e) => st.log(false, format!("Could not generate a GPG key: {e}")),
             }
         }
-        Msg::CopyPublicKey => {
+        PrefsMsg::CopyPublicKey => {
             let Some(git) = st.prefs.as_ref().and_then(|p| p.git.as_ref()) else { return };
             if git.signing_key.is_empty() {
                 return;
@@ -126,21 +127,21 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             let program = non_empty(git.program(), format.default_program());
             fx.push(Effect::ExportPublicKey { format, program, key: git.signing_key.clone() });
         }
-        Msg::PublicKeyExported(result) => match result {
+        PrefsMsg::PublicKeyExported(result) => match result {
             Ok(text) => {
                 fx.push(Effect::Ui(crate::effect::UiEffect::CopyText(text)));
                 st.toast(true, "Public key copied to the clipboard", now);
             }
             Err(e) => st.log(false, format!("Could not export the public key: {e}")),
         },
-        Msg::PickFile(purpose) => {
+        PrefsMsg::PickFile(purpose) => {
             let title = match purpose {
                 FilePurpose::SigningProgram => "Signing program",
                 FilePurpose::SshAllowedSigners => "Allowed signers file",
             };
             fx.push(Effect::PickFile { title: title.into(), purpose });
         }
-        Msg::FilePicked { purpose, path: Some(path) } => {
+        PrefsMsg::FilePicked { purpose, path: Some(path) } => {
             let value = path.display().to_string();
             let Some(git) = st.prefs.as_mut().and_then(|p| p.git.as_mut()) else { return };
             let key = match purpose {
@@ -161,8 +162,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global: true, key: key.into(), value: Some(value) });
             load_signing_keys(st, fx);
         }
-        Msg::FilePicked { path: None, .. } => {}
-        Msg::PickFolder(purpose) => {
+        PrefsMsg::FilePicked { path: None, .. } => {}
+        PrefsMsg::PickFolder(purpose) => {
             let title = match purpose {
                 FolderPurpose::OpenRepo => "Open a Git repository",
                 FolderPurpose::InitRepo => "Initialize a repository in…",
@@ -172,7 +173,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             };
             fx.push(Effect::PickFolder { title: title.into(), purpose });
         }
-        Msg::FolderPicked { purpose, path: Some(path) } => match purpose {
+        PrefsMsg::FolderPicked { purpose, path: Some(path) } => match purpose {
             FolderPurpose::OpenRepo => super::tabs::open(st, path, fx),
             FolderPurpose::WorktreeParent => super::worktrees::parent_picked(st, path),
             FolderPurpose::InitRepo => {
@@ -199,8 +200,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 fx.push(Effect::SetGitConfig { cwd: st.any_dir(), global: false, key: "core.hooksPath".into(), value: Some(value) });
             }
         },
-        Msg::FolderPicked { path: None, .. } => {}
-        _ => {}
+        PrefsMsg::FolderPicked { path: None, .. } => {}
+        PrefsMsg::SettingsUnreadable(text) => unreadable(st, text, now),
     }
 }
 
@@ -218,7 +219,7 @@ fn load_signing_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// Tells the user, in a toast and the activity log, that their settings file couldn't be read.
-pub(super) fn unreadable(st: &mut AppState, text: String, now: Instant) {
+fn unreadable(st: &mut AppState, text: String, now: Instant) {
     st.log(false, text.clone());
     st.toast(false, text, now);
 }

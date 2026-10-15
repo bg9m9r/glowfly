@@ -6,6 +6,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
 use crate::state::AppState;
@@ -47,7 +48,7 @@ fn palette_tags_and_hints() {
     assert!(h.query_by_label("Create tag at HEAD…").is_some());
     h.get_by_label("Create annotated tag at HEAD…").click();
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true }))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CreateTag { annotated: true })))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -71,10 +72,10 @@ fn palette_checkout_refs() {
     assert!(h.query_by_label("Checkout origin/login-page").is_none());
     h.get_by_label("Checkout tag v0.1.0").click();
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::CheckoutTag(t)) if t == "v0.1.0")));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CheckoutTag(t))) if t == "v0.1.0")));
     h.get_by_label("Checkout upstream/release-2.0").click();
     h.run();
-    let upstream = |m: &Msg| matches!(m, Msg::RunPaletteCommand(PaletteCommand::CheckoutRemote { remote, branch }) if remote == "upstream" && branch == "release-2.0");
+    let upstream = |m: &Msg| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::CheckoutRemote { remote, branch })) if remote == "upstream" && branch == "release-2.0");
     assert!(pushed(&h, upstream));
     drop(h);
     remove_fixture(&dir);
@@ -92,7 +93,7 @@ fn palette_many_refs_footer() {
     assert!(h.query_by_label_contains("Showing 200 of").is_some());
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog)))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog))))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -107,7 +108,7 @@ fn palette_more() {
     h.check_snapshot("palette_more");
     h.get_by_label("Reopen closed tab").click();
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::ReopenClosedTab))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::ReopenClosedTab)))));
 
     h.state_mut().1.clear();
     if let Some(p) = h.state_mut().0.palette.as_mut() {
@@ -118,7 +119,7 @@ fn palette_more() {
     assert!(h.query_by_label("Refresh").is_some());
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Refresh))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Refresh)))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -133,7 +134,7 @@ fn palette_no_matches() {
     // Enter with nothing listed runs nothing.
     h.press_key(Key::Enter);
     h.run();
-    assert!(!pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(_))));
+    assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(_)))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -146,30 +147,30 @@ fn palette_keys_and_clicks() {
     h.run();
     h.get_by_label("Checkout search").click();
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Checkout(b)) if b == "search")));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Checkout(b))) if b == "search")));
 
     h.state_mut().1.clear();
     h.press_key(Key::ArrowDown);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::PaletteMove(1))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteMove(1)))));
     // The graph under the palette doesn't move its selection.
     assert!(!pushed(&h, |m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)) | Msg::Repo(RepoMsg::SelectWip))));
 
     h.state_mut().1.clear();
     h.press_key(Key::ArrowUp);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::PaletteMove(-1))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteMove(-1)))));
 
     // The fixture has no remote, so the first row is Add remote… (Fetch and Pull need one).
     h.state_mut().1.clear();
     h.press_key(Key::Enter);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog)))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Remote(RemoteMsg::AddDialog))))));
 
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::ClosePalette)));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::ClosePalette))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -186,7 +187,10 @@ fn palette_ignores_keys_under_a_credential_prompt() {
     h.press_key(Key::ArrowDown);
     h.press_key(Key::Escape);
     h.run();
-    assert!(!pushed(&h, |m| matches!(m, Msg::RunPaletteCommand(_) | Msg::PaletteMove(_) | Msg::ClosePalette)));
+    assert!(!pushed(&h, |m| matches!(
+        m,
+        Msg::Palette(PaletteMsg::RunPaletteCommand(_)) | Msg::Palette(PaletteMsg::PaletteMove(_)) | Msg::Palette(PaletteMsg::ClosePalette)
+    )));
     drop(h);
     remove_fixture(&dir);
 }
@@ -199,11 +203,11 @@ fn shortcut_toggles() {
         .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| super::palette::shortcut(ctx, st, msgs), (st, Vec::new()));
     h.press_key_modifiers(Modifiers::COMMAND, Key::P);
     h.run();
-    assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::TogglePalette)).count(), 1);
+    assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Palette(PaletteMsg::TogglePalette))).count(), 1);
     h.state_mut().1.clear();
     h.press_key_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::P);
     h.run();
-    assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::TogglePalette)).count(), 1);
+    assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Palette(PaletteMsg::TogglePalette))).count(), 1);
     h.state_mut().1.clear();
     h.press_key(Key::P);
     h.run();
@@ -276,7 +280,7 @@ fn palette_file_keys() {
     st.palette = Some(finder(Items::Ready(paths), "", 0));
     let mut h = harness(st, true);
     h.run();
-    let opens = |want: &'static str| move |m: &Msg| matches!(m, Msg::RunPaletteCommand(PaletteCommand::OpenFileHistory(p)) if p == want);
+    let opens = |want: &'static str| move |m: &Msg| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenFileHistory(p))) if p == want);
     h.press_key(Key::Enter);
     h.run();
     assert!(pushed(&h, opens("README.md")));
@@ -289,13 +293,13 @@ fn palette_file_keys() {
     h.state_mut().1.clear();
     h.press_key(Key::Backspace);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::PaletteBack)));
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
 
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
     h.run();
-    assert!(pushed(&h, |m| matches!(m, Msg::PaletteBack)));
-    assert!(!pushed(&h, |m| matches!(m, Msg::ClosePalette)), "Esc goes back rather than closing");
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
+    assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::ClosePalette))), "Esc goes back rather than closing");
 
     // Backspace with text in the field edits the text.
     h.state_mut().0.palette.as_mut().unwrap().query = "x".into();
@@ -303,7 +307,7 @@ fn palette_file_keys() {
     h.state_mut().1.clear();
     h.press_key(Key::Backspace);
     h.run();
-    assert!(!pushed(&h, |m| matches!(m, Msg::PaletteBack)));
+    assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
 
     // Under a credential prompt the finder takes no keys.
     h.state_mut().0.palette.as_mut().unwrap().query.clear();
@@ -313,7 +317,10 @@ fn palette_file_keys() {
     h.press_key(Key::Escape);
     h.press_key(Key::Backspace);
     h.run();
-    assert!(!pushed(&h, |m| matches!(m, Msg::PaletteBack | Msg::ClosePalette | Msg::RunPaletteCommand(_))));
+    assert!(!pushed(&h, |m| matches!(
+        m,
+        Msg::Palette(PaletteMsg::PaletteBack) | Msg::Palette(PaletteMsg::ClosePalette) | Msg::Palette(PaletteMsg::RunPaletteCommand(_))
+    )));
     drop(h);
     remove_fixture(&dir);
 }

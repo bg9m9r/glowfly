@@ -6,6 +6,8 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::palette::{Entry, PaletteCommand as C, entries, shown};
 use crate::state::palette_commands::SHOW_REPO_FOLDER;
@@ -30,7 +32,7 @@ fn matches(st: &AppState, query: &str, label: &str) -> bool {
 }
 
 fn open_palette(st: &mut AppState) {
-    run(st, Msg::TogglePalette);
+    run(st, Msg::Palette(PaletteMsg::TogglePalette));
     assert!(st.palette.is_some());
 }
 
@@ -41,7 +43,7 @@ fn stash_and_pop_entries() {
     assert!(!has(&st, "Pop stash"));
 
     open_palette(&mut st);
-    drive(&mut st, Msg::RunPaletteCommand(C::Stash));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Stash)));
     assert!(st.palette.is_none());
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 1);
@@ -50,7 +52,7 @@ fn stash_and_pop_entries() {
     let pop = find(&st, "Pop stash").expect("Pop stash");
     assert!(pop.detail.as_deref().is_some_and(|d| d.contains("main")), "{:?}", pop.detail);
 
-    drive(&mut st, Msg::RunPaletteCommand(C::PopStash));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::PopStash)));
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.stashes.is_empty());
     assert!(snap.unstaged.iter().any(|f| f.path == "a.txt"));
@@ -64,17 +66,17 @@ fn undo_redo_entries_follow_history() {
     assert!(!has(&st, "Undo"));
     assert!(!has(&st, "Redo"));
 
-    drive(&mut st, Msg::RunPaletteCommand(C::Checkout("topic".into())));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Checkout("topic".into()))));
     let undo = find(&st, "Undo").expect("Undo");
     assert_eq!(undo.detail.as_deref(), Some("checkout of topic"));
     assert_eq!(undo.shortcut, Some("Ctrl+Z"));
 
-    drive(&mut st, Msg::RunPaletteCommand(C::Undo));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Undo)));
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("main"));
     let redo = find(&st, "Redo").expect("Redo");
     assert_eq!(redo.shortcut, Some("Ctrl+Y"));
 
-    drive(&mut st, Msg::RunPaletteCommand(C::Redo));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Redo)));
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("topic"));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -84,7 +86,7 @@ fn rename_branch_entry() {
     let (mut st, dir) = repo_with_topic("palette-more-rename");
     assert!(has(&st, "Rename branch main…"));
     open_palette(&mut st);
-    run(&mut st, Msg::RunPaletteCommand(C::RenameBranch("main".into())));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::RenameBranch("main".into()))));
     assert!(st.palette.is_none());
     assert!(matches!(&st.modal, Some(Modal::RenameBranch { old, name }) if old == "main" && name == "main"));
 
@@ -103,7 +105,7 @@ fn refresh_entry() {
     let (mut st, dir) = repo_with_topic("palette-more-refresh");
     assert_eq!(find(&st, "Refresh").expect("Refresh").shortcut, Some("F5"));
     open_palette(&mut st);
-    let fx = run(&mut st, Msg::RunPaletteCommand(C::Refresh));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Refresh)));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
     assert!(st.palette.is_none());
 
@@ -118,9 +120,9 @@ fn terminal_and_file_manager_entries() {
     assert!(has(&st, "Open in terminal"));
     assert!(has(&st, SHOW_REPO_FOLDER));
 
-    let fx = run(&mut st, Msg::RunPaletteCommand(C::OpenTerminal));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::OpenTerminal)));
     assert!(matches!(&fx[..], [Effect::OpenTerminal(d)] if *d == workdir), "{fx:?}");
-    let fx = run(&mut st, Msg::RunPaletteCommand(C::ShowInFileManager));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ShowInFileManager)));
     assert!(matches!(&fx[..], [Effect::OpenFolder(d)] if *d == workdir), "{fx:?}");
 
     let empty = state();
@@ -137,7 +139,7 @@ fn terminal_panel_entry_toggles() {
     assert!(matches(&st, "integrated", "Show terminal panel"));
 
     open_palette(&mut st);
-    let fx = run(&mut st, Msg::RunPaletteCommand(C::ToggleTerminal));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ToggleTerminal)));
     assert!(st.palette.is_none() && st.terminal.open);
     assert!(fx.iter().any(|e| matches!(e, Effect::Terminal(crate::terminal::TerminalEffect::Spawn { .. }))), "{fx:?}");
     assert!(has(&st, "Hide terminal panel"));
@@ -155,7 +157,7 @@ fn tab_entries() {
     assert_eq!(find(&st, "New tab").expect("New tab").shortcut, Some("Ctrl+T"));
     assert!(!has(&st, "Reopen closed tab"));
     open_palette(&mut st);
-    run(&mut st, Msg::RunPaletteCommand(C::NewTab));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::NewTab)));
     assert!(st.palette.is_none());
     assert_eq!(st.tabs.len(), 2);
 
@@ -167,7 +169,7 @@ fn tab_entries() {
 
     let dir = scratch_repo("palette-more-reopen");
     st.closed_tabs = vec![dir.clone()];
-    drive(&mut st, Msg::RunPaletteCommand(C::ReopenClosedTab));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ReopenClosedTab)));
     assert!(st.closed_tabs.is_empty());
     assert!(st.snap.as_ref().is_some_and(|s| s.workdir == st.workdir().unwrap()));
     assert!(st.tabs.iter().any(|t| t.is(&dir)));
@@ -182,13 +184,13 @@ fn diff_toggles_name_the_next_state() {
     assert!(has(&st, "Use split diff layout"));
     assert!(has(&st, "Ignore whitespace changes"));
 
-    let fx = run(&mut st, Msg::RunPaletteCommand(C::DiffLayout(DiffLayout::Split)));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::DiffLayout(DiffLayout::Split))));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
     assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
     assert!(has(&st, "Use inline diff layout"));
     assert!(!has(&st, "Use split diff layout"));
 
-    run(&mut st, Msg::RunPaletteCommand(C::IgnoreWhitespace(true)));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::IgnoreWhitespace(true))));
     assert!(st.settings.diff_ignore_whitespace);
     assert!(has(&st, "Show whitespace changes"));
     assert!(!has(&st, "Ignore whitespace changes"));
@@ -206,15 +208,15 @@ fn toolbar_labels_toggle_saves_once() {
     assert!(st.settings.toolbar_labels);
     assert!(has(&st, "Hide toolbar labels"));
     open_palette(&mut st);
-    let fx = run(&mut st, Msg::RunPaletteCommand(C::ToolbarLabels(false)));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ToolbarLabels(false))));
     assert!(!st.settings.toolbar_labels);
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if !s.toolbar_labels), "{fx:?}");
     assert!(st.palette.is_none());
     // Nothing left for the per-frame settings check to save.
-    assert!(run(&mut st, Msg::SettingsEdited).is_empty());
+    assert!(run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
     assert!(has(&st, "Show toolbar labels"));
     assert!(!has(&st, "Hide toolbar labels"));
-    assert!(run(&mut st, Msg::SetToolbarLabels(false)).is_empty());
+    assert!(run(&mut st, Msg::Prefs(PrefsMsg::SetToolbarLabels(false))).is_empty());
 }
 
 #[test]

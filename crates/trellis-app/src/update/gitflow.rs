@@ -7,6 +7,7 @@ use super::ops::{JobSpec, busy, start_job};
 use crate::effect::Effect;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::state::gitflow::{INIT_LABEL, SAVE_LABEL, StartForm};
 use crate::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
@@ -119,7 +120,7 @@ fn start(st: &mut AppState, kind: FlowKind, name: &str, now: Instant, fx: &mut V
         st.modal = None;
     }
     if st.prefs.is_some() {
-        fx.extend(super::update(st, Msg::ClosePrefs, now));
+        fx.extend(super::update(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
     }
     let cmd = gitflow::start_cmd(&s, kind, &branch);
     start_job(st, JobSpec::new(format!("Start {branch}"), vec![cmd]), fx);

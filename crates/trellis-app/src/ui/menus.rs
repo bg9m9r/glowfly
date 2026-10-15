@@ -4,6 +4,7 @@ use super::common::{menu_item, short};
 use super::ref_visibility;
 use super::theme::color;
 use crate::msg::BranchMsg;
+use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
@@ -102,7 +103,7 @@ pub fn remote_branch_menu(
         ui.separator();
         match fs.pr_for_branch(name) {
             Some(pr) => menu_item(msgs, ui, format!("Open {} {}", fs.pr_noun(), fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone())),
-            None => menu_item(msgs, ui, format!("Create {}…", fs.pr_noun()), Msg::CreatePrDialog(name.to_owned())),
+            None => menu_item(msgs, ui, format!("Create {}…", fs.pr_noun()), Msg::Forge(ForgeMsg::CreatePrDialog(name.to_owned()))),
         }
     }
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(full.clone()));

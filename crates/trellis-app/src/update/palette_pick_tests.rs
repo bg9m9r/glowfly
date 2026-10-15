@@ -7,6 +7,7 @@ use super::tests::{drive, git, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
@@ -41,11 +42,11 @@ fn pick_mut(st: &mut AppState) -> &mut Pick {
 }
 
 fn loaded(st: &mut AppState, generation: u64, result: Result<Vec<String>, String>) {
-    run(st, Msg::TrackedPathsLoaded { generation, result });
+    run(st, Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result }));
 }
 
 fn enter(st: &mut AppState) -> Vec<Effect> {
-    run(st, Msg::RunPaletteCommand(PaletteCommand::FileHistory))
+    run(st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::FileHistory)))
 }
 
 /// A palette in the file finder over `items`, outside any repository.
@@ -106,7 +107,7 @@ fn file_history_entry_availability() {
 #[test]
 fn file_history_enters_pick_mode() {
     let (mut st, dir) = repo_with_topic("pick-enter");
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     set_query(&mut st, "fil");
     let fx = enter(&mut st);
     let p = st.palette.as_ref().expect("still open");
@@ -122,8 +123,8 @@ fn file_history_enters_pick_mode() {
 #[test]
 fn file_history_list_loads() {
     let (mut st, dir) = repo_with_topic("pick-load");
-    run(&mut st, Msg::TogglePalette);
-    drive(&mut st, Msg::RunPaletteCommand(PaletteCommand::FileHistory));
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::FileHistory)));
     assert!(matches!(&pick(&st).items, Items::Ready(v) if v.iter().any(|p| p == "a.txt")));
     assert!(row_count(&mut st) > 0);
     let _ = std::fs::remove_dir_all(&dir);
@@ -133,24 +134,24 @@ fn file_history_list_loads() {
 fn stale_tracked_paths_ignored() {
     let (mut st, dir) = repo_with_topic("pick-stale");
     let ok = || Ok(vec!["a.txt".to_owned()]);
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     enter(&mut st);
     let g = st.palette_gen;
     loaded(&mut st, g - 1, ok());
     assert_eq!(pick(&st).items, Items::Loading);
 
     // Back in the command list: the result has nowhere to go.
-    run(&mut st, Msg::PaletteBack);
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteBack));
     loaded(&mut st, g, ok());
     assert!(matches!(st.palette.as_ref().unwrap().mode, Mode::Commands));
 
     // Closed: nothing changes.
-    run(&mut st, Msg::ClosePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::ClosePalette));
     loaded(&mut st, g, ok());
     assert!(st.palette.is_none());
 
     // Entered again: only the new request's result counts.
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     enter(&mut st);
     assert_eq!(st.palette_gen, g + 1);
     loaded(&mut st, g, ok());
@@ -163,7 +164,7 @@ fn stale_tracked_paths_ignored() {
 #[test]
 fn tracked_paths_failure_shows_and_logs() {
     let (mut st, dir) = repo_with_topic("pick-fail");
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     enter(&mut st);
     let before = st.log.len();
     let g = st.palette_gen;
@@ -171,7 +172,7 @@ fn tracked_paths_failure_shows_and_logs() {
     assert_eq!(pick(&st).items, Items::Failed("boom".into()));
     assert_eq!(st.log.len(), before + 1);
     assert!(!st.log.last().unwrap().ok);
-    run(&mut st, Msg::PaletteMove(1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -213,16 +214,16 @@ fn pick_ranking_caps_and_narrows() {
 
     // Moving wraps within the shown rows.
     let mut st = picking((0..500).map(|i| format!("f{i}")).collect());
-    run(&mut st, Msg::PaletteMove(-1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, MAX_PICK_ROWS - 1);
 }
 
 #[test]
 fn picking_a_file_opens_history() {
     let (mut st, dir) = repo_with_topic("pick-open");
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     enter(&mut st);
-    drive(&mut st, Msg::RunPaletteCommand(PaletteCommand::OpenFileHistory("a.txt".into())));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenFileHistory("a.txt".into()))));
     assert!(st.palette.is_none());
     let h = st.history.as_ref().expect("history open");
     assert_eq!(h.path, "a.txt");
@@ -237,7 +238,7 @@ fn back_returns_to_commands() {
     let mut st = picking(vec!["a.txt".into()]);
     set_query(&mut st, "x");
     st.palette.as_mut().unwrap().selected = 3;
-    run(&mut st, Msg::PaletteBack);
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteBack));
     let p = st.palette.as_ref().unwrap();
     assert!(matches!(p.mode, Mode::Commands));
     assert!(p.query.is_empty());
@@ -245,15 +246,15 @@ fn back_returns_to_commands() {
 
     // In the command list: nothing changes, the palette stays open.
     set_query(&mut st, "pu");
-    run(&mut st, Msg::PaletteBack);
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteBack));
     assert_eq!(st.palette.as_ref().map(|p| p.query.as_str()), Some("pu"));
 
     // Ctrl+P in the sub-list closes the palette.
     let mut st = picking(vec!["a.txt".into()]);
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     assert!(st.palette.is_none());
     // Closed: going back does nothing.
-    run(&mut st, Msg::PaletteBack);
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteBack));
     assert!(st.palette.is_none());
 }
 

@@ -7,6 +7,8 @@ use super::update;
 use crate::effect::Effect;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::gitflow::GitFlowPage;
 use crate::state::palette::{PaletteCommand as C, entries};
@@ -36,10 +38,10 @@ pub(super) fn open(name: &str) -> (AppState, PathBuf) {
 /// The same, initialized through the page with the default settings.
 pub(super) fn initialized(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = open(name);
-    drive(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
+    drive(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
     drive(&mut st, Msg::GitFlow(GitFlowMsg::Apply));
     assert!(st.snap.as_ref().unwrap().gitflow.is_initialized(), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
-    drive(&mut st, Msg::ClosePrefs);
+    drive(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
     (st, dir)
 }
 
@@ -90,15 +92,15 @@ pub(super) fn rev(dir: &Path, r: &str) -> String {
 #[test]
 fn page_fill() {
     let (mut st, dir) = open("fill");
-    run(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
     let p = page(&st);
     assert_eq!(p.form, defaults());
     assert_eq!(p.filled, p.form);
     assert_eq!(p.workdir.as_deref(), Some(dir.as_path()));
     assert!(!p.edited());
 
-    run(&mut st, Msg::ClosePrefs);
-    run(&mut st, Msg::OpenPrefs(PrefPage::General));
+    run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
     assert_eq!(page(&st).workdir, None);
     flow(&mut st, GitFlowMsg::ShowPage);
     assert_eq!(st.prefs.as_ref().unwrap().page, PrefPage::RepoGitFlow);
@@ -109,7 +111,7 @@ fn page_fill() {
 #[test]
 fn apply_initialize_cmds() {
     let (mut st, dir) = open("apply-cmds");
-    run(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
     let cmds = git_job(&flow(&mut st, GitFlowMsg::Apply)).expect("a git job");
     assert_eq!(cmds[0], args(&["branch", "--no-track", "develop", "refs/heads/main"]));
     assert_eq!(cmds[1], args(&["config", "--local", "gitflow.branch.master", "main"]));
@@ -122,7 +124,7 @@ fn apply_initialize_cmds() {
 #[test]
 fn apply_refused() {
     let (mut st, dir) = open("apply-refused");
-    run(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
     page_mut(&mut st).form.feature.clear();
     assert!(git_job(&flow(&mut st, GitFlowMsg::Apply)).is_none());
     assert_eq!(page(&st).error.as_deref(), Some("Enter a feature prefix."));
@@ -144,7 +146,7 @@ fn apply_refused() {
 #[test]
 fn apply_end_to_end() {
     let (mut st, dir) = open("apply-e2e");
-    drive(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
+    drive(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
     drive(&mut st, Msg::GitFlow(GitFlowMsg::Apply));
     assert_eq!(rev(&dir, "develop"), rev(&dir, "main"));
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("main"));
@@ -175,7 +177,7 @@ fn apply_end_to_end() {
 #[test]
 fn snapshot_changed_refills() {
     let (mut st, dir) = open("refill");
-    run(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
     page_mut(&mut st).form.feature = "x/".into();
     git(&dir, &["config", "gitflow.prefix.release", "rel/"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
@@ -205,7 +207,7 @@ fn palette_entries() {
     let all = entries(&st);
     assert!(all.iter().any(|e| e.command == C::ConfigureGitFlow && e.label == "Configure Git Flow…"));
     assert!(!all.iter().any(|e| matches!(e.command, C::StartGitFlow(_))));
-    run(&mut st, Msg::RunPaletteCommand(C::ConfigureGitFlow));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ConfigureGitFlow)));
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::RepoGitFlow));
     assert_eq!(page(&st).form, defaults());
     cleanup(&dir);
@@ -222,7 +224,7 @@ fn palette_entries() {
             (C::StartGitFlow(FlowKind::Hotfix), from("main")),
         ]
     );
-    run(&mut st, Msg::RunPaletteCommand(C::StartGitFlow(FlowKind::Feature)));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::StartGitFlow(FlowKind::Feature))));
     assert!(matches!(&st.modal, Some(Modal::GitFlowStart(f)) if f.kind == FlowKind::Feature && f.name.is_empty()));
     cleanup(&dir);
 }
@@ -276,7 +278,7 @@ fn start() {
         assert!(matches!(st.modal, Some(Modal::GitFlowStart(_))));
     }
 
-    run(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)));
     let fx = run(&mut st, start(FlowKind::Feature, " login "));
     assert_eq!(git_job(&fx), Some(vec![args(&["checkout", "-b", "feature/login", "refs/heads/develop"])]));
     assert_eq!(job_label(&st).as_deref(), Some("Start feature/login"));

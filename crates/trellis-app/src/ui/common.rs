@@ -3,7 +3,9 @@
 use super::theme::color;
 use super::widgets;
 use crate::msg::CloneMsg;
+use crate::msg::ForgeMsg;
 use crate::msg::Msg;
+use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
@@ -123,10 +125,10 @@ pub fn forge_error_rows(ui: &mut egui::Ui, error: &str, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(26.0);
         if ui.small_button("Sign in").clicked() {
-            msgs.push(Msg::ForgeRefresh { interactive: true });
+            msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
         }
         if ui.small_button("Connect…").clicked() {
-            msgs.push(Msg::OpenPrefs(PrefPage::Integrations));
+            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
         }
     });
     ui.add_space(4.0);
@@ -140,10 +142,10 @@ pub fn status_label_ui(ui: &mut egui::Ui, status: &Status, ok_text: &str, msgs: 
         Status::Error(e) => {
             ui.label(RichText::new(format!("· {e}")).color(color::red()));
             if ui.link("Sign in").clicked() {
-                msgs.push(Msg::ForgeRefresh { interactive: true });
+                msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
             }
             if ui.link("Connect…").clicked() {
-                msgs.push(Msg::OpenPrefs(PrefPage::Integrations));
+                msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
             }
         }
         Status::Idle => {}

@@ -2,17 +2,17 @@
 //! the job that asked ends.
 
 use crate::effect::{Effect, UiEffect};
-use crate::msg::Msg;
+use crate::msg::CredentialMsg;
 use crate::state::AppState;
 use crate::state::askpass::{Carry, PendingPrompt, PromptEnd};
 use std::time::Instant;
 use trellis_core::askpass::{self, Prompt, PromptKind, Reply, Secret};
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::CredentialPrompt { id, prompt } => asked(st, id, prompt, fx),
-        Msg::AnswerCredentials => answer(st, fx),
-        Msg::CancelCredentials => {
+        CredentialMsg::CredentialPrompt { id, prompt } => asked(st, id, prompt, fx),
+        CredentialMsg::AnswerCredentials => answer(st, fx),
+        CredentialMsg::CancelCredentials => {
             let p = &mut st.askpass;
             let Some(front) = p.queue.pop_front() else { return };
             fx.push(Effect::AnswerPrompt { id: front.id, reply: Reply::Cancel });
@@ -20,7 +20,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             p.carry = None;
             p.clear_buffers();
         }
-        Msg::CredentialPromptExpired(id) => {
+        CredentialMsg::CredentialPromptExpired(id) => {
             let p = &mut st.askpass;
             let Some(i) = p.queue.iter().position(|q| q.id == id) else { return };
             p.queue.remove(i);
@@ -31,7 +31,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             st.toast(false, "The credential prompt timed out.", now);
             st.log(false, "The credential prompt timed out.");
         }
-        _ => {}
     }
 }
 

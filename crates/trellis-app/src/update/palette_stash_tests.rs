@@ -8,6 +8,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
 use crate::state::palette::{InputKind, Items, Mode, Pick, PickKind, StashAction, row_count, shown};
 use crate::state::{AppState, Modal};
@@ -46,7 +47,7 @@ fn rows(st: &mut AppState) -> Vec<String> {
 }
 
 fn choose(st: &mut AppState, action: StashAction) -> Vec<Effect> {
-    run(st, Msg::RunPaletteCommand(C::ChooseStash(action)))
+    run(st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ChooseStash(action))))
 }
 
 /// The command for the first row matching `query` in the open sub-list.
@@ -121,7 +122,7 @@ fn stash_entries_availability() {
 fn choose_stash_enters_sub_list() {
     let (mut st, dir) = two_stashes("stash-choose");
     let msgs: Vec<String> = st.snap.as_ref().unwrap().stashes.iter().map(|s| s.message.clone()).collect();
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     set_query(&mut st, "ap");
     assert!(choose(&mut st, StashAction::Apply).is_empty());
     let p = st.palette.as_ref().expect("still open");
@@ -152,7 +153,7 @@ fn choose_stash_enters_sub_list() {
 
     // No stashes: nothing happens.
     let (mut st, dir) = repo_with_topic("stash-choose-none");
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     choose(&mut st, StashAction::Apply);
     assert!(matches!(st.palette.as_ref().unwrap().mode, Mode::Commands));
     let _ = std::fs::remove_dir_all(&dir);
@@ -178,7 +179,7 @@ fn stash_sub_list_filters() {
     assert_eq!(row_count(&mut st), 0);
 
     set_query(&mut st, "");
-    run(&mut st, Msg::PaletteMove(-1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 1, "wraps to the last row");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -193,11 +194,11 @@ fn apply_chosen_stash() {
     // The argv, before running it for real.
     let (mut fresh, fresh_dir) = two_stashes("stash-apply-argv");
     let oid = fresh.snap.as_ref().unwrap().stashes[1].oid;
-    let fx = run(&mut fresh, Msg::RunPaletteCommand(C::StashOp { action: StashAction::Apply, oid }));
+    let fx = run(&mut fresh, Msg::Palette(PaletteMsg::RunPaletteCommand(C::StashOp { action: StashAction::Apply, oid })));
     assert_eq!(git_cmds(&fx), argv(&["stash", "apply", "stash@{1}"]));
     let _ = std::fs::remove_dir_all(&fresh_dir);
 
-    drive(&mut st, Msg::RunPaletteCommand(cmd));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     assert!(st.palette.is_none());
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 2, "apply keeps the stash");
@@ -210,7 +211,7 @@ fn pop_chosen_stash() {
     let (mut st, dir) = two_stashes("stash-pop");
     choose(&mut st, StashAction::Pop);
     let cmd = command_for(&mut st, "second");
-    drive(&mut st, Msg::RunPaletteCommand(cmd));
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     assert!(st.palette.is_none());
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 1);
@@ -224,7 +225,7 @@ fn delete_chosen_stash_confirms() {
     let (mut st, dir) = two_stashes("stash-drop");
     choose(&mut st, StashAction::Drop);
     let cmd = command_for(&mut st, "first");
-    let fx = run(&mut st, Msg::RunPaletteCommand(cmd));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     assert!(st.palette.is_none());
     assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })));
     let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("no confirmation") };
@@ -253,7 +254,7 @@ fn stash_op_follows_oid_when_list_changes() {
     std::fs::write(dir.join("d.txt"), "d\n").unwrap();
     git(&dir, &["stash", "push", "-u", "-m", "third"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    let fx = run(&mut st, Msg::RunPaletteCommand(cmd.clone()));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd.clone())));
     assert_eq!(git_cmds(&fx), argv(&["stash", "apply", "stash@{1}"]));
     // Only the argv matters here; the job never ran.
     st.job = None;
@@ -263,7 +264,7 @@ fn stash_op_follows_oid_when_list_changes() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     choose(&mut st, StashAction::Apply);
     let before = st.log.len();
-    let fx = run(&mut st, Msg::RunPaletteCommand(cmd));
+    let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     assert!(fx.is_empty());
     assert!(st.palette.is_none());
     assert_eq!(st.log.len(), before + 1);
@@ -275,27 +276,27 @@ fn stash_op_follows_oid_when_list_changes() {
 #[test]
 fn stash_message_step() {
     let (mut st, dir) = repo_with_topic("stash-message");
-    run(&mut st, Msg::TogglePalette);
+    run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     set_query(&mut st, "msg");
-    assert!(run(&mut st, Msg::RunPaletteCommand(C::StashMessage)).is_empty());
+    assert!(run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::StashMessage))).is_empty());
     let p = st.palette.as_ref().unwrap();
     assert!(matches!(p.mode, Mode::Input(InputKind::StashMessage)));
     assert!(p.query.is_empty());
 
-    run(&mut st, Msg::PaletteMove(1));
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     assert_eq!(row_count(&mut st), 0);
 
-    assert!(run(&mut st, Msg::RunPaletteCommand(C::StashWithMessage("   ".into()))).is_empty());
+    assert!(run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::StashWithMessage("   ".into())))).is_empty());
     assert!(matches!(st.palette.as_ref().unwrap().mode, Mode::Input(_)), "a blank message leaves the step open");
 
-    let typed = || Msg::RunPaletteCommand(C::StashWithMessage("  Half-done login  ".into()));
+    let typed = || Msg::Palette(PaletteMsg::RunPaletteCommand(C::StashWithMessage("  Half-done login  ".into())));
     let fx = run(&mut st, typed());
     assert_eq!(git_cmds(&fx), argv(&["stash", "push", "-u", "-m", "Half-done login"]));
     let _ = std::fs::remove_dir_all(&dir);
 
     let (mut st, dir) = repo_with_topic("stash-message-drive");
-    run(&mut st, Msg::RunPaletteCommand(C::StashMessage));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::StashMessage)));
     drive(&mut st, typed());
     assert!(st.palette.is_none());
     let snap = st.snap.as_ref().unwrap();
@@ -303,7 +304,7 @@ fn stash_message_step() {
     assert!(snap.stashes[0].message.ends_with("Half-done login"), "{}", snap.stashes[0].message);
 
     // Clean now: the step doesn't open.
-    run(&mut st, Msg::RunPaletteCommand(C::StashMessage));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::StashMessage)));
     assert!(st.palette.is_none());
     assert_eq!(InputKind::StashMessage.command(" "), None);
     let _ = std::fs::remove_dir_all(&dir);
@@ -315,7 +316,7 @@ fn back_from_stash_steps() {
     choose(&mut st, StashAction::Pop);
     set_query(&mut st, "x");
     st.palette.as_mut().unwrap().selected = 1;
-    run(&mut st, Msg::PaletteBack);
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteBack));
     let p = st.palette.as_ref().unwrap();
     assert!(matches!(p.mode, Mode::Commands));
     assert!(p.query.is_empty());
@@ -328,14 +329,14 @@ fn back_from_stash_steps() {
         _ => panic!("stashes not ready"),
     };
     let generation = st.palette_gen;
-    run(&mut st, Msg::TrackedPathsLoaded { generation, result: Ok(vec!["a.txt".into()]) });
+    run(&mut st, Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result: Ok(vec!["a.txt".into()]) }));
     assert_eq!(pick(&st).items, Items::Ready(before));
     let _ = std::fs::remove_dir_all(&dir);
 
     let (mut st, dir) = repo_with_topic("stash-back-input");
-    run(&mut st, Msg::RunPaletteCommand(C::StashMessage));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::StashMessage)));
     set_query(&mut st, "x");
-    run(&mut st, Msg::PaletteBack);
+    run(&mut st, Msg::Palette(PaletteMsg::PaletteBack));
     let p = st.palette.as_ref().unwrap();
     assert!(matches!(p.mode, Mode::Commands));
     assert!(p.query.is_empty());

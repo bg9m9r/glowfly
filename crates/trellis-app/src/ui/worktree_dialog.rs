@@ -4,6 +4,7 @@
 //! after Create worktree.
 
 use super::theme::color;
+use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::worktrees::{WorktreeForm, branch_problem, default_folder, folder_problem, folder_warning};
 use crate::worktree::WorktreeMsg;
@@ -36,7 +37,7 @@ pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Sn
         }
         enter |= r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
         if ui.button("Browse…").clicked() {
-            msgs.push(Msg::PickFolder(FolderPurpose::WorktreeParent));
+            msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::WorktreeParent)));
         }
     });
     let folder_bad = snap.and_then(|s| folder_problem(s, &form.folder)).or_else(|| form.current_error().map(str::to_owned));
