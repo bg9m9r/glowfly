@@ -4,6 +4,7 @@
 use super::tests::{drive, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
@@ -278,10 +279,10 @@ fn two_commit_diff_end_to_end() {
     // Lines of a diff between commits can't be selected.
     let line = diff.hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
     for how in [LineClick::Only, LineClick::Toggle, LineClick::Range] {
-        up(&mut st, Msg::SelectDiffLine { hunk: 0, line, how });
+        up(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }));
         assert!(st.view.diff_lines.is_empty());
     }
-    up(&mut st, Msg::ClearLineSelection);
+    up(&mut st, Msg::Diff(DiffMsg::ClearLineSelection));
     assert!(st.view.diff_lines.is_empty());
     let _ = std::fs::remove_dir_all(&f.dir);
 }

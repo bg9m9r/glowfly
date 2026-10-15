@@ -7,6 +7,7 @@ mod rows;
 use super::UiCache;
 use super::theme::color;
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::state::AppState;
 use crate::state::rebase::{HINT, RebasePanel};
 use eframe::egui::{self, Align, Color32, Layout, RichText, Stroke, Ui};
@@ -60,16 +61,16 @@ fn header(ui: &mut Ui, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Ve
                 r = r.on_disabled_hover_text(why);
             }
             if r.clicked() {
-                msgs.push(Msg::StartRebase { confirmed: false });
+                msgs.push(Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }));
             }
             let cancel = egui::Button::new("Cancel").min_size(egui::vec2(0.0, 28.0));
             if ui.add_enabled(!panel.starting, cancel).on_hover_text("Close without changing anything (Esc)").clicked() {
-                msgs.push(Msg::CloseRebase);
+                msgs.push(Msg::Rebase(RebaseMsg::CloseRebase));
             }
             let reset = egui::Button::new("Reset").min_size(egui::vec2(0.0, 28.0));
             let tip = if panel.stale { "Reload the list from the repository" } else { "Back to the original order and actions" };
             if ui.add_enabled(panel.editable(), reset).on_hover_text(tip).clicked() {
-                msgs.push(Msg::RebaseReset);
+                msgs.push(Msg::Rebase(RebaseMsg::RebaseReset));
             }
             if panel.starting {
                 ui.add(egui::Spinner::new());

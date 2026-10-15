@@ -2,7 +2,6 @@
 
 use crate::effect::{FileOp, ForgeReply, UndoResult, WorkFileOk};
 use crate::state::PrefPage;
-use crate::state::lines::LineClick;
 use crate::state::prefs::GitConfigValues;
 use crate::submodule::SubmoduleMsg;
 use crate::terminal::TerminalMsg;
@@ -11,15 +10,17 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
-use trellis_core::highlight::DiffHighlight;
-use trellis_core::rebase::{Outcome, RebaseAction, RebaseBase, RebasePlan};
-use trellis_core::repo::{ConflictFile, DiffTarget, FileHistory, HunkOp, RestoredFrom, Side};
-use trellis_core::settings::{DiffLayout, DiffMode, ThemeChoice, TrackerChoice};
+use trellis_core::repo::{HunkOp, RestoredFrom};
+use trellis_core::settings::{ThemeChoice, TrackerChoice};
 
+mod diff;
 mod graph;
+mod rebase;
 mod repo;
 
+pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
 pub use graph::{AvatarMsg, GraphMsg, SelectionMsg};
+pub use rebase::RebaseMsg;
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 
 /// What a folder picker was opened for.
@@ -48,115 +49,24 @@ pub enum Msg {
     Tick(Instant),
     /// Selecting several commits, comparing and cherry-picking them (update/selection.rs).
     Selection(SelectionMsg),
-    /// Switch the diff between one column and side by side (saved in settings).
-    SetDiffLayout(DiffLayout),
-    /// Switch the diff between hunks only and the whole file (saved in settings).
-    SetDiffMode(DiffMode),
-    /// Diff header toggle: hide whitespace-only changes and reload the open diff.
-    SetIgnoreWhitespace(bool),
-    /// Scroll the diff to the next (1) or previous (-1) change; at either end, open the next or
-    /// previous changed file of the list the diff came from (on its first or last change).
-    JumpToChange(isize),
-    /// A click on a whole-file "N unchanged lines" row: show the lines of the fold with this key
-    /// in place.
-    ExpandUnchanged(u32),
-    /// A click on the fold-back control on the first line of an opened whole-file run: fold
-    /// the run with this key back into one row.
-    CollapseUnchanged(u32),
-    /// The diff header's Expand all: open every fold of the whole file on screen.
-    ExpandAllUnchanged,
-    /// The diff header's Collapse all: close every opened fold.
-    CollapseAllUnchanged,
-    /// A click on line `line` of hunk `hunk` in the open diff (line-level staging).
-    SelectDiffLine {
-        hunk: usize,
-        line: usize,
-        how: LineClick,
-    },
-    ClearLineSelection,
+    /// The open diff's layout, folds, line selection and highlighting (update/diff.rs).
+    Diff(DiffMsg),
     /// Refresh results and loading more history (update/refresh.rs).
     Load(LoadMsg),
     /// Author avatars (update/avatars.rs).
     Avatars(AvatarMsg),
 
     // ---- conflicts
-    OpenConflict(String),
-    CloseConflict,
-    /// Tick or untick a side of chunk `chunk` in the open conflict.
-    ConflictToggle {
-        chunk: usize,
-        side: Side,
-    },
-    ConflictTakeAll(Side),
-    ConflictReset,
-    /// Make the next (1) or previous (-1) chunk current.
-    ConflictStep(isize),
-    /// Make chunk `i` current (a click on it) without scrolling.
-    ConflictSelect(usize),
-    /// Write the output to the file and stage it.
-    SaveConflict,
-    /// Binary or deleted files: resolve with one side's whole version.
-    ResolveWithSide {
-        path: String,
-        side: Side,
-    },
-    ConflictLoaded {
-        path: String,
-        generation: u64,
-        result: Result<ConflictFile, String>,
-    },
+    /// The conflict view (update/conflict.rs).
+    Conflict(ConflictMsg),
 
     // ---- file history
-    /// The commits that changed `path`, from HEAD (`at: None`) or as seen from commit `at`.
-    OpenFileHistory {
-        path: String,
-        at: Option<Oid>,
-    },
-    CloseFileHistory,
-    /// Select entry `i` of the open file history and show its diff.
-    SelectHistoryEntry(usize),
-    /// Continue the walk past the commit limit.
-    MoreFileHistory,
-    /// "View on graph": close the history and select the commit.
-    ShowInGraph(Oid),
-    FileHistoryLoaded {
-        path: String,
-        generation: u64,
-        result: Result<FileHistory, String>,
-    },
+    /// A file's history (update/history.rs).
+    History(HistoryMsg),
 
     // ---- interactive rebase
-    /// Open the panel with the list for rebasing the current branch from `base`.
-    OpenRebase(RebaseBase),
-    CloseRebase,
-    RebaseSetAction {
-        index: usize,
-        action: RebaseAction,
-    },
-    /// Move row `from` so it ends up at index `to` (removed, then inserted).
-    RebaseMove {
-        from: usize,
-        to: usize,
-    },
-    /// Open the message editor on row `i`.
-    RebaseEditMessage(usize),
-    /// Update message: keep the editor's text and make the row a reword.
-    RebaseSaveMessage,
-    RebaseCancelMessage,
-    /// The original order and actions (or, for a stale list, the list reloaded).
-    RebaseReset,
-    /// Start the rebase; drops ask for confirmation first (`confirmed: false`).
-    StartRebase {
-        confirmed: bool,
-    },
-    RebasePlanLoaded {
-        generation: u64,
-        result: Result<RebasePlan, String>,
-    },
-    /// The rebase job's result, for whichever tab it ran in (like `JobDone`).
-    RebaseFinished {
-        result: Result<Outcome, String>,
-    },
+    /// The interactive rebase panel (update/rebase.rs).
+    Rebase(RebaseMsg),
 
     // ---- tabs
     NewTab,
@@ -448,15 +358,6 @@ pub enum Msg {
     CancelCredentials,
 
     // ---- results from effects
-    /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
-    /// at `generation`, each only where it was pending. Applied only while that diff is still on
-    /// screen.
-    DiffHighlighted {
-        target: DiffTarget,
-        generation: u64,
-        hunks: Option<DiffHighlight>,
-        whole: Option<DiffHighlight>,
-    },
     /// A LocalOp finished; a discard that can be undone carries its undo action.
     LocalOpDone(Result<Option<trellis_core::undo::Action>, String>),
     /// A RevertHunk finished; `path` is the file it was for.

@@ -7,6 +7,7 @@ use super::common::{menu_item, short, status_color};
 use super::file_buttons::{self, CommitFile, Labels};
 use super::file_menu;
 use super::theme::color;
+use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::history::FileHistoryView;
@@ -44,7 +45,7 @@ fn header(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.button("Close  (Esc)").clicked() {
-                msgs.push(Msg::CloseFileHistory);
+                msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
             }
         });
     });
@@ -88,7 +89,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
                 ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
             }
             if resp.clicked() {
-                msgs.push(Msg::SelectHistoryEntry(i));
+                msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(i)));
             }
             resp.context_menu(|ui| entry_menu(ui, msgs, e, &view.path, in_wd));
             ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
@@ -101,7 +102,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
 /// A history row's menu: View on graph, Copy commit SHA, then Restore for the entry's version
 /// and Open / Show for `open_path` (the file as it is named today), disabled unless `in_workdir`.
 pub(super) fn entry_menu(ui: &mut Ui, msgs: &mut Vec<Msg>, e: &HistoryEntry, open_path: &str, in_workdir: bool) {
-    menu_item(msgs, ui, "View on graph", Msg::ShowInGraph(e.oid));
+    menu_item(msgs, ui, "View on graph", Msg::History(HistoryMsg::ShowInGraph(e.oid)));
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));
     ui.separator();
     file_menu::restore_item(ui, msgs, e.oid, &e.path, e.status);
@@ -155,7 +156,7 @@ fn footer(ui: &mut Ui, st: &AppState, view: &FileHistoryView, msgs: &mut Vec<Msg
                 ui.label(RichText::new(format!("Searched back to {date} ({})", short(oid))).color(color::weak()));
             }
             if ui.button("Search further").clicked() {
-                msgs.push(Msg::MoreFileHistory);
+                msgs.push(Msg::History(HistoryMsg::MoreFileHistory));
             }
         }
     });
@@ -175,7 +176,7 @@ fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
         (None, _, true) | (None, true, _) => 0,
         _ => return,
     };
-    msgs.push(Msg::SelectHistoryEntry(next));
+    msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(next)));
 }
 
 /// The selected commit: summary, author and date, links, file buttons (Restore this version,
@@ -201,7 +202,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             ui.label(RichText::new(format!("commit {}", short(e.oid))).monospace().color(color::weak()));
             let link = ui.add_enabled(visible, egui::Link::new("View on graph")).on_disabled_hover_text(NOT_ON_GRAPH);
             if link.clicked() {
-                msgs.push(Msg::ShowInGraph(e.oid));
+                msgs.push(Msg::History(HistoryMsg::ShowInGraph(e.oid)));
             }
             if ui.small_button("Copy SHA").clicked() {
                 msgs.push(Msg::Copy(e.oid.to_string()));

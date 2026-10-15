@@ -6,6 +6,8 @@ use super::diff_tests::three_hunks;
 use super::tests::{drive, git, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::DiffMsg;
+use crate::msg::HistoryMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -95,7 +97,7 @@ fn one_load(fx: &[Effect]) -> (&DiffTarget, bool) {
 
 /// Steps within the open file to `row`: no effects, and the cursor follows.
 fn step_in_file(st: &mut AppState, dir: isize, row: usize) {
-    assert!(run(st, Msg::JumpToChange(dir)).is_empty(), "a step inside the file");
+    assert!(run(st, Msg::Diff(DiffMsg::JumpToChange(dir))).is_empty(), "a step inside the file");
     assert_eq!(st.view.diff_scroll_to_row, Some(row));
     assert_eq!(st.view.diff_cursor, Some(row));
 }
@@ -119,7 +121,7 @@ fn next_at_last_change_opens_next_file_on_first_change() {
     let (mut st, dir) = nav_repo("next");
     at_end_of(&mut st, unstaged("a.txt"));
 
-    let fx = run(&mut st, Msg::JumpToChange(1));
+    let fx = run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert_eq!(one_load(&fx), (&unstaged("b.bin"), false));
     assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));
     // b.bin has nothing to land on: c.txt is requested instead, and b.bin never shows.
@@ -140,11 +142,11 @@ fn next_at_last_change_opens_next_file_on_first_change() {
 fn last_unstaged_continues_to_first_staged() {
     let (mut st, dir) = nav_repo("staged");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(unstaged("c.txt"))));
-    drive(&mut st, Msg::JumpToChange(1));
+    drive(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert_eq!(shown(&st), Some(&DiffTarget::Staged("d.txt".into())));
     assert_eq!(st.view.diff_scroll_to_row, Some(0));
 
-    drive(&mut st, Msg::JumpToChange(-1));
+    drive(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)));
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
     let last = *header_rows(diff(&st), st.settings.diff_layout).last().unwrap();
     assert_eq!((st.view.diff_scroll_to_row, st.view.diff_cursor), (Some(last), Some(last)));
@@ -158,7 +160,7 @@ fn previous_lands_on_last_change() {
         st.settings.diff_layout = layout;
         drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(unstaged("c.txt"))));
         assert_eq!(st.view.diff_top_row, 0);
-        drive(&mut st, Msg::JumpToChange(-1));
+        drive(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)));
         assert_eq!(shown(&st), Some(&unstaged("a.txt")), "{layout:?}: b.bin is passed over");
         let headers = header_rows(diff(&st), layout);
         assert_eq!(st.view.diff_scroll_to_row, Some(headers[1]), "{layout:?}");
@@ -176,14 +178,14 @@ fn whole_file_mode_landing() {
     assert!(diff(&st).whole.is_some());
     let c_rows = change_rows(diff(&st), DiffMode::WholeFile, st.settings.diff_layout, &st.view.diff_expanded);
 
-    drive(&mut st, Msg::JumpToChange(-1));
+    drive(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)));
     assert_eq!(shown(&st), Some(&unstaged("a.txt")));
     let a_rows = change_rows(diff(&st), DiffMode::WholeFile, st.settings.diff_layout, &st.view.diff_expanded);
     assert_eq!(a_rows.len(), 2);
     assert_eq!(st.view.diff_scroll_to_row, a_rows.last().copied());
     assert_ne!(a_rows.last(), header_rows(diff(&st), st.settings.diff_layout).last(), "change block rows, not hunk headers");
 
-    drive(&mut st, Msg::JumpToChange(1));
+    drive(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert_eq!(shown(&st), Some(&unstaged("c.txt")));
     assert_eq!((st.view.diff_scroll_to_row, st.view.diff_cursor), (Some(c_rows[0]), Some(c_rows[0])));
     let _ = std::fs::remove_dir_all(&dir);
@@ -194,14 +196,14 @@ fn no_wrap_at_either_end() {
     let (mut st, dir) = nav_repo("ends");
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged("d.txt".into()))));
     let top = st.view.diff_top_row;
-    assert!(run(&mut st, Msg::JumpToChange(1)).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1))).is_empty());
     assert_eq!(shown(&st), Some(&DiffTarget::Staged("d.txt".into())));
     assert_eq!(st.view.diff_top_row, top);
     assert_eq!(diff_nav::step(&st, 1), Step::End);
 
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(unstaged("a.txt"))));
     assert_eq!(st.view.diff_top_row, 0);
-    assert!(run(&mut st, Msg::JumpToChange(-1)).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1))).is_empty());
     assert_eq!(diff_nav::step(&st, -1).kind(), StepKind::End);
     assert_eq!(diff_nav::step(&st, 1).kind(), StepKind::Change);
     let _ = std::fs::remove_dir_all(&dir);
@@ -225,11 +227,11 @@ fn binary_last_in_direction_is_shown() {
     snap.unstaged.retain(|f| f.path == "a.txt" || f.path == "b.bin");
     snap.staged.clear();
     let headers = at_end_of(&mut st, unstaged("a.txt"));
-    drive(&mut st, Msg::JumpToChange(1));
+    drive(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert_eq!(shown(&st), Some(&unstaged("b.bin")));
     assert!(diff(&st).binary);
     assert_eq!([diff_nav::step(&st, -1).kind(), diff_nav::step(&st, 1).kind()], [StepKind::File, StepKind::End]);
-    drive(&mut st, Msg::JumpToChange(-1));
+    drive(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)));
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the arrows step back from the binary file");
     assert_eq!(st.view.diff_scroll_to_row, Some(headers[1]));
     let _ = std::fs::remove_dir_all(&dir);
@@ -240,8 +242,8 @@ fn presses_while_loading_are_ignored() {
     let (mut st, dir) = nav_repo("loading");
     pending_step(&mut st);
     let (top, landing) = (st.view.diff_top_row, st.view.diff_landing.clone());
-    assert!(run(&mut st, Msg::JumpToChange(1)).is_empty());
-    assert!(run(&mut st, Msg::JumpToChange(-1)).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1))).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1))).is_empty());
     assert_eq!((st.view.diff_top_row, st.view.diff_landing.clone()), (top, landing));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -249,7 +251,7 @@ fn presses_while_loading_are_ignored() {
 /// a.txt open on its last change, with a step to b.bin pending; returns the held load.
 fn pending_step(st: &mut AppState) -> Effect {
     at_end_of(st, unstaged("a.txt"));
-    let fx = run(st, Msg::JumpToChange(1));
+    let fx = run(st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert!(st.view.diff_landing.is_some());
     let [e] = <[Effect; 1]>::try_from(fx).expect("one diff load");
     e
@@ -294,7 +296,7 @@ fn accepted_reload_clears_landing() {
     run(&mut st, runner::execute(stale).unwrap());
     assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the superseded step doesn't land");
     // Stepping works again.
-    assert_eq!(one_load(&run(&mut st, Msg::JumpToChange(1))).0, &unstaged("b.bin"));
+    assert_eq!(one_load(&run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)))).0, &unstaged("b.bin"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -315,14 +317,14 @@ fn commit_file_list() {
     let files: Vec<&str> = st.detail.as_ref().expect("details loaded").files.iter().map(|f| f.path.as_str()).collect();
     assert_eq!(files, ["a.txt", "c.txt", "d.txt"]);
     at_end_of(&mut st, DiffTarget::Commit(oid, "a.txt".into()));
-    let fx = run(&mut st, Msg::JumpToChange(1));
+    let fx = run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert_eq!(one_load(&fx).0, &DiffTarget::Commit(oid, "c.txt".into()));
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&DiffTarget::Commit(oid, "c.txt".into())));
 
     // Details of another commit are not this diff's list.
     st.detail.as_mut().unwrap().oid = Oid::from_bytes(&[7; 20]).unwrap();
-    assert!(run(&mut st, Msg::JumpToChange(1)).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1))).is_empty());
     assert_eq!(diff_nav::step(&st, 1), Step::End);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -337,7 +339,7 @@ fn comparison_file_list() {
     assert_eq!(m.pair(), Some((older, newer)));
     assert!(matches!(&m.changes, Some(Ok(c)) if c.files.len() == 3), "a, c and d differ");
     at_end_of(&mut st, DiffTarget::Between(older, newer, "a.txt".into()));
-    let fx = run(&mut st, Msg::JumpToChange(1));
+    let fx = run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert_eq!(one_load(&fx).0, &DiffTarget::Between(older, newer, "c.txt".into()));
     finish(&mut st, fx);
     assert_eq!(shown(&st), Some(&DiffTarget::Between(older, newer, "c.txt".into())));
@@ -349,12 +351,12 @@ fn file_history_stays_single_file() {
     let (mut st, dir, oid) = committed("history");
     // The commit's details are loaded too, so only the history keeps the step in the file.
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(oid)));
-    drive(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None });
+    drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }));
     assert!(st.history.is_some());
     assert_eq!(shown(&st), Some(&DiffTarget::Commit(oid, "a.txt".into())));
     let headers = header_rows(diff(&st), st.settings.diff_layout);
     step_in_file(&mut st, 1, headers[1]);
-    assert!(run(&mut st, Msg::JumpToChange(1)).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1))).is_empty());
     assert_eq!(diff_nav::step(&st, 1), Step::End);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -385,18 +387,18 @@ fn cursor_survives_clamped_scroll() {
 #[test]
 fn layout_switch_clears_cursor() {
     let mut st = synthetic();
-    run(&mut st, Msg::JumpToChange(1));
+    run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert!(st.view.diff_cursor.is_some());
-    run(&mut st, Msg::SetDiffLayout(DiffLayout::Split));
+    run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.view.diff_cursor, None);
-    run(&mut st, Msg::JumpToChange(-1));
+    run(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)));
     assert!(st.view.diff_cursor.is_some());
-    run(&mut st, Msg::SetDiffMode(DiffMode::WholeFile));
+    run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::WholeFile)));
     assert_eq!(st.view.diff_cursor, None);
     st.view.diff_top_row = 0;
-    run(&mut st, Msg::JumpToChange(1));
+    run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert!(st.view.diff_cursor.is_some());
-    run(&mut st, Msg::SetDiffMode(DiffMode::Hunks));
+    run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
     assert_eq!(st.view.diff_cursor, None);
 }
 

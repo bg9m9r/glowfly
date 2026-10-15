@@ -4,6 +4,7 @@
 
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::state::rebase::{RebasePanel, open_blocker};
 use crate::state::{AppState, Selection};
 use std::path::PathBuf;
@@ -13,9 +14,9 @@ use trellis_core::repo::Snapshot;
 
 pub const JOB_LABEL: &str = "Interactive rebase";
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: RebaseMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::OpenRebase(base) => {
+        RebaseMsg::OpenRebase(base) => {
             let Some(snap) = &st.snap else { return };
             if let Some(why) = open_blocker(snap) {
                 refuse(st, why, now);
@@ -27,7 +28,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             st.rebase = Some(RebasePanel::loading(base));
             request(st, fx);
         }
-        Msg::RebasePlanLoaded { generation, result } => {
+        RebaseMsg::RebasePlanLoaded { generation, result } => {
             if generation != st.rebase_gen || !st.rebase.as_ref().is_some_and(|p| p.loading) {
                 return; // superseded: closed, reopened, or parked with its tab
             }
@@ -43,37 +44,37 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 }
             }
         }
-        Msg::CloseRebase => {
+        RebaseMsg::CloseRebase => {
             if !st.rebase.as_ref().is_some_and(|p| p.starting) {
                 close(st);
             }
         }
-        Msg::RebaseSetAction { index, action } => {
+        RebaseMsg::RebaseSetAction { index, action } => {
             if let Some(p) = editable(st, index) {
                 p.set_action(index, action);
             }
         }
-        Msg::RebaseMove { from, to } => {
+        RebaseMsg::RebaseMove { from, to } => {
             if let Some(p) = editable(st, from).filter(|p| to < p.items.len()) {
                 p.move_item(from, to);
             }
         }
-        Msg::RebaseEditMessage(i) => {
+        RebaseMsg::RebaseEditMessage(i) => {
             if let Some(p) = editable(st, i) {
                 p.open_editor(i);
             }
         }
-        Msg::RebaseSaveMessage => {
+        RebaseMsg::RebaseSaveMessage => {
             if let Some(p) = st.rebase.as_mut().filter(|p| p.editable()) {
                 p.save_message();
             }
         }
-        Msg::RebaseCancelMessage => {
+        RebaseMsg::RebaseCancelMessage => {
             if let Some(p) = st.rebase.as_mut() {
                 p.close_editor();
             }
         }
-        Msg::RebaseReset => {
+        RebaseMsg::RebaseReset => {
             let Some(p) = st.rebase.as_mut().filter(|p| p.editable()) else { return };
             let stale = st.snap.as_ref().is_some_and(|s| p.is_stale(s));
             if stale {
@@ -83,9 +84,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 p.reset();
             }
         }
-        Msg::StartRebase { confirmed } => start(st, confirmed, now, fx),
-        Msg::RebaseFinished { result } => finished(st, result, now, fx),
-        _ => {}
+        RebaseMsg::StartRebase { confirmed } => start(st, confirmed, now, fx),
+        RebaseMsg::RebaseFinished { result } => finished(st, result, now, fx),
     }
 }
 
@@ -118,7 +118,7 @@ fn start(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec<Effect>)
     if drops > 0 && !confirmed {
         let commits = if drops == 1 { "1 commit".to_owned() } else { format!("{drops} commits") };
         let body = format!("Drop {commits} from {}? Their changes will be removed.", p.branch());
-        let ask = Msg::confirm("Drop commits", body, "Start rebase", Msg::StartRebase { confirmed: true });
+        let ask = Msg::confirm("Drop commits", body, "Start rebase", Msg::Rebase(RebaseMsg::StartRebase { confirmed: true }));
         fx.extend(super::update(st, ask, now));
         return;
     }

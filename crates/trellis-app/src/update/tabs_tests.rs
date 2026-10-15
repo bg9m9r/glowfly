@@ -4,6 +4,7 @@
 use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind, UiEffect};
+use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::tabs::MAX_CLOSED_TABS;
@@ -194,15 +195,15 @@ fn conflict_view_survives_tab_switch() {
     let b = scratch_repo("tabs-conflict-b");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
-    drive(&mut st, Msg::OpenConflict("a.txt".into()));
-    update(&mut st, Msg::ConflictToggle { chunk: 0, side: Side::Theirs }, Instant::now());
+    drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
+    update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Theirs }), Instant::now());
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert!(st.conflict.is_none(), "the other tab has no conflict open");
     drive(&mut st, Msg::SelectTab(0));
     assert_eq!(st.conflict.as_ref().map(|c| c.choices.clone()), Some(vec![Choice::Theirs]), "picks survive the switch");
 
     // A load still in flight when the tab is parked is requested again on return.
-    update(&mut st, Msg::OpenConflict("a.txt".into()), Instant::now());
+    update(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())), Instant::now());
     drive(&mut st, Msg::SelectTab(1));
     let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
     let generation = st.conflict_gen;

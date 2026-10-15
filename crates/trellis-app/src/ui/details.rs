@@ -6,6 +6,8 @@ use super::file_menu::{self, RowSource};
 use super::graph::draw_avatar;
 use super::theme::color;
 use crate::keymap::{BindingId, hint};
+use crate::msg::ConflictMsg;
+use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::lfs::{TrackContext, track_items};
@@ -57,7 +59,7 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                     let n = conflicted.len();
                     ui.label(format!("{n} conflicted file{}", if n == 1 { "" } else { "s" }));
                     if ui.button("View conflicts").clicked() {
-                        msgs.push(Msg::OpenConflict(first.path.clone()));
+                        msgs.push(Msg::Conflict(ConflictMsg::OpenConflict(first.path.clone())));
                     }
                 });
             }
@@ -167,7 +169,7 @@ pub(super) fn changed_file_row(
             msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
         }
         r.context_menu(|ui| {
-            menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: Some(history_at) });
+            menu_item(msgs, ui, "File history", Msg::History(HistoryMsg::OpenFileHistory { path: f.path.clone(), at: Some(history_at) }));
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
             if let Some((src, in_wd, lfs)) = actions {
                 let items = if in_wd { track_items(&f.path, lfs) } else { Vec::new() };
@@ -260,11 +262,15 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
         };
         let r = ui.selectable_label(selected, &f.path);
         if r.clicked() {
-            msgs.push(if conflicted { Msg::OpenConflict(f.path.clone()) } else { Msg::Repo(RepoMsg::OpenDiff(target())) });
+            msgs.push(if conflicted {
+                Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone()))
+            } else {
+                Msg::Repo(RepoMsg::OpenDiff(target()))
+            });
         }
         r.context_menu(|ui| {
             if conflicted {
-                menu_item(msgs, ui, "Open conflict", Msg::OpenConflict(f.path.clone()));
+                menu_item(msgs, ui, "Open conflict", Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
             }
             menu_item(msgs, ui, action, toggle());
             // Checking out the index version of a conflicted path means nothing.
@@ -286,7 +292,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
                 }
             }
             if f.status != '?' {
-                menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: None });
+                menu_item(msgs, ui, "File history", Msg::History(HistoryMsg::OpenFileHistory { path: f.path.clone(), at: None }));
             }
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
             let unstages = crate::state::files::unstages_on_delete(snap, &f.path);

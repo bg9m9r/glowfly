@@ -5,6 +5,7 @@ use super::rebase_tests::{repo, with_panel};
 use super::selection_tests::{commit_on, git, head};
 use super::tests::{drive, state};
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, Selection};
 use git2::{Oid, RepositoryState};
@@ -37,12 +38,12 @@ fn banner_action(st: &mut AppState, label: &str) {
 #[test]
 fn reorder_reword_and_drop() {
     let (mut st, dir, c) = with_panel("rebase-e2e-finish", RebaseBase::FromCommit(Oid::zero()));
-    drive(&mut st, Msg::RebaseMove { from: 2, to: 0 });
-    drive(&mut st, Msg::RebaseSetAction { index: 1, action: RebaseAction::Reword });
+    drive(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 2, to: 0 }));
+    drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 1, action: RebaseAction::Reword }));
     st.rebase.as_mut().unwrap().draft = "c1, reworded\n\nWith a body.".into();
-    drive(&mut st, Msg::RebaseSaveMessage);
-    drive(&mut st, Msg::RebaseSetAction { index: 2, action: RebaseAction::Drop });
-    drive(&mut st, Msg::StartRebase { confirmed: false });
+    drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSaveMessage));
+    drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 2, action: RebaseAction::Drop }));
+    drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }));
     assert!(st.modal.is_some(), "dropping asks first");
     drive(&mut st, Msg::ConfirmAccepted);
 
@@ -59,8 +60,8 @@ fn reorder_reword_and_drop() {
 #[test]
 fn an_edit_step_pauses_and_continue_finishes() {
     let (mut st, dir, c) = with_panel("rebase-e2e-edit", RebaseBase::FromCommit(Oid::zero()));
-    drive(&mut st, Msg::RebaseSetAction { index: 0, action: RebaseAction::Edit });
-    drive(&mut st, Msg::StartRebase { confirmed: false });
+    drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 0, action: RebaseAction::Edit }));
+    drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }));
 
     assert_eq!(repo_state(&st), RepositoryState::RebaseInteractive);
     assert!(st.rebase.is_none());
@@ -88,9 +89,9 @@ fn a_conflict_stops_and_abort_restores() {
     let b = commit_on(&dir, "b", 12);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    drive(&mut st, Msg::OpenRebase(RebaseBase::FromCommit(a)));
-    drive(&mut st, Msg::RebaseMove { from: 1, to: 0 });
-    drive(&mut st, Msg::StartRebase { confirmed: false });
+    drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(a))));
+    drive(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 1, to: 0 }));
+    drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }));
 
     let text = format!("Interactive rebase stopped on a conflict at {}. Resolve it, then Continue, or Abort.", short(b));
     assert_eq!(last_toast(&st), (false, text.as_str()));

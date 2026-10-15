@@ -4,6 +4,8 @@
 //! sub-lists and the stash message step.
 
 use crate::effect::Effect;
+use crate::msg::DiffMsg;
+use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
@@ -184,8 +186,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             let Some(w) = st.workdir() else { return };
             Msg::OpenFolder(w)
         }
-        C::DiffLayout(l) => Msg::SetDiffLayout(l),
-        C::IgnoreWhitespace(on) => Msg::SetIgnoreWhitespace(on),
+        C::DiffLayout(l) => Msg::Diff(DiffMsg::SetDiffLayout(l)),
+        C::IgnoreWhitespace(on) => Msg::Diff(DiffMsg::SetIgnoreWhitespace(on)),
         C::OpenRepo => Msg::Repo(RepoMsg::PickRepo),
         C::NewTab => Msg::NewTab,
         C::ReopenClosedTab => Msg::ReopenClosedTab,
@@ -198,7 +200,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
-        C::OpenFileHistory(path) => Msg::OpenFileHistory { path, at: None },
+        C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
         C::Remote(m) => Msg::Remote(m),
         // Opens a step in `handle`; never run directly.
         C::FileHistory | C::ChooseStash(_) | C::StashMessage => return,

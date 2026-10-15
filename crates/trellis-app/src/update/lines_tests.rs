@@ -4,6 +4,7 @@
 use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LocalOp};
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::AppState;
@@ -49,7 +50,7 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 }
 
 fn click(st: &mut AppState, hunk: usize, line: usize, how: LineClick) {
-    assert!(run(st, Msg::SelectDiffLine { hunk, line, how }).is_empty());
+    assert!(run(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk, line, how })).is_empty());
 }
 
 fn selected(st: &AppState) -> Option<(usize, Vec<usize>)> {
@@ -106,7 +107,7 @@ fn clicks_across_hunks_and_on_context() {
     // Shift with nothing selected is a plain click.
     click(&mut st, 0, 4, Range);
     assert_eq!(selected(&st), Some((0, vec![4])));
-    run(&mut st, Msg::ClearLineSelection);
+    run(&mut st, Msg::Diff(DiffMsg::ClearLineSelection));
     assert_eq!(selected(&st), None);
 }
 
@@ -229,7 +230,7 @@ fn end_to_end_stage_lines() {
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     let (_, d) = st.diff.as_ref().unwrap();
     let two = d.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "two").unwrap();
-    drive(&mut st, Msg::SelectDiffLine { hunk: 0, line: two, how: Only });
+    drive(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
     drive(&mut st, Msg::ApplyLines(HunkOp::Stage));
     assert!(st.view.diff_lines.is_empty());
     let snap = st.snap.as_ref().unwrap();

@@ -10,6 +10,8 @@
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, LocalOp, UndoResult};
 use crate::lfs::LfsMsg;
 use crate::msg::AvatarMsg;
+use crate::msg::ConflictMsg;
+use crate::msg::HistoryMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -193,13 +195,15 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             repo::LoadDiffOptions { ignore_whitespace, whole_file },
         )),
         Effect::HighlightDiff { target, generation, diff, .. } => highlight::finish_job(target, generation, &diff, cancelled),
-        Effect::LoadConflict { workdir, path, generation } => {
-            Some(Msg::ConflictLoaded { path: path.clone(), generation, result: repo::load_conflict(&workdir, &path).map_err(err) })
-        }
+        Effect::LoadConflict { workdir, path, generation } => Some(Msg::Conflict(ConflictMsg::ConflictLoaded {
+            path: path.clone(),
+            generation,
+            result: repo::load_conflict(&workdir, &path).map_err(err),
+        })),
         Effect::LoadFileHistory { workdir, path, start, limit, generation } => {
             let result =
                 repo::file_history(&workdir, &path, &start, limit).map_err(|e| format!("Could not load the history of {path}: {e}"));
-            Some(Msg::FileHistoryLoaded { path, generation, result })
+            Some(Msg::History(HistoryMsg::FileHistoryLoaded { path, generation, result }))
         }
         Effect::LocalOp { workdir, op } => Some(Msg::LocalOpDone(local_op(&workdir, op).map_err(err))),
         Effect::RevertHunk { workdir, target, index, expected } => {

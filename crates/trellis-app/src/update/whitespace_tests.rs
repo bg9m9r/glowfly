@@ -4,6 +4,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::AppState;
@@ -56,22 +57,22 @@ fn toggle_saves_and_reloads_the_open_diff() {
     let mut st = state();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
-    assert!(run(&mut st, Msg::SelectDiffLine { hunk: 0, line: 1, how: Only }).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 1, how: Only })).is_empty());
     assert!(!st.view.diff_lines.is_empty());
     assert!(st.hunk_ops_gen().is_some());
 
-    let fx = run(&mut st, Msg::SetIgnoreWhitespace(true));
+    let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     assert!(matches!(&fx[..], [Effect::SaveSettings(s), Effect::LoadDiff { ignore_whitespace: true, reload: false, .. }]
         if s.diff_ignore_whitespace));
     assert!(st.view.diff_lines.is_empty(), "hunk rows change, so the selection goes");
     assert_eq!(st.hunk_ops_gen(), None, "hunk buttons wait for the reload");
     assert_eq!(st.saved_settings, serde_json::to_string(&st.settings).unwrap());
 
-    assert!(run(&mut st, Msg::SetIgnoreWhitespace(true)).is_empty(), "no change, nothing to do");
+    assert!(run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true))).is_empty(), "no change, nothing to do");
 
     // With no diff open only the setting changes.
     let mut st = state();
-    let fx = run(&mut st, Msg::SetIgnoreWhitespace(true));
+    let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_ignore_whitespace));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -85,15 +86,15 @@ fn whitespace_toggle_filters_a_real_repo() {
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(ws.clone())));
     assert!(hunks(&st) >= Some(1));
 
-    drive(&mut st, Msg::SetIgnoreWhitespace(true));
+    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&ws), "the diff stays open");
     assert_eq!(hunks(&st), Some(0));
 
-    drive(&mut st, Msg::SetIgnoreWhitespace(false));
+    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(false)));
     assert!(hunks(&st) >= Some(1), "the hunks come back");
 
     // Opening a diff, and reloading it after a status refresh, both carry the setting.
-    drive(&mut st, Msg::SetIgnoreWhitespace(true));
+    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(ws.clone())));
     assert!(matches!(&fx[..], [Effect::LoadDiff { ignore_whitespace: true, reload: false, .. }]));
     for e in fx {
@@ -115,7 +116,7 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(a.clone())));
-    drive(&mut st, Msg::SetIgnoreWhitespace(true));
+    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     let g = st.hunk_ops_gen().expect("the reload landed");
     assert!(st.hunk_ops_blocked().is_some());
 
@@ -126,7 +127,7 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
     // Clicks don't select lines; a selection made before the toggle can't be applied either.
     let (_, d) = st.diff.clone().unwrap();
     let two = d.hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
-    run(&mut st, Msg::SelectDiffLine { hunk: 0, line: two, how: Only });
+    run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
     assert!(st.view.diff_lines.is_empty());
     st.view.diff_lines.click(&a, &d, 0, two, Only);
     assert!(!has_local_op(&run(&mut st, Msg::ApplyLines(HunkOp::Stage))));
@@ -147,8 +148,8 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(a.clone())));
-    drive(&mut st, Msg::SetIgnoreWhitespace(true));
-    drive(&mut st, Msg::SetIgnoreWhitespace(false));
+    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
+    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(false)));
     assert_eq!(st.hunk_ops_blocked(), None);
     let fresh = st.hunk_ops_gen().expect("enabled again");
     drive(&mut st, stage(fresh));
@@ -163,7 +164,7 @@ fn commit_diffs_block_revert_while_whitespace_is_hidden() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let head = st.snap.as_ref().unwrap().commits[0].oid;
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head, "a.txt".into()))));
-    let fx = run(&mut st, Msg::SetIgnoreWhitespace(true));
+    let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, target: DiffTarget::Commit(..), .. })));
     assert_eq!(st.hunk_ops_blocked(), Some(crate::state::WHITESPACE_BLOCKS_REVERT));
     let _ = std::fs::remove_dir_all(&dir);
@@ -180,7 +181,7 @@ fn a_load_started_before_the_toggle_is_dropped() {
 
     // ws.txt is requested with whitespace shown; the toggle lands before its result.
     let held = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("ws.txt".into()))));
-    let toggled = run(&mut st, Msg::SetIgnoreWhitespace(true));
+    let toggled = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     for e in held {
         let late = crate::runner::execute(e).expect("diff result");
         run(&mut st, late);

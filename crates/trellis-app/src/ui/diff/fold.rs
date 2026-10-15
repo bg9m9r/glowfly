@@ -3,6 +3,7 @@
 //! run, which folds it into that row again.
 
 use super::DiffView;
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, CornerRadius, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
@@ -38,7 +39,7 @@ pub(super) fn fold_row(ui: &mut Ui, rect: Rect, v: &DiffView, f: Fold, sign_x: f
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
     if resp.on_hover_text("Show these lines").clicked() {
-        msgs.push(Msg::ExpandUnchanged(f.key));
+        msgs.push(Msg::Diff(DiffMsg::ExpandUnchanged(f.key)));
     }
 }
 
@@ -79,7 +80,7 @@ pub(super) fn fold_back(ui: &mut Ui, row: Rect, v: &DiffView, f: Fold, sign_x: f
     paint_chevrons(&p, r.center(), k, Stroke::new(1.4_f32, ink), false);
     let tip = format!("Fold these {} unchanged lines back into one row", f.len());
     if resp.on_hover_text(tip).clicked() {
-        msgs.push(Msg::CollapseUnchanged(f.key));
+        msgs.push(Msg::Diff(DiffMsg::CollapseUnchanged(f.key)));
     }
 }
 

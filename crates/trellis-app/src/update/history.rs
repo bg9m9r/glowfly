@@ -2,15 +2,15 @@
 //! of the file), searching further back, and jumping to a commit on the graph.
 
 use crate::effect::Effect;
-use crate::msg::Msg;
+use crate::msg::HistoryMsg;
 use crate::state::AppState;
 use crate::state::history::FileHistoryView;
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, HistoryStart};
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::OpenFileHistory { path, at } => {
+        HistoryMsg::OpenFileHistory { path, at } => {
             if st.workdir().is_none() {
                 return;
             }
@@ -19,7 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             st.history = Some(FileHistoryView::loading(path, at));
             request(st, at.map_or(HistoryStart::Head, HistoryStart::At), fx);
         }
-        Msg::FileHistoryLoaded { path, generation, result } => {
+        HistoryMsg::FileHistoryLoaded { path, generation, result } => {
             if generation != st.history_gen {
                 return; // superseded: closed, reopened, or parked with its tab
             }
@@ -42,19 +42,19 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 }
             }
         }
-        Msg::SelectHistoryEntry(i) => select(st, i, fx),
-        Msg::MoreFileHistory => {
+        HistoryMsg::SelectHistoryEntry(i) => select(st, i, fx),
+        HistoryMsg::MoreFileHistory => {
             let Some(view) = st.history.as_mut().filter(|v| !v.loading && !v.resume.is_empty()) else { return };
             view.loading = true;
             view.error = None;
             let start = HistoryStart::Resume(view.resume.clone());
             request(st, start, fx);
         }
-        Msg::CloseFileHistory => {
+        HistoryMsg::CloseFileHistory => {
             close(st);
             super::repo::close_diff(st);
         }
-        Msg::ShowInGraph(oid) => {
+        HistoryMsg::ShowInGraph(oid) => {
             if st.snap.as_ref().is_some_and(|s| s.row_of.contains_key(&oid)) {
                 close(st);
                 super::repo::select_commit(st, oid, true, fx);
@@ -66,7 +66,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 st.toast(false, text, now);
             }
         }
-        _ => {}
     }
 }
 

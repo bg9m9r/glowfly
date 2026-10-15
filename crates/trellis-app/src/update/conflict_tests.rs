@@ -3,6 +3,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LocalOp};
+use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::AppState;
@@ -35,7 +36,7 @@ fn opened(name: &str) -> (AppState, PathBuf) {
     let dir = conflicted_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    drive(&mut st, Msg::OpenConflict("a.txt".into()));
+    drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
     (st, dir)
 }
 
@@ -91,7 +92,7 @@ fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
         DiffTarget::Unstaged("a.txt".into()),
         FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }.into(),
     ));
-    let fx = update(&mut st, Msg::OpenConflict("a.txt".into()), Instant::now());
+    let fx = update(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())), Instant::now());
     match &fx[..] {
         [Effect::LoadConflict { path, generation, .. }] => assert_eq!((path.as_str(), *generation), ("a.txt", st.conflict_gen)),
         other => panic!("expected a conflict load, got {other:?}"),
@@ -107,7 +108,7 @@ fn stale_conflict_results_are_ignored() {
     let mut st = state();
     st.conflict = Some(ConflictView::loading("f.txt".into()));
     st.conflict_gen = 5;
-    let loaded = |generation, path: &str, result| Msg::ConflictLoaded { path: path.into(), generation, result };
+    let loaded = |generation, path: &str, result| Msg::Conflict(ConflictMsg::ConflictLoaded { path: path.into(), generation, result });
     update(&mut st, loaded(4, "f.txt", Ok(fake_file(1))), Instant::now());
     update(&mut st, loaded(5, "g.txt", Ok(fake_file(1))), Instant::now());
     assert!(st.conflict.as_ref().is_some_and(|c| c.file.is_none()), "still loading");
@@ -120,35 +121,35 @@ fn stale_conflict_results_are_ignored() {
 fn toggling_taking_all_resetting_and_stepping() {
     let mut st = with_fake(3);
     let send = |st: &mut AppState, m| update(st, m, Instant::now());
-    send(&mut st, Msg::ConflictToggle { chunk: 1, side: Side::Theirs });
-    send(&mut st, Msg::ConflictToggle { chunk: 1, side: Side::Ours });
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs }));
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 1, side: Side::Ours }));
     let c = st.conflict.as_ref().unwrap();
     assert_eq!((c.choices[1], c.current), (Choice::TheirsThenOurs, 1));
     assert_eq!(st.view.conflict_scroll_to, None, "picking doesn't scroll");
-    send(&mut st, Msg::ConflictTakeAll(Side::Ours));
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictTakeAll(Side::Ours)));
     assert_eq!(st.conflict.as_ref().unwrap().choices, [Choice::Ours; 3]);
-    send(&mut st, Msg::ConflictReset);
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictReset));
     assert_eq!(st.conflict.as_ref().unwrap().choices, [Choice::Unresolved; 3]);
 
     st.conflict.as_mut().unwrap().current = 0;
-    send(&mut st, Msg::ConflictStep(1));
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(1)));
     assert_eq!((st.conflict.as_ref().unwrap().current, st.view.conflict_scroll_to.take()), (1, Some(1)));
-    send(&mut st, Msg::ConflictStep(1));
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(1)));
     assert_eq!((st.conflict.as_ref().unwrap().current, st.view.conflict_scroll_to.take()), (2, Some(2)));
-    send(&mut st, Msg::ConflictStep(1));
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(1)));
     assert_eq!((st.conflict.as_ref().unwrap().current, st.view.conflict_scroll_to), (2, None), "clamped at the end");
-    send(&mut st, Msg::ConflictSelect(0));
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictSelect(0)));
     assert_eq!((st.conflict.as_ref().unwrap().current, st.view.conflict_scroll_to), (0, None));
-    send(&mut st, Msg::ConflictStep(-1));
+    send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(-1)));
     assert_eq!(st.conflict.as_ref().unwrap().current, 0, "clamped at the start");
 }
 
 #[test]
 fn save_is_refused_until_every_chunk_is_picked() {
     let (mut st, dir) = opened("conflict-save-refused");
-    assert!(update(&mut st, Msg::SaveConflict, Instant::now()).is_empty());
-    update(&mut st, Msg::ConflictToggle { chunk: 0, side: Side::Ours }, Instant::now());
-    let fx = update(&mut st, Msg::SaveConflict, Instant::now());
+    assert!(update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now()).is_empty());
+    update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
+    let fx = update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now());
     let ids = st.conflict.as_ref().unwrap().file.as_ref().unwrap().ids.clone();
     match &fx[..] {
         [Effect::LocalOp { op: LocalOp::ResolveConflict { path, contents, expected }, .. }] => {
@@ -158,15 +159,15 @@ fn save_is_refused_until_every_chunk_is_picked() {
         other => panic!("expected one resolve, got {other:?}"),
     }
     assert!(st.conflict.as_ref().unwrap().saving);
-    assert!(update(&mut st, Msg::SaveConflict, Instant::now()).is_empty(), "not twice");
+    assert!(update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now()).is_empty(), "not twice");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn saving_resolves_the_file_end_to_end() {
     let (mut st, dir) = opened("conflict-save");
-    update(&mut st, Msg::ConflictToggle { chunk: 0, side: Side::Theirs }, Instant::now());
-    drive(&mut st, Msg::SaveConflict);
+    update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Theirs }), Instant::now());
+    drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
     assert_eq!(read(&dir), "one\ntheirs\n");
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.unstaged.iter().any(|f| f.status == '!'));
@@ -188,9 +189,9 @@ fn mark_resolved_closes_the_view() {
 #[test]
 fn a_failed_save_reenables_save() {
     let (mut st, dir) = opened("conflict-stale-save");
-    update(&mut st, Msg::ConflictToggle { chunk: 0, side: Side::Ours }, Instant::now());
+    update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
     git(&dir, &["add", "a.txt"]); // resolved outside the app
-    let fx = update(&mut st, Msg::SaveConflict, Instant::now());
+    let fx = update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now());
     assert_eq!(fx.len(), 1);
     // The write is refused and saving ends (the status reload that follows isn't run here).
     for effect in fx {
@@ -207,8 +208,10 @@ fn a_failed_save_reenables_save() {
 #[test]
 fn resolving_with_a_side_needs_the_open_file() {
     let (mut st, dir) = opened("conflict-side");
-    assert!(update(&mut st, Msg::ResolveWithSide { path: "b.txt".into(), side: Side::Ours }, Instant::now()).is_empty());
-    drive(&mut st, Msg::ResolveWithSide { path: "a.txt".into(), side: Side::Theirs });
+    assert!(
+        update(&mut st, Msg::Conflict(ConflictMsg::ResolveWithSide { path: "b.txt".into(), side: Side::Ours }), Instant::now()).is_empty()
+    );
+    drive(&mut st, Msg::Conflict(ConflictMsg::ResolveWithSide { path: "a.txt".into(), side: Side::Theirs }));
     assert_eq!(read(&dir), "one\ntheirs\n");
     assert!(st.conflict.is_none());
     let _ = std::fs::remove_dir_all(&dir);

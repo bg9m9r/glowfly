@@ -1,7 +1,7 @@
 //! Diff viewer layout, view mode (hunks or the whole file), navigation and whole-file folds.
 
 use crate::effect::Effect;
-use crate::msg::Msg;
+use crate::msg::DiffMsg;
 use crate::state::AppState;
 use crate::state::diff_nav::{self, Landing, Step};
 use trellis_core::diff_rows::{header_rows, hunk_at};
@@ -69,9 +69,9 @@ pub(super) fn skip_past(st: &mut AppState, target: &DiffTarget, d: &FileDiff, l:
     }
 }
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::SetDiffLayout(layout) => {
+        DiffMsg::SetDiffLayout(layout) => {
             if layout == st.settings.diff_layout {
                 return;
             }
@@ -85,8 +85,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             st.settings.diff_layout = layout;
             fx.push(super::prefs::save_settings(st));
         }
-        Msg::SetDiffMode(mode) => set_mode(st, mode, fx),
-        Msg::SetIgnoreWhitespace(on) => {
+        DiffMsg::SetDiffMode(mode) => set_mode(st, mode, fx),
+        DiffMsg::DiffHighlighted { target, generation, hunks, whole } => super::highlight::apply(st, target, generation, hunks, whole),
+        DiffMsg::SetIgnoreWhitespace(on) => {
             if on == st.settings.diff_ignore_whitespace {
                 return;
             }
@@ -96,7 +97,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             // Hunk rows change, so the diff reopens at the top; hunk operations wait for it.
             super::repo::reopen_diff(st, fx);
         }
-        Msg::SelectDiffLine { hunk, line, how } => {
+        DiffMsg::SelectDiffLine { hunk, line, how } => {
             if st.line_ops_blocked().is_some() {
                 return;
             }
@@ -104,8 +105,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 st.view.diff_lines.click(target, d, hunk, line, how);
             }
         }
-        Msg::ClearLineSelection => st.view.diff_lines.clear(),
-        Msg::JumpToChange(step) => {
+        DiffMsg::ClearLineSelection => st.view.diff_lines.clear(),
+        DiffMsg::JumpToChange(step) => {
             if st.view.diff_landing.is_some() {
                 return; // a stepped-to file is loading: key repeat waits for it
             }
@@ -120,9 +121,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 Step::End => {}
             }
         }
-        Msg::ExpandUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.insert(key)),
-        Msg::CollapseUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.remove(key)),
-        Msg::ExpandAllUnchanged => refold(st, |ex, w| {
+        DiffMsg::ExpandUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.insert(key)),
+        DiffMsg::CollapseUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.remove(key)),
+        DiffMsg::ExpandAllUnchanged => refold(st, |ex, w| {
             // Replacing the set also drops keys of folds that are gone.
             let all = Expanded::all(w);
             if *ex == all {
@@ -131,14 +132,13 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             *ex = all;
             true
         }),
-        Msg::CollapseAllUnchanged => refold(st, |ex, _| {
+        DiffMsg::CollapseAllUnchanged => refold(st, |ex, _| {
             if ex.is_empty() {
                 return false;
             }
             ex.clear();
             true
         }),
-        _ => {}
     }
 }
 

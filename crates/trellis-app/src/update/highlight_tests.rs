@@ -5,6 +5,7 @@ use super::diff_tests::drive_holding_diffs;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::runner;
@@ -169,7 +170,7 @@ fn stale_highlight_result_is_dropped() {
     let small = FileDiff { hunks: shown(&st).hunks[..3].to_vec(), ..shown(&st).clone() };
     let hunks = highlight::highlight_diff("big.rs", &small, None);
     assert!(hunks.as_ref().is_some_and(|h| !h.is_pending()));
-    let msg = Msg::DiffHighlighted { target: big(), generation: st.diff_shown_gen, hunks, whole: None };
+    let msg = Msg::Diff(DiffMsg::DiffHighlighted { target: big(), generation: st.diff_shown_gen, hunks, whole: None });
     assert!(up(&mut st, msg).is_empty());
     assert!(pending(shown(&st).highlight.as_ref()), "a mismatched shape is ignored");
     let _ = std::fs::remove_dir_all(&dir);
@@ -190,7 +191,7 @@ fn whole_file_over_limit_gets_colors() {
     assert_colored(&shown(&st).whole.as_deref().unwrap().diff);
 
     // Back to hunks: no reload, and the hunks were finished by the same job.
-    let fx = up(&mut st, Msg::SetDiffMode(DiffMode::Hunks));
+    let fx = up(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadDiff { .. } | Effect::HighlightDiff { .. })));
     assert!(shown(&st).whole.is_none());
     assert_colored(shown(&st));
@@ -258,7 +259,7 @@ fn reload_keeps_colors_without_plain_flash() {
 fn line_selection_survives_same_reload_while_pending() {
     let (mut st, dir, _) = opened_big("hl-select");
     let line = shown(&st).hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
-    up(&mut st, Msg::SelectDiffLine { hunk: 0, line, how: LineClick::Only });
+    up(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how: LineClick::Only }));
     assert!(!st.view.diff_lines.is_empty());
     let selected = st.view.diff_lines.clone();
     let held = drive_holding_diffs(&mut st, Msg::Repo(RepoMsg::Refresh));

@@ -6,6 +6,7 @@ use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::state::ForgeState;
 use crate::state::branches::{self, NO_REMOTES};
 use crate::worktree::WorktreeMsg;
@@ -35,7 +36,7 @@ pub fn local_branch_menu(
         if !current.is_empty() {
             menu_item(msgs, ui, format!("Merge {name} into {current}"), Msg::git("Merge", &["merge", name]));
             menu_item(msgs, ui, format!("Rebase {current} onto {name}"), Msg::git("Rebase", &["rebase", name]));
-            let onto = Msg::OpenRebase(RebaseBase::OntoBranch(name.to_owned()));
+            let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch(name.to_owned())));
             menu_item(msgs, ui, format!("Interactive rebase {current} onto {name}…"), onto);
         }
         ui.separator();

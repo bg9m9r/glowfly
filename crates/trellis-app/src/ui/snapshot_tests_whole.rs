@@ -5,6 +5,7 @@
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, remove_fixture, render, with_repo};
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use egui_kittest::kittest::Queryable;
@@ -183,7 +184,8 @@ fn fold_row_click_sends_expand() {
     h.run();
     h.get_by_label("11 unchanged lines").click();
     h.run();
-    let sent: Vec<u32> = h.state().1.iter().filter_map(|m| if let Msg::ExpandUnchanged(k) = m { Some(*k) } else { None }).collect();
+    let sent: Vec<u32> =
+        h.state().1.iter().filter_map(|m| if let Msg::Diff(DiffMsg::ExpandUnchanged(k)) = m { Some(*k) } else { None }).collect();
     assert_eq!(sent, [key]);
     drop(h);
     remove_fixture(&dir);
@@ -209,7 +211,7 @@ fn fold_back_click_sends_collapse() {
         h.get_by_label("Fold 11 unchanged lines").click();
         h.run();
         let sent = &h.state().1;
-        assert!(matches!(sent[..], [Msg::CollapseUnchanged(k)] if k == key), "{layout:?}: {} messages", sent.len());
+        assert!(matches!(sent[..], [Msg::Diff(DiffMsg::CollapseUnchanged(k))] if k == key), "{layout:?}: {} messages", sent.len());
         drop(h);
         remove_fixture(&dir);
     }
@@ -225,7 +227,7 @@ fn header_fold_buttons() {
     assert!(h.state().1.is_empty(), "Collapse all is off with every fold closed");
     h.get_by_label("Expand all").click();
     h.run();
-    assert!(matches!(h.state().1[..], [Msg::ExpandAllUnchanged]), "{} messages", h.state().1.len());
+    assert!(matches!(h.state().1[..], [Msg::Diff(DiffMsg::ExpandAllUnchanged)]), "{} messages", h.state().1.len());
     h.state_mut().0.settings.diff_mode = DiffMode::Hunks;
     h.run();
     assert!(h.query_by_label("Expand all").is_none() && h.query_by_label("Collapse all").is_none(), "not in the Hunks view");

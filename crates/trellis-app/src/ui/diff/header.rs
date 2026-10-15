@@ -3,6 +3,7 @@
 //! toggles, Expand all / Collapse all for whole-file folds and the whitespace toggle.
 
 use crate::keymap::{self, BindingId};
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::diff_nav::StepKind;
@@ -105,20 +106,20 @@ pub(super) fn header_bar(
                 let [prev, next] = nav;
                 // Arrows are painted: the bundled fonts have no arrow glyphs.
                 if step_button(ui, Icon::NextChange, next, NEXT_TIPS).clicked() {
-                    msgs.push(Msg::JumpToChange(1));
+                    msgs.push(Msg::Diff(DiffMsg::JumpToChange(1)));
                 }
                 if step_button(ui, Icon::PrevChange, prev, PREV_TIPS).clicked() {
-                    msgs.push(Msg::JumpToChange(-1));
+                    msgs.push(Msg::Diff(DiffMsg::JumpToChange(-1)));
                 }
             }
             if let Some((layout, mode)) = rows {
                 ui.add_space(10.0);
                 let layouts =
                     [(DiffLayout::Split, "Split", "Old and new side by side"), (DiffLayout::Inline, "Inline", "Changes in one column")];
-                segmented(ui, layout, &layouts, |l| msgs.push(Msg::SetDiffLayout(l)));
+                segmented(ui, layout, &layouts, |l| msgs.push(Msg::Diff(DiffMsg::SetDiffLayout(l))));
                 ui.add_space(10.0);
                 let modes = [(DiffMode::WholeFile, "Whole file", WHOLE_FILE_TIP), (DiffMode::Hunks, "Hunks", HUNKS_TIP)];
-                segmented(ui, mode, &modes, |m| msgs.push(Msg::SetDiffMode(m)));
+                segmented(ui, mode, &modes, |m| msgs.push(Msg::Diff(DiffMsg::SetDiffMode(m))));
             }
             // Once the file buttons have moved down, the tail joins them.
             wrapped = files_wrapped
@@ -186,11 +187,11 @@ fn tail(ui: &mut Ui, folds: Option<FoldCounts>, ignore_ws: Option<bool>, gap: bo
         }
         let collapse = ui.add_enabled(c.open > 0, egui::Button::new(COLLAPSE_ALL));
         if collapse.on_hover_text(COLLAPSE_ALL_TIP).on_disabled_hover_text(COLLAPSE_ALL_OFF_TIP).clicked() {
-            msgs.push(Msg::CollapseAllUnchanged);
+            msgs.push(Msg::Diff(DiffMsg::CollapseAllUnchanged));
         }
         let expand = ui.add_enabled(c.closed > 0, egui::Button::new(EXPAND_ALL));
         if expand.on_hover_text(EXPAND_ALL_TIP).on_disabled_hover_text(EXPAND_ALL_OFF_TIP).clicked() {
-            msgs.push(Msg::ExpandAllUnchanged);
+            msgs.push(Msg::Diff(DiffMsg::ExpandAllUnchanged));
         }
     }
     if let Some(on) = ignore_ws {
@@ -202,7 +203,7 @@ fn tail(ui: &mut Ui, folds: Option<FoldCounts>, ignore_ws: Option<bool>, gap: bo
         let tip =
             if on { format!("{what}. Hunk and line staging is unavailable while whitespace changes are hidden.") } else { what.to_owned() };
         if ui.selectable_label(on, IGNORE_WS).on_hover_text(tip).clicked() {
-            msgs.push(Msg::SetIgnoreWhitespace(!on));
+            msgs.push(Msg::Diff(DiffMsg::SetIgnoreWhitespace(!on)));
         }
     }
 }

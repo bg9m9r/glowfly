@@ -4,6 +4,7 @@
 use crate::effect::{Effect, LoadKind, UndoResult};
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
@@ -45,7 +46,7 @@ impl Recovery {
         let text = format!("Trellis hit an internal error ({}): {panic}", self.name);
         let msg = match self.kind {
             Kind::Job(undo) => Msg::JobDone { ok: false, output: text, undo },
-            Kind::Rebase => Msg::RebaseFinished { result: Err(text) },
+            Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text) }),
             Kind::LocalOp => Msg::LocalOpDone(Err(text)),
             Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(text) }),
             Kind::Status(generation) => {

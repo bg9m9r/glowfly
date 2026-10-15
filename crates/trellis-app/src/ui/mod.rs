@@ -108,7 +108,11 @@ mod tabs_tests;
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::AvatarMsg;
+use crate::msg::ConflictMsg;
+use crate::msg::DiffMsg;
+use crate::msg::HistoryMsg;
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::runner::Runner;
@@ -229,7 +233,11 @@ impl TrellisApp {
             && !ctx.wants_keyboard_input()
             && let Some(step) = step_shortcuts(ctx)
         {
-            msgs.push(if self.st.conflict.is_some() { Msg::ConflictStep(step) } else { Msg::JumpToChange(step) });
+            msgs.push(if self.st.conflict.is_some() {
+                Msg::Conflict(ConflictMsg::ConflictStep(step))
+            } else {
+                Msg::Diff(DiffMsg::JumpToChange(step))
+            });
         }
         if f5 {
             msgs.push(Msg::Repo(RepoMsg::Refresh));
@@ -262,15 +270,15 @@ fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if st.prefs.is_some() {
         msgs.push(Msg::ClosePrefs);
     } else if st.conflict.is_some() {
-        msgs.push(Msg::CloseConflict);
+        msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.history.is_some() {
-        msgs.push(Msg::CloseFileHistory);
+        msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
     } else if st.diff.is_some() {
         // Esc first drops a line selection, then closes the diff.
-        msgs.push(if st.view.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::ClearLineSelection });
+        msgs.push(if st.view.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::Diff(DiffMsg::ClearLineSelection) });
     } else if let Some(p) = &st.rebase {
         // Esc first closes the message editor, then the panel.
-        msgs.push(if p.editing.is_some() { Msg::RebaseCancelMessage } else { Msg::CloseRebase });
+        msgs.push(if p.editing.is_some() { Msg::Rebase(RebaseMsg::RebaseCancelMessage) } else { Msg::Rebase(RebaseMsg::CloseRebase) });
     } else if matches!(st.selection, crate::state::Selection::Commits(_)) {
         msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
     } else {

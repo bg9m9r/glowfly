@@ -2,6 +2,7 @@
 //! highlighting in the background. `Runner::run` gives each background job a cancel ticket, so a
 //! newer `Effect::HighlightDiff` cancels the older one.
 
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use std::path::PathBuf;
@@ -80,7 +81,7 @@ pub(super) fn finish_job(target: DiffTarget, generation: u64, diff: &FileDiff, c
     let hunks = if pending(diff) { Some(highlight::finish(diff, cancelled)?) } else { None };
     let ms = started.elapsed().as_millis() as u64;
     tracing::debug!(path = target.path(), ms, "diff highlighted in the background");
-    Some(Msg::DiffHighlighted { target, generation, hunks, whole })
+    Some(Msg::Diff(DiffMsg::DiffHighlighted { target, generation, hunks, whole }))
 }
 
 #[cfg(test)]
@@ -98,7 +99,7 @@ mod tests {
         let target = DiffTarget::Unstaged("big.rs".into());
 
         assert!(finish_job(target.clone(), 7, &d, &|| true).is_none(), "a cancelled job sends nothing");
-        let Some(Msg::DiffHighlighted { target: t, generation: 7, hunks: Some(h), whole: None }) =
+        let Some(Msg::Diff(DiffMsg::DiffHighlighted { target: t, generation: 7, hunks: Some(h), whole: None })) =
             finish_job(target.clone(), 7, &d, &|| false)
         else {
             panic!("expected the finished hunks for generation 7");
@@ -127,7 +128,7 @@ mod tests {
         decorate_in_context("a.rs", None, &mut d, None, old.as_ref());
         assert!(d.highlight.as_ref().is_some_and(DiffHighlight::is_pending));
         let target = DiffTarget::Unstaged("a.rs".into());
-        let Some(Msg::DiffHighlighted { hunks: Some(h), .. }) = finish_job(target, 1, &d, &|| false) else {
+        let Some(Msg::Diff(DiffMsg::DiffHighlighted { hunks: Some(h), .. })) = finish_job(target, 1, &d, &|| false) else {
             panic!("expected the finished hunks");
         };
         assert!(!h.is_pending() && !h.line(0, 0).is_empty());

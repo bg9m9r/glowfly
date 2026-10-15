@@ -2,15 +2,15 @@
 //! chunks, and saving (write and stage) or resolving with a whole side.
 
 use crate::effect::{Effect, LocalOp};
-use crate::msg::Msg;
+use crate::msg::ConflictMsg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use std::time::Instant;
 use trellis_core::repo::Choice;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::OpenConflict(path) => {
+        ConflictMsg::OpenConflict(path) => {
             if st.workdir().is_none() {
                 return;
             }
@@ -19,7 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             st.conflict = Some(ConflictView::loading(path));
             request_load(st, fx);
         }
-        Msg::ConflictLoaded { path, generation, result } => {
+        ConflictMsg::ConflictLoaded { path, generation, result } => {
             if generation != st.conflict_gen || st.conflict.as_ref().is_none_or(|c| c.path != path) {
                 return; // superseded: closed, reopened or another file opened
             }
@@ -36,8 +36,8 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 }
             }
         }
-        Msg::CloseConflict => close(st),
-        Msg::ConflictToggle { chunk, side } => {
+        ConflictMsg::CloseConflict => close(st),
+        ConflictMsg::ConflictToggle { chunk, side } => {
             if let Some(c) = st.conflict.as_mut()
                 && chunk < c.choices.len()
             {
@@ -45,9 +45,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 c.current = chunk;
             }
         }
-        Msg::ConflictTakeAll(side) => set_all(st, Choice::only(side)),
-        Msg::ConflictReset => set_all(st, Choice::Unresolved),
-        Msg::ConflictStep(d) => {
+        ConflictMsg::ConflictTakeAll(side) => set_all(st, Choice::only(side)),
+        ConflictMsg::ConflictReset => set_all(st, Choice::Unresolved),
+        ConflictMsg::ConflictStep(d) => {
             let Some(c) = st.conflict.as_mut() else { return };
             let n = c.choices.len();
             if n == 0 {
@@ -59,14 +59,14 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
                 st.view.conflict_scroll_to = Some(next);
             }
         }
-        Msg::ConflictSelect(i) => {
+        ConflictMsg::ConflictSelect(i) => {
             if let Some(c) = st.conflict.as_mut()
                 && i < c.choices.len()
             {
                 c.current = i;
             }
         }
-        Msg::SaveConflict => {
+        ConflictMsg::SaveConflict => {
             let Some(c) = st.conflict.as_mut() else { return };
             // The button is disabled until every chunk has a pick.
             if !c.can_save() {
@@ -77,14 +77,13 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             c.saving = true;
             super::ops::local(st, op, fx);
         }
-        Msg::ResolveWithSide { path, side } => {
+        ConflictMsg::ResolveWithSide { path, side } => {
             let Some(c) = st.conflict.as_mut().filter(|c| c.path == path && !c.saving) else { return };
             let Some(f) = &c.file else { return };
             let op = LocalOp::ResolveWithSide { path, side, expected: f.ids.clone() };
             c.saving = true;
             super::ops::local(st, op, fx);
         }
-        _ => {}
     }
 }
 

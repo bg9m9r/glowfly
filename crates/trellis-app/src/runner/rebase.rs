@@ -3,6 +3,7 @@
 
 use super::err;
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use std::path::Path;
 use trellis_core::rebase::{self, RebaseBase, SequenceEditor, StartRequest};
 
@@ -16,9 +17,9 @@ fn sequence_editor() -> SequenceEditor {
 }
 
 pub(super) fn load_plan(workdir: &Path, base: &RebaseBase, generation: u64) -> Msg {
-    Msg::RebasePlanLoaded { generation, result: rebase::plan(workdir, base).map_err(err) }
+    Msg::Rebase(RebaseMsg::RebasePlanLoaded { generation, result: rebase::plan(workdir, base).map_err(err) })
 }
 
 pub(super) fn start(cwd: &Path, request: &StartRequest) -> Msg {
-    Msg::RebaseFinished { result: rebase::start(cwd, request, &sequence_editor()).map_err(err) }
+    Msg::Rebase(RebaseMsg::RebaseFinished { result: rebase::start(cwd, request, &sequence_editor()).map_err(err) })
 }

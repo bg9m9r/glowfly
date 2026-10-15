@@ -171,50 +171,16 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Selection(m) => selection::handle(st, m, &mut fx),
         Msg::Graph(m) => graph_filter::handle(st, m, &mut fx),
         Msg::Avatars(m) => avatars::handle(st, m, &mut fx),
-        Msg::DiffHighlighted { .. } => highlight::handle(st, msg),
-        Msg::SetDiffLayout(_)
-        | Msg::SetDiffMode(_)
-        | Msg::SetIgnoreWhitespace(_)
-        | Msg::JumpToChange(_)
-        | Msg::ExpandUnchanged(_)
-        | Msg::CollapseUnchanged(_)
-        | Msg::ExpandAllUnchanged
-        | Msg::CollapseAllUnchanged
-        | Msg::SelectDiffLine { .. }
-        | Msg::ClearLineSelection => diff::handle(st, msg, &mut fx),
+        Msg::Diff(m) => diff::handle(st, m, &mut fx),
 
         // conflicts
-        Msg::OpenConflict(_)
-        | Msg::CloseConflict
-        | Msg::ConflictToggle { .. }
-        | Msg::ConflictTakeAll(_)
-        | Msg::ConflictReset
-        | Msg::ConflictStep(_)
-        | Msg::ConflictSelect(_)
-        | Msg::SaveConflict
-        | Msg::ResolveWithSide { .. }
-        | Msg::ConflictLoaded { .. } => conflict::handle(st, msg, &mut fx),
+        Msg::Conflict(m) => conflict::handle(st, m, &mut fx),
 
         // file history
-        Msg::OpenFileHistory { .. }
-        | Msg::CloseFileHistory
-        | Msg::SelectHistoryEntry(_)
-        | Msg::MoreFileHistory
-        | Msg::ShowInGraph(_)
-        | Msg::FileHistoryLoaded { .. } => history::handle(st, msg, now, &mut fx),
+        Msg::History(m) => history::handle(st, m, now, &mut fx),
 
         // interactive rebase
-        Msg::OpenRebase(_)
-        | Msg::CloseRebase
-        | Msg::RebaseSetAction { .. }
-        | Msg::RebaseMove { .. }
-        | Msg::RebaseEditMessage(_)
-        | Msg::RebaseSaveMessage
-        | Msg::RebaseCancelMessage
-        | Msg::RebaseReset
-        | Msg::StartRebase { .. }
-        | Msg::RebasePlanLoaded { .. }
-        | Msg::RebaseFinished { .. } => rebase::handle(st, msg, now, &mut fx),
+        Msg::Rebase(m) => rebase::handle(st, m, now, &mut fx),
 
         // tabs
         Msg::NewTab

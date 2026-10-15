@@ -1,10 +1,9 @@
 //! Syntax highlighting finished in the background: large diffs arrive with a pending highlight
 //! (plain or provisional spans), `Effect::HighlightDiff` parses them on a worker thread (the
-//! lines and the function context in the hunk headers), and `Msg::DiffHighlighted` attaches the
+//! lines and the function context in the hunk headers), and `DiffMsg::DiffHighlighted` attaches the
 //! result if the same diff is still on screen.
 
 use crate::effect::Effect;
-use crate::msg::Msg;
 use crate::state::AppState;
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{DiffTarget, FileDiff};
@@ -48,8 +47,7 @@ pub(super) fn schedule(st: &AppState, fx: &mut Vec<Effect>) {
 /// Attaches a background result to the diff it was for, if that is still on screen and still
 /// pending. Stale results (another file, the diff closed, a newer diff shown) are dropped. Only
 /// the spans change: never the scroll position, cursor, selection or folds.
-pub(super) fn handle(st: &mut AppState, msg: Msg) {
-    let Msg::DiffHighlighted { target, generation, hunks, whole } = msg else { return };
+pub(super) fn apply(st: &mut AppState, target: DiffTarget, generation: u64, hunks: Option<DiffHighlight>, whole: Option<DiffHighlight>) {
     if generation != st.diff_shown_gen {
         return;
     }

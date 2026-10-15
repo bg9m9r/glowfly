@@ -11,6 +11,7 @@ use super::snapshot_tests::{harness, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
 use super::snapshot_tests_revert::with_commit_diff;
 use super::theme::{apply_theme, color};
+use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -86,7 +87,7 @@ fn file_history_buttons_send_msgs() {
     // The arrow keys still move through the list after a button click.
     h.press_key(egui::Key::ArrowUp);
     h.run();
-    assert!(matches!(&h.state().1[..], [Msg::SelectHistoryEntry(1)]), "Up still moves the selection");
+    assert!(matches!(&h.state().1[..], [Msg::History(HistoryMsg::SelectHistoryEntry(1))]), "Up still moves the selection");
     h.state_mut().1.clear();
 
     remove_app(&mut h.state_mut().0, &dir);

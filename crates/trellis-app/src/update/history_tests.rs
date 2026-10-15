@@ -4,6 +4,8 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
+use crate::msg::ConflictMsg;
+use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::conflict::ConflictView;
@@ -53,7 +55,7 @@ fn with_view(name: &str) -> (AppState, PathBuf) {
 }
 
 fn loaded(st: &AppState, h: FileHistory) -> Msg {
-    Msg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen, result: Ok(h) }
+    Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen, result: Ok(h) })
 }
 
 #[test]
@@ -61,7 +63,7 @@ fn opening_file_history_requests_a_walk() {
     let (mut st, dir) = opened("history-open");
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
     st.conflict = Some(ConflictView::loading("a.txt".into()));
-    let fx = update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
+    let fx = update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     let limit = st.settings.commit_limit();
     assert!(
         matches!(&fx[..], [Effect::LoadFileHistory { path, start: HistoryStart::Head, limit: l, generation: 1, .. }]
@@ -83,7 +85,7 @@ fn file_history_end_to_end_with_rename() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
-    drive(&mut st, Msg::OpenFileHistory { path: "b.txt".into(), at: Some(head) });
+    drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "b.txt".into(), at: Some(head) }));
     let view = st.history.as_ref().expect("view open");
     assert!(!view.loading && view.complete() && view.as_of.is_none());
     let statuses: String = view.entries.iter().map(|e| e.status).collect();
@@ -100,20 +102,21 @@ fn file_history_end_to_end_with_rename() {
 #[test]
 fn stale_history_results_are_ignored() {
     let (mut st, dir) = opened("history-stale");
-    update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
+    update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     let fresh = FileHistory { entries: vec![entry(1, "a.txt")], from_head: true, ..Default::default() };
     // An older generation.
-    let old = Msg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen - 1, result: Ok(fresh.clone()) };
+    let old =
+        Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen - 1, result: Ok(fresh.clone()) });
     assert!(update(&mut st, old, Instant::now()).is_empty());
     // Another path.
-    let other = Msg::FileHistoryLoaded { path: "b.txt".into(), generation: st.history_gen, result: Ok(fresh.clone()) };
+    let other = Msg::History(HistoryMsg::FileHistoryLoaded { path: "b.txt".into(), generation: st.history_gen, result: Ok(fresh.clone()) });
     assert!(update(&mut st, other, Instant::now()).is_empty());
     let view = st.history.as_ref().unwrap();
     assert!(view.loading && view.entries.is_empty());
     // After closing.
     let generation = st.history_gen;
-    update(&mut st, Msg::CloseFileHistory, Instant::now());
-    let late = Msg::FileHistoryLoaded { path: "a.txt".into(), generation, result: Ok(fresh) };
+    update(&mut st, Msg::History(HistoryMsg::CloseFileHistory), Instant::now());
+    let late = Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation, result: Ok(fresh) });
     assert!(update(&mut st, late, Instant::now()).is_empty());
     assert!(st.history.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -122,7 +125,7 @@ fn stale_history_results_are_ignored() {
 #[test]
 fn selecting_an_entry_opens_the_diff_at_its_path() {
     let (mut st, dir) = with_view("history-select");
-    let fx = update(&mut st, Msg::SelectHistoryEntry(1), Instant::now());
+    let fx = update(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(1)), Instant::now());
     assert_eq!(st.history.as_ref().unwrap().selected, Some(1));
     assert_eq!(st.view.history_scroll_to, Some(1));
     assert!(
@@ -130,7 +133,7 @@ fn selecting_an_entry_opens_the_diff_at_its_path() {
         "{fx:?}"
     );
     st.view.history_scroll_to = None;
-    assert!(update(&mut st, Msg::SelectHistoryEntry(5), Instant::now()).is_empty());
+    assert!(update(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(5)), Instant::now()).is_empty());
     assert_eq!(st.history.as_ref().unwrap().selected, Some(1));
     assert!(st.view.history_scroll_to.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -145,10 +148,10 @@ fn searching_further_appends_without_duplicates() {
         v.resume = resume.clone();
         v.searched_until = Some((oid(2), 5));
     }
-    let fx = update(&mut st, Msg::MoreFileHistory, Instant::now());
+    let fx = update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now());
     assert!(st.history.as_ref().unwrap().loading);
     assert!(matches!(&fx[..], [Effect::LoadFileHistory { start: HistoryStart::Resume(r), .. }] if *r == resume), "{fx:?}");
-    assert!(update(&mut st, Msg::MoreFileHistory, Instant::now()).is_empty(), "one request at a time");
+    assert!(update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now()).is_empty(), "one request at a time");
 
     let batch = FileHistory {
         entries: vec![entry(2, "old.txt"), entry(3, "old.txt")],
@@ -174,14 +177,14 @@ fn view_on_graph_selects_visible_commits_only() {
     let (mut st, dir) = with_view("history-graph");
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     st.view.scroll_to_row = None;
-    let fx = update(&mut st, Msg::ShowInGraph(head), Instant::now());
+    let fx = update(&mut st, Msg::History(HistoryMsg::ShowInGraph(head)), Instant::now());
     assert!(st.history.is_none());
     assert_eq!(st.selection, Selection::Commit(head));
     assert!(matches!(&fx[..], [Effect::LoadDetail { oid, .. }] if *oid == head), "{fx:?}");
     assert!(st.view.scroll_to_row.is_some());
 
     let (mut st, dir2) = with_view("history-graph-hidden");
-    let fx = update(&mut st, Msg::ShowInGraph(oid(9)), Instant::now());
+    let fx = update(&mut st, Msg::History(HistoryMsg::ShowInGraph(oid(9))), Instant::now());
     assert!(fx.is_empty());
     assert!(st.history.is_some());
     let toast = st.toasts.last().expect("a toast");
@@ -205,7 +208,7 @@ fn other_views_close_file_history() {
         Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head, "a.txt".into()))),
         Msg::Repo(RepoMsg::SelectCommit(head)),
         Msg::Repo(RepoMsg::JumpTo(head)),
-        Msg::OpenConflict("a.txt".into()),
+        Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())),
     ];
     for m in msgs {
         let before = reopen(&mut st);
@@ -220,7 +223,7 @@ fn other_views_close_file_history() {
 
     reopen(&mut st);
     st.diff = Some((DiffTarget::Commit(head, "a.txt".into()), empty_diff().into()));
-    update(&mut st, Msg::CloseFileHistory, Instant::now());
+    update(&mut st, Msg::History(HistoryMsg::CloseFileHistory), Instant::now());
     assert!(st.history.is_none() && st.diff.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -228,8 +231,8 @@ fn other_views_close_file_history() {
 #[test]
 fn history_error_is_shown_and_logged() {
     let (mut st, dir) = opened("history-error");
-    update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
-    let m = Msg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen, result: Err("boom".into()) };
+    update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
+    let m = Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen, result: Err("boom".into()) });
     update(&mut st, m, Instant::now());
     let v = st.history.as_ref().unwrap();
     assert_eq!(v.error.as_deref(), Some("boom"));
@@ -243,7 +246,7 @@ fn tab_switch_parks_file_history() {
     let (a, b) = (scratch_repo("history-tab-a"), scratch_repo("history-tab-b"));
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
-    update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
+    update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     let first = st.history_gen;
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert!(st.history.is_none(), "B has no history open");
@@ -279,7 +282,7 @@ fn tab_switch_reloads_the_selected_entrys_diff() {
     let (a, b) = (scratch_repo("history-tab-diff-a"), scratch_repo("history-tab-diff-b"));
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
-    let fx = update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
+    let fx = update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     // The walk lands, selecting entry 0 and asking for its diff, which is still in flight
     // when the user switches tabs: its result is dropped.
     let walk = fx.into_iter().find(|e| matches!(e, Effect::LoadFileHistory { .. })).unwrap();
@@ -304,10 +307,10 @@ fn a_refresh_does_not_supersede_the_selected_entrys_diff() {
     git(&dir, &["commit", "-q", "-am", "edit a"]);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    drive(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None });
+    drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }));
     assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 0 on screen");
     // Entry 1's diff is in flight when a refresh (window focus, file watcher) reloads the diff.
-    let fx = update(&mut st, Msg::SelectHistoryEntry(1), Instant::now());
+    let fx = update(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(1)), Instant::now());
     let [pending] = <[Effect; 1]>::try_from(fx).unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     run(&mut st, pending);
@@ -318,7 +321,7 @@ fn a_refresh_does_not_supersede_the_selected_entrys_diff() {
 #[test]
 fn loaded_history_records_on_disk() {
     let (mut st, dir) = opened("history-on-disk");
-    update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
+    update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     let first = FileHistory { entries: vec![entry(1, "a.txt")], on_disk: true, ..Default::default() };
     let m = loaded(&st, first);
     update(&mut st, m, Instant::now());

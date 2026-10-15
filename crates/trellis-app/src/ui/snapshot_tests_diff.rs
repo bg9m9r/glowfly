@@ -3,6 +3,7 @@
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, render, with_repo};
+use crate::msg::DiffMsg;
 use crate::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -46,7 +47,7 @@ fn diff_line_selection() {
         let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
         let (fix, new_line) = (at('-', "fix"), at('+', "new line"));
         for (line, how) in [(fix, LineClick::Only), (new_line, LineClick::Toggle)] {
-            crate::update::update(&mut st, Msg::SelectDiffLine { hunk: 0, line, how }, Instant::now());
+            crate::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
         }
         assert_eq!(st.view.diff_lines.count_in(&DiffTarget::Unstaged("app.txt".into()), 0), 2);
         render(name, st, true);

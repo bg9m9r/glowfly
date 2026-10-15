@@ -5,6 +5,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LocalOp};
 use crate::keymap::KeyAction;
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::conflict::ConflictView;
@@ -47,7 +48,7 @@ fn key(st: &mut AppState, action: KeyAction) -> Vec<Effect> {
 }
 
 fn select_line(st: &mut AppState) {
-    assert!(update(st, Msg::SelectDiffLine { hunk: 0, line: 2, how: LineClick::Only }, Instant::now()).is_empty());
+    assert!(update(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 2, how: LineClick::Only }), Instant::now()).is_empty());
     assert!(!st.view.diff_lines.is_empty());
 }
 

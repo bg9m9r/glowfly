@@ -5,6 +5,7 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, theme::color};
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::rebase::RebasePanel;
@@ -83,7 +84,7 @@ fn rebase_panel_blocked_light() {
     h.check_snapshot("rebase_panel_blocked_light");
     h.get_by_label("Start rebase").click();
     h.run();
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::StartRebase { .. })), "a disabled Start sends nothing");
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::StartRebase { .. }))), "a disabled Start sends nothing");
     drop(h);
     remove_fixture(&dir);
 }
@@ -117,17 +118,17 @@ fn header_buttons_and_esc() {
     h.run();
     h.get_by_label("Start rebase").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::StartRebase { confirmed: false })));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }))));
     h.get_by_label("Reset").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::RebaseReset)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::RebaseReset))));
     h.get_by_label("Cancel").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseRebase)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::CloseRebase))));
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
     h.run();
-    assert!(matches!(h.state().1[..], [Msg::CloseRebase]), "Esc closes the panel");
+    assert!(matches!(h.state().1[..], [Msg::Rebase(RebaseMsg::CloseRebase)]), "Esc closes the panel");
     drop(h);
     remove_fixture(&dir);
 }
@@ -168,8 +169,12 @@ fn row_drag_moves_and_snapshots() {
 
     pointer(&mut h, over, Some(false));
     h.run();
-    let moves: Vec<(usize, usize)> =
-        h.state().1.iter().filter_map(|m| if let Msg::RebaseMove { from, to } = m { Some((*from, *to)) } else { None }).collect();
+    let moves: Vec<(usize, usize)> = h
+        .state()
+        .1
+        .iter()
+        .filter_map(|m| if let Msg::Rebase(RebaseMsg::RebaseMove { from, to }) = m { Some((*from, *to)) } else { None })
+        .collect();
     assert_eq!(moves, [(0, 2)]);
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)))), "dragging does not select the commit");
     drop(h);

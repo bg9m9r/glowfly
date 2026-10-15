@@ -4,6 +4,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::AppState;
@@ -42,7 +43,7 @@ fn set_diff_layout_saves_and_keeps_hunk() {
     assert_ne!(inline[1], split[1], "the layouts place hunk 1 on different rows");
     st.view.diff_top_row = inline[1];
 
-    let fx = run(&mut st, Msg::SetDiffLayout(DiffLayout::Split));
+    let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.diff_layout == DiffLayout::Split)));
     assert_eq!(st.saved_settings, serde_json::to_string(&st.settings).unwrap());
@@ -50,19 +51,19 @@ fn set_diff_layout_saves_and_keeps_hunk() {
     assert_eq!(st.view.diff_top_row, split[1]);
 
     st.view.diff_scroll_to_row = None;
-    assert!(run(&mut st, Msg::SetDiffLayout(DiffLayout::Split)).is_empty(), "already split");
+    assert!(run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split))).is_empty(), "already split");
     assert_eq!(st.view.diff_scroll_to_row, None);
 
     // Back to inline from inside hunk 2's rows lands on hunk 2's inline header.
     st.view.diff_top_row = split[2] + 1;
-    run(&mut st, Msg::SetDiffLayout(DiffLayout::Inline));
+    run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Inline)));
     assert_eq!(st.view.diff_scroll_to_row, Some(inline[2]));
 }
 
 #[test]
 fn set_diff_layout_without_diff_still_saves() {
     let mut st = state();
-    let fx = run(&mut st, Msg::SetDiffLayout(DiffLayout::Split));
+    let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
     assert_eq!(st.view.diff_scroll_to_row, None);
@@ -75,7 +76,7 @@ fn jump_to_change_steps_between_hunks() {
         st.settings.diff_layout = layout;
         let headers = header_rows(&three_hunks(), layout);
         let step = |st: &mut AppState, n: isize| {
-            assert!(run(st, Msg::JumpToChange(n)).is_empty());
+            assert!(run(st, Msg::Diff(DiffMsg::JumpToChange(n))).is_empty());
             st.view.diff_scroll_to_row.take()
         };
         assert_eq!(step(&mut st, 1), Some(headers[1]), "{layout:?}");
@@ -92,8 +93,8 @@ fn jump_to_change_steps_between_hunks() {
 #[test]
 fn jump_to_change_without_diff_is_noop() {
     let mut st = state();
-    assert!(run(&mut st, Msg::JumpToChange(1)).is_empty());
-    assert!(run(&mut st, Msg::JumpToChange(-1)).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1))).is_empty());
+    assert!(run(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1))).is_empty());
     assert_eq!(st.view.diff_scroll_to_row, None);
 }
 
@@ -120,7 +121,7 @@ fn a_parked_diff_keeps_its_hunk_when_the_layout_changes_elsewhere() {
     st.view.diff_top_row = inline[1];
 
     run(&mut st, Msg::NewTab);
-    run(&mut st, Msg::SetDiffLayout(DiffLayout::Split));
+    run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     run(&mut st, Msg::SelectTab(0));
     assert_eq!(st.view.diff_top_row, split[1], "the row is converted to the layout now in use");
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));

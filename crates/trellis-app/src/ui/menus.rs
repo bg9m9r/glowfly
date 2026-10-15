@@ -4,6 +4,7 @@ use super::common::{menu_item, short};
 use super::ref_visibility;
 use super::theme::color;
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
 use crate::state::ForgeState;
 use crate::state::selection::MultiSelection;
@@ -41,7 +42,7 @@ pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Ms
             ),
         );
     });
-    menu_item(msgs, ui, "Interactive rebase from here…", Msg::OpenRebase(RebaseBase::FromCommit(oid)));
+    menu_item(msgs, ui, "Interactive rebase from here…", Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid))));
     ui.separator();
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(sha.clone()));
     menu_item(msgs, ui, "Copy commit message", Msg::Copy(summary.to_owned()));

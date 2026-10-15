@@ -5,6 +5,7 @@
 use super::diff::{ROW_H, mono};
 use super::theme::color;
 use super::widgets::{Icon, icon_button};
+use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
@@ -62,7 +63,7 @@ fn header_bar(ui: &mut Ui, view: &ConflictView, msgs: &mut Vec<Msg>) {
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.button("Close  (Esc)").clicked() {
-                msgs.push(Msg::CloseConflict);
+                msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
             }
             if ui.button("Mark resolved").on_hover_text("Stage the working file as it is now").clicked() {
                 msgs.push(Msg::StageFile(view.path.clone()));
@@ -84,10 +85,10 @@ fn header_bar(ui: &mut Ui, view: &ConflictView, msgs: &mut Vec<Msg>) {
                 .on_disabled_hover_text(why)
                 .clicked()
             {
-                msgs.push(Msg::SaveConflict);
+                msgs.push(Msg::Conflict(ConflictMsg::SaveConflict));
             }
             if ui.button("Reset").on_hover_text("Clear all picks").clicked() {
-                msgs.push(Msg::ConflictReset);
+                msgs.push(Msg::Conflict(ConflictMsg::ConflictReset));
             }
             ui.add_space(10.0);
             let n = view.chunk_count();
@@ -98,13 +99,13 @@ fn header_bar(ui: &mut Ui, view: &ConflictView, msgs: &mut Vec<Msg>) {
             // Right to left: next first. Arrows are painted (the bundled fonts lack them).
             let next = ui.add_enabled_ui(view.current + 1 < n, |ui| icon_button(ui, Icon::NextChange, "Next conflict (F7)")).inner;
             if next.clicked() {
-                msgs.push(Msg::ConflictStep(1));
+                msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(1)));
             }
             let counter = if n == 1 { "1 conflict".to_owned() } else { format!("conflict {} of {n}", view.current + 1) };
             ui.label(RichText::new(counter).color(color::text()));
             let prev = ui.add_enabled_ui(view.current > 0, |ui| icon_button(ui, Icon::PrevChange, "Previous conflict (Shift+F7)")).inner;
             if prev.clicked() {
-                msgs.push(Msg::ConflictStep(-1));
+                msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(-1)));
             }
         });
     });
@@ -180,7 +181,7 @@ fn panes(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, segs: &[Segment]
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if ui.small_button("Take all").on_hover_text(format!("Take {} for every conflict", title.to_lowercase())).clicked() {
-                    msgs.push(Msg::ConflictTakeAll(side));
+                    msgs.push(Msg::Conflict(ConflictMsg::ConflictTakeAll(side)));
                 }
             });
         });
@@ -208,7 +209,7 @@ fn panes(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, segs: &[Segment]
                         chunk_header(ui, r, view, k, side, msgs);
                     }
                     if resp.clicked() {
-                        msgs.push(Msg::ConflictSelect(k));
+                        msgs.push(Msg::Conflict(ConflictMsg::ConflictSelect(k)));
                     }
                 }
                 PaneRow::Lines { chunk, row, ours, theirs } => {
@@ -223,7 +224,7 @@ fn panes(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, segs: &[Segment]
                         }
                     }
                     if resp.clicked() {
-                        msgs.push(Msg::ConflictSelect(chunk));
+                        msgs.push(Msg::Conflict(ConflictMsg::ConflictSelect(chunk)));
                     }
                 }
             }
@@ -245,7 +246,7 @@ fn chunk_header(ui: &mut Ui, r: Rect, view: &ConflictView, k: usize, side: Side,
     let check = Rect::from_min_max(pos2(x - 64.0, r.top()), pos2(x, r.bottom()));
     let mut taken = view.choices.get(k).is_some_and(|c| c.takes(side));
     if ui.put(check, egui::Checkbox::new(&mut taken, "Take")).changed() {
-        msgs.push(Msg::ConflictToggle { chunk: k, side });
+        msgs.push(Msg::Conflict(ConflictMsg::ConflictToggle { chunk: k, side }));
     }
 }
 
@@ -296,7 +297,7 @@ fn output(ui: &mut Ui, view: &ConflictView, segs: &[Segment], scroll_to: Option<
                         current_bar(ui, rect);
                     }
                     if resp.clicked() {
-                        msgs.push(Msg::ConflictSelect(k));
+                        msgs.push(Msg::Conflict(ConflictMsg::ConflictSelect(k)));
                     }
                 }
             }
@@ -334,7 +335,7 @@ fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, content: &Con
                 )
             };
             if ui.add_enabled(!view.saving, egui::Button::new(&label)).clicked() {
-                let resolve = Msg::ResolveWithSide { path: path.clone(), side };
+                let resolve = Msg::Conflict(ConflictMsg::ResolveWithSide { path: path.clone(), side });
                 msgs.push(Msg::confirm("Resolve conflict", body, if deleted { "Delete" } else { "Replace" }, resolve));
             }
         }

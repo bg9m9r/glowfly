@@ -14,6 +14,7 @@ mod syntax;
 
 use super::file_buttons::CommitFile;
 use super::theme::color;
+use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::diff_nav;
@@ -267,9 +268,9 @@ pub(super) fn line_click(ui: &Ui, resp: &Response, hunk: usize, line: usize, ori
             LineClick::Only
         };
         if changed {
-            msgs.push(Msg::SelectDiffLine { hunk, line, how });
+            msgs.push(Msg::Diff(DiffMsg::SelectDiffLine { hunk, line, how }));
         } else if how == LineClick::Only {
-            msgs.push(Msg::ClearLineSelection);
+            msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));
         }
     }
     hovered

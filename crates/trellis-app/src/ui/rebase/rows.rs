@@ -7,6 +7,7 @@ use super::super::theme::color;
 use super::super::widgets::{Icon, icon_button, paint_icon};
 use super::UiCache;
 use crate::msg::Msg;
+use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::state::rebase::RebasePanel;
 use crate::state::tabs::index_after_move;
@@ -117,7 +118,7 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                     }
                     let on_summary = r.interact_pointer_pos().is_some_and(|p| p.x >= rect.left() + SHA_X);
                     if enabled && r.double_clicked() && on_summary {
-                        msgs.push(Msg::RebaseEditMessage(i));
+                        msgs.push(Msg::Rebase(RebaseMsg::RebaseEditMessage(i)));
                     }
                 }
             }
@@ -154,7 +155,7 @@ fn drag(ui: &Ui, slots: &[Slot], list_top: f32, pitch: f32, msgs: &mut Vec<Msg>)
     if slot.r.drag_stopped() {
         ui.data_mut(|d| d.remove::<RowDrag>(drag_id));
         if to != state.from {
-            msgs.push(Msg::RebaseMove { from: state.from, to });
+            msgs.push(Msg::Rebase(RebaseMsg::RebaseMove { from: state.from, to }));
         }
         return None;
     }
@@ -285,7 +286,7 @@ fn controls(ui: &mut Ui, rect: Rect, i: usize, n: usize, item: &TodoItem, enable
         },
     );
     if action != item.action {
-        msgs.push(Msg::RebaseSetAction { index: i, action });
+        msgs.push(Msg::Rebase(RebaseMsg::RebaseSetAction { index: i, action }));
     }
 
     let buttons = Rect::from_min_max(pos2(rect.right() - BUTTONS_W, rect.top()), pos2(rect.right() - 4.0, rect.bottom()));
@@ -296,11 +297,11 @@ fn controls(ui: &mut Ui, rect: Rect, i: usize, n: usize, item: &TodoItem, enable
     }
     let up = child.add_enabled_ui(i > 0, |ui| icon_button(ui, Icon::PrevChange, "Move up")).inner;
     if up.clicked() {
-        msgs.push(Msg::RebaseMove { from: i, to: i - 1 });
+        msgs.push(Msg::Rebase(RebaseMsg::RebaseMove { from: i, to: i - 1 }));
     }
     let down = child.add_enabled_ui(i + 1 < n, |ui| icon_button(ui, Icon::NextChange, "Move down")).inner;
     if down.clicked() {
-        msgs.push(Msg::RebaseMove { from: i, to: i + 1 });
+        msgs.push(Msg::Rebase(RebaseMsg::RebaseMove { from: i, to: i + 1 }));
     }
 }
 
@@ -324,10 +325,10 @@ fn editor(ui: &mut Ui, panel: &mut RebasePanel, cache: &mut UiCache, spell: bool
                         spell_text_edit(ui, &mut panel.draft, "Commit message", 5, &mut cache.speller, spell);
                         ui.horizontal(|ui| {
                             if ui.button("Update message").clicked() {
-                                msgs.push(Msg::RebaseSaveMessage);
+                                msgs.push(Msg::Rebase(RebaseMsg::RebaseSaveMessage));
                             }
                             if ui.link("Cancel").clicked() {
-                                msgs.push(Msg::RebaseCancelMessage);
+                                msgs.push(Msg::Rebase(RebaseMsg::RebaseCancelMessage));
                             }
                         });
                     });
