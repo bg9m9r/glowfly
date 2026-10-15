@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-15 13:39 · **Tag management**: Annotate an existing lightweight tag from the TAGS row menu: one job replaces it with an annotated tag on the same commit, signed when tag signing is on (`082c49c`)
 - 2026-10-15 13:31 · **Repository trust**: Untrusted chip in the toolbar and a Review repository trust… palette command bring the trust prompt back (`6764632`)
 - 2026-10-15 12:24 · **File actions**: Undo and redo a restore from a commit: the overwritten working copy is kept and put back byte for byte (`977d157`)
 - 2026-10-15 12:14 · **Repository trust**: ask before running git in repositories whose config or hooks run commands; hold auto-fetch, hosting-service sign-in and git status until trusted (`8c0fb03`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 12:04 · **Built-in terminal**: Terminal panel with a shell per repository tab, toggled from the toolbar, the palette or Ctrl+` (`d520497`)
 - 2026-10-14 11:56 · **Keyboard shortcuts**: S/U stage and unstage, Ctrl+Shift+S/U for all, Ctrl+Shift+M to focus the message, and a Ctrl+/ shortcut sheet (`ea70ddd`)
 - 2026-10-14 07:33 · **File actions**: Open, show in folder and restore from the file history and commit diff header (`a5878a0`)
-- 2026-10-14 07:27 · **Diff viewer upgrade**: Language overrides from linguist-language gitattributes; highlight .jsx (`c15779a`)
 
 ---
 
