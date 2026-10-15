@@ -239,11 +239,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             Msg::Trust(TrustMsg::Ask { real: s.real_workdir.clone() })
         }
         // Opens a step in `handle`; never run directly.
-        C::FileHistory
-        | C::ChooseStash(_)
-        | C::ChooseStashToRename
-        | C::StashMessage
-        | C::FetchMoreCommits => return,
+        C::FileHistory | C::ChooseStash(_) | C::ChooseStashToRename | C::StashMessage | C::FetchMoreCommits => return,
     };
     fx.extend(super::update(st, msg, now));
 }
