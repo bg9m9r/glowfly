@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-15 16:43 · **Repository management**: Favorite repositories above Recent on the welcome screen and in the repository menu, remove one recent entry or clear the list, and missing folders marked (`59fc992`)
 - 2026-10-15 16:02 · **Sparse checkout**: Sparse Checkout page in Preferences: turn on with folders or patterns, save, reapply and turn off; palette entry; libgit2 status hides left-out files (`0969dcf`)
 - 2026-10-15 15:59 · **Graph columns and loading**: resizable graph columns: drag the header dividers to resize, double-click to reset (`3bc171e`)
 - 2026-10-15 14:14 · **Clone and init options**: Fetch full history or N more commits of a shallow clone from the palette and the graph header (`94affbb`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 15:09 · **Git LFS**: Track in Git LFS submenu on file rows for the file, its extension or its folder (`6b98a2b`)
 - 2026-10-14 14:40 · **Worktrees**: WORKTREES section with open in a new tab and Create worktree from a branch or commit (`a661ce2`)
 - 2026-10-14 14:34 · **Git Flow**: Git Flow preferences page with initialize, branch and prefix settings, and start feature/release/hotfix (`f6dd571`)
-- 2026-10-14 13:24 · **Git LFS**: Git LFS preferences page with setup, tracked patterns and LFS commands (`b60ecfb`)
 
 ---
 
