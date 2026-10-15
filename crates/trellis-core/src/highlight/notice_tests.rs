@@ -16,7 +16,10 @@ fn generated() -> String {
 
 #[test]
 fn third_party_notice_lists_bundled_syntax_licenses() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../THIRD-PARTY-NOTICES.md");
+    // Read at run time: a binary built in another worktree (shared target dir) keeps that
+    // worktree's compile-time path.
+    let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into());
+    let path = Path::new(&dir).join("../../THIRD-PARTY-NOTICES.md");
     let notice = std::fs::read_to_string(&path).expect("THIRD-PARTY-NOTICES.md exists").replace("\r\n", "\n");
     assert!(notice.contains("PowerShell.sublime-syntax"), "the notice names Trellis's own grammar");
     let begin = notice.find(BEGIN).expect("the notice has the BEGIN marker") + BEGIN.len();

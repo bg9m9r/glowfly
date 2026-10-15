@@ -293,7 +293,10 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 
 #[test]
 fn views_update_and_state_do_no_io() {
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    // Read at run time: a binary built in another worktree (shared target dir) keeps that
+    // worktree's compile-time path.
+    let src =
+        std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into())).join("src");
     let mut report = Vec::new();
     let mut used = vec![false; ALLOWED.len()];
     for dir in DIRS {
