@@ -62,7 +62,7 @@ impl UndoHistory {
         match (self.undo.last(), &self.blocked) {
             (Some(a), _) => format!("Undo {} ({})", a.describe(), crate::keymap::hint(crate::keymap::BindingId::Undo)),
             (None, Some(label)) => {
-                format!("Can't undo {label}: only checkout, commit, reset, branch delete and discards can be undone")
+                format!("Can't undo {label}: only checkout, commit, reset, branch delete, discards and file restores can be undone")
             }
             (None, None) => "Nothing to undo".to_owned(),
         }

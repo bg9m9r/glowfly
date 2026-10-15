@@ -1,6 +1,7 @@
-//! File actions from file menus: restoring a file as it was in a commit (after a confirmation),
-//! opening a working-tree file in its default program or showing it in the file manager, and
-//! creating, renaming and deleting working-tree files (in `work_files.rs`).
+//! File actions from file menus: restoring a file as it was in a commit (after a confirmation,
+//! recorded for undo with the working copy it replaced), opening a working-tree file in its
+//! default program or showing it in the file manager, and creating, renaming and deleting
+//! working-tree files (in `work_files.rs`).
 
 use crate::effect::Effect;
 use crate::msg::FilesMsg;
@@ -12,6 +13,10 @@ use trellis_core::repo::RestoredFrom;
 
 fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
+}
+
+fn undo_hint() -> &'static str {
+    crate::keymap::hint(crate::keymap::BindingId::Undo)
 }
 
 pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -29,8 +34,9 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
             st.modal = Some(Modal::Confirm {
                 title: "Restore file".into(),
                 body: format!(
-                    "{reason}.\n\nRestoring the version from commit {} replaces it, and its current contents can't be recovered.",
-                    short(oid)
+                    "{reason}.\n\nRestoring the version from commit {} replaces it; Undo ({}) puts its current contents back.",
+                    short(oid),
+                    undo_hint()
                 ),
                 button: "Restore anyway".into(),
                 then: Box::new(Msg::Files(FilesMsg::RestoreFile { oid, path, deleted: false, confirmed: true, overwrite: true })),
@@ -39,7 +45,10 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
         }
         FilesMsg::FileRestored { path, oid, result } => {
             match result {
-                Ok(from) => {
+                Ok((from, undo)) => {
+                    if let Some(a) = undo {
+                        st.undo.record(a);
+                    }
                     let text = match from {
                         RestoredFrom::Commit => {
                             format!("Restored {path} from {}. The change is unstaged in your working tree.", short(oid))
@@ -99,7 +108,7 @@ fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
         format!("{path} will be replaced in your working tree by the version from commit {sha}.")
     };
     let note = if dirty {
-        format!("Your uncommitted changes to {path} will be overwritten and cannot be recovered.")
+        format!("Your uncommitted changes to {path} will be overwritten. Undo ({}) puts them back.", undo_hint())
     } else {
         "The change is left unstaged; discarding it brings back the current version.".to_owned()
     };

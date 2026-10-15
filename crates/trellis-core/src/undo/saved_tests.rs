@@ -75,6 +75,7 @@ fn a_file_edited_since_is_not_overwritten() {
     assert!(r.is_stale() && r.message().contains("f.txt has changed since"), "{r:?}");
     let Action::Discard { before: Some(saved), .. } = &a else { panic!() };
     assert!(r.message().contains(&saved.blob.to_string()), "names the blob to recover from: {r:?}");
+    assert!(r.message().contains("discarded version"), "{r:?}");
     assert_eq!(read(&dir, "f.txt").unwrap(), b"newer work\n");
     let _ = std::fs::remove_dir_all(&dir);
 }

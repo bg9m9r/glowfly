@@ -1,15 +1,28 @@
-//! Creating, renaming, deleting and discarding (untracked) a working-tree file
-//! (`Effect::WorkFile`), listing the tracked files (`Effect::LoadTrackedPaths`), and checking the
-//! Clone dialog's parent folder (`Effect::CheckCloneParent`).
+//! Restoring a file from a commit with an undo entry (`Effect::RestoreFile`), creating,
+//! renaming, deleting and discarding (untracked) a working-tree file (`Effect::WorkFile`),
+//! listing the tracked files (`Effect::LoadTrackedPaths`), and checking the Clone dialog's
+//! parent folder (`Effect::CheckCloneParent`).
 
 use crate::effect::{DeleteMode, FileOp, WorkFileOk};
 use crate::msg::CloneMsg;
+use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::msg::WorkFileMsg;
+use git2::Oid;
 use std::path::Path;
 use trellis_core::error::Error;
 use trellis_core::repo;
+use trellis_core::undo;
+
+/// Restores `path` from commit `oid`, saving the working copy first so the restore can be undone.
+/// Contents only the working tree holds, without `overwrite`, come back as a second confirmation.
+pub(super) fn restore(workdir: &Path, oid: Oid, path: String, overwrite: bool) -> Msg {
+    match undo::restore_saving(workdir, oid, &path, overwrite) {
+        Err(Error::WouldOverwrite(reason)) => Msg::Files(FilesMsg::RestoreWouldOverwrite { path, oid, reason }),
+        result => Msg::Files(FilesMsg::FileRestored { result: result.map_err(|e| e.to_string()), path, oid }),
+    }
+}
 
 /// Moves a deleted file to the system trash. The app's test build uses a stand-in folder
 /// instead, so tests never touch the real Recycle Bin / Trash.

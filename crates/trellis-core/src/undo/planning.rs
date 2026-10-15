@@ -41,9 +41,11 @@ fn gone() -> Plan {
 /// The git commands that undo `action` (or redo it, after an undo), or why they can't run.
 /// Checks the repository as it is now, not as a snapshot showed it.
 pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
-    if let Action::Discard { path, before, after } = action {
-        // Only this file's bytes change, so a merge or rebase in progress doesn't matter.
-        return saved::plan(workdir, path, *before, *after, redo);
+    // Only one file's bytes change, so a merge or rebase in progress doesn't matter.
+    match action {
+        Action::Discard { path, before, after } => return saved::plan(workdir, path, *before, *after, redo, "discarded"),
+        Action::Restore { path, before, after, .. } => return saved::plan(workdir, path, *before, *after, redo, "overwritten"),
+        _ => {}
     }
     let repo = Repository::open(workdir)?;
     if let Some(op) = busy_name(repo.state()) {
@@ -132,6 +134,6 @@ pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
                 None => stale("The discarded-changes stash was dropped"),
             }
         }
-        Action::Discard { .. } => unreachable!("planned above"),
+        Action::Discard { .. } | Action::Restore { .. } => unreachable!("planned above"),
     })
 }

@@ -469,7 +469,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Choose which side to restore for a file the newer commit modified
     - [ ] Re-check which comparison and commit-detail paths are on disk after a status refresh
       (Open / Show can go stale until the commits are reselected)
-  - [ ] Make Restore undoable (keep the overwritten working copy, as Discard does)
+  - [x] Make Restore undoable (keep the overwritten working copy, as Discard does)
   - [ ] Honour smudge filters (Git LFS) when restoring, by writing through `git restore --source`
   - [ ] Explain when a restored or opened path is outside a sparse checkout
   - [x] Open with default app and show in folder from the file history view and the diff header

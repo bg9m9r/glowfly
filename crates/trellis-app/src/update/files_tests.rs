@@ -5,6 +5,7 @@ use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::FilesMsg;
+use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::history::FileHistoryView;
@@ -14,6 +15,7 @@ use git2::{Oid, Repository};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::repo::{self, Comparison, FileEntry, LoadOptions, RestoredFrom};
+use trellis_core::undo::Action;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
@@ -69,6 +71,7 @@ fn restore_warns_about_local_changes() {
     let oid = head(&dir);
     run(&mut st, ask(oid, "a.txt", false));
     assert!(confirm_body(&st).contains("overwritten"), "{}", confirm_body(&st));
+    assert!(confirm_body(&st).contains("Undo"), "the overwritten edits can come back: {}", confirm_body(&st));
     run(&mut st, Msg::CloseModal);
 
     run(&mut st, ask(oid, "a.txt", true));
@@ -114,14 +117,14 @@ fn restored_toasts_and_refreshes() {
     detail.absent.insert("a.txt".into());
     st.detail = Some(detail);
 
-    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) }));
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok((RestoredFrom::Commit, None)) }));
     let toast = st.toasts.last().expect("a toast");
     assert!(toast.ok && toast.text.contains("a.txt") && toast.text.contains(&short(oid)), "{}", toast.text);
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     assert!(st.detail.as_ref().unwrap().in_workdir("a.txt"), "Open and Show become available");
     finish(&mut st, fx);
 
-    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Parent(oid)) }));
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok((RestoredFrom::Parent(oid), None)) }));
     finish(&mut st, fx);
     assert!(st.toasts.last().unwrap().text.contains("before"));
 
@@ -138,11 +141,11 @@ fn restore_marks_history_file_on_disk() {
     st.history = Some(FileHistoryView::loading("a.txt".into(), None));
     let on_disk = |st: &AppState| st.history.as_ref().unwrap().on_disk;
 
-    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "old.txt".into(), oid, result: Ok(RestoredFrom::Commit) }));
+    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "old.txt".into(), oid, result: Ok((RestoredFrom::Commit, None)) }));
     assert!(!on_disk(&st), "another path");
     run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) }));
     assert!(!on_disk(&st), "a failed restore");
-    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) }));
+    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok((RestoredFrom::Commit, None)) }));
     assert!(on_disk(&st), "Open and Show become available in the history");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -187,7 +190,7 @@ fn comparison_restore_clears_absent() {
     st.selection =
         Selection::Commits(MultiSelection { oids: vec![oid, other], anchor: oid, changes: Some(Ok(changes)), pick_blocked: None });
 
-    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit) }));
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok((RestoredFrom::Commit, None)) }));
     let Selection::Commits(m) = &st.selection else { panic!("still two commits") };
     let c = m.changes.as_ref().unwrap().as_ref().unwrap();
     assert!(c.in_workdir("a.txt"), "Open and Show become available");
@@ -272,12 +275,15 @@ fn ignored_file_is_not_overwritten_without_a_warning() {
     drive(&mut st, Msg::ConfirmAccepted);
     assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=secret\n", "nothing written");
     let Some(Modal::Confirm { body, then, .. }) = &st.modal else { panic!("asks again") };
-    assert!(body.contains("ignored") && body.contains("can't be recovered") && body.contains(&short(old)), "{body}");
+    assert!(body.contains("ignored") && body.contains("Undo") && body.contains(&short(old)), "{body}");
     assert!(matches!(&**then, Msg::Files(FilesMsg::RestoreFile { confirmed: true, overwrite: true, .. })));
 
     drive(&mut st, Msg::ConfirmAccepted);
     assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=old\n", "written once the user agreed");
     assert!(st.toasts.last().is_some_and(|t| t.ok));
+    assert!(matches!(st.undo.undo.last(), Some(Action::Restore { path, .. }) if path == ".env"), "{:?}", st.undo.undo);
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=secret\n", "undo brings the secret back");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -62,6 +62,8 @@ mod editor_tests;
 #[cfg(test)]
 mod files_tests;
 #[cfg(test)]
+mod files_undo_tests;
+#[cfg(test)]
 mod fold_tests;
 #[cfg(test)]
 mod force_push_tests;

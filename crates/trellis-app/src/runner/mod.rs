@@ -11,7 +11,6 @@ use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, Loca
 use crate::lfs::LfsMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::ConflictMsg;
-use crate::msg::FilesMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::JobMsg;
@@ -216,10 +215,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
             Some(Msg::Stage(StageMsg::HunkReverted { path: target.path().to_owned(), result }))
         }
-        Effect::RestoreFile { workdir, oid, path, overwrite } => Some(match repo::restore_file(&workdir, oid, &path, overwrite) {
-            Err(trellis_core::error::Error::WouldOverwrite(reason)) => Msg::Files(FilesMsg::RestoreWouldOverwrite { path, oid, reason }),
-            result => Msg::Files(FilesMsg::FileRestored { result: result.map_err(err), path, oid }),
-        }),
+        Effect::RestoreFile { workdir, oid, path, overwrite } => Some(files::restore(&workdir, oid, path, overwrite)),
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
         Effect::CheckSubmodule { workdir, path } => Some(submodules::check(&workdir, path)),
@@ -375,7 +371,7 @@ fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
         }),
         Ok(Plan::Write { path, content }) => match undo::write_saved(cwd, &path, content) {
             Ok(()) => {
-                let output = format!("{} {path}", if redo { "Discarded the changes in" } else { "Restored" });
+                let output = action.wrote(redo);
                 Msg::Job(JobMsg::JobDone { ok: true, output, undo: Some(UndoResult::Done { redo, before: action.clone(), after: action }) })
             }
             Err(e) => failed(format!("Could not write {path}: {e}")),

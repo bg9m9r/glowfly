@@ -14,7 +14,7 @@ mod saved;
 pub use planning::plan;
 use planning::{has_staged, is_clean, stale};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
-pub use saved::{Saved, discard_saving, write as write_saved};
+pub use saved::{Saved, discard_saving, restore_saving, write as write_saved};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.
 pub const DISCARD_STASH_MESSAGE: &str = "Trellis: discarded changes";
@@ -59,7 +59,9 @@ pub enum HeadPos {
 
 /// A recorded operation that can be undone (and then redone). `Discard` is one file's unstaged
 /// changes (all, a hunk or some lines) discarded: `before` is its content then and `after` what
-/// the discard left (`None`: absent). A hard reset's `stash` holds the changes it stashed.
+/// the discard left (`None`: absent). `Restore` is one file written from commit `oid`, with
+/// `before` the working copy it replaced and `after` what the restore wrote. A hard reset's
+/// `stash` holds the changes it stashed.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     Checkout { from: HeadPos, to: HeadPos },
@@ -68,6 +70,7 @@ pub enum Action {
     DeleteBranch { name: String, oid: Oid, upstream: Option<String> },
     DiscardAll { stash: Oid, head: Oid },
     Discard { path: String, before: Option<Saved>, after: Option<Saved> },
+    Restore { path: String, oid: Oid, before: Option<Saved>, after: Option<Saved> },
 }
 
 /// Repository state captured before an operation runs (opaque to callers).
@@ -168,6 +171,7 @@ impl Action {
             Action::DeleteBranch { name, .. } => format!("delete of branch {name}"),
             Action::DiscardAll { .. } => "Discard all changes".to_owned(),
             Action::Discard { path, .. } => format!("discard in {path}"),
+            Action::Restore { path, .. } => format!("restore of {path}"),
         }
     }
 }
@@ -284,6 +288,8 @@ pub fn redone(workdir: &Path, action: Action) -> Result<Action> {
 
 #[cfg(test)]
 mod reset_tests;
+#[cfg(test)]
+mod restore_tests;
 #[cfg(test)]
 mod saved_tests;
 #[cfg(test)]

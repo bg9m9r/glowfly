@@ -126,7 +126,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ),
     ("avatars", &["fetch"]),
     ("signing", &["list_gpg_keys", "list_ssh_keys", "generate_gpg_key", "export_public_key"]),
-    ("undo", &["before", "after", "plan", "redone"]),
+    ("undo", &["before", "after", "plan", "redone", "discard_saving", "restore_saving", "write_saved"]),
     ("rebase", &["plan", "start", "stopped_at", "install_todo"]),
     ("askpass", &["start", "start_with", "ask", "ask_from_env"]),
     ("server", &["start", "start_with"]),

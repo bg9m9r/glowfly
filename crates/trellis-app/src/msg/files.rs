@@ -5,6 +5,7 @@ use super::Inactive;
 use crate::effect::{FileOp, WorkFileOk};
 use git2::Oid;
 use trellis_core::repo::RestoredFrom;
+use trellis_core::undo::Action;
 
 /// Restoring a file as it was in a commit, and opening or showing a working-tree file
 /// (update/files.rs).
@@ -18,8 +19,9 @@ pub enum FilesMsg {
     OpenWorkingFile(String),
     /// Select a working-tree file in the file manager (its folder where selecting isn't supported).
     ShowWorkingFile(String),
-    /// A RestoreFile finished.
-    FileRestored { path: String, oid: Oid, result: Result<RestoredFrom, String> },
+    /// A RestoreFile finished. On success the `Action` is its undo entry (`None`: nothing
+    /// changed, or the working copy before or after couldn't be saved).
+    FileRestored { path: String, oid: Oid, result: Result<(RestoredFrom, Option<Action>), String> },
     /// A RestoreFile without `overwrite` found contents at `path` that only the working tree
     /// holds (`reason` says why), so it wrote nothing.
     RestoreWouldOverwrite { path: String, oid: Oid, reason: String },
@@ -30,9 +32,11 @@ impl FilesMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::RestoreFile { .. } | Self::OpenWorkingFile(..) | Self::ShowWorkingFile(..) | Self::FileRestored { result: Ok(_), .. } => {
-                None
-            }
+            Self::RestoreFile { .. }
+            | Self::OpenWorkingFile(..)
+            | Self::ShowWorkingFile(..)
+            | Self::FileRestored { result: Ok((_, None)), .. } => None,
+            Self::FileRestored { result: Ok((_, Some(a))), .. } => Some(Inactive::Undo(a)),
             Self::FileRestored { path, result: Err(e), .. } => Some(Inactive::Log(format!("Could not restore {path}: {e}"))),
             Self::RestoreWouldOverwrite { path, reason, .. } => Some(Inactive::Log(format!("Did not restore {path}: {reason}."))),
         }
