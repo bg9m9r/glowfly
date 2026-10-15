@@ -1,7 +1,8 @@
 //! The palette's second steps: the sub-lists a command opens (tracked files, stashes) and
-//! free-text steps (a stash message), with their titles, prompts and footers.
+//! free-text steps (a stash message, a commit count), with their titles, prompts and footers.
 
 use super::palette_commands::PaletteCommand;
+use trellis_core::clone_ops::parse_depth;
 
 /// What a stash sub-list does with the chosen stash.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -117,6 +118,8 @@ impl PickKind {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum InputKind {
     StashMessage,
+    /// How many more commits of a shallow clone to download.
+    DeepenBy,
 }
 
 impl InputKind {
@@ -124,6 +127,7 @@ impl InputKind {
     pub fn title(self) -> &'static str {
         match self {
             InputKind::StashMessage => "Stash with message",
+            InputKind::DeepenBy => "Fetch more commits",
         }
     }
 
@@ -131,6 +135,7 @@ impl InputKind {
     pub fn prompt(self) -> &'static str {
         match self {
             InputKind::StashMessage => "Message for the new stash",
+            InputKind::DeepenBy => "How many more commits to download",
         }
     }
 
@@ -138,12 +143,14 @@ impl InputKind {
     pub fn note(self) -> &'static str {
         match self {
             InputKind::StashMessage => "Stashes all changes, untracked files included.",
+            InputKind::DeepenBy => "Downloads this many older commits below where each fetched branch's history now stops.",
         }
     }
 
     pub fn footer(self) -> &'static str {
         match self {
             InputKind::StashMessage => "Enter to stash, Backspace or Esc to go back",
+            InputKind::DeepenBy => "Enter to fetch, Backspace or Esc to go back",
         }
     }
 
@@ -155,6 +162,17 @@ impl InputKind {
         }
         match self {
             InputKind::StashMessage => Some(PaletteCommand::StashWithMessage(t.to_owned())),
+            InputKind::DeepenBy => parse_depth(t).ok().map(PaletteCommand::FetchMoreCommitsBy),
+        }
+    }
+
+    /// Why Enter does nothing for `text`, shown in red in place of the note; None while the
+    /// text is blank or usable.
+    pub fn problem(self, text: &str) -> Option<&'static str> {
+        match self {
+            InputKind::StashMessage => None,
+            InputKind::DeepenBy if text.trim().is_empty() => None,
+            InputKind::DeepenBy => parse_depth(text).err().map(|p| p.message()),
         }
     }
 }

@@ -784,7 +784,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Init with a .gitignore template and a license
   - [ ] Create the hosting-service repository and push on init
   - [ ] Clone from a list of your repositories on a connected hosting service
-  - [ ] Fetch the full history of a shallow clone later (unshallow, or deepen by more commits)
+  - [x] Fetch the full history of a shallow clone later (unshallow, or deepen by more commits)
+    - [ ] Deepen by date (`--shallow-since`) or exclude what a ref reaches (`--shallow-exclude`)
+    - [ ] Widen a single-branch shallow clone to fetch every branch
+    - [ ] Mark the shallow boundary commits in the graph
+    - [ ] Unshallow shallow submodules when an update or reset needs missing commits
+    - [ ] Confirm before unshallowing a very large repository, and cancel a running fetch
 - [ ] **Sparse checkout**
   Enable/disable, set/edit patterns, reapply.
 - [ ] **Repository management**

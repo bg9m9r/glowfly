@@ -24,6 +24,7 @@ pub mod rebase;
 pub mod remote_ops;
 pub mod repo;
 pub mod settings;
+pub mod shallow_ops;
 pub mod signing;
 pub mod spell;
 pub mod stash_ops;

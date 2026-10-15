@@ -1,6 +1,7 @@
 //! The commit graph: configurable columns (branch/tag, graph, SHA, message, changes, author,
 //! date), avatars, ghost refs, and branch highlighting.
 
+mod header;
 mod paint;
 mod select;
 
@@ -13,7 +14,6 @@ use super::theme::color;
 use super::widgets;
 use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
-use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, Selection};
@@ -79,52 +79,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         select::keyboard_nav(ui, &st.selection, snap, &mut st.view, total, has_wip, msgs);
 
-        // Column header.
-        let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::hover());
-        let cols = Columns::new(hdr, graph_w, &cols_cfg);
-        let p = ui.painter();
-        let font = FontId::proportional(10.5);
-        let weak = color::weak();
-        p.line_segment([hdr.left_bottom(), hdr.right_bottom()], Stroke::new(1.0_f32, color::border()));
-        let header = |col: (f32, f32), text: &str, on: bool| {
-            if on {
-                p.text(pos2(col.0 + 6.0, hdr.center().y), Align2::LEFT_CENTER, text, font.clone(), weak);
-                if col.0 > hdr.left() + 1.0 {
-                    p.line_segment([pos2(col.0, hdr.top() + 4.0), pos2(col.0, hdr.bottom() - 4.0)], Stroke::new(1.0_f32, color::border()));
-                }
-            }
-        };
-        header(cols.refs, "BRANCH / TAG", cols_cfg.refs);
-        header(cols.graph, "GRAPH", cols_cfg.tree);
-        header(cols.sha, "SHA", cols_cfg.sha);
-        header((cols.msg.0 - 6.0, cols.msg.1), "COMMIT MESSAGE", cols_cfg.message);
-        header(cols.changes, "CHANGES", cols_cfg.changes);
-        header(cols.author, "AUTHOR", cols_cfg.author);
-        header(cols.date, "DATE", cols_cfg.date);
-        if snap.truncated {
-            let at_max = snap.commits.len() >= crate::state::MAX_COMMITS;
-            let more = (!at_max).then(|| p.layout_no_wrap("Load more".into(), font.clone(), color::accent()));
-            let link_w = more.as_ref().map_or(0.0, |g| g.size().x + 10.0);
-            // The count only where it clears the column's title.
-            let count = p.layout_no_wrap(format!("newest {} commits", snap.commits.len()), font.clone(), color::faint());
-            let title_end = cols.msg.0 + p.layout_no_wrap("COMMIT MESSAGE".into(), font.clone(), weak).size().x + 12.0;
-            let count_x = cols.msg.1 - link_w - count.size().x;
-            if count_x > title_end {
-                p.galley(pos2(count_x, hdr.center().y - count.size().y / 2.0), count, color::faint());
-            }
-            if let Some(g) = more {
-                let rect = Align2::RIGHT_CENTER.anchor_size(pos2(cols.msg.1, hdr.center().y), g.size());
-                let resp = ui.interact(rect, ui.id().with("load-more"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Link, true, "Load more"));
-                if resp.hovered() {
-                    p.line_segment([rect.left_bottom(), rect.right_bottom()], Stroke::new(1.0_f32, color::accent()));
-                }
-                p.galley(rect.min, g, color::accent());
-                if resp.clicked() {
-                    msgs.push(Msg::Load(LoadMsg::LoadMoreCommits));
-                }
-            }
-        }
+        header::column_header(ui, snap, graph_w, &cols_cfg, msgs);
 
         // Pull requests by head commit, for graph badges.
         let pr_at: HashMap<Oid, (String, bool)> = st

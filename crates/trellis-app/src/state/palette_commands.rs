@@ -11,6 +11,8 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 #[path = "palette_gitflow.rs"]
 mod palette_gitflow;
+#[path = "palette_shallow.rs"]
+mod palette_shallow;
 
 /// Recent repositories offered by the palette.
 const MAX_RECENT: usize = 10;
@@ -28,6 +30,12 @@ pub const SHOW_REPO_FOLDER: &str = if cfg!(windows) {
 pub enum PaletteCommand {
     Fetch,
     Pull,
+    /// Download the rest of a shallow clone's history.
+    FetchFullHistory,
+    /// Enter the commit count step; Enter runs `FetchMoreCommitsBy`.
+    FetchMoreCommits,
+    /// Download this many older commits of a shallow clone.
+    FetchMoreCommitsBy(u32),
     Push,
     /// Stash every change, untracked files included.
     Stash,
@@ -125,6 +133,7 @@ impl PaletteCommand {
     pub fn input_kind(&self) -> Option<InputKind> {
         match self {
             PaletteCommand::StashMessage => Some(InputKind::StashMessage),
+            PaletteCommand::FetchMoreCommits => Some(InputKind::DeepenBy),
             _ => None,
         }
     }
@@ -217,6 +226,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(entry(C::Fetch, "Fetch all remotes", "remote update download"));
         out.push(entry(C::Pull, "Pull", "fast-forward merge update"));
     }
+    palette_shallow::shallow_entries(snap, out);
     super::remotes::palette_entries(snap, out);
     if snap.head_branch.is_some() {
         out.push(entry(C::Push, "Push", "upload publish"));

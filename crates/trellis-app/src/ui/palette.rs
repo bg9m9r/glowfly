@@ -127,7 +127,10 @@ fn back_and_title(ui: &mut Ui, title: &str, msgs: &mut Vec<Msg>) {
 /// A free-text step: a note under the field; Enter runs the command for the typed text, unless
 /// it is blank. Returns the footer.
 fn input_step(ui: &mut Ui, kind: InputKind, query: &str, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
-    note(ui, kind.note(), color::weak());
+    match kind.problem(query) {
+        Some(p) => note(ui, p, color::red()),
+        None => note(ui, kind.note(), color::weak()),
+    }
     if run_selected && let Some(cmd) = kind.command(query) {
         msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     }

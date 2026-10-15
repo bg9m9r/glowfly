@@ -90,7 +90,9 @@ pub fn git_change(rel: &Path, touch: Touch) -> Change {
         // modifies `worktrees/<name>` on Windows.
         ["worktrees"] | ["worktrees", _] if touch != Touch::Modified => Change::Full,
         ["worktrees", _, "HEAD" | "locked" | "gitdir"] => Change::Full,
-        ["HEAD" | "packed-refs" | "MERGE_HEAD" | "CHERRY_PICK_HEAD" | "REVERT_HEAD" | "REBASE_HEAD" | "BISECT_LOG"] => Change::Full,
+        ["HEAD" | "packed-refs" | "shallow" | "MERGE_HEAD" | "CHERRY_PICK_HEAD" | "REVERT_HEAD" | "REBASE_HEAD" | "BISECT_LOG"] => {
+            Change::Full
+        }
         ["index"] | ["info", "exclude"] => Change::Status,
         _ => Change::None,
     }
@@ -206,6 +208,14 @@ mod tests {
             assert_eq!(c("worktrees/wt/index.lock", touch), Change::None);
             assert_eq!(c("refs/heads/main", touch), Change::Full);
             assert_eq!(c("index", touch), Change::Status);
+        }
+    }
+
+    #[test]
+    fn the_shallow_file_reloads_everything() {
+        for touch in [Touch::Modified, Touch::Other] {
+            assert_eq!(git_change(Path::new("shallow"), touch), Change::Full);
+            assert_eq!(git_change(Path::new("shallow.lock"), touch), Change::None);
         }
     }
 

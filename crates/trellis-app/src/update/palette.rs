@@ -2,7 +2,8 @@
 //! through the message that the rest of the app already uses for it (remembering plain
 //! commands among the recently run ones), and the second steps that
 //! two-step commands open: the file finder (loading its items in the background), the stash
-//! sub-lists (apply, pop, delete and rename) and the stash message step.
+//! sub-lists (apply, pop, delete and rename), the stash message step and the commit count of a
+//! shallow clone's fetch.
 
 use crate::effect::Effect;
 use crate::msg::BranchMsg;
@@ -22,6 +23,7 @@ use crate::state::{AppState, PrefPage, Selection};
 use crate::tag::TagMsg;
 use std::time::Instant;
 use trellis_core::repo::StashInfo;
+use trellis_core::shallow_ops::Deepen;
 
 pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -147,6 +149,7 @@ fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
 fn enter_input(st: &mut AppState, kind: InputKind) {
     let ok = match kind {
         InputKind::StashMessage => palette::can_stash(st),
+        InputKind::DeepenBy => st.can_fetch_history(),
     };
     if ok {
         open_step(st, Mode::Input(kind));
@@ -167,6 +170,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         }
         C::Fetch => Msg::git("Fetch all", &["fetch", "--all", "--prune"]),
         C::Pull => Msg::git("Pull", &["pull", "--ff"]),
+        C::FetchFullHistory => Msg::Job(JobMsg::Deepen(Deepen::Full)),
+        C::FetchMoreCommitsBy(n) => Msg::Job(JobMsg::Deepen(Deepen::By(n))),
         C::Push => Msg::Job(JobMsg::Push { force: false }),
         C::Stash => Msg::git("Stash", &["stash", "push", "-u"]),
         C::PopStash => Msg::git("Pop stash", &["stash", "pop"]),
@@ -234,7 +239,11 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             Msg::Trust(TrustMsg::Ask { real: s.real_workdir.clone() })
         }
         // Opens a step in `handle`; never run directly.
-        C::FileHistory | C::ChooseStash(_) | C::ChooseStashToRename | C::StashMessage => return,
+        C::FileHistory
+        | C::ChooseStash(_)
+        | C::ChooseStashToRename
+        | C::StashMessage
+        | C::FetchMoreCommits => return,
     };
     fx.extend(super::update(st, msg, now));
 }

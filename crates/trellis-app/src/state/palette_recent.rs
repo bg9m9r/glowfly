@@ -50,6 +50,9 @@ impl PaletteCommand {
         Some(match self {
             C::Fetch => "fetch",
             C::Pull => "pull",
+            C::FetchFullHistory => "fetch-full-history",
+            C::FetchMoreCommits => "fetch-more-commits",
+            C::FetchMoreCommitsBy(_) => return None,
             C::Push => "push",
             C::Stash => "stash",
             C::PopStash => "pop-stash",

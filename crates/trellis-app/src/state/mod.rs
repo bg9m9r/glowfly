@@ -24,6 +24,7 @@ pub mod ref_rows;
 pub mod refresh;
 pub mod remotes;
 pub mod selection;
+pub mod shallow;
 pub mod stashes;
 pub mod submodules;
 pub mod tabs;

@@ -104,6 +104,8 @@ pub enum JobMsg {
     Push {
         force: bool,
     },
+    /// Fetch more of a shallow clone's history from its remote (update/shallow.rs).
+    Deepen(trellis_core::shallow_ops::Deepen),
     /// Undo the active tab's most recent undoable operation.
     Undo,
     Redo,
@@ -119,7 +121,13 @@ impl JobMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::Git { .. } | Self::Stash { .. } | Self::Push { .. } | Self::Undo | Self::Redo | Self::JobDone { .. } => None,
+            Self::Git { .. }
+            | Self::Stash { .. }
+            | Self::Push { .. }
+            | Self::Deepen(..)
+            | Self::Undo
+            | Self::Redo
+            | Self::JobDone { .. } => None,
         }
     }
 }

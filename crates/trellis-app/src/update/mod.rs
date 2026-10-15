@@ -26,6 +26,7 @@ mod refresh;
 mod remotes;
 mod repo;
 mod selection;
+mod shallow;
 mod shortcuts;
 mod stash;
 mod submodules;
@@ -123,6 +124,8 @@ mod remote_tests;
 mod revert_tests;
 #[cfg(test)]
 mod selection_tests;
+#[cfg(test)]
+mod shallow_tests;
 #[cfg(test)]
 mod shortcuts_tests;
 #[cfg(test)]

@@ -277,6 +277,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
                 super::selection::refreshed(st, &snap, fx);
             }
             super::rebase::refreshed(st, &snap);
+            super::shallow::refreshed(st, &snap, fx);
         }
     }
     super::forge::detect(st, &snap);

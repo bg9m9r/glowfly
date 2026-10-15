@@ -6,8 +6,8 @@
 //! (history, refs, status), `diff`, `history` (one file's commits), `index` and `lines`
 //! (staging, line staging), `revert`, `restore`, `conflict` and `resolve`, `template`
 //! (commit.template), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and `removal`
-//! (working-tree files), `tracked`, `attrs` (gitattributes), `submodules`, `worktrees` and
-//! `remotes`.
+//! (working-tree files), `tracked`, `attrs` (gitattributes), `submodules`, `worktrees`,
+//! `remotes` and `shallow`.
 
 use crate::graph::Layout;
 use git2::{Oid, RepositoryState};
@@ -30,6 +30,7 @@ mod removal;
 mod resolve;
 mod restore;
 mod revert;
+mod shallow;
 mod status;
 mod status_cli;
 mod submodules;
@@ -198,6 +199,8 @@ pub struct Snapshot {
     pub worktrees: Vec<WorktreeInfo>,
     /// What in this repository's own config and hooks runs programs; read at every full load.
     pub trust_scan: crate::trust::TrustScan,
+    /// The commits where a shallow clone's history stops (their parents weren't downloaded), from the repository's shallow file; empty for a full clone. Refreshed by full loads only.
+    pub shallow_roots: Vec<Oid>,
     pub graph: Layout,
     /// `refs_key` when the load started: a later equal key means only the status can differ.
     pub refs_key: u64,
@@ -318,6 +321,8 @@ mod resolve_tests;
 mod restore_tests;
 #[cfg(test)]
 mod revert_tests;
+#[cfg(test)]
+mod shallow_tests;
 #[cfg(test)]
 mod status_cli_tests;
 #[cfg(test)]

@@ -169,6 +169,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let (unstaged, staged) = super::status::load_status(&repo, git_status)?;
     let submodules = submodules::list(&repo);
     let worktrees = worktrees::list(&repo);
+    let shallow_roots = super::shallow::roots(&repo);
 
     let mut starts: Vec<Oid> = head_oid.into_iter().collect();
     let tips = visible_tips(&repo, opts, head_branch.as_deref(), &locals);
@@ -234,6 +235,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         submodules,
         worktrees,
         trust_scan,
+        shallow_roots,
         graph,
         refs_key,
         loaded_with,
