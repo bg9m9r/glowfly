@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-15 16:02 · **Sparse checkout**: Sparse Checkout page in Preferences: turn on with folders or patterns, save, reapply and turn off; palette entry; libgit2 status hides left-out files (`0969dcf`)
 - 2026-10-15 15:59 · **Graph columns and loading**: resizable graph columns: drag the header dividers to resize, double-click to reset (`3bc171e`)
 - 2026-10-15 14:14 · **Clone and init options**: Fetch full history or N more commits of a shallow clone from the palette and the graph header (`94affbb`)
 - 2026-10-15 14:01 · **Stash improvements**: Rename (edit the message of) a stash from the STASHES row menu and the palette, keeping its commit and position (`a6ee8cb`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 14:40 · **Worktrees**: WORKTREES section with open in a new tab and Create worktree from a branch or commit (`a661ce2`)
 - 2026-10-14 14:34 · **Git Flow**: Git Flow preferences page with initialize, branch and prefix settings, and start feature/release/hotfix (`f6dd571`)
 - 2026-10-14 13:24 · **Git LFS**: Git LFS preferences page with setup, tracked patterns and LFS commands (`b60ecfb`)
-- 2026-10-14 13:11 · **Submodules**: SUBMODULES section in the left panel with status, open in a new tab, initialize/update to the recorded commit and copy URL (`7942a2e`)
 
 ---
 
