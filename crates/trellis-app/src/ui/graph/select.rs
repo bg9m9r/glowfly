@@ -2,6 +2,8 @@
 
 use super::ROW_H;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
+use crate::msg::SelectionMsg;
 use crate::state::{Selection, ViewState};
 use eframe::egui::{self, Key};
 use git2::Oid;
@@ -11,11 +13,11 @@ use trellis_core::repo::Snapshot;
 /// Ctrl (Cmd on macOS) toggles the commit, and a plain click selects only it.
 pub(super) fn row_click(oid: Oid, m: egui::Modifiers) -> Msg {
     if m.shift {
-        Msg::SelectCommitRange(oid)
+        Msg::Selection(SelectionMsg::SelectCommitRange(oid))
     } else if m.command {
-        Msg::ToggleCommit(oid)
+        Msg::Selection(SelectionMsg::ToggleCommit(oid))
     } else {
-        Msg::SelectCommit(oid)
+        Msg::Repo(RepoMsg::SelectCommit(oid))
     }
 }
 
@@ -58,7 +60,11 @@ pub(super) fn keyboard_nav(
     }
     let current = current_row(sel, snap, has_wip);
     let next = current.map_or(0, |c| (c as i64 + step).clamp(0, total as i64 - 1) as usize);
-    msgs.push(if has_wip && next == 0 { Msg::SelectWip } else { Msg::SelectCommit(snap.commits[next - has_wip as usize].oid) });
+    msgs.push(if has_wip && next == 0 {
+        Msg::Repo(RepoMsg::SelectWip)
+    } else {
+        Msg::Repo(RepoMsg::SelectCommit(snap.commits[next - has_wip as usize].oid))
+    });
     let (offset, height) = view.graph_scroll;
     let top = next as f32 * ROW_H;
     if top < offset {
@@ -76,9 +82,11 @@ mod tests {
     #[test]
     fn row_click_maps_modifiers() {
         let oid = Oid::from_str("1234567890123456789012345678901234567890").unwrap();
-        assert!(matches!(row_click(oid, Modifiers::NONE), Msg::SelectCommit(o) if o == oid));
-        assert!(matches!(row_click(oid, Modifiers::COMMAND), Msg::ToggleCommit(o) if o == oid));
-        assert!(matches!(row_click(oid, Modifiers::SHIFT), Msg::SelectCommitRange(o) if o == oid));
-        assert!(matches!(row_click(oid, Modifiers::SHIFT | Modifiers::COMMAND), Msg::SelectCommitRange(o) if o == oid));
+        assert!(matches!(row_click(oid, Modifiers::NONE), Msg::Repo(RepoMsg::SelectCommit(o)) if o == oid));
+        assert!(matches!(row_click(oid, Modifiers::COMMAND), Msg::Selection(SelectionMsg::ToggleCommit(o)) if o == oid));
+        assert!(matches!(row_click(oid, Modifiers::SHIFT), Msg::Selection(SelectionMsg::SelectCommitRange(o)) if o == oid));
+        assert!(
+            matches!(row_click(oid, Modifiers::SHIFT | Modifiers::COMMAND), Msg::Selection(SelectionMsg::SelectCommitRange(o)) if o == oid)
+        );
     }
 }

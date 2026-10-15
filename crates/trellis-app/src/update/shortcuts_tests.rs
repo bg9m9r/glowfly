@@ -6,6 +6,7 @@ use super::update;
 use crate::effect::{Effect, LocalOp};
 use crate::keymap::KeyAction;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::lines::LineClick;
@@ -218,7 +219,7 @@ fn ctrl_slash_toggles_the_sheet() {
     key(&mut st, KeyAction::ToggleSheet);
     assert!(st.modal.is_none());
 
-    update(&mut st, Msg::confirm("Delete", "Sure?".into(), "Delete", Msg::Refresh), Instant::now());
+    update(&mut st, Msg::confirm("Delete", "Sure?".into(), "Delete", Msg::Repo(RepoMsg::Refresh)), Instant::now());
     key(&mut st, KeyAction::ToggleSheet);
     assert!(matches!(st.modal, Some(Modal::Confirm { .. })), "another dialog stays");
 
@@ -264,8 +265,8 @@ fn palette_entry_and_hints_come_from_the_table() {
 fn s_stages_the_open_file_end_to_end() {
     let dir = scratch_repo("keys-e2e");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     assert!(matches!(&st.diff, Some((DiffTarget::Unstaged(p), _)) if p == "a.txt"));
     drive(&mut st, Msg::Shortcut(KeyAction::Stage));
     let snap = st.snap.as_ref().unwrap();

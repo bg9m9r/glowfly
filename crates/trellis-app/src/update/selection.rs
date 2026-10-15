@@ -2,32 +2,32 @@
 //! keeping the selection across refreshes, and cherry-picking the selected commits.
 
 use crate::effect::Effect;
-use crate::msg::Msg;
+use crate::msg::SelectionMsg;
 use crate::state::selection as sel;
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use trellis_core::gitcli::args;
 use trellis_core::repo::{DiffTarget, Snapshot};
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     match msg {
-        Msg::ToggleCommit(oid) => {
+        SelectionMsg::ToggleCommit(oid) => {
             let new = sel::toggled(&st.selection, oid, snap);
             apply(st, new, fx);
         }
-        Msg::SelectCommitRange(oid) => {
+        SelectionMsg::SelectCommitRange(oid) => {
             let new = sel::ranged(&st.selection, oid, snap);
             apply(st, new, fx);
         }
-        Msg::CollapseSelection => {
+        SelectionMsg::CollapseSelection => {
             if let Selection::Commits(m) = &st.selection {
                 let focus = m.focus();
                 super::repo::select_commit(st, focus, false, fx);
             }
         }
-        Msg::CherryPick(oids) => cherry_pick(st, oids, fx),
-        Msg::CompareLoaded { from, to, result } => match &mut st.selection {
+        SelectionMsg::CherryPick(oids) => cherry_pick(st, oids, fx),
+        SelectionMsg::CompareLoaded { from, to, result } => match &mut st.selection {
             Selection::Commits(m) if m.pair() == Some((from, to)) => {
                 m.changes = Some(result.clone());
                 if let Err(e) = result {
@@ -36,7 +36,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
             }
             _ => tracing::debug!("dropped a stale comparison of {from} and {to}"),
         },
-        _ => {}
     }
 }
 

@@ -4,7 +4,7 @@
 //! reads.
 
 use crate::effect::{Effect, KnownRepo, LoadKind};
-use crate::msg::Msg;
+use crate::msg::LoadMsg;
 use crate::state::refresh::{Depth, RefreshState};
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
@@ -14,9 +14,9 @@ use trellis_core::repo::{FileEntry, Snapshot, SubmoduleInfo};
 
 type Status = (Vec<FileEntry>, Vec<FileEntry>, RepositoryState);
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::RepoUnchanged { generation, result, submodules, open_stamp } => {
+        LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp } => {
             if generation != st.load_gen {
                 return; // superseded by a newer load
             }
@@ -32,7 +32,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             super::forge::refresh(st, false, false, now, fx);
             load_finished(st, fx);
         }
-        Msg::StatusLoaded { generation, result, submodules, open_stamp } => {
+        LoadMsg::StatusLoaded { generation, result, submodules, open_stamp } => {
             if generation != st.load_gen {
                 return;
             }
@@ -47,11 +47,12 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
             apply_status(st, result, submodules, open_stamp, now, fx);
         }
-        Msg::LoadMoreCommits if st.snap.as_ref().is_some_and(|s| s.truncated) => {
+        LoadMsg::LoadMoreCommits if st.snap.as_ref().is_some_and(|s| s.truncated) => {
             st.refresh.extra_commits += st.settings.commit_limit();
             refresh(st, fx);
         }
-        _ => {}
+        // Everything is loaded already.
+        LoadMsg::LoadMoreCommits => {}
     }
 }
 

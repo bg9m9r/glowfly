@@ -7,6 +7,7 @@ use super::tests::{drive, git};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::tags::delete_remote_confirm;
 use crate::state::{AppState, Modal, RunningJob};
 use crate::tag::TagMsg;
@@ -23,7 +24,7 @@ fn with_two(name: &str) -> (AppState, PathBuf, PathBuf, PathBuf) {
     git(&backup, &["init", "-q", "--bare", "-b", "main"]);
     git(&work, &["remote", "add", "backup", &backup.display().to_string()]);
     git(&work, &["tag", "v1"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     (st, work, origin, backup)
 }
 

@@ -8,6 +8,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{confirm, empty_diff, entry, last_log, loaded, run, work_ops};
 use crate::effect::{DeleteMode, Effect, FileOp, LocalOp, WorkFileOk};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::files::TRASH;
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
@@ -196,7 +197,7 @@ fn discard_end_to_end(name: &str, to_trash: bool) -> (PathBuf, AppState, String)
     std::fs::write(dir.join("u.txt"), &contents).unwrap();
     let mut st = state();
     st.settings.delete_to_trash = to_trash;
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.as_ref().unwrap().unstaged.contains(&entry("u.txt", '?')));
     drive(&mut st, Msg::DiscardUntracked("u.txt".into()));
     assert!(matches!(&st.modal, Some(Modal::Confirm { .. })));

@@ -6,6 +6,7 @@ use super::tests::{drive, git};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use std::path::Path;
 use std::time::Instant;
 use trellis_core::gitcli::{args, run};
@@ -25,7 +26,7 @@ fn cleanup(dirs: &[&Path]) {
 /// Rewrites main's last commit locally (so the push needs force) and reloads the snapshot.
 fn rewrite_main(st: &mut crate::state::AppState, work: &Path) {
     git(work, &["commit", "-q", "--amend", "-m", "rewritten"]);
-    drive(st, Msg::Refresh);
+    drive(st, Msg::Repo(RepoMsg::Refresh));
 }
 
 #[test]
@@ -80,7 +81,7 @@ fn force_push_refuses_when_the_remote_moved_after_the_snapshot() {
 fn force_push_of_a_new_branch_expects_it_absent() {
     let (mut st, work, bare) = with_origin("force-lease-new");
     git(&work, &["switch", "-q", "-c", "topic"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = update(&mut st, Msg::Push { force: true }, Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, .. }] => assert_eq!(

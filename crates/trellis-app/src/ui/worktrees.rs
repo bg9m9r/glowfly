@@ -8,6 +8,7 @@ use super::common::{menu_item, menu_item_if};
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::Selection;
 use crate::state::worktree_manage::{manage_blocked, prune_blocked, remove_blocked, row_prune_blocked};
 use crate::state::worktrees::{open_blocked, right_text, tooltip};
@@ -57,7 +58,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         } else if r.clicked()
             && let Some(o) = wt.head
         {
-            msgs.push(Msg::JumpTo(o));
+            msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
         }
         r.context_menu(|ui| menu(ui, wt, open_tabs, msgs));
     }

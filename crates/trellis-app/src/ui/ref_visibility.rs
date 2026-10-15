@@ -1,9 +1,10 @@
 //! Hiding and soloing branches in the graph from the left panel: the branch menu items, the
 //! markers on hidden and soloed rows, and the banner above the lists. Views only push
-//! `Msg::GraphFilter`; `update` saves the filter and reloads.
+//! `GraphMsg::GraphFilter`; `update` saves the filter and reloads.
 
 use super::common::{menu_item, menu_item_if};
 use super::theme::color;
+use crate::msg::GraphMsg;
 use crate::msg::Msg;
 use crate::state::branches::HEAD_ALWAYS_SHOWN;
 use eframe::egui::{
@@ -15,7 +16,7 @@ const HIDDEN_TIP: &str = "Hidden from the graph. Click to show it.";
 const SOLO_TIP: &str = "Soloed. Click to stop soloing it.";
 
 fn filter_msg(op: FilterOp) -> Msg {
-    Msg::GraphFilter(op)
+    Msg::Graph(GraphMsg::GraphFilter(op))
 }
 
 /// "Hide/Show `label` in graph" and "Solo/Stop soloing `label`" for the ref `full`. Hiding is

@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::publish::PublishForm;
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
@@ -37,7 +38,7 @@ fn github() -> Account {
 fn pushed_without_remote(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
     let dir = scratch_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = run(&mut st, Msg::Push { force: false });
     (st, dir, fx)
 }
@@ -102,7 +103,7 @@ fn connected_accounts_are_offered_github_com_first() {
     for a in [&ghe, &gitlab, &github()] {
         st.settings.connections.push(Connection { account: a.clone(), user: "ada".into(), method: "token".into() });
     }
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     run(&mut st, Msg::PublishDialog);
     assert_eq!(form(&st).accounts, [github(), ghe.clone()], "GitHub accounts only");
 
@@ -145,7 +146,7 @@ fn nothing_to_publish_without_commits() {
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "-b", "main"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     run(&mut st, Msg::PublishDialog);
     assert!(st.modal.is_none());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("Make a commit")));

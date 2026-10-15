@@ -8,6 +8,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::palette::{Entry, MAX_COMMAND_ROWS, PaletteCommand as C, entries, listed, shown};
 use std::path::Path;
@@ -55,7 +56,7 @@ fn with_more_remotes(name: &str) -> (AppState, std::path::PathBuf, std::path::Pa
     git(&work, &["branch", "-q", "--track", "mine", "origin/shared"]);
     git(&work, &["remote", "set-head", "origin", "main"]);
     git(&work, &["fetch", "-q", "origin"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     (st, work, bare)
 }
 
@@ -84,7 +85,7 @@ fn remote_entry_runs_checkout_track() {
     assert_eq!(record, Some(UndoKind::Checkout));
 
     let mut st = state();
-    drive(&mut st, Msg::Open(work.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(work.clone())));
     drive(&mut st, Msg::RunPaletteCommand(cmd));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.head_branch.as_deref(), Some("other"));
@@ -118,7 +119,7 @@ fn tag_entries_check_out_detached() {
     let first = repo.revparse_single("HEAD~1").unwrap().id();
     let head = repo.revparse_single("HEAD").unwrap().id();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
 
     let v1 = find(&st, "Checkout tag v1.0").expect("v1.0");
     assert_eq!(v1.detail, Some(format!("detached at {}", &first.to_string()[..7])));

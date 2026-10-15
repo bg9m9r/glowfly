@@ -171,7 +171,7 @@ pub struct ViewState {
     pub hover_tip: Option<Oid>,
     pub hover_tip_next: Option<Oid>,
     /// The hovered ref's tip and the commits on its branch, for row highlighting. Set by
-    /// `update` (`Msg::HoverRef`); the graph only reads it.
+    /// `update` (`GraphMsg::HoverRef`); the graph only reads it.
     pub highlight: Option<(Oid, HashSet<Oid>)>,
     /// The commits reachable from the default branch, walked on the first hover after a load
     /// (`ref_rows::default_ancestry`); cleared when a new snapshot or tab arrives.

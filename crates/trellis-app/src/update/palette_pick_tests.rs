@@ -7,6 +7,7 @@ use super::tests::{drive, git, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::palette::{Items, MAX_PICK_ROWS, Mode, Palette, PaletteCommand, Pick, PickKind, row_count, shown};
@@ -96,7 +97,7 @@ fn file_history_entry_availability() {
     std::fs::create_dir_all(&empty).unwrap();
     git(&empty, &["init", "-q", "-b", "main"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(empty.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(empty.clone())));
     assert!(st.snap.is_some());
     assert!(!listed(&st));
     let _ = std::fs::remove_dir_all(&empty);
@@ -264,7 +265,8 @@ fn file_history_when_closed_opens_palette() {
     assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { .. }]));
 
     st.palette = None;
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Refresh) });
+    st.modal =
+        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
     assert!(enter(&mut st).is_empty());
     assert!(st.palette.is_none());
 

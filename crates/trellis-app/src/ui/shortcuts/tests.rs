@@ -3,6 +3,7 @@
 
 use crate::keymap::KeyAction;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::askpass::PendingPrompt;
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use eframe::egui::{self, Event, Key, Modifiers};
@@ -90,7 +91,8 @@ fn staging_keys() {
 #[test]
 fn nothing_under_dialogs_or_the_palette() {
     let mut st = unstaged();
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Refresh) });
+    st.modal =
+        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
     let mut h = harness(st, false);
     assert_eq!(press(&mut h, Modifiers::NONE, Key::S), []);
     assert_eq!(press(&mut h, CMD_SHIFT, Key::S), []);

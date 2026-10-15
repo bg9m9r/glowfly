@@ -2,7 +2,9 @@
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
 use crate::effect::{Effect, LoadKind, UndoResult};
+use crate::msg::LoadMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 
@@ -45,8 +47,10 @@ impl Recovery {
             Kind::Job(undo) => Msg::JobDone { ok: false, output: text, undo },
             Kind::Rebase => Msg::RebaseFinished { result: Err(text) },
             Kind::LocalOp => Msg::LocalOpDone(Err(text)),
-            Kind::Load(generation, kind) => Msg::RepoLoaded { generation, kind, result: Err(text) },
-            Kind::Status(generation) => Msg::StatusLoaded { generation, result: Err(text), submodules: None, open_stamp: None },
+            Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(text) }),
+            Kind::Status(generation) => {
+                Msg::Load(LoadMsg::StatusLoaded { generation, result: Err(text), submodules: None, open_stamp: None })
+            }
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {
@@ -126,13 +130,13 @@ mod tests {
         let effect =
             Effect::LoadRepo { path: "C:/r".into(), opts: Default::default(), generation: 3, kind: LoadKind::Refresh, known: None };
         let msg = guarded(Recovery::of(&effect, "load-repo"), || panic!("boom")).unwrap();
-        assert!(matches!(&msg, Msg::RepoLoaded { generation: 3, result: Err(e), .. } if e.contains("boom")));
+        assert!(matches!(&msg, Msg::Repo(RepoMsg::RepoLoaded { generation: 3, result: Err(e), .. }) if e.contains("boom")));
         update(&mut st, msg, Instant::now());
         assert!(!st.loading, "the next refresh isn't left waiting for it");
 
         let effect = Effect::LoadStatus { workdir: "C:/r".into(), generation: 3, submodules: false, open: None };
         let msg = guarded(Recovery::of(&effect, "load-status"), || panic!("boom")).unwrap();
         let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
-        assert!(matches!(*msg, Msg::StatusLoaded { generation: 3, result: Err(_), .. }));
+        assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), .. })));
     }
 }

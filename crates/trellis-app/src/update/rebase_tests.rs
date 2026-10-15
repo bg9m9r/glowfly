@@ -7,6 +7,7 @@ use super::tests::{drive, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::rebase::{RebasePanel, TRACKED_CHANGES, UNCHANGED};
@@ -27,7 +28,7 @@ pub(super) fn repo(name: &str) -> (AppState, PathBuf, [Oid; 3]) {
         *oid = commit_on(&dir, &format!("c{}", i + 1), i as u32 + 2);
     }
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     (st, dir, c)
 }
 
@@ -246,7 +247,7 @@ fn start_is_refused_with_a_reason() {
     // HEAD moved: a refresh marks the list stale.
     std::fs::write(dir.join("c4.txt"), "4\n").unwrap();
     commit_on(&dir, "c4", 9);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(panel(&st).stale);
     assert!(start(&mut st).is_empty());
     assert_eq!(last_log(&st), rebase::STALE);
@@ -266,7 +267,7 @@ fn an_unchanged_list_onto_a_branch_can_start() {
     std::fs::write(dir.join("b.txt"), "b\n").unwrap();
     commit_on(&dir, "on base", 20);
     git(&dir, &["checkout", "-q", "main"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::OpenRebase(RebaseBase::OntoBranch("base".into())));
     assert_eq!(panel(&st).subtitle(), "Rebasing 3 commits of main onto base");
     let fx = up(&mut st, Msg::StartRebase { confirmed: false });
@@ -322,7 +323,7 @@ fn a_refused_start_keeps_the_panel() {
 fn the_panel_is_parked_with_its_tab() {
     let (mut st, a, _) = with_panel("rebase-tabs-a", RebaseBase::FromCommit(Oid::zero()));
     let b = super::tests::scratch_repo("rebase-tabs-b");
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert!(st.rebase.is_none(), "B has no panel");
     drive(&mut st, Msg::SelectTab(0));
     assert_eq!(panel(&st).items.len(), 3, "A's panel comes back");

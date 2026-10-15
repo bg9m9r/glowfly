@@ -5,19 +5,21 @@ use super::tests::{drive, finish, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind, WatchTarget};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
+use crate::msg::WatchMsg;
 use crate::runner;
 use crate::state::{AppState, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 fn changed(workdir: &Path, full: bool, last_event: Instant) -> Msg {
-    Msg::Scoped { workdir: workdir.to_path_buf(), msg: Box::new(Msg::RepoChanged { full, last_event }) }
+    Msg::Scoped { workdir: workdir.to_path_buf(), msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full, last_event })) }
 }
 
 fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let workdir = st.workdir().expect("opened");
     (st, dir, workdir)
 }
@@ -62,9 +64,9 @@ fn ref_change_refreshes_everything() {
 fn changes_for_another_tab_are_dropped() {
     let (a, b) = (scratch_repo("watch-tabs-a"), scratch_repo("watch-tabs-b"));
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     let a_workdir = st.workdir().unwrap();
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     let b_workdir = st.workdir().unwrap();
     assert!(update(&mut st, changed(&a_workdir, false, Instant::now()), Instant::now()).is_empty());
     let fx = update(&mut st, changed(&b_workdir, false, Instant::now()), Instant::now());
@@ -123,13 +125,13 @@ fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 fn watcher_follows_the_active_tab() {
     let (a, b) = (scratch_repo("watch-follow-a"), scratch_repo("watch-follow-b"));
     let mut st = state();
-    let fx = step(&mut st, Msg::Open(a.clone()));
+    let fx = step(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     let snap = st.snap.as_ref().unwrap();
     let a_target = WatchTarget { workdir: snap.workdir.clone(), git_dir: snap.git_dir.clone() };
     assert_eq!(watches(&fx), [Some(a_target.clone())], "opening starts the watcher once loaded");
-    assert_eq!(watched_dir(&step(&mut st, Msg::Refresh)), None, "a refresh keeps it");
+    assert_eq!(watched_dir(&step(&mut st, Msg::Repo(RepoMsg::Refresh))), None, "a refresh keeps it");
 
-    step(&mut st, Msg::Open(b.clone()));
+    step(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     let b_workdir = st.workdir().unwrap();
     assert_eq!(watched_dir(&update(&mut st, Msg::SelectTab(0), Instant::now())), Some(Some(a_target.workdir.clone())));
     assert_eq!(watched_dir(&update(&mut st, Msg::NewTab, Instant::now())), Some(None), "an empty tab stops it");
@@ -160,7 +162,7 @@ fn preference_toggle_starts_and_stops_watching() {
 #[test]
 fn watch_failure_is_reported_once_per_repository() {
     let mut st = state();
-    let failed = |w: &str| Msg::WatchFailed { workdir: PathBuf::from(w), error: "too many watches".into() };
+    let failed = |w: &str| Msg::Watch(WatchMsg::WatchFailed { workdir: PathBuf::from(w), error: "too many watches".into() });
     assert!(update(&mut st, failed("C:/repo"), Instant::now()).is_empty());
     assert!(update(&mut st, failed("C:/repo"), Instant::now()).is_empty());
     assert_eq!(st.toasts.len(), 1);

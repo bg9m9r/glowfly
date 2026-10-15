@@ -4,7 +4,9 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::GraphMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::runner;
 use crate::state::AppState;
 use crate::state::branches::HEAD_ALWAYS_SHOWN;
@@ -29,7 +31,7 @@ fn repo_with(name: &str, branches: &[&str]) -> PathBuf {
 fn opened(name: &str, branches: &[&str]) -> (AppState, PathBuf) {
     let dir = repo_with(name, branches);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     (st, dir)
 }
 
@@ -38,7 +40,7 @@ fn heads(b: &str) -> String {
 }
 
 fn op(st: &mut AppState, op: FilterOp) -> Vec<Effect> {
-    update(st, Msg::GraphFilter(op), Instant::now())
+    update(st, Msg::Graph(GraphMsg::GraphFilter(op)), Instant::now())
 }
 
 /// Runs effects already returned by `update` to completion.
@@ -98,7 +100,7 @@ fn hide_saves_and_reloads_without_branch() {
 #[test]
 fn show_restores_branch() {
     let (mut st, dir) = opened("gf-show", &["feature"]);
-    drive(&mut st, Msg::GraphFilter(FilterOp::Hide(heads("feature"))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Hide(heads("feature")))));
     assert!(!has_label(&st, "feature"));
     let fx = op(&mut st, FilterOp::Show(heads("feature")));
     assert!(load_opts(&fx).hidden.is_empty());
@@ -120,11 +122,11 @@ fn hiding_checked_out_branch_is_refused() {
 #[test]
 fn checking_out_hidden_branch_shows_it_again() {
     let (mut st, dir) = opened("gf-checkout-hidden", &["feature", "other"]);
-    drive(&mut st, Msg::GraphFilter(FilterOp::Hide(heads("feature"))));
-    drive(&mut st, Msg::GraphFilter(FilterOp::Hide(heads("other"))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Hide(heads("feature")))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Hide(heads("other")))));
     git(&dir, &["checkout", "-q", "feature"]);
 
-    let fx = update(&mut st, Msg::Refresh, Instant::now());
+    let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
     let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::execute(e)).flatten()).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
@@ -145,17 +147,17 @@ fn filter_messages_need_a_repository() {
 #[test]
 fn solo_and_stop_soloing() {
     let (mut st, dir) = opened("gf-solo", &["feature", "other"]);
-    drive(&mut st, Msg::GraphFilter(FilterOp::Solo(heads("feature"))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Solo(heads("feature")))));
     assert!(has_commit(&st, "feature work") && has_commit(&st, "first"));
     assert!(!has_commit(&st, "other work") && !has_label(&st, "other"));
     assert!(has_label(&st, "main"), "the checked-out branch stays");
 
-    drive(&mut st, Msg::GraphFilter(FilterOp::Solo(heads("other"))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Solo(heads("other")))));
     assert!(has_commit(&st, "feature work") && has_commit(&st, "other work"));
     assert_eq!(filter(&st).solo, [heads("feature"), heads("other")]);
 
     assert!(op(&mut st, FilterOp::Unsolo(heads("main"))).is_empty(), "not soloed: nothing to do");
-    drive(&mut st, Msg::GraphFilter(FilterOp::StopSoloing));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::StopSoloing)));
     assert!(st.settings.graph_filters.is_empty());
     assert!(has_commit(&st, "feature work") && has_commit(&st, "other work") && has_label(&st, "other"));
     assert!(op(&mut st, FilterOp::StopSoloing).is_empty());
@@ -166,9 +168,9 @@ fn solo_and_stop_soloing() {
 fn filters_are_per_repository_across_tabs() {
     let (mut st, a) = opened("gf-tabs-a", &["feature"]);
     let b = repo_with("gf-tabs-b", &["feature"]);
-    drive(&mut st, Msg::GraphFilter(FilterOp::Hide(heads("feature"))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Hide(heads("feature")))));
 
-    let fx = update(&mut st, Msg::Open(b.clone()), Instant::now());
+    let fx = update(&mut st, Msg::Repo(RepoMsg::Open(b.clone())), Instant::now());
     let opts = load_opts(&fx);
     assert!(opts.hidden.is_empty() && opts.solo.is_empty(), "B has no filter");
     run(&mut st, fx);
@@ -192,7 +194,7 @@ fn reopen_with_other_spelling_applies_saved_filter() {
     // A fresh start that opens the folder as the user typed it, not as libgit2 spells it.
     let mut st = state();
     st.settings.set_graph_filter(&workdir, hidden.clone());
-    let fx = update(&mut st, Msg::Open(dir.clone()), Instant::now());
+    let fx = update(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())), Instant::now());
     assert!(load_opts(&fx).hidden.is_empty(), "the requested spelling has no filter saved");
     run(&mut st, fx);
     assert!(!has_label(&st, "feature") && !has_commit(&st, "feature work"));
@@ -203,7 +205,7 @@ fn reopen_with_other_spelling_applies_saved_filter() {
     std::fs::create_dir_all(sub).unwrap();
     let mut st = state();
     st.settings.set_graph_filter(&workdir, hidden);
-    drive(&mut st, Msg::Open(sub.to_path_buf()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(sub.to_path_buf())));
     assert!(!has_label(&st, "feature"));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -211,12 +213,12 @@ fn reopen_with_other_spelling_applies_saved_filter() {
 #[test]
 fn deleted_refs_are_pruned() {
     let (mut st, dir) = opened("gf-prune", &["feature", "other", "keep"]);
-    drive(&mut st, Msg::GraphFilter(FilterOp::Hide(heads("feature"))));
-    drive(&mut st, Msg::GraphFilter(FilterOp::Solo(heads("other"))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Hide(heads("feature")))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Solo(heads("other")))));
     assert!(!has_commit(&st, "keep work"));
     git(&dir, &["branch", "-D", "feature", "other"]);
 
-    let fx = update(&mut st, Msg::Refresh, Instant::now());
+    let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
     let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::execute(e)).flatten()).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
@@ -234,15 +236,15 @@ fn hovering_a_ref_highlights_its_branch_rows_in_update() {
     let snap = st.snap.as_ref().unwrap();
     let topic = snap.locals.iter().find(|b| b.name == "topic").and_then(|b| b.oid).unwrap();
     let main = snap.locals.iter().find(|b| b.name == "main").and_then(|b| b.oid).unwrap();
-    update(&mut st, Msg::HoverRef(Some(topic)), Instant::now());
+    update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(topic))), Instant::now());
     let (tip, rows) = st.view.highlight.clone().expect("the hovered branch is highlighted");
     assert_eq!(tip, topic);
     assert!(rows.contains(&topic) && !rows.contains(&main), "only the branch's own commits: {rows:?}");
     assert!(st.view.base_set.as_ref().is_some_and(|b| b.contains(&main)), "the default branch's history is kept");
-    update(&mut st, Msg::HoverRef(None), Instant::now());
+    update(&mut st, Msg::Graph(GraphMsg::HoverRef(None)), Instant::now());
     assert!(st.view.highlight.is_none());
     // A reload walks the default branch again on the next hover.
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(st.view.base_set.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

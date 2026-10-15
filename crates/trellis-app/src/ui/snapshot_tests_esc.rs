@@ -5,6 +5,7 @@
 use super::snapshot_tests::{remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, escape_key, theme::color};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::terminal::{SessionStatus, TermSession};
 use crate::state::{AppState, PrefPage, PrefsState};
 use eframe::egui::{self, Key};
@@ -49,9 +50,9 @@ fn esc_in_a_text_field_leaves_it_before_closing_the_diff() {
     assert!(h.state().0.view.was_typing, "the commit summary has the keyboard");
 
     let msgs = esc(&mut h);
-    assert!(!msgs.iter().any(|m| matches!(m, Msg::CloseDiff)), "the first Esc only leaves the field");
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))), "the first Esc only leaves the field");
     assert!(!h.state().0.view.was_typing);
-    assert!(esc(&mut h).iter().any(|m| matches!(m, Msg::CloseDiff)), "the next closes the diff");
+    assert!(esc(&mut h).iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))), "the next closes the diff");
     drop(h);
     remove_fixture(&dir);
 }

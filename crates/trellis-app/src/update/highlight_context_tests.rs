@@ -7,6 +7,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::runner;
 use crate::state::AppState;
 use std::path::PathBuf;
@@ -61,8 +62,8 @@ fn all_comment(d: &FileDiff) -> bool {
 fn opened(name: &str, code: usize) -> (AppState, PathBuf, Vec<Effect>) {
     let dir = repo_with(name, code);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    let held = drive_holding_highlights(&mut st, Msg::OpenDiff(target()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let held = drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(target())));
     (st, dir, held)
 }
 
@@ -113,7 +114,7 @@ fn adopt_requires_same_old_text() {
     assert!(old.is_some());
     runner::decorate_in_context("a.rs", None, &mut fresh, None, old.as_ref());
     assert!(hl(&fresh).is_pending());
-    let msg = Msg::DiffLoaded { target: target(), reload: true, generation: st.diff_gen, result: Ok(fresh) };
+    let msg = Msg::Repo(RepoMsg::DiffLoaded { target: target(), reload: true, generation: st.diff_gen, result: Ok(fresh) });
     let fx = update(&mut st, msg, Instant::now());
     assert!(hl(shown(&st)).is_pending(), "not adopted");
     assert_ne!(shown(&st).highlight, per_hunk);

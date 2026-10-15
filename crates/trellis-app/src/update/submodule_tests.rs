@@ -7,6 +7,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::runner;
 use crate::state::submodules::update_args;
 use crate::state::{AppState, Modal, RunningJob};
@@ -32,7 +33,7 @@ fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
     git(&sub, &["config", "user.email", "test@example.com"]);
     git(&sub, &["config", "commit.gpgsign", "false"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(parent.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(parent.clone())));
     (st, parent, lib)
 }
 
@@ -64,7 +65,7 @@ fn last_log(st: &AppState) -> (bool, String) {
 
 fn deinit(st: &mut AppState, parent: &Path) {
     git(parent, &["submodule", "deinit", "-q", "-f", PATH]);
-    drive(st, Msg::Refresh);
+    drive(st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(sub(st).state, SubmoduleState::Uninitialized);
 }
 
@@ -72,7 +73,7 @@ fn commit_inside(st: &mut AppState, parent: &Path) {
     let dir = parent.join(PATH);
     std::fs::write(dir.join("a.txt"), "inside\n").unwrap();
     git(&dir, &["commit", "-q", "-am", "inside"]);
-    drive(st, Msg::Refresh);
+    drive(st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(sub(st).state, SubmoduleState::OutOfSync);
 }
 
@@ -175,7 +176,7 @@ fn status_reload_refreshes_submodules() {
     let (mut st, parent, lib) = opened("sm-status-reload");
     // Already dirty, so the reload below stays a status reload rather than a full load.
     std::fs::write(parent.join("untracked.txt"), "x\n").unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let dir = parent.join(PATH);
     std::fs::write(dir.join("a.txt"), "inside\n").unwrap();
     git(&dir, &["commit", "-q", "-am", "inside"]);
@@ -203,7 +204,7 @@ fn commit_detached(parent: &Path, text: &str) -> Oid {
 fn update_names_commits_it_would_leave_behind() {
     let (mut st, parent, lib) = opened("sm-left-behind");
     let first = commit_detached(&parent, "first\n");
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(sub(&st).left_behind, vec![(first, "first".to_owned())]);
     // A second commit after the last full load: the snapshot doesn't know it yet.
     let second = commit_detached(&parent, "second\n");

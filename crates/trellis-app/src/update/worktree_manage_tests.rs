@@ -5,6 +5,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::worktree_manage::{LockForm, RemoveForm, needs_force_text, prune_blocked};
 use crate::state::worktrees::find;
 use crate::state::{AppState, Modal, RunningJob};
@@ -20,7 +21,7 @@ fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
     let root = dir.with_file_name(format!("{}-worktrees", dir.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&root);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     (st, dir, root)
 }
 
@@ -28,7 +29,7 @@ fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
 fn add(st: &mut AppState, dir: &Path, root: &Path, branch: &str) -> PathBuf {
     let path = root.join(branch);
     git(dir, &["worktree", "add", "-q", "-b", branch, &path.display().to_string()]);
-    drive(st, Msg::Refresh);
+    drive(st, Msg::Repo(RepoMsg::Refresh));
     path
 }
 
@@ -134,7 +135,7 @@ fn remove_locked_opens_in_force_mode() {
     let (mut st, dir, root) = opened("wtm-locked");
     let linked = add(&mut st, &dir, &root, "usb");
     git(&dir, &["worktree", "lock", "--reason", "usb", &linked.display().to_string()]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, wt(WorktreeMsg::RemoveDialog(linked.clone())));
     assert_eq!(remove_form(&mut st).refusal, Some(Refusal::Locked("usb".into())));
     assert_eq!(remove_form(&mut st).force(), RemoveForce::Lock);
@@ -150,7 +151,7 @@ fn locked_after_the_dialog_opened_asks_again() {
     let linked = add(&mut st, &dir, &root, "late");
     drive(&mut st, wt(WorktreeMsg::RemoveDialog(linked.clone())));
     git(&dir, &["worktree", "lock", &linked.display().to_string()]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(update(&mut st, wt(WorktreeMsg::Remove), Instant::now()).is_empty(), "force is confirmed first");
     assert_eq!(remove_form(&mut st).refusal, Some(Refusal::Locked(String::new())));
     assert!(linked.exists());
@@ -162,7 +163,7 @@ fn branch_delete_failure_reported_separately() {
     let (mut st, dir, root) = opened("wtm-unmerged");
     let linked = add(&mut st, &dir, &root, "wip");
     git(&linked, &["commit", "--allow-empty", "-q", "-m", "unmerged"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, wt(WorktreeMsg::RemoveDialog(linked.clone())));
     remove_form(&mut st).delete_branch = true;
     let undo_before = st.undo.undo.len();
@@ -294,7 +295,7 @@ fn prune() {
     git(&dir, &["worktree", "lock", &kept.display().to_string()]);
     std::fs::remove_dir_all(&gone).unwrap();
     std::fs::remove_dir_all(&kept).unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(entry(&st, &gone).unwrap().prunable);
     assert!(!entry(&st, &kept).unwrap().prunable);
 

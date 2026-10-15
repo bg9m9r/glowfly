@@ -7,6 +7,7 @@ use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::palette::StashAction;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use eframe::egui;
@@ -83,7 +84,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             } else if r.clicked()
                 && let Some(o) = b.oid
             {
-                msgs.push(Msg::JumpTo(o));
+                msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
             ref_visibility::row_marker(ui, &r, 13.0, &format!("refs/heads/{}", b.name), &b.name, graph, msgs);
             r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, graph, msgs));
@@ -119,7 +120,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             let r = widgets::list_row(ui, 26.0, &s.message, None, sel == Selection::Commit(s.oid), false);
             let stash = |action| Msg::Stash { action, index: s.index, oid: s.oid };
             if r.clicked() {
-                msgs.push(Msg::SelectCommit(s.oid));
+                msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
             }
             r.context_menu(|ui| {
                 menu_item(msgs, ui, "Apply", stash(StashAction::Apply));
@@ -182,7 +183,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
         } else if r.clicked()
             && let Some(o) = tip
         {
-            msgs.push(Msg::JumpTo(o));
+            msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
         }
         r.context_menu(|ui| {
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));

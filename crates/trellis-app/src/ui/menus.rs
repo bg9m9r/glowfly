@@ -4,6 +4,7 @@ use super::common::{menu_item, short};
 use super::ref_visibility;
 use super::theme::color;
 use crate::msg::Msg;
+use crate::msg::SelectionMsg;
 use crate::state::ForgeState;
 use crate::state::selection::MultiSelection;
 use crate::worktree::WorktreeMsg;
@@ -66,7 +67,7 @@ pub(super) fn cherry_pick_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &m
     }
     let clicked = r.clicked();
     if clicked {
-        msgs.push(Msg::CherryPick(m.oids.clone()));
+        msgs.push(Msg::Selection(SelectionMsg::CherryPick(m.oids.clone())));
     }
     clicked
 }

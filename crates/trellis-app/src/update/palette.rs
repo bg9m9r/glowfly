@@ -5,6 +5,7 @@
 
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
 use crate::state::{AppState, PrefPage, Selection};
 use std::time::Instant;
@@ -136,7 +137,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
     let msg = match cmd {
         C::SearchCommits => {
             if st.diff.is_some() {
-                fx.extend(super::update(st, Msg::CloseDiff, now));
+                fx.extend(super::update(st, Msg::Repo(RepoMsg::CloseDiff), now));
             }
             st.view.show_search = true;
             st.view.focus_search = true;
@@ -176,7 +177,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::ConfigureGitFlow => Msg::OpenPrefs(PrefPage::RepoGitFlow),
         C::StartGitFlow(k) => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartDialog(k)),
         C::FinishGitFlow(b) => Msg::GitFlow(crate::gitflow::GitFlowMsg::FinishDialog(b)),
-        C::Refresh => Msg::Refresh,
+        C::Refresh => Msg::Repo(RepoMsg::Refresh),
         C::OpenTerminal => Msg::OpenTerminal,
         C::ToggleTerminal => Msg::Terminal(crate::terminal::TerminalMsg::Toggle),
         C::ShowInFileManager => {
@@ -185,7 +186,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         }
         C::DiffLayout(l) => Msg::SetDiffLayout(l),
         C::IgnoreWhitespace(on) => Msg::SetIgnoreWhitespace(on),
-        C::OpenRepo => Msg::PickRepo,
+        C::OpenRepo => Msg::Repo(RepoMsg::PickRepo),
         C::NewTab => Msg::NewTab,
         C::ReopenClosedTab => Msg::ReopenClosedTab,
         C::CloseTab => Msg::CloseTab(usize::MAX),
@@ -196,7 +197,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Checkout(name) => Msg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&name)] },
         C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
-        C::OpenRecent(path) => Msg::Open(path),
+        C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
         C::OpenFileHistory(path) => Msg::OpenFileHistory { path, at: None },
         C::Remote(m) => Msg::Remote(m),
         // Opens a step in `handle`; never run directly.

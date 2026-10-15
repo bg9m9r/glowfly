@@ -5,6 +5,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LocalOp};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::lines::LineClick::{self, Only, Range, Toggle};
 use std::collections::BTreeSet;
@@ -58,7 +59,7 @@ fn selected(st: &AppState) -> Option<(usize, Vec<usize>)> {
 
 fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
     let generation = st.diff_gen;
-    run(st, Msg::DiffLoaded { target, reload, generation, result });
+    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result }));
 }
 
 #[test]
@@ -192,7 +193,7 @@ fn reload_keeps_identical_clears_changed() {
     assert_eq!(selected(&st), None, "opening a diff clears it");
 
     select(&mut st);
-    run(&mut st, Msg::CloseDiff);
+    run(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     assert_eq!(selected(&st), None);
 
     st.diff = Some((unstaged(), two_hunks().into()));
@@ -203,7 +204,7 @@ fn reload_keeps_identical_clears_changed() {
     let (mut st, dir) = with_repo("lines-commit", unstaged());
     select(&mut st);
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
-    run(&mut st, Msg::SelectCommit(head));
+    run(&mut st, Msg::Repo(RepoMsg::SelectCommit(head)));
     assert_eq!(selected(&st), None);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -224,8 +225,8 @@ fn end_to_end_stage_lines() {
     let dir = scratch_repo("lines-e2e");
     std::fs::write(dir.join("a.txt"), "one\ntwo\nthree\n").unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     let (_, d) = st.diff.as_ref().unwrap();
     let two = d.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "two").unwrap();
     drive(&mut st, Msg::SelectDiffLine { hunk: 0, line: two, how: Only });
@@ -239,7 +240,7 @@ fn end_to_end_stage_lines() {
     let left: BTreeSet<String> = d.hunks.iter().flat_map(|h| &h.lines).filter(|l| l.origin == '+').map(|l| l.text.clone()).collect();
     assert_eq!(left, BTreeSet::from(["three".to_owned()]));
 
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Staged("a.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged("a.txt".into()))));
     let (_, d) = st.diff.as_ref().unwrap();
     let changes: Vec<String> =
         d.hunks.iter().flat_map(|h| &h.lines).filter(|l| l.origin != ' ').map(|l| format!("{}{}", l.origin, l.text)).collect();

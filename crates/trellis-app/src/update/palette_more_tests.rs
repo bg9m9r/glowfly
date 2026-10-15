@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::palette::{Entry, PaletteCommand as C, entries, shown};
 use crate::state::palette_commands::SHOW_REPO_FOLDER;
 use crate::state::{AppState, Modal};
@@ -89,7 +90,7 @@ fn rename_branch_entry() {
 
     st.modal = None;
     git(&dir, &["checkout", "-q", "--detach"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(st.snap.as_ref().unwrap().head_branch.is_none());
     assert!(!entries(&st).iter().any(|e| e.label.starts_with("Rename branch")));
 
@@ -222,7 +223,7 @@ fn keywords_match_synonyms() {
     // A stash, then a dirty tree again.
     drive(&mut st, Msg::git("Stash", &["stash", "push", "-u"]));
     std::fs::write(dir.join("b.txt"), "new\n").unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.stashes.is_empty() && snap.is_dirty());
 

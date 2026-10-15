@@ -5,6 +5,7 @@ use super::rebase_tests::{repo, with_panel};
 use super::selection_tests::{commit_on, git, head};
 use super::tests::{drive, state};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::{AppState, Selection};
 use git2::{Oid, RepositoryState};
 use std::path::Path;
@@ -86,7 +87,7 @@ fn a_conflict_stops_and_abort_restores() {
     std::fs::write(dir.join("f.txt"), "two\n").unwrap();
     let b = commit_on(&dir, "b", 12);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::OpenRebase(RebaseBase::FromCommit(a)));
     drive(&mut st, Msg::RebaseMove { from: 1, to: 0 });
     drive(&mut st, Msg::StartRebase { confirmed: false });

@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::{AppState, Modal};
 use git2::{Oid, RepositoryState};
 use std::path::{Path, PathBuf};
@@ -27,7 +28,7 @@ pub(super) fn with_origin(name: &str) -> (AppState, PathBuf, PathBuf) {
     git(&work, &["branch", "feature"]);
     git(&work, &["push", "-q", "-u", "origin", "feature"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(work.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(work.clone())));
     (st, work, bare)
 }
 
@@ -131,7 +132,7 @@ fn rename_end_to_end_moves_tracking_and_invalidates_undo() {
 fn upstream_dialog_and_commands() {
     let (mut st, work, bare) = with_origin("br-upstream");
     git(&work, &["branch", "x"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     update(&mut st, Msg::SetUpstreamDialog("x".into()), Instant::now());
     assert!(matches!(&st.modal, Some(Modal::SetUpstream { branch, remote, name }) if branch == "x" && remote == "origin" && name == "x"));
     local(&mut st, "feature").tracking = Some(Tracking { remote: "origin".into(), merge: "other".into() });
@@ -167,7 +168,7 @@ fn upstream_dialog_and_commands() {
 fn upstream_dialog_needs_a_remote() {
     let dir = scratch_repo("br-noremote");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     update(&mut st, Msg::SetUpstreamDialog("main".into()), Instant::now());
     assert!(st.modal.is_none());
     assert_eq!(last_log(&st), "This repository has no remotes.");
@@ -196,7 +197,7 @@ fn fast_forward_commands_and_refusals() {
     assert_eq!(st.undo.blocked.as_deref(), Some("Fast-forward"));
 
     // The job's refresh reloaded the snapshot; set the counts up again.
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     local(&mut st, "main").behind = 1;
     st.snap.as_mut().unwrap().state = RepositoryState::Merge;
     assert!(cmds(&mut st, ff("main")).is_empty());
@@ -279,7 +280,7 @@ fn delete_with_remote_commands_and_refusals() {
     assert_eq!(last_log(&st), "feature has no upstream branch on a remote to delete.");
 
     // Through the confirmation.
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let then = Msg::DeleteBranchAndRemote("feature".into());
     update(&mut st, Msg::confirm("Delete local and remote branch", "…".into(), "Delete both", then), Instant::now());
     let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
@@ -319,7 +320,7 @@ fn delete_with_remote_keeps_a_pushed_unmerged_branch() {
     git(&work, &["commit", "-q", "-m", "feature only"]);
     git(&work, &["push", "-q", "origin", "feature"]);
     git(&work, &["checkout", "-q", "main"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let b = local(&mut st, "feature").clone();
     assert_eq!((b.ahead, b.behind, b.merged), (0, 0, false), "pushed, not merged into main");
 

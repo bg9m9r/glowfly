@@ -4,6 +4,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::RepoMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::palette::{PaletteCommand, shown};
 use crate::state::palette_commands::SHOW_REPO_FOLDER;
@@ -34,7 +35,7 @@ pub(super) fn repo_with_topic(name: &str) -> (AppState, std::path::PathBuf) {
     let dir = scratch_repo(name);
     git(&dir, &["branch", "topic"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.is_some());
     (st, dir)
 }
@@ -56,7 +57,8 @@ fn toggle_opens_and_closes() {
 #[test]
 fn toggle_ignored_under_dialogs() {
     let mut st = state();
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Refresh) });
+    st.modal =
+        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
     run(&mut st, Msg::TogglePalette);
     assert!(st.palette.is_none());
 
@@ -195,7 +197,7 @@ fn run_theme_saves_once() {
 #[test]
 fn run_search_commits_closes_diff_and_focuses() {
     let (mut st, dir) = repo_with_topic("palette-search");
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     assert!(st.diff.is_some());
     open_palette(&mut st);
     run(&mut st, Msg::RunPaletteCommand(PaletteCommand::SearchCommits));
@@ -244,7 +246,7 @@ fn run_prefs_close_tab_open_repo() {
     git(&dir, &["clone", "-q", "--bare", ".", bare.to_str().unwrap()]);
     git(&dir, &["remote", "add", "origin", bare.to_str().unwrap()]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(has(&st, "Fetch all remotes"));
     assert!(has(&st, "Pull"));
     let fx = run(&mut st, Msg::RunPaletteCommand(PaletteCommand::Fetch));

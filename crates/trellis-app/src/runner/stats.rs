@@ -1,10 +1,11 @@
 //! Line counts for the graph's CHANGES column. Scrolling asks for the rows coming into view
 //! every frame, so one worker thread does them, newest request first: a request replaces one
 //! still waiting, and stops one being worked on after its current commit. Whatever is left
-//! undone is reported as `Msg::StatsDropped`, so rows still on screen are asked for again.
+//! undone is reported as `RepoMsg::StatsDropped`, so rows still on screen are asked for again.
 
 use super::Waker;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use git2::Oid;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
@@ -38,7 +39,7 @@ impl StatsWorker {
             (replaced, start)
         };
         if let Some((workdir, oids)) = replaced {
-            report(&tx, &waker, workdir, Msg::StatsDropped(oids));
+            report(&tx, &waker, workdir, Msg::Repo(RepoMsg::StatsDropped(oids)));
         }
         if !start {
             return;
@@ -51,7 +52,7 @@ impl StatsWorker {
             s.running = false;
             if let Some((workdir, oids)) = s.next.take() {
                 drop(s);
-                report(&tx, &waker, workdir, Msg::StatsDropped(oids));
+                report(&tx, &waker, workdir, Msg::Repo(RepoMsg::StatsDropped(oids)));
             }
         }
     }
@@ -74,10 +75,10 @@ impl StatsWorker {
             let (done, gone_through) =
                 catch_unwind(AssertUnwindSafe(|| repo::commit_stats_until(&workdir, &oids, &newer))).unwrap_or((Vec::new(), oids.len()));
             if !done.is_empty() {
-                report(tx, waker, workdir.clone(), Msg::StatsLoaded(done));
+                report(tx, waker, workdir.clone(), Msg::Repo(RepoMsg::StatsLoaded(done)));
             }
             if gone_through < oids.len() {
-                report(tx, waker, workdir, Msg::StatsDropped(oids[gone_through..].to_vec()));
+                report(tx, waker, workdir, Msg::Repo(RepoMsg::StatsDropped(oids[gone_through..].to_vec())));
             }
         }
     }
@@ -114,7 +115,7 @@ mod tests {
         w.submit(dir.clone(), vec![b], tx.clone(), NoWake);
         let Ok(Msg::Scoped { workdir, msg }) = rx.recv_timeout(Duration::from_secs(5)) else { panic!("a report") };
         assert_eq!(workdir, dir);
-        assert!(matches!(*msg, Msg::StatsDropped(ref o) if *o == [a]), "the older request is dropped");
+        assert!(matches!(*msg, Msg::Repo(RepoMsg::StatsDropped(ref o)) if *o == [a]), "the older request is dropped");
         assert_eq!(w.slot().next.as_ref().map(|(_, o)| o.clone()), Some(vec![b]));
 
         // The worker takes the waiting request, and ends once none is left.

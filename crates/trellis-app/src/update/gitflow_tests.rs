@@ -7,6 +7,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::gitflow::GitFlowPage;
 use crate::state::palette::{PaletteCommand as C, entries};
 use crate::state::{AppState, Modal, PrefPage};
@@ -27,7 +28,7 @@ pub(super) fn flow(st: &mut AppState, m: GitFlowMsg) -> Vec<Effect> {
 pub(super) fn open(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(&format!("gitflow-{name}"));
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.is_some());
     (st, dir)
 }
@@ -177,13 +178,13 @@ fn snapshot_changed_refills() {
     run(&mut st, Msg::OpenPrefs(PrefPage::RepoGitFlow));
     page_mut(&mut st).form.feature = "x/".into();
     git(&dir, &["config", "gitflow.prefix.release", "rel/"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(page(&st).form.feature, "x/");
     assert_eq!(page(&st).base.release.as_deref(), Some("rel/"));
 
     flow(&mut st, GitFlowMsg::Discard);
     git(&dir, &["config", "gitflow.prefix.hotfix", "fix/"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(page(&st).form.hotfix, "fix/");
     assert_eq!(page(&st).form.release, "rel/");
 
@@ -265,7 +266,7 @@ fn start_dialog() {
 fn start() {
     let (mut st, dir) = initialized("start");
     git(&dir, &["branch", "feature/taken"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let start = |kind, name: &str| Msg::GitFlow(GitFlowMsg::Start { kind, name: name.into() });
 
     flow(&mut st, GitFlowMsg::StartDialog(FlowKind::Feature));

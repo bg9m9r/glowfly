@@ -5,6 +5,8 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, theme::color};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
+use crate::msg::SelectionMsg;
 use crate::state::AppState;
 use crate::state::terminal::{SessionStatus, TermSession};
 use crate::terminal::TerminalMsg;
@@ -122,7 +124,7 @@ fn focused_terminal_forwards_keys() {
     let key = |key| TermInput::Key { key, mods: Default::default() };
     assert_eq!(inputs, [TermInput::Text("ls".into()), key(TermKey::Enter), key(TermKey::Escape)]);
     assert!(h.state().0.terminal.focused, "Esc stays in the terminal");
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::CloseDiff | Msg::CollapseSelection)));
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff) | Msg::Selection(SelectionMsg::CollapseSelection))));
     drop(h);
     remove_fixture(&dir);
 }

@@ -5,6 +5,7 @@ use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::history::FileHistoryView;
 use crate::state::selection::MultiSelection;
 use crate::state::{AppState, Modal, Selection};
@@ -162,7 +163,7 @@ fn end_to_end_restore() {
     git(&dir, &["config", "core.autocrlf", "false"]);
     git(&dir, &["commit", "-q", "-am", "second"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.as_ref().unwrap().unstaged.is_empty());
     drive(&mut st, Msg::RestoreFile { oid: first, path: "a.txt".into(), deleted: false, confirmed: true, overwrite: false });
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
@@ -210,7 +211,7 @@ fn end_to_end_restore_from_comparison() {
     git(&dir, &["rm", "-q", "gone.txt"]);
     git(&dir, &["commit", "-q", "-m", "delete gone"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
 
     drive(&mut st, Msg::RestoreFile { oid: older, path: "gone.txt".into(), deleted: false, confirmed: true, overwrite: false });
     assert_eq!(
@@ -257,7 +258,7 @@ fn ignored_file_is_not_overwritten_without_a_warning() {
     git(&dir, &["commit", "-q", "-m", "ignore env"]);
     std::fs::write(dir.join(".env"), "TOKEN=secret\n").unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
 
     drive(&mut st, ask(old, ".env", false));
     assert!(!confirm_body(&st).contains("overwritten"), "status shows nothing to warn about");

@@ -7,6 +7,7 @@ use super::super::theme::color;
 use super::super::widgets::{Icon, icon_button, paint_icon};
 use super::UiCache;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::rebase::RebasePanel;
 use crate::state::tabs::index_after_move;
 use crate::state::{AppState, Selection};
@@ -112,7 +113,7 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                         ui.ctx().set_cursor_icon(CursorIcon::Grab);
                     }
                     if r.clicked() {
-                        msgs.push(Msg::SelectCommit(item.oid));
+                        msgs.push(Msg::Repo(RepoMsg::SelectCommit(item.oid)));
                     }
                     let on_summary = r.interact_pointer_pos().is_some_and(|p| p.x >= rect.left() + SHA_X);
                     if enabled && r.double_clicked() && on_summary {

@@ -7,6 +7,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::{AppState, Modal, RunningJob};
 use std::path::Path;
 use std::time::Instant;
@@ -44,7 +45,7 @@ fn new_tag_picks_default_remote() {
 
     let dir = scratch_repo("tag-no-remote");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     open_dialog(&mut st, true);
     assert!(matches!(&st.modal, Some(Modal::NewTag(f)) if f.remote.is_empty() && f.annotated));
     cleanup(&[&dir]);
@@ -59,7 +60,7 @@ fn new_tag_picks_default_remote() {
 fn create_tag_commands() {
     let dir = scratch_repo("tag-cmds");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let sha = head(&st);
     open_dialog(&mut st, false);
     let fx = update(&mut st, create(&sha, " v1 ", "", None), Instant::now());
@@ -92,7 +93,7 @@ fn create_tag_commands() {
 fn create_tag_rejects_bad_names() {
     let dir = scratch_repo("tag-bad-names");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let sha = head(&st);
     open_dialog(&mut st, false);
     let cases = [
@@ -116,7 +117,7 @@ fn create_tag_rejects_existing_tag() {
     let dir = scratch_repo("tag-existing");
     git(&dir, &["tag", "v1"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let sha = head(&st);
     open_dialog(&mut st, false);
     for name in ["v1", "V1"] {

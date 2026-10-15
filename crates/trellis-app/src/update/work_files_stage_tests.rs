@@ -6,6 +6,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{empty_diff, entry, loaded, new_form, rename_form, run, work_ops};
 use crate::effect::{Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::Modal;
 use crate::state::files::{PathForm, folder_prefill};
 use trellis_core::repo::DiffTarget;
@@ -83,7 +84,7 @@ fn new_file_here_prefill() {
 fn end_to_end_staged_rename() {
     let dir = scratch_repo("wf-e2e-staged");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::RenameFile { from: "a.txt".into(), to: "docs/b.txt".into(), stage: true });
     assert!(dir.join("docs/b.txt").is_file());
     assert!(!dir.join("a.txt").exists());

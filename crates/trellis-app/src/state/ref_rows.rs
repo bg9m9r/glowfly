@@ -1,5 +1,5 @@
 //! Which graph rows belong to a branch, for highlighting the rows of the ref under the pointer.
-//! Pure walks over the loaded history; `update` runs them (`Msg::HoverRef`) and views only read
+//! Pure walks over the loaded history; `update` runs them (`GraphMsg::HoverRef`) and views only read
 //! `ViewState::highlight`.
 
 use git2::Oid;

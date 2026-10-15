@@ -107,7 +107,10 @@ mod snapshot_tests_worktrees;
 mod tabs_tests;
 
 use crate::effect::{Effect, UiEffect};
+use crate::msg::AvatarMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
+use crate::msg::SelectionMsg;
 use crate::runner::Runner;
 use crate::state::AppState;
 use crate::update::update;
@@ -161,7 +164,7 @@ impl TrellisApp {
             app.dispatch(&cc.egui_ctx, Msg::RestoreTabs { paths, active });
         }
         if let Some(path) = start {
-            app.dispatch(&cc.egui_ctx, Msg::Open(path));
+            app.dispatch(&cc.egui_ctx, Msg::Repo(RepoMsg::Open(path)));
         }
         app
     }
@@ -204,7 +207,7 @@ impl TrellisApp {
         let palette = self.st.palette.is_some();
         let focused = ctx.input(|i| i.focused);
         if focused && !self.st.view.was_focused {
-            msgs.push(Msg::WindowFocused);
+            msgs.push(Msg::Repo(RepoMsg::WindowFocused));
         }
         self.st.view.was_focused = focused;
         let (f5, find, prefs) = ctx.input(|i| {
@@ -229,7 +232,7 @@ impl TrellisApp {
             msgs.push(if self.st.conflict.is_some() { Msg::ConflictStep(step) } else { Msg::JumpToChange(step) });
         }
         if f5 {
-            msgs.push(Msg::Refresh);
+            msgs.push(Msg::Repo(RepoMsg::Refresh));
         }
         if find && !palette {
             self.st.view.show_search = !self.st.view.show_search;
@@ -264,12 +267,12 @@ fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         msgs.push(Msg::CloseFileHistory);
     } else if st.diff.is_some() {
         // Esc first drops a line selection, then closes the diff.
-        msgs.push(if st.view.diff_lines.is_empty() { Msg::CloseDiff } else { Msg::ClearLineSelection });
+        msgs.push(if st.view.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::ClearLineSelection });
     } else if let Some(p) = &st.rebase {
         // Esc first closes the message editor, then the panel.
         msgs.push(if p.editing.is_some() { Msg::RebaseCancelMessage } else { Msg::CloseRebase });
     } else if matches!(st.selection, crate::state::Selection::Commits(_)) {
-        msgs.push(Msg::CollapseSelection);
+        msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
     } else {
         st.view.show_search = false;
     }
@@ -358,7 +361,7 @@ impl eframe::App for TrellisApp {
         draw(ctx, &mut self.st, &mut self.cache, &mut msgs);
         let wanted = self.cache.avatars.take_wanted();
         if !wanted.is_empty() {
-            msgs.push(Msg::WantAvatars(wanted));
+            msgs.push(Msg::Avatars(AvatarMsg::WantAvatars(wanted)));
         }
         // Only Preferences edits settings in place; persist any change (also on the frame it closes).
         if self.st.prefs.is_some() {

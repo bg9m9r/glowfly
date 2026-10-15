@@ -3,6 +3,7 @@
 //! newer `Effect::HighlightDiff` cancels the older one.
 
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -37,7 +38,7 @@ pub(super) fn load_job(
             v.diff
         })
         .map_err(|e| e.to_string());
-    Msg::DiffLoaded { target, reload, generation, result }
+    Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result })
 }
 
 /// Syntax spans and word marks for a loaded diff and its whole file, reusing `previous`'s spans,

@@ -5,6 +5,7 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, theme::color};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::rebase::RebasePanel;
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -170,7 +171,7 @@ fn row_drag_moves_and_snapshots() {
     let moves: Vec<(usize, usize)> =
         h.state().1.iter().filter_map(|m| if let Msg::RebaseMove { from, to } = m { Some((*from, *to)) } else { None }).collect();
     assert_eq!(moves, [(0, 2)]);
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::SelectCommit(_))), "dragging does not select the commit");
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)))), "dragging does not select the commit");
     drop(h);
     remove_fixture(&dir);
 }

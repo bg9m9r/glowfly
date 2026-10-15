@@ -3,7 +3,9 @@
 
 use super::update;
 use crate::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
+use crate::msg::AvatarMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::runner;
 use crate::state::{AppState, ForgeState, Modal, Selection, Status};
 use std::path::{Path, PathBuf};
@@ -79,12 +81,13 @@ pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
 #[test]
 fn opening_ignores_stale_results() {
     let mut st = state();
-    let fx = update(&mut st, Msg::Open("C:/a".into()), Instant::now());
+    let fx = update(&mut st, Msg::Repo(RepoMsg::Open("C:/a".into())), Instant::now());
     assert!(matches!(&fx[..], [Effect::LoadRepo { generation: 1, kind: LoadKind::Open, .. }]));
     assert!(st.loading);
     // A newer load supersedes the first; the first's result is ignored.
-    update(&mut st, Msg::Open("C:/b".into()), Instant::now());
-    let fx = update(&mut st, Msg::RepoLoaded { generation: 1, kind: LoadKind::Open, result: Err("boom".into()) }, Instant::now());
+    update(&mut st, Msg::Repo(RepoMsg::Open("C:/b".into())), Instant::now());
+    let fx =
+        update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation: 1, kind: LoadKind::Open, result: Err("boom".into()) }), Instant::now());
     assert!(fx.is_empty());
     assert!(st.log.is_empty(), "stale errors are not reported");
     assert!(st.loading);
@@ -98,7 +101,7 @@ fn only_one_git_job_runs_at_a_time() {
     assert!(update(&mut st, Msg::git("Fetch", &["fetch"]), Instant::now()).is_empty());
 
     let dir = scratch_repo("jobs");
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = update(&mut st, Msg::git("Fetch", &["fetch"]), Instant::now());
     assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
     assert!(update(&mut st, Msg::git("Pull", &["pull"]), Instant::now()).is_empty());
@@ -116,9 +119,9 @@ fn only_one_git_job_runs_at_a_time() {
 fn auto_fetch_runs_quietly_on_its_interval() {
     let dir = scratch_repo("autofetch");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     git(&dir, &["remote", "add", "origin", "https://example.invalid/repo.git"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     st.settings.auto_fetch_minutes = 1;
     let start = st.last_fetch;
 
@@ -207,7 +210,7 @@ fn forge_replies_update_pull_requests_and_errors() {
 fn stage_and_commit_end_to_end() {
     let dir = scratch_repo("e2e");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let snap = st.snap.as_ref().expect("opened");
     assert_eq!(st.selection, Selection::Wip, "a dirty repo opens on the WIP");
     assert_eq!(snap.unstaged.len(), 1);
@@ -244,7 +247,7 @@ fn push_sets_upstream_for_new_branches() {
     let dir = scratch_repo("push");
     let mut st = state();
     git(&dir, &["remote", "add", "origin", "https://example.invalid/repo.git"]);
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = update(&mut st, Msg::Push { force: false }, Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, prompts, .. }] => {
@@ -305,11 +308,11 @@ fn commit_signing_flow() {
 fn avatars_are_fetched_in_batches_and_handed_to_the_shell() {
     let mut st = state();
     let emails: Vec<String> = (0..10).map(|i| format!("dev{i}@example.com")).collect();
-    let fx = update(&mut st, Msg::WantAvatars(emails), Instant::now());
+    let fx = update(&mut st, Msg::Avatars(AvatarMsg::WantAvatars(emails)), Instant::now());
     let sizes: Vec<usize> = fx.iter().map(|e| if let Effect::FetchAvatars(b) = e { b.len() } else { 0 }).collect();
     assert_eq!(sizes, [8, 2]);
 
-    update(&mut st, Msg::AvatarsLoaded(vec![("dev0@example.com".into(), None)]), Instant::now());
+    update(&mut st, Msg::Avatars(AvatarMsg::AvatarsLoaded(vec![("dev0@example.com".into(), None)])), Instant::now());
     assert_eq!(st.view.avatars_loaded.len(), 1);
 }
 

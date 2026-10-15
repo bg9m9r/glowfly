@@ -7,6 +7,7 @@ use super::graph::draw_avatar;
 use super::theme::color;
 use crate::keymap::{BindingId, hint};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
@@ -31,7 +32,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
                     if st.snap.as_ref().is_some_and(|s| s.is_dirty()) {
                         ui.add_space(8.0);
                         if ui.button("View uncommitted changes").clicked() {
-                            msgs.push(Msg::SelectWip);
+                            msgs.push(Msg::Repo(RepoMsg::SelectWip));
                         }
                     }
                 }
@@ -129,7 +130,7 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
         ui.label(RichText::new("parents").color(color::weak()));
         for p in &d.parents {
             if ui.link(RichText::new(short(*p)).monospace()).clicked() {
-                msgs.push(Msg::JumpTo(*p));
+                msgs.push(Msg::Repo(RepoMsg::JumpTo(*p)));
             }
         }
     });
@@ -163,7 +164,7 @@ pub(super) fn changed_file_row(
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
         let r = ui.selectable_label(open == Some(&target), &f.path);
         if r.clicked() {
-            msgs.push(Msg::OpenDiff(target));
+            msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
         }
         r.context_menu(|ui| {
             menu_item(msgs, ui, "File history", Msg::OpenFileHistory { path: f.path.clone(), at: Some(history_at) });
@@ -259,7 +260,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
         };
         let r = ui.selectable_label(selected, &f.path);
         if r.clicked() {
-            msgs.push(if conflicted { Msg::OpenConflict(f.path.clone()) } else { Msg::OpenDiff(target()) });
+            msgs.push(if conflicted { Msg::OpenConflict(f.path.clone()) } else { Msg::Repo(RepoMsg::OpenDiff(target())) });
         }
         r.context_menu(|ui| {
             if conflicted {

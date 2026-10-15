@@ -3,6 +3,7 @@
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
 use git2::{Oid, RepositoryState};
@@ -201,20 +202,20 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         }
         let size = vec2(260.0, 34.0);
         if ui.add(egui::Button::new("Open a repository").min_size(size)).clicked() {
-            msgs.push(Msg::PickRepo);
+            msgs.push(Msg::Repo(RepoMsg::PickRepo));
         }
         if ui.add(egui::Button::new("Clone a repository").min_size(size)).clicked() {
             msgs.push(Msg::CloneDialog);
         }
         if ui.add(egui::Button::new("Start a new repository").min_size(size)).clicked() {
-            msgs.push(Msg::InitRepo);
+            msgs.push(Msg::Repo(RepoMsg::InitRepo));
         }
         if !st.recent.is_empty() {
             ui.add_space(20.0);
             ui.label(RichText::new("Recent").color(color::weak()));
             for p in &st.recent {
                 if ui.link(p.display().to_string()).clicked() {
-                    msgs.push(Msg::Open(p.clone()));
+                    msgs.push(Msg::Repo(RepoMsg::Open(p.clone())));
                 }
             }
         }

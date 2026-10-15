@@ -165,23 +165,12 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     let mut fx = Vec::new();
     match msg {
         // repository and selection
-        Msg::PickRepo
-        | Msg::Open(_)
-        | Msg::Refresh
-        | Msg::WindowFocused
-        | Msg::SelectWip
-        | Msg::SelectCommit(_)
-        | Msg::JumpTo(_)
-        | Msg::OpenDiff(_)
-        | Msg::CloseDiff
-        | Msg::SearchNext
-        | Msg::WantStats(_)
-        | Msg::RepoLoaded { .. }
-        | Msg::DetailLoaded { .. }
-        | Msg::DiffLoaded { .. }
-        | Msg::StatsLoaded(_)
-        | Msg::StatsDropped(_) => repo::handle(st, msg, now, &mut fx),
-        Msg::StatusLoaded { .. } | Msg::RepoUnchanged { .. } | Msg::LoadMoreCommits => refresh::handle(st, msg, now, &mut fx),
+        Msg::Repo(m) => repo::handle(st, m, now, &mut fx),
+        Msg::Load(m) => refresh::handle(st, m, now, &mut fx),
+        Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
+        Msg::Selection(m) => selection::handle(st, m, &mut fx),
+        Msg::Graph(m) => graph_filter::handle(st, m, &mut fx),
+        Msg::Avatars(m) => avatars::handle(st, m, &mut fx),
         Msg::DiffHighlighted { .. } => highlight::handle(st, msg),
         Msg::SetDiffLayout(_)
         | Msg::SetDiffMode(_)
@@ -193,10 +182,6 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::CollapseAllUnchanged
         | Msg::SelectDiffLine { .. }
         | Msg::ClearLineSelection => diff::handle(st, msg, &mut fx),
-        Msg::ToggleCommit(_) | Msg::SelectCommitRange(_) | Msg::CollapseSelection | Msg::CherryPick(_) | Msg::CompareLoaded { .. } => {
-            selection::handle(st, msg, &mut fx)
-        }
-        Msg::WantAvatars(_) | Msg::AvatarsLoaded(_) => avatars::handle(st, msg, &mut fx),
 
         // conflicts
         Msg::OpenConflict(_)
@@ -283,7 +268,6 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::Git { .. }
         | Msg::Push { .. }
         | Msg::Stash { .. }
-        | Msg::InitRepo
         | Msg::CloneRepo(_)
         | Msg::LocalOpDone(_)
         | Msg::HunkReverted { .. }
@@ -316,8 +300,6 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::FastForwardBranch(_)
         | Msg::DeleteBranchAndRemote(_)
         | Msg::PushBranch { .. } => branches::handle(st, msg, &mut fx),
-        Msg::GraphFilter(_) => graph_filter::handle(st, msg, &mut fx),
-        Msg::RepoChanged { .. } | Msg::WatchFailed { .. } => watch::handle(st, msg, now, &mut fx),
 
         // credential prompts
         Msg::CredentialPrompt { .. } | Msg::CredentialPromptExpired(_) | Msg::AnswerCredentials | Msg::CancelCredentials => {
@@ -387,7 +369,6 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::ClearLog => st.log.clear(),
-        Msg::HoverRef(tip) => graph_filter::hover_ref(st, tip),
         Msg::SettingsUnreadable(text) => prefs::unreadable(st, text, now),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),

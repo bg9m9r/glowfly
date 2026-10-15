@@ -7,6 +7,7 @@ use super::tests::{drive, git, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::palette::{InputKind, Items, Mode, Pick, PickKind, StashAction, row_count, shown};
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
@@ -74,7 +75,7 @@ pub(super) fn two_stashes(name: &str) -> (AppState, PathBuf) {
     git(&dir, &["stash", "push", "-u", "-m", "first"]);
     std::fs::write(dir.join("c.txt"), "c\n").unwrap();
     git(&dir, &["stash", "push", "-u", "-m", "second"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.is_dirty());
     assert_eq!(snap.stashes.len(), 2);
@@ -108,7 +109,7 @@ fn stash_entries_availability() {
     assert!(labels(&st, "drop").iter().any(|x| x == "Delete stash…"));
 
     git(&dir, &["stash", "drop"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let one = shown(&st, "");
     let apply = one.iter().find(|s| s.entry.label == "Apply stash…").unwrap();
     assert_eq!(apply.entry.detail.as_deref(), Some("1 stash"));
@@ -142,7 +143,8 @@ fn choose_stash_enters_sub_list() {
 
     // Not under a dialog.
     st.palette = None;
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Refresh) });
+    st.modal =
+        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
     assert!(choose(&mut st, StashAction::Apply).is_empty());
     assert!(st.palette.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -249,7 +251,7 @@ fn stash_op_follows_oid_when_list_changes() {
     // Another stash pushes "second" down to stash@{1}.
     std::fs::write(dir.join("d.txt"), "d\n").unwrap();
     git(&dir, &["stash", "push", "-u", "-m", "third"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = run(&mut st, Msg::RunPaletteCommand(cmd.clone()));
     assert_eq!(git_cmds(&fx), argv(&["stash", "apply", "stash@{1}"]));
     // Only the argv matters here; the job never ran.
@@ -257,7 +259,7 @@ fn stash_op_follows_oid_when_list_changes() {
 
     // Dropped elsewhere: nothing runs and the log says so.
     git(&dir, &["stash", "drop", "stash@{1}"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     choose(&mut st, StashAction::Apply);
     let before = st.log.len();
     let fx = run(&mut st, Msg::RunPaletteCommand(cmd));

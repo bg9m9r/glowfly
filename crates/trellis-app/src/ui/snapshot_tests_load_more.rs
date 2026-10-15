@@ -2,6 +2,7 @@
 //! the Load more link.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
@@ -16,7 +17,7 @@ fn graph_header_offers_more_commits() {
     h.check_snapshot("graph_load_more");
     h.get_by_label("Load more").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::LoadMoreCommits)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Load(LoadMsg::LoadMoreCommits))));
 
     // With room in the message column, the count shows too.
     let (mut st, _) = with_repo(ThemeChoice::Dark, "load-more");

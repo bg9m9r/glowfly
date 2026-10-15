@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use std::time::Instant;
 use trellis_core::diff_rows::header_rows;
@@ -102,12 +103,12 @@ fn opening_a_diff_scrolls_to_top_but_reload_keeps_position() {
     st.view.diff_top_row = 7;
     let target = DiffTarget::Unstaged("g.txt".into());
     let generation = st.diff_gen;
-    run(&mut st, Msg::DiffLoaded { target: target.clone(), reload: false, generation, result: Ok(three_hunks()) });
+    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload: false, generation, result: Ok(three_hunks()) }));
     assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (Some(0), 0));
 
     st.view.diff_scroll_to_row = None;
     st.view.diff_top_row = 7;
-    run(&mut st, Msg::DiffLoaded { target, reload: true, generation, result: Ok(three_hunks()) });
+    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: true, generation, result: Ok(three_hunks()) }));
     assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (None, 7));
 }
 
@@ -143,9 +144,9 @@ fn diffs_arrive_highlighted_including_reloads() {
     git(&dir, &["commit", "-q", "-m", "rust"]);
     std::fs::write(dir.join("main.rs"), body("2; // two", "\"why\"")).unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
 
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("main.rs".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
     let (_, d) = st.diff.as_ref().expect("diff open");
     assert_eq!(d.hunks.len(), 2);
     let hl = d.highlight.as_ref().expect("highlighted on load");
@@ -174,13 +175,13 @@ fn diffs_arrive_highlighted_including_reloads() {
     assert!(marked(d, 0, '+'), "the reload comes with word marks for `let y = \"why\"`");
     assert_eq!(d.intraline.hunk_lens(), shape(d));
 
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Staged("main.rs".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged("main.rs".into()))));
     let (target, d) = st.diff.as_ref().expect("staged diff open");
     assert_eq!(*target, DiffTarget::Staged("main.rs".into()));
     assert_eq!(d.highlight.as_ref().map(|h| h.hunk_lens()), Some(shape(d)));
 
     // Plain text stays plain.
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     let (_, d) = st.diff.as_ref().expect("a.txt diff open");
     assert!(!d.hunks.is_empty() && d.highlight.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -233,8 +234,8 @@ fn hunk_ops_wait_for_the_reload_after_a_hunk_op() {
     git(&dir, &["commit", "-q", "-m", "big"]);
     std::fs::write(dir.join("big.txt"), numbered(&[2, 15, 28])).unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("big.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("big.txt".into()))));
     assert_eq!(st.diff.as_ref().map(|(_, d)| d.hunks.len()), Some(3));
     let shown = st.hunk_ops_gen().expect("hunk buttons enabled");
 
@@ -271,7 +272,7 @@ fn late_diff_results_do_not_replace_a_newer_diff_or_reopen_a_closed_one() {
     std::fs::write(dir.join("b.txt"), "b\n").unwrap();
     git(&dir, &["add", "b.txt"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let a = DiffTarget::Unstaged("a.txt".into());
     let b = DiffTarget::Staged("b.txt".into());
     let load = |fx: Vec<Effect>| -> Msg {
@@ -280,16 +281,16 @@ fn late_diff_results_do_not_replace_a_newer_diff_or_reopen_a_closed_one() {
     };
 
     // A is opened, then B; A's result arrives last and is ignored.
-    let late_a = load(run(&mut st, Msg::OpenDiff(a)));
-    let b_loaded = load(run(&mut st, Msg::OpenDiff(b.clone())));
+    let late_a = load(run(&mut st, Msg::Repo(RepoMsg::OpenDiff(a))));
+    let b_loaded = load(run(&mut st, Msg::Repo(RepoMsg::OpenDiff(b.clone()))));
     run(&mut st, b_loaded);
     run(&mut st, late_a);
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&b));
     assert!(st.hunk_ops_gen().is_some());
 
     // A reload still in flight when the diff is closed doesn't bring it back.
-    let late_reload = load(run(&mut st, Msg::OpenDiff(b)));
-    run(&mut st, Msg::CloseDiff);
+    let late_reload = load(run(&mut st, Msg::Repo(RepoMsg::OpenDiff(b))));
+    run(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     run(&mut st, late_reload);
     assert!(st.diff.is_none());
     let _ = std::fs::remove_dir_all(&dir);

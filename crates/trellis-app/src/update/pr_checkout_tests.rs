@@ -4,6 +4,7 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::branches::{checkout_local, pr_checkout};
 use std::path::Path;
 use trellis_core::gitcli::{args, run};
@@ -32,7 +33,7 @@ fn path_named_branch(name: &str) -> (crate::state::AppState, std::path::PathBuf,
     git(&work, &["push", "-q", "origin", "src"]);
     git(&work, &["branch", "-q", "-D", "src"]);
     std::fs::write(work.join("src"), "my unsaved work\n").unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     (st, work, bare)
 }
 
@@ -47,7 +48,7 @@ fn a_branch_named_like_a_path_keeps_changes() {
 
     // Now local: the local branch, still with `--`.
     git(&work, &["switch", "-q", "main"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let cmd = pr_checkout(st.snap.as_ref().unwrap(), "origin", "src").unwrap();
     assert_eq!(cmd, checkout_local("src"));
     drive(&mut st, Msg::Git { label: "Checkout".into(), cmds: vec![cmd] });

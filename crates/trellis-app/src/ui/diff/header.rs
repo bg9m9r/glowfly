@@ -4,6 +4,7 @@
 
 use crate::keymap::{self, BindingId};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::diff_nav::StepKind;
 use crate::ui::common::short;
 use crate::ui::file_buttons::{self, CommitFile, Labels};
@@ -75,7 +76,7 @@ pub(super) fn header_bar(
             files_wrapped = file.is_some()
                 && button_w(ui, CLOSE) + file_buttons_width(ui) + middle_width(ui, rows.is_some(), show_nav) > ui.available_width();
             if ui.button(CLOSE).clicked() {
-                msgs.push(Msg::CloseDiff);
+                msgs.push(Msg::Repo(RepoMsg::CloseDiff));
             }
             match target {
                 DiffTarget::Unstaged(p) => {

@@ -2,17 +2,17 @@
 //! refreshing when it reports changes made outside Trellis.
 
 use crate::effect::{Effect, WatchTarget};
-use crate::msg::Msg;
+use crate::msg::WatchMsg;
 use crate::state::AppState;
 use crate::state::watch::WATCH_SETTLE;
 use std::time::Instant;
 
 const FAILED: &str = "Trellis can't watch this repository for changes, so changes made outside Trellis show up when its window regains focus or you press F5.";
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         // Only arrives through `Msg::Scoped`, so it is for the active tab.
-        Msg::RepoChanged { full, last_event } => {
+        WatchMsg::RepoChanged { full, last_event } => {
             if !st.settings.watch_files || st.snap.is_none() {
                 return;
             }
@@ -32,7 +32,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 super::repo::refresh_status(st, fx);
             }
         }
-        Msg::WatchFailed { workdir, error } => {
+        WatchMsg::WatchFailed { workdir, error } => {
             tracing::warn!("file watching failed for {}: {error}", workdir.display());
             // Reported once per repository; it is retried (silently) when its tab is selected again.
             if st.watch.failed.insert(workdir.clone()) {
@@ -41,7 +41,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 st.log_quiet(false, format!("File watching stopped for {}: {error}", workdir.display()));
             }
         }
-        _ => {}
     }
 }
 

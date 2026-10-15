@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::runner;
 use crate::state::undo::{MAX_UNDO, UndoHistory};
 use crate::state::{AppState, RunningJob};
@@ -32,7 +33,7 @@ fn last_toast(st: &AppState) -> (bool, String) {
 fn committed(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     st.draft.summary = "Second line".into();
     drive(&mut st, Msg::Commit);
@@ -84,7 +85,7 @@ fn commit_then_undo_and_redo_end_to_end() {
 fn git_jobs_record_their_kind() {
     let dir = scratch_repo("undo-kinds");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     st.draft.summary = "Commit me".into();
     let fx = update(&mut st, Msg::Commit, Instant::now());
@@ -147,7 +148,7 @@ fn hard_reset_undo_refused_while_dirty_then_allowed() {
 fn stale_history_is_cleared() {
     let dir = scratch_repo("undo-stale");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     git(&dir, &["branch", "feature"]);
     drive(&mut st, Msg::git("Checkout", &["checkout", "feature"]));
     assert_eq!(st.undo.undo.len(), 1);
@@ -164,7 +165,7 @@ fn stale_history_is_cleared() {
 fn discard_all_is_undoable_end_to_end() {
     let dir = scratch_repo("undo-discard");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]));
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.is_dirty());
@@ -188,7 +189,7 @@ fn delete_branch_undo_restores_branch() {
     let dir = scratch_repo("undo-branch");
     let mut st = state();
     git(&dir, &["branch", "feature"]);
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let tip = st.snap.as_ref().unwrap().head_oid;
     drive(&mut st, Msg::git("Delete branch", &["branch", "-d", "feature"]));
     assert!(!st.snap.as_ref().unwrap().locals.iter().any(|b| b.name == "feature"));
@@ -201,8 +202,8 @@ fn delete_branch_undo_restores_branch() {
 fn undo_result_lands_in_its_own_tab() {
     let (a, b) = (scratch_repo("undo-tab-a"), scratch_repo("undo-tab-b"));
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     drive(&mut st, Msg::SelectTab(0));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     st.draft.summary = "Second line".into();
@@ -234,7 +235,7 @@ fn undo_requires_idle_and_history() {
     assert!(update(&mut st, Msg::Redo, Instant::now()).is_empty());
 
     let dir = scratch_repo("undo-idle");
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.undo.record(dummy(0));
     st.job = Some(RunningJob {
         label: "Fetch".into(),
@@ -253,7 +254,7 @@ fn undo_requires_idle_and_history() {
     let snap = repo::load(&dir, &LoadOptions::all(100)).unwrap();
     let result = Ok(Box::new(snap));
     let generation = st.load_gen;
-    update(&mut st, Msg::RepoLoaded { generation, kind: LoadKind::Open, result }, Instant::now());
+    update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Open, result }), Instant::now());
     assert!(st.undo.undo.is_empty());
 
     let mut h = UndoHistory { redo: vec![dummy(99)], blocked: Some("Merge".into()), ..Default::default() };

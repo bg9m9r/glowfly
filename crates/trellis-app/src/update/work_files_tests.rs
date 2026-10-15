@@ -6,6 +6,7 @@ use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::files::PathForm;
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
@@ -295,7 +296,7 @@ fn end_to_end_create_delete_rename() {
     let dir = scratch_repo("wf-e2e");
     let mut st = state();
     st.settings.delete_to_trash = false;
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::NewFileDialog(String::new()));
     drive(&mut st, Msg::CreateFile("notes/todo.txt".into()));
     assert!(dir.join("notes/todo.txt").is_file());
@@ -326,7 +327,7 @@ fn end_to_end_unstage_and_delete() {
     git(&dir, &["add", "new.txt"]);
     let mut st = state();
     st.settings.delete_to_trash = false;
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.as_ref().unwrap().staged.contains(&entry("new.txt", 'A')));
 
     drive(&mut st, Msg::DeleteFile { path: "new.txt".into(), confirmed: false });

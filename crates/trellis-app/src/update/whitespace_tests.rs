@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::lines::LineClick::Only;
 use std::path::{Path, PathBuf};
@@ -80,8 +81,8 @@ fn whitespace_toggle_filters_a_real_repo() {
     let dir = ws_repo("ws-filter");
     let ws = DiffTarget::Unstaged("ws.txt".into());
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(ws.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(ws.clone())));
     assert!(hunks(&st) >= Some(1));
 
     drive(&mut st, Msg::SetIgnoreWhitespace(true));
@@ -93,7 +94,7 @@ fn whitespace_toggle_filters_a_real_repo() {
 
     // Opening a diff, and reloading it after a status refresh, both carry the setting.
     drive(&mut st, Msg::SetIgnoreWhitespace(true));
-    let fx = run(&mut st, Msg::OpenDiff(ws.clone()));
+    let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(ws.clone())));
     assert!(matches!(&fx[..], [Effect::LoadDiff { ignore_whitespace: true, reload: false, .. }]));
     for e in fx {
         let loaded = crate::runner::execute(e).expect("diff result");
@@ -112,8 +113,8 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
     git(&dir, &["config", "core.autocrlf", "false"]);
     let a = DiffTarget::Unstaged("a.txt".into());
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(a.clone())));
     drive(&mut st, Msg::SetIgnoreWhitespace(true));
     let g = st.hunk_ops_gen().expect("the reload landed");
     assert!(st.hunk_ops_blocked().is_some());
@@ -144,8 +145,8 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
 
     // Showing whitespace again re-enables hunk staging on the reloaded diff.
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(a.clone())));
     drive(&mut st, Msg::SetIgnoreWhitespace(true));
     drive(&mut st, Msg::SetIgnoreWhitespace(false));
     assert_eq!(st.hunk_ops_blocked(), None);
@@ -159,9 +160,9 @@ fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
 fn commit_diffs_block_revert_while_whitespace_is_hidden() {
     let dir = scratch_repo("ws-commit");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let head = st.snap.as_ref().unwrap().commits[0].oid;
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Commit(head, "a.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head, "a.txt".into()))));
     let fx = run(&mut st, Msg::SetIgnoreWhitespace(true));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, target: DiffTarget::Commit(..), .. })));
     assert_eq!(st.hunk_ops_blocked(), Some(crate::state::WHITESPACE_BLOCKS_REVERT));
@@ -173,12 +174,12 @@ fn a_load_started_before_the_toggle_is_dropped() {
     let dir = ws_repo("ws-late");
     let a = DiffTarget::Unstaged("a.txt".into());
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(a.clone())));
     let before = st.diff.clone();
 
     // ws.txt is requested with whitespace shown; the toggle lands before its result.
-    let held = run(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("ws.txt".into())));
+    let held = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("ws.txt".into()))));
     let toggled = run(&mut st, Msg::SetIgnoreWhitespace(true));
     for e in held {
         let late = crate::runner::execute(e).expect("diff result");

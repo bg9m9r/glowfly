@@ -33,7 +33,7 @@ pub enum Effect {
         generation: u64,
         kind: LoadKind,
         /// The snapshot on screen: when its `refs_key` still matches, only the status is read
-        /// (`Msg::RepoUnchanged`).
+        /// (`LoadMsg::RepoUnchanged`).
         known: Option<KnownRepo>,
     },
     LoadStatus {
@@ -41,7 +41,7 @@ pub enum Effect {
         generation: u64,
         /// The last load found submodules: read them again even without a .gitmodules.
         submodules: bool,
-        /// The file whose working-tree or index diff is open, for `Msg::StatusLoaded::open_stamp`.
+        /// The file whose working-tree or index diff is open, for `LoadMsg::StatusLoaded::open_stamp`.
         open: Option<String>,
     },
     LoadDetail {

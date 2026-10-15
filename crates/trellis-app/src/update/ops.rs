@@ -80,9 +80,6 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
         }
         Msg::Push { force } => push(st, force, fx),
         Msg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),
-        Msg::InitRepo => {
-            fx.push(Effect::PickFolder { title: "Initialize a repository in…".into(), purpose: crate::msg::FolderPurpose::InitRepo })
-        }
         Msg::CloneRepo(req) => {
             // The dialog blocks these; checked again so no other sender can start a bad clone.
             if req.name.is_empty() || trellis_core::remote_ops::check_url(&req.url).is_err() {

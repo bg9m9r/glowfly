@@ -1,5 +1,5 @@
 //! Avatar textures for the graph and commit details. Views ask with `get`; the shell sends the
-//! new requests as `Msg::WantAvatars` and hands the fetched images back through `insert`.
+//! new requests as `AvatarMsg::WantAvatars` and hands the fetched images back through `insert`.
 
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions};
 use std::borrow::Cow;

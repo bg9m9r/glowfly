@@ -3,14 +3,20 @@
 //! under the pointer.
 
 use crate::effect::{Effect, LoadKind};
-use crate::msg::Msg;
+use crate::msg::GraphMsg;
 use crate::state::AppState;
 use crate::state::branches::HEAD_ALWAYS_SHOWN;
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::FilterOp;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, fx: &mut Vec<Effect>) {
-    let Msg::GraphFilter(op) = msg else { return };
+pub(super) fn handle(st: &mut AppState, msg: GraphMsg, fx: &mut Vec<Effect>) {
+    match msg {
+        GraphMsg::GraphFilter(op) => filter(st, op, fx),
+        GraphMsg::HoverRef(tip) => hover_ref(st, tip),
+    }
+}
+
+fn filter(st: &mut AppState, op: FilterOp, fx: &mut Vec<Effect>) {
     let Some(w) = st.workdir() else { return };
     // HEAD is always walked, so hiding its branch would only drop the label. The menu disables
     // the item; a late message is refused with the same reason.
@@ -71,7 +77,7 @@ fn ref_exists(snap: &Snapshot, r: &str) -> bool {
 
 /// Highlights the rows of the branch whose tip is `tip` (none for `None`). The default branch's
 /// history is walked once per snapshot, on the first hover.
-pub(super) fn hover_ref(st: &mut AppState, tip: Option<git2::Oid>) {
+fn hover_ref(st: &mut AppState, tip: Option<git2::Oid>) {
     let (Some(tip), Some(snap)) = (tip, st.snap.as_ref()) else {
         st.view.highlight = None;
         return;

@@ -3,6 +3,7 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::DiffTarget;
@@ -26,7 +27,7 @@ fn repo_with_override(name: &str) -> PathBuf {
 
 fn opened(dir: &Path) -> AppState {
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.to_path_buf()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.to_path_buf())));
     st
 }
 
@@ -36,9 +37,9 @@ fn commit_and_working_diffs_use_gitattributes_language() {
     let mut st = opened(&dir);
     let head = st.snap.as_ref().unwrap().commits[0].oid;
 
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Commit(head, "lib.inc".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head, "lib.inc".into()))));
     assert_eq!(syntax(&st).as_deref(), Some("Rust"), "the commit's diff");
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("lib.inc".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("lib.inc".into()))));
     assert_eq!(syntax(&st).as_deref(), Some("Rust"), "the working tree's diff");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -47,17 +48,17 @@ fn commit_and_working_diffs_use_gitattributes_language() {
 fn editing_gitattributes_changes_language_on_reload() {
     let dir = repo_with_override("lang-reload");
     let mut st = opened(&dir);
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("lib.inc".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("lib.inc".into()))));
     assert_eq!(syntax(&st).as_deref(), Some("Rust"));
 
     std::fs::write(dir.join(".gitattributes"), "*.inc linguist-language=Python\n").unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(st.diff.as_ref().map(|(t, _)| t.path()), Some("lib.inc"), "still open");
     assert_eq!(syntax(&st).as_deref(), Some("Python"), "the Rust spans are not adopted");
 
     // Out of the index too: with no working tree copy, the index's attributes apply.
     git(&dir, &["rm", "-q", "-f", ".gitattributes"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(syntax(&st).as_deref(), Some("x86_64 Assembly"), "back to detection by extension");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -70,7 +71,7 @@ fn jsx_working_diff_is_highlighted() {
     git(&dir, &["commit", "-q", "-m", "jsx"]);
     std::fs::write(dir.join("App.jsx"), "const App = () => <div className=\"x\">{1}</div>;\n").unwrap();
     let mut st = opened(&dir);
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("App.jsx".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("App.jsx".into()))));
     assert_eq!(syntax(&st).as_deref(), Some("TypeScriptReact"));
     let _ = std::fs::remove_dir_all(&dir);
 }

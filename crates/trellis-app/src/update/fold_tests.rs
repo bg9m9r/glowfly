@@ -7,6 +7,7 @@ use super::update;
 use super::whole_file_tests::{blocks, three_changes, with_diff};
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use std::time::Instant;
 use trellis_core::diff_rows::{DiffRow, SplitRow};
@@ -49,7 +50,7 @@ fn late_changes() -> FileDiff {
 /// Delivers `d` for `target` as the result of the request in flight.
 fn arrive(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
     let generation = st.diff_gen;
-    run(st, Msg::DiffLoaded { target, reload, generation, result });
+    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result }));
 }
 
 #[test]
@@ -122,13 +123,13 @@ fn folds_reset_only_for_another_file() {
     assert!(st.view.diff_expanded.contains(key), "a reopen of the same file (mode or whitespace switch)");
 
     let g = DiffTarget::Unstaged("g.txt".into());
-    run(&mut st, Msg::OpenDiff(g.clone()));
+    run(&mut st, Msg::Repo(RepoMsg::OpenDiff(g.clone())));
     assert!(st.view.diff_expanded.contains(key), "f.txt is still on screen");
     arrive(&mut st, g.clone(), false, Ok(three_changes(true)));
     assert!(st.view.diff_expanded.is_empty(), "another file arrived");
 
     open(&mut st);
-    run(&mut st, Msg::CloseDiff);
+    run(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     assert!(st.view.diff_expanded.is_empty(), "the diff closed");
 
     st.diff = Some((g.clone(), three_changes(true).into()));
@@ -179,7 +180,7 @@ fn stepping_counts_folds() {
         run(&mut st, Msg::ExpandUnchanged(key));
         assert!(!st.view.diff_expanded.is_empty());
         let g = DiffTarget::Unstaged("g.txt".into());
-        run(&mut st, Msg::OpenDiff(g.clone()));
+        run(&mut st, Msg::Repo(RepoMsg::OpenDiff(g.clone())));
         arrive(&mut st, g, false, Ok(late_changes()));
         let row = blocks(&late_changes(), layout)[0];
         assert_eq!(st.view.diff_scroll_to_row, Some(row), "{layout:?}");
@@ -192,7 +193,7 @@ fn stepping_counts_folds() {
 fn folds_are_parked_with_their_tab() {
     let dir = scratch_repo("fold-tabs");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.settings.diff_mode = DiffMode::WholeFile;
     st.settings.diff_layout = DiffLayout::Inline;
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), three_changes(true).into()));

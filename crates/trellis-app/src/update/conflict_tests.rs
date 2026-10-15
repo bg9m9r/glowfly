@@ -4,6 +4,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LocalOp};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use std::path::{Path, PathBuf};
@@ -33,7 +34,7 @@ pub(super) fn conflicted_repo(name: &str) -> PathBuf {
 fn opened(name: &str) -> (AppState, PathBuf) {
     let dir = conflicted_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::OpenConflict("a.txt".into()));
     (st, dir)
 }
@@ -85,7 +86,7 @@ fn opening_a_conflicted_file_loads_the_chunks() {
 fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
     let dir = conflicted_repo("conflict-vs-diff");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.diff = Some((
         DiffTarget::Unstaged("a.txt".into()),
         FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }.into(),
@@ -96,7 +97,7 @@ fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
         other => panic!("expected a conflict load, got {other:?}"),
     }
     assert!(st.diff.is_none() && st.conflict.is_some());
-    update(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("a.txt".into())), Instant::now());
+    update(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))), Instant::now());
     assert!(st.conflict.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

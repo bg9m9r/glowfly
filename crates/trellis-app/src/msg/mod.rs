@@ -1,6 +1,6 @@
 //! Everything that can happen: user intents from views and results from background effects.
 
-use crate::effect::{FileOp, ForgeReply, LoadKind, UndoResult, WorkFileOk};
+use crate::effect::{FileOp, ForgeReply, UndoResult, WorkFileOk};
 use crate::state::PrefPage;
 use crate::state::lines::LineClick;
 use crate::state::prefs::GitConfigValues;
@@ -13,10 +13,14 @@ use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
 use trellis_core::gitcli::args;
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::rebase::{Outcome, RebaseAction, RebaseBase, RebasePlan};
-use trellis_core::repo::{
-    CommitDetail, Comparison, ConflictFile, DiffTarget, FileDiff, FileEntry, FileHistory, HunkOp, RestoredFrom, Side, Snapshot,
-};
-use trellis_core::settings::{DiffLayout, DiffMode, FilterOp, ThemeChoice, TrackerChoice};
+use trellis_core::repo::{ConflictFile, DiffTarget, FileHistory, HunkOp, RestoredFrom, Side};
+use trellis_core::settings::{DiffLayout, DiffMode, ThemeChoice, TrackerChoice};
+
+mod graph;
+mod repo;
+
+pub use graph::{AvatarMsg, GraphMsg, SelectionMsg};
+pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 
 /// What a folder picker was opened for.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -38,25 +42,12 @@ pub enum FilePurpose {
 
 pub enum Msg {
     // ---- repository
-    PickRepo,
-    Open(PathBuf),
-    Refresh,
-    WindowFocused,
+    /// Opening the repository, selecting a commit or the working tree, the open diff (update/repo.rs).
+    Repo(RepoMsg),
     /// Once per frame: drives auto-fetch and expiring toasts.
     Tick(Instant),
-    SelectWip,
-    SelectCommit(Oid),
-    /// Ctrl/Cmd-click on a graph row: add or remove the commit from the selection.
-    ToggleCommit(Oid),
-    /// Shift-click on a graph row: select every row from the anchor to this commit.
-    SelectCommitRange(Oid),
-    /// Esc: back to the one commit the multi-selection started from.
-    CollapseSelection,
-    /// Cherry-pick these commits onto HEAD, oldest first (the order is decided in update).
-    CherryPick(Vec<Oid>),
-    JumpTo(Oid),
-    OpenDiff(DiffTarget),
-    CloseDiff,
+    /// Selecting several commits, comparing and cherry-picking them (update/selection.rs).
+    Selection(SelectionMsg),
     /// Switch the diff between one column and side by side (saved in settings).
     SetDiffLayout(DiffLayout),
     /// Switch the diff between hunks only and the whole file (saved in settings).
@@ -83,13 +74,10 @@ pub enum Msg {
         how: LineClick,
     },
     ClearLineSelection,
-    SearchNext,
-    /// The graph shows these commits and needs their line counts.
-    WantStats(Vec<Oid>),
-    /// Show more of the history than the commit limit (the graph's "Load more").
-    LoadMoreCommits,
-    /// Views asked for these authors' avatars (lowercased emails, each asked for once).
-    WantAvatars(Vec<String>),
+    /// Refresh results and loading more history (update/refresh.rs).
+    Load(LoadMsg),
+    /// Author avatars (update/avatars.rs).
+    Avatars(AvatarMsg),
 
     // ---- conflicts
     OpenConflict(String),
@@ -285,13 +273,12 @@ pub enum Msg {
     /// Undo the active tab's most recent undoable operation.
     Undo,
     Redo,
-    InitRepo,
     /// Clone a repository into a folder (the Clone dialog's request, options included).
     CloneRepo(crate::state::clone::CloneRequest),
 
     // ---- branches
-    /// Hide, show or solo a ref in the active repository's graph (saved per repository).
-    GraphFilter(FilterOp),
+    /// Hidden and soloed refs and the hovered ref (update/graph_filter.rs).
+    Graph(GraphMsg),
     /// Open the rename dialog for local branch `.0`.
     RenameBranchDialog(String),
     /// `git branch -m old new`.
@@ -461,45 +448,6 @@ pub enum Msg {
     CancelCredentials,
 
     // ---- results from effects
-    RepoLoaded {
-        generation: u64,
-        kind: LoadKind,
-        result: Result<Box<Snapshot>, String>,
-    },
-    /// A refresh found refs, HEAD, config and worktrees as the snapshot has them: only the
-    /// status was read (as for `StatusLoaded`).
-    RepoUnchanged {
-        generation: u64,
-        result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
-        submodules: Option<Vec<trellis_core::repo::SubmoduleInfo>>,
-        open_stamp: Option<u64>,
-    },
-    StatusLoaded {
-        generation: u64,
-        result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
-        /// The submodules read again; None when the repository has none (or they couldn't be read).
-        submodules: Option<Vec<trellis_core::repo::SubmoduleInfo>>,
-        /// `repo::open_file_stamp` of the file asked about; while it stays the same, the open
-        /// diff isn't read again.
-        open_stamp: Option<u64>,
-    },
-    DetailLoaded {
-        oid: Oid,
-        result: Result<CommitDetail, String>,
-    },
-    /// The files that differ from commit `from` (older) to `to` (newer), with which of them are
-    /// missing from the working tree.
-    CompareLoaded {
-        from: Oid,
-        to: Oid,
-        result: Result<Comparison, String>,
-    },
-    DiffLoaded {
-        target: DiffTarget,
-        reload: bool,
-        generation: u64,
-        result: Result<FileDiff, String>,
-    },
     /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
     /// at `generation`, each only where it was pending. Applied only while that diff is still on
     /// screen.
@@ -551,12 +499,6 @@ pub enum Msg {
         token: Option<(Option<String>, String)>,
         result: Result<String, String>,
     },
-    StatsLoaded(Vec<(Oid, usize, usize, usize)>),
-    /// Stats asked for but not worked out: a newer request came first (the graph scrolled on).
-    /// They can be asked for again.
-    StatsDropped(Vec<Oid>),
-    /// Fetched avatars; `None` when an author has none (the view shows initials).
-    AvatarsLoaded(Vec<(String, Option<trellis_core::avatars::Image>)>),
     GitConfigLoaded(GitConfigValues),
     FilePicked {
         purpose: FilePurpose,
@@ -574,22 +516,10 @@ pub enum Msg {
         workdir: PathBuf,
         msg: Box<Msg>,
     },
-    /// Files changed outside Trellis (debounced). Sent wrapped in `Msg::Scoped` for the watched
-    /// repository; `full` when HEAD, refs or a merge/rebase state changed; `last_event` is when
-    /// the burst's last relevant event arrived.
-    RepoChanged {
-        full: bool,
-        last_event: Instant,
-    },
-    /// The file watcher could not start or stopped working for `workdir`.
-    WatchFailed {
-        workdir: PathBuf,
-        error: String,
-    },
+    /// The file watcher's reports (update/watch.rs).
+    Watch(WatchMsg),
     /// The settings file couldn't be read at startup (it was backed up); shown once.
     SettingsUnreadable(String),
-    /// The ref under the pointer changed (`None`: no ref): highlight its branch's rows.
-    HoverRef(Option<Oid>),
     /// The activity log's Clear button.
     ClearLog,
     /// A line for the activity log from a background effect.

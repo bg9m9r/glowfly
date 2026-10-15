@@ -8,6 +8,7 @@ use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::{fetch_blocked, find, tooltip};
 use crate::state::{ForgeState, Selection};
@@ -73,7 +74,7 @@ pub(in crate::ui) fn section(
             if r.double_clicked() {
                 msgs.push(Msg::git("Checkout", &["checkout", "--track", &full]));
             } else if r.clicked() {
-                msgs.push(Msg::JumpTo(*oid));
+                msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
             }
             ref_visibility::row_marker(ui, &r, 20.0, &format!("refs/remotes/{full}"), &full, c.graph, msgs);
             r.context_menu(|ui| remote_branch_menu(ui, remote, name, c.current, c.fs, c.graph, msgs));

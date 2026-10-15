@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
 use crate::state::{AppState, Selection};
@@ -38,7 +39,7 @@ fn empty_diff() -> FileDiff {
 fn opened(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     (st, dir)
 }
 
@@ -80,7 +81,7 @@ fn file_history_end_to_end_with_rename() {
     git(&dir, &["mv", "a.txt", "b.txt"]);
     git(&dir, &["commit", "-q", "-m", "rename a to b"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     drive(&mut st, Msg::OpenFileHistory { path: "b.txt".into(), at: Some(head) });
     let view = st.history.as_ref().expect("view open");
@@ -201,9 +202,9 @@ fn other_views_close_file_history() {
     };
     let snap = Box::new(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     let msgs = [
-        Msg::OpenDiff(DiffTarget::Commit(head, "a.txt".into())),
-        Msg::SelectCommit(head),
-        Msg::JumpTo(head),
+        Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head, "a.txt".into()))),
+        Msg::Repo(RepoMsg::SelectCommit(head)),
+        Msg::Repo(RepoMsg::JumpTo(head)),
         Msg::OpenConflict("a.txt".into()),
     ];
     for m in msgs {
@@ -213,7 +214,7 @@ fn other_views_close_file_history() {
     }
     let before = reopen(&mut st);
     st.loading = true;
-    let m = Msg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Open, result: Ok(snap) };
+    let m = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Open, result: Ok(snap) });
     update(&mut st, m, Instant::now());
     assert!(st.history.is_none() && st.history_gen > before);
 
@@ -241,10 +242,10 @@ fn history_error_is_shown_and_logged() {
 fn tab_switch_parks_file_history() {
     let (a, b) = (scratch_repo("history-tab-a"), scratch_repo("history-tab-b"));
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
     let first = st.history_gen;
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert!(st.history.is_none(), "B has no history open");
     let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
     let v = st.history.as_ref().expect("restored");
@@ -277,7 +278,7 @@ fn run(st: &mut AppState, effect: Effect) {
 fn tab_switch_reloads_the_selected_entrys_diff() {
     let (a, b) = (scratch_repo("history-tab-diff-a"), scratch_repo("history-tab-diff-b"));
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     let fx = update(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None }, Instant::now());
     // The walk lands, selecting entry 0 and asking for its diff, which is still in flight
     // when the user switches tabs: its result is dropped.
@@ -287,7 +288,7 @@ fn tab_switch_reloads_the_selected_entrys_diff() {
     }
     assert_eq!(st.history.as_ref().unwrap().selected, Some(0));
     assert!(st.diff.is_none());
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     let fx = update(&mut st, Msg::SelectTab(0), Instant::now());
     let want = selected_target(&st);
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { target, .. } if *target == want));
@@ -302,13 +303,13 @@ fn a_refresh_does_not_supersede_the_selected_entrys_diff() {
     let dir = scratch_repo("history-refresh-diff");
     git(&dir, &["commit", "-q", "-am", "edit a"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::OpenFileHistory { path: "a.txt".into(), at: None });
     assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 0 on screen");
     // Entry 1's diff is in flight when a refresh (window focus, file watcher) reloads the diff.
     let fx = update(&mut st, Msg::SelectHistoryEntry(1), Instant::now());
     let [pending] = <[Effect; 1]>::try_from(fx).unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     run(&mut st, pending);
     assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(selected_target(&st)), "entry 1 on screen");
     let _ = std::fs::remove_dir_all(&dir);

@@ -7,6 +7,7 @@ use super::file_menu::RowSource;
 use super::menus::{cherry_pick_button, copy_shas};
 use super::theme::color;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::lfs::TrackContext;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, RichText};
@@ -37,7 +38,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(short(oid)).monospace().color(color::weak()));
                     if ui.selectable_label(false, &snap.commits[row].summary).clicked() {
-                        msgs.push(Msg::SelectCommit(oid));
+                        msgs.push(Msg::Repo(RepoMsg::SelectCommit(oid)));
                     }
                 });
             }

@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::commit::pushes_after;
 use crate::state::{AppState, RunningJob};
 use std::path::Path;
@@ -49,7 +50,7 @@ fn stage_all_and_commit_end_to_end() {
     let dir = scratch_repo("commit-stage-all");
     std::fs::write(dir.join("b.txt"), "new\n").unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.as_ref().unwrap().staged.is_empty());
     st.draft.summary = "Everything".into();
     let fx = update(&mut st, Msg::StageAllAndCommit, Instant::now());
@@ -70,7 +71,7 @@ fn stage_all_and_commit_end_to_end() {
 fn shortcut_refusals_toast() {
     let dir = scratch_repo("commit-refusals");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let log_before = st.log.len();
     assert!(update(&mut st, Msg::Commit, Instant::now()).is_empty());
     assert_eq!(last_toast(&st), (false, "Write a summary for the commit.".into()));
@@ -100,7 +101,7 @@ fn skip_hooks_bypasses_failing_pre_commit() {
         std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
     }
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     let head = rev(&dir, "HEAD");
     st.draft.summary = "Hooked".into();
@@ -122,7 +123,7 @@ fn push_after_commit_sets_upstream() {
     let (mut st, work, bare) = with_origin("commit-push-after");
     git(&work, &["checkout", "-q", "-b", "topic"]);
     std::fs::write(work.join("a.txt"), "topic\n").unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     st.settings.push_after_commit = true;
     st.draft.summary = "Topic work".into();
@@ -136,7 +137,7 @@ fn push_after_commit_sets_upstream() {
     // A branch with an upstream is pushed to it.
     git(&work, &["checkout", "-q", "main"]);
     std::fs::write(work.join("a.txt"), "main\n").unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     st.draft.summary = "Main work".into();
     drive(&mut st, Msg::Commit);
@@ -151,7 +152,7 @@ fn push_after_commit_sets_upstream() {
 fn no_push_when_commit_fails_or_tab_changed() {
     let dir = scratch_repo("commit-no-push");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.settings.push_after_commit = true;
     let job = |workdir| RunningJob {
         label: "Commit".into(),
@@ -176,7 +177,7 @@ fn no_push_when_commit_fails_or_tab_changed() {
 
     // Nothing to push from a detached HEAD.
     git(&dir, &["checkout", "-q", "--detach"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     assert!(!pushes_after(&st));
     st.draft.summary = "Detached".into();
@@ -190,7 +191,7 @@ fn template_prefills_and_strips_comments() {
     let dir = scratch_repo("commit-template");
     set_template(&dir, "\n\n# Explain why\n");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert_eq!((st.draft.summary.as_str(), st.draft.description.as_str()), ("", "# Explain why"));
     assert!(st.draft.template.is_some());
 
@@ -205,7 +206,7 @@ fn template_prefills_and_strips_comments() {
     // A draft the user cleared isn't prefilled again.
     st.draft.summary.clear();
     st.draft.description.clear();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(st.draft.is_empty());
     cleanup(&dir);
 }
@@ -216,7 +217,7 @@ fn template_keeps_issue_mentions() {
     set_template(&dir, "\n\n# Explain why\n");
     git(&dir, &["config", "commit.cleanup", "strip"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.draft.summary = "#42 Fix login".into();
     // What the "Link #123" button sends.
     drive(&mut st, Msg::AppendToDescription("#123".into()));
@@ -232,7 +233,7 @@ fn untouched_template_refused() {
     let dir = scratch_repo("commit-template-untouched");
     set_template(&dir, "feat: \n\n# body\n");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     assert_eq!(st.draft.summary, "feat:");
     assert!(update(&mut st, Msg::Commit, Instant::now()).is_empty());
@@ -245,7 +246,7 @@ fn amend_replaces_untouched_template() {
     let dir = scratch_repo("commit-template-amend");
     set_template(&dir, "feat: \n\n# body\n");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.draft.is_untouched_template());
     st.draft.amend = true;
     drive(&mut st, Msg::PrefillAmend);
@@ -259,7 +260,7 @@ fn undo_restores_message_over_template() {
     let dir = scratch_repo("commit-template-undo");
     set_template(&dir, "feat: \n\n# body\n");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::StageFile("a.txt".into()));
     st.draft.summary = "feat: second line".into();
     drive(&mut st, Msg::Commit);

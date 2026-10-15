@@ -49,7 +49,7 @@ pub struct KnownRepo {
     pub refs_key: u64,
     /// The snapshot has submodules: read them again even without a .gitmodules.
     pub submodules: bool,
-    /// The file whose working-tree or index diff is open, for `Msg::RepoUnchanged::open_stamp`.
+    /// The file whose working-tree or index diff is open, for `LoadMsg::RepoUnchanged::open_stamp`.
     pub open: Option<String>,
 }
 

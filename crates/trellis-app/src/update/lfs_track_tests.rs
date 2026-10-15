@@ -7,6 +7,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::lfs::{CHECKING, LfsInstall, NOT_INSTALLED_MENU, ONLY_THIS_FILE, TrackContext, track_items};
 use crate::state::{AppState, PrefPage};
 use std::path::{Path, PathBuf};
@@ -22,7 +23,7 @@ fn lfs(st: &mut AppState, m: LfsMsg) -> Vec<Effect> {
 fn open(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.is_some());
     (st, dir)
 }
@@ -185,7 +186,7 @@ fn track_path_end_to_end() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "art"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Lfs(LfsMsg::Detect));
     assert!(matches!(st.lfs_install, LfsInstall::Installed(_)), "{:?}", st.lfs_install);
     assert!(track_items("art/a.psd", TrackContext::of(&st))[1].blocked.is_none());

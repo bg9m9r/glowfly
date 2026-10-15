@@ -9,7 +9,11 @@
 
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, LocalOp, UndoResult};
 use crate::lfs::LfsMsg;
+use crate::msg::AvatarMsg;
+use crate::msg::LoadMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
+use crate::msg::SelectionMsg;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -162,21 +166,23 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
                 let result = repo::status_at(&path).map_err(err);
                 let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
-                return Some(Msg::RepoUnchanged { generation, result, submodules, open_stamp });
+                return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp }));
             }
             let result =
                 repo::load_cached(&path, &opts, graph_cache).map(Box::new).map_err(|e| format!("Could not open {}: {e}", path.display()));
-            Some(Msg::RepoLoaded { generation, kind, result })
+            Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result }))
         }
         Effect::LoadStatus { workdir, generation, submodules, open } => {
             let open_stamp = open.and_then(|p| repo::open_file_stamp(&workdir, &p));
             let result = repo::status_at(&workdir).map_err(err);
             let submodules = repo::submodules_if_any(&workdir, submodules).ok().flatten();
-            Some(Msg::StatusLoaded { generation, result, submodules, open_stamp })
+            Some(Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp }))
         }
-        Effect::LoadDetail { workdir, oid } => Some(Msg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }),
+        Effect::LoadDetail { workdir, oid } => {
+            Some(Msg::Repo(RepoMsg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }))
+        }
         Effect::LoadCompare { workdir, from, to } => {
-            Some(Msg::CompareLoaded { from, to, result: repo::compare(&workdir, from, to).map_err(err) })
+            Some(Msg::Selection(SelectionMsg::CompareLoaded { from, to, result: repo::compare(&workdir, from, to).map_err(err) }))
         }
         Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file } => Some(highlight::load_job(
             workdir,
@@ -261,8 +267,8 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 .collect();
             (!failures.is_empty()).then(|| Msg::Logged { ok: false, text: failures.join("\n") })
         }
-        Effect::Stats { workdir, oids } => Some(Msg::StatsLoaded(repo::commit_stats(&workdir, &oids))),
-        Effect::FetchAvatars(emails) => Some(Msg::AvatarsLoaded(
+        Effect::Stats { workdir, oids } => Some(Msg::Repo(RepoMsg::StatsLoaded(repo::commit_stats(&workdir, &oids)))),
+        Effect::FetchAvatars(emails) => Some(Msg::Avatars(AvatarMsg::AvatarsLoaded(
             emails
                 .into_iter()
                 .map(|e| {
@@ -270,7 +276,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                     (e, img)
                 })
                 .collect(),
-        )),
+        ))),
         Effect::ReadGitConfig { cwd, has_repo } => Some(Msg::GitConfigLoaded(config::read_git_config(&cwd, has_repo))),
         Effect::SetGitConfig { cwd, global, key, value } => {
             let scope = if global { "--global" } else { "--local" };

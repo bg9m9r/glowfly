@@ -5,6 +5,8 @@ use super::tests::{drive, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
+use crate::msg::SelectionMsg;
 use crate::runner;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
@@ -82,7 +84,7 @@ pub(super) fn fixture(name: &str) -> (AppState, Fixture) {
     c[4] = commit_on(&dir, "c5", 6);
 
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let rows: Vec<Oid> = st.snap.as_ref().unwrap().commits.iter().map(|c| c.oid).collect();
     assert_eq!(rows, [c[4], c[3], side, c[2], c[1], c[0]], "the side commit is drawn between c4 and c3");
     (st, Fixture { dir, c, side })
@@ -109,7 +111,7 @@ fn loads_detail(fx: &[Effect], oid: Oid) -> bool {
 
 /// Refreshes the repository and returns the effects of applying the new snapshot.
 pub(super) fn refresh(st: &mut AppState) -> Vec<Effect> {
-    let fx = up(st, Msg::Refresh);
+    let fx = up(st, Msg::Repo(RepoMsg::Refresh));
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })).expect("a refresh load");
     let loaded = runner::execute(load).unwrap();
     up(st, loaded)
@@ -118,15 +120,15 @@ pub(super) fn refresh(st: &mut AppState) -> Vec<Effect> {
 #[test]
 fn ctrl_click_builds_and_shrinks_a_selection() {
     let (mut st, f) = fixture("multi-ctrl");
-    up(&mut st, Msg::SelectCommit(f.c(5)));
-    let fx = up(&mut st, Msg::ToggleCommit(f.c(3)));
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     let m = multi(&st);
     assert_eq!((m.oids.clone(), m.anchor), (vec![f.c(5), f.c(3)], f.c(3)));
     assert!(st.detail.is_none());
     assert_eq!(compares(&fx), [(f.c(3), f.c(5))]);
     assert_eq!(fx.len(), 1);
 
-    let fx = up(&mut st, Msg::ToggleCommit(f.c(3)));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     assert_eq!(st.selection, Selection::Commit(f.c(5)));
     assert!(loads_detail(&fx, f.c(5)));
     let _ = std::fs::remove_dir_all(&f.dir);
@@ -137,21 +139,21 @@ fn toggle_edge_cases() {
     let (mut st, f) = fixture("multi-toggle-edges");
     for start in [Selection::Wip, Selection::None] {
         st.selection = start;
-        let fx = up(&mut st, Msg::ToggleCommit(f.c(3)));
+        let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
         assert_eq!(st.selection, Selection::Commit(f.c(3)));
         assert!(loads_detail(&fx, f.c(3)));
     }
     // Toggling the only selected commit keeps it.
-    assert!(up(&mut st, Msg::ToggleCommit(f.c(3))).is_empty());
+    assert!(up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3)))).is_empty());
     assert_eq!(st.selection, Selection::Commit(f.c(3)));
     // An oid that is not a graph row does nothing, from one commit or several.
     let unknown = Oid::from_str("0123456789012345678901234567890123456789").unwrap();
-    assert!(up(&mut st, Msg::ToggleCommit(unknown)).is_empty());
-    assert!(up(&mut st, Msg::SelectCommitRange(unknown)).is_empty());
+    assert!(up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(unknown))).is_empty());
+    assert!(up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(unknown))).is_empty());
     assert_eq!(st.selection, Selection::Commit(f.c(3)));
-    up(&mut st, Msg::ToggleCommit(f.c(1)));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(1))));
     let before = st.selection.clone();
-    assert!(up(&mut st, Msg::ToggleCommit(unknown)).is_empty());
+    assert!(up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(unknown))).is_empty());
     assert_eq!(st.selection, before);
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -159,24 +161,24 @@ fn toggle_edge_cases() {
 #[test]
 fn shift_click_selects_graph_rows() {
     let (mut st, f) = fixture("multi-shift");
-    up(&mut st, Msg::SelectCommit(f.c(5)));
-    let fx = up(&mut st, Msg::SelectCommitRange(f.c(2)));
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(2))));
     let m = multi(&st);
     assert_eq!(m.oids, [f.c(5), f.c(4), f.side, f.c(3), f.c(2)], "rows drawn in between are included");
     assert_eq!(m.anchor, f.c(5));
     assert!(compares(&fx).is_empty(), "no file list for more than two commits");
 
-    let fx = up(&mut st, Msg::SelectCommitRange(f.c(4)));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(4))));
     let m = multi(&st);
     assert_eq!((m.oids.clone(), m.anchor), (vec![f.c(5), f.c(4)], f.c(5)));
     assert_eq!(compares(&fx), [(f.c(4), f.c(5))]);
 
-    let fx = up(&mut st, Msg::SelectCommitRange(f.c(5)));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(5))));
     assert_eq!(st.selection, Selection::Commit(f.c(5)));
     assert!(loads_detail(&fx, f.c(5)));
 
     st.selection = Selection::Wip;
-    up(&mut st, Msg::SelectCommitRange(f.c(3)));
+    up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(3))));
     assert_eq!(st.selection, Selection::Commit(f.c(3)));
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -184,39 +186,39 @@ fn shift_click_selects_graph_rows() {
 #[test]
 fn plain_select_and_collapse() {
     let (mut st, f) = fixture("multi-collapse");
-    up(&mut st, Msg::SelectCommit(f.c(5)));
-    up(&mut st, Msg::ToggleCommit(f.c(3)));
-    up(&mut st, Msg::SelectCommit(f.c(4)));
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(4))));
     assert_eq!(st.selection, Selection::Commit(f.c(4)));
 
-    up(&mut st, Msg::SelectCommit(f.c(5)));
-    up(&mut st, Msg::ToggleCommit(f.c(3)));
-    let fx = up(&mut st, Msg::CollapseSelection);
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection));
     assert_eq!(st.selection, Selection::Commit(f.c(3)), "back to the anchor");
     assert!(loads_detail(&fx, f.c(3)));
 
     // With the anchor deselected, the newest selected commit.
-    up(&mut st, Msg::SelectCommit(f.c(5)));
-    up(&mut st, Msg::ToggleCommit(f.c(3)));
-    up(&mut st, Msg::ToggleCommit(f.c(4)));
-    up(&mut st, Msg::ToggleCommit(f.c(4)));
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
     assert_eq!(multi(&st).anchor, f.c(4));
-    up(&mut st, Msg::CollapseSelection);
+    up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection));
     assert_eq!(st.selection, Selection::Commit(f.c(5)));
-    assert!(up(&mut st, Msg::CollapseSelection).is_empty());
+    assert!(up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection)).is_empty());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 
 #[test]
 fn selection_change_closes_views() {
     let (mut st, f) = fixture("multi-closes");
-    up(&mut st, Msg::SelectCommit(f.c(5)));
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.diff = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty.into()));
     st.conflict = Some(ConflictView::loading("f.txt".into()));
     st.history = Some(FileHistoryView::loading("f.txt".into(), None));
     let gen_before = st.diff_gen;
-    up(&mut st, Msg::ToggleCommit(f.c(3)));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     assert!(st.diff.is_none() && st.conflict.is_none() && st.history.is_none());
     assert!(st.diff_gen > gen_before, "a diff still loading must not reopen");
     let _ = std::fs::remove_dir_all(&f.dir);
@@ -225,11 +227,11 @@ fn selection_change_closes_views() {
 #[test]
 fn compare_results() {
     let (mut st, f) = fixture("multi-compare");
-    up(&mut st, Msg::SelectCommit(f.c(5)));
-    up(&mut st, Msg::ToggleCommit(f.c(3)));
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     let files = vec![FileEntry { path: "f.txt".into(), status: 'M' }];
     let c = Comparison { files, absent: ["f.txt".to_owned()].into() };
-    up(&mut st, Msg::CompareLoaded { from: f.c(3), to: f.c(5), result: Ok(c.clone()) });
+    up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(3), to: f.c(5), result: Ok(c.clone()) }));
     assert_eq!(multi(&st).changes, Some(Ok(c.clone())));
     // The same pair after a refresh keeps the list and what was missing from the working tree.
     match refreshed(multi(&st), st.snap.as_ref().unwrap()) {
@@ -237,9 +239,9 @@ fn compare_results() {
         other => panic!("{other:?}"),
     }
     // A result for another pair is stale.
-    up(&mut st, Msg::CompareLoaded { from: f.c(2), to: f.c(5), result: Ok(Comparison::default()) });
+    up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(2), to: f.c(5), result: Ok(Comparison::default()) }));
     assert_eq!(multi(&st).changes, Some(Ok(c)));
-    up(&mut st, Msg::CompareLoaded { from: f.c(3), to: f.c(5), result: Err("bad tree".into()) });
+    up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(3), to: f.c(5), result: Err("bad tree".into()) }));
     assert_eq!(multi(&st).changes, Some(Err("bad tree".into())));
     assert!(st.log.iter().any(|l| !l.ok && l.text == "bad tree"));
     let _ = std::fs::remove_dir_all(&f.dir);
@@ -248,14 +250,14 @@ fn compare_results() {
 #[test]
 fn two_commit_diff_end_to_end() {
     let (mut st, f) = fixture("multi-diff");
-    drive(&mut st, Msg::SelectCommit(f.c(5)));
-    drive(&mut st, Msg::ToggleCommit(f.c(3)));
+    drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     let c = multi(&st).changes.clone().unwrap().unwrap();
     assert_eq!(c.files, [FileEntry { path: "f.txt".into(), status: 'M' }]);
     assert!(c.absent.is_empty(), "f.txt is on disk");
 
     let target = DiffTarget::Between(f.c(3), f.c(5), "f.txt".into());
-    drive(&mut st, Msg::OpenDiff(target.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
     let (shown, diff) = st.diff.clone().expect("the diff opens");
     assert_eq!(shown, target);
     let changed: Vec<String> = diff
@@ -268,7 +270,8 @@ fn two_commit_diff_end_to_end() {
     assert_eq!(changed, ["-line 6", "+line 6 edited", "-line 8", "+line 8 edited"], "only the changes after the older commit");
 
     // A result from an older request is ignored.
-    let stale = Msg::DiffLoaded { target: target.clone(), reload: false, generation: st.diff_gen - 1, result: Err("old".into()) };
+    let stale =
+        Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload: false, generation: st.diff_gen - 1, result: Err("old".into()) });
     up(&mut st, stale);
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target));
 
@@ -286,8 +289,8 @@ fn two_commit_diff_end_to_end() {
 #[test]
 fn refresh_prunes_selection() {
     let (mut st, f) = fixture("multi-refresh");
-    drive(&mut st, Msg::SelectCommit(f.c(5)));
-    drive(&mut st, Msg::ToggleCommit(f.c(4)));
+    drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
     assert_eq!(multi(&st).pick_blocked, Some(PICK_BLOCKED_ON_HEAD));
     // HEAD moves to a branch without c4 and c5: they can be picked now. The pair is the same,
     // so its file list is kept.
@@ -297,7 +300,7 @@ fn refresh_prunes_selection() {
     assert!(multi(&st).changes.is_some() && compares(&fx).is_empty());
 
     git(&f.dir, &["checkout", "-q", "main"]);
-    drive(&mut st, Msg::ToggleCommit(f.c(3)));
+    drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     git(&f.dir, &["reset", "-q", "--hard", &f.c(4).to_string()]);
     let fx = refresh(&mut st);
     assert_eq!(multi(&st).oids, [f.c(4), f.c(3)]);
@@ -314,11 +317,11 @@ fn refresh_prunes_selection() {
 #[test]
 fn refresh_closes_the_diff_of_a_vanished_pair() {
     let (mut st, f) = fixture("multi-refresh-diff");
-    drive(&mut st, Msg::SelectCommit(f.c(5)));
-    drive(&mut st, Msg::ToggleCommit(f.c(3)));
-    drive(&mut st, Msg::ToggleCommit(f.c(4)));
-    drive(&mut st, Msg::ToggleCommit(f.c(5)));
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Between(f.c(3), f.c(4), "f.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
+    drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
+    drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(5))));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Between(f.c(3), f.c(4), "f.txt".into()))));
     assert!(st.diff.is_some());
     git(&f.dir, &["reset", "-q", "--hard", &f.c(3).to_string()]);
     refresh(&mut st);
@@ -330,11 +333,11 @@ fn refresh_closes_the_diff_of_a_vanished_pair() {
 #[test]
 fn multi_selection_survives_tab_switch() {
     let (mut st, f) = fixture("multi-tabs");
-    drive(&mut st, Msg::SelectCommit(f.c(5)));
+    drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     // The file list is still loading when the tab is switched away: its result is dropped.
-    up(&mut st, Msg::ToggleCommit(f.c(3)));
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     let other = super::tests::scratch_repo("multi-tabs-other");
-    drive(&mut st, Msg::Open(other.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(other.clone())));
     let fx = up(&mut st, Msg::SelectTab(0));
     assert_eq!(multi(&st).oids, [f.c(5), f.c(3)]);
     assert!(multi(&st).changes.is_none());

@@ -5,6 +5,7 @@ use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::keymap::{self, BindingId};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
 use eframe::egui::{self, Align, Layout, RichText};
@@ -140,7 +141,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         st.view.show_log = !st.view.show_log;
                     }
                     if tool(ui, Icon::Refresh, "Refresh", true).on_hover_text("F5").clicked() {
-                        msgs.push(Msg::Refresh);
+                        msgs.push(Msg::Repo(RepoMsg::Refresh));
                     }
                 });
             });
@@ -179,14 +180,14 @@ fn dropdown(ui: &mut egui::Ui, id: &str, width: f32, contents: impl FnOnce(&mut 
 
 fn repo_menu(ui: &mut egui::Ui, recent: &[PathBuf], msgs: &mut Vec<Msg>) {
     ui.set_min_width(260.0);
-    menu_item(msgs, ui, "Open…", Msg::PickRepo);
+    menu_item(msgs, ui, "Open…", Msg::Repo(RepoMsg::PickRepo));
     menu_item(msgs, ui, "Clone…", Msg::CloneDialog);
-    menu_item(msgs, ui, "Init…", Msg::InitRepo);
+    menu_item(msgs, ui, "Init…", Msg::Repo(RepoMsg::InitRepo));
     if !recent.is_empty() {
         ui.separator();
         ui.label(RichText::new("Recent").color(color::weak()));
         for p in recent {
-            menu_item(msgs, ui, p.display().to_string(), Msg::Open(p.clone()));
+            menu_item(msgs, ui, p.display().to_string(), Msg::Repo(RepoMsg::Open(p.clone())));
         }
     }
 }

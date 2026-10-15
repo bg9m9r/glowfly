@@ -7,6 +7,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::runner;
 use std::time::Instant;
 use trellis_core::highlight::{self, DiffHighlight, Span, TokenKind};
@@ -48,8 +49,8 @@ fn small_diff_colors_header_context_inline() {
     git(&dir, &["commit", "-q", "-m", "rust"]);
     std::fs::write(dir.join("main.rs"), body(60)).unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    let held = drive_holding_highlights(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("main.rs".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let held = drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
     assert!(held.is_empty(), "small: no background pass");
     let d = shown(&st);
     let header = &d.hunks[0].header;
@@ -81,8 +82,8 @@ fn big_diff_headers_plain_then_colored() {
 fn reload_carries_header_spans() {
     let dir = big_repo("hl-header-reload");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(big()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     let before = headers(shown(&st));
     assert!(before.iter().all(|s| has(s, TokenKind::Keyword)));
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
@@ -109,8 +110,8 @@ fn whole_file_view_colors_block_headers() {
     let dir = big_repo("hl-header-whole");
     let mut st = state();
     st.settings.diff_mode = DiffMode::WholeFile;
-    drive(&mut st, Msg::Open(dir.clone()));
-    let mut held = drive_holding_highlights(&mut st, Msg::OpenDiff(big()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let mut held = drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     assert!(shown(&st).whole.is_some(), "the whole file is loaded");
     finish_held(&mut st, &mut held);
     // The Block rows show the normal hunks' headers, colored from the normal diff's highlight.
@@ -134,8 +135,8 @@ fn plain_text_header_stays_plain() {
     git(&dir, &["commit", "-q", "-m", "list"]);
     std::fs::write(dir.join("list.txt"), body("item eight")).unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("list.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("list.txt".into()))));
     let d = shown(&st);
     assert!(highlight::context_start(&d.hunks[0].header).is_some(), "{}", d.hunks[0].header);
     assert!(d.highlight.is_none());

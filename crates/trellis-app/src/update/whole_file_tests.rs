@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LocalOp};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::history::FileHistoryView;
 use crate::state::lines::LineClick::Only;
 use crate::state::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
@@ -55,7 +56,7 @@ pub(super) fn with_diff(name: &str, diff: FileDiff) -> (AppState, PathBuf) {
 /// Delivers `d` as the result of the diff request in flight.
 fn arrive(st: &mut AppState, target: DiffTarget, d: FileDiff) {
     let generation = st.diff_gen;
-    run(st, Msg::DiffLoaded { target, reload: false, generation, result: Ok(d) });
+    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: false, generation, result: Ok(d) }));
 }
 
 #[test]
@@ -94,14 +95,14 @@ fn diff_loaded_in_whole_mode_scrolls_to_kept_block() {
 
     // Another file opens on its first change block.
     let other = DiffTarget::Unstaged("g.txt".into());
-    let fx = run(&mut st, Msg::OpenDiff(other.clone()));
+    let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(other.clone())));
     assert!(matches!(&fx[..], [Effect::LoadDiff { whole_file: true, .. }]), "{fx:?}");
     arrive(&mut st, other.clone(), three_changes(true));
     assert_eq!(st.view.diff_scroll_to_row, Some(rows[0]));
 
     // The hunk view still opens at the top.
     st.settings.diff_mode = DiffMode::Hunks;
-    let fx = run(&mut st, Msg::OpenDiff(other.clone()));
+    let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(other.clone())));
     assert!(matches!(&fx[..], [Effect::LoadDiff { whole_file: false, .. }]), "{fx:?}");
     arrive(&mut st, other, three_changes(false));
     assert_eq!(st.view.diff_scroll_to_row, Some(0));
@@ -221,8 +222,8 @@ fn whole_file_stage_block_end_to_end() {
     let dir = rust_repo("whole-e2e");
     let mut st = state();
     st.settings.diff_mode = DiffMode::WholeFile;
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("main.rs".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
     let (_, d) = st.diff.as_ref().expect("diff open");
     let w = d.whole.as_deref().expect("whole file loaded");
     assert_eq!(w.blocks.len(), 2);
@@ -257,8 +258,8 @@ fn whole_file_with_ignore_whitespace_blocks_hunks() {
     let mut st = state();
     st.settings.diff_mode = DiffMode::WholeFile;
     st.settings.diff_ignore_whitespace = true;
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("main.rs".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
     assert!(st.diff.as_ref().and_then(|(_, d)| d.whole.as_ref()).is_some());
     let why = st.hunk_ops_blocked().expect("blocked while whitespace is hidden");
     let generation = st.hunk_ops_gen().expect("loaded");
@@ -271,7 +272,7 @@ fn whole_file_with_ignore_whitespace_blocks_hunks() {
 fn file_history_honours_whole_mode() {
     let dir = scratch_repo("whole-history");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.settings.diff_mode = DiffMode::WholeFile;
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     let entry = HistoryEntry {

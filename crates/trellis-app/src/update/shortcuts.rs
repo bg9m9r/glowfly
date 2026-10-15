@@ -7,6 +7,7 @@
 use crate::effect::Effect;
 use crate::keymap::KeyAction;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::{AppState, Modal, Selection};
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, HunkOp};
@@ -65,7 +66,7 @@ fn focus_message(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
         return;
     }
     if st.selection != Selection::Wip {
-        fx.extend(super::update(st, Msg::SelectWip, now));
+        fx.extend(super::update(st, Msg::Repo(RepoMsg::SelectWip), now));
     }
     st.view.focus_message = true;
 }

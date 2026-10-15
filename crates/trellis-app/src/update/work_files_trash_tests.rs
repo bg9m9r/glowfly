@@ -7,6 +7,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{confirm, entry, last_log, loaded, run, work_ops};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::Modal;
 use crate::state::files::TRASH;
 use std::path::PathBuf;
@@ -228,7 +229,7 @@ fn end_to_end_trash() {
     let contents = format!("trash me {}\n", dir.display());
     std::fs::write(dir.join("a.txt"), &contents).unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::DeleteFile { path: "a.txt".into(), confirmed: false });
     assert!(matches!(&st.modal, Some(Modal::Confirm { button, .. }) if *button == format!("Move to {TRASH}")));
     drive(&mut st, Msg::ConfirmAccepted);

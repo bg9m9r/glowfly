@@ -3,6 +3,8 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
+use crate::msg::SelectionMsg;
 use crate::state::selection::MultiSelection;
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -107,9 +109,9 @@ fn graph_multi_menu() {
     let in_menu = h.get_all_by_label("Cherry-pick 2 commits").find(|n| n.bounding_box().is_some_and(|b| b.x0 < 1000.0));
     in_menu.expect("the menu item").click();
     h.run();
-    let picked = h.state().1.iter().find_map(|m| if let Msg::CherryPick(o) = m { Some(o.clone()) } else { None });
+    let picked = h.state().1.iter().find_map(|m| if let Msg::Selection(SelectionMsg::CherryPick(o)) = m { Some(o.clone()) } else { None });
     assert_eq!(picked, Some(vec![search, login]));
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::SelectCommit(_))), "a right-click does not change the selection");
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)))), "a right-click does not change the selection");
 
     // Any other row gets the single-commit menu.
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
@@ -135,7 +137,7 @@ fn esc_collapses_after_closing_the_diff() {
     let (st, dir) = with_selection(ThemeChoice::Dark, "multi-esc", &["Add login page", "Search results page"]);
     let mut h = esc_harness(st);
     press_esc(&mut h);
-    assert!(matches!(&h.state().1[..], [Msg::CollapseSelection]));
+    assert!(matches!(&h.state().1[..], [Msg::Selection(SelectionMsg::CollapseSelection)]));
 
     let (mut st, _) = with_selection(ThemeChoice::Dark, "multi-esc", &["Add login page", "Search results page"]);
     let (older, newer) = multi(&st).pair().unwrap();
@@ -143,6 +145,6 @@ fn esc_collapses_after_closing_the_diff() {
     st.diff = Some((target.clone(), repo::load_diff(&dir, &target).unwrap().into()));
     let mut h = esc_harness(st);
     press_esc(&mut h);
-    assert!(matches!(&h.state().1[..], [Msg::CloseDiff]));
+    assert!(matches!(&h.state().1[..], [Msg::Repo(RepoMsg::CloseDiff)]));
     remove_fixture(&dir);
 }

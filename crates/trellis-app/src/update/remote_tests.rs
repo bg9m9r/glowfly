@@ -8,6 +8,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
 use crate::state::palette::{PaletteCommand, entries};
 use crate::state::remotes::RemoteForm;
@@ -80,7 +81,7 @@ fn add_dialog_prefill() {
     assert!(st.modal.is_none(), "no repository, no dialog");
 
     let dir = scratch_repo("remote-prefill");
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     run(&mut st, RemoteMsg::AddDialog);
     let f = form(&mut st);
     assert_eq!(f.name, "origin");
@@ -218,7 +219,7 @@ fn edit_refuses_case_only_rename() {
 fn edit_clears_push_url() {
     let (mut st, work, bare) = with_origin("remote-edit-clear");
     git(&work, &["remote", "set-url", "--push", "origin", "https://h/x+y(1).git"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     run(&mut st, RemoteMsg::EditDialog("origin".into()));
     let f = form(&mut st);
     assert_eq!(f.push_url, "https://h/x+y(1).git");
@@ -247,7 +248,7 @@ fn edit_unchanged_and_gone() {
     run(&mut st, RemoteMsg::EditDialog("origin".into()));
     form(&mut st).url = "https://example.invalid/new.git".into();
     git(&work, &["remote", "remove", "origin"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     st.log.clear();
     assert!(run(&mut st, RemoteMsg::Submit).is_empty());
     assert_eq!(last_log(&st), "Remote origin no longer exists.");
@@ -295,7 +296,7 @@ fn fetch_one_remote() {
     assert_eq!(last_log(&st), "Remote nope no longer exists.");
     // Listed through its push URL alone.
     git(&work, &["config", "remote.nourl.pushurl", "https://example.invalid/p.git"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(run(&mut st, RemoteMsg::Fetch("nourl".into())).is_empty());
     assert_eq!(last_log(&st), "Can't fetch nourl: it has no fetch URL.");
     cleanup(&[&work, &bare]);
@@ -329,7 +330,7 @@ fn rename_follows_forge_remote() {
     let dir = scratch_repo("remote-forge");
     git(&dir, &["remote", "add", "origin", "https://github.com/owner/repo.git"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let host = st.forge.as_ref().expect("forge detected").host.clone();
     assert!(host.is_some());
     assert_eq!(st.forge.as_ref().unwrap().remote, "origin");

@@ -5,6 +5,7 @@
 use super::common::{menu_item, menu_item_if};
 use super::widgets;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::Selection;
 use crate::state::rebase::JOB_RUNNING;
 use crate::state::tags::delete_remote_confirm;
@@ -32,7 +33,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         }
         let r = widgets::list_row(ui, 26.0, name, None, *sel == Selection::Commit(*oid), false);
         if r.clicked() {
-            msgs.push(Msg::JumpTo(*oid));
+            msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
         }
         r.context_menu(|ui| menu(ui, name, snap, idle, msgs));
     }

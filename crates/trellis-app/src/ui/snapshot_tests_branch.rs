@@ -4,6 +4,7 @@
 
 use super::snapshot_tests::{harness, reload, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
+use crate::msg::GraphMsg;
 use crate::msg::Msg;
 use crate::state::{AppState, Modal};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -127,7 +128,7 @@ fn row_menu(h: &mut egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, label: &str
 }
 
 fn pushed(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, op: &FilterOp) -> bool {
-    h.state().1.iter().any(|m| matches!(m, Msg::GraphFilter(o) if o == op))
+    h.state().1.iter().any(|m| matches!(m, Msg::Graph(GraphMsg::GraphFilter(o)) if o == op))
 }
 
 #[test]

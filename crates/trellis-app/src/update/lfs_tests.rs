@@ -7,6 +7,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::palette::{PaletteCommand as C, entries};
 use crate::state::{AppState, Modal, PrefPage, RunningJob};
 use std::path::{Path, PathBuf};
@@ -27,7 +28,7 @@ fn lfs(st: &mut AppState, m: LfsMsg) -> Vec<Effect> {
 fn open(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.is_some());
     (st, dir)
 }

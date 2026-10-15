@@ -1,9 +1,10 @@
 //! The file watcher for the active tab's repository: notify reports raw events, a thread of its
 //! own drops the ones that don't matter (`trellis_core::watch`), coalesces the rest into bursts
-//! and sends one `Msg::RepoChanged` per burst. Owned by the runner (`Effect::Watch`).
+//! and sends one `WatchMsg::RepoChanged` per burst. Owned by the runner (`Effect::Watch`).
 
 use crate::effect::WatchTarget;
 use crate::msg::Msg;
+use crate::msg::WatchMsg;
 use crate::runner::Waker;
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
@@ -45,7 +46,7 @@ impl WatchSlot {
                 Ok(w) => s.1 = Some(w),
                 Err(error) => {
                     drop(s);
-                    if tx.send(Msg::WatchFailed { workdir: target.workdir, error }).is_ok() {
+                    if tx.send(Msg::Watch(WatchMsg::WatchFailed { workdir: target.workdir, error })).is_ok() {
                         waker.wake();
                     }
                 }
@@ -96,7 +97,7 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
             Ok(Err(e)) => {
                 if !reported {
                     reported = true;
-                    let msg = Msg::WatchFailed { workdir: target.workdir.clone(), error: e.to_string() };
+                    let msg = Msg::Watch(WatchMsg::WatchFailed { workdir: target.workdir.clone(), error: e.to_string() });
                     if tx.send(msg).is_err() {
                         return;
                     }
@@ -111,7 +112,7 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
         if let Some((change, last_event)) = burst.take_due(Instant::now()) {
             let full = change == Change::Full;
             tracing::debug!(workdir = %target.workdir.display(), full, "files changed outside Trellis");
-            let msg = Msg::RepoChanged { full, last_event };
+            let msg = Msg::Watch(WatchMsg::RepoChanged { full, last_event });
             if tx.send(Msg::Scoped { workdir: target.workdir.clone(), msg: Box::new(msg) }).is_err() {
                 return;
             }
@@ -282,10 +283,10 @@ mod tests {
     fn next_change(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<bool> {
         match rx.recv_timeout(timeout).ok()? {
             Msg::Scoped { workdir: w, msg } if w == workdir => match *msg {
-                Msg::RepoChanged { full, .. } => Some(full),
+                Msg::Watch(WatchMsg::RepoChanged { full, .. }) => Some(full),
                 _ => panic!("unexpected scoped message"),
             },
-            Msg::WatchFailed { error, .. } => panic!("watcher failed: {error}"),
+            Msg::Watch(WatchMsg::WatchFailed { error, .. }) => panic!("watcher failed: {error}"),
             _ => panic!("unexpected message"),
         }
     }

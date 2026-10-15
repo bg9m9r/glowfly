@@ -6,6 +6,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::AppState;
 use crate::state::terminal::SessionStatus;
 use crate::terminal::{TerminalEffect as E, TerminalMsg as T};
@@ -35,7 +36,7 @@ fn workdir(st: &AppState) -> PathBuf {
 fn open_with_panel(name: &str) -> (AppState, PathBuf, u64) {
     let dir = scratch_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     run(&mut st, T::Toggle);
     let id = st.terminal.sessions[0].id;
     (st, dir, id)
@@ -49,7 +50,7 @@ fn key(key: TermKey) -> TermInput {
 fn toggle_opens_the_panel_and_spawns_one_shell_per_repo() {
     let dir = scratch_repo("term-toggle");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = run(&mut st, T::Toggle);
     assert!(st.terminal.open && st.terminal.focus_requested);
     assert_eq!(st.terminal.sessions.len(), 1);
@@ -174,8 +175,8 @@ fn spawn_failure_is_shown_and_logged() {
 fn switching_tabs_starts_the_other_repos_shell_and_closing_kills_it() {
     let (a, b) = (scratch_repo("term-tabs-a"), scratch_repo("term-tabs-b"));
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     drive(&mut st, Msg::SelectTab(0));
     run(&mut st, T::Toggle);
     let wa = workdir(&st);
@@ -189,7 +190,7 @@ fn switching_tabs_starts_the_other_repos_shell_and_closing_kills_it() {
         other => panic!("{other:?}"),
     };
     assert_eq!(st.terminal.sessions.len(), 2);
-    assert!(terminal(update(&mut st, Msg::Refresh, Instant::now())).is_empty(), "one shell per repository");
+    assert!(terminal(update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now())).is_empty(), "one shell per repository");
 
     // The hidden tab's shell keeps running and its output is still parsed.
     run(&mut st, T::Output { id: id1, bytes: b"from a".to_vec(), ack: Default::default() });

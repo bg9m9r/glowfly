@@ -8,6 +8,7 @@ use super::gitflow_tests::{cleanup, flow, git_job, initialized, job_label, last_
 use super::tests::{drive, git};
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::palette::{PaletteCommand as C, entries};
 use crate::state::{AppState, Modal, PrefPage};
 use git2::RepositoryState;
@@ -22,7 +23,7 @@ fn ready(name: &str) -> (AppState, PathBuf) {
     git(&dir, &["checkout", "--", "a.txt"]);
     git(&dir, &["checkout", "-q", "-b", "feature/login", "develop"]);
     commit(&dir, "login.txt", "login\n");
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     (st, dir)
 }
 
@@ -52,7 +53,7 @@ fn exists(dir: &Path, r: &str) -> bool {
 fn dialog_refusals() {
     let (mut st, dir) = open("finish-off");
     git(&dir, &["branch", "feature/x"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     flow(&mut st, GitFlowMsg::FinishDialog("feature/x".into()));
     assert!(st.modal.is_none());
     assert_eq!(last_log(&st), NOT_SET_UP);
@@ -66,7 +67,7 @@ fn dialog_refusals() {
     assert!(st.modal.is_none());
 
     git(&dir, &["branch", "release/1.2.0", "develop"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     flow(&mut st, GitFlowMsg::FinishDialog("release/1.2.0".into()));
     let Some(Modal::GitFlowFinish(f)) = &st.modal else { panic!("the dialog opens") };
     assert_eq!((f.kind, f.branch.as_str()), (FlowKind::Release, "release/1.2.0"));
@@ -87,7 +88,7 @@ fn finish_refusals() {
     let feature = || finish_msg("feature/login", FinishOptions::default());
 
     std::fs::write(dir.join("a.txt"), "changed\n").unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     refused(&mut st, feature(), "Commit or stash your changes before finishing feature/login.");
     git(&dir, &["checkout", "--", "a.txt"]);
 
@@ -96,7 +97,7 @@ fn finish_refusals() {
 
     git(&dir, &["branch", "release/1.2.0", "develop"]);
     git(&dir, &["tag", "1.2.0", "develop"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     refused(&mut st, finish_msg("release/1.2.0", release_opts("1.2.0", "Release 1.2.0", false)), "The tag 1.2.0 already exists.");
     refused(&mut st, finish_msg("release/1.2.0", release_opts("1.2.1", "  ", false)), "Enter a tag message.");
 
@@ -105,7 +106,7 @@ fn finish_refusals() {
 
     // Untracked files don't block.
     std::fs::write(dir.join("notes.txt"), "untracked\n").unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(git_job(&run(&mut st, feature())).is_some());
     assert_eq!(job_label(&st).as_deref(), Some("Finish feature login"));
 
@@ -144,7 +145,7 @@ fn finish_cmds() {
     st.job = None;
     st.gitflow_finish = None;
     git(&dir, &["branch", "release/1.2.0", "develop"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let cmds = git_job(&run(&mut st, finish_msg("release/1.2.0", release_opts("1.2.0", "Release 1.2.0", true)))).unwrap();
     assert_eq!(cmds.len(), 5);
     assert!(cmds.iter().all(|c| c[0] != "branch"), "{cmds:?}");
@@ -174,7 +175,7 @@ fn finish_conflict_end_to_end() {
     commit(&dir, "a.txt", "one\ndevelop\n");
     git(&dir, &["checkout", "-q", "-b", "feature/login", "main"]);
     commit(&dir, "a.txt", "one\nfeature\n");
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, finish_msg("feature/login", FinishOptions::default()));
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::Merge);
     let toast = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
@@ -227,14 +228,14 @@ fn stopped_headlines() {
 fn palette_entries() {
     let (mut st, dir) = open("finish-palette-off");
     git(&dir, &["branch", "feature/x"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(!entries(&st).iter().any(|e| matches!(e.command, C::FinishGitFlow(_))));
     cleanup(&dir);
 
     let (mut st, dir) = ready("palette");
     git(&dir, &["branch", "feature/a", "develop"]);
     git(&dir, &["branch", "release/1.2.0", "develop"]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let finishes: Vec<(C, String, Option<String>)> =
         entries(&st).into_iter().filter(|e| matches!(e.command, C::FinishGitFlow(_))).map(|e| (e.command, e.label, e.detail)).collect();
     let into = |t: &str| Some(format!("into {t}"));

@@ -6,6 +6,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::palette::{Items, Mode, Palette, PaletteCommand, Pick, PickKind};
@@ -152,7 +153,7 @@ fn palette_keys_and_clicks() {
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::PaletteMove(1))));
     // The graph under the palette doesn't move its selection.
-    assert!(!pushed(&h, |m| matches!(m, Msg::SelectCommit(_) | Msg::SelectWip)));
+    assert!(!pushed(&h, |m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)) | Msg::Repo(RepoMsg::SelectWip))));
 
     h.state_mut().1.clear();
     h.press_key(Key::ArrowUp);

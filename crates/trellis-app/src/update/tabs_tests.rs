@@ -5,6 +5,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::tabs::MAX_CLOSED_TABS;
 use crate::state::{AppState, Tab};
 use std::path::{Path, PathBuf};
@@ -20,8 +21,8 @@ fn active_is(st: &AppState, dir: &Path) -> bool {
 fn two_repos(name: &str) -> (AppState, PathBuf, PathBuf) {
     let (a, b) = (scratch_repo(&format!("{name}-a")), scratch_repo(&format!("{name}-b")));
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     (st, a, b)
 }
 
@@ -35,7 +36,7 @@ fn cleanup(dirs: &[&Path]) {
 fn each_tab_keeps_its_own_repository_and_draft() {
     let a = scratch_repo("tabs-own-a");
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     assert_eq!(st.tabs.len(), 1, "the empty start tab is reused");
     st.draft.summary = "work in a".into();
     // A's open diff, scrolled down a few rows.
@@ -47,7 +48,7 @@ fn each_tab_keeps_its_own_repository_and_draft() {
     st.view.diff_top_row = 6;
 
     let b = scratch_repo("tabs-own-b");
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     assert!(active_is(&st, &b));
     assert!(st.draft.summary.is_empty());
@@ -61,7 +62,7 @@ fn each_tab_keeps_its_own_repository_and_draft() {
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
 
     // Opening an already open repository selects its tab.
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     // Ctrl+Tab wraps around.
     update(&mut st, Msg::CycleTab(1), Instant::now());
@@ -74,7 +75,12 @@ fn each_tab_keeps_its_own_repository_and_draft() {
 #[test]
 fn results_for_other_tabs_are_dropped() {
     let (mut st, a, b) = two_repos("tabs-scope");
-    let diff = Msg::DiffLoaded { target: DiffTarget::Unstaged("a.txt".into()), reload: false, generation: 0, result: Err("from A".into()) };
+    let diff = Msg::Repo(RepoMsg::DiffLoaded {
+        target: DiffTarget::Unstaged("a.txt".into()),
+        reload: false,
+        generation: 0,
+        result: Err("from A".into()),
+    });
     update(&mut st, Msg::Scoped { workdir: a.clone(), msg: Box::new(diff) }, Instant::now());
     assert!(!st.log.iter().any(|l| l.text == "from A"), "tab A's diff result must not reach tab B");
 
@@ -120,8 +126,8 @@ fn close_and_reopen_tabs() {
 fn a_failed_open_returns_to_the_previous_tab() {
     let a = scratch_repo("tabs-fail");
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
-    drive(&mut st, Msg::Open(a.join("no-such-folder")));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.join("no-such-folder"))));
     assert_eq!(st.tabs.len(), 1);
     assert!(active_is(&st, &a));
     assert!(st.log.last().is_some_and(|l| !l.ok));
@@ -161,17 +167,17 @@ fn a_repository_opened_through_a_link_is_the_same_tab() {
     assert!(made, "could not link {}", link.display());
 
     let mut st = state();
-    drive(&mut st, Msg::Open(link.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(link.clone())));
     assert!(active_is(&st, &a) && active_is(&st, &link));
-    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     assert_eq!(st.tabs.len(), 1, "opening the real folder switches to the same tab");
 
     // The other way round, from a new tab: the link's name matches nothing until it loads,
     // then its tab gives way to the one already showing the folder.
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     drive(&mut st, Msg::NewTab);
-    drive(&mut st, Msg::Open(link.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(link.clone())));
     assert_eq!(st.tabs.len(), 1, "the link's tab closes in favour of the real folder's");
     assert!(active_is(&st, &a) && st.tabs[0].real.is_some());
     #[cfg(windows)]
@@ -187,10 +193,10 @@ fn conflict_view_survives_tab_switch() {
     let a = super::conflict_tests::conflicted_repo("tabs-conflict-a");
     let b = scratch_repo("tabs-conflict-b");
     let mut st = state();
-    drive(&mut st, Msg::Open(a.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
     drive(&mut st, Msg::OpenConflict("a.txt".into()));
     update(&mut st, Msg::ConflictToggle { chunk: 0, side: Side::Theirs }, Instant::now());
-    drive(&mut st, Msg::Open(b.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert!(st.conflict.is_none(), "the other tab has no conflict open");
     drive(&mut st, Msg::SelectTab(0));
     assert_eq!(st.conflict.as_ref().map(|c| c.choices.clone()), Some(vec![Choice::Theirs]), "picks survive the switch");

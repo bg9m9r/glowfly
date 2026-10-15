@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::runner;
 use crate::state::AppState;
 use crate::state::lines::LineClick;
@@ -100,8 +101,8 @@ fn assert_colored(d: &FileDiff) {
 pub(super) fn opened_big(name: &str) -> (AppState, PathBuf, Vec<Effect>) {
     let dir = big_repo(name);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    let held = drive_holding_highlights(&mut st, Msg::OpenDiff(big()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let held = drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     (st, dir, held)
 }
 
@@ -133,8 +134,8 @@ fn small_diff_needs_no_background_pass() {
     git(&dir, &["commit", "-q", "-m", "rust"]);
     std::fs::write(dir.join("main.rs"), "fn main() {\n    let x = 2;\n}\n").unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    let held = drive_holding_highlights(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("main.rs".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let held = drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
     assert!(held.is_empty());
     assert_colored(shown(&st));
     let _ = std::fs::remove_dir_all(&dir);
@@ -146,12 +147,12 @@ fn stale_highlight_result_is_dropped() {
     let old = &held[0];
 
     // (a) Another file is open by the time the result lands.
-    drive(&mut st, Msg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
     assert!(up(&mut st, result_of(old)).is_empty());
     assert_eq!(st.diff.as_ref().map(|(t, d)| (t.path(), d.highlight.is_none())), Some(("a.txt", true)));
 
     // (b) big.rs again: a newer generation, so only the newer result applies.
-    let newer = drive_holding_highlights(&mut st, Msg::OpenDiff(big()));
+    let newer = drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     assert_eq!(newer.len(), 1);
     up(&mut st, result_of(old));
     assert!(pending(shown(&st).highlight.as_ref()), "the older pass's result is stale");
@@ -159,12 +160,12 @@ fn stale_highlight_result_is_dropped() {
     assert_colored(shown(&st));
 
     // (c) Closed.
-    up(&mut st, Msg::CloseDiff);
+    up(&mut st, Msg::Repo(RepoMsg::CloseDiff));
     assert!(up(&mut st, result_of(&newer[0])).is_empty());
     assert!(st.diff.is_none());
 
     // (d) The right generation, but another diff's shape.
-    drive_holding_highlights(&mut st, Msg::OpenDiff(big()));
+    drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     let small = FileDiff { hunks: shown(&st).hunks[..3].to_vec(), ..shown(&st).clone() };
     let hunks = highlight::highlight_diff("big.rs", &small, None);
     assert!(hunks.as_ref().is_some_and(|h| !h.is_pending()));
@@ -179,8 +180,8 @@ fn whole_file_over_limit_gets_colors() {
     let dir = big_repo("hl-whole");
     let mut st = state();
     st.settings.diff_mode = DiffMode::WholeFile;
-    drive(&mut st, Msg::Open(dir.clone()));
-    let mut held = drive_holding_highlights(&mut st, Msg::OpenDiff(big()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let mut held = drive_holding_highlights(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     let w = shown(&st).whole.as_deref().expect("the whole file is loaded");
     assert!(pending(w.diff.highlight.as_ref()));
     assert_eq!(held.len(), 1);
@@ -208,8 +209,8 @@ fn reload_keeps_colors_without_plain_flash() {
     // changed. The spans come out the same, as nothing before them opens a comment or string.
     let dir = big_repo("hl-reload");
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
-    drive(&mut st, Msg::OpenDiff(big()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     assert_colored(shown(&st));
     let before = spans_of(shown(&st));
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
@@ -235,13 +236,13 @@ fn reload_keeps_colors_without_plain_flash() {
 
     // (2) Whole-file view: an edit far away leaves line 10 colored as before until the pass ends.
     st.settings.diff_mode = DiffMode::WholeFile;
-    drive(&mut st, Msg::OpenDiff(big()));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(big())));
     let whole = |st: &AppState| shown(st).whole.as_deref().expect("whole file").diff.clone();
     assert_colored(&whole(&st));
     let line10 = whole(&st).highlight.unwrap().line(0, 10).to_vec();
     assert!(!line10.is_empty());
     std::fs::write(dir.join("big.rs"), big_body(|n| n % 10 == 0 || n == 1495)).unwrap();
-    let held = drive_holding_diffs(&mut st, Msg::Refresh);
+    let held = drive_holding_diffs(&mut st, Msg::Repo(RepoMsg::Refresh));
     let mut fx = land(&mut st, held);
     let w = whole(&st);
     assert!(pending(w.highlight.as_ref()));
@@ -260,7 +261,7 @@ fn line_selection_survives_same_reload_while_pending() {
     up(&mut st, Msg::SelectDiffLine { hunk: 0, line, how: LineClick::Only });
     assert!(!st.view.diff_lines.is_empty());
     let selected = st.view.diff_lines.clone();
-    let held = drive_holding_diffs(&mut st, Msg::Refresh);
+    let held = drive_holding_diffs(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, .. })));
     let fx = land(&mut st, held);
     assert!(pending(shown(&st).highlight.as_ref()));
@@ -269,7 +270,7 @@ fn line_selection_survives_same_reload_while_pending() {
 
     // The pass finishes while another reload is on its way, which arrives pending: the text is
     // the same, so the selection stays.
-    let reload = drive_holding_diffs(&mut st, Msg::Refresh);
+    let reload = drive_holding_diffs(&mut st, Msg::Repo(RepoMsg::Refresh));
     up(&mut st, result_of(&job));
     assert!(!pending(shown(&st).highlight.as_ref()));
     land(&mut st, reload);
@@ -280,7 +281,7 @@ fn line_selection_survives_same_reload_while_pending() {
 #[test]
 fn reload_adopts_finished_spans_on_screen() {
     let (mut st, dir, held) = opened_big("hl-adopt");
-    let reload = drive_holding_diffs(&mut st, Msg::Refresh);
+    let reload = drive_holding_diffs(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(reload.iter().any(|e| matches!(e, Effect::LoadDiff { previous: Some(p), .. } if pending(p.highlight.as_ref()))));
     // The background pass lands before the reload does.
     up(&mut st, result_of(&held[0]));

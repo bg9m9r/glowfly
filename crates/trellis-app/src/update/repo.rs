@@ -2,28 +2,32 @@
 
 pub(super) use super::refresh::{load, refresh, refresh_status};
 use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::{FolderPurpose, Msg};
+use crate::msg::FolderPurpose;
+use crate::msg::RepoMsg;
 use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, Snapshot};
 use trellis_core::settings::DiffMode;
 
-pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::PickRepo => fx.push(Effect::PickFolder { title: "Open a Git repository".into(), purpose: FolderPurpose::OpenRepo }),
-        Msg::Open(path) => super::tabs::open(st, path, fx),
-        Msg::Refresh => {
+        RepoMsg::PickRepo => fx.push(Effect::PickFolder { title: "Open a Git repository".into(), purpose: FolderPurpose::OpenRepo }),
+        RepoMsg::InitRepo => {
+            fx.push(Effect::PickFolder { title: "Initialize a repository in…".into(), purpose: FolderPurpose::InitRepo })
+        }
+        RepoMsg::Open(path) => super::tabs::open(st, path, fx),
+        RepoMsg::Refresh => {
             super::refresh::reload(st, fx);
             super::forge::refresh(st, true, false, now, fx);
         }
-        Msg::WindowFocused => {
+        RepoMsg::WindowFocused => {
             // Pick up changes made outside the app.
             if st.job.is_none() {
                 refresh(st, fx);
             }
         }
-        Msg::RepoLoaded { generation, kind, result } => {
+        RepoMsg::RepoLoaded { generation, kind, result } => {
             if generation != st.load_gen {
                 return; // superseded by a newer load
             }
@@ -39,15 +43,15 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
             super::refresh::load_finished(st, fx);
         }
-        Msg::SelectWip => {
+        RepoMsg::SelectWip => {
             st.selection = Selection::Wip;
             st.detail = None;
             let key = st.snap.as_ref().and_then(|s| s.head_branch.clone()).and_then(|b| st.forge.as_ref().and_then(|f| f.branch_issue(&b)));
             super::forge::want_issues(st, key.into_iter().collect(), fx);
         }
-        Msg::SelectCommit(oid) => select_commit(st, oid, false, fx),
-        Msg::JumpTo(oid) => select_commit(st, oid, true, fx),
-        Msg::DetailLoaded { oid, result } => {
+        RepoMsg::SelectCommit(oid) => select_commit(st, oid, false, fx),
+        RepoMsg::JumpTo(oid) => select_commit(st, oid, true, fx),
+        RepoMsg::DetailLoaded { oid, result } => {
             if st.selection != Selection::Commit(oid) {
                 return;
             }
@@ -63,11 +67,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 }
             }
         }
-        Msg::OpenDiff(target) => {
+        RepoMsg::OpenDiff(target) => {
             super::history::close(st);
             open_diff(st, target, fx);
         }
-        Msg::DiffLoaded { target, reload, generation, result } => {
+        RepoMsg::DiffLoaded { target, reload, generation, result } => {
             if generation != st.diff_gen {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
@@ -132,9 +136,9 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 }
             }
         }
-        Msg::CloseDiff => close_diff(st),
-        Msg::SearchNext => search_next(st, fx),
-        Msg::WantStats(oids) => {
+        RepoMsg::CloseDiff => close_diff(st),
+        RepoMsg::SearchNext => search_next(st, fx),
+        RepoMsg::WantStats(oids) => {
             let Some(workdir) = st.workdir() else { return };
             let missing: Vec<Oid> = oids.into_iter().filter(|o| !st.stats.contains_key(o) && !st.stats_pending.contains(o)).collect();
             if !missing.is_empty() {
@@ -142,18 +146,17 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 fx.push(Effect::Stats { workdir, oids: missing });
             }
         }
-        Msg::StatsDropped(oids) => {
+        RepoMsg::StatsDropped(oids) => {
             for oid in oids {
                 st.stats_pending.remove(&oid);
             }
         }
-        Msg::StatsLoaded(batch) => {
+        RepoMsg::StatsLoaded(batch) => {
             for (oid, files, adds, dels) in batch {
                 st.stats_pending.remove(&oid);
                 st.stats.insert(oid, (files, adds, dels));
             }
         }
-        _ => {}
     }
 }
 

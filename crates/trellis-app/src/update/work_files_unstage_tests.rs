@@ -7,6 +7,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::work_files_tests::{confirm, empty_diff, entry, last_log, loaded, run, work_ops};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::Modal;
 use std::path::PathBuf;
 use trellis_core::repo::DiffTarget;
@@ -109,7 +110,7 @@ fn end_to_end_delete_staged_rename() {
     git(&dir, &["commit", "-q", "-m", "b"]);
     git(&dir, &["mv", "b.txt", "c.txt"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.as_ref().unwrap().staged.contains(&entry("c.txt", 'R')));
 
     drive(&mut st, Msg::DeleteFile { path: "c.txt".into(), confirmed: false });
@@ -130,7 +131,7 @@ fn end_to_end_unstage_gone_new_file() {
     git(&dir, &["add", "new.txt"]);
     std::fs::remove_file(dir.join("new.txt")).unwrap();
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.staged.contains(&entry("new.txt", 'A')) && snap.unstaged.contains(&entry("new.txt", 'D')));
 

@@ -11,7 +11,10 @@ use super::common::lane_color;
 use super::menus::{commit_menu, multi_commit_menu};
 use super::theme::color;
 use super::widgets;
+use crate::msg::GraphMsg;
+use crate::msg::LoadMsg;
 use crate::msg::Msg;
+use crate::msg::RepoMsg;
 use crate::state::{AppState, Selection};
 use crate::update::commit_matches;
 use eframe::egui::{self, Align2, CornerRadius, FontId, Key, Rect, RichText, Sense, Stroke, pos2, vec2};
@@ -54,7 +57,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     r.request_focus();
                 }
                 if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                    msgs.push(Msg::SearchNext);
+                    msgs.push(Msg::Repo(RepoMsg::SearchNext));
                     r.request_focus();
                 }
                 if r.changed() {
@@ -117,7 +120,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 }
                 p.galley(rect.min, g, color::accent());
                 if resp.clicked() {
-                    msgs.push(Msg::LoadMoreCommits);
+                    msgs.push(Msg::Load(LoadMsg::LoadMoreCommits));
                 }
             }
         }
@@ -139,7 +142,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         // Rows belonging to the hovered branch: update works them out, then the next frame shows them.
         if st.settings.highlight_ref_rows && st.view.highlight.as_ref().map(|(t, _)| *t) != st.view.hover_tip {
-            msgs.push(Msg::HoverRef(st.view.hover_tip));
+            msgs.push(Msg::Graph(GraphMsg::HoverRef(st.view.hover_tip)));
             ui.ctx().request_repaint();
         }
         let highlight = st.view.highlight.as_ref().filter(|_| st.settings.highlight_ref_rows).map(|(_, s)| s);
@@ -223,7 +226,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         }
                     }
                     if resp.clicked() {
-                        msgs.push(Msg::SelectWip);
+                        msgs.push(Msg::Repo(RepoMsg::SelectWip));
                     }
                     continue;
                 };
@@ -374,7 +377,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             st.view.hover_tip_next = hover_tip_next;
         }
         if !want_stats.is_empty() {
-            msgs.push(Msg::WantStats(want_stats));
+            msgs.push(Msg::Repo(RepoMsg::WantStats(want_stats)));
         }
     }
 }

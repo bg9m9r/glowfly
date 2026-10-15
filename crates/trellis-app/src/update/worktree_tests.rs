@@ -7,6 +7,7 @@ use super::tests::same_place as same_path;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::msg::RepoMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::runner;
 use crate::state::worktrees::{WorktreeForm, checked_out_in, folder_warning, right_text, section_shown};
@@ -22,7 +23,7 @@ fn opened(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     git(&dir, &["branch", "side"]);
     let mut st = state();
-    drive(&mut st, Msg::Open(dir.clone()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     (st, dir)
 }
 
@@ -93,7 +94,7 @@ fn open_linked_current_and_missing() {
     let (linked, gone) = (root.join("linked"), root.join("gone"));
     git(&dir, &["worktree", "add", "-q", "-b", "linked", &linked.display().to_string()]);
     git(&dir, &["worktree", "add", "-q", "-b", "gone", &gone.display().to_string()]);
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(st.snap.as_ref().unwrap().worktrees.len(), 3);
 
     drive(&mut st, wt(WorktreeMsg::Open(linked.clone())));
@@ -107,7 +108,7 @@ fn open_linked_current_and_missing() {
     assert_eq!(st.tabs.len(), 2);
 
     std::fs::remove_dir_all(&gone).unwrap();
-    drive(&mut st, Msg::Refresh);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(update(&mut st, wt(WorktreeMsg::Open(gone.clone())), Instant::now()).is_empty());
     let (ok, text) = last_log(&st);
     assert!(!ok && text.ends_with("Its folder is missing."), "{text}");
