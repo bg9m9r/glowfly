@@ -11,6 +11,8 @@ pub enum PrefPage {
     Ui,
     /// Diff text: font size, tab size, line numbers, syntax and word highlights.
     Editor,
+    /// External editor and terminal programs.
+    Tools,
     Signing,
     /// SSH key pairs in ~/.ssh and generating one.
     Ssh,
@@ -30,6 +32,7 @@ impl PrefPage {
             PrefPage::Integrations => "Integrations",
             PrefPage::Ui => "UI Customization",
             PrefPage::Editor => "Editor",
+            PrefPage::Tools => "External Tools",
             PrefPage::Signing => "Commit Signing",
             PrefPage::Ssh => "SSH",
             PrefPage::RepoIdentity => "Identity",

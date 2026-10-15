@@ -10,6 +10,7 @@ pub mod conflict_rows;
 pub mod dates;
 pub mod diff_rows;
 pub mod error;
+pub mod external_tools;
 pub mod forge;
 pub mod fuzzy;
 pub mod gitcli;

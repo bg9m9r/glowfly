@@ -108,6 +108,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::AnswerPrompt { .. }
         | Effect::Terminal(_)
         | Effect::Patch(_)
+        | Effect::Tool(_)
         | Effect::Ui(_) => None,
     }
 }
@@ -186,6 +187,7 @@ mod tests {
         // Saving a patch only reads the repository.
         let export = crate::patch::PatchEffect::Export { workdir: w.clone(), oids: Vec::new(), dest: "C:/x.patch".into() };
         assert_eq!(repo_of(&Effect::Patch(export)), None);
+        assert_eq!(repo_of(&Effect::Tool(crate::tools::ToolEffect::PickProgram(crate::tools::ToolKind::Editor))), None);
     }
 
     #[test]

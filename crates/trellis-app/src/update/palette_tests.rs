@@ -86,7 +86,8 @@ fn entries_without_repo() {
             "Hide toolbar labels",
             "Theme: Dark",
             "Theme: Light",
-            "Theme: Follow system"
+            "Theme: Follow system",
+            "Configure external tools"
         ]
     );
     let list = shown(&st, "");
@@ -127,7 +128,7 @@ fn entries_with_repo() {
     st.recent = vec![dir.clone(), "C:/elsewhere/other-repo".into()];
     let all = labels(&st, "");
     assert!(all.contains(&"Open other-repo".to_owned()));
-    let not_recent = ["Open repository…", "Open Preferences", "Open in terminal", SHOW_REPO_FOLDER];
+    let not_recent = ["Open repository…", "Open Preferences", "Open in terminal", "Open repository in external editor", SHOW_REPO_FOLDER];
     assert_eq!(all.iter().filter(|l| l.starts_with("Open ") && !not_recent.contains(&l.as_str())).count(), 1);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -136,10 +137,10 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 8);
+    assert_eq!(shown(&st, "").len(), 9);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 7);
+    assert_eq!(p.selected, 8);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);

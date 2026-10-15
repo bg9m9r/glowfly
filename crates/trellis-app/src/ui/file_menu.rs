@@ -1,6 +1,6 @@
 //! File actions added to file rows' context menus: restore a file from a commit (one commit's
-//! rows, or the rows comparing two selected commits), open it in its default program, show it in
-//! the file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
+//! rows, or the rows comparing two selected commits), open it in its default program or the
+//! external editor, show it in the file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
 //! for files in the working tree, track them in Git LFS. Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
 //! opening a popup. `file_buttons` reuses the labels, reasons and restore message for the same
 //! actions as header buttons.
@@ -13,6 +13,8 @@ use crate::msg::WorkFileMsg;
 use crate::state::files::folder_prefill;
 pub(super) use crate::state::lfs::TRACK_IN_LFS;
 use crate::state::lfs::TrackItem;
+pub(super) use crate::state::tools::OPEN_IN_EDITOR;
+use crate::tools::ToolsMsg;
 use eframe::egui;
 use git2::Oid;
 use trellis_core::repo::FileEntry;
@@ -75,9 +77,11 @@ fn between_restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, older: Oid, newe
     }
 }
 
-/// Open with default app and show in folder, disabled with `missing` as the reason.
+/// Open with default app, open in the external editor and show in folder, disabled with
+/// `missing` as the reason.
 pub(super) fn open_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str, missing: Option<&str>) {
     menu_item_if(msgs, ui, OPEN_DEFAULT, missing, Msg::Files(FilesMsg::OpenWorkingFile(path.to_owned())));
+    menu_item_if(msgs, ui, OPEN_IN_EDITOR, missing, Msg::Tools(ToolsMsg::OpenFile { path: path.to_owned(), line: None }));
     menu_item_if(msgs, ui, SHOW_IN_FOLDER, missing, Msg::Files(FilesMsg::ShowWorkingFile(path.to_owned())));
 }
 

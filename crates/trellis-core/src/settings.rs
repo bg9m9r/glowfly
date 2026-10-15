@@ -9,11 +9,13 @@ mod column_widths;
 mod file;
 mod graph_filter;
 mod paths;
+mod tools;
 mod trust;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{config_dir, migrate_old_config_dir};
+pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::RepoTrust;
 
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
@@ -207,6 +209,9 @@ pub struct Settings {
     /// the order they were added.
     #[serde(default)]
     pub favorite_repos: Vec<String>,
+    /// Preferences > External Tools.
+    #[serde(default)]
+    pub external_tools: ExternalTools,
 }
 
 impl Default for Settings {
@@ -251,6 +256,7 @@ impl Default for Settings {
             graph_filters: HashMap::new(),
             repo_trust: HashMap::new(),
             favorite_repos: Vec::new(),
+            external_tools: ExternalTools::default(),
         }
     }
 }

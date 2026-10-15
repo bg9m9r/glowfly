@@ -78,6 +78,8 @@ pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
                 Effect::OpenPath(_) | Effect::RevealPath(_) => {}
                 // OS dialogs would wait for a user.
                 Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. }) => {}
+                // Never start programs or open dialogs from tests.
+                Effect::Tool(_) => {}
                 other => queue.extend(runner::execute(other)),
             }
         }

@@ -2,7 +2,7 @@
 //!
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
-//! `terminal`, `ssh` and `patch`). Each area's enum goes to one handler in `update/`, which matches it
+//! `terminal`, `ssh`, `patch` and `tools`). Each area's enum goes to one handler in `update/`, which matches it
 //! exhaustively, and says through `on_inactive` what its results still need when they arrive
 //! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
 
@@ -98,6 +98,8 @@ pub enum Msg {
     Terminal(TerminalMsg),
     /// Saving commits as a patch file and applying one (update/patch.rs).
     Patch(crate::patch::PatchMsg),
+    /// External editor and terminal (update/tools.rs).
+    Tools(crate::tools::ToolsMsg),
     /// Hosting services: pull requests, issues, connections (update/forge.rs).
     Forge(ForgeMsg),
     /// Publishing a repository with no remote (update/publish.rs).
@@ -201,6 +203,7 @@ impl Msg {
             Msg::Submodule(m) => m.on_inactive(),
             Msg::Terminal(m) => m.on_inactive(),
             Msg::Patch(m) => m.on_inactive(),
+            Msg::Tools(m) => m.on_inactive(),
             Msg::Forge(m) => m.on_inactive(),
             Msg::Publish(m) => m.on_inactive(),
             Msg::Credentials(m) => m.on_inactive(),

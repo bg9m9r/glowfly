@@ -250,3 +250,35 @@ fn column_widths_old_files() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&wide).unwrap()).unwrap();
     assert_eq!(back.column_widths, wide.column_widths);
 }
+
+#[test]
+fn external_tools_old_files_and_partial_objects() {
+    // Files written before Preferences > External Tools existed load with the defaults.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert_eq!(s.external_tools, ExternalTools::default());
+    assert_eq!(
+        (s.external_tools.editor_file_args.as_str(), s.external_tools.editor_repo_args.as_str()),
+        (EDITOR_FILE_ARGS, EDITOR_REPO_ARGS)
+    );
+    assert_eq!((EDITOR_FILE_ARGS, EDITOR_REPO_ARGS), ("{path}", "{repo}"));
+    assert!(s.external_tools.editor.is_empty() && s.external_tools.terminal.is_empty() && s.external_tools.terminal_args.is_empty());
+    // Only the editor set: the argument templates keep their defaults.
+    let s: Settings = serde_json::from_str(r#"{"external_tools":{"editor":"x"}}"#).unwrap();
+    assert_eq!(s.external_tools, ExternalTools { editor: "x".into(), ..ExternalTools::default() });
+}
+
+#[test]
+fn reset_editor_args_restores_only_the_templates() {
+    let mut t = ExternalTools {
+        editor: "code".into(),
+        editor_file_args: "--goto {path}:{line}".into(),
+        editor_repo_args: "-n {repo}".into(),
+        terminal: "wt".into(),
+        terminal_args: "-d {repo}".into(),
+    };
+    t.reset_editor_args();
+    assert_eq!(
+        t,
+        ExternalTools { editor: "code".into(), terminal: "wt".into(), terminal_args: "-d {repo}".into(), ..ExternalTools::default() }
+    );
+}

@@ -123,6 +123,8 @@ mod snapshot_tests_tag_menu;
 #[cfg(test)]
 mod snapshot_tests_terminal;
 #[cfg(test)]
+mod snapshot_tests_tools;
+#[cfg(test)]
 mod snapshot_tests_trust;
 #[cfg(test)]
 mod snapshot_tests_whole;

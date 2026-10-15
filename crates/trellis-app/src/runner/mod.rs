@@ -53,6 +53,7 @@ mod stats;
 mod submodules;
 mod terminal;
 mod terminal_out;
+mod tools;
 mod worktrees;
 
 #[cfg(test)]
@@ -315,6 +316,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::ExportPublicKey { format, program, key } => Some(keys::export_public(format, &program, &key)),
         Effect::Ssh(e) => Some(ssh::run(e)),
         Effect::Patch(p) => Some(patches::run(p)),
+        Effect::Tool(t) => tools::run(t),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

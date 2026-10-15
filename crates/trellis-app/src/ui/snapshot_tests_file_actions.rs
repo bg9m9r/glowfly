@@ -5,7 +5,7 @@
 //! fixture repository and renderer with `snapshot_tests`.
 
 use super::file_buttons::{OPEN_SHORT, RESTORE_SHORT};
-use super::file_menu::{NOT_IN_WORKDIR, OPEN_DEFAULT, SHOW_IN_FOLDER};
+use super::file_menu::{NOT_IN_WORKDIR, OPEN_DEFAULT, OPEN_IN_EDITOR, SHOW_IN_FOLDER};
 use super::history::entry_menu;
 use super::snapshot_tests::{harness, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
@@ -132,6 +132,7 @@ fn history_entry_menu() {
     let mut h = menu_harness(history_entry('M'), true);
     h.run();
     assert!(!h.get_by_label(SHOW_IN_FOLDER).is_disabled());
+    assert!(!h.get_by_label(OPEN_IN_EDITOR).is_disabled());
     h.get_by_label(OPEN_DEFAULT).click();
     h.run();
     assert!(matches!(&h.state()[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "src/app.txt"), "the current path");
@@ -140,6 +141,7 @@ fn history_entry_menu() {
     let mut h = menu_harness(history_entry('M'), false);
     h.run();
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
+    assert!(h.get_by_label(OPEN_IN_EDITOR).is_disabled());
     assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     drop(h);
 

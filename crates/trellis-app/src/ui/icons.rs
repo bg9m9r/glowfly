@@ -1,5 +1,5 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock), called from `widgets::paint_icon`.
+//! lock, wrench), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -119,6 +119,22 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             pts.push(pos2(c.x + r, base));
             p.add(egui::Shape::line(pts, s));
             p.circle_filled(pos2(c.x, body.center().y), 1.3, s.color);
+        }
+        Icon::Tools => {
+            // A handle from the bottom left to an open jaw at the top right, its gap facing
+            // up and to the right.
+            use std::f32::consts::PI;
+            let (jaw, r) = (pos2(c.x + 3.0, c.y - 3.0), 4.5);
+            line(pos2(c.x - 7.5, c.y + 7.5), pos2(jaw.x - r * 0.7, jaw.y + r * 0.7));
+            // 270° clockwise from pointing right round to pointing up, leaving the up-right
+            // quarter open.
+            let pts: Vec<Pos2> = (0..=24)
+                .map(|i| {
+                    let a = 1.5 * PI * i as f32 / 24.0;
+                    pos2(jaw.x + r * a.cos(), jaw.y + r * a.sin())
+                })
+                .collect();
+            p.add(egui::Shape::line(pts, s));
         }
         Icon::Close => {
             line(pos2(c.x - 4.5, c.y - 4.5), pos2(c.x + 4.5, c.y + 4.5));

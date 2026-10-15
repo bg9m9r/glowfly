@@ -316,6 +316,8 @@ pub enum Effect {
     Terminal(crate::terminal::TerminalEffect),
     /// Patch dialogs and saving commits as a patch (patch.rs); unscoped, each carries its repository.
     Patch(crate::patch::PatchEffect),
+    /// Launching the external editor or a custom terminal, and their program pickers (tools.rs); unscoped.
+    Tool(crate::tools::ToolEffect),
     Ui(UiEffect),
 }
 
@@ -383,6 +385,7 @@ impl Effect {
             | Effect::AnswerPrompt { .. }
             | Effect::Terminal(_)
             | Effect::Patch(_)
+            | Effect::Tool(_)
             | Effect::Ui(_) => None,
         }
     }

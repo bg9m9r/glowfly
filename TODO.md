@@ -71,7 +71,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | SSH | ◐ SSH page (list key pairs, copy a public key, generate an Ed25519 key) | Choose the key git uses, use local agent, add a key to a hosting service (P1 SSH key management) |
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
-| External Tools | ✘ | Editor, diff tool, merge tool, terminal (P1 External tools) |
+| External Tools | ◐ Editor and terminal | Diff tool, merge tool (P1 External tools) |
 | Notifications | ◐ location under UI Customization | Desktop notifications (P1 Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
@@ -430,7 +430,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     comes back from the parent)
   - [x] Open a file in the default program and show it in Explorer / Finder (WIP and commit
     file rows)
-  - [ ] Open in an external editor (needs P1 External tools)
+  - [x] Open in an external editor (file rows' menus; Preferences > External Tools)
   - [x] Create, delete and rename a file (WIP panel: New file… in the Unstaged Files header,
     Rename… and Delete… in working-tree file rows' menus)
   - [ ] Create, rename and delete from the command palette
@@ -883,9 +883,23 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Conflict prediction**
   Local-only version: dry-run merge the branch against its target/upstream (`git merge-tree`)
   and warn about overlapping files before you merge or open a PR.
-- [ ] **External tools**
+- [x] **External tools**
   Choose an editor, diff tool, merge tool and terminal (with custom commands); open the repo in
   the editor.
+  - [x] Editor (open a file or the repository) and a custom terminal command in Preferences > External Tools
+  - [ ] External diff tool: program and arguments ({local}, {remote}, {path}), opened from file
+    rows and the diff header
+  - [ ] External merge tool: program and arguments ({base}, {ours}, {theirs}, {output}), and
+    the conflict view's Resolve in an external merge tool
+  - [ ] Open at the selected diff line: pass {line} from the diff or whole-file view
+  - [ ] Presets for well-known editors and terminals (fill in the arguments when one is
+    picked), and detecting installed ones
+  - [ ] Name the editor in labels ("Open in <editor>"), and an Open in external editor button
+    in the diff and file history headers
+  - [ ] A keyboard shortcut for opening the selected file in the external editor
+  - [ ] Report an editor that exits at once with an error
+  - [ ] Open several selected files or repositories at once, asking first when there are many
+  - [ ] Show / hide arguments toggle that collapses the argument fields
 - [ ] **Notifications**
   Toasts for every operation exist. Missing: optional desktop notifications and "N commits
   behind" alerts after auto-fetch.

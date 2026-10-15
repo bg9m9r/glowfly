@@ -235,6 +235,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
         C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
         C::Remote(m) => Msg::Remote(m),
+        C::Tools(m) => Msg::Tools(m),
         C::ApplyPatch => Msg::Patch(crate::patch::PatchMsg::PickToApply),
         C::ReviewTrust => {
             let Some(s) = &st.snap else { return };

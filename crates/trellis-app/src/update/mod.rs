@@ -41,6 +41,7 @@ mod tabs;
 mod tag_annotate;
 mod tags;
 mod terminal;
+mod tools;
 mod trust;
 mod undo;
 mod watch;
@@ -168,6 +169,8 @@ mod terminal_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod tools_tests;
+#[cfg(test)]
 mod trust_tests;
 #[cfg(test)]
 mod undo_tests;
@@ -229,6 +232,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
+        Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
         Msg::Publish(m) => publish::handle(st, m, &mut fx),
         Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),
@@ -259,11 +263,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::CloseModal => st.modal = None,
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),
-        Msg::OpenTerminal => {
-            if let Some(w) = st.workdir() {
-                fx.push(Effect::OpenTerminal(w));
-            }
-        }
+        Msg::OpenTerminal => tools::open_terminal(st, now, &mut fx),
         Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
         Msg::Logged { ok, text } => st.log(ok, text),
         Msg::ClearLog => st.log.clear(),

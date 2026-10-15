@@ -100,7 +100,8 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
 }
 
 /// A history row's menu: View on graph, Copy commit SHA, then Restore for the entry's version
-/// and Open / Show for `open_path` (the file as it is named today), disabled unless `in_workdir`.
+/// and Open / Open in external editor / Show for `open_path` (the file as it is named today),
+/// disabled unless `in_workdir`.
 pub(super) fn entry_menu(ui: &mut Ui, msgs: &mut Vec<Msg>, e: &HistoryEntry, open_path: &str, in_workdir: bool) {
     menu_item(msgs, ui, "View on graph", Msg::History(HistoryMsg::ShowInGraph(e.oid)));
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));

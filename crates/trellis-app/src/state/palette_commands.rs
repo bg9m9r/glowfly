@@ -122,6 +122,8 @@ pub enum PaletteCommand {
     ReviewTrust,
     /// Pick a patch file and apply it to the working tree.
     ApplyPatch,
+    /// External editor actions (tools.rs).
+    Tools(crate::tools::ToolsMsg),
 }
 
 impl PaletteCommand {
@@ -326,6 +328,7 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
         let e = entry(C::Theme(choice), format!("Theme: {name}"), "appearance colour color");
         out.push(with_detail(e, (st.settings.theme == choice).then(|| "current".to_owned())));
     }
+    super::palette_tools::palette_entries(st, out);
 }
 
 /// A checkout entry for each local branch other than HEAD's.

@@ -6,12 +6,14 @@
 //! send.
 
 use super::file_menu::{
-    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, RENAME, RowSource, SHOW_IN_FOLDER, TRACK_IN_LFS, UNSTAGE_DELETE, commit_file_items, wip_file_items,
+    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, OPEN_IN_EDITOR, RENAME, RowSource, SHOW_IN_FOLDER, TRACK_IN_LFS, UNSTAGE_DELETE,
+    commit_file_items, wip_file_items,
 };
 use super::theme::{apply_theme, color};
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
+use crate::tools::ToolsMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
@@ -96,6 +98,7 @@ fn file_menu_commit() {
     h.run();
     h.check_snapshot("file_menu_commit");
     assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
+    assert!(!h.get_by_label(OPEN_IN_EDITOR).is_disabled());
     assert!(!h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
     assert!(h.query_by_label(TRACK_IN_LFS).is_none(), "no submenu without entries");
@@ -108,6 +111,7 @@ fn file_menu_commit_deleted_light() {
     h.check_snapshot("file_menu_commit_deleted_light");
     assert!(h.query_by_label("Restore the deleted file…").is_some());
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
+    assert!(h.get_by_label(OPEN_IN_EDITOR).is_disabled());
     assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled(), "a sibling can still be created");
 }
@@ -143,7 +147,7 @@ fn file_menu_wip() {
     let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     h.check_snapshot("file_menu_wip");
-    for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, NEW_FILE_HERE, RENAME, DELETE] {
+    for label in [OPEN_DEFAULT, OPEN_IN_EDITOR, SHOW_IN_FOLDER, NEW_FILE_HERE, RENAME, DELETE] {
         assert!(!h.get_by_label(label).is_disabled(), "{label}");
     }
     assert!(h.query_by_label(TRACK_IN_LFS).is_none(), "no submenu without entries");
@@ -154,7 +158,7 @@ fn file_menu_wip_missing() {
     let mut h = harness(entry("src/gone.txt", 'D'), Menu::Wip { missing: true, unstages: false }, true);
     h.run();
     h.check_snapshot("file_menu_wip_missing");
-    for label in [OPEN_DEFAULT, SHOW_IN_FOLDER, RENAME, DELETE] {
+    for label in [OPEN_DEFAULT, OPEN_IN_EDITOR, SHOW_IN_FOLDER, RENAME, DELETE] {
         assert!(h.get_by_label(label).is_disabled(), "{label}");
     }
     assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
@@ -227,6 +231,15 @@ fn file_menu_clicks_send_msgs() {
     h.run();
     assert!(matches!(&h.state()[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "src/app.txt"));
     drop(h);
+
+    for menu in [Menu::Wip { missing: false, unstages: false }, Menu::Commit { in_workdir: true }] {
+        let mut h = harness(entry("src/app.txt", 'M'), menu, true);
+        h.run();
+        h.get_by_label(OPEN_IN_EDITOR).click();
+        h.run();
+        assert!(matches!(&h.state()[..], [Msg::Tools(ToolsMsg::OpenFile { path, line: None })] if path == "src/app.txt"));
+        drop(h);
+    }
 
     let mut h = harness(entry("src/app.txt", 'M'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();

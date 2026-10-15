@@ -11,6 +11,7 @@ mod lfs;
 mod signing;
 mod sparse;
 mod ssh;
+mod tools;
 
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -120,6 +121,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
                     PrefPage::Ui => appearance::ui_page(ui, settings, now),
                     PrefPage::Editor => editor::editor_page(ui, settings),
+                    PrefPage::Tools => tools::tools_page(ui, settings, msgs),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
                     PrefPage::RepoSparse => sparse::sparse_page(ui, &mut prefs.sparse, &sparse_cx, msgs),
@@ -158,6 +160,7 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         go(ui, PrefPage::Integrations, Icon::Plug, "Integrations");
         go(ui, PrefPage::Ui, Icon::Brush, "UI Customization");
         go(ui, PrefPage::Editor, Icon::Code, "Editor");
+        go(ui, PrefPage::Tools, Icon::Tools, "External Tools");
         go(ui, PrefPage::Signing, Icon::Key, "Commit Signing");
         // Not `go`: the page reads ~/.ssh when it opens.
         if widgets::nav_row(ui, Some(Icon::Lock), "SSH", page == PrefPage::Ssh, 15.0).clicked() {

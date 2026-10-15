@@ -63,6 +63,7 @@ impl Effect {
             Effect::AnswerPrompt { .. } => "answer-prompt",
             Effect::Terminal(_) => "terminal",
             Effect::Patch(p) => p.name(),
+            Effect::Tool(t) => t.name(),
             Effect::Ui(_) => "ui",
         }
     }
