@@ -154,18 +154,20 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             if let Some(k) = known
                 && repo::refs_key(&path).is_ok_and(|key| key == k.refs_key)
             {
+                let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
                 let result = repo::status_at(&path).map_err(err);
                 let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
-                return Some(Msg::RepoUnchanged { generation, result, submodules });
+                return Some(Msg::RepoUnchanged { generation, result, submodules, open_stamp });
             }
             let result =
                 repo::load_cached(&path, &opts, graph_cache).map(Box::new).map_err(|e| format!("Could not open {}: {e}", path.display()));
             Some(Msg::RepoLoaded { generation, kind, result })
         }
-        Effect::LoadStatus { workdir, generation, submodules } => {
+        Effect::LoadStatus { workdir, generation, submodules, open } => {
+            let open_stamp = open.and_then(|p| repo::open_file_stamp(&workdir, &p));
             let result = repo::status_at(&workdir).map_err(err);
             let submodules = repo::submodules_if_any(&workdir, submodules).ok().flatten();
-            Some(Msg::StatusLoaded { generation, result, submodules })
+            Some(Msg::StatusLoaded { generation, result, submodules, open_stamp })
         }
         Effect::LoadDetail { workdir, oid } => Some(Msg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }),
         Effect::LoadCompare { workdir, from, to } => {

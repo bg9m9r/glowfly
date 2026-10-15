@@ -127,6 +127,6 @@ mod tests {
         assert_eq!(repo_of(&git(&[&["fetch", ".", "a:b"]])), Some(w.as_path()));
         let op = Effect::LocalOp { workdir: w.clone(), op: crate::effect::LocalOp::StageAll };
         assert_eq!(repo_of(&op), Some(w.as_path()));
-        assert_eq!(repo_of(&Effect::LoadStatus { workdir: w.clone(), generation: 0, submodules: false }), None);
+        assert_eq!(repo_of(&Effect::LoadStatus { workdir: w.clone(), generation: 0, submodules: false, open: None }), None);
     }
 }

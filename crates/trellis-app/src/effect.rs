@@ -100,11 +100,13 @@ pub struct ForgeReply {
 }
 
 /// What a refresh compares against before loading everything again.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct KnownRepo {
     pub refs_key: u64,
     /// The snapshot has submodules: read them again even without a .gitmodules.
     pub submodules: bool,
+    /// The file whose working-tree or index diff is open, for `Msg::RepoUnchanged::open_stamp`.
+    pub open: Option<String>,
 }
 
 /// A repository for the file watcher.
@@ -130,6 +132,8 @@ pub enum Effect {
         generation: u64,
         /// The last load found submodules: read them again even without a .gitmodules.
         submodules: bool,
+        /// The file whose working-tree or index diff is open, for `Msg::StatusLoaded::open_stamp`.
+        open: Option<String>,
     },
     LoadDetail {
         workdir: PathBuf,

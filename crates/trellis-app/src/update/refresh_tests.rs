@@ -136,3 +136,43 @@ fn a_watcher_rescan_checks_refs_before_loading() {
     assert!(matches!(run_load(fx), Msg::RepoUnchanged { .. }));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+fn diff_loads(fx: &[Effect]) -> usize {
+    fx.iter().filter(|e| matches!(e, Effect::LoadDiff { .. })).count()
+}
+
+/// Asks for the status and runs the read: the effects its result leads to.
+fn read_status(st: &mut AppState) -> Vec<Effect> {
+    let workdir = st.workdir().unwrap();
+    let changed = Msg::Scoped { workdir, msg: Box::new(Msg::RepoChanged { full: false, last_event: Instant::now() }) };
+    let fx = update(st, changed, Instant::now());
+    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::execute).expect("a status read");
+    update(st, status, Instant::now())
+}
+
+#[test]
+fn a_status_read_rereads_the_open_diff_only_when_its_file_changed() {
+    let (mut st, dir) = opened("refresh-diff");
+    drive(&mut st, Msg::OpenDiff(trellis_core::repo::DiffTarget::Unstaged("a.txt".into())));
+    assert!(st.diff.is_some());
+    // The first read after opening has nothing to compare with.
+    let fx = read_status(&mut st);
+    finish(&mut st, fx);
+    assert_eq!(diff_loads(&read_status(&mut st)), 0, "nothing changed");
+
+    std::fs::write(dir.join("a.txt"), "one\ntwo\nthree\n").unwrap();
+    let fx = read_status(&mut st);
+    assert_eq!(diff_loads(&fx), 1, "the file changed: {fx:?}");
+    finish(&mut st, fx);
+    assert_eq!(st.diff.as_ref().unwrap().1.hunks[0].lines.iter().filter(|l| l.origin == '+').count(), 2);
+
+    std::fs::write(dir.join("b.txt"), "b\n").unwrap();
+    git(&dir, &["add", "b.txt"]);
+    assert_eq!(diff_loads(&read_status(&mut st)), 1, "the index changed");
+
+    let head = st.snap.as_ref().unwrap().commits[0].oid;
+    drive(&mut st, Msg::OpenDiff(trellis_core::repo::DiffTarget::Commit(head, "a.txt".into())));
+    std::fs::write(dir.join("a.txt"), "other\n").unwrap();
+    assert_eq!(diff_loads(&read_status(&mut st)), 0, "a commit's diff doesn't change");
+    let _ = std::fs::remove_dir_all(&dir);
+}

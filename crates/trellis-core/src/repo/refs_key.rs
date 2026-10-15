@@ -58,6 +58,18 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     Ok(h.finish())
 }
 
+/// A fingerprint of the working-tree file at `path` (relative to `workdir`) and of the index:
+/// while it stays the same, a working-tree or index diff of that file can't have changed.
+/// Taken before reading the status, so a change made meanwhile shows up next time.
+pub fn open_file_stamp(workdir: &Path, path: &str) -> Option<u64> {
+    let repo = Repository::open(workdir).ok()?;
+    let mut h = DefaultHasher::new();
+    path.hash(&mut h);
+    file_stamp(&workdir.join(path)).hash(&mut h);
+    file_stamp(&repo.path().join("index")).hash(&mut h);
+    Some(h.finish())
+}
+
 /// The size and modification time of the file at `p`, or None when there is none.
 fn file_stamp(p: &Path) -> Option<(u64, Option<SystemTime>)> {
     let m = std::fs::metadata(p).ok()?;

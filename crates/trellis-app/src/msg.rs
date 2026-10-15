@@ -470,12 +470,16 @@ pub enum Msg {
         generation: u64,
         result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
         submodules: Option<Vec<trellis_core::repo::SubmoduleInfo>>,
+        open_stamp: Option<u64>,
     },
     StatusLoaded {
         generation: u64,
         result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
         /// The submodules read again; None when the repository has none (or they couldn't be read).
         submodules: Option<Vec<trellis_core::repo::SubmoduleInfo>>,
+        /// `repo::open_file_stamp` of the file asked about; while it stays the same, the open
+        /// diff isn't read again.
+        open_stamp: Option<u64>,
     },
     DetailLoaded {
         oid: Oid,

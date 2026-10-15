@@ -99,7 +99,7 @@ fn whitespace_toggle_filters_a_real_repo() {
         let loaded = crate::runner::execute(e).expect("diff result");
         run(&mut st, loaded);
     }
-    let status = Effect::LoadStatus { workdir: dir.clone(), generation: st.load_gen, submodules: false };
+    let status = Effect::LoadStatus { workdir: dir.clone(), generation: st.load_gen, submodules: false, open: None };
     let status = crate::runner::execute(status).expect("status result");
     let fx = run(&mut st, status);
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, reload: true, .. })));

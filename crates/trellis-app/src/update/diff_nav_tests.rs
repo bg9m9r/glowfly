@@ -283,7 +283,7 @@ fn accepted_reload_clears_landing() {
     let snap = st.snap.as_ref().unwrap();
     let status = (snap.unstaged.clone(), snap.staged.clone(), snap.state);
     let generation = st.load_gen;
-    let fx = run(&mut st, Msg::StatusLoaded { generation, result: Ok(status), submodules: None });
+    let fx = run(&mut st, Msg::StatusLoaded { generation, result: Ok(status), submodules: None, open_stamp: None });
     assert_eq!(one_load(&fx), (&unstaged("a.txt"), true), "a status refresh reloads the old file");
     finish(&mut st, fx);
     assert_eq!(st.view.diff_landing, None);

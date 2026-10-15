@@ -5,7 +5,7 @@
 
 use crate::effect::{Effect, KnownRepo, LoadKind};
 use crate::msg::Msg;
-use crate::state::refresh::Depth;
+use crate::state::refresh::{Depth, RefreshState};
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
 use std::path::PathBuf;
@@ -16,7 +16,7 @@ type Status = (Vec<FileEntry>, Vec<FileEntry>, RepositoryState);
 
 pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::RepoUnchanged { generation, result, submodules } => {
+        Msg::RepoUnchanged { generation, result, submodules, open_stamp } => {
             if generation != st.load_gen {
                 return; // superseded by a newer load
             }
@@ -28,11 +28,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 super::selection::refreshed(st, &snap, fx);
                 st.snap = Some(snap);
             }
-            apply_status(st, result, submodules, now, fx);
+            apply_status(st, result, submodules, open_stamp, now, fx);
             super::forge::refresh(st, false, false, now, fx);
             load_finished(st, fx);
         }
-        Msg::StatusLoaded { generation, result, submodules } => {
+        Msg::StatusLoaded { generation, result, submodules, open_stamp } => {
             if generation != st.load_gen {
                 return;
             }
@@ -45,7 +45,7 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 refresh_status(st, fx);
                 return;
             }
-            apply_status(st, result, submodules, now, fx);
+            apply_status(st, result, submodules, open_stamp, now, fx);
         }
         _ => {}
     }
@@ -60,7 +60,7 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
     st.load_gen += 1;
     st.loading = true;
     // Status reads of the older generation are dropped, and the load reads the status anyway.
-    st.refresh = Default::default();
+    st.refresh = RefreshState { open_stamp: st.refresh.open_stamp, ..Default::default() };
     let opts = st.load_options(&path);
     let known = known.filter(|_| st.snap.as_ref().is_some_and(|s| s.loaded_with == opts));
     fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind, known });
@@ -92,7 +92,9 @@ fn request(st: &mut AppState, depth: Depth, fx: &mut Vec<Effect>) {
         return;
     }
     let known = match depth {
-        Depth::Checked => st.snap.as_ref().map(|s| KnownRepo { refs_key: s.refs_key, submodules: !s.submodules.is_empty() }),
+        Depth::Checked => {
+            st.snap.as_ref().map(|s| KnownRepo { refs_key: s.refs_key, submodules: !s.submodules.is_empty(), open: open_file(st) })
+        }
         Depth::Full => None,
     };
     start(st, path, LoadKind::Refresh, known, fx);
@@ -115,7 +117,25 @@ pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     st.refresh.status_busy = true;
     let submodules = st.snap.as_ref().is_some_and(|s| !s.submodules.is_empty());
-    fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules });
+    fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules, open: open_file(st) });
+}
+
+/// The file whose working-tree or index diff is open.
+fn open_file(st: &AppState) -> Option<String> {
+    st.diff.as_ref().filter(|(t, _)| t.is_working_tree()).map(|(t, _)| t.path().to_owned())
+}
+
+/// Whether the diff on screen must be read again after a status read that found the open file
+/// at `stamp`. A commit or comparison diff never changes; a working-tree or index diff only when
+/// its file or the index did. Always when a request is outstanding (a hunk operation waits for
+/// the reload) or the file history's entry is missing.
+fn diff_changed(st: &mut AppState, stamp: Option<u64>) -> bool {
+    let last = std::mem::replace(&mut st.refresh.open_stamp, stamp);
+    let Some((target, _)) = &st.diff else { return true };
+    if st.diff_gen != st.diff_shown_gen || super::history::missing_diff(st).is_some() {
+        return true;
+    }
+    target.is_working_tree() && (stamp.is_none() || stamp != last)
 }
 
 fn set_status(snap: &mut Snapshot, status: Status, submodules: Option<Vec<SubmoduleInfo>>) {
@@ -138,6 +158,7 @@ fn apply_status(
     st: &mut AppState,
     result: Result<Status, String>,
     submodules: Option<Vec<SubmoduleInfo>>,
+    open_stamp: Option<u64>,
     now: Instant,
     fx: &mut Vec<Effect>,
 ) {
@@ -145,7 +166,9 @@ fn apply_status(
         Ok(status) => {
             let Some(snap) = st.snap.as_mut() else { return };
             set_status(snap, status, submodules);
-            super::repo::reload_diff(st, fx);
+            if diff_changed(st, open_stamp) {
+                super::repo::reload_diff(st, fx);
+            }
             super::conflict::status_changed(st, now);
         }
         Err(e) => {

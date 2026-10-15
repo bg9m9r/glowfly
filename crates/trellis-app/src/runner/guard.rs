@@ -46,7 +46,7 @@ impl Recovery {
             Kind::Rebase => Msg::RebaseFinished { result: Err(text) },
             Kind::LocalOp => Msg::LocalOpDone(Err(text)),
             Kind::Load(generation, kind) => Msg::RepoLoaded { generation, kind, result: Err(text) },
-            Kind::Status(generation) => Msg::StatusLoaded { generation, result: Err(text), submodules: None },
+            Kind::Status(generation) => Msg::StatusLoaded { generation, result: Err(text), submodules: None, open_stamp: None },
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {
@@ -130,7 +130,7 @@ mod tests {
         update(&mut st, msg, Instant::now());
         assert!(!st.loading, "the next refresh isn't left waiting for it");
 
-        let effect = Effect::LoadStatus { workdir: "C:/r".into(), generation: 3, submodules: false };
+        let effect = Effect::LoadStatus { workdir: "C:/r".into(), generation: 3, submodules: false, open: None };
         let msg = guarded(Recovery::of(&effect, "load-status"), || panic!("boom")).unwrap();
         let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
         assert!(matches!(*msg, Msg::StatusLoaded { generation: 3, result: Err(_), .. }));
