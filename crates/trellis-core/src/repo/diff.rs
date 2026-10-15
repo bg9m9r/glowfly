@@ -10,13 +10,23 @@ use std::sync::Arc;
 
 /// Lines added and removed, and files changed, for each commit (against its first parent).
 pub fn commit_stats(workdir: &Path, oids: &[Oid]) -> Vec<(Oid, usize, usize, usize)> {
-    let Ok(repo) = Repository::open(workdir) else { return Vec::new() };
-    oids.iter()
-        .filter_map(|&oid| {
-            let stats = commit_diff(&repo, oid, None).ok()?.stats().ok()?;
-            Some((oid, stats.files_changed(), stats.insertions(), stats.deletions()))
-        })
-        .collect()
+    commit_stats_until(workdir, oids, &|| false).0
+}
+
+/// `commit_stats`, stopping before the next commit once `stop` returns true. Also returns how
+/// many of `oids` were gone through (those that failed included).
+pub fn commit_stats_until(workdir: &Path, oids: &[Oid], stop: &dyn Fn() -> bool) -> (Vec<(Oid, usize, usize, usize)>, usize) {
+    let Ok(repo) = Repository::open(workdir) else { return (Vec::new(), oids.len()) };
+    let mut out = Vec::new();
+    for (i, &oid) in oids.iter().enumerate() {
+        if i > 0 && stop() {
+            return (out, i);
+        }
+        if let Some(stats) = commit_diff(&repo, oid, None).ok().and_then(|d| d.stats().ok()) {
+            out.push((oid, stats.files_changed(), stats.insertions(), stats.deletions()));
+        }
+    }
+    (out, oids.len())
 }
 
 fn delta_char(d: Delta) -> char {

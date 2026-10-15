@@ -40,7 +40,10 @@ mod workfile_rm;
 mod worktrees;
 
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
-pub use diff::{Comparison, ViewDiff, commit_detail, commit_stats, compare, compare_files, load_diff, load_diff_for_view, load_diff_with};
+pub use diff::{
+    Comparison, ViewDiff, commit_detail, commit_stats, commit_stats_until, compare, compare_files, load_diff, load_diff_for_view,
+    load_diff_with,
+};
 use diff::{head_tree, path_opts, workdir_opts};
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};

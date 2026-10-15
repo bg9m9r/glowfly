@@ -84,3 +84,22 @@ fn containment_is_remembered_between_loads() {
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
 }
+
+#[test]
+fn commit_stats_stop_between_commits() {
+    let dir = scratch_repo("stats-until");
+    for (i, msg) in ["one", "two", "three"].iter().enumerate() {
+        commit_at(&dir, msg, i as i64 * 10);
+    }
+    let s = load(&dir, &LoadOptions::all(10)).unwrap();
+    let oids: Vec<_> = s.commits.iter().map(|c| c.oid).collect();
+    let asked = std::cell::Cell::new(0);
+    let stop = || {
+        asked.set(asked.get() + 1);
+        asked.get() >= 2
+    };
+    let (done, gone_through) = commit_stats_until(&dir, &oids, &stop);
+    assert_eq!((done.len(), gone_through), (2, 2), "stops before the third");
+    assert_eq!(commit_stats(&dir, &oids).len(), 3);
+    let _ = std::fs::remove_dir_all(&dir);
+}

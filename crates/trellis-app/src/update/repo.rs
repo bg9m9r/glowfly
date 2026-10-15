@@ -142,6 +142,11 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
                 fx.push(Effect::Stats { workdir, oids: missing });
             }
         }
+        Msg::StatsDropped(oids) => {
+            for oid in oids {
+                st.stats_pending.remove(&oid);
+            }
+        }
         Msg::StatsLoaded(batch) => {
             for (oid, files, adds, dels) in batch {
                 st.stats_pending.remove(&oid);

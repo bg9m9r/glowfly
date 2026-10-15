@@ -32,6 +32,7 @@ mod os;
 mod queue;
 mod rebase;
 mod saves;
+mod stats;
 mod submodules;
 mod terminal;
 mod worktrees;
@@ -64,6 +65,8 @@ pub struct Runner<W: Waker + Clone> {
     saves: saves::Saves,
     /// Effects that change a repository run one at a time per repository.
     queues: Arc<queue::RepoQueues>,
+    /// Works out the graph's line counts, newest request first.
+    stats: stats::StatsWorker,
     /// Ahead/behind and containment answers, kept between repository loads.
     graph_cache: Arc<repo::GraphCache>,
 }
@@ -80,6 +83,7 @@ impl<W: Waker + Clone> Runner<W> {
             saves: Default::default(),
             queues: Default::default(),
             graph_cache: Default::default(),
+            stats: Default::default(),
         }
     }
 
@@ -91,6 +95,7 @@ impl<W: Waker + Clone> Runner<W> {
             Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
             Effect::Terminal(t) => return self.terminal(t),
+            Effect::Stats { workdir, oids } => return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone()),
             other => match self.save(other) {
                 Some(other) => other,
                 None => return,

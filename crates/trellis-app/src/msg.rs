@@ -550,6 +550,9 @@ pub enum Msg {
         result: Result<String, String>,
     },
     StatsLoaded(Vec<(Oid, usize, usize, usize)>),
+    /// Stats asked for but not worked out: a newer request came first (the graph scrolled on).
+    /// They can be asked for again.
+    StatsDropped(Vec<Oid>),
     /// Fetched avatars; `None` when an author has none (the view shows initials).
     AvatarsLoaded(Vec<(String, Option<trellis_core::avatars::Image>)>),
     GitConfigLoaded(GitConfigValues),

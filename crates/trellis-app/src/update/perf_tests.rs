@@ -40,3 +40,21 @@ fn commit_search_ignores_case_and_matches_id_prefixes() {
         assert!(!commit_matches(&c, q), "{q}");
     }
 }
+
+#[test]
+fn dropped_stats_can_be_asked_for_again() {
+    use super::tests::{drive, scratch_repo};
+    use crate::effect::Effect;
+    use crate::msg::Msg;
+    let dir = scratch_repo("stats-dropped");
+    let mut st = state();
+    drive(&mut st, Msg::Open(dir.clone()));
+    let oid = st.snap.as_ref().unwrap().commits[0].oid;
+    let now = std::time::Instant::now();
+    let asks = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::Stats { oids, .. } if *oids == [oid]));
+    assert!(asks(&super::update(&mut st, Msg::WantStats(vec![oid]), now)));
+    assert!(!asks(&super::update(&mut st, Msg::WantStats(vec![oid]), now)), "already asked");
+    super::update(&mut st, Msg::StatsDropped(vec![oid]), now);
+    assert!(asks(&super::update(&mut st, Msg::WantStats(vec![oid]), now)), "a newer request had replaced it");
+    let _ = std::fs::remove_dir_all(&dir);
+}
