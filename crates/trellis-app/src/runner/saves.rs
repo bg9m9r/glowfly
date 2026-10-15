@@ -32,7 +32,7 @@ impl<W: Waker + Clone> Runner<W> {
         let Some(order) = self.saves.order(&effect) else { return Some(effect) };
         let (order, ticket) = (order.clone(), order.ticket());
         let (tx, waker) = (self.tx.clone(), self.waker.clone());
-        let name = super::names::effect_name(&effect);
+        let name = effect.name();
         let spawned = std::thread::Builder::new().name(format!("trellis-{name}")).spawn(move || {
             if let Some(msg) = order.write(ticket, || save_now(effect)).flatten()
                 && tx.send(msg).is_ok()

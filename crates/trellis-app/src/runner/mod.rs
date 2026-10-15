@@ -27,7 +27,6 @@ mod expect;
 pub(crate) mod files;
 mod guard;
 mod highlight;
-mod names;
 mod os;
 mod queue;
 mod rebase;
@@ -104,7 +103,7 @@ impl<W: Waker + Clone> Runner<W> {
         };
         let tx = self.tx.clone();
         let waker = self.waker.clone();
-        let name = names::effect_name(&effect);
+        let name = effect.name();
         let epoch = &self.highlight_epoch;
         let ticket = matches!(effect, Effect::HighlightDiff { .. }).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
         let repo = queue::repo_of(&effect).map(Path::to_owned);

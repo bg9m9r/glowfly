@@ -6,114 +6,23 @@ use crate::msg::{FilePurpose, FolderPurpose};
 use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::askpass::Reply;
-use trellis_core::forge::{Account, Auth, Issue, NewPullRequest, NewRepo, PullRequest, Target};
+use trellis_core::forge::{Account, Auth, NewRepo, Target};
 use trellis_core::rebase::{RebaseBase, StartRequest};
-use trellis_core::repo::{ConflictIds, DiffTarget, FileDiff, HistoryStart, Hunk, HunkOp, LoadOptions, Side};
+use trellis_core::repo::{DiffTarget, FileDiff, HistoryStart, Hunk, LoadOptions};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
+
+mod forge;
+mod names;
+mod repo;
+
+pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
+pub use repo::{KnownRepo, LocalOp, UndoResult, WatchTarget};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum LoadKind {
     Open,
     Refresh,
-}
-
-/// Quick index/working-tree edits (through libgit2, or git where filters must run).
-#[derive(Debug, PartialEq)]
-pub enum LocalOp {
-    StageFile(String),
-    StageAll,
-    UnstagePaths(Vec<String>),
-    /// Checks out the index version of a tracked file.
-    DiscardFile(String),
-    Hunk {
-        op: HunkOp,
-        path: String,
-        index: usize,
-        /// The hunk as displayed; the operation is refused if the file's hunk differs now.
-        expected: Hunk,
-    },
-    /// Lines `lines` (sorted) of hunk `hunk`, whose header must still be `header`.
-    Lines {
-        op: HunkOp,
-        path: String,
-        hunk: usize,
-        /// The hunk as displayed; the operation is refused if the file's hunk differs now.
-        expected: Hunk,
-        lines: Vec<usize>,
-    },
-    /// Writes a resolved conflict's output and stages it, if the conflict is still `expected`.
-    ResolveConflict {
-        path: String,
-        contents: String,
-        expected: ConflictIds,
-    },
-    /// Resolves a conflict with one side's whole version (or its deletion).
-    ResolveWithSide {
-        path: String,
-        side: Side,
-        expected: ConflictIds,
-    },
-}
-
-/// What to ask a hosting service.
-#[derive(Debug)]
-pub enum ForgeCall {
-    /// Pull requests (plus the default branch and, when the host is also the tracker, issues).
-    Refresh {
-        need_default: bool,
-        with_issues: bool,
-    },
-    MyIssues,
-    Issues(Vec<String>),
-    Create(NewPullRequest),
-}
-
-/// A hosting-service failure, flagged when signing in again could fix it.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ForgeError {
-    pub message: String,
-    pub auth: bool,
-}
-
-impl From<trellis_core::error::Error> for ForgeError {
-    fn from(e: trellis_core::error::Error) -> Self {
-        ForgeError { auth: e.is_auth(), message: e.to_string() }
-    }
-}
-
-#[derive(Debug)]
-pub enum ForgeResult {
-    AuthFailed(String),
-    Prs(Result<Vec<PullRequest>, ForgeError>),
-    MyIssues(Result<Vec<Issue>, ForgeError>),
-    Issues(Vec<String>, Result<Vec<Issue>, ForgeError>),
-    DefaultBranch(Option<String>),
-    Created(Result<PullRequest, ForgeError>),
-}
-
-#[derive(Debug)]
-pub struct ForgeReply {
-    pub target: Target,
-    pub auth: Option<Auth>,
-    pub results: Vec<ForgeResult>,
-}
-
-/// What a refresh compares against before loading everything again.
-#[derive(Clone, Debug, PartialEq)]
-pub struct KnownRepo {
-    pub refs_key: u64,
-    /// The snapshot has submodules: read them again even without a .gitmodules.
-    pub submodules: bool,
-    /// The file whose working-tree or index diff is open, for `Msg::RepoUnchanged::open_stamp`.
-    pub open: Option<String>,
-}
-
-/// A repository for the file watcher.
-#[derive(Clone, Debug, PartialEq)]
-pub struct WatchTarget {
-    pub workdir: PathBuf,
-    pub git_dir: PathBuf,
 }
 
 #[derive(Debug)]
@@ -396,23 +305,44 @@ impl Effect {
             | Effect::WorkFile { workdir, .. }
             | Effect::Stats { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
-            _ => None,
+            // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
+            // active, and work outside any repository.
+            Effect::LoadRepo { .. }
+            | Effect::CheckWorktreeFolder(_)
+            | Effect::CheckCloneParent { .. }
+            | Effect::DetectLfs { .. }
+            | Effect::RemoveWorktree(_)
+            | Effect::RunGit { .. }
+            | Effect::UndoRedo { .. }
+            | Effect::InteractiveRebase { .. }
+            | Effect::RepoOwners { .. }
+            | Effect::CreateRepo { .. }
+            | Effect::Connect { .. }
+            | Effect::SaveToken { .. }
+            | Effect::DeleteToken(_)
+            | Effect::ForgetCredentialManager { .. }
+            | Effect::FetchAvatars(_)
+            | Effect::ReadGitConfig { .. }
+            | Effect::SetGitConfig { .. }
+            | Effect::SaveSettings(_)
+            | Effect::SaveRecent(_)
+            | Effect::SaveTabs { .. }
+            | Effect::OpenUrl(_)
+            | Effect::OpenTerminal(_)
+            | Effect::OpenFolder(_)
+            | Effect::OpenPath(_)
+            | Effect::RevealPath(_)
+            | Effect::PickFolder { .. }
+            | Effect::PickFile { .. }
+            | Effect::ListSigningKeys { .. }
+            | Effect::GenerateGpgKey { .. }
+            | Effect::ExportPublicKey { .. }
+            | Effect::Watch(_)
+            | Effect::AnswerPrompt { .. }
+            | Effect::Terminal(_)
+            | Effect::Ui(_) => None,
         }
     }
-}
-
-/// What a git job means for the undo history.
-#[derive(Debug)]
-pub enum UndoResult {
-    /// An undoable job ran; `None` when it changed nothing that can be undone.
-    Recorded(Option<Action>),
-    /// An undo or redo ran. `before` is the history entry and `after` the entry as it stands now
-    /// (they differ only for a redone discard, which makes a new stash).
-    Done { redo: bool, before: Action, after: Action },
-    /// The reversing git commands failed; the entry stays.
-    Failed { redo: bool },
-    /// The undo or redo was refused before running anything; a stale history is cleared.
-    Refused { redo: bool, stale: bool },
 }
 
 /// Effects that need the window, carried out by the UI shell.

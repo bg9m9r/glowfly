@@ -56,7 +56,52 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
         Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } | Effect::InteractiveRebase { cwd, .. } => Some(cwd),
         Effect::RemoveWorktree(r) => Some(&r.repo),
-        _ => None,
+        // Reads, network calls, Trellis's own files (ordered by `saves`), git config (which no
+        // queued job reads mid-way) and work outside the process. Listed one by one so a new
+        // effect has to decide.
+        Effect::LoadRepo { .. }
+        | Effect::LoadStatus { .. }
+        | Effect::LoadDetail { .. }
+        | Effect::LoadCompare { .. }
+        | Effect::LoadDiff { .. }
+        | Effect::HighlightDiff { .. }
+        | Effect::LoadConflict { .. }
+        | Effect::LoadFileHistory { .. }
+        | Effect::LoadTrackedPaths { .. }
+        | Effect::CheckSubmodule { .. }
+        | Effect::CheckWorktreeFolder(_)
+        | Effect::CheckCloneParent { .. }
+        | Effect::DetectLfs { .. }
+        | Effect::LoadLfs { .. }
+        | Effect::LoadRebasePlan { .. }
+        | Effect::Forge { .. }
+        | Effect::RepoOwners { .. }
+        | Effect::CreateRepo { .. }
+        | Effect::Connect { .. }
+        | Effect::SaveToken { .. }
+        | Effect::DeleteToken(_)
+        | Effect::ForgetCredentialManager { .. }
+        | Effect::Stats { .. }
+        | Effect::FetchAvatars(_)
+        | Effect::ReadGitConfig { .. }
+        | Effect::SetGitConfig { .. }
+        | Effect::SaveSettings(_)
+        | Effect::SaveRecent(_)
+        | Effect::SaveTabs { .. }
+        | Effect::OpenUrl(_)
+        | Effect::OpenTerminal(_)
+        | Effect::OpenFolder(_)
+        | Effect::OpenPath(_)
+        | Effect::RevealPath(_)
+        | Effect::PickFolder { .. }
+        | Effect::PickFile { .. }
+        | Effect::ListSigningKeys { .. }
+        | Effect::GenerateGpgKey { .. }
+        | Effect::ExportPublicKey { .. }
+        | Effect::Watch(_)
+        | Effect::AnswerPrompt { .. }
+        | Effect::Terminal(_)
+        | Effect::Ui(_) => None,
     }
 }
 
@@ -128,5 +173,50 @@ mod tests {
         let op = Effect::LocalOp { workdir: w.clone(), op: crate::effect::LocalOp::StageAll };
         assert_eq!(repo_of(&op), Some(w.as_path()));
         assert_eq!(repo_of(&Effect::LoadStatus { workdir: w.clone(), generation: 0, submodules: false, open: None }), None);
+    }
+
+    #[test]
+    fn every_effect_that_changes_a_repository_queues() {
+        use crate::effect::{FileOp, LocalOp};
+        use trellis_core::repo::{DiffTarget, Hunk};
+        let w = PathBuf::from("C:/r");
+        let hunk = Hunk { header: String::new(), lines: Vec::new() };
+        let changing = [
+            Effect::LocalOp { workdir: w.clone(), op: LocalOp::StageAll },
+            Effect::RevertHunk { workdir: w.clone(), target: DiffTarget::Commit(git2::Oid::zero(), "a".into()), index: 0, expected: hunk },
+            Effect::RestoreFile { workdir: w.clone(), oid: git2::Oid::zero(), path: "a".into(), overwrite: false },
+            Effect::WorkFile { workdir: w.clone(), op: FileOp::Create("a".into()) },
+            Effect::RunGit {
+                cwd: w.clone(),
+                cmds: vec![trellis_core::gitcli::args(&["commit"])],
+                write_file: None,
+                record: None,
+                prompts: false,
+                expect: None,
+            },
+            Effect::UndoRedo {
+                cwd: w.clone(),
+                action: trellis_core::undo::Action::DiscardAll { stash: git2::Oid::zero(), head: git2::Oid::zero() },
+                redo: false,
+            },
+            Effect::InteractiveRebase {
+                cwd: w.clone(),
+                request: trellis_core::rebase::StartRequest {
+                    head: git2::Oid::zero(),
+                    upstream: trellis_core::rebase::Upstream::Root,
+                    items: vec![],
+                },
+            },
+            Effect::RemoveWorktree(crate::worktree::RemoveRequest {
+                repo: w.clone(),
+                path: "C:/wt".into(),
+                name: "wt".into(),
+                force: trellis_core::worktree_ops::RemoveForce::None,
+                delete_branch: None,
+            }),
+        ];
+        for e in &changing {
+            assert_eq!(repo_of(e), Some(w.as_path()), "{} must run on its repository's queue", e.name());
+        }
     }
 }
