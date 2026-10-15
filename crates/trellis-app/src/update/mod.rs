@@ -23,6 +23,7 @@ mod palette;
 mod prefs;
 mod publish;
 mod rebase;
+mod recent;
 mod refresh;
 mod remotes;
 mod repo;
@@ -121,6 +122,8 @@ mod rebase_e2e_tests;
 #[cfg(test)]
 mod rebase_tests;
 #[cfg(test)]
+mod recent_tests;
+#[cfg(test)]
 mod refresh_tests;
 #[cfg(test)]
 mod remote_tests;
@@ -190,6 +193,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     match msg {
         // Each area's messages go to its handler, which matches them exhaustively.
         Msg::Repo(m) => repo::handle(st, m, now, &mut fx),
+        Msg::Recent(m) => recent::handle(st, m, &mut fx),
         Msg::Load(m) => refresh::handle(st, m, now, &mut fx),
         Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
         Msg::Selection(m) => selection::handle(st, m, &mut fx),

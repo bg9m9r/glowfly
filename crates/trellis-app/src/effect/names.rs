@@ -45,6 +45,7 @@ impl Effect {
             Effect::SetGitConfig { .. } => "set-config",
             Effect::SaveSettings(_) => "save-settings",
             Effect::SaveRecent(_) => "save-recent",
+            Effect::CheckRepoFolders(_) => "check-repo-folders",
             Effect::SaveTabs { .. } => "save-tabs",
             Effect::OpenUrl(_) => "open-url",
             Effect::OpenTerminal(_) => "open-terminal",

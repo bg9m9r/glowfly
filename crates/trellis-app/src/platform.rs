@@ -1,5 +1,5 @@
-//! Operating-system integration: the recent-repositories file, terminals, file managers (opening
-//! a folder, or showing a file selected in it).
+//! Operating-system integration: the recent-repositories file and which listed folders are
+//! missing, terminals, file managers (opening a folder, or showing a file selected in it).
 
 use std::path::{Path, PathBuf};
 
@@ -10,12 +10,23 @@ fn recent_file() -> Option<PathBuf> {
     trellis_core::settings::config_dir().map(|d| d.join("recent.txt"))
 }
 
-/// Recently opened repositories that still exist, newest first.
+/// Recently opened repositories, newest first, including folders that no longer exist.
 pub fn load_recent() -> Vec<PathBuf> {
     recent_file()
         .and_then(|f| std::fs::read_to_string(f).ok())
-        .map(|s| s.lines().filter(|l| !l.is_empty()).map(PathBuf::from).filter(|p| p.exists()).collect())
+        .map(|s| s.lines().filter(|l| !l.is_empty()).map(PathBuf::from).collect())
         .unwrap_or_default()
+}
+
+/// The folders among `paths` that are gone: not a directory, or unreachable (a network path or
+/// a drive that isn't connected).
+pub fn missing_folders(paths: &[PathBuf]) -> Vec<PathBuf> {
+    paths.iter().filter(|p| !p.is_dir()).cloned().collect()
+}
+
+/// The first of `paths` that exists.
+pub fn first_existing(paths: &[PathBuf]) -> Option<PathBuf> {
+    paths.iter().find(|p| p.exists()).cloned()
 }
 
 /// Saves the recent-repositories list, newest first.

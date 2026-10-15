@@ -203,6 +203,10 @@ pub struct Settings {
     /// (`Snapshot::real_workdir`); a repository with no entry is undecided.
     #[serde(default)]
     pub repo_trust: HashMap<String, RepoTrust>,
+    /// Favorite repositories (welcome screen and repository menu), as working-directory paths in
+    /// the order they were added.
+    #[serde(default)]
+    pub favorite_repos: Vec<String>,
 }
 
 impl Default for Settings {
@@ -246,6 +250,7 @@ impl Default for Settings {
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),
             repo_trust: HashMap::new(),
+            favorite_repos: Vec::new(),
         }
     }
 }

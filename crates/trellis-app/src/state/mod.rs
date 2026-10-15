@@ -23,6 +23,7 @@ pub mod rebase;
 pub mod ref_rows;
 pub mod refresh;
 pub mod remotes;
+pub mod repo_lists;
 pub mod selection;
 pub mod shallow;
 pub mod sparse;
@@ -150,6 +151,9 @@ pub struct AppState {
     /// Settings as last saved, to detect edits made in Preferences.
     pub saved_settings: String,
     pub recent: Vec<PathBuf>,
+    /// Recent or favorite repository folders found missing by the last check
+    /// (`RecentMsg::FoldersChecked`).
+    pub missing_repos: Vec<PathBuf>,
     /// Open tabs; the active one's repository data is in the fields below.
     pub tabs: Vec<Tab>,
     pub active_tab: usize,
@@ -231,6 +235,7 @@ impl AppState {
             settings,
             saved_settings,
             recent,
+            missing_repos: Vec::new(),
             tabs: vec![Tab::empty()],
             active_tab: 0,
             tab_return: None,

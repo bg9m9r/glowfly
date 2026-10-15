@@ -73,6 +73,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::CheckSubmodule { .. }
         | Effect::CheckWorktreeFolder(_)
         | Effect::CheckCloneParent { .. }
+        | Effect::CheckRepoFolders(_)
         | Effect::DetectLfs { .. }
         | Effect::LoadLfs { .. }
         | Effect::LoadSparse { .. }

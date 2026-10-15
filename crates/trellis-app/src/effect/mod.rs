@@ -256,6 +256,9 @@ pub enum Effect {
     },
     SaveSettings(Box<Settings>),
     SaveRecent(Vec<PathBuf>),
+    /// Which of these repository folders are gone (not a directory or unreachable); reported as
+    /// `RecentMsg::FoldersChecked`.
+    CheckRepoFolders(Vec<PathBuf>),
     /// The open tabs (repositories) and which one is active, for the next start.
     SaveTabs {
         paths: Vec<PathBuf>,
@@ -351,6 +354,7 @@ impl Effect {
             | Effect::SetGitConfig { .. }
             | Effect::SaveSettings(_)
             | Effect::SaveRecent(_)
+            | Effect::CheckRepoFolders(_)
             | Effect::SaveTabs { .. }
             | Effect::OpenUrl(_)
             | Effect::OpenTerminal(_)

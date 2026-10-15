@@ -55,7 +55,7 @@ binary (package `trellis`).
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
 | `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |
 | `watcher.rs` | The file watcher for the active tab's repository, owned by the runner. |
-| `platform.rs` | OS integration: recent repositories, open tabs, terminals, the file manager. |
+| `platform.rs` | OS integration: recent repositories and which listed folders are missing, open tabs, terminals, the file manager. |
 | `keymap.rs` | The keyboard binding table, shared by shortcuts, the palette and tooltips. |
 | `ui/` | egui views, one file or folder per region, plus snapshot tests (`snapshot_tests*.rs`). `ui/mod.rs` is the shell: it owns the runner and dispatches messages. |
 

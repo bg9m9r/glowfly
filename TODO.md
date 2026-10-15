@@ -809,9 +809,22 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Convert the list between folders and patterns when switching the mode
   - [ ] Sparse index support (needs libgit2 to read index.sparse directory entries)
   - [ ] Palette entries that reapply or turn off sparse checkout directly
-- [ ] **Repository management**
-  Scan project folders for repos, favorites with shortcuts, a recent list with removal, and
-  fetch or pull across many repos.
+- [x] **Repository management**
+  Favorites section above Recent on the welcome screen and in the repository menu; remove one
+  recent entry or clear the list; missing folders marked.
+  - [ ] Scan project folders for repositories (choose one or more parent folders, list the Git
+    repositories found under them, filter by name)
+  - [ ] Keyboard shortcuts to open favorites (e.g. the first nine), listed in the shortcut sheet
+    and the palette
+  - [ ] Reorder favorites by dragging
+  - [ ] Fetch or pull across many repositories (all favorites or all listed), with
+    per-repository results and a "nothing to fetch" case
+  - [ ] Mark repositories already open in a tab in the recent and favorite lists, and open all
+    of them in new tabs at once
+  - [ ] Remove all missing entries in one go, and offer to remove an entry when opening it fails
+    because its folder is gone
+  - [ ] Palette commands to favorite or unfavorite the active repository, with favorites listed
+    first among the palette's repositories
 - [ ] **Graph columns and loading**
   Column toggles, compact layout and row highlighting are done (UI Customization). Missing:
   - [x] Resize columns: drag the header dividers (BRANCH/TAG, SHA, changes, author, date), double-click to reset, saved in settings

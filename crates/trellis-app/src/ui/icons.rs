@@ -1,4 +1,4 @@
-//! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse), called from
+//! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close), called from
 //! `widgets::paint_icon`.
 
 use super::widgets::Icon;
@@ -87,6 +87,28 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             for dx in [-4.0, 0.0, 4.0] {
                 p.circle_filled(pos2(c.x + dx, c.y + 3.5), 1.1, s.color);
             }
+        }
+        Icon::Star | Icon::StarFilled => {
+            // Five outer points (radius 7) alternating with five inner ones (radius 3).
+            let at = |i: usize, r: f32| {
+                let a = -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::PI / 5.0;
+                pos2(c.x + r * a.cos(), c.y + r * a.sin())
+            };
+            let pts: Vec<Pos2> = (0..10).map(|i| at(i, if i % 2 == 0 { 7.0 } else { 3.0 })).collect();
+            if icon == Icon::StarFilled {
+                // A star isn't convex: fill the inner pentagon and each point's triangle.
+                let inner: Vec<Pos2> = pts.iter().skip(1).step_by(2).copied().collect();
+                p.add(egui::Shape::convex_polygon(inner, s.color, Stroke::NONE));
+                for i in (0..10).step_by(2) {
+                    let tri = vec![pts[(i + 9) % 10], pts[i], pts[i + 1]];
+                    p.add(egui::Shape::convex_polygon(tri, s.color, Stroke::NONE));
+                }
+            }
+            p.add(egui::Shape::closed_line(pts, s));
+        }
+        Icon::Close => {
+            line(pos2(c.x - 4.5, c.y - 4.5), pos2(c.x + 4.5, c.y + 4.5));
+            line(pos2(c.x - 4.5, c.y + 4.5), pos2(c.x + 4.5, c.y - 4.5));
         }
         _ => return false,
     }

@@ -137,6 +137,17 @@ fn delete_to_trash_defaults_on() {
     assert!(!back.delete_to_trash);
 }
 
+#[test]
+fn favorite_repos_default_empty_and_round_trip() {
+    assert!(Settings::default().favorite_repos.is_empty());
+    // Files written before favorites existed load with none.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.favorite_repos.is_empty());
+    let favs = Settings { favorite_repos: vec!["C:/work/web-app".into(), "C:/work/api".into()], ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&favs).unwrap()).unwrap();
+    assert_eq!(back.favorite_repos, ["C:/work/web-app", "C:/work/api"]);
+}
+
 fn json(s: &Settings) -> serde_json::Value {
     serde_json::to_value(s).unwrap()
 }

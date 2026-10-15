@@ -377,7 +377,7 @@ fn tag_checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
 fn recent_entries(st: &AppState, out: &mut Vec<Entry>) {
     let active = st.workdir();
     for path in st.recent.iter().take(MAX_RECENT) {
-        if active.as_deref().is_some_and(|w| same_folder(w, path)) {
+        if active.as_deref().is_some_and(|w| same_folder(w, path)) || super::repo_lists::is_missing(st, path) {
             continue;
         }
         let e = entry(PaletteCommand::OpenRecent(path.clone()), format!("Open {}", folder_name(path)), "recent repository");

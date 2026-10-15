@@ -213,15 +213,7 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         if ui.add(egui::Button::new("Start a new repository").min_size(size)).clicked() {
             msgs.push(Msg::Repo(RepoMsg::InitRepo));
         }
-        if !st.recent.is_empty() {
-            ui.add_space(20.0);
-            ui.label(RichText::new("Recent").color(color::weak()));
-            for p in &st.recent {
-                if ui.link(p.display().to_string()).clicked() {
-                    msgs.push(Msg::Repo(RepoMsg::Open(p.clone())));
-                }
-            }
-        }
+        super::repo_list::welcome_sections(ui, st, msgs);
     });
 }
 

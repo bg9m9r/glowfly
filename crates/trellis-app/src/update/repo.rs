@@ -26,6 +26,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             if st.job.is_none() {
                 refresh(st, fx);
             }
+            super::recent::check_folders(st, fx);
         }
         RepoMsg::RepoLoaded { generation, kind, result } => {
             if generation != st.load_gen {
@@ -252,6 +253,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             st.recent.insert(0, snap.workdir.clone());
             st.recent.truncate(12);
             fx.push(Effect::SaveRecent(st.recent.clone()));
+            st.missing_repos.retain(|p| !crate::state::tabs::same_path(p, &snap.workdir));
             fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Trellis", snap.name))));
             st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
             st.detail = None;

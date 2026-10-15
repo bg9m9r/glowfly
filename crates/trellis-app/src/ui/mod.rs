@@ -29,6 +29,7 @@ mod publish;
 mod rebase;
 mod ref_visibility;
 mod remotes;
+mod repo_list;
 mod shortcuts;
 mod sidebar;
 mod spell_edit;
@@ -93,6 +94,8 @@ mod snapshot_tests_rebase;
 #[cfg(test)]
 mod snapshot_tests_remotes;
 #[cfg(test)]
+mod snapshot_tests_repo_list;
+#[cfg(test)]
 mod snapshot_tests_revert;
 #[cfg(test)]
 mod snapshot_tests_select;
@@ -131,6 +134,7 @@ use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RebaseMsg;
+use crate::msg::RecentMsg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::msg::TabsMsg;
@@ -168,7 +172,7 @@ impl TrellisApp {
         // Restore the last session's tabs (or, before tabs were saved, the last repository).
         let (mut paths, active) = if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), 0) };
         if paths.is_empty() && settings.reopen_last_repo {
-            paths.extend(recent.first().cloned());
+            paths.extend(crate::platform::first_existing(&recent));
         }
         let mut app = Self {
             st: AppState::new(settings, recent, Instant::now()),
@@ -179,6 +183,7 @@ impl TrellisApp {
         // git and ssh ask for missing credentials through a dialog from now on.
         app.runner.start_askpass();
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
+        app.dispatch(&cc.egui_ctx, Msg::Recent(RecentMsg::CheckFolders));
         if let Some(problem) = problem {
             tracing::warn!("settings: {}", problem.message());
             app.dispatch(&cc.egui_ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem.message())));

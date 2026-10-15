@@ -12,11 +12,11 @@ use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::PublishMsg;
+use crate::msg::RecentMsg;
 use crate::msg::RepoMsg;
 use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
 use eframe::egui::{self, Align, Layout, RichText};
-use std::path::PathBuf;
 use trellis_core::forge::Provider;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -32,8 +32,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     ui.add_space(4.0);
                     ui.label(RichText::new("repository").size(11.0).color(color::weak()));
                     let name = st.snap.as_ref().map(|s| s.name.clone()).unwrap_or_else(|| "Open…".into());
-                    let r =
-                        ui.menu_button(RichText::new(name).size(16.0).strong().color(color::text()), |ui| repo_menu(ui, &st.recent, msgs));
+                    let r = ui.menu_button(RichText::new(name).size(16.0).strong().color(color::text()), |ui| repo_menu(ui, st, msgs));
                     caret_after(ui, &r.response);
                 });
                 let Some(snap) = &st.snap else { return };
@@ -192,16 +191,15 @@ fn dropdown(ui: &mut egui::Ui, id: &str, width: f32, contents: impl FnOnce(&mut 
     });
 }
 
-fn repo_menu(ui: &mut egui::Ui, recent: &[PathBuf], msgs: &mut Vec<Msg>) {
+fn repo_menu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.set_min_width(260.0);
     menu_item(msgs, ui, "Open…", Msg::Repo(RepoMsg::PickRepo));
     menu_item(msgs, ui, "Clone…", Msg::Clone(CloneMsg::Dialog));
     menu_item(msgs, ui, "Init…", Msg::Repo(RepoMsg::InitRepo));
-    if !recent.is_empty() {
-        ui.separator();
-        ui.label(RichText::new("Recent").color(color::weak()));
-        for p in recent {
-            menu_item(msgs, ui, p.display().to_string(), Msg::Repo(RepoMsg::Open(p.clone())));
-        }
+    if let Some(snap) = &st.snap {
+        let fav = crate::state::repo_lists::is_favorite(&st.settings, &snap.workdir);
+        let label = if fav { "Remove this repository from favorites" } else { "Add this repository to favorites" };
+        menu_item(msgs, ui, label, Msg::Recent(RecentMsg::SetFavorite { path: snap.workdir.clone(), favorite: !fav }));
     }
+    super::repo_list::menu_sections(ui, st, msgs);
 }

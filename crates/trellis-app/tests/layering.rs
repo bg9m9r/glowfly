@@ -136,7 +136,17 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("worktree_ops", &["check_folder", "remove", "dirty_count"]),
     (
         "platform",
-        &["load_recent", "save_recent", "load_tabs", "save_tabs", "open_terminal", "open_in_file_manager", "reveal_in_file_manager"],
+        &[
+            "load_recent",
+            "save_recent",
+            "missing_folders",
+            "first_existing",
+            "load_tabs",
+            "save_tabs",
+            "open_terminal",
+            "open_in_file_manager",
+            "reveal_in_file_manager",
+        ],
     ),
 ];
 
@@ -145,6 +155,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/mod.rs", "Settings::load", "the shell loads the settings once, at startup"),
     ("ui/mod.rs", "platform::load_recent", "the shell loads the recent list once, at startup"),
     ("ui/mod.rs", "platform::load_tabs", "the shell loads the last session's tabs once, at startup"),
+    ("ui/mod.rs", "platform::first_existing", "the shell picks the last repository to reopen once, at startup"),
     ("ui/mod.rs", "Instant::now", "the shell stamps each frame and message with the time"),
     ("ui/mod.rs", "Local::now", "the shell sets `st.view.now` once per frame"),
     ("state/mod.rs", "std::env", "`any_dir` falls back to the temp folder's path; nothing is read"),

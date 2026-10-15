@@ -49,6 +49,11 @@ pub enum Icon {
     Shield,
     /// A folder with one solid and one dotted file row: sparse checkout (Preferences).
     Sparse,
+    /// A five-pointed star, outlined or filled: a favorite repository toggle.
+    Star,
+    StarFilled,
+    /// A small diagonal cross: remove an entry from a list.
+    Close,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -203,6 +208,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             p.add(egui::Shape::closed_line(pts, s));
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
+        Icon::Star | Icon::StarFilled | Icon::Close => {}                                                                      // icons.rs
     }
 }
 

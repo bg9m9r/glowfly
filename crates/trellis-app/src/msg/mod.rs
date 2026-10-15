@@ -20,6 +20,7 @@ mod forge;
 mod graph;
 mod prefs;
 mod rebase;
+mod recent;
 mod repo;
 mod sparse;
 mod stash;
@@ -34,6 +35,7 @@ pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
 pub use graph::{AvatarMsg, GraphMsg, SelectionMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
+pub use recent::RecentMsg;
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 pub use sparse::SparseMsg;
 pub use stash::StashMsg;
@@ -44,6 +46,8 @@ pub use work::{CommitMsg, JobMsg, StageMsg};
 pub enum Msg {
     /// Opening the repository, selecting a commit or the working tree, the open diff (update/repo.rs).
     Repo(RepoMsg),
+    /// The recent and favorite repository lists (update/recent.rs).
+    Recent(RecentMsg),
     /// Refresh results and loading more history (update/refresh.rs).
     Load(LoadMsg),
     /// The file watcher's reports (update/watch.rs).
@@ -165,6 +169,7 @@ impl Msg {
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
             Msg::Repo(m) => m.on_inactive(),
+            Msg::Recent(m) => m.on_inactive(),
             Msg::Load(m) => m.on_inactive(),
             Msg::Watch(m) => m.on_inactive(),
             Msg::Selection(m) => m.on_inactive(),

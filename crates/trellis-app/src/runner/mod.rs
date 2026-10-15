@@ -18,6 +18,7 @@ use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::PublishMsg;
+use crate::msg::RecentMsg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::msg::StageMsg;
@@ -300,6 +301,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             (!ok && value.is_some()).then(|| Msg::Logged { ok: false, text: format!("git config {key} failed: {out}") })
         }
         save @ (Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. }) => saves::save_now(save),
+        Effect::CheckRepoFolders(paths) => Some(Msg::Recent(RecentMsg::FoldersChecked(crate::platform::missing_folders(&paths)))),
         Effect::OpenUrl(url) => os::open_url(&url),
         Effect::OpenTerminal(dir) => os::open_terminal(&dir),
         Effect::OpenFolder(dir) => os::open_folder(&dir),
