@@ -1,27 +1,51 @@
-//! The graph's column header: the column titles and, at the right end of the message column,
-//! the history notes (how many commits a truncated history shows, Load more, and a shallow
-//! clone's note with its Fetch full history link).
+//! The graph's column header: the column titles and the history notes (how many commits a
+//! truncated history shows, Load more, and a shallow clone's note with its Fetch full history
+//! link). The notes sit at the right end of the message column; a shallow clone's notes that
+//! don't fit there get their own line under the titles, so the note is always visible.
 
 use super::paint::Columns;
 use crate::msg::{JobMsg, LoadMsg, Msg};
 use crate::state::shallow::{header_tooltip, history_remote};
 use crate::ui::theme::color;
-use eframe::egui::{self, Align2, FontId, Pos2, Response, Sense, Stroke, pos2, vec2};
+use eframe::egui::{self, Align2, FontId, Pos2, Rect, Response, Sense, Stroke, pos2, vec2};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::GraphColumns;
 use trellis_core::shallow_ops::Deepen;
 
 /// Space between the notes at the right of the message column.
 const GAP: f32 = 10.0;
+/// Height of the header row, and of the notes line under it.
+const ROW_H: f32 = 22.0;
 
 const FETCH_FULL: &str = "Fetch full history";
+const SHALLOW: &str = "Shallow clone";
+const LOAD_MORE: &str = "Load more";
 
 /// Draws the header row. Rows lay out their own columns the same way.
 pub(super) fn column_header(ui: &mut egui::Ui, snap: &Snapshot, graph_w: f32, cols_cfg: &GraphColumns, msgs: &mut Vec<Msg>) {
-    let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::hover());
+    let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
     let cols = Columns::new(hdr, graph_w, cols_cfg);
-    let p = ui.painter();
     let font = FontId::proportional(10.5);
+    titles(ui, hdr, &cols, cols_cfg, &font);
+
+    let notes = Notes::of(snap);
+    if !notes.any() {
+        return;
+    }
+    let title_end = cols.msg.0 + text_w(ui, "COMMIT MESSAGE", &font) + 12.0;
+    if notes.shallow && cols.msg.1 - notes.width(ui, snap, &font) <= title_end {
+        // Too narrow for the whole set beside the title: a line of its own, under the titles.
+        let (line, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
+        ui.painter().line_segment([line.left_bottom(), line.right_bottom()], Stroke::new(1.0_f32, color::border()));
+        notes.draw(ui, snap, &font, pos2(line.right() - 6.0, line.center().y), line.left() + 6.0, msgs);
+    } else {
+        notes.draw(ui, snap, &font, pos2(cols.msg.1, hdr.center().y), title_end, msgs);
+    }
+}
+
+/// The column titles and the dividers between them.
+fn titles(ui: &egui::Ui, hdr: Rect, cols: &Columns, cols_cfg: &GraphColumns, font: &FontId) {
+    let p = ui.painter();
     let weak = color::weak();
     p.line_segment([hdr.left_bottom(), hdr.right_bottom()], Stroke::new(1.0_f32, color::border()));
     let header = |col: (f32, f32), text: &str, on: bool| {
@@ -39,53 +63,94 @@ pub(super) fn column_header(ui: &mut egui::Ui, snap: &Snapshot, graph_w: f32, co
     header(cols.changes, "CHANGES", cols_cfg.changes);
     header(cols.author, "AUTHOR", cols_cfg.author);
     header(cols.date, "DATE", cols_cfg.date);
+}
 
-    let shallow = snap.is_shallow();
-    if !snap.truncated && !shallow {
-        return;
-    }
-    // Laid out right to left from the end of the message column. The links always show; the
-    // notes only where they clear the column's title.
-    let y = hdr.center().y;
-    let title_end = cols.msg.0 + p.layout_no_wrap("COMMIT MESSAGE".into(), font.clone(), weak).size().x + 12.0;
-    let mut x = cols.msg.1;
-    if snap.truncated && snap.commits.len() < crate::state::MAX_COMMITS {
-        let (resp, w) = link(ui, &font, pos2(x, y), "load-more", "Load more", "Load more");
-        x -= w + GAP;
-        if resp.clicked() {
-            msgs.push(Msg::Load(LoadMsg::LoadMoreCommits));
+/// Which history notes the header shows.
+struct Notes {
+    load_more: bool,
+    fetch_full: bool,
+    count: bool,
+    shallow: bool,
+}
+
+impl Notes {
+    fn of(snap: &Snapshot) -> Self {
+        let shallow = snap.is_shallow();
+        Self {
+            load_more: snap.truncated && snap.commits.len() < crate::state::MAX_COMMITS,
+            fetch_full: shallow && history_remote(snap).is_some(),
+            count: snap.truncated,
+            shallow,
         }
     }
-    let tooltip = shallow.then(|| header_tooltip(snap));
-    if let Some(tip) = &tooltip
-        && history_remote(snap).is_some()
-    {
-        // A narrow column shows the shorter text, so it doesn't run into the title; the tooltip
-        // and the link's accessible name still say what it does.
-        let wide = p.layout_no_wrap(FETCH_FULL.into(), font.clone(), color::accent()).size().x;
-        let text = if x - wide > title_end { FETCH_FULL } else { "Full history" };
-        let (resp, w) = link(ui, &font, pos2(x, y), "fetch-full-history", FETCH_FULL, text);
-        x -= w + GAP;
-        if resp.on_hover_text(tip).clicked() {
-            msgs.push(Msg::Job(JobMsg::Deepen(Deepen::Full)));
+
+    fn any(&self) -> bool {
+        self.count || self.shallow
+    }
+
+    /// Width of every note at full length, with the gaps between them.
+    fn width(&self, ui: &egui::Ui, snap: &Snapshot, font: &FontId) -> f32 {
+        let widths = [
+            self.load_more.then(|| text_w(ui, LOAD_MORE, font)),
+            self.fetch_full.then(|| text_w(ui, FETCH_FULL, font)),
+            self.count.then(|| text_w(ui, &count_text(snap), font)),
+            self.shallow.then(|| text_w(ui, SHALLOW, font)),
+        ];
+        let shown: Vec<f32> = widths.into_iter().flatten().collect();
+        shown.iter().sum::<f32>() + GAP * shown.len().saturating_sub(1) as f32
+    }
+
+    /// Lays the notes out right to left from `right`. The links always show; the notes only
+    /// where they stay right of `left`.
+    fn draw(&self, ui: &egui::Ui, snap: &Snapshot, font: &FontId, right: Pos2, left: f32, msgs: &mut Vec<Msg>) {
+        let p = ui.painter();
+        let y = right.y;
+        let mut x = right.x;
+        if self.load_more {
+            let (resp, w) = link(ui, font, pos2(x, y), "load-more", LOAD_MORE, LOAD_MORE);
+            x -= w + GAP;
+            if resp.clicked() {
+                msgs.push(Msg::Load(LoadMsg::LoadMoreCommits));
+            }
+        }
+        let tooltip = self.shallow.then(|| header_tooltip(snap));
+        if let Some(tip) = tooltip.as_ref().filter(|_| self.fetch_full) {
+            // Where even the line of its own is too narrow, the link shows the shorter text; the
+            // tooltip and the link's accessible name still say what it does.
+            let text = if x - text_w(ui, FETCH_FULL, font) > left { FETCH_FULL } else { "Full history" };
+            let (resp, w) = link(ui, font, pos2(x, y), "fetch-full-history", FETCH_FULL, text);
+            x -= w + GAP;
+            if resp.on_hover_text(tip).clicked() {
+                msgs.push(Msg::Job(JobMsg::Deepen(Deepen::Full)));
+            }
+        }
+        if self.count {
+            let count = p.layout_no_wrap(count_text(snap), font.clone(), color::faint());
+            let count_x = x - count.size().x;
+            if count_x > left {
+                p.galley(pos2(count_x, y - count.size().y / 2.0), count, color::faint());
+            }
+            x = count_x - GAP;
+        }
+        if let Some(tip) = tooltip {
+            let label = p.layout_no_wrap(SHALLOW.into(), font.clone(), color::faint());
+            let rect = Align2::RIGHT_CENTER.anchor_size(pos2(x, y), label.size());
+            if rect.left() > left {
+                p.galley(rect.min, label, color::faint());
+                let resp = ui.interact(rect, ui.id().with("shallow-clone"), Sense::hover());
+                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, SHALLOW));
+                let _ = resp.on_hover_text(tip);
+            }
         }
     }
-    if snap.truncated {
-        let count = p.layout_no_wrap(format!("newest {} commits", snap.commits.len()), font.clone(), color::faint());
-        let count_x = x - count.size().x;
-        if count_x > title_end {
-            p.galley(pos2(count_x, y - count.size().y / 2.0), count, color::faint());
-        }
-        x = count_x - GAP;
-    }
-    if let Some(tip) = tooltip {
-        let label = p.layout_no_wrap("Shallow clone".into(), font.clone(), color::faint());
-        let rect = Align2::RIGHT_CENTER.anchor_size(pos2(x, y), label.size());
-        if rect.left() > title_end {
-            p.galley(rect.min, label, color::faint());
-            let _ = ui.interact(rect, ui.id().with("shallow-clone"), Sense::hover()).on_hover_text(tip);
-        }
-    }
+}
+
+fn count_text(snap: &Snapshot) -> String {
+    format!("newest {} commits", snap.commits.len())
+}
+
+fn text_w(ui: &egui::Ui, text: &str, font: &FontId) -> f32 {
+    ui.painter().layout_no_wrap(text.into(), font.clone(), color::weak()).size().x
 }
 
 /// An accent text link showing `text` with its right end at `right`, underlined on hover and

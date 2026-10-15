@@ -26,6 +26,7 @@ fn graph_header_shallow() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("graph_shallow");
+    assert_note_and_full_link(&h);
     h.get_by_label("Fetch full history").hover();
     h.run();
     h.check_snapshot("graph_shallow_tooltip");
@@ -46,7 +47,33 @@ fn graph_header_shallow_and_truncated() {
     h.run();
     h.check_snapshot("graph_shallow_load_more_light");
     assert!(h.query_by_label("Load more").is_some());
-    assert!(h.query_by_label("Fetch full history").is_some());
+    assert_note_and_full_link(&h);
+    remove_fixture(&dir);
+}
+
+/// The "Shallow clone" note shows on the link's line, and the link reads in full: it is wider
+/// than the note, which the short "Full history" would not be.
+fn assert_note_and_full_link<S>(h: &egui_kittest::Harness<'_, S>) {
+    let note = h.get_by_label("Shallow clone").bounding_box().expect("the note is laid out");
+    let link = h.get_by_label("Fetch full history").bounding_box().expect("the link is laid out");
+    assert!((note.y0 - link.y0).abs() < 1.0, "note {note:?} and link {link:?} share a line");
+    assert!(note.x1 < link.x0, "the note sits left of the link");
+    assert!(link.width() > note.width(), "the link shows its full text: {link:?} vs {note:?}");
+}
+
+/// With every column on, a shallow truncated history's notes still all show, on a line of their
+/// own under the titles.
+#[test]
+fn graph_header_shallow_narrow_message_column() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "shallow-narrow");
+    make_shallow(&mut st);
+    st.snap.as_mut().unwrap().truncated = true;
+    st.settings.columns.changes = true;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("graph_shallow_notes_line");
+    assert!(h.query_by_label("Load more").is_some());
+    assert_note_and_full_link(&h);
     remove_fixture(&dir);
 }
 
