@@ -5,6 +5,7 @@ pub mod askpass;
 pub mod avatars;
 pub mod branch_ops;
 pub mod clone_ops;
+pub mod commit_query;
 pub mod conflict_rows;
 pub mod dates;
 pub mod diff_rows;

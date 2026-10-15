@@ -1,11 +1,11 @@
 //! Behaviour kept by the per-frame performance work: the bounded activity log and the
 //! allocation-free commit search.
 
-use super::commit_matches;
 use super::tests::state;
 use crate::msg::RepoMsg;
 use crate::state::LOG_LIMIT;
 use git2::Oid;
+use trellis_core::commit_query::CommitQuery;
 use trellis_core::repo::CommitInfo;
 
 #[test]
@@ -35,10 +35,10 @@ fn commit_search_ignores_case_and_matches_id_prefixes() {
         parents: Vec::new(),
     };
     for q in ["parser", "fix the", "über-long", "body", "lovelace", "0abc", "0abcdef1234567890abcdef1234567890abcdef1"] {
-        assert!(commit_matches(&c, q), "{q}");
+        assert!(CommitQuery::parse(q).matches(&c), "{q}");
     }
     for q in ["parsers", "abcdef", "ada@", "0abcdef1234567890abcdef1234567890abcdef12"] {
-        assert!(!commit_matches(&c, q), "{q}");
+        assert!(!CommitQuery::parse(q).matches(&c), "{q}");
     }
 }
 

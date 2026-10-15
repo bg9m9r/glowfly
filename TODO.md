@@ -833,6 +833,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Search and filter**
   Filter the graph to matches (not just dim them), filter by author, search by file path,
   background indexing for large repos.
+  - [x] Filter the graph to matches (Filter toggle, Ctrl+Shift+F, live match count)
+  - [x] Author filter (author: terms and an author picker)
+  - [ ] Search by file path
+  - [ ] Background indexing for large repos
 - [x] **Signing beyond config**
   Done on the Commit Signing page: generate a GPG key, copy the public key, gpg/ssh program
   path, SSH allowed-signers, sign tags.

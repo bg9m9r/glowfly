@@ -70,7 +70,7 @@ pub struct Parked {
     pub stats: HashMap<Oid, (usize, usize, usize)>,
     pub signatures: crate::state::signatures::Signatures,
     pub search: String,
-    pub search_cursor: usize,
+    pub commit_search: crate::state::search::CommitSearch,
     pub ref_filter: String,
     pub graph_scroll: f32,
     /// First visible row of the open diff, counted in `diff_layout` (the layout setting is

@@ -94,8 +94,9 @@ pub fn toggled(sel: &Selection, oid: Oid, snap: &Snapshot) -> Selection {
     }
 }
 
-/// The selection after a Shift-click on `oid`: every graph row from the anchor to it.
-pub fn ranged(sel: &Selection, oid: Oid, snap: &Snapshot) -> Selection {
+/// The selection after a Shift-click on `oid`: every graph row from the anchor to it. While the
+/// graph filters (`shown`: the commit indexes it shows, ascending), only the shown ones.
+pub fn ranged(sel: &Selection, oid: Oid, snap: &Snapshot, shown: Option<&[usize]>) -> Selection {
     let Some(&to) = snap.row_of.get(&oid) else { return sel.clone() };
     let anchor = match sel {
         Selection::Commit(a) => *a,
@@ -104,7 +105,8 @@ pub fn ranged(sel: &Selection, oid: Oid, snap: &Snapshot) -> Selection {
     };
     let Some(&from) = snap.row_of.get(&anchor) else { return Selection::Commit(oid) };
     let (lo, hi) = (from.min(to), from.max(to));
-    MultiSelection::build(snap.commits[lo..=hi].iter().map(|c| c.oid), anchor, snap)
+    let in_range = (lo..=hi).filter(|i| shown.is_none_or(|s| s.binary_search(i).is_ok()));
+    MultiSelection::build(in_range.filter_map(|i| snap.commits.get(i)).map(|c| c.oid), anchor, snap)
 }
 
 /// Why these commits can't be cherry-picked together onto HEAD, if they can't.

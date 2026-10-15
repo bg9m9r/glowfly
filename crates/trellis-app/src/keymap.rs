@@ -198,6 +198,7 @@ pub enum BindingId {
     Sheet,
     Search,
     SearchNext,
+    SearchFilter,
     Prefs,
     Refresh,
     Undo,
@@ -239,7 +240,7 @@ use When as W;
 /// Every binding, in display order within its group. The staging keys, FocusMessage, Sheet,
 /// the tab keys (but the 1-8 range), Undo, Redo and ToggleTerminal are matched from this table
 /// (`ui/shortcuts.rs`); the others document handlers that match their own keys: `ui/mod.rs`
-/// (F5, Ctrl+F, Ctrl+comma, F7/Alt+arrows, Esc), `ui/commit_box.rs`, `ui/graph/select.rs`,
+/// (F5, Ctrl+comma, F7/Alt+arrows, Esc), `ui/commit_box.rs`, `ui/graph/` (Ctrl+F, Ctrl+Shift+F, arrows),
 /// `ui/history.rs`, `ui/palette.rs`, `ui/terminal/` and the dialogs. Change a key there, change it here.
 pub const BINDINGS: &[Binding] = &[
     b(I::Stage, G::Staging, "Stage the file or the selected lines", &[C::plain(K::Letter('S'))], W::WorkingDiff),
@@ -252,6 +253,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::SelectRow, G::Navigation, "Select the row above or below", &[C::plain(K::Up), C::plain(K::Down)], W::Lists),
     b(I::Search, G::Navigation, "Show or hide commit search", &[C::cmd(K::Letter('F'))], W::Anywhere),
     b(I::SearchNext, G::Navigation, "Next search match", &[C::plain(K::Enter)], W::Search),
+    b(I::SearchFilter, G::Navigation, "Show only matching commits", &[C::cmd_shift(K::Letter('F'))], W::Anywhere),
     b(I::NextChange, G::Diff, "Next change or conflict", &[C::plain(K::F(7)), C::alt(K::Down)], W::DiffOrConflict),
     b(I::PrevChange, G::Diff, "Previous change or conflict", &[C::shift(K::F(7)), C::alt(K::Up)], W::DiffOrConflict),
     b(

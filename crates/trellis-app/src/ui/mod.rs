@@ -99,6 +99,8 @@ mod snapshot_tests_repo_list;
 #[cfg(test)]
 mod snapshot_tests_revert;
 #[cfg(test)]
+mod snapshot_tests_search;
+#[cfg(test)]
 mod snapshot_tests_select;
 #[cfg(test)]
 mod snapshot_tests_shallow;
@@ -243,9 +245,7 @@ impl TrellisApp {
             msgs.push(Msg::Repo(RepoMsg::WindowFocused));
         }
         self.st.view.was_focused = focused;
-        let (f5, find, prefs) = ctx.input(|i| {
-            (i.key_pressed(Key::F5), i.modifiers.command && i.key_pressed(Key::F), i.modifiers.command && i.key_pressed(Key::Comma))
-        });
+        let (f5, prefs) = ctx.input(|i| (i.key_pressed(Key::F5), i.modifiers.command && i.key_pressed(Key::Comma)));
         if self.st.prefs.is_none() && !palette {
             shortcuts::tab_keys(ctx, self.st.tabs.len(), msgs);
         }
@@ -271,8 +271,8 @@ impl TrellisApp {
         if f5 {
             msgs.push(Msg::Repo(RepoMsg::Refresh));
         }
-        if find && !palette {
-            self.st.view.show_search = !self.st.view.show_search;
+        if !palette {
+            graph::find_keys(ctx, &mut self.st, msgs);
         }
         if prefs && self.st.prefs.is_none() && !palette {
             msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(crate::state::PrefPage::General)));

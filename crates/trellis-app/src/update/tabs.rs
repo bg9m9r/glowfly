@@ -263,7 +263,7 @@ fn park(st: &mut AppState) -> Parked {
         stats: std::mem::take(&mut st.stats),
         signatures: st.signatures.parked(),
         search: std::mem::take(&mut st.view.search),
-        search_cursor: std::mem::take(&mut st.view.search_cursor),
+        commit_search: std::mem::take(&mut st.search),
         ref_filter: std::mem::take(&mut st.view.ref_filter),
         graph_scroll: st.view.graph_scroll.0,
         diff_top_row: st.view.diff_top_row,
@@ -321,7 +321,8 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.stats = p.stats;
     st.signatures = p.signatures;
     st.view.search = p.search;
-    st.view.search_cursor = p.search_cursor;
+    // The matches belong to the parked snapshot, restored above.
+    st.search = p.commit_search;
     st.view.ref_filter = p.ref_filter;
     st.view.scroll_offset = Some(p.graph_scroll);
     st.view.scroll_to_row = None;

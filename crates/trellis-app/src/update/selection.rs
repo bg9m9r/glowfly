@@ -3,6 +3,7 @@
 
 use crate::effect::Effect;
 use crate::msg::SelectionMsg;
+use crate::state::search::GraphRows;
 use crate::state::selection as sel;
 use crate::state::{AppState, Selection};
 use git2::Oid;
@@ -17,7 +18,8 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>)
             apply(st, new, fx);
         }
         SelectionMsg::SelectCommitRange(oid) => {
-            let new = sel::ranged(&st.selection, oid, snap);
+            let shown = GraphRows::new(snap, &st.search, st.view.show_search).shown();
+            let new = sel::ranged(&st.selection, oid, snap, shown);
             apply(st, new, fx);
         }
         SelectionMsg::CollapseSelection => {

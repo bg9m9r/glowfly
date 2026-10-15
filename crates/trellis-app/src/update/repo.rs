@@ -1,4 +1,4 @@
-//! Opening and refreshing the repository, selection, diffs and search.
+//! Opening and refreshing the repository, selection and diffs.
 
 pub(super) use super::refresh::{load, refresh, refresh_status};
 use crate::effect::{Effect, LoadKind, UiEffect};
@@ -141,7 +141,6 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             }
         }
         RepoMsg::CloseDiff => close_diff(st),
-        RepoMsg::SearchNext => search_next(st, fx),
         RepoMsg::WantStats(oids) => {
             let Some(workdir) = st.workdir() else { return };
             let missing: Vec<Oid> = oids.into_iter().filter(|o| !st.stats.contains_key(o) && !st.stats_pending.contains(o)).collect();
@@ -292,6 +291,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::forge::detect(st, &snap);
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     st.snap = Some(snap);
+    super::search::snapshot_changed(st);
     super::trust::loaded(st, kind, fx);
     super::gitflow::snapshot_changed(st);
     super::commit::apply_template(st);
@@ -317,41 +317,8 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::conflict::close(st);
     super::history::close(st);
     fx.push(Effect::LoadDetail { workdir, oid });
-    if scroll
-        && let Some(snap) = &st.snap
-        && let Some(&row) = snap.row_of.get(&oid)
-    {
-        let row = row + snap.graph.wip.is_some() as usize;
+    if scroll && let Some(row) = super::search::reveal(st, oid) {
         // Leave a few rows of context above the target.
         st.view.scroll_to_row = Some(row.saturating_sub(4));
     }
-}
-
-fn search_next(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let Some(snap) = &st.snap else { return };
-    let q = st.view.search.trim().to_lowercase();
-    if q.is_empty() || snap.commits.is_empty() {
-        return;
-    }
-    let n = snap.commits.len();
-    let found = (1..=n).map(|k| (st.view.search_cursor + k) % n).find(|&i| commit_matches(&snap.commits[i], &q));
-    match found {
-        Some(i) => {
-            st.view.search_cursor = i;
-            let oid = snap.commits[i].oid;
-            select_commit(st, oid, true, fx);
-        }
-        None => {
-            let q = st.view.search.trim().to_owned();
-            st.log(false, format!("No commits match \"{q}\""));
-        }
-    }
-}
-
-/// Whether the commit's summary, body or author contains `q`, or its id starts with it. `q` is
-/// lowercase. Runs for every row the graph dims and over the history on Find next, so it
-/// doesn't allocate.
-pub fn commit_matches(c: &trellis_core::repo::CommitInfo, q: &str) -> bool {
-    use trellis_core::matching::{contains_lower, hex_starts_with};
-    contains_lower(&c.summary, q) || contains_lower(&c.body, q) || contains_lower(&c.author, q) || hex_starts_with(c.oid.as_bytes(), q)
 }

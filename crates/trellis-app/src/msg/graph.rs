@@ -1,6 +1,6 @@
 //! Messages of the commit graph: multi-selection and cherry-pick, the ref filter and hover,
-//! column widths, and avatars (update/selection.rs, update/graph_filter.rs,
-//! update/graph_columns.rs, update/avatars.rs).
+//! column widths, the commit search, and avatars (update/selection.rs, update/graph_filter.rs,
+//! update/graph_columns.rs, update/search.rs, update/avatars.rs).
 
 use git2::Oid;
 use trellis_core::repo::Comparison;
@@ -54,6 +54,35 @@ impl GraphMsg {
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             Self::GraphFilter(..) | Self::HoverRef(..) | Self::ResizeColumn { .. } | Self::ResetColumnWidth(..) => None,
+        }
+    }
+}
+
+/// The graph's search bar: the query, stepping through matches, the filter and the author
+/// picker (update/search.rs).
+pub enum SearchMsg {
+    /// The view edited the query (`ViewState::search`).
+    QueryChanged,
+    /// Enter in the query field: select the next match (wrapping).
+    Next,
+    /// The Filter toggle or Ctrl+Shift+F: show only the matching commits, or all again.
+    ToggleFilter,
+    /// The bar's Close button: hide it, clear the query and turn the filter off.
+    Close,
+    /// The author picker is open and has no author list yet (sent each frame, like WantStats;
+    /// handled once).
+    WantAuthors,
+    /// The author picker's choice: an author's email, or `None` for "Any author".
+    PickAuthor(Option<String>),
+}
+
+impl SearchMsg {
+    /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
+    /// drops it.
+    pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
+        match self {
+            // All are intents for the active tab.
+            Self::QueryChanged | Self::Next | Self::ToggleFilter | Self::Close | Self::WantAuthors | Self::PickAuthor(..) => None,
         }
     }
 }

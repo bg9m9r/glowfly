@@ -4,9 +4,11 @@
 mod header;
 mod paint;
 mod resize;
+mod search_bar;
 mod select;
 
 pub use paint::draw_avatar;
+pub(super) use search_bar::find_keys;
 
 use super::UiCache;
 use super::common::lane_color;
@@ -17,9 +19,9 @@ use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::state::search::GraphRows;
 use crate::state::{AppState, Selection};
-use crate::update::commit_matches;
-use eframe::egui::{self, Align2, CornerRadius, FontId, Key, Rect, RichText, Sense, Stroke, pos2, vec2};
+use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, RichText, Sense, Stroke, pos2, vec2};
 use git2::Oid;
 use paint::{Columns, draw_lanes, draw_ref_labels, lane_x, paint_pencil, wip_counts};
 use std::collections::HashMap;
@@ -31,55 +33,37 @@ const MAX_VISIBLE_LANES: usize = 12;
 
 /// The commit graph with its column header.
 pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    if st.snap.is_none() {
+        return;
+    }
+    if st.view.show_search {
+        search_bar::show(ui, st, msgs);
+        ui.add_space(4.0);
+    }
     {
         let Some(snap) = &st.snap else { return };
-        let has_wip = snap.graph.wip.is_some();
-        let total = snap.commits.len() + has_wip as usize;
-        let lanes = snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES);
-        let graph_w = lanes as f32 * LANE_W + 10.0;
-        let query = st.view.search.trim().to_lowercase();
-        let cols_cfg = st.settings.columns;
-
-        if st.view.show_search {
-            ui.horizontal(|ui| {
-                ui.add_space(8.0);
-                let r = ui.add(
-                    egui::TextEdit::singleline(&mut st.view.search)
-                        .hint_text("Search commit messages, authors and SHAs, then press Enter")
-                        .desired_width(420.0),
-                );
-                // A credential prompt or the command palette above keeps the keyboard.
-                let covered = st.askpass.showing() || st.palette.is_some();
-                if !r.has_focus() && st.view.search.is_empty() && !covered {
-                    r.request_focus();
-                }
-                // Search commits from the command palette focuses the field even with text in it.
-                if !covered && std::mem::take(&mut st.view.focus_search) {
-                    r.request_focus();
-                }
-                if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                    msgs.push(Msg::Repo(RepoMsg::SearchNext));
-                    r.request_focus();
-                }
-                if r.changed() {
-                    st.view.search_cursor = snap.commits.len().saturating_sub(1);
-                }
-                if ui.small_button("Close").clicked() {
-                    st.view.show_search = false;
-                    st.view.search.clear();
-                }
-            });
-            ui.add_space(4.0);
-        }
-
-        if snap.commits.is_empty() && !has_wip {
+        if snap.commits.is_empty() && snap.graph.wip.is_none() {
             ui.centered_and_justified(|ui| ui.label(RichText::new("This repository has no commits yet.").color(color::weak())));
             return;
         }
+        // The search dims or hides rows only while its bar is shown.
+        let rows = GraphRows::new(snap, &st.search, st.view.show_search);
+        let filtered = rows.filtered();
+        let searching = st.view.show_search && st.search.active();
+        let has_wip = rows.has_wip();
+        let total = rows.len();
+        // While filtering every node sits in the first lane, without lane lines.
+        let lanes = if filtered { 1 } else { snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES) };
+        let graph_w = lanes as f32 * LANE_W + 10.0;
+        let cols_cfg = st.settings.columns;
 
-        select::keyboard_nav(ui, &st.selection, snap, &mut st.view, total, has_wip, msgs);
+        select::keyboard_nav(ui, &st.selection, snap, &rows, &mut st.view, msgs);
 
         let widths = header::column_header(ui, snap, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
+        if filtered && total == 0 {
+            ui.centered_and_justified(|ui| ui.label(RichText::new("No commits match this search.").color(color::weak())));
+            return;
+        }
 
         // Pull requests by head commit, for graph badges.
         let pr_at: HashMap<Oid, (String, bool)> = st
@@ -124,15 +108,14 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
                 let painter = ui.painter_at(rect);
                 let cols = Columns::new(rect, graph_w, &cols_cfg, &widths);
-                let is_wip = has_wip && row == 0;
-                let (commit, g) = match row.checked_sub(has_wip as usize) {
-                    Some(i) if !is_wip => match (snap.commits.get(i), snap.graph.rows.get(i)) {
-                        (Some(c), Some(g)) => (Some(c), g),
+                let (index, commit, g) = match rows.commit_at(row) {
+                    Some(i) => match (snap.commits.get(i), snap.graph.rows.get(i)) {
+                        (Some(c), Some(g)) => (i, Some(c), g),
                         _ => continue, // a layout that doesn't match the history draws nothing
                     },
-                    _ => match snap.graph.wip.as_ref() {
-                        Some(g) => (None, g),
-                        None => continue,
+                    None => match snap.graph.wip.as_ref() {
+                        Some(g) if has_wip && row == 0 => (0, None, g),
+                        _ => continue,
                     },
                 };
                 let selected = match (selection, commit) {
@@ -153,9 +136,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 }
 
                 let gp = painter.with_clip_rect(cols.rect(cols.graph, rect));
-                let node_x = lane_x(cols.graph.0, g.col);
+                let node_x = lane_x(cols.graph.0, if filtered { 0 } else { g.col });
                 let mid = rect.center().y;
-                if cols_cfg.tree {
+                if cols_cfg.tree && !filtered {
                     draw_lanes(&gp, cols.graph.0, rect, g);
                 }
 
@@ -187,7 +170,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     continue;
                 };
 
-                let dim = !query.is_empty() && !commit_matches(c, &query);
+                let dim = searching && !filtered && st.search.position(index).is_none();
                 if cols_cfg.tree {
                     if c.parents.len() > 1 {
                         gp.circle_filled(pos2(node_x, mid), 5.0, lane_col);

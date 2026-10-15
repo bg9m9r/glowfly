@@ -24,6 +24,7 @@ pub mod ref_rows;
 pub mod refresh;
 pub mod remotes;
 pub mod repo_lists;
+pub mod search;
 pub mod selection;
 pub mod shallow;
 pub mod signatures;
@@ -207,6 +208,8 @@ pub struct AppState {
     pub stats_pending: HashSet<Oid>,
     /// Signature checks of the active tab's commits (parked with the tab).
     pub signatures: signatures::Signatures,
+    /// The active tab's commit search; parked with the tab.
+    pub search: search::CommitSearch,
     pub last_fetch: Instant,
     /// The file watcher for the active tab.
     pub watch: watch::WatchState,
@@ -270,6 +273,7 @@ impl AppState {
             stats: HashMap::new(),
             stats_pending: HashSet::new(),
             signatures: Default::default(),
+            search: Default::default(),
             last_fetch: now,
             watch,
             askpass: Default::default(),

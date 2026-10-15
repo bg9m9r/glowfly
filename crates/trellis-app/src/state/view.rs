@@ -43,8 +43,10 @@ pub struct ColumnDrag {
 pub struct ViewState {
     pub show_log: bool,
     pub show_search: bool,
+    /// The search bar's query text (parsed by update on `SearchMsg::QueryChanged`).
     pub search: String,
-    pub search_cursor: usize,
+    /// The author picker's filter field.
+    pub author_filter: String,
     pub ref_filter: String,
     pub sections: Sections,
     /// Scroll the graph so this row is near the top on the next frame (set by `update`).
@@ -111,7 +113,7 @@ impl Default for ViewState {
             show_log: false,
             show_search: false,
             search: String::new(),
-            search_cursor: 0,
+            author_filter: String::new(),
             ref_filter: String::new(),
             sections: Sections::default(),
             scroll_to_row: None,

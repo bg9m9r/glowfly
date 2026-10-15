@@ -20,7 +20,6 @@ pub enum RepoMsg {
     JumpTo(Oid),
     OpenDiff(DiffTarget),
     CloseDiff,
-    SearchNext,
     /// The graph shows these commits and needs their line counts.
     WantStats(Vec<Oid>),
     InitRepo,
@@ -69,7 +68,6 @@ impl RepoMsg {
             | Self::JumpTo(..)
             | Self::OpenDiff(..)
             | Self::CloseDiff
-            | Self::SearchNext
             | Self::WantStats(..)
             | Self::InitRepo
             | Self::RepoLoaded { .. }

@@ -32,7 +32,7 @@ pub use branch::{BranchMsg, CloneMsg};
 pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
 pub use files::{FilesMsg, WorkFileMsg, restore_failed};
 pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
-pub use graph::{AvatarMsg, GraphMsg, SelectionMsg};
+pub use graph::{AvatarMsg, GraphMsg, SearchMsg, SelectionMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use recent::RecentMsg;
@@ -56,6 +56,8 @@ pub enum Msg {
     Selection(SelectionMsg),
     /// Hidden and soloed refs and the hovered ref (update/graph_filter.rs).
     Graph(GraphMsg),
+    /// The graph search: query, filter, author picker (update/search.rs).
+    Search(SearchMsg),
     /// Author avatars (update/avatars.rs).
     Avatars(AvatarMsg),
     /// The open diff's layout, folds, line selection and highlighting (update/diff.rs).
@@ -176,6 +178,7 @@ impl Msg {
             Msg::Watch(m) => m.on_inactive(),
             Msg::Selection(m) => m.on_inactive(),
             Msg::Graph(m) => m.on_inactive(),
+            Msg::Search(m) => m.on_inactive(),
             Msg::Avatars(m) => m.on_inactive(),
             Msg::Diff(m) => m.on_inactive(),
             Msg::Conflict(m) => m.on_inactive(),

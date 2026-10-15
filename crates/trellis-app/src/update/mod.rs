@@ -27,6 +27,7 @@ mod recent;
 mod refresh;
 mod remotes;
 mod repo;
+mod search;
 mod selection;
 mod shallow;
 mod shortcuts;
@@ -132,6 +133,8 @@ mod remote_tests;
 #[cfg(test)]
 mod revert_tests;
 #[cfg(test)]
+mod search_tests;
+#[cfg(test)]
 mod selection_tests;
 #[cfg(test)]
 mod shallow_tests;
@@ -186,8 +189,6 @@ mod worktree_manage_tests;
 #[cfg(test)]
 mod worktree_tests;
 
-pub use repo::commit_matches;
-
 use crate::effect::{Effect, UiEffect};
 use crate::msg::{Inactive, Msg};
 use crate::state::AppState;
@@ -204,6 +205,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
         Msg::Selection(m) => selection::handle(st, m, &mut fx),
         Msg::Graph(m) => graph_filter::handle(st, m, &mut fx),
+        Msg::Search(m) => search::handle(st, m, &mut fx),
         Msg::Avatars(m) => avatars::handle(st, m, &mut fx),
         Msg::Diff(m) => diff::handle(st, m, &mut fx),
         Msg::Conflict(m) => conflict::handle(st, m, &mut fx),

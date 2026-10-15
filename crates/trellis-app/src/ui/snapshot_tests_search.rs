@@ -1,0 +1,253 @@
+//! The graph's search bar: dimmed and filtered rows, the match count, the author picker, and
+//! the messages the bar and its keys send. Shares the fixture repository and renderer with
+//! `snapshot_tests`.
+
+use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
+use super::{UiCache, avatars::Avatars, draw, theme::color};
+use crate::msg::{Msg, RepoMsg, SearchMsg};
+use crate::state::{AppState, Selection};
+use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::accesskit::Role;
+use eframe::egui::{self, Event, Key, Modifiers};
+use egui_kittest::Harness;
+use egui_kittest::kittest::{By, Queryable};
+use std::path::PathBuf;
+use std::time::Instant;
+use trellis_core::repo::LoadOptions;
+use trellis_core::settings::ThemeChoice;
+use trellis_core::spell::Speller;
+
+/// The fixture with one more commit on main, by Grace Hopper.
+fn with_two_authors(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_repo(theme, name);
+    std::fs::write(dir.join("notes.txt"), "notes\n").unwrap();
+    let d = "2026-01-11T10:00:00+00:00";
+    git(&dir, &["add", "notes.txt"], d);
+    git(&dir, &["commit", "-q", "-m", "Write release notes", "--author", "Grace Hopper <grace@example.com>"], d);
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    let snap = st.snap.as_ref().unwrap();
+    let grace = snap.commits.iter().find(|c| c.summary == "Write release notes").expect("the new commit");
+    assert_eq!((grace.author.as_str(), grace.email.as_str()), ("Grace Hopper", "grace@example.com"));
+    assert!(snap.graph.wip.is_some(), "README.md is still modified");
+    (st, dir)
+}
+
+fn send(st: &mut AppState, msg: SearchMsg) {
+    crate::update::update(st, Msg::Search(msg), Instant::now());
+}
+
+/// The bar shown with `q` typed into it.
+fn searching(st: &mut AppState, q: &str) {
+    st.view.show_search = true;
+    st.view.search = q.into();
+    send(st, SearchMsg::QueryChanged);
+}
+
+fn select(st: &mut AppState, summary: &str) {
+    let oid = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == summary).unwrap().oid;
+    st.selection = Selection::Commit(oid);
+}
+
+/// Clicks the author picker open.
+fn open_picker(h: &mut Harness<'_, (AppState, Vec<Msg>)>) {
+    h.get(By::new().role(Role::ComboBox)).click();
+    h.run();
+}
+
+fn search_msgs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<String> {
+    h.state()
+        .1
+        .iter()
+        .filter_map(|m| match m {
+            Msg::Search(s) => Some(match s {
+                SearchMsg::QueryChanged => "QueryChanged".to_owned(),
+                SearchMsg::Next => "Next".to_owned(),
+                SearchMsg::ToggleFilter => "ToggleFilter".to_owned(),
+                SearchMsg::Close => "Close".to_owned(),
+                SearchMsg::WantAuthors => "WantAuthors".to_owned(),
+                SearchMsg::PickAuthor(a) => format!("PickAuthor({a:?})"),
+            }),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn graph_search_dim() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-dim");
+    searching(&mut st, "login");
+    assert_eq!(st.search.matches.len(), 2);
+    select(&mut st, "Merge branch 'login-page'");
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("1 of 2").is_some());
+    h.check_snapshot("graph_search_dim");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn graph_search_filtered() {
+    for (theme, name, dark) in
+        [(ThemeChoice::Dark, "graph_search_filtered", true), (ThemeChoice::Light, "graph_search_filtered_light", false)]
+    {
+        let (mut st, dir) = with_two_authors(theme, name);
+        searching(&mut st, "page");
+        send(&mut st, SearchMsg::ToggleFilter);
+        assert!(st.search.filter);
+        assert_eq!(st.search.matches.len(), 3);
+        render(name, st, dark);
+        remove_fixture(&dir);
+    }
+}
+
+#[test]
+fn graph_search_no_matches() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-none");
+    searching(&mut st, "nothing like this");
+    send(&mut st, SearchMsg::ToggleFilter);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("No matches").is_some());
+    assert!(h.query_by_label("No commits match this search.").is_some());
+    h.check_snapshot("graph_search_no_matches");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn graph_search_hidden_bar() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-hidden");
+    searching(&mut st, "login");
+    send(&mut st, SearchMsg::ToggleFilter);
+    // Esc or Ctrl+F only hide the bar: the query and filter stay, but nothing dims or hides.
+    st.view.show_search = false;
+    render("graph_search_hidden_bar", st, true);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn graph_search_author_picker() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-authors");
+    searching(&mut st, "");
+    send(&mut st, SearchMsg::WantAuthors);
+    assert_eq!(st.search.authors.as_ref().map(Vec::len), Some(2));
+    let mut h = harness(st, true);
+    h.run();
+    open_picker(&mut h);
+    assert!(h.query_by_label("Ada Lovelace <ada@example.com>").is_some());
+    h.check_snapshot("graph_search_author_picker");
+
+    h.state_mut().1.clear();
+    h.get_by_label("Grace Hopper <grace@example.com>").click();
+    h.run();
+    assert_eq!(search_msgs(&h), ["PickAuthor(Some(\"grace@example.com\"))"]);
+
+    open_picker(&mut h);
+    h.state_mut().1.clear();
+    h.get_by_label("Any author").click();
+    h.run();
+    assert_eq!(search_msgs(&h), ["PickAuthor(None)"]);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn the_bar_sends_search_messages() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-msgs");
+    st.view.show_search = true;
+    let mut h = harness(st, true);
+    h.run();
+    // The empty field has the keyboard.
+    h.input_mut().events.push(Event::Text("log".into()));
+    h.run();
+    assert_eq!(h.state().0.view.search, "log");
+    assert_eq!(search_msgs(&h), ["QueryChanged"]);
+
+    h.state_mut().1.clear();
+    h.get_by_label("Filter").click();
+    h.run();
+    assert_eq!(search_msgs(&h), ["ToggleFilter"]);
+
+    // Opening the picker before the authors are known asks for them.
+    h.state_mut().1.clear();
+    open_picker(&mut h);
+    assert!(search_msgs(&h).iter().any(|m| m == "WantAuthors"));
+    assert!(h.query_by_label("Reading authors…").is_some());
+    h.press_key(Key::Escape);
+    h.run();
+
+    h.state_mut().1.clear();
+    h.get_by_label("Close").click();
+    h.run();
+    assert_eq!(search_msgs(&h), ["Close"]);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// A harness that also runs the find keys, as the app's input handling does.
+fn keys_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
+    let mut cache: Option<UiCache> = None;
+    Harness::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+        move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
+            color::set_dark(true);
+            super::graph::find_keys(ctx, st, msgs);
+            let cache = cache.get_or_insert_with(|| UiCache {
+                avatars: Avatars::default(),
+                speller: Speller::new(),
+                diff_rows: Default::default(),
+            });
+            draw(ctx, st, cache, msgs);
+        },
+        (st, Vec::new()),
+    )
+}
+
+#[test]
+fn find_keys_show_the_bar_and_toggle_the_filter() {
+    let (st, dir) = with_two_authors(ThemeChoice::Dark, "search-keys");
+    let mut h = keys_harness(st);
+    h.run();
+    h.press_key_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::F);
+    h.run();
+    assert!(h.state().0.view.show_search);
+    assert_eq!(search_msgs(&h), ["ToggleFilter"]);
+
+    h.state_mut().1.clear();
+    h.press_key_modifiers(Modifiers::COMMAND, Key::F);
+    h.run();
+    assert!(!h.state().0.view.show_search);
+    assert!(search_msgs(&h).is_empty(), "Ctrl+F only hides the bar");
+    h.press_key_modifiers(Modifiers::COMMAND, Key::F);
+    h.run();
+    assert!(h.state().0.view.show_search);
+    // Ctrl+Shift+F with the bar shown keeps it shown.
+    h.press_key_modifiers(Modifiers::COMMAND | Modifiers::SHIFT, Key::F);
+    h.run();
+    assert!(h.state().0.view.show_search);
+    assert_eq!(search_msgs(&h), ["ToggleFilter"]);
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn arrow_keys_move_through_the_shown_matches() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-arrows");
+    searching(&mut st, "page");
+    send(&mut st, SearchMsg::ToggleFilter);
+    let snap = st.snap.as_ref().unwrap();
+    let shown: Vec<_> = st.search.matches.iter().map(|&i| snap.commits[i].oid).collect();
+    assert_eq!(shown.len(), 3);
+    // Merge branch 'login-page', then Add login page with Fix build on Windows hidden between.
+    st.selection = Selection::Commit(shown[1]);
+    let mut h = harness(st, true);
+    h.run();
+    h.state_mut().1.clear();
+    h.press_key(Key::ArrowDown);
+    h.run();
+    let selected: Vec<_> =
+        h.state().1.iter().filter_map(|m| if let Msg::Repo(RepoMsg::SelectCommit(o)) = m { Some(*o) } else { None }).collect();
+    assert_eq!(selected, [shown[2]], "the next shown match, past the hidden rows");
+    drop(h);
+    remove_fixture(&dir);
+}

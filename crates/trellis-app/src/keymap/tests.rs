@@ -2,7 +2,7 @@
 
 use super::*;
 
-const ALL: [BindingId; 32] = [
+const ALL: [BindingId; 33] = [
     I::Stage,
     I::Unstage,
     I::StageAll,
@@ -29,6 +29,7 @@ const ALL: [BindingId; 32] = [
     I::Sheet,
     I::Search,
     I::SearchNext,
+    I::SearchFilter,
     I::Prefs,
     I::Refresh,
     I::Undo,

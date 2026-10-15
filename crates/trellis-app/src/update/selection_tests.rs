@@ -186,6 +186,25 @@ fn shift_click_selects_graph_rows() {
 }
 
 #[test]
+fn shift_click_while_filtering_selects_only_shown_rows() {
+    let (mut st, f) = fixture("multi-shift-filtered");
+    // Every commit but `side` (row 2) matches, and the graph shows only the matches.
+    st.view.show_search = true;
+    st.search.query = trellis_core::commit_query::CommitQuery::parse("c");
+    st.search.matches = vec![0, 1, 3, 4, 5];
+    st.search.filter = true;
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(2))));
+    assert_eq!(multi(&st).oids, [f.c(5), f.c(4), f.c(3), f.c(2)], "the hidden side commit is left out");
+    // With the bar hidden the graph shows every row again, and so does the range.
+    st.view.show_search = false;
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
+    up(&mut st, Msg::Selection(SelectionMsg::SelectCommitRange(f.c(2))));
+    assert_eq!(multi(&st).oids, [f.c(5), f.c(4), f.side, f.c(3), f.c(2)]);
+    let _ = std::fs::remove_dir_all(&f.dir);
+}
+
+#[test]
 fn plain_select_and_collapse() {
     let (mut st, f) = fixture("multi-collapse");
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
