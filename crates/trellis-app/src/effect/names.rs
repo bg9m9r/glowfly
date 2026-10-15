@@ -62,6 +62,7 @@ impl Effect {
             Effect::Watch(_) => "watch",
             Effect::AnswerPrompt { .. } => "answer-prompt",
             Effect::Terminal(_) => "terminal",
+            Effect::Patch(p) => p.name(),
             Effect::Ui(_) => "ui",
         }
     }

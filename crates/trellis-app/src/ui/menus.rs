@@ -8,17 +8,20 @@ use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
+use crate::patch::PatchMsg;
 use crate::state::ForgeState;
+use crate::state::patch::PATCH_BLOCKED_MERGE;
 use crate::state::selection::MultiSelection;
 use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, RichText};
-use git2::Oid;
 use trellis_core::rebase::RebaseBase;
+use trellis_core::repo::CommitInfo;
 use trellis_core::settings::GraphFilter;
 use trellis_core::worktree_ops::WorktreeBase;
 
-pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Msg>) {
+pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, msgs: &mut Vec<Msg>) {
+    let oid = c.oid;
     let sha = oid.to_string();
     let s = short(oid);
     menu_item(msgs, ui, "Create branch here…", Msg::Branch(BranchMsg::NewBranch { start: Some(sha.clone()), name: String::new() }));
@@ -47,15 +50,22 @@ pub fn commit_menu(ui: &mut egui::Ui, oid: Oid, summary: &str, msgs: &mut Vec<Ms
     });
     menu_item(msgs, ui, "Interactive rebase from here…", Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid))));
     ui.separator();
+    let patch = ui.add_enabled(c.parents.len() < 2, egui::Button::new("Create patch…")).on_disabled_hover_text(PATCH_BLOCKED_MERGE);
+    if patch.clicked() {
+        msgs.push(Msg::Patch(PatchMsg::Export(vec![oid])));
+        ui.close_menu();
+    }
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(sha.clone()));
-    menu_item(msgs, ui, "Copy commit message", Msg::Copy(summary.to_owned()));
+    menu_item(msgs, ui, "Copy commit message", Msg::Copy(c.summary.clone()));
 }
 
 /// The menu for a row of a multi-selection: actions on all the selected commits.
 pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) {
     ui.label(RichText::new(format!("{} commits selected", m.len())).color(color::weak()));
     ui.separator();
-    if cherry_pick_button(ui, m, msgs) {
+    let picked = cherry_pick_button(ui, m, msgs);
+    let patched = patch_button(ui, m, msgs);
+    if picked || patched {
         ui.close_menu();
     }
     menu_item(msgs, ui, "Copy SHAs", copy_shas(m));
@@ -72,6 +82,21 @@ pub(super) fn cherry_pick_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &m
     let clicked = r.clicked();
     if clicked {
         msgs.push(Msg::Selection(SelectionMsg::CherryPick(m.oids.clone())));
+    }
+    clicked
+}
+
+/// "Create patch from N commits…", disabled with the reason on hover when a merge is selected.
+/// Returns whether it was clicked.
+pub(super) fn patch_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
+    let button = egui::Button::new(format!("Create patch from {} commits…", m.len()));
+    let mut r = ui.add_enabled(m.export_blocked.is_none(), button);
+    if let Some(why) = m.export_blocked {
+        r = r.on_disabled_hover_text(why);
+    }
+    let clicked = r.clicked();
+    if clicked {
+        msgs.push(Msg::Patch(PatchMsg::Export(m.oids.clone())));
     }
     clicked
 }

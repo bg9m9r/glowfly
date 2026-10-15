@@ -863,8 +863,23 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Keys outside ~/.ssh (IdentityFile entries in ~/.ssh/config, agent-only keys)
 - [ ] **Profiles**
   Several named profiles (identity, integrations, preferences) with quick switching.
-- [ ] **Local patches**
+- [x] **Local patches**
   Export commits, files or the WIP to a `.patch` file; open and apply a patch.
+  - [x] Create patch… from one commit or a multi-selection in the graph menus (one mbox-style
+    file, oldest first, binary-safe); Apply patch… from the palette to the working tree, checked
+    first so nothing changes when it doesn't apply
+  - [ ] Export the WIP (unstaged and/or staged changes) to a `.patch` file
+  - [ ] Export selected files of a commit or the WIP to a `.patch` file (from the file menu)
+  - [ ] Apply a patch as commits with `git am` (series, three-way fallback, continue, skip and
+    abort, conflicts in the conflict view)
+  - [ ] Apply options: to the index as well, three-way fallback, partial apply with `.rej`
+    files, reverse apply
+  - [ ] Create patch button in the multi-selection details panel, and a palette entry for the
+    selected commits
+  - [ ] Copy a commit's patch to the clipboard instead of saving a file
+  - [ ] Show in folder from the toast after saving a patch
+  - [ ] Drop a `.patch` file on the window to apply it, and preview the files a patch touches
+    before applying
 - [ ] **Conflict prediction**
   Local-only version: dry-run merge the branch against its target/upstream (`git merge-tree`)
   and warn about overlapping files before you merge or open a PR.

@@ -12,6 +12,7 @@ mod gitflow;
 mod keymap;
 mod lfs;
 mod msg;
+mod patch;
 mod platform;
 mod remote;
 mod runner;

@@ -188,8 +188,13 @@ fn comparison_restore_clears_absent() {
     let files = vec![FileEntry { path: "a.txt".into(), status: 'D' }];
     let changes = Comparison { files, absent: ["a.txt".to_owned()].into() };
     let other = Oid::from_str("1111111111111111111111111111111111111111").unwrap();
-    st.selection =
-        Selection::Commits(MultiSelection { oids: vec![oid, other], anchor: oid, changes: Some(Ok(changes)), pick_blocked: None });
+    st.selection = Selection::Commits(MultiSelection {
+        oids: vec![oid, other],
+        anchor: oid,
+        changes: Some(Ok(changes)),
+        pick_blocked: None,
+        export_blocked: None,
+    });
 
     let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     let Selection::Commits(m) = &st.selection else { panic!("still two commits") };

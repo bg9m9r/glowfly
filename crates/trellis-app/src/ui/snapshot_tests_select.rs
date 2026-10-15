@@ -5,6 +5,7 @@ use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
+use crate::patch::PatchMsg;
 use crate::state::selection::MultiSelection;
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -113,6 +114,16 @@ fn graph_multi_menu() {
     assert_eq!(picked, Some(vec![search, login]));
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)))), "a right-click does not change the selection");
 
+    // The menu offers the selection as one patch.
+    click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
+    h.state_mut().1.clear();
+    let in_menu = h.get_all_by_label("Create patch from 2 commits…").find(|n| n.bounding_box().is_some_and(|b| b.x0 < 1000.0));
+    in_menu.expect("the menu item").click();
+    h.run();
+    let exported = h.state().1.iter().find_map(|m| if let Msg::Patch(PatchMsg::Export(o)) = m { Some(o.clone()) } else { None });
+    assert_eq!(exported, Some(vec![search, login]));
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)))), "a right-click does not change the selection");
+
     // Any other row gets the single-commit menu.
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
     assert!(h.query_by_label("Cherry-pick commit").is_some());
@@ -146,5 +157,28 @@ fn esc_collapses_after_closing_the_diff() {
     let mut h = esc_harness(st);
     press_esc(&mut h);
     assert!(matches!(&h.state().1[..], [Msg::Repo(RepoMsg::CloseDiff)]));
+    remove_fixture(&dir);
+}
+
+#[test]
+fn graph_commit_menu() {
+    let (st, dir) = with_repo(ThemeChoice::Dark, "commit-menu");
+    let (fix, merge) = (commit(&st, "Fix build on Windows"), commit(&st, "Merge branch 'login-page'"));
+    let row_of = |o: Oid| st.snap.as_ref().unwrap().row_of[&o] + 1;
+    let (fix_row, merge_row) = (row_of(fix), row_of(merge));
+    let mut h = harness(st, true);
+    h.run();
+    click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
+    h.check_snapshot("graph_commit_menu");
+    h.state_mut().1.clear();
+    h.get_by_label("Create patch…").click();
+    h.run();
+    let exported = h.state().1.iter().find_map(|m| if let Msg::Patch(PatchMsg::Export(o)) = m { Some(o.clone()) } else { None });
+    assert_eq!(exported, Some(vec![fix]));
+
+    // A merge commit has no patch of its own.
+    click(&mut h, pos2(700.0, row_y(merge_row)), PointerButton::Secondary);
+    assert!(h.get_by_label("Create patch…").is_disabled());
+    drop(h);
     remove_fixture(&dir);
 }

@@ -11,6 +11,7 @@ use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
+use crate::patch::PatchEffect;
 use crate::runner;
 use crate::state::{AppState, ForgeState, Modal, Selection, Status};
 use std::path::{Path, PathBuf};
@@ -75,6 +76,8 @@ pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
                 // Shells are never started by these tests.
                 Effect::Terminal(_) => {}
                 Effect::OpenPath(_) | Effect::RevealPath(_) => {}
+                // OS dialogs would wait for a user.
+                Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. }) => {}
                 other => queue.extend(runner::execute(other)),
             }
         }

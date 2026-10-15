@@ -100,6 +100,7 @@ impl PaletteCommand {
             C::Checkout(_) | C::CheckoutRemote { .. } | C::CheckoutTag(_) | C::OpenRecent(_) => return None,
             C::FileHistory => "file-history",
             C::ReviewTrust => "review-trust",
+            C::ApplyPatch => "apply-patch",
             C::OpenFileHistory(_) => return None,
             C::Remote(m) => match m {
                 RemoteMsg::AddDialog => "add-remote",

@@ -17,6 +17,7 @@ pub mod palette;
 pub mod palette_commands;
 pub mod palette_kinds;
 pub mod palette_recent;
+pub mod patch;
 pub mod prefs;
 pub mod publish;
 pub mod rebase;
@@ -229,6 +230,8 @@ pub struct AppState {
     pub gitflow_finish: Option<gitflow::FinishJob>,
     /// The running remote tag push or delete (update/tags.rs), for its headline.
     pub tag_job: Option<tags::RemoteTagJob>,
+    /// The running Apply patch job (update/patch.rs), for its headline.
+    pub patch_apply: Option<patch::PendingApply>,
     /// Repository trust prompts asked and repositories just created, this session.
     pub trust: trust::TrustSession,
     pub view: ViewState,
@@ -284,6 +287,7 @@ impl AppState {
             terminal: Default::default(),
             gitflow_finish: None,
             tag_job: None,
+            patch_apply: None,
             trust: Default::default(),
             view: ViewState::default(),
         }

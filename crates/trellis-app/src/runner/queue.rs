@@ -107,6 +107,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Watch(_)
         | Effect::AnswerPrompt { .. }
         | Effect::Terminal(_)
+        | Effect::Patch(_)
         | Effect::Ui(_) => None,
     }
 }
@@ -182,6 +183,9 @@ mod tests {
             repo_of(&Effect::LoadStatus { workdir: w.clone(), generation: 0, submodules: false, open: None, git_status: true }),
             None
         );
+        // Saving a patch only reads the repository.
+        let export = crate::patch::PatchEffect::Export { workdir: w.clone(), oids: Vec::new(), dest: "C:/x.patch".into() };
+        assert_eq!(repo_of(&Effect::Patch(export)), None);
     }
 
     #[test]

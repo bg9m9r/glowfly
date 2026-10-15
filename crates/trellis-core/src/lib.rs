@@ -20,6 +20,7 @@ pub mod intraline;
 pub mod lfs;
 pub mod line_pairs;
 pub mod matching;
+pub mod patch_ops;
 pub mod persist;
 pub mod rebase;
 pub mod remote_ops;

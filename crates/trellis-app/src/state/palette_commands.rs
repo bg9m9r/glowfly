@@ -120,6 +120,8 @@ pub enum PaletteCommand {
     Remote(crate::remote::RemoteMsg),
     /// Show the trust prompt again for the open repository.
     ReviewTrust,
+    /// Pick a patch file and apply it to the working tree.
+    ApplyPatch,
 }
 
 impl PaletteCommand {
@@ -286,6 +288,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if super::palette::can_pick_file(st) {
         out.push(entry(C::FileHistory, "File history…", "find open file path log"));
     }
+    super::patch::palette_entries(out);
     palette_setup::setup_entries(out);
     palette_gitflow::gitflow_entries(snap, out);
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));

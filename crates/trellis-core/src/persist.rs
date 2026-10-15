@@ -1,4 +1,5 @@
-//! Crash-safe writes for Trellis's own files (settings, recent repositories, open tabs).
+//! Crash-safe writes of Trellis's own files (settings, recent repositories, open tabs) and of files
+//! written for the user (saved patches).
 //!
 //! A file is written to a temporary sibling, flushed to disk, then renamed over the target, so a
 //! crash or power cut leaves either the old file or the new one, never half of each.

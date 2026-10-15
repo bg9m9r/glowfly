@@ -41,6 +41,7 @@ mod guard;
 mod highlight;
 mod keys;
 mod os;
+mod patches;
 mod queue;
 mod rebase;
 mod saves;
@@ -313,6 +314,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::GenerateGpgKey { program, name, email, passphrase } => Some(keys::generate_gpg(&program, &name, &email, &passphrase)),
         Effect::ExportPublicKey { format, program, key } => Some(keys::export_public(format, &program, &key)),
         Effect::Ssh(e) => Some(ssh::run(e)),
+        Effect::Patch(p) => Some(patches::run(p)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

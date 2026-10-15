@@ -314,6 +314,8 @@ pub enum Effect {
     Ssh(crate::ssh::SshEffect),
     /// The built-in terminal panel's shells; handled by Runner::run, never a worker.
     Terminal(crate::terminal::TerminalEffect),
+    /// Patch dialogs and saving commits as a patch (patch.rs); unscoped, each carries its repository.
+    Patch(crate::patch::PatchEffect),
     Ui(UiEffect),
 }
 
@@ -380,6 +382,7 @@ impl Effect {
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }
             | Effect::Terminal(_)
+            | Effect::Patch(_)
             | Effect::Ui(_) => None,
         }
     }

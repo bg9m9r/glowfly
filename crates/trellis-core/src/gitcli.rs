@@ -99,6 +99,20 @@ pub fn read(cwd: &Path, args: &[String]) -> GitOutput {
 /// (once enabled), so a caller can override one of them for one command, e.g. with
 /// [`NO_PROMPTS`]. With a `timeout`, the child is killed once it runs that long.
 pub fn output(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: Option<Duration>) -> GitOutput {
+    let (mut out, stdout) = raw(cwd, args, input, env, timeout);
+    out.stdout = String::from_utf8_lossy(&stdout).into_owned();
+    out
+}
+
+/// Like [`output`], with stdout kept as raw bytes (patches, blobs); [`GitOutput::stdout`] is
+/// empty. Nothing is fed on stdin.
+pub fn output_bytes(cwd: &Path, args: &[String], env: &[(&str, &str)], timeout: Option<Duration>) -> (GitOutput, Vec<u8>) {
+    raw(cwd, args, "", env, timeout)
+}
+
+/// Runs git as [`output`] describes, returning stdout undecoded next to the result, whose
+/// `stdout` is left empty (stderr is decoded).
+fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: Option<Duration>) -> (GitOutput, Vec<u8>) {
     let mut cmd = Command::new("git");
     cmd.args(args)
         .current_dir(cwd)
@@ -123,7 +137,7 @@ pub fn output(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], ti
     }
     let mut child = match cmd.spawn() {
         Ok(c) => c,
-        Err(e) => return GitOutput::failed(format!("failed to run git: {e}")),
+        Err(e) => return (GitOutput::failed(format!("failed to run git: {e}")), Vec::new()),
     };
     // Feed stdin and drain both pipes on their own threads, so a large input or output can't
     // leave git and Trellis each waiting for the other.
@@ -139,22 +153,23 @@ pub fn output(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], ti
     let stderr = drain(child.stderr.take());
     let (status, timed_out) = match wait(&mut child, timeout) {
         Ok(s) => s,
-        Err(e) => return GitOutput::failed(format!("failed to run git: {e}")),
+        Err(e) => return (GitOutput::failed(format!("failed to run git: {e}")), Vec::new()),
     };
     // After a kill, a grandchild (a hook, ssh) may still hold the pipes; don't wait on it.
     let grace = timed_out.then_some(Duration::from_secs(1));
+    let stdout = collect(&stdout, grace);
     let mut out = GitOutput {
         ok: status.is_some_and(|s| s.success()),
         code: status.and_then(|s| s.code()),
-        stdout: collect(&stdout, grace),
-        stderr: collect(&stderr, grace),
+        stdout: String::new(),
+        stderr: String::from_utf8_lossy(&collect(&stderr, grace)).into_owned(),
         timed_out,
     };
     if timed_out {
         let secs = timeout.unwrap_or_default().as_secs_f32();
         out.stderr.push_str(&format!("\ngit {} took more than {secs}s and was stopped", args.join(" ")));
     }
-    out
+    (out, stdout)
 }
 
 type Drained = std::sync::mpsc::Receiver<Vec<u8>>;
@@ -172,12 +187,11 @@ fn drain(pipe: Option<impl std::io::Read + Send + 'static>) -> Drained {
     rx
 }
 
-fn collect(rx: &Drained, grace: Option<Duration>) -> String {
-    let bytes = match grace {
+fn collect(rx: &Drained, grace: Option<Duration>) -> Vec<u8> {
+    match grace {
         Some(d) => rx.recv_timeout(d).unwrap_or_default(),
         None => rx.recv().unwrap_or_default(),
-    };
-    String::from_utf8_lossy(&bytes).into_owned()
+    }
 }
 
 /// Waits for `child`, killing it once `timeout` passes. Returns its status (None if killed)
@@ -248,6 +262,16 @@ mod tests {
         let out = output(&dir, &args(&["config", "--no-such-option"]), "", &[], None);
         assert!(!out.ok && out.stdout.is_empty() && !out.stderr.is_empty(), "{out:?}");
         assert_eq!(out.combined(), out.stderr.trim_end());
+    }
+
+    #[test]
+    fn output_bytes_keeps_raw_stdout() {
+        let dir = std::env::temp_dir();
+        let a = args(&["-c", r"alias.b=!printf '\377\376'", "b"]);
+        let (out, bytes) = output_bytes(&dir, &a, &[], None);
+        assert!(out.ok, "{out:?}");
+        assert_eq!(bytes, [0xFF, 0xFE]);
+        assert!(out.stdout.is_empty(), "{out:?}");
     }
 
     #[test]

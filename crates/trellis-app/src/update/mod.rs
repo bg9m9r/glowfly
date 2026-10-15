@@ -20,6 +20,7 @@ mod history;
 mod lfs;
 mod ops;
 mod palette;
+mod patch;
 mod prefs;
 mod publish;
 mod rebase;
@@ -114,6 +115,8 @@ mod palette_recent_tests;
 mod palette_stash_tests;
 #[cfg(test)]
 mod palette_tests;
+#[cfg(test)]
+mod patch_tests;
 #[cfg(test)]
 mod perf_tests;
 #[cfg(test)]
@@ -225,6 +228,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
+        Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
         Msg::Publish(m) => publish::handle(st, m, &mut fx),
         Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),

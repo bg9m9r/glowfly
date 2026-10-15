@@ -21,6 +21,8 @@ pub struct MultiSelection {
     pub changes: Option<Result<Comparison, String>>,
     /// Why "Cherry-pick N commits" is unavailable (merges, or commits already on HEAD).
     pub pick_blocked: Option<&'static str>,
+    /// Why "Create patch from N commits" is unavailable (merges).
+    pub export_blocked: Option<&'static str>,
 }
 
 impl MultiSelection {
@@ -33,7 +35,8 @@ impl MultiSelection {
             [one] => Selection::Commit(*one),
             _ => {
                 let pick_blocked = cherry_pick_blocker(snap, &oids);
-                Selection::Commits(Self { oids, anchor, changes: None, pick_blocked })
+                let export_blocked = super::patch::export_blocker(snap, &oids);
+                Selection::Commits(Self { oids, anchor, changes: None, pick_blocked, export_blocked })
             }
         }
     }
