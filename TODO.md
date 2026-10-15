@@ -14,6 +14,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-15 12:24 · **File actions**: Undo and redo a restore from a commit: the overwritten working copy is kept and put back byte for byte (`977d157`)
 - 2026-10-15 12:14 · **Diff viewer upgrade**: Pair removed and added lines by similarity in the split layout and for word highlights (`9e4288f`)
 - 2026-10-15 12:14 · **Diff viewer upgrade**: Cache the computed diff rows (done by the rows cache; the Previous/Next button state is left as a follow-up) (`bdc1893`)
 - 2026-10-15 11:55 · **Command palette (fuzzy finder)**: Commands button in the toolbar, and recently run commands listed first (`f3b5231`)
@@ -33,7 +34,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-14 07:27 · **Diff viewer upgrade**: Language overrides from linguist-language gitattributes; highlight .jsx (`c15779a`)
 - 2026-10-14 07:22 · **Command palette (fuzzy finder)**: Apply, pop or delete a chosen stash and stash with a message (`ae3ed3a`)
 - 2026-10-14 06:59 · **Diff viewer upgrade**: Highlight TOML, TypeScript, PowerShell, Dockerfile, Kotlin and Swift (`a1b840e`)
-- 2026-10-14 06:53 · **Command palette (fuzzy finder)**: Check out remote branches and tags (`c11355d`)
 
 ---
 
