@@ -76,6 +76,8 @@ mod snapshot_tests_gitflow;
 #[cfg(test)]
 mod snapshot_tests_lfs;
 #[cfg(test)]
+mod snapshot_tests_load_more;
+#[cfg(test)]
 mod snapshot_tests_palette;
 #[cfg(test)]
 mod snapshot_tests_palette_stash;

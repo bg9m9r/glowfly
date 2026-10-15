@@ -235,6 +235,9 @@ impl Default for ViewState {
     }
 }
 
+/// The most commits "Load more" goes up to.
+pub const MAX_COMMITS: usize = 200_000;
+
 pub struct AppState {
     pub settings: Settings,
     /// Settings as last saved, to detect edits made in Preferences.
@@ -397,7 +400,8 @@ impl AppState {
         // Smart visibility also keeps branches that have open pull requests.
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
         let f = self.settings.graph_filter_for(workdir);
-        LoadOptions { max_commits: self.settings.commit_limit(), smart, extra_tips, hidden: f.hidden, solo: f.solo }
+        let max_commits = (self.settings.commit_limit() + self.refresh.extra_commits).min(MAX_COMMITS.max(self.settings.commit_limit()));
+        LoadOptions { max_commits, smart, extra_tips, hidden: f.hidden, solo: f.solo }
     }
 
     pub fn log(&mut self, ok: bool, text: impl Into<String>) {

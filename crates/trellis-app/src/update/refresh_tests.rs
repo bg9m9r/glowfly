@@ -176,3 +176,23 @@ fn a_status_read_rereads_the_open_diff_only_when_its_file_changed() {
     assert_eq!(diff_loads(&read_status(&mut st)), 0, "a commit's diff doesn't change");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn load_more_raises_the_limit_until_the_tab_is_switched() {
+    let (mut st, dir) = opened("refresh-more");
+    let limit = st.settings.commit_limit();
+    assert!(update(&mut st, Msg::LoadMoreCommits, Instant::now()).is_empty(), "the whole history is shown already");
+    st.snap.as_mut().unwrap().truncated = true;
+    let fx = update(&mut st, Msg::LoadMoreCommits, Instant::now());
+    let [Effect::LoadRepo { opts, known: None, .. }] = &loads(&fx)[..] else { panic!("a full load: {fx:?}") };
+    assert_eq!(opts.max_commits, 2 * limit);
+    finish(&mut st, fx);
+    assert_eq!(st.snap.as_ref().unwrap().loaded_with.max_commits, 2 * limit);
+    assert_eq!(st.load_options(&dir).max_commits, 2 * limit, "later refreshes keep it");
+
+    let other = scratch_repo("refresh-more-other");
+    drive(&mut st, Msg::Open(other.clone()));
+    assert_eq!(st.load_options(&other).max_commits, limit, "another tab starts at the limit");
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_dir_all(&other);
+}

@@ -47,6 +47,10 @@ pub(super) fn handle(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Eff
             }
             apply_status(st, result, submodules, open_stamp, now, fx);
         }
+        Msg::LoadMoreCommits if st.snap.as_ref().is_some_and(|s| s.truncated) => {
+            st.refresh.extra_commits += st.settings.commit_limit();
+            refresh(st, fx);
+        }
         _ => {}
     }
 }
@@ -60,7 +64,7 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
     st.load_gen += 1;
     st.loading = true;
     // Status reads of the older generation are dropped, and the load reads the status anyway.
-    st.refresh = RefreshState { open_stamp: st.refresh.open_stamp, ..Default::default() };
+    st.refresh = RefreshState { open_stamp: st.refresh.open_stamp, extra_commits: st.refresh.extra_commits, ..Default::default() };
     let opts = st.load_options(&path);
     let known = known.filter(|_| st.snap.as_ref().is_some_and(|s| s.loaded_with == opts));
     fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind, known });

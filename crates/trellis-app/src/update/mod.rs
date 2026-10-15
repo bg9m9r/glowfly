@@ -181,7 +181,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         | Msg::DiffLoaded { .. }
         | Msg::StatsLoaded(_)
         | Msg::StatsDropped(_) => repo::handle(st, msg, now, &mut fx),
-        Msg::StatusLoaded { .. } | Msg::RepoUnchanged { .. } => refresh::handle(st, msg, now, &mut fx),
+        Msg::StatusLoaded { .. } | Msg::RepoUnchanged { .. } | Msg::LoadMoreCommits => refresh::handle(st, msg, now, &mut fx),
         Msg::DiffHighlighted { .. } => highlight::handle(st, msg),
         Msg::SetDiffLayout(_)
         | Msg::SetDiffMode(_)

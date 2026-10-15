@@ -98,13 +98,28 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         header(cols.author, "AUTHOR", cols_cfg.author);
         header(cols.date, "DATE", cols_cfg.date);
         if snap.truncated {
-            p.text(
-                pos2(cols.msg.1, hdr.center().y),
-                Align2::RIGHT_CENTER,
-                format!("newest {} commits", snap.commits.len()),
-                FontId::proportional(10.5),
-                color::faint(),
-            );
+            let at_max = snap.commits.len() >= crate::state::MAX_COMMITS;
+            let more = (!at_max).then(|| p.layout_no_wrap("Load more".into(), font.clone(), color::accent()));
+            let link_w = more.as_ref().map_or(0.0, |g| g.size().x + 10.0);
+            // The count only where it clears the column's title.
+            let count = p.layout_no_wrap(format!("newest {} commits", snap.commits.len()), font.clone(), color::faint());
+            let title_end = cols.msg.0 + p.layout_no_wrap("COMMIT MESSAGE".into(), font.clone(), weak).size().x + 12.0;
+            let count_x = cols.msg.1 - link_w - count.size().x;
+            if count_x > title_end {
+                p.galley(pos2(count_x, hdr.center().y - count.size().y / 2.0), count, color::faint());
+            }
+            if let Some(g) = more {
+                let rect = Align2::RIGHT_CENTER.anchor_size(pos2(cols.msg.1, hdr.center().y), g.size());
+                let resp = ui.interact(rect, ui.id().with("load-more"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+                resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Link, true, "Load more"));
+                if resp.hovered() {
+                    p.line_segment([rect.left_bottom(), rect.right_bottom()], Stroke::new(1.0_f32, color::accent()));
+                }
+                p.galley(rect.min, g, color::accent());
+                if resp.clicked() {
+                    msgs.push(Msg::LoadMoreCommits);
+                }
+            }
         }
 
         // Pull requests by head commit, for graph badges.

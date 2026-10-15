@@ -86,6 +86,8 @@ pub enum Msg {
     SearchNext,
     /// The graph shows these commits and needs their line counts.
     WantStats(Vec<Oid>),
+    /// Show more of the history than the commit limit (the graph's "Load more").
+    LoadMoreCommits,
     /// Views asked for these authors' avatars (lowercased emails, each asked for once).
     WantAvatars(Vec<String>),
 

@@ -19,6 +19,8 @@ pub struct RefreshState {
     pub status_busy: bool,
     /// The status was asked for again while it was being read.
     pub status_queued: bool,
+    /// Commits past the limit that Load more added for this tab (until it is switched away).
+    pub extra_commits: usize,
     /// The open file's `repo::open_file_stamp` when its diff was last read again after a status
     /// read.
     pub open_stamp: Option<u64>,
