@@ -234,15 +234,22 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     fx
 }
 
+/// Records `action` in the undo history of the parked tab for `workdir`.
+fn record_parked(st: &mut AppState, workdir: &Path, action: trellis_core::undo::Action) {
+    if let Some(p) = st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()) {
+        p.undo.record(action);
+    }
+}
+
 /// A result for the repository at `workdir`, whose tab is no longer active: only what its area
 /// says still matters (`Msg::on_inactive`) is applied.
 fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant) {
     match msg.on_inactive() {
         Some(Inactive::Log(text)) => st.log(false, text),
-        Some(Inactive::Undo(action)) => {
-            if let Some(p) = st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()) {
-                p.undo.record(action);
-            }
+        Some(Inactive::Undo(action)) => record_parked(st, workdir, action),
+        Some(Inactive::LogAndUndo { text, undo }) => {
+            st.log(false, text);
+            record_parked(st, workdir, undo);
         }
         Some(Inactive::WorkFile { op, result }) => work_files::inactive_result(st, op, result, now),
         None => tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display()),

@@ -19,9 +19,10 @@ pub enum FilesMsg {
     OpenWorkingFile(String),
     /// Select a working-tree file in the file manager (its folder where selecting isn't supported).
     ShowWorkingFile(String),
-    /// A RestoreFile finished. On success the `Action` is its undo entry (`None`: nothing
-    /// changed, or the working copy before or after couldn't be saved).
-    FileRestored { path: String, oid: Oid, result: Result<(RestoredFrom, Option<Action>), String> },
+    /// A RestoreFile finished. `undo` is its undo entry (`None`: nothing changed, or the working
+    /// copy before or after couldn't be saved); a failed restore has one when it changed the
+    /// file anyway.
+    FileRestored { path: String, oid: Oid, result: Result<RestoredFrom, String>, undo: Option<Action> },
     /// A RestoreFile without `overwrite` found contents at `path` that only the working tree
     /// holds (`reason` says why), so it wrote nothing.
     RestoreWouldOverwrite { path: String, oid: Oid, reason: String },
@@ -35,12 +36,26 @@ impl FilesMsg {
             Self::RestoreFile { .. }
             | Self::OpenWorkingFile(..)
             | Self::ShowWorkingFile(..)
-            | Self::FileRestored { result: Ok((_, None)), .. } => None,
-            Self::FileRestored { result: Ok((_, Some(a))), .. } => Some(Inactive::Undo(a)),
-            Self::FileRestored { path, result: Err(e), .. } => Some(Inactive::Log(format!("Could not restore {path}: {e}"))),
+            | Self::FileRestored { result: Ok(_), undo: None, .. } => None,
+            Self::FileRestored { result: Ok(_), undo: Some(a), .. } => Some(Inactive::Undo(a)),
+            Self::FileRestored { path, result: Err(e), undo: None, .. } => Some(Inactive::Log(restore_failed(&path, &e, false))),
+            Self::FileRestored { path, result: Err(e), undo: Some(a), .. } => {
+                Some(Inactive::LogAndUndo { text: restore_failed(&path, &e, true), undo: a })
+            }
             Self::RestoreWouldOverwrite { path, reason, .. } => Some(Inactive::Log(format!("Did not restore {path}: {reason}."))),
         }
     }
+}
+
+/// The log line for a restore of `path` that failed with `e`; `undoable` when it changed the
+/// file anyway and recorded an undo entry.
+pub fn restore_failed(path: &str, e: &str, undoable: bool) -> String {
+    let undo = if undoable {
+        format!(". Undo ({}) puts back what it held before.", crate::keymap::hint(crate::keymap::BindingId::Undo))
+    } else {
+        String::new()
+    };
+    format!("Could not restore {path}: {e}{undo}")
 }
 
 /// Creating, renaming, deleting and discarding (untracked) working-tree files, and the results

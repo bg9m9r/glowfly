@@ -64,32 +64,75 @@ fn current(workdir: &Path, path: &str) -> Result<Option<Saved>> {
 /// The working copy before and after an operation, when the two differ.
 type Pair = (Option<Saved>, Option<Saved>);
 
+/// A restore that failed. `undo` is set when the file changed anyway (git removes a file before
+/// a failing required filter runs, a write can be cut short), so the working copy it held can
+/// still be put back; the error then names the blob that keeps it.
+#[derive(Debug)]
+pub struct RestoreFailed {
+    pub error: Error,
+    pub undo: Option<Box<Action>>,
+}
+
 /// Runs `op` with `path`'s contents saved before and after it. The pair comes back only when
 /// they differ, and not at all when the file before isn't one whose contents can be saved (a
 /// symbolic link or a folder: `op` still runs). Any other failure to save first refuses `op`.
 /// A failure to save afterwards is returned when `strict_after` is set, and otherwise just
-/// leaves the operation without a pair.
-fn saving<T>(workdir: &Path, path: &str, strict_after: bool, op: impl FnOnce() -> Result<T>) -> Result<(T, Option<Pair>)> {
+/// leaves the operation without a pair. When `op` fails but the file changed anyway (or can no
+/// longer be read), its error names the blob that keeps the earlier contents, and the pair
+/// comes back with it when the file as it is now could be saved.
+fn saving<T>(
+    workdir: &Path,
+    path: &str,
+    strict_after: bool,
+    op: impl FnOnce() -> Result<T>,
+) -> std::result::Result<(T, Option<Pair>), (Error, Option<Pair>)> {
     let before = match save(workdir, path) {
         Ok(b) => Some(b),
         Err(Error::Unsupported(_)) => None,
-        Err(e) => return Err(e),
+        Err(e) => return Err((e, None)),
     };
-    let out = op()?;
+    let out = match op() {
+        Ok(out) => out,
+        Err(e) => {
+            return Err(match before {
+                Some(before) => failed_after_saving(workdir, path, before, e),
+                None => (e, None),
+            });
+        }
+    };
     let Some(before) = before else { return Ok((out, None)) };
     let after = match save(workdir, path) {
         Ok(a) => a,
         Err(_) if !strict_after => return Ok((out, None)),
-        Err(e) => return Err(e),
+        Err(e) => return Err((e, None)),
     };
     Ok((out, (before != after).then_some((before, after))))
 }
 
+/// `op` failed after `path` was saved as `before`. Unchanged, the error comes back as it was;
+/// otherwise it says where the earlier contents are kept, with the pair when the file as it is
+/// now could be saved too.
+fn failed_after_saving(workdir: &Path, path: &str, before: Option<Saved>, e: Error) -> (Error, Option<Pair>) {
+    let after = save(workdir, path);
+    if after.as_ref().is_ok_and(|a| *a == before) {
+        return (e, None);
+    }
+    let error = match before {
+        Some(s) => Error::Other(format!(
+            "{e}. {path} changed anyway; its earlier contents are kept as blob {} (git cat-file -p {})",
+            s.blob, s.blob
+        )),
+        None => e,
+    };
+    (error, after.ok().map(|a| (before, a)))
+}
+
 /// Runs `discard` on `path` with its contents saved first. Returns the action that undoes it,
 /// or `None` when nothing changed or the file isn't one whose contents can be saved (a symbolic
-/// link or a folder: the discard still runs). Any other failure to save refuses the discard.
+/// link or a folder: the discard still runs). Any other failure to save refuses the discard. A
+/// discard that fails after changing the file says where its earlier contents are kept.
 pub fn discard_saving(workdir: &Path, path: &str, discard: impl FnOnce() -> Result<()>) -> Result<Option<Action>> {
-    let ((), pair) = saving(workdir, path, true, discard)?;
+    let ((), pair) = saving(workdir, path, true, discard).map_err(|(e, _)| e)?;
     Ok(pair.map(|(before, after)| Action::Discard { path: path.to_owned(), before, after }))
 }
 
@@ -97,10 +140,19 @@ pub fn discard_saving(workdir: &Path, path: &str, discard: impl FnOnce() -> Resu
 /// saved first. Returns where the contents came from and the action that undoes the restore, or
 /// `None` when nothing changed or the file before or after isn't one whose contents can be
 /// saved (the restore still runs). Errors from the restore, such as [`Error::WouldOverwrite`],
-/// come back unchanged; any other failure to save first refuses the restore.
-pub fn restore_saving(workdir: &Path, oid: Oid, path: &str, overwrite: bool) -> Result<(RestoredFrom, Option<Action>)> {
-    let (from, pair) = saving(workdir, path, false, || crate::repo::restore_file(workdir, oid, path, overwrite))?;
-    Ok((from, pair.map(|(before, after)| Action::Restore { path: path.to_owned(), oid, before, after })))
+/// come back unchanged unless the file changed anyway, when they come with the action that puts
+/// it back; any other failure to save first refuses the restore.
+pub fn restore_saving(
+    workdir: &Path,
+    oid: Oid,
+    path: &str,
+    overwrite: bool,
+) -> std::result::Result<(RestoredFrom, Option<Action>), RestoreFailed> {
+    let action = |(before, after): Pair| Action::Restore { path: path.to_owned(), oid, before, after };
+    match saving(workdir, path, false, || crate::repo::restore_file(workdir, oid, path, overwrite)) {
+        Ok((from, pair)) => Ok((from, pair.map(action))),
+        Err((error, pair)) => Err(RestoreFailed { error, undo: pair.map(|p| Box::new(action(p))) }),
+    }
 }
 
 impl Action {

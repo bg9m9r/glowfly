@@ -117,18 +117,19 @@ fn restored_toasts_and_refreshes() {
     detail.absent.insert("a.txt".into());
     st.detail = Some(detail);
 
-    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok((RestoredFrom::Commit, None)) }));
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     let toast = st.toasts.last().expect("a toast");
     assert!(toast.ok && toast.text.contains("a.txt") && toast.text.contains(&short(oid)), "{}", toast.text);
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     assert!(st.detail.as_ref().unwrap().in_workdir("a.txt"), "Open and Show become available");
     finish(&mut st, fx);
 
-    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok((RestoredFrom::Parent(oid), None)) }));
+    let fx =
+        run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Parent(oid)), undo: None }));
     finish(&mut st, fx);
     assert!(st.toasts.last().unwrap().text.contains("before"));
 
-    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) }));
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: None }));
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore a.txt: boom"));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })));
     let _ = std::fs::remove_dir_all(&dir);
@@ -141,11 +142,11 @@ fn restore_marks_history_file_on_disk() {
     st.history = Some(FileHistoryView::loading("a.txt".into(), None));
     let on_disk = |st: &AppState| st.history.as_ref().unwrap().on_disk;
 
-    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "old.txt".into(), oid, result: Ok((RestoredFrom::Commit, None)) }));
+    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "old.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     assert!(!on_disk(&st), "another path");
-    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()) }));
+    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: None }));
     assert!(!on_disk(&st), "a failed restore");
-    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok((RestoredFrom::Commit, None)) }));
+    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     assert!(on_disk(&st), "Open and Show become available in the history");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -153,7 +154,7 @@ fn restore_marks_history_file_on_disk() {
 #[test]
 fn scoped_error_for_inactive_tab_is_logged() {
     let (mut st, dir) = loaded("files-scoped");
-    let msg = Msg::Files(FilesMsg::FileRestored { path: "b.txt".into(), oid: head(&dir), result: Err("in the way".into()) });
+    let msg = Msg::Files(FilesMsg::FileRestored { path: "b.txt".into(), oid: head(&dir), result: Err("in the way".into()), undo: None });
     let fx = run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore b.txt: in the way"));
@@ -190,7 +191,7 @@ fn comparison_restore_clears_absent() {
     st.selection =
         Selection::Commits(MultiSelection { oids: vec![oid, other], anchor: oid, changes: Some(Ok(changes)), pick_blocked: None });
 
-    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok((RestoredFrom::Commit, None)) }));
+    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     let Selection::Commits(m) = &st.selection else { panic!("still two commits") };
     let c = m.changes.as_ref().unwrap().as_ref().unwrap();
     assert!(c.in_workdir("a.txt"), "Open and Show become available");

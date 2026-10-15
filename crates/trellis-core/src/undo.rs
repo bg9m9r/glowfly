@@ -14,7 +14,7 @@ mod saved;
 pub use planning::plan;
 use planning::{has_staged, is_clean, stale};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
-pub use saved::{Saved, discard_saving, restore_saving, write as write_saved};
+pub use saved::{RestoreFailed, Saved, discard_saving, restore_saving, write as write_saved};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.
 pub const DISCARD_STASH_MESSAGE: &str = "Trellis: discarded changes";

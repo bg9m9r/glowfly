@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::FilesMsg;
+use crate::msg::Inactive;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -125,5 +126,50 @@ fn restore_result_for_inactive_tab_goes_to_its_history() {
     assert!(matches!(parked.undo.undo.last(), Some(Action::Restore { path, .. }) if path == "a.txt"));
     for d in [&a, &b] {
         let _ = std::fs::remove_dir_all(d);
+    }
+}
+
+/// A restore that fails after git removed the file (a required smudge filter that fails) still
+/// records an undo entry, and the log says so; undoing puts the edits back.
+#[test]
+fn failed_restore_that_removed_the_file_can_be_undone() {
+    let (mut st, dir) = opened("files-undo-failed");
+    for (k, v) in [("filter.x.clean", "cat"), ("filter.x.smudge", "cat"), ("filter.x.required", "true")] {
+        git(&dir, &["config", k, v]);
+    }
+    std::fs::write(dir.join(".gitattributes"), "*.up filter=x\n").unwrap();
+    std::fs::write(dir.join("b.up"), "one\n").unwrap();
+    git(&dir, &["add", ".gitattributes", "b.up"]);
+    git(&dir, &["commit", "-q", "-m", "add b"]);
+    let base = head(&dir);
+    std::fs::write(dir.join("b.up"), "two\n").unwrap();
+    git(&dir, &["commit", "-q", "-am", "edit b"]);
+    std::fs::write(dir.join("b.up"), "local edits\n").unwrap();
+    git(&dir, &["config", "filter.x.smudge", "false"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+
+    drive(&mut st, restore(base, "b.up"));
+    assert!(!dir.join("b.up").exists(), "git removed the file before the filter failed");
+    assert!(top_is_restore_of(&st, "b.up"), "{:?}", st.undo.undo);
+    let log: Vec<&str> = st.log.iter().map(|l| l.text.as_str()).collect();
+    let said = log.iter().find(|t| t.starts_with("Could not restore b.up")).unwrap_or_else(|| panic!("{log:?}"));
+    assert!(said.contains("git cat-file -p") && said.contains("Undo (Ctrl+Z) puts back what it held before."), "{said}");
+
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(text(&dir, "b.up"), "local edits\n", "the edits are back");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn failed_restore_with_undo_for_inactive_tab_logs_and_keeps_the_undo() {
+    let oid = Oid::zero();
+    let undo = Action::Restore { path: "a.txt".into(), oid, before: None, after: None };
+    let msg = FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: Some(undo.clone()) };
+    match msg.on_inactive() {
+        Some(Inactive::LogAndUndo { text, undo: a }) => {
+            assert!(text.starts_with("Could not restore a.txt: boom. Undo ("), "{text}");
+            assert_eq!(a, undo);
+        }
+        _ => panic!("expected a log line and an undo entry"),
     }
 }

@@ -14,14 +14,20 @@ use std::path::Path;
 use trellis_core::error::Error;
 use trellis_core::repo;
 use trellis_core::undo;
+use trellis_core::undo::RestoreFailed;
 
-/// Restores `path` from commit `oid`, saving the working copy first so the restore can be undone.
-/// Contents only the working tree holds, without `overwrite`, come back as a second confirmation.
+/// Restores `path` from commit `oid`, saving the working copy first so the restore can be undone
+/// (even one that failed after changing the file). Contents only the working tree holds, without
+/// `overwrite`, come back as a second confirmation.
 pub(super) fn restore(workdir: &Path, oid: Oid, path: String, overwrite: bool) -> Msg {
-    match undo::restore_saving(workdir, oid, &path, overwrite) {
-        Err(Error::WouldOverwrite(reason)) => Msg::Files(FilesMsg::RestoreWouldOverwrite { path, oid, reason }),
-        result => Msg::Files(FilesMsg::FileRestored { result: result.map_err(|e| e.to_string()), path, oid }),
-    }
+    let (result, undo) = match undo::restore_saving(workdir, oid, &path, overwrite) {
+        Err(RestoreFailed { error: Error::WouldOverwrite(reason), undo: None }) => {
+            return Msg::Files(FilesMsg::RestoreWouldOverwrite { path, oid, reason });
+        }
+        Ok((from, undo)) => (Ok(from), undo),
+        Err(RestoreFailed { error, undo }) => (Err(error.to_string()), undo.map(|a| *a)),
+    };
+    Msg::Files(FilesMsg::FileRestored { path, oid, result, undo })
 }
 
 /// Moves a deleted file to the system trash. The app's test build uses a stand-in folder

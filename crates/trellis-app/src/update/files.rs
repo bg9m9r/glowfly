@@ -43,12 +43,13 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
             });
             super::repo::refresh_status(st, fx);
         }
-        FilesMsg::FileRestored { path, oid, result } => {
+        FilesMsg::FileRestored { path, oid, result, undo } => {
+            let undoable = undo.is_some();
+            if let Some(a) = undo {
+                st.undo.record(a);
+            }
             match result {
-                Ok((from, undo)) => {
-                    if let Some(a) = undo {
-                        st.undo.record(a);
-                    }
+                Ok(from) => {
                     let text = match from {
                         RestoredFrom::Commit => {
                             format!("Restored {path} from {}. The change is unstaged in your working tree.", short(oid))
@@ -72,7 +73,7 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
                         c.absent.remove(&path);
                     }
                 }
-                Err(e) => st.log(false, format!("Could not restore {path}: {e}")),
+                Err(e) => st.log(false, crate::msg::restore_failed(&path, &e, undoable)),
             }
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);

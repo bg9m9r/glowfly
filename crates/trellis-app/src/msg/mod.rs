@@ -26,7 +26,7 @@ mod work;
 
 pub use branch::{BranchMsg, CloneMsg};
 pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
-pub use files::{FilesMsg, WorkFileMsg};
+pub use files::{FilesMsg, WorkFileMsg, restore_failed};
 pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
 pub use graph::{AvatarMsg, GraphMsg, SelectionMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
@@ -140,6 +140,8 @@ pub enum Inactive {
     Log(String),
     /// An undoable operation: its undo belongs to the history of the tab it ran in.
     Undo(trellis_core::undo::Action),
+    /// A failure for the activity log that still left an undoable change (both of the above).
+    LogAndUndo { text: String, undo: trellis_core::undo::Action },
     /// A working-tree file operation's result: a dialog may still be waiting for it.
     WorkFile { op: FileOp, result: Result<WorkFileOk, String> },
 }

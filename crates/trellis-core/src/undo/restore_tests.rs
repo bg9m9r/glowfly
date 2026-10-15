@@ -116,7 +116,7 @@ fn restore_that_changes_nothing_records_nothing() {
 fn would_overwrite_and_failures_record_nothing() {
     let (dir, v1) = two_versions("rs-fail");
     match restore_saving(&dir, v1, "nope.txt", true) {
-        Err(Error::NotFound(_)) => {}
+        Err(RestoreFailed { error: Error::NotFound(_), undo: None }) => {}
         r => panic!("expected NotFound, got {r:?}"),
     }
     assert!(read(&dir, "nope.txt").is_none());
@@ -124,7 +124,7 @@ fn would_overwrite_and_failures_record_nothing() {
     git(&dir, &["rm", "-q", "--cached", "f.txt"]);
     write(&dir, "f.txt", "local\n");
     match restore_saving(&dir, v1, "f.txt", false) {
-        Err(Error::WouldOverwrite(_)) => {}
+        Err(RestoreFailed { error: Error::WouldOverwrite(_), undo: None }) => {}
         r => panic!("expected WouldOverwrite, got {r:?}"),
     }
     assert_eq!(read(&dir, "f.txt").unwrap(), b"local\n", "untouched");
@@ -156,5 +156,85 @@ fn restore_through_a_smudge_filter_undoes() {
     assert_eq!(read(&dir, "a.up").unwrap(), b"line one\n", "written through the smudge");
     apply(&dir, &a, false);
     assert_eq!(read(&dir, "a.up").unwrap(), b"local work\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A required smudge filter that fails: git removes the working copy before the filter runs,
+/// then gives up. The failure still comes with an undo, and names the blob that keeps the edits.
+#[test]
+fn restore_that_fails_after_removing_the_file_can_be_undone() {
+    let dir = scratch_repo("rs-failed-filter");
+    git(&dir, &["config", "filter.x.clean", "cat"]);
+    git(&dir, &["config", "filter.x.smudge", "cat"]);
+    git(&dir, &["config", "filter.x.required", "true"]);
+    write(
+        &dir,
+        ".gitattributes",
+        "*.up filter=x
+",
+    );
+    let base = commit(
+        &dir, "a.up", "one
+", "base",
+    );
+    commit(
+        &dir, "a.up", "two
+", "edit",
+    );
+    write(
+        &dir,
+        "a.up",
+        "local edits
+",
+    );
+    git(&dir, &["config", "filter.x.smudge", "false"]);
+
+    let failed = restore_saving(&dir, base, "a.up", true).expect_err("the smudge fails");
+    assert!(read(&dir, "a.up").is_none(), "git removed the file before the filter failed");
+    let a = *failed.undo.expect("undoable although it failed");
+    let Action::Restore { before: Some(saved), after: None, .. } = &a else { panic!("{a:?}") };
+    let msg = failed.error.to_string();
+    assert!(msg.contains("a.up changed anyway"), "{msg}");
+    assert!(msg.contains(&format!("git cat-file -p {}", saved.blob)), "names the blob: {msg}");
+
+    apply(&dir, &a, false);
+    assert_eq!(
+        read(&dir, "a.up").unwrap(),
+        b"local edits
+"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A discard that fails after changing the file says where its earlier contents are kept.
+#[test]
+fn discard_that_fails_after_changing_the_file_names_the_blob() {
+    let (dir, _) = two_versions("rs-failed-discard");
+    write(
+        &dir, "f.txt", "mine
+",
+    );
+    let err = discard_saving(&dir, "f.txt", || {
+        std::fs::remove_file(dir.join("f.txt"))?;
+        Err(Error::Other("cut short".into()))
+    })
+    .expect_err("the discard fails");
+    let msg = err.to_string();
+    assert!(msg.starts_with("cut short. f.txt changed anyway"), "{msg}");
+    let blob = Repository::open(&dir)
+        .unwrap()
+        .blob(
+            b"mine
+",
+        )
+        .unwrap();
+    assert!(msg.contains(&format!("git cat-file -p {blob}")), "{msg}");
+    // A failure that left the file alone comes back unchanged.
+    write(
+        &dir, "f.txt", "mine
+",
+    );
+    let err = discard_saving(&dir, "f.txt", || Err(Error::Other("refused".into()))).expect_err("fails");
+    assert_eq!(err.to_string(), "refused");
     let _ = std::fs::remove_dir_all(&dir);
 }
