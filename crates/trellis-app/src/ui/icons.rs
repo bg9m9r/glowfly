@@ -1,7 +1,7 @@
-//! Painting of the newer icons (code, eye, storage, flow), called from `widgets::paint_icon`.
+//! Painting of the newer icons (code, eye, storage, flow, palette), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
-use eframe::egui::{self, Color32, Painter, Pos2, Stroke, pos2, vec2};
+use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
 
 /// Paints `icon` centred on `c`; returns false for icons painted by `paint_icon` itself.
 pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
@@ -51,6 +51,13 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.circle_stroke(commit, r, s);
             line(pos2(x, c.y - 4.0), pos2(commit.x, commit.y - r));
             line(pos2(commit.x, commit.y + r), pos2(x, c.y + 6.0));
+        }
+        Icon::Palette => {
+            // A rounded search field above two list rows, the second shorter.
+            let field = Rect::from_min_max(pos2(c.x - 8.5, c.y - 8.0), pos2(c.x + 8.5, c.y - 2.0));
+            p.rect_stroke(field, 2.0, s, egui::StrokeKind::Middle);
+            line(pos2(c.x - 8.5, c.y + 2.5), pos2(c.x + 8.5, c.y + 2.5));
+            line(pos2(c.x - 8.5, c.y + 7.0), pos2(c.x + 3.5, c.y + 7.0));
         }
         _ => return false,
     }

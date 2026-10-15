@@ -4,7 +4,8 @@
 //! most `MAX_COMMAND_ROWS` of the ranked matches; the commands themselves are
 //! in `palette_commands`. Some commands open a second step: a list of items for that command
 //! (`Mode::Pick`), such as tracked files or stashes, or a free-text field (`Mode::Input`), such
-//! as a stash message. The steps' texts are in `palette_kinds`.
+//! as a stash message. The steps' texts are in `palette_kinds`. With an empty query, recently
+//! run commands (`palette_recent`) come first; with a query, recency only breaks score ties.
 
 pub use super::palette_commands::{Entry, PaletteCommand, entries};
 pub use super::palette_kinds::{InputKind, PickKind, StashAction};
@@ -181,7 +182,17 @@ pub struct Listed {
 pub fn listed(st: &AppState, query: &str) -> Listed {
     let mut all: Vec<Option<Entry>> = entries(st).into_iter().map(Some).collect();
     let items: Vec<(&str, &str)> = all.iter().flatten().map(|e| (e.label.as_str(), e.keywords)).collect();
-    let ranked = fuzzy::rank(query, &items);
+    let mut ranked = fuzzy::rank(query, &items);
+    if !st.palette_recent.is_empty() {
+        // Recently run commands first among equal scores (all of them, for an empty query). The
+        // sort is stable, so the ranking's own tie-breaks still order the rest.
+        let recency: Vec<usize> = all
+            .iter()
+            .flatten()
+            .map(|e| e.command.recall_key().and_then(|k| st.palette_recent.position(k)).unwrap_or(usize::MAX))
+            .collect();
+        ranked.sort_by(|a, b| b.1.score.cmp(&a.1.score).then(recency[a.0].cmp(&recency[b.0])));
+    }
     let total = ranked.len();
     let rows = ranked
         .into_iter()

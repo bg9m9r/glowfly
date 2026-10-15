@@ -94,6 +94,8 @@ mod palette_more_tests;
 #[cfg(test)]
 mod palette_pick_tests;
 #[cfg(test)]
+mod palette_recent_tests;
+#[cfg(test)]
 mod palette_stash_tests;
 #[cfg(test)]
 mod palette_tests;

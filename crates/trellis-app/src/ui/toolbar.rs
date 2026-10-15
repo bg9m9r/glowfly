@@ -9,6 +9,7 @@ use crate::msg::CloneMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
+use crate::msg::PaletteMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::PublishMsg;
 use crate::msg::RepoMsg;
@@ -139,6 +140,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         .clicked()
                     {
                         msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
+                    }
+                    let pal = tool(ui, Icon::Palette, "Commands", true);
+                    pal.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Command palette"));
+                    if pal.on_hover_text(format!("Command palette ({})", keymap::hint(BindingId::Palette))).clicked() {
+                        msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
                     }
                     if tool(ui, Icon::Search, "Search", true).on_hover_text(keymap::hint(BindingId::Search)).clicked() {
                         st.view.show_search = !st.view.show_search;

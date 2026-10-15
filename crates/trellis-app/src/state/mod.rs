@@ -16,6 +16,7 @@ pub mod lines;
 pub mod palette;
 pub mod palette_commands;
 pub mod palette_kinds;
+pub mod palette_recent;
 pub mod prefs;
 pub mod publish;
 pub mod rebase;
@@ -303,6 +304,8 @@ pub struct AppState {
     pub palette: Option<palette::Palette>,
     /// Incremented for every palette list request; older `TrackedPathsLoaded` results are ignored.
     pub palette_gen: u64,
+    /// Plain commands recently run from the palette, most recent first (global, per session).
+    pub palette_recent: palette_recent::RecentCommands,
     /// The built-in terminal panel (global, not per tab).
     pub terminal: terminal::TerminalPanel,
     /// The running Git Flow Finish job's steps (update/gitflow_finish.rs).
@@ -355,6 +358,7 @@ impl AppState {
             lfs_install: Default::default(),
             palette: None,
             palette_gen: 0,
+            palette_recent: Default::default(),
             terminal: Default::default(),
             gitflow_finish: None,
             tag_job: None,

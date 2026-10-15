@@ -1,5 +1,6 @@
 //! The command palette: opening and closing it, moving the selection, running a command
-//! through the message that the rest of the app already uses for it, and the second steps that
+//! through the message that the rest of the app already uses for it (remembering plain
+//! commands among the recently run ones), and the second steps that
 //! two-step commands open: the file finder (loading its items in the background), the stash
 //! sub-lists and the stash message step.
 
@@ -37,6 +38,10 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             p.scroll_to_selected = true;
         }
         PaletteMsg::RunPaletteCommand(cmd) => {
+            // Two-step commands count when their step opens; picks and typed text never do.
+            if let Some(key) = cmd.recall_key() {
+                st.palette_recent.record(key);
+            }
             if let Some(kind) = cmd.pick_kind() {
                 enter_pick(st, kind, fx);
                 return;

@@ -80,6 +80,8 @@ mod snapshot_tests_load_more;
 #[cfg(test)]
 mod snapshot_tests_palette;
 #[cfg(test)]
+mod snapshot_tests_palette_recent;
+#[cfg(test)]
 mod snapshot_tests_palette_stash;
 #[cfg(test)]
 mod snapshot_tests_rebase;

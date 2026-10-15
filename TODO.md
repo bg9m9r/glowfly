@@ -503,7 +503,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   (detached), a file finder for file history, apply, pop or delete a chosen stash, and stash
   with a message. Entries whose command also has a global key
   show it dimmed at the right (Ctrl+F, Ctrl+W, F5, Ctrl+Z/Y, Ctrl+T, Ctrl+Shift+T and Ctrl+,).
-  The list shows at most 200 rows; typing more narrows the rest.
+  The list shows at most 200 rows; typing more narrows the rest. A Commands button in the
+  toolbar opens the palette. The last 10 plain commands run from it (per session) are listed
+  first for an empty query, and break ties between equally good matches for a typed one.
   - [x] File finder: pick any tracked file to open its history (blame waits for the blame gutter)
   - [x] Create tag and annotated tag
     - [x] Check tag names live in the New tag dialog (ref-format rules, an existing tag)
@@ -526,8 +528,17 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       detached can be lost
     - [ ] Group ref entries by remote, or move them into a two-step checkout sub-list
     - [ ] Virtualised command rows so the 200-row cap can be lifted
-  - [ ] A toolbar button that opens the palette, with the shortcut in its tooltip
-  - [ ] Rank recently run commands first
+  - [x] A toolbar button that opens the palette, with the shortcut in its tooltip
+    - [ ] Show the Commands button when no repository is open (the palette already works there)
+    - [ ] Accessible labels for every toolbar button, once tests no longer look up palette rows
+      by bare labels such as Refresh or Push
+  - [x] Rank recently run commands first
+    - [ ] Remember recently run commands across restarts (a short key list in settings)
+    - [ ] A dim "recently used" marker or divider for the recent block in the list
+    - [ ] Remember recent commands per repository instead of per session
+    - [ ] Rank recently used ref commands (Fetch <remote>, Finish <flow branch>, checkouts)
+    - [ ] Rank recently picked items first in the file and stash sub-lists
+    - [ ] An entry to clear the recent-commands list
   - [x] More commands: stash and pop, rename branch, undo and redo, new tab and reopen closed
     tab, diff layout and whitespace toggles, toolbar labels, open in terminal and file manager
     - [ ] Syntax highlighting on/off (re-highlighting the open diff when flipped)
