@@ -4,7 +4,7 @@ use super::graph_cache::GraphCache;
 use super::*;
 use crate::error::{Error, Result};
 use crate::graph;
-use git2::{BranchType, Oid, Repository, RepositoryState, StatusOptions};
+use git2::{BranchType, Oid, Repository};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -152,7 +152,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     }
     tags.reverse();
 
-    let (unstaged, staged) = load_status(&repo)?;
+    let (unstaged, staged) = super::status::load_status(&repo)?;
     let submodules = submodules::list(&repo);
     let worktrees = worktrees::list(&repo);
 
@@ -222,73 +222,6 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         refs_key,
         loaded_with,
     })
-}
-
-/// Working-tree status only: (unstaged, staged, repository state).
-pub fn status_at(workdir: &Path) -> Result<(Vec<FileEntry>, Vec<FileEntry>, RepositoryState)> {
-    let repo = Repository::open(workdir)?;
-    let (unstaged, staged) = load_status(&repo)?;
-    Ok((unstaged, staged, repo.state()))
-}
-
-fn load_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
-    let mut opts = StatusOptions::new();
-    opts.include_untracked(true).recurse_untracked_dirs(true).renames_head_to_index(true).include_ignored(false);
-    let mut unstaged = Vec::new();
-    let mut staged = Vec::new();
-    // A .gitmodules that can't be parsed fails the status of every gitlink; read it again
-    // without submodules rather than failing the whole load.
-    let statuses = match repo.statuses(Some(&mut opts)) {
-        Ok(s) => s,
-        Err(_) => repo.statuses(Some(opts.exclude_submodules(true)))?,
-    };
-    for e in statuses.iter() {
-        let s = e.status();
-        let path = e
-            .head_to_index()
-            .and_then(|d| d.new_file().path().map(|p| p.to_string_lossy().into_owned()))
-            .or_else(|| e.path().map(str::to_owned))
-            .unwrap_or_default();
-        if s.is_conflicted() {
-            unstaged.push(FileEntry { path, status: '!' });
-            continue;
-        }
-        let index = if s.is_index_new() {
-            Some('A')
-        } else if s.is_index_modified() {
-            Some('M')
-        } else if s.is_index_deleted() {
-            Some('D')
-        } else if s.is_index_renamed() {
-            Some('R')
-        } else if s.is_index_typechange() {
-            Some('T')
-        } else {
-            None
-        };
-        let worktree = if s.is_wt_new() {
-            Some('?')
-        } else if s.is_wt_modified() {
-            Some('M')
-        } else if s.is_wt_deleted() {
-            Some('D')
-        } else if s.is_wt_renamed() {
-            Some('R')
-        } else if s.is_wt_typechange() {
-            Some('T')
-        } else {
-            None
-        };
-        if let Some(c) = index {
-            staged.push(FileEntry { path: path.clone(), status: c });
-        }
-        if let Some(c) = worktree {
-            unstaged.push(FileEntry { path, status: c });
-        }
-    }
-    unstaged.sort_by(|a, b| a.path.cmp(&b.path));
-    staged.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok((unstaged, staged))
 }
 
 /// Ref names to walk when the graph is filtered; None means everything.

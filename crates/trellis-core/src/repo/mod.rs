@@ -28,6 +28,8 @@ mod removal;
 mod resolve;
 mod restore;
 mod revert;
+mod status;
+mod status_cli;
 mod submodules;
 mod template;
 mod tracked;
@@ -44,8 +46,9 @@ pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
-pub use load::{load, load_cached, messages_between, status_at};
+pub use load::{load, load_cached, messages_between};
 pub use refs_key::refs_key;
+pub use status::status_at;
 pub use remotes::RemoteInfo;
 pub use removal::{Deleted, Removal, Trasher, os_trash};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
@@ -372,6 +375,8 @@ mod resolve_tests;
 mod restore_tests;
 #[cfg(test)]
 mod revert_tests;
+#[cfg(test)]
+mod status_cli_tests;
 #[cfg(test)]
 mod submodules_tests;
 #[cfg(test)]
