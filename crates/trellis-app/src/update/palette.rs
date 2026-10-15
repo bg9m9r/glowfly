@@ -15,6 +15,7 @@ use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::TabsMsg;
+use crate::msg::TrustMsg;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
 use crate::state::{AppState, PrefPage, Selection};
 use crate::tag::TagMsg;
@@ -213,6 +214,10 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
         C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
         C::Remote(m) => Msg::Remote(m),
+        C::ReviewTrust => {
+            let Some(s) = &st.snap else { return };
+            Msg::Trust(TrustMsg::Ask { real: s.real_workdir.clone() })
+        }
         // Opens a step in `handle`; never run directly.
         C::FileHistory | C::ChooseStash(_) | C::StashMessage => return,
     };

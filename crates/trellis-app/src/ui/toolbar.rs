@@ -155,6 +155,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     if tool(ui, Icon::Refresh, "Refresh", true).on_hover_text("F5").clicked() {
                         msgs.push(Msg::Repo(RepoMsg::Refresh));
                     }
+                    ui.add_space(6.0);
+                    super::trust_chip::show(ui, st, msgs);
                 });
             });
         });

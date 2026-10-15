@@ -7,6 +7,8 @@ use std::path::PathBuf;
 pub enum TrustMsg {
     /// Trust or don't trust the repository at `real` (`Snapshot::real_workdir`).
     Decide { real: PathBuf, trusted: bool },
+    /// Show the trust prompt again for the active repository at `real` (toolbar chip, palette).
+    Ask { real: PathBuf },
 }
 
 impl TrustMsg {
@@ -14,7 +16,7 @@ impl TrustMsg {
     /// as it is a user intent and never comes back scoped.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::Decide { .. } => None,
+            Self::Decide { .. } | Self::Ask { .. } => None,
         }
     }
 }

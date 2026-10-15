@@ -45,6 +45,8 @@ pub enum Icon {
     Flow,
     /// A search field over two list rows: the command palette (toolbar).
     Palette,
+    /// A shield with an exclamation mark: an untrusted repository (toolbar chip).
+    Shield,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -198,7 +200,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             ];
             p.add(egui::Shape::closed_line(pts, s));
         }
-        Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette => {} // icons.rs
+        Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield => {} // icons.rs
     }
 }
 

@@ -494,8 +494,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     review and revoke it
   - [x] Hold background fetch (and anything else that runs git on its own) until the user decides
   - [ ] While untrusted, browse read-only through libgit2 and say in the toolbar why fetch,
-    pull and commit hooks are paused
-  - [ ] A way to bring the prompt back for the open repository (toolbar chip or palette
+    pull and commit hooks are paused (the toolbar's Untrusted chip already says what is paused
+    and why; manual pull, push and commit hooks still run)
+  - [x] A way to bring the prompt back for the open repository (toolbar chip or palette
     command) after Don't trust or Esc
   - [ ] Trust worktrees Trellis creates from a trusted repository (and optionally submodules of
     one); ask again when a trusted repository gains new command-running settings or hooks

@@ -4,7 +4,8 @@
 use super::tests::{finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, KnownRepo};
-use crate::msg::{JobMsg, Msg, RepoMsg, StageMsg, TabsMsg, TrustMsg};
+use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StageMsg, TabsMsg, TrustMsg};
+use crate::state::palette::{Palette, PaletteCommand, entries};
 use crate::state::trust::{Created, recorded};
 use crate::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
@@ -236,4 +237,130 @@ fn only_a_new_repository_from_init_is_trusted() {
     assert!(st.modal.is_none());
     assert_eq!(recorded(&st.settings, &real(&st)), Some(RepoTrust::Trusted));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The open trust prompt.
+fn prompt(st: &AppState) -> &crate::state::trust::TrustPrompt {
+    let Some(Modal::Trust(p)) = &st.modal else { panic!("expected the trust prompt") };
+    p
+}
+
+fn ask(st: &mut AppState, real: &Path) {
+    drive(st, Msg::Trust(TrustMsg::Ask { real: real.to_path_buf() }));
+}
+
+#[test]
+fn esc_then_ask_brings_the_prompt_back() {
+    let dir = untrusted_repo("trust-ask-again");
+    let mut st = state();
+    open(&mut st, &dir);
+    assert!(asking(&st));
+    let real = real(&st);
+    for _ in 0..2 {
+        drive(&mut st, Msg::CloseModal);
+        assert!(st.modal.is_none());
+        assert!(st.settings.repo_trust.is_empty(), "nothing is saved");
+        ask(&mut st, &real);
+        let p = prompt(&st);
+        assert!(!p.refused);
+        assert!(p.scan.config.iter().any(|c| c.key == "core.sshCommand"), "{:?}", p.scan);
+    }
+    assert_eq!(st.trust.asked.len(), 1, "asked once per repository");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn ask_after_dont_trust_shows_a_refused_prompt() {
+    let dir = untrusted_repo("trust-ask-refused");
+    let mut st = state();
+    open(&mut st, &dir);
+    let real = real(&st);
+    drive(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: false }));
+    ask(&mut st, &real);
+    assert!(prompt(&st).refused);
+
+    let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: true }));
+    assert_eq!(recorded(&st.settings, &real), Some(RepoTrust::Trusted));
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { opts, .. } if opts.trusted)), "{fx:?}");
+    assert!(fx.iter().any(is_forge), "{fx:?}");
+    finish(&mut st, fx);
+    ask(&mut st, &real);
+    assert!(st.modal.is_none(), "a trusted repository isn't asked about");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn ask_is_ignored_for_another_repository_a_clean_one_or_over_a_dialog() {
+    let dir = untrusted_repo("trust-ask-ignored");
+    let mut st = state();
+    open(&mut st, &dir);
+    drive(&mut st, Msg::CloseModal);
+    ask(&mut st, Path::new("C:/elsewhere"));
+    assert!(st.modal.is_none(), "not the active repository");
+
+    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog) });
+    let here = real(&st);
+    ask(&mut st, &here);
+    assert!(matches!(st.modal, Some(Modal::Confirm { .. })), "another dialog stays");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let clean = scratch_repo("trust-ask-clean");
+    let mut st = state();
+    open(&mut st, &clean);
+    let real = real(&st);
+    ask(&mut st, &real);
+    assert!(st.modal.is_none(), "a clean repository isn't asked about");
+    let _ = std::fs::remove_dir_all(&clean);
+}
+
+#[test]
+fn asking_closes_the_palette() {
+    let dir = untrusted_repo("trust-ask-palette");
+    let mut st = state();
+    open(&mut st, &dir);
+    drive(&mut st, Msg::CloseModal);
+    st.palette = Some(Palette::default());
+    let real = real(&st);
+    ask(&mut st, &real);
+    assert!(st.palette.is_none());
+    assert!(asking(&st));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The detail of the Review repository trust… entry, if it is offered.
+fn review_entry(st: &AppState) -> Option<(usize, Option<String>)> {
+    entries(st).into_iter().enumerate().find(|(_, e)| e.command == PaletteCommand::ReviewTrust).map(|(i, e)| (i, e.detail))
+}
+
+#[test]
+fn review_trust_is_in_the_palette_only_while_held() {
+    let dir = untrusted_repo("trust-palette");
+    let mut st = state();
+    open(&mut st, &dir);
+    drive(&mut st, Msg::CloseModal);
+    assert_eq!(review_entry(&st), Some((0, Some("undecided".into()))));
+
+    st.palette = Some(Palette::default());
+    drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::ReviewTrust)));
+    assert!(st.palette.is_none());
+    assert!(asking(&st));
+    assert_eq!(st.palette_recent.position("review-trust"), Some(0));
+
+    let real = real(&st);
+    drive(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: false }));
+    assert_eq!(review_entry(&st), Some((0, Some("not trusted".into()))));
+    drive(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
+    assert_eq!(review_entry(&st), None);
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let clean = scratch_repo("trust-palette-clean");
+    let mut st = state();
+    open(&mut st, &clean);
+    assert_eq!(review_entry(&st), None);
+    let _ = std::fs::remove_dir_all(&clean);
+}
+
+#[test]
+fn ask_is_not_kept_for_an_inactive_tab() {
+    assert!(Msg::Trust(TrustMsg::Ask { real: PathBuf::from("C:/x") }).on_inactive().is_none());
 }

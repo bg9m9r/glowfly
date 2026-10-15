@@ -40,6 +40,7 @@ mod tags;
 mod terminal;
 pub mod theme;
 mod toolbar;
+mod trust_chip;
 mod trust_dialog;
 pub mod widgets;
 mod worktree_dialog;

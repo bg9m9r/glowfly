@@ -4,6 +4,7 @@
 //! (`Snapshot::trust_scan`). Pure rules only; update/trust.rs asks and records.
 
 use super::AppState;
+use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
 use super::tabs::same_path;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::Snapshot;
@@ -52,6 +53,19 @@ pub struct TrustPrompt {
     /// Where it really is on disk (`Snapshot::real_workdir`): the key the decision is saved under.
     pub real: PathBuf,
     pub scan: TrustScan,
+    /// The saved decision is Don't trust (the prompt was brought back).
+    pub refused: bool,
+}
+
+/// The prompt for the loaded repository `snap`.
+pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
+    TrustPrompt {
+        name: snap.name.clone(),
+        workdir: snap.workdir.clone(),
+        real: snap.real_workdir.clone(),
+        scan: snap.trust_scan.clone(),
+        refused: standing(s, snap) == Standing::NotTrusted,
+    }
 }
 
 /// The decision saved for the repository at `path`, under any spelling of it.
@@ -82,10 +96,21 @@ pub fn standing_of(saved: Option<RepoTrust>, clean: bool) -> Standing {
 }
 
 impl AppState {
+    /// Where the active repository stands; None without a repository.
+    pub fn trust_standing(&self) -> Option<Standing> {
+        self.snap.as_ref().map(|snap| standing(&self.settings, snap))
+    }
+
+    /// Whether git is held in the active repository (Undecided or NotTrusted): the toolbar
+    /// shows the Untrusted chip and the palette offers to review it.
+    pub fn held(&self) -> bool {
+        matches!(self.trust_standing(), Some(Standing::Undecided | Standing::NotTrusted))
+    }
+
     /// Whether Trellis may run git in the active repository without being asked (Trusted or
     /// Clean). True without a repository: there is nothing of its own to run.
     pub fn runs_git_unasked(&self) -> bool {
-        self.snap.as_ref().is_none_or(|snap| matches!(standing(&self.settings, snap), Standing::Trusted | Standing::Clean))
+        !self.held()
     }
 
     /// Whether the user trusts the repository at `workdir` (as given, or where the active tab
@@ -95,6 +120,36 @@ impl AppState {
         let snap_real = self.snap.as_ref().filter(|s| same_path(&s.workdir, workdir)).map(|s| s.real_workdir.as_path());
         [Some(workdir), tab_real, snap_real].into_iter().flatten().any(|p| recorded(&self.settings, p) == Some(RepoTrust::Trusted))
     }
+}
+
+/// What the Untrusted chip's tooltip says is paused, and why. Only what Trellis really holds:
+/// manual Pull, Push and Commit still run git and its hooks. Empty for Trusted and Clean.
+pub fn paused_note(standing: Standing) -> &'static str {
+    match standing {
+        Standing::Undecided => {
+            "This repository's own settings or hooks make git run programs, and you haven't said whether to trust it. \
+             Until you do, Trellis won't fetch in the background, contact its hosting service or let git read its status. \
+             Pull, Push and Commit you start yourself still run git and its hooks. Click to review."
+        }
+        Standing::NotTrusted => {
+            "You chose not to trust this repository. Trellis won't fetch in the background, contact its hosting service \
+             or let git read its status. Pull, Push and Commit you start yourself still run git and its hooks. Click to review."
+        }
+        Standing::Trusted | Standing::Clean => "",
+    }
+}
+
+/// Hidden words that find Review repository trust… in the palette.
+const KEYWORDS: &str = "trust untrusted security safe hooks config settings allow prompt paused";
+
+/// Review repository trust…, while git is held in the active repository.
+pub(crate) fn palette_entries(st: &AppState, out: &mut Vec<Entry>) {
+    let detail = match st.trust_standing() {
+        Some(Standing::Undecided) => "undecided",
+        Some(Standing::NotTrusted) => "not trusted",
+        _ => return,
+    };
+    out.push(with_detail(entry(PaletteCommand::ReviewTrust, "Review repository trust…", KEYWORDS), Some(detail.into())));
 }
 
 /// Shortens `dir` for the dialog: relative to `workdir` when inside it.
@@ -151,6 +206,20 @@ mod tests {
         assert_eq!(standing_of(Some(RepoTrust::NotTrusted), true), Standing::NotTrusted, "no stays no");
         assert_eq!(standing_of(None, true), Standing::Clean);
         assert_eq!(standing_of(None, false), Standing::Undecided);
+    }
+
+    #[test]
+    fn the_paused_note_says_what_is_held_and_what_still_runs() {
+        let (undecided, refused) = (paused_note(Standing::Undecided), paused_note(Standing::NotTrusted));
+        assert_ne!(undecided, refused);
+        for note in [undecided, refused] {
+            assert!(note.contains("background"), "{note}");
+            assert!(!note.contains("  "), "one space between sentences: {note}");
+            assert!(note.contains("Pull, Push and Commit you start yourself still run"), "{note}");
+        }
+        assert!(undecided.contains("settings or hooks make git run programs"));
+        assert!(refused.starts_with("You chose not to trust"));
+        assert!(paused_note(Standing::Trusted).is_empty() && paused_note(Standing::Clean).is_empty());
     }
 
     #[test]

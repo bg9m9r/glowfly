@@ -93,6 +93,7 @@ impl PaletteCommand {
             C::Theme(ThemeChoice::System) => "theme-system",
             C::Checkout(_) | C::CheckoutRemote { .. } | C::CheckoutTag(_) | C::OpenRecent(_) => return None,
             C::FileHistory => "file-history",
+            C::ReviewTrust => "review-trust",
             C::OpenFileHistory(_) => return None,
             C::Remote(m) => match m {
                 RemoteMsg::AddDialog => "add-remote",

@@ -1,4 +1,5 @@
-//! Painting of the newer icons (code, eye, storage, flow, palette), called from `widgets::paint_icon`.
+//! Painting of the newer icons (code, eye, storage, flow, palette, shield), called from
+//! `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -58,6 +59,24 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.rect_stroke(field, 2.0, s, egui::StrokeKind::Middle);
             line(pos2(c.x - 8.5, c.y + 2.5), pos2(c.x + 8.5, c.y + 2.5));
             line(pos2(c.x - 8.5, c.y + 7.0), pos2(c.x + 3.5, c.y + 7.0));
+        }
+        Icon::Shield => {
+            // A shield outline: flat shoulders, straight sides, tapering to a point below.
+            let (x, y) = (c.x, c.y);
+            let pts = vec![
+                pos2(x - 6.5, y - 6.0),
+                pos2(x, y - 8.5),
+                pos2(x + 6.5, y - 6.0),
+                pos2(x + 6.5, y - 0.5),
+                pos2(x + 4.0, y + 4.5),
+                pos2(x, y + 8.5),
+                pos2(x - 4.0, y + 4.5),
+                pos2(x - 6.5, y - 0.5),
+            ];
+            p.add(egui::Shape::closed_line(pts, s));
+            // The exclamation mark inside.
+            line(pos2(x, y - 4.5), pos2(x, y + 1.0));
+            p.circle_filled(pos2(x, y + 4.0), 1.1, s.color);
         }
         _ => return false,
     }

@@ -99,6 +99,8 @@ pub enum PaletteCommand {
     OpenFileHistory(String),
     /// A REMOTE section action (Add remote…, Fetch <remote>).
     Remote(crate::remote::RemoteMsg),
+    /// Show the trust prompt again for the open repository.
+    ReviewTrust,
 }
 
 impl PaletteCommand {
@@ -202,6 +204,7 @@ pub fn entries(st: &AppState) -> Vec<Entry> {
 /// Commands for the open repository.
 fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     use PaletteCommand as C;
+    super::trust::palette_entries(st, out);
     if !snap.remote_urls.is_empty() {
         out.push(entry(C::Fetch, "Fetch all remotes", "remote update download"));
         out.push(entry(C::Pull, "Pull", "fast-forward merge update"));

@@ -17,19 +17,27 @@ pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     ui.add_space(2.0);
     ui.label(RichText::new(printable(&p.name)).strong());
     ui.add(egui::Label::new(RichText::new(p.workdir.display().to_string()).color(color::weak())).wrap());
+    if p.refused {
+        ui.label(RichText::new("You chose not to trust it before.").color(color::weak()));
+    }
     ui.add_space(8.0);
-    ui.add(
-        egui::Label::new("This repository's own settings or hooks make git run programs. So far Trellis has only read its files.").wrap(),
-    );
-    ui.add_space(8.0);
-    egui::ScrollArea::vertical().max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
-        findings(ui, &p.scan, &p.workdir);
-        for m in &p.scan.submodules {
-            ui.add_space(4.0);
-            ui.label(RichText::new(format!("In submodule {}", printable(&m.path))).strong());
-            ui.indent(("trust-submodule", &m.path), |ui| findings(ui, &m.scan, &p.workdir));
-        }
-    });
+    if p.scan.is_empty() {
+        ui.add(egui::Label::new("Nothing in its settings or hooks runs programs right now.").wrap());
+    } else {
+        ui.add(
+            egui::Label::new("This repository's own settings or hooks make git run programs. So far Trellis has only read its files.")
+                .wrap(),
+        );
+        ui.add_space(8.0);
+        egui::ScrollArea::vertical().max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
+            findings(ui, &p.scan, &p.workdir);
+            for m in &p.scan.submodules {
+                ui.add_space(4.0);
+                ui.label(RichText::new(format!("In submodule {}", printable(&m.path))).strong());
+                ui.indent(("trust-submodule", &m.path), |ui| findings(ui, &m.scan, &p.workdir));
+            }
+        });
+    }
     ui.add_space(8.0);
     ui.add(
         egui::Label::new(

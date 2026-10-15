@@ -1,11 +1,12 @@
 //! Repository trust: asking once whether to trust a repository whose own config or hooks make
-//! git run programs, recording the answer, and trusting repositories Trellis cloned or created.
-//! What is held until then is checked where it starts (`AppState::runs_git_unasked`).
+//! git run programs, recording the answer, bringing the prompt back on request (the toolbar's
+//! Untrusted chip, the palette), and trusting repositories Trellis cloned or created. What is
+//! held until then is checked where it starts (`AppState::runs_git_unasked`).
 
 use crate::effect::{Effect, LoadKind};
 use crate::msg::TrustMsg;
 use crate::state::tabs::same_path;
-use crate::state::trust::{Created, Standing, TrustPrompt, record, standing};
+use crate::state::trust::{Created, Standing, prompt_for, record, standing};
 use crate::state::{AppState, Modal};
 use std::path::Path;
 use std::time::Instant;
@@ -14,7 +15,23 @@ use trellis_core::settings::RepoTrust;
 pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         TrustMsg::Decide { real, trusted } => decide(st, &real, trusted, now, fx),
+        TrustMsg::Ask { real } => ask(st, &real),
     }
+}
+
+/// Shows the prompt again for the active repository at `real`, if git is held there (Undecided
+/// or NotTrusted) and no other dialog is open. Closes the palette, which never covers a dialog.
+fn ask(st: &mut AppState, real: &Path) {
+    let Some(snap) = st.snap.as_ref().filter(|s| same_path(&s.real_workdir, real)) else { return };
+    if !matches!(standing(&st.settings, snap), Standing::Undecided | Standing::NotTrusted) || st.modal.is_some() {
+        return;
+    }
+    let prompt = prompt_for(&st.settings, snap);
+    if !st.trust.asked.iter().any(|p| same_path(p, &prompt.real)) {
+        st.trust.asked.push(prompt.real.clone());
+    }
+    st.palette = None;
+    st.modal = Some(Modal::Trust(prompt));
 }
 
 fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut Vec<Effect>) {
@@ -73,12 +90,7 @@ pub(super) fn maybe_ask(st: &mut AppState, fresh_open: bool) {
         return;
     }
     tracing::debug!("asking whether to trust {}", snap.real_workdir.display());
-    let prompt = TrustPrompt {
-        name: snap.name.clone(),
-        workdir: snap.workdir.clone(),
-        real: snap.real_workdir.clone(),
-        scan: snap.trust_scan.clone(),
-    };
+    let prompt = prompt_for(&st.settings, snap);
     if !asked {
         st.trust.asked.push(prompt.real.clone());
     }
