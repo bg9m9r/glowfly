@@ -225,3 +225,17 @@ fn trust_decisions_default_empty_and_round_trip() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
     assert_eq!(back.repo_trust, s.repo_trust);
 }
+
+#[test]
+fn column_widths_old_files() {
+    // Files written before columns could be resized keep the old widths.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert_eq!(s.column_widths, ColumnWidths::default());
+    // A partial object fills in the rest.
+    let s: Settings = serde_json::from_str(r#"{"column_widths":{"author":200}}"#).unwrap();
+    assert_eq!(s.column_widths.get(ResizableColumn::Author), 200.0);
+    assert_eq!(s.column_widths, ColumnWidths { author: 200.0, ..ColumnWidths::default() });
+    let wide = Settings { column_widths: ColumnWidths::default().with(ResizableColumn::Refs, 300.0), ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&wide).unwrap()).unwrap();
+    assert_eq!(back.column_widths, wide.column_widths);
+}

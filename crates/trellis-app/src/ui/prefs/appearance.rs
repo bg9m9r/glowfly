@@ -36,7 +36,7 @@ pub fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str,
 }
 
 pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32)) {
-    use trellis_core::settings::{BranchVisibility as BV, Corner, DescriptionMode as DM, GraphColumns, ThemeChoice as TC};
+    use trellis_core::settings::{BranchVisibility as BV, ColumnWidths, Corner, DescriptionMode as DM, GraphColumns, ThemeChoice as TC};
     row(ui, "Theme", |ui| {
         combo(ui, "theme", &mut s.theme, &[(TC::Dark, "Trellis Dark"), (TC::Light, "Trellis Light"), (TC::System, "Match system")])
     });
@@ -151,10 +151,16 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32)) {
         ui.horizontal(|ui| {
             if ui.button("Reset to default layout").clicked() {
                 *c = GraphColumns::default();
+                s.column_widths = ColumnWidths::default();
             }
             if ui.button("Reset to compact layout").clicked() {
                 *c = GraphColumns::compact();
+                s.column_widths = ColumnWidths::default();
             }
         });
+        help(
+            ui,
+            "Either reset also puts every column back to its standard width. To resize a column, drag the divider beside its title in the graph header; double-click a divider to reset just that column.",
+        );
     });
 }

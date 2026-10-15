@@ -5,10 +5,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::RangeInclusive;
 
+mod column_widths;
 mod file;
 mod graph_filter;
 mod paths;
 mod trust;
+pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{config_dir, migrate_old_config_dir};
@@ -154,6 +156,9 @@ pub struct Settings {
     pub highlight_ref_rows: bool,
     pub branch_visibility: BranchVisibility,
     pub columns: GraphColumns,
+    /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
+    #[serde(default)]
+    pub column_widths: ColumnWidths,
 
     // Diff viewer
     #[serde(default)]
@@ -224,6 +229,7 @@ impl Default for Settings {
             highlight_ref_rows: true,
             branch_visibility: BranchVisibility::All,
             columns: GraphColumns::default(),
+            column_widths: ColumnWidths::default(),
             diff_layout: DiffLayout::Inline,
             diff_mode: DiffMode::Hunks,
             syntax_highlighting: true,

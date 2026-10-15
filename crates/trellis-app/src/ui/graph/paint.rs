@@ -1,6 +1,6 @@
 //! Drawing helpers for the commit graph: column layout, lanes, nodes and ref labels.
 
-use super::{LANE_W, REF_COL_W};
+use super::LANE_W;
 use crate::ui::avatars::Avatars;
 use crate::ui::common::lane_color;
 use crate::ui::theme::color;
@@ -9,7 +9,10 @@ use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, ep
 use std::collections::HashMap;
 use trellis_core::graph::GraphRow;
 use trellis_core::repo::{self, RefKind, Snapshot};
-use trellis_core::settings::GraphColumns;
+use trellis_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
+
+/// The narrowest a drag leaves the message column.
+const MIN_MSG_W: f32 = 120.0;
 
 /// Horizontal extent of each column for one row (empty ranges for hidden columns).
 pub struct Columns {
@@ -23,20 +26,48 @@ pub struct Columns {
 }
 
 impl Columns {
-    pub fn new(rect: Rect, graph_w: f32, c: &GraphColumns) -> Self {
+    pub fn new(rect: Rect, graph_w: f32, c: &GraphColumns, w: &ColumnWidths) -> Self {
+        use ResizableColumn::*;
         let mut x = rect.left();
-        let refs = if c.refs { (x, x + REF_COL_W) } else { (x, x) };
+        let refs = if c.refs { (x, x + w.get(Refs)) } else { (x, x) };
         x = refs.1;
         let graph = if c.tree { (x, x + graph_w) } else { (x, x) };
         x = graph.1;
-        let sha = if c.sha { (x + 10.0, x + 74.0) } else { (x, x) };
+        let sha = if c.sha { (x + 10.0, x + w.get(Sha)) } else { (x, x) };
         x = sha.1;
         let right = rect.right() - 6.0;
-        let date = if c.date { (right - 150.0, right) } else { (right, right) };
-        let author = if c.author { (date.0 - 148.0, date.0 - 8.0) } else { (date.0, date.0) };
-        let changes = if c.changes { (author.0 - 100.0, author.0 - 8.0) } else { (author.0, author.0) };
+        let date = if c.date { (right - w.get(Date), right) } else { (right, right) };
+        let author = if c.author { (date.0 - w.get(Author), date.0 - 8.0) } else { (date.0, date.0) };
+        let changes = if c.changes { (author.0 - w.get(Changes), author.0 - 8.0) } else { (author.0, author.0) };
         let msg = (x + 10.0, changes.0 - 12.0);
         Self { refs, graph, sha, msg, changes, author, date }
+    }
+
+    /// Each shown resizable column with the x of the divider that resizes it: the one on the
+    /// right of BRANCH / TAG and SHA, the one on the left of the right-aligned columns.
+    pub fn grips(&self, c: &GraphColumns) -> impl Iterator<Item = (ResizableColumn, f32)> {
+        let refs = if c.tree {
+            self.graph.0
+        } else if c.sha {
+            self.sha.0
+        } else {
+            self.msg.0 - 6.0
+        };
+        [
+            (c.refs, ResizableColumn::Refs, refs),
+            (c.sha, ResizableColumn::Sha, self.msg.0 - 6.0),
+            (c.changes, ResizableColumn::Changes, self.changes.0),
+            (c.author, ResizableColumn::Author, self.author.0),
+            (c.date, ResizableColumn::Date, self.date.0),
+        ]
+        .into_iter()
+        .filter(|(on, ..)| *on)
+        .map(|(_, col, x)| (col, x))
+    }
+
+    /// How much wider the columns may grow before the message column drops below `MIN_MSG_W`.
+    pub fn msg_room(&self) -> f32 {
+        (self.msg.1 - self.msg.0 - MIN_MSG_W).max(0.0)
     }
 
     pub fn rect(&self, col: (f32, f32), row: Rect) -> Rect {

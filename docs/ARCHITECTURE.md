@@ -39,7 +39,7 @@ binary (package `trellis`).
 | `watch.rs` | Which file changes in a repository matter. |
 | `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
-| `settings.rs`, `settings/` | Preferences, per-repository graph filters and repository trust decisions. |
+| `settings.rs`, `settings/` | Preferences, graph column widths, per-repository graph filters and repository trust decisions. |
 | `persist.rs` | Crash-safe writes of Trellis's own files. |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
 
@@ -77,10 +77,11 @@ binary (package `trellis`).
 ```
 
 - **Views** draw `AppState` and push `Msg`s. They change only text buffers and `view` state
-  (scroll, hover, open sections), never domain state such as the log, the selection or a form's
-  checks. They never touch disk, network, processes or the clock. They may use core types and
-  pure helpers. Avatars, for example, are requested by the views, fetched through
-  `Effect::FetchAvatars`, and turned into textures by the shell.
+  (scroll, hover, open sections, a drag's preview until its release sends a `Msg`), never domain
+  state such as the log, the selection or a form's checks. They never touch disk, network,
+  processes or the clock. They may use core types and pure helpers. Avatars, for example, are
+  requested by the views, fetched through `Effect::FetchAvatars`, and turned into textures by the
+  shell.
 - **`update`** is the only place domain state changes. It never blocks and does no I/O. Anything
   slow or outside the process (git, HTTP, the file system) becomes an `Effect`.
 - **The runner** (`runner/mod.rs`) starts one worker thread per effect and sends the result back

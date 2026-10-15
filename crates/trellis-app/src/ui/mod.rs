@@ -59,6 +59,8 @@ mod snapshot_tests_branch;
 #[cfg(test)]
 mod snapshot_tests_clone;
 #[cfg(test)]
+mod snapshot_tests_columns;
+#[cfg(test)]
 mod snapshot_tests_commit;
 #[cfg(test)]
 mod snapshot_tests_diff;

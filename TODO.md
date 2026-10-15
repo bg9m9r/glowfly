@@ -797,8 +797,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   fetch or pull across many repos.
 - [ ] **Graph columns and loading**
   Column toggles, compact layout and row highlighting are done (UI Customization). Missing:
-  - Resize columns (widths are fixed)
-  - Lazy-load more history when scrolling past the commit limit (the General page's "lazy
+  - [x] Resize columns: drag the header dividers (BRANCH/TAG, SHA, changes, author, date), double-click to reset, saved in settings
+  - [ ] Lazy-load more history when scrolling past the commit limit (the General page's "lazy
     loading"); jumping to a pinned branch goes with pinning in Branch operations
 - [ ] **Search and filter**
   Filter the graph to matches (not just dim them), filter by author, search by file path,

@@ -1,8 +1,9 @@
-//! The commit graph: configurable columns (branch/tag, graph, SHA, message, changes, author,
-//! date), avatars, ghost refs, and branch highlighting.
+//! The commit graph: configurable, resizable columns (branch/tag, graph, SHA, message, changes,
+//! author, date), avatars, ghost refs, and branch highlighting.
 
 mod header;
 mod paint;
+mod resize;
 mod select;
 
 pub use paint::draw_avatar;
@@ -27,7 +28,6 @@ use trellis_core::settings::DescriptionMode;
 const ROW_H: f32 = 30.0;
 const LANE_W: f32 = 22.0;
 const MAX_VISIBLE_LANES: usize = 12;
-const REF_COL_W: f32 = 190.0;
 
 /// The commit graph with its column header.
 pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -79,7 +79,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         select::keyboard_nav(ui, &st.selection, snap, &mut st.view, total, has_wip, msgs);
 
-        header::column_header(ui, snap, graph_w, &cols_cfg, msgs);
+        let widths = header::column_header(ui, snap, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
 
         // Pull requests by head commit, for graph badges.
         let pr_at: HashMap<Oid, (String, bool)> = st
@@ -123,7 +123,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             for row in range {
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
                 let painter = ui.painter_at(rect);
-                let cols = Columns::new(rect, graph_w, &cols_cfg);
+                let cols = Columns::new(rect, graph_w, &cols_cfg, &widths);
                 let is_wip = has_wip && row == 0;
                 let (commit, g) = match row.checked_sub(has_wip as usize) {
                     Some(i) if !is_wip => match (snap.commits.get(i), snap.graph.rows.get(i)) {
@@ -237,7 +237,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 }
 
                 if cols_cfg.sha {
-                    painter.text(
+                    painter.with_clip_rect(cols.rect(cols.sha, rect)).text(
                         pos2(cols.sha.0, mid),
                         Align2::LEFT_CENTER,
                         &c.oid.to_string()[..7],

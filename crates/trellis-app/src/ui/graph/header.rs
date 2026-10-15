@@ -1,15 +1,18 @@
-//! The graph's column header: the column titles and the history notes (how many commits a
-//! truncated history shows, Load more, and a shallow clone's note with its Fetch full history
-//! link). The notes sit at the right end of the message column; a shallow clone's notes that
-//! don't fit there get their own line under the titles, so the note is always visible.
+//! The graph's column header: the column titles with their draggable dividers (resize.rs), and
+//! the history notes (how many commits a truncated history shows, Load more, and a shallow
+//! clone's note with its Fetch full history link). The notes sit at the right end of the message
+//! column; a shallow clone's notes that don't fit there get their own line under the titles, so
+//! the note is always visible.
 
 use super::paint::Columns;
+use super::resize;
 use crate::msg::{JobMsg, LoadMsg, Msg};
+use crate::state::ColumnDrag;
 use crate::state::shallow::{header_tooltip, history_remote};
 use crate::ui::theme::color;
 use eframe::egui::{self, Align2, FontId, Pos2, Rect, Response, Sense, Stroke, pos2, vec2};
 use trellis_core::repo::Snapshot;
-use trellis_core::settings::GraphColumns;
+use trellis_core::settings::{ColumnWidths, GraphColumns};
 use trellis_core::shallow_ops::Deepen;
 
 /// Space between the notes at the right of the message column.
@@ -21,16 +24,31 @@ const FETCH_FULL: &str = "Fetch full history";
 const SHALLOW: &str = "Shallow clone";
 const LOAD_MORE: &str = "Load more";
 
-/// Draws the header row. Rows lay out their own columns the same way.
-pub(super) fn column_header(ui: &mut egui::Ui, snap: &Snapshot, graph_w: f32, cols_cfg: &GraphColumns, msgs: &mut Vec<Msg>) {
+/// Draws the header row and returns the column widths to lay the rows out with this frame (the
+/// saved widths, or the preview of a divider being dragged), so header and rows line up.
+pub(super) fn column_header(
+    ui: &mut egui::Ui,
+    snap: &Snapshot,
+    graph_w: f32,
+    cols_cfg: &GraphColumns,
+    saved: ColumnWidths,
+    drag: &mut Option<ColumnDrag>,
+    msgs: &mut Vec<Msg>,
+) -> ColumnWidths {
     let (hdr, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
-    let cols = Columns::new(hdr, graph_w, cols_cfg);
+    let effective = |d: &Option<ColumnDrag>| d.as_ref().map_or(saved, |d| saved.with(d.col, d.width));
+    let cols = Columns::new(hdr, graph_w, cols_cfg, &effective(drag));
+    let active = resize::grips(ui, hdr, &cols, cols_cfg, &saved, drag, msgs);
+    // Lay out again with this frame's drag, so the titles don't lag a frame behind the rows.
+    let widths = effective(drag);
+    let cols = Columns::new(hdr, graph_w, cols_cfg, &widths);
     let font = FontId::proportional(10.5);
     titles(ui, hdr, &cols, cols_cfg, &font);
+    resize::paint_active(ui, hdr, &cols, cols_cfg, active);
 
     let notes = Notes::of(snap);
     if !notes.any() {
-        return;
+        return widths;
     }
     let title_end = cols.msg.0 + text_w(ui, "COMMIT MESSAGE", &font) + 12.0;
     if notes.shallow && cols.msg.1 - notes.width(ui, snap, &font) <= title_end {
@@ -41,6 +59,7 @@ pub(super) fn column_header(ui: &mut egui::Ui, snap: &Snapshot, graph_w: f32, co
     } else {
         notes.draw(ui, snap, &font, pos2(cols.msg.1, hdr.center().y), title_end, msgs);
     }
+    widths
 }
 
 /// The column titles and the dividers between them.

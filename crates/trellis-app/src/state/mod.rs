@@ -41,7 +41,7 @@ pub use commit::CommitDraft;
 pub use forge::{ForgeState, Status};
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use tabs::Tab;
-pub use view::ViewState;
+pub use view::{ColumnDrag, ViewState};
 
 use crate::msg::Msg;
 use git2::Oid;

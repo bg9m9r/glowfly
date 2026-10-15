@@ -13,6 +13,7 @@ mod files;
 mod forge;
 mod gitflow;
 mod gitflow_finish;
+mod graph_columns;
 mod graph_filter;
 mod highlight;
 mod history;
@@ -76,6 +77,8 @@ mod forge_tests;
 mod gitflow_finish_tests;
 #[cfg(test)]
 mod gitflow_tests;
+#[cfg(test)]
+mod graph_columns_tests;
 #[cfg(test)]
 mod graph_filter_tests;
 #[cfg(test)]

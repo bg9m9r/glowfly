@@ -5,6 +5,7 @@ use super::{diff_nav, lines};
 use git2::Oid;
 use std::collections::HashSet;
 use trellis_core::repo::DiffTarget;
+use trellis_core::settings::ResizableColumn;
 
 /// Each left-panel section's open state; views toggle them directly.
 pub struct Sections {
@@ -22,6 +23,20 @@ impl Default for Sections {
     fn default() -> Self {
         Self { local: true, remote: true, prs: true, issues: true, tags: false, stashes: true, submodules: true, worktrees: true }
     }
+}
+
+/// A graph header divider being dragged, and the preview width the graph lays out with until
+/// the release stores it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ColumnDrag {
+    pub col: ResizableColumn,
+    /// Pointer x where the drag was pressed.
+    pub start_x: f32,
+    /// The column's stored width when the drag started.
+    pub start_width: f32,
+    /// How far the column may grow before the message column gets too narrow.
+    pub room: f32,
+    pub width: f32,
 }
 
 /// Purely visual state that views may change directly.
@@ -86,6 +101,8 @@ pub struct ViewState {
     pub focus_search: bool,
     /// Focus the commit summary field on the next frame (set by update, taken by the commit box).
     pub focus_message: bool,
+    /// The header divider being dragged (set and cleared by the graph view).
+    pub column_drag: Option<ColumnDrag>,
 }
 
 impl Default for ViewState {
@@ -121,6 +138,7 @@ impl Default for ViewState {
             history_scroll_to: None,
             focus_search: false,
             focus_message: false,
+            column_drag: None,
         }
     }
 }
