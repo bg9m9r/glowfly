@@ -236,3 +236,48 @@ fn diff_nav_first_file() {
     render("diff_nav_first_file", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
+
+/// A comment inserted above two edited settings, word-marked and line-paired as the runner does.
+fn with_similar_pairs(layout: DiffLayout) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, &format!("diff-similar-{layout:?}"));
+    let before = "[server]\nhost = \"localhost\"\nport = 8080\ntimeout = 30\n";
+    let after = "[server]\n# listen on all interfaces\nhost = \"0.0.0.0\"\nport = 9090\ntimeout = 30\n";
+    std::fs::write(dir.join("config.txt"), before).unwrap();
+    let d = "2026-01-11T10:00:00+00:00";
+    git(&dir, &["add", "config.txt"], d);
+    git(&dir, &["commit", "-q", "-m", "Add config.txt"], d);
+    std::fs::write(dir.join("config.txt"), after).unwrap();
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
+    let target = DiffTarget::Unstaged("config.txt".into());
+    let mut diff = repo::load_diff(&dir, &target).unwrap();
+    diff.intraline = intraline::intraline(&diff);
+    st.diff = Some((target, diff.into()));
+    st.settings.diff_layout = layout;
+    (st, dir)
+}
+
+#[test]
+fn diff_similar_pairs() {
+    use trellis_core::diff_rows::{SplitRow, split_rows};
+    let (st, dir) = with_similar_pairs(DiffLayout::Split);
+    let d = &st.diff.as_ref().unwrap().1;
+    let origins: String = d.hunks[0].lines.iter().map(|l| l.origin).collect();
+    assert_eq!(origins, " --+++ ");
+    let pair = |old, new| SplitRow::Pair { hunk: 0, old, new };
+    let want = [
+        SplitRow::Header(0),
+        pair(Some(0), Some(0)),
+        pair(None, Some(3)),
+        pair(Some(1), Some(4)),
+        pair(Some(2), Some(5)),
+        pair(Some(6), Some(6)),
+    ];
+    assert_eq!(split_rows(d), want);
+    let marked: Vec<usize> = (0..7).filter(|&l| !d.intraline.line(0, l).is_empty()).collect();
+    assert_eq!(marked, [1, 2, 4, 5]);
+    render("diff_similar_pairs_split", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+    let (st, dir) = with_similar_pairs(DiffLayout::Inline);
+    render("diff_similar_pairs_inline", st, true);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}

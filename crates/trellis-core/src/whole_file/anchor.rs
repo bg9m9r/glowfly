@@ -40,17 +40,21 @@ pub fn line_at_row(w: &WholeFile, layout: DiffLayout, ex: &Expanded, row: usize)
 }
 
 /// The row showing whole-file line `line` in `layout`, with the folds in `ex` open: the fold row
-/// hiding it, else the first row starting at or after it. A block's action row comes before its
-/// first line's row, so the action row stays with its change. Past the last line, the last row
-/// (0 with no rows).
+/// hiding it or the first row starting at it, else the first row starting after it. A block's
+/// action row comes before its first line's row, so the action row stays with its change. The
+/// exact match comes first because similarity pairing can put a run's row starts out of order
+/// (5, 3, 4); `line_at_row` and this still round-trip. Past the last line, the last row (0 with
+/// no rows).
 pub fn row_of_line(w: &WholeFile, layout: DiffLayout, ex: &Expanded, line: usize) -> usize {
     let rows = starts(w, layout, ex);
-    let at = rows.iter().position(|&(start, end)| match (start, end) {
-        (Some(s), Some(e)) => (s..e).contains(&line) || s > line,
-        (Some(s), None) => s >= line,
-        (None, _) => false,
-    });
-    at.unwrap_or(rows.len().saturating_sub(1))
+    let find = |after: bool| {
+        rows.iter().position(|&(start, end)| match (start, end) {
+            (Some(s), Some(e)) => (s..e).contains(&line) || (after && s > line),
+            (Some(s), None) => s == line || (after && s > line),
+            (None, _) => false,
+        })
+    };
+    find(false).or_else(|| find(true)).unwrap_or(rows.len().saturating_sub(1))
 }
 
 #[cfg(test)]
@@ -116,5 +120,36 @@ mod tests {
         let empty = WholeFile { diff: super::super::tests::diff(Vec::new()), blocks: Vec::new() };
         assert_eq!(row_of_line(&empty, DiffLayout::Inline, &none, 3), 0);
         assert_eq!(line_at_row(&empty, DiffLayout::Split, &none, 0), None);
+    }
+
+    #[test]
+    fn round_trip_with_similarity_pairs() {
+        // Split row starts go 20, 22, 20, 21 here (block, comment, host, port): not monotonic.
+        let w = super::super::tests::similar_whole(20);
+        assert!(!folds(&w).is_empty());
+        for layout in LAYOUTS {
+            for ex in [Expanded::default(), Expanded::all(&w)] {
+                let n = row_count(&w, layout, &ex);
+                let starts: Vec<usize> = (0..n).map(|r| line_at_row(&w, layout, &ex, r).expect("a line")).collect();
+                for (r, &line) in starts.iter().enumerate() {
+                    let back = row_of_line(&w, layout, &ex, line);
+                    assert_eq!(starts[back], line, "{layout:?} row {r}: lands on a row starting at the same line");
+                    assert!(back <= r, "{layout:?} row {r}");
+                    if starts.iter().filter(|&&s| s == line).count() == 1 {
+                        assert_eq!(back, r, "{layout:?} row {r}");
+                    }
+                }
+                for (b, &row) in w.blocks.iter().zip(&block_rows(&w, layout, &ex)) {
+                    assert_eq!(row_of_line(&w, layout, &ex, b.start), row, "{layout:?}: the block's action row");
+                }
+            }
+        }
+        // Each row start inside the change maps back to its own row (or the action row).
+        let none = Expanded::default();
+        let rows = split_rows(&w, &none);
+        for line in [20, 21, 22] {
+            let r = row_of_line(&w, DiffLayout::Split, &none, line);
+            assert!(matches!(rows[r], SplitRow::Block(_)) || line_at_row(&w, DiffLayout::Split, &none, r) == Some(line), "line {line}");
+        }
     }
 }

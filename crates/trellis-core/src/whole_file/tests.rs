@@ -161,3 +161,39 @@ fn block_rows_are_ignored_by_hunk_helpers() {
     let marks = crate::intraline::intraline(&w.diff);
     assert!(!marks.line(0, 1).is_empty() && !marks.line(0, 2).is_empty());
 }
+
+/// A comment inserted above two edited settings, with `pad` context lines on each side, and its
+/// word marks and line pairs filled in.
+pub(super) fn similar_whole(pad: u32) -> WholeFile {
+    let mut lines: Vec<DiffLine> = (1..=pad).map(|n| ctx(n, n)).collect();
+    let (o, n) = (pad + 1, pad + 1);
+    lines.extend([
+        l('-', Some(o), None, "host = \"localhost\""),
+        l('-', Some(o + 1), None, "port = 8080"),
+        l('+', None, Some(n), "# listen on all interfaces"),
+        l('+', None, Some(n + 1), "host = \"0.0.0.0\""),
+        l('+', None, Some(n + 2), "port = 9090"),
+    ]);
+    lines.extend((0..pad.max(1)).map(|k| ctx(o + 2 + k, n + 3 + k)));
+    let mut w = single(lines);
+    w.diff.intraline = crate::intraline::intraline(&w.diff);
+    w
+}
+
+#[test]
+fn whole_split_rows_with_similarity_pairs() {
+    let w = similar_whole(1);
+    let none = Expanded::default();
+    let pair = |old: Option<usize>, new: Option<usize>| SplitRow::Pair { hunk: 0, old, new };
+    let want = [
+        pair(Some(0), Some(0)),
+        SplitRow::Block(0),
+        pair(None, Some(3)),
+        pair(Some(1), Some(4)),
+        pair(Some(2), Some(5)),
+        pair(Some(6), Some(6)),
+    ];
+    assert_eq!(split_rows(&w, &none), want);
+    assert_eq!(block_rows(&w, DiffLayout::Split, &none), [1]);
+    assert_eq!(block_rows(&w, DiffLayout::Inline, &none), [1]);
+}

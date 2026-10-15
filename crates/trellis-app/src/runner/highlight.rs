@@ -33,9 +33,21 @@ pub(super) fn load_job(
                 .map(|h| (0..d.hunks[h].lines.len()).filter(|&l| !d.intraline.line(h, l).is_empty()).count())
                 .sum::<usize>();
             let whole = d.whole.is_some();
+            let paired = d.intraline.pairs().len();
             let pending = d.highlight.as_ref().is_some_and(|h| h.is_pending());
             let ignore_whitespace = opts.ignore_whitespace;
-            tracing::debug!(path = target.path(), syntax, language, pending, context, marked, ignore_whitespace, whole, "diff highlighted");
+            tracing::debug!(
+                path = target.path(),
+                syntax,
+                language,
+                pending,
+                context,
+                marked,
+                paired,
+                ignore_whitespace,
+                whole,
+                "diff highlighted"
+            );
             v.diff
         })
         .map_err(|e| e.to_string());
@@ -132,5 +144,28 @@ mod tests {
             panic!("expected the finished hunks");
         };
         assert!(!h.is_pending() && !h.line(0, 0).is_empty());
+    }
+
+    #[test]
+    fn decorate_fills_line_pairs() {
+        use trellis_core::repo::{DiffLine, Hunk};
+        let l = |origin: char, old: Option<u32>, new: Option<u32>, text: &str| DiffLine { origin, old, new, text: text.into() };
+        let lines = vec![
+            l(' ', Some(1), Some(1), "[server]"),
+            l('-', Some(2), None, "host = \"localhost\""),
+            l('-', Some(3), None, "port = 8080"),
+            l('+', None, Some(2), "# listen on all interfaces"),
+            l('+', None, Some(3), "host = \"0.0.0.0\""),
+            l('+', None, Some(4), "port = 9090"),
+            l(' ', Some(4), Some(5), "timeout = 30"),
+        ];
+        let hunk = Hunk { header: "@@ -1,4 +1,5 @@".into(), lines };
+        let whole = trellis_core::whole_file::WholeFile::new(std::slice::from_ref(&hunk), hunk.clone()).map(Box::new);
+        assert!(whole.is_some());
+        let mut d = FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole };
+        decorate("config.txt", &mut d, None);
+        assert_eq!(d.intraline.pairs().hunk(0), [(1, 4), (2, 5)]);
+        let w = d.whole.as_deref().expect("whole file");
+        assert!(!w.diff.intraline.pairs().is_empty());
     }
 }

@@ -120,4 +120,67 @@ fn intraline_pairs_like_split_rows() {
     assert_eq!(intraline(&binary), Intraline::default());
     assert!(il.line(9, 0).is_empty() && il.line(0, 99).is_empty());
     assert!(Intraline::default().line(0, 0).is_empty());
+    assert_eq!(il.pairs(), &crate::line_pairs::pair_lines(&d));
+}
+
+fn sim(old: &str, new: &str) -> Option<f32> {
+    similarity(old, new, &mut MAX_CELLS.clone())
+}
+
+#[test]
+fn similarity_agrees_with_pair_ranges() {
+    let cases = [
+        ("let total = price * quantity;", "let total = price * count;"),
+        ("let x = 1;", "let x = 2; // two"),
+        ("foo(a)", "foo(a, b)"),
+        ("fix", "fixed build"),
+        ("let a = compute();", "}"),
+        ("  foo", "    foo"),
+        ("foo;", "foo;  "),
+        ("   ", "  "),
+        ("host = \"localhost\"", "host = \"0.0.0.0\""),
+        ("port = 8080", "# listen on all interfaces"),
+        ("ab cd", "ab ef"),
+        ("ab cd ef", "ab gh ij"),
+        ("abc", "abd"),
+        ("x", ""),
+    ];
+    for (o, n) in cases {
+        assert_eq!(sim(o, n).is_some_and(|s| s >= MIN_SIMILARITY), pr(o, n).is_some(), "{o:?} / {n:?}: {:?}", sim(o, n));
+    }
+}
+
+#[test]
+fn similarity_edge_cases() {
+    let mut budget = 0;
+    assert_eq!(similarity("let x = 1;", "let x = 1;", &mut budget), Some(1.0), "identical lines cost nothing");
+    assert_eq!(sim("", ""), None);
+    assert_eq!(sim("   ", "   "), None);
+    assert_eq!(sim("   ", "\t"), None);
+    let long = "a ".repeat(MAX_LINE_BYTES);
+    assert_eq!(sim(&long, "a"), None);
+    assert_eq!(sim("a", &long), None);
+    let mut budget = 0;
+    assert_eq!(similarity("let x = 1;", "let x = 2;", &mut budget), None);
+    let s = sim("let x = 1;", "let x = 2;").expect("scored");
+    assert!((s - 12.0 / 14.0).abs() < 1e-6, "{s}");
+}
+
+#[test]
+fn marks_follow_similarity_pairs() {
+    let d = diff(vec![hunk(&[
+        (' ', "[server]"),
+        ('-', "host = \"localhost\""),
+        ('-', "port = 8080"),
+        ('+', "# listen on all interfaces"),
+        ('+', "host = \"0.0.0.0\""),
+        ('+', "port = 9090"),
+        (' ', "timeout = 30"),
+    ])]);
+    let il = intraline(&d);
+    let marked: Vec<usize> = (0..7).filter(|&l| !il.line(0, l).is_empty()).collect();
+    assert_eq!(marked, [1, 2, 4, 5]);
+    assert_eq!(il.pairs().hunk(0), [(1, 4), (2, 5)]);
+    let host = &d.hunks[0].lines[4].text;
+    assert_eq!(il.line(0, 4).iter().map(|r| &host[r.start as usize..r.end as usize]).collect::<Vec<_>>(), ["0.0.0.0"]);
 }

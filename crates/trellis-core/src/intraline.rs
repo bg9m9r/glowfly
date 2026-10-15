@@ -1,13 +1,15 @@
-//! Word-level changes between the removed and added lines that the split layout pairs, as byte
-//! ranges into `DiffLine::text` (the raw line, tabs included; the viewer maps them onto the
-//! tab-expanded text with `tabs::expand`). Pure: no git, no UI.
+//! Word-level changes between the removed and added lines that the split layout pairs (by
+//! similarity, see `line_pairs`), as byte ranges into `DiffLine::text` (the raw line, tabs
+//! included; the viewer maps them onto the tab-expanded text with `tabs::expand`). Pure: no git,
+//! no UI.
 //!
 //! Each line is cut into tokens (a run of word characters, a run of whitespace, or a single
 //! other character), the common prefix and suffix tokens are stripped, and the rest is compared
 //! with a longest-common-subsequence table. The trimming makes the common one-word edit O(n);
 //! the worst case per pair is a 301x301 table of `u16`, and a per-diff budget caps the total.
 
-use crate::diff_rows::{SplitRow, split_rows};
+use crate::diff_rows::{SplitRow, split_rows_with};
+use crate::line_pairs::{self, LinePairs};
 use crate::repo::FileDiff;
 use std::ops::Range;
 
@@ -26,10 +28,12 @@ pub const MIN_SIMILARITY: f32 = 0.4;
 /// The changed ranges of a removed line and of the added line paired with it.
 pub type PairMarks = (Vec<Range<u32>>, Vec<Range<u32>>);
 
-/// Changed byte ranges for every line of a `FileDiff`, indexed like `hunks[h].lines[l]`.
+/// The word marks of a `FileDiff` (changed byte ranges for every line, indexed like
+/// `hunks[h].lines[l]`) and the line pairs they were computed on.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Intraline {
     lines: Vec<Vec<Vec<Range<u32>>>>,
+    pairs: LinePairs,
 }
 
 impl Intraline {
@@ -42,16 +46,23 @@ impl Intraline {
     pub fn hunk_lens(&self) -> Vec<usize> {
         self.lines.iter().map(Vec::len).collect()
     }
+
+    /// Which removed line sits beside which added line in the split layout.
+    pub fn pairs(&self) -> &LinePairs {
+        &self.pairs
+    }
 }
 
-/// Word marks for every removed/added pair that the split layout shows side by side.
+/// The removed and added lines paired by similarity, and word marks for every pair that the
+/// split layout shows side by side. Pairing and marks have separate work budgets.
 pub fn intraline(diff: &FileDiff) -> Intraline {
     if diff.binary || diff.hunks.is_empty() {
         return Intraline::default();
     }
+    let pairs = line_pairs::pair_lines(diff);
     let mut lines: Vec<Vec<Vec<Range<u32>>>> = diff.hunks.iter().map(|h| vec![Vec::new(); h.lines.len()]).collect();
     let mut budget = MAX_CELLS;
-    for row in split_rows(diff) {
+    for row in split_rows_with(diff, &pairs) {
         let SplitRow::Pair { hunk, old: Some(o), new: Some(n) } = row else { continue };
         let hl = &diff.hunks[hunk].lines;
         if o == n || hl[o].origin != '-' || hl[n].origin != '+' {
@@ -62,7 +73,7 @@ pub fn intraline(diff: &FileDiff) -> Intraline {
             lines[hunk][n] = new;
         }
     }
-    Intraline { lines }
+    Intraline { lines, pairs }
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -83,7 +94,7 @@ fn class(c: char) -> Class {
 }
 
 /// Token byte ranges: runs of word characters, runs of whitespace, and single other chars.
-fn tokens(s: &str) -> Vec<Range<usize>> {
+pub(crate) fn tokens(s: &str) -> Vec<Range<usize>> {
     let mut out: Vec<Range<usize>> = Vec::new();
     let mut prev = None;
     for (i, c) in s.char_indices() {
@@ -98,9 +109,13 @@ fn tokens(s: &str) -> Vec<Range<usize>> {
     out
 }
 
-fn is_space(t: &str) -> bool {
+pub(crate) fn is_space(t: &str) -> bool {
     t.chars().next().is_some_and(char::is_whitespace)
 }
+
+/// The work budget ran out before a comparison table could be built.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct OverBudget;
 
 /// The changed ranges of `old` and `new`, or `None` when the pair is identical, too long, too
 /// different, or over `budget` (which is reduced by the work done).
@@ -109,6 +124,47 @@ pub fn pair_ranges(old: &str, new: &str, budget: &mut usize) -> Option<PairMarks
         return None;
     }
     let (a, b) = (tokens(old), tokens(new));
+    let (mut ca, mut cb) = compare(old, new, &a, &b, budget).ok()??;
+    if share(old, new, &a, &b, &ca)? < MIN_SIMILARITY {
+        return None;
+    }
+    let (ra, rb) = (ranges(old, &a, &mut ca), ranges(new, &b, &mut cb));
+    if ra.is_empty() && rb.is_empty() {
+        return None;
+    }
+    Some((ra, rb))
+}
+
+/// How alike `old` and `new` are, from 0 to 1: twice the non-whitespace bytes they share (in
+/// order) over all non-whitespace bytes of both. `None` when either line is longer than
+/// `MAX_LINE_BYTES`, neither has a non-whitespace byte, the pair has too many tokens, or it
+/// would go over `budget`. For non-identical lines within budget, `similarity(o, n) >=
+/// MIN_SIMILARITY` exactly when `pair_ranges(o, n)` returns marks. Identical non-blank lines
+/// score 1.0 without using budget.
+pub fn similarity(old: &str, new: &str, budget: &mut usize) -> Option<f32> {
+    similarity_checked(old, new, budget).ok().flatten()
+}
+
+/// `similarity`, telling a pair that ran out of budget apart from one that can't be scored.
+pub(crate) fn similarity_checked(old: &str, new: &str, budget: &mut usize) -> Result<Option<f32>, OverBudget> {
+    if old.len() > MAX_LINE_BYTES || new.len() > MAX_LINE_BYTES {
+        return Ok(None);
+    }
+    if old == new {
+        return Ok((!old.chars().all(char::is_whitespace)).then_some(1.0));
+    }
+    let (a, b) = (tokens(old), tokens(new));
+    let Some((ca, _)) = compare(old, new, &a, &b, budget)? else { return Ok(None) };
+    Ok(share(old, new, &a, &b, &ca))
+}
+
+/// Which tokens of the old and the new line changed.
+type Changed = (Vec<bool>, Vec<bool>);
+
+/// The changed-token flags of `old` (tokens `a`) and `new` (tokens `b`): the common prefix and
+/// suffix are trimmed and the middles compared with an LCS table charged to `budget`. `Ok(None)`
+/// when a middle has more than `MAX_TOKENS` tokens.
+fn compare(old: &str, new: &str, a: &[Range<usize>], b: &[Range<usize>], budget: &mut usize) -> Result<Option<Changed>, OverBudget> {
     let ta = |i: usize| &old[a[i].clone()];
     let tb = |j: usize| &new[b[j].clone()];
     let mut pre = 0;
@@ -121,11 +177,11 @@ pub fn pair_ranges(old: &str, new: &str, budget: &mut usize) -> Option<PairMarks
     }
     let (n, m) = (a.len() - pre - suf, b.len() - pre - suf);
     if n > MAX_TOKENS || m > MAX_TOKENS {
-        return None;
+        return Ok(None);
     }
     let cells = (n + 1) * (m + 1);
     if cells > *budget {
-        return None;
+        return Err(OverBudget);
     }
     *budget -= cells;
 
@@ -154,20 +210,20 @@ pub fn pair_ranges(old: &str, new: &str, budget: &mut usize) -> Option<PairMarks
     }
     ca[pre + i..pre + n].fill(true);
     cb[pre + j..pre + m].fill(true);
+    Ok(Some((ca, cb)))
+}
 
-    let nonws = |s: &str, toks: &[Range<usize>], keep: &dyn Fn(usize) -> bool| -> usize {
-        toks.iter().enumerate().filter(|&(k, t)| keep(k) && !is_space(&s[t.clone()])).map(|(_, t)| t.len()).sum()
-    };
-    let common = nonws(old, &a, &|k| !ca[k]);
-    let total = nonws(old, &a, &|_| true) + nonws(new, &b, &|_| true);
-    if total == 0 || ((2 * common) as f32) < MIN_SIMILARITY * total as f32 {
-        return None;
-    }
-    let (ra, rb) = (ranges(old, &a, &mut ca), ranges(new, &b, &mut cb));
-    if ra.is_empty() && rb.is_empty() {
-        return None;
-    }
-    Some((ra, rb))
+/// Non-whitespace bytes of the tokens `toks` of `s` for which `keep` holds.
+fn nonws(s: &str, toks: &[Range<usize>], keep: impl Fn(usize) -> bool) -> usize {
+    toks.iter().enumerate().filter(|&(k, t)| keep(k) && !is_space(&s[t.clone()])).map(|(_, t)| t.len()).sum()
+}
+
+/// Twice the unchanged non-whitespace bytes (`ca` flags `old`'s changed tokens) over all
+/// non-whitespace bytes of both lines; `None` when neither has any.
+fn share(old: &str, new: &str, a: &[Range<usize>], b: &[Range<usize>], ca: &[bool]) -> Option<f32> {
+    let common = nonws(old, a, |k| !ca[k]);
+    let total = nonws(old, a, |_| true) + nonws(new, b, |_| true);
+    (total > 0).then(|| (2 * common) as f32 / total as f32)
 }
 
 /// Merges changed tokens into ranges: consecutive ones, and across one unchanged whitespace

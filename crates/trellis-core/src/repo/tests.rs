@@ -206,6 +206,32 @@ added b
 }
 
 #[test]
+fn split_rows_pair_similar_lines_from_real_diff() {
+    use crate::diff_rows::{SplitRow, split_rows};
+    let dir = scratch_repo("split-similar");
+    write(&dir, "config.txt", "[server]\nhost = \"localhost\"\nport = 8080\ntimeout = 30\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-m", "base"]);
+    write(&dir, "config.txt", "[server]\n# listen on all interfaces\nhost = \"0.0.0.0\"\nport = 9090\ntimeout = 30\n");
+    let mut d = load_diff(&dir, &DiffTarget::Unstaged("config.txt".into())).unwrap();
+    d.intraline = crate::intraline::intraline(&d);
+    assert_split_covers(&d);
+    let lines = &d.hunks[0].lines;
+    let text = |i: Option<usize>| i.map_or("", |i| lines[i].text.trim_end());
+    let rows: Vec<(&str, &str)> = split_rows(&d)
+        .into_iter()
+        .filter_map(|r| match r {
+            SplitRow::Pair { old, new, .. } => Some((text(old), text(new))),
+            _ => None,
+        })
+        .collect();
+    assert!(rows.contains(&("", "# listen on all interfaces")), "{rows:?}");
+    assert!(rows.contains(&("host = \"localhost\"", "host = \"0.0.0.0\"")), "{rows:?}");
+    assert!(rows.contains(&("port = 8080", "port = 9090")), "{rows:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn split_rows_place_real_no_newline_markers() {
     use crate::diff_rows::{SplitRow, split_rows};
     let dir = scratch_repo("split-eofnl");

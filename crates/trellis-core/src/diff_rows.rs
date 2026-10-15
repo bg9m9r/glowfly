@@ -4,8 +4,10 @@
 //! Change navigation (next/previous hunk) works on the same row indices, which is why this
 //! lives here rather than in the view.
 
-use crate::repo::FileDiff;
+use crate::line_pairs::LinePairs;
+use crate::repo::{DiffLine, FileDiff};
 use crate::settings::DiffLayout;
+use std::ops::Range;
 
 /// A row of the inline (unified) layout.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -63,37 +65,73 @@ fn side(origin: char) -> Side {
     }
 }
 
-/// Old and new side by side: within each hunk, a run of removed lines followed by a run of
-/// added lines is zipped row by row, and the longer run's extra rows get an empty cell opposite.
+/// The change runs of a hunk's lines: each maximal stretch of old-side lines (`-`, `>`)
+/// followed by new-side lines (`+`, `<`), as the old and new index ranges (`old.end ==
+/// new.start`). A deletion after additions starts a new run.
+pub(crate) fn change_runs(lines: &[DiffLine]) -> Vec<(Range<usize>, Range<usize>)> {
+    let mut runs = Vec::new();
+    // The open run's first line and the first line of its new side (its end while it has none).
+    let mut open: Option<(usize, usize)> = None;
+    for (i, line) in lines.iter().enumerate() {
+        match (side(line.origin), open) {
+            (Side::Old, Some((start, mid))) if mid < i => {
+                runs.push((start..mid, mid..i));
+                open = Some((i, i + 1));
+            }
+            (Side::Old, Some((start, _))) => open = Some((start, i + 1)),
+            (Side::Old, None) => open = Some((i, i + 1)),
+            (Side::New, None) => open = Some((i, i)),
+            (Side::New, Some(_)) | (Side::Both, None) => {}
+            (Side::Both, Some((start, mid))) => {
+                runs.push((start..mid, mid..i));
+                open = None;
+            }
+        }
+    }
+    if let Some((start, mid)) = open {
+        runs.push((start..mid, mid..lines.len()));
+    }
+    runs
+}
+
+/// Old and new side by side. In each change run (removed lines followed by added lines) the
+/// lines paired by similarity in the diff's `intraline` share rows, and the lines between them
+/// share rows by position, the longer side's extra lines getting an empty cell opposite. A diff
+/// that was never decorated, or whose pairs don't fit it, pairs by position.
 pub fn split_rows(d: &FileDiff) -> Vec<SplitRow> {
+    split_rows_with(d, d.intraline.pairs())
+}
+
+/// `split_rows` with the anchors `pairs`, which are ignored when they don't fit `d`.
+pub fn split_rows_with(d: &FileDiff, pairs: &LinePairs) -> Vec<SplitRow> {
+    let fits = pairs.fits(d);
     let mut rows = Vec::new();
     for (h, hunk) in d.hunks.iter().enumerate() {
         rows.push(SplitRow::Header(h));
-        let (mut dels, mut adds) = (Vec::new(), Vec::new());
-        let flush = |rows: &mut Vec<SplitRow>, dels: &mut Vec<usize>, adds: &mut Vec<usize>| {
-            for k in 0..dels.len().max(adds.len()) {
-                rows.push(SplitRow::Pair { hunk: h, old: dels.get(k).copied(), new: adds.get(k).copied() });
+        let anchors = if fits { pairs.hunk(h) } else { &[] };
+        let mut next = anchors.iter().map(|&(o, n)| (o as usize, n as usize)).peekable();
+        let zip = |rows: &mut Vec<SplitRow>, old: Range<usize>, new: Range<usize>| {
+            for k in 0..old.len().max(new.len()) {
+                let (o, n) = (old.start + k, new.start + k);
+                rows.push(SplitRow::Pair { hunk: h, old: (o < old.end).then_some(o), new: (n < new.end).then_some(n) });
             }
-            dels.clear();
-            adds.clear();
         };
-        for (i, line) in hunk.lines.iter().enumerate() {
-            match side(line.origin) {
-                Side::Old => {
-                    // A deletion after additions starts a new block.
-                    if !adds.is_empty() {
-                        flush(&mut rows, &mut dels, &mut adds);
-                    }
-                    dels.push(i);
+        let mut line = 0;
+        for (old, new) in change_runs(&hunk.lines) {
+            rows.extend((line..old.start).map(|i| SplitRow::Pair { hunk: h, old: Some(i), new: Some(i) }));
+            line = new.end;
+            let (mut di, mut ai) = (old.start, new.start);
+            while let Some((o, n)) = next.next_if(|&(o, _)| o < old.end) {
+                if o < di || n < ai || n >= new.end {
+                    continue;
                 }
-                Side::New => adds.push(i),
-                Side::Both => {
-                    flush(&mut rows, &mut dels, &mut adds);
-                    rows.push(SplitRow::Pair { hunk: h, old: Some(i), new: Some(i) });
-                }
+                zip(&mut rows, di..o, ai..n);
+                rows.push(SplitRow::Pair { hunk: h, old: Some(o), new: Some(n) });
+                (di, ai) = (o + 1, n + 1);
             }
+            zip(&mut rows, di..old.end, ai..new.end);
         }
-        flush(&mut rows, &mut dels, &mut adds);
+        rows.extend((line..hunk.lines.len()).map(|i| SplitRow::Pair { hunk: h, old: Some(i), new: Some(i) }));
     }
     rows
 }
@@ -132,133 +170,4 @@ pub fn step_change(headers: &[usize], top: usize, step: isize) -> Option<usize> 
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::repo::{DiffLine, Hunk};
-
-    fn hunk(lines: &[(char, Option<u32>, Option<u32>, &str)]) -> Hunk {
-        Hunk {
-            header: "@@ -1 +1 @@".into(),
-            lines: lines.iter().map(|&(origin, old, new, text)| DiffLine { origin, old, new, text: text.into() }).collect(),
-        }
-    }
-
-    fn diff(hunks: Vec<Hunk>) -> FileDiff {
-        FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
-    }
-
-    fn pair(old: Option<usize>, new: Option<usize>) -> SplitRow {
-        SplitRow::Pair { hunk: 0, old, new }
-    }
-
-    #[test]
-    fn split_pairs_replacement_block() {
-        let d = diff(vec![hunk(&[
-            (' ', Some(1), Some(1), "ctx"),
-            ('-', Some(2), None, "a"),
-            ('-', Some(3), None, "b"),
-            ('+', None, Some(2), "c"),
-            (' ', Some(4), Some(3), "ctx"),
-        ])]);
-        let want = [SplitRow::Header(0), pair(Some(0), Some(0)), pair(Some(1), Some(3)), pair(Some(2), None), pair(Some(4), Some(4))];
-        assert_eq!(split_rows(&d), want);
-    }
-
-    #[test]
-    fn split_more_adds_than_dels() {
-        let d = diff(vec![hunk(&[('-', Some(1), None, "a"), ('+', None, Some(1), "b"), ('+', None, Some(2), "c")])]);
-        assert_eq!(split_rows(&d), [SplitRow::Header(0), pair(Some(0), Some(1)), pair(None, Some(2))]);
-    }
-
-    #[test]
-    fn split_pure_add_and_pure_delete() {
-        let added = diff(vec![hunk(&[('+', None, Some(1), "a"), ('+', None, Some(2), "b"), ('+', None, Some(3), "c")])]);
-        let rows = split_rows(&added);
-        assert_eq!(rows.len(), 4);
-        assert!(rows[1..].iter().all(|r| matches!(r, SplitRow::Pair { old: None, new: Some(_), .. })));
-        let deleted = diff(vec![hunk(&[('-', Some(1), None, "a"), ('-', Some(2), None, "b")])]);
-        let rows = split_rows(&deleted);
-        assert_eq!(rows.len(), 3);
-        assert!(rows[1..].iter().all(|r| matches!(r, SplitRow::Pair { old: Some(_), new: None, .. })));
-    }
-
-    #[test]
-    fn split_deletion_after_additions_starts_new_block() {
-        let d = diff(vec![hunk(&[('+', None, Some(1), "a"), ('-', Some(1), None, "b")])]);
-        assert_eq!(split_rows(&d), [SplitRow::Header(0), pair(None, Some(0)), pair(Some(1), None)]);
-    }
-
-    const EOFNL: &str = "\\ No newline at end of file";
-
-    #[test]
-    fn split_no_newline_markers() {
-        // Neither side ends in a newline: libgit2 emits `>` after the removed line (old side)
-        // and `<` after the added line (new side), so `a` still pairs with `b`.
-        let d = diff(vec![hunk(&[
-            (' ', Some(1), Some(1), "x"),
-            ('-', Some(2), None, "a"),
-            ('>', Some(2), None, EOFNL),
-            ('+', None, Some(2), "b"),
-            ('<', None, Some(2), EOFNL),
-        ])]);
-        assert_eq!(split_rows(&d), [SplitRow::Header(0), pair(Some(0), Some(0)), pair(Some(1), Some(3)), pair(Some(2), Some(4))]);
-        // Only the new file lacks the newline: its marker sits under the new side.
-        let new_only = diff(vec![hunk(&[('-', Some(1), None, "a"), ('+', None, Some(1), "b"), ('<', None, Some(1), EOFNL)])]);
-        assert_eq!(split_rows(&new_only), [SplitRow::Header(0), pair(Some(0), Some(1)), pair(None, Some(2))]);
-        // Only the old file lacks it: its marker sits under the old side.
-        let old_only = diff(vec![hunk(&[('-', Some(1), None, "a"), ('>', Some(1), None, EOFNL), ('+', None, Some(1), "b")])]);
-        assert_eq!(split_rows(&old_only), [SplitRow::Header(0), pair(Some(0), Some(2)), pair(Some(1), None)]);
-        let both = diff(vec![hunk(&[(' ', Some(1), Some(1), "a"), ('=', None, None, EOFNL)])]);
-        assert_eq!(split_rows(&both), [SplitRow::Header(0), pair(Some(0), Some(0)), pair(Some(1), Some(1))]);
-    }
-
-    #[test]
-    fn split_multiple_hunks_and_header_rows() {
-        let d = diff(vec![
-            hunk(&[(' ', Some(1), Some(1), "x"), ('-', Some(2), None, "a"), ('-', Some(3), None, "b"), ('+', None, Some(2), "c")]),
-            hunk(&[('+', None, Some(9), "d"), (' ', Some(9), Some(10), "y")]),
-        ]);
-        assert_eq!(header_rows(&d, DiffLayout::Inline), [0, 5]);
-        let rows = split_rows(&d);
-        let headers: Vec<usize> = rows.iter().enumerate().filter(|(_, r)| matches!(r, SplitRow::Header(_))).map(|(i, _)| i).collect();
-        assert_eq!(header_rows(&d, DiffLayout::Split), headers);
-        assert_eq!(headers, [0, 4]);
-        assert_eq!(rows[5], SplitRow::Pair { hunk: 1, old: None, new: Some(0) });
-
-        let empty = diff(Vec::new());
-        assert!(split_rows(&empty).is_empty() && inline_rows(&empty).is_empty());
-        assert!(header_rows(&empty, DiffLayout::Inline).is_empty() && header_rows(&empty, DiffLayout::Split).is_empty());
-    }
-
-    #[test]
-    fn inline_rows_matches_flattening() {
-        let d = diff(vec![hunk(&[(' ', Some(1), Some(1), "x"), ('+', None, Some(2), "a")]), hunk(&[('-', Some(7), None, "b")])]);
-        let want = [
-            DiffRow::Header(0),
-            DiffRow::Line { hunk: 0, line: 0 },
-            DiffRow::Line { hunk: 0, line: 1 },
-            DiffRow::Header(1),
-            DiffRow::Line { hunk: 1, line: 0 },
-        ];
-        assert_eq!(inline_rows(&d), want);
-    }
-
-    #[test]
-    fn step_change_and_hunk_at() {
-        let h = [0, 5, 12];
-        assert_eq!(step_change(&h, 0, 1), Some(5));
-        assert_eq!(step_change(&h, 5, 1), Some(12));
-        assert_eq!(step_change(&h, 12, 1), None);
-        assert_eq!(step_change(&h, 7, 1), Some(12));
-        assert_eq!(step_change(&h, 12, -1), Some(5));
-        assert_eq!(step_change(&h, 7, -1), Some(5));
-        assert_eq!(step_change(&h, 0, -1), None);
-        assert_eq!(step_change(&h, 7, 0), None);
-        assert_eq!(step_change(&[], 0, 1), None);
-        assert_eq!(step_change(&[], 3, -1), None);
-        assert_eq!(hunk_at(&h, 7), 1);
-        assert_eq!(hunk_at(&h, 0), 0);
-        assert_eq!(hunk_at(&h, 99), 2);
-        assert_eq!(hunk_at(&[], 3), 0);
-    }
-}
+mod tests;

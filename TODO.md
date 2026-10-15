@@ -199,7 +199,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] User-selectable syntax color themes beyond the dark and light palettes
   - [x] Word-level intraline highlights
     - [x] A preference to turn them off (Preferences > Editor)
-    - [ ] Pair removed and added lines by similarity instead of by position
+    - [x] Pair removed and added lines by similarity instead of by position
+      - [ ] Pair moved lines across change runs and hunks
+      - [ ] Pair the conflict view's side-by-side rows by similarity too
   - [x] Ignore leading/trailing whitespace (diff header toggle, saved in settings; hunk and line
     operations are off while it is on, since `apply_hunk` counts the unfiltered hunks)
     - [ ] Map hunk and line stage/unstage/discard, and Revert Hunk on commit diffs, from the
@@ -262,7 +264,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [ ] Keep a step from being superseded when a status refresh reloads the old file while
       the next one is loading
     - [ ] Show which file of how many (e.g. 3 of 12) in the diff header
-  - [ ] Cache the computed diff rows instead of rebuilding them every frame
+  - [x] Cache the computed diff rows instead of rebuilding them every frame
+    - [ ] Cache the change rows behind the Previous/Next buttons too (their state rebuilds the
+      change rows twice per frame)
 - [x] **Line-level staging**
   Select lines in a hunk to stage, unstage or discard (click, Shift-click for a range,
   Ctrl/Cmd-click to toggle; Esc clears). Working-tree diffs only, one hunk at a time.

@@ -30,7 +30,8 @@ pub struct ChangeBlock {
 
 /// A file loaded with unlimited context. `diff` holds exactly one hunk, the whole file. Its
 /// `highlight` and `intraline` are filled in by the runner like any FileDiff, so
-/// `highlight_diff`, `intraline` and `diff_rows::split_rows` work on it unchanged.
+/// `highlight_diff`, `intraline` and `diff_rows::split_rows` (with the line pairs from its own
+/// `intraline`) work on it unchanged.
 #[derive(Clone, PartialEq, Debug)]
 pub struct WholeFile {
     pub diff: FileDiff,
@@ -110,10 +111,11 @@ pub fn inline_rows(w: &WholeFile, ex: &Expanded) -> Vec<DiffRow> {
 }
 
 /// Split rows of the whole file: removed and added runs paired as in `diff_rows::split_rows`,
-/// without its hunk header, each block's action row before the pair holding its first line,
-/// and one row per fold not in `ex` in place of its pairs. A block starts after context or at
-/// the top of the file, so its first line opens a new removed/added run and sits in that run's
-/// first pair. Fold lines are all context, so each is a pair of one line on both sides.
+/// without its hunk header, each block's action row before the first row showing any of its
+/// lines, and one row per fold not in `ex` in place of its pairs. A block starts after context
+/// or at the top of the file, so its first row opens a new removed/added run; with similarity
+/// pairing that row can be an added line alone, its first removed line paired further down.
+/// Fold lines are all context, so each is a pair of one line on both sides.
 pub fn split_rows(w: &WholeFile, ex: &Expanded) -> Vec<SplitRow> {
     let pairs = diff_rows::split_rows(&w.diff);
     let mut blocks = w.blocks.iter().peekable();
@@ -133,7 +135,8 @@ pub fn split_rows(w: &WholeFile, ex: &Expanded) -> Vec<SplitRow> {
             }
             continue;
         }
-        if let Some(b) = blocks.next_if(|b| old == Some(b.start) || new == Some(b.start)) {
+        // Rows before a block only show lines before its start.
+        if let Some(b) = blocks.next_if(|b| old.into_iter().chain(new).any(|i| i >= b.start)) {
             rows.push(SplitRow::Block(b.hunk));
         }
         rows.push(row);

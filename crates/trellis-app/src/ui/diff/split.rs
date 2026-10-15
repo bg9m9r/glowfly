@@ -1,5 +1,6 @@
 //! The split layout: the old side on the left, the new side on the right, with removed and
-//! added runs paired row by row and a divider between the columns.
+//! added lines paired by similarity (see `trellis_core::line_pairs`) and a divider between the
+//! columns.
 
 use super::style::DiffStyle;
 use super::syntax::paint_line;

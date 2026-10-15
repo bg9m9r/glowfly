@@ -54,6 +54,8 @@ mod conflict_tests;
 #[cfg(test)]
 mod diff_nav_tests;
 #[cfg(test)]
+mod diff_pairs_tests;
+#[cfg(test)]
 mod diff_tests;
 #[cfg(test)]
 mod editor_tests;
