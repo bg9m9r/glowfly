@@ -17,6 +17,7 @@ fn pr(head: Option<&str>) -> PullRequest {
         reviewers: Vec::new(),
         head: head.map(str::to_owned),
         merge_status: None,
+        checks: None,
         url: String::new(),
     }
 }

@@ -33,6 +33,7 @@ fn view(d: Option<PrDetail>) -> PrView {
         reviewers: Vec::new(),
         head: None,
         merge_status: None,
+        checks: None,
         url: String::new(),
     };
     PrView {

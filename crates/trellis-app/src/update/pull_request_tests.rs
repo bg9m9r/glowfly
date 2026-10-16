@@ -37,6 +37,7 @@ pub(super) fn pr(id: u64, head: Option<Oid>) -> PullRequest {
         reviewers: Vec::new(),
         head: head.map(|h| h.to_string()),
         merge_status: None,
+        checks: None,
         url: "https://github.com/o/r/pull/7".into(),
     }
 }
