@@ -60,7 +60,7 @@ pub(super) fn commit_on(dir: &Path, message: &str, day: u32) -> Oid {
 }
 
 pub(super) fn fixture(name: &str) -> (AppState, Fixture) {
-    let dir = std::env::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
+    let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     for a in [&["init", "-q", "-b", "main"][..], &["config", "user.name", "Test"], &["config", "user.email", "test@example.com"]] {

@@ -67,7 +67,7 @@ fn tracked_paths_empty_and_not_a_repo() {
     assert_eq!(tracked_paths(&dir).unwrap(), Vec::<String>::new());
     let _ = std::fs::remove_dir_all(&dir);
 
-    let plain = std::env::temp_dir().join(format!("trellis-test-tracked-plain-{}", std::process::id()));
+    let plain = crate::paths::temp_dir().join(format!("trellis-test-tracked-plain-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&plain);
     std::fs::create_dir_all(&plain).unwrap();
     assert!(tracked_paths(&plain).is_err());

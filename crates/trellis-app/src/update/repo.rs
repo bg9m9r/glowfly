@@ -255,11 +255,12 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     st.view.highlight = None;
     match kind {
         LoadKind::Open => {
-            st.recent.retain(|p| p != &snap.workdir);
+            // Any spelling of this folder (a short 8.3 name, a link) gives way to libgit2's.
+            st.recent.retain(|p| !crate::state::tabs::is_repo_at(&snap, p));
             st.recent.insert(0, snap.workdir.clone());
             st.recent.truncate(12);
             fx.push(Effect::SaveRecent(st.recent.clone()));
-            st.missing_repos.retain(|p| !crate::state::tabs::same_path(p, &snap.workdir));
+            st.missing_repos.retain(|p| !crate::state::tabs::is_repo_at(&snap, p));
             fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Trellis", snap.name))));
             st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
             st.detail = None;

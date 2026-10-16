@@ -93,7 +93,7 @@ fn file_history_entry_availability() {
     let _ = std::fs::remove_dir_all(&dir);
 
     // No commits yet: HEAD is unborn.
-    let empty = std::env::temp_dir().join(format!("trellis-app-test-pick-unborn-{}", std::process::id()));
+    let empty = trellis_core::paths::temp_dir().join(format!("trellis-app-test-pick-unborn-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&empty);
     std::fs::create_dir_all(&empty).unwrap();
     git(&empty, &["init", "-q", "-b", "main"]);

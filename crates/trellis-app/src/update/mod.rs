@@ -128,6 +128,8 @@ mod palette_tests;
 #[cfg(test)]
 mod patch_tests;
 #[cfg(test)]
+mod path_alias_tests;
+#[cfg(test)]
 mod perf_tests;
 #[cfg(test)]
 mod pr_checkout_tests;

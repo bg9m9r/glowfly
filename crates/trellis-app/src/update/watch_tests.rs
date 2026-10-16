@@ -84,7 +84,7 @@ fn own_job_suppresses_watch_events() {
     let (mut st, dir, workdir) = opened("watch-own-job");
     st.job = Some(job(Some(dir.clone())));
     assert!(update(&mut st, changed(&workdir, false, Instant::now()), Instant::now()).is_empty(), "a job runs here");
-    st.job = Some(job(Some(std::env::temp_dir().join("trellis-watch-some-other-repo"))));
+    st.job = Some(job(Some(trellis_core::paths::temp_dir().join("trellis-watch-some-other-repo"))));
     let fx = update(&mut st, changed(&workdir, false, Instant::now()), Instant::now());
     assert!(is_status(&fx, &st, &workdir), "a job elsewhere doesn't suppress: {fx:?}");
     finish(&mut st, fx);

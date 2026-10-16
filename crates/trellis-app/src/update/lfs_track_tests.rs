@@ -177,7 +177,7 @@ fn track_path_refusals() {
 
 #[test]
 fn track_path_end_to_end() {
-    if trellis_core::lfs::installed(&std::env::temp_dir()).is_none() {
+    if trellis_core::lfs::installed(&trellis_core::paths::temp_dir()).is_none() {
         eprintln!("track_path_end_to_end: git-lfs is not installed, skipping");
         return;
     }

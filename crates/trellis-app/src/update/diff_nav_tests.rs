@@ -41,7 +41,7 @@ fn lines(changed: &[usize]) -> String {
 /// (two hunks), c.txt at line 5, b.bin rewritten, and d.txt edited at line 10 and staged.
 /// Opened with the WIP selected: unstaged a.txt, b.bin, c.txt; staged d.txt.
 fn nav_repo(name: &str) -> (AppState, PathBuf) {
-    let dir = std::env::temp_dir().join(format!("trellis-app-test-nav-{name}-{}", std::process::id()));
+    let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-nav-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "-b", "main"]);

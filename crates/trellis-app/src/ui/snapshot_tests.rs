@@ -38,7 +38,7 @@ fn try_git(dir: &Path, a: &[&str], date: &str) -> (bool, String) {
 /// A small repository with a merged feature branch, an open branch, a tag and a modified file.
 /// Each test passes its own `name`: tests run in parallel and must not share a folder.
 fn fixture_repo(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("trellis-snap-{}-{name}", std::process::id())).join("demo");
+    let dir = trellis_core::paths::temp_dir().join(format!("trellis-snap-{}-{name}", std::process::id())).join("demo");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let d = "2026-01-05T10:00:00+00:00";

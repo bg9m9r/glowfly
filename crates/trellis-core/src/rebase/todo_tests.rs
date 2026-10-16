@@ -153,7 +153,7 @@ d 6f7a8b9 Sixth
 
 #[test]
 fn install_todo_checks_the_commits() {
-    let dir = std::env::temp_dir().join(format!("trellis-test-install-todo-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("trellis-test-install-todo-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let (prepared, git_todo) = (dir.join("todo"), dir.join("git-rebase-todo"));

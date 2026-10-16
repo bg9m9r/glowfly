@@ -9,7 +9,7 @@ use crate::testutil::*;
 use std::path::{Path, PathBuf};
 
 pub(super) fn test_bin() -> PathBuf {
-    std::env::temp_dir().join(format!("trellis-test-bin-{}", std::process::id()))
+    crate::paths::temp_dir().join(format!("trellis-test-bin-{}", std::process::id()))
 }
 
 /// Moves the file into this process's stand-in bin under a unique name.

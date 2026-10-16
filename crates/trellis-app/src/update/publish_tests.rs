@@ -143,7 +143,7 @@ fn created_repository_becomes_origin_and_is_pushed() {
 
 #[test]
 fn nothing_to_publish_without_commits() {
-    let dir = std::env::temp_dir().join(format!("trellis-app-test-publish-empty-{}", std::process::id()));
+    let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-publish-empty-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "-b", "main"]);

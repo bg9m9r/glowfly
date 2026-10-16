@@ -164,7 +164,7 @@ fn json(s: &Settings) -> serde_json::Value {
 }
 
 fn scratch_settings(name: &str, text: &[u8]) -> (std::path::PathBuf, std::path::PathBuf) {
-    let dir = std::env::temp_dir().join(format!("trellis-settings-{name}-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("trellis-settings-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("settings.json");
@@ -221,7 +221,7 @@ fn unknown_value_resets_only_that_setting() {
 
 #[test]
 fn missing_file_is_not_a_problem() {
-    let dir = std::env::temp_dir().join(format!("trellis-settings-missing-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("trellis-settings-missing-{}", std::process::id()));
     let (s, problem) = Settings::load_from(&dir.join("settings.json"));
     assert_eq!((json(&s), problem), (json(&Settings::default()), None));
 }

@@ -68,7 +68,7 @@ pub(super) fn created(st: &mut AppState, path: &Path, how: Created, output: &str
 /// The active tab's snapshot was just replaced by a full load of `kind`.
 pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
-    let made = st.trust.created.iter().position(|p| same_path(p, &snap.workdir) || same_path(p, &snap.real_workdir));
+    let made = st.trust.created.iter().position(|p| crate::state::tabs::is_repo_at(snap, p));
     if let Some(i) = made {
         st.trust.created.remove(i);
         let real = snap.real_workdir.clone();

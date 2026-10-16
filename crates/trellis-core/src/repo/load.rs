@@ -32,7 +32,10 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     })?;
 
     let workdir = repo.workdir().ok_or_else(|| Error::Unsupported("repository has no working directory".into()))?.to_path_buf();
-    let real_workdir = std::fs::canonicalize(&workdir).unwrap_or_else(|_| workdir.clone());
+    let real_workdir = crate::paths::resolve(&workdir);
+    // The spelling it was opened by, when that is another name for the work dir (not a folder
+    // inside it): a short 8.3 name or a link the caller may still hold.
+    let opened_as = (path != workdir && crate::paths::resolve(path) == real_workdir).then(|| path.to_path_buf());
     let git_dir = repo.path().to_path_buf();
     let name = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| workdir.display().to_string());
     let state = repo.state();
@@ -210,6 +213,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     Ok(Snapshot {
         workdir,
         real_workdir,
+        opened_as,
         git_dir,
         name,
         remote_urls,

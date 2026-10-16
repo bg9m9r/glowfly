@@ -261,7 +261,7 @@ fn busy_and_stale_tab() {
 
     // The dialog is waiting for a request whose tab is no longer the active one.
     let request = NewWorktree {
-        repo: std::env::temp_dir().join("trellis-elsewhere"),
+        repo: trellis_core::paths::temp_dir().join("trellis-elsewhere"),
         base: WorktreeBase::Branch("side".into()),
         folder: wt_root(&dir).join("side"),
         branch: None,
@@ -337,7 +337,7 @@ fn browse_picks_the_parent() {
     }
     drive(&mut st, wt(WorktreeMsg::CreateDialog(WorktreeBase::Branch("side".into()))));
     form(&mut st).branch = "feature/x".into();
-    let parent = std::env::temp_dir().join("picked");
+    let parent = trellis_core::paths::temp_dir().join("picked");
     drive(&mut st, Msg::Prefs(PrefsMsg::FolderPicked { purpose: FolderPurpose::WorktreeParent, path: Some(parent.clone()) }));
     let f = form(&mut st);
     assert_eq!(PathBuf::from(&f.folder), parent.join("feature-x"));

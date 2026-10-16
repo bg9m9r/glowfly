@@ -43,13 +43,13 @@ fn parse_folder_rules() {
     assert_eq!(parse_folder(""), Err(FolderProblem::Empty));
     assert_eq!(parse_folder("   "), Err(FolderProblem::Empty));
     assert_eq!(parse_folder("rel/dir"), Err(FolderProblem::NotAbsolute));
-    let tmp = std::env::temp_dir().join("trellis-wt-parse");
+    let tmp = crate::paths::temp_dir().join("trellis-wt-parse");
     assert_eq!(parse_folder(&format!("  {}  ", tmp.display())), Ok(tmp));
 }
 
 #[test]
 fn check_folder_on_disk() {
-    let root = std::env::temp_dir().join(format!("trellis-wt-check-{}", std::process::id()));
+    let root = crate::paths::temp_dir().join(format!("trellis-wt-check-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).unwrap();
     assert_eq!(check_folder(&root.join("missing")), Ok(()));

@@ -107,7 +107,7 @@ fn program_trims_and_unquotes() {
 
 /// Two PATH folders in a fresh temporary folder: the first empty, the second holding `files`.
 fn path_fixture(name: &str, files: &[&str]) -> (PathBuf, OsString) {
-    let root = std::env::temp_dir().join(format!("trellis-tools-{name}-{}", std::process::id()));
+    let root = crate::paths::temp_dir().join(format!("trellis-tools-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     let (a, b) = (root.join("one"), root.join("two"));
     std::fs::create_dir_all(&a).unwrap();
@@ -198,12 +198,12 @@ fn spawn_reports_a_missing_program() {
     let l = Launch {
         program: PathBuf::from(format!("trellis-no-such-program-{}", std::process::id())),
         args: Vec::new(),
-        cwd: std::env::temp_dir(),
+        cwd: crate::paths::temp_dir(),
         own_console: false,
     };
     let e = spawn(&l).unwrap_err();
     assert!(e.is_not_found(), "{e}");
-    let l = Launch { program: std::env::temp_dir().join("trellis-no-such-dir").join("ed.exe"), ..l };
+    let l = Launch { program: crate::paths::temp_dir().join("trellis-no-such-dir").join("ed.exe"), ..l };
     assert!(spawn(&l).unwrap_err().is_not_found());
 }
 

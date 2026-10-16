@@ -320,7 +320,7 @@ fn deletes_a_read_only_file() {
 
 #[test]
 fn bare_repository_is_unsupported() {
-    let dir = std::env::temp_dir().join(format!("trellis-test-wf-bare-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("trellis-test-wf-bare-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "--bare"]);

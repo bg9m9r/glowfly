@@ -14,7 +14,7 @@ use trellis_core::gitcli::args;
 use trellis_core::settings::RepoTrust;
 
 /// `scratch_repo` with an https remote, a core.sshCommand and an active pre-commit hook.
-fn untrusted_repo(name: &str) -> PathBuf {
+pub(super) fn untrusted_repo(name: &str) -> PathBuf {
     let dir = scratch_repo(name);
     git(&dir, &["remote", "add", "origin", "https://github.com/o/r.git"]);
     git(&dir, &["config", "core.sshCommand", "ssh -v"]);
@@ -68,7 +68,7 @@ fn status_read_git(st: &mut AppState) -> Option<bool> {
     flag
 }
 
-fn job(then_open: (PathBuf, Created)) -> RunningJob {
+pub(super) fn job(then_open: (PathBuf, Created)) -> RunningJob {
     RunningJob {
         label: "Clone".into(),
         workdir: None,
@@ -80,7 +80,7 @@ fn job(then_open: (PathBuf, Created)) -> RunningJob {
     }
 }
 
-fn done(st: &mut AppState, ok: bool, output: &str) {
+pub(super) fn done(st: &mut AppState, ok: bool, output: &str) {
     drive(st, Msg::Job(JobMsg::JobDone { ok, output: output.into(), undo: None }));
 }
 

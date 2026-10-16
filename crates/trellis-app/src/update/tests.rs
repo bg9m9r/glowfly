@@ -31,7 +31,7 @@ pub(super) fn git(dir: &Path, a: &[&str]) {
 
 /// A repository with one commit and one modified file.
 pub(super) fn scratch_repo(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
+    let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "-b", "main"]);

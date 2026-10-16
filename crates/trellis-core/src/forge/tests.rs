@@ -42,7 +42,7 @@ fn live_remote() {
     let url = std::env::var("TRELLIS_LIVE_REMOTE").expect("set TRELLIS_LIVE_REMOTE");
     let t = parse_remote(&url, &[]).expect("unrecognized remote");
     let account = t.account();
-    let auth = resolve_auth(&account, &std::env::temp_dir(), false, true).expect("no credentials");
+    let auth = resolve_auth(&account, &crate::paths::temp_dir(), false, true).expect("no credentials");
     println!("{} {} via {}", t.provider.name(), t.display(), auth.source);
     println!("user: {}", verify(&account, &auth).expect("verify"));
     println!("default branch: {:?}", default_branch(&t, &auth).expect("default branch"));

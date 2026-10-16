@@ -160,6 +160,10 @@ pub struct Snapshot {
     /// followed), so callers can tell two paths to one repository apart without touching the
     /// disk again. `workdir` itself when it can't be resolved.
     pub real_workdir: PathBuf,
+    /// The path `load` was given, when it names `workdir` under another spelling (a short 8.3
+    /// name, a link, `/var` for `/private/var`): what a typed path, a clone's destination or a
+    /// recent-list entry may still say. `None` when it was `workdir` itself or a folder inside it.
+    pub opened_as: Option<PathBuf>,
     pub git_dir: PathBuf,
     pub name: String,
     /// (remote name, fetch URL)

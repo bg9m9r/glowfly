@@ -12,7 +12,7 @@ pub(super) fn pat(raw: &str) -> LfsPattern {
 
 /// git-lfs's version, or None (with a note) so tests that need it can skip.
 pub(super) fn lfs_or_skip(test: &str) -> Option<String> {
-    let v = installed(&std::env::temp_dir());
+    let v = installed(&crate::paths::temp_dir());
     if v.is_none() {
         eprintln!("{test}: git-lfs is not installed, skipping");
     }
@@ -95,7 +95,7 @@ fn command_lines() {
 
 #[test]
 fn hook_states() {
-    let dir = std::env::temp_dir().join(format!("trellis-test-lfs-hooks-{}", std::process::id()));
+    let dir = crate::paths::temp_dir().join(format!("trellis-test-lfs-hooks-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     assert_eq!(hook_state(&dir), (false, vec![]));

@@ -47,7 +47,7 @@ impl Tab {
 
     /// Whether this tab shows the repository `snap` was loaded from.
     pub fn shows(&self, snap: &Snapshot) -> bool {
-        self.is(&snap.workdir) || self.real.as_deref().is_some_and(|r| same_path(r, &snap.real_workdir))
+        [&self.path, &self.real].into_iter().flatten().any(|p| is_repo_at(snap, p))
     }
 }
 
@@ -97,6 +97,14 @@ pub fn index_after_move(i: usize, from: usize, to: usize) -> usize {
     } else {
         i
     }
+}
+
+/// Whether `path` names the repository `snap` loaded, under any spelling it was seen by: as
+/// libgit2 reports it, resolved on disk (links and short 8.3 names followed), or as it was
+/// opened. Pure, like `same_path`: a path held elsewhere (the recent list, a clone's
+/// destination) that was only ever spelled another way still needs one of these to match.
+pub fn is_repo_at(snap: &Snapshot, path: &Path) -> bool {
+    [Some(&snap.workdir), Some(&snap.real_workdir), snap.opened_as.as_ref()].into_iter().flatten().any(|p| same_path(p, path))
 }
 
 /// Whether two paths are spelled as the same folder, ignoring separator style, `.` parts,

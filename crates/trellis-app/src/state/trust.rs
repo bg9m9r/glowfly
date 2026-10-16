@@ -117,7 +117,7 @@ impl AppState {
     /// found it on disk).
     pub fn trusts(&self, workdir: &Path) -> bool {
         let tab_real = self.tabs.get(self.active_tab).filter(|t| t.is(workdir)).and_then(|t| t.real.as_deref());
-        let snap_real = self.snap.as_ref().filter(|s| same_path(&s.workdir, workdir)).map(|s| s.real_workdir.as_path());
+        let snap_real = self.snap.as_ref().filter(|s| super::tabs::is_repo_at(s, workdir)).map(|s| s.real_workdir.as_path());
         [Some(workdir), tab_real, snap_real].into_iter().flatten().any(|p| recorded(&self.settings, p) == Some(RepoTrust::Trusted))
     }
 }
