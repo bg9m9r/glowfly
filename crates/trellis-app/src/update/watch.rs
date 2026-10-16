@@ -38,7 +38,7 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             if st.watch.failed.insert(workdir.clone()) {
                 st.toast(false, FAILED, now);
                 // Quiet: this shouldn't pop the activity log open.
-                st.log_quiet(false, format!("File watching stopped for {}: {error}", workdir.display()));
+                st.log_quiet(false, format!("File watching stopped for {}: {error}", trellis_core::native_path::shown(&workdir)));
             }
         }
     }

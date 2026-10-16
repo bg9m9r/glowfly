@@ -8,6 +8,7 @@
 //! in Windows paths are taken literally.
 
 use crate::error::{Error, Result};
+use crate::native_path::native;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -72,6 +73,7 @@ pub struct Vars<'a> {
 /// The arguments of `template` with its placeholders filled in from `v`, in one pass (a value
 /// that itself contains `{line}` is not expanded again). Unknown `{names}` are kept as typed.
 pub fn expand(template: &str, v: &Vars) -> Result<Vec<OsString>, TemplateError> {
+/// Paths go in in this system's spelling (`C:\x\y`, never libgit2's `C:/x/y/`).
     Ok(split(template)?.iter().map(|a| substitute(a, v)).collect())
 }
 
@@ -82,13 +84,13 @@ fn substitute(arg: &str, v: &Vars) -> OsString {
         out.push(&rest[..i]);
         let at = &rest[i..];
         if let Some(r) = at.strip_prefix("{path}") {
-            out.push(v.path);
+            out.push(native(v.path));
             rest = r;
         } else if let Some(r) = at.strip_prefix("{line}") {
             out.push(v.line.to_string());
             rest = r;
         } else if let Some(r) = at.strip_prefix("{repo}") {
-            out.push(v.repo);
+            out.push(native(v.repo));
             rest = r;
         } else {
             out.push("{");

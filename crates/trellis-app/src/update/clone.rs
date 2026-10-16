@@ -14,7 +14,7 @@ pub(super) const PARENT_CHECK_DELAY: Duration = Duration::from_millis(250);
 pub(super) fn handle(st: &mut AppState, msg: CloneMsg, fx: &mut Vec<Effect>) {
     match msg {
         CloneMsg::Dialog => {
-            let parent = st.recent.first().and_then(|p| p.parent()).map(|p| p.display().to_string()).unwrap_or_default();
+            let parent = st.recent.first().and_then(|p| p.parent()).map(trellis_core::native_path::shown).unwrap_or_default();
             st.modal = Some(Modal::Clone(CloneForm::new(parent)));
             check_parent(st, Duration::ZERO, fx);
         }

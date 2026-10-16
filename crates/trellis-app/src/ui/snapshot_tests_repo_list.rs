@@ -24,6 +24,11 @@ fn lists(st: &mut AppState) {
     st.missing_repos = vec![PathBuf::from(OLD)];
 }
 
+/// How the list shows `path`: in this system's spelling (`C:\work\web-app` on Windows).
+fn shown(path: &str) -> String {
+    trellis_core::native_path::shown(std::path::Path::new(path))
+}
+
 fn welcome_state(theme: ThemeChoice) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     lists(&mut st);
@@ -52,8 +57,8 @@ fn last(h: &H) -> &Msg {
 fn welcome_repos() {
     let mut h = harness(welcome_state(ThemeChoice::Dark), true);
     h.run();
-    assert_eq!(h.query_all_by_label(WEB).count(), 1, "a favorite is listed once");
-    for label in ["Favorites", "Recent", "not found", API, OLD] {
+    assert_eq!(h.query_all_by_label(&shown(WEB)).count(), 1, "a favorite is listed once");
+    for label in ["Favorites", "Recent", "not found", &shown(API), &shown(OLD)] {
         assert!(h.query_by_label(label).is_some(), "{label} is shown");
     }
     h.check_snapshot("welcome_repos");
@@ -78,13 +83,13 @@ fn welcome_no_favorites_hint() {
 fn welcome_row_menu() {
     let mut h = harness(welcome_state(ThemeChoice::Dark), true);
     h.run();
-    let link = h.get_by_label(API).bounding_box().expect("the link");
+    let link = h.get_by_label(&shown(API)).bounding_box().expect("the link");
     click(&mut h, pos2(((link.x0 + link.x1) / 2.0) as f32, ((link.y0 + link.y1) / 2.0) as f32), PointerButton::Secondary);
     for label in ["Open", "Add to favorites", "Remove from recent", "Copy path"] {
         assert!(h.get_all_by_label(label).any(|n| n.bounding_box().is_some_and(|b| b.x1 - b.x0 > 30.0)), "{label} in the menu");
     }
     h.check_snapshot("welcome_repo_row_menu");
-    let item = bounds(&h, "Remove from recent", API, false);
+    let item = bounds(&h, "Remove from recent", &shown(API), false);
     click(&mut h, item.center(), PointerButton::Primary);
     assert!(matches!(last(&h), Msg::Recent(RecentMsg::Remove(p)) if p == &PathBuf::from(API)));
 }
@@ -94,13 +99,13 @@ fn welcome_icons_push_messages() {
     let mut h = harness(welcome_state(ThemeChoice::Dark), true);
     h.run();
     assert_eq!(h.query_all_by_label("Remove from recent").count(), 2, "only Recent rows have ×");
-    let star = bounds(&h, "Add to favorites", API, true);
+    let star = bounds(&h, "Add to favorites", &shown(API), true);
     click(&mut h, star.center(), PointerButton::Primary);
     assert!(matches!(last(&h), Msg::Recent(RecentMsg::SetFavorite { path, favorite: true }) if path == &PathBuf::from(API)));
-    let star = bounds(&h, "Remove from favorites", WEB, true);
+    let star = bounds(&h, "Remove from favorites", &shown(WEB), true);
     click(&mut h, star.center(), PointerButton::Primary);
     assert!(matches!(last(&h), Msg::Recent(RecentMsg::SetFavorite { path, favorite: false }) if path == &PathBuf::from(WEB)));
-    let cross = bounds(&h, "Remove from recent", OLD, true);
+    let cross = bounds(&h, "Remove from recent", &shown(OLD), true);
     click(&mut h, cross.center(), PointerButton::Primary);
     assert!(matches!(last(&h), Msg::Recent(RecentMsg::Remove(p)) if p == &PathBuf::from(OLD)));
     h.get_by_label("Clear").click();
@@ -127,10 +132,10 @@ fn repo_menu_favorites_and_recent() {
         .min_by(|a, b| a.y0.total_cmp(&b.y0))
         .expect("the repository button");
     click(&mut h, pos2(((name.x0 + name.x1) / 2.0) as f32, ((name.y0 + name.y1) / 2.0) as f32), PointerButton::Primary);
-    for label in ["Add this repository to favorites", "Favorites", "Recent", "Clear recent", WEB, API] {
+    for label in ["Add this repository to favorites", "Favorites", "Recent", "Clear recent", &shown(WEB), &shown(API)] {
         assert!(h.query_by_label(label).is_some(), "{label} is in the menu");
     }
-    assert_eq!(h.query_all_by_label(WEB).count(), 1, "a favorite is listed once");
+    assert_eq!(h.query_all_by_label(&shown(WEB)).count(), 1, "a favorite is listed once");
     h.check_snapshot("repo_menu");
     h.get_by_label("Add this repository to favorites").click();
     h.run();

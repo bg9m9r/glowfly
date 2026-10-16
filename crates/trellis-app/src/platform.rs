@@ -80,23 +80,31 @@ pub fn save_tabs(paths: &[PathBuf], active: usize) -> std::io::Result<()> {
     trellis_core::persist::atomic_write(&f, format_tabs(paths, active).as_bytes())
 }
 
-pub fn open_in_file_manager(dir: &Path) {
-    #[cfg(windows)]
-    let cmd = "explorer";
-    #[cfg(target_os = "macos")]
-    let cmd = "open";
-    #[cfg(all(unix, not(target_os = "macos")))]
-    let cmd = "xdg-open";
-    if let Err(e) = std::process::Command::new(cmd).arg(dir).spawn() {
-        tracing::warn!("could not open the file manager: {e}");
-    }
+/// The file manager and the folder to give it for showing `dir`, in this system's spelling
+/// (Explorer doesn't understand libgit2's `C:/x/y/` and opens its default folder instead).
+pub(crate) fn file_manager_command(dir: &Path) -> (&'static str, PathBuf) {
+    let cmd = if cfg!(windows) {
+        "explorer"
+    } else if cfg!(target_os = "macos") {
+        "open"
+    } else {
+        "xdg-open"
+    };
+    (cmd, trellis_core::native_path::native(dir))
+}
+
+/// Opens the folder `dir` in the file manager. Explorer's exit code is 1 even when it worked,
+/// so only a failure to start it is reported.
+pub fn open_in_file_manager(dir: &Path) -> std::io::Result<()> {
+    let (cmd, dir) = file_manager_command(dir);
+    std::process::Command::new(cmd).arg(dir).spawn().map(drop)
 }
 
 /// Shows `path` selected in the file manager: Explorer on Windows, Finder on macOS. Elsewhere
 /// there is no common way to select a file, so its folder opens instead.
 pub fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
-    // Rebuilding from components normalises separators (`C:\repo\src/a.txt` on Windows).
-    let path: PathBuf = path.components().collect();
+    // Normalises separators (`C:\repo\src/a.txt` on Windows) and drops a `\\?\` prefix.
+    let path = trellis_core::native_path::native(path);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -148,5 +156,14 @@ mod tests {
         let p = PathBuf::from(std::ffi::OsStr::from_bytes(b"/w/caf\xe9"));
         assert_eq!(parse_tabs(&format_tabs(std::slice::from_ref(&p), 0)).0, std::slice::from_ref(&p));
         assert_eq!(parse_recent(&format_recent(std::slice::from_ref(&p))), [p]);
+    }
+
+    #[test]
+    fn the_file_manager_gets_this_systems_spelling() {
+        let (_, dir) = file_manager_command(Path::new("C:/x/y/"));
+        let want = if cfg!(windows) { r"C:\x\y" } else { "C:/x/y" };
+        assert_eq!(dir, PathBuf::from(want));
+        let (_, dir) = file_manager_command(Path::new("/home/me/repo/"));
+        assert!(!dir.to_string_lossy().ends_with('/'), "{}", dir.display());
     }
 }

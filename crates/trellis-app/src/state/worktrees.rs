@@ -85,7 +85,7 @@ pub fn tooltip(wt: &WorktreeInfo) -> String {
         None => "Main worktree".to_owned(),
         Some(n) => format!("Linked worktree ({n})"),
     }];
-    lines.push(wt.path.display().to_string());
+    lines.push(trellis_core::native_path::shown(&wt.path));
     match (&wt.branch, wt.head) {
         (Some(b), _) => lines.push(format!("Branch: {b}")),
         (None, Some(oid)) => lines.push(format!("Detached HEAD at {}", short(oid))),
@@ -141,7 +141,7 @@ pub fn folder_problem(snap: &Snapshot, text: &str) -> Option<String> {
         Ok(p) => p,
         Err(p) => return Some(p.message(text.trim())),
     };
-    find(snap, &path).map(|w| format!("A worktree is already registered at {}.", w.path.display()))
+    find(snap, &path).map(|w| format!("A worktree is already registered at {}.", trellis_core::native_path::shown(&w.path)))
 }
 
 /// A caution, not a refusal: the folder is inside a listed worktree.
@@ -154,7 +154,7 @@ pub fn folder_warning(snap: &Snapshot, text: &str) -> Option<String> {
         .max_by_key(|w| w.path.components().count())?;
     Some(format!(
         "This folder is inside the worktree at {}. Its files will show up there as untracked unless .gitignore covers them.",
-        host.path.display()
+        trellis_core::native_path::shown(&host.path)
     ))
 }
 
@@ -177,7 +177,7 @@ pub fn branch_problem(snap: &Snapshot, base: &WorktreeBase, new_branch: &str) ->
     Some(if wt.current {
         format!("{b} is checked out in this worktree. Enter a name for a new branch.")
     } else {
-        format!("{b} is checked out in the worktree at {}. Enter a name for a new branch.", wt.path.display())
+        format!("{b} is checked out in the worktree at {}. Enter a name for a new branch.", trellis_core::native_path::shown(&wt.path))
     })
 }
 

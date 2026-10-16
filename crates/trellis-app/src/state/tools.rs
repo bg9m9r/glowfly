@@ -60,7 +60,7 @@ pub fn failure_text(kind: ToolKind, program: &str, target: &str, failure: &Launc
         LaunchFailure::NotFound => {
             format!("Could not find the external {what} \"{program}\". Check the {what} executable in Preferences > External Tools.")
         }
-        LaunchFailure::Missing(p) => format!("{} is not in the working tree", p.display()),
+        LaunchFailure::Missing(p) => format!("{} is not in the working tree", trellis_core::native_path::shown(p)),
         LaunchFailure::Other(e) => match kind {
             ToolKind::Editor => format!("Could not open {target} in {program}: {e}"),
             ToolKind::Terminal => format!("Could not start the terminal {program}: {e}"),

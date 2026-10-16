@@ -11,7 +11,9 @@ fn failed(text: String) -> Option<Msg> {
 
 /// The log line for a path that is gone, or None when it exists (a broken symlink counts).
 fn missing(p: &Path) -> Option<Msg> {
-    p.symlink_metadata().is_err().then(|| Msg::Logged { ok: false, text: format!("{} is not in the working tree", p.display()) })
+    p.symlink_metadata()
+        .is_err()
+        .then(|| Msg::Logged { ok: false, text: format!("{} is not in the working tree", trellis_core::native_path::shown(p)) })
 }
 
 /// Opens an `https://` link in the browser. Anything else (other schemes, file paths, links
@@ -33,15 +35,18 @@ pub(super) fn open_terminal(dir: &Path) -> Option<Msg> {
 }
 
 pub(super) fn open_folder(dir: &Path) -> Option<Msg> {
-    crate::platform::open_in_file_manager(dir);
-    None
+    let shown = trellis_core::native_path::shown(dir);
+    if !dir.is_dir() {
+        return failed(format!("Could not open {shown}: the folder is gone"));
+    }
+    crate::platform::open_in_file_manager(dir).err().and_then(|e| failed(format!("Could not open {shown} in the file manager: {e}")))
 }
 
 /// Opens the working-tree file `rel` of `workdir` in its default program, without waiting for
 /// it. Unless `confirmed`, a file the system would run (see [`runs`]) comes back as
 /// `OpenNeedsConfirm` instead.
 pub(super) fn open_path(workdir: &Path, rel: &str, confirmed: bool) -> Option<Msg> {
-    let p = workdir.join(rel);
+    let p = trellis_core::native_path::native(&workdir.join(rel));
     if let Some(m) = missing(&p) {
         return Some(m);
     }
@@ -65,7 +70,9 @@ pub(super) fn reveal(p: &Path) -> Option<Msg> {
     if let Some(m) = missing(p) {
         return Some(m);
     }
-    crate::platform::reveal_in_file_manager(p).err().and_then(|e| failed(format!("Could not show {}: {e}", p.display())))
+    crate::platform::reveal_in_file_manager(p)
+        .err()
+        .and_then(|e| failed(format!("Could not show {}: {e}", trellis_core::native_path::shown(p))))
 }
 
 #[cfg(test)]
@@ -97,6 +104,14 @@ mod tests {
             assert!(!ok);
             assert!(text.contains("not in the working tree"), "{text}");
         }
+    }
+
+    #[test]
+    fn a_folder_that_is_gone_is_reported_not_opened() {
+        let dir = trellis_core::paths::temp_dir().join(format!("trellis-no-such-folder-{}", std::process::id()));
+        let (ok, text) = logged(open_folder(&dir));
+        assert!(!ok);
+        assert!(text.contains("the folder is gone") && text.contains(&trellis_core::native_path::shown(&dir)), "{text}");
     }
 
     #[test]

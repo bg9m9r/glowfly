@@ -10,6 +10,23 @@ fn os(v: &[&str]) -> Vec<OsString> {
     v.iter().map(OsString::from).collect()
 }
 
+/// `os`, with the paths in it spelled as `expand` fills them in on this system (`\` on Windows).
+fn nat(v: &[&str]) -> Vec<OsString> {
+    v.iter().map(|s| OsString::from(if cfg!(windows) { s.replace('/', "\\") } else { s.to_string() })).collect()
+}
+
+#[test]
+fn expand_fills_in_this_systems_spelling() {
+    let repo = Path::new("C:/x/y/");
+    let file = repo.join("src/a.txt");
+    let got = expand("{path} --cwd={repo}", &vars(&file, repo, 1)).unwrap();
+    if cfg!(windows) {
+        assert_eq!(got, os(&[r"C:\x\y\src\a.txt", r"--cwd=C:\x\y"]));
+    } else {
+        assert_eq!(got, os(&["C:/x/y/src/a.txt", "--cwd=C:/x/y"]));
+    }
+}
+
 #[test]
 fn split_separates_on_any_whitespace() {
     assert_eq!(split("a b").unwrap(), strs(&["a", "b"]));
@@ -47,8 +64,8 @@ fn vars<'a>(path: &'a Path, repo: &'a Path, line: u32) -> Vars<'a> {
 fn expand_keeps_a_path_with_spaces_as_one_argument() {
     let path = Path::new("/home/me/my repo/a file.txt");
     let repo = Path::new("/home/me/my repo");
-    assert_eq!(expand("{path}", &vars(path, repo, 1)).unwrap(), os(&["/home/me/my repo/a file.txt"]));
-    assert_eq!(expand("-n {repo}", &vars(path, repo, 1)).unwrap(), os(&["-n", "/home/me/my repo"]));
+    assert_eq!(expand("{path}", &vars(path, repo, 1)).unwrap(), nat(&["/home/me/my repo/a file.txt"]));
+    assert_eq!(expand("-n {repo}", &vars(path, repo, 1)).unwrap(), nat(&["-n", "/home/me/my repo"]));
 }
 
 #[test]
@@ -56,9 +73,9 @@ fn expand_fills_placeholders_inside_arguments() {
     let path = Path::new("/r/src/main.rs");
     let repo = Path::new("/r");
     let v = vars(path, repo, 42);
-    assert_eq!(expand("--goto={path}:{line}", &v).unwrap(), os(&["--goto=/r/src/main.rs:42"]));
-    assert_eq!(expand(r#"--goto "{path}:{line}" --cwd={repo}"#, &v).unwrap(), os(&["--goto", "/r/src/main.rs:42", "--cwd=/r"]));
-    assert_eq!(expand("{line}{line}", &v).unwrap(), os(&["4242"]));
+    assert_eq!(expand("--goto={path}:{line}", &v).unwrap(), nat(&["--goto=/r/src/main.rs:42"]));
+    assert_eq!(expand(r#"--goto "{path}:{line}" --cwd={repo}"#, &v).unwrap(), nat(&["--goto", "/r/src/main.rs:42", "--cwd=/r"]));
+    assert_eq!(expand("{line}{line}", &v).unwrap(), nat(&["4242"]));
 }
 
 #[test]
@@ -66,14 +83,14 @@ fn expand_is_single_pass() {
     // A repository folder literally named {line} is not expanded again.
     let repo = Path::new("/x/{line}");
     let path = Path::new("/x/{line}/{repo}.txt");
-    assert_eq!(expand("{repo} {path}", &vars(path, repo, 7)).unwrap(), os(&["/x/{line}", "/x/{line}/{repo}.txt"]));
+    assert_eq!(expand("{repo} {path}", &vars(path, repo, 7)).unwrap(), nat(&["/x/{line}", "/x/{line}/{repo}.txt"]));
 }
 
 #[test]
 fn expand_keeps_unknown_names_and_lone_braces() {
     let p = Path::new("/r/a");
     let v = vars(p, Path::new("/r"), 1);
-    assert_eq!(expand("{foo} { } {path {} }{line}", &v).unwrap(), os(&["{foo}", "{", "}", "{path", "{}", "}1"]));
+    assert_eq!(expand("{foo} { } {path {} }{line}", &v).unwrap(), nat(&["{foo}", "{", "}", "{path", "{}", "}1"]));
     assert_eq!(expand(r#"--x "{path}"#, &v), Err(TemplateError::UnmatchedQuote));
 }
 

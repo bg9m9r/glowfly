@@ -32,8 +32,9 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
     if !*open {
         return;
     }
-    let matches =
-        |w: &WorktreeInfo| shown(&w.folder_name()) || w.branch.as_deref().is_some_and(shown) || shown(&w.path.display().to_string());
+    let matches = |w: &WorktreeInfo| {
+        shown(&w.folder_name()) || w.branch.as_deref().is_some_and(shown) || shown(&trellis_core::native_path::shown(&w.path))
+    };
     for wt in snap.worktrees.iter().filter(|w| matches(w)) {
         let label = if wt.current { format!("✔  {}", wt.folder_name()) } else { wt.folder_name() };
         let col = if wt.locked.is_some() {
@@ -67,7 +68,7 @@ fn menu(ui: &mut egui::Ui, wt: &WorktreeInfo, open_tabs: &[crate::state::tabs::P
     menu_item_if(msgs, ui, "Open in new tab", open_blocked(wt), Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
     let gone = wt.missing.then_some("Its folder is missing.");
     menu_item_if(msgs, ui, "Open folder", gone, Msg::OpenFolder(wt.path.clone()));
-    menu_item(msgs, ui, "Copy path", Msg::Copy(wt.path.display().to_string()));
+    menu_item(msgs, ui, "Copy path", Msg::Copy(trellis_core::native_path::shown(&wt.path)));
     // git refuses all of these for the main worktree.
     if wt.is_main() {
         return;

@@ -18,7 +18,7 @@ pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     ui.heading("Trust this repository?");
     ui.add_space(2.0);
     ui.label(RichText::new(printable(&p.name)).strong());
-    ui.add(egui::Label::new(RichText::new(p.workdir.display().to_string()).color(color::weak())).wrap());
+    ui.add(egui::Label::new(RichText::new(trellis_core::native_path::shown(&p.workdir)).color(color::weak())).wrap());
     if let Some(label) = &p.held {
         let what = format!("{} needs git to run this repository's settings and hooks.", printable(label));
         ui.add(egui::Label::new(RichText::new(what).strong()).wrap());

@@ -74,7 +74,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                             let (hovered, close_hovered) = (r.hovered(), close.hovered());
                             paint_tab(p, rect, name(i), active, hovered, active || hovered || close_hovered, close_hovered);
                             let r = match &st.tabs[i].path {
-                                Some(path) => r.on_hover_text(path.display().to_string()),
+                                Some(path) => r.on_hover_text(trellis_core::native_path::shown(path)),
                                 None => r,
                             };
                             if close.clicked() || r.middle_clicked() {
@@ -191,7 +191,7 @@ fn tab_menu(ui: &mut egui::Ui, i: usize, st: &AppState, msgs: &mut Vec<Msg>) {
     let reopen = Button::new("Reopen closed tab").shortcut_text(crate::keymap::hint(crate::keymap::BindingId::ReopenTab));
     let r = item(ui, msgs, !st.closed_tabs.is_empty(), reopen, Msg::Tabs(TabsMsg::ReopenClosedTab));
     if let Some(path) = st.closed_tabs.last() {
-        r.on_hover_text(path.display().to_string());
+        r.on_hover_text(trellis_core::native_path::shown(path));
     }
 }
 

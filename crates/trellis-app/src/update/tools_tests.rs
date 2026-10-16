@@ -15,6 +15,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::external_tools::Launch;
+use trellis_core::native_path::native;
 
 fn run(st: &mut AppState, m: ToolsMsg) -> Vec<Effect> {
     update(st, Msg::Tools(m), Instant::now())
@@ -43,8 +44,10 @@ fn launch(fx: Vec<Effect>, kind: ToolKind) -> (Launch, Option<PathBuf>) {
     }
 }
 
+/// The arguments for `v`, as they are filled in: in this system's spelling (`C:\x\y`, not
+/// libgit2's `C:/x/y/`).
 fn os(v: &[&Path]) -> Vec<OsString> {
-    v.iter().map(|p| p.as_os_str().to_owned()).collect()
+    v.iter().map(|p| native(p).into_os_string()).collect()
 }
 
 /// The last log line and toast, which must both be failures with the same text.
@@ -85,7 +88,7 @@ fn custom_file_arguments_fill_in_the_line() {
     let (mut st, dir) = open("tools-file-args", "\"C:/Tools/Ed/ed.exe\"");
     st.settings.external_tools.editor_file_args = r#"--goto "{path}:{line}""#.into();
     let w = st.workdir().unwrap();
-    let at = |line: u32| OsString::from(format!("{}:{line}", w.join("src/a.rs").display()));
+    let at = |line: u32| OsString::from(format!("{}:{line}", native(&w.join("src/a.rs")).display()));
     let (l, _) = launch(run(&mut st, open_file("src/a.rs", None)), ToolKind::Editor);
     assert_eq!(l.program, PathBuf::from("C:/Tools/Ed/ed.exe"), "the quotes are not part of the program");
     assert_eq!(l.args, [OsString::from("--goto"), at(1)]);
@@ -128,7 +131,10 @@ fn open_in_terminal_uses_the_custom_terminal_when_set() {
     st.settings.external_tools.terminal = "wt".into();
     st.settings.external_tools.terminal_args = r#"-d "{repo}""#.into();
     let (l, check) = launch(update(&mut st, Msg::OpenTerminal, Instant::now()), ToolKind::Terminal);
-    assert_eq!(l, Launch { program: "wt".into(), args: vec![OsString::from("-d"), w.clone().into_os_string()], cwd: w, own_console: true });
+    assert_eq!(
+        l,
+        Launch { program: "wt".into(), args: vec![OsString::from("-d"), native(&w).into_os_string()], cwd: w, own_console: true }
+    );
     assert_eq!(check, None);
 
     st.settings.external_tools.terminal_args = "-d \"{repo}".into();
@@ -162,7 +168,7 @@ fn failed_launches_are_logged_and_toasted() {
     run(&mut st, failed(ToolKind::Terminal, LaunchFailure::NotFound));
     assert!(failure(&st).contains("terminal"));
     run(&mut st, failed(ToolKind::Editor, LaunchFailure::Missing("C:/r/a.txt".into())));
-    assert_eq!(failure(&st), format!("{} is not in the working tree", Path::new("C:/r/a.txt").display()));
+    assert_eq!(failure(&st), format!("{} is not in the working tree", native(Path::new("C:/r/a.txt")).display()));
     run(&mut st, failed(ToolKind::Editor, LaunchFailure::Other("Access is denied.".into())));
     assert_eq!(failure(&st), "Could not open a.txt in subl: Access is denied.");
     run(&mut st, failed(ToolKind::Terminal, LaunchFailure::Other("boom".into())));

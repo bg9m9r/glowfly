@@ -105,7 +105,7 @@ fn clear_confirm(st: &AppState) -> Msg {
 fn row(ui: &mut egui::Ui, st: &AppState, path: &Path, place: Place, section: Section, msgs: &mut Vec<Msg>) {
     let fav = is_favorite(st, path);
     let missing = is_missing(st, path);
-    let text = path.display().to_string();
+    let text = trellis_core::native_path::shown(path);
     let open = || Msg::Repo(RepoMsg::Open(path.to_path_buf()));
     let favorite = || Msg::Recent(RecentMsg::SetFavorite { path: path.to_path_buf(), favorite: !fav });
     let remove = || Msg::Recent(RecentMsg::Remove(path.to_path_buf()));

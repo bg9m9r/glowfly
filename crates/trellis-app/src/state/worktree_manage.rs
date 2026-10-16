@@ -132,7 +132,7 @@ pub fn unlock_refused(wt: &WorktreeInfo) -> Option<&'static str> {
 
 /// Logged when a dialog's or menu's worktree is no longer listed.
 pub fn gone_text(path: &Path) -> String {
-    format!("{} is no longer a worktree of this repository.", path.display())
+    format!("{} is no longer a worktree of this repository.", trellis_core::native_path::shown(path))
 }
 
 pub fn removed_headline(name: &str, branch: Option<&str>) -> String {
@@ -145,7 +145,7 @@ pub fn removed_headline(name: &str, branch: Option<&str>) -> String {
 pub fn folder_left_headline(name: &str, path: &Path) -> String {
     format!(
         "Removed worktree {name} from git, but its folder {} couldn't be fully deleted. Close programs using it, then delete the folder yourself.",
-        path.display()
+        trellis_core::native_path::shown(path)
     )
 }
 

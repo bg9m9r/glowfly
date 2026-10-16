@@ -67,6 +67,6 @@ pub(super) fn recent_entries(st: &AppState, out: &mut Vec<Entry>) {
             continue;
         }
         let e = entry(PaletteCommand::OpenRecent(path.clone()), format!("Open {}", folder_name(path)), "recent repository");
-        out.push(with_detail(e, Some(path.display().to_string())));
+        out.push(with_detail(e, Some(trellis_core::native_path::shown(path))));
     }
 }

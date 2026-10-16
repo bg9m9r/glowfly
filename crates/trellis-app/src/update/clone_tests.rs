@@ -65,6 +65,9 @@ fn clone_dialog_opens_with_shallow_off() {
     assert_eq!(f.depth, "1");
     assert!(f.url.is_empty() && f.since.is_empty() && f.branch.is_empty());
     assert_eq!(Path::new(&f.parent), Path::new("C:/work"));
+    // Typed in this system's spelling, never libgit2's.
+    #[cfg(windows)]
+    assert_eq!(f.parent, r"C:\work");
 }
 
 #[test]
