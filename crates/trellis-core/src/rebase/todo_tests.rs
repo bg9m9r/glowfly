@@ -24,15 +24,23 @@ fn reword(n: u8, message: &str) -> TodoItem {
     TodoItem { new_message: Some(message.into()), ..item(n, RebaseAction::Reword) }
 }
 
+/// The message folder in this OS's own spelling, and how it appears in the todo for `sh`
+/// (backslashes become slashes only on Windows; on Unix a backslash is part of a name).
+#[cfg(windows)]
 const MSG_DIR: &str = "C:\\repo\\.git\\trellis-rebase";
+#[cfg(windows)]
+const QUOTED_DIR: &str = "C:/repo/.git/trellis-rebase";
+#[cfg(not(windows))]
+const MSG_DIR: &str = "/repo/.git/trellis-rebase";
+#[cfg(not(windows))]
+const QUOTED_DIR: &str = "/repo/.git/trellis-rebase";
 
 fn base_line(n: u8) -> String {
-    format!("exec git rev-parse HEAD >'C:/repo/.git/trellis-rebase/reword-{}.base'", oid(n))
+    format!("exec git rev-parse HEAD >'{QUOTED_DIR}/reword-{}.base'", oid(n))
 }
 
 fn exec_line(n: u8) -> String {
-    let (base, file) =
-        (format!("'C:/repo/.git/trellis-rebase/reword-{0}.base'", oid(n)), format!("'C:/repo/.git/trellis-rebase/reword-{0}.txt'", oid(n)));
+    let (base, file) = (format!("'{QUOTED_DIR}/reword-{0}.base'", oid(n)), format!("'{QUOTED_DIR}/reword-{0}.txt'", oid(n)));
     format!(
         r#"exec h=$(git rev-parse -q --verify HEAD); p=$(git rev-parse -q --verify HEAD^); b=$(cat {base}); if [ "$h" != "$b" ] && {{ [ "$p" = "$b" ] || [ -z "$p" ]; }}; then git commit --amend --allow-empty --no-verify --cleanup=whitespace -F {file}; fi"#
     )
