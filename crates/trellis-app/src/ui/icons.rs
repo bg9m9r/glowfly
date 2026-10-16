@@ -1,5 +1,5 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench, warning), called from `widgets::paint_icon`.
+//! lock, wrench, warning, keyboard), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -144,6 +144,19 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             line(right, top);
             line(pos2(c.x, c.y - 3.0), pos2(c.x, c.y + 2.0));
             p.circle_filled(pos2(c.x, c.y + 4.6), 1.1, s.color);
+        }
+        Icon::Keyboard => {
+            // A rounded outline about 15x10 with two rows of three keys and a space bar.
+            let body = Rect::from_center_size(c, vec2(15.0, 10.0));
+            p.rect_stroke(body, 2.0, s, egui::StrokeKind::Middle);
+            let thin = Stroke::new(s.width * 0.8, s.color);
+            for (row, y) in [(0, c.y - 2.2), (1, c.y + 0.4)] {
+                for k in 0..3 {
+                    let x = c.x - 4.0 + 4.0 * k as f32 + if row == 1 { 0.5 } else { 0.0 };
+                    p.line_segment([pos2(x - 0.9, y), pos2(x + 0.9, y)], thin);
+                }
+            }
+            p.line_segment([pos2(c.x - 3.5, c.y + 3.0), pos2(c.x + 3.5, c.y + 3.0)], thin);
         }
         Icon::Close => {
             line(pos2(c.x - 4.5, c.y - 4.5), pos2(c.x + 4.5, c.y + 4.5));

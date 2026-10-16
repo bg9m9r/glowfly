@@ -116,6 +116,8 @@ mod snapshot_tests_path_warnings;
 #[cfg(test)]
 mod snapshot_tests_platform_dialogs;
 #[cfg(test)]
+mod snapshot_tests_prefs_keyboard;
+#[cfg(test)]
 mod snapshot_tests_prefs_notify;
 #[cfg(test)]
 mod snapshot_tests_profiles;
@@ -174,8 +176,6 @@ mod tabs_tests;
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::AvatarMsg;
-use crate::msg::ConflictMsg;
-use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RecentMsg;
@@ -184,8 +184,9 @@ use crate::msg::TabsMsg;
 use crate::runner::Runner;
 use crate::state::AppState;
 use crate::update::update;
-use central::{escape_key, step_shortcuts};
-use eframe::egui::{self, Key};
+#[cfg(test)]
+use central::escape_key;
+use eframe::egui;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
@@ -275,49 +276,12 @@ impl TrellisApp {
 
     /// Keyboard shortcuts and window events, turned into messages or view-state changes.
     fn input(&mut self, ctx: &egui::Context, msgs: &mut Vec<Msg>) {
-        palette::shortcut(ctx, &self.st, msgs);
-        shortcuts::keys(ctx, &self.st, msgs);
-        terminal::shortcut(ctx, &self.st, msgs);
-        // The open palette keeps the keyboard: no other shortcut reaches what is under it.
-        let palette = self.st.palette.is_some();
         let focused = self.st.view.focused;
         if focused && !self.st.view.was_focused {
             msgs.push(Msg::Repo(RepoMsg::WindowFocused));
         }
         self.st.view.was_focused = focused;
-        let (f5, prefs) = ctx.input(|i| (i.key_pressed(Key::F5), i.modifiers.command && i.key_pressed(Key::Comma)));
-        if self.st.prefs.is_none() && !palette {
-            shortcuts::tab_keys(ctx, self.st.tabs.len(), msgs);
-        }
-        // Text fields keep Ctrl+Z for their own undo; nothing reaches the views under a dialog.
-        let dialog = self.st.modal.is_some() || self.st.askpass.showing() || palette;
-        if self.st.prefs.is_none() && !dialog && !ctx.wants_keyboard_input() {
-            shortcuts::undo_keys(ctx, msgs);
-        }
-        // Text fields (the commit message) keep Alt+arrows.
-        let stepping = self.st.blame.is_none() && (self.st.conflict.is_some() || self.st.diff.is_some());
-        if stepping
-            && self.st.prefs.is_none()
-            && !dialog
-            && !ctx.wants_keyboard_input()
-            && let Some(step) = step_shortcuts(ctx)
-        {
-            msgs.push(if self.st.conflict.is_some() {
-                Msg::Conflict(ConflictMsg::ConflictStep(step))
-            } else {
-                Msg::Diff(DiffMsg::JumpToChange(step))
-            });
-        }
-        if f5 {
-            msgs.push(Msg::Repo(RepoMsg::Refresh));
-        }
-        if !palette {
-            graph::find_keys(ctx, &mut self.st, msgs);
-        }
-        if prefs && self.st.prefs.is_none() && !palette {
-            msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(crate::state::PrefPage::General)));
-        }
-        escape_key(ctx, &mut self.st, msgs);
+        shortcuts::input(ctx, &mut self.st, msgs);
     }
 }
 

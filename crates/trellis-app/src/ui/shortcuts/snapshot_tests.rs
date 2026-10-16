@@ -82,3 +82,20 @@ fn commit_summary_takes_focus() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn sheet_shows_rebound_keys() {
+    use crate::keymap::{BindingId, Chord, KeyName};
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-rebound");
+    st.keymap.set(BindingId::Refresh, vec![Chord::cmd(KeyName::Letter('R'))]);
+    st.keymap.set(BindingId::NewTab, Vec::new());
+    st.modal = Some(Modal::Shortcuts { filter: String::new() });
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Ctrl+R").is_some(), "Refresh shows its new key");
+    assert!(h.query_by_label("F5").is_none(), "and not the old one");
+    assert!(h.query_by_label("No key").is_some(), "New tab has none");
+    drop(h);
+    remove_fixture(&dir);
+}

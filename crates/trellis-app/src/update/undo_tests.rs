@@ -62,7 +62,7 @@ fn cleanup(dirs: &[&Path]) {
 fn commit_then_undo_and_redo_end_to_end() {
     let (mut st, dir) = committed("undo-commit");
     assert_eq!(st.undo.undo.len(), 1);
-    assert!(st.undo.undo_tooltip().starts_with("Undo commit 'Second line'"), "{}", st.undo.undo_tooltip());
+    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Undo commit 'Second line'"), "{}", st.undo.undo_tooltip(&st.keymap));
 
     st.draft = Default::default();
     drive(&mut st, Msg::Job(JobMsg::Undo));
@@ -117,11 +117,11 @@ fn unrecorded_job_blocks_and_fetch_keeps_history() {
     done(&mut st, true);
     assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty());
     assert_eq!(st.undo.blocked.as_deref(), Some("Merge"));
-    assert!(st.undo.undo_tooltip().starts_with("Can't undo Merge"), "{}", st.undo.undo_tooltip());
+    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Can't undo Merge"), "{}", st.undo.undo_tooltip(&st.keymap));
 
     let fx = update(&mut st, Msg::Job(JobMsg::Undo), Instant::now());
     assert!(fx.is_empty());
-    assert_eq!(last_toast(&st), (false, st.undo.undo_tooltip()));
+    assert_eq!(last_toast(&st), (false, st.undo.undo_tooltip(&st.keymap)));
     cleanup(&[&dir]);
 }
 
@@ -287,7 +287,7 @@ fn discarded_file_comes_back_with_undo() {
     drive(&mut st, Msg::Stage(StageMsg::DiscardFile("a.txt".into())));
     assert_ne!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
     assert!(matches!(st.undo.undo.last(), Some(Action::Discard { path, .. }) if path == "a.txt"), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_tooltip(), format!("Undo discard in a.txt ({})", keys("Ctrl+Z")));
+    assert_eq!(st.undo.undo_tooltip(&st.keymap), format!("Undo discard in a.txt ({})", keys("Ctrl+Z")));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");

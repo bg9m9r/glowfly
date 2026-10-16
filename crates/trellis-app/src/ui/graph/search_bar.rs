@@ -2,7 +2,7 @@
 //! count and Close. It edits only the query and author filter text; everything else is a
 //! `SearchMsg` for update/search.rs.
 
-use crate::keymap::{self, BindingId};
+use crate::keymap::BindingId;
 use crate::msg::{Msg, SearchMsg};
 use crate::state::{AppState, Selection};
 use crate::ui::theme::color;
@@ -18,17 +18,6 @@ const CONTROLS_W: f32 = 430.0;
 
 /// The empty query field's hint, also its hover text while empty (a narrow graph clips it).
 const HINT: &str = "Search messages, authors and SHAs; narrow with author: or path:";
-
-/// Ctrl+F (Cmd+F) shows or hides the bar; Ctrl+Shift+F shows it and turns the filter on or off.
-pub(crate) fn find_keys(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    let (find, shift) = ctx.input(|i| (i.modifiers.command && i.key_pressed(Key::F), i.modifiers.shift));
-    if find {
-        st.view.show_search = shift || !st.view.show_search;
-        if shift {
-            msgs.push(Msg::Search(SearchMsg::ToggleFilter));
-        }
-    }
-}
 
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
@@ -57,7 +46,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             r.request_focus();
         }
 
-        let tip = format!("Show only matching commits ({})", keymap::hint(BindingId::SearchFilter));
+        let tip = st.keymap.tip("Show only matching commits", BindingId::SearchFilter);
         if ui.selectable_label(st.search.filter, "Filter").on_hover_text(tip).clicked() {
             msgs.push(Msg::Search(SearchMsg::ToggleFilter));
         }

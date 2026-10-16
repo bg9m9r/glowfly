@@ -20,6 +20,7 @@ mod files;
 mod forge;
 mod graph;
 mod init;
+mod keys;
 mod prefs;
 mod rebase;
 mod recent;
@@ -37,6 +38,7 @@ pub use files::{FilesMsg, WorkFileMsg, not_opened, restore_failed};
 pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
 pub use graph::{AvatarMsg, GraphMsg, PathsChunk, SearchMsg, SelectionMsg};
 pub use init::InitMsg;
+pub use keys::KeysMsg;
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use recent::{FolderCheck, RecentMsg};
@@ -118,6 +120,8 @@ pub enum Msg {
     Credentials(CredentialMsg),
     /// The Preferences window, pickers and signing keys (update/prefs.rs).
     Prefs(PrefsMsg),
+    /// Preferences > Keyboard: recording, conflicts and resets (update/keys.rs).
+    Keys(KeysMsg),
     /// The Git LFS preferences page (lfs.rs).
     Lfs(crate::lfs::LfsMsg),
     /// The Git Flow page and Start dialog (gitflow.rs).
@@ -135,7 +139,7 @@ pub enum Msg {
     /// Which git runs and what it can do; repositories git refuses for their owner
     /// (update/git_env.rs).
     GitEnv(crate::git_env::GitEnvMsg),
-    /// A key from ui/shortcuts.rs: stage or unstage the open file or its selected lines, stage
+    /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
     Shortcut(crate::keymap::KeyAction),
@@ -228,6 +232,7 @@ impl Msg {
             Msg::Publish(m) => m.on_inactive(),
             Msg::Credentials(m) => m.on_inactive(),
             Msg::Prefs(m) => m.on_inactive(),
+            Msg::Keys(m) => m.on_inactive(),
             Msg::Lfs(m) => m.on_inactive(),
             Msg::GitFlow(m) => m.on_inactive(),
             Msg::Sparse(m) => m.on_inactive(),

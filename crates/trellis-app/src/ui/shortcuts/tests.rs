@@ -38,7 +38,7 @@ fn harness(st: AppState, field: bool) -> H {
     let mut h = Harness::new_state(
         |ctx, k: &mut Keys| {
             // Like the shell: keys before the views draw.
-            super::keys(ctx, &k.st, &mut k.msgs);
+            super::input(ctx, &mut k.st, &mut k.msgs);
             if let Some((text, focus)) = k.field.as_mut() {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     let r = ui.text_edit_singleline(text);

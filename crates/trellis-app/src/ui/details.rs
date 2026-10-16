@@ -5,7 +5,7 @@ use super::common::{issue_chip, lane_color, menu_item, short, state_actions, sta
 use super::file_menu::{self, RowSource};
 use super::graph::draw_avatar;
 use super::theme::color;
-use crate::keymap::{BindingId, hint};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -79,9 +79,9 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
 
     let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / 2.0).max(80.0);
     let lfs = TrackContext::of(st);
-    file_list(ui, snap, false, &open, list_h, lfs, msgs);
+    file_list(ui, snap, false, &open, list_h, lfs, &st.keymap, msgs);
     ui.add_space(8.0);
-    file_list(ui, snap, true, &open, list_h, lfs, msgs);
+    file_list(ui, snap, true, &open, list_h, lfs, &st.keymap, msgs);
     super::commit_box::show(ui, st, cache, msgs);
 }
 
@@ -191,7 +191,17 @@ struct OpenFile<'a> {
 }
 
 /// The Unstaged or Staged Files list of the working tree.
-fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, lfs: TrackContext, msgs: &mut Vec<Msg>) {
+#[allow(clippy::too_many_arguments)]
+fn file_list(
+    ui: &mut egui::Ui,
+    snap: &Snapshot,
+    staged: bool,
+    open: &OpenFile,
+    max_h: f32,
+    lfs: TrackContext,
+    keys: &Keymap,
+    msgs: &mut Vec<Msg>,
+) {
     let (title, files) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
     // The Staged header's background opens its menu; registered before the header's buttons, so
     // they keep their own clicks.
@@ -204,14 +214,14 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
                 ui.add(egui::Label::new(text).selectable(false));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if staged {
-                        let tip = format!("Unstage every file ({})", hint(BindingId::UnstageAll));
+                        let tip = keys.tip("Unstage every file", BindingId::UnstageAll);
                         if !files.is_empty() && ui.small_button("Unstage all").on_hover_text(tip).clicked() {
                             msgs.push(Msg::Stage(StageMsg::UnstageAll));
                         }
                         return;
                     }
                     if !files.is_empty() {
-                        let tip = format!("Stage every changed file ({})", hint(BindingId::StageAll));
+                        let tip = keys.tip("Stage every changed file", BindingId::StageAll);
                         if ui.small_button("Stage all").on_hover_text(tip).clicked() {
                             msgs.push(Msg::Stage(StageMsg::StageAll));
                         }

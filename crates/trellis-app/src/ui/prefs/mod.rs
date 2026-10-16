@@ -7,6 +7,8 @@ mod general;
 mod git;
 mod gitflow;
 mod integrations;
+mod keyboard;
+mod keyboard_row;
 mod lfs;
 mod profile_setup;
 mod profiles;
@@ -106,6 +108,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let switching = st.profile_switch;
     let git_program = st.git.info.clone();
     let settings = &mut st.settings;
+    let keymap = &st.keymap;
     let Some(prefs) = st.prefs.as_mut() else { return };
     let fs = st.forge.as_ref();
     // Repository settings are keyed by where it really is (`settings::repo_keys`).
@@ -137,6 +140,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
                     PrefPage::Ui => appearance::ui_page(ui, settings, now, msgs),
                     PrefPage::Editor => editor::editor_page(ui, settings),
+                    PrefPage::Keyboard => keyboard::keyboard_page(ui, &mut prefs.keys, keymap, msgs),
                     PrefPage::Tools => tools::tools_page(ui, settings, msgs),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
@@ -168,6 +172,12 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
             if widgets::nav_row(ui, Some(icon), label, page == pg, 15.0).clicked()
                 && let Some(p) = st.prefs.as_mut()
             {
+                // A key being recorded or a warning belongs to the page it was on.
+                if p.page != pg {
+                    p.keys.recording = None;
+                    p.keys.pending = None;
+                    p.keys.confirm_reset_all = false;
+                }
                 p.page = pg;
             }
         };
@@ -179,6 +189,7 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         go(ui, PrefPage::Integrations, Icon::Plug, "Integrations");
         go(ui, PrefPage::Ui, Icon::Brush, "UI Customization");
         go(ui, PrefPage::Editor, Icon::Code, "Editor");
+        go(ui, PrefPage::Keyboard, Icon::Keyboard, "Keyboard");
         go(ui, PrefPage::Tools, Icon::Tools, "External Tools");
         go(ui, PrefPage::Signing, Icon::Key, "Commit Signing");
         // Not `go`: the page reads ~/.ssh when it opens.

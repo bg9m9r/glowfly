@@ -15,9 +15,11 @@ use eframe::egui::{self, Align, Color32, Key, Layout, Modifiers, RichText, vec2}
 /// Height the commit box needs below the file lists (the lists share what is left).
 pub(super) const RESERVED_HEIGHT: f32 = 340.0;
 
+/// The commit keys are fixed, so their defaults are the keys in effect.
 fn shortcuts_tip() -> String {
-    use crate::keymap::{BindingId, hint};
-    format!("{} commits from the message fields; {} stages all changes first.", hint(BindingId::Commit), hint(BindingId::StageAllAndCommit))
+    use crate::keymap::{BindingId, binding};
+    let key = |id| binding(id).defaults[0].text();
+    format!("{} commits from the message fields; {} stages all changes first.", key(BindingId::Commit), key(BindingId::StageAllAndCommit))
 }
 const PUSH_HINT: &str =
     "After a successful commit, push the branch. A branch with no upstream is pushed to the default remote and tracks it.";

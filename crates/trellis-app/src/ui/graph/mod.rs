@@ -9,7 +9,6 @@ mod search_bar;
 mod select;
 
 pub use paint::draw_avatar;
-pub(super) use search_bar::find_keys;
 
 use super::UiCache;
 use super::common::lane_color;

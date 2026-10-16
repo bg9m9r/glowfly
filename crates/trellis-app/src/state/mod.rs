@@ -17,6 +17,7 @@ pub mod git_env;
 pub mod gitflow;
 pub mod history;
 pub mod init;
+pub mod keys_page;
 pub mod known_folders;
 pub mod lfs;
 pub mod lines;
@@ -169,6 +170,8 @@ pub const MAX_COMMITS: usize = 200_000;
 
 pub struct AppState {
     pub settings: Settings,
+    /// The keys in effect: the defaults with `settings.keybindings` applied.
+    pub keymap: crate::keymap::Keymap,
     /// Settings as last saved, to detect edits made in Preferences.
     pub saved_settings: String,
     pub recent: Vec<PathBuf>,
@@ -282,8 +285,10 @@ impl AppState {
     pub fn new(settings: Settings, recent: Vec<PathBuf>, now: Instant) -> Self {
         let saved_settings = serde_json::to_string(&settings).unwrap_or_default();
         let watch = watch::WatchState { enabled: settings.watch_files, ..Default::default() };
-        Self {
+        let (keymap, key_problems) = crate::keymap::Keymap::from_overrides(&settings.keybindings);
+        let mut st = Self {
             settings,
+            keymap,
             saved_settings,
             recent,
             missing_repos: Vec::new(),
@@ -341,7 +346,12 @@ impl AppState {
             profile_switch_edits: Vec::new(),
             trust: Default::default(),
             view: ViewState::default(),
+        };
+        for p in key_problems {
+            tracing::warn!("{p}");
+            st.log(false, p);
         }
+        st
     }
 
     /// The generation of the diff on screen when its hunk indexes are current, i.e. no reload

@@ -6,7 +6,7 @@
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::TabsMsg;
-use crate::state::AppState;
+use crate::state::{AppState, Tab};
 use crate::terminal::TerminalMsg;
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::Harness;
@@ -30,16 +30,10 @@ struct Keys {
 }
 
 fn harness() -> Harness<'static, Keys> {
-    let st = AppState::new(Settings::default(), Vec::new(), Instant::now());
-    let mut h = Harness::new_state(
-        |ctx, k: &mut Keys| {
-            super::keys(ctx, &k.st, &mut k.msgs);
-            crate::ui::terminal::shortcut(ctx, &k.st, &mut k.msgs);
-            super::tab_keys(ctx, 3, &mut k.msgs);
-            super::undo_keys(ctx, &mut k.msgs);
-        },
-        Keys { st, msgs: Vec::new() },
-    );
+    let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+    // Three tabs, so the last one is tab 2.
+    st.tabs = vec![Tab::empty(), Tab::empty(), Tab::empty()];
+    let mut h = Harness::new_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
     h.run();
     h
 }

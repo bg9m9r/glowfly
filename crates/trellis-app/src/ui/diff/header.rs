@@ -3,7 +3,7 @@
 //! toggles, Expand all / Collapse all for whole-file folds, and the whitespace and wrap
 //! toggles.
 
-use crate::keymap::{self, BindingId};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -65,6 +65,7 @@ pub(super) fn header_bar(
     nav: [StepKind; 2],
     toggles: Toggles,
     folds: Option<FoldCounts>,
+    keys: &Keymap,
     msgs: &mut Vec<Msg>,
 ) {
     let folds = folds.filter(|_| matches!(rows, Some((_, DiffMode::WholeFile))));
@@ -91,15 +92,19 @@ pub(super) fn header_bar(
             }
             match target {
                 DiffTarget::Unstaged(p) => {
-                    let k = keymap::hint(BindingId::Stage);
-                    let tip = format!("Stage this file ({k}). With lines selected, {k} stages only those lines.");
+                    let tip = match keys.hint(BindingId::Stage) {
+                        Some(k) => format!("Stage this file ({k}). With lines selected, {k} stages only those lines."),
+                        None => "Stage this file".to_owned(),
+                    };
                     if ui.button("Stage file").on_hover_text(tip).clicked() {
                         msgs.push(Msg::Stage(StageMsg::StageFile(p.clone())));
                     }
                 }
                 DiffTarget::Staged(p) => {
-                    let k = keymap::hint(BindingId::Unstage);
-                    let tip = format!("Unstage this file ({k}). With lines selected, {k} unstages only those lines.");
+                    let tip = match keys.hint(BindingId::Unstage) {
+                        Some(k) => format!("Unstage this file ({k}). With lines selected, {k} unstages only those lines."),
+                        None => "Unstage this file".to_owned(),
+                    };
                     if ui.button("Unstage file").on_hover_text(tip).clicked() {
                         msgs.push(Msg::Stage(StageMsg::UnstageFile(p.clone())));
                     }
@@ -276,7 +281,7 @@ mod tests {
         let folds = Some(FoldCounts { open: 1, closed: 1 });
         let rows = Some((DiffLayout::Inline, DiffMode::WholeFile));
         let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, folds, &mut Vec::new());
+            header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, folds, &Keymap::default(), &mut Vec::new());
         });
         h.run();
         let top = |label: &str| h.get_by_label(label).bounding_box().expect("laid out").y0;
@@ -298,7 +303,7 @@ mod tests {
         let target = DiffTarget::Unstaged("notes.txt".into());
         let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
         let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui_state(
-            |ui, msgs: &mut Vec<Msg>| header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, msgs),
+            |ui, msgs: &mut Vec<Msg>| header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), msgs),
             Vec::new(),
         );
         h.run();
@@ -308,7 +313,7 @@ mod tests {
 
         let no_rows = Toggles { ignore_ws: Some(false), wrap: None };
         let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, None, None, [StepKind::End; 2], no_rows, None, &mut Vec::new());
+            header_bar(ui, &target, None, None, [StepKind::End; 2], no_rows, None, &Keymap::default(), &mut Vec::new());
         });
         h.run();
         assert!(h.query_by_label(WRAP).is_none(), "no rows, no wrap toggle");
@@ -323,7 +328,7 @@ mod tests {
         let file = CommitFile { oid, path: "notes.txt", status: 'M', open_path: "notes.txt", in_workdir: true };
         let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
         let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, Some(&file), rows, [StepKind::Change; 2], TOGGLES, None, &mut Vec::new());
+            header_bar(ui, &target, Some(&file), rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), &mut Vec::new());
         });
         h.run();
         let rect = |label: &str| h.get_by_label(label).bounding_box().expect("laid out");

@@ -354,3 +354,19 @@ fn desktop_notifications_default_off() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
     assert!(back.desktop_notifications);
 }
+
+#[test]
+fn keybindings_default_and_roundtrip() {
+    // Files written before shortcuts could be changed load with every key at its default.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.keybindings.is_empty());
+    assert!(Settings::default().keybindings.is_empty());
+    let mut keys = BTreeMap::new();
+    keys.insert("refresh".to_owned(), vec!["Mod+R".to_owned(), "F5".to_owned()]);
+    keys.insert("new-tab".to_owned(), Vec::new());
+    let s = Settings { keybindings: keys.clone(), ..Settings::default() };
+    let text = serde_json::to_string(&s).unwrap();
+    assert!(text.find("\"new-tab\"") < text.find("\"refresh\""), "written in key order: {text}");
+    let back: Settings = serde_json::from_str(&text).unwrap();
+    assert_eq!(back.keybindings, keys);
+}

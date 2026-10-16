@@ -34,6 +34,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let stage_renames = st.settings.stage_renames;
     let push_tags = st.settings.push_new_tags;
     let connections = &st.settings.connections;
+    let keys = &st.keymap;
     let mut close = false;
     let first = msgs.len();
     let resp = egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
@@ -176,7 +177,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             }
             Modal::Shortcuts { filter } => {
-                if super::shortcuts::sheet(ui, filter, !prompting) {
+                if super::shortcuts::sheet(ui, filter, !prompting, keys) {
                     close = true;
                 }
             }

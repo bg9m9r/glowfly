@@ -200,7 +200,7 @@ fn palette_ignores_keys_under_a_credential_prompt() {
 fn shortcut_toggles() {
     let st = AppState::new(super::snapshot_tests::settings(ThemeChoice::Dark), Vec::new(), std::time::Instant::now());
     let mut h = Harness::builder()
-        .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| super::palette::shortcut(ctx, st, msgs), (st, Vec::new()));
+        .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| super::shortcuts::input(ctx, st, msgs), (st, Vec::new()));
     h.press_key_modifiers(Modifiers::COMMAND, Key::P);
     h.run();
     assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Palette(PaletteMsg::TogglePalette))).count(), 1);

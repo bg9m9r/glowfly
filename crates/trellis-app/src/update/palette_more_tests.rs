@@ -69,12 +69,12 @@ fn undo_redo_entries_follow_history() {
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Checkout("topic".into()))));
     let undo = find(&st, "Undo").expect("Undo");
     assert_eq!(undo.detail.as_deref(), Some("checkout of topic"));
-    assert_eq!(undo.shortcut, Some(keys("Ctrl+Z").as_str()));
+    assert_eq!(undo.shortcut(&st.keymap), Some(keys("Ctrl+Z").as_str()));
 
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Undo)));
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("main"));
     let redo = find(&st, "Redo").expect("Redo");
-    assert_eq!(redo.shortcut, Some(keys("Ctrl+Y").as_str()));
+    assert_eq!(redo.shortcut(&st.keymap), Some(keys("Ctrl+Y").as_str()));
 
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Redo)));
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("topic"));
@@ -103,7 +103,7 @@ fn rename_branch_entry() {
 #[test]
 fn refresh_entry() {
     let (mut st, dir) = repo_with_topic("palette-more-refresh");
-    assert_eq!(find(&st, "Refresh").expect("Refresh").shortcut, Some("F5"));
+    assert_eq!(find(&st, "Refresh").expect("Refresh").shortcut(&st.keymap), Some("F5"));
     open_palette(&mut st);
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Refresh)));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
@@ -135,7 +135,7 @@ fn terminal_and_file_manager_entries() {
 fn terminal_panel_entry_toggles() {
     let (mut st, dir) = repo_with_topic("palette-more-panel");
     let show = find(&st, "Show terminal panel").expect("Show terminal panel");
-    assert_eq!(show.shortcut, Some("Ctrl+`"));
+    assert_eq!(show.shortcut(&st.keymap), Some("Ctrl+`"));
     assert!(matches(&st, "integrated", "Show terminal panel"));
 
     open_palette(&mut st);
@@ -154,7 +154,7 @@ fn terminal_panel_entry_toggles() {
 #[test]
 fn tab_entries() {
     let mut st = state();
-    assert_eq!(find(&st, "New tab").expect("New tab").shortcut, Some(keys("Ctrl+T").as_str()));
+    assert_eq!(find(&st, "New tab").expect("New tab").shortcut(&st.keymap), Some(keys("Ctrl+T").as_str()));
     assert!(!has(&st, "Reopen closed tab"));
     open_palette(&mut st);
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::NewTab)));
@@ -165,7 +165,7 @@ fn tab_entries() {
     st.closed_tabs = vec!["C:/work/old-repo".into()];
     let reopen = find(&st, "Reopen closed tab").expect("Reopen closed tab");
     assert_eq!(reopen.detail.as_deref(), Some("old-repo"));
-    assert_eq!(reopen.shortcut, Some(keys("Ctrl+Shift+T").as_str()));
+    assert_eq!(reopen.shortcut(&st.keymap), Some(keys("Ctrl+Shift+T").as_str()));
 
     let dir = scratch_repo("palette-more-reopen");
     st.closed_tabs = vec![dir.clone()];

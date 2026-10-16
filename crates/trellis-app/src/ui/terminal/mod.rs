@@ -12,21 +12,7 @@ use crate::terminal::TerminalMsg;
 use crate::ui::theme::color;
 use eframe::egui::{self, Align, FontSelection, Layout, RichText, text::LayoutJob};
 
-const HIDE_TIP: &str = "Hide the terminal panel (Ctrl+`)";
 const KILL_TIP: &str = "Stop the shell and everything running in it";
-
-/// Ctrl+` (Ctrl on every system) shows or hides the panel, also while the terminal has the
-/// keyboard. Preferences, dialogs and the palette keep it.
-pub fn shortcut(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
-    if st.prefs.is_some() || st.modal.is_some() || st.askpass.showing() || st.palette.is_some() {
-        return;
-    }
-    ctx.input_mut(|i| {
-        if super::shortcuts::pressed(i, crate::keymap::BindingId::ToggleTerminal) {
-            msgs.push(Msg::Terminal(TerminalMsg::Toggle));
-        }
-    });
-}
 
 /// Draws the panel while it is open and a repository is.
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -57,7 +43,11 @@ fn header(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         RichText::new(subtitle(program, tab)).color(color::weak()).append_to(&mut job, ui.style(), FontSelection::Default, Align::Center);
         ui.label(job);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.small_button("Hide").on_hover_text(HIDE_TIP).clicked() {
+            if ui
+                .small_button("Hide")
+                .on_hover_text(st.keymap.tip("Hide the terminal panel", crate::keymap::BindingId::ToggleTerminal))
+                .clicked()
+            {
                 msgs.push(Msg::Terminal(TerminalMsg::Hide));
             }
             match session {

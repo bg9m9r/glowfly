@@ -23,6 +23,7 @@ mod highlight;
 mod history;
 mod init;
 mod jobs;
+mod keys;
 mod lfs;
 mod notify;
 mod ops;
@@ -132,6 +133,8 @@ mod highlight_tests;
 mod history_tests;
 #[cfg(test)]
 mod init_tests;
+#[cfg(test)]
+mod keys_tests;
 #[cfg(test)]
 mod language_override_tests;
 #[cfg(test)]
@@ -323,6 +326,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Publish(m) => publish::handle(st, m, &mut fx),
         Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),
         Msg::Prefs(m) => prefs::handle(st, m, now, &mut fx),
+        Msg::Keys(m) => keys::handle(st, m, &mut fx),
         Msg::Lfs(m) => lfs::handle(st, m, now, &mut fx),
         Msg::GitFlow(m) => gitflow::handle(st, m, now, &mut fx),
         Msg::Sparse(m) => sparse::handle(st, m, now, &mut fx),

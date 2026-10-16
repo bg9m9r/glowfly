@@ -1,8 +1,8 @@
-//! The newer keyboard shortcuts. `ui/shortcuts.rs` matches the keys; this file decides whether
-//! each applies now and sends the message the buttons already use: S/U stage or unstage the
-//! open working-tree file (its selected lines, when a selection is visible), Ctrl+Shift+S/U
-//! stage or unstage everything, Ctrl+Shift+M goes to the commit message, and Ctrl+/ opens or
-//! closes the shortcut sheet.
+//! The staging, commit-message and sheet keys. `ui/shortcuts/global.rs` matches the keys; this
+//! file decides whether each applies now and sends the message the buttons already use: S/U
+//! stage or unstage the open working-tree file (its selected lines, when a selection is
+//! visible), Ctrl+Shift+S/U stage or unstage everything, Ctrl+Shift+M goes to the commit
+//! message, and Ctrl+/ opens or closes the shortcut sheet (the default keys).
 
 use crate::effect::Effect;
 use crate::keymap::KeyAction;

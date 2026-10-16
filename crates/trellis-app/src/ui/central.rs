@@ -1,6 +1,5 @@
 //! The central area: which view fills it (welcome, conflict, blame, file history, diff, the
-//! rebase and Git Flow panels, or the graph), and the keys that act on those views (the Esc
-//! chain and change stepping).
+//! rebase and Git Flow panels, or the graph), and the Esc chain that closes them.
 
 use super::UiCache;
 use super::theme::color;
@@ -22,7 +21,7 @@ use eframe::egui::{self, Key};
 /// editor first), the Git Flow panel, then a multi-selection, and finally the search bar.
 /// Dialogs (a credential prompt included) and the command palette handle Esc themselves. In a
 /// text field Esc only leaves the field, and in the terminal it goes to the shell.
-pub(super) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !ctx.input(|i| i.key_pressed(Key::Escape))
         || st.modal.is_some()
         || st.askpass.showing()
@@ -53,23 +52,6 @@ pub(super) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     } else {
         st.view.show_search = false;
     }
-}
-
-/// F7 / Shift+F7 and Alt+Down / Alt+Up: the next (1) or previous (-1) change in the open diff
-/// (at either end, continuing into the next or previous changed file), or conflict in the
-/// conflict view.
-pub(super) fn step_shortcuts(ctx: &egui::Context) -> Option<isize> {
-    use egui::Modifiers;
-    ctx.input_mut(|i| {
-        // Shift first: consume_key ignores extra Shift, so F7 would also match Shift+F7.
-        if i.consume_key(Modifiers::SHIFT, Key::F7) || i.consume_key(Modifiers::ALT, Key::ArrowUp) {
-            Some(-1)
-        } else if i.consume_key(Modifiers::NONE, Key::F7) || i.consume_key(Modifiers::ALT, Key::ArrowDown) {
-            Some(1)
-        } else {
-            None
-        }
-    })
 }
 
 /// The central panel: the welcome screen without a repository, else the innermost view open

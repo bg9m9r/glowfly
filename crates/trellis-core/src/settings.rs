@@ -2,7 +2,7 @@
 
 use crate::forge::{Account, Connection};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::ops::RangeInclusive;
 
 mod column_widths;
@@ -243,6 +243,12 @@ pub struct Settings {
     /// Ask for OpenPGP signing passphrases in Trellis rather than GnuPG's own window
     /// (Preferences > Commit Signing).
     pub gpg_prompts_in_app: bool,
+    /// Keyboard shortcuts the user changed (Preferences > Keyboard): a binding's stable id
+    /// ("new-tab") -> its keys as text ("Mod+Shift+N"; Mod is Ctrl, or Cmd on macOS). An empty list
+    /// leaves the action without a key; ids not listed keep their defaults. The app's keymap
+    /// ignores what it can't use.
+    #[serde(default)]
+    pub keybindings: BTreeMap<String, Vec<String>>,
 }
 
 impl Default for Settings {
@@ -297,6 +303,7 @@ impl Default for Settings {
             active_profile: None,
             use_ssh_agent: false,
             gpg_prompts_in_app: true,
+            keybindings: BTreeMap::new(),
         }
     }
 }

@@ -16,20 +16,6 @@ const ROW_H: f32 = 28.0;
 const LIST_MAX_H: f32 = 360.0;
 const LABEL_SIZE: f32 = 13.5;
 
-/// Ctrl+P or Ctrl+Shift+P (Cmd on macOS) opens or closes the palette. Works while a text field
-/// has focus; does nothing under Preferences, a dialog or a credential prompt.
-pub fn shortcut(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
-    if st.prefs.is_some() || st.modal.is_some() || st.askpass.showing() {
-        return;
-    }
-    ctx.input_mut(|i| {
-        // Shift first: consume_key ignores extra Shift, so Ctrl+P would also match Ctrl+Shift+P.
-        if i.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::P) || i.consume_key(Modifiers::COMMAND, Key::P) {
-            msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
-        }
-    });
-}
-
 /// Draws the open palette. A credential prompt above it keeps the keyboard.
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(p) = st.palette.as_ref() else { return };
@@ -156,7 +142,8 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
         for (i, shown) in list.iter().enumerate() {
             let selected = sel == Some(i);
             let e = &shown.entry;
-            let r = row(ui, &e.label, e.detail.as_deref(), e.shortcut, &shown.matched, 0, selected);
+            let key = e.shortcut(&st.keymap);
+            let r = row(ui, &e.label, e.detail.as_deref(), key, &shown.matched, 0, selected);
             if r.clicked() {
                 msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(shown.entry.command.clone())));
             }

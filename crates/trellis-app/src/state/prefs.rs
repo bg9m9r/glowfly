@@ -11,6 +11,8 @@ pub enum PrefPage {
     Ui,
     /// Diff text: font size, tab size, line numbers, syntax and word highlights.
     Editor,
+    /// Keyboard shortcuts: changing, adding and removing keys.
+    Keyboard,
     /// External editor and terminal programs.
     Tools,
     Signing,
@@ -32,6 +34,7 @@ impl PrefPage {
             PrefPage::Integrations => "Integrations",
             PrefPage::Ui => "UI Customization",
             PrefPage::Editor => "Editor",
+            PrefPage::Keyboard => "Keyboard Shortcuts",
             PrefPage::Tools => "External Tools",
             PrefPage::Signing => "Commit Signing",
             PrefPage::Ssh => "SSH",
@@ -145,6 +148,7 @@ pub struct PrefsState {
     pub sparse: crate::state::sparse::SparsePage,
     pub ssh: crate::state::ssh::SshPage,
     pub profiles: crate::state::profiles::ProfilesPage,
+    pub keys: crate::state::keys_page::KeysPage,
 }
 
 impl PrefsState {
@@ -165,6 +169,7 @@ impl PrefsState {
             sparse: Default::default(),
             ssh: Default::default(),
             profiles: Default::default(),
+            keys: Default::default(),
         }
     }
 }

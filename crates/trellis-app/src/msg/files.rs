@@ -45,9 +45,9 @@ impl FilesMsg {
             | Self::ShowWorkingFile(..)
             | Self::FileRestored { result: Ok(_), undo: None, .. } => None,
             Self::FileRestored { result: Ok(_), undo: Some(a), .. } => Some(Inactive::Undo(a)),
-            Self::FileRestored { path, result: Err(e), undo: None, .. } => Some(Inactive::Log(restore_failed(&path, &e, false))),
+            Self::FileRestored { path, result: Err(e), undo: None, .. } => Some(Inactive::Log(restore_failed(&path, &e, false, None))),
             Self::FileRestored { path, result: Err(e), undo: Some(a), .. } => {
-                Some(Inactive::LogAndUndo { text: restore_failed(&path, &e, true), undo: a })
+                Some(Inactive::LogAndUndo { text: restore_failed(&path, &e, true, None), undo: a })
             }
             Self::RestoreWouldOverwrite { path, reason, .. } => Some(Inactive::Log(format!("Did not restore {path}: {reason}."))),
             Self::OpenNeedsConfirm { path, kind, .. } => Some(Inactive::Log(not_opened(&path, kind))),
@@ -56,12 +56,12 @@ impl FilesMsg {
 }
 
 /// The log line for a restore of `path` that failed with `e`; `undoable` when it changed the
-/// file anyway and recorded an undo entry.
-pub fn restore_failed(path: &str, e: &str, undoable: bool) -> String {
-    let undo = if undoable {
-        format!(". Undo ({}) puts back what it held before.", crate::keymap::hint(crate::keymap::BindingId::Undo))
-    } else {
-        String::new()
+/// file anyway and recorded an undo entry, which `undo_key` (if Undo has one) runs.
+pub fn restore_failed(path: &str, e: &str, undoable: bool, undo_key: Option<&str>) -> String {
+    let undo = match (undoable, undo_key) {
+        (false, _) => String::new(),
+        (true, Some(k)) => format!(". Undo ({k}) puts back what it held before."),
+        (true, None) => ". Undo puts back what it held before.".to_owned(),
     };
     format!("Could not restore {path}: {e}{undo}")
 }

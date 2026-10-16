@@ -69,7 +69,7 @@ binary (package `trellis`).
 | `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |
 | `watcher.rs` | The file watcher for the active tab's repository, owned by the runner. |
 | `platform.rs` | OS integration: recent repositories and which listed folders are missing, open tabs, terminals, the file manager. |
-| `keymap.rs` | The keyboard binding table, shared by shortcuts, the palette and tooltips. |
+| `keymap/` | The binding table (`table.rs`), chords and their text and file forms (`chord.rs`), the effective keymap with the user's overrides (`active.rs`) and the rebinding rules (`rebind.rs`); shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard. |
 | `ui/` | egui views, one file or folder per region (the Clone dialog in `clone_dialog.rs` and `clone_service.rs`, the Init dialog in `init_dialog.rs`), plus snapshot tests (`snapshot_tests*.rs`). `ui/mod.rs` is the shell: it owns the runner and dispatches messages; `central.rs` holds the central-area routing (which view fills it) and the Esc chain. |
 
 ### Tests outside `src/`

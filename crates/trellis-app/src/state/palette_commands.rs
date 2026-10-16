@@ -1,5 +1,5 @@
 //! The command palette's commands: which are available now, their labels, hidden keywords,
-//! details and the global keys that do the same (from the binding table in `keymap.rs`).
+//! details and the global keys that do the same (their current keys come from the effective keymap, `keymap/active.rs`).
 
 use super::palette_kinds::StashAction;
 use super::{AppState, Selection};
@@ -149,13 +149,8 @@ pub enum PaletteCommand {
 }
 
 impl PaletteCommand {
-    /// The key that does the same thing, from the binding table.
-    pub fn shortcut(&self) -> Option<&'static str> {
-        self.binding().map(crate::keymap::hint)
-    }
-
-    /// The binding in `keymap.rs` that does the same thing.
-    fn binding(&self) -> Option<BindingId> {
+    /// The binding that does the same thing; the palette shows its current key.
+    pub(crate) fn binding(&self) -> Option<BindingId> {
         use PaletteCommand as C;
         Some(match self {
             C::SearchCommits => BindingId::Search,
@@ -182,13 +177,18 @@ pub struct Entry {
     pub detail: Option<String>,
     /// Hidden words that also match the entry.
     pub keywords: &'static str,
-    /// The global key that does the same, drawn dim at the far right.
-    pub shortcut: Option<&'static str>,
+}
+
+impl Entry {
+    /// The key that does the same as this entry, as `keys` has it now; drawn dim at the far
+    /// right of the row.
+    pub fn shortcut<'k>(&self, keys: &'k crate::keymap::Keymap) -> Option<&'k str> {
+        self.command.binding().and_then(|id| keys.hint(id))
+    }
 }
 
 pub(super) fn entry(command: PaletteCommand, label: impl Into<String>, keywords: &'static str) -> Entry {
-    let shortcut = command.shortcut();
-    Entry { command, label: label.into(), detail: None, keywords, shortcut }
+    Entry { command, label: label.into(), detail: None, keywords }
 }
 
 pub(super) fn with_detail(mut e: Entry, detail: Option<String>) -> Entry {

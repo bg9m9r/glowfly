@@ -1,0 +1,113 @@
+//! The rebinding rules: which places overlap, folding Ctrl into Mod, which keys are refused,
+//! clashes with fixed and rebindable bindings, Swap, Add and Reset.
+
+use super::rebind::Refusal;
+use super::*;
+
+use BindingId as I;
+use KeyName as K;
+
+const WHENS: [When; 10] = [
+    When::Anywhere,
+    When::NotTyping,
+    When::WorkingDiff,
+    When::DiffOrConflict,
+    When::Message,
+    When::Lists,
+    When::Search,
+    When::InPalette,
+    When::PaletteStep,
+    When::Dialog,
+];
+
+#[test]
+fn overlaps_is_symmetric() {
+    for a in WHENS {
+        assert!(a.overlaps(a), "{a:?}");
+        for b in WHENS {
+            assert_eq!(a.overlaps(b), b.overlaps(a), "{a:?} {b:?}");
+        }
+    }
+    assert!(When::Anywhere.overlaps(When::Message));
+    assert!(!When::NotTyping.overlaps(When::Message));
+    assert!(When::WorkingDiff.overlaps(When::DiffOrConflict));
+    assert!(When::InPalette.overlaps(When::PaletteStep));
+    assert!(!When::Search.overlaps(When::Dialog));
+    assert!(!When::Lists.overlaps(When::InPalette));
+}
+
+#[test]
+fn folding_ctrl() {
+    let (pc, mac) = (Chord::ctrl(K::Tab), Chord::cmd(K::Tab));
+    assert!(same_keys(pc, mac, true));
+    assert!(!same_keys(pc, mac, false));
+    assert!(!same_keys(Chord::cmd(K::Tab), Chord::cmd_shift(K::Tab), true));
+    assert!(!same_keys(Chord::plain(K::Up), Chord::alt(K::Up), true));
+}
+
+fn keys() -> Keymap {
+    Keymap::default()
+}
+
+#[test]
+fn check_same_and_refused() {
+    let k = keys();
+    assert_eq!(check(&k, I::NewTab, Chord::cmd(K::Letter('T')), true), Check::Same);
+    for c in [
+        Chord::plain(K::Enter),
+        Chord::shift(K::Tab),
+        Chord::plain(K::Escape),
+        Chord::cmd(K::Escape),
+        Chord::plain(K::Space),
+        Chord::plain(K::Up),
+    ] {
+        assert_eq!(check(&k, I::Refresh, c, true), Check::Refused(Refusal::Reserved), "{c:?}");
+    }
+    assert_eq!(check(&k, I::Refresh, Chord::cmd(K::Letter('C')), true), Check::Refused(Refusal::ClipboardKey));
+    assert_eq!(check(&k, I::Undo, Chord::cmd(K::Letter('V')), true), Check::Refused(Refusal::ClipboardKey));
+    assert_eq!(check(&k, I::Palette, Chord::plain(K::Letter('P')), true), Check::Refused(Refusal::NeedsModifier));
+    assert_eq!(check(&k, I::Palette, Chord::shift(K::Comma), true), Check::Refused(Refusal::NeedsModifier));
+    assert_eq!(check(&k, I::Undo, Chord::plain(K::Letter('Z')), true), Check::Ok, "NotTyping takes plain keys");
+    assert_eq!(check(&k, I::Refresh, Chord::plain(K::F(9)), true), Check::Ok, "F-keys need no modifier");
+    assert_eq!(check(&k, I::Refresh, Chord::plain(K::Delete), true), Check::Ok);
+}
+
+#[test]
+fn check_clashes() {
+    let k = keys();
+    assert_eq!(check(&k, I::Refresh, Chord::cmd(K::Digit(3)), true), Check::Clash { other: I::GoToTab, fixed: true });
+    assert_eq!(check(&k, I::Palette, Chord::cmd(K::Enter), true), Check::Clash { other: I::Commit, fixed: true });
+    assert_eq!(check(&k, I::Undo, Chord::cmd(K::Enter), true), Check::Ok, "the commit message is a text field");
+    assert_eq!(check(&k, I::Refresh, Chord::cmd(K::Letter('T')), true), Check::Clash { other: I::NewTab, fixed: false });
+    assert_eq!(check(&k, I::Stage, Chord::cmd(K::Letter('Z')), true), Check::Clash { other: I::Undo, fixed: false });
+}
+
+#[test]
+fn swap() {
+    let k = keys();
+    assert_eq!(swap_chord(&k, I::Refresh, Slot::Replace(0), I::NewTab, true), Some(Chord::plain(K::F(5))));
+    assert_eq!(swap_chord(&k, I::Refresh, Slot::Add, I::NewTab, true), None);
+    assert_eq!(swap_chord(&k, I::Stage, Slot::Replace(0), I::Palette, true), None, "S can't open the palette while typing");
+}
+
+#[test]
+fn apply_to_a_slot() {
+    let k = keys();
+    let f9 = Chord::plain(K::F(9));
+    let (p, sp) = (Chord::cmd(K::Letter('P')), Chord::cmd_shift(K::Letter('P')));
+    assert_eq!(apply(&k, I::Palette, Slot::Replace(1), f9), [p, f9]);
+    assert_eq!(apply(&k, I::Palette, Slot::Add, f9), [p, sp, f9]);
+}
+
+#[test]
+fn reset_takes_its_keys_back() {
+    let mut k = keys();
+    let t = Chord::cmd(K::Letter('T'));
+    k.set(I::NewTab, Vec::new());
+    k.set(I::Refresh, vec![t, Chord::plain(K::F(5))]);
+    let taken = reset_taking(&mut k, I::NewTab, true);
+    assert_eq!(taken, [(I::Refresh, t)]);
+    assert_eq!(k.chords(I::NewTab), [t]);
+    assert_eq!(k.chords(I::Refresh), [Chord::plain(K::F(5))]);
+    assert!(reset_taking(&mut k, I::NewTab, true).is_empty());
+}

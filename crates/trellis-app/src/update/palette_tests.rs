@@ -320,7 +320,7 @@ fn new_tag_msg_opens_modal() {
 fn shortcut_hints() {
     let (st, dir) = repo_with_topic("palette-hints");
     let list = shown(&st, "");
-    let hint = |label: &str| list.iter().find(|s| s.entry.label == label).map(|s| s.entry.shortcut).expect(label);
+    let hint = |label: &str| list.iter().find(|s| s.entry.label == label).map(|s| s.entry.shortcut(&st.keymap)).expect(label);
     assert_eq!(hint("Search commits"), Some(keys("Ctrl+F").as_str()));
     assert_eq!(hint("Close tab"), Some(keys("Ctrl+W").as_str()));
     assert_eq!(hint("Open Preferences"), Some(keys("Ctrl+,").as_str()));
@@ -332,6 +332,6 @@ fn shortcut_hints() {
         assert_eq!(hint(label), None, "{label}");
     }
     // F5 refreshes; it doesn't fetch.
-    assert_eq!(PaletteCommand::Fetch.shortcut(), None);
+    assert_eq!(PaletteCommand::Fetch.binding(), None);
     let _ = std::fs::remove_dir_all(&dir);
 }

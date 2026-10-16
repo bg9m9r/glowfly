@@ -246,13 +246,13 @@ fn the_bar_sends_search_messages() {
     remove_fixture(&dir);
 }
 
-/// A harness that also runs the find keys, as the app's input handling does.
+/// A harness that also runs the shortcuts, as the app's input handling does.
 fn keys_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut cache: Option<UiCache> = None;
     Harness::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
-            super::graph::find_keys(ctx, st, msgs);
+            super::shortcuts::input(ctx, st, msgs);
             let cache = cache.get_or_insert_with(|| UiCache {
                 avatars: Avatars::default(),
                 speller: Speller::new(),

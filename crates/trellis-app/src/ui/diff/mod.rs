@@ -113,7 +113,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs
         };
         let toggles =
             header::Toggles { ignore_ws: (!diff.binary).then_some(ignore_ws), wrap: has_rows.then_some(st.settings.diff_word_wrap) };
-        header::header_bar(ui, target, commit_file.as_ref(), rows, nav, toggles, fold_counts, msgs);
+        header::header_bar(ui, target, commit_file.as_ref(), rows, nav, toggles, fold_counts, &st.keymap, msgs);
         ui.separator();
         if diff.binary {
             ui.label(RichText::new("Binary file not shown.").color(color::weak()));

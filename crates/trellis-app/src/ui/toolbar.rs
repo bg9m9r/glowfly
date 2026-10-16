@@ -3,7 +3,7 @@
 use super::common::{caret_after, menu_item, short};
 use super::theme::color;
 use super::widgets::{self, Icon};
-use crate::keymap::{self, BindingId};
+use crate::keymap::BindingId;
 use crate::msg::BranchMsg;
 use crate::msg::CloneMsg;
 use crate::msg::ForgeMsg;
@@ -66,10 +66,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 
                 ui.add_space(52.0);
                 let idle = st.job.is_none();
-                if tool(ui, Icon::Undo, "Undo", idle && !st.undo.undo.is_empty()).on_hover_text(st.undo.undo_tooltip()).clicked() {
+                if tool(ui, Icon::Undo, "Undo", idle && !st.undo.undo.is_empty()).on_hover_text(st.undo.undo_tooltip(&st.keymap)).clicked()
+                {
                     msgs.push(Msg::Job(JobMsg::Undo));
                 }
-                if tool(ui, Icon::Redo, "Redo", idle && !st.undo.redo.is_empty()).on_hover_text(st.undo.redo_tooltip()).clicked() {
+                if tool(ui, Icon::Redo, "Redo", idle && !st.undo.redo.is_empty()).on_hover_text(st.undo.redo_tooltip(&st.keymap)).clicked()
+                {
                     msgs.push(Msg::Job(JobMsg::Redo));
                 }
                 ui.add_space(6.0);
@@ -135,18 +137,15 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
 
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if tool(ui, Icon::Gear, "Settings", true)
-                        .on_hover_text(format!("Preferences ({})", keymap::hint(BindingId::Prefs)))
-                        .clicked()
-                    {
+                    if tool(ui, Icon::Gear, "Settings", true).on_hover_text(st.keymap.tip("Preferences", BindingId::Prefs)).clicked() {
                         msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
                     }
                     let pal = tool(ui, Icon::Palette, "Commands", true);
                     pal.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Command palette"));
-                    if pal.on_hover_text(format!("Command palette ({})", keymap::hint(BindingId::Palette))).clicked() {
+                    if pal.on_hover_text(st.keymap.tip("Command palette", BindingId::Palette)).clicked() {
                         msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
                     }
-                    if tool(ui, Icon::Search, "Search", true).on_hover_text(keymap::hint(BindingId::Search)).clicked() {
+                    if tool(ui, Icon::Search, "Search", true).on_hover_text(st.keymap.tip("Search commits", BindingId::Search)).clicked() {
                         st.view.show_search = !st.view.show_search;
                     }
                     if tool(ui, Icon::Activity, "Activity", true).clicked() {

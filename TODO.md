@@ -486,7 +486,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     External Tools, opened from file rows and the diff header
   - [ ] External merge tool: program and arguments ({base}, {ours}, {theirs}, {output}), and the
     conflict view's Resolve in an external merge tool
-- [ ] **Rebind keyboard shortcuts**
+- [x] **Rebind keyboard shortcuts**
   Rebind keys in Preferences, saved in settings and matched through the shortcut table, with
   conflict detection and reset to default.
 - [x] **GPG passphrase prompts**
@@ -899,11 +899,23 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - Topological next/previous (the next or previous commit on the selected commit's own branch
   line) and first/last row in the graph
-- Match the older keys (tabs, undo/redo, F5, Ctrl+F, Ctrl+, , F7/Alt+arrows, the palette's
-  keys) through the table too, so it is checked rather than kept in step by hand
 - A visible way to the shortcut sheet (a toolbar, status bar or Help entry naming Ctrl+/)
 - S in the WIP file lists (keyboard focus in the lists, Up/Down between files), and moving on
   to the next unstaged file after S stages the open one
+
+### Rebind keyboard shortcuts
+
+- Keys for palette commands that have none yet (fetch, pull, push, create branch…), assignable
+  on the Keyboard page
+- Multi-step key sequences (press one chord, then another)
+- Export and import a keymap file, or keymap presets
+- Warn when a key is taken by the OS on the current system (Cmd+Tab, Cmd+Q, Cmd+H on macOS;
+  Alt+F4 on Windows), including a Mod+Tab synced from another OS
+- Let a focused terminal keep keys that are bound to global shortcuts
+- Record keys the table can't name yet (F13–F24, Plus, curly brackets, media keys)
+- Rebind the fixed context keys (Commit's Ctrl+Enter, list arrows, palette keys) with their own
+  per-context conflict rules
+- Per-repository keymaps
 
 ### Built-in terminal
 

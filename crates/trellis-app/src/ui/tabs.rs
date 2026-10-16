@@ -92,7 +92,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     paint_tab(ui.painter(), f.rect, name(f.from), active, false, active, false);
                     ui.painter().rect_stroke(f.rect, ROUNDING, Stroke::new(1.0_f32, color::primary()), StrokeKind::Inside);
                 }
-                new_tab_button(ui, msgs);
+                new_tab_button(ui, &st.keymap, msgs);
             });
         });
 }
@@ -168,9 +168,9 @@ fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, active: bool, hovered: b
     }
 }
 
-fn new_tab_button(ui: &mut egui::Ui, msgs: &mut Vec<Msg>) {
+fn new_tab_button(ui: &mut egui::Ui, keys: &crate::keymap::Keymap, msgs: &mut Vec<Msg>) {
     let (rect, r) = ui.allocate_exact_size(vec2(HEIGHT, HEIGHT), Sense::click());
-    let r = r.on_hover_text(format!("New tab ({})", crate::keymap::hint(crate::keymap::BindingId::NewTab)));
+    let r = r.on_hover_text(keys.tip("New tab", crate::keymap::BindingId::NewTab));
     let c = rect.center();
     let col = if r.hovered() { color::text() } else { color::weak() };
     let s = Stroke::new(1.6_f32, col);
@@ -188,7 +188,7 @@ fn tab_menu(ui: &mut egui::Ui, i: usize, st: &AppState, msgs: &mut Vec<Msg>) {
     item(ui, msgs, n > 1, Button::new("Close other tabs"), Msg::Tabs(TabsMsg::CloseOtherTabs(i)));
     item(ui, msgs, i + 1 < n, Button::new("Close tabs to the right"), Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
     ui.separator();
-    let reopen = Button::new("Reopen closed tab").shortcut_text(crate::keymap::hint(crate::keymap::BindingId::ReopenTab));
+    let reopen = Button::new("Reopen closed tab").shortcut_text(st.keymap.hint(crate::keymap::BindingId::ReopenTab).unwrap_or_default());
     let r = item(ui, msgs, !st.closed_tabs.is_empty(), reopen, Msg::Tabs(TabsMsg::ReopenClosedTab));
     if let Some(path) = st.closed_tabs.last() {
         r.on_hover_text(trellis_core::native_path::shown(path));

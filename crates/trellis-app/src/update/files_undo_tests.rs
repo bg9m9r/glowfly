@@ -49,7 +49,7 @@ fn restore_then_undo_and_redo() {
     drive(&mut st, restore(head(&dir), "a.txt"));
     assert_eq!(text(&dir, "a.txt"), "one\n");
     assert!(top_is_restore_of(&st, "a.txt"), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_tooltip(), format!("Undo restore of a.txt ({})", keys("Ctrl+Z")));
+    assert_eq!(st.undo.undo_tooltip(&st.keymap), format!("Undo restore of a.txt ({})", keys("Ctrl+Z")));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(text(&dir, "a.txt"), "one\ntwo\n", "the edits are back");
@@ -173,7 +173,8 @@ fn failed_restore_with_undo_for_inactive_tab_logs_and_keeps_the_undo() {
     let msg = FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: Some(undo.clone()) };
     match msg.on_inactive() {
         Some(Inactive::LogAndUndo { text, undo: a }) => {
-            assert!(text.starts_with("Could not restore a.txt: boom. Undo ("), "{text}");
+            // The message can't see the keymap, so the key is left out.
+            assert_eq!(text, "Could not restore a.txt: boom. Undo puts back what it held before.");
             assert_eq!(a, undo);
         }
         _ => panic!("expected a log line and an undo entry"),

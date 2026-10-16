@@ -2,7 +2,7 @@
 //! click and its tooltip. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use crate::keymap::{self, BindingId};
+use crate::keymap::BindingId;
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::state::palette::{Palette, PaletteCommand as C, shown};
@@ -46,7 +46,7 @@ fn toolbar_palette_tooltip_light() {
     for _ in 0..4 {
         h.run();
     }
-    let want = format!("Command palette ({})", keymap::hint(BindingId::Palette));
+    let want = h.state().0.keymap.tip("Command palette", BindingId::Palette);
     assert!(h.query_by_label_contains(&want).is_some(), "the tooltip shows {want}");
     h.check_snapshot("toolbar_palette_tooltip_light");
     remove_fixture(&dir);

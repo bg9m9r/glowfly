@@ -136,7 +136,7 @@ fn ctrl_backtick_toggles() {
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
-            super::terminal::shortcut(ctx, st, msgs);
+            super::shortcuts::input(ctx, st, msgs);
             let cache = cache.get_or_insert_with(|| UiCache {
                 avatars: Avatars::default(),
                 speller: Speller::new(),

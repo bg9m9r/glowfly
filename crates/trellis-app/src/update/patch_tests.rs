@@ -155,7 +155,7 @@ fn palette_offers_apply_patch_with_a_repo() {
     let (mut st, dir) = three_commits("patch-ui-palette");
     let e = entries(&st).into_iter().find(|e| e.command == C::ApplyPatch).expect("Apply patch…");
     assert_eq!(e.label, "Apply patch…");
-    assert_eq!(e.shortcut, None);
+    assert_eq!(e.shortcut(&st.keymap), None);
 
     update(&mut st, Msg::Palette(PaletteMsg::TogglePalette), Instant::now());
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ApplyPatch)), Instant::now());

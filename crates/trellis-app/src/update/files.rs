@@ -18,8 +18,9 @@ fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-fn undo_hint() -> &'static str {
-    crate::keymap::hint(crate::keymap::BindingId::Undo)
+/// " (Ctrl+Z)" after "Undo", or nothing when Undo has no key.
+fn undo_hint(st: &AppState) -> String {
+    st.keymap.paren(crate::keymap::BindingId::Undo)
 }
 
 pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -37,9 +38,9 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
             st.modal = Some(Modal::Confirm {
                 title: "Restore file".into(),
                 body: format!(
-                    "{reason}.\n\nRestoring the version from commit {} replaces it; Undo ({}) puts its current contents back.",
+                    "{reason}.\n\nRestoring the version from commit {} replaces it; Undo{} puts its current contents back.",
                     short(oid),
-                    undo_hint()
+                    undo_hint(st)
                 ),
                 button: "Restore anyway".into(),
                 then: Box::new(Msg::Files(FilesMsg::RestoreFile { oid, path, deleted: false, confirmed: true, overwrite: true })),
@@ -76,7 +77,10 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
                         c.absent.remove(&path);
                     }
                 }
-                Err(e) => st.log(false, crate::msg::restore_failed(&path, &e, undoable)),
+                Err(e) => {
+                    let key = st.keymap.hint(crate::keymap::BindingId::Undo).map(str::to_owned);
+                    st.log(false, crate::msg::restore_failed(&path, &e, undoable, key.as_deref()));
+                }
             }
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
@@ -119,7 +123,7 @@ fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
         format!("{path} will be replaced in your working tree by the version from commit {sha}.")
     };
     let note = if dirty {
-        format!("Your uncommitted changes to {path} will be overwritten. Undo ({}) puts them back.", undo_hint())
+        format!("Your uncommitted changes to {path} will be overwritten. Undo{} puts them back.", undo_hint(st))
     } else {
         "The change is left unstaged; discarding it brings back the current version.".to_owned()
     };
