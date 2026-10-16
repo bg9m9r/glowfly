@@ -19,6 +19,7 @@ pub(super) static GITHUB_ENTERPRISE: ProviderInfo = ProviderInfo {
     api_headers: &[("X-GitHub-Api-Version", "2022-11-28")],
     lists_forks: true,
     creates_forks: true,
+    adds_ssh_keys: true,
     service: &GitHub,
     ..DEFAULTS
 };

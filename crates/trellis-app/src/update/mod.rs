@@ -44,6 +44,8 @@ mod shortcuts;
 mod signatures;
 mod sparse;
 mod ssh;
+mod ssh_service;
+mod ssh_use;
 mod stash;
 mod stash_push;
 mod submodules;
@@ -191,7 +193,13 @@ mod signature_tests;
 #[cfg(test)]
 mod sparse_tests;
 #[cfg(test)]
+mod ssh_service_tests;
+#[cfg(test)]
 mod ssh_tests;
+#[cfg(test)]
+mod ssh_use_agent_tests;
+#[cfg(test)]
+mod ssh_use_tests;
 #[cfg(test)]
 mod stash_push_tests;
 #[cfg(test)]

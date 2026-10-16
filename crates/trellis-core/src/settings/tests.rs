@@ -43,6 +43,17 @@ fn load_more_on_scroll_defaults_on() {
 }
 
 #[test]
+fn use_ssh_agent_defaults_off() {
+    // Files written before the setting existed keep choosing keys through core.sshCommand.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.use_ssh_agent);
+    assert!(!Settings::default().use_ssh_agent);
+    let on = Settings { use_ssh_agent: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.use_ssh_agent);
+}
+
+#[test]
 fn ignore_whitespace_defaults_off() {
     // Files written before the toggle existed show every whitespace change.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

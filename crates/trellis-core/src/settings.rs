@@ -233,6 +233,9 @@ pub struct Settings {
     /// The profile whose identity is in the global git config.
     #[serde(default)]
     pub active_profile: Option<ProfileId>,
+    /// Leave core.sshCommand unset and let ssh use the running agent (Preferences > SSH).
+    #[serde(default)]
+    pub use_ssh_agent: bool,
 }
 
 impl Default for Settings {
@@ -284,6 +287,7 @@ impl Default for Settings {
             external_tools: ExternalTools::default(),
             profiles: Vec::new(),
             active_profile: None,
+            use_ssh_agent: false,
         }
     }
 }

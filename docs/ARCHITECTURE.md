@@ -36,7 +36,7 @@ binary (package `trellis`).
 | `gitflow.rs`, `gitflow/` | Git Flow with plain git: config, checks, start and finish plans, versions, branch groups by kind. |
 | `rebase/` | Interactive rebase: the plan, the todo file, running `git rebase -i`. |
 | `undo.rs` | Undo and redo of Trellis's own operations. |
-| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`; repository web pages (`web.rs`), forks (`forks/`) and the signed-in user's own repositories (`user_repos/`). |
+| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`; repository web pages (`web.rs`), forks (`forks/`), the signed-in user's own repositories (`user_repos/`) and SSH public keys on the user's account (`ssh_keys.rs`). |
 | `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
 | `graph.rs` | Lane layout for the commit graph. |
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
@@ -50,7 +50,7 @@ binary (package `trellis`).
 | `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; writing an identity to the global config in order. |
 | `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches). |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
-| `ssh_keys.rs`, `ssh_keys/` | SSH key pairs in `~/.ssh`: listing them with `ssh-keygen` fingerprints, and generating Ed25519 keys with `ssh-keygen` (written under a temporary name, then moved into place). |
+| `ssh_keys.rs`, `ssh_keys/` | SSH key pairs in `~/.ssh`: listing them with `ssh-keygen` fingerprints (`listing.rs`), finding ssh's programs (`tools.rs`), generating Ed25519 keys with `ssh-keygen`, written under a temporary name and then moved into place (`generate.rs`), choosing the key git uses in `core.sshCommand` (`command.rs`), and finding the SSH agent and adding keys with `ssh-add` (`agent.rs`). |
 | `external_tools.rs` | External programs (Preferences > External Tools): argument templates and their placeholders, finding the program on PATH, starting it detached. |
 | `conflict_check.rs` | Predicting merge conflicts with `git merge-tree` (nothing in the working tree, index or refs changes), and choosing the branch to compare the checked-out branch with. |
 | `signature_check.rs` | Checking commit signatures through git (`%G?`), so the user's signing programs, keyrings and allowed signers file apply. |

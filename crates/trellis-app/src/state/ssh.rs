@@ -1,9 +1,12 @@
 //! The SSH preferences page: the key pairs read in the background, the Generate New Key form,
 //! the rules that decide whether Generate can run, and the texts its toasts and dialog show.
+//! The key git uses and the agent are in `ssh_use`, adding a key to a service in `ssh_service`.
 
+use super::ssh_service::UploadForm;
+use super::ssh_use::{Choices, RepoTarget};
 use std::path::{Path, PathBuf};
 use trellis_core::paths::same_spelling;
-use trellis_core::ssh_keys::{LocationProblem, SshListing, comment_problem, default_location, resolve_location};
+use trellis_core::ssh_keys::{AgentStatus, LocationProblem, SshKeyPair, SshListing, comment_problem, default_location, resolve_location};
 
 pub const COPIED: &str = "Public key copied to the clipboard";
 pub const REPLACE_TITLE: &str = "Replace SSH key";
@@ -33,6 +36,27 @@ pub struct SshPage {
     pub generating: bool,
     /// Why the last Generate was refused, or what ssh-keygen said when it failed.
     pub form_error: Option<String>,
+    /// core.sshCommand at each level; None while it is read.
+    pub choice: Option<Choices>,
+    /// Bumped by each read of the choice; an older read's result is ignored.
+    pub choice_generation: u64,
+    /// Why the last Use for git or Stop using was refused, or what git said when it failed.
+    pub choice_error: Option<String>,
+    /// A core.sshCommand write is running.
+    pub choice_busy: bool,
+    /// The key the running write chooses (None: it unsets the choice).
+    pub choice_key: Option<PathBuf>,
+    /// The repository open when the page was read, for its own core.sshCommand.
+    pub repo: Option<RepoTarget>,
+    /// What the last agent check found; None while it runs.
+    pub agent: Option<AgentStatus>,
+    pub agent_generation: u64,
+    /// The key ssh-add is adding.
+    pub agent_adding: Option<PathBuf>,
+    /// Why the last Add to agent was refused, or what ssh-add said when it failed.
+    pub agent_error: Option<String>,
+    /// The Add to service form, under the key it is for.
+    pub upload: Option<UploadForm>,
 }
 
 impl SshPage {
@@ -47,6 +71,11 @@ impl SshPage {
     pub fn resolved(&self) -> Option<PathBuf> {
         let listing = self.listing.as_ref()?;
         resolve_location(&self.location, &listing.home).ok()
+    }
+
+    /// The listed pair whose private key is `private`.
+    pub fn key(&self, private: &Path) -> Option<&SshKeyPair> {
+        self.listing.as_ref()?.keys.iter().find(|k| same_spelling(&k.private, private))
     }
 
     /// The location is one of the listed private keys.

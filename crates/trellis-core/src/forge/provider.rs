@@ -49,6 +49,8 @@ pub struct ProviderInfo {
     pub lists_forks: bool,
     /// Can fork a repository into the signed-in user's account.
     pub creates_forks: bool,
+    /// Can add an SSH public key to the signed-in user's account.
+    pub adds_ssh_keys: bool,
     /// Request headers only this service understands.
     pub api_headers: &'static [(&'static str, &'static str)],
     /// The API implementation.
@@ -139,6 +141,10 @@ impl Provider {
     pub fn creates_forks(self) -> bool {
         self.info().creates_forks
     }
+
+    pub fn adds_ssh_keys(self) -> bool {
+        self.info().adds_ssh_keys
+    }
 }
 
 /// The settings most services share; each `ProviderInfo` overrides what differs.
@@ -158,6 +164,7 @@ pub(super) const DEFAULTS: ProviderInfo = ProviderInfo {
     links_issues_by_api: false,
     lists_forks: false,
     creates_forks: false,
+    adds_ssh_keys: false,
     api_headers: &[],
     service: &NoService,
 };
@@ -219,6 +226,10 @@ mod tests {
         }
         for p in [AzureDevOps, JiraCloud, JiraDataCenter] {
             assert_eq!(forks(p), (false, false), "{p:?}");
+        }
+        for p in Provider::ALL {
+            let adds = matches!(p, GitHub | GitHubEnterprise | GitLab | GitLabSelfManaged | Bitbucket);
+            assert_eq!(p.adds_ssh_keys(), adds, "{p:?}");
         }
     }
 }

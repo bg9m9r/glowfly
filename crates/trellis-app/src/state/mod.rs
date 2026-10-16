@@ -42,6 +42,8 @@ pub mod shallow;
 pub mod signatures;
 pub mod sparse;
 pub mod ssh;
+pub mod ssh_service;
+pub mod ssh_use;
 pub mod stashes;
 pub mod submodules;
 pub mod tabs;

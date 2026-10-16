@@ -70,7 +70,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 |---|---|---|
 | General | ✔ General | Missing: delete `.orig` files after merge, keep submodules updated, show all commits, path to `sh.exe`, extended logging, conflict detection |
 | Profiles | ◐ Profile (named identity profiles, switching) | Per-profile integrations and preferences (P1 Profiles) |
-| SSH | ◐ SSH page (list key pairs, copy a public key, generate an Ed25519 key) | Choose the key git uses, use local agent, add a key to a hosting service (P1 SSH key management) |
+| SSH | ✔ SSH page (key pairs, generate a key, the key git uses, local agent, add a key to a hosting service) | Follow-ups in Later > SSH key management |
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ◐ Editor and terminal | Diff tool, merge tool (P1 External tools) |
@@ -436,13 +436,13 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Done on the Commit Signing page: generate a GPG key, copy the public key, gpg/ssh program
   path, SSH allowed-signers, sign tags.
   - [x] Verified/unverified signature badge on commits (the selected commit's details panel)
-- [ ] **SSH key management**
+- [x] **SSH key management**
   Generate a key, choose the key pair, use the local agent, copy the public key (and add it to
   a connected service).
   - [x] Preferences > SSH: list the key pairs in ~/.ssh with type, comment and fingerprint, copy a public key, generate an Ed25519 key (asking before replacing one)
-  - [ ] Choose the key pair git uses for SSH remotes (core.sshCommand with `-i <key> -o IdentitiesOnly=yes`, globally or per repository), show the current choice and stop using it
-  - [ ] Use local SSH agent: detect a running agent (ssh-add -l, the Windows OpenSSH agent service or a Pageant-style agent), add the selected key to it, and leave core.sshCommand unset while it is on
-  - [ ] Add the public key to a connected hosting service through its API (optional key title, check whether it is already registered, fallback: copy the key and open the service's SSH key settings page)
+  - [x] Choose the key pair git uses for SSH remotes (core.sshCommand with `-i <key> -o IdentitiesOnly=yes`, globally or per repository), show the current choice and stop using it
+  - [x] Use local SSH agent: detect a running agent (ssh-add -l, the Windows OpenSSH agent service or a Pageant-style agent), add the selected key to it, and leave core.sshCommand unset while it is on
+  - [x] Add the public key to a connected hosting service through its API (optional key title, check whether it is already registered, fallback: copy the key and open the service's SSH key settings page)
 - [ ] **Profiles**
   Several named profiles (identity, integrations, preferences) with quick switching.
   - [x] Named identity profiles: add, rename, delete (asking first), switch from Preferences >
@@ -1136,6 +1136,16 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Flag encrypted private keys and keys whose file permissions are too open for ssh on their row
 - Palette entry for the SSH page (palette_commands.rs needs splitting first)
 - Keys outside ~/.ssh (IdentityFile entries in ~/.ssh/config, agent-only keys)
+- Start the Windows OpenSSH Authentication Agent service (needs an administrator) or an ssh-agent on Unix from the SSH page
+- On Windows, offer to point git at Windows' OpenSSH (core.sshCommand or GIT_SSH) so it reads keys from the agent service
+- Per-repository key choice in a repository with no trust decision (trust it and choose the key in one step)
+- Remove a key from the agent (ssh-add -d), and add with a lifetime (-t) or confirmation (-c)
+- Add keys to Bitbucket Data Center and Azure DevOps through their APIs
+- List and delete the keys registered on a connected service, and show on each key row which services have it
+- Per-host key choice through ~/.ssh/config Host entries instead of core.sshCommand
+- Choose a key file outside ~/.ssh for Use for git (with the Browse buttons above)
+- Palette entries for Use for git, Add to agent and Add to service (after palette_commands.rs is split)
+- Link from the add-key fallback to reconnect a service with a token that may write SSH keys (Integrations, preselected)
 
 ### Profiles
 

@@ -10,7 +10,7 @@ use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::remote::{RemoteEffect, RemoteMsg};
-use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
+use crate::ssh::SshFailure;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use trellis_core::forge::{Account, Target};
@@ -30,10 +30,9 @@ enum Kind {
     /// A repository load or status read: the UI waits for it before starting another.
     Load(u64, LoadKind),
     Status(u64),
-    /// Reading ~/.ssh for Preferences > SSH: the page shows a spinner until it ends.
-    SshList(u64),
-    /// Generating an SSH key: the page shows Generating until it ends.
-    SshGenerate,
+    /// Preferences > SSH work (reading ~/.ssh or the agent, generating or adding a key, writing
+    /// core.sshCommand): the page shows a spinner until its result arrives.
+    Ssh(SshFailure),
     /// A fork dialog's request: the dialog shows a spinner until its answer arrives.
     Fork(FailedFork),
     /// The Clone dialog's list of the user's repositories on this account: a spinner until it ends.
@@ -81,8 +80,7 @@ impl Recovery {
             Effect::LocalOp { .. } => Kind::LocalOp,
             Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
             Effect::LoadStatus { generation, .. } => Kind::Status(*generation),
-            Effect::Ssh(SshEffect::List { generation }) => Kind::SshList(*generation),
-            Effect::Ssh(SshEffect::Generate { .. }) => Kind::SshGenerate,
+            Effect::Ssh(e) => Kind::Ssh(e.failure()),
             Effect::Remote(e) => Kind::Fork(FailedFork::of(e)),
             _ => Kind::Log,
         };
@@ -99,8 +97,7 @@ impl Recovery {
             Kind::Status(generation) => {
                 Msg::Load(LoadMsg::StatusLoaded { generation, result: Err(text), submodules: None, open_stamp: None })
             }
-            Kind::SshList(generation) => Msg::Ssh(SshMsg::Loaded { generation, result: Err(text) }),
-            Kind::SshGenerate => Msg::Ssh(SshMsg::Generated(Err(GenerateFailure::Failed(text)))),
+            Kind::Ssh(f) => Msg::Ssh(f.message(text)),
             Kind::Fork(f) => f.message(text),
             Kind::Repos(account) => {
                 let result = Box::new(Err(ForgeError { message: text, auth: false }));
@@ -134,6 +131,7 @@ pub(super) fn guarded(recovery: Recovery, f: impl FnOnce() -> Option<Msg>) -> Op
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ssh::SshMsg;
     use crate::state::{AppState, RunningJob};
     use crate::update::update;
     use std::time::Instant;
@@ -257,6 +255,7 @@ mod tests {
 
     #[test]
     fn a_panicking_ssh_effect_ends_the_page_state() {
+        use crate::ssh::{GenerateFailure, SshEffect};
         use crate::state::{PrefPage, PrefsState};
         use trellis_core::ssh_keys::NewKey;
         let key = NewKey { path: "C:/h/.ssh/id".into(), comment: String::new(), passphrase: "s3cret".into() };
@@ -279,5 +278,45 @@ mod tests {
         assert!(matches!(&msg, Msg::Ssh(SshMsg::Loaded { generation: 3, result: Err(_) })));
         update(&mut st, msg, Instant::now());
         assert!(st.prefs.as_ref().unwrap().ssh.error.as_deref().is_some_and(|e| e.contains("boom")), "the spinner gives way to the error");
+    }
+
+    #[test]
+    fn panicking_key_choice_agent_and_upload_effects_report_failures() {
+        use crate::ssh::SshEffect;
+        use crate::state::ssh_service::{UploadForm, UploadState};
+        use crate::state::{PrefPage, PrefsState};
+        use trellis_core::forge::{Account, Provider};
+        use trellis_core::ssh_keys::AgentReach;
+        let panicked = |effect: Effect| {
+            assert!(effect.scope().is_none(), "unscoped");
+            guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap()
+        };
+        let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+        let mut prefs = PrefsState::new(PrefPage::Ssh);
+        prefs.ssh.choice_busy = true;
+        prefs.ssh.agent_generation = 4;
+        let account = Account { provider: Provider::GitHub, host: "github.com".into(), org: String::new() };
+        let mut form = UploadForm::new("C:/h/.ssh/id".into(), account.clone(), "id".into());
+        form.state = UploadState::Sending;
+        prefs.ssh.upload = Some(form);
+        st.prefs = Some(prefs);
+
+        let msg = panicked(Effect::Ssh(SshEffect::SetKeyChoice { repo: None, key: Some("C:/h/.ssh/id".into()) }));
+        assert!(matches!(&msg, Msg::Ssh(SshMsg::KeyChoiceSet { repo: false, result: Err(e) }) if e.contains("ssh-config")));
+        update(&mut st, msg, Instant::now());
+        let page = &st.prefs.as_ref().unwrap().ssh;
+        assert!(!page.choice_busy && page.choice_error.as_deref().is_some_and(|e| e.contains("boom")));
+
+        let msg = panicked(Effect::Ssh(SshEffect::Agent { generation: 4 }));
+        update(&mut st, msg, Instant::now());
+        let agent = st.prefs.as_ref().unwrap().ssh.agent.clone().expect("the check ended");
+        assert!(matches!(agent.reach, Some(AgentReach::Failed(e)) if e.contains("boom")));
+
+        let effect =
+            SshEffect::AddToService { account, public_key: "ssh-ed25519 AAAA".into(), title: "t".into(), key: "C:/h/.ssh/id".into() };
+        let msg = panicked(Effect::Ssh(effect));
+        update(&mut st, msg, Instant::now());
+        let state = &st.prefs.as_ref().unwrap().ssh.upload.as_ref().expect("the form stays").state;
+        assert!(matches!(state, UploadState::Failed { message, fallback: false } if message.contains("boom")), "{state:?}");
     }
 }

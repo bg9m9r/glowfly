@@ -19,6 +19,7 @@ pub(super) static GITLAB_SELF_MANAGED: ProviderInfo = ProviderInfo {
     close_keyword: Some("Closes"),
     lists_forks: true,
     creates_forks: true,
+    adds_ssh_keys: true,
     service: &GitLab,
     ..DEFAULTS
 };

@@ -12,6 +12,9 @@ mod profiles;
 mod signing;
 mod sparse;
 mod ssh;
+mod ssh_generate;
+mod ssh_git;
+mod ssh_service;
 mod tools;
 
 use super::theme::color;
@@ -91,6 +94,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     };
     let sparse_cx = sparse::SparseContext { repo_name: repo_name.clone(), job: st.job.as_ref().map(|j| j.label.clone()) };
     let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some() };
+    let ssh_cx = ssh::SshContext {
+        use_agent: st.settings.use_ssh_agent,
+        services: crate::state::ssh_service::services(&st.settings.connections)
+            .into_iter()
+            .map(|c| (c.account.clone(), crate::state::ssh_service::service_label(&c.account)))
+            .collect(),
+        job: st.job.as_ref().map(|j| j.label.clone()),
+    };
     let switching = st.profile_switch;
     let git_program = st.git.info.clone();
     let settings = &mut st.settings;
@@ -129,7 +140,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
                     PrefPage::RepoSparse => sparse::sparse_page(ui, &mut prefs.sparse, &sparse_cx, msgs),
-                    PrefPage::Ssh => ssh::ssh_page(ui, &mut prefs.ssh, msgs),
+                    PrefPage::Ssh => ssh::ssh_page(ui, &mut prefs.ssh, &ssh_cx, msgs),
                     _ => {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {

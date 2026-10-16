@@ -15,6 +15,7 @@ pub(super) static BITBUCKET: ProviderInfo = ProviderInfo {
     token_help: "Your Bitbucket username and an app password with Repositories, Pull requests and Issues permissions.",
     close_keyword: Some("Resolves"),
     lists_forks: true,
+    adds_ssh_keys: true,
     service: &Bitbucket,
     ..DEFAULTS
 };

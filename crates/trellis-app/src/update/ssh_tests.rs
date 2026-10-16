@@ -1,31 +1,33 @@
-//! Headless tests for Preferences > SSH: reading ~/.ssh, prefilling the form, generating a key
-//! (refusals, the Replace confirmation, success and failure) and copying a public key.
+//! Headless tests for Preferences > SSH: reading ~/.ssh, the key choice and the agent,
+//! prefilling the form, generating a key (refusals, the Replace confirmation, success and
+//! failure) and copying a public key.
 
-use super::tests::state;
+use super::tests::{drive, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, UiEffect};
-use crate::msg::{Msg, PrefsMsg};
+use crate::msg::{Msg, PrefsMsg, RepoMsg};
 use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
 use crate::state::prefs::GitConfigValues;
 use crate::state::ssh::SshPage;
 use crate::state::{AppState, Modal, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use trellis_core::ssh_keys::{SshKeyPair, SshListing, default_location};
+use trellis_core::settings::RepoTrust;
+use trellis_core::ssh_keys::{AgentStatus, KeyChoice, SshKeyPair, SshListing, default_location};
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn ssh(st: &mut AppState, m: SshMsg) -> Vec<Effect> {
+pub(super) fn ssh(st: &mut AppState, m: SshMsg) -> Vec<Effect> {
     run(st, Msg::Ssh(m))
 }
 
-fn home() -> PathBuf {
+pub(super) fn home() -> PathBuf {
     PathBuf::from(if cfg!(windows) { "C:/h" } else { "/h" })
 }
 
-fn pair(name: &str, comment: &str) -> SshKeyPair {
+pub(super) fn pair(name: &str, comment: &str) -> SshKeyPair {
     let private = home().join(".ssh").join(name);
     SshKeyPair {
         public: home().join(".ssh").join(format!("{name}.pub")),
@@ -39,15 +41,15 @@ fn pair(name: &str, comment: &str) -> SshKeyPair {
     }
 }
 
-fn listing(keys: Vec<SshKeyPair>, keygen: bool) -> SshListing {
+pub(super) fn listing(keys: Vec<SshKeyPair>, keygen: bool) -> SshListing {
     SshListing { home: home(), dir: home().join(".ssh"), keys, keygen: keygen.then(|| PathBuf::from("C:/bin/ssh-keygen.exe")) }
 }
 
-fn page(st: &AppState) -> &SshPage {
+pub(super) fn page(st: &AppState) -> &SshPage {
     &st.prefs.as_ref().expect("Preferences open").ssh
 }
 
-fn page_mut(st: &mut AppState) -> &mut SshPage {
+pub(super) fn page_mut(st: &mut AppState) -> &mut SshPage {
     &mut st.prefs.as_mut().expect("Preferences open").ssh
 }
 
@@ -66,7 +68,7 @@ fn email(st: &mut AppState, email: &str) {
 }
 
 /// Preferences open on the SSH page with `keys` listed.
-fn loaded(keys: Vec<SshKeyPair>, keygen: bool) -> AppState {
+pub(super) fn loaded(keys: Vec<SshKeyPair>, keygen: bool) -> AppState {
     let mut st = state();
     run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh)));
     let generation = page(&st).generation;
@@ -271,4 +273,66 @@ fn page_rules() {
     p.confirm = "a".into();
     assert_eq!(p.blocked(), None);
     assert!(crate::state::ssh::replace_body(Path::new("C:/k/id")).contains("will stop accepting it"));
+}
+
+fn read_choices(fx: &[Effect]) -> Vec<(u64, Option<PathBuf>)> {
+    fx.iter()
+        .filter_map(|e| match e {
+            Effect::Ssh(SshEffect::ReadChoice { generation, repo }) => Some((*generation, repo.clone())),
+            _ => None,
+        })
+        .collect()
+}
+
+fn agents(fx: &[Effect]) -> Vec<u64> {
+    fx.iter()
+        .filter_map(|e| match e {
+            Effect::Ssh(SshEffect::Agent { generation }) => Some(*generation),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn show_page_reads_the_choice_and_the_agent() {
+    let mut st = state();
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
+    let fx = ssh(&mut st, SshMsg::ShowPage);
+    assert_eq!((lists(&fx), read_choices(&fx), agents(&fx)), (vec![1], vec![(1, None)], vec![1]));
+    assert!(page(&st).repo.is_none(), "no repository is open");
+
+    let unset = || Ok(KeyChoice::Unset);
+    ssh(&mut st, SshMsg::ChoiceLoaded { generation: 0, global: unset(), repo: None });
+    assert!(page(&st).choice.is_none(), "an older read is ignored");
+    ssh(&mut st, SshMsg::ChoiceLoaded { generation: 1, global: unset(), repo: None });
+    assert_eq!(page(&st).choice.as_ref().map(|c| c.global.clone()), Some(unset()));
+
+    assert_eq!(agents(&ssh(&mut st, SshMsg::ReloadAgent)), [2]);
+    ssh(&mut st, SshMsg::AgentLoaded { generation: 1, status: AgentStatus::default() });
+    assert!(page(&st).agent.is_none(), "an older check is ignored");
+    ssh(&mut st, SshMsg::AgentLoaded { generation: 2, status: AgentStatus::default() });
+    assert!(page(&st).agent.is_some());
+
+    run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
+    assert!(ssh(&mut st, SshMsg::ChoiceLoaded { generation: 1, global: unset(), repo: None }).is_empty());
+    assert!(ssh(&mut st, SshMsg::ReloadAgent).is_empty(), "nothing to check for");
+}
+
+#[test]
+fn an_open_repository_is_read_too() {
+    let dir = scratch_repo("ssh-choice-repo");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let workdir = st.snap.as_ref().expect("opened").workdir.clone();
+    let fx = run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Ssh)));
+    assert_eq!(read_choices(&fx), [(1, Some(workdir.clone()))]);
+    let repo = page(&st).repo.clone().expect("the repository");
+    assert_eq!(repo.workdir, workdir);
+    assert!(!repo.trusted, "clean, but not trusted by the user");
+
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    ssh(&mut st, SshMsg::Reload);
+    assert!(page(&st).repo.as_ref().is_some_and(|r| r.trusted), "follows the saved decision");
+    let _ = std::fs::remove_dir_all(&dir);
 }

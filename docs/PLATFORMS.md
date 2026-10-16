@@ -147,7 +147,7 @@ second one next to it.
    from the stages' own bytes so each line keeps its ending.
 6. **A multi-file replacement keeps the old set until the new set is in place.** Move the old
    files aside with `persist::move_aside`, install the new ones, restore on any failure, and
-   delete the backups last (see `ssh_keys.rs` and `settings/file.rs`).
+   delete the backups last (see `ssh_keys/generate.rs` and `settings/file.rs`).
 7. **Saves from several threads go through `persist::LatestOnly`** so an older save can't land
    after a newer one.
 
@@ -199,6 +199,10 @@ second one next to it.
    (`gitcli.rs`), which would also give hooks, gpg and pinentry an ASCII-only character set.
 6. **On Unix, set `DISPLAY` when it's unset** (`gitcli::display_placeholder`): OpenSSH before
    8.4 asks the askpass helper only when `DISPLAY` is set.
+7. **A path written into a git config value that a shell runs (`core.sshCommand`) goes through
+   `native_path::native` and `rebase::shell_quote_for`** (`ssh_keys/command.rs`): no `\\?\`
+   prefix, sh-quoted, and forward slashes on Windows. Git for Windows' bundled ssh doesn't read
+   keys from the Windows OpenSSH agent service; only Windows' own `ssh.exe` does.
 
 ### Watching and refresh
 

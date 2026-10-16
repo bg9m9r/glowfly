@@ -1,10 +1,13 @@
 //! Preferences > SSH: reading ~/.ssh, copying a public key, and generating a key (asking before
-//! replacing one). Its effects are unscoped: the page belongs to no repository.
+//! replacing one). The key git uses and the agent are in `ssh_use`, adding a key to a service in
+//! `ssh_service`. Its effects are unscoped: the page belongs to no repository.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::Msg;
 use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
 use crate::state::ssh::{COPIED, REPLACE_BUTTON, REPLACE_TITLE, replace_body};
+use crate::state::ssh_use::RepoTarget;
+use crate::state::trust::Standing;
 use crate::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
 use trellis_core::paths::same_spelling;
@@ -39,6 +42,24 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
             st.toast(true, COPIED, now);
         }
         SshMsg::Generate { overwrite } => generate(st, overwrite, fx),
+        SshMsg::UseKey { key, repo, confirmed } => super::ssh_use::use_key(st, key, repo, confirmed, fx),
+        SshMsg::StopUsing { repo, confirmed } => super::ssh_use::stop_using(st, repo, confirmed, fx),
+        SshMsg::SetUseAgent(on) => super::ssh_use::set_use_agent(st, on, now, fx),
+        SshMsg::ReloadAgent => super::ssh_use::read_agent(st, fx),
+        SshMsg::AddToAgent(key) => super::ssh_use::add_to_agent(st, &key, fx),
+        SshMsg::ChoiceLoaded { generation, global, repo } => super::ssh_use::choice_loaded(st, generation, global, repo),
+        SshMsg::KeyChoiceSet { repo, result } => super::ssh_use::key_choice_set(st, repo, result, now, fx),
+        SshMsg::AgentLoaded { generation, status } => super::ssh_use::agent_loaded(st, generation, status),
+        SshMsg::AgentAdded { key, result } => super::ssh_use::agent_added(st, &key, result, now, fx),
+        SshMsg::ChooseService { key, account } => super::ssh_service::choose(st, &key, account, now, fx),
+        SshMsg::SendToService => super::ssh_service::send(st, fx),
+        SshMsg::CancelService => {
+            if let Some(p) = st.prefs.as_mut() {
+                p.ssh.upload = None;
+            }
+        }
+        SshMsg::OpenKeySettings { key, account } => super::ssh_service::open_key_settings(st, &key, &account, now, fx),
+        SshMsg::AddedToService { key, account, result } => super::ssh_service::added(st, &key, &account, result, now, fx),
         SshMsg::Generated(result) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.ssh.generating = false;
@@ -77,13 +98,23 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
     }
 }
 
-/// Reads ~/.ssh again for the open Preferences, showing the loading state meanwhile.
+/// Reads the page again for the open Preferences (~/.ssh, the key git uses and the agent),
+/// showing the loading state meanwhile.
 pub(super) fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let repo = st.snap.as_ref().map(|s| RepoTarget {
+        name: s.name.clone(),
+        workdir: s.workdir.clone(),
+        real: s.real_workdir.clone(),
+        trusted: st.trust_standing() == Some(Standing::Trusted),
+    });
     let Some(p) = st.prefs.as_mut() else { return };
     p.ssh.generation += 1;
     p.ssh.listing = None;
     p.ssh.error = None;
+    p.ssh.repo = repo;
     fx.push(Effect::Ssh(SshEffect::List { generation: p.ssh.generation }));
+    super::ssh_use::read_choice(st, fx);
+    super::ssh_use::read_agent(st, fx);
 }
 
 /// Starts ssh-keygen with the form, unless something blocks it (the button is disabled then

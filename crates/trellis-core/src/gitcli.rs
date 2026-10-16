@@ -48,6 +48,12 @@ pub fn askpass_vars(a: &AskpassEnv) -> Vec<(&'static str, OsString)> {
     vars
 }
 
+/// [`askpass_vars`] once the app has enabled the helper; empty before that (and in tests), so a
+/// child given only these can't prompt through the app.
+pub fn askpass_env() -> Vec<(&'static str, OsString)> {
+    ASKPASS.get().map(askpass_vars).unwrap_or_default()
+}
+
 /// The `DISPLAY` to set for ssh children so OpenSSH before 8.4 uses the askpass helper: `:0`
 /// on Unix when `display` is unset or empty, else None (Windows' OpenSSH doesn't look at it).
 /// ssh only checks that it is set; nothing connects to it unless X11 forwarding is configured.
@@ -143,7 +149,7 @@ fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: 
         // so this holds even when the user sets `LC_ALL`.
         .env("LANGUAGE", "C")
         .env("LC_MESSAGES", "C")
-        .envs(ASKPASS.get().map(askpass_vars).unwrap_or_default())
+        .envs(askpass_env())
         .envs(env.iter().copied());
     crate::env_path::apply(&mut cmd);
     #[cfg(windows)]

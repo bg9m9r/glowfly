@@ -13,6 +13,7 @@ use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::patch::PatchEffect;
 use crate::runner;
+use crate::ssh::SshEffect;
 use crate::state::{AppState, ForgeState, Modal, Selection, Status};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -111,6 +112,14 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::Profile(_)
             // Asks a hosting service.
             | Effect::Clone(crate::effect::CloneEffect::ListRepos { .. })
+            // Would write the global git config, run ssh-keygen or ssh-add, or call a service.
+            | Effect::Ssh(
+                SshEffect::SetKeyChoice { repo: None, .. }
+                    | SshEffect::Agent { .. }
+                    | SshEffect::AddToAgent { .. }
+                    | SshEffect::AddToService { .. }
+                    | SshEffect::Generate { .. }
+            )
     )
 }
 
