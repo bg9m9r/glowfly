@@ -64,7 +64,7 @@ fn has_label(st: &AppState, name: &str) -> bool {
 }
 
 fn filter(st: &AppState) -> GraphFilter {
-    st.settings.graph_filter_for(&st.snap.as_ref().unwrap().workdir)
+    st.settings.graph_filter_for(&st.snap.as_ref().unwrap().real_workdir)
 }
 
 /// The options of the single LoadRepo in `fx`.
@@ -192,14 +192,17 @@ fn reopen_with_other_spelling_applies_saved_filter() {
     let workdir = st.snap.as_ref().unwrap().workdir.clone();
     let hidden = GraphFilter { hidden: vec![heads("feature")], solo: vec![] };
 
-    // A fresh start that opens the folder as the user typed it, not as libgit2 spells it.
+    // A fresh start that opens the folder as the user typed it, with the filter saved by an
+    // earlier version under libgit2's spelling (`C:/x/repo/`): another spelling of the same path.
     let mut st = state();
-    st.settings.set_graph_filter(&workdir, hidden.clone());
+    st.settings.graph_filters.insert(workdir.display().to_string(), hidden.clone());
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())), Instant::now());
-    assert!(load_opts(&fx).hidden.is_empty(), "the requested spelling has no filter saved");
+    assert_eq!(load_opts(&fx).hidden, hidden.hidden, "found under the old spelling");
     run(&mut st, fx);
     assert!(!has_label(&st, "feature") && !has_commit(&st, "feature work"));
     assert_eq!(filter(&st), hidden);
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    assert_eq!(st.settings.graph_filters.keys().collect::<Vec<_>>(), [&trellis_core::settings::repo_keys::key(&real)], "moved");
 
     // Opened through a subfolder.
     let sub: &Path = &dir.join("sub");

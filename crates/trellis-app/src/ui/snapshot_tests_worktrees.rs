@@ -42,6 +42,7 @@ fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>
         locked: None,
         missing: false,
         prunable: false,
+        folder: None,
     }
 }
 

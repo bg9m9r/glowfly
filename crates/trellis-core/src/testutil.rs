@@ -39,6 +39,19 @@ pub(crate) fn set_config(dir: &Path, entries: &[(&str, &str)]) {
     }
 }
 
+/// A second name for the folder `dir`, made next to it (`<name>-alias`): a symlink, or on Windows
+/// a junction where symlinks need rights the account lacks. None when neither can be made.
+pub(crate) fn alias_of(dir: &Path) -> Option<PathBuf> {
+    let link = dir.with_file_name(format!("{}-alias", dir.file_name()?.to_string_lossy()));
+    let _ = std::fs::remove_dir(&link).or_else(|_| std::fs::remove_file(&link));
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(dir, &link).is_ok();
+    #[cfg(windows)]
+    let made = std::os::windows::fs::symlink_dir(dir, &link).is_ok()
+        || std::process::Command::new("cmd").args(["/c", "mklink", "/J"]).arg(&link).arg(dir).output().is_ok_and(|o| o.status.success());
+    made.then_some(link)
+}
+
 pub(crate) fn write(dir: &Path, file: &str, text: &str) {
     std::fs::write(dir.join(file), text).unwrap();
 }

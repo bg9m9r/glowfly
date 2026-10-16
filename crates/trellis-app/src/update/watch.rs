@@ -19,7 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             // Trellis' own job refreshes when it is done.
             let here = st.workdir();
             if let (Some(job), Some(here)) = (st.job.as_ref().and_then(|j| j.workdir.as_deref()), here.as_deref())
-                && crate::state::tabs::same_path(job, here)
+                && trellis_core::paths::same_spelling(job, here)
             {
                 return;
             }

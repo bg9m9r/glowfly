@@ -166,6 +166,10 @@ pub struct Snapshot {
     /// name, a link, `/var` for `/private/var`): what a typed path, a clone's destination or a
     /// recent-list entry may still say. `None` when it was `workdir` itself or a folder inside it.
     pub opened_as: Option<PathBuf>,
+    /// `workdir`'s identity on disk when it was loaded (`paths::FolderId`): what tells whether
+    /// another path is this repository whatever its spelling, case included. None on a volume
+    /// that gives no file ids.
+    pub folder: Option<crate::paths::FolderId>,
     pub git_dir: PathBuf,
     pub name: String,
     /// (remote name, fetch URL)

@@ -141,7 +141,7 @@ fn finished(st: &mut AppState, result: Result<Outcome, String>, now: Instant, fx
     let Some(job) = &st.job else { return };
     let workdir = job.workdir.clone();
     let here = match (workdir.as_deref(), st.workdir()) {
-        (Some(a), Some(b)) => crate::state::tabs::same_path(a, &b),
+        (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),
         _ => false,
     };
     // `keep`: the panel stays open with this error (and is marked stale when nothing ran).

@@ -9,6 +9,7 @@ use super::{CommitDraft, ForgeState, Selection};
 use git2::Oid;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use trellis_core::paths::{FolderId, same_spelling};
 use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, Snapshot};
 use trellis_core::settings::{DiffLayout, DiffMode};
 use trellis_core::whole_file::Expanded;
@@ -24,6 +25,9 @@ pub struct Tab {
     /// in this tab. Another name for the same folder (a link, a junction, a short 8.3 name)
     /// matches this rather than `path`.
     pub real: Option<PathBuf>,
+    /// The folder's identity on disk (`Snapshot::folder`), once loaded in this tab: what matches
+    /// any other spelling of it, case included where the volume ignores case.
+    pub folder: Option<FolderId>,
     /// Everything this tab showed when it was last active. `None` for the active tab, and for
     /// a tab restored at startup that hasn't been loaded yet.
     pub parked: Option<Box<Parked>>,
@@ -31,24 +35,51 @@ pub struct Tab {
 
 impl Tab {
     pub fn empty() -> Self {
-        Self { path: None, name: "New tab".into(), real: None, parked: None }
+        Self { path: None, name: "New tab".into(), real: None, folder: None, parked: None }
     }
 
     /// A tab for `path` whose repository loads when the tab is first selected.
     pub fn unloaded(path: PathBuf) -> Self {
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string());
-        Self { path: Some(path), name, real: None, parked: None }
+        Self { path: Some(path), name, real: None, folder: None, parked: None }
     }
 
-    /// Whether this tab shows the repository at `path` (as given, or where it really is).
+    /// Whether this tab shows the repository at `path` (as given, or where it really is), by
+    /// spelling. `place().is` also matches by identity.
     pub fn is(&self, path: &Path) -> bool {
-        [&self.path, &self.real].into_iter().flatten().any(|p| same_path(p, path))
+        [&self.path, &self.real].into_iter().flatten().any(|p| same_spelling(p, path))
     }
 
-    /// Whether this tab shows the repository `snap` was loaded from.
+    /// Whether this tab shows the repository `snap` was loaded from: the same folder on disk, or
+    /// (before either was looked at) the same spelling.
     pub fn shows(&self, snap: &Snapshot) -> bool {
-        [&self.path, &self.real].into_iter().flatten().any(|p| is_repo_at(snap, p))
+        (self.folder.is_some() && self.folder == snap.folder) || [&self.path, &self.real].into_iter().flatten().any(|p| is_repo_at(snap, p))
     }
+
+    /// The names and identity this tab's folder is known by.
+    pub fn place(&self) -> Place {
+        Place { paths: [&self.path, &self.real].into_iter().flatten().cloned().collect(), folder: self.folder }
+    }
+}
+
+/// A folder as Trellis knows it without touching the disk: the spellings it was seen by and,
+/// once it was looked at on a worker thread, its identity.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Place {
+    pub paths: Vec<PathBuf>,
+    pub folder: Option<FolderId>,
+}
+
+impl Place {
+    /// Whether this is the folder at `path`, whose identity is `folder` when known.
+    pub fn is(&self, path: &Path, folder: Option<FolderId>) -> bool {
+        (folder.is_some() && folder == self.folder) || self.paths.iter().any(|p| same_spelling(p, path))
+    }
+}
+
+/// The places of the tabs that show a repository.
+pub fn open_places(tabs: &[Tab]) -> Vec<Place> {
+    tabs.iter().filter(|t| t.path.is_some()).map(Tab::place).collect()
 }
 
 /// The per-repository part of `AppState`, set aside while another tab is active.
@@ -101,53 +132,27 @@ pub fn index_after_move(i: usize, from: usize, to: usize) -> usize {
 
 /// Whether `path` names the repository `snap` loaded, under any spelling it was seen by: as
 /// libgit2 reports it, resolved on disk (links and short 8.3 names followed), or as it was
-/// opened. Pure, like `same_path`: a path held elsewhere (the recent list, a clone's
-/// destination) that was only ever spelled another way still needs one of these to match.
+/// opened. Pure, by spelling only: `AppState::names_repo` also matches by identity.
 pub fn is_repo_at(snap: &Snapshot, path: &Path) -> bool {
-    [Some(&snap.workdir), Some(&snap.real_workdir), snap.opened_as.as_ref()].into_iter().flatten().any(|p| same_path(p, path))
-}
-
-/// Whether two paths are spelled as the same folder, ignoring separator style, `.` parts,
-/// trailing separators, the verbatim `\\?\` prefix of resolved Windows paths and (on Windows
-/// and macOS, whose file systems ignore it by default) case. Pure: nothing is resolved on disk, so callers
-/// compare paths that were resolved when they were loaded (`Snapshot::real_workdir`, `Tab::real`).
-pub fn same_path(a: &Path, b: &Path) -> bool {
-    parts(a) == parts(b)
-}
-
-fn parts(path: &Path) -> Vec<String> {
-    use std::path::{Component, Prefix};
-    let fold = |s: String| if cfg!(any(windows, target_os = "macos")) { s.to_lowercase() } else { s };
-    path.components()
-        .filter(|c| !matches!(c, Component::CurDir))
-        .map(|c| match c {
-            Component::Prefix(p) => match p.kind() {
-                Prefix::Disk(d) | Prefix::VerbatimDisk(d) => format!("{}:", (d as char).to_ascii_lowercase()),
-                Prefix::UNC(s, h) | Prefix::VerbatimUNC(s, h) => fold(format!("//{}/{}", s.to_string_lossy(), h.to_string_lossy())),
-                _ => fold(p.as_os_str().to_string_lossy().into_owned()),
-            },
-            other => fold(other.as_os_str().to_string_lossy().into_owned()),
-        })
-        .collect()
+    [Some(&snap.workdir), Some(&snap.real_workdir), snap.opened_as.as_ref()].into_iter().flatten().any(|p| same_spelling(p, path))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::same_path;
-    use std::path::Path;
+    use super::*;
+
+    fn id(n: u64) -> Option<FolderId> {
+        Some(FolderId::for_tests(n))
+    }
 
     #[test]
-    fn same_path_compares_spelling_only() {
-        let p = |s: &str| Path::new(s).to_path_buf();
-        assert!(same_path(&p("work/repo/"), &p("work/./repo")));
-        assert!(!same_path(&p("work/repo"), &p("work/other")));
-        // Case is ignored where the file system ignores it by default.
-        assert_eq!(same_path(&p("work/Repo"), &p("work/repo")), cfg!(any(windows, target_os = "macos")));
-        #[cfg(windows)]
-        {
-            assert!(same_path(&p(r"C:\work\repo"), &p("c:/work/repo")));
-            assert!(same_path(&p(r"\\?\C:\work\repo"), &p(r"C:\work\repo")), "a resolved path matches its plain form");
-            assert!(same_path(&p(r"\\?\UNC\server\share\repo"), &p(r"\\Server\share\repo")));
-        }
+    fn places_match_by_identity_or_spelling() {
+        let place = Place { paths: vec![PathBuf::from("/w/repo")], folder: id(1) };
+        assert!(place.is(Path::new("/w/./repo/"), None), "spelling");
+        assert!(place.is(Path::new("/elsewhere/link"), id(1)), "identity");
+        assert!(!place.is(Path::new("/w/Repo"), None), "case is never folded by spelling");
+        assert!(!place.is(Path::new("/w/Repo"), id(2)), "another folder");
+        let unseen = Place { paths: vec![PathBuf::from("/w/repo")], folder: None };
+        assert!(!unseen.is(Path::new("/x"), None), "no identity matches no identity");
     }
 }

@@ -127,7 +127,7 @@ pub fn dirty_count(worktree: &Path) -> Result<usize> {
 /// is `Lock`) or changed files (unless forced at all) are reported before git runs; then
 /// `git worktree remove` runs through the CLI and the worktrees are listed again.
 pub fn remove(cwd: &Path, path: &Path, force: RemoveForce) -> RemoveReport {
-    let listed = |p: &Path| crate::repo::worktrees_at(cwd).ok().and_then(|l| l.into_iter().find(|w| super::same_folder(&w.path, p)));
+    let listed = |p: &Path| crate::repo::worktrees_at(cwd).ok().and_then(|l| l.into_iter().find(|w| crate::paths::same_folder(&w.path, p)));
     let Some(wt) = listed(path) else {
         return RemoveReport {
             outcome: RemoveOutcome::Failed,

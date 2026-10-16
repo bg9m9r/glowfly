@@ -263,8 +263,8 @@ pub enum Effect {
     },
     SaveSettings(Box<Settings>),
     SaveRecent(Vec<PathBuf>),
-    /// Which of these repository folders are gone (not a directory or unreachable); reported as
-    /// `RecentMsg::FoldersChecked`.
+    /// Which of these repository folders are gone (not a directory or unreachable), and the
+    /// identity of each that is there; reported as `RecentMsg::FoldersChecked`.
     CheckRepoFolders(Vec<PathBuf>),
     /// The open tabs (repositories) and which one is active, for the next start.
     SaveTabs {

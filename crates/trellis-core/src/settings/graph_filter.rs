@@ -1,8 +1,6 @@
 //! Refs hidden from or soloed in a repository's commit graph, saved per working directory.
 
-use super::Settings;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 
 /// Which refs a repository's graph leaves out (`hidden`) or shows exclusively (`solo`, plus
 /// HEAD). Full ref names: refs/heads/x, refs/remotes/r/x. A ref is never in both lists.
@@ -86,26 +84,11 @@ fn remove(list: &mut Vec<String>, r: &str) -> bool {
     list.len() != n
 }
 
-impl Settings {
-    /// The graph filter saved for the repository at `workdir` (empty when there is none).
-    pub fn graph_filter_for(&self, workdir: &Path) -> GraphFilter {
-        self.graph_filters.get(&workdir.display().to_string()).cloned().unwrap_or_default()
-    }
-
-    /// Saves `f` for the repository at `workdir`; an empty filter removes the entry.
-    pub fn set_graph_filter(&mut self, workdir: &Path, f: GraphFilter) {
-        let key = workdir.display().to_string();
-        if f.is_empty() {
-            self.graph_filters.remove(&key);
-        } else {
-            self.graph_filters.insert(key, f);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::settings::Settings;
+    use std::path::Path;
 
     fn s(r: &str) -> String {
         r.to_owned()

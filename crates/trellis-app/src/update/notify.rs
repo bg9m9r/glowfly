@@ -4,9 +4,9 @@
 
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
-use crate::state::tabs::same_path;
 use crate::state::{AppState, ToastAction, notify};
 use std::time::Instant;
+use trellis_core::paths::same_spelling;
 use trellis_core::repo::Snapshot;
 
 /// The background fetch's job label (update/ops.rs `auto_fetch`).
@@ -25,7 +25,7 @@ pub(super) fn loaded(st: &mut AppState, snap: &Snapshot, kind: LoadKind, now: In
     let generation = st.load_gen;
     // A load already in flight when the fetch ended leaves the watch for the queued refresh.
     let Some(w) = st.behind_watch.take_if(|w| generation > w.after_gen) else { return };
-    if kind != LoadKind::Refresh || !same_path(&w.workdir, &snap.workdir) || !st.settings.behind_alerts {
+    if kind != LoadKind::Refresh || !same_spelling(&w.workdir, &snap.workdir) || !st.settings.behind_alerts {
         return;
     }
     if let Some(text) = notify::alert_text(&w, snap.head_info()) {
@@ -46,7 +46,7 @@ pub(super) fn toast_action(st: &mut AppState, id: u64, now: Instant, fx: &mut Ve
     let Some(i) = st.toasts.iter().position(|t| t.id == id) else { return };
     let Some(action) = st.toasts.remove(i).action else { return };
     if let Some(dir) = &action.workdir
-        && !st.workdir().is_some_and(|w| same_path(dir, &w))
+        && !st.workdir().is_some_and(|w| same_spelling(dir, &w))
     {
         st.toast(false, format!("{} wasn't run: switch back to that repository's tab first.", action.label), now);
         return;

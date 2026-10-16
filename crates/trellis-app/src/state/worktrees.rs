@@ -6,8 +6,9 @@ use crate::worktree::NewWorktree;
 use git2::Oid;
 use std::path::Path;
 use trellis_core::branch_ops::check_branch_name;
+use trellis_core::paths::{is_within, same_spelling};
 use trellis_core::repo::{Snapshot, WorktreeInfo};
-use trellis_core::worktree_ops::{WorktreeBase, folder_slug, is_inside, parse_folder, same_folder};
+use trellis_core::worktree_ops::{WorktreeBase, folder_slug, parse_folder};
 
 /// What the Create worktree dialog is editing.
 #[derive(Clone, Debug, PartialEq)]
@@ -117,7 +118,7 @@ pub fn open_blocked(wt: &WorktreeInfo) -> Option<&'static str> {
 
 /// The listed worktree at `path`.
 pub fn find<'a>(snap: &'a Snapshot, path: &Path) -> Option<&'a WorktreeInfo> {
-    snap.worktrees.iter().find(|w| same_folder(&w.path, path))
+    snap.worktrees.iter().find(|w| same_spelling(&w.path, path))
 }
 
 /// The worktree that has `branch` checked out.
@@ -149,7 +150,7 @@ pub fn folder_warning(snap: &Snapshot, text: &str) -> Option<String> {
     let host = snap
         .worktrees
         .iter()
-        .filter(|w| is_inside(&path, &w.path) && !same_folder(&path, &w.path))
+        .filter(|w| is_within(&path, &w.path) && !same_spelling(&path, &w.path))
         .max_by_key(|w| w.path.components().count())?;
     Some(format!(
         "This folder is inside the worktree at {}. Its files will show up there as untracked unless .gitignore covers them.",

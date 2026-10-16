@@ -103,7 +103,7 @@ fn clear_confirm(st: &AppState) -> Msg {
 
 /// One repository: star toggle, the path (opens it), a "not found" note and, for Recent rows, ×.
 fn row(ui: &mut egui::Ui, st: &AppState, path: &Path, place: Place, section: Section, msgs: &mut Vec<Msg>) {
-    let fav = is_favorite(&st.settings, path);
+    let fav = is_favorite(st, path);
     let missing = is_missing(st, path);
     let text = path.display().to_string();
     let open = || Msg::Repo(RepoMsg::Open(path.to_path_buf()));

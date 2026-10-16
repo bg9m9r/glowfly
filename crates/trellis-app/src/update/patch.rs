@@ -55,7 +55,7 @@ pub(super) fn handle(st: &mut AppState, m: PatchMsg, now: Instant, fx: &mut Vec<
 /// Applies the patch file at `path` to `workdir`, the repository the dialog was opened for, if
 /// that is still the active tab and no job is running.
 fn apply(st: &mut AppState, workdir: &std::path::Path, path: &std::path::Path, fx: &mut Vec<Effect>) {
-    if !st.workdir().is_some_and(|w| crate::state::tabs::same_path(&w, workdir)) {
+    if !st.workdir().is_some_and(|w| trellis_core::paths::same_spelling(&w, workdir)) {
         st.log(false, format!("The patch was not applied: {} is no longer the active tab.", display_name(workdir)));
         return;
     }

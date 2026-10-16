@@ -5,9 +5,9 @@ use crate::effect::{Effect, UiEffect};
 use crate::msg::Msg;
 use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
 use crate::state::ssh::{COPIED, REPLACE_BUTTON, REPLACE_TITLE, replace_body};
-use crate::state::tabs::same_path;
 use crate::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
+use trellis_core::paths::same_spelling;
 use trellis_core::ssh_keys::NewKey;
 
 pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -34,7 +34,7 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
         }
         SshMsg::CopyPublicKey(path) => {
             let listing = st.prefs.as_ref().and_then(|p| p.ssh.listing.as_ref());
-            let Some(key) = listing.and_then(|l| l.keys.iter().find(|k| same_path(&k.private, &path))) else { return };
+            let Some(key) = listing.and_then(|l| l.keys.iter().find(|k| same_spelling(&k.private, &path))) else { return };
             fx.push(Effect::Ui(UiEffect::CopyText(key.public_key.clone())));
             st.toast(true, COPIED, now);
         }

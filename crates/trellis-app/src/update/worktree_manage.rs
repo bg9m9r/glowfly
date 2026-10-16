@@ -28,8 +28,8 @@ pub(super) struct Removed {
 }
 
 /// The folders open in tabs.
-fn open_tabs(st: &AppState) -> Vec<PathBuf> {
-    st.tabs.iter().filter_map(|t| t.path.clone()).collect()
+fn open_tabs(st: &AppState) -> Vec<crate::state::tabs::Place> {
+    crate::state::tabs::open_places(&st.tabs)
 }
 
 /// The listed worktree at `path`, or None after logging that it is gone.
@@ -90,7 +90,7 @@ pub(super) fn remove(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn removed(st: &mut AppState, r: Removed, now: Instant, fx: &mut Vec<Effect>) {
     let Some(job) = &st.job else { return };
     let here = match (job.workdir.as_deref(), st.workdir()) {
-        (Some(a), Some(b)) => crate::state::tabs::same_path(a, &b),
+        (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),
         _ => false,
     };
     let name = r.request.name.as_str();

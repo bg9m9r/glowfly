@@ -35,7 +35,7 @@ pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
 pub use graph::{AvatarMsg, GraphMsg, SearchMsg, SelectionMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
-pub use recent::RecentMsg;
+pub use recent::{FolderCheck, RecentMsg};
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 pub use sparse::SparseMsg;
 pub use stash::StashMsg;

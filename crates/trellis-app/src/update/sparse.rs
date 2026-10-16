@@ -113,7 +113,7 @@ fn loaded(st: &mut AppState, generation: u64, result: Result<SparseStatus, Strin
 fn done(st: &mut AppState, ok: bool, output: String, now: Instant, fx: &mut Vec<Effect>) {
     let Some(job) = &st.job else { return };
     let here = match (job.workdir.as_deref(), st.workdir()) {
-        (Some(a), Some(b)) => crate::state::tabs::same_path(a, &b),
+        (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),
         _ => false,
     };
     let kept = if ok { sparse_ops::left_behind(&output).len() } else { 0 };

@@ -25,6 +25,9 @@ pub struct WorktreeInfo {
     pub missing: bool,
     /// `git worktree prune` would drop it: `Worktree::is_prunable(None)` (missing and not locked).
     pub prunable: bool,
+    /// The folder's identity on disk when listed (`paths::FolderId`): what tells whether a tab
+    /// shows this worktree under another spelling. None when it is missing.
+    pub folder: Option<crate::paths::FolderId>,
 }
 
 impl WorktreeInfo {
@@ -49,13 +52,14 @@ pub fn worktrees_at(workdir: &Path) -> Result<Vec<WorktreeInfo>> {
 pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
     let Ok(common) = Repository::open(repo.commondir()) else { return Vec::new() };
     let here = repo.workdir().map(normalize);
-    let is_current = |path: &Path| here.as_deref().is_some_and(|h| same_place(path, h));
+    let is_current = |path: &Path| here.as_deref().is_some_and(|h| crate::paths::same_folder(path, h));
     let mut out = Vec::new();
     if let Some(workdir) = common.workdir() {
         let path = normalize(workdir);
         let (branch, head) = read_head(common.path(), &common);
         let current = is_current(&path);
-        out.push(WorktreeInfo { name: None, path, branch, head, current, locked: None, missing: false, prunable: false });
+        let folder = crate::paths::FolderId::of(&path);
+        out.push(WorktreeInfo { name: None, path, branch, head, current, locked: None, missing: false, prunable: false, folder });
     }
     let Ok(names) = common.worktrees() else { return out };
     let mut linked: Vec<WorktreeInfo> = names
@@ -72,7 +76,8 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
             let prunable = wt.is_prunable(None).unwrap_or(false);
             let (branch, head) = read_head(&common.commondir().join("worktrees").join(name), &common);
             let current = is_current(&path);
-            Some(WorktreeInfo { name: Some(name.to_owned()), path, branch, head, current, locked, missing, prunable })
+            let folder = crate::paths::FolderId::of(&path);
+            Some(WorktreeInfo { name: Some(name.to_owned()), path, branch, head, current, locked, missing, prunable, folder })
         })
         .collect();
     linked.sort_by(|a, b| a.path.cmp(&b.path));
@@ -83,15 +88,6 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
 /// `path` rebuilt from its components: platform separators, no trailing separator.
 fn normalize(path: &Path) -> PathBuf {
     path.components().filter(|c| !matches!(c, Component::CurDir)).collect()
-}
-
-/// Whether `a` and `b` name the same folder: by their canonical forms, or by their components
-/// when either can't be canonicalized (case-insensitive on Windows).
-fn same_place(a: &Path, b: &Path) -> bool {
-    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
-        (Ok(x), Ok(y)) => x == y,
-        _ => crate::worktree_ops::same_folder(a, b),
-    }
 }
 
 /// The branch (short name for refs/heads/, the whole ref otherwise) and commit that the HEAD

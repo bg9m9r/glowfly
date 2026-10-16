@@ -2,47 +2,107 @@
 //! stage, discard or conflict save never runs at the same time as a pull, a checkout or another
 //! edit of the same repository: each runs after the ones queued before it. Reads (loading
 //! status, diffs, history) and network-only jobs (fetch, push) don't queue.
+//!
+//! A queue belongs to a folder, not to a spelling of its path: jobs for `C:/x/repo/`, a junction
+//! to it, or `REPO` on a volume that ignores case share one worker. Telling them apart takes the
+//! disk (`paths::FolderId`), so `submit` hands each job to a router thread that looks the folder
+//! up (once per spelling) and passes the job on, in order; the UI thread never waits on it.
 
 use crate::effect::Effect;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::mpsc::{self, Sender};
+use trellis_core::paths::FolderId;
 
 pub(super) type Job = Box<dyn FnOnce() + Send>;
 
-#[derive(Default)]
+/// What a queue is keyed by: the folder's identity, or (for a path with none: missing, or on a
+/// volume without file ids) its resolved spelling.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum Key {
+    Folder(FolderId),
+    Spelling(PathBuf),
+}
+
+/// Finds the key of a repository path; `identify` in production, a stand-in in tests.
+type Identify = fn(&Path) -> Key;
+
+fn identify(repo: &Path) -> Key {
+    match FolderId::of(repo) {
+        Some(id) => Key::Folder(id),
+        None => Key::Spelling(trellis_core::paths::resolve(repo).components().collect()),
+    }
+}
+
 pub(super) struct RepoQueues {
-    /// A worker thread per repository, started on first use, that runs its jobs in order.
-    workers: Mutex<HashMap<PathBuf, Sender<Job>>>,
+    /// The router thread, started on first use.
+    router: Mutex<Option<Sender<(PathBuf, Job)>>>,
+    identify: Identify,
+}
+
+impl Default for RepoQueues {
+    fn default() -> Self {
+        Self { router: Mutex::new(None), identify }
+    }
 }
 
 impl RepoQueues {
-    /// Queues `job` behind the earlier jobs for `repo`. Returns the job back if no worker
-    /// thread could be started for it.
+    /// Queues `job` behind the earlier jobs for the folder `repo` names. Returns the job back if
+    /// no thread could be started for it.
     pub(super) fn submit(&self, repo: &Path, job: Job) -> Result<(), Job> {
-        let mut workers = self.workers.lock().unwrap_or_else(|p| p.into_inner());
+        let mut router = self.router.lock().unwrap_or_else(|p| p.into_inner());
         let mut job = job;
-        if let Some(tx) = workers.get(repo) {
-            match tx.send(job) {
+        if let Some(tx) = router.as_ref() {
+            match tx.send((repo.to_owned(), job)) {
                 Ok(()) => return Ok(()),
+                Err(mpsc::SendError((_, back))) => job = back, // the router is gone; start another
+            }
+        }
+        let (tx, rx) = mpsc::channel::<(PathBuf, Job)>();
+        let identify = self.identify;
+        let started = std::thread::Builder::new().name("trellis-repo-queues".into()).spawn(move || route(rx, identify));
+        if started.is_err() {
+            return Err(job);
+        }
+        // The router is alive, so the send can't fail.
+        let _ = tx.send((repo.to_owned(), job));
+        *router = Some(tx);
+        Ok(())
+    }
+}
+
+/// Passes each job to its folder's worker, starting workers on first use. A job whose worker
+/// can't be started runs on a thread of its own, or here as a last resort.
+fn route(rx: mpsc::Receiver<(PathBuf, Job)>, identify: Identify) {
+    let mut keys: HashMap<PathBuf, Key> = HashMap::new();
+    let mut workers: HashMap<Key, Sender<Job>> = HashMap::new();
+    for (repo, job) in rx {
+        let key = keys.entry(repo.clone()).or_insert_with(|| identify(&repo)).clone();
+        let mut job = job;
+        if let Some(tx) = workers.get(&key) {
+            match tx.send(job) {
+                Ok(()) => continue,
                 Err(mpsc::SendError(back)) => job = back, // its worker is gone; start another
             }
         }
-        let (tx, rx) = mpsc::channel::<Job>();
+        let (tx, worker_rx) = mpsc::channel::<Job>();
         let name = format!("trellis-repo-{}", repo.file_name().map(|n| n.to_string_lossy()).unwrap_or_default());
         let started = std::thread::Builder::new().name(name).spawn(move || {
-            for job in rx {
+            for job in worker_rx {
                 job();
             }
         });
         if started.is_err() {
-            return Err(job);
+            tracing::error!("could not start a queue for {}", repo.display());
+            if let Err(e) = std::thread::Builder::new().name("trellis-repo-job".into()).spawn(job) {
+                tracing::error!("could not start a thread for a job: {e}");
+            }
+            continue;
         }
         // The worker is alive, so the send can't fail.
         let _ = tx.send(job);
-        workers.insert(repo.to_owned(), tx);
-        Ok(())
+        workers.insert(key, tx);
     }
 }
 
@@ -164,6 +224,72 @@ mod tests {
         gate_tx.send(()).unwrap();
         assert_eq!(done_rx.recv_timeout(Duration::from_secs(10)).unwrap(), "pull");
         assert_eq!(done_rx.recv_timeout(Duration::from_secs(10)).unwrap(), "stage");
+    }
+
+    /// Whether a job for `second` waits for a long job for `first`: one queue for both.
+    fn one_queue(q: &RepoQueues, first: &Path, second: &Path) -> bool {
+        let (gate_tx, gate_rx) = mpsc::channel::<()>();
+        let (done_tx, done_rx) = mpsc::channel::<&'static str>();
+        let d = done_tx.clone();
+        q.submit(
+            first,
+            Box::new(move || {
+                let _ = gate_rx.recv_timeout(Duration::from_secs(10));
+                d.send("first").unwrap();
+            }),
+        )
+        .ok()
+        .unwrap();
+        q.submit(second, Box::new(move || done_tx.send("second").unwrap())).ok().unwrap();
+        let waited = done_rx.recv_timeout(Duration::from_millis(300)).is_err();
+        gate_tx.send(()).unwrap();
+        let mut rest: Vec<_> = (0..if waited { 2 } else { 1 }).map(|_| done_rx.recv_timeout(Duration::from_secs(10)).unwrap()).collect();
+        if waited {
+            assert_eq!(rest.remove(0), "first", "in order");
+        }
+        waited
+    }
+
+    #[test]
+    fn one_folder_under_two_names_has_one_queue() {
+        let dir = trellis_core::paths::temp_dir().join(format!("trellis-queue-alias-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let link = dir.with_file_name(format!("trellis-queue-alias-{}-link", std::process::id()));
+        let _ = std::fs::remove_dir(&link).or_else(|_| std::fs::remove_file(&link));
+        #[cfg(unix)]
+        let made = std::os::unix::fs::symlink(&dir, &link).is_ok();
+        #[cfg(windows)]
+        let made = std::os::windows::fs::symlink_dir(&dir, &link).is_ok()
+            || std::process::Command::new("cmd")
+                .args(["/c", "mklink", "/J"])
+                .arg(&link)
+                .arg(&dir)
+                .output()
+                .is_ok_and(|o| o.status.success());
+        assert!(made, "made a link");
+        let q = RepoQueues::default();
+        assert!(one_queue(&q, &dir, &link), "a link to the folder");
+        assert!(one_queue(&q, &dir, &dir.join(".")), "another spelling");
+        let other = dir.with_file_name(format!("trellis-queue-other-{}", std::process::id()));
+        std::fs::create_dir_all(&other).unwrap();
+        assert!(!one_queue(&q, &dir, &other), "another folder");
+        let _ = std::fs::remove_dir(&link).or_else(|_| std::fs::remove_file(&link));
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&other);
+    }
+
+    #[test]
+    fn case_twins_share_a_queue_only_where_the_volume_ignores_case() {
+        // What the disk would say on a volume that ignores case, and on one that doesn't.
+        fn ignores_case(p: &Path) -> Key {
+            Key::Spelling(PathBuf::from(p.to_string_lossy().to_lowercase()))
+        }
+        fn tells_apart(p: &Path) -> Key {
+            Key::Spelling(p.to_path_buf())
+        }
+        let (upper, lower) = (Path::new("/v/App"), Path::new("/v/app"));
+        assert!(one_queue(&RepoQueues { router: Mutex::new(None), identify: ignores_case }, upper, lower));
+        assert!(!one_queue(&RepoQueues { router: Mutex::new(None), identify: tells_apart }, upper, lower));
     }
 
     #[test]

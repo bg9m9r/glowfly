@@ -74,16 +74,19 @@ fn messages() {
 
 #[test]
 fn inside_and_same() {
+    use crate::paths::{is_within, same_spelling};
     let app = abs("a/app");
-    assert!(is_inside(&app, &app));
-    assert!(same_folder(&app, &app));
-    assert!(is_inside(&abs("a/app/sub/dir"), &app));
-    assert!(!is_inside(&abs("a/app-wt"), &app), "a sibling with a shared prefix");
-    assert!(!is_inside(&abs("a"), &app));
-    assert!(!same_folder(&abs("a/app/sub"), &app));
-    assert!(same_folder(&abs("a/app/"), &app), "a trailing separator");
+    assert!(is_within(&app, &app));
+    assert!(same_spelling(&app, &app));
+    assert!(is_within(&abs("a/app/sub/dir"), &app));
+    assert!(!is_within(&abs("a/app-wt"), &app), "a sibling with a shared prefix");
+    assert!(!is_within(&abs("a"), &app));
+    assert!(!same_spelling(&abs("a/app/sub"), &app));
+    assert!(same_spelling(&abs("a/app/"), &app), "a trailing separator");
     if cfg!(windows) {
-        assert!(same_folder(Path::new("c:\\A\\App"), Path::new("C:/a/app")));
-        assert!(is_inside(Path::new("C:\\a\\APP\\x"), Path::new("c:/a/app")));
+        assert!(same_spelling(Path::new(r"c:\a\app"), Path::new("C:/a/app")));
+        // Case is the volume's business: the spelling never folds it.
+        assert!(!same_spelling(Path::new(r"c:\A\App"), Path::new("C:/a/app")));
+        assert!(!is_within(Path::new(r"C:\a\APP\x"), Path::new("c:/a/app")));
     }
 }

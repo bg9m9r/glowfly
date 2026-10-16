@@ -10,6 +10,7 @@ mod file;
 mod graph_filter;
 mod paths;
 mod profiles;
+pub mod repo_keys;
 mod tools;
 mod trust;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
@@ -206,13 +207,13 @@ pub struct Settings {
     /// Connected services. Secrets live in the OS credential store or Git Credential
     /// Manager, never here.
     pub connections: Vec<Connection>,
-    /// Issue tracker per repository working directory.
+    /// Issue tracker per repository, keyed by its resolved working directory (`repo_keys`).
     pub repo_trackers: HashMap<String, TrackerChoice>,
-    /// Hidden and soloed refs per repository working directory.
+    /// Hidden and soloed refs per repository, keyed by its resolved working directory (`repo_keys`).
     #[serde(default)]
     pub graph_filters: HashMap<String, GraphFilter>,
     /// Trust decisions per repository, keyed by its resolved working directory
-    /// (`Snapshot::real_workdir`); a repository with no entry is undecided.
+    /// (`Snapshot::real_workdir`, through `repo_keys`); a repository with no entry is undecided.
     #[serde(default)]
     pub repo_trust: HashMap<String, RepoTrust>,
     /// Favorite repositories (welcome screen and repository menu), as working-directory paths in
@@ -294,10 +295,6 @@ pub const TAB_SIZES: RangeInclusive<u8> = 1..=16;
 impl Settings {
     pub fn connection(&self, account: &Account) -> Option<&Connection> {
         self.connections.iter().find(|c| &c.account == account)
-    }
-
-    pub fn tracker_for(&self, workdir: &std::path::Path) -> TrackerChoice {
-        self.repo_trackers.get(&workdir.display().to_string()).cloned().unwrap_or_default()
     }
 
     pub fn commit_limit(&self) -> usize {

@@ -2,7 +2,7 @@
 //! be done, initializing and updating one as a job (asking first when out of sync, naming the
 //! commits on no branch that it would leave behind), and keeping the undo history across an update.
 
-use super::tests::same_place as same_path;
+use super::tests::same_place;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
@@ -93,12 +93,12 @@ fn open_submodule_in_new_tab() {
     // Switching to the new tab parks the parent (watcher, title, saved tabs), then it loads.
     let loads: Vec<&Effect> = fx.iter().filter(|e| matches!(e, Effect::LoadRepo { .. })).collect();
     match &loads[..] {
-        [Effect::LoadRepo { kind: LoadKind::Open, path, .. }] => assert!(same_path(path, &want), "{}", path.display()),
+        [Effect::LoadRepo { kind: LoadKind::Open, path, .. }] => assert!(same_place(path, &want), "{}", path.display()),
         other => panic!("{other:?}"),
     }
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     finish(&mut st, fx);
-    assert!(same_path(&st.snap.as_ref().unwrap().workdir, &want));
+    assert!(same_place(&st.snap.as_ref().unwrap().workdir, &want));
 
     // Opening it again from the parent selects its tab.
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));

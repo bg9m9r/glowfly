@@ -248,10 +248,10 @@ fn page_rules() {
     let listed = home().join(".ssh").join("id_ed25519").display().to_string();
     fill(&mut st, &listed, "", "", "");
     assert!(page(&st).location_taken());
-    if cfg!(windows) {
-        fill(&mut st, &listed.to_uppercase(), "", "", "");
-        assert!(page(&st).location_taken(), "paths compare without case on Windows");
-    }
+    // Case is the volume's business (a folder may be case-sensitive even on Windows): the
+    // listing is matched by spelling, and generating refuses an existing file on disk.
+    fill(&mut st, &listed.to_uppercase(), "", "", "");
+    assert!(!page(&st).location_taken(), "spelling never folds case");
     fill(&mut st, "~/.ssh/other", "", "", "");
     assert!(!page(&st).location_taken());
     assert!(page(&st).can_generate());

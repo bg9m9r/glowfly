@@ -57,7 +57,7 @@ pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
 /// Opens `path`: selects its tab if it is already open, uses the active tab if it is empty,
 /// and otherwise opens a new tab.
 pub(super) fn open(st: &mut AppState, path: PathBuf, fx: &mut Vec<Effect>) {
-    if let Some(i) = st.tabs.iter().position(|t| t.is(&path)) {
+    if let Some(i) = st.tab_showing(&path) {
         if i == st.active_tab {
             super::repo::refresh(st, fx);
         } else {
@@ -101,13 +101,15 @@ pub(super) fn opened(st: &mut AppState) -> Effect {
     if let (Some(snap), Some(tab)) = (&st.snap, st.tabs.get_mut(st.active_tab)) {
         tab.path = Some(snap.workdir.clone());
         tab.real = Some(snap.real_workdir.clone());
+        tab.folder = snap.folder;
         tab.name = snap.name.clone();
     }
     save(st)
 }
 
 /// The repository `snap` just loaded for the active tab is already open in another tab, under
-/// another name for the same folder (a link, a junction, a short 8.3 name): closes the active tab
+/// another name for the same folder (a link, a junction, a short 8.3 name, another case on a
+/// volume that ignores case): closes the active tab
 /// and selects that one instead. Returns whether it did.
 pub(super) fn open_elsewhere(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>) -> bool {
     let here = st.active_tab;

@@ -2,6 +2,7 @@
 
 use super::Inactive;
 use std::path::PathBuf;
+use trellis_core::paths::FolderId;
 
 /// The recent and favorite repository lists (update/recent.rs).
 pub enum RecentMsg {
@@ -13,8 +14,18 @@ pub enum RecentMsg {
     SetFavorite { path: PathBuf, favorite: bool },
     /// Ask which listed folders are gone (startup, window focus).
     CheckFolders,
-    /// Result of `Effect::CheckRepoFolders`: the folders among those checked that are missing.
-    FoldersChecked(Vec<PathBuf>),
+    /// Result of `Effect::CheckRepoFolders`: what was found at each folder checked.
+    FoldersChecked(Vec<FolderCheck>),
+}
+
+/// What `Effect::CheckRepoFolders` found at one listed folder.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FolderCheck {
+    pub path: PathBuf,
+    /// A folder is there (false: gone, not a folder, or unreachable).
+    pub present: bool,
+    /// Its identity, when the volume gives one.
+    pub folder: Option<FolderId>,
 }
 
 impl RecentMsg {

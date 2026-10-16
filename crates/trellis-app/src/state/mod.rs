@@ -12,6 +12,7 @@ pub mod files;
 mod forge;
 pub mod gitflow;
 pub mod history;
+pub mod known_folders;
 pub mod lfs;
 pub mod lines;
 pub mod notify;
@@ -160,6 +161,8 @@ pub struct AppState {
     /// Recent or favorite repository folders found missing by the last check
     /// (`RecentMsg::FoldersChecked`).
     pub missing_repos: Vec<PathBuf>,
+    /// The identities of listed and loaded folders, as worker threads found them.
+    pub known: known_folders::KnownFolders,
     /// Open tabs; the active one's repository data is in the fields below.
     pub tabs: Vec<Tab>,
     pub active_tab: usize,
@@ -261,6 +264,7 @@ impl AppState {
             saved_settings,
             recent,
             missing_repos: Vec::new(),
+            known: Default::default(),
             tabs: vec![Tab::empty()],
             active_tab: 0,
             tab_return: None,
@@ -350,7 +354,7 @@ impl AppState {
         let smart = self.settings.branch_visibility == BranchVisibility::Smart;
         // Smart visibility also keeps branches that have open pull requests.
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
-        let f = self.settings.graph_filter_for(workdir);
+        let f = self.settings.graph_filter_for(&self.repo_key(workdir));
         let max_commits = (self.settings.commit_limit() + self.refresh.extra_commits).min(MAX_COMMITS.max(self.settings.commit_limit()));
         LoadOptions { max_commits, smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted: self.trusts(workdir) }
     }

@@ -192,7 +192,9 @@ impl TrellisApp {
         // Restore the last session's tabs (or, before tabs were saved, the last repository).
         let (mut paths, active) = if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), 0) };
         if paths.is_empty() && settings.reopen_last_repo {
-            paths.extend(crate::platform::first_existing(&recent));
+            // Not checked here (a network share may not answer): a folder that is gone fails to
+            // load like any other.
+            paths.extend(recent.first().cloned());
         }
         let mut app = Self {
             st: AppState::new(settings, recent, Instant::now()),

@@ -2,9 +2,10 @@
 //! unlocking and pruning worktrees, shared by the views and `update` so a disabled menu item and
 //! a refused request say the same thing. Pure: paths are compared component by component.
 
+use super::tabs::Place;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::{Snapshot, WorktreeInfo};
-use trellis_core::worktree_ops::{Refusal, RemoveForce, same_folder};
+use trellis_core::worktree_ops::{Refusal, RemoveForce};
 
 /// What the Remove worktree dialog is showing.
 #[derive(Clone, Debug, PartialEq)]
@@ -85,9 +86,11 @@ pub fn manage_blocked(wt: &WorktreeInfo) -> Option<&'static str> {
 
 /// Why the worktree can't be removed: also when another tab shows it, since its folder would
 /// disappear under that tab.
-pub fn remove_blocked(wt: &WorktreeInfo, open_tabs: &[PathBuf]) -> Option<&'static str> {
+/// `open_tabs` are the tabs' places (`tabs::open_places`): a tab opened under another spelling
+/// of the folder (a link, a short 8.3 name, another case) is found by its identity.
+pub fn remove_blocked(wt: &WorktreeInfo, open_tabs: &[Place]) -> Option<&'static str> {
     manage_blocked(wt)
-        .or_else(|| open_tabs.iter().any(|t| same_folder(t, &wt.path)).then_some("It is open in another tab. Close that tab first."))
+        .or_else(|| open_tabs.iter().any(|t| t.is(&wt.path, wt.folder)).then_some("It is open in another tab. Close that tab first."))
 }
 
 /// Why a missing row's Prune would leave it.
@@ -101,7 +104,7 @@ pub fn prune_blocked(snap: &Snapshot) -> Option<&'static str> {
 }
 
 /// Why `update` refuses to remove the worktree.
-pub fn remove_refused(wt: &WorktreeInfo, open_tabs: &[PathBuf]) -> Option<&'static str> {
+pub fn remove_refused(wt: &WorktreeInfo, open_tabs: &[Place]) -> Option<&'static str> {
     if wt.is_main() { Some("The main worktree can't be removed.") } else { remove_blocked(wt, open_tabs) }
 }
 

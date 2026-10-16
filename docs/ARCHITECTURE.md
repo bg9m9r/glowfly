@@ -97,8 +97,11 @@ binary (package `trellis`).
   (`Effect::scope`) come back as `Msg::Scoped`. If their tab is no longer active, only what the
   area's `on_inactive` returns is applied (a log line, an undo entry for that tab, a dialog's
   result); the rest is dropped.
-  Paths are resolved on disk once, when a repository loads (`Snapshot::real_workdir`); `update`
-  compares them with the pure `state::tabs::same_path`.
+  Paths are resolved on disk once, when a repository loads (`Snapshot::real_workdir`, with its
+  identity `Snapshot::folder`). `update` compares paths with the pure `paths::same_spelling` plus
+  the identities worker threads found (`AppState::same_folder`, `state/known_folders.rs`); it
+  never folds case, which is the volume's business. Settings saved per repository are keyed by
+  `real_workdir` through `settings::repo_keys`.
 - **Toasts** (`state/toasts.rs`) can carry one action button with a stored `Msg`. A click
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
   while the toast's repository is the active tab.

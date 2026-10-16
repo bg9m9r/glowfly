@@ -95,7 +95,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let settings = &mut st.settings;
     let Some(prefs) = st.prefs.as_mut() else { return };
     let fs = st.forge.as_ref();
-    let workdir = st.snap.as_ref().map(|s| s.workdir.clone());
+    // Repository settings are keyed by where it really is (`settings::repo_keys`).
+    let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
     let now = (st.view.now, st.view.utc_offset);
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))

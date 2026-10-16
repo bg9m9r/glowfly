@@ -3,7 +3,7 @@
 //! the command through `gitcli` so hooks, config and credential prompts apply. Removing,
 //! locking, unlocking and pruning worktrees are in `manage`.
 
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 mod manage;
 pub use manage::*;
@@ -119,30 +119,6 @@ pub fn check_folder(path: &Path) -> Result<(), FolderProblem> {
         }
         Err(e) => Err(FolderProblem::Unreadable(e.to_string())),
     }
-}
-
-/// The parts of `path` that name it: no `.`, no root marker, and on Windows lowercased with
-/// either separator.
-fn parts(path: &Path) -> Vec<String> {
-    path.components()
-        .filter(|c| !matches!(c, Component::CurDir | Component::RootDir))
-        .map(|c| {
-            let s = c.as_os_str().to_string_lossy();
-            if cfg!(windows) { s.to_lowercase() } else { s.into_owned() }
-        })
-        .collect()
-}
-
-/// Whether `path` is `root` or inside it, comparing whole components (case-insensitively on
-/// Windows). Pure: nothing is resolved on disk.
-pub fn is_inside(path: &Path, root: &Path) -> bool {
-    let (p, r) = (parts(path), parts(root));
-    !r.is_empty() && p.len() >= r.len() && p[..r.len()] == r[..]
-}
-
-/// Whether `a` and `b` are the same path, compared as in `is_inside`.
-pub fn same_folder(a: &Path, b: &Path) -> bool {
-    parts(a) == parts(b)
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@
 //! check, then `git worktree add` as a job, then the new tab); the refusals the form and the disk
 //! check give; Browse…; and the section's text rules.
 
-use super::tests::same_place as same_path;
+use super::tests::same_place;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
@@ -101,7 +101,7 @@ fn open_linked_current_and_missing() {
 
     drive(&mut st, wt(WorktreeMsg::Open(linked.clone())));
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
-    assert!(same_path(&st.snap.as_ref().unwrap().workdir, &linked));
+    assert!(same_place(&st.snap.as_ref().unwrap().workdir, &linked));
 
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert!(update(&mut st, wt(WorktreeMsg::Open(dir.clone())), Instant::now()).is_empty());
@@ -145,12 +145,12 @@ fn create_from_branch_and_open() {
     assert!(folder.is_dir());
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     let snap = st.snap.as_ref().unwrap();
-    assert!(same_path(&snap.workdir, &folder));
+    assert!(same_place(&snap.workdir, &folder));
     assert_eq!(snap.head_branch.as_deref(), Some("side"));
 
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     let snap = st.snap.as_ref().unwrap();
-    assert!(same_path(&snap.workdir, &dir));
+    assert!(same_place(&snap.workdir, &dir));
     assert_eq!(snap.worktrees.len(), 2, "{:?}", snap.worktrees);
     assert!(section_shown(snap));
     cleanup(&dir);

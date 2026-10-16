@@ -70,7 +70,7 @@ fn cleanup(dir: &Path, linked: &Path) {
 }
 
 fn listed(dir: &Path, linked: &Path) -> bool {
-    crate::repo::worktrees_at(dir).unwrap().iter().any(|w| crate::worktree_ops::same_folder(&w.path, linked))
+    crate::repo::worktrees_at(dir).unwrap().iter().any(|w| crate::paths::same_folder(&w.path, linked))
 }
 
 #[test]

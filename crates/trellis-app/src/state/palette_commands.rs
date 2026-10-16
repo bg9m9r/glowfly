@@ -370,22 +370,11 @@ fn recent_entries(st: &AppState, out: &mut Vec<Entry>) {
     let active = st.workdir();
     for path in st.recent.iter().take(MAX_RECENT) {
         let is_active =
-            active.as_deref().is_some_and(|w| same_folder(w, path)) || st.snap.as_ref().is_some_and(|s| super::tabs::is_repo_at(s, path));
+            active.as_deref().is_some_and(|w| st.same_folder(w, path)) || st.snap.as_ref().is_some_and(|s| st.names_repo(s, path));
         if is_active || super::repo_lists::is_missing(st, path) {
             continue;
         }
         let e = entry(PaletteCommand::OpenRecent(path.clone()), format!("Open {}", folder_name(path)), "recent repository");
         out.push(with_detail(e, Some(path.display().to_string())));
-    }
-}
-
-/// Whether two paths name the same folder, compared by their text only (separators, trailing
-/// separators and, on Windows, case don't matter). Runs every frame, so it never touches disk.
-fn same_folder(a: &Path, b: &Path) -> bool {
-    if cfg!(windows) {
-        let norm = |p: &Path| p.components().map(|c| c.as_os_str().to_string_lossy().to_lowercase()).collect::<Vec<_>>();
-        norm(a) == norm(b)
-    } else {
-        a.components().eq(b.components())
     }
 }

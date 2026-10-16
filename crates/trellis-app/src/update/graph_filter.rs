@@ -19,7 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: GraphMsg, fx: &mut Vec<Effect>) {
 }
 
 fn filter(st: &mut AppState, op: FilterOp, fx: &mut Vec<Effect>) {
-    let Some(w) = st.workdir() else { return };
+    let Some(w) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
     // HEAD is always walked, so hiding its branch would only drop the label. The menu disables
     // the item; a late message is refused with the same reason.
     let head = st.snap.as_ref().and_then(|s| s.head_branch.as_deref()).map(|b| format!("refs/heads/{b}"));
@@ -41,25 +41,28 @@ fn filter(st: &mut AppState, op: FilterOp, fx: &mut Vec<Effect>) {
 /// A repository finished loading (before `snap` becomes the active snapshot). Drops hidden and
 /// soloed refs that no longer exist from the saved filter, and returns whether the repository
 /// must be loaded again: a soloed ref went away (the graph would show only HEAD), or it was
-/// opened through another spelling of its path, so the saved filter wasn't applied.
+/// opened through another spelling of its path, so the saved filter wasn't applied. Settings
+/// earlier versions saved under libgit2's spelling move to the resolved path first.
 pub(super) fn loaded(st: &mut AppState, snap: &Snapshot, kind: LoadKind, fx: &mut Vec<Effect>) -> bool {
-    let mut f = st.settings.graph_filter_for(&snap.workdir);
+    let aliases: Vec<&std::path::Path> =
+        [Some(&snap.workdir), snap.opened_as.as_ref()].into_iter().flatten().map(|p| p.as_path()).collect();
+    let adopted = st.settings.adopt_repo_keys(&snap.real_workdir, &aliases);
+    let saved = st.settings.graph_filter_for(&snap.real_workdir);
+    let mut f = saved.clone();
     let (mut hidden_changed, solo_changed) = f.prune(|r| ref_exists(snap, r));
     // A hidden branch that has since been checked out is shown again (the load already showed it).
     if let Some(b) = &snap.head_branch {
         hidden_changed |= f.apply(FilterOp::Show(format!("refs/heads/{b}")));
     }
     if hidden_changed || solo_changed {
-        st.settings.set_graph_filter(&snap.workdir, f);
+        st.settings.set_graph_filter(&snap.real_workdir, f);
+    }
+    if adopted || hidden_changed || solo_changed {
         fx.push(super::prefs::save_settings(st));
     }
-    // The tab still holds the requested path: `tabs::opened` replaces it after this.
-    let respelled = kind == LoadKind::Open
-        && st
-            .tabs
-            .get(st.active_tab)
-            .and_then(|t| t.path.as_ref())
-            .is_some_and(|requested| st.settings.graph_filter_for(requested) != st.settings.graph_filter_for(&snap.workdir));
+    // Loaded with the filter saved for another spelling (the path it was opened by, before its
+    // resolved form was known): load again with its own.
+    let respelled = kind == LoadKind::Open && (snap.loaded_with.hidden != saved.hidden || snap.loaded_with.solo != saved.solo);
     solo_changed || respelled
 }
 

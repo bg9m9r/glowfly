@@ -15,7 +15,6 @@ use crate::state::worktrees::{open_blocked, right_text, tooltip};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
-use std::path::PathBuf;
 use trellis_core::repo::{Snapshot, WorktreeInfo};
 
 /// What the rows are drawn against: the left-panel filter, the selection, and the folders open
@@ -23,7 +22,7 @@ use trellis_core::repo::{Snapshot, WorktreeInfo};
 pub(super) struct Rows<'a> {
     pub shown: &'a dyn Fn(&str) -> bool,
     pub sel: &'a Selection,
-    pub open_tabs: &'a [PathBuf],
+    pub open_tabs: &'a [crate::state::tabs::Place],
 }
 
 pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows: Rows, hover_next: &mut Option<Oid>, msgs: &mut Vec<Msg>) {
@@ -64,7 +63,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
     }
 }
 
-fn menu(ui: &mut egui::Ui, wt: &WorktreeInfo, open_tabs: &[PathBuf], msgs: &mut Vec<Msg>) {
+fn menu(ui: &mut egui::Ui, wt: &WorktreeInfo, open_tabs: &[crate::state::tabs::Place], msgs: &mut Vec<Msg>) {
     menu_item_if(msgs, ui, "Open in new tab", open_blocked(wt), Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
     let gone = wt.missing.then_some("Its folder is missing.");
     menu_item_if(msgs, ui, "Open folder", gone, Msg::OpenFolder(wt.path.clone()));

@@ -8,11 +8,12 @@
 use super::jobs::Started;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::TrustMsg;
-use crate::state::tabs::{is_repo_at, same_path};
+use crate::state::tabs::is_repo_at;
 use crate::state::trust::{Created, HeldJob, Standing, prompt_for, record, standing};
 use crate::state::{AppState, Modal, RunningJob};
 use std::path::Path;
 use std::time::Instant;
+use trellis_core::paths::same_spelling;
 use trellis_core::settings::RepoTrust;
 
 pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -25,12 +26,12 @@ pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Ve
 /// Shows the prompt again for the active repository at `real`, if git is held there (Undecided
 /// or NotTrusted) and no other dialog is open. Closes the palette, which never covers a dialog.
 fn ask(st: &mut AppState, real: &Path) {
-    let Some(snap) = st.snap.as_ref().filter(|s| same_path(&s.real_workdir, real)) else { return };
+    let Some(snap) = st.snap.as_ref().filter(|s| same_spelling(&s.real_workdir, real)) else { return };
     if !matches!(standing(&st.settings, snap), Standing::Undecided | Standing::NotTrusted) || st.modal.is_some() {
         return;
     }
     let prompt = prompt_for(&st.settings, snap);
-    if !st.trust.asked.iter().any(|p| same_path(p, &prompt.real)) {
+    if !st.trust.asked.iter().any(|p| same_spelling(p, &prompt.real)) {
         st.trust.asked.push(prompt.real.clone());
     }
     st.palette = None;
@@ -46,7 +47,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     if matches!(st.modal, Some(Modal::Trust(_))) {
         st.modal = None;
     }
-    let Some(snap) = st.snap.as_ref().filter(|s| same_path(&s.real_workdir, real)) else {
+    let Some(snap) = st.snap.as_ref().filter(|s| same_spelling(&s.real_workdir, real)) else {
         if let Some(h) = held {
             forget(st, h, trusted);
         }
@@ -73,7 +74,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
 /// trusted, if it was held for that repository, it is still the active one, its prompt was the
 /// one decided (`named`) and no other job is running; otherwise drops it.
 fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, fx: &mut Vec<Effect>) {
-    let here = named && same_path(&h.real, real) && st.snap.as_ref().is_some_and(|s| same_path(&s.real_workdir, &h.real));
+    let here = named && same_spelling(&h.real, real) && st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &h.real));
     if !here || super::jobs::busy(st, false) {
         return forget(st, h, true);
     }
@@ -113,7 +114,7 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect) -> Starte
     let Some(snap) = st.snap.as_ref() else { return Started::No };
     let mut prompt = prompt_for(&st.settings, snap);
     prompt.held = Some(job.label.clone());
-    if !st.trust.asked.iter().any(|p| same_path(p, &prompt.real)) {
+    if !st.trust.asked.iter().any(|p| same_spelling(p, &prompt.real)) {
         st.trust.asked.push(prompt.real.clone());
     }
     tracing::debug!("holding {} until {name} is trusted", job.label);
@@ -178,7 +179,7 @@ pub(super) fn created(st: &mut AppState, path: &Path, how: Created, output: &str
 /// The active tab's snapshot was just replaced by a full load of `kind`.
 pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
-    let made = st.trust.created.iter().position(|p| crate::state::tabs::is_repo_at(snap, p));
+    let made = st.trust.created.iter().position(|p| st.names_repo(snap, p));
     if let Some(i) = made {
         st.trust.created.remove(i);
         let real = snap.real_workdir.clone();
@@ -195,7 +196,7 @@ pub(super) fn maybe_ask(st: &mut AppState, fresh_open: bool) {
     if standing(&st.settings, snap) != Standing::Undecided || st.modal.is_some() {
         return;
     }
-    let asked = st.trust.asked.iter().any(|p| same_path(p, &snap.real_workdir));
+    let asked = st.trust.asked.iter().any(|p| same_spelling(p, &snap.real_workdir));
     if asked && !fresh_open {
         return;
     }

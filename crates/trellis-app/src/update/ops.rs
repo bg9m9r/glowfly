@@ -255,7 +255,7 @@ pub(super) fn finish_job(
     }
     // The user may have switched tabs while the job ran.
     let here = match (job.workdir.as_deref(), st.workdir()) {
-        (Some(a), Some(b)) => crate::state::tabs::same_path(a, &b),
+        (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),
         (a, b) => a.is_none() && b.is_none(),
     };
     super::undo::finished(st, &job, ok, undo, here);

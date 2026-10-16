@@ -14,7 +14,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
     match msg {
         PrefsMsg::OpenPrefs(page) => {
             let mut prefs = PrefsState::new(page);
-            if let Some(w) = st.workdir()
+            if let Some(w) = st.snap.as_ref().map(|s| s.real_workdir.clone())
                 && let TrackerChoice::Jira { project, .. } = st.settings.tracker_for(&w)
             {
                 prefs.jira_project = project;

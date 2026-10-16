@@ -118,7 +118,7 @@ fn trust_and_run_runs_the_held_job() {
     let gits = run_gits(&fx);
     let [Effect::RunGit { cwd, cmds, .. }] = gits.as_slice() else { panic!("one RunGit: {fx:?}") };
     assert_eq!(*cmds, vec![args(&["pull", "--ff"])]);
-    assert!(crate::state::tabs::same_path(cwd, &st.workdir().unwrap()));
+    assert!(trellis_core::paths::same_spelling(cwd, &st.workdir().unwrap()));
     let job = st.job.as_ref().expect("Pull runs");
     assert_eq!(job.label, "Pull");
     assert!(job.workdir.is_some());

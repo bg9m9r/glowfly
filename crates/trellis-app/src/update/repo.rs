@@ -248,6 +248,7 @@ pub(super) fn close_diff(st: &mut AppState) {
 }
 
 fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
+    st.known.learn_snapshot(&snap);
     if kind == LoadKind::Open && super::tabs::open_elsewhere(st, &snap, fx) {
         return;
     }
@@ -255,12 +256,15 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     st.view.highlight = None;
     match kind {
         LoadKind::Open => {
-            // Any spelling of this folder (a short 8.3 name, a link) gives way to libgit2's.
-            st.recent.retain(|p| !crate::state::tabs::is_repo_at(&snap, p));
+            // Any spelling of this folder (a short 8.3 name, a link, another case where the
+            // volume ignores it) gives way to libgit2's.
+            let recent = std::mem::take(&mut st.recent);
+            st.recent = recent.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             st.recent.insert(0, snap.workdir.clone());
             st.recent.truncate(12);
             fx.push(Effect::SaveRecent(st.recent.clone()));
-            st.missing_repos.retain(|p| !crate::state::tabs::is_repo_at(&snap, p));
+            let missing = std::mem::take(&mut st.missing_repos);
+            st.missing_repos = missing.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Trellis", snap.name))));
             st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
             st.detail = None;

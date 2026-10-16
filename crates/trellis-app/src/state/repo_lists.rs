@@ -2,35 +2,35 @@
 //! check, and the wording shared by the views and `update` (update/recent.rs).
 
 use super::AppState;
-use super::tabs::same_path;
 use std::path::{Path, PathBuf};
 use trellis_core::settings::Settings;
 
 /// The favorite repositories, in the order they were added.
 pub fn favorites(s: &Settings) -> Vec<PathBuf> {
-    s.favorite_repos.iter().map(PathBuf::from).collect()
+    s.favorite_repos.iter().map(|f| trellis_core::paths::decode(f)).collect()
 }
 
-/// Whether `p` is a favorite, under any spelling of its path.
-pub fn is_favorite(s: &Settings, p: &Path) -> bool {
-    s.favorite_repos.iter().any(|f| same_path(Path::new(f), p))
+/// Whether `p` is a favorite: the same folder as one (`AppState::same_folder`).
+pub fn is_favorite(st: &AppState, p: &Path) -> bool {
+    st.settings.favorite_repos.iter().any(|f| st.same_folder(&trellis_core::paths::decode(f), p))
 }
 
 /// Whether the last check found `p`'s folder missing.
 pub fn is_missing(st: &AppState, p: &Path) -> bool {
-    st.missing_repos.iter().any(|m| same_path(m, p))
+    st.missing_repos.iter().any(|m| trellis_core::paths::same_spelling(m, p))
 }
 
 /// The rows of the Recent section: the recent list without the favorites, which have their own.
 pub fn recent_rows(st: &AppState) -> Vec<&PathBuf> {
-    st.recent.iter().filter(|p| !is_favorite(&st.settings, p)).collect()
+    st.recent.iter().filter(|p| !is_favorite(st, p)).collect()
 }
 
-/// Every listed folder, favorites first, each once.
+/// Every listed folder, favorites first, each spelling once (each is looked at, so the check
+/// finds which are one folder).
 pub fn paths_to_check(st: &AppState) -> Vec<PathBuf> {
     let mut out: Vec<PathBuf> = Vec::new();
     for p in favorites(&st.settings).into_iter().chain(st.recent.iter().cloned()) {
-        if !out.iter().any(|o| same_path(o, &p)) {
+        if !out.iter().any(|o| trellis_core::paths::same_spelling(o, &p)) {
             out.push(p);
         }
     }
@@ -63,14 +63,16 @@ mod tests {
     fn recent_rows_leave_out_favorites() {
         let st = state(&["/w/a", "/w/b", "/w/c"], &["/w/b/"]);
         assert_eq!(recent_rows(&st), [&PathBuf::from("/w/a"), &PathBuf::from("/w/c")]);
-        // Case is ignored where the file system ignores it by default (NTFS, APFS)...
-        if cfg!(any(windows, target_os = "macos")) {
-            let st = state(&["/Work/A", "/work/b"], &["/work/a"]);
-            assert_eq!(recent_rows(&st), [&PathBuf::from("/work/b")]);
-        }
-        // ...and only Windows reads a backslash as a separator.
+        // Case is the volume's business: another case is another row until a check finds both
+        // spellings to be one folder.
+        let mut st = state(&["/Work/A", "/work/b"], &["/work/a"]);
+        assert_eq!(recent_rows(&st), [&PathBuf::from("/Work/A"), &PathBuf::from("/work/b")]);
+        st.known.learn(Path::new("/Work/A"), trellis_core::paths::FolderId::for_tests(1));
+        st.known.learn(Path::new("/work/a"), trellis_core::paths::FolderId::for_tests(1));
+        assert_eq!(recent_rows(&st), [&PathBuf::from("/work/b")]);
+        // Only Windows reads a backslash as a separator.
         if cfg!(windows) {
-            let st = state(&["C:/Work/A", "C:/work/b"], &["c:\\work\\a"]);
+            let st = state(&["C:/work/A", "C:/work/b"], &[r"c:\work\A"]);
             assert_eq!(recent_rows(&st), [&PathBuf::from("C:/work/b")]);
         }
     }

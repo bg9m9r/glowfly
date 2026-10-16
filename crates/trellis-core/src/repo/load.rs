@@ -35,7 +35,11 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let real_workdir = crate::paths::resolve(&workdir);
     // The spelling it was opened by, when that is another name for the work dir (not a folder
     // inside it): a short 8.3 name or a link the caller may still hold.
-    let opened_as = (path != workdir && crate::paths::resolve(path) == real_workdir).then(|| path.to_path_buf());
+    let folder = crate::paths::FolderId::of(&workdir);
+    let opened_as = (path != workdir
+        && (crate::paths::same_spelling(&crate::paths::resolve(path), &real_workdir)
+            || folder.is_some_and(|f| crate::paths::FolderId::of(path) == Some(f))))
+    .then(|| path.to_path_buf());
     let git_dir = repo.path().to_path_buf();
     let name = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| workdir.display().to_string());
     let state = repo.state();
@@ -214,6 +218,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         workdir,
         real_workdir,
         opened_as,
+        folder,
         git_dir,
         name,
         remote_urls,

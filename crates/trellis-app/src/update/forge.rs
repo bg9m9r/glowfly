@@ -47,8 +47,8 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
             st.log(true, format!("Removed {} connection{}{extra}.", accounts.len(), if accounts.len() == 1 { "" } else { "s" }));
         }
         ForgeMsg::SetTracker(choice) => {
-            let Some(w) = st.workdir() else { return };
-            st.settings.repo_trackers.insert(w.display().to_string(), choice);
+            let Some(w) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
+            st.settings.set_tracker(&w, choice);
             fx.push(super::prefs::save_settings(st));
             if let Some(snap) = st.snap.take() {
                 detect(st, &snap);
@@ -70,7 +70,7 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
         Some((r, t)) => (r, Some(t)),
         None => (String::new(), None),
     };
-    let tracker = match st.settings.tracker_for(&snap.workdir) {
+    let tracker = match st.settings.tracker_for(&snap.real_workdir) {
         TrackerChoice::Auto => host.clone().filter(|t| t.provider.has_issues()),
         TrackerChoice::None => None,
         TrackerChoice::Jira { account, project } => Some(Target::jira(&account, &project)),

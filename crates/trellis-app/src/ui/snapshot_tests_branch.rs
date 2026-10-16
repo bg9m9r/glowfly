@@ -106,7 +106,7 @@ fn branch_menu() {
 /// `search` soloed, `login-page` and origin/main hidden, with the graph loaded to match.
 fn hidden_solo(name: &str) -> (AppState, std::path::PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
-    let workdir = st.snap.as_ref().unwrap().workdir.clone();
+    let workdir = st.snap.as_ref().unwrap().real_workdir.clone();
     let filter = GraphFilter {
         hidden: vec!["refs/heads/login-page".into(), "refs/remotes/origin/main".into()],
         solo: vec!["refs/heads/search".into()],

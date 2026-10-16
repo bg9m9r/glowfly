@@ -66,10 +66,7 @@ pub(super) fn keys(text: &str) -> String {
 /// Whether `a` and `b` are the same folder on disk (tests compare a fixture's path, which may be
 /// a short 8.3 name on CI, with the one libgit2 reports).
 pub(super) fn same_place(a: &Path, b: &Path) -> bool {
-    match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
-        (Ok(x), Ok(y)) => x == y,
-        _ => crate::state::tabs::same_path(a, b),
-    }
+    trellis_core::paths::same_folder(a, b)
 }
 
 /// Runs `msg` and every resulting effect to completion, as the app would (minus the window).

@@ -37,14 +37,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 );
             });
             ui.add_space(8.0);
-            let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.workdir)).unwrap_or_default();
+            let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
             ref_visibility::banner(ui, &filter, msgs);
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));
         });
 }
 
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
-    let open_tabs: Vec<std::path::PathBuf> = st.tabs.iter().filter_map(|t| t.path.clone()).collect();
+    let open_tabs = crate::state::tabs::open_places(&st.tabs);
     let Some(snap) = &st.snap else { return };
     let filter = st.view.ref_filter.to_lowercase();
     let shown = |name: &str| trellis_core::matching::contains_lower(name, &filter);

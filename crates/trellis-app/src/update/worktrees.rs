@@ -80,7 +80,7 @@ fn folder_checked(st: &mut AppState, req: NewWorktree, result: Result<(), String
             return;
         }
     }
-    let here = st.workdir().is_some_and(|w| crate::state::tabs::same_path(&w, &req.repo));
+    let here = st.workdir().is_some_and(|w| trellis_core::paths::same_spelling(&w, &req.repo));
     if !here {
         st.log(false, TAB_GONE);
         close(st);

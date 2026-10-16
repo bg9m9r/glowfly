@@ -1,8 +1,8 @@
 //! The SSH preferences page: the key pairs read in the background, the Generate New Key form,
 //! the rules that decide whether Generate can run, and the texts its toasts and dialog show.
 
-use crate::state::tabs::same_path;
 use std::path::{Path, PathBuf};
+use trellis_core::paths::same_spelling;
 use trellis_core::ssh_keys::{LocationProblem, SshListing, comment_problem, default_location, resolve_location};
 
 pub const COPIED: &str = "Public key copied to the clipboard";
@@ -52,7 +52,7 @@ impl SshPage {
     /// The location is one of the listed private keys.
     pub fn location_taken(&self) -> bool {
         let (Some(listing), Some(path)) = (self.listing.as_ref(), self.resolved()) else { return false };
-        listing.keys.iter().any(|k| same_path(&k.private, &path))
+        listing.keys.iter().any(|k| same_spelling(&k.private, &path))
     }
 
     pub fn passphrase_mismatch(&self) -> bool {

@@ -6,10 +6,9 @@
 
 use super::AppState;
 use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
-use super::tabs::same_path;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::Snapshot;
-use trellis_core::settings::{RepoTrust, Settings};
+use trellis_core::settings::{RepoTrust, Settings, repo_keys};
 use trellis_core::trust::TrustScan;
 
 /// How a repository Trellis is about to open came to be.
@@ -85,15 +84,16 @@ pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
     }
 }
 
-/// The decision saved for the repository at `path`, under any spelling of it.
+/// The decision saved for the repository at `path`, under any spelling of it. Never under
+/// another case: on a volume that tells case apart that is another repository, so a decision is
+/// only shared by paths spelled the same.
 pub fn recorded(s: &Settings, path: &Path) -> Option<RepoTrust> {
-    s.repo_trust.iter().find(|(k, _)| same_path(Path::new(k.as_str()), path)).map(|(_, t)| *t)
+    repo_keys::get(&s.repo_trust, path).copied()
 }
 
 /// Saves `t` for the repository at `real`, replacing a decision saved under another spelling.
 pub fn record(s: &mut Settings, real: &Path, t: RepoTrust) {
-    s.repo_trust.retain(|k, _| !same_path(Path::new(k.as_str()), real));
-    s.repo_trust.insert(real.display().to_string(), t);
+    repo_keys::set(&mut s.repo_trust, real, Some(t));
 }
 
 /// Where the loaded repository `snap` stands.
@@ -205,12 +205,16 @@ mod tests {
         record(&mut s, Path::new("work/tools"), RepoTrust::Trusted);
         assert_eq!(recorded(&s, Path::new("work/./tools/")), Some(RepoTrust::Trusted));
         assert_eq!(recorded(&s, Path::new("work/other")), None);
+        // Another case is another repository as far as the saved decisions go: on a volume that
+        // tells case apart it is one, and trust is never shared by guessing.
+        assert_eq!(recorded(&s, Path::new("work/Tools")), None);
         #[cfg(windows)]
         {
             record(&mut s, Path::new(r"\\?\C:\x"), RepoTrust::Trusted);
-            assert_eq!(recorded(&s, Path::new(r"c:\X")), Some(RepoTrust::Trusted));
+            assert_eq!(recorded(&s, Path::new(r"c:\x")), Some(RepoTrust::Trusted));
+            assert_eq!(recorded(&s, Path::new(r"c:\X")), None);
             // A new decision replaces the one saved under the older spelling.
-            record(&mut s, Path::new(r"c:\X"), RepoTrust::NotTrusted);
+            record(&mut s, Path::new(r"c:\x\"), RepoTrust::NotTrusted);
             assert_eq!(recorded(&s, Path::new(r"\\?\C:\x")), Some(RepoTrust::NotTrusted));
             assert_eq!(s.repo_trust.len(), 2);
         }
