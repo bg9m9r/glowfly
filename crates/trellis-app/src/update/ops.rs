@@ -14,7 +14,12 @@ pub(super) use super::jobs::{JobSpec, Started, begin_job, busy, start_job};
 
 pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        StageMsg::StageFile(p) => local(st, LocalOp::StageFile(p), fx),
+        StageMsg::StageFile(p) => {
+            // Marking a file resolved while the merge tool has it open stages the markers.
+            if !super::conflict::in_tool(st, &p) {
+                local(st, LocalOp::StageFile(p), fx);
+            }
+        }
         StageMsg::UnstageFile(p) => local(st, LocalOp::UnstagePaths(vec![p]), fx),
         StageMsg::StageAll => {
             // Staging a conflicted file marks it resolved, markers and all, so that is done

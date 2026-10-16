@@ -73,3 +73,7 @@ impl ExternalTools {
         self.merge_tool_args = MERGE_TOOL_ARGS.into();
     }
 }
+
+#[cfg(test)]
+#[path = "tools_tests.rs"]
+mod tests;

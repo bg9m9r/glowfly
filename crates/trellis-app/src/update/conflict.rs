@@ -5,6 +5,7 @@ use crate::effect::{Effect, LocalOp};
 use crate::msg::ConflictMsg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
+use crate::state::tool_compare::merging;
 use std::time::Instant;
 use trellis_core::repo::Choice;
 
@@ -68,6 +69,10 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             }
         }
         ConflictMsg::SaveConflict => {
+            let path = st.conflict.as_ref().map(|c| c.path.clone()).unwrap_or_default();
+            if in_tool(st, &path) {
+                return;
+            }
             let Some(c) = st.conflict.as_mut() else { return };
             // The button is disabled until every chunk has a pick.
             if !c.can_save() {
@@ -79,6 +84,9 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             super::ops::local(st, op, fx);
         }
         ConflictMsg::ResolveWithSide { path, side } => {
+            if in_tool(st, &path) {
+                return;
+            }
             let Some(c) = st.conflict.as_mut().filter(|c| c.path == path && !c.saving) else { return };
             let Some(f) = &c.file else { return };
             let op = LocalOp::ResolveWithSide { path, side, expected: f.ids.clone() };
@@ -86,6 +94,16 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             super::ops::local(st, op, fx);
         }
     }
+}
+
+/// Whether the merge tool has `path` open, said in the log: writing the file now would race
+/// with the tool's save (the buttons are disabled; a confirm dialog can still answer).
+pub(super) fn in_tool(st: &mut AppState, path: &str) -> bool {
+    let busy = merging(st, path);
+    if busy {
+        st.log(false, format!("{path} is open in the merge tool: save and close it there first."));
+    }
+    busy
 }
 
 fn set_all(st: &mut AppState, choice: Choice) {

@@ -1,6 +1,7 @@
 //! Preferences > External Tools snapshots: the page with nothing set (the terminal arguments
 //! disabled), and with an editor, custom arguments naming an unknown placeholder, a custom
-//! terminal, and diff and merge tools whose arguments leave out a version.
+//! terminal, and diff and merge tools whose arguments leave out a version; the conflict view
+//! with the merge tool blocked by a job, and with the merge tool open on its file.
 
 use super::snapshot_tests::{harness_sized, settings};
 use crate::state::{AppState, PrefPage, PrefsState};
@@ -91,5 +92,29 @@ fn conflict_view_merge_tool_button_sends_resolve() {
     let sent =
         h.state().1.iter().any(|m| matches!(m, crate::msg::Msg::Tools(crate::tools::ToolsMsg::ResolveInMergeTool(p)) if p == "notes.txt"));
     assert!(sent);
+    let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+#[test]
+fn conflict_view_while_the_merge_tool_has_the_file() {
+    use egui_kittest::kittest::Queryable;
+    let (mut st, dir) = super::snapshot_tests::with_conflict("conflict-in-tool", "notes.txt", |side| format!("{side}\n").into_bytes());
+    st.settings.external_tools.merge_tool = "kdiff3".into();
+    st.job = Some(crate::state::RunningJob {
+        label: crate::state::tool_compare::merge_label("notes.txt"),
+        workdir: st.workdir(),
+        quiet: false,
+        clear_commit: false,
+        then_push: false,
+        then_open: None,
+        keeps_undo: true,
+    });
+    let mut h = super::snapshot_tests::harness(st, true);
+    h.run_steps(4);
+    h.check_snapshot("conflict_view_in_merge_tool");
+    // The header's (the file row's is refused when it arrives: update/tool_compare_tests.rs).
+    let disabled = h.get_all_by_label("Mark resolved").filter(|n| n.is_disabled()).count();
+    assert_eq!(disabled, 1, "staging now would stage the markers");
+    assert!(h.get_by_label("Save").is_disabled());
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }

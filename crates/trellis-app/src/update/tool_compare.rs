@@ -9,10 +9,11 @@ use crate::msg::Msg;
 use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::ToastAction;
-use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL, diff_request, merge_end_text, merge_request, not_found};
+use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL, diff_request, merge_end_text, merge_label, merge_request, not_found};
 use crate::tools::{MergeEnd, MergeToolRequest, ToolEffect};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
+use trellis_core::paths::same_spelling;
 use trellis_core::repo::DiffTarget;
 
 /// Open in external diff tool. Copies go through git's checkout filters only while the
@@ -44,12 +45,14 @@ pub(super) fn resolve(st: &mut AppState, path: String, now: Instant, fx: &mut Ve
     if super::jobs::busy(st, false) {
         return;
     }
-    let label = format!("Resolve {path} in the merge tool");
+    let label = merge_label(&path);
     super::jobs::begin_tool_job(st, &label, move |cwd| Effect::Tool(ToolEffect::RunMerge(MergeToolRequest { workdir: cwd, ..req })), fx);
 }
 
 /// The merge tool exited: ends the job (re-reading status when its tab is active), with a
-/// Mark resolved button when it saved the file, or Open Preferences when it wasn't found.
+/// Mark resolved button when it saved the file, or Open Preferences when it wasn't found. A
+/// conflict view open on the file closes when the tool changed it: its picks would write over
+/// the tool's result.
 pub(super) fn exited(
     st: &mut AppState,
     workdir: PathBuf,
@@ -60,6 +63,9 @@ pub(super) fn exited(
     fx: &mut Vec<Effect>,
 ) {
     let (ok, output, headline) = merge_end_text(&program, &path, &end);
+    if matches!(end, MergeEnd::Saved | MergeEnd::Resolved | MergeEnd::Exited { changed: true, .. }) {
+        close_view(st, &workdir, &path);
+    }
     if st.job.is_none() {
         // No job to end (it was ended some other way): only say what happened.
         st.log(ok, headline);
@@ -71,5 +77,17 @@ pub(super) fn exited(
         st.set_last_toast_action(ToastAction { label: "Mark resolved".into(), msg, workdir: Some(workdir) });
     } else if not_found(&end) {
         st.set_last_toast_action(prefs_action());
+    }
+}
+
+/// Closes the conflict view on `path` of `workdir`, in the active tab or the parked one.
+fn close_view(st: &mut AppState, workdir: &Path, path: &str) {
+    let here = st.workdir().is_some_and(|w| same_spelling(&w, workdir));
+    if here {
+        if st.conflict.as_ref().is_some_and(|c| c.path == path) {
+            super::conflict::close(st);
+        }
+    } else if let Some(parked) = st.tabs.iter_mut().find(|t| t.is(workdir)).and_then(|t| t.parked.as_mut()) {
+        parked.conflict.take_if(|c| c.path == path);
     }
 }

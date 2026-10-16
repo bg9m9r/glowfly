@@ -24,6 +24,22 @@ const DELETED: &str = "One side deleted the file: keep or delete it with the but
 pub const NO_DIFF_TOOL_DETAIL: &str = "no diff tool set";
 pub const NO_MERGE_TOOL_DETAIL: &str = "no merge tool set";
 
+/// Why the conflict view's write actions (Save, Mark resolved, a whole side) are disabled
+/// while the merge tool has the file open.
+pub const IN_MERGE_TOOL: &str = "Open in the merge tool: save and close it there first";
+
+/// The merge tool job's label for `path`.
+pub fn merge_label(path: &str) -> String {
+    format!("Resolve {path} in the merge tool")
+}
+
+/// Whether the merge tool has `path` of the active tab's repository open: its job is the
+/// active one there. Writes to the file from the app would race with the tool's save.
+pub fn merging(st: &AppState, path: &str) -> bool {
+    let (Some(job), Some(here)) = (&st.job, st.workdir()) else { return false };
+    job.label == merge_label(path) && job.workdir.as_deref().is_some_and(|w| trellis_core::paths::same_spelling(w, &here))
+}
+
 /// Why Open in external diff tool is disabled, or None.
 pub fn diff_blocked(t: &ExternalTools) -> Option<&'static str> {
     external_tools::program(&t.diff_tool).is_none().then_some(NO_DIFF_TOOL)

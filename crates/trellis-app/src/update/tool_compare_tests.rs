@@ -1,13 +1,13 @@
 //! Headless tests for the external diff and merge tools: refusals that point to Preferences,
 //! the requests planned for each diff target (with git's filters only in a trusted
 //! repository), the merge tool started as the single active job without the trust prompt, and
-//! how its end is reported.
+//! how its end is reported (and that the conflict view writes nothing over the tool's work).
 
 use super::conflict_tests::conflicted_repo;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg};
+use crate::msg::{ConflictMsg, Msg, RepoMsg, StageMsg};
 use crate::state::AppState;
 use crate::state::PrefPage;
 use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL};
@@ -15,7 +15,7 @@ use crate::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, T
 use git2::Oid;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use trellis_core::repo::DiffTarget;
+use trellis_core::repo::{DiffTarget, Side};
 use trellis_core::settings::ExternalTools;
 use trellis_core::undo::Action;
 
@@ -210,6 +210,56 @@ fn a_merge_tool_run_keeps_the_undo_history() {
         assert!(st.undo.blocked.is_none(), "{end:?}");
     }
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `running` with the conflict view loaded on a.txt and a side picked for every chunk.
+fn running_in_view(name: &str) -> (AppState, PathBuf) {
+    let (mut st, dir) = running(name);
+    drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
+    assert!(st.conflict.as_ref().is_some_and(|c| c.file.is_some()), "the view loaded");
+    update(&mut st, Msg::Conflict(ConflictMsg::ConflictTakeAll(Side::Ours)), Instant::now());
+    assert!(st.conflict.as_ref().unwrap().can_save());
+    (st, dir)
+}
+
+fn writes(fx: &[Effect]) -> bool {
+    fx.iter().any(|e| matches!(e, Effect::LocalOp { .. }))
+}
+
+#[test]
+fn the_conflict_view_writes_nothing_while_the_merge_tool_has_the_file() {
+    let (mut st, dir) = running_in_view("tc-view-held");
+    let now = Instant::now();
+    for m in [
+        Msg::Conflict(ConflictMsg::SaveConflict),
+        Msg::Conflict(ConflictMsg::ResolveWithSide { path: "a.txt".into(), side: Side::Theirs }),
+        Msg::Stage(StageMsg::StageFile("a.txt".into())),
+    ] {
+        let fx = update(&mut st, m, now);
+        assert!(!writes(&fx), "nothing is written or staged while the tool runs: {fx:?}");
+        assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("a.txt is open in the merge tool: save and close it there first."));
+    }
+    assert!(!st.conflict.as_ref().unwrap().saving);
+    // Other files stage as usual.
+    assert!(writes(&update(&mut st, Msg::Stage(StageMsg::StageFile("b.txt".into())), now)));
+
+    // The tool left the file alone: the view and its picks stay, and Save works again.
+    exited(&mut st, MergeEnd::Unchanged);
+    assert!(st.conflict.as_ref().is_some_and(|c| c.can_save()), "the picks are kept");
+    assert!(writes(&update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), now)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_merge_tool_that_changed_the_file_closes_the_conflict_view() {
+    for (i, end) in [MergeEnd::Saved, MergeEnd::Exited { code: Some(1), said: String::new(), changed: true }].into_iter().enumerate() {
+        let (mut st, dir) = running_in_view(&format!("tc-view-closes-{i}"));
+        exited(&mut st, end.clone());
+        assert!(st.conflict.is_none(), "{end:?}: its picks would overwrite the tool's result");
+        // Mark resolved stages the tool's result once it has exited.
+        assert!(writes(&update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now())), "{end:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
 
 #[test]
