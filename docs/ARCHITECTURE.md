@@ -110,6 +110,11 @@ binary (package `trellis`).
   the identities worker threads found (`AppState::same_folder`, `state/known_folders.rs`); it
   never folds case, which is the volume's business. Settings saved per repository are keyed by
   `real_workdir` through `settings::repo_keys`.
+- **Job follow-ups**: a job can carry what to do once it succeeds (`JobSpec`/`RunningJob`
+  `then_push`, `then_open`, `then_pr`), handled in `update/ops.rs::finish_job`. Those that act
+  on the repository run only while the job's tab is active and are logged otherwise. A follow-up that needs the refreshed snapshot waits for the
+  reload: a push for a pull request sets `ForgeState::open_after_load`, and the next snapshot
+  load opens the create dialog (`update/push_pr.rs::loaded`), never replacing another dialog.
 - **Toasts** (`state/toasts.rs`) can carry one action button with a stored `Msg`. A click
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
   while the toast's repository is the active tab.

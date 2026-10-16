@@ -102,7 +102,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
             ref_visibility::row_marker(ui, &r, 13.0, &format!("refs/heads/{}", b.name), &b.name, graph, msgs);
-            r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, graph, msgs));
+            r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, graph, &sel, msgs));
         }
     }
 

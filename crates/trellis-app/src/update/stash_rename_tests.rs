@@ -128,6 +128,7 @@ fn refusals_leave_or_close_the_dialog() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_pr: None,
         keeps_undo: true,
     });
     assert!(run(&mut st, rename(first.oid, "renamed")).is_empty());

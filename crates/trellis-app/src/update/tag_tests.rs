@@ -147,6 +147,7 @@ fn create_tag_unknown_remote_and_busy() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_pr: None,
         keeps_undo: true,
     });
     let fx = update(&mut st, create(&sha, "v1", "", Some("origin")), Instant::now());

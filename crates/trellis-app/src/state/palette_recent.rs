@@ -80,6 +80,8 @@ impl PaletteCommand {
             C::CreateTag { annotated: false } => "create-tag",
             C::CreateTag { annotated: true } => "create-annotated-tag",
             C::RenameBranch(_) => "rename-branch",
+            C::CreatePr(_) => "create-pr",
+            C::PushAndCreatePr(_) => "push-create-pr",
             C::SearchCommits => "search-commits",
             C::InitializeLfs => "lfs-init",
             C::ConfigureLfs => "lfs-configure",

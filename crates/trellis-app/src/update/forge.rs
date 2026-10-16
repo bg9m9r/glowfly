@@ -1,8 +1,9 @@
-//! Hosting services: detection, refresh, replies, pull request creation, connections.
+//! Hosting services: detection, refresh, replies, connections. Starting a pull request is in
+//! update/push_pr.rs.
 
 use crate::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
-use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, Modal, Status};
+use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, Status};
 use git2::Oid;
 use std::time::Instant;
 use trellis_core::forge::{self, Account, Connection, Target};
@@ -23,12 +24,9 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
         }
         ForgeMsg::ForgeReplied(reply) => replied(st, reply, now),
         ForgeMsg::TipsShown(oids) => super::build_status::shown(st, oids),
-        ForgeMsg::CreatePrDialog(source) => open_create_pr(st, source, fx),
-        ForgeMsg::CreatePr(pr) => {
-            if let Some(target) = st.forge.as_ref().and_then(|f| f.host.clone()) {
-                request(st, target, false, ForgeCall::Create(pr), fx);
-            }
-        }
+        ForgeMsg::CreatePrDialog { source, target } => super::push_pr::open_dialog(st, source, target, fx),
+        ForgeMsg::PushAndStartPr { branch, target } => super::push_pr::start(st, &branch, target, fx),
+        ForgeMsg::CreatePr(pr) => super::push_pr::create(st, pr, fx),
         ForgeMsg::Connect { account, user, token } => {
             if let Some(p) = st.prefs.as_mut() {
                 p.int_busy = true;
@@ -258,48 +256,6 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant) {
         resolve_pr_heads(st);
         super::build_status::seed_from_prs(st, now);
     }
-}
-
-fn open_create_pr(st: &mut AppState, source: String, fx: &mut Vec<Effect>) {
-    let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
-    if fs.host.is_none() {
-        return;
-    }
-    let remote_branches: Vec<String> =
-        snap.remotes.iter().find(|(r, _)| *r == fs.remote).map(|(_, b)| b.iter().map(|(n, _)| n.clone()).collect()).unwrap_or_default();
-    let target = fs
-        .default_branch
-        .clone()
-        .filter(|b| *b != source)
-        .or_else(|| {
-            ["main", "master", "develop"].iter().find(|b| remote_branches.iter().any(|r| r == *b) && **b != source).map(|b| b.to_string())
-        })
-        .unwrap_or_else(|| "main".into());
-    let local_tip = snap.locals.iter().find(|b| b.name == source).and_then(|b| b.oid);
-    let title = local_tip.and_then(|o| snap.row_of.get(&o)).map(|&r| snap.commits[r].summary.clone()).unwrap_or_else(|| source.clone());
-    // Issues mentioned on the branch: from its name and from commits not yet on the target.
-    let mut keys: Vec<String> = fs.branch_issue(&source).into_iter().collect();
-    let tip = |name: &str, remote_first: bool| {
-        let remote =
-            snap.remotes.iter().find(|(r, _)| *r == fs.remote).and_then(|(_, b)| b.iter().find(|(n, _)| n == name)).map(|(_, o)| *o);
-        let local = snap.locals.iter().find(|b| b.name == name).and_then(|b| b.oid);
-        if remote_first { remote.or(local) } else { local.or(remote) }
-    };
-    if let Some(from) = tip(&source, false) {
-        for c in snap.commits_between(from, tip(&target, true)) {
-            for k in fs.issue_refs(&c.summary).into_iter().chain(fs.issue_refs(&c.body)) {
-                if !keys.contains(&k) {
-                    keys.push(k);
-                }
-            }
-        }
-    }
-    let items = keys.join(", ");
-    let candidates = if remote_branches.is_empty() { snap.locals.iter().map(|b| b.name.clone()).collect() } else { remote_branches };
-    let mut targets: Vec<String> = candidates.into_iter().filter(|b| *b != source).collect();
-    targets.sort();
-    st.modal = Some(Modal::CreatePr { source, target, targets, title, description: String::new(), draft: false, items });
-    want_issues(st, keys, fx);
 }
 
 fn connected(

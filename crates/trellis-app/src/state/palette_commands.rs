@@ -12,6 +12,8 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 mod palette_checkouts;
 #[path = "palette_gitflow.rs"]
 mod palette_gitflow;
+#[path = "palette_pr.rs"]
+mod palette_pr;
 #[path = "palette_setup.rs"]
 mod palette_setup;
 #[path = "palette_shallow.rs"]
@@ -39,6 +41,10 @@ pub enum PaletteCommand {
     /// Download this many older commits of a shallow clone.
     FetchMoreCommitsBy(u32),
     Push,
+    /// Open the create pull request dialog for this (checked-out) branch.
+    CreatePr(String),
+    /// Push this (checked-out) branch to the code host, then open the create dialog.
+    PushAndCreatePr(String),
     /// Stash every change, untracked files included.
     Stash,
     /// Pop the most recent stash.
@@ -243,6 +249,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if snap.head_branch.is_some() {
         out.push(entry(C::Push, "Push", "upload publish"));
     }
+    palette_pr::pr_entries(st, snap, out);
     palette_stash::stash_entries(snap, out);
     if !snap.unstaged.is_empty() {
         out.push(entry(C::StageAll, "Stage all files", "add everything"));

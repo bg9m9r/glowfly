@@ -10,6 +10,7 @@ use crate::effect::Effect;
 use crate::msg::BlameMsg;
 use crate::msg::BranchMsg;
 use crate::msg::DiffMsg;
+use crate::msg::ForgeMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
@@ -225,6 +226,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             Msg::Tag(TagMsg::NewTag { at: at.to_string(), annotated })
         }
         C::RenameBranch(name) => Msg::Branch(BranchMsg::RenameBranchDialog(name)),
+        C::CreatePr(b) => Msg::Forge(ForgeMsg::CreatePrDialog { source: b, target: None }),
+        C::PushAndCreatePr(b) => Msg::Forge(ForgeMsg::PushAndStartPr { branch: b, target: None }),
         C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),
         C::ConfigureLfs => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)),
         C::ConfigureGitFlow => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)),

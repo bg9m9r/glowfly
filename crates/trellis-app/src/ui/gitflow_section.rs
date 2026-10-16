@@ -79,7 +79,7 @@ pub(super) fn section(
                 let finish = format!("Finish {} {}…", g.kind.noun(), b.short);
                 menu_item(msgs, ui, finish, Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
                 ui.separator();
-                local_branch_menu(ui, info, snap, rows.fs, rows.graph, msgs);
+                local_branch_menu(ui, info, snap, rows.fs, rows.graph, rows.sel, msgs);
             });
         }
     }

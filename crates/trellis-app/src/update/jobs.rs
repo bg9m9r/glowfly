@@ -2,6 +2,7 @@
 //! RunningJob plus effect it runs (`begin_tool_job` for the merge tool, which skips the gate).
 
 use crate::effect::Effect;
+use crate::state::push_pr::PrStart;
 use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob};
 use std::path::PathBuf;
@@ -17,6 +18,8 @@ pub(super) struct JobSpec {
     pub clear_commit: bool,
     /// Push the branch once the job (a commit) succeeds.
     pub then_push: bool,
+    /// Open the create pull request dialog once the job (a push) succeeds.
+    pub then_pr: Option<PrStart>,
     /// Open this repository in the active tab once the job succeeds; how it was made decides
     /// whether it is trusted (update/trust.rs).
     pub then_open: Option<(PathBuf, Created)>,
@@ -36,6 +39,7 @@ impl JobSpec {
             quiet: false,
             clear_commit: false,
             then_push: false,
+            then_pr: None,
             then_open: None,
             write_file: None,
             record: None,
@@ -71,6 +75,7 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         quiet: spec.quiet,
         clear_commit: spec.clear_commit,
         then_push: spec.then_push,
+        then_pr: spec.then_pr,
         then_open: spec.then_open,
         keeps_undo: super::undo::keeps_history(&spec.cmds),
     };
@@ -91,8 +96,16 @@ pub(super) fn begin_job(
     effect: impl FnOnce(PathBuf) -> Effect,
     fx: &mut Vec<Effect>,
 ) -> Started {
-    let job =
-        RunningJob { label: label.into(), workdir: None, quiet: false, clear_commit: false, then_push: false, then_open: None, keeps_undo };
+    let job = RunningJob {
+        label: label.into(),
+        workdir: None,
+        quiet: false,
+        clear_commit: false,
+        then_push: false,
+        then_pr: None,
+        then_open: None,
+        keeps_undo,
+    };
     launch(st, job, None, effect, fx)
 }
 
@@ -138,6 +151,7 @@ pub(super) fn start_effect_job(
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_pr: None,
         then_open,
         keeps_undo: false,
     };

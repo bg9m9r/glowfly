@@ -1,19 +1,20 @@
 //! The right-click menu of a local branch: checkout, merge and rebase, checking for conflicts,
-//! fast-forward, push, pull requests, rename, upstream, hide or solo in the graph, and delete. Disabled items say why on hover, with the same
-//! text `update` logs when it refuses a late message.
+//! fast-forward, push, pull requests (pushing the branch first when the code host lacks it,
+//! into the branch selected before), rename, upstream, hide or solo in the graph, and delete.
+//! Disabled items say why on hover, with the same text `update` logs when it refuses a late
+//! message.
 
 use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::msg::BranchMsg;
-use crate::msg::ForgeMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
-use crate::state::ForgeState;
 use crate::state::branches::{self, NO_REMOTES};
 use crate::state::conflict_check::NO_TARGET;
+use crate::state::{ForgeState, Selection};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use trellis_core::rebase::RebaseBase;
@@ -27,6 +28,7 @@ pub fn local_branch_menu(
     snap: &Snapshot,
     fs: Option<&ForgeState>,
     filter: &GraphFilter,
+    sel: &Selection,
     msgs: &mut Vec<Msg>,
 ) {
     let name = b.name.as_str();
@@ -59,10 +61,7 @@ pub fn local_branch_menu(
     if let Some(fs) = fs {
         ui.separator();
         if fs.host.is_some() {
-            match fs.pr_for_branch(name) {
-                Some(pr) => menu_item(msgs, ui, format!("Open {} {}", fs.pr_noun(), fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone())),
-                None => menu_item(msgs, ui, format!("Create {}…", fs.pr_noun()), Msg::Forge(ForgeMsg::CreatePrDialog(name.to_owned()))),
-            }
+            super::pr_menu_items::local(ui, b, snap, fs, sel, msgs);
         }
         if let Some(key) = fs.branch_issue(name) {
             menu_item(msgs, ui, format!("Open {} {}", fs.issue_noun(), fs.mention(&key)), Msg::OpenUrl(fs.issue_url(&key)));

@@ -36,6 +36,8 @@ pub struct ForgeState {
     pub last_refresh: Option<Instant>,
     /// CI status of the branch tips on screen.
     pub tips: TipChecks,
+    /// A push for a pull request succeeded: open its create dialog when the next snapshot lands.
+    pub open_after_load: Option<super::push_pr::PrStart>,
 }
 
 impl ForgeState {
@@ -56,6 +58,7 @@ impl ForgeState {
             default_branch: None,
             last_refresh: None,
             tips: TipChecks::default(),
+            open_after_load: None,
         }
     }
 

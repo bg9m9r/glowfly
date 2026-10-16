@@ -1,0 +1,107 @@
+//! Pull request items shared by the branch row menus and the toolbar: create one (into the
+//! branch selected before the menu opened, or from the checked-out branch into a remote one),
+//! and push the branch first when the code host lacks it or some of its commits. A branch that
+//! can't be pushed plainly gets a disabled item saying why; nothing is ever force-pushed.
+
+use super::common::{menu_item, menu_item_if};
+use crate::msg::ForgeMsg;
+use crate::msg::Msg;
+use crate::state::push_pr::{self, HostBranch};
+use crate::state::{ForgeState, Selection};
+use eframe::egui;
+use git2::Oid;
+use trellis_core::repo::{BranchInfo, Snapshot};
+
+fn create(source: &str, target: Option<&str>) -> Msg {
+    Msg::Forge(ForgeMsg::CreatePrDialog { source: source.to_owned(), target: target.map(str::to_owned) })
+}
+
+fn push(branch: &str, target: Option<&str>) -> Msg {
+    Msg::Forge(ForgeMsg::PushAndStartPr { branch: branch.to_owned(), target: target.map(str::to_owned) })
+}
+
+/// A LOCAL row: open the branch's pull request, or create one, pushing first when needed.
+pub(super) fn local(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, sel: &Selection, msgs: &mut Vec<Msg>) {
+    let (name, noun) = (b.name.as_str(), fs.pr_noun());
+    if let Some(pr) = fs.pr_for_branch(name) {
+        menu_item(msgs, ui, format!("Open {noun} {}", fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone()));
+        return;
+    }
+    let into = push_pr::chosen_target(sel, b, snap, fs);
+    let into = into.as_deref();
+    let state = push_pr::host_branch(b, snap, fs);
+    // The service refuses a source it doesn't have, so a missing branch is only offered pushed.
+    if !matches!(state, Some(HostBranch::Missing)) {
+        menu_item(msgs, ui, format!("Create {noun}…"), create(name, None));
+        if let (Some(t), false) = (into, push_pr::needs_push(&state)) {
+            menu_item(msgs, ui, format!("Create {noun} into {t}…"), create(name, Some(t)));
+        }
+    }
+    let label = format!("Push {name} and create a {noun}…");
+    match &state {
+        Some(HostBranch::Missing | HostBranch::Ahead(_)) => {
+            menu_item(msgs, ui, label, push(name, None));
+            if let Some(t) = into {
+                menu_item(msgs, ui, format!("Push {name} and create a {noun} into {t}…"), push(name, Some(t)));
+            }
+        }
+        Some(HostBranch::Blocked(why)) => menu_item_if(msgs, ui, label, Some(why.as_str()), push(name, None)),
+        Some(HostBranch::Pushed) | None => {}
+    }
+}
+
+/// A REMOTE row on the code host's remote whose branch has no open pull request: create one
+/// from it (into the selected branch), or from the checked-out branch into it.
+pub(super) fn remote(ui: &mut egui::Ui, name: &str, oid: Oid, snap: &Snapshot, fs: &ForgeState, sel: &Selection, msgs: &mut Vec<Msg>) {
+    let noun = fs.pr_noun();
+    menu_item(msgs, ui, format!("Create {noun}…"), create(name, None));
+    if let Some(t) = push_pr::chosen_target_for(sel, name, Some(oid), None, snap, fs) {
+        menu_item(msgs, ui, format!("Create {noun} into {t}…"), create(name, Some(&t)));
+    }
+    let Some(head) = snap.head_info() else { return };
+    if fs.pr_for_branch(&head.name).is_some() || push_pr::pr_source(snap, fs, &head.name) == name {
+        return;
+    }
+    let h = head.name.as_str();
+    match push_pr::host_branch(head, snap, fs) {
+        state if push_pr::needs_push(&state) => {
+            menu_item(msgs, ui, format!("Push {h} and create a {noun} into {name}…"), push(h, Some(name)));
+        }
+        Some(HostBranch::Blocked(why)) => {
+            menu_item_if(msgs, ui, format!("Create {noun} from {h} into {name}…"), Some(why.as_str()), create(h, Some(name)));
+        }
+        _ => menu_item(msgs, ui, format!("Create {noun} from {h} into {name}…"), create(h, Some(name))),
+    }
+}
+
+/// The PR tool button's menu: Create, and Push and create.
+pub(super) fn pr_menu(ui: &mut egui::Ui, snap: &Snapshot, fs: &ForgeState, idle: bool, msgs: &mut Vec<Msg>) {
+    let head = snap.head_info();
+    let r = ui.add_enabled(idle && head.is_some(), egui::Button::new(format!("Create {}…", fs.pr_noun())));
+    if r.clicked()
+        && let Some(b) = head
+    {
+        msgs.push(create(&b.name, None));
+    }
+    push_pr_item(ui, snap, fs, idle, msgs);
+}
+
+/// "Push <head> and create a …" in the Push and PR dropdowns: enabled when idle and the
+/// checked-out branch has no open pull request and needs a push, otherwise saying why not.
+pub(super) fn push_pr_item(ui: &mut egui::Ui, snap: &Snapshot, fs: &ForgeState, idle: bool, msgs: &mut Vec<Msg>) {
+    let noun = fs.pr_noun();
+    let item = push_pr::push_item(snap, fs);
+    let label = match snap.head_info() {
+        Some(b) => format!("Push {} and create a {noun}…", b.name),
+        None => format!("Push and create a {noun}…"),
+    };
+    let mut r = ui.add_enabled(idle && item.is_ok(), egui::Button::new(label));
+    if let Err(why) = &item {
+        r = r.on_disabled_hover_text(why);
+    }
+    if r.clicked()
+        && let Ok(branch) = item
+    {
+        msgs.push(push(&branch, None));
+    }
+}

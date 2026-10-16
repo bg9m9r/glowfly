@@ -35,6 +35,7 @@ mod menus;
 mod modals;
 mod palette;
 mod path_warnings;
+mod pr_menu_items;
 mod prefs;
 mod publish;
 mod rebase;
@@ -127,6 +128,8 @@ mod snapshot_tests_prefs_keyboard;
 mod snapshot_tests_prefs_notify;
 #[cfg(test)]
 mod snapshot_tests_profiles;
+#[cfg(test)]
+mod snapshot_tests_push_pr;
 #[cfg(test)]
 mod snapshot_tests_rebase;
 #[cfg(test)]

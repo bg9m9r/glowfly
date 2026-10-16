@@ -72,6 +72,7 @@ fn prefs_sparse_busy() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_pr: None,
         keeps_undo: false,
     });
     // The status bar's job spinner keeps repainting; a fixed number of frames keeps the image

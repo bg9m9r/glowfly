@@ -33,6 +33,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             // A dialog may have been open when the repository loaded.
             super::trust::maybe_ask(st, false);
             super::forge::refresh(st, false, false, now, fx);
+            super::push_pr::loaded(st, fx);
             load_finished(st, fx);
         }
         LoadMsg::StatusLoaded { generation, result, submodules, open_stamp } => {

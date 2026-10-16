@@ -105,6 +105,7 @@ pub(super) fn running_job(dir: &Path) -> RunningJob {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_pr: None,
         then_open: None,
         keeps_undo: false,
     }

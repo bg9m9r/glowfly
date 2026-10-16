@@ -1,23 +1,22 @@
-//! Right-click menus for commits and remote branches (local branches: `branch_menu.rs`).
+//! Right-click menus for commits and remote branches (local branches: `branch_menu.rs`; pull
+//! request items: `pr_menu_items.rs`).
 
 use super::common::{menu_item, short};
 use super::ref_visibility;
 use super::theme::color;
 use crate::msg::BranchMsg;
-use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
-use crate::state::ForgeState;
 use crate::state::patch::PATCH_BLOCKED_MERGE;
 use crate::state::selection::MultiSelection;
 use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, RichText};
+use git2::Oid;
 use trellis_core::rebase::RebaseBase;
-use trellis_core::repo::CommitInfo;
-use trellis_core::settings::GraphFilter;
+use trellis_core::repo::{CommitInfo, Snapshot};
 use trellis_core::worktree_ops::WorktreeBase;
 
 pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, msgs: &mut Vec<Msg>) {
@@ -113,11 +112,12 @@ pub fn remote_branch_menu(
     ui: &mut egui::Ui,
     remote: &str,
     name: &str,
-    current: &str,
-    fs: Option<&ForgeState>,
-    filter: &GraphFilter,
+    oid: Oid,
+    snap: &Snapshot,
+    c: &super::remotes::Ctx,
     msgs: &mut Vec<Msg>,
 ) {
+    let (current, fs, filter) = (c.current, c.fs, c.graph);
     let full = format!("{remote}/{name}");
     menu_item(msgs, ui, format!("Checkout {full}"), Msg::git("Checkout", &["checkout", "--track", &full]));
     if !current.is_empty() {
@@ -128,7 +128,7 @@ pub fn remote_branch_menu(
         ui.separator();
         match fs.pr_for_branch(name) {
             Some(pr) => menu_item(msgs, ui, format!("Open {} {}", fs.pr_noun(), fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone())),
-            None => menu_item(msgs, ui, format!("Create {}…", fs.pr_noun()), Msg::Forge(ForgeMsg::CreatePrDialog(name.to_owned()))),
+            None => super::pr_menu_items::remote(ui, name, oid, snap, fs, c.sel, msgs),
         }
     }
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(full.clone()));

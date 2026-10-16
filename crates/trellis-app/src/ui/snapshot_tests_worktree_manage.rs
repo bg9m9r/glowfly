@@ -86,6 +86,7 @@ fn worktree_remove_locked() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_pr: None,
         keeps_undo: true,
     });
     h.run_steps(2);

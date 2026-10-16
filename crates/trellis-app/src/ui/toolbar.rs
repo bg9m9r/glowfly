@@ -78,7 +78,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 if tool(ui, Icon::Pull, "Pull", idle).on_hover_text("Fast-forward if possible").clicked() {
                     msgs.push(Msg::git("Pull", &["pull", "--ff"]));
                 }
-                dropdown(ui, "pull-menu", 240.0, |ui| {
+                dropdown(ui, "pull-menu", "More pull actions", 240.0, |ui| {
                     for (label, a) in [
                         ("Fetch all", &["fetch", "--all", "--prune"][..]),
                         ("Pull (fast-forward if possible)", &["pull", "--ff"][..]),
@@ -93,7 +93,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 if tool(ui, Icon::Push, "Push", idle).clicked() {
                     msgs.push(Msg::Job(JobMsg::Push { force: false }));
                 }
-                dropdown(ui, "push-menu", 200.0, |ui| {
+                let host = st.forge.as_ref().filter(|f| f.host.is_some());
+                dropdown(ui, "push-menu", "More push actions", if host.is_some() { 260.0 } else { 200.0 }, |ui| {
                     if ui.add_enabled(idle, egui::Button::new("Force push (with lease)")).clicked() {
                         msgs.push(Msg::confirm(
                             "Force push",
@@ -105,6 +106,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     if snap.remotes.is_empty() && ui.add_enabled(idle, egui::Button::new("Publish to GitHub…")).clicked() {
                         msgs.push(Msg::Publish(PublishMsg::PublishDialog));
                     }
+                    if let Some(fs) = host {
+                        ui.separator();
+                        super::pr_menu_items::push_pr_item(ui, snap, fs, idle, msgs);
+                    }
                 });
                 if tool(ui, Icon::Branch, "Branch", idle).clicked() {
                     msgs.push(Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }));
@@ -115,7 +120,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 if tool(ui, Icon::Pop, "Pop", idle && !snap.stashes.is_empty()).clicked() {
                     msgs.push(Msg::git("Pop stash", &["stash", "pop"]));
                 }
-                if let Some(fs) = st.forge.as_ref().filter(|f| f.host.is_some()) {
+                if let Some(fs) = host {
                     let can_pr = idle && snap.head_branch.is_some();
                     let tip = format!(
                         "Create a {} on {} for this branch",
@@ -125,8 +130,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     if tool(ui, Icon::PullRequest, "PR", can_pr).on_hover_text(tip).clicked()
                         && let Some(b) = &snap.head_branch
                     {
-                        msgs.push(Msg::Forge(ForgeMsg::CreatePrDialog(b.clone())));
+                        msgs.push(Msg::Forge(ForgeMsg::CreatePrDialog { source: b.clone(), target: None }));
                     }
+                    dropdown(ui, "pr-menu", &format!("More {} actions", fs.pr_noun()), 260.0, |ui| {
+                        super::pr_menu_items::pr_menu(ui, snap, fs, idle, msgs)
+                    });
                 }
                 ui.add_space(6.0);
                 ui.separator();
@@ -182,9 +190,11 @@ fn terminal_button(ui: &mut egui::Ui, open: bool, labels: bool, tip: &str, msgs:
     resp.context_menu(|ui| menu_item(msgs, ui, "Open in external terminal", Msg::OpenTerminal));
 }
 
-/// The small ▾ button next to a tool button, opening a menu below it.
-fn dropdown(ui: &mut egui::Ui, id: &str, width: f32, contents: impl FnOnce(&mut egui::Ui)) {
+/// The small ▾ button next to a tool button, opening a menu below it. The painted caret gets
+/// `name` as its accessible name (screen readers and UI tests).
+fn dropdown(ui: &mut egui::Ui, id: &str, name: &str, width: f32, contents: impl FnOnce(&mut egui::Ui)) {
     let caret = widgets::caret_button(ui);
+    caret.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
     let popup = ui.make_persistent_id(id);
     if caret.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));

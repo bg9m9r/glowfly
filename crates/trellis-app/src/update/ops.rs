@@ -270,7 +270,8 @@ pub(super) fn finish_job(
     now: Instant,
     fx: &mut Vec<Effect>,
 ) {
-    let Some(job) = st.job.take() else { return };
+    let Some(mut job) = st.job.take() else { return };
+    let then_pr = job.then_pr.take();
     // A cancelled or timed-out credential prompt explains a failure better than git's output.
     let headline = super::askpass::job_finished(st, ok, &job.label, fx).or(headline);
     let status = if ok { "done" } else { "FAILED" };
@@ -311,6 +312,7 @@ pub(super) fn finish_job(
         if ok && job.then_push {
             st.log(true, "Push after committing was skipped: that repository's tab is no longer active.");
         }
+        super::push_pr::job_finished(st, then_pr, ok, false);
         return; // that tab refreshes when it is selected again
     }
     super::notify::fetched(st, &job.label, job.quiet, ok);
@@ -321,6 +323,7 @@ pub(super) fn finish_job(
     if !job.quiet {
         super::forge::refresh(st, true, false, now, fx);
     }
+    super::push_pr::job_finished(st, then_pr, ok, true);
     // Push after committing, from the snapshot before the commit: the upstream is unchanged.
     if ok && job.then_push {
         push(st, false, fx);

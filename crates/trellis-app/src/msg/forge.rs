@@ -47,7 +47,16 @@ pub enum ForgeMsg {
         gcm: bool,
     },
     SetTracker(TrackerChoice),
-    CreatePrDialog(String),
+    /// Open the create dialog for `source` (a local or host-remote branch), preselecting `target`.
+    CreatePrDialog {
+        source: String,
+        target: Option<String>,
+    },
+    /// Push local `branch` to the code host's remote, then open the create dialog.
+    PushAndStartPr {
+        branch: String,
+        target: Option<String>,
+    },
     CreatePr(NewPullRequest),
     ForgeReplied(ForgeReply),
     /// The branch tips drawn this frame (LOCAL and REMOTE rows, graph ref labels), sent by the
@@ -71,7 +80,8 @@ impl ForgeMsg {
             | Self::Disconnect(..)
             | Self::ForgetTokens { .. }
             | Self::SetTracker(..)
-            | Self::CreatePrDialog(..)
+            | Self::CreatePrDialog { .. }
+            | Self::PushAndStartPr { .. }
             | Self::CreatePr(..)
             | Self::ForgeReplied(..)
             | Self::TipsShown(..)

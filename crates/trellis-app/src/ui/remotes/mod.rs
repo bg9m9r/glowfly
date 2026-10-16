@@ -90,7 +90,7 @@ pub(in crate::ui) fn section(
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
             }
             ref_visibility::row_marker(ui, &r, 20.0, &format!("refs/remotes/{full}"), &full, c.graph, msgs);
-            r.context_menu(|ui| remote_branch_menu(ui, remote, name, c.current, c.fs, c.graph, msgs));
+            r.context_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &c, msgs));
         }
     }
 }

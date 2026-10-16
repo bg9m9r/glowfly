@@ -34,6 +34,7 @@ mod prefs;
 mod profile_setup;
 mod profiles;
 mod publish;
+mod push_pr;
 mod rebase;
 mod recent;
 mod refresh;
@@ -187,6 +188,10 @@ mod profile_setup_tests;
 mod profiles_tests;
 #[cfg(test)]
 mod publish_tests;
+#[cfg(test)]
+mod push_pr_state_tests;
+#[cfg(test)]
+mod push_pr_tests;
 #[cfg(test)]
 mod rebase_e2e_tests;
 #[cfg(test)]

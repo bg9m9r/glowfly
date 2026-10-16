@@ -514,7 +514,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Status on branch tips: markers on LOCAL and REMOTE rows and on graph ref labels, with or
     without a pull request
   - [x] Open the failing (or latest) build's page in the browser from the PR row menu or tooltip
-- [ ] **"Push and start a PR"**
+- [x] **"Push and start a PR"**
   One action to push a branch and open the create-PR dialog; start a PR from a remote branch.
 - [ ] **PR and issue filters**
   Saved filters: mine, needs my review, assigned, mentioned, labels, milestones, sprints.
@@ -1355,3 +1355,14 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Command-line companion
 
 - History, diff and status subcommands
+
+### "Push and start a PR"
+
+- Pull requests across forks: a source on a fork remote, or pushing to your own fork and opening the pull request against the upstream repository
+- On a LOCAL row, create a pull request from the checked-out branch into that branch (the REMOTE row has it)
+- Choose source and target by selecting two branch rows
+- Find a branch's open pull request by its upstream's name when the local name differs
+- Remember the last target used per branch and preselect it next time
+- For a diverged branch, offer a force push with lease and then the pull request (today it is refused with the reason)
+- A Preferences setting to create pull requests as drafts by default
+- Push-and-create entries in the graph's commit and ref-label menus

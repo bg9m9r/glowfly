@@ -35,6 +35,7 @@ pub mod path_hazards;
 pub mod prefs;
 pub mod profiles;
 pub mod publish;
+pub mod push_pr;
 pub mod rebase;
 pub mod ref_rows;
 pub mod refresh;
@@ -124,6 +125,8 @@ pub struct RunningJob {
     pub then_open: Option<(PathBuf, trust::Created)>,
     /// Run the push flow when this (commit) job succeeds.
     pub then_push: bool,
+    /// Open the create pull request dialog for this branch once this (push) job succeeds.
+    pub then_pr: Option<push_pr::PrStart>,
     /// The job can't make the undo history wrong (fetch, push, or an undo/redo itself).
     pub keeps_undo: bool,
 }

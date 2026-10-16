@@ -17,6 +17,8 @@ use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
+use crate::state::branches;
+use crate::state::push_pr::{self, HostBranch};
 use crate::state::{AppState, ForgeState, Modal};
 use eframe::egui::{self, RichText};
 use trellis_core::forge::{self, NewPullRequest, RefStyle};
@@ -212,6 +214,22 @@ struct PrForm<'a> {
     items: &'a mut String,
 }
 
+/// What the create dialog says about `source` not being (all) on the code host's remote, and
+/// the local branch it offers to push, if any.
+fn push_note(snap: &Snapshot, fs: &ForgeState, source: &str, pushed: bool) -> Option<(String, Option<String>)> {
+    let remote = &fs.remote;
+    match push_pr::dialog_push(snap, fs, source) {
+        Some((b, HostBranch::Missing)) => Some((format!("{source} isn't on {remote} yet."), Some(b.name.clone()))),
+        Some((b, HostBranch::Ahead(n))) => {
+            Some((format!("{} has {} that aren't on {remote}.", b.name, branches::commits(n)), Some(b.name.clone())))
+        }
+        Some((_, HostBranch::Blocked(why))) => Some((why, None)),
+        Some((_, HostBranch::Pushed)) => None,
+        None if !pushed => Some((format!("{source} isn't on {remote}. Fetch, or push it from where it lives."), None)),
+        None => None,
+    }
+}
+
 /// The create pull/merge request form; returns true when the dialog should close.
 fn create_pr(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let Some(host) = fs.host.as_ref() else { return true };
@@ -230,12 +248,15 @@ fn create_pr(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&Snapsh
         });
     });
     let pushed = snap.is_some_and(|s| s.remotes.iter().any(|(r, b)| *r == fs.remote && b.iter().any(|(n, _)| n == f.source)));
-    if !pushed {
+    if let Some((text, local)) = snap.and_then(|s| push_note(s, fs, f.source, pushed)) {
         ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.label(RichText::new(format!("{} isn't on {} yet.", f.source, fs.remote)).color(color::amber()));
-            if ui.add_enabled(idle, egui::Button::new("Push branch")).clicked() {
-                msgs.push(Msg::git("Push", &["push", "-u", &fs.remote, f.source]));
+        ui.horizontal_wrapped(|ui| {
+            ui.label(RichText::new(text).color(color::amber()));
+            // The dialog stays open: it is the one shown again once the push lands.
+            if let Some(local) = local
+                && ui.add_enabled(idle, egui::Button::new(format!("Push {local}"))).clicked()
+            {
+                msgs.push(Msg::Forge(ForgeMsg::PushAndStartPr { branch: local, target: Some(f.target.clone()) }));
             }
         });
     }

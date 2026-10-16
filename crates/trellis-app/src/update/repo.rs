@@ -41,6 +41,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     if kind == LoadKind::Open {
                         super::tabs::open_failed(st, fx);
                     }
+                    super::push_pr::load_failed(st, fx);
                 }
             }
             super::refresh::load_finished(st, fx);
@@ -315,6 +316,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::forge::resolve_pr_heads(st);
     reload_diff(st, fx);
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
+    super::push_pr::loaded(st, fx);
     if reload {
         super::refresh::reload_after(st, fx);
     }

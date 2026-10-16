@@ -81,6 +81,7 @@ fn job(label: &str) -> RunningJob {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_pr: None,
         then_open: None,
         keeps_undo: true,
     }

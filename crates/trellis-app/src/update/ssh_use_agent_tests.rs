@@ -58,6 +58,7 @@ fn add_to_agent_is_refused_with_a_reason() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_pr: None,
         keeps_undo: false,
     });
     refused(st, "Wait until Pull finishes");

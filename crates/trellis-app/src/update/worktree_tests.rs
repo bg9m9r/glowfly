@@ -252,6 +252,7 @@ fn busy_and_stale_tab() {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_pr: None,
         keeps_undo: true,
     });
     assert!(update(&mut st, wt(WorktreeMsg::Submit), Instant::now()).is_empty());

@@ -75,6 +75,7 @@ fn running() -> RunningJob {
         clear_commit: false,
         then_open: None,
         then_push: false,
+        then_pr: None,
         keeps_undo: true,
     }
 }
