@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 07:15 · **Stash improvements**: Stash dialog with a message and a choice of all changes, only staged changes or chosen files, from the palette, the Staged Files header menu and Stash this file… on WIP rows (`25ab29a`)
 - 2026-10-16 06:51 · **Remote management**: View a remote on its hosting service, add a teammate's fork from the service's list of forks, and fork a repository into your account (GitHub, GitLab) then add and fetch it, from the REMOTE row menu and the palette (`dc17a10`)
 - 2026-10-16 03:57 · **Tag management**: Hide and solo tags in the graph from the TAGS row menu, with markers on hidden and soloed rows (`152cd40`)
 - 2026-10-16 03:00 · **Git Flow**: Git Flow panel in place of the graph, a GIT FLOW section in the left panel grouping flow branches by kind, and Start Git Flow feature/release/hotfix from an issue in the issue menu and palette (`8f751ea`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 14:14 · **Clone and init options**: Fetch full history or N more commits of a shallow clone from the palette and the graph header (`94affbb`)
 - 2026-10-15 14:01 · **Stash improvements**: Rename (edit the message of) a stash from the STASHES row menu and the palette, keeping its commit and position (`a6ee8cb`)
 - 2026-10-15 13:39 · **Tag management**: Annotate an existing lightweight tag from the TAGS row menu: one job replaces it with an annotated tag on the same commit, signed when tag signing is on (`082c49c`)
-- 2026-10-15 13:31 · **Repository trust**: Untrusted chip in the toolbar and a Review repository trust… palette command bring the trust prompt back (`6764632`)
 
 ---
 
