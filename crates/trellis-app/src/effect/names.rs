@@ -134,6 +134,7 @@ impl Effect {
             | Effect::ExportPublicKey { .. }
             | Effect::Profile(_)
             | Effect::GitEnv(_)
+            | Effect::Onboarding(_)
             | Effect::Theme(_)
             | Effect::CheckConflicts(_)
             | Effect::Remote(_)

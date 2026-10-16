@@ -111,7 +111,7 @@ impl GitInfo {
                     crate::native_path::shown(p)
                 ),
                 Some(p) => format!("Trellis couldn't run git at {}. Commits, fetches and pushes need it.", crate::native_path::shown(p)),
-                None => "Trellis couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then choose it in                          Preferences > Git or restart Trellis."
+                None => "Trellis couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then choose it in Preferences > Git or restart Trellis."
                     .to_owned(),
             });
         };
@@ -164,6 +164,7 @@ mod tests {
         assert_eq!(GitInfo { path: None, version: Some((2, 45, 0)), chosen: false }.banner(), None);
         let none = GitInfo::default().banner().unwrap();
         assert!(none.contains("couldn't find git") && none.contains("Preferences > Git"), "{none}");
+        assert!(!none.contains("  "), "no runs of spaces in the text: {none}");
         let broken = GitInfo { path: Some("/x/git".into()), version: None, chosen: false }.banner().unwrap();
         assert!(broken.contains("couldn't run git") && !broken.contains("Preferences > Git"), "{broken}");
         let chosen = GitInfo { path: Some("/x/git".into()), version: None, chosen: true }.banner().unwrap();

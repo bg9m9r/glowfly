@@ -88,7 +88,7 @@ fn welcome_connect() {
 #[test]
 fn welcome_git() {
     let mut st = on(ThemeChoice::Dark, WelcomeStep::Git, Some(ada()));
-    st.git.info = Some(GitInfo { path: None, version: Some((2, 45, 1)) });
+    st.git.info = Some(GitInfo { path: None, version: Some((2, 45, 1)), chosen: false });
     snapshot("welcome_git_ready", st, true);
     let mut st = on(ThemeChoice::Dark, WelcomeStep::Git, Some(ada()));
     st.git.info = Some(GitInfo::default());
