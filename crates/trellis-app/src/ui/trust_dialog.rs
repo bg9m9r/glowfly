@@ -1,5 +1,7 @@
 //! The "Trust this repository?" dialog: what in the repository's own config and hooks makes git
-//! run programs, and the Trust / Don't trust choice (update/trust.rs records it).
+//! run programs, and the Trust / Don't trust choice (update/trust.rs records it). When a git
+//! job the user started waits for the decision, it names that job and offers Trust and run or
+//! Cancel instead.
 
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -10,13 +12,17 @@ use std::path::Path;
 use trellis_core::text::printable;
 use trellis_core::trust::TrustScan;
 
-/// Draws the prompt; returns true when the dialog should close (never: the buttons send a
-/// decision and update closes it).
+/// Draws the prompt; returns true when Cancel was clicked (the dialog closes without a
+/// decision). The other buttons send a decision and update closes it.
 pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     ui.heading("Trust this repository?");
     ui.add_space(2.0);
     ui.label(RichText::new(printable(&p.name)).strong());
     ui.add(egui::Label::new(RichText::new(p.workdir.display().to_string()).color(color::weak())).wrap());
+    if let Some(label) = &p.held {
+        let what = format!("{} needs git to run this repository's settings and hooks.", printable(label));
+        ui.add(egui::Label::new(RichText::new(what).strong()).wrap());
+    }
     if p.refused {
         ui.label(RichText::new("You chose not to trust it before.").color(color::weak()));
     }
@@ -42,19 +48,28 @@ pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     ui.add(
         egui::Label::new(
             "Trust it only if you know where it came from. Until then, Trellis won't fetch in the background, \
-             ask its credential helper for sign-ins, or let git read its status.",
+             ask its credential helper for sign-ins or let git read its status, and it asks before running git \
+             commands you start.",
         )
         .wrap(),
     );
     ui.add_space(12.0);
+    let mut cancel = false;
     ui.horizontal(|ui| {
+        if p.held.is_some() {
+            if ui.button("Trust and run").clicked() {
+                msgs.push(Msg::Trust(TrustMsg::Decide { real: p.real.clone(), trusted: true }));
+            }
+            cancel = ui.button("Cancel").clicked();
+            return;
+        }
         for (label, trusted) in [("Trust", true), ("Don't trust", false)] {
             if ui.button(label).clicked() {
                 msgs.push(Msg::Trust(TrustMsg::Decide { real: p.real.clone(), trusted }));
             }
         }
     });
-    false
+    cancel
 }
 
 /// The settings and hooks of one repository (the top one or a submodule).

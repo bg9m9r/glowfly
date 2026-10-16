@@ -83,8 +83,7 @@ fn when_on(st: &mut AppState, label: &str, command: SparseCommand, fx: &mut Vec<
 /// Runs `command` as the active job, unless one is running (said in the log). It rewrites the
 /// working tree, so the undo history is cleared.
 fn start(st: &mut AppState, label: &str, command: SparseCommand, fx: &mut Vec<Effect>) {
-    let Some(cwd) = ops::begin_job(st, label, false) else { return };
-    fx.push(Effect::SparseCheckout { cwd, command });
+    ops::begin_job(st, label, false, move |cwd| Effect::SparseCheckout { cwd, command }, fx);
 }
 
 fn loaded(st: &mut AppState, generation: u64, result: Result<SparseStatus, String>) {

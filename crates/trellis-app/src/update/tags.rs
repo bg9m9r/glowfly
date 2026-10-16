@@ -104,8 +104,8 @@ fn start_remote(st: &mut AppState, op: RemoteTagOp, tag: String, remotes: Vec<St
         .collect();
     let label = job_label(op, &tag, &targets);
     // Remote tags aren't undoable, so nothing is recorded.
-    ops::start_job(st, JobSpec::new(label.clone(), cmds), fx);
-    if st.job.as_ref().is_some_and(|j| j.label == label) {
+    // Also for a job waiting for the trust prompt; dropping it clears this.
+    if ops::start_job(st, JobSpec::new(label.clone(), cmds), fx) != ops::Started::No {
         st.tag_job = Some(RemoteTagJob { label, op, tag, remotes: targets });
     }
 }

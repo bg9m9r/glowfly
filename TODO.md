@@ -259,16 +259,16 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Make Restore undoable (keep the overwritten working copy, as Discard does)
   - [x] Open with default app and show in folder from the file history view and the diff header
   - [x] Restore button in the file history's selected-commit header and the commit diff header
-- [ ] **Repository trust**
+- [x] **Repository trust**
   A repository's `.git/config` (`core.sshCommand`, `credential.helper`, `core.fsmonitor`) and its
   hooks can run arbitrary commands as soon as git touches it. Before Trellis runs git in a
   repository it didn't clone or create (auto-fetch, hooks), ask whether to trust it.
   - [x] Ask on first open of an untrusted repository, naming the config keys and hooks that
     would run commands; repositories Trellis cloned or initialised are trusted automatically
   - [x] Hold background fetch (and anything else that runs git on its own) until the user decides
-  - [ ] While untrusted, browse read-only through libgit2 and say in the toolbar why fetch,
-    pull and commit hooks are paused (the toolbar's Untrusted chip already says what is paused
-    and why; manual pull, push and commit hooks still run)
+  - [x] While untrusted, browse read-only through libgit2, say in the toolbar why fetch, pull
+    and commit hooks are paused, and ask before running git commands the user starts (Trust and
+    run / Cancel)
   - [x] A way to bring the prompt back for the open repository (toolbar chip or palette
     command) after Don't trust or Esc
 
@@ -823,6 +823,16 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Trust worktrees Trellis creates from a trusted repository (and optionally submodules of one);
   ask again when a trusted repository gains new command-running settings or hooks
 - Hold shells the built-in terminal starts in an untrusted repository (prompts that run git)
+- Bring back the dialog a held job came from (New tag, Remote, worktree…) after Cancel, with its
+  fields intact
+- Don't count hooks Trellis installed itself (git lfs install) as a reason to ask about a
+  repository that was clean
+- Hold the git CLI reads the LFS and Sparse Checkout Preferences pages make in an untrusted
+  repository
+- Hold Publish and other jobs that run in a different untrusted repository than the active one,
+  using that repository's own decision
+- Offer Don't trust on the prompt that holds a job, alongside Trust and run and Cancel
+- Queue several held jobs instead of refusing a second one while the prompt is open
 
 ### Command palette (fuzzy finder)
 

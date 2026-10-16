@@ -68,7 +68,8 @@ fn rename(st: &mut AppState, oid: Oid, body: &str, fx: &mut Vec<Effect>) {
         return;
     }
     // Recorded undo actions find stashes by commit, which a rename keeps.
-    let Some(cwd) = ops::begin_job(st, "Rename stash", true) else { return };
-    close_dialog(st);
-    fx.push(Effect::RenameStash { cwd, index: s.index, oid, message });
+    let effect = move |cwd| Effect::RenameStash { cwd, index: s.index, oid, message };
+    if ops::begin_job(st, "Rename stash", true, effect, fx) == ops::Started::Now {
+        close_dialog(st);
+    }
 }

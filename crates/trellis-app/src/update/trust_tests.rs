@@ -28,24 +28,24 @@ pub(super) fn untrusted_repo(name: &str) -> PathBuf {
     dir
 }
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn drive(st: &mut AppState, msg: Msg) {
+pub(super) fn drive(st: &mut AppState, msg: Msg) {
     let fx = run(st, msg);
     finish(st, fx);
 }
 
-fn open(st: &mut AppState, dir: &Path) {
+pub(super) fn open(st: &mut AppState, dir: &Path) {
     drive(st, Msg::Repo(RepoMsg::Open(dir.to_path_buf())));
 }
 
-fn asking(st: &AppState) -> bool {
+pub(super) fn asking(st: &AppState) -> bool {
     matches!(st.modal, Some(Modal::Trust(_)))
 }
 
-fn real(st: &AppState) -> PathBuf {
+pub(super) fn real(st: &AppState) -> PathBuf {
     st.snap.as_ref().unwrap().real_workdir.clone()
 }
 

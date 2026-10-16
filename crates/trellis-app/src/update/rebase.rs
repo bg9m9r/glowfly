@@ -124,12 +124,15 @@ fn start(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec<Effect>)
     }
     let Some(plan) = p.plan.as_ref() else { return };
     let request = StartRequest { head: plan.head, upstream: plan.upstream, items: p.items.clone() };
-    let Some(cwd) = super::ops::begin_job(st, JOB_LABEL, false) else { return };
+    let effect = move |cwd| Effect::InteractiveRebase { cwd, request };
+    // Also while it waits for the trust prompt: dropping it there resets `starting`.
+    if super::ops::begin_job(st, JOB_LABEL, false, effect, fx) == super::ops::Started::No {
+        return;
+    }
     if let Some(p) = st.rebase.as_mut() {
         p.starting = true;
         p.error = None;
     }
-    fx.push(Effect::InteractiveRebase { cwd, request });
 }
 
 /// The rebase job ended. Its tab's panel (active or parked) closes unless nothing was changed,

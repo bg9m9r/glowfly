@@ -67,8 +67,8 @@ fn apply(st: &mut AppState, workdir: &std::path::Path, path: &std::path::Path, f
     if ops::busy(st, false) {
         return;
     }
-    ops::start_job(st, JobSpec::new(APPLY_LABEL.into(), patch_ops::apply_cmds(text)), fx);
-    if st.job.as_ref().is_some_and(|j| j.label == APPLY_LABEL) {
+    // Also for a job waiting for the trust prompt; dropping it clears this.
+    if ops::start_job(st, JobSpec::new(APPLY_LABEL.into(), patch_ops::apply_cmds(text)), fx) != ops::Started::No {
         st.patch_apply = Some(PendingApply { label: APPLY_LABEL.into(), name: display_name(path) });
     }
 }

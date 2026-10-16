@@ -1,14 +1,16 @@
-//! Staging, committing, git commands (push, pull, branch…), and auto-fetch.
+//! Staging, committing, git commands (push, pull, branch…), and auto-fetch. Jobs start in
+//! update/jobs.rs, re-exported here.
 
 use crate::effect::{Effect, LocalOp, UndoResult};
 use crate::msg::{JobMsg, StageMsg};
 use crate::state::trust::Created;
-use crate::state::{AppState, CommitDraft, RunningJob};
-use std::path::PathBuf;
+use crate::state::{AppState, CommitDraft};
 use std::time::{Duration, Instant};
 use trellis_core::gitcli::args;
 use trellis_core::repo::{DiffTarget, HunkOp, Snapshot};
 use trellis_core::undo::{ResetMode, UndoKind};
+
+pub(super) use super::jobs::{JobSpec, Started, begin_job, busy, start_job};
 
 pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -117,86 +119,6 @@ pub(super) fn clone_repo(st: &mut AppState, req: crate::state::clone::CloneReque
         JobSpec { cwd: Some(req.parent), then_open: Some((dest, Created::Clone)), ..JobSpec::new("Clone".into(), vec![cmd]) },
         fx,
     );
-}
-
-/// A git command sequence to run as the (single) active job.
-pub(super) struct JobSpec {
-    pub label: String,
-    pub cmds: Vec<Vec<String>>,
-    pub cwd: Option<PathBuf>,
-    pub quiet: bool,
-    pub clear_commit: bool,
-    /// Push the branch once the job (a commit) succeeds.
-    pub then_push: bool,
-    /// Open this repository in the active tab once the job succeeds; how it was made decides
-    /// whether it is trusted (update/trust.rs).
-    pub then_open: Option<(PathBuf, Created)>,
-    pub write_file: Option<(PathBuf, String)>,
-    /// Record the job for undo when it is this kind of operation.
-    pub record: Option<UndoKind>,
-    /// Run nothing unless this revision still resolves to this commit.
-    pub expect: Option<(String, git2::Oid)>,
-}
-
-impl JobSpec {
-    pub fn new(label: String, cmds: Vec<Vec<String>>) -> Self {
-        Self {
-            label,
-            cmds,
-            cwd: None,
-            quiet: false,
-            clear_commit: false,
-            then_push: false,
-            then_open: None,
-            write_file: None,
-            record: None,
-            expect: None,
-        }
-    }
-}
-
-/// Whether a job is already running (only one runs at a time); tells the user unless `quiet`.
-pub(super) fn busy(st: &mut AppState, quiet: bool) -> bool {
-    if st.job.is_some() && !quiet {
-        st.log(false, "Another operation is still running.");
-    }
-    st.job.is_some()
-}
-
-pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) {
-    let job = RunningJob {
-        label: spec.label,
-        workdir: None,
-        quiet: spec.quiet,
-        clear_commit: spec.clear_commit,
-        then_push: spec.then_push,
-        then_open: spec.then_open,
-        keeps_undo: super::undo::keeps_history(&spec.cmds),
-    };
-    let Some(cwd) = claim(st, job, spec.cwd) else { return };
-    // Background jobs fail rather than pop up a credential prompt.
-    let prompts = !spec.quiet;
-    fx.push(Effect::RunGit { cwd, cmds: spec.cmds, write_file: spec.write_file, record: spec.record, prompts, expect: spec.expect });
-}
-
-/// Makes a job labelled `label` the active one in the active tab's repository, unless another
-/// job is running (said in the log). Returns the folder to run it in.
-pub(super) fn begin_job(st: &mut AppState, label: &str, keeps_undo: bool) -> Option<PathBuf> {
-    let job =
-        RunningJob { label: label.into(), workdir: None, quiet: false, clear_commit: false, then_push: false, then_open: None, keeps_undo };
-    claim(st, job, None)
-}
-
-/// Makes `job` the active job (in the active tab) unless one is running; returns `cwd`, or the
-/// active tab's repository.
-fn claim(st: &mut AppState, mut job: RunningJob, cwd: Option<PathBuf>) -> Option<PathBuf> {
-    if busy(st, job.quiet) {
-        return None;
-    }
-    let cwd = cwd.or_else(|| st.workdir())?;
-    job.workdir = st.workdir();
-    st.job = Some(job);
-    Some(cwd)
 }
 
 /// Stages, unstages or discards the selected diff lines, when the selection belongs to the

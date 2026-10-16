@@ -1,7 +1,8 @@
 //! Repository trust: whether Trellis may let git run the programs a repository's own config and
 //! hooks name without asking (auto-fetch, hosting-service sign-in, git's own status read). The
 //! decisions live in `Settings::repo_trust`; the scan comes with each full load
-//! (`Snapshot::trust_scan`). Pure rules only; update/trust.rs asks and records.
+//! (`Snapshot::trust_scan`). A git job the user starts while git is held waits here as the
+//! session's held job until they decide. Pure rules only; update/trust.rs asks and records.
 
 use super::AppState;
 use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
@@ -42,6 +43,19 @@ pub struct TrustSession {
     pub asked: Vec<PathBuf>,
     /// Repositories Trellis just cloned or initialised, recorded as trusted when they load.
     pub created: Vec<PathBuf>,
+    /// The job waiting for the open trust prompt.
+    pub held: Option<HeldJob>,
+}
+
+/// A job the user started while git was held in its repository: it runs if they trust it
+/// (update/trust.rs).
+pub struct HeldJob {
+    /// `Snapshot::real_workdir` of the repository it waits for.
+    pub real: PathBuf,
+    /// The repository's name, for the log.
+    pub name: String,
+    pub job: super::RunningJob,
+    pub effect: crate::effect::Effect,
 }
 
 /// The "Trust this repository?" dialog.
@@ -55,6 +69,8 @@ pub struct TrustPrompt {
     pub scan: TrustScan,
     /// The saved decision is Don't trust (the prompt was brought back).
     pub refused: bool,
+    /// The label of the job the user started that waits for this decision.
+    pub held: Option<String>,
 }
 
 /// The prompt for the loaded repository `snap`.
@@ -65,6 +81,7 @@ pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
         real: snap.real_workdir.clone(),
         scan: snap.trust_scan.clone(),
         refused: standing(s, snap) == Standing::NotTrusted,
+        held: None,
     }
 }
 
@@ -123,17 +140,19 @@ impl AppState {
 }
 
 /// What the Untrusted chip's tooltip says is paused, and why. Only what Trellis really holds:
-/// manual Pull, Push and Commit still run git and its hooks. Empty for Trusted and Clean.
+/// background fetch, hosting-service calls and git's status read wait, and git commands the
+/// user starts ask first. Empty for Trusted and Clean.
 pub fn paused_note(standing: Standing) -> &'static str {
     match standing {
         Standing::Undecided => {
             "This repository's own settings or hooks make git run programs, and you haven't said whether to trust it. \
-             Until you do, Trellis won't fetch in the background, contact its hosting service or let git read its status. \
-             Pull, Push and Commit you start yourself still run git and its hooks. Click to review."
+             Until you do, Trellis won't fetch in the background, contact its hosting service or let git read its status, \
+             and it asks before running Pull, Push, Commit or any other git command you start. Click to review."
         }
         Standing::NotTrusted => {
             "You chose not to trust this repository. Trellis won't fetch in the background, contact its hosting service \
-             or let git read its status. Pull, Push and Commit you start yourself still run git and its hooks. Click to review."
+             or let git read its status, and it asks again before running Pull, Push, Commit or any other git command you \
+             start. Click to review."
         }
         Standing::Trusted | Standing::Clean => "",
     }
@@ -209,13 +228,14 @@ mod tests {
     }
 
     #[test]
-    fn the_paused_note_says_what_is_held_and_what_still_runs() {
+    fn the_paused_note_says_what_is_held() {
         let (undecided, refused) = (paused_note(Standing::Undecided), paused_note(Standing::NotTrusted));
         assert_ne!(undecided, refused);
         for note in [undecided, refused] {
             assert!(note.contains("background"), "{note}");
             assert!(!note.contains("  "), "one space between sentences: {note}");
-            assert!(note.contains("Pull, Push and Commit you start yourself still run"), "{note}");
+            assert!(note.contains("Pull, Push, Commit or any other git command you start"), "{note}");
+            assert!(!note.contains("still run"), "{note}");
         }
         assert!(undecided.contains("settings or hooks make git run programs"));
         assert!(refused.starts_with("You chose not to trust"));

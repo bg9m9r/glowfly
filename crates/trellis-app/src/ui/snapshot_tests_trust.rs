@@ -1,5 +1,6 @@
-//! The repository trust prompt (settings and hooks that run programs, and the two choices) and
-//! the toolbar's Untrusted chip that brings it back.
+//! The repository trust prompt (settings and hooks that run programs, and the two choices, or
+//! Trust and run / Cancel for a job that waits for it) and the toolbar's Untrusted chip that
+//! brings it back.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, settings, with_repo};
 use crate::msg::{Msg, TrustMsg};
@@ -14,13 +15,14 @@ use trellis_core::settings::{RepoTrust, ThemeChoice};
 use trellis_core::trust::{ConfigCommand, SubmoduleScan, TrustScan};
 
 fn with_prompt(theme: ThemeChoice, scan: TrustScan) -> AppState {
-    prompt_state(theme, scan, false)
+    prompt_state(theme, scan, false, None)
 }
 
-fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool) -> AppState {
+fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option<&str>) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     let workdir = PathBuf::from("C:/work/tools");
-    st.modal = Some(Modal::Trust(TrustPrompt { name: "tools".into(), real: workdir.clone(), workdir, scan, refused }));
+    let held = held.map(str::to_owned);
+    st.modal = Some(Modal::Trust(TrustPrompt { name: "tools".into(), real: workdir.clone(), workdir, scan, refused, held }));
     st
 }
 
@@ -96,11 +98,33 @@ fn trust_prompt_submodules() {
 
 #[test]
 fn trust_prompt_refused() {
-    let mut h = harness(prompt_state(ThemeChoice::Light, TrustScan::default(), true), false);
+    let mut h = harness(prompt_state(ThemeChoice::Light, TrustScan::default(), true, None), false);
     h.run();
     h.check_snapshot("trust_prompt_refused");
     assert!(h.query_by_label("You chose not to trust it before.").is_some());
     assert!(h.query_by_label("Nothing in its settings or hooks runs programs right now.").is_some());
+}
+
+#[test]
+fn trust_prompt_held() {
+    let scan = TrustScan {
+        config: vec![setting("core.sshCommand", "ssh -v")],
+        hooks: vec!["pre-commit".into()],
+        hooks_dir: Some(PathBuf::from("C:/work/tools/.git/hooks")),
+        submodules: Vec::new(),
+    };
+    let mut h = harness(prompt_state(ThemeChoice::Dark, scan, false, Some("Pull")), true);
+    h.run();
+    h.check_snapshot("trust_prompt_held");
+    assert!(h.query_by_label("Pull needs git to run this repository's settings and hooks.").is_some());
+    assert!(h.query_by_label("Don't trust").is_none(), "a held job offers Trust and run or Cancel");
+    h.get_by_label("Trust and run").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::Decide { trusted: true, .. }))));
+    h.state_mut().1.clear();
+    h.get_by_label("Cancel").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)), "Cancel closes without a decision");
 }
 
 /// Gives the fixture at `dir` a core.sshCommand and loads it again, so its git is held.

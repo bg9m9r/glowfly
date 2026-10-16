@@ -76,16 +76,12 @@ pub(super) fn remove(st: &mut AppState, fx: &mut Vec<Effect>) {
         st.modal = Some(Modal::RemoveWorktree(form));
         return;
     }
-    let Some(cwd) = ops::begin_job(st, "Remove worktree", true) else { return };
-    st.modal = None;
+    let (name, force) = (form.name.clone(), form.force());
     let delete_branch = form.delete_branch.then(|| form.branch.clone()).flatten();
-    fx.push(Effect::RemoveWorktree(RemoveRequest {
-        repo: cwd,
-        path: wt.path,
-        name: form.name.clone(),
-        force: form.force(),
-        delete_branch,
-    }));
+    let effect = move |repo| Effect::RemoveWorktree(RemoveRequest { repo, path: wt.path, name, force, delete_branch });
+    if ops::begin_job(st, "Remove worktree", true, effect, fx) == ops::Started::Now {
+        st.modal = None;
+    }
 }
 
 /// The remove finished: one toast and log entry for the outcome (plus a second entry for a

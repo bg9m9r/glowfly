@@ -105,6 +105,10 @@ fn skip_hooks_bypasses_failing_pre_commit() {
     }
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    // The hook makes the repository ask about trust; trusted, the commit runs it.
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    crate::state::trust::record(&mut st.settings, &real, trellis_core::settings::RepoTrust::Trusted);
+    drive(&mut st, Msg::CloseModal);
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     let head = rev(&dir, "HEAD");
     st.draft.summary = "Hooked".into();

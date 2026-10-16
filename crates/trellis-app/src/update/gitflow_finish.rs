@@ -3,7 +3,7 @@
 //! headline when that job ends: the plan's summary, or which step stopped it and what is left.
 
 use super::gitflow::NOT_SET_UP;
-use super::ops::{JobSpec, busy, last_line, start_job};
+use super::ops::{JobSpec, Started, busy, last_line, start_job};
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
@@ -66,8 +66,8 @@ pub(super) fn finish(st: &mut AppState, branch: &str, options: FinishOptions, no
         fx.extend(super::update(st, Msg::Prefs(PrefsMsg::ClosePrefs), now));
     }
     let label = plan.label();
-    start_job(st, JobSpec::new(label.clone(), plan.cmds()), fx);
-    if st.job.as_ref().is_some_and(|j| j.label == label) {
+    // Also for a job waiting for the trust prompt; dropping it clears this.
+    if start_job(st, JobSpec::new(label.clone(), plan.cmds()), fx) != Started::No {
         let steps = plan.steps.iter().map(|x| x.what.clone()).collect();
         st.gitflow_finish = Some(FinishJob { label, steps, done: plan.summary(&s) });
     }

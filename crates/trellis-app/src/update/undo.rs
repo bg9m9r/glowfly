@@ -17,20 +17,8 @@ pub(super) fn run(st: &mut AppState, redo: bool, now: Instant, fx: &mut Vec<Effe
         }
         return;
     };
-    if super::ops::busy(st, false) {
-        return;
-    }
-    let Some(cwd) = st.workdir() else { return };
-    st.job = Some(RunningJob {
-        label: format!("{} {}", if redo { "Redo" } else { "Undo" }, action.describe()),
-        workdir: Some(cwd.clone()),
-        quiet: false,
-        clear_commit: false,
-        then_push: false,
-        then_open: None,
-        keeps_undo: true,
-    });
-    fx.push(Effect::UndoRedo { cwd, action, redo });
+    let label = format!("{} {}", if redo { "Redo" } else { "Undo" }, action.describe());
+    super::ops::begin_job(st, &label, true, move |cwd| Effect::UndoRedo { cwd, action, redo }, fx);
 }
 
 /// Jobs that never move a local branch, HEAD, index or working tree, so the history stays

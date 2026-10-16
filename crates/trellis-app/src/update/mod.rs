@@ -18,6 +18,7 @@ mod graph_columns;
 mod graph_filter;
 mod highlight;
 mod history;
+mod jobs;
 mod lfs;
 mod notify;
 mod ops;
@@ -186,6 +187,8 @@ mod tests;
 #[cfg(test)]
 mod tools_tests;
 #[cfg(test)]
+mod trust_held_tests;
+#[cfg(test)]
 mod trust_tests;
 #[cfg(test)]
 mod undo_tests;
@@ -280,7 +283,13 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             }
         }
         Msg::ToastAction(id) => notify::toast_action(st, id, now, &mut fx),
-        Msg::CloseModal => st.modal = None,
+        Msg::CloseModal => {
+            // Closing the trust prompt without a decision drops the job waiting for it.
+            if matches!(st.modal, Some(crate::state::Modal::Trust(_))) {
+                trust::dismissed(st);
+            }
+            st.modal = None;
+        }
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),
         Msg::OpenTerminal => tools::open_terminal(st, now, &mut fx),

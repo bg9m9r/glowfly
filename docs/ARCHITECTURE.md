@@ -139,7 +139,10 @@ binary (package `trellis`).
 3. **Effect.** If the work is slow or leaves the process, add an `Effect` variant in
    `effect/mod.rs`, give it a name in `effect/names.rs`, decide in `Effect::scope` and the
    runner's `queue::repo_of` whether it is scoped to a tab and whether it changes the
-   repository (both list every effect), and return it from `update`.
+   repository (both list every effect), and return it from `update`. An effect that runs git
+   as the single active job starts through `start_job` or `begin_job` (`update/jobs.rs`),
+   which checks that no job is running and holds it for the trust prompt while git is held in
+   the repository (`update/trust.rs`), so check their `Started` result rather than `st.job`.
 4. **Runner.** Execute it in `runner/mod.rs`, or in `runner/<area>.rs` for more than a line.
    The real work (git, files, HTTP) goes in `trellis-core`.
 5. **Result.** The runner sends a result message back. Handle it in the same `update` file.

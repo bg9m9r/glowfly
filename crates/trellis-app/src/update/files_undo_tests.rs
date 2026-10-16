@@ -134,6 +134,9 @@ fn restore_result_for_inactive_tab_goes_to_its_history() {
 #[test]
 fn failed_restore_that_removed_the_file_can_be_undone() {
     let (mut st, dir) = opened("files-undo-failed");
+    // The filter settings below make git run commands; trusted, Undo still runs.
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    crate::state::trust::record(&mut st.settings, &real, trellis_core::settings::RepoTrust::Trusted);
     for (k, v) in [("filter.x.clean", "cat"), ("filter.x.smudge", "cat"), ("filter.x.required", "true")] {
         git(&dir, &["config", k, v]);
     }

@@ -333,6 +333,9 @@ fn set_up_and_track_end_to_end() {
         return;
     }
     let (mut st, dir) = open("lfs-e2e");
+    // git lfs install adds hooks, which would make the repository ask about trust.
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    crate::state::trust::record(&mut st.settings, &real, trellis_core::settings::RepoTrust::Trusted);
     drive(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)));
     let s = st.prefs.as_ref().unwrap().lfs.status.clone().expect("status");
     assert!(s.installed() && !s.initialized);
