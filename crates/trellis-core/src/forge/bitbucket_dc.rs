@@ -102,6 +102,7 @@ fn convert_dc(p: DcPr) -> PullRequest {
             .collect(),
         head: p.from_ref.latest_commit,
         merge_status: None,
+        checks: None,
         url: p.links.this.into_iter().next().map(|h| h.href).unwrap_or_default(),
     }
 }

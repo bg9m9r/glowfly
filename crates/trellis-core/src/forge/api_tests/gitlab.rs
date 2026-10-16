@@ -25,6 +25,7 @@ fn lists_merge_requests_with_approvals_on_a_self_managed_server() {
     let states: Vec<(&str, &str)> = p.reviewers.iter().map(|r| (r.name.as_str(), r.state.as_str())).collect();
     assert_eq!(states, [("Grace", "approved"), ("Linus", "no vote")]);
     assert_eq!(p.url, "https://gitlab.acme.io/group/sub/app/-/merge_requests/3");
+    assert!(prs.iter().all(|p| p.checks.is_none()));
     // An approvals lookup that fails leaves that merge request without reviewers; a link to
     // another host is dropped.
     assert_eq!((prs[1].reviewers.len(), prs[1].url.as_str()), (0, ""));

@@ -136,6 +136,7 @@ fn convert_cloud(p: CloudPr) -> PullRequest {
         // Bitbucket Cloud reports a 12-character hash prefix.
         head: p.source.commit.map(|c| c.hash).filter(|h| !h.is_empty()),
         merge_status: None,
+        checks: None,
         url: p.links.html.href,
     }
 }

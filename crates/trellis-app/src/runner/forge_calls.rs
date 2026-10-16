@@ -45,7 +45,9 @@ pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: 
             let r = forge::issues(t, &auth, &keys).map_err(ForgeError::from);
             vec![ForgeResult::Issues(keys, r)]
         }
-        ForgeCall::Create(pr) => vec![ForgeResult::Created(forge::create_pull_request(t, &auth, &pr).map_err(ForgeError::from))],
+        ForgeCall::Create(pr) => {
+            vec![ForgeResult::Created(forge::create_pull_request(t, &auth, &pr).map(Box::new).map_err(ForgeError::from))]
+        }
     };
     ForgeReply { target, auth: Some(auth), results }
 }

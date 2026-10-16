@@ -35,7 +35,8 @@ pub enum ForgeResult {
     MyIssues(Result<Vec<Issue>, ForgeError>),
     Issues(Vec<String>, Result<Vec<Issue>, ForgeError>),
     DefaultBranch(Option<String>),
-    Created(Result<PullRequest, ForgeError>),
+    /// Boxed: a pull request is far larger than the other results.
+    Created(Result<Box<PullRequest>, ForgeError>),
 }
 
 #[derive(Debug)]

@@ -165,6 +165,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
     } else if f.prs.is_empty() {
         hint_row(ui, if f.loading > 0 { "Loading…".to_owned() } else { format!("No open {}s", f.pr_noun()) });
     }
+    let slot = if f.prs.iter().any(|p| p.checks.is_some()) { super::build_status::MARKER_SLOT } else { 0.0 };
     for pr in f.prs.iter().filter(|p| shown(&p.title) || shown(&p.source) || shown(&p.id.to_string())) {
         if widgets::list_row_hidden(ui) {
             continue;
@@ -174,13 +175,19 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
         let right = format!("{}{}", f.pr_label(pr.id), if votes > 0 { format!(" ✔{votes}") } else { String::new() });
         let tip = f.pr_heads.get(&pr.id).copied();
         let selected = tip.is_some_and(|o| *sel == Selection::Commit(o));
-        let r = widgets::list_row(ui, 26.0, &title, Some((&right, color::purple())), selected, false);
+        let (r, marker) = widgets::list_row_slot(ui, 26.0, &title, Some((&right, color::purple())), slot, selected, false);
+        if let Some(c) = &pr.checks {
+            super::build_status::paint_marker(&ui.painter_at(r.rect), marker.center(), c.state);
+        }
         let mut tooltip = format!("{} → {}\nby {}", pr.source, pr.target, pr.author);
         for rv in &pr.reviewers {
             tooltip.push_str(&format!("\n{}: {}{}", rv.name, rv.state, if rv.required { " (required)" } else { "" }));
         }
         if let Some(ms) = &pr.merge_status {
             tooltip.push_str(&format!("\nmerge: {ms}"));
+        }
+        if let Some(c) = &pr.checks {
+            tooltip.push_str(&format!("\n{}", c.summary()));
         }
         let d = pr.description.trim();
         if !d.is_empty() {

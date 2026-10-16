@@ -1,7 +1,8 @@
 //! GitHub and GitHub Enterprise Server (REST API v3).
 
+use super::github_checks;
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, enc, get, page, post};
+use super::{Account, Auth, Checks, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, enc, get, page, post};
 use crate::error::Result;
 use serde::Deserialize;
 use serde_json::json;
@@ -24,8 +25,8 @@ pub(super) static GITHUB_ENTERPRISE: ProviderInfo = ProviderInfo {
     ..DEFAULTS
 };
 
-/// Pull requests whose reviews are asked for in one GraphQL call.
-const REVIEW_BATCH: usize = 50;
+/// Pull requests whose reviews and checks are asked for in one GraphQL call.
+const DETAIL_BATCH: usize = 50;
 
 pub(super) fn api(host: &str, provider: Provider) -> String {
     if provider == Provider::GitHub { "https://api.github.com".into() } else { format!("https://{host}/api/v3") }
@@ -87,10 +88,17 @@ struct Review {
     state: String,
 }
 
-fn convert(p: ApiPr, reviews: Vec<Review>) -> PullRequest {
+/// What the GraphQL call adds to a REST pull request.
+#[derive(Default)]
+struct Details {
+    reviews: Vec<Review>,
+    checks: Option<Checks>,
+}
+
+fn convert(p: ApiPr, d: Details) -> PullRequest {
     // Latest review per reviewer wins; comments don't change a vote.
     let mut states: Vec<(String, String)> = Vec::new();
-    for r in reviews {
+    for r in d.reviews {
         let (Some(user), state) = (r.user, r.state) else { continue };
         let label = match state.as_str() {
             "APPROVED" => "approved",
@@ -117,26 +125,46 @@ fn convert(p: ApiPr, reviews: Vec<Review>) -> PullRequest {
         reviewers: states.into_iter().map(|(name, state)| Reviewer { name, state, required: false }).collect(),
         head: Some(p.head.sha).filter(|s| !s.is_empty()),
         merge_status: None,
+        checks: d.checks,
         url: p.html_url,
     }
 }
 
-/// Each pull request's reviews, asked for in a few GraphQL calls rather than one REST call per
-/// pull request. Pull requests whose reviews can't be read are left out (and show no votes).
-fn reviews(t: &Target, auth: &Auth, numbers: &[u64]) -> HashMap<u64, Vec<Review>> {
+/// The GraphQL query for one batch of pull requests' reviews and, `with_checks`, their checks.
+fn query(chunk: &[u64], with_checks: bool) -> String {
+    let checks = if with_checks { github_checks::ROLLUP_FIELDS } else { "" };
+    let fields: String = chunk
+        .iter()
+        .map(|n| format!("p{n}: pullRequest(number: {n}) {{ reviews(first: 100) {{ nodes {{ author {{ login }} state }} }} {checks} }} "))
+        .collect();
+    format!("query($owner: String!, $repo: String!) {{ repository(owner: $owner, name: $repo) {{ {fields}}} }}")
+}
+
+/// Each pull request's reviews and checks, asked for in a few GraphQL calls rather than REST
+/// calls per pull request. Pull requests for which neither can be read are left out (and show no
+/// votes or checks). A server that doesn't know the check fields is asked again without them.
+fn details(t: &Target, auth: &Auth, numbers: &[u64]) -> HashMap<u64, Details> {
+    let ask = |chunk: &[u64], with_checks: bool| {
+        let body = json!({ "query": query(chunk, with_checks), "variables": { "owner": t.owner, "repo": t.repo } });
+        post::<serde_json::Value>(auth, &graphql_url(t), body)
+    };
     let mut out = HashMap::new();
-    for chunk in numbers.chunks(REVIEW_BATCH) {
-        let fields: String = chunk
-            .iter()
-            .map(|n| format!("p{n}: pullRequest(number: {n}) {{ reviews(first: 100) {{ nodes {{ author {{ login }} state }} }} }} "))
-            .collect();
-        let query = format!("query($owner: String!, $repo: String!) {{ repository(owner: $owner, name: $repo) {{ {fields}}} }}");
-        let body = json!({ "query": query, "variables": { "owner": t.owner, "repo": t.repo } });
-        let Ok(answer) = post::<serde_json::Value>(auth, &graphql_url(t), body) else { break };
+    let mut with_checks = true;
+    for chunk in numbers.chunks(DETAIL_BATCH) {
+        let Ok(mut answer) = ask(chunk, with_checks) else { break };
+        if with_checks && answer["data"]["repository"].is_null() && answer["errors"].is_array() {
+            // Rejected outright (an older server without the rollup field): drop the checks.
+            with_checks = false;
+            let Ok(again) = ask(chunk, false) else { break };
+            answer = again;
+        }
         let repo = &answer["data"]["repository"];
         for n in chunk {
-            if let Ok(r) = serde_json::from_value::<Vec<Review>>(repo[format!("p{n}")]["reviews"]["nodes"].clone()) {
-                out.insert(*n, r);
+            let pr = &repo[format!("p{n}")];
+            let reviews = serde_json::from_value::<Vec<Review>>(pr["reviews"]["nodes"].clone()).ok();
+            let checks = if with_checks { github_checks::from_pr(pr) } else { None };
+            if reviews.is_some() || checks.is_some() {
+                out.insert(*n, Details { reviews: reviews.unwrap_or_default(), checks });
             }
         }
     }
@@ -195,12 +223,12 @@ impl super::Forge for GitHub {
     fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
         let prs: Vec<ApiPr> = page::by_link(auth, format!("{}/pulls?state=open&per_page=100", repo_api(t)))?;
         let numbers: Vec<u64> = prs.iter().map(|p| p.number).collect();
-        let mut reviews = reviews(t, auth, &numbers);
+        let mut details = details(t, auth, &numbers);
         Ok(prs
             .into_iter()
             .map(|p| {
-                let r = reviews.remove(&p.number).unwrap_or_default();
-                convert(p, r)
+                let d = details.remove(&p.number).unwrap_or_default();
+                convert(p, d)
             })
             .collect())
     }
@@ -216,7 +244,7 @@ impl super::Forge for GitHub {
     fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
         let body = json!({ "title": pr.title, "head": pr.source, "base": pr.target, "body": pr.description, "draft": pr.draft });
         let created: ApiPr = post(auth, &format!("{}/pulls", repo_api(t)), body)?;
-        Ok(convert(created, Vec::new()))
+        Ok(convert(created, Details::default()))
     }
 
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
@@ -267,7 +295,7 @@ mod tests {
             r#"[{"user":{"login":"grace"},"state":"CHANGES_REQUESTED"},{"user":{"login":"grace"},"state":"APPROVED"},{"user":{"login":"bob"},"state":"COMMENTED"}]"#,
         )
         .unwrap();
-        let pr = convert(p, reviews);
+        let pr = convert(p, Details { reviews, checks: None });
         assert_eq!((pr.id, pr.source.as_str(), pr.target.as_str()), (4, "feature/search", "main"));
         assert_eq!(pr.approvals(), 1);
         assert_eq!(pr.reviewers.len(), 2);

@@ -8,6 +8,7 @@ mod blame;
 mod branch_dialogs;
 mod branch_menu;
 mod central;
+mod build_status;
 mod clone_dialog;
 mod clone_service;
 mod commit_box;
@@ -29,6 +30,7 @@ mod graph;
 mod history;
 mod icons;
 mod init_dialog;
+mod list_row;
 mod menus;
 mod modals;
 mod palette;
@@ -121,6 +123,7 @@ mod snapshot_tests_platform_dialogs;
 mod snapshot_tests_prefs_keyboard;
 #[cfg(test)]
 mod snapshot_tests_prefs_notify;
+mod snapshot_tests_pr_checks;
 #[cfg(test)]
 mod snapshot_tests_profiles;
 #[cfg(test)]

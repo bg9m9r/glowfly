@@ -89,6 +89,7 @@ fn convert(m: ApiMr, approvals: Approvals) -> PullRequest {
         reviewers,
         head: m.sha,
         merge_status: m.detailed_merge_status,
+        checks: None,
         url: m.web_url,
     }
 }

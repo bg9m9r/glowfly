@@ -10,8 +10,12 @@ const PRS: &str = r#"[
 
 const REVIEWS: &str = r#"{"data":{"repository":{
   "p4":{"reviews":{"nodes":[{"author":{"login":"grace"},"state":"CHANGES_REQUESTED"},{"author":{"login":"grace"},"state":"APPROVED"},
-    {"author":{"login":"bob"},"state":"COMMENTED"},{"author":null,"state":"APPROVED"}]}},
-  "p5":{"reviews":{"nodes":[]}}}}}"#;
+    {"author":{"login":"bob"},"state":"COMMENTED"},{"author":null,"state":"APPROVED"}]},
+    "commits":{"nodes":[{"commit":{"statusCheckRollup":{"state":"FAILURE","contexts":{"totalCount":3,"nodes":[
+      {"__typename":"CheckRun","status":"COMPLETED","conclusion":"SUCCESS"},
+      {"__typename":"CheckRun","status":"COMPLETED","conclusion":"FAILURE"},
+      {"__typename":"StatusContext","state":"SUCCESS"}]}}}}]}},
+  "p5":{"reviews":{"nodes":[]},"commits":{"nodes":[{"commit":{"statusCheckRollup":null}}]}}}}}"#;
 
 /// `graphql` is the GraphQL endpoint's route.
 fn pr_server(api_host: &'static str, prefix: &'static str, graphql: &'static str) -> Mock {
@@ -49,19 +53,23 @@ fn lists_pull_requests_with_review_states() {
     let states: Vec<(&str, &str)> = p.reviewers.iter().map(|r| (r.name.as_str(), r.state.as_str())).collect();
     assert_eq!(states, [("grace", "approved"), ("linus", "requested")]);
     assert!(p.head_matches("abcdef1234567"));
+    assert_eq!(p.checks, Some(Checks { state: CheckState::Failed, passed: 2, failed: 1, pending: 0, complete: true }));
     // A link to another host is dropped; the rest of the pull request stays.
     assert_eq!((prs[1].id, prs[1].url.as_str(), prs[1].head.as_deref()), (5, "", None));
+    // No CI on this one.
+    assert_eq!(prs[1].checks, None);
 
     let list = find(&m, "GET api.github.com/repos/o/r/pulls?");
     assert_eq!(list.header("Authorization"), Some("Bearer tok"));
     assert_eq!(list.header("X-GitHub-Api-Version"), Some("2022-11-28"));
     assert_eq!(list.header("Accept"), Some("application/json"));
-    // Every pull request's reviews came in one GraphQL call, with owner and repository passed
+    // Every pull request's reviews and checks came in one GraphQL call, with owner and repository passed
     // as variables rather than written into the query.
     assert_eq!(routes(&m).len(), 2);
     let sent = find(&m, "POST api.github.com/graphql").json();
     let query = sent["query"].as_str().unwrap();
     assert!(query.contains("p4: pullRequest(number: 4)") && query.contains("p5: pullRequest(number: 5)"), "{query}");
+    assert!(query.contains("statusCheckRollup") && query.contains("commits(last: 1)"), "{query}");
     assert_eq!(sent["variables"], serde_json::json!({"owner":"o","repo":"r"}));
 }
 
@@ -85,8 +93,61 @@ fn reviews_are_batched_and_a_failed_lookup_leaves_votes_empty() {
     });
     let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
     assert!(prs.iter().all(|p| p.reviewers.len() == 1 && p.reviewers[0].state == "requested"));
+    assert!(prs.iter().all(|p| p.checks.is_none()));
     // The first batch failed, so the rest weren't asked for.
     assert_eq!(routes(&m).iter().filter(|r| r.contains("graphql")).count(), 1);
+}
+
+/// GraphQL calls `m` received, and how many of them asked for checks.
+fn graphql_calls(m: &Mock) -> (usize, Vec<bool>) {
+    let bodies: Vec<bool> = m.requests().iter().filter(|r| r.method == "POST").map(|r| r.body.contains("statusCheckRollup")).collect();
+    (bodies.len(), bodies)
+}
+
+#[test]
+fn checks_are_dropped_when_the_server_rejects_the_rollup_field() {
+    let server = |list: String| {
+        Mock::start(move |r| match r.route().as_str() {
+            "GET api.github.com/repos/o/r/pulls?state=open&per_page=100" => Reply::json(list.clone()),
+            "POST api.github.com/graphql" if r.body.contains("statusCheckRollup") => {
+                Reply::json(r#"{"errors":[{"message":"no such field"}]}"#)
+            }
+            "POST api.github.com/graphql" => Reply::json(REVIEWS),
+            _ => Reply::not_found(),
+        })
+    };
+    let m = server(PRS.into());
+    let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
+    let states: Vec<(&str, &str)> = prs[0].reviewers.iter().map(|r| (r.name.as_str(), r.state.as_str())).collect();
+    assert_eq!(states, [("grace", "approved"), ("linus", "requested")]);
+    assert!(prs.iter().all(|p| p.checks.is_none()));
+    assert_eq!(graphql_calls(&m), (2, vec![true, false]));
+    drop(m);
+
+    // The first batch is asked twice; the rest skip the check fields straight away.
+    let m = server(many_prs(120));
+    let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
+    assert_eq!(prs.len(), 120);
+    assert_eq!(graphql_calls(&m), (4, vec![true, false, false, false]));
+}
+
+#[test]
+fn a_field_error_on_the_rollup_keeps_reviews() {
+    // A token that may read pull requests but not statuses: only that field is nulled.
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET api.github.com/repos/o/r/pulls?state=open&per_page=100" => Reply::json(PRS),
+        "POST api.github.com/graphql" => Reply::json(
+            r#"{"data":{"repository":{"p4":{"reviews":{"nodes":[{"author":{"login":"grace"},"state":"APPROVED"}]},
+              "commits":{"nodes":[{"commit":{"statusCheckRollup":null}}]}}}},
+            "errors":[{"type":"FORBIDDEN","path":["repository","p4","commits","nodes",0,"commit","statusCheckRollup"],
+              "message":"Resource not accessible by personal access token"}]}"#,
+        ),
+        _ => Reply::not_found(),
+    });
+    let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
+    assert_eq!(prs[0].approvals(), 1);
+    assert!(prs.iter().all(|p| p.checks.is_none()));
+    assert_eq!(graphql_calls(&m), (1, vec![true]));
 }
 
 #[test]

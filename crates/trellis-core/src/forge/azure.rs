@@ -179,6 +179,7 @@ fn convert(t: &Target, p: ApiPr) -> PullRequest {
             .collect(),
         head: p.last_merge_source_commit.map(|c| c.commit_id),
         merge_status: p.merge_status,
+        checks: None,
     }
 }
 

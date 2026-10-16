@@ -17,7 +17,7 @@ use crate::ssh::SshEffect;
 use crate::state::{AppState, ForgeState, Modal, Selection, Status};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
-use trellis_core::forge::{Provider, PullRequest, Target};
+use trellis_core::forge::{CheckState, Checks, Provider, PullRequest, Target};
 use trellis_core::gitcli::{args, run};
 use trellis_core::settings::Settings;
 
@@ -237,12 +237,14 @@ fn forge_replies_update_pull_requests_and_errors() {
         reviewers: Vec::new(),
         head: None,
         merge_status: None,
+        checks: Some(Checks { state: CheckState::Pending, passed: 1, failed: 0, pending: 1, complete: true }),
         url: "u".into(),
     };
     let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
     let fs = st.forge.as_ref().unwrap();
     assert_eq!(fs.prs.len(), 1);
+    assert_eq!(fs.prs[0].checks, Some(Checks { state: CheckState::Pending, passed: 1, failed: 0, pending: 1, complete: true }));
     assert_eq!(fs.host_status, Status::Ok);
     assert_eq!(fs.pr_label(7), "#7");
 

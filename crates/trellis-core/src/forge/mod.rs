@@ -6,6 +6,7 @@ mod azure;
 mod bitbucket;
 mod bitbucket_dc;
 mod github;
+mod github_checks;
 mod gitlab;
 mod jira;
 
@@ -14,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 mod auth;
 mod forks;
+mod checks;
 mod http;
 mod links;
 mod page;
@@ -30,6 +32,7 @@ pub use auth::{
     save_token,
 };
 pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find_my_fork, list_forks, remote_name_for, same_repository};
+pub use checks::{CheckState, Checks};
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
 pub use links::https_host;
@@ -129,6 +132,8 @@ pub struct PullRequest {
     /// Head commit SHA (Bitbucket Cloud reports only a 12-character prefix).
     pub head: Option<String>,
     pub merge_status: Option<String>,
+    /// CI status of the head commit; None when the service reported none (only GitHub is read so far).
+    pub checks: Option<Checks>,
     /// Web page; empty when the service sent no usable link.
     pub url: String,
 }

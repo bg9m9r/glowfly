@@ -239,7 +239,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant) {
             }
             ForgeResult::Created(Ok(pr)) => {
                 logs.push((true, format!("Created {} {} {}\n{}", fs.pr_noun(), fs.pr_label(pr.id), pr.title, pr.url)));
-                fs.prs.insert(0, pr);
+                fs.prs.insert(0, *pr);
                 prs_changed = true;
             }
             ForgeResult::Created(Err(e)) => logs.push((false, format!("Creating the {} failed: {}", fs.pr_noun(), e.message))),

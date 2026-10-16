@@ -504,6 +504,19 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **CI / build status**
   Check status on PRs and on branch tips (GitHub checks, GitLab pipelines, Azure Pipelines,
   Bitbucket builds).
+  - [x] GitHub and GitHub Enterprise pull requests: check runs and commit statuses read with the
+    reviews (same batched GraphQL call), a passed/failed/pending marker on PULL REQUESTS rows
+    and a "Checks: N of M passed" line in the row tooltip
+  - [ ] GitLab pipelines: the head pipeline status on merge requests
+  - [ ] Azure Pipelines: build and policy status on Azure DevOps pull requests
+  - [ ] Bitbucket builds: commit build statuses for Bitbucket Cloud and Data Center pull requests
+  - [ ] Status on branch tips: markers on LOCAL and REMOTE rows and on graph ref labels, with or
+    without a pull request
+  - [ ] Open the failing (or latest) build's page in the browser from the PR row menu or tooltip
+  - [ ] Per-check detail (names, durations, required or optional, cancelled, skipped and
+    action required told apart) in the in-app pull request view
+  - [ ] Name the permission build status needs in the GitHub token help, once it is confirmed
+    which fine-grained permissions expose check runs and commit statuses
 - [ ] **"Push and start a PR"**
   One action to push a branch and open the create-PR dialog; start a PR from a remote branch.
 - [ ] **PR and issue filters**
