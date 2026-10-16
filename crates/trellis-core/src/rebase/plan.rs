@@ -81,7 +81,7 @@ pub(super) fn range(repo: &Repository, head: Oid, upstream: Upstream) -> Result<
     Ok(out)
 }
 
-fn merge_refused(oid: Oid) -> Error {
+pub(super) fn merge_refused(oid: Oid) -> Error {
     Error::Unsupported(format!("The range includes the merge commit {}; rebasing merges isn't supported yet", short(oid)))
 }
 

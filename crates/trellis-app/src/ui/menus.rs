@@ -20,7 +20,7 @@ use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{CommitInfo, Snapshot};
 use trellis_core::worktree_ops::WorktreeBase;
 
-pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, msgs: &mut Vec<Msg>) {
+pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let oid = c.oid;
     let sha = oid.to_string();
     let s = short(oid);
@@ -49,6 +49,7 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, msgs: &mut Vec<Msg>) {
         );
     });
     menu_item(msgs, ui, "Interactive rebase from here…", Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid))));
+    super::rebase::edit_menu::single(ui, oid, snap, msgs);
     ui.separator();
     let patch = ui.add_enabled(c.parents.len() < 2, egui::Button::new("Create patch…")).on_disabled_hover_text(PATCH_BLOCKED_MERGE);
     if patch.clicked() {
@@ -61,7 +62,7 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, msgs: &mut Vec<Msg>) {
 }
 
 /// The menu for a row of a multi-selection: actions on all the selected commits.
-pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) {
+pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     ui.label(RichText::new(format!("{} commits selected", m.len())).color(color::weak()));
     ui.separator();
     let picked = cherry_pick_button(ui, m, msgs);
@@ -69,6 +70,7 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<M
     if picked || patched {
         ui.close_menu();
     }
+    super::rebase::edit_menu::multi(ui, m, snap, msgs);
     menu_item(msgs, ui, "Copy SHAs", copy_shas(m));
 }
 

@@ -7,32 +7,32 @@ use crate::testutil::*;
 use git2::Repository;
 use std::path::Path;
 
-fn request(dir: &Path, base: RebaseBase, edit: impl FnOnce(&mut Vec<TodoItem>)) -> StartRequest {
+pub(super) fn request(dir: &Path, base: RebaseBase, edit: impl FnOnce(&mut Vec<TodoItem>)) -> StartRequest {
     let p = plan(dir, &base).unwrap();
     let mut items = p.items;
     edit(&mut items);
-    StartRequest { head: p.head, upstream: p.upstream, items }
+    StartRequest { head: p.head, upstream: p.upstream, items, autostash: false }
 }
 
-fn start_copy(dir: &Path, req: &StartRequest) -> Outcome {
+pub(super) fn start_copy(dir: &Path, req: &StartRequest) -> Outcome {
     start(dir, req, &SequenceEditor::Copy).unwrap()
 }
 
-fn out(dir: &Path, a: &[&str]) -> String {
+pub(super) fn out(dir: &Path, a: &[&str]) -> String {
     let (ok, text) = run(dir, &args(a));
     assert!(ok, "git {a:?} failed: {text}");
     text
 }
 
-fn log(dir: &Path) -> Vec<String> {
+pub(super) fn log(dir: &Path) -> Vec<String> {
     out(dir, &["log", "--format=%s"]).lines().map(str::to_owned).collect()
 }
 
-fn message(dir: &Path, rev: &str) -> String {
+pub(super) fn message(dir: &Path, rev: &str) -> String {
     out(dir, &["log", "-1", "--format=%B", rev]).trim_end().to_owned()
 }
 
-fn state(dir: &Path) -> git2::RepositoryState {
+pub(super) fn state(dir: &Path) -> git2::RepositoryState {
     Repository::open(dir).unwrap().state()
 }
 
@@ -110,7 +110,7 @@ fn edit_stops_and_continue_finishes() {
     });
     let outcome = start_copy(&dir, &req);
     match &outcome {
-        Outcome::Stopped { ok: true, stop, .. } => assert_eq!(*stop, Stop { kind: StopKind::Edit, oid: Some(c2) }),
+        Outcome::Stopped { ok: true, progress, .. } => assert_eq!(progress.stop, Stop { kind: StopKind::Edit, oid: Some(c2) }),
         other => panic!("expected an edit stop, got {other:?}"),
     }
     assert_eq!(state(&dir), git2::RepositoryState::RebaseInteractive);
@@ -131,7 +131,7 @@ fn reordering_conflicting_commits_stops_on_the_conflict() {
     let req = request(&dir, RebaseBase::FromCommit(a), |items| items.reverse());
     let outcome = start_copy(&dir, &req);
     match &outcome {
-        Outcome::Stopped { ok: false, stop, .. } => assert_eq!(*stop, Stop { kind: StopKind::Conflict, oid: Some(b) }),
+        Outcome::Stopped { ok: false, progress, .. } => assert_eq!(progress.stop, Stop { kind: StopKind::Conflict, oid: Some(b) }),
         other => panic!("expected a conflict, got {other:?}"),
     }
     assert_eq!(state(&dir), git2::RepositoryState::RebaseInteractive);
@@ -197,7 +197,7 @@ fn skipping_a_reworded_pick_rewords_nothing_else() {
         items[0].new_message = Some("New b message".into());
     });
     match start_copy(&dir, &req) {
-        Outcome::Stopped { stop, .. } => assert_eq!(stop, Stop { kind: StopKind::Conflict, oid: Some(b) }),
+        Outcome::Stopped { progress, .. } => assert_eq!(progress.stop, Stop { kind: StopKind::Conflict, oid: Some(b) }),
         other => panic!("expected a conflict, got {other:?}"),
     }
     out(&dir, &["rebase", "--skip"]);
@@ -205,5 +205,89 @@ fn skipping_a_reworded_pick_rewords_nothing_else() {
     assert_eq!(log(&dir), ["a", "base"], "the skipped commit's message goes nowhere");
     assert_eq!(head(&dir), a, "a replays onto base unchanged");
     assert_eq!(Repository::open(&dir).unwrap().find_commit(a).unwrap().parent_id(0).unwrap(), base);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn stash_tip(dir: &Path) -> Option<Oid> {
+    Repository::open(dir).unwrap().refname_to_id("refs/stash").ok()
+}
+
+#[test]
+fn autostash_keeps_changes() {
+    let (dir, [_, _, c3, _]) = linear("rebase-run-autostash");
+    write(
+        &dir,
+        "1.txt",
+        "1, edited
+",
+    );
+    let before = head(&dir);
+    let reword = |dir: &Path, autostash: bool| {
+        let mut req = request(dir, RebaseBase::FromCommit(c3), |items| {
+            set(items, 0, RebaseAction::Reword);
+            items[0].new_message = Some("c3, reworded".into());
+        });
+        req.autostash = autostash;
+        req
+    };
+    // Without autostash git refuses and nothing changes.
+    let outcome = start_copy(&dir, &reword(&dir, false));
+    assert!(matches!(outcome, Outcome::Failed { .. }), "{outcome:?}");
+    assert_eq!((state(&dir), head(&dir)), (git2::RepositoryState::Clean, before));
+
+    let outcome = start_copy(&dir, &reword(&dir, true));
+    assert!(matches!(outcome, Outcome::Finished { stash_kept: false, .. }), "{outcome:?}");
+    assert_eq!(log(&dir), ["c4", "c3, reworded", "c2", "c1"]);
+    assert_eq!(
+        std::fs::read_to_string(dir.join("1.txt")).unwrap(),
+        "1, edited
+",
+        "the edit is back"
+    );
+    assert_eq!(stash_tip(&dir), None, "nothing is left in the stash list");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn autostash_conflict_is_reported() {
+    let (dir, [_, c2, ..]) = linear("rebase-run-autostash-conflict");
+    write(
+        &dir,
+        "2.txt",
+        "2, edited
+",
+    );
+    let mut req = request(&dir, RebaseBase::FromCommit(c2), |items| set(items, 0, RebaseAction::Drop));
+    req.autostash = true;
+    let outcome = start_copy(&dir, &req);
+    assert!(matches!(outcome, Outcome::Finished { stash_kept: true, .. }), "{outcome:?}");
+    assert_eq!(log(&dir), ["c4", "c3", "c1"]);
+    assert!(stash_tip(&dir).is_some(), "git kept the changes in the stash list");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn refused_todo_with_autostash_restores_changes() {
+    let (dir, [_, c2, ..]) = linear("rebase-run-autostash-refused");
+    write(
+        &dir,
+        "1.txt",
+        "1, edited
+",
+    );
+    let before = head(&dir);
+    let mut req = request(&dir, RebaseBase::FromCommit(c2), |items| items.reverse());
+    req.autostash = true;
+    match start(&dir, &req, &SequenceEditor::Shell("false".into())) {
+        Err(_) | Ok(Outcome::Failed { .. }) => {}
+        Ok(other) => panic!("expected a failure, got {other:?}"),
+    }
+    assert_eq!((state(&dir), head(&dir)), (git2::RepositoryState::Clean, before));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("1.txt")).unwrap(),
+        "1, edited
+",
+        "the edit is back"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }

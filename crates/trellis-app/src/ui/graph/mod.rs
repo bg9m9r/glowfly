@@ -333,8 +333,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     });
                 }
                 resp.context_menu(|ui| match selection {
-                    Selection::Commits(m) if m.contains(c.oid) => multi_commit_menu(ui, m, msgs),
-                    _ => commit_menu(ui, c, msgs),
+                    Selection::Commits(m) if m.contains(c.oid) => multi_commit_menu(ui, m, snap, msgs),
+                    _ => commit_menu(ui, c, snap, msgs),
                 });
             }
             last

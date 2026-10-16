@@ -222,6 +222,9 @@ pub struct Snapshot {
     /// The LFS patterns of the root .gitattributes (empty without one); refreshed by full loads only.
     pub lfs_patterns: Vec<crate::lfs::LfsPattern>,
     pub state: RepositoryState,
+    /// Where an in-progress rebase is (step, stopped commit); None otherwise. Read by every full
+    /// load.
+    pub rebase: Option<crate::rebase::RebaseProgress>,
     pub commits: Vec<CommitInfo>,
     pub row_of: HashMap<Oid, usize>,
     pub truncated: bool,

@@ -9,7 +9,9 @@ use trellis_core::repo::Snapshot;
 pub const LOADING: &str = "The commit list is still loading.";
 pub const STARTING: &str = "The interactive rebase is already running.";
 pub const JOB_RUNNING: &str = "Another operation is still running.";
-pub const TRACKED_CHANGES: &str = "Commit or stash your changes before rebasing.";
+pub const CONFLICTED_FILES: &str = "Resolve the conflicted files before rebasing.";
+/// Said before a rebase stashes the uncommitted changes (`--autostash`).
+pub const STASH_LINE: &str = "You have uncommitted changes. Trellis stashes them first and puts them back when the rebase ends.";
 pub const UNCHANGED: &str = "Nothing to change yet.";
 pub const HINT: &str = "Commits are applied from top to bottom.";
 
@@ -165,8 +167,8 @@ impl RebasePanel {
         if let Some(text) = rebase::in_progress_text(snap.state) {
             return Some(text);
         }
-        if !snap.staged.is_empty() || snap.unstaged.iter().any(|f| f.status != '?') {
-            return Some(TRACKED_CHANGES.into());
+        if has_conflicts(snap) {
+            return Some(CONFLICTED_FILES.into());
         }
         if let Some(p) = rebase::problem(&self.items) {
             return Some(p);
@@ -174,6 +176,36 @@ impl RebasePanel {
         let from_commit = matches!(self.base, RebaseBase::FromCommit(_));
         (from_commit && rebase::is_unchanged(&self.items, &self.original)).then(|| UNCHANGED.into())
     }
+}
+
+/// The work tree has conflicted files (also without an operation in progress, after a stash
+/// apply).
+pub fn has_conflicts(snap: &Snapshot) -> bool {
+    snap.unstaged.iter().any(|f| f.status == '!')
+}
+
+/// A rebase must stash first: something is staged, or a tracked file changed (untracked files
+/// don't get in git's way).
+pub fn needs_stash(snap: &Snapshot) -> bool {
+    !snap.staged.is_empty() || snap.unstaged.iter().any(|f| f.status != '?')
+}
+
+/// The question asked before starting a rebase, if one is needed: about dropping `drops`
+/// commits of `branch`, about stashing the uncommitted changes (`stash`), or both at once.
+pub fn start_question(drops: usize, branch: &str, stash: bool) -> Option<(String, String)> {
+    if drops > 0 {
+        let commits = if drops == 1 { "1 commit".to_owned() } else { format!("{drops} commits") };
+        let mut body = format!("Drop {commits} from {branch}? Their changes will be removed.");
+        if stash {
+            body = format!(
+                "{body}
+
+{STASH_LINE}"
+            );
+        }
+        return Some(("Drop commits".into(), body));
+    }
+    stash.then(|| ("Stash changes and rebase".into(), STASH_LINE.into()))
 }
 
 /// Why a rebase can't be opened in this state, if it can't.

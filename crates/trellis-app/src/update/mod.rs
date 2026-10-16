@@ -51,6 +51,8 @@ mod publish;
 mod pull_request;
 mod push_pr;
 mod rebase;
+mod rebase_quick;
+mod rebase_resume;
 mod recent;
 mod refresh;
 mod refresh_paths;
@@ -246,6 +248,12 @@ mod push_pr_state_tests;
 mod push_pr_tests;
 #[cfg(test)]
 mod rebase_e2e_tests;
+#[cfg(test)]
+mod rebase_quick_tests;
+#[cfg(test)]
+mod rebase_resume_tests;
+#[cfg(test)]
+mod rebase_stash_tests;
 #[cfg(test)]
 mod rebase_tests;
 #[cfg(test)]

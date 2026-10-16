@@ -1,9 +1,10 @@
-//! Running an interactive rebase through the git CLI with a prepared todo list, and reading
-//! where a stopped rebase is.
+//! Running an interactive rebase through the git CLI with a prepared todo list, and resuming a
+//! stopped one (Continue / Skip).
 
 use super::plan::{checked_head, range};
+use super::progress::progress;
 use super::todo::{build, editor_command, problem};
-use super::{CHANGED, Outcome, STALE, SequenceEditor, StartRequest, Stop, StopKind, Upstream};
+use super::{CHANGED, NOT_REBASING, Outcome, STALE, SequenceEditor, StartRequest, Upstream};
 use crate::error::{Error, Result};
 use crate::gitcli;
 use git2::{Oid, Repository, RepositoryState};
@@ -49,7 +50,12 @@ pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Res
     };
     // Our list replaces git's, so git must list the same commits: keep the ones it would
     // otherwise drop up front as already applied upstream.
-    let args = gitcli::args(&["rebase", "-i", "--reapply-cherry-picks", &upstream]);
+    let mut args = gitcli::args(&["rebase", "-i"]);
+    if req.autostash {
+        args.push("--autostash".into());
+    }
+    args.extend(gitcli::args(&["--reapply-cherry-picks", &upstream]));
+    let stash_before = stash_tip(&repo);
     let command = editor_command(editor, &prepared);
     let (ok, output) = gitcli::run_with_input(workdir, &args, "", &[("GIT_SEQUENCE_EDITOR", &command)]);
 
@@ -65,11 +71,51 @@ pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Res
     } else if !ok {
         abort_unstarted(workdir, &git_dir);
     }
-    Ok(match stopped_at(workdir) {
-        Some(stop) => Outcome::Stopped { ok, output, stop },
-        None if ok => Outcome::Finished { output },
-        None => Outcome::Failed { output },
-    })
+    outcome(workdir, ok, output, req.autostash, stash_before)
+}
+
+/// How to go on with a stopped rebase.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Resume {
+    /// `git rebase --continue`: commit what is staged (keeping the message) and go on.
+    Continue,
+    /// `git rebase --skip`: leave the stopped commit out and go on.
+    Skip,
+}
+
+/// Continues or skips the rebase in progress, then reads where it stands: finished, stopped
+/// again (at an edit, a conflict, or because git refused to go on), or failed. Refused when no
+/// rebase is in progress.
+pub fn resume(workdir: &Path, how: Resume) -> Result<Outcome> {
+    let repo = Repository::open(workdir)?;
+    use RepositoryState::*;
+    if !matches!(repo.state(), Rebase | RebaseInteractive | RebaseMerge | ApplyMailboxOrRebase) {
+        return Err(Error::Unsupported(NOT_REBASING.into()));
+    }
+    let git_dir = repo.path();
+    let had_stash = git_dir.join("rebase-merge").join("autostash").exists() || git_dir.join("rebase-apply").join("autostash").exists();
+    let stash_before = stash_tip(&repo);
+    let flag = match how {
+        Resume::Continue => "--continue",
+        Resume::Skip => "--skip",
+    };
+    let (ok, output) = gitcli::run(workdir, &gitcli::args(&["rebase", flag]));
+    outcome(workdir, ok, output, had_stash, stash_before)
+}
+
+/// The stash list's newest entry, if any.
+fn stash_tip(repo: &Repository) -> Option<Oid> {
+    repo.refname_to_id("refs/stash").ok()
+}
+
+/// What a finished git run left: a rebase still in progress, none (with whether git had to
+/// keep an autostash it couldn't apply in the stash list), or a failure.
+fn outcome(workdir: &Path, ok: bool, output: String, autostash: bool, stash_before: Option<Oid>) -> Result<Outcome> {
+    if let Some(progress) = progress(workdir) {
+        return Ok(Outcome::Stopped { ok, output, progress });
+    }
+    let stash_kept = autostash && Repository::open(workdir).ok().and_then(|r| stash_tip(&r)) != stash_before;
+    Ok(if ok { Outcome::Finished { output, stash_kept } } else { Outcome::Failed { output } })
 }
 
 /// A rebase that git set up but never began (no step done): abort it, so nothing is left in
@@ -83,39 +129,4 @@ fn abort_unstarted(workdir: &Path, git_dir: &Path) {
     if done.trim().is_empty() {
         let _ = gitcli::run(workdir, &gitcli::args(&["rebase", "--abort"]));
     }
-}
-
-/// Where a stopped interactive rebase is: the last step done, and whether it conflicted.
-/// `None` unless an interactive (or merge-based) rebase is in progress.
-pub fn stopped_at(workdir: &Path) -> Option<Stop> {
-    let repo = Repository::open(workdir).ok()?;
-    if !matches!(repo.state(), RepositoryState::RebaseInteractive | RepositoryState::RebaseMerge) {
-        return None;
-    }
-    let done = std::fs::read_to_string(repo.path().join("rebase-merge").join("done")).unwrap_or_default();
-    let steps: Vec<(&str, Option<&str>)> = done
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .map(|l| {
-            let mut words = l.split_whitespace();
-            let cmd = words.next().unwrap_or_default();
-            (cmd, words.find(|w| !w.starts_with('-')))
-        })
-        .collect();
-    let resolve = |sha: Option<&str>| sha.and_then(|s| repo.revparse_single(s).ok()).map(|o| o.id());
-    let conflicted = || repo.index().map(|i| i.has_conflicts()).unwrap_or(false);
-    let Some(&(cmd, sha)) = steps.last() else { return Some(Stop { kind: StopKind::Other, oid: None }) };
-    Some(match cmd {
-        "exec" | "x" => {
-            let commit = steps.iter().rev().find(|(c, _)| matches!(*c, "pick" | "p" | "edit" | "e" | "reword" | "r"));
-            Stop { kind: StopKind::Exec, oid: resolve(commit.and_then(|(_, s)| *s)) }
-        }
-        "edit" | "e" => Stop { kind: StopKind::Edit, oid: resolve(sha) },
-        "pick" | "p" | "reword" | "r" | "squash" | "s" | "fixup" | "f" => {
-            let kind = if conflicted() { StopKind::Conflict } else { StopKind::Other };
-            Stop { kind, oid: resolve(sha) }
-        }
-        _ => Stop { kind: StopKind::Other, oid: resolve(sha) },
-    })
 }

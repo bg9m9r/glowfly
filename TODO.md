@@ -749,21 +749,21 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Interactive rebase
 
 - Rebase onto a commit, and branch context menus on the graph's ref labels
-- History editing from the graph: reword, squash with parent, or drop commits from the context
-  menu (several at once needs multi-select)
-- Start with uncommitted changes by stashing them first (`--autostash`), after asking
-- Rebase ranges that contain merge commits (`--rebase-merges`)
+- Rebase ranges that contain merge commits (`--rebase-merges`), also for graph squashes and drops
 - Keep `update-ref` steps (`rebase.updateRefs`) so branches stacked inside the range move with
   it
 - Edit the combined message of a squash group in the panel instead of git's concatenation
 - Keyboard control in the panel: select a row, Alt+Up/Down to move it, a letter key per action
 - Edit the remaining steps of a rebase already in progress (`rebase --edit-todo`), including one
   started outside Trellis
-- Show the step (N of M) and the stopped commit in the rebase banner, and report edit or
-  conflict stops after Continue too (Continue currently says "succeeded" even when it stops
-  again)
-- Undo an interactive rebase (back to `ORIG_HEAD`) from the undo history
+- Undo an interactive rebase or a graph history edit (back to `ORIG_HEAD`) from the undo history
 - `exec` and `break` steps in the panel
+- Move commits up/down or reword several commits from a multi-selection in the graph
+- Edit the combined message of a graph squash before it runs (the messages are joined now)
+- Keyboard shortcuts and command palette entries for Reword, Squash, Drop, Continue and Skip
+- A preference to always stash automatically, without asking, before a rebase
+- Click the stopped commit's SHA in the rebase banner to select it in the graph
+- Spellcheck in the Reword dialog (needs `UiCache` in modals)
 
 ### Multi-select commits
 
@@ -773,7 +773,7 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   newest), explaining when the selection isn't contiguous
 - Extend the selection from the keyboard: Shift+Up/Down and Ctrl+A
 - Swap the compare direction (newer to older) in the two-commit view
-- Revert several commits; squash, drop, move or reword several (interactive rebase)
+- Revert several commits; move or reword several (interactive rebase)
 - When a multi-commit cherry-pick stops on a conflict, select the WIP row, and add Skip commit
   (`cherry-pick --skip`) to the cherry-pick banner
 - Cherry-pick merge commits (choose the mainline parent with `-m`)

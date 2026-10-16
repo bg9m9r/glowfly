@@ -175,6 +175,8 @@ mod snapshot_tests_push_pr;
 #[cfg(test)]
 mod snapshot_tests_rebase;
 #[cfg(test)]
+mod snapshot_tests_rebase_edit;
+#[cfg(test)]
 mod snapshot_tests_remotes;
 #[cfg(test)]
 mod snapshot_tests_repo_list;

@@ -148,7 +148,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("signing", &["list_gpg_keys", "list_ssh_keys", "generate_gpg_key", "export_public_key"]),
     ("ssh_keys", &["find_keygen", "fingerprint", "list_key_pairs", "list", "generate"]),
     ("undo", &["before", "after", "plan", "redone", "discard_saving", "restore_saving", "write_saved"]),
-    ("rebase", &["plan", "start", "stopped_at", "install_todo"]),
+    ("rebase", &["plan", "start", "stopped_at", "install_todo", "resume", "progress", "prepare_edit"]),
     ("askpass", &["start", "start_with", "ask", "ask_from_env", "ask_gpg", "ask_gpg_from_env"]),
     ("gpg_prompt", &["run_wrapper"]),
     ("program", &["user_program"]),

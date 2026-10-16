@@ -1,5 +1,7 @@
 //! Interactive rebase: the commits a rebase would replay (`plan`), the todo list Trellis
-//! writes for git in place of the one git generates (`todo`), and running it (`run`).
+//! writes for git in place of the one git generates (`todo`), running and resuming it (`run`),
+//! history edits chosen in the graph (`quick`), and where a rebase in progress stands
+//! (`progress`).
 //!
 //! Git is started with `GIT_SEQUENCE_EDITOR` set to a command that replaces git's todo with
 //! the prepared one (Trellis itself in `--write-todo` mode, after checking that both list the
@@ -10,11 +12,16 @@ use git2::{Oid, RepositoryState};
 use std::path::PathBuf;
 
 mod plan;
+mod progress;
+mod quick;
 mod run;
 mod todo;
 
 pub use plan::plan;
-pub use run::{start, stopped_at};
+pub(crate) use progress::progress_of;
+pub use progress::{RebaseProgress, progress, stopped_at};
+pub use quick::{QuickEdit, QuickPlan, prepare_edit};
+pub use run::{Resume, resume, start};
 pub use todo::{build, editor_command, install_todo, is_unchanged, listed_oids, problem, shell_quote, shell_quote_for};
 
 /// Why Start refuses a list made before HEAD moved.
@@ -25,6 +32,18 @@ pub const DETACHED: &str = "Check out a branch to rebase it.";
 pub const FIRST_COMBINES: &str =
     "The first commit can't be squashed or fixed up: there is no earlier commit in the list to combine it with.";
 pub const EMPTY_REWORD: &str = "Reword messages can't be empty.";
+pub const NOT_ON_BRANCH: &str = "This commit isn't on the current branch.";
+pub const SOME_NOT_ON_BRANCH: &str = "Some selected commits aren't on the current branch.";
+pub const MERGE_SELECTED: &str = "Merge commits can't be edited this way.";
+pub const SOME_MERGE_SELECTED: &str = "The selection includes a merge commit.";
+/// A merge between the edited commit and HEAD.
+pub const MERGE_AFTER: &str = "A merge commit comes after this one on the branch; rebasing merges isn't supported yet.";
+pub const ROOT_SQUASH: &str = "The first commit has no parent to squash it into.";
+pub const PARENT_MERGE: &str = "Its parent is a merge commit, which can't be squashed into.";
+pub const NOT_CONSECUTIVE: &str = "Select commits that follow one another to squash them.";
+pub const TOO_FEW_TO_SQUASH: &str = "Select two or more commits to squash them.";
+pub const DROPS_EVERYTHING: &str = "Dropping every commit of the branch isn't supported.";
+pub const NOT_REBASING: &str = "No rebase is in progress.";
 
 /// What git does with one commit of the todo list.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -107,11 +126,13 @@ pub struct RebasePlan {
 }
 
 /// The list to run, with the HEAD it was made for.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct StartRequest {
     pub head: Oid,
     pub upstream: Upstream,
     pub items: Vec<TodoItem>,
+    /// Stash tracked changes first and put them back when the rebase ends (`--autostash`).
+    pub autostash: bool,
 }
 
 /// The command git runs as `GIT_SEQUENCE_EDITOR` (git appends the todo file's path).
@@ -146,20 +167,14 @@ pub struct Stop {
 
 #[derive(Debug)]
 pub enum Outcome {
-    Finished {
-        output: String,
-    },
+    /// No rebase is left in progress. `stash_kept`: the autostash didn't apply cleanly, so git
+    /// kept it in the stash list.
+    Finished { output: String, stash_kept: bool },
     /// A rebase is in progress (at an edit step, a conflict or a failed reword); `ok` is git's
     /// exit status.
-    Stopped {
-        ok: bool,
-        output: String,
-        stop: Stop,
-    },
+    Stopped { ok: bool, output: String, progress: RebaseProgress },
     /// Git failed and left no rebase in progress.
-    Failed {
-        output: String,
-    },
+    Failed { output: String },
 }
 
 /// Why nothing can start while an operation is in progress, if one is.
@@ -190,6 +205,10 @@ pub(crate) fn short(oid: Oid) -> String {
 
 #[cfg(test)]
 mod plan_tests;
+#[cfg(test)]
+mod progress_tests;
+#[cfg(test)]
+mod quick_tests;
 #[cfg(test)]
 mod run_tests;
 #[cfg(test)]

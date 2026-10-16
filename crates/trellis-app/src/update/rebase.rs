@@ -1,15 +1,19 @@
 //! Interactive rebase: opening the panel and loading its list, editing the list, starting the
 //! rebase as the single active job, and showing where it ended (finished, stopped at an edit
-//! or a conflict, or refused).
+//! or a conflict, or refused). Graph edits are in `rebase_quick`, the banner's Continue and
+//! Skip in `rebase_resume`; their results end here too, in `finished`.
 
-use crate::effect::Effect;
+use super::ops::Started;
+use super::rebase_resume::{STASH_KEPT, stopped_headline};
+use crate::effect::{Effect, RebaseEffect};
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
-use crate::state::rebase::{RebasePanel, open_blocker};
+use crate::state::rebase::{RebasePanel, needs_stash, open_blocker, start_question};
+use crate::state::rebase_quick::QUICK_STALE;
 use crate::state::{AppState, Selection};
 use std::path::PathBuf;
 use std::time::Instant;
-use trellis_core::rebase::{Outcome, StartRequest, Stop, StopKind};
+use trellis_core::rebase::{self, Outcome, StartRequest};
 use trellis_core::repo::Snapshot;
 
 pub const JOB_LABEL: &str = "Interactive rebase";
@@ -88,13 +92,20 @@ pub(super) fn handle(st: &mut AppState, msg: RebaseMsg, now: Instant, fx: &mut V
                 p.reset();
             }
         }
-        RebaseMsg::StartRebase { confirmed } => start(st, confirmed, now, fx),
+        RebaseMsg::StartRebase { confirmed, autostash } => start(st, confirmed, autostash, now, fx),
         RebaseMsg::RebaseFinished { result } => finished(st, result, now, fx),
+        RebaseMsg::Edit(e) => super::rebase_quick::edit(st, e, now, fx),
+        RebaseMsg::EditPrepared { workdir, result } => super::rebase_quick::prepared(st, workdir, result, now, fx),
+        RebaseMsg::SubmitReword => super::rebase_quick::submit_reword(st, now, fx),
+        RebaseMsg::RunEdit { plan, autostash, confirmed } => {
+            super::rebase_quick::run(st, *plan, autostash, confirmed, now, fx);
+        }
+        RebaseMsg::Resume(how) => super::rebase_resume::resume(st, how, now, fx),
     }
 }
 
 /// A refusal: logged, and shown as a red toast.
-fn refuse(st: &mut AppState, why: String, now: Instant) {
+pub(super) fn refuse(st: &mut AppState, why: String, now: Instant) {
     st.log(false, why.clone());
     st.toast(false, why, now);
 }
@@ -108,29 +119,31 @@ fn editable(st: &mut AppState, index: usize) -> Option<&mut RebasePanel> {
 fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.rebase_gen += 1;
     if let (Some(workdir), Some(p)) = (st.workdir(), &st.rebase) {
-        fx.push(Effect::LoadRebasePlan { workdir, base: p.base.clone(), generation: st.rebase_gen });
+        fx.push(Effect::Rebase(RebaseEffect::LoadPlan { workdir, base: p.base.clone(), generation: st.rebase_gen }));
     }
 }
 
-fn start(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec<Effect>) {
+/// Starts the panel's list. Drops and uncommitted changes ask first, in one question; a tree
+/// that became dirty after a question that didn't mention stashing asks again.
+fn start(st: &mut AppState, confirmed: bool, autostash: bool, now: Instant, fx: &mut Vec<Effect>) {
     let (Some(p), Some(snap)) = (&st.rebase, &st.snap) else { return };
     if let Some(why) = p.start_blocker(snap, st.job.is_some()) {
         st.log(false, why);
         return;
     }
     let drops = p.drops();
-    if drops > 0 && !confirmed {
-        let commits = if drops == 1 { "1 commit".to_owned() } else { format!("{drops} commits") };
-        let body = format!("Drop {commits} from {}? Their changes will be removed.", p.branch());
-        let ask = Msg::confirm("Drop commits", body, "Start rebase", Msg::Rebase(RebaseMsg::StartRebase { confirmed: true }));
-        fx.extend(super::update(st, ask, now));
+    let stash = needs_stash(snap);
+    if (((drops > 0 || stash) && !confirmed) || (stash && !autostash))
+        && let Some((title, body)) = start_question(drops, p.branch(), stash)
+    {
+        let then = Msg::Rebase(RebaseMsg::StartRebase { confirmed: true, autostash: stash });
+        fx.extend(super::update(st, Msg::confirm(&title, body, "Start rebase", then), now));
         return;
     }
     let Some(plan) = p.plan.as_ref() else { return };
-    let request = StartRequest { head: plan.head, upstream: plan.upstream, items: p.items.clone() };
-    let effect = move |cwd| Effect::InteractiveRebase { cwd, request };
+    let request = StartRequest { head: plan.head, upstream: plan.upstream, items: p.items.clone(), autostash: stash };
     // Also while it waits for the trust prompt: dropping it there resets `starting`.
-    if super::ops::begin_job(st, JOB_LABEL, false, effect, fx) == super::ops::Started::No {
+    if launch(st, JOB_LABEL, request, fx) == Started::No {
         return;
     }
     if let Some(p) = st.rebase.as_mut() {
@@ -139,24 +152,42 @@ fn start(st: &mut AppState, confirmed: bool, now: Instant, fx: &mut Vec<Effect>)
     }
 }
 
-/// The rebase job ended. Its tab's panel (active or parked) closes unless nothing was changed,
-/// in which case it stays open with the reason.
+/// Runs `request` as the active job labelled `label`.
+pub(super) fn launch(st: &mut AppState, label: &str, request: StartRequest, fx: &mut Vec<Effect>) -> Started {
+    super::ops::begin_job(st, label, false, move |cwd| Effect::Rebase(RebaseEffect::Start { cwd, request }), fx)
+}
+
+/// A rebase job ended (the panel's, a graph edit's, or the banner's Continue / Skip). Its tab's
+/// panel (active or parked) closes unless nothing was changed, in which case it stays open with
+/// the reason. A stop selects the WIP row, where the banner is.
 fn finished(st: &mut AppState, result: Result<Outcome, String>, now: Instant, fx: &mut Vec<Effect>) {
     let Some(job) = &st.job else { return };
-    let workdir = job.workdir.clone();
+    let (workdir, label) = (job.workdir.clone(), job.label.clone());
     let here = match (workdir.as_deref(), st.workdir()) {
         (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),
         _ => false,
     };
+    let panel_open = panel_slot(st, workdir.clone(), here).is_some_and(|s| s.is_some());
     // `keep`: the panel stays open with this error (and is marked stale when nothing ran).
     let (ok, output, headline, keep, stopped) = match result {
-        Ok(Outcome::Finished { output }) => (true, output, None, None, false),
-        Ok(Outcome::Stopped { ok, output, stop }) => (ok, output, Some(stopped_headline(&stop)), None, true),
+        Ok(Outcome::Finished { output, stash_kept }) => {
+            let headline = stash_kept.then(|| format!("{label} {STASH_KEPT}"));
+            (!stash_kept, output, headline, None, false)
+        }
+        Ok(Outcome::Stopped { ok, output, progress }) => {
+            let headline = stopped_headline(&label, &progress, ok, &output);
+            (ok, output, Some(headline), None, true)
+        }
         Ok(Outcome::Failed { output }) => {
             let error = super::ops::last_line(&output).to_owned();
             (false, output, None, Some((error, false)), false)
         }
-        Err(e) => (false, e.clone(), Some(format!("{JOB_LABEL} failed: {e}")), Some((e, true)), false),
+        Err(e) => {
+            // Only the panel can be reset to reload its list.
+            let shown = if e == rebase::STALE && !panel_open { QUICK_STALE } else { e.as_str() };
+            let headline = format!("{label} failed: {shown}");
+            (false, e.clone(), Some(headline), Some((e, true)), false)
+        }
     };
     let closes = keep.is_none();
     if let Some(slot) = panel_slot(st, workdir, here) {
@@ -190,16 +221,6 @@ fn panel_slot(st: &mut AppState, workdir: Option<PathBuf>, here: bool) -> Option
     }
     let w = workdir?;
     st.tabs.iter_mut().find(|t| t.is(&w)).and_then(|t| t.parked.as_mut()).map(|p| &mut p.rebase)
-}
-
-fn stopped_headline(stop: &Stop) -> String {
-    let at = stop.oid.map(|o| o.to_string()[..7].to_owned()).unwrap_or_else(|| "a commit".into());
-    match stop.kind {
-        StopKind::Edit => format!("{JOB_LABEL} paused at {at} so you can edit it. Use Continue when you're done."),
-        StopKind::Conflict => format!("{JOB_LABEL} stopped on a conflict at {at}. Resolve it, then Continue, or Abort."),
-        StopKind::Exec => format!("{JOB_LABEL} stopped: rewording {at} failed."),
-        StopKind::Other => format!("{JOB_LABEL} stopped at {at}. Continue, Skip commit or Abort."),
-    }
 }
 
 /// After a refresh: the list is stale once HEAD or its branch moved.

@@ -1,7 +1,9 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
-use crate::effect::{CloneEffect, Effect, ForgeError, InitEffect, LoadKind, SubmoduleEffect, UndoResult, UpdateEffect};
+use crate::effect::{
+    CloneEffect, Effect, ForgeError, InitEffect, LoadKind, RebaseEffect, SubmoduleEffect, UndoResult, UpdateEffect,
+};
 use crate::msg::BlameMsg;
 use crate::msg::CloneMsg;
 use crate::msg::JobMsg;
@@ -89,7 +91,7 @@ impl Recovery {
             | Effect::Init(InitEffect::Run { .. })
             | Effect::Tool(ToolEffect::RunMerge(_)) => Kind::Job(None),
             Effect::Clone(CloneEffect::ListRepos { account, .. }) => Kind::Repos(account.clone()),
-            Effect::InteractiveRebase { .. } => Kind::Rebase,
+            Effect::Rebase(RebaseEffect::Start { .. } | RebaseEffect::Resume { .. }) => Kind::Rebase,
             Effect::LocalOp { .. } => Kind::LocalOp,
             Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
             Effect::LoadStatus { generation, .. } => Kind::Status(*generation),

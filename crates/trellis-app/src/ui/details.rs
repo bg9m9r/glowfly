@@ -12,6 +12,7 @@ use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::WorkFileMsg;
 use crate::state::lfs::{TrackContext, track_items};
+use crate::state::rebase_banner::{RESOLVE_FIRST, action_msg};
 use crate::state::tool_compare::{RESOLVE_IN_MERGE_TOOL, ToolAvail};
 use crate::state::{AppState, Selection};
 use crate::tools::ToolsMsg;
@@ -54,8 +55,12 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     let in_progress = state_actions(snap.state);
     if in_progress.is_some() || !conflicted.is_empty() {
         egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
-            if let Some((name, _)) = in_progress {
-                ui.label(RichText::new(format!("{name} in progress")).strong());
+            match (in_progress, &snap.rebase) {
+                (Some((name, _)), Some(p)) => super::rebase::banner::progress(ui, p, name, !conflicted.is_empty()),
+                (Some((name, _)), None) => {
+                    ui.label(RichText::new(format!("{name} in progress")).strong());
+                }
+                _ => {}
             }
             if let Some(first) = conflicted.first() {
                 ui.horizontal(|ui| {
@@ -69,8 +74,9 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
             let Some((_, actions)) = in_progress else { return };
             ui.horizontal(|ui| {
                 for (label, a) in actions {
-                    if ui.button(*label).clicked() {
-                        msgs.push(Msg::git(label, a));
+                    let held = !conflicted.is_empty() && *label == "Continue" && snap.rebase.is_some();
+                    if ui.add_enabled(!held, egui::Button::new(*label)).on_disabled_hover_text(RESOLVE_FIRST).clicked() {
+                        msgs.push(action_msg(snap.state, label, a));
                     }
                 }
             });

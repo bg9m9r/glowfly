@@ -74,6 +74,20 @@ fn rebase_panel() {
 }
 
 #[test]
+fn rebase_panel_dirty() {
+    use RebaseAction::*;
+    let (mut st, dir) = with_panel(ThemeChoice::Dark, "rebase-dirty", &[Pick, Pick, Drop, Pick, Pick, Pick]);
+    st.snap.as_mut().unwrap().unstaged.push(trellis_core::repo::FileEntry::new("README.md", 'M'));
+    let blocker = st.rebase.as_ref().unwrap().start_blocker(st.snap.as_ref().unwrap(), false);
+    assert_eq!(blocker, None, "uncommitted changes are stashed, not refused");
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("rebase_panel_dirty");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn rebase_panel_blocked_light() {
     use RebaseAction::*;
     let (st, dir) = with_panel(ThemeChoice::Light, "rebase-blocked", &[Squash, Pick, Drop, Pick, Pick, Pick]);
@@ -118,7 +132,7 @@ fn header_buttons_and_esc() {
     h.run();
     h.get_by_label("Start rebase").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }))));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }))));
     h.get_by_label("Reset").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::RebaseReset))));

@@ -32,8 +32,7 @@ impl Effect {
             Effect::SparseCheckout { .. } => "sparse-checkout",
             Effect::RunGit { .. } => "git",
             Effect::UndoRedo { .. } => "undo-redo",
-            Effect::LoadRebasePlan { .. } => "rebase-plan",
-            Effect::InteractiveRebase { .. } => "rebase",
+            Effect::Rebase(e) => e.name(),
             Effect::Forge { .. } => "forge",
             Effect::Connect { .. } => "connect",
             Effect::RepoOwners { .. } => "repo-owners",
@@ -117,8 +116,7 @@ impl Effect {
             | Effect::SparseCheckout { .. }
             | Effect::RunGit { .. }
             | Effect::UndoRedo { .. }
-            | Effect::LoadRebasePlan { .. }
-            | Effect::InteractiveRebase { .. }
+            | Effect::Rebase(_)
             | Effect::Forge { .. }
             | Effect::Connect { .. }
             | Effect::RepoOwners { .. }

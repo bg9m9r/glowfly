@@ -44,6 +44,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let common = common_dir::CommonDir::of(&repo);
     let name = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| workdir.display().to_string());
     let state = repo.state();
+    let rebase = crate::rebase::progress_of(&repo);
 
     let (head_oid, head_branch, detached) = match repo.head() {
         Ok(h) => {
@@ -240,6 +241,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         gitflow,
         lfs_patterns,
         state,
+        rebase,
         commits,
         row_of,
         truncated,

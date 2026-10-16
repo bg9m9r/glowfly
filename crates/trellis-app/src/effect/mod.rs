@@ -7,7 +7,6 @@ use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::askpass::Reply;
 use trellis_core::forge::{Account, Auth, NewRepo, Target};
-use trellis_core::rebase::{RebaseBase, StartRequest};
 use trellis_core::repo::{DiffTarget, FileDiff, HistoryStart, Hunk, LoadOptions};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
@@ -21,6 +20,7 @@ mod init;
 mod issue;
 mod names;
 mod notify;
+mod rebase;
 mod repo;
 mod scope;
 mod submodule;
@@ -34,6 +34,7 @@ pub use forge_filters::{FilterCall, FilterResult};
 pub use init::InitEffect;
 pub use issue::*;
 pub use notify::{DesktopNote, NoteKind};
+pub use rebase::RebaseEffect;
 pub use repo::{ConflictRead, KnownRepo, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use submodule::SubmoduleEffect;
 pub use updates::UpdateEffect;
@@ -207,18 +208,8 @@ pub enum Effect {
         /// Run nothing unless this revision still resolves to this commit.
         expect: Option<(String, git2::Oid)>,
     },
-    /// The commits an interactive rebase from `base` would replay.
-    LoadRebasePlan {
-        workdir: PathBuf,
-        base: RebaseBase,
-        generation: u64,
-    },
-    /// Runs an interactive rebase with a prepared todo list. Unscoped like `RunGit`: the job's
-    /// result must reach `update` even if its tab is no longer active.
-    InteractiveRebase {
-        cwd: PathBuf,
-        request: StartRequest,
-    },
+    /// Interactive rebase: the panel's list, graph edits, running and resuming.
+    Rebase(RebaseEffect),
     /// Undoes (or redoes) `action` after checking the repository still matches it. Unscoped like
     /// `RunGit`: the job's result must reach `update` even if its tab is no longer active.
     UndoRedo {

@@ -166,6 +166,7 @@ fn graph_commit_menu() {
     let (fix, merge) = (commit(&st, "Fix build on Windows"), commit(&st, "Merge branch 'login-page'"));
     let row_of = |o: Oid| st.snap.as_ref().unwrap().row_of[&o] + 1;
     let (fix_row, merge_row) = (row_of(fix), row_of(merge));
+    let root_row = row_of(commit(&st, "Initial commit"));
     let mut h = harness(st, true);
     h.run();
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
@@ -185,6 +186,11 @@ fn graph_commit_menu() {
     // A merge commit has no patch of its own.
     click(&mut h, pos2(700.0, row_y(merge_row)), PointerButton::Secondary);
     assert!(h.get_by_label("Create patch…").is_disabled());
+    // History edits need a linear run up to HEAD, which is a merge here.
+    assert!(h.get_by_label("Squash into parent").is_disabled());
+    click(&mut h, pos2(700.0, row_y(root_row)), PointerButton::Secondary);
+    assert!(h.get_by_label("Squash into parent").is_disabled());
+    assert!(h.get_by_label("Reword commit…").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

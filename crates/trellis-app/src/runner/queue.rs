@@ -8,7 +8,7 @@
 //! disk (`paths::FolderId`), so `submit` hands each job to a router thread that looks the folder
 //! up (once per spelling) and passes the job on, in order; the UI thread never waits on it.
 
-use crate::effect::{Effect, SubmoduleEffect};
+use crate::effect::{Effect, RebaseEffect, SubmoduleEffect};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -114,7 +114,8 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::RestoreFile { workdir, .. }
         | Effect::WorkFile { workdir, .. } => Some(workdir),
         Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
-        Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } | Effect::InteractiveRebase { cwd, .. } => Some(cwd),
+        Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } => Some(cwd),
+        Effect::Rebase(RebaseEffect::Start { cwd, .. } | RebaseEffect::Resume { cwd, .. }) => Some(cwd),
         Effect::RemoveWorktree(r) => Some(&r.repo),
         Effect::Submodule(SubmoduleEffect::Remove(r)) => Some(&r.repo),
         Effect::RenameStash { cwd, .. } => Some(cwd),
@@ -141,7 +142,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::DetectLfs { .. }
         | Effect::LoadLfs { .. }
         | Effect::LoadSparse { .. }
-        | Effect::LoadRebasePlan { .. }
+        | Effect::Rebase(RebaseEffect::LoadPlan { .. } | RebaseEffect::PrepareEdit { .. })
         | Effect::Forge { .. }
         | Effect::RepoOwners { .. }
         | Effect::CreateRepo { .. }
@@ -406,14 +407,16 @@ mod tests {
                 redo: false,
                 opts: Default::default(),
             },
-            Effect::InteractiveRebase {
+            Effect::Rebase(RebaseEffect::Start {
                 cwd: w.clone(),
                 request: trellis_core::rebase::StartRequest {
                     head: git2::Oid::zero(),
                     upstream: trellis_core::rebase::Upstream::Root,
                     items: vec![],
+                    autostash: false,
                 },
-            },
+            }),
+            Effect::Rebase(RebaseEffect::Resume { cwd: w.clone(), how: trellis_core::rebase::Resume::Skip }),
             Effect::RemoveWorktree(crate::worktree::RemoveRequest {
                 repo: w.clone(),
                 path: "C:/wt".into(),

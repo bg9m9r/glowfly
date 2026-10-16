@@ -5,14 +5,14 @@ use super::rebase::JOB_LABEL;
 use super::selection_tests::{commit_on, git, head};
 use super::tests::{drive, state};
 use super::update;
-use crate::effect::Effect;
+use crate::effect::{Effect, RebaseEffect};
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
-use crate::state::rebase::{RebasePanel, TRACKED_CHANGES, UNCHANGED};
+use crate::state::rebase::{CONFLICTED_FILES, RebasePanel, UNCHANGED};
 use crate::state::{AppState, Modal, RunningJob};
 use git2::{Oid, RepositoryState};
 use std::path::{Path, PathBuf};
@@ -121,7 +121,7 @@ fn opening_requests_the_list_and_closes_other_views() {
     st.conflict = Some(ConflictView::loading("c1.txt".into()));
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[1]))));
     match &fx[..] {
-        [e @ Effect::LoadRebasePlan { base, generation, .. }] => {
+        [e @ Effect::Rebase(RebaseEffect::LoadPlan { base, generation, .. })] => {
             assert_eq!((base, *generation), (&RebaseBase::FromCommit(c[1]), st.rebase_gen));
             assert!(e.scope().is_some(), "the result comes back for this tab only");
         }
@@ -221,7 +221,7 @@ fn editing_the_list() {
 #[test]
 fn start_is_refused_with_a_reason() {
     let (mut st, dir, c) = with_panel("rebase-start-refused", RebaseBase::FromCommit(Oid::zero()));
-    let start = |st: &mut AppState| up(st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }));
+    let start = |st: &mut AppState| up(st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
 
     // Unchanged lists from a commit have nothing to do.
     assert!(start(&mut st).is_empty());
@@ -233,18 +233,18 @@ fn start_is_refused_with_a_reason() {
     assert_eq!(last_log(&st), "Another operation is still running.");
     st.job = None;
 
-    // Untracked files are fine; tracked changes are not.
+    // Conflicted files left by a stash apply block it; tracked changes only ask (rebase_stash_tests).
     let snap = st.snap.as_mut().unwrap();
-    snap.unstaged.push(FileEntry::new("c1.txt", 'M'));
+    snap.unstaged.push(FileEntry::new("c1.txt", '!'));
     assert!(start(&mut st).is_empty());
-    assert_eq!(last_log(&st), TRACKED_CHANGES);
+    assert_eq!(last_log(&st), CONFLICTED_FILES);
     st.snap.as_mut().unwrap().unstaged = vec![FileEntry::new("new.txt", '?')];
 
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 0, action: RebaseAction::Squash }));
     assert!(start(&mut st).is_empty());
     assert_eq!(last_log(&st), rebase::FIRST_COMBINES);
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 0, action: RebaseAction::Pick }));
-    assert!(matches!(&start(&mut st)[..], [Effect::InteractiveRebase { .. }]), "the list is fine now");
+    assert!(matches!(&start(&mut st)[..], [Effect::Rebase(RebaseEffect::Start { .. })]), "the list is fine now");
     st.job = None;
     st.rebase.as_mut().unwrap().starting = false;
 
@@ -257,7 +257,7 @@ fn start_is_refused_with_a_reason() {
     assert_eq!(last_log(&st), rebase::STALE);
     // Reset reloads a stale list.
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::RebaseReset));
-    assert!(matches!(&fx[..], [Effect::LoadRebasePlan { generation, .. }] if *generation == st.rebase_gen));
+    assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadPlan { generation, .. })] if *generation == st.rebase_gen));
     assert!(panel(&st).loading);
     assert_eq!(c.len(), 3);
     let _ = std::fs::remove_dir_all(&dir);
@@ -274,8 +274,8 @@ fn an_unchanged_list_onto_a_branch_can_start() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch("base".into()))));
     assert_eq!(panel(&st).subtitle(), "Rebasing 3 commits of main onto base");
-    let fx = up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }));
-    assert!(matches!(&fx[..], [Effect::InteractiveRebase { .. }]), "{fx:?}");
+    let fx = up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
+    assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::Start { .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -284,7 +284,7 @@ fn drops_are_confirmed_before_starting() {
     let (mut st, dir, c) = with_panel("rebase-start-drop", RebaseBase::FromCommit(Oid::zero()));
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 1, action: RebaseAction::Drop }));
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 2, to: 0 }));
-    assert!(up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false })).is_empty());
+    assert!(up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false })).is_empty());
     match &st.modal {
         Some(Modal::Confirm { title, body, button, .. }) => {
             assert_eq!((title.as_str(), button.as_str()), ("Drop commits", "Start rebase"));
@@ -293,7 +293,7 @@ fn drops_are_confirmed_before_starting() {
         _ => panic!("expected a confirmation"),
     }
     let fx = up(&mut st, Msg::ConfirmAccepted);
-    let [Effect::InteractiveRebase { cwd, request }] = &fx[..] else { panic!("expected one rebase, got {fx:?}") };
+    let [Effect::Rebase(RebaseEffect::Start { cwd, request })] = &fx[..] else { panic!("expected one rebase, got {fx:?}") };
     assert!(super::tests::same_place(cwd, &dir));
     assert_eq!(request.head, head(&dir));
     assert_eq!(request.upstream, Upstream::Commit(st.snap.as_ref().unwrap().commits[3].oid));
@@ -337,7 +337,7 @@ fn the_panel_is_parked_with_its_tab() {
     up(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     let fx = up(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     let gen_now = st.rebase_gen;
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRebasePlan { generation, .. } if *generation == gen_now)), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Rebase(RebaseEffect::LoadPlan { generation, .. }) if *generation == gen_now)), "{fx:?}");
 
     // A result for A while B is active closes A's parked panel and leaves B's alone.
     st.job = Some(running_job(&a));
@@ -346,7 +346,7 @@ fn the_panel_is_parked_with_its_tab() {
     let mut other = RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1)));
     other.fill(fake_plan(2));
     st.rebase = Some(other);
-    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result: Ok(Outcome::Finished { output: String::new() }) }));
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result: Ok(Outcome::Finished { output: String::new(), stash_kept: false }) }));
     assert_eq!(panel(&st).items.len(), 2, "the active tab's panel is untouched");
     let parked = st.tabs[0].parked.as_ref().expect("A is parked");
     assert!(parked.rebase.is_none(), "A's panel closed");

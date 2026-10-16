@@ -305,8 +305,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo }))
         }
         Effect::UndoRedo { cwd, action, redo, opts } => Some(git_ops::undo_redo(&cwd, action, redo, opts)),
-        Effect::LoadRebasePlan { workdir, base, generation } => Some(rebase::load_plan(&workdir, &base, generation)),
-        Effect::InteractiveRebase { cwd, request } => Some(rebase::start(&cwd, &request)),
+        Effect::Rebase(e) => Some(rebase::run(e)),
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
             Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))
         }

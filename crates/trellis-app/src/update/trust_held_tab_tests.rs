@@ -29,7 +29,7 @@ fn rebase_held_then_switched(name: &str) -> (AppState, PathBuf, PathBuf) {
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(base.unwrap()))));
     assert!(st.rebase.as_ref().is_some_and(|p| !p.loading && p.items.len() == 3), "the list loaded");
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 2, to: 0 }));
-    let fx = run(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }));
+    let fx = run(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     assert!(fx.is_empty(), "{fx:?}");
     assert!(st.rebase.as_ref().unwrap().starting, "{:?}", st.log.last().map(|e| &e.text));
     assert_eq!(st.trust.held.as_ref().map(|h| h.job.label.as_str()), Some(JOB_LABEL));
@@ -63,7 +63,7 @@ fn trust_and_run_from_another_tab_frees_the_panel_and_says_why() {
     let (mut st, a, b) = rebase_held_then_switched("held-tab-trust");
     let real_a = st.trust.held.as_ref().unwrap().real.clone();
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real: real_a, trusted: true }));
-    assert!(!fx.iter().any(|e| matches!(e, crate::effect::Effect::InteractiveRebase { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, crate::effect::Effect::Rebase(crate::effect::RebaseEffect::Start { .. }))), "{fx:?}");
     assert!(st.job.is_none());
     let text = &st.log.iter().rev().find(|e| e.text.contains("wasn't run")).expect("a log line").text;
     assert!(text.contains("trusted now") && !text.contains("only after you trust it"), "{text}");

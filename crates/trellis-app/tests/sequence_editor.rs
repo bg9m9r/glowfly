@@ -45,7 +45,7 @@ fn the_helper_installs_the_prepared_todo() {
     let plan = rebase::plan(&dir, &RebaseBase::FromCommit(Oid::from_str(base.trim()).unwrap())).unwrap();
     let mut items = plan.items;
     items.reverse();
-    let req = StartRequest { head: plan.head, upstream: plan.upstream, items };
+    let req = StartRequest { head: plan.head, upstream: plan.upstream, items, autostash: false };
     let outcome = rebase::start(&dir, &req, &helper()).unwrap();
     assert!(matches!(outcome, Outcome::Finished { .. }), "{outcome:?}");
     assert_eq!(git(&dir, &["log", "--format=%s"]).lines().collect::<Vec<_>>(), ["two", "three", "one"]);
@@ -72,7 +72,7 @@ fn the_helper_refuses_a_foreign_commit() {
         rebase::shell_quote(&exe.to_string_lossy()),
         rebase::shell_quote(&prepared.to_string_lossy()),
     );
-    let req = StartRequest { head: tip.head, upstream: tip.upstream, items: tip.items };
+    let req = StartRequest { head: tip.head, upstream: tip.upstream, items: tip.items, autostash: false };
     let e = rebase::start(&dir, &req, &SequenceEditor::Shell(script)).unwrap_err();
     assert_eq!(e.to_string(), rebase::CHANGED);
     assert!(prepared_dir.join("todo.error").exists(), "the helper wrote why it refused");

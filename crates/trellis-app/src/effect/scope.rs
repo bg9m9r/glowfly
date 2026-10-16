@@ -18,7 +18,6 @@ impl Effect {
             | Effect::LoadTrackedPaths { workdir, .. }
             | Effect::LoadLfs { workdir, .. }
             | Effect::LoadSparse { workdir, .. }
-            | Effect::LoadRebasePlan { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::ReadConflictFiles { workdir, .. }
             | Effect::RevertHunk { workdir, .. }
@@ -31,6 +30,7 @@ impl Effect {
             Effect::CheckConflicts(j) => Some(&j.workdir),
             Effect::LoadBlame(r) => Some(&r.workdir),
             Effect::Submodule(e) => e.scope(),
+            Effect::Rebase(e) => e.scope(),
             Effect::PullRequest(e) => e.scope(),
             Effect::DeepLink(e) => e.scope(),
             Effect::Issue(e) => e.scope(),
@@ -45,7 +45,6 @@ impl Effect {
             | Effect::SparseCheckout { .. }
             | Effect::RunGit { .. }
             | Effect::UndoRedo { .. }
-            | Effect::InteractiveRebase { .. }
             | Effect::RepoOwners { .. }
             | Effect::CreateRepo { .. }
             | Effect::Connect { .. }

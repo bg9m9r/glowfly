@@ -1,7 +1,11 @@
 //! The interactive rebase panel, shown in place of the graph: a header with Reset, Cancel and
 //! Start rebase, why Start is unavailable, and the list of commits in the order git applies
-//! them (rows in `rows`).
+//! them (rows in `rows`). Also the graph menus' history edits (`edit_menu`), the Reword dialog
+//! (`reword_dialog`) and the rebase banner on the WIP row (`banner`).
 
+pub(super) mod banner;
+pub(super) mod edit_menu;
+pub(super) mod reword_dialog;
 mod rows;
 
 use super::UiCache;
@@ -9,8 +13,10 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::state::AppState;
-use crate::state::rebase::{HINT, RebasePanel};
+use crate::state::rebase::{HINT, RebasePanel, needs_stash};
 use eframe::egui::{self, Align, Color32, Layout, RichText, Stroke, Ui};
+
+const STASH_HINT: &str = "Uncommitted changes will be stashed first and put back afterwards.";
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(panel) = &st.rebase else { return };
@@ -29,6 +35,9 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
         }
         ui.label(RichText::new(HINT).size(12.0).color(color::weak()));
+        if st.snap.as_ref().is_some_and(needs_stash) {
+            ui.label(RichText::new(STASH_HINT).size(12.0).color(color::weak()));
+        }
     });
     ui.separator();
     if panel.loading {
@@ -61,7 +70,7 @@ fn header(ui: &mut Ui, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Ve
                 r = r.on_disabled_hover_text(why);
             }
             if r.clicked() {
-                msgs.push(Msg::Rebase(RebaseMsg::StartRebase { confirmed: false }));
+                msgs.push(Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
             }
             let cancel = egui::Button::new("Cancel").min_size(egui::vec2(0.0, 28.0));
             if ui.add_enabled(!panel.starting, cancel).on_hover_text("Close without changing anything (Esc)").clicked() {
