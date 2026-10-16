@@ -260,3 +260,62 @@ fn clearing_the_activity_log_is_a_message() {
     update(&mut st, Msg::ClearLog, Instant::now());
     assert!(st.log.is_empty());
 }
+
+fn tags(t: &str) -> String {
+    format!("refs/tags/{t}")
+}
+
+#[test]
+fn hide_show_and_solo_a_tag() {
+    let (mut st, dir) = opened("gf-tag", &["feature", "other"]);
+    git(&dir, &["tag", "rel", "feature"]);
+    git(&dir, &["branch", "-D", "feature"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(has_label(&st, "rel") && has_commit(&st, "feature work"));
+
+    let fx = op(&mut st, FilterOp::Hide(tags("rel")));
+    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::LoadRepo { .. }]));
+    assert_eq!(load_opts(&fx).hidden, [tags("rel")]);
+    run(&mut st, fx);
+    assert!(!has_label(&st, "rel") && !has_commit(&st, "feature work"));
+    assert!(has_commit(&st, "other work"));
+    assert!(st.snap.as_ref().unwrap().tags.iter().any(|(n, _)| n == "rel"), "still listed");
+    assert_eq!(filter(&st).hidden, [tags("rel")]);
+
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Show(tags("rel")))));
+    assert!(st.settings.graph_filters.is_empty());
+    assert!(has_label(&st, "rel") && has_commit(&st, "feature work"));
+
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Solo(tags("rel")))));
+    assert!(has_commit(&st, "feature work") && has_commit(&st, "first"));
+    assert!(!has_commit(&st, "other work") && !has_label(&st, "other"));
+    assert!(has_label(&st, "main"), "the checked-out branch stays");
+
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::StopSoloing)));
+    assert!(st.settings.graph_filters.is_empty());
+    assert!(has_commit(&st, "feature work") && has_commit(&st, "other work") && has_label(&st, "other"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn deleted_tags_are_pruned() {
+    let (mut st, dir) = opened("gf-prune-tags", &["feature", "other"]);
+    git(&dir, &["tag", "rel", "feature"]);
+    git(&dir, &["tag", "keep", "other"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Hide(tags("keep")))));
+    drive(&mut st, Msg::Graph(GraphMsg::GraphFilter(FilterOp::Solo(tags("rel")))));
+    assert!(!has_commit(&st, "other work"));
+    git(&dir, &["tag", "-d", "rel", "keep"]);
+
+    let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
+    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::execute(e)).flatten()).unwrap();
+    let fx = update(&mut st, loaded, Instant::now());
+    assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    let opts = load_opts(&fx);
+    assert!(opts.hidden.is_empty() && opts.solo.is_empty(), "reloaded without the solo");
+    run(&mut st, fx);
+    assert!(has_commit(&st, "other work"));
+    let _ = std::fs::remove_dir_all(&dir);
+}

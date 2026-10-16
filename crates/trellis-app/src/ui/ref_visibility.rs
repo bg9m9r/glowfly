@@ -1,6 +1,6 @@
-//! Hiding and soloing branches in the graph from the left panel: the branch menu items, the
-//! markers on hidden and soloed rows, and the banner above the lists. Views only push
-//! `GraphMsg::GraphFilter`; `update` saves the filter and reloads.
+//! Hiding and soloing branches and tags in the graph from the left panel: the branch and tag
+//! menu items, the markers on hidden and soloed rows, and the banner above the lists. Views only
+//! push `GraphMsg::GraphFilter`; `update` saves the filter and reloads.
 
 use super::common::{menu_item, menu_item_if};
 use super::theme::color;
@@ -75,10 +75,7 @@ pub fn row_marker(ui: &mut egui::Ui, row: &Response, gutter_x: f32, full: &str, 
 pub fn banner(ui: &mut egui::Ui, filter: &GraphFilter, msgs: &mut Vec<Msg>) {
     let names = |refs: &[String]| refs.iter().map(|r| GraphFilter::short(r)).collect::<Vec<_>>().join("\n");
     if !filter.solo.is_empty() {
-        let text = match &filter.solo[..] {
-            [one] => format!("Soloing {}", GraphFilter::short(one)),
-            many => format!("Soloing {} branches", many.len()),
-        };
+        let text = solo_text(&filter.solo);
         let tip = format!("Soloing:\n{}\n\nThe checked-out branch is always shown.", names(&filter.solo));
         let icon = |p: &Painter, c: Pos2| paint_solo(p, c, color::accent());
         banner_row(ui, icon, &text, &tip, ("Stop soloing", FilterOp::StopSoloing), msgs);
@@ -92,6 +89,20 @@ pub fn banner(ui: &mut egui::Ui, filter: &GraphFilter, msgs: &mut Vec<Msg>) {
     if !filter.is_empty() {
         ui.add_space(6.0);
     }
+}
+
+/// The banner's solo line: the ref's short name for one, else how many and of which kind.
+fn solo_text(solo: &[String]) -> String {
+    if let [one] = solo {
+        return format!("Soloing {}", GraphFilter::short(one));
+    }
+    let tags = solo.iter().filter(|r| r.starts_with("refs/tags/")).count();
+    let kind = match tags {
+        0 => "branches",
+        t if t == solo.len() => "tags",
+        _ => "branches and tags",
+    };
+    format!("Soloing {} {kind}", solo.len())
 }
 
 fn banner_row(ui: &mut egui::Ui, icon: impl Fn(&Painter, Pos2), text: &str, tip: &str, button: (&str, FilterOp), msgs: &mut Vec<Msg>) {
@@ -131,4 +142,22 @@ fn paint_eye(p: &Painter, c: Pos2, crossed: bool, col: Color32) {
 fn paint_solo(p: &Painter, c: Pos2, col: Color32) {
     p.circle_stroke(c, 5.0, Stroke::new(1.4_f32, col));
     p.circle_filled(c, 2.0, col);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::solo_text;
+
+    fn refs(r: &[&str]) -> Vec<String> {
+        r.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn solo_text_names_one_ref_and_counts_by_kind() {
+        assert_eq!(solo_text(&refs(&["refs/heads/main"])), "Soloing main");
+        assert_eq!(solo_text(&refs(&["refs/tags/v1.0"])), "Soloing v1.0");
+        assert_eq!(solo_text(&refs(&["refs/heads/a", "refs/remotes/origin/b"])), "Soloing 2 branches");
+        assert_eq!(solo_text(&refs(&["refs/tags/a", "refs/tags/b"])), "Soloing 2 tags");
+        assert_eq!(solo_text(&refs(&["refs/heads/a", "refs/tags/b", "refs/tags/c"])), "Soloing 3 branches and tags");
+    }
 }

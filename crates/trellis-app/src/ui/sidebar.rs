@@ -115,7 +115,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         super::gitflow_section::section(ui, snap, &s, &mut sections.gitflow, rows, hover_next, msgs);
     }
 
-    let rows = super::tags::Rows { shown: &shown, sel: &sel, idle };
+    let rows = super::tags::Rows { shown: &shown, sel: &sel, idle, graph };
     super::tags::section(ui, snap, &mut sections.tags, rows, msgs);
 
     widgets::section_header(ui, "STASHES", Some(snap.stashes.len()), &mut sections.stashes);

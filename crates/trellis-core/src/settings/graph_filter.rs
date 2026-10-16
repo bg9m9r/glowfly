@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 /// Which refs a repository's graph leaves out (`hidden`) or shows exclusively (`solo`, plus
-/// HEAD). Full ref names: refs/heads/x, refs/remotes/r/x. A ref is never in both lists.
+/// HEAD). Full ref names: refs/heads/x, refs/remotes/r/x, refs/tags/x. A ref is never in both
+/// lists.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GraphFilter {
@@ -72,9 +73,12 @@ impl GraphFilter {
         (self.hidden.len() != h, self.solo.len() != s)
     }
 
-    /// A full ref name without refs/heads/ or refs/remotes/, for labels.
+    /// A full ref name without refs/heads/, refs/remotes/ or refs/tags/, for labels.
     pub fn short(full: &str) -> &str {
-        full.strip_prefix("refs/heads/").or_else(|| full.strip_prefix("refs/remotes/")).unwrap_or(full)
+        full.strip_prefix("refs/heads/")
+            .or_else(|| full.strip_prefix("refs/remotes/"))
+            .or_else(|| full.strip_prefix("refs/tags/"))
+            .unwrap_or(full)
     }
 }
 
@@ -122,6 +126,7 @@ mod tests {
         assert!(f.is_empty());
         assert_eq!(GraphFilter::short("refs/remotes/origin/b"), "origin/b");
         assert_eq!(GraphFilter::short("refs/heads/a/b"), "a/b");
+        assert_eq!(GraphFilter::short("refs/tags/v1.0"), "v1.0");
     }
 
     #[test]

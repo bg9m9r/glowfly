@@ -1,13 +1,14 @@
-//! The TAGS row menu: annotate (lightweight tags only), push to each remote or all of them,
-//! delete locally, delete from each remote or all of them, which items show for one remote or none, the remote items disabled
-//! while a job runs, and the remote delete confirmation. Remotes are injected into the shared
-//! fixture's snapshot so the images are deterministic.
+//! The TAGS row menu: annotate (lightweight tags only), hide or solo in the graph, push to each
+//! remote or all of them, delete locally, delete from each remote or all of them, which items
+//! show for one remote or none, the remote items disabled while a job runs, the remote delete
+//! confirmation, and the markers on hidden and soloed tag rows. Remotes are injected into the
+//! shared fixture's snapshot so the images are deterministic.
 
-use super::snapshot_tests::{harness, remove_fixture, with_repo};
+use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::{click_steps, running};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::Msg;
+use crate::msg::{GraphMsg, Msg};
 use crate::state::tags::delete_remote_confirm;
 use crate::state::{AppState, Modal};
 use crate::tag::TagMsg;
@@ -15,11 +16,14 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
-use trellis_core::settings::ThemeChoice;
+use trellis_core::repo::LoadOptions;
+use trellis_core::settings::{FilterOp, GraphFilter, ThemeChoice};
 
-const ITEMS: [&str; 9] = [
+const ITEMS: [&str; 11] = [
     "Checkout (detached)",
     "Annotate…",
+    "Hide v0.1.0 in graph",
+    "Solo v0.1.0",
     "Push to origin",
     "Push to backup",
     "Push to all remotes",
@@ -51,6 +55,10 @@ fn open_menu(h: &mut H) {
 
 fn both() -> Vec<String> {
     vec!["origin".into(), "backup".into()]
+}
+
+fn filter_pushed(h: &H, op: FilterOp) -> bool {
+    pushed(h, &|m| matches!(m, Msg::Graph(GraphMsg::GraphFilter(o)) if *o == op))
 }
 
 #[test]
@@ -85,6 +93,11 @@ fn tag_row_menu() {
     h.run();
     let want = TagMsg::OpenAnnotate { tag: "v0.1.0".into() };
     assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
+
+    open_menu(&mut h);
+    h.get_by_label("Hide v0.1.0 in graph").click();
+    h.run();
+    assert!(filter_pushed(&h, FilterOp::Hide("refs/tags/v0.1.0".into())));
     drop(h);
     remove_fixture(&dir);
 }
@@ -159,6 +172,34 @@ fn tag_row_menu_annotated_tag() {
     open_menu(&mut h);
     assert!(h.query_by_label("Checkout (detached)").is_some());
     assert!(h.query_by_label("Annotate…").is_none());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn tags_hidden_solo() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "tags-hidden-solo");
+    git(&dir, &["tag", "-a", "v0.2.0", "-m", "Second", "search"], "2026-01-05T10:00:00+00:00");
+    let workdir = st.snap.as_ref().unwrap().workdir.clone();
+    let filter = GraphFilter { hidden: vec!["refs/tags/v0.1.0".into()], solo: vec!["refs/tags/v0.2.0".into()] };
+    st.settings.set_graph_filter(&workdir, filter.clone());
+    let opts = LoadOptions { max_commits: 500, hidden: filter.hidden, solo: filter.solo, ..Default::default() };
+    reload(&mut st, &dir, &opts);
+    st.snap.as_mut().unwrap().remotes = vec![("origin".into(), Vec::new())];
+    st.view.sections.tags = true;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("tags_hidden_solo");
+    assert!(h.query_by_label("Soloing v0.2.0").is_some());
+    assert!(h.query_by_label("1 hidden from the graph").is_some());
+    h.get_by_label("Show v0.1.0 in graph").click();
+    h.run();
+    assert!(filter_pushed(&h, FilterOp::Show("refs/tags/v0.1.0".into())));
+
+    let at = tag_row(&h, "v0.2.0");
+    click(&mut h, at, PointerButton::Secondary);
+    assert_eq!(h.get_all_by_label("Stop soloing v0.2.0").count(), 2, "the row's marker and the menu item");
+    assert!(!h.get_by_label("Hide v0.2.0 in graph").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

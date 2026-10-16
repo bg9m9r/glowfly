@@ -99,3 +99,29 @@ fn checked_out_branch_is_never_hidden() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn hidden_and_soloed_tags() {
+    let dir = branches("filter-tags");
+    git(&dir, &["tag", "-a", "rel", "-m", "release", "feature"]);
+    git(&dir, &["tag", "base", "main"]);
+    git(&dir, &["branch", "-q", "-D", "feature"]);
+    // Only the annotated tag rel reaches "feature work" now.
+    let s = load(&dir, &opts(&["refs/tags/rel"], &[])).unwrap();
+    assert!(!labels(&s).contains(&"rel".to_owned()));
+    assert!(!has(&s, "feature work"));
+    assert!(has(&s, "other work") && has(&s, "first"));
+
+    let s = load(&dir, &opts(&[], &["refs/tags/rel"])).unwrap();
+    assert!(has(&s, "feature work") && has(&s, "first"));
+    assert!(!has(&s, "other work"));
+    assert_eq!(labels(&s), ["main", "rel"], "base is dropped though it sits on HEAD's commit");
+
+    // A lightweight tag resolves the same way.
+    git(&dir, &["tag", "lw", "other"]);
+    git(&dir, &["branch", "-q", "-D", "other"]);
+    let s = load(&dir, &opts(&[], &["refs/tags/lw"])).unwrap();
+    assert!(has(&s, "other work"));
+    assert!(!has(&s, "feature work"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
