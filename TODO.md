@@ -1174,7 +1174,7 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - A keyboard shortcut for Switch profile
 - Separate stored sign-ins per profile for the same service account (e.g. two GitHub users on github.com)
 - Warn when connecting an account another profile already uses with a different user
-- Per-profile diff header toggles (inline/split layout, hunks/whole file, ignore whitespace)
+- Per-profile diff header toggles (inline/split layout, hunks/whole file, ignore whitespace, word wrap)
 - Per-profile External Tools (editor and terminal programs)
 - Per-profile repository-specific settings (issue tracker, hidden/soloed refs)
 - A "Saved with profile X" caption on the General, UI Customization and Editor pages

@@ -75,6 +75,7 @@ fn apply_leaves_global_fields() {
     s.diff_layout = DiffLayout::Split;
     s.diff_mode = DiffMode::WholeFile;
     s.diff_ignore_whitespace = true;
+    s.diff_word_wrap = true;
     s.push_after_commit = true;
     let before = json(&s);
     let mut prefs = ProfilePrefs::from_settings(&s);
@@ -113,6 +114,19 @@ fn swap_saves_outgoing_and_loads_incoming() {
     let b = s.profile(B).unwrap();
     assert!(b.prefs.is_none() && b.connections.is_none(), "the incoming profile's are live now");
     assert_eq!(s.active_profile, Some(A), "the caller makes B current");
+}
+
+#[test]
+fn swap_keeps_the_diff_header_toggles() {
+    let mut s = two();
+    (s.diff_word_wrap, s.diff_ignore_whitespace, s.diff_layout) = (true, true, DiffLayout::Split);
+    s.swap_profile_setup(B);
+    assert!(s.diff_word_wrap && s.diff_ignore_whitespace);
+    assert_eq!(s.diff_layout, DiffLayout::Split);
+    s.active_profile = Some(B);
+    s.diff_word_wrap = false;
+    s.swap_profile_setup(A);
+    assert!(!s.diff_word_wrap, "word wrap is the header toggle's, not the profile's");
 }
 
 #[test]

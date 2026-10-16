@@ -1,7 +1,8 @@
 //! What switches with a profile besides its identity: the app preferences (General, UI
-//! Customization and Editor) and the connected hosting-service accounts. Everything else in
-//! `Settings` (repository-specific settings, trust, favorites, tools, window and dialog state)
-//! stays global; a test makes every new setting pick a side.
+//! Customization and Editor, except word wrap) and the connected hosting-service accounts.
+//! Everything else in `Settings` (repository-specific settings, trust, favorites, tools, diff
+//! header toggles, window and dialog state) stays global; a test makes every new setting pick
+//! a side.
 //!
 //! The current profile's saved `connections` and `prefs` are always None and never read: the
 //! live values are `Settings.connections` and the `Settings` fields themselves. A switch saves
@@ -72,7 +73,6 @@ profile_prefs! {
     diff_line_numbers: bool,
     syntax_highlighting: bool,
     diff_word_highlights: bool,
-    diff_word_wrap: bool,
 }
 
 impl Default for ProfilePrefs {
@@ -88,6 +88,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "diff_layout",
     "diff_mode",
     "diff_ignore_whitespace",
+    // Also a diff header toggle, which stays put when the profile changes.
+    "diff_word_wrap",
     "push_after_commit",
     "stage_renames",
     "push_new_tags",

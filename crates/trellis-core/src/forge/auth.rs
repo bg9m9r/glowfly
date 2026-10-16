@@ -129,16 +129,24 @@ fn may_ask_gcm(account: &Account, connected: bool) -> bool {
     account.provider.supports_gcm() && (connected || is_public_host(account))
 }
 
+/// The token saved in the OS credential store, only while the current profile has the account
+/// `connected`. Profiles share one store and a profile's Disconnect keeps the token while another
+/// profile still lists the account, so a saved token alone doesn't mean this profile signed in.
+fn stored_auth(account: &Account, connected: bool, saved: impl FnOnce(&Account) -> Option<Secret>) -> Option<Auth> {
+    let s = saved(account).filter(|_| connected)?;
+    Some(Auth::from_token(account.provider, s.user.as_deref(), &s.token, "saved token"))
+}
+
 /// Finds credentials, in order: the provider's environment variable (public hosts only), a
-/// token saved in the OS credential store, then Git Credential Manager (the same sign-in
-/// `git push` uses; public hosts, or self-hosted ones the user `connected`). GCM may show its
-/// sign-in window only when `interactive` is set.
+/// token saved in the OS credential store (accounts the current profile `connected`), then Git
+/// Credential Manager (the same sign-in `git push` uses; public hosts, or self-hosted ones the
+/// user `connected`). GCM may show its sign-in window only when `interactive` is set.
 pub fn resolve_auth(account: &Account, cwd: &Path, interactive: bool, connected: bool) -> Result<Auth> {
     if let Some((token, var)) = env_token(account, |n| std::env::var(n).ok()) {
         return Ok(Auth::from_token(account.provider, None, &token, var));
     }
-    if let Some(s) = saved_token(account) {
-        return Ok(Auth::from_token(account.provider, s.user.as_deref(), &s.token, "saved token"));
+    if let Some(auth) = stored_auth(account, connected, saved_token) {
+        return Ok(auth);
     }
     if may_ask_gcm(account, connected) {
         return from_credential_manager(account, cwd, interactive);
@@ -242,6 +250,17 @@ mod tests {
         assert!(!may_ask_gcm(&ghe, false));
         assert!(may_ask_gcm(&ghe, true));
         assert!(!may_ask_gcm(&acct(Provider::JiraCloud, "x.atlassian.net"), true), "Jira has no GCM sign-in");
+    }
+
+    #[test]
+    fn saved_token_is_used_only_while_the_profile_is_connected() {
+        let gh = acct(Provider::GitHub, "github.com");
+        let saved = |_: &Account| Some(Secret { user: None, token: "other-profile".into() });
+        // Another profile connected github.com and saved this token; this one isn't connected.
+        assert!(stored_auth(&gh, false, saved).is_none());
+        let auth = stored_auth(&gh, true, saved).expect("connected");
+        assert_eq!((auth.header.as_str(), auth.source.as_str()), ("Bearer other-profile", "saved token"));
+        assert!(stored_auth(&gh, true, |_| None).is_none());
     }
 
     #[test]

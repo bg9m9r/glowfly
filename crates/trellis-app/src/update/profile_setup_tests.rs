@@ -156,6 +156,8 @@ fn account_change_reloads_forge() {
     assert!(fs.prs.is_empty() && fs.auth.is_empty(), "rebuilt");
     assert!(fs.last_refresh.is_some(), "refreshed at once");
     assert_eq!(forge_calls(&fx), 1, "{fx:?}");
+    // Personal doesn't list github.com, so the sign-in Work saved for it isn't used.
+    assert!(fx.iter().any(|e| matches!(e, Effect::Forge { auth: None, connected: false, .. })), "{fx:?}");
     assert!(st.tabs[0].parked.as_ref().unwrap().forge.is_none(), "the parked tab detects again when selected");
     for d in [a, b] {
         let _ = std::fs::remove_dir_all(d);
