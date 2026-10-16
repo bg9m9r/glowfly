@@ -16,7 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
-- 2026-10-16 06:51 · **Remote management**: View a remote on its hosting service, add a teammate's fork from the service's list of forks, and fork a repository into your account (GitHub, GitLab) then add and fetch it, from the REMOTE row menu and the palette (`c00589e`)
+- 2026-10-16 06:51 · **Remote management**: View a remote on its hosting service, add a teammate's fork from the service's list of forks, and fork a repository into your account (GitHub, GitLab) then add and fetch it, from the REMOTE row menu and the palette (`dc17a10`)
 - 2026-10-16 03:57 · **Tag management**: Hide and solo tags in the graph from the TAGS row menu, with markers on hidden and soloed rows (`152cd40`)
 - 2026-10-16 03:00 · **Git Flow**: Git Flow panel in place of the graph, a GIT FLOW section in the left panel grouping flow branches by kind, and Start Git Flow feature/release/hotfix from an issue in the issue menu and palette (`8f751ea`)
 - 2026-10-16 00:41 · **Diff viewer upgrade**: Word wrap toggle in the diff header and Preferences > Editor, with variable-height rows (`bb11923`)
