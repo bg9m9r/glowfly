@@ -12,10 +12,10 @@ use crate::state::forks::{
     ForkAction, ForkCreate, ForkPicker, ForkStep, add_fork_label, add_job, added_as, error_text, fork_target, suggest,
 };
 use crate::state::remotes::{Job, find, gone_text};
-use crate::state::tabs::same_path;
 use crate::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use trellis_core::forge::{self, CreatedFork, ForkList, ForkLookup, Target};
+use trellis_core::paths::same_spelling;
 use trellis_core::remote_ops::{add_cmds, check_remote_name, check_url};
 use trellis_core::repo::Snapshot;
 
@@ -50,14 +50,14 @@ fn source(st: &mut AppState, name: &str, action: ForkAction) -> Option<(PathBuf,
 
 fn picker<'a>(st: &'a mut AppState, workdir: &Path, target: &Target) -> Option<&'a mut ForkPicker> {
     match st.modal.as_mut() {
-        Some(Modal::AddFork(p)) if same_path(&p.workdir, workdir) && p.target == *target => Some(p),
+        Some(Modal::AddFork(p)) if same_spelling(&p.workdir, workdir) && p.target == *target => Some(p),
         _ => None,
     }
 }
 
 fn creator<'a>(st: &'a mut AppState, workdir: &Path, target: &Target) -> Option<&'a mut ForkCreate> {
     match st.modal.as_mut() {
-        Some(Modal::CreateFork(f)) if same_path(&f.workdir, workdir) && f.target == *target => Some(f),
+        Some(Modal::CreateFork(f)) if same_spelling(&f.workdir, workdir) && f.target == *target => Some(f),
         _ => None,
     }
 }
@@ -244,7 +244,7 @@ pub(super) fn fork_created(
     st.log(true, format!("Created the fork {} on {service}{link}.", fork.full_name));
     // The remote it came from, when that repository is open: its URL style, and a name check.
     let connections = &st.settings.connections;
-    let active = st.snap.as_ref().filter(|s| same_path(&s.workdir, &workdir));
+    let active = st.snap.as_ref().filter(|s| same_spelling(&s.workdir, &workdir));
     let src = active.and_then(|s| s.remote_info.iter().find(|r| forge::parse_remote(r.fetch_url(), connections).as_ref() == Some(target)));
     let (src_name, src_url) = src.map(|r| (r.name.clone(), r.fetch_url().to_owned())).unwrap_or_default();
     if active.is_some_and(|s| check_remote_name(&name, &names(s), None).is_err()) {
