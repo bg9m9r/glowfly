@@ -133,6 +133,8 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::PullRequest(crate::pull_request::PrEffect::Call(_))
             // Would read and write the developer's real config folder.
             | Effect::Theme(_)
+            // The log worker owns the log files (never attached in tests).
+            | Effect::Logs(_)
     )
 }
 

@@ -25,7 +25,7 @@ binary (package `trellis`).
 | Module | Holds |
 | --- | --- |
 | `repo/` | The repository model on libgit2: loading history, refs and status; diffs; staging, line staging, revert, restore; conflicts and their resolution; blame through `git blame --porcelain`; working-tree files; submodules (and whether a new one can go in a folder: the index, the disk, .gitignore, a leftover stored module), worktrees, remotes, shallow-clone boundaries. |
-| `gitcli.rs` | The git CLI, for commands that honour hooks, credentials and signing. |
+| `gitcli.rs` | The git CLI, for commands that honour hooks, credentials and signing; reports every command's timing to the observer the app sets. |
 | `git_version.rs`, `env_path.rs` | Which git runs (found on the PATH children get) and the features its version lacks; that PATH, which on macOS merges in the login shell's. |
 | `git_program.rs` | The git program every git child runs (chosen in Preferences > Git, else `git` from PATH), checking a program before it is used, and finding the installed gits. |
 | `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
@@ -50,7 +50,8 @@ binary (package `trellis`).
 | `path_query.rs` | Path terms of the commit search: folder, file name or glob, matched ignoring case and Unicode form. |
 | `settings.rs`, `settings/` | Preferences, theme choices and theme files (`themes.rs` parses them, aliases and loops included; `themes_io.rs` reads the themes folder and writes new files), graph column widths, per-repository graph filters, per-repository PR and issue filters (`forge_filters.rs`), repository trust decisions and named profiles with their identity (seeding, syncing with git, name checks), saved connected accounts and app preferences (`profiles_prefs.rs`: what switches with a profile, and every setting classified as per-profile or global). |
 | `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; writing an identity to the global config in order. |
-| `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches). |
+| `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches); appends to logs. |
+| `logs.rs`, `logs/` | Trellis's log files: the activity log's file format and trimming (`activity.rs`), the size-rotating writer of the error and performance logs (`rotate.rs`), reading a log's end (`tail.rs`), and the text of performance and git command lines (`lines.rs`). |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
 | `ssh_keys.rs`, `ssh_keys/` | SSH key pairs in `~/.ssh`: listing them with `ssh-keygen` fingerprints (`listing.rs`), finding ssh's programs (`tools.rs`), generating Ed25519 keys with `ssh-keygen`, written under a temporary name and then moved into place (`generate.rs`), choosing the key git uses in `core.sshCommand` (`command.rs`), and finding the SSH agent and adding keys with `ssh-add` (`agent.rs`). |
 | `external_tools.rs`, `external_tools/` | External programs (Preferences > External Tools): argument templates and each tool's placeholders (`template.rs`), finding the program on PATH, starting it detached or waiting for it to exit (`run_to_exit`), the private folder for the copies diff and merge tools open (`temp.rs`: one session folder per opening, swept after 24 hours), and writing those copies for a diff or a conflict (`compare.rs`, from `repo/tool_sides.rs`). |
@@ -62,12 +63,13 @@ binary (package `trellis`).
 | Module | Holds |
 | --- | --- |
 | `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`TRELLIS_GPG_WRAPPER`) and askpass helper. |
+| `logging.rs` | The tracing setup, after the helper modes exit: warnings, errors and panics to `errors.log` (rotated; debug details with extended logging, switched at runtime), `RUST_LOG` to stderr, and the panic hook. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, `FilterMsg` in `forge_filters.rs`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
 | `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`, `forge_filters.rs` for PR and issue filter calls, `blame.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs and the SUBMODULES section (`clone.rs`, `init.rs`, `submodule.rs`), `Effect::name` (`names.rs`) and `Effect::scope` (`scope.rs`). |
-| `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
+| `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs`, `logs.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data (the Clone dialog in `clone.rs` and `clone_service.rs`, the Init dialog in `init.rs`). |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
-| `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |
+| `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work; `logs.rs` is the one ordered worker for the log files. |
 | `watcher.rs` | The file watcher for the active tab's repository, owned by the runner. |
 | `platform.rs` | OS integration: recent repositories and which listed folders are missing, open tabs, terminals, the file manager. |
 | `keymap/` | The binding table (`table.rs`), chords and their text and file forms (`chord.rs`), the effective keymap with the user's overrides (`active.rs`) and the rebinding rules (`rebind.rs`); shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard. |
@@ -158,6 +160,15 @@ binary (package `trellis`).
   `settings.gpg_prompts_in_app` is off, `update/askpass.rs` answers `Reply::UseSystem` without
   showing anything; that, an unreachable app, or a GnuPG without loopback runs gpg exactly as
   git asked, so GnuPG's own pinentry appears.
+- **Logs**: `AppState::log` / `log_quiet` also queue each line in the outbox
+  `LogsState::pending` (`state/logs.rs`), which the end of `update` flushes as
+  `Effect::Logs(LogsEffect::Append)` once the activity file has loaded (`LogsMsg::Start` at
+  startup reads it, and earlier sessions' entries go in front of this session's). One ordered
+  log worker (`runner/logs.rs`) owns the activity file and the performance log and stamps
+  times, so `update` reads no clock. `Runner::run` times every effect that doesn't wait on the
+  user (`Effect::timed`) and gitcli's run observer times every git command; those taking
+  `logs::SLOW` or more go to `performance.log`, and with extended logging each git command
+  also comes back as `LogsMsg::GitRan` for a quiet activity line.
 - **`AppState`** holds no egui types; textures and fonts live in a `UiCache` owned by the UI
   layer.
 
@@ -178,7 +189,8 @@ binary (package `trellis`).
    the shell's `ThemeCache`, worked out again only when the theme, the theme files or the OS
    setting change. Immutable
    data loaded once (the syntax definitions in `highlight/syntaxes.rs`) is not mutable state,
-   and neither is the askpass environment in `gitcli` (`enable_askpass`): set once by the app
+   and neither are the askpass environment in `gitcli` (`enable_askpass`) and gitcli's run
+   observer (`observe_runs`, which hands timings to the log worker): each set once by the app
    shell at startup, never changed afterwards and never set in tests. The PATH children get
    (`env_path`) is likewise computed once, on first use, and never changed. The git program
    (`git_program`) is the one setting that changes while Trellis runs: the shell sets it from

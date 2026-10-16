@@ -27,6 +27,7 @@ pub mod known_folders;
 pub mod layout;
 pub mod lfs;
 pub mod lines;
+pub mod logs;
 pub mod notify;
 pub mod palette;
 pub mod palette_commands;
@@ -75,6 +76,7 @@ pub mod worktrees;
 
 pub use commit::CommitDraft;
 pub use forge::{ForgeState, ProjectKeys, Status};
+pub use logs::{LOG_LIMIT, LogEntry};
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};
@@ -138,14 +140,6 @@ pub struct RunningJob {
     pub then_pr: Option<push_pr::PrStart>,
     /// The job can't make the undo history wrong (fetch, push, or an undo/redo itself).
     pub keeps_undo: bool,
-}
-
-/// The most entries the activity log keeps.
-pub const LOG_LIMIT: usize = 500;
-
-pub struct LogEntry {
-    pub ok: bool,
-    pub text: String,
 }
 
 /// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter
@@ -252,6 +246,8 @@ pub struct AppState {
     /// The active tab's undo history.
     pub undo: undo::UndoHistory,
     pub log: Vec<LogEntry>,
+    /// The log files: persistence of the activity log, the panel's tab (state/logs.rs).
+    pub logs: logs::LogsState,
     pub toasts: Vec<Toast>,
     /// Last toast id handed out (state/toasts.rs).
     pub toast_seq: u64,
@@ -347,6 +343,7 @@ impl AppState {
             job: None,
             undo: undo::UndoHistory::default(),
             log: Vec::new(),
+            logs: Default::default(),
             toasts: Vec::new(),
             toast_seq: 0,
             behind_watch: None,

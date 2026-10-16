@@ -365,6 +365,8 @@ pub enum Effect {
     Init(InitEffect),
     /// A desktop notification (runner/notify.rs); unscoped.
     Notify(DesktopNote),
+    /// Log files: the activity log, reading the error and performance logs, extended logging (runner/logs.rs).
+    Logs(crate::logs::LogsEffect),
     /// The pull request panel's file list (scoped) and service calls (unscoped; pull_request.rs).
     PullRequest(crate::pull_request::PrEffect),
     Ui(UiEffect),

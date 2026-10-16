@@ -263,6 +263,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Submodule(m) => Msg::Submodule(m),
         C::Tools(m) => Msg::Tools(m),
         C::Layout(m) => Msg::Layout(m),
+        C::Logs(m) => Msg::Logs(m),
         C::ApplyPatch => Msg::Patch(crate::patch::PatchMsg::PickToApply),
         C::SwitchProfile(id) => Msg::Profile(crate::profile::ProfileMsg::Switch(id)),
         C::ReviewTrust => {

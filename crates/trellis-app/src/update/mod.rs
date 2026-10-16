@@ -30,6 +30,7 @@ mod jobs;
 mod keys;
 mod layout;
 mod lfs;
+mod logs;
 mod notify;
 mod ops;
 mod palette;
@@ -379,6 +380,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Trust(m) => trust::handle(st, m, now, &mut fx),
         Msg::GitEnv(m) => git_env::handle(st, m, now, &mut fx),
         Msg::Theme(m) => themes::handle(st, m, now, &mut fx),
+        Msg::Logs(m) => logs::handle(st, m, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).
@@ -413,7 +415,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::OpenTerminal => tools::open_terminal(st, now, &mut fx),
         Msg::OpenFolder(p) => fx.push(Effect::OpenFolder(p)),
         Msg::Logged { ok, text } => st.log(ok, text),
-        Msg::ClearLog => st.log.clear(),
+        Msg::ClearLog => logs::clear(st, &mut fx),
     }
+    logs::flush(st, &mut fx);
     fx
 }

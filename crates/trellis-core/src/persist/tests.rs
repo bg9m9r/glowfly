@@ -39,6 +39,59 @@ fn atomic_write_failure_keeps_the_old_file() {
 }
 
 #[test]
+fn append_creates_folder_and_appends() {
+    let dir = scratch("append");
+    let file = dir.join("logs").join("activity.jsonl");
+    append(
+        &file, b"one
+",
+    )
+    .unwrap();
+    append(
+        &file, b"two
+",
+    )
+    .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&file).unwrap(),
+        "one
+two
+"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn append_follows_a_link() {
+    let dir = scratch("append-link");
+    let real = dir.join("real.log");
+    let link = dir.join("link.log");
+    std::fs::write(
+        &real, "a
+",
+    )
+    .unwrap();
+    if !symlink_file(&real, &link) {
+        eprintln!("skipped: this system refused to create a symbolic link");
+        let _ = std::fs::remove_dir_all(&dir);
+        return;
+    }
+    append(
+        &link, b"b
+",
+    )
+    .unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&real).unwrap(),
+        "a
+b
+"
+    );
+    assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink(), "the link stays a link");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn move_aside_picks_a_free_name() {
     let dir = scratch("aside");
     let file = dir.join("settings.json");

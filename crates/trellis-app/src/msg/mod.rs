@@ -2,7 +2,7 @@
 //!
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
-//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `conflict_check` and `pull_request`). Each area's enum goes to one handler in `update/`, which matches it
+//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `conflict_check`, `pull_request` and `logs`). Each area's enum goes to one handler in `update/`, which matches it
 //! exhaustively, and says through `on_inactive` what its results still need when they arrive
 //! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
 
@@ -152,6 +152,8 @@ pub enum Msg {
     GitEnv(crate::git_env::GitEnvMsg),
     /// Theme files: loading, reloading, the folder and new files (update/themes.rs).
     Theme(crate::themes::ThemeMsg),
+    /// Activity, error and performance logs (update/logs.rs).
+    Logs(crate::logs::LogsMsg),
     /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
@@ -258,6 +260,7 @@ impl Msg {
             Msg::Trust(m) => m.on_inactive(),
             Msg::GitEnv(m) => m.on_inactive(),
             Msg::Theme(m) => m.on_inactive(),
+            Msg::Logs(m) => m.on_inactive(),
             Msg::Tick(_)
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }

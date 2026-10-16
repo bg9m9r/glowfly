@@ -75,8 +75,88 @@ impl Effect {
             Effect::Clone(e) => e.name(),
             Effect::Init(e) => e.name(),
             Effect::Notify(_) => "desktop-note",
+            Effect::Logs(_) => "logs",
             Effect::PullRequest(e) => e.name(),
             Effect::Ui(_) => "ui",
+        }
+    }
+
+    /// Whether the runner times this effect for the performance log (runner/mod.rs).
+    pub fn timed(&self) -> bool {
+        match self {
+            Effect::LoadRepo { .. }
+            | Effect::LoadStatus { .. }
+            | Effect::LoadDetail { .. }
+            | Effect::LoadCompare { .. }
+            | Effect::LoadDiff { .. }
+            | Effect::HighlightDiff { .. }
+            | Effect::LoadConflict { .. }
+            | Effect::LoadFileHistory { .. }
+            | Effect::LoadBlame(_)
+            | Effect::LocalOp { .. }
+            | Effect::RevertHunk { .. }
+            | Effect::RestoreFile { .. }
+            | Effect::WorkFile { .. }
+            | Effect::LoadTrackedPaths { .. }
+            | Effect::Submodule(_)
+            | Effect::CheckWorktreeFolder(_)
+            | Effect::CheckCloneParent { .. }
+            | Effect::DetectLfs { .. }
+            | Effect::RemoveWorktree(_)
+            | Effect::RenameStash { .. }
+            | Effect::LoadLfs { .. }
+            | Effect::LoadSparse { .. }
+            | Effect::SparseCheckout { .. }
+            | Effect::RunGit { .. }
+            | Effect::UndoRedo { .. }
+            | Effect::LoadRebasePlan { .. }
+            | Effect::InteractiveRebase { .. }
+            | Effect::Forge { .. }
+            | Effect::Connect { .. }
+            | Effect::RepoOwners { .. }
+            | Effect::CreateRepo { .. }
+            | Effect::SaveToken { .. }
+            | Effect::DeleteToken(_)
+            | Effect::ForgetCredentialManager { .. }
+            | Effect::TrelloBoards { .. }
+            | Effect::Stats { .. }
+            | Effect::SearchPaths { .. }
+            | Effect::VerifySignature { .. }
+            | Effect::FetchAvatars(_)
+            | Effect::ReadGitConfig { .. }
+            | Effect::SetGitConfig { .. }
+            | Effect::SaveSettings(_)
+            | Effect::SaveRecent(_)
+            | Effect::CheckRepoFolders(_)
+            | Effect::SaveTabs { .. }
+            | Effect::ListSigningKeys { .. }
+            | Effect::ExportPublicKey { .. }
+            | Effect::Ssh(_)
+            | Effect::Profile(_)
+            | Effect::Patch(_)
+            | Effect::GitEnv(_)
+            | Effect::Theme(_)
+            | Effect::CheckConflicts(_)
+            | Effect::Remote(_)
+            | Effect::Clone(_)
+            | Effect::Init(_)
+            | Effect::PullRequest(_) => true,
+            // They wait on the user, hand work to the system, or never run on a worker thread.
+            Effect::OpenUrl(_)
+            | Effect::OpenTerminal(_)
+            | Effect::OpenFolder(_)
+            | Effect::OpenPath { .. }
+            | Effect::RevealPath(_)
+            | Effect::PickFolder { .. }
+            | Effect::PickFile { .. }
+            | Effect::GenerateGpgKey { .. }
+            | Effect::Watch(_)
+            | Effect::AnswerPrompt { .. }
+            | Effect::Terminal(_)
+            | Effect::Tool(_)
+            | Effect::Notify(_)
+            | Effect::Logs(_)
+            | Effect::Ui(_) => false,
         }
     }
 }

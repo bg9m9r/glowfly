@@ -26,7 +26,7 @@ notify-rust = "4"
 open = "5"
 rfd = "0.15"
 tracing = "0.1.44"
-tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "chrono"] }
 
 [dev-dependencies]
 egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }

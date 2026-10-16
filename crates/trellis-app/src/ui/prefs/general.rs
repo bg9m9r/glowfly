@@ -2,6 +2,7 @@
 
 use super::{help, row, text_field, warn};
 use crate::keymap::{BindingId, Keymap};
+use crate::logs::LogsMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
@@ -77,6 +78,28 @@ pub fn general_page(
     row(ui, "Deleting Files", |ui| {
         ui.checkbox(&mut s.delete_to_trash, format!("Move deleted files to the {TRASH}"));
         help(ui, "When off, Delete… and discarding an untracked file remove it from disk straight away, and it can't be recovered.");
+    });
+    row(ui, "Extended Logging", |ui| {
+        // Through a message, so the runner hears of it (the error log's level changes too).
+        let mut on = s.extended_logging;
+        if ui.checkbox(&mut on, "Add the git commands Trellis runs, with their timings, to the activity log").changed() {
+            msgs.push(Msg::Logs(LogsMsg::SetExtended(on)));
+        }
+        help(
+            ui,
+            "Also writes Trellis's informational and debug messages to the error log. Leave it off unless you're tracking down a \
+             problem: it adds a line for every git command, background refreshes included.",
+        );
+    });
+    row(ui, "Logs", |ui| {
+        if ui.button("Open logs folder").clicked() {
+            msgs.push(Msg::Logs(LogsMsg::OpenFolder));
+        }
+        help(
+            ui,
+            "activity.jsonl keeps the activity log across sessions, errors.log holds warnings, errors and crashes, and \
+             performance.log lists operations that took half a second or more.",
+        );
     });
     if let Some(git) = git {
         row(ui, "Longpaths", |ui| {

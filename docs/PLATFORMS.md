@@ -134,7 +134,9 @@ second one next to it.
 
 1. **Every write goes through `persist::write_file` or `persist::atomic_write`:** a sibling
    temp file, `sync_all`, rename, then a folder fsync on Unix. Never `fs::write` a file that
-   matters; a crash must leave the old file or the new one.
+   matters; a crash must leave the old file or the new one. Append-only logs are the one
+   exception: they grow through `persist::append` (or a handle from `persist::open_append`),
+   and their readers skip a torn last line.
 2. **Links:** Trellis's own files follow a symlink to its real file and keep the link
    (`atomic_write`). Working-tree writes set `WriteOptions::refuse_links` and never write
    through a link, which can point anywhere.
@@ -264,6 +266,11 @@ second one next to it.
 5. **Put caches in the cache folder** (`%LOCALAPPDATA%`, `~/Library/Caches`, `$XDG_CACHE_HOME`;
    `settings/paths.rs`), not the roaming config folder, and take the home folder from
    `settings::home_dir`, which ignores an empty or relative `HOME`.
+6. **Put logs in `settings::log_dir`** (`%LOCALAPPDATA%\Trellis\logs`, `~/Library/Logs/Trellis`,
+   `$XDG_STATE_HOME/trellis/logs`): local, never the roaming config or cache folder. Append
+   through `persist::append` / `persist::open_append`, and keep every log bounded: trim it
+   (the activity log, `logs::ActivityFile`) or rotate it by size (the error and performance
+   logs, `logs::RotatingFile`). With no folder, logs stay in memory.
 
 ## Testing on every OS
 

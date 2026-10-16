@@ -540,7 +540,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [x] **Zoom** in/out/reset; show/hide the left, detail and toolbar panels
 - [ ] **Menu bar** (File / Edit / View / Window / Help), including Undo/Redo under Edit
 - [ ] **Language**: translate the UI (date locale and relative dates already exist)
-- [ ] **Logs**: keep the activity log across sessions; error and performance logs; extended
+- [x] **Logs**: keep the activity log across sessions; error and performance logs; extended
       logging (the in-session activity log exists)
 - [x] **Command-line companion**: `trellis <path>` and `trellis .` work (subcommands are under
       Later)
@@ -1474,3 +1474,17 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Re-check the chosen git's version automatically when it is upgraded while Trellis runs (Look again covers it by hand)
 - Offer to fall back to the PATH git when the saved one disappears, instead of only explaining it in the banner
 - Run every command of a multi-command job with the git it started with, even when another git is chosen meanwhile
+
+### Logs
+
+- Search and filter inside the activity panel and the error and performance tabs
+- Copy one log entry or the whole log to the clipboard, and export all logs as one archive for a bug report
+- Show hook runs (pre-commit, pre-push) as their own titled entries in the activity log
+- Show each entry's time in the current session (on hover or in a column)
+- Settings for the slow-operation threshold and the log size limits
+- Record how long queued effects wait behind a repository's queue, and time the stats and path-search workers
+- Leave time spent waiting on a credential or passphrase prompt out of git job timings
+- Rotate the error and performance logs by day as well as by size
+- Keep two Trellis instances' activity logs apart (one file per instance or a lock during trims)
+- Add log entries to the Help menu once the menu bar exists
+- Open a log file in the system's text editor from the panel

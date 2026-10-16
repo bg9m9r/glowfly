@@ -1,7 +1,7 @@
-//! `AppState`'s queries (whether hunk and line operations are blocked, the working folder, load
-//! options) and the activity log.
+//! `AppState`'s queries: whether hunk and line operations are blocked, the working folder, load
+//! options. The activity log's `log` and `log_quiet` are in `logs.rs`.
 
-use super::{AppState, LOG_LIMIT, LogEntry, WHITESPACE_BLOCKS_HUNK_OPS, WHITESPACE_BLOCKS_REVERT, WHOLE_FILE_BLOCKS_LINE_OPS};
+use super::{AppState, WHITESPACE_BLOCKS_HUNK_OPS, WHITESPACE_BLOCKS_REVERT, WHOLE_FILE_BLOCKS_LINE_OPS};
 use std::path::{Path, PathBuf};
 use trellis_core::repo::LoadOptions;
 use trellis_core::settings::{BranchVisibility, DiffMode};
@@ -52,21 +52,5 @@ impl AppState {
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
         let (f, worktree_wips) = (self.settings.graph_filter_for(&self.repo_key(workdir)), self.settings.worktree_wips);
         LoadOptions { max_commits: self.commits_wanted(), smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted, worktree_wips }
-    }
-
-    pub fn log(&mut self, ok: bool, text: impl Into<String>) {
-        self.log_quiet(ok, text);
-        if !ok {
-            self.view.show_log = true;
-        }
-    }
-
-    /// Adds to the activity log without opening it, dropping the oldest entries past
-    /// `LOG_LIMIT` (auto-fetch adds one a minute for as long as the app runs).
-    pub fn log_quiet(&mut self, ok: bool, text: impl Into<String>) {
-        self.log.push(LogEntry { ok, text: text.into() });
-        if self.log.len() > LOG_LIMIT {
-            self.log.drain(..self.log.len() - LOG_LIMIT);
-        }
     }
 }

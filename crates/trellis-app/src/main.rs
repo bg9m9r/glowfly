@@ -13,6 +13,8 @@ mod git_env;
 mod gitflow;
 mod keymap;
 mod lfs;
+mod logging;
+mod logs;
 mod msg;
 mod patch;
 mod platform;
@@ -61,10 +63,8 @@ fn main() -> eframe::Result {
     if std::env::var_os(askpass::ENV_ADDR).is_some() {
         std::process::exit(askpass_helper(argv.get(1)));
     }
-    // RUST_LOG=trellis=debug shows background effects as they run.
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "trellis=info".into()))
-        .init();
+    // Only the window logs: the helper modes above exit before this.
+    let logs = logging::init();
     if let Err(e) = trellis_core::settings::migrate_old_config_dir() {
         tracing::warn!("could not move the settings folder from where an earlier version kept it: {e}");
     }
@@ -79,7 +79,7 @@ fn main() -> eframe::Result {
             .with_min_inner_size([960.0, 540.0]),
         ..Default::default()
     };
-    eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start)))))
+    eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start, logs)))))
 }
 
 /// The repository path given on the command line. On Windows, `trellis "C:\My Repo\"` arrives

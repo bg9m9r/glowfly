@@ -1,4 +1,4 @@
-//! Bottom status bar, the activity log panel, and toast notifications.
+//! Bottom status bar and toast notifications (the logs panel is in `activity_log.rs`).
 
 use super::common::status_label_ui;
 use super::theme::color;
@@ -45,32 +45,6 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                 });
             });
         });
-}
-
-pub fn activity_log(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    if !st.view.show_log {
-        return;
-    }
-    egui::TopBottomPanel::bottom("activity").resizable(true).default_height(150.0).show(ctx, |ui| {
-        ui.horizontal(|ui| {
-            ui.strong("Activity");
-            if ui.small_button("Clear").clicked() {
-                msgs.push(Msg::ClearLog);
-            }
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if ui.small_button("Hide").clicked() {
-                    st.view.show_log = false;
-                }
-            });
-        });
-        egui::ScrollArea::vertical().stick_to_bottom(true).auto_shrink([false, false]).show(ui, |ui| {
-            for entry in &st.log {
-                let c = if entry.ok { color::text() } else { color::red() };
-                ui.label(RichText::new(&entry.text).monospace().color(c));
-                ui.separator();
-            }
-        });
-    });
 }
 
 /// The toasts in the corner from Preferences. The area takes clicks only while a toast has an

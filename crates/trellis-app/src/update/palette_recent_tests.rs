@@ -5,6 +5,7 @@ use super::palette_tests::repo_with_topic;
 use super::tests::{drive, state};
 use super::update;
 use crate::effect::Effect;
+use crate::logs::{LogKind, LogsMsg};
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::remote::RemoteMsg;
@@ -192,6 +193,11 @@ fn recall_keys_are_unique() {
         C::FileHistory,
         C::Blame,
         C::Remote(RemoteMsg::AddDialog),
+        C::Logs(LogsMsg::Show(LogKind::Activity)),
+        C::Logs(LogsMsg::Show(LogKind::Errors)),
+        C::Logs(LogsMsg::Show(LogKind::Performance)),
+        C::Logs(LogsMsg::OpenFolder),
+        C::Logs(LogsMsg::SetExtended(true)),
     ];
     let keys: Vec<&str> = keyed.iter().map(|c| c.recall_key().unwrap_or_else(|| panic!("{c:?} has no key"))).collect();
     let unique: HashSet<&str> = keys.iter().copied().collect();

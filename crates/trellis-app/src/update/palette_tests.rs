@@ -95,7 +95,12 @@ fn entries_without_repo() {
             "Theme: High contrast dark",
             "Theme: High contrast light",
             "Theme: Sand",
-            "Configure external tools"
+            "Configure external tools",
+            "View activity log",
+            "View error log",
+            "View performance log",
+            "Open logs folder",
+            "Turn on extended logging"
         ]
     );
     let list = shown(&st, "");
@@ -136,7 +141,14 @@ fn entries_with_repo() {
     st.recent = vec![dir.clone(), "C:/elsewhere/other-repo".into()];
     let all = labels(&st, "");
     assert!(all.contains(&"Open other-repo".to_owned()));
-    let not_recent = ["Open repository…", "Open Preferences", "Open in terminal", "Open repository in external editor", SHOW_REPO_FOLDER];
+    let not_recent = [
+        "Open repository…",
+        "Open Preferences",
+        "Open in terminal",
+        "Open repository in external editor",
+        "Open logs folder",
+        SHOW_REPO_FOLDER,
+    ];
     assert_eq!(all.iter().filter(|l| l.starts_with("Open ") && !not_recent.contains(&l.as_str())).count(), 1);
     let _ = std::fs::remove_dir_all(&dir);
 }

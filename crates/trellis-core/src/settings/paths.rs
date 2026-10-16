@@ -1,5 +1,5 @@
 //! Where Trellis keeps its own files (settings, recent repositories, tabs; the avatar cache is in
-//! `cache_dir`):
+//! `cache_dir`, the logs in `log_dir`):
 //!
 //! - Windows: `%APPDATA%\Trellis`
 //! - macOS: `~/Library/Application Support/Trellis`
@@ -97,6 +97,28 @@ pub(crate) fn cache_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> O
 
 pub fn cache_dir() -> Option<PathBuf> {
     cache_dir_for(Os::CURRENT, |k| std::env::var_os(k))
+}
+
+/// Where Trellis keeps its logs (the activity log, the error and performance logs): on this
+/// machine only, never in a roaming profile.
+///
+/// - Windows: `%LOCALAPPDATA%\Trellis\logs`
+/// - macOS: `~/Library/Logs/Trellis`
+/// - Linux and other Unix: `$XDG_STATE_HOME/trellis/logs`, or `~/.local/state/trellis/logs`
+pub(crate) fn log_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
+    match os {
+        Os::Windows => abs_var(&env, "LOCALAPPDATA").map(|a| a.join("Trellis").join("logs")),
+        Os::Mac => abs_var(&env, "HOME").map(|h| h.join("Library").join("Logs").join("Trellis")),
+        Os::Xdg => abs_var(&env, "XDG_STATE_HOME")
+            .or_else(|| abs_var(&env, "HOME").map(|h| h.join(".local").join("state")))
+            .map(|s| s.join("trellis").join("logs")),
+    }
+}
+
+/// The logs folder for this system (see [`log_dir_for`]); None when the variables it needs are
+/// missing, empty or relative.
+pub fn log_dir() -> Option<PathBuf> {
+    log_dir_for(Os::CURRENT, |k| std::env::var_os(k))
 }
 
 /// The user's home folder as git and its ssh see it: `HOME` (Git for Windows sets it, and a user
@@ -257,6 +279,25 @@ mod tests {
         assert_eq!(home_dir_for(Os::Xdg, &env), None);
         let env = env_of(vec![("HOME", PathBuf::from("rel"))]);
         assert_eq!(home_dir_for(Os::Mac, &env), None);
+    }
+
+    #[test]
+    fn log_dir_per_platform() {
+        let r = root("logs");
+        let env = env_of(vec![("HOME", r.join("home")), ("LOCALAPPDATA", r.join("local")), ("APPDATA", r.join("roaming"))]);
+        assert_eq!(log_dir_for(Os::Windows, &env), Some(r.join("local").join("Trellis").join("logs")));
+        assert_eq!(log_dir_for(Os::Mac, &env), Some(r.join("home").join("Library").join("Logs").join("Trellis")));
+        assert_eq!(log_dir_for(Os::Xdg, &env), Some(r.join("home").join(".local").join("state").join("trellis").join("logs")));
+        let env = env_of(vec![("HOME", r.join("home")), ("XDG_STATE_HOME", r.join("state"))]);
+        assert_eq!(log_dir_for(Os::Xdg, &env), Some(r.join("state").join("trellis").join("logs")));
+
+        // Relative or empty values are ignored.
+        let env = env_of(vec![("HOME", r.join("home")), ("XDG_STATE_HOME", PathBuf::from("rel/state"))]);
+        assert_eq!(log_dir_for(Os::Xdg, &env), Some(r.join("home").join(".local").join("state").join("trellis").join("logs")));
+        let env = env_of(vec![("HOME", PathBuf::new()), ("LOCALAPPDATA", PathBuf::from("rel")), ("XDG_STATE_HOME", PathBuf::new())]);
+        assert_eq!(log_dir_for(Os::Windows, &env), None);
+        assert_eq!(log_dir_for(Os::Mac, &env), None);
+        assert_eq!(log_dir_for(Os::Xdg, &env), None);
     }
 
     #[test]

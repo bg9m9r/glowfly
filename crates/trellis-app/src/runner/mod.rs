@@ -3,7 +3,8 @@
 //!
 //! `Runner::run` starts one named thread per effect. A few effects get special handling: the
 //! file watcher (`Effect::Watch`), credential-prompt answers and the terminal's shell sessions
-//! are run by the runner itself, and saves of Trellis's own files are kept in order (`saves`). Work longer than a line lives in this
+//! are run by the runner itself, the log files have one ordered worker (`logs`), effects are
+//! timed for the performance log, and saves of Trellis's own files are kept in order (`saves`). Work longer than a line lives in this
 //! folder's per-area files (`files`, `worktrees`, `rebase`, `highlight`, …); the git, file and
 //! network code itself lives in `trellis-core`.
 
@@ -47,6 +48,7 @@ mod guard;
 mod highlight;
 mod init;
 mod keys;
+mod logs;
 mod notify;
 mod os;
 mod patches;
@@ -102,6 +104,8 @@ pub struct Runner<W: Waker + Clone> {
     path_search: path_search::PathSearchWorker,
     /// Ahead/behind and containment answers, kept between repository loads.
     graph_cache: Arc<repo::GraphCache>,
+    /// The log files' worker (attached at startup, never in tests).
+    logs: logs::LogWorker,
 }
 
 impl<W: Waker + Clone> Runner<W> {
@@ -118,7 +122,13 @@ impl<W: Waker + Clone> Runner<W> {
             graph_cache: Default::default(),
             stats: Default::default(),
             path_search: Default::default(),
+            logs: Default::default(),
         }
+    }
+
+    /// Starts the log worker on the folder `logging::init` chose. Once, at startup.
+    pub fn attach_logs(&mut self, setup: crate::logging::LogSetup) {
+        self.logs.attach(setup, self.tx.clone(), self.waker.clone());
     }
 
     /// Starts `effect` on a worker thread, or queues it behind the earlier effects that change the
@@ -130,6 +140,7 @@ impl<W: Waker + Clone> Runner<W> {
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
             Effect::Terminal(t) => return self.terminal(t),
             Effect::Stats { workdir, oids } => return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone()),
+            Effect::Logs(e) => return self.logs.submit(e),
             Effect::SearchPaths { workdir, request, terms, oids } => {
                 let r = path_search::Request { workdir, request, terms, oids };
                 return self.path_search.submit(r, self.tx.clone(), self.waker.clone());
@@ -147,10 +158,20 @@ impl<W: Waker + Clone> Runner<W> {
         let repo = queue::repo_of(&effect).map(Path::to_owned);
         let recovery = guard::Recovery::of(&effect, name);
         let graph_cache = Arc::clone(&self.graph_cache);
+        // Effects that don't wait on the user are timed for the performance log.
+        let perf = if effect.timed() { self.logs.perf_probe().map(|p| (p, logs::folder_of(&effect))) } else { None };
         let job: queue::Job = Box::new(move || {
             let _span = tracing::debug_span!("effect", name).entered();
             let cancelled = || ticket.as_ref().is_some_and(|(e, mine)| e.load(Ordering::Relaxed) != *mine);
-            if let Some(msg) = guard::guarded(recovery, || execute_with(effect, &cancelled, &graph_cache))
+            let started = std::time::Instant::now();
+            let msg = guard::guarded(recovery, || execute_with(effect, &cancelled, &graph_cache));
+            let took = started.elapsed();
+            if let Some((probe, detail)) = perf
+                && took >= trellis_core::logs::SLOW
+            {
+                let _ = probe.send(logs::Job::Perf { took, what: name.to_owned(), detail });
+            }
+            if let Some(msg) = msg
                 && tx.send(msg).is_ok()
             {
                 waker.wake();
@@ -347,8 +368,8 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None
         }
-        Effect::Watch(_) | Effect::AnswerPrompt { .. } | Effect::Terminal(_) => {
-            tracing::warn!("watch, prompt or terminal effect reached a worker; it is handled by Runner::run");
+        Effect::Watch(_) | Effect::AnswerPrompt { .. } | Effect::Terminal(_) | Effect::Logs(_) => {
+            tracing::warn!("watch, prompt, terminal or log effect reached a worker; it is handled by Runner::run");
             None
         }
     }

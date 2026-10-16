@@ -80,6 +80,7 @@ impl Effect {
             | Effect::Clone(_)
             | Effect::Init(_)
             | Effect::Notify(_)
+            | Effect::Logs(_)
             | Effect::Ui(_) => None,
         }
     }

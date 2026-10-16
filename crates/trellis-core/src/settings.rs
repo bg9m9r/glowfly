@@ -22,7 +22,7 @@ pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use file::{LoadProblem, settings_file};
 pub use forge_filters::RepoForgeFilters;
 pub use graph_filter::{FilterOp, GraphFilter};
-pub use paths::{cache_dir, config_dir, home_dir, migrate_old_config_dir};
+pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
@@ -281,6 +281,9 @@ pub struct Settings {
     /// Ask for OpenPGP signing passphrases in Trellis rather than GnuPG's own window
     /// (Preferences > Commit Signing).
     pub gpg_prompts_in_app: bool,
+    /// Add git commands and their timings to the activity log and write details to the error log (Preferences > General).
+    #[serde(default)]
+    pub extended_logging: bool,
     /// Keyboard shortcuts the user changed (Preferences > Keyboard): a binding's stable id
     /// ("new-tab") -> its keys as text ("Mod+Shift+N"; Mod is Ctrl, or Cmd on macOS). An empty list
     /// leaves the action without a key; ids not listed keep their defaults. The app's keymap
@@ -350,6 +353,7 @@ impl Default for Settings {
             active_profile: None,
             use_ssh_agent: false,
             gpg_prompts_in_app: true,
+            extended_logging: false,
             keybindings: BTreeMap::new(),
             git_program: None,
         }

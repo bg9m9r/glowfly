@@ -1,7 +1,8 @@
 //! Every file Trellis writes goes through here: its own files (settings, recent repositories,
-//! open tabs), files written for the user (saved patches), and working-tree files it puts back
-//! itself (undo and redo of a discard or restore). [`remove_tree`] deletes a folder Trellis
-//! owns the removal of (a submodule's stored module) without following links.
+//! open tabs, logs), files written for the user (saved patches), and working-tree files it puts
+//! back itself (undo and redo of a discard or restore). [`remove_tree`] deletes a folder Trellis
+//! owns the removal of (a submodule's stored module) without following links. Logs grow by
+//! [`append`] (or a handle from [`open_append`]) instead of being replaced.
 //!
 //! A file is written to a temporary sibling, flushed to disk, then renamed over the target, so a
 //! crash or power cut leaves either the old file or the new one, never half of each. On Unix the
@@ -69,6 +70,24 @@ pub fn write_file(path: &Path, bytes: &[u8], opts: WriteOptions) -> std::io::Res
         clean_stale_temps(dir, &name.to_string_lossy());
     }
     Ok(())
+}
+
+/// Opens `path` for appending, creating it and its folder if needed. A symbolic link at `path`
+/// is followed. Only for append-only logs: each write lands at the end of the file, even when
+/// another process appends to it too, and nothing is flushed to disk, so a crash can lose or tear
+/// the last line. Readers must skip a bad last line.
+pub fn open_append(path: &Path) -> std::io::Result<std::fs::File> {
+    let target = link_target(path)?;
+    if let Some(dir) = target.parent().filter(|d| !d.as_os_str().is_empty()) {
+        std::fs::create_dir_all(dir)?;
+    }
+    std::fs::OpenOptions::new().create(true).append(true).open(&target)
+}
+
+/// Appends `bytes` to the log at `path` in one write (see [`open_append`] for what a crash can
+/// leave).
+pub fn append(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    open_append(path)?.write_all(bytes)
 }
 
 /// Removes the file at `path` (not following a link). A missing file is fine. On Windows a

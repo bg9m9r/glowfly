@@ -12,6 +12,8 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 mod palette_checkouts;
 #[path = "palette_gitflow.rs"]
 mod palette_gitflow;
+#[path = "palette_logs.rs"]
+mod palette_logs;
 #[path = "palette_pr.rs"]
 mod palette_pr;
 #[path = "palette_setup.rs"]
@@ -148,6 +150,8 @@ pub enum PaletteCommand {
     ApplyPatch,
     /// External editor actions (tools.rs).
     Tools(crate::tools::ToolsMsg),
+    /// The logs (logs.rs).
+    Logs(crate::logs::LogsMsg),
     /// Enter the profile sub-list; choosing a profile runs SwitchProfile.
     ChooseProfile,
     /// Write this profile's identity to the global git config and make it current.
@@ -338,4 +342,5 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
         out.push(with_detail(e, current.then(|| "current".to_owned())));
     }
     super::palette_tools::palette_entries(st, out);
+    palette_logs::palette_entries(st, out);
 }

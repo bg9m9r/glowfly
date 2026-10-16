@@ -2,6 +2,7 @@
 //! background results through `update`, runs the resulting effects, and handles the few
 //! effects that need the window.
 
+mod activity_log;
 mod askpass;
 mod avatars;
 mod blame;
@@ -116,6 +117,8 @@ mod snapshot_tests_init;
 mod snapshot_tests_lfs;
 #[cfg(test)]
 mod snapshot_tests_load_more;
+#[cfg(test)]
+mod snapshot_tests_logs;
 #[cfg(test)]
 mod snapshot_tests_palette;
 #[cfg(test)]
@@ -239,7 +242,7 @@ pub struct TrellisApp {
 }
 
 impl TrellisApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<PathBuf>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<PathBuf>, logs: crate::logging::LogSetup) -> Self {
         let (tx, results) = mpsc::channel();
         let (settings, problem) = Settings::load();
         // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
@@ -267,6 +270,9 @@ impl TrellisApp {
         layout::start(&cc.egui_ctx, &app.st);
         // git and ssh ask for missing credentials through a dialog from now on.
         app.runner.start_askpass();
+        // The log files, and earlier sessions' activity.
+        app.runner.attach_logs(logs);
+        app.dispatch(&cc.egui_ctx, Msg::Logs(crate::logs::LogsMsg::Start));
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
         app.dispatch(&cc.egui_ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect));
         app.dispatch(&cc.egui_ctx, Msg::Recent(RecentMsg::CheckFolders));
@@ -328,7 +334,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
             toolbar::show(ctx, st, msgs);
         }
         git_banner::show(ctx, st, msgs);
-        status::activity_log(ctx, st, msgs);
+        activity_log::show(ctx, st, msgs);
         if st.snap.is_some() {
             if st.settings.show_left_panel {
                 sidebar::show(ctx, st, msgs);

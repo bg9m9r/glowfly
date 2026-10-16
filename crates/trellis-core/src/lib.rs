@@ -27,6 +27,7 @@ pub mod init_ops;
 pub mod intraline;
 pub mod lfs;
 pub mod line_pairs;
+pub mod logs;
 pub mod matching;
 pub mod names;
 pub mod native_path;

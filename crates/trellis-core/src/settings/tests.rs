@@ -76,6 +76,17 @@ fn gpg_prompts_in_app_default_on() {
 }
 
 #[test]
+fn extended_logging_defaults_off_and_old_files_load() {
+    // Files written before the setting existed load with it off.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.extended_logging);
+    assert!(!Settings::default().extended_logging);
+    let on = Settings { extended_logging: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.extended_logging);
+}
+
+#[test]
 fn ignore_whitespace_defaults_off() {
     // Files written before the toggle existed show every whitespace change.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

@@ -9,6 +9,9 @@
 //! failing, and Trellis as its `gpg.program` (see [`crate::gpg_prompt`]), so signing
 //! passphrases are asked the same way. A command that must never prompt passes [`NO_PROMPTS`]
 //! as its environment, which also leaves `gpg.program` alone.
+//!
+//! Every command run here is reported, once it ends, to the observer the app shell sets at
+//! startup ([`observe_runs`]), which writes slow ones to the performance log.
 
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
@@ -32,6 +35,32 @@ static ASKPASS: OnceLock<AskpassEnv> = OnceLock::new();
 /// Makes every later git child prompt through the app. Returns false if it was already set.
 pub fn enable_askpass(env: AskpassEnv) -> bool {
     ASKPASS.set(env).is_ok()
+}
+
+/// One git command that ended, for the observer set with [`observe_runs`].
+#[derive(Clone, Debug, PartialEq)]
+pub struct GitRun {
+    pub cwd: PathBuf,
+    pub args: Vec<String>,
+    pub took: Duration,
+    /// The exit code; None when git couldn't start, was killed or timed out.
+    pub code: Option<i32>,
+    /// Git started and exited by itself, with any exit code: false only when it couldn't
+    /// start, was killed or timed out.
+    pub ok: bool,
+    pub timed_out: bool,
+}
+
+type Observer = Box<dyn Fn(&GitRun) + Send + Sync>;
+
+/// Set once by the app shell at startup and never changed (never set in tests), like
+/// [`ASKPASS`].
+static OBSERVER: OnceLock<Observer> = OnceLock::new();
+
+/// Reports every later git command to `f` once it ends (on the thread that ran it, so `f` must
+/// be quick). Returns false if an observer was already set.
+pub fn observe_runs(f: Observer) -> bool {
+    OBSERVER.set(f).is_ok()
 }
 
 /// The environment that points git and ssh at the askpass helper. `SSH_ASKPASS_REQUIRE=force`
@@ -169,8 +198,33 @@ fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: 
     raw_with(&crate::git_program::program(), cwd, args, input, env, timeout)
 }
 
-/// [`raw`] running `program`.
+/// [`raw`] running `program`. Reports the run to the observer, if one is set, exactly once
+/// whichever way it ends.
 fn raw_with(
+    program: &OsStr,
+    cwd: &Path,
+    args: &[String],
+    input: &str,
+    env: &[(&str, &str)],
+    timeout: Option<Duration>,
+) -> (GitOutput, Vec<u8>) {
+    let start = Instant::now();
+    let result = raw_inner(program, cwd, args, input, env, timeout);
+    if let Some(observe) = OBSERVER.get() {
+        let out = &result.0;
+        observe(&GitRun {
+            cwd: cwd.to_owned(),
+            args: args.to_vec(),
+            took: start.elapsed(),
+            code: out.code,
+            ok: out.code.is_some() && !out.timed_out,
+            timed_out: out.timed_out,
+        });
+    }
+    result
+}
+
+fn raw_inner(
     program: &OsStr,
     cwd: &Path,
     args: &[String],

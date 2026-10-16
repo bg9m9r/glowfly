@@ -109,6 +109,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "active_profile",
     "use_ssh_agent",
     "gpg_prompts_in_app",
+    // A diagnostic switch, not a profile preference.
+    "extended_logging",
     // Preferences > Keyboard is not one of the pages a profile keeps.
     "keybindings",
     // The git program belongs to the machine, not to whoever is committing.
