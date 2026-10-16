@@ -2,7 +2,7 @@
 //! back, redo writes the restored version again, a file edited since is left alone, and a
 //! result for a tab that is no longer active lands in that tab's history.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::FilesMsg;
@@ -49,7 +49,7 @@ fn restore_then_undo_and_redo() {
     drive(&mut st, restore(head(&dir), "a.txt"));
     assert_eq!(text(&dir, "a.txt"), "one\n");
     assert!(top_is_restore_of(&st, "a.txt"), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_tooltip(), "Undo restore of a.txt (Ctrl+Z)");
+    assert_eq!(st.undo.undo_tooltip(), format!("Undo restore of a.txt ({})", keys("Ctrl+Z")));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(text(&dir, "a.txt"), "one\ntwo\n", "the edits are back");
@@ -153,7 +153,10 @@ fn failed_restore_that_removed_the_file_can_be_undone() {
     assert!(top_is_restore_of(&st, "b.up"), "{:?}", st.undo.undo);
     let log: Vec<&str> = st.log.iter().map(|l| l.text.as_str()).collect();
     let said = log.iter().find(|t| t.starts_with("Could not restore b.up")).unwrap_or_else(|| panic!("{log:?}"));
-    assert!(said.contains("git cat-file -p") && said.contains("Undo (Ctrl+Z) puts back what it held before."), "{said}");
+    assert!(
+        said.contains("git cat-file -p") && said.contains(&format!("Undo ({}) puts back what it held before.", keys("Ctrl+Z"))),
+        "{said}"
+    );
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(text(&dir, "b.up"), "local edits\n", "the edits are back");

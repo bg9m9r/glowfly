@@ -45,6 +45,13 @@ pub(super) fn scratch_repo(name: &str) -> PathBuf {
     dir
 }
 
+/// The shortcut `text`, written as Windows and Linux show it, as this system shows it: the
+/// Command modifier reads "Cmd" on macOS (`Chord::parts`). Plain Ctrl chords (Ctrl+`) have
+/// no business going through this.
+pub(super) fn keys(text: &str) -> String {
+    if cfg!(target_os = "macos") { text.replacen("Ctrl+", "Cmd+", 1) } else { text.to_owned() }
+}
+
 /// Whether `a` and `b` are the same folder on disk (tests compare a fixture's path, which may be
 /// a short 8.3 name on CI, with the one libgit2 reports).
 pub(super) fn same_place(a: &Path, b: &Path) -> bool {

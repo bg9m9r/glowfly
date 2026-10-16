@@ -2,7 +2,7 @@
 //! toolbar commands: when each is offered, and that running it does what its button does.
 
 use super::palette_tests::repo_with_topic;
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::Msg;
@@ -69,12 +69,12 @@ fn undo_redo_entries_follow_history() {
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Checkout("topic".into()))));
     let undo = find(&st, "Undo").expect("Undo");
     assert_eq!(undo.detail.as_deref(), Some("checkout of topic"));
-    assert_eq!(undo.shortcut, Some("Ctrl+Z"));
+    assert_eq!(undo.shortcut, Some(keys("Ctrl+Z").as_str()));
 
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Undo)));
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("main"));
     let redo = find(&st, "Redo").expect("Redo");
-    assert_eq!(redo.shortcut, Some("Ctrl+Y"));
+    assert_eq!(redo.shortcut, Some(keys("Ctrl+Y").as_str()));
 
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Redo)));
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("topic"));
@@ -154,7 +154,7 @@ fn terminal_panel_entry_toggles() {
 #[test]
 fn tab_entries() {
     let mut st = state();
-    assert_eq!(find(&st, "New tab").expect("New tab").shortcut, Some("Ctrl+T"));
+    assert_eq!(find(&st, "New tab").expect("New tab").shortcut, Some(keys("Ctrl+T").as_str()));
     assert!(!has(&st, "Reopen closed tab"));
     open_palette(&mut st);
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::NewTab)));
@@ -165,7 +165,7 @@ fn tab_entries() {
     st.closed_tabs = vec!["C:/work/old-repo".into()];
     let reopen = find(&st, "Reopen closed tab").expect("Reopen closed tab");
     assert_eq!(reopen.detail.as_deref(), Some("old-repo"));
-    assert_eq!(reopen.shortcut, Some("Ctrl+Shift+T"));
+    assert_eq!(reopen.shortcut, Some(keys("Ctrl+Shift+T").as_str()));
 
     let dir = scratch_repo("palette-more-reopen");
     st.closed_tabs = vec![dir.clone()];

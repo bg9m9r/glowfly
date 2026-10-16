@@ -1,7 +1,7 @@
 //! Headless tests for the command palette: opening, the commands it lists, moving the
 //! selection, and running commands through the existing messages.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::PaletteMsg;
@@ -321,13 +321,13 @@ fn shortcut_hints() {
     let (st, dir) = repo_with_topic("palette-hints");
     let list = shown(&st, "");
     let hint = |label: &str| list.iter().find(|s| s.entry.label == label).map(|s| s.entry.shortcut).expect(label);
-    assert_eq!(hint("Search commits"), Some("Ctrl+F"));
-    assert_eq!(hint("Close tab"), Some("Ctrl+W"));
-    assert_eq!(hint("Open Preferences"), Some("Ctrl+,"));
+    assert_eq!(hint("Search commits"), Some(keys("Ctrl+F").as_str()));
+    assert_eq!(hint("Close tab"), Some(keys("Ctrl+W").as_str()));
+    assert_eq!(hint("Open Preferences"), Some(keys("Ctrl+,").as_str()));
     assert_eq!(hint("Refresh"), Some("F5"));
-    assert_eq!(hint("New tab"), Some("Ctrl+T"));
-    assert_eq!(hint("Stage all files"), Some("Ctrl+Shift+S"));
-    assert_eq!(hint("Keyboard shortcuts"), Some("Ctrl+/"));
+    assert_eq!(hint("New tab"), Some(keys("Ctrl+T").as_str()));
+    assert_eq!(hint("Stage all files"), Some(keys("Ctrl+Shift+S").as_str()));
+    assert_eq!(hint("Keyboard shortcuts"), Some(keys("Ctrl+/").as_str()));
     for label in ["Push", "Stash changes", "Create tag at HEAD…", "Checkout topic"] {
         assert_eq!(hint(label), None, "{label}");
     }

@@ -1,7 +1,7 @@
 //! Headless tests for undo and redo: what gets recorded, when the history is kept or cleared,
 //! and undoing each kind of operation end to end against real repositories.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::CommitMsg;
@@ -287,7 +287,7 @@ fn discarded_file_comes_back_with_undo() {
     drive(&mut st, Msg::Stage(StageMsg::DiscardFile("a.txt".into())));
     assert_ne!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
     assert!(matches!(st.undo.undo.last(), Some(Action::Discard { path, .. }) if path == "a.txt"), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_tooltip(), "Undo discard in a.txt (Ctrl+Z)");
+    assert_eq!(st.undo.undo_tooltip(), format!("Undo discard in a.txt ({})", keys("Ctrl+Z")));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
