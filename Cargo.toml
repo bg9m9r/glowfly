@@ -26,3 +26,11 @@ unsafe_op_in_unsafe_fn = "warn"
 lto = "thin"
 codegen-units = 1
 strip = true
+
+# Debug builds and tests: line tables are enough for panics and backtraces, and dependencies
+# need none. Much less to write and link than full debug info.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
