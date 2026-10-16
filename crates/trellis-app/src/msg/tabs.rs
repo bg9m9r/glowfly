@@ -1,6 +1,7 @@
 //! Messages of the tab bar (update/tabs.rs).
 
 use std::path::PathBuf;
+use trellis_core::repo::CommonDir;
 
 /// Opening, switching, moving, closing and restoring tabs (update/tabs.rs).
 pub enum TabsMsg {
@@ -11,8 +12,8 @@ pub enum TabsMsg {
     /// Close tab `i`; `usize::MAX` closes the active tab.
     CloseTab(usize),
     ReopenClosedTab,
-    /// Move tab `from` so it ends up at index `to` (removed, then inserted); the active tab
-    /// stays active.
+    /// Move tab `from` toward slot `to`; with grouping on, a drop outside its group moves the
+    /// whole group (`tab_groups::move_order`). The active tab stays active.
     MoveTab {
         from: usize,
         to: usize,
@@ -26,6 +27,8 @@ pub enum TabsMsg {
         paths: Vec<PathBuf>,
         active: usize,
     },
+    /// Result of `Effect::ReadTabGroups`: the common dir of each restored tab's folder.
+    GroupsRead(Vec<(PathBuf, Option<CommonDir>)>),
 }
 
 impl TabsMsg {
@@ -41,7 +44,8 @@ impl TabsMsg {
             | Self::MoveTab { .. }
             | Self::CloseOtherTabs(..)
             | Self::CloseTabsToRight(..)
-            | Self::RestoreTabs { .. } => None,
+            | Self::RestoreTabs { .. }
+            | Self::GroupsRead(..) => None,
         }
     }
 }

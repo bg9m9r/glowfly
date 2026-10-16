@@ -155,6 +155,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("worktree_ops", &["check_folder", "remove", "dirty_count"]),
     ("paths", &["resolve", "temp_dir", "same_folder"]),
     ("FolderId", &["of"]),
+    ("CommonDir", &["at"]),
     (
         "platform",
         &[

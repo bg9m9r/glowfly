@@ -41,6 +41,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
             || folder.is_some_and(|f| crate::paths::FolderId::of(path) == Some(f))))
     .then(|| path.to_path_buf());
     let git_dir = repo.path().to_path_buf();
+    let common = common_dir::CommonDir::of(&repo);
     let name = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| workdir.display().to_string());
     let state = repo.state();
 
@@ -229,6 +230,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         opened_as,
         folder,
         git_dir,
+        common,
         name,
         remote_urls,
         head_branch,

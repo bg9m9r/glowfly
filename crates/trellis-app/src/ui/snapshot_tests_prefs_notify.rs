@@ -1,9 +1,12 @@
-//! Preferences > UI Customization's Desktop notifications row: the checkbox only asks update
-//! to change the setting (which saves it and sends the confirming notification).
+//! Preferences > UI Customization rows: Desktop notifications, whose checkbox only asks update
+//! to change the setting (which saves it and sends the confirming notification), and Group
+//! worktree tabs, bound to the setting directly.
 
-use super::snapshot_tests::{harness, render, settings};
+use super::snapshot_tests::{harness, harness_sized, render, settings};
 use crate::msg::{Msg, PrefsMsg};
 use crate::state::{AppState, PrefPage, PrefsState};
+use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use std::time::Instant;
 use trellis_core::settings::ThemeChoice;
@@ -32,4 +35,15 @@ fn desktop_notifications_checkbox_only_asks() {
 #[test]
 fn preferences_ui_desktop_on() {
     render("prefs_ui_desktop_on", page(true), true);
+}
+
+#[test]
+fn group_worktree_tabs_row() {
+    let mut h = harness_sized(page(false), true, egui::vec2(1400.0, 1560.0));
+    h.run();
+    h.check_snapshot("prefs_ui_group_worktree_tabs");
+    assert!(h.state().0.settings.group_worktree_tabs, "on by default");
+    h.get_by_label("Automatically group worktree tabs together").click();
+    h.run();
+    assert!(!h.state().0.settings.group_worktree_tabs);
 }

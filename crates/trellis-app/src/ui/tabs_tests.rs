@@ -1,4 +1,5 @@
-//! Tab bar interaction tests: dragging a tab to reorder it, and the tab context menu.
+//! Tab bar interaction tests: dragging a tab to reorder it, the tab context menu, and worktree
+//! tab groups (their strip, dragging a group, the repository line in the tooltip).
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::Msg;
@@ -9,6 +10,7 @@ use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
+use trellis_core::repo::CommonDir;
 use trellis_core::settings::ThemeChoice;
 
 /// The fixture's two tabs plus a third, so a tab can be dropped in the middle.
@@ -86,4 +88,86 @@ fn tab_context_menu() {
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::CloseTabsToRight(_)))));
     drop(h);
     remove_fixture(&dir);
+}
+
+/// Five tabs: the fixture and a linked worktree of it (group A), an ungrouped tab, and two tabs
+/// of group B. The linked and B tabs are unloaded, with their groups set by hand.
+fn grouped_tabs(name: &str) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
+    let base = trellis_core::paths::temp_dir().join(format!("trellis-tab-groups-{name}"));
+    let a = st.snap.as_ref().unwrap().common.clone();
+    let b = CommonDir { dir: base.join("api").join(".git"), folder: None, name: "api".into() };
+    let tab = |n: &str, group: Option<&CommonDir>| Tab { group: group.cloned(), ..Tab::unloaded(base.join(n)) };
+    st.tabs = vec![
+        Tab { group: Some(a.clone()), ..Tab::unloaded(dir.clone()) },
+        tab("demo-hotfix", Some(&a)),
+        tab("notes", None),
+        tab("api", Some(&b)),
+        tab("api-review", Some(&b)),
+    ];
+    (st, dir)
+}
+
+#[test]
+fn grouped_tabs_have_a_strip() {
+    let (st, dir) = grouped_tabs("tabs-grouped");
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("tabs_grouped");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn dragging_a_grouped_tab_out_moves_its_group() {
+    let (st, dir) = grouped_tabs("tabs-group-drag");
+    let mut h = harness(st, true);
+    h.run();
+    let drag_to = |h: &mut Harness<'_, (AppState, Vec<Msg>)>, slots: f32, release: bool| {
+        let start = tab_centre(0);
+        pointer(h, start, Some((PointerButton::Primary, true)));
+        h.step();
+        pointer(h, start + egui::vec2(12.0, 0.0), None);
+        h.step();
+        let over = start + egui::vec2(221.0 * slots, 0.0);
+        pointer(h, over, None);
+        h.step();
+        h.run();
+        if release {
+            pointer(h, over, Some((PointerButton::Primary, false)));
+            h.run();
+        }
+    };
+    // Past group B: both group A tabs slide (the dragged one floats over slot 3).
+    drag_to(&mut h, 3.0, false);
+    assert!(h.state().1.is_empty(), "nothing is sent while dragging");
+    h.check_snapshot("tabs_group_dragging");
+    pointer(&mut h, tab_centre(0) + egui::vec2(663.0, 0.0), Some((PointerButton::Primary, false)));
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 3 }))), "the raw slot is sent");
+
+    // Inside the group: a move within it.
+    h.state_mut().1.clear();
+    drag_to(&mut h, 1.0, true);
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { from: 0, to: 1 }))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn a_grouped_tab_names_its_repository_on_hover() {
+    for (i, grouped) in [(1, true), (2, false)] {
+        let (st, dir) = grouped_tabs(&format!("tabs-group-tip-{i}"));
+        let mut h = harness(st, true);
+        h.run();
+        pointer(&mut h, tab_centre(i), None);
+        for _ in 0..4 {
+            h.run();
+        }
+        let name = if grouped { "demo-hotfix" } else { "notes" };
+        assert!(h.query_by_label_contains(name).is_some(), "tab {i} shows its path");
+        assert_eq!(h.query_by_label_contains("Repository: demo").is_some(), grouped, "tab {i}");
+        drop(h);
+        remove_fixture(&dir);
+    }
 }

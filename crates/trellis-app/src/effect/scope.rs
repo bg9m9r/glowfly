@@ -58,6 +58,7 @@ impl Effect {
             | Effect::SaveSettings(_)
             | Effect::SaveRecent(_)
             | Effect::CheckRepoFolders(_)
+            | Effect::ReadTabGroups(_)
             | Effect::SaveTabs { .. }
             | Effect::OpenUrl(_)
             | Effect::OpenTerminal(_)

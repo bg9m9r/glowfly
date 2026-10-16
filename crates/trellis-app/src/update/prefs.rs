@@ -246,7 +246,7 @@ pub(super) fn save_settings(st: &mut AppState) -> Effect {
     Effect::SaveSettings(Box::new(st.settings.clone()))
 }
 
-/// Makes the file watcher and the conflict check follow the settings. Sent every frame while
+/// Makes the file watcher, the conflict check and the tab groups follow the settings. Sent every frame while
 /// Preferences is open (and after a profile switch): both are no-ops when nothing changed.
 pub(super) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.settings.watch_files != st.watch.enabled {
@@ -260,6 +260,7 @@ pub(super) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
     } else {
         super::conflict_check::want(st, fx);
     }
+    super::tab_groups::regroup(st, fx);
 }
 
 /// Switches the Integrations page to `provider`, prefilling the host for the open repository.

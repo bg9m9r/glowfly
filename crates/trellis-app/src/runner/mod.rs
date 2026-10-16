@@ -345,6 +345,16 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::SetGitConfig { cwd, global, key, value } => config::set(&cwd, global, &key, value.as_deref()),
         save @ (Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. }) => saves::save_now(save),
         Effect::CheckRepoFolders(paths) => Some(Msg::Recent(RecentMsg::FoldersChecked(crate::platform::check_folders(&paths)))),
+        Effect::ReadTabGroups(paths) => {
+            let read = paths
+                .into_iter()
+                .map(|p| {
+                    let common = repo::CommonDir::at(&p);
+                    (p, common)
+                })
+                .collect();
+            Some(Msg::Tabs(crate::msg::TabsMsg::GroupsRead(read)))
+        }
         Effect::OpenUrl(url) => os::open_url(&url),
         Effect::OpenTerminal(dir) => os::open_terminal(&dir),
         Effect::OpenFolder(dir) => os::open_folder(&dir),

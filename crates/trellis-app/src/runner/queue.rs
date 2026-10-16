@@ -136,6 +136,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::CheckWorktreeFolder(_)
         | Effect::CheckCloneParent { .. }
         | Effect::CheckRepoFolders(_)
+        | Effect::ReadTabGroups(_)
         | Effect::DetectLfs { .. }
         | Effect::LoadLfs { .. }
         | Effect::LoadSparse { .. }

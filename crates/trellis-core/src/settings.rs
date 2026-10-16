@@ -205,6 +205,8 @@ pub struct Settings {
     /// Show a WIP row in the graph for each other worktree with uncommitted changes
     /// (Preferences > UI Customization).
     pub worktree_wips: bool,
+    /// Keep tabs of one repository's worktrees side by side (Preferences > UI Customization).
+    pub group_worktree_tabs: bool,
     pub branch_visibility: BranchVisibility,
     pub columns: GraphColumns,
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
@@ -333,6 +335,7 @@ impl Default for Settings {
             ghost_refs: true,
             highlight_ref_rows: true,
             worktree_wips: true,
+            group_worktree_tabs: true,
             branch_visibility: BranchVisibility::All,
             columns: GraphColumns::default(),
             column_widths: ColumnWidths::default(),

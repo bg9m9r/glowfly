@@ -221,3 +221,18 @@ fn swap_carries_zoom_and_panels() {
     assert_eq!(s.zoom_percent, 150);
     assert!(s.show_left_panel);
 }
+
+#[test]
+fn group_worktree_tabs_defaults_on_and_switches_with_the_profile() {
+    assert!(Settings::default().group_worktree_tabs);
+    // Files written before the setting existed group the tabs.
+    let old: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(old.group_worktree_tabs);
+    let mut s = two();
+    s.group_worktree_tabs = false;
+    s.swap_profile_setup(B);
+    assert!(s.group_worktree_tabs, "B's saved preference");
+    s.active_profile = Some(B);
+    s.swap_profile_setup(A);
+    assert!(!s.group_worktree_tabs, "A's, saved on the way out");
+}

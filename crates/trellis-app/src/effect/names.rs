@@ -50,6 +50,7 @@ impl Effect {
             Effect::SaveSettings(_) => "save-settings",
             Effect::SaveRecent(_) => "save-recent",
             Effect::CheckRepoFolders(_) => "check-repo-folders",
+            Effect::ReadTabGroups(_) => "read-tab-groups",
             Effect::SaveTabs { .. } => "save-tabs",
             Effect::OpenUrl(_) => "open-url",
             Effect::OpenTerminal(_) => "open-terminal",
@@ -132,6 +133,7 @@ impl Effect {
             | Effect::SaveSettings(_)
             | Effect::SaveRecent(_)
             | Effect::CheckRepoFolders(_)
+            | Effect::ReadTabGroups(_)
             | Effect::SaveTabs { .. }
             | Effect::ListSigningKeys { .. }
             | Effect::ExportPublicKey { .. }

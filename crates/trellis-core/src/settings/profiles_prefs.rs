@@ -69,6 +69,7 @@ profile_prefs! {
     ghost_refs: bool,
     highlight_ref_rows: bool,
     worktree_wips: bool,
+    group_worktree_tabs: bool,
     branch_visibility: BranchVisibility,
     columns: GraphColumns,
     column_widths: ColumnWidths,

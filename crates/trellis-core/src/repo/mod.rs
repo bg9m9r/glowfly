@@ -23,6 +23,7 @@ mod attrs;
 mod blame;
 mod blame_porcelain;
 mod collide;
+mod common_dir;
 mod conflict;
 mod diff;
 mod diff_types;
@@ -65,6 +66,7 @@ mod worktrees;
 
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameRun, blame_file};
 pub use collide::{Collision, Folding, probe};
+pub use common_dir::{CommonDir, repo_name_of};
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{
     BranchChanges, Comparison, ViewDiff, branch_changes, commit_detail, commit_stats, commit_stats_until, compare, compare_files,
@@ -199,6 +201,8 @@ pub struct Snapshot {
     /// that gives no file ids.
     pub folder: Option<crate::paths::FolderId>,
     pub git_dir: PathBuf,
+    /// The git dir every worktree of this repository shares: what groups worktree tabs.
+    pub common: CommonDir,
     pub name: String,
     /// (remote name, fetch URL)
     pub remote_urls: Vec<(String, String)>,
@@ -312,6 +316,8 @@ impl LoadOptions {
 mod bytes_tests;
 #[cfg(test)]
 mod collide_tests;
+#[cfg(test)]
+mod common_dir_tests;
 #[cfg(test)]
 mod compare_tests;
 #[cfg(test)]

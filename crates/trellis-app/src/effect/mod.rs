@@ -297,6 +297,9 @@ pub enum Effect {
     /// Which of these repository folders are gone (not a directory or unreachable), and the
     /// identity of each that is there; reported as `RecentMsg::FoldersChecked`.
     CheckRepoFolders(Vec<PathBuf>),
+    /// The common dir of each restored tab's folder, without loading it; reported as
+    /// `TabsMsg::GroupsRead`.
+    ReadTabGroups(Vec<PathBuf>),
     /// The open tabs (repositories) and which one is active, for the next start.
     SaveTabs {
         paths: Vec<PathBuf>,

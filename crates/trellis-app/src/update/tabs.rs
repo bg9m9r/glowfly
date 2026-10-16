@@ -1,11 +1,12 @@
 //! Tabs: opening repositories side by side, switching, reordering, closing and reopening, and
 //! restoring the previous session. Switching parks the active tab's data and restores the
-//! other's; reordering moves parked data with its tab.
+//! other's; reordering moves parked data with its tab. Where a tab opens and how a drop moves it
+//! follow the worktree groups (`tab_groups.rs`).
 
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::TabsMsg;
 use crate::state::conflict::ConflictView;
-use crate::state::tabs::{MAX_CLOSED_TABS, Parked, index_after_move};
+use crate::state::tabs::{MAX_CLOSED_TABS, Parked};
 use crate::state::{AppState, Selection, Tab};
 use std::path::PathBuf;
 use trellis_core::repo::Snapshot;
@@ -31,7 +32,7 @@ pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
                 open(st, path, fx);
             }
         }
-        TabsMsg::MoveTab { from, to } => move_tab(st, from, to, fx),
+        TabsMsg::MoveTab { from, to } => super::tab_groups::moved(st, from, to, fx),
         TabsMsg::CloseOtherTabs(i) if i < st.tabs.len() => close_where(st, |j| j == i, i, fx),
         TabsMsg::CloseTabsToRight(i) if i < st.tabs.len() => close_where(st, |j| j <= i, i, fx),
         TabsMsg::RestoreTabs { paths, active } => {
@@ -51,7 +52,9 @@ pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
             } else {
                 switch(st, target, fx);
             }
+            super::tab_groups::restored(st, fx);
         }
+        TabsMsg::GroupsRead(read) => super::tab_groups::read(st, read, fx),
         // Out of range: the tab is gone.
         TabsMsg::CloseOtherTabs(_) | TabsMsg::CloseTabsToRight(_) => {}
     }
@@ -70,9 +73,11 @@ pub(super) fn open(st: &mut AppState, path: PathBuf, fx: &mut Vec<Effect>) {
         return;
     }
     if st.snap.is_some() || st.tabs[st.active_tab].path.is_some() {
+        // Next to its worktree group when that is known already (`tab_groups::slot_for`).
+        let at = super::tab_groups::slot_for(st, &path);
+        super::tab_groups::insert_tab(st, at, Tab::empty());
         let back = st.active_tab;
-        st.tabs.push(Tab::empty());
-        switch(st, st.tabs.len() - 1, fx);
+        switch(st, at, fx);
         st.tab_return = Some(back);
     }
     st.tabs[st.active_tab] = Tab::unloaded(path.clone());
@@ -109,6 +114,7 @@ pub(super) fn opened(st: &mut AppState) -> Effect {
         tab.folder = snap.folder;
         tab.name = snap.name.clone();
     }
+    super::tab_groups::loaded(st);
     save(st)
 }
 
@@ -204,20 +210,6 @@ fn remember_closed(st: &mut AppState, path: PathBuf) {
     if st.closed_tabs.len() > MAX_CLOSED_TABS {
         st.closed_tabs.remove(0);
     }
-}
-
-/// Moves tab `from` to index `to`. The active tab stays active and keeps its data in
-/// `AppState`; every other tab's parked data moves with it.
-fn move_tab(st: &mut AppState, from: usize, to: usize, fx: &mut Vec<Effect>) {
-    let n = st.tabs.len();
-    if from >= n || to >= n || from == to {
-        return;
-    }
-    let tab = st.tabs.remove(from);
-    st.tabs.insert(to, tab);
-    st.active_tab = index_after_move(st.active_tab, from, to);
-    st.tab_return = st.tab_return.map(|r| index_after_move(r, from, to));
-    fx.push(save(st));
 }
 
 /// Closes every tab for which `keep` is false. `survivor` (the tab the request came from) is
@@ -363,7 +355,7 @@ fn unpark(st: &mut AppState, p: Parked) {
 }
 
 /// The session to restore on the next start: tabs with a repository, and the active one.
-fn save(st: &AppState) -> Effect {
+pub(super) fn save(st: &AppState) -> Effect {
     let with_path: Vec<(usize, PathBuf)> = st.tabs.iter().enumerate().filter_map(|(i, t)| t.path.clone().map(|p| (i, p))).collect();
     let active = with_path.iter().position(|(i, _)| *i >= st.active_tab).unwrap_or(0);
     Effect::SaveTabs { paths: with_path.into_iter().map(|(_, p)| p).collect(), active }

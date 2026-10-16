@@ -116,6 +116,10 @@ binary (package `trellis`).
   the identities worker threads found (`AppState::same_folder`, `state/known_folders.rs`); it
   never folds case, which is the volume's business. Settings saved per repository are keyed by
   `real_workdir` through `settings::repo_keys`.
+  Worktree tab groups: each `Tab::group` is its repository's common git dir (`Snapshot::common`,
+  or for restored tabs `Effect::ReadTabGroups`, read at startup without loading them); the pure
+  rules for blocks, drops and regrouping are in `state/tab_groups.rs`, applied by
+  `update/tab_groups.rs` and drawn by `ui/tabs.rs`.
 - **Job follow-ups**: a job can carry what to do once it succeeds (`JobSpec`/`RunningJob`
   `then_push`, `then_open`, `then_pr`, `then_link`), handled in `update/ops.rs::finish_job`. Those that act
   on the repository run only while the job's tab is active and are logged otherwise. A follow-up that needs the refreshed snapshot waits for the

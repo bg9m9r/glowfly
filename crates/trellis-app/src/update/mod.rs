@@ -71,6 +71,7 @@ mod status_tip;
 mod submodule_add;
 mod submodule_remove;
 mod submodules;
+mod tab_groups;
 mod tabs;
 mod tag_annotate;
 mod tags;
@@ -283,6 +284,8 @@ mod submodule_add_tests;
 mod submodule_remove_tests;
 #[cfg(test)]
 mod submodule_tests;
+#[cfg(test)]
+mod tab_groups_tests;
 #[cfg(test)]
 mod tabs_tests;
 #[cfg(test)]

@@ -11,7 +11,7 @@ use git2::Oid;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use trellis_core::paths::{FolderId, same_spelling};
-use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, Snapshot};
+use trellis_core::repo::{CommitDetail, CommonDir, DiffTarget, FileDiff, Snapshot};
 use trellis_core::settings::{DiffLayout, DiffMode};
 use trellis_core::whole_file::Expanded;
 
@@ -29,6 +29,9 @@ pub struct Tab {
     /// The folder's identity on disk (`Snapshot::folder`), once loaded in this tab: what matches
     /// any other spelling of it, case included where the volume ignores case.
     pub folder: Option<FolderId>,
+    /// The common dir of the tab's repository, from its snapshot or the startup read
+    /// (`Effect::ReadTabGroups`): what groups worktree tabs. None for a new tab, or before either.
+    pub group: Option<CommonDir>,
     /// Everything this tab showed when it was last active. `None` for the active tab, and for
     /// a tab restored at startup that hasn't been loaded yet.
     pub parked: Option<Box<Parked>>,
@@ -36,13 +39,13 @@ pub struct Tab {
 
 impl Tab {
     pub fn empty() -> Self {
-        Self { path: None, name: "New tab".into(), real: None, folder: None, parked: None }
+        Self { path: None, name: "New tab".into(), real: None, folder: None, group: None, parked: None }
     }
 
     /// A tab for `path` whose repository loads when the tab is first selected.
     pub fn unloaded(path: PathBuf) -> Self {
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string());
-        Self { path: Some(path), name, real: None, folder: None, parked: None }
+        Self { path: Some(path), name, real: None, folder: None, group: None, parked: None }
     }
 
     /// Whether this tab shows the repository at `path` (as given, or where it really is), by
@@ -129,7 +132,8 @@ pub struct Parked {
     pub diff_expanded: Expanded,
 }
 
-/// Where the tab at index `i` ends up after moving the tab at `from` to `to`.
+/// Where the tab at index `i` ends up after moving the tab at `from` to `to`: what
+/// `tab_groups::move_order` gives when every tab is a block of its own (its tests compare).
 pub fn index_after_move(i: usize, from: usize, to: usize) -> usize {
     if i == from {
         to

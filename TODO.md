@@ -75,7 +75,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ✔ Editor, terminal, diff tool and merge tool | Follow-ups in Later > External tools and Later > External diff and merge tools |
 | Notifications | ✔ location, behind alerts and desktop notifications under UI Customization | Per-kind choices, click to focus (Later > Notifications) |
-| UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
+| UI Customization | ✔ UI Customization | Repo group colors (wait on repository groups) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
 | Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights, word wrap) | Font family, EOL character |
 | In-App Terminal | ✘ | Shell, font, cursor style and dimming for the built-in terminal (P1 Built-in terminal) |
@@ -93,7 +93,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 
 ### UI Customization
 
-Done except the two items that wait on other features (repo groups, tabs and worktrees).
+Done except the group colors, which wait on repository groups in the repository manager.
 
 - [x] **Theme** dropdown (dark, light, more)
 - [x] **Notification location** (bottom left, top right, …), once toasts exist
@@ -104,7 +104,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Default group color / reset all to default**,
       for repo groups in the repository manager. (Workspace color belongs to cloud Workspaces,
       which are out of scope.)
-- [ ] **Automatically group worktree tabs together**, after tabs and worktrees
+- [x] **Automatically group worktree tabs together**: tabs of one repository's worktrees open
+      and stay side by side with a colored strip; a drop outside the group moves the whole group
 - [x] **Show toolbar icon labels**
 - [x] **Enable spell checking** in commit messages
 - [x] **Author initials vs avatars**: real avatars (Gravatar or the hosting service's
@@ -992,8 +993,7 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Move a worktree (`git worktree move`)
 - An Open folder button in the "folder couldn't be fully deleted" report, and a retry of the
   folder delete
-- A context-menu entry to show or hide the WORKTREES section; optionally group worktree tabs
-  next to their main repository's tab
+- A context-menu entry to show or hide the WORKTREES section
 - Refresh other worktrees' WIP counts on watcher and status-only reloads and on returning to the
   tab (today only full loads count them)
 - A Refresh worktree changes item in the WORKTREES header menu that counts again without walking
@@ -1558,3 +1558,15 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Open issue rows in the in-app issue panel once issues can be viewed in Trellis
 - Apply saved PR and issue filters (labels, milestones) across repositories
 - Check out a pull request's branch from the dashboard
+
+### Automatically group worktree tabs together
+
+- A tab group context menu: close the group, close the other groups, move the group to the start
+  or end
+- Collapse a tab group to one tab showing a count
+- A modifier-drag that takes one tab out of its group or drops it into another group
+- A repository name chip at the start of each group in the tab strip
+- Strip colors chosen per repository, shared with the repository manager's group colors once
+  those exist
+- Save each tab's group in the tabs file so the startup read isn't needed
+- Keyboard shortcuts to jump to the next or previous tab group

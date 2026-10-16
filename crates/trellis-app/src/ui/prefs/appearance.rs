@@ -157,6 +157,13 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, now: (i64, i3
             "Adds a row above a worktree's checked-out commit while it has uncommitted changes, with counts. Click it to open that worktree. Counts are read when the repository loads.",
         );
     });
+    row(ui, "Group worktree tabs", |ui| {
+        ui.checkbox(&mut s.group_worktree_tabs, "Automatically group worktree tabs together");
+        help(
+            ui,
+            "Tabs for worktrees of the same repository (its main folder and every linked worktree) stay next to each other, with a colored line under them. Drag a tab inside its group to reorder it; drop it outside the group to move the whole group.",
+        );
+    });
     row(ui, "Branch visibility in commit graph", |ui| {
         combo(ui, "visibility", &mut s.branch_visibility, &[(BV::All, "All"), (BV::Smart, "Smart")]);
         help(ui, "Smart shows the checked-out branch, its upstream, the default branch, and branches with open pull requests.");

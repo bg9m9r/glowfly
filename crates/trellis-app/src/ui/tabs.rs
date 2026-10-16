@@ -1,12 +1,17 @@
 //! The tab bar above the toolbar: one tab per open repository, plus a "new tab" button. Tabs
-//! are dragged sideways to reorder them; right-clicking one offers the close actions.
+//! are dragged sideways to reorder them; right-clicking one offers the close actions. With
+//! Group worktree tabs on, tabs of one repository's worktrees form a group (`state/tab_groups.rs`)
+//! marked by a colored strip along their bottom; a tab dropped outside its group takes the group.
 
 use super::theme::color;
 use crate::msg::Msg;
 use crate::msg::TabsMsg;
 use crate::state::AppState;
-use crate::state::tabs::index_after_move;
-use eframe::egui::{self, Align2, Button, CursorIcon, FontId, Id, PointerButton, Rect, Response, Sense, Stroke, StrokeKind, pos2, vec2};
+use crate::state::tab_groups::{self, is_identity, move_order, new_index, shown_at};
+use eframe::egui::{
+    self, Align2, Button, Color32, CursorIcon, FontId, Id, PointerButton, Rect, Response, Sense, Stroke, StrokeKind, pos2, vec2,
+};
+use std::ops::Range;
 
 const HEIGHT: f32 = 30.0;
 const ROUNDING: egui::CornerRadius = egui::CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 };
@@ -19,11 +24,11 @@ struct TabDrag {
     grab: f32,
 }
 
-/// A drag in progress: the dragged tab, the slot it would drop into, and where it is drawn.
-#[derive(Clone, Copy)]
+/// A drag in progress: the dragged tab, the order a drop now would give (`order[new] == old`),
+/// and where it is drawn.
 struct Floating {
     from: usize,
-    to: usize,
+    order: Vec<usize>,
     rect: Rect,
 }
 
@@ -54,7 +59,11 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                         Slot { rect, r, close }
                     })
                     .collect();
-                let floating = drag(ui, &slots, strip_left, pitch, msgs);
+                let on = st.settings.group_worktree_tabs;
+                let blocks = tab_groups::blocks(&st.tabs, on);
+                let shown = tab_groups::shown_groups(&st.tabs, on);
+                let floating = drag(ui, &slots, &blocks, strip_left, pitch, msgs);
+                let gap = pitch - width;
                 // The active tab's name comes from its loaded repository.
                 let name = |i: usize| match (&st.snap, i == st.active_tab) {
                     (Some(snap), true) => snap.name.as_str(),
@@ -63,19 +72,33 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                 for (i, Slot { rect, r, close }) in slots.into_iter().enumerate() {
                     let active = i == st.active_tab;
                     let p = ui.painter();
-                    match floating {
+                    let group = shown_at(&shown, i);
+                    match &floating {
                         Some(f) if f.from == i => {}
                         // While dragging, the others slide to where they would be after the drop.
                         Some(f) => {
-                            let shift = (index_after_move(i, f.from, f.to) as f32 - i as f32) * pitch;
-                            paint_tab(p, rect.translate(vec2(shift, 0.0)), name(i), active, false, false, false);
+                            let shift = (new_index(&f.order, i) as f32 - i as f32) * pitch;
+                            let rect = rect.translate(vec2(shift, 0.0));
+                            paint_tab(p, rect, name(i), active, false, false, false);
+                            if let Some((members, n)) = group {
+                                // Where the group's ends will be after the drop.
+                                let at = |j: usize| new_index(&f.order, j);
+                                let (lo, hi) = members.clone().map(at).fold((usize::MAX, 0), |(lo, hi), j| (lo.min(j), hi.max(j)));
+                                paint_group_strip(p, rect, group_color(*n), at(i) == lo, at(i) == hi, gap);
+                            }
                         }
                         None => {
                             let (hovered, close_hovered) = (r.hovered(), close.hovered());
                             paint_tab(p, rect, name(i), active, hovered, active || hovered || close_hovered, close_hovered);
-                            let r = match &st.tabs[i].path {
-                                Some(path) => r.on_hover_text(trellis_core::native_path::shown(path)),
-                                None => r,
+                            if let Some((members, n)) = group {
+                                paint_group_strip(p, rect, group_color(*n), i == members.start, i + 1 == members.end, gap);
+                            }
+                            let r = match (&st.tabs[i].path, group.and(st.tabs[i].group.as_ref())) {
+                                (Some(path), Some(g)) => {
+                                    r.on_hover_text(format!("{}\nRepository: {}", trellis_core::native_path::shown(path), g.name))
+                                }
+                                (Some(path), None) => r.on_hover_text(trellis_core::native_path::shown(path)),
+                                (None, _) => r,
                             };
                             if close.clicked() || r.middle_clicked() {
                                 msgs.push(Msg::Tabs(TabsMsg::CloseTab(i)));
@@ -90,6 +113,9 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                 if let Some(f) = floating {
                     let active = f.from == st.active_tab;
                     paint_tab(ui.painter(), f.rect, name(f.from), active, false, active, false);
+                    if let Some((_, n)) = shown_at(&shown, f.from) {
+                        paint_group_strip(ui.painter(), f.rect, group_color(*n), true, true, gap);
+                    }
                     ui.painter().rect_stroke(f.rect, ROUNDING, Stroke::new(1.0_f32, color::primary()), StrokeKind::Inside);
                 }
                 new_tab_button(ui, &st.keymap, msgs);
@@ -98,8 +124,9 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
 }
 
 /// Tracks a tab drag: returns where the dragged tab floats while one is in progress, and pushes
-/// `MoveTab` when it is dropped in another slot.
-fn drag(ui: &egui::Ui, slots: &[Slot], strip_left: f32, pitch: f32, msgs: &mut Vec<Msg>) -> Option<Floating> {
+/// `MoveTab` with the slot under it when dropping it there changes the order (`blocks` are the
+/// tabs that move together, `tab_groups::move_order`).
+fn drag(ui: &egui::Ui, slots: &[Slot], blocks: &[Range<usize>], strip_left: f32, pitch: f32, msgs: &mut Vec<Msg>) -> Option<Floating> {
     let drag_id = Id::new("tab-drag");
     let n = slots.len();
     if n < 2 {
@@ -119,20 +146,34 @@ fn drag(ui: &egui::Ui, slots: &[Slot], strip_left: f32, pitch: f32, msgs: &mut V
     };
     let left = (px.x - state.grab).clamp(strip_left, strip_left + (n - 1) as f32 * pitch);
     let to = drop_slot(left, strip_left, pitch, n);
+    let order = move_order(blocks, state.from, to);
     if slot.r.drag_stopped() {
         ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
-        if to != state.from {
+        if !is_identity(&order) {
             msgs.push(Msg::Tabs(TabsMsg::MoveTab { from: state.from, to }));
         }
         return None;
     }
     ui.ctx().set_cursor_icon(CursorIcon::Grabbing);
-    Some(Floating { from: state.from, to, rect: Rect::from_min_size(pos2(left, slot.rect.top()), slot.rect.size()) })
+    Some(Floating { from: state.from, order, rect: Rect::from_min_size(pos2(left, slot.rect.top()), slot.rect.size()) })
 }
 
 /// The slot nearest to a tab whose left edge is at `left`.
 fn drop_slot(left: f32, strip_left: f32, pitch: f32, n: usize) -> usize {
     (((left - strip_left) / pitch).round().max(0.0) as usize).min(n - 1)
+}
+
+/// The color of the `n`th group from the left, so neighbouring groups differ.
+fn group_color(n: usize) -> Color32 {
+    [color::blue(), color::purple(), color::green(), color::amber()][n % 4].gamma_multiply(0.8)
+}
+
+/// The strip under a grouped tab: inset at the group's outer ends, and across the `gap` to the
+/// next tab elsewhere, so it runs unbroken along the group.
+fn paint_group_strip(p: &egui::Painter, rect: Rect, color: Color32, first: bool, last: bool, gap: f32) {
+    let left = rect.left() + if first { 4.0 } else { 0.0 };
+    let right = rect.right() + if last { -4.0 } else { gap };
+    p.rect_filled(Rect::from_min_max(pos2(left, rect.bottom() - 3.0), pos2(right, rect.bottom() - 1.0)), 1.0, color);
 }
 
 fn close_rect(tab: Rect) -> Rect {

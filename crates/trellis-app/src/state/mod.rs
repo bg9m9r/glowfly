@@ -69,6 +69,7 @@ pub mod ssh_service;
 pub mod ssh_use;
 pub mod stashes;
 pub mod submodules;
+pub mod tab_groups;
 pub mod tabs;
 pub mod tags;
 pub mod terminal;
