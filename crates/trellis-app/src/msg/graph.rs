@@ -61,6 +61,9 @@ impl GraphMsg {
 /// The graph's search bar: the query, stepping through matches, the filter and the author
 /// picker (update/search.rs).
 pub enum SearchMsg {
+    /// Edit > Find commits and the palette's Search commits: close an open diff, show the search
+    /// bar and focus its field.
+    Open,
     /// The view edited the query (`ViewState::search`).
     QueryChanged,
     /// Enter in the query field: select the next match (wrapping).
@@ -95,7 +98,9 @@ impl SearchMsg {
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             // All are intents for the active tab.
-            Self::QueryChanged | Self::Next | Self::ToggleFilter | Self::Close | Self::WantAuthors | Self::PickAuthor(..) => None,
+            Self::Open | Self::QueryChanged | Self::Next | Self::ToggleFilter | Self::Close | Self::WantAuthors | Self::PickAuthor(..) => {
+                None
+            }
             // The tab asks again for what is unsearched when it is shown (tabs::activate →
             // search_paths::resume).
             Self::PathsSearched { .. } => None,

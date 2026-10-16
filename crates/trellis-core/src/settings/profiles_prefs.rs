@@ -64,6 +64,7 @@ profile_prefs! {
     show_left_panel: bool,
     show_details_panel: bool,
     show_toolbar: bool,
+    show_menu_bar: bool,
     spellcheck: bool,
     use_initials: bool,
     ghost_refs: bool,

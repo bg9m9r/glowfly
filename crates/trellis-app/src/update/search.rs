@@ -13,6 +13,13 @@ use trellis_core::commit_query::{self, CommitQuery};
 
 pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
     match msg {
+        SearchMsg::Open => {
+            if st.diff.is_some() {
+                super::repo::close_diff(st);
+            }
+            st.view.show_search = true;
+            st.view.focus_search = true;
+        }
         SearchMsg::QueryChanged => query_changed(st, fx),
         SearchMsg::Next => next(st, fx),
         SearchMsg::ToggleFilter => {

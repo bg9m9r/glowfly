@@ -18,6 +18,7 @@ use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
+use crate::msg::SearchMsg;
 use crate::msg::StageMsg;
 use crate::msg::StashMsg;
 use crate::msg::TabsMsg;
@@ -192,14 +193,7 @@ fn enter_input(st: &mut AppState, kind: InputKind) {
 fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect>) {
     use PaletteCommand as C;
     let msg = match cmd {
-        C::SearchCommits => {
-            if st.diff.is_some() {
-                fx.extend(super::update(st, Msg::Repo(RepoMsg::CloseDiff), now));
-            }
-            st.view.show_search = true;
-            st.view.focus_search = true;
-            return;
-        }
+        C::SearchCommits => Msg::Search(SearchMsg::Open),
         C::Fetch => Msg::git("Fetch all", &["fetch", "--all", "--prune"]),
         C::Pull => Msg::git("Pull", &["pull", "--ff"]),
         C::FetchFullHistory => Msg::Job(JobMsg::Deepen(Deepen::Full)),

@@ -60,6 +60,7 @@ fn search_msgs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<String> {
         .iter()
         .filter_map(|m| match m {
             Msg::Search(s) => Some(match s {
+                SearchMsg::Open => "Open".to_owned(),
                 SearchMsg::QueryChanged => "QueryChanged".to_owned(),
                 SearchMsg::Next => "Next".to_owned(),
                 SearchMsg::ToggleFilter => "ToggleFilter".to_owned(),

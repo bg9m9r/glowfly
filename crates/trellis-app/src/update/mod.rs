@@ -2,6 +2,7 @@
 //! and a message, mutates the state, and returns the effects to run. Nothing here blocks or
 //! touches disk, network or the window, which keeps it fully testable.
 
+mod app;
 mod askpass;
 mod avatars;
 mod blame;
@@ -408,6 +409,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Onboarding(m) => onboarding::handle(st, m, now, &mut fx),
         Msg::DeepLink(m) => deep_link::handle(st, m, now, &mut fx),
         Msg::Dashboard(m) => dashboard::handle(st, m, now, &mut fx),
+        Msg::App(m) => app::handle(st, m, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).

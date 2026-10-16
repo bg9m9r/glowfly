@@ -34,6 +34,7 @@ pub mod layout;
 pub mod lfs;
 pub mod lines;
 pub mod logs;
+pub mod menu_bar;
 pub mod notify;
 pub mod onboarding;
 pub mod onboarding_tour;
@@ -218,6 +219,8 @@ pub enum Modal {
     /// An invalid link, a linked repository not found, or several copies to choose from.
     DeepLink(deep_link::LinkDialog),
     CreateIssue(Box<issue_form::IssueForm>),
+    /// Help > About Trellis: version, links and third-party notices.
+    About,
 }
 
 /// The most commits "Load more" goes up to.

@@ -91,6 +91,7 @@ fn entries_without_repo() {
             "Hide left panel",
             "Hide commit details panel",
             "Hide toolbar",
+            "Hide menu bar",
             "Theme: Dark",
             "Theme: Light",
             "Theme: Follow system",

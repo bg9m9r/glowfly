@@ -39,6 +39,7 @@ mod init_dialog;
 mod issue;
 mod layout;
 mod list_row;
+mod menu_bar;
 mod menus;
 mod modals;
 mod palette;
@@ -318,6 +319,7 @@ impl TrellisApp {
                 Effect::Ui(UiEffect::CopyText(text)) => ctx.copy_text(text),
                 Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
                 Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
+                Effect::Ui(UiEffect::CloseWindow) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
                 Effect::Ui(UiEffect::FocusWindow) => {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
                     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
@@ -355,6 +357,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         st.terminal.focused = false;
         prefs::show(ctx, st, msgs);
     } else {
+        menu_bar::show(ctx, st, msgs);
         tabs::show(ctx, st, msgs);
         if st.settings.show_toolbar {
             toolbar::show(ctx, st, msgs);

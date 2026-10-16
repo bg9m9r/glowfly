@@ -197,7 +197,7 @@ impl PaletteCommand {
             C::Layout(LayoutMsg::ZoomIn) => BindingId::ZoomIn,
             C::Layout(LayoutMsg::ZoomOut) => BindingId::ZoomOut,
             C::Layout(LayoutMsg::ZoomReset) => BindingId::ZoomReset,
-            C::Layout(LayoutMsg::SetPanel { panel, .. } | LayoutMsg::TogglePanel(panel)) => panel.binding(),
+            C::Layout(LayoutMsg::SetPanel { panel, .. } | LayoutMsg::TogglePanel(panel)) => return panel.binding(),
             _ => return None,
         })
     }

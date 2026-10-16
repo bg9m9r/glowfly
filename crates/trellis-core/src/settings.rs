@@ -3,9 +3,9 @@
 use crate::forge::{Account, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
-use std::ops::RangeInclusive;
 
 mod column_widths;
+mod editor;
 mod file;
 mod forge_filters;
 mod graph_filter;
@@ -19,6 +19,7 @@ mod tools;
 mod trust;
 mod zoom;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
+pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
 pub use file::{LoadProblem, settings_file};
 pub use forge_filters::RepoForgeFilters;
 pub use graph_filter::{FilterOp, GraphFilter};
@@ -197,6 +198,8 @@ pub struct Settings {
     pub show_details_panel: bool,
     /// Draw the toolbar at the top of the window.
     pub show_toolbar: bool,
+    /// Draw the menu bar (File, Edit, View, Window, Help) at the top of the window.
+    pub show_menu_bar: bool,
     pub spellcheck: bool,
     /// Initials instead of Gravatar / hosting-service avatars.
     pub use_initials: bool,
@@ -330,6 +333,7 @@ impl Default for Settings {
             show_left_panel: true,
             show_details_panel: true,
             show_toolbar: true,
+            show_menu_bar: true,
             spellcheck: true,
             use_initials: false,
             ghost_refs: true,
@@ -373,12 +377,6 @@ impl Default for Settings {
 }
 
 pub const MIN_INITIAL_COMMITS: usize = 500;
-/// The diff viewer's text size when nothing else is set.
-pub const DEFAULT_DIFF_FONT_SIZE: f32 = 12.5;
-/// The diff text sizes Preferences > Editor offers.
-pub const DIFF_FONT_SIZES: RangeInclusive<f32> = 8.0..=24.0;
-/// The tab sizes Preferences > Editor offers.
-pub const TAB_SIZES: RangeInclusive<u8> = 1..=16;
 
 impl Settings {
     pub fn connection(&self, account: &Account) -> Option<&Connection> {
@@ -387,20 +385,6 @@ impl Settings {
 
     pub fn commit_limit(&self) -> usize {
         self.initial_commits.max(MIN_INITIAL_COMMITS)
-    }
-
-    /// The diff text size, kept within `DIFF_FONT_SIZES` (the default for a non-number from a
-    /// hand-edited file).
-    pub fn diff_font_px(&self) -> f32 {
-        if !self.diff_font_size.is_finite() {
-            return DEFAULT_DIFF_FONT_SIZE;
-        }
-        self.diff_font_size.clamp(*DIFF_FONT_SIZES.start(), *DIFF_FONT_SIZES.end())
-    }
-
-    /// Columns per tab stop, kept within `TAB_SIZES`.
-    pub fn tab_columns(&self) -> usize {
-        self.tab_size.clamp(*TAB_SIZES.start(), *TAB_SIZES.end()) as usize
     }
 
     /// Graph and list dates: the Date/Time format, or relative ("3 hours ago") to `now`.

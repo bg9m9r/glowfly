@@ -1,5 +1,5 @@
-//! Favorite and recent repository rows, shared by the welcome screen and the toolbar's repository
-//! menu.
+//! Favorite and recent repository rows, shared by the welcome screen, the toolbar's repository
+//! menu and File > Open recent.
 
 use super::common::menu_item;
 use super::theme::color;
@@ -72,9 +72,25 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 
 /// The repository menu's Favorites (when there are any) and Recent sections and "Clear recent".
 pub fn menu_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    sections(ui, st, msgs, true);
+}
+
+/// File > Open recent: the same sections, without the separator above the first.
+pub fn recent_submenu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    sections(ui, st, msgs, false);
+}
+
+/// Whether there is a favorite or a recent repository to list.
+pub fn has_entries(st: &AppState) -> bool {
+    !favorites(&st.settings).is_empty() || !recent_rows(st).is_empty()
+}
+
+fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separator: bool) {
     let favs = favorites(&st.settings);
     if !favs.is_empty() {
-        ui.separator();
+        if lead_separator {
+            ui.separator();
+        }
         header(ui, "Favorites");
         for p in &favs {
             row(ui, st, p, Place::Menu, Section::Favorite, msgs);
@@ -82,7 +98,9 @@ pub fn menu_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     }
     let recent = recent_rows(st);
     if !recent.is_empty() {
-        ui.separator();
+        if lead_separator || !favs.is_empty() {
+            ui.separator();
+        }
         header(ui, "Recent");
         for p in recent {
             row(ui, st, p, Place::Menu, Section::Recent, msgs);

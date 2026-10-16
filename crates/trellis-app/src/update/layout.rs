@@ -2,9 +2,10 @@
 //! change; the shell applies them on the next frame.
 
 use crate::effect::Effect;
-use crate::msg::LayoutMsg;
+use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
 use crate::state::layout::{Panel, set_shown, shown, zoom_toast_text};
+use crate::state::toasts::ToastAction;
 use std::time::Instant;
 use trellis_core::settings::{DEFAULT_ZOOM_PERCENT, zoom_in_from, zoom_out_from};
 
@@ -15,9 +16,19 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
         LayoutMsg::ZoomReset => zoom(st, DEFAULT_ZOOM_PERCENT, now, fx),
         LayoutMsg::TogglePanel(p) => {
             let on = !shown(&st.settings, p);
-            set(st, p, on, fx);
+            set_and_note(st, p, on, now, fx);
         }
-        LayoutMsg::SetPanel { panel, shown } => set(st, panel, shown, fx),
+        LayoutMsg::SetPanel { panel, shown } => set_and_note(st, panel, shown, now, fx),
+    }
+}
+
+/// `set`, and when that hid the menu bar, a toast that brings it back (it has no key, and the
+/// View menu that showed it is gone).
+fn set_and_note(st: &mut AppState, p: Panel, on: bool, now: Instant, fx: &mut Vec<Effect>) {
+    if set(st, p, on, fx) && p == Panel::MenuBar && !on {
+        let back = Msg::Layout(LayoutMsg::SetPanel { panel: Panel::MenuBar, shown: true });
+        let action = ToastAction { label: "Show menu bar".into(), msg: Box::new(back), workdir: None };
+        st.toast_action(true, "Menu bar hidden", action, now);
     }
 }
 
@@ -37,8 +48,11 @@ fn zoom(st: &mut AppState, new: u16, now: Instant, fx: &mut Vec<Effect>) {
     st.view.zoom_toast = Some(st.toast_replacing(st.view.zoom_toast, true, text, now));
 }
 
-fn set(st: &mut AppState, p: Panel, on: bool, fx: &mut Vec<Effect>) {
-    if set_shown(&mut st.settings, p, on) {
+/// Shows or hides `p`, saving when that changed it; returns whether it did.
+fn set(st: &mut AppState, p: Panel, on: bool, fx: &mut Vec<Effect>) -> bool {
+    let changed = set_shown(&mut st.settings, p, on);
+    if changed {
         fx.push(super::prefs::save_settings(st));
     }
+    changed
 }

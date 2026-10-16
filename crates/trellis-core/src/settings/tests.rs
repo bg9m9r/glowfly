@@ -87,6 +87,19 @@ fn extended_logging_defaults_off_and_old_files_load() {
 }
 
 #[test]
+fn menu_bar_defaults_shown_and_old_files_load() {
+    // Files written before the setting existed show the menu bar.
+    assert!(Settings::default().show_menu_bar);
+    let empty: Settings = serde_json::from_str("{}").unwrap();
+    assert!(empty.show_menu_bar);
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5, "show_toolbar": false}"#).unwrap();
+    assert!(s.show_menu_bar);
+    let off = Settings { show_menu_bar: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.show_menu_bar);
+}
+
+#[test]
 fn ignore_whitespace_defaults_off() {
     // Files written before the toggle existed show every whitespace change.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

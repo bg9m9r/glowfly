@@ -157,7 +157,15 @@ binary (package `trellis`).
   (`ui/layout.rs::apply_zoom`, like the theme), so a profile switch or a Preferences edit takes
   effect on the next frame. egui's built-in zoom keys are turned off at start-up so the keymap
   owns them. `show_left_panel`, `show_details_panel` and `show_toolbar` are checked by
-  `ui/mod.rs::draw`, which simply skips a hidden panel.
+  `ui/mod.rs::draw`, which simply skips a hidden panel; `show_menu_bar` is checked by
+  `ui/menu_bar::show`. Hiding the menu bar through `LayoutMsg` toasts a Show menu bar button.
+- **Menu bar** (`ui/menu_bar/`, one file per menu): every item pushes the message the toolbar,
+  palette or key already sends, shows its key from the keymap (`Keymap::hint`, never a literal)
+  and explains a disabled state on hover; the texts and reasons are pure helpers in
+  `state/menu_bar.rs` and `UndoHistory::undo_entry`. Its own window actions are `AppMsg`
+  (`update/app.rs`): Quit returns `UiEffect::CloseWindow`, which the shell's `dispatch` turns
+  into a viewport close, and About opens `Modal::About`, which lists the third-party licenses
+  `trellis_core::notices` parses from THIRD-PARTY-NOTICES.md (embedded at build time).
 - **Desktop notifications**: `update/notify.rs::desktop` returns `Effect::Notify` (a
   `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and
   `st.view.focused` is false; the shell sets `view.focused` from egui at the start of each frame,

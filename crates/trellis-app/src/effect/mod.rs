@@ -399,4 +399,6 @@ pub enum UiEffect {
     RequestAttention,
     /// A link arrived: un-minimize, raise and focus the window (or flash it when that fails).
     FocusWindow,
+    /// File > Quit: close the main window.
+    CloseWindow,
 }

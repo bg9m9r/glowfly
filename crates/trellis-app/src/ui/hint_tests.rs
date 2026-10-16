@@ -46,3 +46,14 @@ fn commit_tip_reads_the_keymap() {
     );
     assert_eq!(super::commit_box::shortcuts_tip(&keys), want);
 }
+
+#[test]
+fn menu_bar_items_name_the_current_key() {
+    let mut keys = Keymap::default();
+    assert_eq!(super::menu_bar::hint(&keys, Some(I::Undo)), keys.hint(I::Undo).unwrap());
+    keys.set(I::Undo, f8());
+    assert_eq!(super::menu_bar::hint(&keys, Some(I::Undo)), "F8");
+    keys.set(I::Undo, Vec::new());
+    assert_eq!(super::menu_bar::hint(&keys, Some(I::Undo)), "");
+    assert_eq!(super::menu_bar::hint(&keys, None), "");
+}

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::gitcli::args;
 
+mod app;
 mod blame;
 mod branch;
 mod dashboard;
@@ -35,6 +36,7 @@ mod tabs;
 mod trust;
 mod work;
 
+pub use app::AppMsg;
 pub use blame::BlameMsg;
 pub use branch::{BranchMsg, CloneMsg};
 pub use dashboard::DashboardMsg;
@@ -167,6 +169,8 @@ pub enum Msg {
     DeepLink(crate::deep_link::DeepLinkMsg),
     /// The cross-repository dashboard (update/dashboard.rs).
     Dashboard(DashboardMsg),
+    /// Quitting and the About dialog (update/app.rs).
+    App(AppMsg),
     /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
@@ -278,6 +282,7 @@ impl Msg {
             Msg::Onboarding(m) => m.on_inactive(),
             Msg::DeepLink(m) => m.on_inactive(),
             Msg::Dashboard(m) => m.on_inactive(),
+            Msg::App(m) => m.on_inactive(),
             Msg::Tick(_)
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }

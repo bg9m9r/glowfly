@@ -540,7 +540,8 @@ Done except the group colors, which wait on repository groups in the repository 
       JSON theme files in the config folder's `themes` folder (a base theme and the colors it
       changes, as #rrggbb or another color's name), listed in Preferences and the palette
 - [x] **Zoom** in/out/reset; show/hide the left, detail and toolbar panels
-- [ ] **Menu bar** (File / Edit / View / Window / Help), including Undo/Redo under Edit
+- [x] **Menu bar** (File / Edit / View / Window / Help), including Undo/Redo under Edit, an
+      About dialog with the third-party notices, and a UI Customization toggle to hide it
 - [ ] **Language**: translate the UI (date locale and relative dates already exist)
 - [x] **Logs**: keep the activity log across sessions; error and performance logs; extended
       logging (the in-session activity log exists)
@@ -599,7 +600,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Safety stash before `reset --hard`, so undoing the reset restores discarded changes; offer to
   stash local changes when undoing or redoing a hard reset or Discard all
 - When undoing `checkout --track` / `checkout -b`, offer to delete the created branch
-- Edit menu entries for Undo/Redo, once Trellis has a menu bar
 
 ### Diff viewer upgrade
 
@@ -618,7 +618,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Color Dockerfile `RUN` commands as shell (the hidden "Dockerfile (with bash)" grammar)
 - Trim the bundled syntax set to the languages Trellis wants, if the extra ~0.6 MB of binary
   size matters
-- Show the third-party notices inside the app (an About dialog)
 - A per-file language picker (e.g. in the diff header), remembered per path
 - For commit diffs, read `.gitattributes` from the commit instead of the working tree
 - Take the hunk-header function context from `.gitattributes` diff drivers (`diff=<lang>`,
@@ -1481,7 +1480,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Keep the trust chip and conflict-prediction indicator visible while the toolbar is hidden
 - A palette entry and key for showing or hiding the activity log
 - Per-repository panel layout
-- View menu entries for zoom and panels once the menu bar exists
 
 ### Git engine choice
 
@@ -1505,7 +1503,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Leave time spent waiting on a credential or passphrase prompt out of git job timings
 - Rotate the error and performance logs by day as well as by size
 - Keep two Trellis instances' activity logs apart (one file per instance or a lock during trims)
-- Add log entries to the Help menu once the menu bar exists
 - Open a log file in the system's text editor from the panel
 
 ### Onboarding
@@ -1570,3 +1567,17 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   those exist
 - Save each tab's group in the tabs file so the startup read isn't needed
 - Keyboard shortcuts to jump to the next or previous tab group
+
+### Menu bar
+
+- A key to show or hide the menu bar, and Alt showing it for one use while it is hidden
+- Alt-letter mnemonics and keyboard navigation of the menus (Alt+F, arrow keys between menus)
+- The native macOS application menu (the global menu bar with the standard app menu) instead of the in-window bar
+- Ask before quitting (from the menu or the window's close button) while a git operation is still running
+- A Quit key in the keymap (Cmd+Q on macOS, Ctrl+Q elsewhere)
+- About Trellis and Quit as command palette entries
+- A Show menu bar button in the status bar while the menu bar is hidden
+- Repository and Branch menus (fetch, pull, push, stash, new branch and tag)
+- Recently closed tabs as a submenu, to reopen any of them
+- The OS and architecture in the About dialog's copied version info
+- A Check for updates item in the Help menu once updates exist

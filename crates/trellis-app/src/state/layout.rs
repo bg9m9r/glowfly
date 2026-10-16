@@ -1,5 +1,6 @@
 //! The window's zoom and which of its panels are drawn: the left panel of refs, the commit
-//! details panel and the toolbar. All four live in `Settings`; the shell reads them each frame.
+//! details panel, the toolbar and the menu bar. All live in `Settings`; the shell reads them
+//! each frame.
 
 use super::AppState;
 use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
@@ -16,10 +17,12 @@ pub enum Panel {
     Details,
     /// The toolbar at the top of the window.
     Toolbar,
+    /// The menu bar (File, Edit, View, Window, Help) above the tabs.
+    MenuBar,
 }
 
 impl Panel {
-    pub const ALL: [Panel; 3] = [Panel::Left, Panel::Details, Panel::Toolbar];
+    pub const ALL: [Panel; 4] = [Panel::Left, Panel::Details, Panel::Toolbar, Panel::MenuBar];
 
     /// Its name in labels ("Hide <name>").
     pub fn name(self) -> &'static str {
@@ -27,15 +30,17 @@ impl Panel {
             Panel::Left => "left panel",
             Panel::Details => "commit details panel",
             Panel::Toolbar => "toolbar",
+            Panel::MenuBar => "menu bar",
         }
     }
 
-    /// The key that shows or hides it.
-    pub fn binding(self) -> BindingId {
+    /// The key that shows or hides it; the menu bar has none.
+    pub fn binding(self) -> Option<BindingId> {
         match self {
-            Panel::Left => BindingId::ToggleLeftPanel,
-            Panel::Details => BindingId::ToggleDetailsPanel,
-            Panel::Toolbar => BindingId::ToggleToolbar,
+            Panel::Left => Some(BindingId::ToggleLeftPanel),
+            Panel::Details => Some(BindingId::ToggleDetailsPanel),
+            Panel::Toolbar => Some(BindingId::ToggleToolbar),
+            Panel::MenuBar => None,
         }
     }
 
@@ -44,6 +49,7 @@ impl Panel {
             Panel::Left => "sidebar branches refs left panel toggle collapse",
             Panel::Details => "side panel details commit box wip staging toggle",
             Panel::Toolbar => "toolbar top bar buttons toggle",
+            Panel::MenuBar => "menu bar menus file edit view window help top toggle",
         }
     }
 }
@@ -54,6 +60,7 @@ pub fn shown(s: &Settings, p: Panel) -> bool {
         Panel::Left => s.show_left_panel,
         Panel::Details => s.show_details_panel,
         Panel::Toolbar => s.show_toolbar,
+        Panel::MenuBar => s.show_menu_bar,
     }
 }
 
@@ -63,6 +70,7 @@ pub fn set_shown(s: &mut Settings, p: Panel, on: bool) -> bool {
         Panel::Left => &mut s.show_left_panel,
         Panel::Details => &mut s.show_details_panel,
         Panel::Toolbar => &mut s.show_toolbar,
+        Panel::MenuBar => &mut s.show_menu_bar,
     };
     let changed = *field != on;
     *field = on;

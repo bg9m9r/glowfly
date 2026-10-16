@@ -123,6 +123,13 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, now: (i64, i3
             "While the toolbar is hidden, the status bar has a Show toolbar button, and the command palette and keyboard shortcuts keep working.",
         );
     });
+    row(ui, "Show menu bar", |ui| {
+        ui.checkbox(&mut s.show_menu_bar, "");
+        help(
+            ui,
+            "While the menu bar is hidden, the command palette and keyboard shortcuts still reach everything, and Show menu bar in the palette brings it back.",
+        );
+    });
     row(ui, "Show toolbar icon labels", |ui| {
         ui.checkbox(&mut s.toolbar_labels, "");
     });

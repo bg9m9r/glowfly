@@ -106,7 +106,8 @@ fn build_fixture(dir: &Path) {
 
 pub(super) fn settings(theme: ThemeChoice) -> Settings {
     // Fixed locale and initials (no network) for reproducible images.
-    Settings { theme, date_locale: "en_US".into(), use_initials: true, auto_fetch_minutes: 0, ..Settings::default() }
+    // Only the menu-bar snapshots draw the bar, so other whole-window images stay as they were.
+    Settings { theme, date_locale: "en_US".into(), use_initials: true, auto_fetch_minutes: 0, show_menu_bar: false, ..Settings::default() }
 }
 
 /// 2026-02-01 12:00 UTC, shown in UTC: rendering never depends on the machine's clock or zone.

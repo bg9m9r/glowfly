@@ -154,6 +154,7 @@ impl PaletteCommand {
                 LayoutMsg::SetPanel { panel: Panel::Left, .. } => "left-panel",
                 LayoutMsg::SetPanel { panel: Panel::Details, .. } => "details-panel",
                 LayoutMsg::SetPanel { panel: Panel::Toolbar, .. } => "toolbar",
+                LayoutMsg::SetPanel { panel: Panel::MenuBar, .. } => "menu-bar",
                 LayoutMsg::TogglePanel(_) => return None,
             },
             C::Logs(m) => match m {

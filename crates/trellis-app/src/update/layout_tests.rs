@@ -103,8 +103,50 @@ fn toggle_panel_flips_and_saves() {
         assert!(Panel::ALL.iter().filter(|&&o| o != p).all(|&o| shown(&st.settings, o)), "only {p:?} changes");
         assert!(saves(&run(&mut st, LayoutMsg::TogglePanel(p))));
         assert!(shown(&st.settings, p), "{p:?}");
-        assert!(st.toasts.is_empty());
+        // Only hiding the menu bar says how to get it back.
+        assert_eq!(st.toasts.len(), usize::from(p == Panel::MenuBar), "{p:?}");
     }
+}
+
+#[test]
+fn hiding_the_menu_bar_offers_it_back() {
+    let mut st = state();
+    assert!(st.settings.show_menu_bar);
+    assert!(saves(&run(&mut st, LayoutMsg::SetPanel { panel: Panel::MenuBar, shown: false })));
+    assert!(!st.settings.show_menu_bar);
+    assert_eq!(toast_texts(&st), ["Menu bar hidden"]);
+    let action = st.toasts[0].action.as_ref().expect("a Show menu bar button");
+    assert_eq!(action.label, "Show menu bar");
+    assert!(action.workdir.is_none());
+    assert!(matches!(*action.msg, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::MenuBar, shown: true })));
+    // Already hidden: nothing saved, no second toast.
+    assert!(!saves(&run(&mut st, LayoutMsg::SetPanel { panel: Panel::MenuBar, shown: false })));
+    assert_eq!(st.toasts.len(), 1);
+
+    let id = st.toasts[0].id;
+    let fx = update(&mut st, Msg::ToastAction(id), Instant::now());
+    assert!(st.settings.show_menu_bar);
+    assert!(saves(&fx));
+    assert!(st.toasts.is_empty(), "the toast goes with its button");
+    // Showing it says nothing.
+    assert!(!saves(&run(&mut st, LayoutMsg::SetPanel { panel: Panel::MenuBar, shown: true })));
+    assert!(st.toasts.is_empty());
+}
+
+#[test]
+fn palette_lists_the_menu_bar_without_a_key() {
+    let mut st = state();
+    let hide = find(&st, "Hide menu bar").expect("Hide menu bar");
+    assert_eq!(hide.shortcut(&st.keymap), None);
+    assert!(find(&st, "Show menu bar").is_none());
+    update(&mut st, Msg::Palette(PaletteMsg::TogglePalette), Instant::now());
+    let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(hide.command)), Instant::now());
+    assert!(!st.settings.show_menu_bar);
+    assert!(saves(&fx));
+    assert_eq!(st.palette_recent.keys(), ["menu-bar"]);
+    let show = find(&st, "Show menu bar").expect("Show menu bar");
+    assert_eq!(show.shortcut(&st.keymap), None);
+    assert!(find(&st, "Hide menu bar").is_none());
 }
 
 #[test]

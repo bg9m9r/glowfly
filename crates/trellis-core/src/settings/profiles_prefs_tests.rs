@@ -236,3 +236,14 @@ fn group_worktree_tabs_defaults_on_and_switches_with_the_profile() {
     s.swap_profile_setup(A);
     assert!(!s.group_worktree_tabs, "A's, saved on the way out");
 }
+
+#[test]
+fn swap_carries_the_menu_bar() {
+    let mut s = two();
+    s.show_menu_bar = false;
+    s.swap_profile_setup(B);
+    assert!(s.show_menu_bar, "in from the incoming profile");
+    s.active_profile = Some(B);
+    s.swap_profile_setup(A);
+    assert!(!s.show_menu_bar, "back from the outgoing profile");
+}
