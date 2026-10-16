@@ -7,6 +7,7 @@ use crate::error::Error;
 
 mod azure;
 mod bitbucket;
+mod forks;
 mod github;
 mod gitlab;
 mod paging;

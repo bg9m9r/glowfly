@@ -1,8 +1,9 @@
 //! The REMOTE section: Add and Edit remote (the dialog's form checked again against the current
 //! snapshot), Fetch one remote, and Remove after a confirmation. Every change is a plain git
-//! job through `ops::start_job`.
+//! job through `ops::start_job`. View on service and the fork dialogs are in `remote_forks`.
 
 use super::ops::{self, JobSpec};
+use super::remote_forks;
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
@@ -47,11 +48,22 @@ pub(super) fn handle(st: &mut AppState, msg: RemoteMsg, fx: &mut Vec<Effect>) {
             }
             ops::start_job(st, JobSpec::new(format!("Remove remote {name}"), vec![remove_cmd(&name)]), fx);
         }
+        RemoteMsg::View(name) => remote_forks::view(st, &name, fx),
+        RemoteMsg::ForkDialog(name) => remote_forks::open_picker(st, &name, fx),
+        RemoteMsg::PickFork(i) => remote_forks::pick(st, i),
+        RemoteMsg::AddFork => remote_forks::add_fork(st, fx),
+        RemoteMsg::ForkOnService(name) => remote_forks::open_create(st, &name, fx),
+        RemoteMsg::AddMyFork => remote_forks::add_my_fork(st, fx),
+        RemoteMsg::CreateFork => remote_forks::create(st, fx),
+        RemoteMsg::RetryForks => remote_forks::retry(st, fx),
+        RemoteMsg::ForksLoaded { workdir, target, result } => remote_forks::forks_loaded(st, &workdir, &target, *result),
+        RemoteMsg::MyForkFound { workdir, target, result } => remote_forks::my_fork_found(st, &workdir, &target, *result),
+        RemoteMsg::ForkCreated { workdir, target, name, result } => remote_forks::fork_created(st, workdir, &target, name, *result, fx),
     }
 }
 
 /// The configured remote `name` in the current snapshot, or None after logging that it is gone.
-fn configured(st: &mut AppState, name: &str) -> Option<RemoteInfo> {
+pub(super) fn configured(st: &mut AppState, name: &str) -> Option<RemoteInfo> {
     let found = find(st.snap.as_ref()?, name).cloned();
     if found.is_none() {
         st.log(false, gone_text(name));

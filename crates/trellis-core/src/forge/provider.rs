@@ -45,6 +45,10 @@ pub struct ProviderInfo {
     pub close_keyword: Option<&'static str>,
     /// Links its own issues to pull requests through the API rather than by mention.
     pub links_issues_by_api: bool,
+    /// Can list a repository's forks (the Add a fork dialog).
+    pub lists_forks: bool,
+    /// Can fork a repository into the signed-in user's account.
+    pub creates_forks: bool,
     /// Request headers only this service understands.
     pub api_headers: &'static [(&'static str, &'static str)],
     /// The API implementation.
@@ -127,6 +131,14 @@ impl Provider {
     pub fn has_issues(self) -> bool {
         self.info().has_issues
     }
+
+    pub fn lists_forks(self) -> bool {
+        self.info().lists_forks
+    }
+
+    pub fn creates_forks(self) -> bool {
+        self.info().creates_forks
+    }
 }
 
 /// The settings most services share; each `ProviderInfo` overrides what differs.
@@ -144,6 +156,8 @@ pub(super) const DEFAULTS: ProviderInfo = ProviderInfo {
     is_jira: false,
     close_keyword: None,
     links_issues_by_api: false,
+    lists_forks: false,
+    creates_forks: false,
     api_headers: &[],
     service: &NoService,
 };
@@ -196,5 +210,15 @@ mod tests {
         assert_eq!(fixed, ["github.com", "gitlab.com", "bitbucket.org"]);
         assert!(Provider::ALL.iter().all(|p| p.supports_gcm() != p.is_jira()));
         assert_eq!(Provider::ALL.iter().filter(|p| p.is_jira()).count(), 2);
+        let forks = |p: Provider| (p.lists_forks(), p.creates_forks());
+        for p in [GitHub, GitHubEnterprise, GitLab, GitLabSelfManaged] {
+            assert_eq!(forks(p), (true, true), "{p:?}");
+        }
+        for p in [Bitbucket, BitbucketDataCenter] {
+            assert_eq!(forks(p), (true, false), "{p:?}");
+        }
+        for p in [AzureDevOps, JiraCloud, JiraDataCenter] {
+            assert_eq!(forks(p), (false, false), "{p:?}");
+        }
     }
 }

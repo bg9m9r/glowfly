@@ -228,6 +228,12 @@ impl super::Forge for AzureDevOps {
         format!("{}/{}/{}", t.owner, t.project, t.repo)
     }
 
+    fn repo_url(&self, t: &Target) -> String {
+        let base =
+            if t.host == "dev.azure.com" { format!("https://dev.azure.com/{}", enc(&t.owner)) } else { format!("https://{}", t.host) };
+        format!("{base}/{}/_git/{}", enc(&t.project), enc(&t.repo))
+    }
+
     fn verify(&self, account: &Account, auth: &Auth) -> Result<String> {
         #[derive(Deserialize)]
         #[serde(rename_all = "camelCase")]

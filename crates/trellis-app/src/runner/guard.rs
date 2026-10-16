@@ -1,16 +1,18 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
-use crate::effect::{Effect, LoadKind, UndoResult};
+use crate::effect::{Effect, ForgeError, LoadKind, UndoResult};
 use crate::msg::JobMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
+use crate::remote::{RemoteEffect, RemoteMsg};
 use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
+use trellis_core::forge::Target;
 
 /// What to report if an effect panics, worked out before it runs.
 pub(super) struct Recovery {
@@ -31,7 +33,34 @@ enum Kind {
     SshList(u64),
     /// Generating an SSH key: the page shows Generating until it ends.
     SshGenerate,
+    /// A fork dialog's request: the dialog shows a spinner until its answer arrives.
+    Fork(FailedFork),
     Log,
+}
+
+enum FailedFork {
+    List(PathBuf, Target),
+    Find(PathBuf, Target),
+    Create(PathBuf, Target, String),
+}
+
+impl FailedFork {
+    fn of(e: &RemoteEffect) -> Self {
+        match e {
+            RemoteEffect::ListForks(r) => FailedFork::List(r.workdir.clone(), r.target.clone()),
+            RemoteEffect::FindMyFork(r) => FailedFork::Find(r.workdir.clone(), r.target.clone()),
+            RemoteEffect::CreateFork { req, name } => FailedFork::Create(req.workdir.clone(), req.target.clone(), name.clone()),
+        }
+    }
+
+    fn message(self, text: String) -> Msg {
+        let err = ForgeError { message: text, auth: false };
+        Msg::Remote(match self {
+            FailedFork::List(workdir, target) => RemoteMsg::ForksLoaded { workdir, target, result: Box::new(Err(err)) },
+            FailedFork::Find(workdir, target) => RemoteMsg::MyForkFound { workdir, target, result: Box::new(Err(err)) },
+            FailedFork::Create(workdir, target, name) => RemoteMsg::ForkCreated { workdir, target, name, result: Box::new(Err(err)) },
+        })
+    }
 }
 
 impl Recovery {
@@ -46,6 +75,7 @@ impl Recovery {
             Effect::LoadStatus { generation, .. } => Kind::Status(*generation),
             Effect::Ssh(SshEffect::List { generation }) => Kind::SshList(*generation),
             Effect::Ssh(SshEffect::Generate { .. }) => Kind::SshGenerate,
+            Effect::Remote(e) => Kind::Fork(FailedFork::of(e)),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -63,6 +93,7 @@ impl Recovery {
             }
             Kind::SshList(generation) => Msg::Ssh(SshMsg::Loaded { generation, result: Err(text) }),
             Kind::SshGenerate => Msg::Ssh(SshMsg::Generated(Err(GenerateFailure::Failed(text)))),
+            Kind::Fork(f) => f.message(text),
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {
@@ -125,6 +156,20 @@ mod tests {
         });
         update(&mut st, msg, Instant::now());
         assert!(st.job.is_none(), "the UI can start another operation");
+    }
+
+    #[test]
+    fn a_panicking_fork_request_ends_the_dialogs_spinner() {
+        use crate::remote::ForkRequest;
+        let target = trellis_core::forge::parse_remote("https://github.com/team/app", &[]).unwrap();
+        let req = ForkRequest { workdir: "C:/r".into(), target: target.clone(), auth: None, connected: false };
+        let effect = Effect::Remote(RemoteEffect::ListForks(req));
+        assert!(effect.scope().is_none(), "unscoped: the dialog gets its answer whichever tab is active");
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+        let Msg::Remote(RemoteMsg::ForksLoaded { workdir, target: t, result }) = msg else { panic!("not a fork list result") };
+        let Err(e) = *result else { panic!("not a failure") };
+        assert_eq!((workdir, t), (PathBuf::from("C:/r"), target));
+        assert!(e.message.contains("boom") && e.message.contains("list-forks") && !e.auth, "{e:?}");
     }
 
     #[test]

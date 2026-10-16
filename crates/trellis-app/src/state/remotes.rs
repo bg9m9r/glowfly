@@ -1,8 +1,10 @@
 //! The REMOTE section's text and the Add/Edit remote dialog's form and rules, shared by the
 //! views and `update` so a disabled item or a refused request shows the same words. Pure.
 
+use super::forks::{ForkAction, add_fork_label, fork_label, fork_target};
 use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
 use crate::remote::RemoteMsg;
+use trellis_core::forge::{self, Connection};
 use trellis_core::remote_ops::{RemoteEdit, RemoteNameProblem, UrlProblem, add_cmds, check_remote_name, check_url, display_url, edit_cmds};
 use trellis_core::repo::{RemoteInfo, Snapshot};
 
@@ -177,12 +179,28 @@ pub fn tooltip(info: &RemoteInfo) -> String {
     }
 }
 
-/// Add remote…, and Fetch <remote> for each remote with a fetch URL.
-pub(crate) fn palette_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
+/// Add remote…, and for each remote with a fetch URL: Fetch, View on its service, Add a fork
+/// and Fork, the last three only where they can run.
+pub(crate) fn palette_entries(snap: &Snapshot, connections: &[Connection], out: &mut Vec<Entry>) {
     let add = PaletteCommand::Remote(RemoteMsg::AddDialog);
     out.push(entry(add, "Add remote…", "new remote url origin upstream fork mirror"));
+    let cmd = PaletteCommand::Remote;
     for r in snap.remote_info.iter().filter(|r| !r.fetch_url().is_empty()) {
-        let e = entry(PaletteCommand::Remote(RemoteMsg::Fetch(r.name.clone())), format!("Fetch {}", r.name), "remote update download");
+        let e = entry(cmd(RemoteMsg::Fetch(r.name.clone())), format!("Fetch {}", r.name), "remote update download");
         out.push(with_detail(e, Some(display_url(r.fetch_url()))));
+        if let Ok(page) = forge::web_page(r.fetch_url(), connections) {
+            let label = if page.service.is_empty() {
+                format!("View {} in browser", r.name)
+            } else {
+                format!("View {} on {}", r.name, page.service)
+            };
+            out.push(with_detail(entry(cmd(RemoteMsg::View(r.name.clone())), label, "browser web open site page"), Some(page.url)));
+        }
+        if fork_target(r, connections, ForkAction::List).is_ok() {
+            out.push(entry(cmd(RemoteMsg::ForkDialog(r.name.clone())), add_fork_label(&r.name), "fork teammate contributor remote"));
+        }
+        if fork_target(r, connections, ForkAction::Create).is_ok() {
+            out.push(entry(cmd(RemoteMsg::ForkOnService(r.name.clone())), fork_label(r, connections), "fork copy account"));
+        }
     }
 }

@@ -94,7 +94,9 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         }
     }
 
-    let ctx = super::remotes::Ctx { shown: &shown, sel: &sel, current: &current, fs, graph, idle, filtering: !filter.is_empty() };
+    let connections = &st.settings.connections;
+    let ctx =
+        super::remotes::Ctx { shown: &shown, sel: &sel, current: &current, fs, graph, idle, filtering: !filter.is_empty(), connections };
     super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, msgs);
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {

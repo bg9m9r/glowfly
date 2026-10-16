@@ -1,6 +1,7 @@
 //! The REMOTE section of the left panel: a group row per configured remote (also remotes with
-//! no branches yet) with its URLs on hover and a menu to fetch, edit, copy its URLs or remove
-//! it, and under it the remote-tracking branch rows. The header's menu adds a remote.
+//! no branches yet) with its URLs on hover and a menu to fetch it, view it on its hosting
+//! service, add a teammate's fork of it, fork it into the user's account, edit it, copy its URLs
+//! or remove it, and under it the remote-tracking branch rows. The header's menu adds a remote.
 
 use super::common::{hint_row, menu_item, menu_item_if};
 use super::menus::remote_branch_menu;
@@ -10,14 +11,18 @@ use super::widgets;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
+use crate::state::forks::{ForkAction, add_fork_label, fork_label, fork_target, view_item};
 use crate::state::remotes::{fetch_blocked, find, tooltip};
 use crate::state::{ForgeState, Selection};
 use eframe::egui::{self, Align2, FontId, Response, Sense, pos2, vec2};
 use git2::Oid;
+use trellis_core::forge::Connection;
 use trellis_core::repo::{RemoteInfo, Snapshot};
 use trellis_core::settings::GraphFilter;
 
 pub(super) mod dialog;
+pub(super) mod fork_create;
+pub(super) mod fork_pick;
 
 /// What the section is drawn against.
 pub(super) struct Ctx<'a> {
@@ -32,6 +37,8 @@ pub(super) struct Ctx<'a> {
     pub idle: bool,
     /// The left-panel filter has text.
     pub filtering: bool,
+    /// Saved connections, to recognize self-hosted services.
+    pub connections: &'a [Connection],
 }
 
 pub(in crate::ui) fn section(
@@ -58,7 +65,7 @@ pub(in crate::ui) fn section(
             }
         };
         let r = group_row(ui, remote).on_hover_text(tooltip(info));
-        r.context_menu(|ui| group_menu(ui, info, c.idle, msgs));
+        r.context_menu(|ui| group_menu(ui, info, c.idle, c.connections, msgs));
         if branches.is_empty() && !c.filtering {
             hint_row(ui, "No branches yet. Fetch this remote to load them.".to_owned());
         }
@@ -95,10 +102,19 @@ fn group_row(ui: &mut egui::Ui, name: &str) -> Response {
     resp
 }
 
-fn group_menu(ui: &mut egui::Ui, info: &RemoteInfo, idle: bool, msgs: &mut Vec<Msg>) {
+fn group_menu(ui: &mut egui::Ui, info: &RemoteInfo, idle: bool, connections: &[Connection], msgs: &mut Vec<Msg>) {
     let name = &info.name;
-    menu_item_if(msgs, ui, format!("Fetch {name}"), fetch_blocked(info, idle), Msg::Remote(RemoteMsg::Fetch(name.clone())));
-    menu_item(msgs, ui, "Edit remote…", Msg::Remote(RemoteMsg::EditDialog(name.clone())));
+    let msg = |m: RemoteMsg| Msg::Remote(m);
+    menu_item_if(msgs, ui, format!("Fetch {name}"), fetch_blocked(info, idle), msg(RemoteMsg::Fetch(name.clone())));
+    let (view, why) = view_item(info, connections);
+    menu_item_if(msgs, ui, view, why.as_deref(), msg(RemoteMsg::View(name.clone())));
+    ui.separator();
+    let why = fork_target(info, connections, ForkAction::List).err();
+    menu_item_if(msgs, ui, add_fork_label(name), why.as_deref(), msg(RemoteMsg::ForkDialog(name.clone())));
+    let why = fork_target(info, connections, ForkAction::Create).err();
+    menu_item_if(msgs, ui, fork_label(info, connections), why.as_deref(), msg(RemoteMsg::ForkOnService(name.clone())));
+    ui.separator();
+    menu_item(msgs, ui, "Edit remote…", msg(RemoteMsg::EditDialog(name.clone())));
     if !info.fetch_url().is_empty() {
         menu_item(msgs, ui, "Copy fetch URL", Msg::Copy(info.fetch_url().to_owned()));
     }

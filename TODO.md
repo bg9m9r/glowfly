@@ -378,7 +378,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Create a feature, release or hotfix branch from an issue (issue menu and palette): three
     Start Git Flow items in the issue menu, and palette entries that list the assigned issues;
     the Start dialog opens with the issue's branch name typed
-- [ ] **Remote management**
+- [x] **Remote management**
   Add/edit/remove remotes (separate pull and push URLs), fetch one remote, view a remote in the
   browser, add a teammate's fork, fork on the service.
   - [x] Publish a repository with no remote to GitHub: Push (or Push ▾ > Publish to GitHub…)
@@ -386,9 +386,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     as `origin` and pushes the branch with upstream set
   - [x] Add, edit (name, fetch URL, separate push URL) and remove remotes, and fetch one remote,
     from the REMOTE section (header and remote row menus, palette)
-  - [ ] View a remote on its hosting service in the browser (row menu, from the remote URL)
-  - [ ] Add a teammate's fork as a remote (pick from the service's forks of this repository)
-  - [ ] Fork the repository on the hosting service and add the fork as a remote
+  - [x] View a remote on its hosting service in the browser (row menu, from the remote URL)
+  - [x] Add a teammate's fork as a remote (pick from the service's forks of this repository)
+  - [x] Fork the repository on the hosting service and add the fork as a remote
 - [x] **Tag management**
   Annotate an existing tag, delete from one or all remotes, push to all remotes, hide tags.
   (Push a tag and delete it locally exist; tag signing is on the Commit Signing page.)
@@ -999,6 +999,15 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   fetch or push URLs
 - Per-remote options: fetch refspecs, tag fetching, prune on fetch, the default branch
 - Offer Add remote… when fetch, pull or push finds no remote
+- Fork on Bitbucket Cloud and Bitbucket Data Center (find the user's fork and create one)
+- List forks and fork on Azure DevOps
+- Fork into an organization or group, under another name, or with only the default branch
+- Show the user's own fork first in the Add a fork list, with a one-click Add
+- View on service for self-hosted servers whose web pages use another port than their SSH address
+- After forking, offer to make the fork the push remote of the current branch, or to rename
+  origin to upstream
+- View a remote branch or commit on its hosting service from the branch and commit menus
+- Search a service's forks on the server, beyond the newest 1000
 
 ### Tag management
 

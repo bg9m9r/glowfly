@@ -14,15 +14,16 @@ pub(super) static BITBUCKET_DATA_CENTER: ProviderInfo = ProviderInfo {
     host_hint: "e.g., bitbucket.mycompany.com",
     token_help: "An HTTP access token with Repository write permission.",
     has_issues: false,
+    lists_forks: true,
     service: &BitbucketDc,
     ..DEFAULTS
 };
 
-fn dc_repo(t: &Target) -> String {
+pub(super) fn dc_repo(t: &Target) -> String {
     format!("https://{}/rest/api/1.0/projects/{}/repos/{}", t.host, enc(&t.owner), enc(&t.repo))
 }
 
-fn dc_list<T: DeserializeOwned>(auth: &Auth, first: String) -> Result<Vec<T>> {
+pub(super) fn dc_list<T: DeserializeOwned>(auth: &Auth, first: String) -> Result<Vec<T>> {
     page::collect(first.clone(), |url| {
         let v: Values<T> = get(auth, url)?;
         let next = match (v.is_last_page, v.next_page_start) {
@@ -150,6 +151,18 @@ impl super::Forge for BitbucketDc {
 
     fn token_url(&self, account: &Account) -> Option<String> {
         Some(format!("https://{}/plugins/servlet/access-tokens/manage", account.host))
+    }
+
+    /// `~user` owners are personal repositories, under /users/.
+    fn repo_url(&self, t: &Target) -> String {
+        match t.owner.strip_prefix('~') {
+            Some(user) => format!("https://{}/users/{}/repos/{}/browse", t.host, enc(user), enc(&t.repo)),
+            None => format!("https://{}/projects/{}/repos/{}/browse", t.host, enc(&t.owner), enc(&t.repo)),
+        }
+    }
+
+    fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
+        super::forks::bitbucket::data_center(t, auth)
     }
 }
 

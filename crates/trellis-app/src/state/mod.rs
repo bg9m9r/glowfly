@@ -10,6 +10,7 @@ pub mod conflict_check;
 pub mod diff_nav;
 pub mod files;
 mod forge;
+pub mod forks;
 pub mod git_env;
 pub mod gitflow;
 pub mod history;
@@ -148,6 +149,8 @@ pub enum Modal {
     GitFlowStart(gitflow::StartForm),
     GitFlowFinish(gitflow::FinishForm),
     Remote(remotes::RemoteForm),
+    AddFork(Box<forks::ForkPicker>),
+    CreateFork(Box<forks::ForkCreate>),
     Trust(trust::TrustPrompt),
     ConflictReport(conflict_check::ConflictReport),
 }

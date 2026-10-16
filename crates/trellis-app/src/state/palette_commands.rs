@@ -229,7 +229,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(entry(C::Pull, "Pull", "fast-forward merge update"));
     }
     palette_shallow::shallow_entries(snap, out);
-    super::remotes::palette_entries(snap, out);
+    super::remotes::palette_entries(snap, &st.settings.connections, out);
     if snap.head_branch.is_some() {
         out.push(entry(C::Push, "Push", "upload publish"));
     }

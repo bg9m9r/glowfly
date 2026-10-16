@@ -110,6 +110,10 @@ fn remote_group_menu() {
     for item in ["Fetch origin", "Edit remote…", "Copy fetch URL", "Copy push URL", "Remove remote…"] {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
+    // example.com is no hosting service Trellis knows: its page opens, but there are no forks.
+    assert!(!h.get_by_label("View origin in browser").is_disabled());
+    assert!(h.get_by_label("Add a fork of origin…").is_disabled());
+    assert!(h.get_by_label("Fork origin on its hosting service…").is_disabled());
     h.check_snapshot("remote_group_menu");
     h.get_by_label("Fetch origin").click();
     h.run();

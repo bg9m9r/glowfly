@@ -172,6 +172,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Tool(_)
         | Effect::GitEnv(_)
         | Effect::CheckConflicts(_)
+        | Effect::Remote(_)
         | Effect::Ui(_) => None,
     }
 }
@@ -339,6 +340,18 @@ mod tests {
         let apply =
             crate::profile::ProfileEffect::Apply { cwd: w.clone(), has_repo: true, id: trellis_core::settings::ProfileId(1), identity };
         assert_eq!(repo_of(&Effect::Profile(apply)), None);
+        // Fork lists and forking call the hosting service only; the remote is added by a job.
+        use crate::remote::{ForkRequest, RemoteEffect};
+        let target = trellis_core::forge::parse_remote("https://github.com/team/app", &[]).unwrap();
+        let req = || ForkRequest { workdir: w.clone(), target: target.clone(), auth: None, connected: false };
+        let remote =
+            [RemoteEffect::ListForks(req()), RemoteEffect::FindMyFork(req()), RemoteEffect::CreateFork { req: req(), name: "ada".into() }];
+        let names: Vec<&str> = remote.iter().map(RemoteEffect::name).collect();
+        assert_eq!(names, ["list-forks", "find-my-fork", "create-fork"]);
+        for e in remote {
+            let e = Effect::Remote(e);
+            assert_eq!((repo_of(&e), e.scope()), (None, None), "{}", e.name());
+        }
     }
 
     #[test]

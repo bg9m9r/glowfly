@@ -34,6 +34,23 @@ fn detects_hosts() {
     assert_eq!((az.provider, az.owner.as_str(), az.project.as_str(), az.repo.as_str()), (Provider::AzureDevOps, "contoso", "Web", "app"));
 }
 
+#[test]
+fn ssh_aliases_are_their_public_hosts() {
+    assert_eq!(parse_remote("ssh://git@ssh.github.com:443/o/r.git", &[]), Some(t(Provider::GitHub, "github.com", "o", "r")));
+    assert_eq!(parse_remote("ssh://git@altssh.gitlab.com:443/g/sub/app.git", &[]), Some(t(Provider::GitLab, "gitlab.com", "g/sub", "app")));
+    assert_eq!(
+        parse_remote("ssh://git@altssh.bitbucket.org:443/team/app", &[]),
+        Some(t(Provider::Bitbucket, "bitbucket.org", "team", "app"))
+    );
+    // A Windows drive letter is a folder, not an scp-like host.
+    let conn = Connection {
+        account: Account { provider: Provider::GitHubEnterprise, host: "d".into(), org: String::new() },
+        user: "u".into(),
+        method: "m".into(),
+    };
+    assert_eq!(parse_remote("D:/backups/app.git", &[conn]), None);
+}
+
 /// Read-only check against a real service, using whatever credentials Trellis would find.
 /// Run with: TRELLIS_LIVE_REMOTE=<remote url> cargo test live_remote -- --ignored --nocapture
 #[test]

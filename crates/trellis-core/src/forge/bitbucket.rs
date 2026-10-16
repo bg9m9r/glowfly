@@ -14,13 +14,14 @@ pub(super) static BITBUCKET: ProviderInfo = ProviderInfo {
     username_label: Some("Username"),
     token_help: "Your Bitbucket username and an app password with Repositories, Pull requests and Issues permissions.",
     close_keyword: Some("Resolves"),
+    lists_forks: true,
     service: &Bitbucket,
     ..DEFAULTS
 };
 
 const CLOUD: &str = "https://api.bitbucket.org/2.0";
 
-fn cloud_repo(t: &Target) -> String {
+pub(super) fn cloud_repo(t: &Target) -> String {
     format!("{CLOUD}/repositories/{}/{}", enc(&t.owner), enc(&t.repo))
 }
 
@@ -37,7 +38,7 @@ pub(super) struct Values<T> {
     pub next_page_start: Option<u64>,
 }
 
-fn cloud_list<T: DeserializeOwned>(auth: &Auth, first: String) -> Result<Vec<T>> {
+pub(super) fn cloud_list<T: DeserializeOwned>(auth: &Auth, first: String) -> Result<Vec<T>> {
     page::collect(first, |url| {
         let v: Values<T> = get(auth, url)?;
         Ok(Page { items: v.values, next: v.next })
@@ -223,6 +224,10 @@ impl super::Forge for Bitbucket {
 
     fn token_url(&self, _account: &Account) -> Option<String> {
         Some("https://bitbucket.org/account/settings/app-passwords/".into())
+    }
+
+    fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
+        super::forks::bitbucket::cloud(t, auth)
     }
 }
 

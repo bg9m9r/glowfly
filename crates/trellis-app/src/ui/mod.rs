@@ -86,6 +86,8 @@ mod snapshot_tests_file_menu;
 #[cfg(test)]
 mod snapshot_tests_file_menu_lfs;
 #[cfg(test)]
+mod snapshot_tests_forks;
+#[cfg(test)]
 mod snapshot_tests_gitflow;
 #[cfg(test)]
 mod snapshot_tests_lfs;

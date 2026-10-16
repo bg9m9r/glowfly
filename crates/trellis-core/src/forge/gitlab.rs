@@ -17,11 +17,13 @@ pub(super) static GITLAB_SELF_MANAGED: ProviderInfo = ProviderInfo {
     pr_noun: "merge request",
     pr_prefix: "!",
     close_keyword: Some("Closes"),
+    lists_forks: true,
+    creates_forks: true,
     service: &GitLab,
     ..DEFAULTS
 };
 
-fn project_api(t: &Target) -> String {
+pub(super) fn project_api(t: &Target) -> String {
     format!("https://{}/api/v4/projects/{}", t.host, enc(&format!("{}/{}", t.owner, t.repo)))
 }
 
@@ -174,6 +176,18 @@ impl super::Forge for GitLab {
         }
         let url = format!("{}/issues?scope=all&per_page=100&{}", project_api(t), iids.join("&"));
         Ok(page::by_link::<ApiIssue>(auth, url)?.into_iter().map(to_issue).collect())
+    }
+
+    fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
+        super::forks::gitlab::list(t, auth)
+    }
+
+    fn my_fork(&self, t: &Target, auth: &Auth) -> Result<super::ForkLookup> {
+        super::forks::gitlab::my_fork(t, auth)
+    }
+
+    fn create_fork(&self, t: &Target, auth: &Auth, wait: &super::Wait) -> Result<super::CreatedFork> {
+        super::forks::gitlab::create(t, auth, wait)
     }
 }
 

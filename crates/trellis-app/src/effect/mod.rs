@@ -330,6 +330,8 @@ pub enum Effect {
     GitEnv(crate::git_env::GitEnvEffect),
     /// Dry-runs a merge with git merge-tree (conflict_check.rs); reads only.
     CheckConflicts(crate::conflict_check::CheckJob),
+    /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.
+    Remote(crate::remote::RemoteEffect),
     Ui(UiEffect),
 }
 
@@ -401,6 +403,7 @@ impl Effect {
             | Effect::Patch(_)
             | Effect::Tool(_)
             | Effect::GitEnv(_)
+            | Effect::Remote(_)
             | Effect::Ui(_) => None,
         }
     }

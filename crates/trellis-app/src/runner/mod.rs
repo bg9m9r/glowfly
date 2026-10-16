@@ -38,6 +38,7 @@ mod conflict_check;
 mod expect;
 pub(crate) mod files;
 mod forge_calls;
+mod forks;
 mod git_env;
 mod guard;
 mod highlight;
@@ -316,6 +317,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Tool(t) => tools::run(t),
         Effect::GitEnv(e) => Some(git_env::run(e)),
         Effect::CheckConflicts(job) => Some(conflict_check::run(job)),
+        Effect::Remote(e) => Some(forks::run(e)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

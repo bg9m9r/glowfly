@@ -17,6 +17,8 @@ pub(super) static GITHUB_ENTERPRISE: ProviderInfo = ProviderInfo {
     env_var: Some("GITHUB_TOKEN"),
     close_keyword: Some("Closes"),
     api_headers: &[("X-GitHub-Api-Version", "2022-11-28")],
+    lists_forks: true,
+    creates_forks: true,
     service: &GitHub,
     ..DEFAULTS
 };
@@ -32,18 +34,18 @@ fn graphql_url(t: &Target) -> String {
     if t.provider == Provider::GitHub { "https://api.github.com/graphql".into() } else { format!("https://{}/api/graphql", t.host) }
 }
 
-fn repo_api(t: &Target) -> String {
+pub(super) fn repo_api(t: &Target) -> String {
     format!("{}/repos/{}/{}", api(&t.host, t.provider), enc(&t.owner), enc(&t.repo))
 }
 
 #[derive(Deserialize)]
-struct User {
-    login: String,
+pub(super) struct User {
+    pub(super) login: String,
     #[serde(default)]
     name: Option<String>,
 }
 
-fn me(host: &str, provider: Provider, auth: &Auth) -> Result<User> {
+pub(super) fn me(host: &str, provider: Provider, auth: &Auth) -> Result<User> {
     get(auth, &format!("{}/user", api(host, provider)))
 }
 
@@ -221,6 +223,18 @@ impl super::Forge for GitHub {
         let url = format!("{}/issues?state=open&assignee={}&per_page=100&sort=updated", repo_api(t), enc(&login));
         let items: Vec<ApiIssue> = page::by_link(auth, url)?;
         Ok(items.into_iter().filter(|i| i.pull_request.is_none()).map(to_issue).collect())
+    }
+
+    fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
+        super::forks::github::list(t, auth)
+    }
+
+    fn my_fork(&self, t: &Target, auth: &Auth) -> Result<super::ForkLookup> {
+        super::forks::github::my_fork(t, auth)
+    }
+
+    fn create_fork(&self, t: &Target, auth: &Auth, wait: &super::Wait) -> Result<super::CreatedFork> {
+        super::forks::github::create(t, auth, wait)
     }
 
     fn issues(&self, t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {

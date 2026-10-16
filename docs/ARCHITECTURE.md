@@ -35,7 +35,7 @@ binary (package `trellis`).
 | `gitflow.rs`, `gitflow/` | Git Flow with plain git: config, checks, start and finish plans, versions, branch groups by kind. |
 | `rebase/` | Interactive rebase: the plan, the todo file, running `git rebase -i`. |
 | `undo.rs` | Undo and redo of Trellis's own operations. |
-| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`. |
+| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`; repository web pages (`web.rs`) and forks (`forks/`). |
 | `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
 | `graph.rs` | Lane layout for the commit graph. |
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |

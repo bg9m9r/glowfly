@@ -1,5 +1,6 @@
-//! Hosting-service integrations ("forges"): remote detection, credentials, pull/merge requests
-//! and issues for GitHub, GitLab, Bitbucket, Azure DevOps and Jira, behind one common model.
+//! Hosting-service integrations ("forges"): remote detection, credentials, pull/merge requests,
+//! issues, forks and repository web pages for GitHub, GitLab, Bitbucket, Azure DevOps and Jira,
+//! behind one common model.
 
 mod azure;
 mod bitbucket;
@@ -12,6 +13,7 @@ use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 mod auth;
+mod forks;
 mod http;
 mod links;
 mod page;
@@ -19,11 +21,13 @@ mod provider;
 mod publish;
 mod refs;
 mod remote;
+mod web;
 
 pub use auth::{
     Auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact, resolve_auth,
     save_token,
 };
+pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find_my_fork, list_forks, remote_name_for, same_repository};
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
 pub use links::https_host;
@@ -31,6 +35,7 @@ pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, mention};
 pub use remote::{Connection, parse_host, parse_remote};
+pub use web::{NoWebPage, WebPage, web_page};
 
 /// A connection identity: which service, which host, and (Azure DevOps) which organization.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -195,6 +200,27 @@ pub trait Forge: Sync {
     /// How a repository is named in the interface.
     fn display(&self, t: &Target) -> String {
         format!("{}/{}", t.owner, t.repo)
+    }
+
+    /// The repository's home page (not yet checked by `links::web_url`).
+    fn repo_url(&self, t: &Target) -> String {
+        format!("https://{}/{}/{}", t.host, enc_path(&t.owner), enc(&t.repo))
+    }
+
+    /// Forks of this repository, newest first, up to `page::MAX_ITEMS`.
+    fn forks(&self, _t: &Target, _auth: &Auth) -> Result<ForkList> {
+        Err(Error::Unsupported("listing forks isn't supported on this service".into()))
+    }
+
+    /// The signed-in user and the fork of this repository they already have.
+    fn my_fork(&self, _t: &Target, _auth: &Auth) -> Result<ForkLookup> {
+        Err(Error::Unsupported("finding your fork isn't supported on this service".into()))
+    }
+
+    /// Forks this repository into the signed-in user's account, waiting (per `wait`) until it
+    /// is ready.
+    fn create_fork(&self, _t: &Target, _auth: &Auth, _wait: &Wait) -> Result<CreatedFork> {
+        Err(Error::Unsupported("forking isn't supported on this service".into()))
     }
 }
 

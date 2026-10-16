@@ -31,6 +31,7 @@ mod publish;
 mod rebase;
 mod recent;
 mod refresh;
+mod remote_forks;
 mod remotes;
 mod repo;
 mod search;
@@ -157,6 +158,8 @@ mod rebase_tests;
 mod recent_tests;
 #[cfg(test)]
 mod refresh_tests;
+#[cfg(test)]
+mod remote_fork_tests;
 #[cfg(test)]
 mod remote_tests;
 #[cfg(test)]

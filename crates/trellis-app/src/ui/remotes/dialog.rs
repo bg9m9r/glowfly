@@ -1,6 +1,6 @@
 //! The Add remote and Edit remote dialog: a name, a fetch URL and an optional push URL, checked
 //! as they are typed. `update` checks the request again and closes the dialog once the job
-//! starts.
+//! starts. When adding, a link opens the Add a fork dialog for a remote whose service lists forks.
 
 use super::super::theme::color;
 use crate::msg::Msg;
@@ -11,32 +11,46 @@ use trellis_core::remote_ops::{RemoteNameProblem, UrlProblem};
 use trellis_core::repo::Snapshot;
 
 /// A field with its label above it; returns whether Enter left it.
-fn field(ui: &mut egui::Ui, label: &str, text: &mut String, id: &str, hint: &str) -> (egui::Response, bool) {
+pub(super) fn field(ui: &mut egui::Ui, label: &str, text: &mut String, id: &str, hint: &str) -> (egui::Response, bool) {
     ui.label(label);
     let r = ui.add(egui::TextEdit::singleline(text).id(Id::new(id)).hint_text(hint).desired_width(f32::INFINITY));
     let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     (r, enter)
 }
 
-fn problem_line(ui: &mut egui::Ui, text: String) {
+pub(super) fn problem_line(ui: &mut egui::Ui, text: String) {
     if !text.is_empty() {
         ui.label(RichText::new(text).color(color::red()));
     }
 }
 
-fn note(ui: &mut egui::Ui, text: impl Into<String>) {
+pub(super) fn note(ui: &mut egui::Ui, text: impl Into<String>) {
     ui.label(RichText::new(text.into()).color(color::weak()));
 }
 
 /// The Add/Edit remote dialog; returns true when Cancel closes it (update closes it once the job
 /// starts). The name field takes the focus when nothing has it, unless `focus` is false (a
 /// credential prompt is open above it). The button is disabled while a job runs (`idle` false).
-pub fn show(ui: &mut egui::Ui, form: &mut RemoteForm, snap: Option<&Snapshot>, focus: bool, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+/// `fork_source` is the remote and service the fork link offers (add mode only).
+pub fn show(
+    ui: &mut egui::Ui,
+    form: &mut RemoteForm,
+    snap: Option<&Snapshot>,
+    fork_source: Option<(String, String)>,
+    focus: bool,
+    idle: bool,
+    msgs: &mut Vec<Msg>,
+) -> bool {
     let mut close = false;
     match &form.original {
         Some(o) => ui.heading(format!("Edit remote {}", o.name)),
         None => ui.heading("Add remote"),
     };
+    if let (None, Some((remote, service))) = (&form.original, fork_source)
+        && ui.link(format!("Pick a fork of {remote} on {service}…")).clicked()
+    {
+        msgs.push(Msg::Remote(RemoteMsg::ForkDialog(remote)));
+    }
     ui.add_space(6.0);
 
     let (name_r, enter_name) = field(ui, "Name", &mut form.name, "trellis-remote-name", "upstream");

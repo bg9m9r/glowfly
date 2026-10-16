@@ -5,7 +5,8 @@
 //! `branch_dialogs.rs`), renaming a stash (drawn by `stash_dialog.rs`), creating or renaming a
 //! working-tree file (drawn by `file_dialogs.rs`), starting a Git Flow branch (drawn by
 //! `gitflow_dialog.rs`), finishing one (drawn by `gitflow_finish_dialog.rs`), adding or editing a
-//! remote (drawn by `remotes/dialog.rs`), the keyboard shortcut sheet (drawn by
+//! remote (drawn by `remotes/dialog.rs`), adding a fork as a remote and forking on the hosting
+//! service (drawn by `remotes/fork_pick.rs` and `remotes/fork_create.rs`), the keyboard shortcut sheet (drawn by
 //! `shortcuts/sheet.rs`), the repository trust prompt (drawn by `trust_dialog.rs`) and a conflict
 //! check's report (drawn by `conflict_check.rs`).
 
@@ -28,6 +29,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let idle = st.job.is_none();
     let stage_renames = st.settings.stage_renames;
     let push_tags = st.settings.push_new_tags;
+    let connections = &st.settings.connections;
     let mut close = false;
     let first = msgs.len();
     let resp = egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
@@ -124,7 +126,18 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             }
             Modal::Remote(form) => {
-                if super::remotes::dialog::show(ui, form, snap, !prompting, idle, msgs) {
+                let fork_source = snap.and_then(|s| crate::state::forks::fork_source(s, connections));
+                if super::remotes::dialog::show(ui, form, snap, fork_source, !prompting, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::AddFork(p) => {
+                if super::remotes::fork_pick::show(ui, p, snap, connections, !prompting, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::CreateFork(f) => {
+                if super::remotes::fork_create::show(ui, f, snap, connections, !prompting, idle, msgs) {
                     close = true;
                 }
             }
