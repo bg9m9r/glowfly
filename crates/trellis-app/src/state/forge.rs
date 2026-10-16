@@ -1,10 +1,22 @@
 //! Pull requests and issues for the open repository.
 
 use super::build_status::TipChecks;
+use super::pr_details::PrDetailPass;
 use git2::Oid;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 use trellis_core::forge::{self, Auth, Issue, Provider, PullRequest, RefStyle, Target};
+
+/// A Jira site's project keys, read once per tracker to tell keys from look-alikes (`UTF-8`).
+#[derive(Clone, PartialEq, Debug, Default)]
+pub enum ProjectKeys {
+    /// Not read yet, or the read failed (asked again on the next refresh).
+    #[default]
+    Unknown,
+    /// More projects than a list holds: the built-in word list applies.
+    TooMany,
+    Known(HashSet<String>),
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Status {
@@ -38,6 +50,10 @@ pub struct ForgeState {
     pub tips: TipChecks,
     /// A push for a pull request succeeded: open its create dialog when the next snapshot lands.
     pub open_after_load: Option<super::push_pr::PrStart>,
+    /// Checks and votes past the first `CHECKED_PRS`, on services read per pull request.
+    pub details: PrDetailPass,
+    /// The Jira tracker's project keys.
+    pub jira_projects: ProjectKeys,
 }
 
 impl ForgeState {
@@ -59,6 +75,8 @@ impl ForgeState {
             last_refresh: None,
             tips: TipChecks::default(),
             open_after_load: None,
+            details: PrDetailPass::default(),
+            jira_projects: ProjectKeys::Unknown,
         }
     }
 
@@ -66,6 +84,8 @@ impl ForgeState {
     pub fn replies_dropped(&mut self) {
         self.loading = 0;
         self.tips.in_flight.clear();
+        self.details.in_flight = false;
+        self.details.queue.clear();
     }
 
     pub fn pr_for_branch(&self, branch: &str) -> Option<&PullRequest> {
@@ -90,16 +110,33 @@ impl ForgeState {
 
     pub fn issue_refs(&self, text: &str) -> Vec<String> {
         let mut refs = self.style().map(|s| forge::issue_refs(s, text)).unwrap_or_default();
-        // With a Jira project configured, only that project's keys count.
-        if let Some(t) = self.tracker.as_ref().filter(|t| t.provider.is_jira() && !t.project.is_empty()) {
-            let prefix = format!("{}-", t.project);
-            refs.retain(|k| k.starts_with(&prefix));
-        }
+        refs.retain(|k| self.keeps(k));
         refs
     }
 
     pub fn branch_issue(&self, branch: &str) -> Option<String> {
-        self.style().and_then(|s| forge::branch_issue(s, branch))
+        self.style().and_then(|s| forge::branch_issue(s, branch)).filter(|k| self.keeps(k))
+    }
+
+    /// Jira keys count only for the project filter, else the site's projects once known.
+    fn keeps(&self, key: &str) -> bool {
+        match self.tracker.as_ref().filter(|t| t.provider.is_jira()) {
+            Some(t) => forge::keep_jira_key(key, &t.project, self.known_projects()),
+            None => true,
+        }
+    }
+
+    pub fn known_projects(&self) -> Option<&HashSet<String>> {
+        match &self.jira_projects {
+            ProjectKeys::Known(set) => Some(set),
+            _ => None,
+        }
+    }
+
+    /// A Jira tracker without a project filter whose project keys haven't been read.
+    pub fn needs_project_keys(&self) -> bool {
+        self.tracker.as_ref().is_some_and(|t| t.provider.is_jira() && t.project.trim().is_empty())
+            && self.jira_projects == ProjectKeys::Unknown
     }
 
     pub fn mention(&self, key: &str) -> String {

@@ -2,6 +2,7 @@
 
 pub use super::azure_remote::{credential_host, parse_host_domain, parse_remote};
 use super::checks::per_pr;
+use super::details::{PrDetails, checks_of};
 use super::http::get_paged;
 use super::page::{self, MAX_ITEMS, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
@@ -21,6 +22,7 @@ pub(super) static AZURE_DEVOPS: ProviderInfo = ProviderInfo {
     pr_prefix: "!",
     ref_style: RefStyle::AzureBoards,
     links_issues_by_api: true,
+    details_per_pr: true,
     service: &AzureDevOps,
     ..DEFAULTS
 };
@@ -104,7 +106,18 @@ struct ApiRepo {
 
 #[derive(Deserialize)]
 struct ApiProject {
+    #[serde(default)]
     id: String,
+}
+
+/// The repository resource: its default branch and the project it belongs to.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RepoInfo {
+    #[serde(default)]
+    default_branch: Option<String>,
+    #[serde(default)]
+    project: Option<ApiProject>,
 }
 
 fn vote_label(vote: i32) -> &'static str {
@@ -237,14 +250,18 @@ impl super::Forge for AzureDevOps {
     }
 
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct RepoInfo {
-            #[serde(default)]
-            default_branch: Option<String>,
-        }
         let info: RepoInfo = get(auth, &format!("{}?api-version={V}", repo_api(t)))?;
         Ok(info.default_branch.map(|b| b.trim_start_matches("refs/heads/").to_owned()))
+    }
+
+    /// Build policies and statuses of each pull request, under the repository's project id.
+    fn pr_details(&self, t: &Target, auth: &Auth, prs: &[PullRequest]) -> Result<Vec<PrDetails>> {
+        let info: RepoInfo = get(auth, &format!("{}?api-version={V}", repo_api(t)))?;
+        let project = info.project.map(|p| p.id).unwrap_or_default();
+        if project.is_empty() {
+            return Ok(prs.iter().map(PrDetails::empty).collect());
+        }
+        checks_of(prs, |p| azure_checks::pr_checks(t, auth, &project, p.id))
     }
 
     fn create_pull_request(&self, t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {

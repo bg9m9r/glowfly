@@ -48,7 +48,13 @@ pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: 
             }
             r
         }
-        ForgeCall::MyIssues => vec![ForgeResult::MyIssues(forge::my_issues(t, &auth).map_err(ForgeError::from))],
+        ForgeCall::MyIssues { project_keys } => {
+            let mut r = vec![ForgeResult::MyIssues(forge::my_issues(t, &auth).map_err(ForgeError::from))];
+            if project_keys {
+                r.push(ForgeResult::ProjectKeys(forge::project_keys(t, &auth).map_err(ForgeError::from)));
+            }
+            r
+        }
         ForgeCall::Issues(keys) => {
             let r = forge::issues(t, &auth, &keys).map_err(ForgeError::from);
             vec![ForgeResult::Issues(keys, r)]
@@ -60,6 +66,7 @@ pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: 
             let r = forge::commit_checks(t, &auth, &tips).map_err(ForgeError::from);
             vec![ForgeResult::TipChecks(tips, r)]
         }
+        ForgeCall::PrDetails(prs) => vec![ForgeResult::PrDetails(forge::pr_details(t, &auth, &prs).map_err(ForgeError::from))],
     };
     ForgeReply { target, auth: Some(auth), results }
 }

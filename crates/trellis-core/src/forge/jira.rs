@@ -74,6 +74,23 @@ struct Search {
     total: Option<usize>,
 }
 
+#[derive(Deserialize)]
+struct Key {
+    key: String,
+}
+
+/// A page of Jira Cloud's project search.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectPage {
+    #[serde(default)]
+    values: Vec<Key>,
+    #[serde(default)]
+    is_last: Option<bool>,
+    #[serde(default)]
+    start_at: usize,
+}
+
 fn to_issue(host: &str, i: ApiIssue) -> Issue {
     Issue {
         url: format!("https://{host}/browse/{}", i.key),
@@ -133,6 +150,24 @@ impl super::Forge for Jira {
             Ok(Page { items: s.issues, next })
         })?;
         Ok(items.into_iter().map(|i| to_issue(&t.host, i)).collect())
+    }
+
+    /// Cloud pages through the project search; Data Center lists every project at once. A list
+    /// cut off at `MAX_ITEMS` is None: an incomplete list would reject real keys.
+    fn project_keys(&self, t: &Target, auth: &Auth) -> Result<Option<Vec<String>>> {
+        let api = api(&t.host, t.provider);
+        if t.provider != Provider::JiraCloud {
+            return Ok(Some(get::<Vec<Key>>(auth, &format!("{api}/project"))?.into_iter().map(|k| k.key).collect()));
+        }
+        let first = format!("{api}/project/search?maxResults=100");
+        let mut more = false;
+        let keys = page::collect(first.clone(), |url| {
+            let p: ProjectPage = get(auth, url)?;
+            more = p.is_last == Some(false) && !p.values.is_empty();
+            let next = more.then(|| page::with_param(&first, "startAt", &(p.start_at + p.values.len()).to_string()));
+            Ok(Page { items: p.values, next })
+        })?;
+        Ok((!more).then(|| keys.into_iter().map(|k| k.key).collect()))
     }
 
     /// Looks keys up one by one: a JQL `key in (...)` fails entirely if any key doesn't exist.

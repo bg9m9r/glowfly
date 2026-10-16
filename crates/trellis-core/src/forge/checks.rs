@@ -2,8 +2,7 @@
 
 use std::collections::HashMap;
 
-/// Pull requests (the first in each list) that get per-PR check calls on services that need
-/// one call per pull request.
+/// Pull requests whose per-PR details are read with the list; the rest come from `pr_details`.
 pub const CHECKED_PRS: usize = 25;
 /// The most commits asked about in one `commit_checks` call.
 pub const TIPS_PER_CALL: usize = 10;

@@ -280,3 +280,29 @@ fn commit_checks_unsupported_server() {
     let err = commit_checks(&t, &token(Provider::GitHubEnterprise), &[tip(sha(3), "main")]).unwrap_err();
     assert!(matches!(err, Error::Unsupported(_)), "{err}");
 }
+
+#[test]
+fn later_batches_apply_reviews() {
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET api.github.com/repos/o/r/pulls?state=open&per_page=100" => Reply::json(many_prs(120)),
+        "POST api.github.com/graphql" => {
+            // Every alias in the query gets one approval.
+            let query = r.json()["query"].as_str().unwrap_or_default().to_owned();
+            let approved = r#"{"reviews":{"nodes":[{"author":{"login":"grace"},"state":"APPROVED"}]}}"#;
+            let aliases: Vec<String> = query
+                .split("pullRequest(number: ")
+                .skip(1)
+                .filter_map(|rest| rest.split(')').next())
+                .map(|n| format!(r#""p{n}":{approved}"#))
+                .collect();
+            Reply::json(format!(r#"{{"data":{{"repository":{{{}}}}}}}"#, aliases.join(",")))
+        }
+        _ => Reply::not_found(),
+    });
+    let prs = pull_requests(&remote("https://github.com/o/r"), &token(Provider::GitHub)).unwrap();
+    assert_eq!(prs.len(), 120);
+    assert!(prs.iter().all(|p| p.approvals() == 1));
+    // The third call's batch (101 to 120) included.
+    assert_eq!(prs[100..].iter().map(|p| p.id).collect::<Vec<_>>(), (101..=120).collect::<Vec<_>>());
+    assert_eq!(routes(&m).iter().filter(|r| r.contains("graphql")).count(), 3);
+}

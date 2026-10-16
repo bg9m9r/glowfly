@@ -31,6 +31,24 @@ fn find(m: &Mock, prefix: &str) -> Request {
     found.into_iter().next().unwrap()
 }
 
+/// A listed pull request with only an id and a head, for `pr_details` calls.
+fn listed(id: u64, head: Option<String>) -> PullRequest {
+    PullRequest {
+        id,
+        title: String::new(),
+        description: String::new(),
+        source: String::new(),
+        target: String::new(),
+        author: String::new(),
+        draft: false,
+        reviewers: Vec::new(),
+        head,
+        merge_status: None,
+        checks: None,
+        url: String::new(),
+    }
+}
+
 fn routes(m: &Mock) -> Vec<String> {
     m.requests().iter().map(Request::route).collect()
 }

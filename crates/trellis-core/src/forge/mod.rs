@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 
 mod auth;
 mod checks;
+mod details;
 mod forks;
 mod http;
 mod links;
@@ -39,13 +40,14 @@ pub use auth::{
 };
 pub use checks::{CHECKED_PRS, CheckState, Checks, TipQuery};
 use checks::{TIPS_PER_CALL, full_sha};
+pub use details::{DETAILS_PER_CALL, PrDetails};
 pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find_my_fork, list_forks, remote_name_for, same_repository};
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
 pub use links::https_host;
 pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
-pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, mention};
+pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, jira_project, keep_jira_key, mention};
 pub use remote::{Connection, parse_host, parse_remote};
 pub use review::*;
 pub use ssh_keys::{
@@ -121,7 +123,7 @@ impl Target {
 
 // -------------------------------------------------------------------- common model
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Reviewer {
     pub name: String,
     /// approved, changes requested, waiting, rejected, no vote…
@@ -142,8 +144,9 @@ pub struct PullRequest {
     /// Head commit SHA (Bitbucket Cloud reports only a 12-character prefix).
     pub head: Option<String>,
     pub merge_status: Option<String>,
-    /// CI status of the head commit; None when the service reported none (or the pull request
-    /// is past the first `CHECKED_PRS` on a service asked once per pull request).
+    /// CI status of the head commit; None when the service reported none. On services asked once
+    /// per pull request, the list carries it for the first `CHECKED_PRS` and `pr_details` fills
+    /// in the rest.
     pub checks: Option<Checks>,
     /// Web page; empty when the service sent no usable link.
     pub url: String,
@@ -193,6 +196,12 @@ pub trait Forge: Sync {
         Ok(Vec::new())
     }
 
+    /// Checks and votes for each of `prs`, one pull request at a time (services that read them
+    /// per pull request; see `details`).
+    fn pr_details(&self, _t: &Target, _auth: &Auth, _prs: &[PullRequest]) -> Result<Vec<PrDetails>> {
+        Ok(Vec::new())
+    }
+
     fn default_branch(&self, _t: &Target, _auth: &Auth) -> Result<Option<String>> {
         Ok(None)
     }
@@ -209,6 +218,11 @@ pub trait Forge: Sync {
     /// Looks up specific issues by key; unknown keys are skipped.
     fn issues(&self, _t: &Target, _auth: &Auth, _keys: &[String]) -> Result<Vec<Issue>> {
         Ok(Vec::new())
+    }
+
+    /// Every project key on a Jira site; None when the site has too many to list.
+    fn project_keys(&self, _t: &Target, _auth: &Auth) -> Result<Option<Vec<String>>> {
+        Ok(None)
     }
 
     /// Web page for an issue (the key is not yet encoded); empty without an issue tracker.
@@ -265,6 +279,15 @@ pub fn pull_requests(t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
     service(t.provider).pull_requests(t, auth).map(|prs| links::prs(t, prs))
 }
 
+/// Checks and votes for up to `DETAILS_PER_CALL` of `prs`, the second pass after the list.
+pub fn pr_details(t: &Target, auth: &Auth, prs: &[PullRequest]) -> Result<Vec<PrDetails>> {
+    let prs = &prs[..prs.len().min(DETAILS_PER_CALL)];
+    if prs.is_empty() {
+        return Ok(Vec::new());
+    }
+    service(t.provider).pr_details(t, auth, prs).map(links::details)
+}
+
 pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
     service(t.provider).default_branch(t, auth)
 }
@@ -292,6 +315,11 @@ pub fn issues(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
         return Ok(Vec::new());
     }
     service(t.provider).issues(t, auth, keys).map(|i| links::issues(t, i))
+}
+
+/// A Jira site's project keys (None: too many to list).
+pub fn project_keys(t: &Target, auth: &Auth) -> Result<Option<Vec<String>>> {
+    service(t.provider).project_keys(t, auth)
 }
 
 /// Text appended to a PR description to link an issue, for trackers linked by mention.

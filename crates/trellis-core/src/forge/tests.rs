@@ -88,8 +88,8 @@ fn finds_issue_references() {
     assert_eq!(issue_refs(RefStyle::AzureBoards, "Fix AB#123, ab#45; LAB#9 and #7"), ["123", "45"]);
     // Cross-repository references (owner/repo#3) point elsewhere and are skipped.
     assert_eq!(issue_refs(RefStyle::Hash, "Fixes #12 and owner/repo#3, not &#39; or a#5"), ["12"]);
-    // UTF-8 has the shape of a Jira key; lookups skip keys that don't exist, and a project
-    // filter (see ForgeState::issue_refs) narrows matches further.
+    // UTF-8 has the shape of a Jira key and is still found here; `keep_jira_key` (applied by
+    // ForgeState::issue_refs) drops it unless the site has such a project.
     assert_eq!(issue_refs(RefStyle::Jira, "PROJ-12: fix ABC-7 in UTF-8 (X-1 too short)"), ["PROJ-12", "ABC-7", "UTF-8"]);
     assert_eq!(branch_issue(RefStyle::Hash, "feature/1234-login"), Some("1234".into()));
     assert_eq!(branch_issue(RefStyle::Jira, "bugfix/PROJ-12-crash"), Some("PROJ-12".into()));

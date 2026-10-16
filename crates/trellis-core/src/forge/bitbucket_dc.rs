@@ -2,6 +2,7 @@
 
 use super::bitbucket::{Href, Values};
 use super::checks::{full_sha, per_pr};
+use super::details::{PrDetails, checks_of};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{Account, Auth, Checks, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get, get_text, post};
@@ -17,6 +18,7 @@ pub(super) static BITBUCKET_DATA_CENTER: ProviderInfo = ProviderInfo {
     token_help: "An HTTP access token with Repository write permission.",
     has_issues: false,
     lists_forks: true,
+    details_per_pr: true,
     service: &BitbucketDc,
     ..DEFAULTS
 };
@@ -131,6 +133,14 @@ impl super::Forge for BitbucketDc {
             None => Ok(None),
         });
         Ok(prs.into_iter().zip(checks).map(|(p, c)| convert_dc(p, c)).collect())
+    }
+
+    /// Build statuses of each head commit; a pull request without a full commit id has none.
+    fn pr_details(&self, t: &Target, auth: &Auth, prs: &[PullRequest]) -> Result<Vec<PrDetails>> {
+        checks_of(prs, |p| match p.head.as_deref().filter(|c| full_sha(c)) {
+            Some(sha) => bitbucket_checks::dc_commit(auth, &t.host, sha),
+            None => Ok(None),
+        })
     }
 
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {

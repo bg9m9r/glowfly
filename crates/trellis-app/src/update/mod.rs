@@ -31,6 +31,7 @@ mod notify;
 mod ops;
 mod palette;
 mod patch;
+mod pr_details;
 mod prefs;
 mod profile_setup;
 mod profiles;
@@ -185,6 +186,8 @@ mod path_hazards_tests;
 mod perf_tests;
 #[cfg(test)]
 mod pr_checkout_tests;
+#[cfg(test)]
+mod pr_details_tests;
 #[cfg(test)]
 mod profile_setup_tests;
 #[cfg(test)]

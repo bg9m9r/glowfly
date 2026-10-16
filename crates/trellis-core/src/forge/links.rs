@@ -2,7 +2,7 @@
 //! return any URL, so only `https://` links on the service's own host are kept (build pages,
 //! which often live on another site, only need to be safe `https://` links).
 
-use super::{Checks, Issue, Provider, PullRequest, Target};
+use super::{Checks, Issue, PrDetails, Provider, PullRequest, Target};
 use std::collections::HashMap;
 
 /// The host part of an `https://` URL, lowercased, when the URL is safe to hand to a browser:
@@ -48,6 +48,13 @@ pub(super) fn pr(t: &Target, mut p: PullRequest) -> PullRequest {
         c.url = build_url(std::mem::take(&mut c.url));
     }
     p
+}
+
+pub(super) fn details(mut v: Vec<PrDetails>) -> Vec<PrDetails> {
+    for c in v.iter_mut().filter_map(|d| d.checks.as_mut()) {
+        c.url = build_url(std::mem::take(&mut c.url));
+    }
+    v
 }
 
 pub(super) fn issues(t: &Target, items: Vec<Issue>) -> Vec<Issue> {

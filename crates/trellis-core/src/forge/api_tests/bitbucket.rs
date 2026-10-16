@@ -209,3 +209,43 @@ fn data_center_pull_requests_carry_build_statuses() {
     assert_eq!(by_sha.keys().collect::<Vec<_>>(), [&head]);
     assert_eq!(routes(&m).len(), 4);
 }
+
+#[test]
+fn pr_details_read_build_statuses_per_pull_request() {
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET api.bitbucket.org/2.0/repositories/team/app/pullrequests/12/statuses?pagelen=100" => Reply::json(STATUSES),
+        _ => Reply::not_found(),
+    });
+    let t = remote("https://bitbucket.org/team/app");
+    let prs = [listed(12, Some("0123456789ab".into())), listed(13, None)];
+    let got = pr_details(&t, &token(Provider::Bitbucket), &prs).unwrap();
+    assert_eq!(got[0].checks.as_ref().map(|c| c.state), Some(CheckState::Failed));
+    assert_eq!((got[0].head.as_deref(), got[0].votes.as_ref()), (Some("0123456789ab"), None));
+    assert_eq!(got[1], PrDetails { id: 13, head: None, checks: None, votes: None });
+    assert_eq!(
+        routes(&m),
+        [
+            "GET api.bitbucket.org/2.0/repositories/team/app/pullrequests/12/statuses?pagelen=100",
+            "GET api.bitbucket.org/2.0/repositories/team/app/pullrequests/13/statuses?pagelen=100"
+        ]
+    );
+    drop(m);
+
+    // Data Center asks about full commit ids only.
+    let head = "f".repeat(40);
+    let statuses = format!("GET bitbucket.acme.io/rest/build-status/1.0/commits/{head}?limit=100");
+    let route = statuses.clone();
+    let m = Mock::start(move |r| {
+        if r.route() == route {
+            Reply::json(r#"{"isLastPage":true,"values":[{"state":"SUCCESSFUL","url":"https://jenkins.acme.io/job/2"}]}"#)
+        } else {
+            Reply::not_found()
+        }
+    });
+    let t = remote("https://bitbucket.acme.io/scm/PROJ/api.git");
+    let prs = [listed(3, Some(head.clone())), listed(4, Some("deadbeef00".into()))];
+    let got = pr_details(&t, &token(Provider::BitbucketDataCenter), &prs).unwrap();
+    assert_eq!(got[0].checks.as_ref().map(|c| c.url.as_str()), Some("https://jenkins.acme.io/job/2"));
+    assert_eq!(got[1].checks, None);
+    assert_eq!(routes(&m), [statuses]);
+}

@@ -33,6 +33,7 @@ pub mod palette_recent;
 pub mod palette_tools;
 pub mod patch;
 pub mod path_hazards;
+pub mod pr_details;
 pub mod prefs;
 pub mod profiles;
 pub mod publish;
@@ -70,7 +71,7 @@ pub mod worktree_manage;
 pub mod worktrees;
 
 pub use commit::CommitDraft;
-pub use forge::{ForgeState, Status};
+pub use forge::{ForgeState, ProjectKeys, Status};
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};

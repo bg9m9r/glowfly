@@ -526,14 +526,11 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Trello cards as an issue tracker.
 - [ ] **Cross-repo dashboard**
   PRs and issues across all connected repos (local, with no cloud account).
-- [ ] **Limits found while building integrations**
-  - [ ] Paginate PR and issue lists. Trellis stops at 100 (50 on Bitbucket Cloud); `morluto/rea`
+- [x] **Limits found while building integrations**
+  - [x] Paginate PR and issue lists. Trellis stops at 100 (50 on Bitbucket Cloud); `morluto/rea`
         already exceeds that.
-  - [ ] Fetch review states for every PR. Only the first 25 are fetched today, to save API calls.
-  - [ ] Live-test GitLab, Bitbucket Cloud and Data Center, Azure DevOps, and Jira. Only GitHub
-        has been checked against a real account. This includes the Azure DevOps sign-in through
-        Git Credential Manager (Microsoft Entra Bearer token).
-  - [ ] Jira key detection treats strings like `UTF-8` as keys unless a project filter is set.
+  - [x] Fetch review states for every PR. Only the first 25 are fetched today, to save API calls.
+  - [x] Jira key detection treats strings like `UTF-8` as keys unless a project filter is set.
 
 ## P3: app polish and platform
 
@@ -1352,6 +1349,11 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - Make the branch-name issue heuristic configurable (`2024-cleanup` is currently read as issue
   2024)
+- Live-test GitLab, Bitbucket Cloud and Data Center, Azure DevOps and Jira against real accounts, including the Azure DevOps sign-in through Git Credential Manager (Microsoft Entra Bearer token)
+- Pace per-PR detail lookups by each service's rate-limit headers instead of a fixed max age
+- Read per-PR details a few at a time in parallel once the test mock supports calls from other threads
+- Let users add their own words to the list of Jira non-project prefixes
+- Read the cached Jira project keys again when a key's project is missing (a project created after the first read)
 
 ### Trello
 

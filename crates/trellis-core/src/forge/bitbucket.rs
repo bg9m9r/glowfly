@@ -1,6 +1,7 @@
 //! Bitbucket Cloud (API 2.0). Data Center / Server is in `bitbucket_dc`.
 
 use super::checks::per_pr;
+use super::details::{PrDetails, checks_of};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{Account, Auth, Checks, Issue, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get, post};
@@ -18,6 +19,7 @@ pub(super) static BITBUCKET: ProviderInfo = ProviderInfo {
     close_keyword: Some("Resolves"),
     lists_forks: true,
     adds_ssh_keys: true,
+    details_per_pr: true,
     service: &Bitbucket,
     ..DEFAULTS
 };
@@ -180,6 +182,10 @@ impl super::Forge for Bitbucket {
         let prs = cloud_list::<CloudPr>(auth, url)?;
         let checks = per_pr(&prs, |p| bitbucket_checks::cloud_pr(t, auth, p.id));
         Ok(prs.into_iter().zip(checks).map(|(p, c)| convert_cloud(p, c)).collect())
+    }
+
+    fn pr_details(&self, t: &Target, auth: &Auth, prs: &[PullRequest]) -> Result<Vec<PrDetails>> {
+        checks_of(prs, |p| bitbucket_checks::cloud_pr(t, auth, p.id))
     }
 
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {

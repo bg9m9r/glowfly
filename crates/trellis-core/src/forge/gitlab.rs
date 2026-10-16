@@ -1,6 +1,7 @@
 //! GitLab.com and GitLab Self-Managed (REST API v4).
 
 use super::checks::per_pr;
+use super::details::{self, PrDetails};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
     Account, Auth, CHECKED_PRS, Checks, Issue, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks,
@@ -25,6 +26,7 @@ pub(super) static GITLAB_SELF_MANAGED: ProviderInfo = ProviderInfo {
     lists_forks: true,
     creates_forks: true,
     adds_ssh_keys: true,
+    details_per_pr: true,
     service: &GitLab,
     ..DEFAULTS
 };
@@ -63,7 +65,7 @@ struct ApiMr {
     detailed_merge_status: Option<String>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
 struct Approvals {
     #[serde(default)]
     approved_by: Vec<ApprovedBy>,
@@ -74,16 +76,10 @@ struct ApprovedBy {
     user: User,
 }
 
-fn convert(m: ApiMr, approvals: Approvals, checks: Option<Checks>) -> PullRequest {
-    let approved: Vec<String> = approvals.approved_by.into_iter().map(|a| a.user.name).collect();
-    let mut reviewers: Vec<Reviewer> =
-        approved.iter().map(|n| Reviewer { name: n.clone(), state: "approved".into(), required: false }).collect();
-    for r in m.reviewers {
-        if !approved.contains(&r.name) {
-            reviewers.push(Reviewer { name: r.name, state: "no vote".into(), required: false });
-        }
-    }
-    PullRequest {
+/// A merge request with `votes` (its approvers) merged in the same way as the second pass.
+fn convert(m: ApiMr, votes: Vec<Reviewer>, checks: Option<Checks>) -> PullRequest {
+    let reviewers = m.reviewers.into_iter().map(|r| Reviewer { name: r.name, state: "no vote".into(), required: false }).collect();
+    let mut pr = PullRequest {
         id: m.iid,
         title: m.title,
         description: m.description.unwrap_or_default(),
@@ -94,9 +90,21 @@ fn convert(m: ApiMr, approvals: Approvals, checks: Option<Checks>) -> PullReques
         reviewers,
         head: m.sha,
         merge_status: m.detailed_merge_status,
-        checks,
+        checks: None,
         url: m.web_url,
-    }
+    };
+    pr.apply(&PrDetails { checks, votes: Some(votes), ..PrDetails::empty(&pr) });
+    pr
+}
+
+/// The merge request's approvers, as "approved" votes.
+fn votes(t: &Target, auth: &Auth, iid: u64) -> Result<Vec<Reviewer>> {
+    let a: Approvals = get(auth, &format!("{}/merge_requests/{iid}/approvals", project_api(t)))?;
+    Ok(approvers(a))
+}
+
+fn approvers(a: Approvals) -> Vec<Reviewer> {
+    a.approved_by.into_iter().map(|a| Reviewer { name: a.user.name, state: "approved".into(), required: false }).collect()
 }
 
 #[derive(Deserialize)]
@@ -141,14 +149,29 @@ impl super::Forge for GitLab {
         let checks = per_pr(&mrs, |m| gitlab_checks::head_pipeline(t, auth, m.iid));
         let mut out = Vec::with_capacity(mrs.len());
         for (i, (m, checks)) in mrs.into_iter().zip(checks).enumerate() {
-            let approvals = if i < CHECKED_PRS {
-                get(auth, &format!("{}/merge_requests/{}/approvals", project_api(t), m.iid)).unwrap_or_default()
-            } else {
-                Approvals::default()
-            };
-            out.push(convert(m, approvals, checks));
+            // An approvals lookup that fails leaves the merge request without votes.
+            let votes = if i < CHECKED_PRS { votes(t, auth, m.iid).unwrap_or_default() } else { Vec::new() };
+            out.push(convert(m, votes, checks));
         }
         Ok(out)
+    }
+
+    /// Approvals are required (a refusal stops the pass); pipelines are skipped after the first
+    /// refusal, so a token that can't read them still gets votes.
+    fn pr_details(&self, t: &Target, auth: &Auth, prs: &[PullRequest]) -> Result<Vec<PrDetails>> {
+        let mut ask_pipelines = true;
+        details::each(prs, |p| {
+            let votes = votes(t, auth, p.id)?;
+            let checks = if ask_pipelines {
+                gitlab_checks::head_pipeline(t, auth, p.id).unwrap_or_else(|e| {
+                    ask_pipelines = e.is_not_found();
+                    None
+                })
+            } else {
+                None
+            };
+            Ok(PrDetails { checks, votes: Some(votes), ..PrDetails::empty(p) })
+        })
     }
 
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
@@ -169,7 +192,7 @@ impl super::Forge for GitLab {
             "remove_source_branch": false,
         });
         let created: ApiMr = post(auth, &format!("{}/merge_requests", project_api(t)), body)?;
-        Ok(convert(created, Approvals::default(), None))
+        Ok(convert(created, Vec::new(), None))
     }
 
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
@@ -225,7 +248,7 @@ mod tests {
         )
         .unwrap();
         let a: Approvals = serde_json::from_str(r#"{"approved_by":[{"user":{"name":"Grace","username":"g"}}]}"#).unwrap();
-        let pr = convert(m, a, None);
+        let pr = convert(m, approvers(a), None);
         assert!(pr.draft);
         assert_eq!(pr.approvals(), 1);
         assert_eq!(pr.reviewers.len(), 2);

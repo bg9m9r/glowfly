@@ -192,3 +192,41 @@ fn commit_checks_use_branch_builds_and_statuses() {
     let c = &got[&sha];
     assert_eq!((c.state, c.passed, c.url.as_str()), (CheckState::Passed, 1, "https://scan.example.com/5"));
 }
+
+#[test]
+fn pr_details_read_the_project_once_then_each_pull_requests_policies() {
+    let evaluations = |pr: u64| {
+        format!(
+            "GET {BASE}/_apis/policy/evaluations?artifactId=vstfs%3A%2F%2F%2FCodeReview%2FCodeReviewId%2Fp-1%2F{pr}&api-version=7.1-preview.1"
+        )
+    };
+    let m = Mock::start(move |r| {
+        let route = r.route();
+        if route == format!("GET {REPO}?api-version=7.1") {
+            Reply::json(r#"{"defaultBranch":"refs/heads/main","project":{"id":"p-1"}}"#)
+        } else if route == evaluations(17) {
+            Reply::json(format!(
+                r#"{{"value":[{{"status":"running","configuration":{{"isEnabled":true,"type":{{"id":"{BUILD}"}}}},"context":{{"buildId":5}}}}]}}"#
+            ))
+        } else if route.contains("/statuses?") || route == evaluations(18) {
+            Reply::json(r#"{"value":[]}"#)
+        } else {
+            Reply::not_found()
+        }
+    });
+    let prs = [listed(17, Some("abc1234".into())), listed(18, None)];
+    let got = pr_details(&t(), &token(Provider::AzureDevOps), &prs).unwrap();
+    let c = got[0].checks.as_ref().unwrap();
+    assert_eq!((c.state, c.url.as_str()), (CheckState::Pending, "https://dev.azure.com/contoso/Fabrikam%20Web/_build/results?buildId=5"));
+    assert_eq!(got[1].checks, None);
+    let r = routes(&m);
+    assert_eq!(r.iter().filter(|r| r.starts_with(&format!("GET {REPO}?"))).count(), 1);
+    assert_eq!(r.iter().filter(|r| r.contains("/policy/evaluations?")).count(), 2);
+    drop(m);
+
+    // A repository answer without its project: no checks, and nothing more is asked.
+    let m = Mock::start(|_| Reply::json(r#"{"defaultBranch":"refs/heads/main"}"#));
+    let got = pr_details(&t(), &token(Provider::AzureDevOps), &prs).unwrap();
+    assert!(got.len() == 2 && got.iter().all(|d| d.checks.is_none()));
+    assert_eq!(routes(&m).len(), 1);
+}

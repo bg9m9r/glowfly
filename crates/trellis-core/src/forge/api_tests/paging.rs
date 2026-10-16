@@ -199,3 +199,121 @@ fn jira_pages_by_token_on_cloud_and_by_start_on_data_center() {
     assert_eq!(found.iter().map(|i| i.key.as_str()).collect::<Vec<_>>(), ["B-1", "B-2"]);
     assert_eq!(routes(&m).len(), 2);
 }
+
+#[test]
+fn gitlab_my_issues_follow_next_links() {
+    let issue = |n: usize| format!(r#"{{"iid":{n},"title":"I{n}","state":"opened","web_url":"https://gitlab.com/g/app/-/issues/{n}"}}"#);
+    let m = Mock::start(move |r| {
+        if !r.route().starts_with("GET gitlab.com/api/v4/projects/g%2Fapp/issues?state=opened&scope=assigned_to_me&per_page=100") {
+            return Reply::not_found();
+        }
+        let page = page_of(&r.path);
+        let reply = Reply::json(array([page * 10 + 1, page * 10 + 2].into_iter().map(issue)));
+        if page < 3 {
+            let next = format!(
+                r#"<https://gitlab.com/api/v4/projects/g%2Fapp/issues?state=opened&scope=assigned_to_me&per_page=100&page={}>; rel="next""#,
+                page + 1
+            );
+            reply.header("Link", &next)
+        } else {
+            reply
+        }
+    });
+    let found = my_issues(&remote("https://gitlab.com/g/app"), &token(Provider::GitLab)).unwrap();
+    assert_eq!(found.iter().map(|i| i.key.as_str()).collect::<Vec<_>>(), ["11", "12", "21", "22", "31", "32"]);
+    assert_eq!(routes(&m).len(), 3);
+}
+
+#[test]
+fn bitbucket_cloud_issues_follow_next() {
+    let issue = |n: usize| {
+        format!(
+            r#"{{"id":{n},"title":"I{n}","state":"open","kind":"bug","links":{{"html":{{"href":"https://bitbucket.org/t/a/issues/{n}"}}}}}}"#
+        )
+    };
+    let m = Mock::start(move |r| {
+        let route = r.route();
+        if route == "GET api.bitbucket.org/2.0/user" {
+            Reply::json(r#"{"display_name":"Ada","uuid":"{u-1}"}"#)
+        } else if route.starts_with("GET api.bitbucket.org/2.0/repositories/t/a/issues?q=") && route.ends_with("&pagelen=50") {
+            Reply::json(format!(r#"{{"values":[{}],"next":"https://api.bitbucket.org/2.0/repositories/t/a/issues?page=2"}}"#, issue(1)))
+        } else if route == "GET api.bitbucket.org/2.0/repositories/t/a/issues?page=2" {
+            Reply::json(format!(r#"{{"values":[{}],"next":"https://bitbucket.evil.example/issues?page=3"}}"#, issue(2)))
+        } else {
+            Reply::not_found()
+        }
+    });
+    let found = my_issues(&remote("https://bitbucket.org/t/a"), &token(Provider::Bitbucket)).unwrap();
+    assert_eq!(found.iter().map(|i| i.key.as_str()).collect::<Vec<_>>(), ["1", "2"]);
+    let r = routes(&m);
+    assert_eq!(r.len(), 3, "{r:?}");
+    assert!(r[1].contains(&enc(r#"assignee.uuid="{u-1}""#)), "{}", r[1]);
+}
+
+#[test]
+fn azure_work_items_are_read_in_batches_of_200() {
+    // The query answers newest first; each batch answers in id order.
+    let m = Mock::start(|r| {
+        let route = r.route();
+        if route == "POST dev.azure.com/org/proj/_apis/wit/wiql?$top=1000&api-version=7.1" {
+            let refs: Vec<String> = (1..=450).rev().map(|id| format!(r#"{{"id":{id}}}"#)).collect();
+            Reply::json(format!(r#"{{"workItems":[{}]}}"#, refs.join(",")))
+        } else if route.starts_with("GET dev.azure.com/org/proj/_apis/wit/workitems?ids=") {
+            let ids = r.path.split("ids=").nth(1).and_then(|s| s.split('&').next()).unwrap_or_default();
+            let mut ids: Vec<u32> = ids.split(',').filter_map(|i| i.parse().ok()).collect();
+            ids.sort();
+            let items: Vec<String> = ids.iter().map(|id| format!(r#"{{"id":{id},"fields":{{"System.Title":"W{id}"}}}}"#)).collect();
+            Reply::json(format!(r#"{{"value":[{}]}}"#, items.join(",")))
+        } else {
+            Reply::not_found()
+        }
+    });
+    let found = my_issues(&remote("https://dev.azure.com/org/proj/_git/app"), &token(Provider::AzureDevOps)).unwrap();
+    assert_eq!(found.len(), 450);
+    assert_eq!((found[0].key.as_str(), found[449].key.as_str()), ("450", "1"));
+    assert!(found.windows(2).all(|w| w[0].key.parse::<u32>().unwrap() > w[1].key.parse::<u32>().unwrap()));
+    let batches: Vec<usize> = m
+        .requests()
+        .iter()
+        .filter(|r| r.method == "GET")
+        .map(|r| r.path.split("ids=").nth(1).and_then(|s| s.split('&').next()).unwrap_or_default().split(',').count())
+        .collect();
+    assert_eq!(batches, [200, 200, 50]);
+}
+
+#[test]
+fn jira_project_keys_page_and_give_up_past_the_cap() {
+    let keys = |from: usize, n: usize| (from..from + n).map(|i| format!(r#"{{"key":"P{i}"}}"#)).collect::<Vec<_>>().join(",");
+    let start_of = |path: &str| path.split(['?', '&']).find_map(|p| p.strip_prefix("startAt=")).and_then(|n| n.parse().ok()).unwrap_or(0);
+    let cloud = Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() };
+    let t = Target::jira(&cloud, "");
+    let m = Mock::start(move |r| match start_of(&r.path) {
+        0 => Reply::json(format!(r#"{{"startAt":0,"isLast":false,"values":[{}]}}"#, keys(0, 2))),
+        _ => Reply::json(format!(r#"{{"startAt":2,"isLast":true,"values":[{}]}}"#, keys(2, 1))),
+    });
+    assert_eq!(project_keys(&t, &token(Provider::JiraCloud)).unwrap(), Some(vec!["P0".into(), "P1".into(), "P2".into()]));
+    assert_eq!(
+        routes(&m),
+        [
+            "GET acme.atlassian.net/rest/api/3/project/search?maxResults=100",
+            "GET acme.atlassian.net/rest/api/3/project/search?maxResults=100&startAt=2"
+        ]
+    );
+    drop(m);
+
+    // A site with more projects than a list holds: the keys can't all be known.
+    let _m = Mock::start(move |r| {
+        let start = start_of(&r.path);
+        Reply::json(format!(r#"{{"startAt":{start},"isLast":false,"values":[{}]}}"#, keys(start, 100)))
+    });
+    assert_eq!(project_keys(&t, &token(Provider::JiraCloud)).unwrap(), None);
+    drop(_m);
+
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET jira.acme.io/rest/api/2/project" => Reply::json(r#"[{"key":"ABC"},{"key":"OPS"}]"#),
+        _ => Reply::not_found(),
+    });
+    let dc = Account { provider: Provider::JiraDataCenter, host: "jira.acme.io".into(), org: String::new() };
+    assert_eq!(project_keys(&Target::jira(&dc, ""), &token(Provider::JiraDataCenter)).unwrap(), Some(vec!["ABC".into(), "OPS".into()]));
+    assert_eq!(routes(&m).len(), 1);
+}

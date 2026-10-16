@@ -1,6 +1,7 @@
 //! Issue references in commit messages, PR text and branch names.
 
 use super::*;
+use std::collections::HashSet;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RefStyle {
@@ -60,7 +61,8 @@ pub fn issue_refs(style: RefStyle, text: &str) -> Vec<String> {
                     while j < b.len() && (b[j].is_ascii_uppercase() || b[j].is_ascii_digit() || b[j] == b'_') {
                         j += 1;
                     }
-                    if j < b.len() && b[j] == b'-' && j - i >= 2 {
+                    // Jira numbers issues from 1 and never pads them with zeros.
+                    if j + 1 < b.len() && b[j] == b'-' && b[j + 1] != b'0' && j - i >= 2 {
                         let mut k = j + 1;
                         while k < b.len() && b[k].is_ascii_digit() {
                             k += 1;
@@ -114,6 +116,33 @@ fn trello_branch(last: &str) -> Option<String> {
     ok.then(|| last[..8].to_owned())
 }
 
+/// Upper-case words written before a hyphen and number in ordinary text (character sets,
+/// hashes, ciphers, standards), never treated as projects unless the site has one by that name.
+const NOT_PROJECTS: &[&str] = &[
+    "AES", "ANSI", "CP", "CRC", "CVE", "CWE", "DES", "ECMA", "HMAC", "HTTP", "IEC", "IEEE", "ISO", "MD", "PEP", "RFC", "RSA", "SHA", "SSL",
+    "TLS", "UCS", "UTF", "WIN", "X86",
+];
+
+/// The project part of a Jira key: `PROJ` in `PROJ-12`.
+pub fn jira_project(key: &str) -> &str {
+    key.rsplit_once('-').map_or(key, |(p, _)| p)
+}
+
+/// Whether a Jira-shaped `key` counts as an issue: with a project `filter`, only that project's
+/// keys do; else, once the site's `projects` are known, only theirs; else any key whose project
+/// isn't a word that is never a project (`UTF-8`, `SHA-256`).
+pub fn keep_jira_key(key: &str, filter: &str, projects: Option<&HashSet<String>>) -> bool {
+    let project = jira_project(key);
+    let filter = filter.trim();
+    if !filter.is_empty() {
+        return project == filter.to_ascii_uppercase();
+    }
+    match projects {
+        Some(set) => set.contains(project),
+        None => !NOT_PROJECTS.contains(&project),
+    }
+}
+
 /// An issue key encoded at the start of a branch's last path segment, e.g.
 /// `feature/1234-login-page`, `1234_fix`, or `bugfix/PROJ-12-crash`.
 pub fn branch_issue(style: RefStyle, branch: &str) -> Option<String> {
@@ -149,4 +178,29 @@ pub fn branch_name_for(issue: &Issue) -> String {
     }
     let slug = slug.trim_end_matches('-');
     if slug.is_empty() { issue.key.clone() } else { format!("{}-{slug}", issue.key) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn jira_numbers_never_start_with_zero() {
+        assert_eq!(issue_refs(RefStyle::Jira, "ABC-007 and ABC-0 and ABC-7"), ["ABC-7"]);
+        assert_eq!(issue_refs(RefStyle::Jira, "ends with ABC-"), Vec::<String>::new());
+    }
+
+    #[test]
+    fn keeps_jira_keys_by_filter_projects_or_the_word_list() {
+        for word in ["UTF-8", "ISO-8859", "SHA-256", "CVE-2024", "X86-64"] {
+            assert!(!keep_jira_key(word, "", None), "{word}");
+        }
+        assert!(keep_jira_key("PROJ-12", "", None));
+        let projects: HashSet<String> = HashSet::from(["UTF".to_owned()]);
+        assert!(keep_jira_key("UTF-8", "", Some(&projects)));
+        assert!(!keep_jira_key("PROJ-12", "", Some(&projects)));
+        assert!(keep_jira_key("PROJ-1", " proj ", None));
+        assert!(!keep_jira_key("ABC-1", " proj ", Some(&projects)));
+        assert_eq!(jira_project("A_B2-12"), "A_B2");
+    }
 }

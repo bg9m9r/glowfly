@@ -1,9 +1,10 @@
 //! Hosting services: detection, refresh, replies, connections. Starting a pull request is in
 //! update/push_pr.rs.
 
+use super::pr_details;
 use crate::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
-use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, Status};
+use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, ProjectKeys, Status};
 use git2::Oid;
 use std::time::Instant;
 use trellis_core::forge::{self, Account, Connection, Target};
@@ -18,6 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
                 fs.tracker_status = Status::Idle;
                 if interactive {
                     fs.tips.expire();
+                    fs.details.expire();
                 }
             }
             refresh(st, true, interactive, now, fx);
@@ -138,13 +140,14 @@ pub(super) fn refresh(st: &mut AppState, force: bool, interactive: bool, now: In
     }
     fs.last_refresh = Some(now);
     let need_default = fs.default_branch.is_none();
+    let project_keys = fs.needs_project_keys();
     let (host, tracker) = (fs.host.clone(), fs.tracker.clone());
     let same = host.is_some() && host == tracker;
     if let Some(h) = host {
         request(st, h, interactive, ForgeCall::Refresh { need_default, with_issues: same }, fx);
     }
     if let (Some(t), false) = (tracker, same) {
-        request(st, t, interactive, ForgeCall::MyIssues, fx);
+        request(st, t, interactive, ForgeCall::MyIssues { project_keys }, fx);
     }
 }
 
@@ -206,6 +209,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
             }
             ForgeResult::Prs(Ok(prs)) => {
                 fs.prs = prs;
+                pr_details::list_arrived(fs, now);
                 fs.host_status = Status::Ok;
                 prs_changed = true;
             }
@@ -251,6 +255,13 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
             }
             ForgeResult::Created(Err(e)) => logs.push((false, format!("Creating the {} failed: {}", fs.pr_noun(), e.message))),
             ForgeResult::TipChecks(asked, r) => super::build_status::replied(fs, &asked, r.map_err(drop), now),
+            ForgeResult::PrDetails(r) => prs_changed |= pr_details::replied(fs, r, &key, now),
+            ForgeResult::ProjectKeys(r) => match r {
+                Ok(Some(keys)) => fs.jira_projects = ProjectKeys::Known(keys.into_iter().collect()),
+                Ok(None) => fs.jira_projects = ProjectKeys::TooMany,
+                // Left unknown, so the next refresh asks again.
+                Err(e) => tracing::debug!("Jira project keys: {}", e.message),
+            },
         }
     }
     for (ok, text) in logs {
@@ -262,6 +273,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
         super::build_status::seed_from_prs(st, now);
         super::pull_request::prs_changed(st, fx);
     }
+    pr_details::send_next(st, fx);
 }
 
 fn connected(
@@ -321,6 +333,7 @@ fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
         let msg = format!("not connected to {}", account.provider.name());
         if fs.host.as_ref().is_some_and(|t| t.account() == *account) {
             fs.prs.clear();
+            fs.details.clear();
             fs.pr_heads.clear();
             fs.tips = Default::default();
             fs.host_status = Status::Error(msg.clone());

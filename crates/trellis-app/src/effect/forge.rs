@@ -1,7 +1,7 @@
 //! What the forge effect asks a hosting service, and what comes back.
 
 use std::collections::HashMap;
-use trellis_core::forge::{Auth, Checks, Issue, NewPullRequest, PullRequest, Target, TipQuery};
+use trellis_core::forge::{Auth, Checks, Issue, NewPullRequest, PrDetails, PullRequest, Target, TipQuery};
 
 /// What to ask a hosting service.
 #[derive(Debug)]
@@ -11,11 +11,17 @@ pub enum ForgeCall {
         need_default: bool,
         with_issues: bool,
     },
-    MyIssues,
+    /// Assigned issues, and (`project_keys`) the Jira site's project keys.
+    MyIssues {
+        project_keys: bool,
+    },
     Issues(Vec<String>),
     Create(NewPullRequest),
     /// CI status of branch tips on the host.
     TipChecks(Vec<TipQuery>),
+    /// The next chunk of the second pass: checks and votes of pull requests past the first
+    /// `CHECKED_PRS` (up to `DETAILS_PER_CALL`).
+    PrDetails(Vec<PullRequest>),
 }
 
 /// A hosting-service failure, flagged when signing in again could fix it.
@@ -42,6 +48,9 @@ pub enum ForgeResult {
     Created(Result<Box<PullRequest>, ForgeError>),
     /// The tips asked about, and their status by full commit id.
     TipChecks(Vec<TipQuery>, Result<HashMap<String, Checks>, ForgeError>),
+    PrDetails(Result<Vec<PrDetails>, ForgeError>),
+    /// A Jira site's project keys; None when it has too many to list.
+    ProjectKeys(Result<Option<Vec<String>>, ForgeError>),
 }
 
 #[derive(Debug)]

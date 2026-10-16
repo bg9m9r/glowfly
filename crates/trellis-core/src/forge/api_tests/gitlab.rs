@@ -170,3 +170,47 @@ fn commit_checks_read_the_last_pipeline() {
     assert_eq!((got[&a].state, got[&a].url.as_str()), (CheckState::Pending, "https://gitlab.com/g/app/-/pipelines/4"));
     assert!(!got.contains_key(&b));
 }
+
+#[test]
+fn pr_details_read_votes_and_pipelines() {
+    let (t, auth) = (remote("https://gitlab.com/g/app"), token(Provider::GitLab));
+    let list = Mock::start(|r| match r.route().strip_prefix(GL) {
+        Some("/merge_requests?state=opened&per_page=100") => Reply::json(many_mrs(30)),
+        Some(p) if p.ends_with("/approvals") => Reply::json(r#"{"approved_by":[]}"#),
+        _ => Reply::json(r#"{"head_pipeline":null}"#),
+    });
+    let mut prs = pull_requests(&t, &auth).unwrap();
+    drop(list);
+
+    let m = Mock::start(|r| match r.route().strip_prefix(GL) {
+        Some("/merge_requests/27/approvals") => Reply::json(r#"{"approved_by":[{"user":{"name":"Grace","username":"g"}}]}"#),
+        Some(p) if p.ends_with("/approvals") => Reply::json(r#"{"approved_by":[]}"#),
+        _ => Reply::json(r#"{"head_pipeline":{"status":"success","web_url":"https://gitlab.com/g/app/-/pipelines/1"}}"#),
+    });
+    let got = pr_details(&t, &auth, &prs[CHECKED_PRS..]).unwrap();
+    assert_eq!(got.iter().map(|d| d.id).collect::<Vec<_>>(), [26, 27, 28, 29, 30]);
+    assert_eq!(routes(&m).iter().filter(|r| r.ends_with("/approvals")).count(), 5);
+    assert_eq!(mr_lookups(&m), 5);
+    for d in &got {
+        prs.iter_mut().find(|p| p.id == d.id).unwrap().apply(d);
+    }
+    assert_eq!(prs[26].approvals(), 1);
+    assert_eq!(prs[26].checks.as_ref().map(|c| c.state), Some(CheckState::Passed));
+    drop(m);
+
+    // A token that can't read pipelines still gets votes.
+    let m = Mock::start(|r| match r.route().strip_prefix(GL) {
+        Some(p) if p.ends_with("/approvals") => Reply::json(r#"{"approved_by":[]}"#),
+        _ => Reply::status(403, r#"{"message":"403 Forbidden"}"#),
+    });
+    let got = pr_details(&t, &auth, &prs[CHECKED_PRS..]).unwrap();
+    assert_eq!(got.len(), 5);
+    assert!(got.iter().all(|d| d.checks.is_none() && d.votes == Some(Vec::new())));
+    assert_eq!(mr_lookups(&m), 1);
+    assert_eq!(routes(&m).iter().filter(|r| r.ends_with("/approvals")).count(), 5);
+    drop(m);
+
+    // Votes are required: a refused first lookup is the call's error.
+    let _m = Mock::start(|_| Reply::status(401, r#"{"message":"401 Unauthorized"}"#));
+    assert!(pr_details(&t, &auth, &prs[CHECKED_PRS..]).unwrap_err().is_auth());
+}

@@ -54,6 +54,9 @@ pub struct ProviderInfo {
     pub creates_forks: bool,
     /// Can add an SSH public key to the signed-in user's account.
     pub adds_ssh_keys: bool,
+    /// Reads checks or votes with one call per pull request, so the list carries them only for
+    /// the first `CHECKED_PRS` (the rest come from `pr_details`).
+    pub details_per_pr: bool,
     /// Request headers only this service understands.
     pub api_headers: &'static [(&'static str, &'static str)],
     /// The API implementation.
@@ -154,6 +157,10 @@ impl Provider {
     pub fn adds_ssh_keys(self) -> bool {
         self.info().adds_ssh_keys
     }
+
+    pub fn details_per_pr(self) -> bool {
+        self.info().details_per_pr
+    }
 }
 
 /// The settings most services share; each `ProviderInfo` overrides what differs.
@@ -175,6 +182,7 @@ pub(super) const DEFAULTS: ProviderInfo = ProviderInfo {
     lists_forks: false,
     creates_forks: false,
     adds_ssh_keys: false,
+    details_per_pr: false,
     api_headers: &[],
     service: &NoService,
 };
@@ -242,6 +250,8 @@ mod tests {
         for p in Provider::ALL {
             let adds = matches!(p, GitHub | GitHubEnterprise | GitLab | GitLabSelfManaged | Bitbucket);
             assert_eq!(p.adds_ssh_keys(), adds, "{p:?}");
+            let per_pr = matches!(p, GitLab | GitLabSelfManaged | Bitbucket | BitbucketDataCenter | AzureDevOps);
+            assert_eq!(p.details_per_pr(), per_pr, "{p:?}");
         }
     }
 }
