@@ -250,3 +250,16 @@ fn rebase_labels() {
     assert!(f.labels.theirs.ends_with("feature change"));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_whitespace_only_chunk_is_picked_automatically() {
+    use crate::conflict_rows::{Trivial, trivial_picks};
+    let base = base_lines();
+    // Line 2: re-indented on ours, a trailing space on theirs. Line 10: a real conflict.
+    let ours = base.replace("line 2\n", "    line 2\n").replace("line 10\n", "line 10 ours\n");
+    let theirs = base.replace("line 2\n", "line 2 \n").replace("line 10\n", "line 10 theirs\n");
+    let dir = merge_conflict("conflict-trivial", "f.txt", &base, &ours, &theirs);
+    let f = load_conflict(&dir, "f.txt").unwrap();
+    assert_eq!(trivial_picks(&f), [Some((Choice::Ours, Trivial::Whitespace)), None]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

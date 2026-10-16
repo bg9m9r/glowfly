@@ -5,8 +5,8 @@
 
 use super::tools::{fail, fail_to_prefs, prefs_action};
 use crate::effect::Effect;
+use crate::msg::ConflictMsg;
 use crate::msg::Msg;
-use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::ToastAction;
 use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL, diff_request, merge_end_text, merge_label, merge_request, not_found};
@@ -73,7 +73,7 @@ pub(super) fn exited(
     }
     super::ops::finish_job(st, ok, output, Some(headline), None, now, fx);
     if end == MergeEnd::Saved {
-        let msg = Box::new(Msg::Stage(StageMsg::StageFile(path)));
+        let msg = Box::new(Msg::Conflict(ConflictMsg::MarkResolved(vec![path])));
         st.set_last_toast_action(ToastAction { label: "Mark resolved".into(), msg, workdir: Some(workdir) });
     } else if not_found(&end) {
         st.set_last_toast_action(prefs_action());

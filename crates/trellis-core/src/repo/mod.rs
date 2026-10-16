@@ -5,7 +5,8 @@
 //! The types are here (the diff ones in `diff_types`, `Snapshot`'s queries in `snapshot_impl`);
 //! the work is split by area: `load` (history, refs, status), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`,
-//! `history` (one file's commits), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict` and `resolve`, `template`
+//! `history` (one file's commits), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files, Mark resolved and Mark
+//! conflicted) and `markers` (conflict markers left in working files), `template`
 //! (commit.template), `tool_sides` (versions for external tools), `touching` (commits that
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and
 //! `removal` (working-tree files), `tracked`,
@@ -34,11 +35,13 @@ mod history;
 mod index;
 mod lines;
 mod load;
+mod markers;
 mod noclobber;
 mod refs_key;
 mod remotes;
 mod removal;
 mod resolve;
+mod resolve_undo;
 mod restore;
 mod revert;
 mod rpath;
@@ -80,10 +83,12 @@ pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
 pub use lines::apply_lines;
 pub use load::{load, load_cached, messages_between};
+pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use refs_key::{open_file_stamp, refs_key};
 pub use remotes::RemoteInfo;
 pub use removal::{Deleted, Removal, Trasher};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
+pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolved_paths};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
 pub use status::{ChangeCounts, status_at};
@@ -339,6 +344,8 @@ mod lines_tests;
 #[cfg(test)]
 mod load_filter_tests;
 #[cfg(test)]
+mod markers_tests;
+#[cfg(test)]
 mod refs_key_tests;
 #[cfg(test)]
 mod remotes_tests;
@@ -348,6 +355,8 @@ mod removal_tests;
 mod resolve_eol_tests;
 #[cfg(test)]
 mod resolve_tests;
+#[cfg(test)]
+mod resolve_undo_tests;
 #[cfg(test)]
 mod restore_lfs_tests;
 #[cfg(test)]

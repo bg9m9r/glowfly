@@ -129,6 +129,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::LoadDiff { .. }
         | Effect::HighlightDiff { .. }
         | Effect::LoadConflict { .. }
+        | Effect::ReadConflictFiles { .. }
         | Effect::LoadFileHistory { .. }
         | Effect::LoadBlame(_)
         | Effect::LoadTrackedPaths { .. }

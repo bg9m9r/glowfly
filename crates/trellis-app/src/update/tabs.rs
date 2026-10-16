@@ -164,6 +164,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     if st.snap.is_some() {
         super::repo::refresh(st, fx);
         super::conflict::reload_pending(st, fx);
+        super::conflict_files::want(st, fx);
         super::history::reload_pending(st, fx);
         super::blame::reload_pending(st, fx);
         super::pull_request::reload_pending(st, fx);
@@ -259,6 +260,7 @@ fn park(st: &mut AppState) -> Parked {
         diff: st.diff.take(),
         // A save in flight reports to this tab only if it is still active, so don't wait for it.
         conflict: st.conflict.take().map(|c| ConflictView { saving: false, ..c }),
+        conflict_files: std::mem::take(&mut st.conflict_files),
         history: st.history.take(),
         blame: st.blame.take(),
         pull_request: st.pull_request.take(),
@@ -311,6 +313,8 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.view.diff_scroll_to_row = st.diff.is_some().then_some(top);
     st.view.diff_top_row = top;
     st.conflict = p.conflict;
+    // Summary reads for this tab were dropped while it was parked; `activate` reads again.
+    st.conflict_files = p.conflict_files;
     // Conflict results for this tab were dropped while it was parked.
     st.conflict_gen += 1;
     st.view.conflict_scroll_to = st.conflict.as_ref().filter(|c| c.file.is_some()).map(|c| c.current);

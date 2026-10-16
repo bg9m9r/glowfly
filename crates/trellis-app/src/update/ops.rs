@@ -15,6 +15,11 @@ pub(super) use super::jobs::{JobSpec, Started, begin_job, busy, start_job};
 pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         StageMsg::StageFile(p) => {
+            // Staging a conflicted file marks it resolved: checked for markers first.
+            if st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.status == '!' && f.path == p)) {
+                super::conflict_files::mark_resolved(st, vec![p], fx);
+                return;
+            }
             // Marking a file resolved while the merge tool has it open stages the markers.
             if !super::conflict::in_tool(st, &p) {
                 local(st, LocalOp::StageFile(p), fx);
@@ -69,15 +74,17 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             super::repo::refresh_status(st, fx);
         }
         StageMsg::LocalOpDone(result) => {
+            let failed = result.is_err();
             match result {
                 Err(e) => st.log(false, e),
                 Ok(Some(action)) => st.undo.record(action),
                 Ok(None) => {}
             }
-            // A save that failed can be tried again; one that worked closes the view once the
+            // A save that failed can be tried again; one that worked moves the view on once the
             // status shows the file resolved.
             if let Some(c) = st.conflict.as_mut() {
                 c.saving = false;
+                c.step_on_resolve &= !failed;
             }
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);

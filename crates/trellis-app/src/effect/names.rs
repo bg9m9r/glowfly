@@ -16,6 +16,7 @@ impl Effect {
             Effect::LoadFileHistory { .. } => "file-history",
             Effect::LoadBlame(_) => "blame",
             Effect::LocalOp { .. } => "local-op",
+            Effect::ReadConflictFiles { .. } => "conflict-files",
             Effect::RevertHunk { .. } => "revert-hunk",
             Effect::RestoreFile { .. } => "restore-file",
             Effect::WorkFile { .. } => "work-file",
@@ -100,6 +101,7 @@ impl Effect {
             | Effect::LoadFileHistory { .. }
             | Effect::LoadBlame(_)
             | Effect::LocalOp { .. }
+            | Effect::ReadConflictFiles { .. }
             | Effect::RevertHunk { .. }
             | Effect::RestoreFile { .. }
             | Effect::WorkFile { .. }

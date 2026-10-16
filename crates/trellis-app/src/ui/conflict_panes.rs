@@ -144,17 +144,30 @@ pub(super) fn panes(
     });
 }
 
-/// A chunk's header in one column: "Conflict N" and a Take checkbox for that side.
+/// A chunk's header in one column: "Conflict N" (with a faint tag when its pick was made
+/// automatically) and a Take checkbox for that side.
 fn chunk_header(ui: &mut Ui, r: Rect, view: &ConflictView, k: usize, side: Side, msgs: &mut Vec<Msg>) {
     let p = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
     p.rect_filled(r, 0.0, color::hunk_bg());
-    p.text(pos2(r.left() + 12.0, r.center().y), Align2::LEFT_CENTER, format!("Conflict {}", k + 1), mono(), color::hunk_fg());
+    let title = p.text(pos2(r.left() + 12.0, r.center().y), Align2::LEFT_CENTER, format!("Conflict {}", k + 1), mono(), color::hunk_fg());
     if k == view.current {
         current_bar(ui, r);
     }
     // Kept in view when the panes scroll sideways.
     let x = r.right().min(ui.clip_rect().right()) - 8.0;
     let check = Rect::from_min_max(pos2(x - 64.0, r.top()), pos2(x, r.bottom()));
+    if let Some(why) = view.auto.get(k).copied().flatten() {
+        // Cut short before the checkbox rather than run under it.
+        let room = Rect::from_min_max(pos2(title.right(), r.top()), pos2(check.left() - 8.0, r.bottom()));
+        let tag = format!("picked automatically · {}", why.label());
+        p.with_clip_rect(room.intersect(p.clip_rect())).text(
+            pos2(title.right() + 12.0, r.center().y),
+            Align2::LEFT_CENTER,
+            tag,
+            mono(),
+            color::faint(),
+        );
+    }
     let mut taken = view.choices.get(k).is_some_and(|c| c.takes(side));
     if ui.put(check, egui::Checkbox::new(&mut taken, "Take")).changed() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictToggle { chunk: k, side }));

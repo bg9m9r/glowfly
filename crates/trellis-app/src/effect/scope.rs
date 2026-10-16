@@ -20,6 +20,7 @@ impl Effect {
             | Effect::LoadSparse { workdir, .. }
             | Effect::LoadRebasePlan { workdir, .. }
             | Effect::LocalOp { workdir, .. }
+            | Effect::ReadConflictFiles { workdir, .. }
             | Effect::RevertHunk { workdir, .. }
             | Effect::RestoreFile { workdir, .. }
             | Effect::WorkFile { workdir, .. }

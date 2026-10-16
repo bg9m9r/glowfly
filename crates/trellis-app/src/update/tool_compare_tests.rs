@@ -143,7 +143,7 @@ fn the_trust_prompt_does_not_hold_the_merge_tool() {
 }
 
 /// `conflicted_repo` with the merge tool running on a.txt as the active job.
-fn running(name: &str) -> (AppState, PathBuf) {
+pub(super) fn running(name: &str) -> (AppState, PathBuf) {
     let dir = conflicted_repo(name);
     let mut st = opened(&dir);
     st.settings.external_tools.merge_tool = "kdiff3".into();
@@ -167,7 +167,7 @@ fn a_saved_merge_ends_the_job_with_mark_resolved() {
     assert_eq!(text, "The merge tool saved a.txt. Mark it resolved to stage the result.");
     let id = st.toasts.last().unwrap().id;
     let fx = update(&mut st, Msg::ToastAction(id), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LocalOp { .. })), "stages the file: {fx:?}");
+    assert!(checks_markers(&fx), "checks the file for markers, then stages it: {fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -226,6 +226,11 @@ fn writes(fx: &[Effect]) -> bool {
     fx.iter().any(|e| matches!(e, Effect::LocalOp { .. }))
 }
 
+/// Mark resolved's first step: the working file is read for conflict markers.
+fn checks_markers(fx: &[Effect]) -> bool {
+    fx.iter().any(|e| matches!(e, Effect::ReadConflictFiles { purpose: crate::effect::ConflictRead::BeforeMarkResolved, .. }))
+}
+
 #[test]
 fn the_conflict_view_writes_nothing_while_the_merge_tool_has_the_file() {
     let (mut st, dir) = running_in_view("tc-view-held");
@@ -256,8 +261,8 @@ fn a_merge_tool_that_changed_the_file_closes_the_conflict_view() {
         let (mut st, dir) = running_in_view(&format!("tc-view-closes-{i}"));
         exited(&mut st, end.clone());
         assert!(st.conflict.is_none(), "{end:?}: its picks would overwrite the tool's result");
-        // Mark resolved stages the tool's result once it has exited.
-        assert!(writes(&update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now())), "{end:?}");
+        // Mark resolved stages the tool's result once it has exited (after the markers check).
+        assert!(checks_markers(&update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now())), "{end:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

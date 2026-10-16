@@ -1,10 +1,11 @@
 //! Messages of the diff view, the conflict view and the file history (update/diff.rs,
 //! update/highlight.rs, update/conflict.rs, update/history.rs).
 
+use crate::effect::ConflictRead;
 use crate::state::lines::LineClick;
 use git2::Oid;
 use trellis_core::highlight::DiffHighlight;
-use trellis_core::repo::{ConflictFile, DiffTarget, FileHistory, Side};
+use trellis_core::repo::{ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
 use trellis_core::settings::{DiffLayout, DiffMode};
 
 /// The open diff: layout and mode, stepping between changes, folds, line selection, and the
@@ -101,6 +102,19 @@ pub enum ConflictMsg {
         generation: u64,
         result: Result<ConflictFile, String>,
     },
+    /// Mark conflicted files resolved: their working files are checked for conflict markers
+    /// first, and any left are confirmed before staging.
+    MarkResolved(Vec<String>),
+    /// Mark resolved after the markers warning: stage without checking again.
+    MarkResolvedConfirmed(Vec<String>),
+    /// Bring back the conflict of resolved files (the view has confirmed).
+    MarkConflicted(Vec<String>),
+    /// The working files of `paths` read for markers (and the resolved files, for a summary).
+    ConflictFilesRead {
+        purpose: ConflictRead,
+        paths: Vec<String>,
+        result: Result<ConflictSummary, String>,
+    },
 }
 
 impl ConflictMsg {
@@ -117,7 +131,12 @@ impl ConflictMsg {
             | Self::ConflictSelect(..)
             | Self::SaveConflict
             | Self::ResolveWithSide { .. }
-            | Self::ConflictLoaded { .. } => None,
+            | Self::ConflictLoaded { .. }
+            | Self::MarkResolved(..)
+            | Self::MarkResolvedConfirmed(..)
+            | Self::MarkConflicted(..)
+            | Self::ConflictFilesRead { result: Ok(_), .. } => None,
+            Self::ConflictFilesRead { result: Err(e), .. } => Some(crate::msg::Inactive::Log(e)),
         }
     }
 }

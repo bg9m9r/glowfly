@@ -6,6 +6,10 @@
 //! `core.autocrlf`, `eol` and `filter` attributes, `working-tree-encoding` and the executable
 //! bit (with `core.fileMode`) come out exactly as git itself would write them, and Trellis never
 //! rewrites line endings or calls chmod on the working file.
+//!
+//! Resolutions keep git's resolve-undo record (the index's REUC extension), as `git add` does,
+//! so a file resolved here can be marked conflicted again (`resolve_undo::mark_conflicted`).
+//! Submodules are the exception: their resolution is staged without one.
 
 use super::conflict::{ConflictContent, ConflictFile, ConflictIds, Segment, Side};
 use crate::error::{Error, Result};
@@ -114,11 +118,10 @@ pub fn write_resolution(workdir: &Path, path: &str, contents: &str, expected: &C
     let (mut index, conflict) = checked_index(&repo, path, expected)?;
     let side = conflict.our.or(conflict.their);
     let mut entry = side.ok_or_else(|| Error::Other(format!("{path} has no side to resolve to")))?;
-    entry.id = repo.blob(contents.as_bytes())?;
     if entry.mode & TYPE_MASK != REGULAR {
         entry.mode = 0o100644;
     }
-    stage_entry(&mut index, path, entry)?;
+    stage_recording(&mut index, entry, contents.as_bytes())?;
     index.write()?;
     check_out(workdir, path, index, repo)
 }
@@ -151,15 +154,17 @@ pub fn resolve_with_side(workdir: &Path, path: &str, side: Side, expected: &Conf
         SYMLINK => {
             // Check the link out from the index (as a plain file where links are off), never
             // writing through whatever link the working tree holds now.
-            stage_entry(&mut index, path, entry)?;
+            let target = repo.find_blob(entry.id)?.content().to_vec();
+            stage_recording(&mut index, entry, &target)?;
             remove_working(&full)?;
             let mut co = CheckoutBuilder::new();
             co.force().recreate_missing(true).skip_unmerged(true).disable_pathspec_match(true).path(path);
             repo.checkout_index(Some(&mut index), Some(&mut co))?;
         }
-        // A file: stage the side's blob as it is and let git write it.
+        // A file: stage the side's blob as it is (the same blob id) and let git write it.
         _ => {
-            stage_entry(&mut index, path, entry)?;
+            let data = repo.find_blob(entry.id)?.content().to_vec();
+            stage_recording(&mut index, entry, &data)?;
             index.write()?;
             return check_out(workdir, path, index, repo);
         }
@@ -168,15 +173,30 @@ pub fn resolve_with_side(workdir: &Path, path: &str, side: Side, expected: &Conf
     Ok(())
 }
 
-/// Stages `entry` (one side of the conflict at `path`) as the resolution.
+/// Stages `entry` (one side of the conflict at `path`) as the resolution, without a
+/// resolve-undo record: for submodules, which `stage_recording` can't stage.
 fn stage_entry(index: &mut git2::Index, path: &str, mut entry: IndexEntry) -> Result<()> {
     index.conflict_remove(Path::new(path))?;
-    entry.flags &= !STAGE_MASK;
-    // No cached stat data, so the working file is always compared by content.
-    let zero = IndexTime::new(0, 0);
-    (entry.ctime, entry.mtime, entry.dev, entry.ino, entry.uid, entry.gid, entry.file_size) = (zero, zero, 0, 0, 0, 0, 0);
+    clear_stage(&mut entry);
     index.add(&entry)?;
     Ok(())
+}
+
+/// Stages `data` as the resolution of the conflict `entry` belongs to (its path and mode), and
+/// moves the conflict's stages into the resolve-undo record. libgit2 records them only when
+/// adding from a buffer with the conflict still in the index, so it isn't removed first.
+fn stage_recording(index: &mut git2::Index, mut entry: IndexEntry, data: &[u8]) -> Result<()> {
+    clear_stage(&mut entry);
+    index.add_frombuffer(&entry, data)?;
+    Ok(())
+}
+
+/// Makes `entry` a stage-0 entry with no cached stat data, so the working file is always
+/// compared by content.
+fn clear_stage(entry: &mut IndexEntry) {
+    entry.flags &= !STAGE_MASK;
+    let zero = IndexTime::new(0, 0);
+    (entry.ctime, entry.mtime, entry.dev, entry.ino, entry.uid, entry.gid, entry.file_size) = (zero, zero, 0, 0, 0, 0, 0);
 }
 
 /// Writes the staged `path` to the working tree with `git checkout-index`, so git's smudge

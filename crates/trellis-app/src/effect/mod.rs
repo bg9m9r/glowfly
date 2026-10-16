@@ -34,7 +34,7 @@ pub use forge_filters::{FilterCall, FilterResult};
 pub use init::InitEffect;
 pub use issue::*;
 pub use notify::{DesktopNote, NoteKind};
-pub use repo::{KnownRepo, LocalOp, StatusRead, UndoResult, WatchTarget};
+pub use repo::{ConflictRead, KnownRepo, LocalOp, StatusRead, UndoResult, WatchTarget};
 pub use submodule::SubmoduleEffect;
 pub use updates::UpdateEffect;
 
@@ -107,6 +107,13 @@ pub enum Effect {
     LocalOp {
         workdir: PathBuf,
         op: LocalOp,
+    },
+    /// Counts the conflict markers in the working files of `paths` (and, for a summary, lists
+    /// the resolved files): only reads.
+    ReadConflictFiles {
+        workdir: PathBuf,
+        paths: Vec<String>,
+        purpose: ConflictRead,
     },
     /// Applies the inverse of hunk `index` of `target` (a commit or comparison diff) to the
     /// working tree only; refused if git's hunk is no longer `expected`.

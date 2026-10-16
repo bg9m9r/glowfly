@@ -11,6 +11,7 @@ use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use trellis_core::conflict_rows::Trivial;
 use trellis_core::gitcli::{args, run};
 use trellis_core::repo::{
     Choice, Chunk, ConflictContent, ConflictFile, ConflictIds, DiffTarget, FileDiff, Operation, Segment, Side, SideLabels,
@@ -26,6 +27,27 @@ pub(super) fn conflicted_repo(name: &str) -> PathBuf {
     git(&dir, &["commit", "-q", "-am", "theirs"]);
     git(&dir, &["checkout", "-q", "main"]);
     std::fs::write(dir.join("a.txt"), "one\nours\n").unwrap();
+    git(&dir, &["commit", "-q", "-am", "ours"]);
+    let (ok, _) = run(&dir, &args(&["merge", "other"]));
+    assert!(!ok, "merge should conflict");
+    dir
+}
+
+/// A repository in the middle of a merge where a.txt and b.txt each conflict in one chunk.
+pub(super) fn two_conflicts(name: &str) -> PathBuf {
+    let dir = scratch_repo(name);
+    std::fs::write(dir.join("b.txt"), "one\n").unwrap();
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    git(&dir, &["checkout", "-q", "-b", "other"]);
+    for f in ["a.txt", "b.txt"] {
+        std::fs::write(dir.join(f), "one\ntheirs\n").unwrap();
+    }
+    git(&dir, &["commit", "-q", "-am", "theirs"]);
+    git(&dir, &["checkout", "-q", "main"]);
+    for f in ["a.txt", "b.txt"] {
+        std::fs::write(dir.join(f), "one\nours\n").unwrap();
+    }
     git(&dir, &["commit", "-q", "-am", "ours"]);
     let (ok, _) = run(&dir, &args(&["merge", "other"]));
     assert!(!ok, "merge should conflict");
@@ -181,6 +203,8 @@ fn saving_resolves_the_file_end_to_end() {
 fn mark_resolved_closes_the_view() {
     let (mut st, dir) = opened("conflict-mark");
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
+    assert!(st.conflict.is_some(), "the markers warning comes first");
+    drive(&mut st, Msg::ConfirmAccepted);
     assert!(st.conflict.is_none());
     assert!(read(&dir).contains("<<<<<<<"), "marked resolved as it is");
     let _ = std::fs::remove_dir_all(&dir);
@@ -215,4 +239,90 @@ fn resolving_with_a_side_needs_the_open_file() {
     assert_eq!(read(&dir), "one\ntheirs\n");
     assert!(st.conflict.is_none());
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `two_conflicts` opened, with the conflict view loaded on a.txt.
+fn opened_two(name: &str) -> (AppState, PathBuf) {
+    let dir = two_conflicts(name);
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
+    assert!(st.conflict.as_ref().is_some_and(|c| c.file.is_some()));
+    (st, dir)
+}
+
+#[test]
+fn saving_steps_to_the_next_conflicted_file() {
+    let (mut st, dir) = opened_two("conflict-step");
+    update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
+    drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
+    let c = st.conflict.as_ref().expect("still open");
+    assert_eq!(c.path, "b.txt");
+    assert!(c.file.is_some() && !c.step_on_resolve, "b.txt loaded fresh");
+    let toast = st.toasts.last().expect("a toast");
+    assert_eq!(toast.text, "Resolved a.txt. Opened b.txt (1 conflicted file left)");
+    // The last one closes the view as before.
+    drive(&mut st, Msg::Conflict(ConflictMsg::ResolveWithSide { path: "b.txt".into(), side: Side::Theirs }));
+    assert!(st.conflict.is_none());
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Resolved b.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn marking_the_open_file_resolved_steps_too() {
+    let (mut st, dir) = opened_two("conflict-step-mark");
+    drive(&mut st, Msg::Conflict(ConflictMsg::MarkResolved(vec!["a.txt".into()])));
+    drive(&mut st, Msg::ConfirmAccepted);
+    assert_eq!(st.conflict.as_ref().map(|c| c.path.as_str()), Some("b.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_file_resolved_outside_the_app_closes_the_view_without_stepping() {
+    let (mut st, dir) = opened_two("conflict-step-outside");
+    git(&dir, &["add", "a.txt"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(st.conflict.is_none(), "closed, though b.txt is still conflicted");
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Resolved a.txt (1 conflicted file left)"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn trivial_chunks_are_picked_when_the_file_loads() {
+    let mut f = fake_file(2);
+    if let ConflictContent::Text(segs) = &mut f.content
+        && let Segment::Conflict(c) = &mut segs[1]
+    {
+        c.ours = c.base.clone();
+    }
+    let mut view = ConflictView::loading("f.txt".into());
+    view.set_file(f);
+    assert_eq!((view.choices[0], view.auto[0]), (Choice::Theirs, Some(Trivial::Unchanged)));
+    assert_eq!((view.choices[1], view.auto[1]), (Choice::Unresolved, None));
+    assert_eq!((view.current, view.auto_count()), (1, 1), "on the first chunk still to pick");
+    assert!(view.output().is_none(), "nothing is saved until every chunk is picked");
+
+    let mut st = state();
+    st.conflict = Some(view);
+    update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
+    let c = st.conflict.as_ref().unwrap();
+    assert_eq!((c.choices[0], c.auto[0]), (Choice::TheirsThenOurs, None), "a change clears the tag");
+    st.conflict.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
+    update(&mut st, Msg::Conflict(ConflictMsg::ConflictReset), Instant::now());
+    let c = st.conflict.as_ref().unwrap();
+    assert_eq!((c.choices.clone(), c.auto.clone()), (vec![Choice::Unresolved; 2], vec![None; 2]), "Reset clears every pick");
+
+    // Every chunk picked automatically: Save is ready, and the view starts on the first.
+    let mut f = fake_file(2);
+    if let ConflictContent::Text(segs) = &mut f.content {
+        for s in segs.iter_mut() {
+            if let Segment::Conflict(c) = s {
+                c.theirs = c.ours.clone();
+            }
+        }
+    }
+    let mut view = ConflictView::loading("f.txt".into());
+    view.set_file(f);
+    assert!(view.can_save());
+    assert_eq!((view.auto, view.current), (vec![Some(Trivial::Identical); 2], 0));
 }

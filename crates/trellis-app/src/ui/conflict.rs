@@ -8,7 +8,6 @@ use super::widgets::{Icon, icon_button};
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
-use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use crate::state::tool_compare::{IN_MERGE_TOOL, MERGE_TOOL_BUTTON, merge_blocked, merging};
@@ -31,6 +30,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(format!("{IN_MERGE_TOOL}.")).color(color::amber()));
         });
     }
+    auto_note(ui, view);
     let Some(file) = &view.file else {
         ui.label(RichText::new("Loading…").color(color::weak()));
         return;
@@ -137,9 +137,35 @@ fn header_buttons(ui: &mut Ui, view: &ConflictView, tool: Option<&str>, in_tool:
 /// Mark resolved for `path`, disabled while the merge tool has it open (`in_tool`).
 fn mark_resolved_button(ui: &mut Ui, path: &str, in_tool: bool, msgs: &mut Vec<Msg>) {
     let r = ui.add_enabled(!in_tool, egui::Button::new("Mark resolved"));
-    if r.on_hover_text("Stage the working file as it is now").on_disabled_hover_text(IN_MERGE_TOOL).clicked() {
-        msgs.push(Msg::Stage(StageMsg::StageFile(path.to_owned())));
+    let tip = "Stage the working file as it is now (asks first if conflict markers are left)";
+    if r.on_hover_text(tip).on_disabled_hover_text(IN_MERGE_TOOL).clicked() {
+        msgs.push(Msg::Conflict(ConflictMsg::MarkResolved(vec![path.to_owned()])));
     }
+}
+
+/// Under the header: how many chunks were picked automatically, while any pick still is.
+fn auto_note(ui: &mut Ui, view: &ConflictView) {
+    let (auto, n) = (view.auto_count(), view.chunk_count());
+    if auto == 0 {
+        return;
+    }
+    let text = if auto == n {
+        let all = if n == 1 { "The conflict in this file was" } else { "All conflicts in this file were" };
+        RichText::new(format!(
+            "{all} picked automatically (one side unchanged, or only whitespace differs). You can save it straight away."
+        ))
+        .color(color::accent())
+    } else {
+        RichText::new(format!(
+            "{auto} of {n} conflicts were picked automatically (one side unchanged, or only whitespace differs). Check them before \
+             saving."
+        ))
+        .color(color::weak())
+    };
+    ui.horizontal(|ui| {
+        ui.add_space(8.0);
+        ui.label(text);
+    });
 }
 
 /// Open in merge tool for `path`, disabled with the reason `blocked`.

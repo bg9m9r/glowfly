@@ -1,7 +1,8 @@
 //! Row layout of the conflict view: the ours and theirs panes side by side (aligned, the
-//! shorter side of a chunk padded), and the output as it will be saved.
+//! shorter side of a chunk padded), and the output as it will be saved. Also the chunks that
+//! can be picked safely without asking (`trivial_pick`).
 
-use crate::repo::{Choice, Segment, Side};
+use crate::repo::{Choice, Chunk, ConflictFile, Segment, Side};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PaneRow {
@@ -95,10 +96,78 @@ pub fn scroll_target(first_rows: &[usize], chunk: usize) -> usize {
     first_rows.get(chunk).copied().unwrap_or(0).saturating_sub(3)
 }
 
+/// Why a chunk could be picked without asking.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Trivial {
+    /// One side left the base as it was, so the other side's change is the whole story.
+    Unchanged,
+    /// Both sides made the same change.
+    Identical,
+    /// The sides (or one side and the base) differ only in spaces, tabs, blank lines or line
+    /// endings.
+    Whitespace,
+}
+
+impl Trivial {
+    /// A few words for the chunk header.
+    pub fn label(self) -> &'static str {
+        match self {
+            Trivial::Unchanged => "unchanged on one side",
+            Trivial::Identical => "same on both sides",
+            Trivial::Whitespace => "whitespace only",
+        }
+    }
+}
+
+/// The lines without their terminators.
+fn bare(lines: &[String]) -> Vec<&str> {
+    lines.iter().map(|l| l.strip_suffix('\n').map_or(l.as_str(), |l| l.strip_suffix('\r').unwrap_or(l))).collect()
+}
+
+/// The lines with each run of whitespace made one space, ends trimmed and blank lines dropped.
+fn loose(lines: &[String]) -> Vec<String> {
+    lines.iter().map(|l| l.split_whitespace().collect::<Vec<_>>().join(" ")).filter(|l| !l.is_empty()).collect()
+}
+
+/// The pick for `chunk` when one is safe without asking, and why. Checked in order: one side
+/// equal to the base (line endings aside) takes the other side; both sides equal takes ours;
+/// then the same three tests with whitespace ignored. Without a real base (`has_base` false,
+/// both sides added the file) the base tests are skipped: that base is an empty stand-in.
+pub fn trivial_pick(chunk: &Chunk, has_base: bool) -> Option<(Choice, Trivial)> {
+    let (base, ours, theirs) = (bare(&chunk.base), bare(&chunk.ours), bare(&chunk.theirs));
+    if has_base && ours == base {
+        return Some((Choice::Theirs, Trivial::Unchanged));
+    }
+    if has_base && theirs == base {
+        return Some((Choice::Ours, Trivial::Unchanged));
+    }
+    if chunk.ours == chunk.theirs {
+        return Some((Choice::Ours, Trivial::Identical));
+    }
+    let (ours, theirs) = (loose(&chunk.ours), loose(&chunk.theirs));
+    if ours == theirs {
+        return Some((Choice::Ours, Trivial::Whitespace));
+    }
+    if has_base {
+        let base = loose(&chunk.base);
+        if ours == base {
+            return Some((Choice::Theirs, Trivial::Whitespace));
+        }
+        if theirs == base {
+            return Some((Choice::Ours, Trivial::Whitespace));
+        }
+    }
+    None
+}
+
+/// `trivial_pick` for each of `file`'s chunks, in order.
+pub fn trivial_picks(file: &ConflictFile) -> Vec<Option<(Choice, Trivial)>> {
+    file.chunks().map(|c| trivial_pick(c, !file.no_ancestor)).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::repo::Chunk;
 
     fn lines(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| format!("{s}\n")).collect()
@@ -156,5 +225,44 @@ mod tests {
         assert_eq!(scroll_target(&[1, 10], 0), 0);
         assert_eq!(scroll_target(&[1, 10], 1), 7);
         assert_eq!(scroll_target(&[], 3), 0);
+    }
+
+    fn chunk(base: &[&str], ours: &[&str], theirs: &[&str]) -> Chunk {
+        Chunk { base: lines(base), ours: lines(ours), theirs: lines(theirs) }
+    }
+
+    #[test]
+    fn trivial_pick_table() {
+        use Choice::{Ours, Theirs};
+        use Trivial::{Identical, Unchanged, Whitespace};
+        let crlf = |v: &[&str]| v.iter().map(|s| format!("{s}\r\n")).collect::<Vec<_>>();
+        type Row = (&'static str, Chunk, Option<(Choice, Trivial)>);
+        let table: [Row; 9] = [
+            ("ours is the base", chunk(&["a"], &["a"], &["b"]), Some((Theirs, Unchanged))),
+            ("theirs is the base", chunk(&["a"], &["b"], &["a"]), Some((Ours, Unchanged))),
+            ("the same change", chunk(&["a"], &["b", "c"], &["b", "c"]), Some((Ours, Identical))),
+            ("indentation", chunk(&["a"], &["    b(x)"], &["\tb(x)"]), Some((Ours, Whitespace))),
+            ("trailing spaces", chunk(&["a"], &["b  c"], &["b c  "]), Some((Ours, Whitespace))),
+            ("a blank line added", chunk(&["a"], &["b", "", "c"], &["b", "c"]), Some((Ours, Whitespace))),
+            ("ours only reindents", chunk(&["  a"], &["a"], &["z"]), Some((Theirs, Whitespace))),
+            ("theirs only reindents", chunk(&["  a"], &["z"], &["a "]), Some((Ours, Whitespace))),
+            ("a real conflict", chunk(&["a"], &["b"], &["c"]), None),
+        ];
+        for (what, c, want) in table {
+            assert_eq!(trivial_pick(&c, true), want, "{what}");
+        }
+        // Line endings alone: CR LF against LF.
+        let c = Chunk { base: lines(&["a"]), ours: crlf(&["b"]), theirs: lines(&["b"]) };
+        assert_eq!(trivial_pick(&c, true), Some((Ours, Whitespace)));
+        // Line endings are ignored against the base too.
+        let c = Chunk { base: crlf(&["a"]), ours: lines(&["a"]), theirs: lines(&["b"]) };
+        assert_eq!(trivial_pick(&c, true), Some((Theirs, Unchanged)));
+        // Without a base, an empty side isn't "unchanged": the empty base is made up.
+        let c = chunk(&[], &[], &["t"]);
+        assert_eq!(trivial_pick(&c, false), None);
+        assert_eq!(trivial_pick(&c, true), Some((Theirs, Unchanged)));
+        // Equal sides are still equal without a base.
+        assert_eq!(trivial_pick(&chunk(&[], &["x"], &["x"]), false), Some((Ours, Identical)));
+        assert_eq!(Whitespace.label(), "whitespace only");
     }
 }

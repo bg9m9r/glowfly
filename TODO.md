@@ -696,19 +696,21 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Merge conflict tool
 
 - Take or untake individual lines from either side of a conflict
-- Auto-resolve trivial conflicts (whitespace-only, or one side equal to the base), with a note
-  that they were resolved automatically
 - Edit the output pane directly before saving
 - Save the output while keeping conflict markers for chunks not picked yet
-- Mark several selected files resolved, Mark all resolved, and Mark conflicted (un-resolve,
-  e.g. `git checkout -m <path>`)
-- Split the WIP file list into Conflicted Files (N) and Resolved Files (N), with per-file
-  conflict counts
-- Step to the next conflicted file after saving one
 - Undo and redo of a saved resolution through the undo history
 - Collapse long unchanged runs in the panes; a resizable split between panes and output
 - Syntax highlighting in the conflict panes
-- Warn before Mark resolved when the working file still contains conflict markers
+- Mark several selected files resolved or conflicted at once (needs multi-select in the WIP
+  file lists)
+- Mark all resolved for one folder, once the WIP list has a folder view
+- Command palette entries for Mark all resolved and Mark conflicted
+- A Preferences switch to turn off automatic picks for trivial conflicts
+- Pick trivial conflicts in every conflicted file at once, without opening each one
+- Mark conflicted for a submodule resolved in Trellis (no resolve-undo record is written for
+  gitlinks)
+- Mark conflicted for modify/delete conflicts (git can't recreate a conflict missing one side)
+- A Mark all conflicted button on the Resolved Files header
 
 ### File history and blame
 

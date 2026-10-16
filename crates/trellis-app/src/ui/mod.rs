@@ -16,6 +16,7 @@ mod commit_box;
 pub(crate) mod common;
 mod conflict;
 mod conflict_check;
+mod conflict_files;
 mod conflict_panes;
 mod dashboard;
 mod dashboard_rows;
@@ -102,6 +103,8 @@ mod snapshot_tests_columns;
 mod snapshot_tests_commit;
 #[cfg(test)]
 mod snapshot_tests_conflict_check;
+#[cfg(test)]
+mod snapshot_tests_conflict_files;
 #[cfg(test)]
 mod snapshot_tests_dashboard;
 #[cfg(test)]

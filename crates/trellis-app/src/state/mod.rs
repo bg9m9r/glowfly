@@ -11,6 +11,7 @@ pub mod clone_service;
 pub mod commit;
 pub mod conflict;
 pub mod conflict_check;
+pub mod conflict_files;
 pub mod dashboard;
 pub mod dashboard_plan;
 pub mod dashboard_rows;
@@ -270,6 +271,8 @@ pub struct AppState {
     /// Incremented for every conflict load request and whenever the view closes; older
     /// `ConflictLoaded` results are ignored.
     pub conflict_gen: u64,
+    /// The WIP panel's Conflicted Files counts and Resolved Files (parked with the tab).
+    pub conflict_files: conflict_files::ConflictFiles,
     /// The open file history; shown instead of a diff or the graph (below a conflict).
     pub history: Option<history::FileHistoryView>,
     /// Incremented for every history request and whenever the view closes; older
@@ -395,6 +398,7 @@ impl AppState {
             diff_shown_gen: 0,
             conflict: None,
             conflict_gen: 0,
+            conflict_files: Default::default(),
             history: None,
             history_gen: 0,
             blame: None,

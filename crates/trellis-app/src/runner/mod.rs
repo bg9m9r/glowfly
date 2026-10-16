@@ -37,6 +37,7 @@ mod blame;
 mod clone;
 mod config;
 mod conflict_check;
+mod conflict_files;
 mod dashboard;
 mod deep_link;
 mod expect;
@@ -274,6 +275,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         }
         Effect::LoadBlame(r) => Some(blame::load(r)),
         Effect::LocalOp { workdir, op } => Some(Msg::Stage(StageMsg::LocalOpDone(git_ops::local_op(&workdir, op).map_err(err)))),
+        Effect::ReadConflictFiles { workdir, paths, purpose } => Some(conflict_files::read(&workdir, paths, purpose)),
         Effect::RevertHunk { workdir, target, index, expected } => {
             let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
             Some(Msg::Stage(StageMsg::HunkReverted { path: target.path().to_owned(), result }))

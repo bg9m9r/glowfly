@@ -13,6 +13,7 @@ mod clone_service;
 mod commit;
 mod conflict;
 mod conflict_check;
+mod conflict_files;
 mod dashboard;
 mod deep_link;
 mod deep_link_open;
@@ -113,6 +114,8 @@ mod clone_tests;
 mod commit_tests;
 #[cfg(test)]
 mod conflict_check_tests;
+#[cfg(test)]
+mod conflict_files_tests;
 #[cfg(test)]
 mod conflict_tests;
 #[cfg(test)]

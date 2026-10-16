@@ -79,9 +79,15 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     }
     super::path_warnings::banner(ui, snap);
 
-    let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / 2.0).max(80.0);
+    // The lists shown share what the commit box leaves: Unstaged and Staged, plus Conflicted
+    // and Resolved Files while there are any.
+    let resolved = st.conflict_files.resolved_rows(snap);
+    let lists = 2 + usize::from(!conflicted.is_empty()) + usize::from(!resolved.is_empty());
+    let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / lists as f32).max(60.0);
     let tools = ToolAvail::of(st);
     let ctx = RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap };
+    let lists = super::conflict_files::Lists { conflicted: &conflicted, resolved: &resolved, height: list_h };
+    super::conflict_files::show(ui, st, lists, &open, ctx, msgs);
     file_list(ui, snap, false, &open, list_h, ctx, msgs);
     ui.add_space(8.0);
     file_list(ui, snap, true, &open, list_h, ctx, msgs);
@@ -170,10 +176,10 @@ pub(super) struct RowActions<'a> {
 /// What every working-tree row needs, built once per frame: Track in Git LFS's context and
 /// the diff and merge tools' availability, plus the keymap for the header buttons' tips.
 #[derive(Clone, Copy)]
-struct RowContext<'a> {
-    lfs: TrackContext<'a>,
-    tools: &'a ToolAvail,
-    keys: &'a Keymap,
+pub(super) struct RowContext<'a> {
+    pub lfs: TrackContext<'a>,
+    pub tools: &'a ToolAvail,
+    pub keys: &'a Keymap,
 }
 
 /// A file changed by a commit (or between two): its status and path, which opens `target`.
@@ -208,9 +214,9 @@ pub(super) fn changed_file_row(
 }
 
 /// What the central panel shows, so its file row is drawn selected.
-struct OpenFile<'a> {
-    diff: Option<&'a DiffTarget>,
-    conflict: Option<&'a str>,
+pub(super) struct OpenFile<'a> {
+    pub diff: Option<&'a DiffTarget>,
+    pub conflict: Option<&'a str>,
 }
 
 /// The Discard all confirmation, naming Undo's current key.
@@ -222,9 +228,14 @@ pub(super) fn discard_all_text(keys: &Keymap) -> String {
     )
 }
 
-/// The Unstaged or Staged Files list of the working tree.
+/// The Unstaged or Staged Files list of the working tree. Conflicted files have their own list
+/// (`conflict_files::show`), so Unstaged Files leaves them out.
 fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, ctx: RowContext, msgs: &mut Vec<Msg>) {
-    let (title, files) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
+    let (title, all) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
+    // Built only while files are conflicted: a working tree can have thousands of changed files.
+    let kept: Option<Vec<&FileEntry>> =
+        (!staged && all.iter().any(|f| f.status == '!')).then(|| all.iter().filter(|f| f.status != '!').collect());
+    let count = kept.as_ref().map_or(all.len(), Vec::len);
     let keys = ctx.keys;
     // The Staged header's background opens its menu; registered before the header's buttons, so
     // they keep their own clicks.
@@ -233,17 +244,17 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
         egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
             ui.horizontal(|ui| {
                 // Not selectable, so a right-click on the title reaches the header's menu.
-                let text = RichText::new(format!("{title} ({})", files.len())).strong().color(color::text());
+                let text = RichText::new(format!("{title} ({count})")).strong().color(color::text());
                 ui.add(egui::Label::new(text).selectable(false));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if staged {
                         let tip = keys.tip("Unstage every file", BindingId::UnstageAll);
-                        if !files.is_empty() && ui.small_button("Unstage all").on_hover_text(tip).clicked() {
+                        if count > 0 && ui.small_button("Unstage all").on_hover_text(tip).clicked() {
                             msgs.push(Msg::Stage(StageMsg::UnstageAll));
                         }
                         return;
                     }
-                    if !files.is_empty() {
+                    if count > 0 {
                         let tip = keys.tip("Stage every changed file", BindingId::StageAll);
                         if ui.small_button("Stage all").on_hover_text(tip).clicked() {
                             msgs.push(Msg::Stage(StageMsg::StageAll));
@@ -270,26 +281,41 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
         header.response.context_menu(|ui| file_menu::staged_header_items(ui, msgs, snap));
     }
     let area = egui::ScrollArea::vertical().id_salt(title).max_height(max_h).auto_shrink([false, true]);
-    if files.is_empty() {
+    if count == 0 {
         area.show(ui, |ui| ui.label(RichText::new("None").color(color::faint())));
         return;
     }
     // Only the rows in view are drawn: a working tree can have thousands of changed files.
-    area.show_rows(ui, widget_row_height(ui), files.len(), |ui, range| {
-        for f in &files[range] {
-            wip_file_row(ui, snap, f, staged, open, ctx, msgs);
+    area.show_rows(ui, widget_row_height(ui), count, |ui, range| {
+        for i in range {
+            let f = kept.as_ref().map_or(&all[i], |k| k[i]);
+            wip_file_row(ui, snap, f, staged, open, ctx, None, msgs);
         }
     });
 }
 
-/// A row of the Unstaged or Staged Files list: status, Stage / Unstage / Mark resolved, the
-/// path (opens its diff, or the conflict view) and its menu.
-fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool, open: &OpenFile, ctx: RowContext, msgs: &mut Vec<Msg>) {
+/// A row of the Unstaged, Staged or Conflicted Files list: status, Stage / Unstage / Mark
+/// resolved, the path (opens its diff, or the conflict view), `note` (weak, or green) and its
+/// menu.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn wip_file_row(
+    ui: &mut egui::Ui,
+    snap: &Snapshot,
+    f: &FileEntry,
+    staged: bool,
+    open: &OpenFile,
+    ctx: RowContext,
+    note: Option<(String, bool)>,
+    msgs: &mut Vec<Msg>,
+) {
     let target = || if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
-    let toggle =
-        || if staged { Msg::Stage(StageMsg::UnstageFile(f.path.clone())) } else { Msg::Stage(StageMsg::StageFile(f.path.clone())) };
-    // A conflicted file opens in the conflict view; staging it marks it resolved.
+    // A conflicted file opens in the conflict view; marking it resolved checks for markers first.
     let conflicted = !staged && f.status == '!';
+    let toggle = || match (staged, conflicted) {
+        (true, _) => Msg::Stage(StageMsg::UnstageFile(f.path.clone())),
+        (false, true) => Msg::Conflict(ConflictMsg::MarkResolved(vec![f.path.clone()])),
+        (false, false) => Msg::Stage(StageMsg::StageFile(f.path.clone())),
+    };
     ui.horizontal(|ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
         let action = match (staged, conflicted) {
@@ -310,6 +336,9 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
         };
         let r = ui.selectable_label(selected, &f.path);
         super::path_warnings::mark(ui, f);
+        if let Some((text, green)) = note {
+            ui.label(RichText::new(text).small().color(if green { color::green() } else { color::weak() }));
+        }
         if r.clicked() {
             msgs.push(if conflicted {
                 Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone()))

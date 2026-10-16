@@ -213,7 +213,7 @@ fn apply_status(
             if diff_changed(st, open_stamp) {
                 super::repo::reload_diff(st, fx);
             }
-            super::conflict::status_changed(st, now);
+            super::conflict::status_changed(st, now, fx);
         }
         Err(e) => {
             st.log(false, e);

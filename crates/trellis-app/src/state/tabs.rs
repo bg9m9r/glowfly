@@ -95,6 +95,8 @@ pub struct Parked {
     pub diff: Option<(DiffTarget, std::sync::Arc<FileDiff>)>,
     /// The open conflict with its picks (a load in flight is requested again on return).
     pub conflict: Option<ConflictView>,
+    /// The Conflicted Files counts and Resolved Files (read again on return).
+    pub conflict_files: crate::state::conflict_files::ConflictFiles,
     /// The open file history (a request in flight is sent again on return).
     pub history: Option<FileHistoryView>,
     /// The open blame view (a load in flight is requested again on return).

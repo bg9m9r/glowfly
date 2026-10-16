@@ -28,6 +28,8 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Resu
         LocalOp::Lines { op, path, hunk, expected, lines } => done(repo::apply_lines(workdir, &path, hunk, &expected, &lines, op)),
         LocalOp::ResolveConflict { path, contents, expected } => done(repo::write_resolution(workdir, &path, &contents, &expected)),
         LocalOp::ResolveWithSide { path, side, expected } => done(repo::resolve_with_side(workdir, &path, side, &expected)),
+        LocalOp::MarkResolved(paths) => done(repo::mark_resolved(workdir, &paths)),
+        LocalOp::MarkConflicted(paths) => done(repo::mark_conflicted(workdir, &paths)),
     }
 }
 

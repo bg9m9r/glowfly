@@ -42,6 +42,19 @@ pub enum LocalOp {
         side: Side,
         expected: ConflictIds,
     },
+    /// Stages conflicted files as they are, marking them resolved.
+    MarkResolved(Vec<String>),
+    /// Brings back resolved files' conflicts from git's resolve-undo record.
+    MarkConflicted(Vec<String>),
+}
+
+/// Why the conflicted files' working copies are read (`Effect::ReadConflictFiles`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ConflictRead {
+    /// The WIP panel's counts and Resolved Files; results of older generations are dropped.
+    Summary { generation: u64 },
+    /// The markers check before Mark resolved stages the files.
+    BeforeMarkResolved,
 }
 
 /// What a status read found (`LoadMsg::StatusLoaded`).

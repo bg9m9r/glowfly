@@ -328,8 +328,9 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::terminal::sync(st, fx);
     if kind == LoadKind::Open {
         fx.push(super::tabs::opened(st));
+        super::conflict_files::want(st, fx);
     } else {
-        super::conflict::status_changed(st, now);
+        super::conflict::status_changed(st, now, fx);
     }
     super::forge::resolve_pr_heads(st);
     if kind == LoadKind::Refresh {

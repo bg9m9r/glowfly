@@ -1,5 +1,5 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue), called from
+//! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue, check), called from
 //! `widgets::paint_icon`.
 
 use super::widgets::Icon;
@@ -212,6 +212,11 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
         Icon::Issue => {
             p.circle_stroke(c, 6.0, Stroke::new(1.6_f32, s.color));
             p.circle_filled(c, 1.8, s.color);
+        }
+        Icon::Check => {
+            let corner = pos2(c.x - 1.5, c.y + 4.0);
+            line(pos2(c.x - 5.5, c.y), corner);
+            line(corner, pos2(c.x + 6.0, c.y - 5.0));
         }
         _ => return false,
     }
