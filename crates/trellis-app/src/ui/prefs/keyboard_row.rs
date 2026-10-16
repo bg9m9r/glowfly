@@ -41,10 +41,9 @@ pub fn row(ui: &mut Ui, b: &'static Binding, keys: &Keymap, page: &KeysPage, msg
                 return;
             }
             let chords = keys.chords(b.id);
-            if !keys.is_default(b.id) {
-                if ui.small_button("Reset").on_hover_text(format!("Back to {}", keys.defaults_text(b.id))).clicked() {
-                    push(msgs, KeysMsg::Reset(b.id));
-                }
+            let reset = |ui: &mut Ui| ui.small_button("Reset").on_hover_text(format!("Back to {}", keys.defaults_text(b.id)));
+            if !keys.is_default(b.id) && reset(ui).clicked() {
+                push(msgs, KeysMsg::Reset(b.id));
             }
             if recording == Some(Slot::Add) {
                 pill(ui);
