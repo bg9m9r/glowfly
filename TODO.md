@@ -17,7 +17,7 @@ The last 20 completed TODO items, newest first: when (local time), which item, a
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 - 2026-10-16 00:41 · **Diff viewer upgrade**: Word wrap toggle in the diff header and Preferences > Editor, with variable-height rows (`bb11923`)
-- 2026-10-16 00:37 · **Repository trust**: git jobs started in an untrusted repository (pull, push, commit and its hooks, undo, …) wait for the trust prompt, which names the operation and offers Trust and run or Cancel (`517552e`)
+- 2026-10-16 00:37 · **Repository trust**: git jobs started in an untrusted repository (pull, push, commit and its hooks, undo, …) wait for the trust prompt, which names the operation and offers Trust and run or Cancel (`0c57fb6`)
 - 2026-10-15 22:15 · **Notifications**: "N commits behind" toast with a Pull button when a background fetch leaves the checked-out branch further behind its upstream; toasts can carry an action button; Behind alerts setting under UI Customization (`90241d7`)
 - 2026-10-15 19:55 · **Conflict prediction**: Dry-run merge of the checked-out branch against its upstream or default branch with git merge-tree after loads and fetches: toolbar warning with the conflicting files, Merge/Rebase from its popover, and on-demand checks from the branch menus (`62f321b`)
 - 2026-10-15 19:44 · **External tools**: Preferences > External Tools: choose an editor (open a file from file rows, or the repository from the palette) with argument templates, and a custom terminal for Open in terminal (`e7ea38a`)
