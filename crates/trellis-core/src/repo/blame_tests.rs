@@ -137,6 +137,18 @@ fn blame_of_binary_folder_submodule_missing() {
 }
 
 #[test]
+fn blame_of_a_too_large_file() {
+    let dir = scratch_repo("blame-too-large");
+    // Text just past the limit: refused before git runs, with the size rounded up to whole MB.
+    let big = "x\n".repeat(BLAME_MAX_BYTES / 2 + 1);
+    assert!(big.len() > BLAME_MAX_BYTES);
+    commit(&dir, "big.txt", &big, "big");
+    let err = blame_file(&dir, "big.txt", None).unwrap_err();
+    assert!(matches!(&err, Error::Unsupported(m) if m == "big.txt is too large to blame (9 MB)"), "{err}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn blame_keeps_tabs_and_strips_cr() {
     let dir = scratch_repo("blame-crlf");
     commit(&dir, "a.txt", "fn main() {\r\n\tlet x = 1;\r\n}\r\n", "crlf");
