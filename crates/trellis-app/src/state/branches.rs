@@ -27,7 +27,8 @@ pub fn remote_tracking(b: &BranchInfo) -> Option<&Tracking> {
     b.tracking.as_ref().filter(|t| t.is_remote())
 }
 
-fn commits(n: usize) -> String {
+/// "1 commit" or "N commits".
+pub(crate) fn commits(n: usize) -> String {
     if n == 1 { "1 commit".to_owned() } else { format!("{n} commits") }
 }
 

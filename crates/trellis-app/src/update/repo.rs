@@ -292,6 +292,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     }
     super::forge::detect(st, &snap);
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
+    super::notify::loaded(st, &snap, kind, now);
     st.snap = Some(snap);
     super::search::snapshot_changed(st);
     super::trust::loaded(st, kind, fx);

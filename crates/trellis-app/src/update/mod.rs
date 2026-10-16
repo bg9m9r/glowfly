@@ -19,6 +19,7 @@ mod graph_filter;
 mod highlight;
 mod history;
 mod lfs;
+mod notify;
 mod ops;
 mod palette;
 mod patch;
@@ -108,6 +109,8 @@ mod lfs_tests;
 mod lfs_track_tests;
 #[cfg(test)]
 mod lines_tests;
+#[cfg(test)]
+mod notify_tests;
 #[cfg(test)]
 mod palette_checkout_tests;
 #[cfg(test)]
@@ -270,6 +273,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
                 fx.extend(update(st, *then, now));
             }
         }
+        Msg::ToastAction(id) => notify::toast_action(st, id, now, &mut fx),
         Msg::CloseModal => st.modal = None,
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::OpenUrl(url)),

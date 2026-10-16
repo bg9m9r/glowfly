@@ -21,6 +21,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 return; // superseded by a newer load
             }
             st.loading = false;
+            super::notify::unchanged(st);
             // A file list dropped in flight (a tab switch) is asked for again.
             if matches!(st.selection, Selection::Commits(_))
                 && let Some(snap) = st.snap.take()

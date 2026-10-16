@@ -146,6 +146,8 @@ pub enum Msg {
         then: Box<Msg>,
     },
     ConfirmAccepted,
+    /// A toast's action button (state/toasts.rs): runs its message and removes the toast (update/notify.rs).
+    ToastAction(u64),
     /// Close whichever dialog is open.
     CloseModal,
     // The outside world, from menus all over the app.
@@ -224,6 +226,7 @@ impl Msg {
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }
             | Msg::ConfirmAccepted
+            | Msg::ToastAction(_)
             | Msg::CloseModal
             | Msg::Copy(_)
             | Msg::OpenUrl(_)

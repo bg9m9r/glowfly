@@ -128,6 +128,8 @@ mod snapshot_tests_tag_menu;
 #[cfg(test)]
 mod snapshot_tests_terminal;
 #[cfg(test)]
+mod snapshot_tests_toasts;
+#[cfg(test)]
 mod snapshot_tests_tools;
 #[cfg(test)]
 mod snapshot_tests_trust;
@@ -378,7 +380,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     modals::show(ctx, st, msgs);
     // After the other dialogs, so a credential prompt stacks on top of them.
     askpass::show(ctx, st, msgs);
-    status::toasts(ctx, st);
+    status::toasts(ctx, st, msgs);
     st.view.was_typing = text_field_focused(ctx);
 }
 

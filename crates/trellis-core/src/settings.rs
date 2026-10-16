@@ -146,6 +146,8 @@ pub struct Settings {
     // UI customization
     pub theme: ThemeChoice,
     pub notification_location: Corner,
+    /// After a background fetch, toast when the checked-out branch falls (further) behind its upstream (Preferences > UI Customization).
+    pub behind_alerts: bool,
     /// "system" or a locale such as "de_DE".
     pub date_locale: String,
     /// moment.js-style patterns.
@@ -238,6 +240,7 @@ impl Default for Settings {
             conflict_check: true,
             theme: ThemeChoice::Dark,
             notification_location: Corner::BottomLeft,
+            behind_alerts: true,
             date_locale: "system".into(),
             date_format: "MM/DD/YYYY".into(),
             date_word_format: "MMMM D, YYYY".into(),

@@ -293,3 +293,13 @@ fn reset_editor_args_restores_only_the_templates() {
         ExternalTools { editor: "code".into(), terminal: "wt".into(), terminal_args: "-d {repo}".into(), ..ExternalTools::default() }
     );
 }
+
+#[test]
+fn behind_alerts_default_on() {
+    assert!(Settings::default().behind_alerts);
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.behind_alerts, "old files load with behind alerts on");
+    let off = Settings { behind_alerts: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.behind_alerts);
+}

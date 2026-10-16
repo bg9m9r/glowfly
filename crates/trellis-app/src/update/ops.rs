@@ -359,6 +359,7 @@ pub(super) fn finish_job(
         }
         return; // that tab refreshes when it is selected again
     }
+    super::notify::fetched(st, &job.label, job.quiet, ok);
     super::watch::settled(st, now);
     super::repo::refresh(st, fx);
     super::lfs::job_finished(st, &job.label, ok, job.quiet, fx);
@@ -392,5 +393,5 @@ pub(super) fn auto_fetch(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) 
     if st.settings.auto_prune {
         cmd.push("--prune".into());
     }
-    start_job(st, JobSpec { quiet: true, ..JobSpec::new("Auto-fetch".into(), vec![cmd]) }, fx);
+    start_job(st, JobSpec { quiet: true, ..JobSpec::new(super::notify::AUTO_FETCH.into(), vec![cmd]) }, fx);
 }

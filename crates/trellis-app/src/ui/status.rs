@@ -3,7 +3,7 @@
 use super::common::status_label_ui;
 use super::theme::color;
 use crate::msg::Msg;
-use crate::state::{AppState, TOAST_LIFETIME};
+use crate::state::AppState;
 use eframe::egui::{self, Align, Align2, Layout, RichText, Stroke, vec2};
 use trellis_core::settings::Corner;
 
@@ -72,8 +72,10 @@ pub fn activity_log(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>)
     });
 }
 
-pub fn toasts(ctx: &egui::Context, st: &mut AppState) {
-    st.toasts.retain(|t| t.at.elapsed() < TOAST_LIFETIME);
+/// The toasts in the corner from Preferences. The area takes clicks only while a toast has an
+/// action button, so plain toasts let clicks through to what is under them.
+pub fn toasts(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    st.toasts.retain(|t| t.at.elapsed() < t.lifetime());
     if st.toasts.is_empty() {
         return;
     }
@@ -83,11 +85,18 @@ pub fn toasts(ctx: &egui::Context, st: &mut AppState) {
         Corner::TopLeft => (Align2::LEFT_TOP, vec2(12.0, 70.0)),
         Corner::TopRight => (Align2::RIGHT_TOP, vec2(-12.0, 70.0)),
     };
-    egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(false).show(ctx, |ui| {
+    let interactable = st.toasts.iter().any(|t| t.action.is_some());
+    egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(interactable).show(ctx, |ui| {
         for t in &st.toasts {
             // Fade out over the last second.
-            let fade = 1.0 - (t.at.elapsed().as_secs_f32() - (TOAST_LIFETIME.as_secs_f32() - 1.0)).clamp(0.0, 1.0);
-            let accent = if t.ok { color::green() } else { color::red() };
+            let fade = 1.0 - (t.at.elapsed().as_secs_f32() - (t.lifetime().as_secs_f32() - 1.0)).clamp(0.0, 1.0);
+            let accent = if t.action.is_some() {
+                color::blue()
+            } else if t.ok {
+                color::green()
+            } else {
+                color::red()
+            };
             egui::Frame::new()
                 .fill(color::toolbar().gamma_multiply(fade))
                 .stroke(Stroke::new(1.0_f32, accent.gamma_multiply(fade)))
@@ -96,6 +105,16 @@ pub fn toasts(ctx: &egui::Context, st: &mut AppState) {
                 .show(ui, |ui| {
                     ui.set_max_width(380.0);
                     ui.label(RichText::new(&t.text).color(color::text().gamma_multiply(fade)));
+                    if let Some(a) = &t.action {
+                        ui.add_space(4.0);
+                        ui.scope(|ui| {
+                            ui.multiply_opacity(fade);
+                            let button = egui::Button::new(&a.label).fill(color::input()).stroke(Stroke::new(1.0_f32, color::border()));
+                            if ui.add(button).clicked() {
+                                msgs.push(Msg::ToastAction(t.id));
+                            }
+                        });
+                    }
                 });
             ui.add_space(6.0);
         }

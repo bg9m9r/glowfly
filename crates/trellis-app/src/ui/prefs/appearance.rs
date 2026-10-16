@@ -53,6 +53,10 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32)) {
             ],
         )
     });
+    row(ui, "Behind alerts", |ui| {
+        ui.checkbox(&mut s.behind_alerts, "");
+        help(ui, "After a background fetch, say when the checked-out branch has fallen behind its upstream, with a button to pull.");
+    });
 
     section(ui, "Date/Time");
     ui.horizontal(|ui| {

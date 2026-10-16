@@ -14,6 +14,7 @@ pub mod gitflow;
 pub mod history;
 pub mod lfs;
 pub mod lines;
+pub mod notify;
 pub mod palette;
 pub mod palette_commands;
 pub mod palette_kinds;
@@ -40,6 +41,7 @@ pub mod submodules;
 pub mod tabs;
 pub mod tags;
 pub mod terminal;
+pub mod toasts;
 pub mod tools;
 pub mod trust;
 pub mod undo;
@@ -52,6 +54,7 @@ pub use commit::CommitDraft;
 pub use forge::{ForgeState, Status};
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use tabs::Tab;
+pub use toasts::{Toast, ToastAction};
 pub use view::{ColumnDrag, ViewState};
 
 use crate::msg::Msg;
@@ -64,7 +67,6 @@ use trellis_core::settings::{BranchVisibility, DiffMode, Settings};
 
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
-pub const TOAST_LIFETIME: Duration = Duration::from_secs(5);
 /// Why hunk and line operations are off while the diff hides whitespace changes.
 pub const WHITESPACE_BLOCKS_HUNK_OPS: &str =
     "Turn off Ignore whitespace to stage, unstage or discard hunks and lines. The hidden whitespace changes are part of each hunk.";
@@ -119,12 +121,6 @@ pub const LOG_LIMIT: usize = 500;
 pub struct LogEntry {
     pub ok: bool,
     pub text: String,
-}
-
-pub struct Toast {
-    pub ok: bool,
-    pub text: String,
-    pub at: Instant,
 }
 
 /// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter
@@ -207,6 +203,11 @@ pub struct AppState {
     pub undo: undo::UndoHistory,
     pub log: Vec<LogEntry>,
     pub toasts: Vec<Toast>,
+    /// Last toast id handed out (state/toasts.rs).
+    pub toast_seq: u64,
+    /// How far behind the checked-out branch was when the active tab's auto-fetch ended, until
+    /// the reload after it lands (update/notify.rs).
+    pub behind_watch: Option<notify::BehindWatch>,
     pub modal: Option<Modal>,
     pub prefs: Option<PrefsState>,
     pub forge: Option<ForgeState>,
@@ -284,6 +285,8 @@ impl AppState {
             undo: undo::UndoHistory::default(),
             log: Vec::new(),
             toasts: Vec::new(),
+            toast_seq: 0,
+            behind_watch: None,
             modal: None,
             prefs: None,
             forge: None,
@@ -365,13 +368,6 @@ impl AppState {
         self.log.push(LogEntry { ok, text: text.into() });
         if self.log.len() > LOG_LIMIT {
             self.log.drain(..self.log.len() - LOG_LIMIT);
-        }
-    }
-
-    pub fn toast(&mut self, ok: bool, text: impl Into<String>, now: Instant) {
-        self.toasts.push(Toast { ok, text: text.into(), at: now });
-        if self.toasts.len() > 4 {
-            self.toasts.remove(0);
         }
     }
 }

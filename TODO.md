@@ -72,7 +72,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ◐ Editor and terminal | Diff tool, merge tool (P1 External tools) |
-| Notifications | ◐ location under UI Customization | Desktop notifications (P1 Notifications) |
+| Notifications | ◐ location and behind alerts under UI Customization | Desktop notifications (P1 Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
 | Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights) | Font family, word wrap, EOL character |
@@ -929,8 +929,14 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Open several selected files or repositories at once, asking first when there are many
   - [ ] Show / hide arguments toggle that collapses the argument fields
 - [ ] **Notifications**
-  Toasts for every operation exist. Missing: optional desktop notifications and "N commits
-  behind" alerts after auto-fetch.
+  Toasts for every operation exist. Missing: optional desktop notifications.
+  - [x] "N commits behind" toast with Pull after a background fetch (UI Customization > Behind alerts)
+  - [ ] Desktop (OS) notifications while the window is unfocused, for the behind alert and job
+    results: an opt-in toggle with help text, confirmed once it is turned on
+  - [ ] Behind alerts for other local branches with upstreams and for inactive tabs, batched
+    into one alert when several have new commits
+  - [ ] Pull request activity alerts (new pull requests, review requests, finished checks)
+  - [ ] Keep a toast up while the pointer is over it, and a close button on toasts
 
 ## P2: integrations depth
 
