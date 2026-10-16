@@ -187,6 +187,8 @@ mod tests;
 #[cfg(test)]
 mod tools_tests;
 #[cfg(test)]
+mod trust_held_tab_tests;
+#[cfg(test)]
 mod trust_held_tests;
 #[cfg(test)]
 mod trust_tests;

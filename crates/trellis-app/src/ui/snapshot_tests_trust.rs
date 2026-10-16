@@ -185,3 +185,43 @@ fn no_chip_for_a_clean_or_trusted_repository() {
     assert!(h.query_by_label("Untrusted").is_none(), "trusted");
     remove_fixture(&dir);
 }
+
+/// Opens `modal` over the fixture `name` with its git held, clicks `button`, and runs what that
+/// frame sent through update in order, as the app does.
+fn submit_held(name: &str, modal: Modal, button: &str) -> AppState {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
+    make_untrusted(&mut st, &dir);
+    assert!(st.held());
+    st.modal = Some(modal);
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label(button).click();
+    h.run();
+    let (mut st, msgs) =
+        std::mem::replace(h.state_mut(), (AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now()), Vec::new()));
+    drop(h);
+    for m in msgs {
+        let _ = crate::update::update(&mut st, m, Instant::now());
+    }
+    remove_fixture(&dir);
+    st
+}
+
+fn held_prompt(st: &AppState) -> Option<&str> {
+    match &st.modal {
+        Some(Modal::Trust(p)) => p.held.as_deref(),
+        _ => None,
+    }
+}
+
+#[test]
+fn a_dialog_that_closes_itself_leaves_the_prompt_for_its_job() {
+    let st = submit_held("trust-new-branch", Modal::NewBranch { start: None, name: "topic".into(), checkout: false }, "Create");
+    assert_eq!(held_prompt(&st), Some("Create branch"), "the prompt names the job");
+    assert!(st.trust.held.is_some(), "the job waits for the decision");
+    assert!(st.job.is_none());
+
+    let st = submit_held("trust-rename-branch", Modal::RenameBranch { old: "search".into(), name: "find".into() }, "Rename");
+    assert_eq!(held_prompt(&st), Some("Rename branch"));
+    assert!(st.trust.held.is_some());
+}

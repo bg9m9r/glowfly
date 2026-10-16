@@ -8,7 +8,7 @@
 use super::jobs::Started;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::TrustMsg;
-use crate::state::tabs::same_path;
+use crate::state::tabs::{is_repo_at, same_path};
 use crate::state::trust::{Created, HeldJob, Standing, prompt_for, record, standing};
 use crate::state::{AppState, Modal, RunningJob};
 use std::path::Path;
@@ -48,7 +48,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     }
     let Some(snap) = st.snap.as_ref().filter(|s| same_path(&s.real_workdir, real)) else {
         if let Some(h) = held {
-            forget(st, h);
+            forget(st, h, trusted);
         }
         return;
     };
@@ -64,7 +64,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     } else {
         st.log(true, format!("{name} isn't trusted. Trellis won't fetch or contact its hosting service for it on its own."));
         if let Some(h) = held {
-            forget(st, h);
+            forget(st, h, false);
         }
     }
 }
@@ -75,7 +75,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
 fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, fx: &mut Vec<Effect>) {
     let here = named && same_path(&h.real, real) && st.snap.as_ref().is_some_and(|s| same_path(&s.real_workdir, &h.real));
     if !here || super::jobs::busy(st, false) {
-        return forget(st, h);
+        return forget(st, h, true);
     }
     tracing::debug!("running {} now that {} is trusted", h.job.label, h.name);
     st.job = Some(h.job);
@@ -107,7 +107,7 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect) -> Starte
         }
         // Its prompt was closed some other way.
         if let Some(old) = st.trust.held.take() {
-            forget(st, old);
+            forget(st, old, false);
         }
     }
     let Some(snap) = st.snap.as_ref() else { return Started::No };
@@ -127,22 +127,39 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect) -> Starte
 /// The trust prompt was closed without a decision: the held job, if any, is dropped.
 pub(super) fn dismissed(st: &mut AppState) {
     if let Some(h) = st.trust.held.take() {
-        forget(st, h);
+        forget(st, h, false);
     }
 }
 
-/// Drops the held job `h`: clears what its caller set up to follow it, and says it didn't run.
-fn forget(st: &mut AppState, h: HeldJob) {
+/// Drops the held job `h`: clears what its caller set up to follow it, in its own tab whether
+/// or not that is still the active one, and says it didn't run, and why (`trusted`: the
+/// repository is trusted now, but the job couldn't run as asked).
+fn forget(st: &mut AppState, h: HeldJob, trusted: bool) {
     let label = h.job.label.as_str();
     st.gitflow_finish.take_if(|j| j.label == label);
     st.tag_job.take_if(|j| j.label == label);
     st.patch_apply.take_if(|j| j.label == label);
-    if label == super::rebase::JOB_LABEL
-        && let Some(p) = st.rebase.as_mut()
-    {
-        p.starting = false;
+    if label == super::rebase::JOB_LABEL {
+        let active = st.snap.as_ref().is_some_and(|s| is_repo_at(s, &h.real));
+        let panel = if active {
+            st.rebase.as_mut()
+        } else {
+            st.tabs
+                .iter_mut()
+                .filter_map(|t| t.parked.as_mut())
+                .find(|p| p.snap.as_ref().is_some_and(|s| is_repo_at(s, &h.real)))
+                .and_then(|p| p.rebase.as_mut())
+        };
+        if let Some(p) = panel {
+            p.starting = false;
+        }
     }
-    st.log(true, format!("{label} wasn't run. Trellis runs git commands in {} only after you trust it.", h.name));
+    let text = if trusted {
+        format!("{label} wasn't run: {} is trusted now, so start it again.", h.name)
+    } else {
+        format!("{label} wasn't run. Trellis runs git commands in {} only after you trust it.", h.name)
+    };
+    st.log(true, text);
 }
 
 /// A job that made the repository at `path` succeeded and Trellis is about to open it: a clone,

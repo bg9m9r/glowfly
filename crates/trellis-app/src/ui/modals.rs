@@ -31,6 +31,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let stage_renames = st.settings.stage_renames;
     let push_tags = st.settings.push_new_tags;
     let mut close = false;
+    let first = msgs.len();
     let resp = egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
         ui.set_width(460.0);
         match modal {
@@ -184,7 +185,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         }
     });
     if close || (!prompting && resp.should_close()) {
-        msgs.push(Msg::CloseModal);
+        // The dialog closes before what it asked for runs, so a dialog that opens (the trust
+        // prompt holding the job it started) isn't closed with it.
+        msgs.insert(first, Msg::CloseModal);
     }
 }
 
