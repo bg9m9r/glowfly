@@ -5,7 +5,7 @@
 
 use super::ops::{self, JobSpec, Started, start_job};
 use crate::effect::Effect;
-use crate::state::stashes::{NOTHING, StashPushForm, label, push_blocked, wip_files};
+use crate::state::stashes::{NOTHING, StashPushForm, label, push_blocked, stashable_paths};
 use crate::state::{AppState, Modal};
 use trellis_core::stash_ops::{STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 
@@ -30,12 +30,12 @@ fn close_dialog(st: &mut AppState) {
 }
 
 /// Stashes `scope` under the typed `body` (blank: git's own message). For Files only the
-/// `paths` still changed in the snapshot count. A refused stash is logged and keeps the dialog
+/// `paths` still changed in the snapshot and safe to name to git (`stashable`) count. A refused stash is logged and keeps the dialog
 /// open, except on a clean tree; so does a busy one.
 pub(super) fn push(st: &mut AppState, scope: StashScope, body: &str, paths: Vec<String>, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let paths: Vec<String> = if scope == StashScope::Files {
-        let listed: std::collections::HashSet<String> = wip_files(snap).into_iter().map(|f| f.path).collect();
+        let listed: std::collections::HashSet<String> = stashable_paths(snap).collect();
         paths.into_iter().filter(|p| listed.contains(p)).collect()
     } else {
         Vec::new()

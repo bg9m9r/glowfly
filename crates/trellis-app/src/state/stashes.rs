@@ -66,18 +66,33 @@ impl StashPushForm {
         Self { scope, message: String::new(), chosen: path.into_iter().collect(), focus_message: true }
     }
 
-    /// The ticked paths that are still changed in `snap`, in list order.
+    /// The ticked paths that are still changed in `snap` and can be stashed, in list order.
     pub fn paths(&self, snap: &Snapshot) -> Vec<String> {
-        wip_files(snap).into_iter().map(|f| f.path).filter(|p| self.chosen.contains(p)).collect()
+        stashable_paths(snap).filter(|p| self.chosen.contains(p)).collect()
     }
 }
 
 /// The working-tree files: unstaged and staged entries merged by path (the unstaged status
-/// wins), sorted by path, untracked included.
+/// wins), sorted by path, untracked included. A row keeps the hazard either list gives it.
 pub fn wip_files(snap: &Snapshot) -> Vec<FileEntry> {
-    let mut by_path: BTreeMap<&str, char> = snap.staged.iter().map(|f| (f.path.as_str(), f.status)).collect();
-    by_path.extend(snap.unstaged.iter().map(|f| (f.path.as_str(), f.status)));
-    by_path.into_iter().map(|(path, status)| FileEntry { path: path.to_owned(), status }).collect()
+    let mut by_path: BTreeMap<&str, FileEntry> = snap.staged.iter().map(|f| (f.path.as_str(), f.clone())).collect();
+    for f in &snap.unstaged {
+        let hazard = f.hazard.clone().or_else(|| by_path.get(f.path.as_str()).and_then(|s| s.hazard.clone()));
+        by_path.insert(f.path.as_str(), FileEntry { hazard, ..f.clone() });
+    }
+    by_path.into_values().collect()
+}
+
+/// Whether Selected files may stash `f`: not when its name isn't UTF-8 (its shown path names
+/// another file or none) or it shares one file on disk with another index path (stashing it
+/// rewrites that file for both).
+pub fn stashable(f: &FileEntry) -> bool {
+    f.hazard.is_none()
+}
+
+/// The paths of `wip_files` that Selected files may stash, in list order.
+pub fn stashable_paths(snap: &Snapshot) -> impl Iterator<Item = String> {
+    wip_files(snap).into_iter().filter(stashable).map(|f| f.path)
 }
 
 /// Why stashing `scope` (with `paths` for Selected files) can't run now, or None.

@@ -175,10 +175,11 @@ pub(super) fn staged_header_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, snap: 
     menu_item_if(msgs, ui, "Unstage all", nothing, Msg::Stage(StageMsg::UnstageAll));
 }
 
-/// Opens the Stash dialog on Selected files with only `path` ticked; disabled while any file is
-/// conflicted, since git can't stash then.
-pub(super) fn stash_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, snap: &Snapshot, path: &str) {
+/// Opens the Stash dialog on Selected files with only `f` ticked; disabled while any file is
+/// conflicted, since git can't stash then, and for a row Trellis can't stash safely.
+pub(super) fn stash_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, snap: &Snapshot, f: &FileEntry) {
     let conflicted = snap.unstaged.iter().any(|f| f.status == '!').then_some("Resolve the conflicted files first");
-    let m = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some(path.to_owned()) });
-    menu_item_if(msgs, ui, STASH_FILE, conflicted, m);
+    let unsafe_path = f.hazard.as_ref().map(|_| "Trellis can't stash this path safely");
+    let m = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some(f.path.clone()) });
+    menu_item_if(msgs, ui, STASH_FILE, conflicted.or(unsafe_path), m);
 }

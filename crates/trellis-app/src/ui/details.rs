@@ -310,7 +310,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
                     );
                 }
             }
-            file_menu::stash_file_item(ui, msgs, snap, &f.path);
+            file_menu::stash_file_item(ui, msgs, snap, f);
             if f.status != '?' {
                 menu_item(msgs, ui, "File history", Msg::History(HistoryMsg::OpenFileHistory { path: f.path.clone(), at: None }));
             }

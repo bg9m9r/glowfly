@@ -20,7 +20,7 @@ use trellis_core::settings::ThemeChoice;
 use trellis_core::stash_ops::StashScope;
 
 fn files(list: &[(&str, char)]) -> Vec<FileEntry> {
-    list.iter().map(|(p, s)| FileEntry { path: p.to_string(), status: *s }).collect()
+    list.iter().map(|(p, s)| FileEntry::new(*p, *s)).collect()
 }
 
 /// The fixture on the WIP panel with these unstaged and staged files.
@@ -88,6 +88,28 @@ fn stash_push_dialog_files() {
     };
     assert!(pushed(&h, &stashes), "{}", h.state().1.len());
     assert!(h.state().0.modal.is_some(), "update closes the dialog once the job starts");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn stash_push_dialog_unsafe_path() {
+    let (mut st, dir) = dialog(ThemeChoice::Dark, "stash-push-unsafe", &STAGED, StashPushForm::new(StashScope::Files, None));
+    let twin = trellis_core::repo::Hazard::Twins(vec!["Docs/notes.md".into()]);
+    st.snap.as_mut().unwrap().unstaged[2].hazard = Some(twin);
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Select all").click();
+    h.run();
+    assert!(h.query_by_label("4 of 4 files").is_some());
+    // In the WIP list behind the dialog, and in the dialog's checklist.
+    assert_eq!(h.get_all_by_label("(same file as another path)").count(), 2);
+    h.check_snapshot("stash_push_dialog_unsafe_path");
+    stash_button(&h).click();
+    h.run();
+    let four = ["a.txt", "b.txt", "c.txt", "src/lib.rs"];
+    let stashes = |m: &Msg| matches!(m, Msg::Stash(StashMsg::Push { paths, .. }) if paths.iter().map(String::as_str).eq(four));
+    assert!(pushed(&h, &stashes));
     drop(h);
     remove_fixture(&dir);
 }

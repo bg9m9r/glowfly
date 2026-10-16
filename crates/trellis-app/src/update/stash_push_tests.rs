@@ -9,11 +9,11 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StashMsg, TrustMsg};
 use crate::state::palette::{PaletteCommand as C, shown};
-use crate::state::stashes::{CONFLICTED, NO_FILES, NOTHING, NOTHING_STAGED, StashPushForm};
+use crate::state::stashes::{CONFLICTED, NO_FILES, NOTHING, NOTHING_STAGED, StashPushForm, wip_files};
 use crate::state::{AppState, Modal, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
-use trellis_core::repo::FileEntry;
+use trellis_core::repo::{FileEntry, Hazard};
 use trellis_core::stash_ops::{STAGED_MIN_GIT, StashScope};
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -179,9 +179,42 @@ fn unchanged_paths_are_dropped_and_none_left_is_refused() {
 }
 
 #[test]
+fn paths_trellis_cannot_name_safely_are_never_stashed() {
+    let (mut st, dir) = wip_repo("stash-push-hazards");
+    let snap = st.snap.as_mut().unwrap();
+    let odd = Hazard::NotUtf8(b"caf\xe9.txt".to_vec());
+    snap.unstaged.push(FileEntry { hazard: Some(odd.clone()), ..FileEntry::new("caf\\xE9.txt", '?') });
+    let twin = Hazard::Twins(vec!["A.txt".into()]);
+    snap.staged[0].hazard = Some(twin.clone());
+    // The staged row's hazard survives the merge with an unstaged row for the same path.
+    snap.unstaged.push(FileEntry::new("a.txt", 'M'));
+    let listed = wip_files(st.snap.as_ref().unwrap());
+    let hazard = |p: &str| listed.iter().find(|f| f.path == p).and_then(|f| f.hazard.clone());
+    assert_eq!((hazard("a.txt"), hazard("caf\\xE9.txt"), hazard("b.txt")), (Some(twin.clone()), Some(odd.clone()), None));
+
+    let fx = run(&mut st, push(StashScope::Files, "", &["a.txt", "b.txt", "caf\\xE9.txt"]));
+    assert_eq!(git_run(&fx).0, argv(&["--literal-pathspecs", "stash", "push", "-u", "--", "b.txt"]));
+    st.job = None;
+    dialog(&mut st, StashScope::Files);
+    assert!(run(&mut st, push(StashScope::Files, "", &["a.txt", "caf\\xE9.txt"])).is_empty());
+    assert_eq!(last_log(&st), NO_FILES);
+
+    st.modal = None;
+    for (path, h) in [("a.txt", twin), ("caf\\xE9.txt", odd)] {
+        let fx = run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some(path.into()) }));
+        assert!(fx.is_empty() && st.modal.is_none(), "{path}: the dialog stays shut");
+        assert_eq!(st.toasts.last().map(|t| t.text.clone()), Some(h.reason()));
+    }
+    let mut form = StashPushForm::new(StashScope::Files, None);
+    form.chosen.extend(["a.txt", "b.txt", "caf\\xE9.txt"].map(String::from));
+    assert_eq!(form.paths(st.snap.as_ref().unwrap()), ["b.txt"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn conflicts_and_a_clean_tree_are_refused() {
     let (mut st, dir) = wip_repo("stash-push-refused");
-    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "d.txt".into(), status: '!' });
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("d.txt", '!'));
     dialog(&mut st, StashScope::All);
     assert!(run(&mut st, push(StashScope::All, "", &[])).is_empty());
     assert_eq!(last_log(&st), CONFLICTED);
@@ -212,7 +245,7 @@ fn a_long_selection_writes_the_pathspec_file() {
     let (mut st, dir) = wip_repo("stash-push-long");
     let paths: Vec<String> = (0..200).map(|i| format!("dir/{i:03}-{}.txt", "x".repeat(60))).collect();
     let snap = st.snap.as_mut().unwrap();
-    snap.unstaged.extend(paths.iter().map(|p| FileEntry { path: p.clone(), status: '?' }));
+    snap.unstaged.extend(paths.iter().map(|p| FileEntry::new(p.clone(), '?')));
     let git_dir = snap.git_dir.clone();
     let refs: Vec<&str> = paths.iter().map(String::as_str).collect();
     let fx = run(&mut st, push(StashScope::Files, "", &refs));

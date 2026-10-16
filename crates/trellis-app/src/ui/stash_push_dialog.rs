@@ -6,7 +6,7 @@
 use super::common::{status_color, status_label, widget_row_height};
 use super::theme::color;
 use crate::msg::{Msg, StashMsg};
-use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, wip_files};
+use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
 use eframe::egui::{self, Key, RichText, Sense};
 use trellis_core::repo::Snapshot;
 use trellis_core::stash_ops::StashScope;
@@ -76,18 +76,19 @@ pub fn show(ui: &mut egui::Ui, form: &mut StashPushForm, snap: Option<&Snapshot>
 }
 
 /// Select all / Select none, the ticked count, and one row per working-tree file: its box,
-/// status letter and path (a click on the path also toggles it).
+/// status letter and path (a click on the path also toggles it). A row Trellis can't stash
+/// safely (`stashable`) has its box off and says why after the path.
 fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
     let files = wip_files(snap);
-    let ticked = files.iter().filter(|f| form.chosen.contains(&f.path)).count();
+    let ticked = files.iter().filter(|f| stashable(f) && form.chosen.contains(&f.path)).count();
     ui.horizontal(|ui| {
         if ui.small_button("Select all").clicked() {
-            form.chosen.extend(files.iter().map(|f| f.path.clone()));
+            form.chosen.extend(files.iter().filter(|f| stashable(f)).map(|f| f.path.clone()));
         }
         if ui.small_button("Select none").clicked() {
             form.chosen.clear();
         }
-        let total = files.len();
+        let total = files.iter().filter(|f| stashable(f)).count();
         let noun = if total == 1 { "file" } else { "files" };
         ui.label(RichText::new(format!("{ticked} of {total} {noun}")).color(color::weak()));
     });
@@ -99,10 +100,13 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
         |ui, range| {
             for f in &files[range] {
                 ui.horizontal(|ui| {
-                    let mut on = form.chosen.contains(&f.path);
-                    let boxed = ui.checkbox(&mut on, "").changed();
+                    let usable = stashable(f);
+                    let mut on = usable && form.chosen.contains(&f.path);
+                    let boxed = ui.add_enabled(usable, egui::Checkbox::without_text(&mut on)).changed();
                     ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
-                    let clicked = ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(Sense::click())).clicked();
+                    let sense = if usable { Sense::click() } else { Sense::hover() };
+                    let clicked = ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(sense)).clicked();
+                    super::path_warnings::mark(ui, f);
                     if clicked {
                         on = !on;
                     }
