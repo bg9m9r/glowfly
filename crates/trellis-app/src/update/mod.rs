@@ -320,6 +320,8 @@ mod undo_tests;
 #[cfg(test)]
 mod updates_notes_tests;
 #[cfg(test)]
+mod updates_recheck_tests;
+#[cfg(test)]
 mod updates_tests;
 #[cfg(test)]
 mod watch_poll_tests;

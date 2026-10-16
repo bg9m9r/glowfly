@@ -167,7 +167,7 @@ fn prefs_updates_failed() {
 
 #[test]
 fn prefs_updates_checking() {
-    let mut st = prefs(UpdateStatus::Checking { manual: true });
+    let mut st = prefs(UpdateStatus::Checking { manual: true, previous: Box::default() });
     st.settings.updates.last_checked = None;
     let mut h = harness(st, true);
     h.run_steps(4);

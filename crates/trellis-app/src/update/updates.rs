@@ -35,7 +35,7 @@ pub(super) fn handle(st: &mut AppState, msg: UpdateMsg, now: Instant, fx: &mut V
             }
         }
         UpdateMsg::ShowFile => {
-            if let UpdateStatus::Downloaded { file, .. } = &st.updates.status {
+            if let UpdateStatus::Downloaded { file, .. } = st.updates.settled() {
                 fx.push(Effect::RevealPath(file.clone()));
             }
         }
@@ -68,8 +68,10 @@ pub(super) fn tick(st: &mut AppState, t: Instant, fx: &mut Vec<Effect>) {
     }
 }
 
+/// Starts a check, keeping the current status for the answer to fall back on.
 fn check(st: &mut AppState, manual: bool, fx: &mut Vec<Effect>) {
-    st.updates.status = UpdateStatus::Checking { manual };
+    let previous = Box::new(std::mem::take(&mut st.updates.status));
+    st.updates.status = UpdateStatus::Checking { manual, previous };
     fx.push(Effect::Updates(UpdateEffect::Check { manual }));
 }
 
@@ -78,17 +80,21 @@ fn download_action() -> ToastAction {
 }
 
 fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease>, String>, now: Instant, fx: &mut Vec<Effect>) {
+    // What the status was before the check: a downloaded file or an offer outlives the answer.
+    let prior = match std::mem::take(&mut st.updates.status) {
+        UpdateStatus::Checking { previous, .. } => *previous,
+        other => other,
+    };
     let found = match result {
         Ok(found) => found,
         Err(e) => {
             st.log_quiet(false, check_failed_text(&e));
             if manual {
-                st.updates.status = UpdateStatus::CheckFailed(e.clone());
                 st.toast(false, check_failed_text(&e), now);
             } else {
                 st.updates.retry_at = Some(now + RETRY_AFTER);
-                st.updates.status = UpdateStatus::Idle;
             }
+            st.updates.status = if manual && prior.offer().is_none() { UpdateStatus::CheckFailed(e) } else { prior };
             return;
         }
     };
@@ -97,26 +103,45 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
     fx.push(super::prefs::save_settings(st));
     let u = &st.updates;
     let offer = found.as_ref().and_then(|f| app_update::offer(&f.release, &u.current, u.platform, f.install));
+    // A file already downloaded for this release (or a newer one) stays.
+    let kept = match (&offer, &prior) {
+        (Some(o), UpdateStatus::Downloaded { offer: d, installer, .. }) if d.version >= o.version => Some((d.version.clone(), *installer)),
+        _ => None,
+    };
+    if let Some((version, installer)) = kept {
+        st.log_quiet(true, available_text(&version));
+        if manual {
+            downloaded_toast(st, &version, installer, now);
+        }
+        st.updates.status = prior;
+        return;
+    }
     match offer {
         Some(o) => {
             let text = available_text(&o.version);
             st.log_quiet(true, text.clone());
-            // A file already downloaded for this release (or a newer one) stays.
-            if !matches!(&st.updates.status, UpdateStatus::Downloaded { offer, .. } if offer.version >= o.version) {
-                st.updates.status = UpdateStatus::Available(Box::new(o));
+            // An automatic check toasts a release once, not again each day.
+            let known = prior.offer().is_some_and(|p| p.version >= o.version);
+            if manual || !known {
                 st.toast_action(true, text, download_action(), now);
             }
+            st.updates.status = UpdateStatus::Available(Box::new(o));
         }
         None => {
             st.log_quiet(true, latest_text(&st.updates.current));
             if manual {
                 st.toast(true, latest_text(&st.updates.current), now);
             }
-            if !matches!(st.updates.status, UpdateStatus::Downloaded { .. }) {
-                st.updates.status = UpdateStatus::UpToDate;
-            }
+            st.updates.status = if matches!(prior, UpdateStatus::Downloaded { .. }) { prior } else { UpdateStatus::UpToDate };
         }
     }
+}
+
+/// "Downloaded Trellis x.y.z." with Install for an installer, else Show file.
+fn downloaded_toast(st: &mut AppState, version: &app_update::Version, installer: bool, now: Instant) {
+    let (label, msg) = if installer { ("Install", UpdateMsg::Install) } else { ("Show file", UpdateMsg::ShowFile) };
+    let action = ToastAction { label: label.into(), msg: Box::new(Msg::Updates(msg)), workdir: None };
+    st.toast_action(true, downloaded_text(version), action, now);
 }
 
 fn download(st: &mut AppState, fx: &mut Vec<Effect>) {
@@ -148,8 +173,7 @@ fn downloaded(st: &mut AppState, result: Result<PathBuf, String>, now: Instant) 
             let installer = is_installer(&file);
             let text = downloaded_text(&offer.version);
             st.log_quiet(true, format!("{text} {}", trellis_core::native_path::shown(&file)));
-            let (label, msg) = if installer { ("Install", UpdateMsg::Install) } else { ("Show file", UpdateMsg::ShowFile) };
-            st.toast_action(true, text, ToastAction { label: label.into(), msg: Box::new(Msg::Updates(msg)), workdir: None }, now);
+            downloaded_toast(st, &offer.version, installer, now);
             st.updates.status = UpdateStatus::Downloaded { offer, file, installer };
         }
         Err(error) => {

@@ -11,7 +11,7 @@ pub(super) fn entries(st: &AppState, out: &mut Vec<Entry>) {
     out.push(entry(C::Updates(UpdateMsg::ShowNotes), "View release notes", "changelog whats new patch notes history version"));
     let check = entry(C::Updates(UpdateMsg::CheckNow), "Check for updates", "update upgrade new version latest release download");
     out.push(with_detail(check, st.updates.busy().then(|| "checking…".to_owned())));
-    match &st.updates.status {
+    match st.updates.settled() {
         UpdateStatus::Available(o) | UpdateStatus::DownloadFailed { offer: o, .. } => {
             out.push(entry(C::Updates(UpdateMsg::Download), format!("Download Trellis {}", o.version), "update upgrade new version"));
         }

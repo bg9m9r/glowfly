@@ -50,11 +50,11 @@ pub(super) fn send(st: &mut AppState, m: U, now: Instant) -> Vec<Effect> {
     update(st, Msg::Updates(m), now)
 }
 
-fn found(tag: &str, install: InstallKind) -> Result<Option<CheckedRelease>, String> {
+pub(super) fn found(tag: &str, install: InstallKind) -> Result<Option<CheckedRelease>, String> {
     Ok(Some(CheckedRelease { release: release(tag, true), install }))
 }
 
-fn checks(fx: &[Effect]) -> Vec<bool> {
+pub(super) fn checks(fx: &[Effect]) -> Vec<bool> {
     fx.iter().filter_map(|e| if let Effect::Updates(UpdateEffect::Check { manual }) = e { Some(*manual) } else { None }).collect()
 }
 
@@ -62,12 +62,12 @@ fn saves(fx: &[Effect]) -> bool {
     fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
 }
 
-fn tick(st: &mut AppState, t: Instant) -> Vec<Effect> {
+pub(super) fn tick(st: &mut AppState, t: Instant) -> Vec<Effect> {
     update(st, Msg::Tick(t), t)
 }
 
 /// An app with 0.3.0 on offer (found by an automatic check).
-fn offered() -> (AppState, Instant) {
+pub(super) fn offered() -> (AppState, Instant) {
     let mut st = app();
     let t = Instant::now();
     send(&mut st, U::Checked { manual: false, result: found("v0.3.0", InstallKind::Installer) }, t);
@@ -84,7 +84,7 @@ fn automatic_checks_wait_for_startup_and_the_delay() {
     assert!(checks(&tick(&mut st, t0 + Duration::from_secs(14))).is_empty(), "before 15 s");
     let fx = tick(&mut st, t0 + STARTUP_DELAY);
     assert_eq!(checks(&fx), [false]);
-    assert_eq!(st.updates.status, UpdateStatus::Checking { manual: false });
+    assert!(matches!(st.updates.status, UpdateStatus::Checking { manual: false, .. }));
     assert!(checks(&tick(&mut st, t0 + STARTUP_DELAY + Duration::from_secs(1))).is_empty(), "never twice at once");
 }
 
@@ -108,7 +108,7 @@ fn automatic_checks_honour_the_setting_and_the_last_check() {
 fn a_newer_release_is_offered() {
     let mut st = app();
     let t = Instant::now();
-    st.updates.status = UpdateStatus::Checking { manual: false };
+    st.updates.status = UpdateStatus::Checking { manual: false, previous: Box::default() };
     let fx = send(&mut st, U::Checked { manual: false, result: found("v0.3.0", InstallKind::Installer) }, t);
     let UpdateStatus::Available(o) = &st.updates.status else { panic!("{:?}", st.updates.status) };
     assert_eq!(o.version.to_string(), "0.3.0");
@@ -237,7 +237,7 @@ fn palette_entries_follow_the_status() {
     assert!(!l.iter().any(|l| l.starts_with("Download Trellis") || l.starts_with("Install Trellis")));
     let t = Instant::now();
     update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Updates(U::CheckNow))), t);
-    assert_eq!(st.updates.status, UpdateStatus::Checking { manual: true });
+    assert!(matches!(st.updates.status, UpdateStatus::Checking { manual: true, .. }));
     assert_eq!(st.palette_recent.keys(), &["check-updates"]);
     let busy = entries(&st).into_iter().find(|e| e.label == "Check for updates").and_then(|e| e.detail);
     assert_eq!(busy.as_deref(), Some("checking…"));

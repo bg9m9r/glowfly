@@ -44,7 +44,7 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         ChipKind::Failed | ChipKind::Downloading => "Download again",
     };
     if resp.on_hover_text(tip).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
-        let m = match &st.updates.status {
+        let m = match st.updates.settled() {
             UpdateStatus::Available(_) => UpdateMsg::ShowNotes,
             UpdateStatus::Downloaded { installer: true, .. } => UpdateMsg::Install,
             UpdateStatus::Downloaded { .. } => UpdateMsg::ShowFile,

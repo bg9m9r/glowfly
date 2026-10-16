@@ -17,8 +17,11 @@ pub const RETRY_AFTER: Duration = Duration::from_secs(3600);
 pub enum UpdateStatus {
     #[default]
     Idle,
+    /// `previous` is the status before the check, which the answer may keep (a downloaded
+    /// file, say); the chip, palette and Install still use it meanwhile.
     Checking {
         manual: bool,
+        previous: Box<UpdateStatus>,
     },
     UpToDate,
     CheckFailed(String),
@@ -104,15 +107,10 @@ pub fn download_failed_text(e: &str) -> String {
     format!("The download failed: {e}")
 }
 
-impl UpdatesState {
-    /// A check or download is running: no other starts.
-    pub fn busy(&self) -> bool {
-        matches!(self.status, UpdateStatus::Checking { .. } | UpdateStatus::Downloading(_))
-    }
-
+impl UpdateStatus {
     /// The newer release on offer, in whatever state its download is.
     pub fn offer(&self) -> Option<&Offer> {
-        match &self.status {
+        match self {
             UpdateStatus::Available(o)
             | UpdateStatus::Downloading(o)
             | UpdateStatus::Downloaded { offer: o, .. }
@@ -120,10 +118,31 @@ impl UpdatesState {
             UpdateStatus::Idle | UpdateStatus::Checking { .. } | UpdateStatus::UpToDate | UpdateStatus::CheckFailed(_) => None,
         }
     }
+}
+
+impl UpdatesState {
+    /// The status, or while a check runs the one before it: what the chip, palette and
+    /// Install act on.
+    pub fn settled(&self) -> &UpdateStatus {
+        match &self.status {
+            UpdateStatus::Checking { previous, .. } => previous,
+            s => s,
+        }
+    }
+
+    /// A check or download is running: no other starts.
+    pub fn busy(&self) -> bool {
+        matches!(self.status, UpdateStatus::Checking { .. } | UpdateStatus::Downloading(_))
+    }
+
+    /// The newer release on offer, in whatever state its download is.
+    pub fn offer(&self) -> Option<&Offer> {
+        self.settled().offer()
+    }
 
     /// The status bar's chip: its text and kind, when there is an update to talk about.
     pub fn chip(&self) -> Option<(String, ChipKind)> {
-        Some(match &self.status {
+        Some(match self.settled() {
             UpdateStatus::Available(o) => (format!("Update available ({})", o.version), ChipKind::Available),
             UpdateStatus::Downloading(o) => (format!("Downloading Trellis {}…", o.version), ChipKind::Downloading),
             UpdateStatus::Downloaded { .. } => ("Update downloaded".to_owned(), ChipKind::Downloaded),
@@ -142,7 +161,7 @@ impl UpdatesState {
 
     /// The downloaded installer, when there is one to open.
     pub fn installer(&self) -> Option<&PathBuf> {
-        match &self.status {
+        match self.settled() {
             UpdateStatus::Downloaded { file, installer: true, .. } => Some(file),
             _ => None,
         }
