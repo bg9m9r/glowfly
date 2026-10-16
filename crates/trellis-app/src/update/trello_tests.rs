@@ -40,7 +40,7 @@ fn run(st: &mut AppState, msg: ForgeMsg) -> Vec<Effect> {
 fn my_issues_calls(fx: &[Effect]) -> Vec<bool> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::Forge { call: ForgeCall::MyIssues, connected, .. } => Some(*connected),
+            Effect::Forge { call: ForgeCall::MyIssues { .. }, connected, .. } => Some(*connected),
             _ => None,
         })
         .collect()
