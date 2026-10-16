@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 18:09 · **Language**: A Language setting on Preferences > General (system or a chosen language) with bundled English, German and Spanish catalogs and system-language detection, translating the Preferences navigation, General, Editor and External Tools pages, the commit box and the status bar (`920530f`)
 - 2026-10-16 17:57 · **Packaging and updates**: An app icon, MSI, DMG and DEB installers with checksums and optional code signing in the release workflow, a daily update check in Preferences > General with download, verify and install, a status bar chip and toasts, and release notes from the bundled CHANGELOG shown once after an upgrade (`b732d84`)
 - 2026-10-16 17:35 · **Menu bar**: A File / Edit / View / Window / Help menu bar above the tabs (Open recent, Undo/Redo with the action named, copy SHA or message, zoom and panel toggles, theme, the open tabs, logs and help) whose items show their keys and why they are disabled, an About dialog with version info and the bundled third-party notices, and a UI Customization toggle to hide it (`8680fb6`)
 - 2026-10-16 17:28 · **Automatically group worktree tabs together**: Tabs of one repository's worktrees open and stay next to each other (new worktree tabs join their group, drags move whole groups) with a colored strip under each group, behind a Preferences > UI Customization toggle that is on by default (`6090bb4`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 14:30 · **External diff and merge tools**: Diff tool and merge tool in Preferences > External Tools; Open in external diff tool from file rows, file history and the diff header (copies in a private temp folder, the working file for unstaged changes), and Resolve in external merge tool from conflicted rows and the conflict view, run as a job that reports whether the file was saved (`837a315`)
 - 2026-10-16 14:19 · **"Push and start a PR"**: Push a branch and open the create dialog in one action from the LOCAL, GIT FLOW and REMOTE row menus, the toolbar's Push and PR dropdowns and the palette (into the selected branch, or from the checked-out branch into a remote one), with a push note and button in the create dialog; diverged branches are refused with the reason, never forced (`fba5d7d`)
 - 2026-10-16 14:07 · **Worktrees**: WIP rows in the graph for other worktrees with uncommitted changes (counts, tooltip, click to open; UI Customization toggle) (`c6dae35`)
-- 2026-10-16 14:06 · **Git LFS**: Auto-fetch also downloads the checked-out commit's LFS files (quiet, never prompts, behind alert kept); restoring from a commit checks filtered (LFS) files with git before overwriting (`b640259`)
 
 ---
 
