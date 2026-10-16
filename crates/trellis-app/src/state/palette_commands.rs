@@ -12,10 +12,10 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 mod palette_checkouts;
 #[path = "palette_gitflow.rs"]
 mod palette_gitflow;
-#[path = "palette_logs.rs"]
-mod palette_logs;
 #[path = "palette_link.rs"]
 mod palette_link;
+#[path = "palette_logs.rs"]
+mod palette_logs;
 #[path = "palette_pr.rs"]
 mod palette_pr;
 #[path = "palette_setup.rs"]

@@ -64,7 +64,7 @@ fn activity_log_error_tab() {
     assert!(msgs.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::OpenFolder))));
 }
 
-/// Preferences > General's Extended Logging and Logs rows, at the end of a tall page.
+/// Preferences > General's Extended Logging and Logs rows, near the end of a tall page.
 #[test]
 fn preferences_general_logging() {
     use crate::state::{PrefPage, PrefsState};

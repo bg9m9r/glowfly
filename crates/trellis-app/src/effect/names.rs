@@ -141,7 +141,8 @@ impl Effect {
             | Effect::Remote(_)
             | Effect::Clone(_)
             | Effect::Init(_)
-            | Effect::PullRequest(_) => true,
+            | Effect::PullRequest(_)
+            | Effect::DeepLink(_) => true,
             // Some of their variants wait on the user (a file dialog, a passphrase prompt).
             Effect::Ssh(e) => e.timed(),
             Effect::Patch(p) => p.timed(),
