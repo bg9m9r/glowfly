@@ -110,6 +110,74 @@ fn partial_stash_undo_ignores_other_changes() {
 }
 
 #[test]
+fn partial_stash_undo_allows_staged_files_it_left_alone() {
+    let (dir, _) = base("undo-stash-files-staged");
+    write(
+        &dir,
+        "a.txt",
+        "a edited
+",
+    );
+    write(
+        &dir,
+        "b.txt",
+        "b staged
+",
+    );
+    git(&dir, &["add", "b.txt"]);
+    let (_, action) = record_kind(&dir, &["--literal-pathspecs", "stash", "push", "--", "a.txt"]);
+    let action = action.expect("recorded");
+    assert_eq!(split(&dir), (vec![], vec!["Mb.txt".to_owned()]), "b.txt stays staged");
+    write(
+        &dir,
+        "b.txt",
+        "b edited after
+",
+    );
+    let undo = plan(&dir, &action, false).unwrap();
+    assert_eq!(undo, cmds(&[&["stash", "pop", "--index", "stash@{0}"]]));
+    run_plan(&dir, undo);
+    assert_eq!(split(&dir), (vec!["Ma.txt".to_owned(), "Mb.txt".to_owned()], vec!["Mb.txt".to_owned()]));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("b.txt")).unwrap(),
+        "b edited after
+"
+    );
+
+    // Unstaged since, git would refuse to pop it back over b.txt.
+    run_plan(&dir, plan(&dir, &action, true).unwrap());
+    let action = redone(&dir, action).unwrap();
+    git(&dir, &["reset", "-q", "b.txt"]);
+    assert!(matches!(refused(plan(&dir, &action, false).unwrap()), Refusal::Dirty(_)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn pop_undo_clears_many_untracked_files_in_short_commands() {
+    let (dir, _) = base("undo-stash-many");
+    let names: Vec<String> = (0..600).map(|i| format!("generated/a-fairly-long-generated-file-name-{i:04}.txt")).collect();
+    std::fs::create_dir(dir.join("generated")).unwrap();
+    for n in &names {
+        write(
+            &dir, n, "x
+",
+        );
+    }
+    git(&dir, &["stash", "push", "-q", "-u"]);
+    let (_, action) = record_kind(&dir, &["stash", "pop"]);
+    let Plan::Run(undo) = plan(&dir, &action.expect("recorded"), false).unwrap() else { panic!() };
+    let cleans: Vec<_> = undo.iter().filter(|c| c.get(1).map(String::as_str) == Some("clean")).collect();
+    assert!(cleans.len() > 1, "split into several commands");
+    for c in &cleans {
+        assert!(c[5..].iter().map(|p| p.len() + 1).sum::<usize>() <= crate::repo::CLI_PATH_BYTES);
+    }
+    assert_eq!(cleans.iter().map(|c| c.len() - 5).sum::<usize>(), names.len());
+    run_plan(&dir, Plan::Run(undo));
+    assert!(clean(&dir), "{:?}", split(&dir));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn pop_undo_and_redo() {
     let (dir, head) = base("undo-stash-pop");
     write(&dir, "a.txt", "a edited\n");

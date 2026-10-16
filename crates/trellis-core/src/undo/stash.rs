@@ -1,5 +1,6 @@
 //! Undoing stashes. A stash push is undone by popping that stash back (with its index), as long
-//! as none of the paths it holds has changed since. A pop or apply onto a clean working tree is
+//! as none of the paths it holds has changed since (staged files a push of selected files left as
+//! they were don't count). A pop or apply onto a clean working tree is
 //! undone by putting the stash back in the list (when it was dropped) and clearing what it
 //! applied, as long as the working tree is exactly as the pop left it: `changes` fingerprints it.
 
@@ -7,8 +8,8 @@ use super::planning::{dirty, gone, is_clean, stale};
 use super::{Action, Changes, Plan, reset::stash_index};
 use crate::error::{Error, Result};
 use crate::gitcli::args;
-use crate::repo::{FileEntry, Hazard, status_at};
-use git2::{Diff, ObjectType, Oid, Repository, TreeWalkMode, TreeWalkResult};
+use crate::repo::{CLI_PATH_BYTES, FileEntry, Hazard, status_at};
+use git2::{Diff, Index, ObjectType, Oid, Repository, Tree, TreeWalkMode, TreeWalkResult};
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -83,6 +84,35 @@ pub(super) fn changes(workdir: &Path) -> Result<Changes> {
     Ok(Changes(out))
 }
 
+/// Whether the push left `path` staged just as the stash holds it, so popping the stash with its
+/// index changes nothing there. A push of selected files records the whole index but leaves the
+/// staged files outside its paths as they were.
+fn left_staged(index: &Index, staged: &Tree, work: &Tree, path: &str) -> bool {
+    let p = Path::new(path);
+    let now = index.get_path(p, 0).map(|e| (e.id, e.mode as i32));
+    let held = |t: &Tree| t.get_path(p).ok().map(|e| (e.id(), e.filemode()));
+    held(staged) == now && held(work) == now
+}
+
+/// `git clean` commands removing the untracked `paths`, as many as keep each command line's paths
+/// under `CLI_PATH_BYTES`.
+pub(super) fn clean_commands(paths: Vec<String>) -> Vec<Vec<String>> {
+    let start = || args(&["--literal-pathspecs", "clean", "-f", "-q", "--"]);
+    let (mut out, mut cmd, mut bytes) = (Vec::new(), start(), 0);
+    for p in paths {
+        if bytes > 0 && bytes + p.len() + 1 > CLI_PATH_BYTES {
+            out.push(std::mem::replace(&mut cmd, start()));
+            bytes = 0;
+        }
+        bytes += p.len() + 1;
+        cmd.push(p);
+    }
+    if bytes > 0 {
+        out.push(cmd);
+    }
+    out
+}
+
 fn stash_ref(n: usize) -> String {
     format!("stash@{{{n}}}")
 }
@@ -107,7 +137,10 @@ pub(super) fn plan_push(workdir: &Path, repo: &Repository, action: &Action, head
     }
     let Some(n) = stash_index(workdir, *stash)? else { return Ok(stale("The stash was dropped or applied since")) };
     let paths = stash_paths(repo, *stash)?;
-    if status_entries(workdir)?.iter().any(|e| paths.contains(&e.path)) {
+    let commit = repo.find_commit(*stash)?;
+    let (work, staged, index) = (commit.tree()?, commit.parent(1)?.tree()?, repo.index()?);
+    let changed = |e: &FileEntry| e.status == '?' || !left_staged(&index, &staged, &work, &e.path);
+    if status_entries(workdir)?.iter().any(|e| paths.contains(&e.path) && changed(e)) {
         return Ok(dirty(action, redo));
     }
     Ok(Plan::Run(vec![args(&["stash", "pop", "--index", &stash_ref(n)])]))
@@ -141,10 +174,6 @@ pub(super) fn plan_apply(workdir: &Path, repo: &Repository, action: &Action, hea
     }
     cmds.push(args(&["reset", "--hard", "-q"]));
     let untracked: Vec<String> = status_entries(workdir)?.into_iter().filter(|e| e.status == '?').map(|e| e.path).collect();
-    if !untracked.is_empty() {
-        let mut clean = args(&["--literal-pathspecs", "clean", "-f", "-q", "--"]);
-        clean.extend(untracked);
-        cmds.push(clean);
-    }
+    cmds.extend(clean_commands(untracked));
     Ok(Plan::Run(cmds))
 }
