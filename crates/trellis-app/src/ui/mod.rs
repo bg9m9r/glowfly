@@ -16,6 +16,7 @@ mod commit_box;
 pub(crate) mod common;
 mod conflict;
 mod conflict_check;
+mod conflict_panes;
 mod dashboard;
 mod dashboard_rows;
 mod deep_link_dialog;
