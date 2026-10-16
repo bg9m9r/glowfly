@@ -90,8 +90,8 @@ pub(super) fn header_bar(
         _ => 0.0,
     };
     let middle_w = middle_width(ui, rows.is_some(), show_nav);
-    let middle_down =
-        middle_w > 0.0 && lead_width(ui, target.path(), &kind) + button_w(ui, CLOSE) + icon_w(ui) + stage_w + middle_w > ui.available_width();
+    let middle_down = middle_w > 0.0
+        && lead_width(ui, target.path(), &kind) + button_w(ui, CLOSE) + icon_w(ui) + stage_w + middle_w > ui.available_width();
     let mut wrapped = false;
     let mut files_wrapped = false;
     ui.horizontal(|ui| {

@@ -2,7 +2,7 @@
 //! missing or behind (with a Fetch button), and the list, whose rows open their diff.
 
 use super::super::common::widget_row_height;
-use super::super::details::changed_file_row;
+use super::super::details::{RowActions, changed_file_row};
 use super::super::file_menu::RowSource;
 use super::super::theme::color;
 use crate::msg::Msg;
@@ -40,6 +40,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
             let (base, files) = (c.base, &c.comparison.files);
             let open = st.diff.as_ref().map(|(t, _)| t);
             let lfs = TrackContext::of(st);
+            let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
             egui::ScrollArea::vertical().id_salt("pr-files").auto_shrink([false, false]).show_rows(
                 ui,
                 widget_row_height(ui),
@@ -47,8 +48,9 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
                 |ui, range| {
                     for f in &files[range] {
                         let Some(target) = v.diff_target(&f.path) else { continue };
-                        let source = RowSource::Between { older: base, newer: tip };
-                        changed_file_row(ui, f, target, open, tip, Some((source, c.comparison.in_workdir(&f.path), lfs)), msgs);
+                        let src = RowSource::Between { older: base, newer: tip };
+                        let actions = RowActions { src, in_workdir: c.comparison.in_workdir(&f.path), lfs, diff_blocked };
+                        changed_file_row(ui, f, target, open, tip, Some(actions), msgs);
                     }
                 },
             );
