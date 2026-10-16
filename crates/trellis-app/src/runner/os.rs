@@ -1,8 +1,9 @@
 //! Effects that hand something to the operating system: URLs, terminals, the file manager and
 //! files opened in their default program. None of them touch the repository.
 
-use crate::msg::Msg;
+use crate::msg::{FilesMsg, Msg};
 use std::path::Path;
+use trellis_core::opens::{FileFacts, Os, opens_as_program};
 
 fn failed(text: String) -> Option<Msg> {
     Some(Msg::Logged { ok: false, text })
@@ -36,12 +37,27 @@ pub(super) fn open_folder(dir: &Path) -> Option<Msg> {
     None
 }
 
-/// Opens `p` in its default program, without waiting for it.
-pub(super) fn open_path(p: &Path) -> Option<Msg> {
-    if let Some(m) = missing(p) {
+/// Opens the working-tree file `rel` of `workdir` in its default program, without waiting for
+/// it. Unless `confirmed`, a file the system would run (see [`runs`]) comes back as
+/// `OpenNeedsConfirm` instead.
+pub(super) fn open_path(workdir: &Path, rel: &str, confirmed: bool) -> Option<Msg> {
+    let p = workdir.join(rel);
+    if let Some(m) = missing(&p) {
         return Some(m);
     }
-    open::that_detached(p).err().and_then(|e| failed(format!("Could not open {}: {e}", p.display())))
+    if !confirmed && let Some(kind) = runs(&p) {
+        return Some(Msg::Files(FilesMsg::OpenNeedsConfirm { workdir: workdir.to_owned(), path: rel.to_owned(), kind }));
+    }
+    open::that_detached(&p).err().and_then(|e| failed(format!("Could not open {}: {e}", p.display())))
+}
+
+/// What `p` is when opening it would run it: by its name, by what a symbolic link there points
+/// to, and by its executable bit and type (following the link), with this system's `PATHEXT`.
+fn runs(p: &Path) -> Option<&'static str> {
+    let facts = std::fs::metadata(p).ok().map(|m| FileFacts::of(&m));
+    let pathext = std::env::var("PATHEXT").ok();
+    let target = std::fs::read_link(p).ok();
+    [Some(p), target.as_deref()].into_iter().flatten().find_map(|q| opens_as_program(q, facts, Os::current(), pathext.as_deref()))
 }
 
 /// Shows `p` selected in the file manager (its folder, where selecting isn't supported).
@@ -74,11 +90,36 @@ mod tests {
 
     #[test]
     fn missing_paths_are_logged_without_launching_anything() {
-        let p = std::env::temp_dir().join(format!("trellis-no-such-file-{}", std::process::id())).join("gone.txt");
-        for m in [open_path(&p), reveal(&p)] {
+        let dir = std::env::temp_dir().join(format!("trellis-no-such-file-{}", std::process::id()));
+        let p = dir.join("gone.txt");
+        for m in [open_path(&dir, "gone.txt", false), open_path(&dir, "gone.txt", true), reveal(&p)] {
             let (ok, text) = logged(m);
             assert!(!ok);
             assert!(text.contains("not in the working tree"), "{text}");
         }
+    }
+
+    #[test]
+    fn files_the_system_would_run_are_found_on_disk() {
+        let dir = std::env::temp_dir().join(format!("trellis-runs-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("notes.txt"), "text").unwrap();
+        assert_eq!(runs(&dir.join("notes.txt")), None);
+        let program = if cfg!(windows) { "run.bat" } else { "run" };
+        std::fs::write(dir.join(program), "@exit /b 0").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(runs(&dir.join(program)), None, "not executable yet");
+            std::fs::set_permissions(dir.join(program), std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        assert!(runs(&dir.join(program)).is_some());
+        // A link with a harmless name that points at it counts too.
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(dir.join(program), dir.join("readme.txt")).unwrap();
+            assert!(runs(&dir.join("readme.txt")).is_some());
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -76,6 +76,8 @@ mod diff_tests;
 #[cfg(test)]
 mod editor_tests;
 #[cfg(test)]
+mod files_open_tests;
+#[cfg(test)]
 mod files_tests;
 #[cfg(test)]
 mod files_undo_tests;

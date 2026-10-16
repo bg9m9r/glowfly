@@ -274,8 +274,14 @@ pub enum Effect {
     OpenUrl(String),
     OpenTerminal(PathBuf),
     OpenFolder(PathBuf),
-    /// Opens an absolute path in the default program.
-    OpenPath(PathBuf),
+    /// Opens the working-tree file `path` (repo-relative) of `workdir` in the default program.
+    /// Unless `confirmed`, a file the system would run instead of show is reported back
+    /// (`FilesMsg::OpenNeedsConfirm`) rather than opened.
+    OpenPath {
+        workdir: PathBuf,
+        path: String,
+        confirmed: bool,
+    },
     /// Shows an absolute path selected in the file manager.
     RevealPath(PathBuf),
     PickFolder {
@@ -378,7 +384,7 @@ impl Effect {
             | Effect::OpenUrl(_)
             | Effect::OpenTerminal(_)
             | Effect::OpenFolder(_)
-            | Effect::OpenPath(_)
+            | Effect::OpenPath { .. }
             | Effect::RevealPath(_)
             | Effect::PickFolder { .. }
             | Effect::PickFile { .. }

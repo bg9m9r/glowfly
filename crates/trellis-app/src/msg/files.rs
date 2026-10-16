@@ -15,8 +15,14 @@ pub enum FilesMsg {
     /// `overwrite` is set once the user was warned that the file's current contents will be lost;
     /// without it, core refuses to write over contents that discarding couldn't bring back.
     RestoreFile { oid: Oid, path: String, deleted: bool, confirmed: bool, overwrite: bool },
-    /// Open a working-tree file (repo-relative path) in the OS default program.
+    /// Open a working-tree file (repo-relative path) in the OS default program. One the
+    /// system would run instead of show asks first.
     OpenWorkingFile(String),
+    /// The user agreed to open (and so run) the working-tree file `path`.
+    OpenConfirmed(String),
+    /// Opening `path` in `workdir` would run it (`kind`: "a program", "a script", ...), found
+    /// when the runner looked at the file; nothing was opened.
+    OpenNeedsConfirm { workdir: std::path::PathBuf, path: String, kind: &'static str },
     /// Select a working-tree file in the file manager (its folder where selecting isn't supported).
     ShowWorkingFile(String),
     /// A RestoreFile finished. `undo` is its undo entry (`None`: nothing changed, or the working
@@ -35,6 +41,7 @@ impl FilesMsg {
         match self {
             Self::RestoreFile { .. }
             | Self::OpenWorkingFile(..)
+            | Self::OpenConfirmed(..)
             | Self::ShowWorkingFile(..)
             | Self::FileRestored { result: Ok(_), undo: None, .. } => None,
             Self::FileRestored { result: Ok(_), undo: Some(a), .. } => Some(Inactive::Undo(a)),
@@ -43,6 +50,7 @@ impl FilesMsg {
                 Some(Inactive::LogAndUndo { text: restore_failed(&path, &e, true), undo: a })
             }
             Self::RestoreWouldOverwrite { path, reason, .. } => Some(Inactive::Log(format!("Did not restore {path}: {reason}."))),
+            Self::OpenNeedsConfirm { path, kind, .. } => Some(Inactive::Log(not_opened(&path, kind))),
         }
     }
 }
@@ -103,4 +111,9 @@ impl WorkFileMsg {
             Self::TrashRefused { op, refusal } => Some(Inactive::Log(op.not_deleted(&refusal.detail))),
         }
     }
+}
+
+/// The log line for a file that would run, when it can't be asked about.
+pub fn not_opened(path: &str, kind: &str) -> String {
+    format!("Did not open {path}: it is {kind}, and opening it would run it. Open it again from its repository's tab to choose.")
 }

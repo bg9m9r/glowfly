@@ -6,9 +6,12 @@
 use crate::effect::Effect;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
+use crate::state::trust::Standing;
 use crate::state::{AppState, Modal, Selection};
 use git2::Oid;
+use std::path::Path;
 use std::time::Instant;
+use trellis_core::opens::{Os, opens_as_program};
 use trellis_core::repo::RestoredFrom;
 
 fn short(oid: Oid) -> String {
@@ -78,9 +81,16 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
-        FilesMsg::OpenWorkingFile(p) => {
-            if let Some(w) = st.workdir() {
-                fx.push(Effect::OpenPath(w.join(&p)));
+        FilesMsg::OpenWorkingFile(p) => match opens_as_program(Path::new(&p), None, Os::current(), None) {
+            Some(kind) => ask_open(st, p, kind),
+            None => open(st, p, false, fx),
+        },
+        FilesMsg::OpenConfirmed(p) => open(st, p, true, fx),
+        FilesMsg::OpenNeedsConfirm { workdir, path, kind } => {
+            if st.workdir().is_some_and(|w| w == workdir) {
+                ask_open(st, path, kind);
+            } else {
+                st.log(false, crate::msg::not_opened(&path, kind));
             }
         }
         FilesMsg::ShowWorkingFile(p) => {
@@ -119,4 +129,40 @@ fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
         button: "Restore".into(),
         then: Box::new(Msg::Files(FilesMsg::RestoreFile { oid, path, deleted, confirmed: true, overwrite: dirty })),
     });
+}
+
+fn open(st: &AppState, path: String, confirmed: bool, fx: &mut Vec<Effect>) {
+    if let Some(workdir) = st.workdir() {
+        fx.push(Effect::OpenPath { workdir, path, confirmed });
+    }
+}
+
+/// Opening `path` would run it (it is `kind`): files from a repository carry no download
+/// warning, so the system wouldn't ask. Ask here, unless the user chose not to trust this
+/// repository, which refuses it outright. Either way the editor is offered for reading it.
+fn ask_open(st: &mut AppState, path: String, kind: &'static str) {
+    let editor = crate::state::tools::OPEN_IN_EDITOR;
+    match st.trust_standing() {
+        Some(Standing::NotTrusted) => st.log(
+            false,
+            format!(
+                "Did not open {path}: it is {kind}, and opening it would run it. You chose not to trust this repository. To read it, use {editor}."
+            ),
+        ),
+        standing => {
+            let trust = if standing == Some(Standing::Trusted) {
+                ""
+            } else {
+                " You haven't said whether you trust this repository."
+            };
+            st.modal = Some(Modal::Confirm {
+                title: "Run this file?".into(),
+                body: format!(
+                    "{path} is {kind}. Opening it with its default app runs it, with your permissions. Files from a repository get no download warning from your system, so only run it if you trust where it came from.{trust}\n\nTo read or edit it instead, use {editor}."
+                ),
+                button: "Run".into(),
+                then: Box::new(Msg::Files(FilesMsg::OpenConfirmed(path))),
+            });
+        }
+    }
 }

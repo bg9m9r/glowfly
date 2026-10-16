@@ -294,7 +294,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::OpenUrl(url) => os::open_url(&url),
         Effect::OpenTerminal(dir) => os::open_terminal(&dir),
         Effect::OpenFolder(dir) => os::open_folder(&dir),
-        Effect::OpenPath(p) => os::open_path(&p),
+        Effect::OpenPath { workdir, path, confirmed } => os::open_path(&workdir, &path, confirmed),
         Effect::RevealPath(p) => os::reveal(&p),
         Effect::PickFolder { title, purpose } => {
             let path = rfd::FileDialog::new().set_title(title).pick_folder();

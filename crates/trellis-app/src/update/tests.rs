@@ -105,7 +105,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. }
             // Shells are never started by these tests.
             | Effect::Terminal(_)
-            | Effect::OpenPath(_) | Effect::RevealPath(_)
+            | Effect::OpenPath { .. } | Effect::RevealPath(_)
             // OS dialogs would wait for a user.
             | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
             // Never start programs or open dialogs from tests.

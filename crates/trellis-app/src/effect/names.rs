@@ -51,7 +51,7 @@ impl Effect {
             Effect::OpenUrl(_) => "open-url",
             Effect::OpenTerminal(_) => "open-terminal",
             Effect::OpenFolder(_) => "open-folder",
-            Effect::OpenPath(_) => "open-path",
+            Effect::OpenPath { .. } => "open-path",
             Effect::RevealPath(_) => "reveal-path",
             Effect::PickFolder { .. } => "pick-folder",
             Effect::PickFile { .. } => "pick-file",

@@ -97,7 +97,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::OpenUrl(_)
         | Effect::OpenTerminal(_)
         | Effect::OpenFolder(_)
-        | Effect::OpenPath(_)
+        | Effect::OpenPath { .. }
         | Effect::RevealPath(_)
         | Effect::PickFolder { .. }
         | Effect::PickFile { .. }
