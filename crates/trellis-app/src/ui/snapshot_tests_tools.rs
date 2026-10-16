@@ -68,6 +68,7 @@ fn conflict_view_merge_tool_disabled() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_pr: None,
         then_open: None,
         keeps_undo: false,
     });
@@ -106,6 +107,7 @@ fn conflict_view_while_the_merge_tool_has_the_file() {
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_pr: None,
         then_open: None,
         keeps_undo: true,
     });

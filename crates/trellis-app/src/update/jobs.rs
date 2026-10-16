@@ -127,6 +127,7 @@ pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce
         quiet: false,
         clear_commit: false,
         then_push: false,
+        then_pr: None,
         then_open: None,
         keeps_undo: true,
     });
