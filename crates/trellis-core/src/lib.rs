@@ -18,6 +18,7 @@ pub mod fuzzy;
 pub mod git_version;
 pub mod gitcli;
 pub mod gitflow;
+pub mod gpg_prompt;
 pub mod graph;
 pub mod highlight;
 pub mod identity;

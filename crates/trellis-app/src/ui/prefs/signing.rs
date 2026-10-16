@@ -1,5 +1,5 @@
 //! Preferences > Commit Signing: format, program, signing key (listed from gpg or ~/.ssh),
-//! key generation, and signing defaults.
+//! where the key's passphrase is asked, key generation, and signing defaults.
 
 use super::{help, primary_button, row, text_field, warn};
 use crate::msg::PrefsMsg;
@@ -8,6 +8,7 @@ use crate::state::PrefsState;
 use crate::ui::theme::color;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
+use trellis_core::settings::Settings;
 use trellis_core::signing::SigningFormat;
 
 const RENEW_HELP: &str = "https://docs.github.com/en/authentication/managing-commit-signature-verification/updating-an-expired-gpg-key";
@@ -17,7 +18,11 @@ fn set(msgs: &mut Vec<Msg>, key: &str, value: &str) {
     msgs.push(Msg::Prefs(PrefsMsg::GitConfig { global: true, key: key.into(), value: (!value.is_empty()).then(|| value.to_owned()) }));
 }
 
-pub fn signing_page(ui: &mut Ui, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
+const PROMPT_HELP: &str = "Off: GnuPG shows its own passphrase window, for example one that reads the passphrase from \
+your system keychain. Needs git 2.31 or newer and GnuPG 2.1.12 or newer; with older versions GnuPG's own window is used.";
+
+/// `settings` is edited in place (the shell saves it after the frame).
+pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
     let Some(git) = prefs.git.as_mut() else { return };
     let signing = &mut prefs.signing;
     let format = SigningFormat::from_config(&git.signing_format);
@@ -112,6 +117,10 @@ pub fn signing_page(ui: &mut Ui, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
     });
 
     if format == SigningFormat::OpenPgp {
+        row(ui, "Passphrase Prompt", |ui| {
+            ui.checkbox(&mut settings.gpg_prompts_in_app, "Ask for the key's passphrase in Trellis");
+            help(ui, PROMPT_HELP);
+        });
         row(ui, "Generate new GPG Key", |ui| {
             ui.horizontal(|ui| {
                 ui.add(

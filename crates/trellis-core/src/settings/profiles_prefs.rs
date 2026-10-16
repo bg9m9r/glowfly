@@ -102,6 +102,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "profiles",
     "active_profile",
     "use_ssh_agent",
+    "gpg_prompts_in_app",
 ];
 
 /// What a profile switch changed in the settings in use.

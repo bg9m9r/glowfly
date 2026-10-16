@@ -36,12 +36,19 @@ use std::path::{Path, PathBuf};
 use trellis_core::askpass::{self, HelperError, Outcome};
 
 fn main() -> eframe::Result {
-    // Git runs Trellis as the sequence editor of an interactive rebase: install the prepared
-    // todo list and exit, without opening a window.
+    // Besides the window, git runs Trellis in three modes that exit without opening one: as the
+    // sequence editor of an interactive rebase (`--write-todo`), as gpg.program when it signs
+    // (marked by `TRELLIS_GPG_WRAPPER`), and as the askpass program.
     let argv: Vec<OsString> = std::env::args_os().collect();
-    // Checked first: the sequence editor runs under git, so it inherits the askpass variables.
+    // Checked first: the sequence editor runs under git, so it inherits the other modes'
+    // variables.
     if argv.get(1).is_some_and(|a| a == "--write-todo") {
         std::process::exit(write_todo(&argv[2..]));
+    }
+    // git signs with its gpg.program: ask for the key's passphrase through the running app.
+    // Before the askpass checks, since git passes the askpass variables on to it too.
+    if trellis_core::gpg_prompt::is_wrapper_call(&argv, std::env::var_os(trellis_core::gpg_prompt::ENV_WRAPPER).as_deref()) {
+        std::process::exit(trellis_core::gpg_prompt::run_wrapper(&argv[1..]));
     }
     // git or ssh asks for credentials: answer through the running app, without a window.
     // git runs the askpass program with the prompt as its only argument, so the environment
@@ -135,6 +142,11 @@ fn askpass_helper(prompt: Option<&OsString>) -> i32 {
         }
         Ok(Outcome::TimedOut) => {
             eprintln!("Trellis: the credential prompt timed out.");
+            1
+        }
+        // Only signing requests are answered this way; for anything else it means no answer.
+        Ok(Outcome::UseSystem) => {
+            eprintln!("Trellis: the credential prompt was not answered.");
             1
         }
         Err(HelperError::Closed) => {

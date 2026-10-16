@@ -489,7 +489,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Rebind keyboard shortcuts**
   Rebind keys in Preferences, saved in settings and matched through the shortcut table, with
   conflict detection and reset to default.
-- [ ] **GPG passphrase prompts**
+- [x] **GPG passphrase prompts**
   Ask for GPG passphrases for commit and tag signing in Trellis (a Trellis pinentry, or loopback
   pinentry), like the existing SSH passphrase prompt.
 
@@ -1254,6 +1254,18 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   and other hosting-service calls)
 - Turn desktop notifications off automatically, or offer to, when the OS refuses the confirming
   notification
+
+### GPG passphrase prompts
+
+- Passphrase prompts for X.509 (gpgsm) signing through gpg.x509.program
+- Passphrase prompts for SSH-format signing keys (ssh-keygen -Y sign)
+- A git banner reason saying git older than 2.31 keeps GnuPG's own passphrase window
+- Use Trellis's prompt when Trellis was started with GIT_CONFIG_COUNT set (append at the next
+  index)
+- Resolve MSYS-style gpg.program paths such as /usr/bin/gpg on Windows
+- Wording for smartcard PIN and touch requests (loopback with a card is unverified)
+- Show the key's expiry date in the passphrase dialog
+- Signing passphrase prompts for git commands typed in the terminal panel
 
 ### Limits found while building integrations
 

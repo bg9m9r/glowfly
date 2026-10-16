@@ -131,7 +131,11 @@ impl Shared {
         let Some(pending) = self.pending.upgrade() else { return Some(Response::Cancelled) };
         pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id, tx);
         drop(pending);
-        (self.on_event)(Event::Asked { id, prompt: Prompt::new(req.prompt, req.hint) });
+        let prompt = match req.gpg {
+            Some(ask) => Prompt::gpg(ask),
+            None => Prompt::new(req.prompt, req.hint),
+        };
+        (self.on_event)(Event::Asked { id, prompt });
         let reply = match rx.recv_timeout(self.timeout) {
             Ok(reply) => reply,
             Err(RecvTimeoutError::Disconnected) => Reply::Cancel,
@@ -149,6 +153,7 @@ impl Shared {
         Some(match reply {
             Reply::Answer(s) => Response::Answer(s.expose().to_owned()),
             Reply::Cancel => Response::Cancelled,
+            Reply::UseSystem => Response::UseSystem,
         })
     }
 }

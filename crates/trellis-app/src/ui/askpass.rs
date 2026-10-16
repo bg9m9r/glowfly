@@ -16,11 +16,15 @@ struct Layout {
     title: String,
     key_icon: bool,
     line: Option<String>,
+    /// Under the line: who owns the key (if known) and its id.
+    detail: Option<(Option<String>, String)>,
     /// The plain field and its hint.
     user: Option<&'static str>,
     /// The masked field and its hint.
     secret: Option<&'static str>,
     token_hint: bool,
+    /// Small help above the footer.
+    help: Option<&'static str>,
     /// Show the whole prompt text (a host-key question).
     full_text: bool,
     primary: &'static str,
@@ -33,9 +37,11 @@ impl Layout {
             title,
             key_icon: true,
             line: None,
+            detail: None,
             user: None,
             secret: None,
             token_hint: false,
+            help: None,
             full_text: false,
             primary,
             secondary: "Cancel",
@@ -65,6 +71,13 @@ fn layout(p: &PendingPrompt) -> Layout {
             secret: Some("Passphrase"),
             ..Layout::new("Unlock SSH key".into(), "Unlock")
         },
+        PromptKind::GpgPassphrase { key, user, .. } => Layout {
+            line: Some("Git is signing with your OpenPGP key. Enter its passphrase.".into()),
+            detail: Some((user.clone(), key.clone())),
+            secret: Some("Passphrase"),
+            help: Some(GPG_HELP),
+            ..Layout::new("Unlock signing key".into(), "Unlock")
+        },
         PromptKind::Confirm => {
             Layout { key_icon: false, full_text: true, secondary: "No", ..Layout::new("Confirm SSH connection".into(), "Yes") }
         }
@@ -81,12 +94,16 @@ fn layout(p: &PendingPrompt) -> Layout {
     }
 }
 
+/// Help for a signing passphrase: why it isn't asked every time, and how to get GnuPG's window.
+const GPG_HELP: &str = "gpg-agent remembers the passphrase for a while, so Trellis asks again only once it has \
+forgotten. To use GnuPG's own window instead, turn this off in Preferences > Commit Signing.";
+
 /// The notice under the fields for a prompt asked again, or for a host whose credentials
 /// failed last time.
 fn notice(p: &PendingPrompt) -> Option<(String, egui::Color32)> {
     if p.retry {
         let text = match p.prompt.kind {
-            PromptKind::Passphrase { .. } => "That passphrase didn't unlock the key. Try again.",
+            PromptKind::Passphrase { .. } | PromptKind::GpgPassphrase { .. } => "That passphrase didn't unlock the key. Try again.",
             _ => "That didn't work. Try again.",
         };
         return Some((text.into(), color::red()));
@@ -115,6 +132,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         ui.add_space(4.0);
         if let Some(line) = &l.line {
             ui.add(egui::Label::new(RichText::new(line).color(color::weak())).wrap());
+        }
+        if let Some((user, key)) = &l.detail {
+            ui.add_space(4.0);
+            if let Some(user) = user {
+                ui.add(egui::Label::new(RichText::new(user).color(color::text())).wrap());
+            }
+            ui.label(RichText::new(format!("Key {key}")).monospace().color(color::weak()));
         }
         if l.full_text {
             egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
@@ -162,6 +186,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.add_space(2.0);
             let hint = "Most hosting services expect a personal access token here, not your account password.";
             ui.add(egui::Label::new(RichText::new(hint).color(color::weak()).size(12.0)).wrap());
+        }
+        if let Some(help) = l.help {
+            ui.add_space(2.0);
+            ui.add(egui::Label::new(RichText::new(help).color(color::weak()).size(12.0)).wrap());
         }
         ui.add_space(10.0);
         let valid = p.can_submit();

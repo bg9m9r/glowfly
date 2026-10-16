@@ -208,6 +208,14 @@ second one next to it.
    `native_path::native` and `rebase::shell_quote_for`** (`ssh_keys/command.rs`): no `\\?\`
    prefix, sh-quoted, and forward slashes on Windows. Git for Windows' bundled ssh doesn't read
    keys from the Windows OpenSSH agent service; only Windows' own `ssh.exe` does.
+8. **The gpg.program wrapper runs the gpg git would have run** (`gpg_prompt/`): the last
+   `gpg.program` / `gpg.openpgp.program` from any scope (system, global, repository, worktree)
+   that isn't Trellis, else `gpg` on the PATH git passes on (on Windows that is Git for Windows'
+   bundled gpg or a Gpg4win install, whichever git itself would find). It keeps git's PATH (no
+   `env_path::apply` in the wrapper), starts its gpg children with `CREATE_NO_WINDOW`, and feeds
+   the passphrase on fd 0 (`--passphrase-fd 0`), never in argv, a file or the environment. It
+   needs git 2.31 (`GIT_CONFIG_COUNT`) and GnuPG 2.1.12 (loopback allowed by default); with
+   anything older, or an agent with `no-allow-loopback-pinentry`, GnuPG's own pinentry is used.
 
 ### Watching and refresh
 
@@ -292,6 +300,10 @@ Gaps that are accepted for now:
 - **Desktop notifications don't carry Trellis's name yet:** on Windows they are attributed to
   PowerShell's app id until Trellis registers its own AppUserModelID; on macOS an unbundled
   binary posts under another app's identity through the deprecated NSUserNotification API.
+- **Trellis started with `GIT_CONFIG_COUNT` already set keeps GnuPG's own passphrase window:**
+  the user's command-scope config is left alone rather than appended to.
+- **Keychain-backed pinentries (pinentry-mac and the like) are bypassed** while "Ask for the
+  key's passphrase in Trellis" is on, since loopback skips the pinentry.
 
 Unverified, needs a real machine:
 
@@ -307,3 +319,6 @@ Unverified, needs a real machine:
   land while it is focused and only toast);
 - desktop notifications while Focus Assist or Do Not Disturb is on (expected: hidden, no
   error).
+- signing passphrases through Gpg4win and through Git for Windows' bundled gpg on a real
+  machine (the codes `gpg_prompt/status.rs` reads come from GnuPG's documentation);
+- smartcard PINs through loopback pinentry.

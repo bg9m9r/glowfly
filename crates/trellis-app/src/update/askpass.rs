@@ -17,24 +17,37 @@ pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &m
             let Some(front) = p.queue.pop_front() else { return };
             fx.push(Effect::AnswerPrompt { id: front.id, reply: Reply::Cancel });
             p.ended = Some(PromptEnd::Cancelled);
+            p.ended_signing = matches!(front.prompt.kind, PromptKind::GpgPassphrase { .. });
             p.carry = None;
             p.clear_buffers();
         }
         CredentialMsg::CredentialPromptExpired(id) => {
             let p = &mut st.askpass;
             let Some(i) = p.queue.iter().position(|q| q.id == id) else { return };
-            p.queue.remove(i);
+            let signing = p.queue.remove(i).is_some_and(|q| matches!(q.prompt.kind, PromptKind::GpgPassphrase { .. }));
             if i == 0 {
                 p.clear_buffers();
             }
             p.ended = Some(PromptEnd::TimedOut);
-            st.toast(false, "The credential prompt timed out.", now);
-            st.log(false, "The credential prompt timed out.");
+            p.ended_signing = signing;
+            let text = if signing { "The signing passphrase prompt timed out." } else { "The credential prompt timed out." };
+            st.toast(false, text, now);
+            st.log(false, text);
         }
     }
 }
 
 fn asked(st: &mut AppState, id: u64, prompt: Prompt, fx: &mut Vec<Effect>) {
+    // A signing passphrase: GnuPG's own window when the user prefers it, and a retry only when
+    // the wrapper says the last passphrase was wrong.
+    let signing_retry = match &prompt.kind {
+        PromptKind::GpgPassphrase { .. } if !st.settings.gpg_prompts_in_app => {
+            fx.push(Effect::AnswerPrompt { id, reply: Reply::UseSystem });
+            return;
+        }
+        PromptKind::GpgPassphrase { retry, .. } => Some(*retry),
+        _ => None,
+    };
     let p = &mut st.askpass;
     if p.carry_answers(&prompt)
         && let Some(carry) = p.carry.take()
@@ -43,7 +56,7 @@ fn asked(st: &mut AppState, id: u64, prompt: Prompt, fx: &mut Vec<Effect>) {
         fx.push(Effect::AnswerPrompt { id, reply: Reply::Answer(carry.password) });
         return;
     }
-    let retry = p.answered.contains(&prompt.text);
+    let retry = signing_retry.unwrap_or_else(|| p.answered.contains(&prompt.text));
     let rejected_before = matches!(prompt.kind, PromptKind::Username { .. } | PromptKind::Password { .. })
         && askpass::host(&prompt.kind).is_some_and(|h| p.failed_hosts.contains(&h));
     let first = p.queue.is_empty();
@@ -85,9 +98,11 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// and forgets whatever the job left behind.
 pub(super) fn job_finished(st: &mut AppState, ok: bool, label: &str, fx: &mut Vec<Effect>) -> Option<String> {
     let p = &mut st.askpass;
-    let headline = match (ok, p.ended) {
-        (false, Some(PromptEnd::Cancelled)) => Some(format!("{label} cancelled: no credentials were given")),
-        (false, Some(PromptEnd::TimedOut)) => Some(format!("{label} failed: the credential prompt timed out")),
+    let headline = match (ok, p.ended, p.ended_signing) {
+        (false, Some(PromptEnd::Cancelled), false) => Some(format!("{label} cancelled: no credentials were given")),
+        (false, Some(PromptEnd::TimedOut), false) => Some(format!("{label} failed: the credential prompt timed out")),
+        (false, Some(PromptEnd::Cancelled), true) => Some(format!("{label} cancelled: no signing passphrase was given")),
+        (false, Some(PromptEnd::TimedOut), true) => Some(format!("{label} failed: the signing passphrase prompt timed out")),
         _ => None,
     };
     if ok {
@@ -104,5 +119,6 @@ pub(super) fn job_finished(st: &mut AppState, ok: bool, label: &str, fx: &mut Ve
     p.answered.clear();
     p.answered_hosts.clear();
     p.ended = None;
+    p.ended_signing = false;
     headline
 }

@@ -204,6 +204,7 @@ fn preferences_general() {
 #[test]
 fn preferences_commit_signing() {
     use crate::state::prefs::GitConfigValues;
+    use egui_kittest::kittest::Queryable;
     use trellis_core::signing::SigningKey;
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     let mut prefs = PrefsState::new(PrefPage::Signing);
@@ -222,7 +223,14 @@ fn preferences_commit_signing() {
         expired: false,
     }]);
     st.prefs = Some(prefs);
-    render("prefs_signing", st, true);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("prefs_signing");
+    // The passphrase-prompt choice is edited in place.
+    assert!(h.state().0.settings.gpg_prompts_in_app);
+    h.get_by_label("Ask for the key's passphrase in Trellis").click();
+    h.run();
+    assert!(!h.state().0.settings.gpg_prompts_in_app);
 }
 
 #[test]

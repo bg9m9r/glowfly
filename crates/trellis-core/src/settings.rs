@@ -240,6 +240,9 @@ pub struct Settings {
     /// Leave core.sshCommand unset and let ssh use the running agent (Preferences > SSH).
     #[serde(default)]
     pub use_ssh_agent: bool,
+    /// Ask for OpenPGP signing passphrases in Trellis rather than GnuPG's own window
+    /// (Preferences > Commit Signing).
+    pub gpg_prompts_in_app: bool,
 }
 
 impl Default for Settings {
@@ -293,6 +296,7 @@ impl Default for Settings {
             profiles: Vec::new(),
             active_profile: None,
             use_ssh_agent: false,
+            gpg_prompts_in_app: true,
         }
     }
 }

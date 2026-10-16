@@ -67,6 +67,8 @@ mod worktree_manage;
 mod worktrees;
 
 #[cfg(test)]
+mod askpass_gpg_tests;
+#[cfg(test)]
 mod askpass_tests;
 #[cfg(test)]
 mod blame_tests;

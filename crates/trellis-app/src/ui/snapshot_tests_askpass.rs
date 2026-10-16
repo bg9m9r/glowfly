@@ -1,5 +1,5 @@
-//! The credential prompt over the main window: sign in, a passphrase retried, and a host-key
-//! confirmation. Shares the fixture repository and renderer with `snapshot_tests`.
+//! The credential prompt over the main window: sign in, a passphrase retried, a host-key
+//! confirmation, and a signing key's passphrase (first and retried). Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::CredentialMsg;
@@ -9,7 +9,7 @@ use crate::state::askpass::PendingPrompt;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
-use trellis_core::askpass::Prompt;
+use trellis_core::askpass::{GpgAsk, Prompt};
 use trellis_core::settings::ThemeChoice;
 
 const HOST_KEY: &str = "The authenticity of host 'example.com (192.0.2.10)' can't be established.\n\
@@ -19,6 +19,12 @@ Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
 
 fn prompt(st: &mut AppState, text: &str, retry: bool, rejected_before: bool) {
     st.askpass.queue.push_back(PendingPrompt { id: 1, prompt: Prompt::new(text, None), retry, rejected_before });
+    st.askpass.focus_pending = true;
+}
+
+fn gpg_prompt(st: &mut AppState, retry: bool) {
+    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry };
+    st.askpass.queue.push_back(PendingPrompt { id: 1, prompt: Prompt::gpg(ask), retry, rejected_before: false });
     st.askpass.focus_pending = true;
 }
 
@@ -72,6 +78,43 @@ fn credential_prompt_host_key() {
     h.check_snapshot("credential_prompt_host_key");
     assert!(h.query_by_label("Yes").is_some_and(|n| !n.is_disabled()));
     h.get_by_label("No").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn credential_prompt_gpg() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "askpass-gpg");
+    gpg_prompt(&mut st, false);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("credential_prompt_gpg");
+    assert!(h.get_by_label("Unlock").is_disabled(), "nothing typed yet");
+    assert!(h.query_by_label_contains("Key ABCDEF0123456789").is_some());
+    assert!(h.query_by_label_contains("Ada Lovelace <ada@example.com>").is_some());
+    assert!(h.query_by_label_contains("gpg-agent remembers the passphrase").is_some());
+    assert!(h.query_by_label_contains("didn't unlock").is_none());
+    h.state_mut().0.askpass.secret = "hunter2".into();
+    h.run();
+    assert!(h.query_by_label_contains("hunter2").is_none(), "the passphrase is masked");
+    h.get_by_label("Unlock").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn credential_prompt_gpg_retry_light() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "askpass-gpg-retry");
+    gpg_prompt(&mut st, true);
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("credential_prompt_gpg_retry_light");
+    assert!(h.query_by_label_contains("didn't unlock the key").is_some());
+    h.press_key(egui::Key::Escape);
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
     drop(h);

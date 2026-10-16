@@ -46,3 +46,14 @@ fn confirmations_and_other_prompts() {
     assert_eq!(classify("Enter PIN for authenticator: ", None), PromptKind::Other { secret: true });
     assert_eq!(host(&PromptKind::Confirm), None);
 }
+
+#[test]
+fn only_structured_requests_are_signing_prompts() {
+    let ask = super::GpgAsk { key: "ABCDEF0123456789".into(), user: None, retry: false };
+    let p = super::Prompt::gpg(ask);
+    assert_eq!(p.text, "Passphrase for OpenPGP key ABCDEF0123456789");
+    assert_eq!(p.kind, PromptKind::GpgPassphrase { key: "ABCDEF0123456789".into(), user: None, retry: false });
+    assert_eq!(host(&p.kind), None);
+    // The same text from git or ssh is just a secret question.
+    assert_eq!(classify(&p.text, None), PromptKind::Other { secret: true });
+}

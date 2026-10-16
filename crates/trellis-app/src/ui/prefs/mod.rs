@@ -121,7 +121,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.spacing_mut().item_spacing.y = 6.0;
                 let needs_git = matches!(page, PrefPage::Profile | PrefPage::Signing | PrefPage::RepoIdentity | PrefPage::RepoHooks);
                 if page == PrefPage::Signing && prefs.git.is_some() {
-                    signing::signing_page(ui, prefs, msgs);
+                    signing::signing_page(ui, settings, prefs, msgs);
                     return;
                 }
                 if needs_git && prefs.git.is_none() {

@@ -9,7 +9,8 @@ use trellis_core::askpass::{self, Prompt, PromptKind, Secret};
 pub struct PendingPrompt {
     pub id: u64,
     pub prompt: Prompt,
-    /// The same prompt was already answered in this job: the answer didn't work.
+    /// The answer to the same prompt earlier in this job didn't work (for a signing passphrase:
+    /// the wrapper said so).
     pub retry: bool,
     /// The last job that used credentials Trellis supplied for this host failed.
     pub rejected_before: bool,
@@ -47,6 +48,8 @@ pub struct CredentialPrompts {
     /// Hosts whose last job failed after Trellis supplied credentials (kept across jobs).
     pub failed_hosts: HashSet<String>,
     pub ended: Option<PromptEnd>,
+    /// The prompt that ended the job early asked for a signing passphrase.
+    pub ended_signing: bool,
 }
 
 impl CredentialPrompts {

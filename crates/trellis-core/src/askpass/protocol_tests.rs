@@ -18,6 +18,25 @@ fn requests_and_responses_round_trip_on_one_line() {
 }
 
 #[test]
+fn signing_requests_round_trip_and_old_requests_still_decode() {
+    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry: true };
+    let line = encode_gpg_request("abc", &ask);
+    assert_eq!(line.matches('\n').count(), 1);
+    let req = decode_request(&line).unwrap();
+    assert_eq!(req.gpg.as_ref(), Some(&ask));
+    assert_eq!(req.prompt, "Passphrase for OpenPGP key ABCDEF0123456789");
+    assert_eq!(req.hint, None);
+
+    let old = r#"{"v":1,"token":"a","prompt":"Password for 'https://x': ","hint":null}"#;
+    let req = decode_request(old).unwrap();
+    assert!(req.gpg.is_none());
+    assert!(!encode_request("a", "p", None).contains("gpg"), "askpass requests leave the field out");
+
+    let line = encode_response(&Response::UseSystem);
+    assert!(decode_response(&line).unwrap() == Response::UseSystem);
+}
+
+#[test]
 fn decoding_rejects_bad_input() {
     let v2 = r#"{"v":2,"token":"a","prompt":"p","hint":null}"#;
     assert!(matches!(decode_request(v2), Err(ProtocolError::Version(2))));

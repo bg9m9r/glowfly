@@ -30,6 +30,7 @@ binary (package `trellis`).
 | `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
 | `native_path.rs`, `volume.rs` | The spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`); whether a folder is on a network or virtual file system. |
 | `askpass/` | Credential prompts: classifying git's and ssh's questions, the helper protocol, the app's listener and the helper's client. |
+| `gpg_prompt/` | Signing passphrases: Trellis as git's gpg.program, running the user's gpg with loopback pinentry and asking through the askpass listener. |
 | `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `shallow_ops.rs`, `worktree_ops.rs`, `stash_ops.rs`, `sparse_ops.rs`, `patch_ops.rs`, `submodule_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning (with the sparse clone job: the clone, then the folders to check out), fetching more of a shallow clone's history, worktrees, submodules (the Add dialog's fields; removing one: deinit, `git rm`, then its stored module, with what would be lost) and stashes (renaming a stash list entry by dropping and storing the top of `refs/stash` again, and stash push command lines: all, staged only, chosen paths); sparse checkout state, paths and command lines; patch files: format-patch export, git apply command lines and errors. |
 | `init_ops.rs`, `init_ops/` | New repository files and the init job: `.gitignore` templates, license texts, what the chosen folder already holds, and init, write (never overwriting) and commit. |
 | `lfs.rs`, `lfs/` | Git LFS: install and setup state, tracked patterns, LFS command lines. |
@@ -59,7 +60,7 @@ binary (package `trellis`).
 
 | Module | Holds |
 | --- | --- |
-| `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`) and askpass helper. |
+| `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`TRELLIS_GPG_WRAPPER`) and askpass helper. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
 | `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`, `blame.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs and the SUBMODULES section (`clone.rs`, `init.rs`, `submodule.rs`), and `Effect::name` (`names.rs`). |
 | `lfs.rs`, `git_env.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
@@ -78,6 +79,7 @@ binary (package `trellis`).
 | `crates/trellis-app/tests/layering.rs` | No I/O in `ui/`, `update/` or `state/` (see Rules). |
 | `crates/trellis-app/tests/sequence_editor.rs` | A rebase with the built executable as the sequence editor. |
 | `crates/trellis-app/tests/askpass.rs` | The built executable as the askpass helper. |
+| `crates/trellis-app/tests/gpg_prompt.rs` | The built executable as gpg.program: the loop guard, and (Unix) `git commit -S` through a fake gpg. |
 | `crates/trellis-app/tests/snapshots/` | Approved UI images. |
 
 ### Data flow (Elm-style)
@@ -119,6 +121,23 @@ binary (package `trellis`).
   confirmation regardless of focus. `runner/notify.rs` shows the note through notify-rust (the
   only caller, `tests/layering.rs`) and reports a refusal as
   `PrefsMsg::DesktopNotificationFailed`.
+- **Credential prompts** (`askpass/`): every git child that may prompt gets Trellis as its
+  `GIT_ASKPASS` / `SSH_ASKPASS`; the helper process asks the app's loopback listener, which
+  reports `CredentialMsg::CredentialPrompt`, and `Effect::AnswerPrompt` hands the dialog's
+  `Reply` back. `gitcli::NO_PROMPTS` (background jobs, reads) turns all of it off.
+- **Signing passphrases** (`gpg_prompt/`): gpg-agent's pinentry is fixed when the long-running
+  agent starts and is shared by all its clients, so there is no Trellis pinentry; swapping it
+  would mean editing gpg-agent.conf and restarting the agent. GnuPG's per-call alternative,
+  `--pinentry-mode loopback`, is used instead: for commands that may prompt (not
+  `NO_PROMPTS`), `gitcli` adds `GIT_CONFIG_COUNT`/`KEY_0`/`VALUE_0` setting `gpg.program` to
+  the Trellis executable (command scope beats every config file) plus `TRELLIS_GPG_WRAPPER=1`.
+  The wrapper runs the user's own gpg.program (or `gpg`) with `--pinentry-mode error` first, so
+  a passphrase the agent has cached (or a key without one) signs without a prompt; on "No
+  pinentry" it sends a structured `GpgAsk` through the askpass listener and signs with loopback,
+  the passphrase on fd 0, asking again after a bad passphrase (three tries). When
+  `settings.gpg_prompts_in_app` is off, `update/askpass.rs` answers `Reply::UseSystem` without
+  showing anything; that, an unreachable app, or a GnuPG without loopback runs gpg exactly as
+  git asked, so GnuPG's own pinentry appears.
 - **`AppState`** holds no egui types; textures and fonts live in a `UiCache` owned by the UI
   layer.
 

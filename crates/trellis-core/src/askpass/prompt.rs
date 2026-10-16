@@ -11,6 +11,10 @@ pub enum PromptKind {
     Password { target: String, user: Option<String> },
     /// ssh asks for the passphrase of the private key at `key`.
     Passphrase { key: String },
+    /// The signing wrapper asks for the passphrase of OpenPGP key `key` (long id or git's key
+    /// spec), owned by `user`; `retry` when the last answer didn't unlock it. Only built from a
+    /// structured request ([`super::Prompt::gpg`]), never by [`classify`].
+    GpgPassphrase { key: String, user: Option<String>, retry: bool },
     /// A yes/no question, such as ssh's unknown host key.
     Confirm,
     /// Anything else; `secret` when the text mentions a password, PIN, token or the like.

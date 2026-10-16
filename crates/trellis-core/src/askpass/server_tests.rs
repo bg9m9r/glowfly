@@ -1,5 +1,6 @@
-use super::client::{HelperError, Outcome, ask};
+use super::client::{HelperError, Outcome, ask, ask_gpg};
 use super::prompt::PromptKind;
+use super::protocol::GpgAsk;
 use super::server::{Event, MAX_CONNECTIONS, REQUEST_TIMEOUT, Server, start_with};
 use super::{Reply, Secret};
 use std::io::{Read, Write};
@@ -50,6 +51,29 @@ fn answers_reach_the_client() {
         other => panic!("expected an answer, got {other:?}"),
     }
     assert!(!s.answer(id, Reply::Cancel), "answered once");
+}
+
+#[test]
+fn signing_requests_become_gpg_prompts() {
+    let (s, events) = server(Duration::from_secs(60));
+    let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada <ada@example.com>".into()), retry: true };
+    for (reply, want_secret) in [(Reply::UseSystem, None), (Reply::Answer(Secret::new("right")), Some("right"))] {
+        let (tx, result) = mpsc::channel();
+        let (addr, token, a) = (s.addr(), s.token().to_owned(), ask.clone());
+        std::thread::spawn(move || {
+            let _ = tx.send(ask_gpg(&addr, &token, &a, WAIT));
+        });
+        let (id, prompt) = asked(&events);
+        let kind = PromptKind::GpgPassphrase { key: "ABCDEF0123456789".into(), user: Some("Ada <ada@example.com>".into()), retry: true };
+        assert_eq!(prompt.kind, kind);
+        assert_eq!(super::host(&prompt.kind), None);
+        assert!(s.answer(id, reply));
+        match (result.recv_timeout(WAIT).unwrap(), want_secret) {
+            (Ok(Outcome::UseSystem), None) => {}
+            (Ok(Outcome::Answer(a)), Some(want)) => assert_eq!(a.expose(), want),
+            (other, _) => panic!("unexpected {other:?}"),
+        }
+    }
 }
 
 #[test]

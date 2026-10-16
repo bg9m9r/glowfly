@@ -14,6 +14,9 @@
 //! 4. The listener reports each prompt as an [`server::Event`]; the app shows a dialog and
 //!    hands the user's [`Reply`] back with [`server::Server::answer`].
 //!
+//! The gpg.program wrapper ([`crate::gpg_prompt`]) sends a structured request instead
+//! ([`protocol::GpgAsk`]), shown as a [`PromptKind::GpgPassphrase`] prompt.
+//!
 //! Classification of the prompt text ([`prompt::classify`]) is pure and decides which dialog
 //! is shown.
 
@@ -31,9 +34,9 @@ mod server_tests;
 
 use std::time::Duration;
 
-pub use client::{HelperError, Outcome, ask, ask_from_env};
+pub use client::{HelperError, Outcome, ask, ask_from_env, ask_gpg, ask_gpg_from_env};
 pub use prompt::{PromptKind, classify, host, user_and_host};
-pub use protocol::{ENV_ADDR, ENV_TOKEN, SSH_HINT_ENV};
+pub use protocol::{ENV_ADDR, ENV_TOKEN, GpgAsk, SSH_HINT_ENV};
 pub use server::{Event, Server};
 
 /// How long a prompt waits for an answer before it is closed as timed out.
@@ -83,6 +86,8 @@ pub fn wipe(s: &mut String) {
 pub enum Reply {
     Answer(Secret),
     Cancel,
+    /// Let the program ask in its own way (a signing request: GnuPG's own pinentry).
+    UseSystem,
 }
 
 /// One prompt from git or ssh: its text, ssh's `SSH_ASKPASS_PROMPT` hint, and what it asks for.
@@ -98,5 +103,11 @@ impl Prompt {
         let text = text.into();
         let kind = classify(&text, hint.as_deref());
         Prompt { text, hint, kind }
+    }
+
+    /// The signing wrapper's request for an OpenPGP key's passphrase.
+    pub fn gpg(ask: GpgAsk) -> Self {
+        let GpgAsk { key, user, retry } = ask;
+        Prompt { text: format!("Passphrase for OpenPGP key {key}"), hint: None, kind: PromptKind::GpgPassphrase { key, user, retry } }
     }
 }

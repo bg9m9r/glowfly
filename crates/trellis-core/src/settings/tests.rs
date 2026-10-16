@@ -54,6 +54,17 @@ fn use_ssh_agent_defaults_off() {
 }
 
 #[test]
+fn gpg_prompts_in_app_default_on() {
+    // Files written before the setting existed ask for signing passphrases in Trellis.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.gpg_prompts_in_app);
+    assert!(Settings::default().gpg_prompts_in_app);
+    let off = Settings { gpg_prompts_in_app: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.gpg_prompts_in_app);
+}
+
+#[test]
 fn ignore_whitespace_defaults_off() {
     // Files written before the toggle existed show every whitespace change.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
