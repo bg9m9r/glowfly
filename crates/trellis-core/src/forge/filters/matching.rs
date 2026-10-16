@@ -75,7 +75,7 @@ fn supports(p: Provider, kind: FilterKind, f: Field) -> bool {
     let (gh, gl) = (github_family(p), gitlab_family(p));
     match kind {
         FilterKind::Prs => {
-            let code_host = !p.is_jira();
+            let code_host = !p.is_tracker_only();
             match f {
                 Field::Author | Field::Review | Field::Draft | Field::Base => code_host,
                 Field::Assignee | Field::Milestone => gh || gl,
@@ -84,7 +84,8 @@ fn supports(p: Provider, kind: FilterKind, f: Field) -> bool {
             }
         }
         FilterKind::Issues => {
-            if !p.has_issues() {
+            // Trello's cards can't be searched by condition.
+            if !p.has_issues() || p == Provider::Trello {
                 return false;
             }
             match f {
@@ -104,6 +105,7 @@ pub fn item_noun(p: Provider, kind: FilterKind) -> &'static str {
     match kind {
         FilterKind::Prs => p.pr_noun(),
         FilterKind::Issues if p == Provider::AzureDevOps => "work item",
+        FilterKind::Issues if p == Provider::Trello => "card",
         FilterKind::Issues => "issue",
     }
 }
@@ -116,7 +118,7 @@ pub fn unsupported_field(p: Provider, kind: FilterKind, f: Field) -> Option<Stri
     if kind == FilterKind::Issues && !p.has_issues() {
         return Some(format!("{} has no issue tracker.", p.name()));
     }
-    if kind == FilterKind::Prs && p.is_jira() {
+    if kind == FilterKind::Prs && p.is_tracker_only() {
         return Some(format!("{} doesn't host pull requests.", p.name()));
     }
     Some(format!("{} can't filter {}s by {}.", p.name(), item_noun(p, kind), f.noun(p)))

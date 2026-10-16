@@ -39,6 +39,7 @@ pub(super) fn pr(id: u64, head: Option<Oid>) -> PullRequest {
         merge_status: None,
         checks: None,
         url: "https://github.com/o/r/pull/7".into(),
+        facets: Default::default(),
     }
 }
 

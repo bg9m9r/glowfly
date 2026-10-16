@@ -59,6 +59,7 @@ pub(super) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) -> (App
         merge_status: with_source.then(|| "mergeable".into()),
         checks: None,
         url: "https://github.com/acme/demo/pull/12".into(),
+        facets: Default::default(),
     }];
     let view = PrView::new(fs.prs[0].clone(), &fs, st.snap.as_ref().unwrap());
     st.forge = Some(fs);

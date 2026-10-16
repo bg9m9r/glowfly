@@ -115,6 +115,7 @@ fn pr_for(source: &str) -> PullRequest {
         merge_status: None,
         checks: None,
         url: String::new(),
+        facets: Default::default(),
     }
 }
 

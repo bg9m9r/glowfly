@@ -58,6 +58,7 @@ fn card(key: &str, title: &str) -> Issue {
         kind: "Website".into(),
         assignee: Some("Ada".into()),
         url: format!("https://trello.com/c/{key}"),
+        facets: Default::default(),
     }
 }
 

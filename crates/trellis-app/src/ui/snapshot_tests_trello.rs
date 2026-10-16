@@ -111,6 +111,7 @@ fn trello_cards_menu() {
         kind: "Website".into(),
         assignee: Some("Ada Lovelace".into()),
         url: format!("https://trello.com/c/{key}"),
+        facets: Default::default(),
     };
     f.my_issues = vec![card("AbCd1234", "Fix login", "Doing"), card("Zz9Yy8Xx", "Speed up the search page", "Review")];
     st.forge = Some(f);

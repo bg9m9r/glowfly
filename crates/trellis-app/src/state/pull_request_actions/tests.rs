@@ -35,6 +35,7 @@ pub(in crate::state) fn view(d: Option<PrDetail>) -> PrView {
         merge_status: None,
         checks: None,
         url: String::new(),
+        facets: Default::default(),
     };
     PrView {
         pr,

@@ -227,7 +227,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
-        Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil => {}                                                                  // icons.rs
+        Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil => {}                                                   // icons.rs
     }
 }
 

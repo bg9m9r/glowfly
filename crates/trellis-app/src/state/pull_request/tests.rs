@@ -19,6 +19,7 @@ fn pr(head: Option<&str>) -> PullRequest {
         merge_status: None,
         checks: None,
         url: String::new(),
+        facets: Default::default(),
     }
 }
 

@@ -47,6 +47,7 @@ fn listed(id: u64, head: Option<String>) -> PullRequest {
         merge_status: None,
         checks: None,
         url: String::new(),
+        facets: Default::default(),
     }
 }
 

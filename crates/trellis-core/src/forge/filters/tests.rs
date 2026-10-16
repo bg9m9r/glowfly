@@ -132,6 +132,8 @@ fn names_what_a_service_cannot_filter_by() {
     let sprint = Conditions { sprint: Sprint::Open, ..Default::default() };
     assert_eq!(unsupported(Provider::JiraDataCenter, issues, &sprint), None);
     assert!(unsupported(Provider::GitHub, issues, &sprint).is_some());
+    assert_eq!(reason(Provider::Trello, issues, Builtin::IssuesCreatedByMe.conditions()), "Trello can't filter cards by author.");
+    assert!(reason(Provider::Trello, FilterKind::Prs, Builtin::MyPrs.conditions()).contains("doesn't host pull requests"));
 
     let comma = Conditions { labels: vec!["a,b".into()], ..Default::default() };
     assert_eq!(problems(Provider::GitHub, issues, &comma), ["GitHub can't search for a label that contains a comma: \u{201c}a,b\u{201d}."]);

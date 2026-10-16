@@ -183,6 +183,7 @@ fn trello_card_links_and_branches() {
         state: String::new(),
         kind: String::new(),
         assignee: None,
+        facets: Default::default(),
         url: String::new(),
     };
     assert_eq!(branch_name_for(&card), "AbCd1234-fix-login");

@@ -97,6 +97,7 @@ mod tests {
             merge_status: None,
             checks: None,
             url: String::new(),
+            facets: Default::default(),
         }
     }
 
@@ -118,6 +119,21 @@ mod tests {
         p.reviewers[1].state = "changes requested".into();
         p.apply(&PrDetails::empty(&p));
         assert_eq!(states(&p), [("Grace", "no vote"), ("Linus", "changes requested")]);
+    }
+
+    #[test]
+    fn approvals_stop_awaiting_their_reviewers() {
+        let mut p = pr(1, "abc");
+        p.facets.reviewer_ids = vec!["g".into(), "l".into()];
+        p.facets.awaiting_ids = p.facets.reviewer_ids.clone();
+        let approved =
+            PrDetails { votes: Some(vec![reviewer("Grace", "approved")]), approved_ids: vec!["g".into()], ..PrDetails::empty(&p) };
+        p.apply(&approved);
+        assert_eq!(p.facets.awaiting_ids, ["l"]);
+        p.apply(&PrDetails::empty(&p));
+        assert_eq!(p.facets.awaiting_ids, ["l"], "no votes read: unchanged");
+        p.apply(&PrDetails { votes: Some(Vec::new()), ..PrDetails::empty(&p) });
+        assert_eq!(p.facets.awaiting_ids, ["g", "l"], "a withdrawn approval is awaited again");
     }
 
     #[test]

@@ -178,6 +178,7 @@ fn with_open_pr(name: &str, head: bool) -> (AppState, PathBuf) {
         merge_status: None,
         checks: None,
         url: "https://github.com/o/r/pull/7".into(),
+        facets: Default::default(),
     };
     st.forge.as_mut().unwrap().prs = vec![pr];
     if head {

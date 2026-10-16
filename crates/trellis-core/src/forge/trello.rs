@@ -155,6 +155,7 @@ fn looked_up(key: &str, c: ApiCard) -> Issue {
         kind: c.board.map(|b| b.name).unwrap_or_default(),
         assignee: (!names.is_empty()).then(|| names.join(", ")),
         url: card_url(key),
+        facets: Default::default(),
     }
 }
 
@@ -218,6 +219,7 @@ impl super::Forge for Trello {
                 state: list.name.clone(),
                 kind: board.name.clone(),
                 assignee: Some(assignee.clone()),
+                facets: Default::default(),
             });
             if out.len() >= page::MAX_ITEMS {
                 break;

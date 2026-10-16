@@ -34,6 +34,7 @@ fn pr(id: u64, head: &str) -> PullRequest {
         merge_status: None,
         checks: None,
         url: String::new(),
+        facets: Default::default(),
     }
 }
 
@@ -48,7 +49,9 @@ fn passed() -> Option<Checks> {
 /// Read details for `ids`: passed checks, and Grace's approval.
 fn answers(ids: &[u64]) -> Vec<PrDetails> {
     let grace = Reviewer { name: "Grace".into(), state: "approved".into(), required: false };
-    ids.iter().map(|&id| PrDetails { id, head: Some(head(id)), checks: passed(), votes: Some(vec![grace.clone()]) }).collect()
+    ids.iter()
+        .map(|&id| PrDetails { id, head: Some(head(id)), checks: passed(), votes: Some(vec![grace.clone()]), approved_ids: Vec::new() })
+        .collect()
 }
 
 /// The ids of each details chunk the effects ask for.

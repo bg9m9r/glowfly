@@ -221,7 +221,7 @@ fn pr_details_read_build_statuses_per_pull_request() {
     let got = pr_details(&t, &token(Provider::Bitbucket), &prs).unwrap();
     assert_eq!(got[0].checks.as_ref().map(|c| c.state), Some(CheckState::Failed));
     assert_eq!((got[0].head.as_deref(), got[0].votes.as_ref()), (Some("0123456789ab"), None));
-    assert_eq!(got[1], PrDetails { id: 13, head: None, checks: None, votes: None });
+    assert_eq!(got[1], PrDetails { id: 13, head: None, checks: None, votes: None, approved_ids: Vec::new() });
     assert_eq!(
         routes(&m),
         [
