@@ -551,9 +551,10 @@ Done except the group colors, which wait on repository groups in the repository 
       commit and remote URL), copied from the branch, tag, remote and commit menus and the
       palette, opened in the running window with Locate, Clone and Fetch when they don't match,
       and registered per user in Preferences > General (Windows and XDG desktops)
-- [ ] **Packaging and updates**: the Release workflow publishes zip/tar.gz downloads. Missing:
-      installers, an app icon, code signing, file association, auto-update and a release notes
-      view
+- [x] **Packaging and updates**: an app icon; MSI, DMG and DEB installers next to the zip and
+      tar.gz downloads, with "Open in Trellis" on folders and `trellis://` links; code signing in
+      CI when the secrets are set; SHA256SUMS; a daily update check with a verified download; and
+      the release notes bundled in the app
 - [x] **Git engine choice**: choose
       which git executable to use and show its version
 - [x] **Performance**: incremental status for very large working trees: the watcher's changed
@@ -1529,7 +1530,7 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Deep links
 
-- macOS: receive links as Apple events and declare the scheme in the app bundle's Info.plist (with Packaging and updates)
+- macOS: receive links and folders as Apple events (GURL and odoc) and declare the scheme and the folder document type in Trellis.app's Info.plist, so links, Finder's Open With and dropping a folder on the Dock icon open them
 - Offer to add the link's remote when the repository matched by root commit has no remote with that URL
 - Copy link to a commit or tag on a chosen remote
 - Forward `trellis <path>` to the running window too, not only links
@@ -1581,3 +1582,18 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Recently closed tabs as a submenu, to reopen any of them
 - The OS and architecture in the About dialog's copied version info
 - A Check for updates item in the Help menu once updates exist
+
+### Packaging and updates
+
+- Install and restart: quit Trellis and run the downloaded installer, or swap the portable program in place
+- A download progress bar (bytes and percent) with Cancel, streaming the file to disk instead of holding it in memory
+- Skip this version: don't offer a release again until a newer one is out
+- "Open in Trellis" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
+- "Open in Trellis" on drives as well as folders
+- Register an AppUserModelID on the Start menu shortcut and the process, so notifications carry Trellis's name
+- More formats and targets: .rpm, AppImage or Flatpak, a Homebrew cask, a winget manifest, Linux aarch64 and Windows ARM64 builds
+- Sign SHA256SUMS (minisign or GPG) and check that signature in the app before trusting the checksums
+- Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
+- A CI dry run that builds the installers on pull requests touching packaging/ or the release workflow
+- A beta channel that offers pre-releases to users who opt in
+- A per-machine (all users) MSI

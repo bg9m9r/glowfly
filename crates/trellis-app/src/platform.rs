@@ -1,9 +1,12 @@
 //! Operating-system integration: the recent-repositories and tabs files, what is at the listed
-//! folders, terminals, file managers (opening a folder, or showing a file selected in it).
+//! folders, terminals, file managers (opening a folder, or showing a file selected in it), and the
+//! window icon.
 
 use std::path::{Path, PathBuf};
 
+mod icon;
 mod terminal;
+pub use icon::app_icon;
 pub use terminal::open_terminal;
 
 fn recent_file() -> Option<PathBuf> {

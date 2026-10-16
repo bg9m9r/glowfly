@@ -45,6 +45,7 @@ pub mod palette_onboarding;
 pub mod palette_profiles;
 pub mod palette_recent;
 pub mod palette_tools;
+pub mod palette_updates;
 pub mod patch;
 pub mod path_hazards;
 pub mod pr_details;
@@ -58,6 +59,7 @@ pub mod push_pr;
 pub mod rebase;
 pub mod ref_rows;
 pub mod refresh;
+pub mod release_notes;
 pub mod remotes;
 pub mod repo_lists;
 pub mod search;
@@ -80,6 +82,7 @@ pub mod tools;
 pub mod trello;
 pub mod trust;
 pub mod undo;
+pub mod updates;
 mod view;
 pub mod watch;
 pub mod worktree_manage;
@@ -221,6 +224,8 @@ pub enum Modal {
     CreateIssue(Box<issue_form::IssueForm>),
     /// Help > About Trellis: version, links and third-party notices.
     About,
+    /// The release notes, with a newer release on top when one is on offer.
+    ReleaseNotes(Box<release_notes::NotesDialog>),
 }
 
 /// The most commits "Load more" goes up to.
@@ -358,6 +363,8 @@ pub struct AppState {
     pub onboarding: onboarding::Onboarding,
     /// The cross-repository dashboard: global, not parked with a tab.
     pub dashboard: dashboard::Dashboard,
+    /// Trellis's own update check and download (global; nothing saved but `settings.updates`).
+    pub updates: updates::UpdatesState,
     pub view: ViewState,
 }
 
@@ -435,6 +442,7 @@ impl AppState {
             trust: Default::default(),
             onboarding: Default::default(),
             dashboard: Default::default(),
+            updates: Default::default(),
             view: ViewState::default(),
         };
         for p in key_problems {

@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, HashMap};
 
 mod column_widths;
 mod editor;
+mod downloads;
 mod file;
 mod forge_filters;
 mod graph_filter;
@@ -17,9 +18,11 @@ pub mod themes;
 mod themes_io;
 mod tools;
 mod trust;
+mod updates;
 mod zoom;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
+pub use downloads::downloads_dir;
 pub use file::{LoadProblem, settings_file};
 pub use forge_filters::RepoForgeFilters;
 pub use graph_filter::{FilterOp, GraphFilter};
@@ -29,6 +32,7 @@ pub use profiles_prefs::{ProfilePrefs, SetupSwap};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::RepoTrust;
+pub use updates::UpdatePrefs;
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
 
 /// The theme in use (Preferences > UI Customization > Theme). Old files' "Dark", "Light" and
@@ -305,6 +309,9 @@ pub struct Settings {
     /// read as true, so only a new install shows the welcome.
     #[serde(default = "file::seen")]
     pub welcome_done: bool,
+    /// The daily update check and the release notes last shown (Preferences > General > Updates).
+    #[serde(default)]
+    pub updates: UpdatePrefs,
 }
 
 impl Default for Settings {
@@ -372,6 +379,7 @@ impl Default for Settings {
             keybindings: BTreeMap::new(),
             git_program: None,
             welcome_done: false,
+            updates: UpdatePrefs::default(),
         }
     }
 }
@@ -403,5 +411,7 @@ impl Settings {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod updates_tests;
 #[cfg(test)]
 mod welcome_tests;

@@ -73,6 +73,16 @@ jobs:
       TAG: ${{ needs.prepare.outputs.tag }}
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
+      # Signing secrets (docs/RELEASING.md). Empty when unset: the packaging scripts then skip
+      # signing with a notice, and the release still succeeds.
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -88,24 +98,49 @@ jobs:
         run: ./scripts/linux-deps.sh
       - name: Build
         run: cargo build --release --locked -p trellis --target ${{ matrix.target }}
-      - name: Package
-        shell: bash
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          name="trellis-$TAG-${{ matrix.target }}"
-          mkdir "$name"
-          cp LICENSE-MIT LICENSE-APACHE README.md THIRD-PARTY-NOTICES.md "$name"/
-          if [ -f CHANGELOG.md ]; then cp CHANGELOG.md "$name"/; fi
-          if [ "$RUNNER_OS" = Windows ]; then
-            cp "target/${{ matrix.target }}/release/trellis.exe" "$name"/
-            7z a -tzip "$name.zip" "$name" > /dev/null
-            archive="$name.zip"
-          else
-            cp "target/${{ matrix.target }}/release/trellis" "$name"/
-            tar -czf "$name.tar.gz" "$name"
-            archive="$name.tar.gz"
-          fi
-          if command -v sha256sum > /dev/null; then sha256sum "$archive" > "$archive.sha256"; else shasum -a 256 "$archive" > "$archive.sha256"; fi
-          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+          dotnet tool install --global wix --version 5.0.2
+          pwsh scripts/package-windows.ps1 -Target ${{ matrix.target }} -Tag "$env:TAG"
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: bash scripts/package-macos.sh ${{ matrix.target }} "$TAG"
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cargo install cargo-deb --locked --version 2.12.1
+          bash scripts/package-linux.sh ${{ matrix.target }} "$TAG"
       - name: Upload to the release
         shell: bash
-        run: gh release upload "$TAG" "$ARCHIVE" "$ARCHIVE.sha256" --clobber
+        # Regular files only: dist/ also holds the assembled Trellis.app folder on macOS.
+        run: find dist -maxdepth 1 -type f -print0 | xargs -0 gh release upload "$TAG" --clobber
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f "$RUNNER_TEMP/trellis-signing.pfx" "$RUNNER_TEMP/trellis-signing.p12"
+          if [ "$RUNNER_OS" = macOS ] && [ -f "$RUNNER_TEMP/trellis-signing.keychain-db" ]; then
+            security delete-keychain "$RUNNER_TEMP/trellis-signing.keychain-db" || true
+          fi
+
+  # SHA256SUMS over every file of the release, for `sha256sum -c SHA256SUMS --ignore-missing`
+  # and the app's update check.
+  checksums:
+    needs: [prepare, build]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Publish SHA256SUMS
+        run: |
+          mkdir dist
+          gh release download "$TAG" --dir dist --pattern 'trellis-*'
+          rm -f dist/*.sha256
+          (cd dist && sha256sum -- * | sort -k2 > SHA256SUMS)
+          cat dist/SHA256SUMS
+          gh release upload "$TAG" dist/SHA256SUMS --clobber

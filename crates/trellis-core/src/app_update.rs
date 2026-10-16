@@ -1,0 +1,79 @@
+//! Trellis's own updates: whether a check is due, which release is newer than this copy, which
+//! of its files fits this system and how this copy was installed, and downloading that file
+//! after checking it against the release's published SHA-256 checksums.
+//!
+//! - `version.rs`: semantic versions and their precedence.
+//! - `release.rs`: the hosting service's release (tag, notes, files), with unsafe links and file
+//!   names dropped.
+//! - `assets.rs`: this system's platform, how this copy was installed, and which file to fetch.
+//! - `sums.rs`: `SHA256SUMS` and `<file>.sha256` files.
+//! - `download.rs`: fetching, verifying and saving a file (I/O).
+//!
+//! The release itself is read by `forge::latest_release`. Trellis never replaces its own
+//! running program: a downloaded installer is opened only when the user asks.
+
+mod assets;
+mod download;
+mod release;
+mod sums;
+mod version;
+
+#[cfg(test)]
+mod tests;
+
+pub use assets::{Arch, CURRENT_PLATFORM, InstallKind, Platform, SumsSource, TargetOs, install_kind, install_kind_for, pick, sums_source};
+pub use download::{MAX_DOWNLOAD, download, free_name, split_extension};
+pub use release::{Asset, Release, asset_name_ok, parse_release};
+pub use sums::{expected as expected_sum, parse as parse_sums, sha256};
+pub use version::{PreId, Version};
+
+/// This build's version.
+pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
+/// The repository whose releases are checked (a fork built with its own `repository` field
+/// checks its own releases).
+pub const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
+/// How long after a successful check the next automatic one is due, in seconds.
+pub const CHECK_EVERY_SECS: i64 = 86_400;
+
+/// Whether an automatic check is due at `now` (Unix seconds): never when turned off or without
+/// a clock; otherwise when there was no check yet, a day has passed, or the last check lies in
+/// the future (the clock went back).
+pub fn due(enabled: bool, last_checked: Option<i64>, now: i64) -> bool {
+    if !enabled || now <= 0 {
+        return false;
+    }
+    match last_checked {
+        None => true,
+        Some(last) => last > now || now - last >= CHECK_EVERY_SECS,
+    }
+}
+
+/// A release newer than this copy, with the file to fetch for this system (None when there is
+/// no build for it) and where its checksum is published.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Offer {
+    pub release: Release,
+    pub version: Version,
+    pub asset: Option<Asset>,
+    pub sums: SumsSource,
+}
+
+/// The offer `release` makes to a copy at `current`: Some only when its tag is a version newer
+/// than `current`.
+pub fn offer(release: &Release, current: &Version, platform: Option<Platform>, kind: InstallKind) -> Option<Offer> {
+    let version = Version::parse(&release.tag)?;
+    if version <= *current {
+        return None;
+    }
+    let asset = platform.and_then(|p| pick(release, p, kind));
+    let sums = asset.as_ref().map_or(SumsSource::None, |a| sums_source(release, a));
+    Some(Offer { release: release.clone(), version, asset, sums })
+}
+
+/// The releases page of `repository` (`https://github.com/o/r/releases`), when it is an https
+/// URL.
+pub fn releases_page(repository: &str) -> Option<String> {
+    let base = repository.trim_end_matches('/');
+    let base = base.strip_suffix(".git").unwrap_or(base);
+    crate::forge::https_host(base).map(|_| format!("{base}/releases"))
+}

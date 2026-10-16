@@ -120,6 +120,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "git_program",
     // Whether this install has shown the first-run welcome.
     "welcome_done",
+    // The machine's update check and the release notes seen.
+    "updates",
 ];
 
 /// What a profile switch changed in the settings in use.

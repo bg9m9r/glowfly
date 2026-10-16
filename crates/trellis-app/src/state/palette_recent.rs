@@ -8,6 +8,7 @@ use super::palette_commands::PaletteCommand;
 use super::palette_kinds::StashAction;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::LayoutMsg;
+use crate::msg::UpdateMsg;
 use crate::onboarding::OnboardingMsg;
 use crate::remote::RemoteMsg;
 use crate::submodule::SubmoduleMsg;
@@ -168,6 +169,9 @@ impl PaletteCommand {
             C::Onboarding(OnboardingMsg::ShowWelcome) => "show-welcome",
             C::Onboarding(OnboardingMsg::StartTour) => "tour",
             C::Onboarding(_) => return None,
+            C::Updates(UpdateMsg::ShowNotes) => "release-notes",
+            C::Updates(UpdateMsg::CheckNow) => "check-updates",
+            C::Updates(_) => return None,
         })
     }
 }

@@ -1,9 +1,11 @@
 //! Trellis's core: repository access (libgit2 + git CLI), commit-graph layout, hosting-service
 //! integrations, settings and formatting helpers. Nothing here depends on the UI.
 
+pub mod app_update;
 pub mod askpass;
 pub mod avatars;
 pub mod branch_ops;
+pub mod changelog;
 pub mod clone_ops;
 pub mod commit_query;
 pub mod conflict_check;

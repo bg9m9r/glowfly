@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Trellis
+Comment=Opens trellis:// links in Trellis
+Exec=/usr/bin/trellis %u
+Terminal=false
+NoDisplay=true
+MimeType=x-scheme-handler/trellis;

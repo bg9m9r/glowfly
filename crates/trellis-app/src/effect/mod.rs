@@ -24,6 +24,7 @@ mod notify;
 mod repo;
 mod scope;
 mod submodule;
+mod updates;
 
 pub use blame::BlameRequest;
 pub use clone::CloneEffect;
@@ -35,6 +36,7 @@ pub use issue::*;
 pub use notify::{DesktopNote, NoteKind};
 pub use repo::{KnownRepo, LocalOp, StatusRead, UndoResult, WatchTarget};
 pub use submodule::SubmoduleEffect;
+pub use updates::UpdateEffect;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum LoadKind {
@@ -387,6 +389,8 @@ pub enum Effect {
     Dashboard(DashboardEffect),
     /// The issue panel's and the Create issue dialog's calls to the tracker (unscoped; issue.rs).
     Issue(IssueEffect),
+    /// Update checks, downloads and opening a downloaded installer (runner/updates.rs); unscoped.
+    Updates(UpdateEffect),
     Ui(UiEffect),
 }
 

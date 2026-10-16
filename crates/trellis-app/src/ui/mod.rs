@@ -50,6 +50,7 @@ mod publish;
 mod pull_request;
 mod rebase;
 mod ref_visibility;
+mod release_notes;
 mod remotes;
 mod repo_list;
 mod shortcuts;
@@ -70,6 +71,7 @@ mod toolbar;
 mod tour;
 mod trust_chip;
 mod trust_dialog;
+mod update_notice;
 mod welcome;
 mod welcome_steps;
 pub mod widgets;
@@ -212,6 +214,8 @@ mod snapshot_tests_trello;
 #[cfg(test)]
 mod snapshot_tests_trust;
 #[cfg(test)]
+mod snapshot_tests_updates;
+#[cfg(test)]
 mod snapshot_tests_whole;
 #[cfg(test)]
 mod snapshot_tests_worktree_manage;
@@ -295,6 +299,7 @@ impl TrellisApp {
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
         app.dispatch(&cc.egui_ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect));
         app.dispatch(&cc.egui_ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup));
+        app.dispatch(&cc.egui_ctx, Msg::Updates(crate::msg::UpdateMsg::Startup));
         app.dispatch(&cc.egui_ctx, Msg::Recent(RecentMsg::CheckFolders));
         if let Some(problem) = problem {
             tracing::warn!("settings: {}", problem.message());

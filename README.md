@@ -8,12 +8,31 @@ requests and issues.
 Trellis is an independent project. It is not affiliated with or endorsed by any other Git client
 or hosting service; product names are used only to describe compatibility.
 
-## Download
+## Install
 
 Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
 [Releases](https://github.com/bg9m9r/trellis/releases) page. Git must be installed and on your
-`PATH`. The builds aren't code-signed yet, so Windows SmartScreen and macOS Gatekeeper will warn
-the first time you open them.
+`PATH`.
+
+- **Windows**: `trellis-vX.Y.Z-x86_64-pc-windows-msvc.msi` installs for your user only (no
+  administrator rights) into `%LOCALAPPDATA%\Programs\Trellis`, with a Start menu shortcut,
+  "Open in Trellis" on folders in Explorer (on Windows 11 under "Show more options") and
+  `trellis://` links. Uninstall it from Settings > Apps.
+- **macOS**: open `trellis-vX.Y.Z-<arch>-apple-darwin.dmg` and drag Trellis to Applications.
+- **Debian and Ubuntu**: `sudo apt install ./trellis-vX.Y.Z-x86_64-unknown-linux-gnu.deb`. It
+  adds Trellis to the applications menu, "Open with Trellis" on folders in the file manager, and
+  `trellis://` links.
+- **Anywhere**: the `.zip` (Windows) and `.tar.gz` (macOS, Linux) hold the program on its own;
+  unpack it wherever you like.
+
+Each download has a `.sha256` file, and `SHA256SUMS` lists them all: check a download with
+`sha256sum -c SHA256SUMS --ignore-missing`. Builds are code-signed once the project's signing
+certificates are set up (see [docs/RELEASING.md](docs/RELEASING.md)); until then Windows
+SmartScreen and macOS Gatekeeper warn the first time you open them.
+
+Trellis checks GitHub for a newer release once a day (Preferences > General > Updates, where you
+can turn it off) and downloads it only when you ask, after checking it against the published
+checksums. "View release notes" in the command palette shows what changed.
 
 ## Building from source
 

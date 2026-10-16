@@ -36,6 +36,7 @@ mod page;
 mod provider;
 mod publish;
 mod refs;
+mod releases;
 mod remote;
 mod review;
 mod ssh_keys;
@@ -58,6 +59,7 @@ pub use links::https_host;
 pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, jira_project, keep_jira_key, mention};
+pub use releases::{fetch_public, latest_release, releases_api};
 pub(crate) use remote::split_url;
 pub use remote::{Connection, parse_host, parse_remote};
 pub use review::*;
@@ -387,6 +389,6 @@ pub fn link_line(code_host: Provider, tracker: Provider, key: &str) -> Option<St
 #[cfg(test)]
 mod api_tests;
 #[cfg(test)]
-mod mock;
+pub(crate) mod mock;
 #[cfg(test)]
 mod tests;

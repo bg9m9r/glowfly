@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Trellis
+GenericName=Git Client
+Comment=Browse, commit and share changes in Git repositories
+Exec=trellis %f
+Icon=trellis
+Terminal=false
+MimeType=inode/directory;
+Categories=Development;RevisionControl;
+Keywords=git;repository;commit;branch;version control;
+StartupWMClass=trellis

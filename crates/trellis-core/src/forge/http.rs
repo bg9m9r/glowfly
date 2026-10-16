@@ -79,6 +79,49 @@ pub(super) fn request(method: &str, auth: &Auth, url: &str) -> Result<ureq::Requ
     Ok(req)
 }
 
+/// One agent for downloads (release files): no overall timeout, since a large file on a slow
+/// line takes a while, but a stalled connection still fails. Redirects are followed (release
+/// files are served from another host); the published checksum guards the content.
+fn download_agent() -> &'static ureq::Agent {
+    static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+    AGENT.get_or_init(|| {
+        let builder = ureq::AgentBuilder::new()
+            .timeout_connect(Duration::from_secs(15))
+            .timeout_read(Duration::from_secs(60))
+            .redirects(5)
+            .user_agent(concat!("Trellis/", env!("CARGO_PKG_VERSION")));
+        // A redirect may not drop to plain http (the tests' mock server is plain http).
+        #[cfg(not(test))]
+        let builder = builder.https_only(true);
+        builder.build()
+    })
+}
+
+/// A request without credentials (public release data and files). Only `https://` URLs are
+/// accepted.
+pub(super) fn public_request(url: &str, download: bool) -> Result<ureq::Request> {
+    if links::https_host(url).is_none() {
+        return Err(Error::Other(format!("refusing to fetch {}: not an https address", crate::text::printable(url))));
+    }
+    #[cfg(test)]
+    let redirected = super::mock::redirect(url);
+    #[cfg(test)]
+    let url = redirected.as_ref().map_or(url, |(u, _)| u.as_str());
+    let agent = if download { download_agent() } else { agent() };
+    #[allow(unused_mut)]
+    let mut req = agent.get(url);
+    #[cfg(test)]
+    if let Some((_, host)) = &redirected {
+        req = req.set("X-Test-Host", host);
+    }
+    Ok(req)
+}
+
+/// Sends a request without a body; a non-success status becomes an error.
+pub(super) fn call_get(req: ureq::Request) -> Result<ureq::Response> {
+    call(req, None)
+}
+
 /// Sends a request (with a JSON body for writes); a non-success status becomes an error.
 fn call(req: ureq::Request, body: Option<serde_json::Value>) -> Result<ureq::Response> {
     #[cfg(test)]

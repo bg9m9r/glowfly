@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Trellis.app's Info.plist; scripts/package-macos.sh replaces @VERSION@. No document or URL
+  types yet: Trellis can't receive Apple events, so declaring them would start it without the
+  folder or link.
+-->
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>Trellis</string>
+  <key>CFBundleDisplayName</key>
+  <string>Trellis</string>
+  <key>CFBundleIdentifier</key>
+  <string>io.github.bg9m9r.trellis</string>
+  <key>CFBundleExecutable</key>
+  <string>trellis</string>
+  <key>CFBundleIconFile</key>
+  <string>trellis</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>@VERSION@</string>
+  <key>CFBundleVersion</key>
+  <string>@VERSION@</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.developer-tools</string>
+  <key>NSHumanReadableCopyright</key>
+  <string>Copyright © Trellis contributors. MIT or Apache-2.0.</string>
+</dict>
+</plist>

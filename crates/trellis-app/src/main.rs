@@ -83,7 +83,10 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_title("Trellis")
             .with_inner_size([1440.0, 880.0])
-            .with_min_inner_size([960.0, 540.0]),
+            .with_min_inner_size([960.0, 540.0])
+            .with_icon(crate::platform::app_icon())
+            // The Wayland app id: matches trellis.desktop (and its StartupWMClass).
+            .with_app_id("trellis"),
         ..Default::default()
     };
     eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start, logs)))))

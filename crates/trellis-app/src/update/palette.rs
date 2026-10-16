@@ -276,6 +276,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Logs(m) => Msg::Logs(m),
         C::Onboarding(m) => Msg::Onboarding(m),
         C::Dashboard => Msg::Dashboard(crate::msg::DashboardMsg::Open),
+        C::Updates(m) => Msg::Updates(m),
         C::ApplyPatch => Msg::Patch(crate::patch::PatchMsg::PickToApply),
         C::SwitchProfile(id) => Msg::Profile(crate::profile::ProfileMsg::Switch(id)),
         C::ReviewTrust => {

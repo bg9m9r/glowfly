@@ -4,9 +4,10 @@
 //!   `shell\open\command` runs `"<trellis.exe>" "%1"`.
 //! - Linux and the other XDG desktops: a hidden desktop entry, `trellis-links.desktop` in the
 //!   data folder's `applications` (`$XDG_DATA_HOME`, else `~/.local/share`), declaring
-//!   `x-scheme-handler/trellis`, made the default with `xdg-mime default`.
+//!   `x-scheme-handler/trellis`, made the default with `xdg-mime default`. The Linux package
+//!   installs the same file for [`PACKAGED_EXE`] in `/usr/share/applications`, which counts too.
 //! - macOS: links reach an application bundle through its Info.plist and Apple events, which
-//!   comes with packaging; until then [`status`] says so.
+//!   Trellis.app doesn't handle yet; until then [`status`] says so.
 //!
 //! The decisions (what a registry value or `xdg-mime` answer means, how the command line is
 //! quoted) are pure functions, tested on every OS.
@@ -31,6 +32,9 @@ use std::path::Path;
 pub const SCHEME: &str = "trellis";
 /// The desktop entry's file name on XDG desktops.
 pub const DESKTOP_FILE: &str = "trellis-links.desktop";
+/// Where the Linux package installs Trellis; its packaged `trellis-links.desktop` (in
+/// `/usr/share/applications`) is `desktop_entry` for this path.
+pub const PACKAGED_EXE: &str = "/usr/bin/trellis";
 /// Why the scheme can't be registered on macOS yet.
 pub const MACOS_NOTE: &str = "On macOS, links will open Trellis once it is installed as an application.";
 /// The desktop's handler query lacks its program.

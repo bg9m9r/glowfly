@@ -85,6 +85,8 @@ fn entries_without_repo() {
             "Open Preferences",
             "Keyboard shortcuts",
             "Show the welcome",
+            "View release notes",
+            "Check for updates",
             "Hide toolbar labels",
             "Zoom in",
             "Zoom out",

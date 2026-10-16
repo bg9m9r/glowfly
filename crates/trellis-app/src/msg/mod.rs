@@ -2,7 +2,8 @@
 //!
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
-//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `conflict_check`, `pull_request`, `logs`, `onboarding` and `deep_link`). Each area's enum goes to one handler in `update/`, which matches it
+//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `conflict_check`, `pull_request`, `logs`, `onboarding` and `deep_link`;
+//! Trellis's own updates are `UpdateMsg` in `updates.rs`). Each area's enum goes to one handler in `update/`, which matches it
 //! exhaustively, and says through `on_inactive` what its results still need when they arrive
 //! for a tab that is no longer active. Only a few cross-cutting messages are top-level.
 
@@ -34,6 +35,7 @@ mod sparse;
 mod stash;
 mod tabs;
 mod trust;
+mod updates;
 mod work;
 
 pub use app::AppMsg;
@@ -57,6 +59,7 @@ pub use sparse::SparseMsg;
 pub use stash::StashMsg;
 pub use tabs::TabsMsg;
 pub use trust::TrustMsg;
+pub use updates::{CheckedRelease, UpdateMsg};
 pub use work::{CommitMsg, JobMsg, StageMsg};
 
 pub enum Msg {
@@ -171,6 +174,8 @@ pub enum Msg {
     Dashboard(DashboardMsg),
     /// Quitting and the About dialog (update/app.rs).
     App(AppMsg),
+    /// Trellis's own updates and the release notes (update/updates.rs).
+    Updates(UpdateMsg),
     /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
@@ -283,6 +288,7 @@ impl Msg {
             Msg::DeepLink(m) => m.on_inactive(),
             Msg::Dashboard(m) => m.on_inactive(),
             Msg::App(m) => m.on_inactive(),
+            Msg::Updates(m) => m.on_inactive(),
             Msg::Tick(_)
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }

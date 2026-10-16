@@ -188,7 +188,14 @@ second one next to it.
    read-only, and keep the file's name (`names::portable`) so tools can highlight it. They hold
    the stored bytes unless the repository is trusted, when `git cat-file --filters` gives the
    checkout form. A macOS application bundle that Trellis waits for runs through `open -W`.
-8. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
+8. **A downloaded update is opened only after its SHA-256 matches the release's published
+   checksum, and only on the user's click** (`app_update::download`, `runner/updates.rs`). The
+   file's name comes from the server, so it is checked first (`app_update::asset_name_ok`: 1 to
+   128 characters of `A-Za-z0-9._-`, no leading dot) and can't leave the downloads folder; the
+   bytes are held in memory, checked, and only then written with `persist::write_file`. An
+   existing file with other content is never replaced (`free_name`: `name (1).msi`). Trellis never
+   replaces its own running program.
+9. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
    libdbus) on Linux. A missing notification server is an error the confirmation reports;
    never call it from update or views (`tests/layering.rs`).
@@ -301,6 +308,10 @@ second one next to it.
    through `persist::append` / `persist::open_append`, and keep every log bounded: trim it
    (the activity log, `logs::ActivityFile`) or rotate it by size (the error and performance
    logs, `logs::RotatingFile`). With no folder, logs stay in memory.
+7. **Save downloaded updates to `settings::downloads_dir`:** the Downloads known folder on
+   Windows (`SHGetKnownFolderPath`, wherever the user moved it; else `%USERPROFILE%\Downloads`),
+   `~/Downloads` on macOS, and `XDG_DOWNLOAD_DIR` from `user-dirs.dirs` (else `~/Downloads`) on
+   XDG desktops; when that isn't a folder, the cache folder's `updates`.
 
 ## Testing on every OS
 
@@ -356,8 +367,13 @@ Gaps that are accepted for now:
   binary posts under another app's identity through the deprecated NSUserNotification API.
 - **Trellis started with `GIT_CONFIG_COUNT` already set keeps GnuPG's own passphrase window:**
   the user's command-scope config is left alone rather than appended to.
-- **macOS doesn't receive links yet:** an application gets them as Apple events, with the
-  scheme declared in its bundle's Info.plist, which comes with packaging. Preferences says so.
+- **macOS doesn't receive links or folders yet:** an application gets them as Apple events, with
+  the scheme and the folder document type declared in its bundle's Info.plist. Trellis.app
+  declares neither until it handles those events (declaring them would start it without the link
+  or folder). Preferences says so.
+- **Windows 11's modern context menu has no "Open in Trellis":** that menu needs an
+  `IExplorerCommand` in a packaged (sparse) app; the MSI's entry is in the classic menu, under
+  "Show more options".
 - **Wayland compositors may refuse to raise the window** for a link from another process; it
   then only asks for attention.
 - **`xdg-mime` can't unset a default:** Unregister removes the desktop entry, and desktops ignore

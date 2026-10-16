@@ -69,3 +69,41 @@ fn windows_answers_are_read() {
     let other = r#""D:\Apps\Other\other.exe" "%1""#;
     assert_eq!(decide_windows(Some(other), &exe()), SchemeStatus::OtherProgram(other.into()));
 }
+
+/// A file of the repository's `packaging/` folder.
+fn packaging(file: &str) -> String {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packaging").join(file);
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+#[test]
+fn the_packaged_link_handler_is_trellis_own_entry() {
+    let packaged = packaging("linux/trellis-links.desktop");
+    assert_eq!(packaged, desktop_entry(std::path::Path::new(PACKAGED_EXE)).unwrap(), "regenerate it from url_scheme::desktop_entry");
+    assert_eq!(decide_xdg(DESKTOP_FILE, Some(&packaged), std::path::Path::new(PACKAGED_EXE)), SchemeStatus::Registered);
+    let app = packaging("linux/trellis.desktop");
+    for line in ["Exec=trellis %f", "Icon=trellis", "MimeType=inode/directory;", "StartupWMClass=trellis"] {
+        assert!(app.lines().any(|l| l == line), "{line} in trellis.desktop");
+    }
+}
+
+#[test]
+fn the_installer_registers_what_trellis_registers() {
+    let wxs = packaging("windows/trellis.wxs");
+    // The installed program, as the registry sees it once the installer fills in the folder.
+    let scheme = windows_command(std::path::Path::new("[INSTALLFOLDER]trellis.exe"));
+    assert_eq!(scheme, r#""[INSTALLFOLDER]trellis.exe" "%1""#);
+    assert!(wxs.contains(&format!("Value='{scheme}'")), "the scheme's command");
+    let folder = scheme.replace("%1", "%V");
+    assert_eq!(wxs.matches(&format!("Value='{folder}'")).count(), 2, "folders and folder backgrounds");
+    for key in
+        [r"Software\Classes\trellis", r"Software\Classes\Directory\shell\Trellis", r"Software\Classes\Directory\Background\shell\Trellis"]
+    {
+        assert!(wxs.contains(&format!(r#"Root="HKCU" Key="{key}""#)), "{key} under HKCU");
+    }
+    assert!(wxs.contains(r#"Value="URL:Trellis link""#) && wxs.contains(r#"Name="URL Protocol""#));
+    assert!(wxs.contains(r#"Value='"[INSTALLFOLDER]trellis.exe",0'"#), "the default icon");
+    assert!(!wxs.contains("HKLM"), "nothing machine-wide");
+    let plist = packaging("macos/Info.plist");
+    assert!(!plist.contains("CFBundleDocumentTypes") && !plist.contains("CFBundleURLTypes"), "no Apple event types yet");
+}

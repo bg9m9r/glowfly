@@ -49,9 +49,17 @@ fn mime_type() -> String {
     format!("x-scheme-handler/{SCHEME}")
 }
 
+/// The applications folders of `XDG_DATA_DIRS` (default `/usr/local/share:/usr/share`), where
+/// a package installs its desktop entries.
+fn system_apps_dirs() -> Vec<PathBuf> {
+    let dirs = std::env::var_os("XDG_DATA_DIRS").filter(|d| !d.is_empty()).unwrap_or_else(|| "/usr/local/share:/usr/share".into());
+    std::env::split_paths(&dirs).filter(|d| d.is_absolute()).map(|d| d.join("applications")).collect()
+}
+
 pub(super) fn status(exe: &Path) -> Result<SchemeStatus, String> {
     let default = xdg_mime(&["query", "default", &mime_type()])?;
-    let ours = apps_dir().and_then(|a| std::fs::read_to_string(a.join(DESKTOP_FILE)).ok());
+    // The user's own entry wins over a packaged one, as desktops look it up.
+    let ours = apps_dir().into_iter().chain(system_apps_dirs()).find_map(|a| std::fs::read_to_string(a.join(DESKTOP_FILE)).ok());
     Ok(super::decide_xdg(&default, ours.as_deref(), exe))
 }
 

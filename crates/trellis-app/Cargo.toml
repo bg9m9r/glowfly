@@ -30,3 +30,36 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter", "chrono"] }
 
 [dev-dependencies]
 egui_kittest = { version = "0.31", features = ["snapshot", "wgpu"] }
+# tests/app_icon.rs renders the app icon and checks the PNGs in assets/icon.
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+# The icon and version details of trellis.exe (build.rs).
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+# The Linux package (scripts/package-linux.sh runs `cargo deb -p trellis --no-build`).
+[package.metadata.deb]
+name = "trellis"
+maintainer = "Trellis contributors <https://github.com/bg9m9r/trellis/issues>"
+copyright = "Trellis contributors"
+section = "vcs"
+priority = "optional"
+depends = "$auto, git"
+extended-description = """Trellis is a native Git client: a commit graph, diffs, staging by file, hunk or line, branches, stashes, rebases and pull requests from the hosting service."""
+assets = [
+    ["target/release/trellis", "usr/bin/", "755"],
+    ["../../packaging/linux/trellis.desktop", "usr/share/applications/", "644"],
+    ["../../packaging/linux/trellis-links.desktop", "usr/share/applications/", "644"],
+    ["../../assets/icon/trellis-16.png", "usr/share/icons/hicolor/16x16/apps/trellis.png", "644"],
+    ["../../assets/icon/trellis-24.png", "usr/share/icons/hicolor/24x24/apps/trellis.png", "644"],
+    ["../../assets/icon/trellis-32.png", "usr/share/icons/hicolor/32x32/apps/trellis.png", "644"],
+    ["../../assets/icon/trellis-48.png", "usr/share/icons/hicolor/48x48/apps/trellis.png", "644"],
+    ["../../assets/icon/trellis-64.png", "usr/share/icons/hicolor/64x64/apps/trellis.png", "644"],
+    ["../../assets/icon/trellis-128.png", "usr/share/icons/hicolor/128x128/apps/trellis.png", "644"],
+    ["../../assets/icon/trellis-256.png", "usr/share/icons/hicolor/256x256/apps/trellis.png", "644"],
+    ["../../assets/icon/trellis-512.png", "usr/share/icons/hicolor/512x512/apps/trellis.png", "644"],
+    ["../../LICENSE-MIT", "usr/share/doc/trellis/", "644"],
+    ["../../LICENSE-APACHE", "usr/share/doc/trellis/", "644"],
+    ["../../README.md", "usr/share/doc/trellis/", "644"],
+    ["../../THIRD-PARTY-NOTICES.md", "usr/share/doc/trellis/", "644"],
+]

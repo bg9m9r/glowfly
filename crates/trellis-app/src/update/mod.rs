@@ -53,6 +53,7 @@ mod rebase;
 mod recent;
 mod refresh;
 mod refresh_paths;
+mod release_notes;
 mod remote_forks;
 mod remotes;
 mod repo;
@@ -83,6 +84,7 @@ mod tools;
 mod trello;
 mod trust;
 mod undo;
+mod updates;
 mod watch;
 mod work_files;
 mod work_files_delete;
@@ -316,6 +318,10 @@ mod trust_tests;
 #[cfg(test)]
 mod undo_tests;
 #[cfg(test)]
+mod updates_notes_tests;
+#[cfg(test)]
+mod updates_tests;
+#[cfg(test)]
 mod watch_poll_tests;
 #[cfg(test)]
 mod watch_tests;
@@ -410,6 +416,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::DeepLink(m) => deep_link::handle(st, m, now, &mut fx),
         Msg::Dashboard(m) => dashboard::handle(st, m, now, &mut fx),
         Msg::App(m) => app::handle(st, m, &mut fx),
+        Msg::Updates(m) => updates::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).
@@ -417,6 +424,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             ops::auto_fetch(st, t, &mut fx);
             watch::poll(st, t, &mut fx);
             build_status::tick(st, t, &mut fx);
+            updates::tick(st, t, &mut fx);
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {

@@ -23,6 +23,7 @@ mod ssh_service;
 mod theme_row;
 mod tools;
 mod trello;
+mod updates_row;
 
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -109,6 +110,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             .collect(),
         job: st.job.as_ref().map(|j| j.label.clone()),
     };
+    let updates = updates_row::UpdatesView {
+        updates: &st.updates,
+        last_checked: st.settings.updates.last_checked.map(|t| st.settings.format_time(t, st.view.now, st.view.utc_offset)),
+    };
     let switching = st.profile_switch;
     let git_state = &st.git;
     let settings = &mut st.settings;
@@ -142,7 +147,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
                 match page {
                     PrefPage::General => {
-                        general::general_page(ui, settings, prefs.git.as_mut(), git_state.info.as_ref(), keymap, scheme, msgs)
+                        let cx = general::GeneralContext { program: git_state.info.as_ref(), keys: keymap, scheme, updates };
+                        general::general_page(ui, settings, prefs.git.as_mut(), &cx, msgs)
                     }
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),

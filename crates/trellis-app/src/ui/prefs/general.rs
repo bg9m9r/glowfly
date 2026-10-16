@@ -1,5 +1,6 @@
 //! Preferences > General.
 
+use super::updates_row::UpdatesView;
 use super::{help, row, text_field, warn};
 use crate::keymap::{BindingId, Keymap};
 use crate::logs::LogsMsg;
@@ -22,15 +23,16 @@ fn watch_files_help(keys: &Keymap) -> String {
     }
 }
 
-pub fn general_page(
-    ui: &mut Ui,
-    s: &mut Settings,
-    git: Option<&mut GitConfigValues>,
-    program: Option<&GitInfo>,
-    keys: &Keymap,
-    scheme: &SchemeView,
-    msgs: &mut Vec<Msg>,
-) {
+/// What the General page reads besides the settings it edits.
+pub struct GeneralContext<'a> {
+    pub program: Option<&'a GitInfo>,
+    pub keys: &'a Keymap,
+    pub scheme: &'a SchemeView,
+    pub updates: UpdatesView<'a>,
+}
+
+pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValues>, cx: &GeneralContext, msgs: &mut Vec<Msg>) {
+    let (program, keys, scheme) = (cx.program, cx.keys, cx.scheme);
     row(ui, "Git", |ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new(git_program_text(program)).color(color::text()));
@@ -40,6 +42,7 @@ pub fn general_page(
         });
         help(ui, "The git program Trellis runs for commits, fetches, pushes and hooks (Preferences > Git).");
     });
+    super::updates_row::updates_row(ui, s, &cx.updates, msgs);
     row(ui, "Auto-Fetch Interval", |ui| {
         ui.add(egui::DragValue::new(&mut s.auto_fetch_minutes).range(0..=60).suffix(" min"));
         help(ui, "In minutes, between 0 and 60 (0 disables auto-fetch). Fetches all remotes of the open repository.");

@@ -174,6 +174,8 @@ pub enum PaletteCommand {
     Onboarding(crate::onboarding::OnboardingMsg),
     /// Open the cross-repository dashboard.
     Dashboard,
+    /// Release notes and Trellis's own updates (update/updates.rs).
+    Updates(crate::msg::UpdateMsg),
 }
 
 impl PaletteCommand {
@@ -350,6 +352,7 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
     super::palette_profiles::profile_entries(st, out);
     out.push(entry(C::KeyboardShortcuts, "Keyboard shortcuts", "keys keyboard bindings hotkeys help reference list"));
     super::palette_onboarding::entries(st, out);
+    super::palette_updates::entries(st, out);
     let labels = st.settings.toolbar_labels;
     let label = if labels { "Hide toolbar labels" } else { "Show toolbar labels" };
     out.push(entry(C::ToolbarLabels(!labels), label, "toolbar buttons text captions icons compact"));

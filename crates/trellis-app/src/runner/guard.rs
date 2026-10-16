@@ -1,7 +1,7 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
-use crate::effect::{CloneEffect, Effect, ForgeError, InitEffect, LoadKind, SubmoduleEffect, UndoResult};
+use crate::effect::{CloneEffect, Effect, ForgeError, InitEffect, LoadKind, SubmoduleEffect, UndoResult, UpdateEffect};
 use crate::msg::BlameMsg;
 use crate::msg::CloneMsg;
 use crate::msg::JobMsg;
@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
+use crate::msg::UpdateMsg;
 use crate::remote::{RemoteEffect, RemoteMsg};
 use crate::ssh::SshFailure;
 use crate::tools::ToolEffect;
@@ -44,6 +45,9 @@ enum Kind {
         path: String,
         generation: u64,
     },
+    /// An update check (`Some(manual)`) or download (None): the status shows a spinner until
+    /// its result arrives.
+    Update(Option<bool>),
     Log,
 }
 
@@ -92,6 +96,8 @@ impl Recovery {
             Effect::Ssh(e) => Kind::Ssh(e.failure()),
             Effect::Remote(e) => Kind::Fork(FailedFork::of(e)),
             Effect::LoadBlame(r) => Kind::Blame { path: r.path.clone(), generation: r.generation },
+            Effect::Updates(UpdateEffect::Check { manual }) => Kind::Update(Some(*manual)),
+            Effect::Updates(UpdateEffect::Download(_)) => Kind::Update(None),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -114,6 +120,8 @@ impl Recovery {
                 Msg::Clone(CloneMsg::ReposLoaded { account, result })
             }
             Kind::Blame { path, generation } => Msg::Blame(BlameMsg::Loaded { path, generation, result: Err(text) }),
+            Kind::Update(Some(manual)) => Msg::Updates(UpdateMsg::Checked { manual, result: Err(text) }),
+            Kind::Update(None) => Msg::Updates(UpdateMsg::Downloaded(Err(text))),
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {

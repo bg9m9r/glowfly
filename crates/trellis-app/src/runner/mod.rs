@@ -74,6 +74,7 @@ mod terminal;
 mod terminal_out;
 mod themes;
 mod tools;
+mod updates;
 mod worktrees;
 
 #[cfg(test)]
@@ -387,6 +388,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::DeepLink(e) => Some(deep_link::run(e)),
         Effect::Dashboard(e) => Some(dashboard::run(e)),
         Effect::Issue(e) => Some(issues::run(e)),
+        Effect::Updates(e) => updates::run(e),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

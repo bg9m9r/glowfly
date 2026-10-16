@@ -4,3 +4,7 @@
 *.sh text eol=lf
 *.sublime-syntax text eol=lf
 crates/trellis-core/src/init_ops/** text eol=lf
+*.ico binary
+*.icns binary
+# The packaged desktop entries are compared byte for byte with what Trellis writes.
+packaging/linux/*.desktop text eol=lf
