@@ -1,4 +1,4 @@
-use super::program::from_config;
+use super::program::{from_config, query};
 use std::path::Path;
 
 fn me() -> &'static Path {
@@ -30,4 +30,28 @@ fn nothing_usable_gives_none() {
 fn trellis_is_recognised_in_another_spelling() {
     let out = "gpg.program\ngpg2\0gpg.program\nC:/Apps/Trellis/trellis.exe\0";
     assert_eq!(from_config(out, me()).as_deref(), Some("gpg2"));
+}
+
+/// git expands `~/` in `gpg.program` before running it, so the wrapper must run the expanded
+/// path rather than look for a file literally named `~`.
+#[test]
+fn a_home_relative_program_is_expanded_like_git_does() {
+    let dir = crate::paths::temp_dir().join(format!("trellis-gpg-program-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let (home, repo) = (dir.join("home"), dir.join("repo"));
+    std::fs::create_dir_all(&home).unwrap();
+    git2::Repository::init(&repo).unwrap();
+    let global = dir.join("global.gitconfig");
+    std::fs::write(&global, "[gpg]\n\tprogram = ~/bin/my-gpg\n").unwrap();
+
+    let got = query(me(), |cmd| {
+        cmd.current_dir(&repo)
+            .env("GIT_CONFIG_GLOBAL", &global)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("HOME", &home)
+            .env_remove("GIT_CONFIG_COUNT");
+    });
+    let want = home.join("bin").join("my-gpg");
+    assert!(crate::paths::same_spelling(Path::new(&got), &want), "{got:?} is not {want:?}");
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -4,10 +4,10 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 /// The program git would run without Trellis's override, from
-/// `git config -z --get-regexp '^gpg\.(openpgp\.)?program$'` output (`key\nvalue\0` entries,
-/// in the order git reads them): the last non-empty value that isn't `self_exe`. git lets the
-/// last of `gpg.program` and `gpg.openpgp.program` win, and Trellis's own command-scope entry
-/// comes last of all. Pure.
+/// `git config -z --type=path --get-regexp '^gpg\.(openpgp\.)?program$'` output (`key\nvalue\0`
+/// entries, in the order git reads them): the last non-empty value that isn't `self_exe`. git
+/// lets the last of `gpg.program` and `gpg.openpgp.program` win, and Trellis's own
+/// command-scope entry comes last of all. Pure.
 pub fn from_config(z_output: &str, self_exe: &Path) -> Option<String> {
     let me = crate::native_path::native(self_exe);
     z_output
@@ -25,11 +25,20 @@ pub fn from_config(z_output: &str, self_exe: &Path) -> Option<String> {
 /// that would start a login shell for every signature). `gpg` when nothing is set or git can't
 /// be run.
 pub fn user_program(self_exe: &Path) -> String {
+    query(self_exe, |_| {})
+}
+
+/// `user_program`, with `setup` adjusting the `git config` command first (tests point it at a
+/// fixture's folder and config files). git treats `gpg.program` as a path, expanding `~/` and
+/// `%(prefix)/` before running it, so the value is read as one (`--type=path`) and the wrapper
+/// runs the same file git would.
+pub(super) fn query(self_exe: &Path, setup: impl FnOnce(&mut Command)) -> String {
     let mut cmd = Command::new("git");
-    cmd.args(["config", "-z", "--get-regexp", r"^gpg\.(openpgp\.)?program$"])
+    cmd.args(["config", "-z", "--type=path", "--get-regexp", r"^gpg\.(openpgp\.)?program$"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
     super::real::no_window(&mut cmd);
+    setup(&mut cmd);
     cmd.output().ok().and_then(|out| from_config(&String::from_utf8_lossy(&out.stdout), self_exe)).unwrap_or_else(|| "gpg".to_owned())
 }
