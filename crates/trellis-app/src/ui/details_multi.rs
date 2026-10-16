@@ -2,7 +2,7 @@
 //! two, the files that differ between them and their file actions.
 
 use super::common::{short, widget_row_height};
-use super::details::changed_file_row;
+use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
 use super::menus::{cherry_pick_button, copy_shas};
 use super::theme::color;
@@ -66,6 +66,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         Some(Ok(c)) => {
             let open = st.diff.as_ref().map(|(t, _)| t);
             let lfs = TrackContext::of(st);
+            let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
             let row_h = widget_row_height(ui);
             egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show_rows(
                 ui,
@@ -74,7 +75,8 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 |ui, range| {
                     for f in &c.files[range] {
                         let target = DiffTarget::Between(older, newer, f.path.clone());
-                        let actions = Some((RowSource::Between { older, newer }, c.in_workdir(&f.path), lfs));
+                        let src = RowSource::Between { older, newer };
+                        let actions = Some(RowActions { src, in_workdir: c.in_workdir(&f.path), lfs, diff_blocked });
                         changed_file_row(ui, f, target, open, newer, actions, msgs);
                     }
                 },

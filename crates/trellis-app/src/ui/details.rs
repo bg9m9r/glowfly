@@ -2,7 +2,7 @@
 
 use super::UiCache;
 use super::common::{issue_chip, lane_color, menu_item, short, state_actions, status_color, status_label, widget_row_height};
-use super::file_menu::{self, RowSource};
+use super::file_menu::{self, RowSource, ToolItem};
 use super::graph::draw_avatar;
 use super::theme::color;
 use crate::keymap::{BindingId, Keymap};
@@ -12,7 +12,9 @@ use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::msg::WorkFileMsg;
 use crate::state::lfs::{TrackContext, track_items};
+use crate::state::tool_compare::{RESOLVE_IN_MERGE_TOOL, ToolAvail};
 use crate::state::{AppState, Selection};
+use crate::tools::ToolsMsg;
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
 use git2::Oid;
 use trellis_core::repo::{DiffTarget, FileEntry, Snapshot};
@@ -78,10 +80,11 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     super::path_warnings::banner(ui, snap);
 
     let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / 2.0).max(80.0);
-    let lfs = TrackContext::of(st);
-    file_list(ui, snap, false, &open, list_h, lfs, &st.keymap, msgs);
+    let tools = ToolAvail::of(st);
+    let ctx = RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap };
+    file_list(ui, snap, false, &open, list_h, ctx, msgs);
     ui.add_space(8.0);
-    file_list(ui, snap, true, &open, list_h, lfs, &st.keymap, msgs);
+    file_list(ui, snap, true, &open, list_h, ctx, msgs);
     super::commit_box::show(ui, st, cache, msgs);
 }
 
@@ -143,26 +146,46 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     let n = d.files.len();
     ui.label(RichText::new(format!("{n} changed file{}", if n == 1 { "" } else { "s" })).strong().color(color::text()));
     let lfs = TrackContext::of(st);
+    let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
     let row_h = widget_row_height(ui);
     egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
         for f in &d.files[range] {
-            let actions = Some((RowSource::Commit(d.oid), d.in_workdir(&f.path), lfs));
+            let actions = Some(RowActions { src: RowSource::Commit(d.oid), in_workdir: d.in_workdir(&f.path), lfs, diff_blocked });
             changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, actions, msgs);
         }
     });
 }
 
+/// The file actions of a commit's (or comparison's) file row: where its change comes from,
+/// whether the path is in the working tree, what Track in Git LFS needs, and why Open in
+/// external diff tool is disabled.
+#[derive(Clone, Copy)]
+pub(super) struct RowActions<'a> {
+    pub src: RowSource,
+    pub in_workdir: bool,
+    pub lfs: TrackContext<'a>,
+    pub diff_blocked: Option<&'a str>,
+}
+
+/// What every working-tree row needs, built once per frame: Track in Git LFS's context and
+/// the diff and merge tools' availability, plus the keymap for the header buttons' tips.
+#[derive(Clone, Copy)]
+struct RowContext<'a> {
+    lfs: TrackContext<'a>,
+    tools: &'a ToolAvail,
+    keys: &'a Keymap,
+}
+
 /// A file changed by a commit (or between two): its status and path, which opens `target`.
-/// Its menu opens the file's history as seen from `history_at`. With `actions` (where the change
-/// comes from, whether the path is in the working tree, and what Track in Git LFS needs) it also
-/// has the file actions.
+/// Its menu opens the file's history as seen from `history_at`. With `actions` it also has the
+/// file actions.
 pub(super) fn changed_file_row(
     ui: &mut egui::Ui,
     f: &FileEntry,
     target: DiffTarget,
     open: Option<&DiffTarget>,
     history_at: Oid,
-    actions: Option<(RowSource, bool, TrackContext<'_>)>,
+    actions: Option<RowActions<'_>>,
     msgs: &mut Vec<Msg>,
 ) {
     ui.horizontal(|ui| {
@@ -176,9 +199,9 @@ pub(super) fn changed_file_row(
             let deleted = (f.status == 'D').then_some("This commit deletes the file");
             file_menu::history_items(ui, msgs, &f.path, Some(history_at), deleted);
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
-            if let Some((src, in_wd, lfs)) = actions {
-                let items = if in_wd { track_items(&f.path, lfs) } else { Vec::new() };
-                file_menu::commit_file_items(ui, msgs, src, f, in_wd, &items);
+            if let Some(a) = actions {
+                let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
+                file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked);
             }
         });
     });
@@ -200,18 +223,9 @@ pub(super) fn discard_all_text(keys: &Keymap) -> String {
 }
 
 /// The Unstaged or Staged Files list of the working tree.
-#[allow(clippy::too_many_arguments)]
-fn file_list(
-    ui: &mut egui::Ui,
-    snap: &Snapshot,
-    staged: bool,
-    open: &OpenFile,
-    max_h: f32,
-    lfs: TrackContext,
-    keys: &Keymap,
-    msgs: &mut Vec<Msg>,
-) {
+fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, ctx: RowContext, msgs: &mut Vec<Msg>) {
     let (title, files) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
+    let keys = ctx.keys;
     // The Staged header's background opens its menu; registered before the header's buttons, so
     // they keep their own clicks.
     let sense = if staged { Sense::click() } else { Sense::hover() };
@@ -263,14 +277,14 @@ fn file_list(
     // Only the rows in view are drawn: a working tree can have thousands of changed files.
     area.show_rows(ui, widget_row_height(ui), files.len(), |ui, range| {
         for f in &files[range] {
-            wip_file_row(ui, snap, f, staged, open, lfs, msgs);
+            wip_file_row(ui, snap, f, staged, open, ctx, msgs);
         }
     });
 }
 
 /// A row of the Unstaged or Staged Files list: status, Stage / Unstage / Mark resolved, the
 /// path (opens its diff, or the conflict view) and its menu.
-fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool, open: &OpenFile, lfs: TrackContext, msgs: &mut Vec<Msg>) {
+fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool, open: &OpenFile, ctx: RowContext, msgs: &mut Vec<Msg>) {
     let target = || if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
     let toggle =
         || if staged { Msg::Stage(StageMsg::UnstageFile(f.path.clone())) } else { Msg::Stage(StageMsg::StageFile(f.path.clone())) };
@@ -333,8 +347,14 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
             let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
             let missing = snap.missing_from_workdir(&f.path);
-            let items = if missing { Vec::new() } else { track_items(&f.path, lfs) };
-            file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items);
+            let items = if missing { Vec::new() } else { track_items(&f.path, ctx.lfs) };
+            let tool = if conflicted {
+                let msg = Msg::Tools(ToolsMsg::ResolveInMergeTool(f.path.clone()));
+                ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: ctx.tools.merge.as_deref() }
+            } else {
+                file_menu::diff_item(target(), ctx.tools.diff)
+            };
+            file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items, tool);
         });
     });
 }

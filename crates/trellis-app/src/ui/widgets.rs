@@ -64,6 +64,8 @@ pub enum Icon {
     Warning,
     /// A keyboard: Preferences > Keyboard.
     Keyboard,
+    /// Two pages side by side with an arrow out of the corner: open in the external diff tool.
+    ExternalDiff,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -218,7 +220,8 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             p.add(egui::Shape::closed_line(pts, s));
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
-        Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
+        Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {} // icons.rs
+        Icon::ExternalDiff => {} // icons.rs
     }
 }
 

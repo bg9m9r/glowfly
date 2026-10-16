@@ -59,6 +59,7 @@ mod tabs;
 mod tag_annotate;
 mod tags;
 mod terminal;
+mod tool_compare;
 mod tools;
 mod trust;
 mod undo;
@@ -246,6 +247,8 @@ mod tag_tests;
 mod terminal_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tool_compare_tests;
 #[cfg(test)]
 mod tools_tests;
 #[cfg(test)]

@@ -5,8 +5,9 @@
 //! The types are here (the diff ones in `diff_types`); the work is split by area: `load`
 //! (history, refs, status), `diff`, `history` (one file's commits), `blame`, `index` and `lines`
 //! (staging, line staging), `revert`, `restore`, `conflict` and `resolve`, `template`
-//! (commit.template), `touching` (commits that changed a searched path), `workfile`,
-//! `workfile_mv`, `workfile_rm`, `noclobber` and `removal` (working-tree files), `tracked`,
+//! (commit.template), `tool_sides` (versions for external tools), `touching` (commits that
+//! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and
+//! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees`, `remotes` and `shallow`. Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
@@ -45,6 +46,7 @@ mod status_cli;
 mod submodule_add;
 mod submodules;
 mod template;
+mod tool_sides;
 mod touching;
 mod tracked;
 mod trash;
@@ -81,6 +83,7 @@ pub use status::{ChangeCounts, status_at};
 pub use submodule_add::check_submodule_path;
 pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
+pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_bytes, diff_sides, is_conflicted, merge_sides};
 pub use touching::{Touching, commits_touching};
 pub use tracked::tracked_paths;
 pub use trash::{TrashProblem, TrashRefusal, os_trash};

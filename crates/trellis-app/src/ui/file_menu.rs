@@ -1,6 +1,7 @@
 //! File actions added to file rows' context menus: the file's history and blame, restore a file from a commit (one commit's
-//! rows, or the rows comparing two selected commits), open it in its default program or the
-//! external editor, show it in the file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
+//! rows, or the rows comparing two selected commits), open it in its default program, the
+//! external editor or the external diff tool (or resolve it in the merge tool), show it in the
+//! file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
 //! for files in the working tree, track them in Git LFS, and the Stash dialog's entries (the
 //! Staged Files header's menu, Stash this file… on working-tree rows). Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
 //! opening a popup. `file_buttons` reuses the labels, reasons and restore message for the same
@@ -18,11 +19,14 @@ use crate::msg::WorkFileMsg;
 use crate::state::files::folder_prefill;
 pub(super) use crate::state::lfs::TRACK_IN_LFS;
 use crate::state::lfs::TrackItem;
+pub(super) use crate::state::tool_compare::OPEN_IN_DIFF_TOOL;
+#[cfg(test)]
+pub(super) use crate::state::tool_compare::RESOLVE_IN_MERGE_TOOL;
 pub(super) use crate::state::tools::OPEN_IN_EDITOR;
 use crate::tools::ToolsMsg;
 use eframe::egui;
 use git2::Oid;
-use trellis_core::repo::{FileEntry, Snapshot};
+use trellis_core::repo::{DiffTarget, FileEntry, Snapshot};
 use trellis_core::stash_ops::StashScope;
 
 /// The show-in-file-manager label for this platform.
@@ -94,11 +98,31 @@ fn between_restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, older: Oid, newe
     }
 }
 
-/// Open with default app, open in the external editor and show in folder, disabled with
+/// An external diff or merge tool entry: its label, what it sends, and why it is disabled.
+pub(super) struct ToolItem<'a> {
+    pub label: &'static str,
+    pub msg: Msg,
+    pub blocked: Option<&'a str>,
+}
+
+/// Open in external diff tool for `target`, disabled with `blocked`.
+pub(super) fn diff_item(target: DiffTarget, blocked: Option<&str>) -> ToolItem<'_> {
+    ToolItem { label: OPEN_IN_DIFF_TOOL, msg: Msg::Tools(ToolsMsg::OpenDiff(target)), blocked }
+}
+
+fn tool_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, item: ToolItem) {
+    menu_item_if(msgs, ui, item.label, item.blocked, item.msg);
+}
+
+/// Open with default app, open in the external editor, the `tool` entry (with its own reason
+/// when disabled: it needs no working file) and show in folder, the others disabled with
 /// `missing` as the reason.
-pub(super) fn open_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str, missing: Option<&str>) {
+pub(super) fn open_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str, missing: Option<&str>, tool: Option<ToolItem>) {
     menu_item_if(msgs, ui, OPEN_DEFAULT, missing, Msg::Files(FilesMsg::OpenWorkingFile(path.to_owned())));
     menu_item_if(msgs, ui, OPEN_IN_EDITOR, missing, Msg::Tools(ToolsMsg::OpenFile { path: path.to_owned(), line: None }));
+    if let Some(item) = tool {
+        tool_item(ui, msgs, item);
+    }
     menu_item_if(msgs, ui, SHOW_IN_FOLDER, missing, Msg::Files(FilesMsg::ShowWorkingFile(path.to_owned())));
 }
 
@@ -133,8 +157,9 @@ fn lfs_submenu(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
 }
 
 /// Extra items for a commit's file row, or a row comparing two commits: separator, restore,
-/// open items (disabled unless `in_workdir`), separator and new file in this folder, then (only
-/// `in_workdir`) the Track in Git LFS submenu with `lfs`.
+/// open items (disabled unless `in_workdir`; Open in external diff tool disabled with
+/// `diff_blocked`), separator and new file in this folder, then (only `in_workdir`) the Track
+/// in Git LFS submenu with `lfs`.
 pub(super) fn commit_file_items(
     ui: &mut egui::Ui,
     msgs: &mut Vec<Msg>,
@@ -142,13 +167,20 @@ pub(super) fn commit_file_items(
     f: &FileEntry,
     in_workdir: bool,
     lfs: &[TrackItem],
+    diff_blocked: Option<&str>,
 ) {
     ui.separator();
-    match src {
-        RowSource::Commit(oid) => restore_item(ui, msgs, oid, &f.path, f.status),
-        RowSource::Between { older, newer } => between_restore_item(ui, msgs, older, newer, f),
-    }
-    open_items(ui, msgs, &f.path, (!in_workdir).then_some(NOT_IN_WORKDIR));
+    let target = match src {
+        RowSource::Commit(oid) => {
+            restore_item(ui, msgs, oid, &f.path, f.status);
+            DiffTarget::Commit(oid, f.path.clone())
+        }
+        RowSource::Between { older, newer } => {
+            between_restore_item(ui, msgs, older, newer, f);
+            DiffTarget::Between(older, newer, f.path.clone())
+        }
+    };
+    open_items(ui, msgs, &f.path, (!in_workdir).then_some(NOT_IN_WORKDIR), Some(diff_item(target, diff_blocked)));
     ui.separator();
     new_file_here(ui, msgs, &f.path);
     if in_workdir {
@@ -156,15 +188,24 @@ pub(super) fn commit_file_items(
     }
 }
 
-/// Extra items for a working-tree row: separator, open items (disabled when `missing`), then
+/// Extra items for a working-tree row: separator, open items (disabled when `missing`, with
+/// `tool` among them: the row's diff tool entry, or the merge tool's for a conflicted row), then
 /// separator, new file in this folder, rename and delete (the last two also disabled while the
 /// row is conflicted), then (unless `missing`) the Track in Git LFS submenu with `lfs`. `unstages` means deleting this path also takes it out of the index (staged
 /// as new or as a rename's new path): the item then reads "Unstage and delete…" and stays enabled
 /// when the file is already gone, since unstaging it is still useful.
-pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEntry, missing: bool, unstages: bool, lfs: &[TrackItem]) {
+pub(super) fn wip_file_items(
+    ui: &mut egui::Ui,
+    msgs: &mut Vec<Msg>,
+    f: &FileEntry,
+    missing: bool,
+    unstages: bool,
+    lfs: &[TrackItem],
+    tool: ToolItem,
+) {
     ui.separator();
     let gone = missing.then_some(DELETED_IN_WORKDIR);
-    open_items(ui, msgs, &f.path, gone);
+    open_items(ui, msgs, &f.path, gone, Some(tool));
     ui.separator();
     new_file_here(ui, msgs, &f.path);
     let conflicted = (f.status == '!').then_some(CONFLICTED);

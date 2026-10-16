@@ -54,6 +54,7 @@ pub mod tabs;
 pub mod tags;
 pub mod terminal;
 pub mod toasts;
+pub mod tool_compare;
 pub mod tools;
 pub mod trust;
 pub mod undo;

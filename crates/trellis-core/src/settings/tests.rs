@@ -327,12 +327,49 @@ fn reset_editor_args_restores_only_the_templates() {
         editor_repo_args: "-n {repo}".into(),
         terminal: "wt".into(),
         terminal_args: "-d {repo}".into(),
+        diff_tool: "meld".into(),
+        diff_tool_args: "{remote}".into(),
+        merge_tool: "kdiff3".into(),
+        merge_tool_args: "{output}".into(),
     };
     t.reset_editor_args();
-    assert_eq!(
-        t,
-        ExternalTools { editor: "code".into(), terminal: "wt".into(), terminal_args: "-d {repo}".into(), ..ExternalTools::default() }
-    );
+    let custom = ExternalTools {
+        editor: "code".into(),
+        terminal: "wt".into(),
+        terminal_args: "-d {repo}".into(),
+        diff_tool: "meld".into(),
+        diff_tool_args: "{remote}".into(),
+        merge_tool: "kdiff3".into(),
+        merge_tool_args: "{output}".into(),
+        ..ExternalTools::default()
+    };
+    assert_eq!(t, custom);
+}
+
+#[test]
+fn diff_and_merge_tools_load_with_defaults_and_reset_alone() {
+    use super::tools::{DIFF_TOOL_ARGS, MERGE_TOOL_ARGS};
+    assert_eq!((DIFF_TOOL_ARGS, MERGE_TOOL_ARGS), ("{local} {remote}", "{base} {ours} {theirs} {output}"));
+    for json in [r#"{"auto_fetch_minutes": 5}"#, r#"{"external_tools":{"editor":"x"}}"#] {
+        let t = serde_json::from_str::<Settings>(json).unwrap().external_tools;
+        assert!(t.diff_tool.is_empty() && t.merge_tool.is_empty(), "{json}");
+        assert_eq!((t.diff_tool_args.as_str(), t.merge_tool_args.as_str()), (DIFF_TOOL_ARGS, MERGE_TOOL_ARGS), "{json}");
+    }
+    let custom = ExternalTools {
+        editor: "code".into(),
+        editor_file_args: "--goto {path}".into(),
+        diff_tool: "meld".into(),
+        diff_tool_args: "{remote} {local}".into(),
+        merge_tool: "kdiff3".into(),
+        merge_tool_args: "{output}".into(),
+        ..ExternalTools::default()
+    };
+    let mut t = custom.clone();
+    t.reset_diff_tool_args();
+    assert_eq!(t, ExternalTools { diff_tool_args: DIFF_TOOL_ARGS.into(), ..custom.clone() });
+    let mut t = custom.clone();
+    t.reset_merge_tool_args();
+    assert_eq!(t, ExternalTools { merge_tool_args: MERGE_TOOL_ARGS.into(), ..custom });
 }
 
 #[test]

@@ -11,6 +11,8 @@ use crate::msg::Msg;
 use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
+use crate::state::tool_compare::{MERGE_TOOL_BUTTON, merge_blocked};
+use crate::tools::ToolsMsg;
 use eframe::egui::{self, Align, Align2, Color32, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use trellis_core::conflict_rows::{OutRow, PaneRow, output_rows, pane_rows, scroll_target};
 use trellis_core::repo::{Chunk, ConflictContent, ConflictFile, Operation, Segment, Side, SideLabels};
@@ -22,8 +24,9 @@ const TEXT_X: f32 = 50.0;
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
     let Some(view) = &st.conflict else { return };
+    let tool = merge_blocked(&st.settings.external_tools, view.file.as_ref().map(|f| &f.content), st.job.is_some());
     ui.add_space(6.0);
-    header_bar(ui, view, &st.keymap, msgs);
+    header_bar(ui, view, tool.as_deref(), &st.keymap, msgs);
     ui.separator();
     let Some(file) = &view.file else {
         ui.label(RichText::new("Loading…").color(color::weak()));
@@ -39,7 +42,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             });
             output(ui, view, segs, scroll_to, msgs);
         }
-        other => fallback(ui, view, file, other, msgs),
+        other => fallback(ui, view, file, other, tool.as_deref(), msgs),
     }
 }
 
@@ -55,62 +58,20 @@ fn operation_text(l: &SideLabels) -> String {
 }
 
 /// Path and operation on the left; on the right (from the edge inwards) Close, Mark resolved,
-/// Save, Reset and the conflict counter with previous/next.
-fn header_bar(ui: &mut Ui, view: &ConflictView, keys: &Keymap, msgs: &mut Vec<Msg>) {
+/// Open in merge tool (disabled with the reason `tool` when set), Save, Reset and the conflict
+/// counter with previous/next.
+fn header_bar(ui: &mut Ui, view: &ConflictView, tool: Option<&str>, keys: &Keymap, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.label(RichText::new(&view.path).strong().size(15.0).color(color::text()));
-        if let Some(f) = &view.file {
-            ui.label(RichText::new(operation_text(&f.labels)).color(color::weak()));
-        }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.button("Close  (Esc)").clicked() {
-                msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
-            }
-            if ui.button("Mark resolved").on_hover_text("Stage the working file as it is now").clicked() {
-                msgs.push(Msg::Stage(StageMsg::StageFile(view.path.clone())));
-            }
-            if !view.file.as_ref().is_some_and(|f| matches!(f.content, ConflictContent::Text(_))) {
-                return;
-            }
-            let can = view.can_save();
-            let save = egui::Button::new(RichText::new("Save").strong().color(if can { Color32::WHITE } else { color::faint() }))
-                .fill(if can { color::primary() } else { color::toolbar() });
-            let why = if view.saving {
-                "Saving…".to_owned()
-            } else {
-                format!("Pick a side for every conflict first ({} left)", view.unresolved())
-            };
-            if ui
-                .add_enabled(can, save)
-                .on_hover_text("Write the output to the file and mark it resolved")
-                .on_disabled_hover_text(why)
-                .clicked()
-            {
-                msgs.push(Msg::Conflict(ConflictMsg::SaveConflict));
-            }
-            if ui.button("Reset").on_hover_text("Clear all picks").clicked() {
-                msgs.push(Msg::Conflict(ConflictMsg::ConflictReset));
-            }
-            ui.add_space(10.0);
-            let n = view.chunk_count();
-            if n == 0 {
-                ui.label(RichText::new("No conflicting lines").color(color::weak()));
-                return;
-            }
-            // Right to left: next first. Arrows are painted (the bundled fonts lack them).
-            let tip = step_tip(keys, true);
-            let next = ui.add_enabled_ui(view.current + 1 < n, |ui| icon_button(ui, Icon::NextChange, &tip)).inner;
-            if next.clicked() {
-                msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(1)));
-            }
-            let counter = if n == 1 { "1 conflict".to_owned() } else { format!("conflict {} of {n}", view.current + 1) };
-            ui.label(RichText::new(counter).color(color::text()));
-            let tip = step_tip(keys, false);
-            let prev = ui.add_enabled_ui(view.current > 0, |ui| icon_button(ui, Icon::PrevChange, &tip)).inner;
-            if prev.clicked() {
-                msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(-1)));
-            }
+            header_buttons(ui, view, tool, keys, msgs);
+            // The path and operation get what the buttons leave, cut short rather than run under.
+            ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                ui.add(egui::Label::new(RichText::new(&view.path).strong().size(15.0).color(color::text())).truncate());
+                if let Some(f) = &view.file {
+                    ui.add(egui::Label::new(RichText::new(operation_text(&f.labels)).color(color::weak())).truncate());
+                }
+            });
         });
     });
 }
@@ -118,6 +79,62 @@ fn header_bar(ui: &mut Ui, view: &ConflictView, keys: &Keymap, msgs: &mut Vec<Ms
 /// The tooltip of the next (`forward`) or previous conflict arrow, with the step's current key.
 pub(super) fn step_tip(keys: &Keymap, forward: bool) -> String {
     if forward { keys.tip("Next conflict", BindingId::NextChange) } else { keys.tip("Previous conflict", BindingId::PrevChange) }
+}
+
+/// The header's buttons, laid out right to left.
+fn header_buttons(ui: &mut Ui, view: &ConflictView, tool: Option<&str>, keys: &Keymap, msgs: &mut Vec<Msg>) {
+    if ui.button("Close  (Esc)").clicked() {
+        msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
+    }
+    if ui.button("Mark resolved").on_hover_text("Stage the working file as it is now").clicked() {
+        msgs.push(Msg::Stage(StageMsg::StageFile(view.path.clone())));
+    }
+    merge_tool_button(ui, &view.path, tool, msgs);
+    if !view.file.as_ref().is_some_and(|f| matches!(f.content, ConflictContent::Text(_))) {
+        return;
+    }
+    let can = view.can_save();
+    let save = egui::Button::new(RichText::new("Save").strong().color(if can { Color32::WHITE } else { color::faint() })).fill(if can {
+        color::primary()
+    } else {
+        color::toolbar()
+    });
+    let why =
+        if view.saving { "Saving…".to_owned() } else { format!("Pick a side for every conflict first ({} left)", view.unresolved()) };
+    if ui.add_enabled(can, save).on_hover_text("Write the output to the file and mark it resolved").on_disabled_hover_text(why).clicked() {
+        msgs.push(Msg::Conflict(ConflictMsg::SaveConflict));
+    }
+    if ui.button("Reset").on_hover_text("Clear all picks").clicked() {
+        msgs.push(Msg::Conflict(ConflictMsg::ConflictReset));
+    }
+    ui.add_space(10.0);
+    let n = view.chunk_count();
+    if n == 0 {
+        ui.label(RichText::new("No conflicting lines").color(color::weak()));
+        return;
+    }
+    // Right to left: next first. Arrows are painted (the bundled fonts lack them).
+    let tip = step_tip(keys, true);
+    let next = ui.add_enabled_ui(view.current + 1 < n, |ui| icon_button(ui, Icon::NextChange, &tip)).inner;
+    if next.clicked() {
+        msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(1)));
+    }
+    let counter = if n == 1 { "1 conflict".to_owned() } else { format!("conflict {} of {n}", view.current + 1) };
+    ui.label(RichText::new(counter).color(color::text()));
+    let tip = step_tip(keys, false);
+    let prev = ui.add_enabled_ui(view.current > 0, |ui| icon_button(ui, Icon::PrevChange, &tip)).inner;
+    if prev.clicked() {
+        msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(-1)));
+    }
+}
+
+/// Open in merge tool for `path`, disabled with the reason `blocked`.
+fn merge_tool_button(ui: &mut Ui, path: &str, blocked: Option<&str>, msgs: &mut Vec<Msg>) {
+    let r = ui.add_enabled(blocked.is_none(), egui::Button::new(MERGE_TOOL_BUTTON));
+    let r = r.on_hover_text("Resolve the conflict in the external merge tool").on_disabled_hover_text(blocked.unwrap_or_default());
+    if r.clicked() {
+        msgs.push(Msg::Tools(ToolsMsg::ResolveInMergeTool(path.to_owned())));
+    }
 }
 
 /// Trims the terminator and shows tabs as 4 spaces (the file is written unchanged).
@@ -314,8 +331,9 @@ fn output(ui: &mut Ui, view: &ConflictView, segs: &[Segment], scroll_to: Option<
     });
 }
 
-/// Files with no chunk view: the reason, and buttons to take a whole version.
-fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, content: &ConflictContent, msgs: &mut Vec<Msg>) {
+/// Files with no chunk view: the reason, and buttons to take a whole version (and for a binary
+/// file, to open the merge tool, disabled with the reason `tool`).
+fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, content: &ConflictContent, tool: Option<&str>, msgs: &mut Vec<Msg>) {
     let labels = &file.labels;
     let message = match content {
         ConflictContent::Binary => "Binary file: pick a whole version.".to_owned(),
@@ -350,6 +368,9 @@ fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, content: &Con
         }
         if ui.button("Mark resolved").on_hover_text("Stage the working file as it is now").clicked() {
             msgs.push(Msg::Stage(StageMsg::StageFile(path.clone())));
+        }
+        if *content == ConflictContent::Binary {
+            merge_tool_button(ui, path, tool, msgs);
         }
     });
 }

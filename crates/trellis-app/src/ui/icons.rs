@@ -1,5 +1,5 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench, warning, keyboard), called from `widgets::paint_icon`.
+//! lock, wrench, warning, keyboard, external diff), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -161,6 +161,23 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
         Icon::Close => {
             line(pos2(c.x - 4.5, c.y - 4.5), pos2(c.x + 4.5, c.y + 4.5));
             line(pos2(c.x - 4.5, c.y + 4.5), pos2(c.x + 4.5, c.y - 4.5));
+        }
+        Icon::ExternalDiff => {
+            // Two narrow pages side by side, each with two short text lines, and a small arrow
+            // leaving the top-right corner.
+            let (page_s, text_s) = (Stroke::new(1.2_f32, s.color), Stroke::new(1.0_f32, s.color));
+            for left in [c.x - 9.0, c.x - 1.5] {
+                let page = Rect::from_min_size(pos2(left, c.y - 3.5), vec2(6.5, 11.0));
+                p.rect_stroke(page, 0.5, page_s, egui::StrokeKind::Middle);
+                for y in [c.y + 0.5, c.y + 3.5] {
+                    p.line_segment([pos2(page.left() + 1.5, y), pos2(page.right() - 1.5, y)], text_s);
+                }
+            }
+            let arrow = Stroke::new(1.4_f32, s.color);
+            let (from, tip) = (pos2(c.x + 4.0, c.y - 2.0), pos2(c.x + 8.5, c.y - 6.5));
+            p.line_segment([from, tip], arrow);
+            p.line_segment([tip, pos2(tip.x - 3.5, tip.y)], arrow);
+            p.line_segment([tip, pos2(tip.x, tip.y + 3.5)], arrow);
         }
         _ => return false,
     }

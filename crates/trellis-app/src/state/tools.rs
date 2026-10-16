@@ -1,5 +1,6 @@
 //! Rules of Preferences > External Tools: planning an editor or terminal launch from the
-//! settings, the texts of its failures, and the page's warnings.
+//! settings, the texts of its failures (the diff and merge tools' too), and the page's
+//! warnings. The diff and merge tools' own rules are in state/tool_compare.rs.
 
 use crate::tools::{LaunchFailure, ToolKind};
 use std::path::Path;
@@ -13,7 +14,7 @@ pub const NO_EDITOR: &str = "No external editor is set. Choose one in Preference
 pub const NO_EDITOR_DETAIL: &str = "no editor set";
 
 /// The failure text for a template whose field is called `field` on the page.
-fn unmatched(field: &str) -> String {
+pub(super) fn unmatched(field: &str) -> String {
     format!("The {field} arguments in Preferences > External Tools have an unmatched quote.")
 }
 
@@ -55,14 +56,17 @@ pub fn failure_text(kind: ToolKind, program: &str, target: &str, failure: &Launc
     let what = match kind {
         ToolKind::Editor => "editor",
         ToolKind::Terminal => "terminal",
+        ToolKind::DiffTool => "diff tool",
+        ToolKind::MergeTool => "merge tool",
     };
     match failure {
         LaunchFailure::NotFound => {
             format!("Could not find the external {what} \"{program}\". Check the {what} executable in Preferences > External Tools.")
         }
         LaunchFailure::Missing(p) => format!("{} is not in the working tree", trellis_core::native_path::shown(p)),
+        LaunchFailure::Files(e) => format!("Could not prepare {target} for the {what}: {e}"),
         LaunchFailure::Other(e) => match kind {
-            ToolKind::Editor => format!("Could not open {target} in {program}: {e}"),
+            ToolKind::Editor | ToolKind::DiffTool | ToolKind::MergeTool => format!("Could not open {target} in {program}: {e}"),
             ToolKind::Terminal => format!("Could not start the terminal {program}: {e}"),
         },
     }
@@ -75,25 +79,36 @@ pub fn bundle_warning(program: &str) -> bool {
         .is_some_and(|s| s.ends_with(".app"))
 }
 
-/// The warnings under an arguments field: an unmatched quote, and names that are not
-/// placeholders.
-pub fn template_warnings(template: &str) -> Vec<String> {
+/// The warnings under an arguments field: an unmatched quote, and names that are not among
+/// `known`, that field's placeholders.
+pub fn template_warnings(template: &str, known: &[&str]) -> Vec<String> {
     let mut out = Vec::new();
     if external_tools::split(template).is_err() {
         out.push("These arguments have an unmatched quote; they can't be used until it is fixed.".to_owned());
     }
     out.extend(
-        external_tools::unknown_placeholders(template).into_iter().map(|p| format!("{p} is not a placeholder; it is passed as typed.")),
+        external_tools::unknown_placeholders(template, known)
+            .into_iter()
+            .map(|p| format!("{p} is not a placeholder; it is passed as typed.")),
     );
     out
 }
 
-/// The palette's detail for Open repository in external editor: the editor's file name, or
-/// that none is set.
-pub fn editor_detail(t: &ExternalTools) -> String {
-    external_tools::program(&t.editor)
+/// The warnings for each of `wanted` that no argument of `template` uses, so the tool won't be
+/// given that version.
+pub fn missing_warnings(template: &str, wanted: &[&str]) -> Vec<String> {
+    external_tools::missing_placeholders(template, wanted)
+        .into_iter()
+        .map(|p| format!("{p} is missing, so the tool won't be given that version."))
+        .collect()
+}
+
+/// The palette's detail for a tool's entry: the file name of `program` (a Preferences
+/// field), or `none` when it is not set.
+pub fn program_detail(program: &str, none: &str) -> String {
+    external_tools::program(program)
         .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().into_owned()))
-        .unwrap_or_else(|| NO_EDITOR_DETAIL.to_owned())
+        .unwrap_or_else(|| none.to_owned())
 }
 
 #[cfg(test)]
@@ -102,12 +117,34 @@ mod tests {
 
     #[test]
     fn warnings_name_the_problem() {
-        assert!(template_warnings("{path}").is_empty());
-        assert!(template_warnings("").is_empty());
-        let w = template_warnings(r#"--goto "{path}"#);
+        let known = &external_tools::EDITOR_PLACEHOLDERS;
+        assert!(template_warnings("{path}", known).is_empty());
+        assert!(template_warnings("", known).is_empty());
+        let w = template_warnings(r#"--goto "{path}"#, known);
         assert_eq!(w.len(), 1);
         assert!(w[0].contains("unmatched quote"), "{w:?}");
-        assert_eq!(template_warnings("{path}:{col}"), ["{col} is not a placeholder; it is passed as typed."]);
+        assert_eq!(template_warnings("{path}:{col}", known), ["{col} is not a placeholder; it is passed as typed."]);
+        let diff = &external_tools::DIFF_PLACEHOLDERS;
+        assert_eq!(template_warnings("{local} {remote}:{line}", diff), ["{line} is not a placeholder; it is passed as typed."]);
+        assert!(template_warnings("{base} {ours} {theirs} {output} {repo}", &external_tools::MERGE_PLACEHOLDERS).is_empty());
+    }
+
+    #[test]
+    fn missing_warnings_name_each_absent_placeholder() {
+        let want = ["{remote} is missing, so the tool won't be given that version."];
+        assert_eq!(missing_warnings("{local}", &["{local}", "{remote}"]), want);
+        assert!(missing_warnings("{local} --new={remote}", &["{local}", "{remote}"]).is_empty());
+        assert_eq!(missing_warnings("{base} {ours} {theirs}", &["{ours}", "{theirs}", "{output}"]).len(), 1);
+    }
+
+    #[test]
+    fn diff_and_merge_failures_name_the_tool() {
+        let t = failure_text(ToolKind::DiffTool, "meld", "a.txt", &LaunchFailure::NotFound);
+        assert_eq!(t, "Could not find the external diff tool \"meld\". Check the diff tool executable in Preferences > External Tools.");
+        let t = failure_text(ToolKind::DiffTool, "meld", "a.txt", &LaunchFailure::Files("disk full".into()));
+        assert_eq!(t, "Could not prepare a.txt for the diff tool: disk full");
+        let t = failure_text(ToolKind::MergeTool, "kdiff3", "a.txt", &LaunchFailure::NotFound);
+        assert!(t.contains("external merge tool \"kdiff3\""), "{t}");
     }
 
     #[test]
@@ -119,12 +156,11 @@ mod tests {
     }
 
     #[test]
-    fn editor_detail_is_the_program_name() {
-        let t = ExternalTools { editor: "code".into(), ..ExternalTools::default() };
-        assert_eq!(editor_detail(&t), "code");
-        let t = ExternalTools { editor: "/opt/ed/bin/ed.sh".into(), ..ExternalTools::default() };
-        assert_eq!(editor_detail(&t), "ed");
-        assert_eq!(editor_detail(&ExternalTools::default()), NO_EDITOR_DETAIL);
+    fn program_detail_is_the_program_name() {
+        assert_eq!(program_detail("code", NO_EDITOR_DETAIL), "code");
+        assert_eq!(program_detail("/opt/ed/bin/ed.sh", NO_EDITOR_DETAIL), "ed");
+        assert_eq!(program_detail("", NO_EDITOR_DETAIL), NO_EDITOR_DETAIL);
+        assert_eq!(program_detail(" \"\" ", "none"), "none");
     }
 
     #[test]

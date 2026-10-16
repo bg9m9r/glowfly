@@ -127,6 +127,8 @@ impl PaletteCommand {
             C::Tools(m) => match m {
                 ToolsMsg::OpenRepo => "open-repo-in-editor",
                 ToolsMsg::ShowPage => "tools-configure",
+                ToolsMsg::OpenDiff(_) => "open-in-diff-tool",
+                ToolsMsg::ResolveInMergeTool(_) => "resolve-in-merge-tool",
                 _ => return None,
             },
         })

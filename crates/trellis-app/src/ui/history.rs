@@ -12,6 +12,8 @@ use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::history::FileHistoryView;
+use crate::state::tool_compare::{OPEN_IN_DIFF_TOOL, diff_blocked};
+use crate::tools::ToolsMsg;
 use eframe::egui::{self, Align, Align2, CursorIcon, FontId, Key, Layout, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::repo::{DiffTarget, HistoryEntry};
 
@@ -71,6 +73,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
     let Some(view) = &st.history else { return };
     keyboard(ui, view, msgs);
     let in_wd = view.in_workdir(st.snap.as_ref());
+    let diff_blocked = diff_blocked(&st.settings.external_tools);
     egui::ScrollArea::vertical().id_salt("file-history").auto_shrink([false, false]).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (i, e) in view.entries.iter().enumerate() {
@@ -94,7 +97,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             if resp.clicked() {
                 msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(i)));
             }
-            resp.context_menu(|ui| entry_menu(ui, msgs, e, &view.path, in_wd));
+            resp.context_menu(|ui| entry_menu(ui, msgs, e, &view.path, in_wd, diff_blocked));
             ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
         }
         ui.add_space(8.0);
@@ -104,13 +107,22 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
 
 /// A history row's menu: View on graph, Copy commit SHA, then Restore for the entry's version
 /// and Open / Open in external editor / Show for `open_path` (the file as it is named today),
-/// disabled unless `in_workdir`.
-pub(super) fn entry_menu(ui: &mut Ui, msgs: &mut Vec<Msg>, e: &HistoryEntry, open_path: &str, in_workdir: bool) {
+/// disabled unless `in_workdir`, with Open in external diff tool for the entry's change
+/// (disabled with `diff_blocked`).
+pub(super) fn entry_menu(
+    ui: &mut Ui,
+    msgs: &mut Vec<Msg>,
+    e: &HistoryEntry,
+    open_path: &str,
+    in_workdir: bool,
+    diff_blocked: Option<&str>,
+) {
     menu_item(msgs, ui, "View on graph", Msg::History(HistoryMsg::ShowInGraph(e.oid)));
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));
     ui.separator();
     file_menu::restore_item(ui, msgs, e.oid, &e.path, e.status);
-    file_menu::open_items(ui, msgs, open_path, (!in_workdir).then_some(file_menu::NOT_IN_WORKDIR));
+    let tool = file_menu::diff_item(DiffTarget::Commit(e.oid, e.path.clone()), diff_blocked);
+    file_menu::open_items(ui, msgs, open_path, (!in_workdir).then_some(file_menu::NOT_IN_WORKDIR), Some(tool));
 }
 
 /// Line 1: short SHA and summary. Line 2: status, author (and the old path of a rename), with
@@ -184,7 +196,7 @@ fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
 }
 
 /// The selected commit: summary, author and date, links, file buttons (Restore this version,
-/// Open, Show), then its diff of the file.
+/// Open, Show, Open in external diff tool), then its diff of the file.
 fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.history else { return };
     let open_path = view.path.clone();
@@ -214,7 +226,14 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         });
         ui.add_space(4.0);
         let file = CommitFile { oid: e.oid, path: &e.path, status: e.status, open_path: &open_path, in_workdir: in_wd };
-        ui.horizontal_wrapped(|ui| file_buttons::show(ui, msgs, &file, Labels::Full));
+        let blocked = diff_blocked(&st.settings.external_tools);
+        ui.horizontal_wrapped(|ui| {
+            file_buttons::show(ui, msgs, &file, Labels::Full);
+            let r = ui.add_enabled(blocked.is_none(), egui::Button::new(OPEN_IN_DIFF_TOOL));
+            if r.on_disabled_hover_text(blocked.unwrap_or_default()).clicked() {
+                msgs.push(Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Commit(e.oid, e.path.clone()))));
+            }
+        });
     });
     ui.separator();
     let target = DiffTarget::Commit(e.oid, e.path.clone());

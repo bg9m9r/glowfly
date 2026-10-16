@@ -12,6 +12,7 @@ use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::remote::{RemoteEffect, RemoteMsg};
 use crate::ssh::SshFailure;
+use crate::tools::ToolEffect;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use trellis_core::forge::{Account, Target};
@@ -81,7 +82,8 @@ impl Recovery {
             | Effect::RenameStash { .. }
             | Effect::SparseCheckout { .. }
             | Effect::Clone(CloneEffect::Sparse { .. })
-            | Effect::Init(InitEffect::Run { .. }) => Kind::Job(None),
+            | Effect::Init(InitEffect::Run { .. })
+            | Effect::Tool(ToolEffect::RunMerge(_)) => Kind::Job(None),
             Effect::Clone(CloneEffect::ListRepos { account, .. }) => Kind::Repos(account.clone()),
             Effect::InteractiveRebase { .. } => Kind::Rebase,
             Effect::LocalOp { .. } => Kind::LocalOp,
@@ -198,6 +200,17 @@ mod tests {
         let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
         let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
         assert!(output.contains("boom") && output.contains("rename-stash"), "{output}");
+    }
+
+    #[test]
+    fn a_panicking_merge_tool_ends_its_job() {
+        use crate::tools::MergeToolRequest;
+        let req =
+            MergeToolRequest { program: "m".into(), template: String::new(), workdir: "C:/r".into(), path: "a.txt".into(), filters: false };
+        let effect = Effect::Tool(ToolEffect::RunMerge(req));
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
+        let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
+        assert!(output.contains("boom") && output.contains("run-merge-tool"), "{output}");
     }
 
     #[test]

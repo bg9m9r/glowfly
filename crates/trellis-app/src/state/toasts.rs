@@ -45,6 +45,14 @@ impl AppState {
         self.push_toast(ok, text.into(), Some(action), now)
     }
 
+    /// Gives the newest toast (one just pushed, such as a finished job's) the action `action`,
+    /// so it stays up long enough to click. Nothing happens without a toast.
+    pub fn set_last_toast_action(&mut self, action: ToastAction) {
+        if let Some(t) = self.toasts.last_mut() {
+            t.action = Some(action);
+        }
+    }
+
     fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, now: Instant) -> u64 {
         self.toast_seq += 1;
         self.toasts.push(Toast { ok, text, at: now, id: self.toast_seq, action });

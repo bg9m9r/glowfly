@@ -1,13 +1,18 @@
-//! Messages and effects of the external editor and a custom terminal (Preferences > External
-//! Tools; state/tools.rs, update/tools.rs, runner/tools.rs, ui/prefs/tools.rs).
+//! Messages and effects of the external editor, a custom terminal, and the external diff and
+//! merge tools (Preferences > External Tools; state/tools.rs, state/tool_compare.rs,
+//! update/tools.rs, update/tool_compare.rs, runner/tools.rs, runner/tools/compare.rs,
+//! ui/prefs/tools.rs).
 
 use std::path::PathBuf;
 use trellis_core::external_tools::Launch;
+use trellis_core::repo::DiffTarget;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ToolKind {
     Editor,
     Terminal,
+    DiffTool,
+    MergeTool,
 }
 
 /// Why a program didn't start.
@@ -17,8 +22,25 @@ pub enum LaunchFailure {
     NotFound,
     /// The file to open is no longer in the working tree.
     Missing(PathBuf),
+    /// The versions to compare or merge couldn't be written (the error).
+    Files(String),
     /// Anything else, as the system put it.
     Other(String),
+}
+
+/// How a merge tool run ended.
+#[derive(Clone, Debug, PartialEq)]
+pub enum MergeEnd {
+    /// It exited with 0 and the working file changed.
+    Saved,
+    /// It exited with 0 and left the working file as it was.
+    Unchanged,
+    /// The file is no longer conflicted (the tool staged it itself).
+    Resolved,
+    /// It exited with an error; `changed` says the working file changed anyway.
+    Exited { code: Option<i32>, said: String, changed: bool },
+    /// It didn't start, or its files couldn't be prepared.
+    Failed(LaunchFailure),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -37,6 +59,13 @@ pub enum ToolsMsg {
     /// A launch failed (runner/tools.rs). `program` as typed, `target` the file or repository
     /// name.
     LaunchFailed { kind: ToolKind, program: String, target: String, failure: LaunchFailure },
+    /// Open this diff's file in the external diff tool.
+    OpenDiff(DiffTarget),
+    /// Resolve this conflicted file (repo-relative) in the external merge tool, as a job.
+    ResolveInMergeTool(String),
+    /// The merge tool run as a job in `workdir` ended (runner/tools/compare.rs). `program` as
+    /// typed.
+    MergeToolExited { workdir: PathBuf, path: String, program: String, end: MergeEnd },
 }
 
 impl ToolsMsg {
@@ -49,19 +78,49 @@ impl ToolsMsg {
             | Self::ShowPage
             | Self::Browse(_)
             | Self::ProgramPicked { .. }
-            | Self::LaunchFailed { .. } => None,
+            | Self::LaunchFailed { .. }
+            | Self::OpenDiff(_)
+            | Self::ResolveInMergeTool(_)
+            // The job logic (ops::finish_job) decides what an inactive tab needs.
+            | Self::MergeToolExited { .. } => None,
         }
     }
 }
 
-/// Starting the editor or terminal, and their program pickers, run by runner/tools.rs.
+/// Opening a diff in the diff tool: the program and template from the settings, and what to
+/// compare. `filters` writes copies through git's checkout filters (a trusted repository).
+#[derive(Clone, Debug, PartialEq)]
+pub struct DiffToolRequest {
+    pub program: PathBuf,
+    pub template: String,
+    pub workdir: PathBuf,
+    pub target: DiffTarget,
+    pub filters: bool,
+}
+
+/// Resolving the conflict at `path` in the merge tool, as for `DiffToolRequest`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MergeToolRequest {
+    pub program: PathBuf,
+    pub template: String,
+    pub workdir: PathBuf,
+    pub path: String,
+    pub filters: bool,
+}
+
+/// Starting the editor, terminal or a diff or merge tool, and their program pickers, run by
+/// runner/tools.rs.
 #[derive(Debug)]
 pub enum ToolEffect {
     /// Starts `launch`; `check` is a file that must still exist first. `target` names it in
     /// errors.
     Launch { kind: ToolKind, launch: Launch, target: String, check: Option<PathBuf> },
-    /// The file dialog for choosing the editor or terminal program.
+    /// The file dialog for choosing a tool's program.
     PickProgram(ToolKind),
+    /// Writes the diff's versions and starts the diff tool on them, without waiting.
+    OpenDiff(DiffToolRequest),
+    /// Writes the conflict's stages and runs the merge tool until it exits (the active job).
+    RunMerge(MergeToolRequest),
 }
 
 impl ToolEffect {
@@ -70,7 +129,11 @@ impl ToolEffect {
         match self {
             ToolEffect::Launch { kind: ToolKind::Editor, .. } => "launch-editor",
             ToolEffect::Launch { kind: ToolKind::Terminal, .. } => "launch-terminal",
+            ToolEffect::Launch { kind: ToolKind::DiffTool, .. } => "launch-diff-tool",
+            ToolEffect::Launch { kind: ToolKind::MergeTool, .. } => "launch-merge-tool",
             ToolEffect::PickProgram(_) => "pick-tool-program",
+            ToolEffect::OpenDiff(_) => "open-diff-tool",
+            ToolEffect::RunMerge(_) => "run-merge-tool",
         }
     }
 }

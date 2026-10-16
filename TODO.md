@@ -73,7 +73,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | SSH | ✔ SSH page (key pairs, generate a key, the key git uses, local agent, add a key to a hosting service) | Follow-ups in Later > SSH key management |
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
-| External Tools | ◐ Editor and terminal | Diff tool, merge tool (P1 External tools) |
+| External Tools | ✔ Editor, terminal, diff tool and merge tool | Follow-ups in Later > External tools and Later > External diff and merge tools |
 | Notifications | ✔ location, behind alerts and desktop notifications under UI Customization | Per-kind choices, click to focus (Later > Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
@@ -482,10 +482,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     for a path that already exists or is already in the index
   - [x] Remove a submodule (deinit, `git rm`, clean its `.git/modules` entry) behind a
     destructive confirmation
-- [ ] **External diff and merge tools**
-  - [ ] External diff tool: program and arguments ({local}, {remote}, {path}) in Preferences >
+- [x] **External diff and merge tools**
+  - [x] External diff tool: program and arguments ({local}, {remote}, {path}) in Preferences >
     External Tools, opened from file rows and the diff header
-  - [ ] External merge tool: program and arguments ({base}, {ours}, {theirs}, {output}), and the
+  - [x] External merge tool: program and arguments ({base}, {ours}, {theirs}, {output}), and the
     conflict view's Resolve in an external merge tool
 - [x] **Rebind keyboard shortcuts**
   Rebind keys in Preferences, saved in settings and matched through the shortcut table, with
@@ -1281,6 +1281,24 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Report an editor that exits at once with an error
 - Open several selected files or repositories at once, asking first when there are many
 - Show / hide arguments toggle that collapses the argument fields
+
+### External diff and merge tools
+
+- Presets for well-known diff and merge tools (fill program and arguments in one click)
+- Use the tools named in git config (diff.tool / merge.tool, difftool.<name>.cmd) when Trellis
+  has none set
+- Keyboard shortcut to open the selected file in the diff tool (or the merge tool for a
+  conflicted file)
+- Show/hide arguments toggle on the External Tools page
+- Directory diff: a whole commit or comparison in the diff tool at once
+- Open several selected files in the diff tool at once
+- Compare any commit's version with the working file in the diff tool (from file history and
+  blame)
+- Console diff/merge tools started in a terminal window
+- Cancel a running merge tool from Trellis
+- Option to mark the file resolved automatically when the merge tool saves it and exits with 0
+- Name the temp folders after the sides' branch names instead of ours/theirs
+- Remove the diff tool's temporary copies when Trellis quits, not only by the 24-hour sweep
 
 ### Notifications
 

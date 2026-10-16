@@ -1,4 +1,5 @@
-//! The diff header bar: the file and its kind, then the file actions (Stage or Unstage file;
+//! The diff header bar: the file and its kind, then Open in external diff tool and the file
+//! actions (Stage or Unstage file;
 //! Restore, Open and Show for a commit's file), next/previous change, the view mode and layout
 //! toggles, Expand all / Collapse all for whole-file folds, and the whitespace and wrap
 //! toggles.
@@ -9,6 +10,8 @@ use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::state::diff_nav::StepKind;
+use crate::state::tool_compare::OPEN_IN_DIFF_TOOL;
+use crate::tools::ToolsMsg;
 use crate::ui::common::short;
 use crate::ui::file_buttons::{self, CommitFile, Labels};
 use crate::ui::file_menu::SHOW_IN_FOLDER;
@@ -40,8 +43,8 @@ pub(super) struct FoldCounts {
     pub closed: usize,
 }
 
-/// Path and kind on the left; on the right (listed from the edge inwards) Close, the file
-/// actions (Stage file or Unstage file for working-tree diffs; Show, Open and Restore for a
+/// Path and kind on the left; on the right (listed from the edge inwards) Close, Open in
+/// external diff tool (disabled with the reason `diff_tool` when set), the file actions (Stage file or Unstage file for working-tree diffs; Show, Open and Restore for a
 /// commit's diff, from `file`, which is `None` when the commit detail doesn't list it),
 /// next/previous change, the layout toggle, the view mode toggle, Collapse all and
 /// Expand all, and the whitespace and wrap toggles. `rows` holds the layout and view mode, `None` when
@@ -66,6 +69,7 @@ pub(super) fn header_bar(
     toggles: Toggles,
     folds: Option<FoldCounts>,
     keys: &Keymap,
+    diff_tool: Option<&str>,
     msgs: &mut Vec<Msg>,
 ) {
     let folds = folds.filter(|_| matches!(rows, Some((_, DiffMode::WholeFile))));
@@ -86,9 +90,16 @@ pub(super) fn header_bar(
             // The commit file buttons move down too when even without the tail they would reach
             // the path.
             files_wrapped = file.is_some()
-                && button_w(ui, CLOSE) + file_buttons_width(ui) + middle_width(ui, rows.is_some(), show_nav) > ui.available_width();
+                && button_w(ui, CLOSE) + icon_w(ui) + file_buttons_width(ui) + middle_width(ui, rows.is_some(), show_nav)
+                    > ui.available_width();
             if ui.button(CLOSE).clicked() {
                 msgs.push(Msg::Repo(RepoMsg::CloseDiff));
+            }
+            let tool =
+                ui.add_enabled_ui(diff_tool.is_none(), |ui| icon_button(ui, Icon::ExternalDiff, diff_tool.unwrap_or(OPEN_IN_DIFF_TOOL)));
+            if tool.inner.clicked() {
+                msgs.push(Msg::Tools(ToolsMsg::OpenDiff(target.clone())));
+                tool.inner.surrender_focus();
             }
             match target {
                 DiffTarget::Unstaged(p) => {
@@ -171,6 +182,11 @@ fn button_w(ui: &Ui, text: &str) -> f32 {
     let s = ui.spacing();
     let text_w = ui.fonts(|f| f.layout_no_wrap(text.to_owned(), font, color::text()).size().x);
     text_w + 2.0 * s.button_padding.x + s.item_spacing.x
+}
+
+/// The width an icon button takes in the bar, with the gap after it.
+fn icon_w(ui: &Ui) -> f32 {
+    26.0 + ui.spacing().item_spacing.x
 }
 
 /// The width of the compact Restore, Open and Show buttons.
@@ -285,7 +301,7 @@ mod tests {
         let folds = Some(FoldCounts { open: 1, closed: 1 });
         let rows = Some((DiffLayout::Inline, DiffMode::WholeFile));
         let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, folds, &Keymap::default(), &mut Vec::new());
+            header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, folds, &Keymap::default(), None, &mut Vec::new());
         });
         h.run();
         let top = |label: &str| h.get_by_label(label).bounding_box().expect("laid out").y0;
@@ -307,7 +323,7 @@ mod tests {
         let target = DiffTarget::Unstaged("notes.txt".into());
         let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
         let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui_state(
-            |ui, msgs: &mut Vec<Msg>| header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), msgs),
+            |ui, msgs: &mut Vec<Msg>| header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, msgs),
             Vec::new(),
         );
         h.run();
@@ -317,7 +333,7 @@ mod tests {
 
         let no_rows = Toggles { ignore_ws: Some(false), wrap: None };
         let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, None, None, [StepKind::End; 2], no_rows, None, &Keymap::default(), &mut Vec::new());
+            header_bar(ui, &target, None, None, [StepKind::End; 2], no_rows, None, &Keymap::default(), None, &mut Vec::new());
         });
         h.run();
         assert!(h.query_by_label(WRAP).is_none(), "no rows, no wrap toggle");
@@ -332,7 +348,7 @@ mod tests {
         let file = CommitFile { oid, path: "notes.txt", status: 'M', open_path: "notes.txt", in_workdir: true };
         let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
         let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, Some(&file), rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), &mut Vec::new());
+            header_bar(ui, &target, Some(&file), rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, &mut Vec::new());
         });
         h.run();
         let rect = |label: &str| h.get_by_label(label).bounding_box().expect("laid out");

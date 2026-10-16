@@ -61,7 +61,8 @@ fn file_menu_wip_lfs() {
             r.context_menu(|ui| {
                 let _ = ui.button("Stage");
                 let _ = ui.button("Copy path");
-                wip_file_items(ui, msgs, &f, false, false, &lfs);
+                let tool = super::file_menu::diff_item(trellis_core::repo::DiffTarget::Unstaged(PATH.into()), None);
+                wip_file_items(ui, msgs, &f, false, false, &lfs, tool);
             });
         },
         Vec::new(),
@@ -121,7 +122,7 @@ fn commit_menu(in_workdir: bool) -> Harness<'static, Vec<Msg>> {
     Harness::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
-            commit_file_items(ui, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs);
+            commit_file_items(ui, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs, None);
         },
         Vec::new(),
     )

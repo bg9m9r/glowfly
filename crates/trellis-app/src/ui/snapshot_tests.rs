@@ -112,11 +112,16 @@ pub(super) fn settings(theme: ThemeChoice) -> Settings {
 const NOW: i64 = 1_769_947_200;
 
 /// A window-sized harness drawing `st`; the messages views push collect in its state.
-pub(super) fn harness(mut st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
+pub(super) fn harness(st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
+    harness_sized(st, dark, SIZE)
+}
+
+/// `harness` with a window of `size` (a tall one shows a long page without scrolling).
+pub(super) fn harness_sized(mut st: AppState, dark: bool, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    Harness::builder().with_size(SIZE).build_state(
+    Harness::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             // Like the app, pick the palette at the start of every frame.
             color::set_dark(dark);
@@ -267,7 +272,7 @@ fn ghost_branch_on_the_current_commit() {
 
 /// The fixture in the middle of merging `theme-tweaks`, which conflicts with main in `file`
 /// (written by `content` for each side: "base", "ours" or "theirs"). The view is open on it.
-fn with_conflict(name: &str, file: &str, content: impl Fn(&str) -> Vec<u8>) -> (AppState, PathBuf) {
+pub(super) fn with_conflict(name: &str, file: &str, content: impl Fn(&str) -> Vec<u8>) -> (AppState, PathBuf) {
     use crate::state::conflict::ConflictView;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let d = "2026-01-11T10:00:00+00:00";

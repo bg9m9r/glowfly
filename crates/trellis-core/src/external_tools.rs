@@ -1,11 +1,7 @@
-//! External programs the user chose (Preferences > External Tools): splitting an argument
-//! template into arguments, filling in its placeholders, finding the program on PATH, and
-//! starting it detached.
-//!
-//! Templates are split before placeholders are filled in, so a path with spaces is always one
-//! argument, and nothing goes through a shell. Whitespace separates arguments and double quotes
-//! group text (the quotes themselves are dropped); there is no escape character, so backslashes
-//! in Windows paths are taken literally.
+//! External programs the user chose (Preferences > External Tools): argument templates
+//! (`template`), finding the program on PATH, and starting it, detached or waiting for it to
+//! exit. `temp` holds the private folder for the copies diff and merge tools are given, and
+//! `compare` writes those copies for a diff or a conflict.
 
 use crate::error::{Error, Result};
 use crate::native_path::native;
@@ -14,110 +10,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
-/// Why a template can't be used.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-pub enum TemplateError {
-    #[error("unmatched quote")]
-    UnmatchedQuote,
-}
-
-/// The placeholders a template may name.
-pub const PLACEHOLDERS: [&str; 3] = ["{path}", "{line}", "{repo}"];
-
-/// Splits `template` into arguments: whitespace separates them, double quotes group text with
-/// spaces (`a"b c"d` is `ab cd`, `""` is one empty argument), and backslashes are plain text.
-pub fn split(template: &str) -> Result<Vec<String>, TemplateError> {
-    let mut out = Vec::new();
-    let mut current = String::new();
-    // Whether an argument has started (a quote starts one even if it stays empty).
-    let mut started = false;
-    let mut quoted = false;
-    for ch in template.chars() {
-        match ch {
-            '"' => {
-                quoted = !quoted;
-                started = true;
-            }
-            c if c.is_whitespace() && !quoted => {
-                if started {
-                    out.push(std::mem::take(&mut current));
-                    started = false;
-                }
-            }
-            c => {
-                current.push(c);
-                started = true;
-            }
-        }
-    }
-    if quoted {
-        return Err(TemplateError::UnmatchedQuote);
-    }
-    if started {
-        out.push(current);
-    }
-    Ok(out)
-}
-
-/// What the placeholders stand for. For repository and terminal templates `path` is the
-/// repository folder and `line` is 1.
-#[derive(Clone, Copy, Debug)]
-pub struct Vars<'a> {
-    /// `{path}`: the file's full path.
-    pub path: &'a Path,
-    /// `{line}`: the line number.
-    pub line: u32,
-    /// `{repo}`: the repository folder.
-    pub repo: &'a Path,
-}
-
-/// The arguments of `template` with its placeholders filled in from `v`, in one pass (a value
-/// that itself contains `{line}` is not expanded again). Unknown `{names}` are kept as typed.
-/// Paths go in in this system's spelling (`C:\x\y`, never libgit2's `C:/x/y/`).
-pub fn expand(template: &str, v: &Vars) -> Result<Vec<OsString>, TemplateError> {
-    Ok(split(template)?.iter().map(|a| substitute(a, v)).collect())
-}
-
-fn substitute(arg: &str, v: &Vars) -> OsString {
-    let mut out = OsString::new();
-    let mut rest = arg;
-    while let Some(i) = rest.find('{') {
-        out.push(&rest[..i]);
-        let at = &rest[i..];
-        if let Some(r) = at.strip_prefix("{path}") {
-            out.push(native(v.path));
-            rest = r;
-        } else if let Some(r) = at.strip_prefix("{line}") {
-            out.push(v.line.to_string());
-            rest = r;
-        } else if let Some(r) = at.strip_prefix("{repo}") {
-            out.push(native(v.repo));
-            rest = r;
-        } else {
-            out.push("{");
-            rest = &at[1..];
-        }
-    }
-    out.push(rest);
-    out
-}
-
-/// Each `{name}` in `template` that is not a placeholder, once each, in the order they appear.
-pub fn unknown_placeholders(template: &str) -> Vec<String> {
-    let mut out: Vec<String> = Vec::new();
-    let mut rest = template;
-    while let Some(i) = rest.find('{') {
-        rest = &rest[i + 1..];
-        let name_len = rest.find(|c: char| !(c.is_alphanumeric() || c == '_')).unwrap_or(rest.len());
-        if name_len > 0 && rest[name_len..].starts_with('}') {
-            let word = format!("{{{}}}", &rest[..name_len]);
-            if !PLACEHOLDERS.contains(&word.as_str()) && !out.contains(&word) {
-                out.push(word);
-            }
-        }
-    }
-    out
-}
+pub mod compare;
+pub mod temp;
+mod template;
+pub use template::*;
 
 /// The program named by a Preferences field: trimmed, without one pair of surrounding quotes
 /// (as pasted from a file manager); None when nothing is set.
@@ -241,11 +137,15 @@ fn has_extension(p: &Path, ext: &str) -> bool {
 /// the app as documents, even to a running one, but would take options meant for the app as its
 /// own; so when any argument is an option (`--goto`, `-n`) they go after `--args`, to a new
 /// instance (`-n`), since a running one never sees `--args` (editors that take options pass
-/// them on to the window that is already open).
-pub(crate) fn command_line(resolved: &Path, args: &[OsString], macos: bool) -> (PathBuf, Vec<OsString>) {
+/// them on to the window that is already open). With `wait`, `open -W` waits until the app
+/// exits, so a caller that waits for the program (a merge tool) really waits.
+pub(crate) fn command_line(resolved: &Path, args: &[OsString], macos: bool, wait: bool) -> (PathBuf, Vec<OsString>) {
     if macos && has_extension(resolved, "app") {
         let options = args.iter().any(|a| a.to_string_lossy().starts_with('-'));
-        let mut all: Vec<OsString> = if options { vec!["-n".into()] } else { Vec::new() };
+        let mut all: Vec<OsString> = if wait { vec!["-W".into()] } else { Vec::new() };
+        if options {
+            all.push("-n".into());
+        }
         all.extend([OsString::from("-a"), resolved.as_os_str().to_owned()]);
         if options {
             all.push("--args".into());
@@ -291,27 +191,7 @@ pub const EARLY_EXIT: Duration = Duration::from_millis(1500);
 /// background thread. See `console_setup` for its input and output. `Error::NotFound` when the
 /// program can't be found.
 pub fn spawn(l: &Launch) -> Result<()> {
-    let macos = cfg!(target_os = "macos");
-    let resolved = find_on_path(&l.program).ok_or_else(|| Error::NotFound(l.program.display().to_string()))?;
-    let (program, args) = command_line(&resolved, &l.args, macos);
-    let mut cmd = Command::new(&program);
-    cmd.args(&args).current_dir(native(&l.cwd));
-    crate::env_path::apply(&mut cmd);
-    let batch = cfg!(windows) && (has_extension(&resolved, "cmd") || has_extension(&resolved, "bat"));
-    let setup = console_setup(l.own_console, batch);
-    if setup.null_stdio {
-        // stderr is kept, to say why a program that fails at once failed.
-        cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
-    }
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(setup.creation_flags);
-    }
-    let mut child = cmd.spawn().map_err(|e| match e.kind() {
-        std::io::ErrorKind::NotFound => Error::NotFound(l.program.display().to_string()),
-        _ => Error::Io(e),
-    })?;
+    let mut child = start(l, false)?;
     let stderr = child.stderr.take().map(drain_stderr);
     let deadline = Instant::now() + EARLY_EXIT;
     while Instant::now() < deadline {
@@ -330,6 +210,59 @@ pub fn spawn(l: &Launch) -> Result<()> {
         let _ = child.wait();
     });
     Ok(())
+}
+
+/// Starts `l` as `spawn` and `run_to_exit` describe; `wait` makes a macOS application bundle
+/// run through `open -W`.
+fn start(l: &Launch, wait: bool) -> Result<std::process::Child> {
+    let macos = cfg!(target_os = "macos");
+    let resolved = find_on_path(&l.program).ok_or_else(|| Error::NotFound(l.program.display().to_string()))?;
+    let (program, args) = command_line(&resolved, &l.args, macos, wait);
+    let mut cmd = Command::new(&program);
+    cmd.args(&args).current_dir(native(&l.cwd));
+    crate::env_path::apply(&mut cmd);
+    let batch = cfg!(windows) && (has_extension(&resolved, "cmd") || has_extension(&resolved, "bat"));
+    let setup = console_setup(l.own_console, batch);
+    if setup.null_stdio {
+        // stderr is kept, to say why a program that fails failed.
+        cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(setup.creation_flags);
+    }
+    cmd.spawn().map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => Error::NotFound(l.program.display().to_string()),
+        _ => Error::Io(e),
+    })
+}
+
+/// How a program Trellis waited for ended.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExitReport {
+    /// The exit code; None when it was stopped by a signal.
+    pub code: Option<i32>,
+    /// The first non-empty line it printed on stderr, made printable; "" when none.
+    pub said: String,
+}
+
+impl ExitReport {
+    pub fn success(&self) -> bool {
+        self.code == Some(0)
+    }
+}
+
+/// Starts `l` (with no input or output, as an editor; see `console_setup`) and waits until it
+/// exits, however long that is. A macOS application bundle runs through `open -W`, so this
+/// waits for the app too. `Error::NotFound` when the program can't be found.
+pub fn run_to_exit(l: &Launch) -> Result<ExitReport> {
+    let mut child = start(&Launch { own_console: false, ..l.clone() }, true)?;
+    let stderr = child.stderr.take().map(drain_stderr);
+    let status = child.wait()?;
+    let text = stderr.and_then(|rx| rx.recv_timeout(Duration::from_secs(2)).ok()).unwrap_or_default();
+    let said = text.lines().map(str::trim).find(|l| !l.is_empty()).map(crate::text::printable).unwrap_or_default();
+    Ok(ExitReport { code: status.code(), said })
 }
 
 /// Reads a child's stderr to its end on a thread of its own (so a chatty program never blocks
@@ -365,5 +298,7 @@ pub fn early_exit_message(code: Option<i32>, stderr: &str) -> String {
     }
 }
 
+#[cfg(test)]
+mod template_tests;
 #[cfg(test)]
 mod tests;

@@ -2,24 +2,26 @@
 //! commit's modified file, a file the commit deleted (not in the working tree), a row comparing
 //! two commits, and working-tree rows (a modified file, one whose file is gone, a conflicted
 //! one, and a staged new file present or gone, whose delete also unstages it). New file in this
-//! folder is enabled on every row. Clicks check the messages the items
+//! folder is enabled on every row. Open in external diff tool (Resolve in external merge tool
+//! on a conflicted row) is disabled until a tool is set. Clicks check the messages the items
 //! send.
 
 use super::file_menu::{
-    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, OPEN_IN_EDITOR, RENAME, RowSource, SHOW_IN_FOLDER, TRACK_IN_LFS, UNSTAGE_DELETE,
-    commit_file_items, wip_file_items,
+    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, OPEN_IN_DIFF_TOOL, OPEN_IN_EDITOR, RENAME, RESOLVE_IN_MERGE_TOOL, RowSource, SHOW_IN_FOLDER,
+    TRACK_IN_LFS, ToolItem, UNSTAGE_DELETE, commit_file_items, diff_item, wip_file_items,
 };
 use super::theme::{apply_theme, color};
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
+use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL};
 use crate::tools::ToolsMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
-use trellis_core::repo::FileEntry;
+use trellis_core::repo::{DiffTarget, FileEntry};
 
 const OID: &str = "3f2a9c41d07be5a8c6f19e2d4b7a0c3e5f816d29";
 /// The newer commit of a compared pair (`OID` is the older one).
@@ -49,11 +51,18 @@ fn newer() -> Oid {
     Oid::from_str(NEWER).unwrap()
 }
 
-/// A small window drawing the extra items for `f` inside a menu frame, as the popup would.
+/// A small window drawing the extra items for `f` inside a menu frame, as the popup would, with
+/// no diff or merge tool set.
 fn harness(f: FileEntry, menu: Menu, dark: bool) -> Harness<'static, Vec<Msg>> {
+    harness_with(f, menu, dark, false)
+}
+
+/// `harness`, with the diff and merge tools set when `tools`.
+fn harness_with(f: FileEntry, menu: Menu, dark: bool, tools: bool) -> Harness<'static, Vec<Msg>> {
+    let (diff, merge) = if tools { (None, None) } else { (Some(NO_DIFF_TOOL), Some(NO_MERGE_TOOL)) };
     // The comparison's restore item names a commit, so it needs a wider window.
     let width = if matches!(menu, Menu::Between { .. }) { 300.0 } else { 260.0 };
-    Harness::builder().with_size(egui::vec2(width, 240.0)).build_ui_state(
+    Harness::builder().with_size(egui::vec2(width, 260.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(dark);
             apply_theme(ui.ctx());
@@ -66,11 +75,19 @@ fn harness(f: FileEntry, menu: Menu, dark: bool) -> Harness<'static, Vec<Msg>> {
                 let _ = ui.button(if matches!(menu, Menu::Wip { .. }) { "Stage" } else { "File history" });
                 let _ = ui.button("Copy path");
                 match menu {
-                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[]),
+                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], diff),
                     Menu::Between { in_workdir } => {
-                        commit_file_items(ui, msgs, RowSource::Between { older: oid(), newer: newer() }, &f, in_workdir, &[])
+                        commit_file_items(ui, msgs, RowSource::Between { older: oid(), newer: newer() }, &f, in_workdir, &[], diff)
                     }
-                    Menu::Wip { missing, unstages } => wip_file_items(ui, msgs, &f, missing, unstages, &[]),
+                    Menu::Wip { missing, unstages } => {
+                        let tool = if f.status == '!' {
+                            let msg = Msg::Tools(ToolsMsg::ResolveInMergeTool(f.path.clone()));
+                            ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: merge }
+                        } else {
+                            diff_item(DiffTarget::Unstaged(f.path.clone()), diff)
+                        };
+                        wip_file_items(ui, msgs, &f, missing, unstages, &[], tool)
+                    }
                 }
             });
         },
@@ -168,6 +185,9 @@ fn file_menu_wip_missing() {
 fn file_menu_wip_conflicted() {
     let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
+    h.check_snapshot("file_menu_wip_conflicted");
+    assert!(h.get_by_label(RESOLVE_IN_MERGE_TOOL).is_disabled(), "no merge tool set");
+    assert!(h.query_by_label(OPEN_IN_DIFF_TOOL).is_none());
     assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
     assert!(h.get_by_label(RENAME).is_disabled());
@@ -177,6 +197,37 @@ fn file_menu_wip_conflicted() {
     let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false, unstages: true }, true);
     h.run();
     assert!(h.get_by_label(UNSTAGE_DELETE).is_disabled());
+    drop(h);
+
+    let mut h = harness_with(entry("src/both.txt", '!'), Menu::Wip { missing: false, unstages: false }, true, true);
+    h.run();
+    h.get_by_label(RESOLVE_IN_MERGE_TOOL).click();
+    h.run();
+    assert!(matches!(&h.state()[..], [Msg::Tools(ToolsMsg::ResolveInMergeTool(p))] if p == "src/both.txt"));
+}
+
+#[test]
+fn diff_tool_items_need_a_tool_and_send_their_targets() {
+    // Disabled without a tool, even where the file is in the working tree.
+    for menu in [Menu::Commit { in_workdir: true }, Menu::Wip { missing: false, unstages: false }] {
+        let mut h = harness(entry("src/app.txt", 'M'), menu, true);
+        h.run();
+        assert!(h.get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
+    }
+    // Enabled with one, even for a file gone from the working tree.
+    let cases = [
+        (Menu::Commit { in_workdir: false }, DiffTarget::Commit(oid(), "src/app.txt".into())),
+        (Menu::Between { in_workdir: true }, DiffTarget::Between(oid(), newer(), "src/app.txt".into())),
+        (Menu::Wip { missing: true, unstages: false }, DiffTarget::Unstaged("src/app.txt".into())),
+    ];
+    for (menu, want) in cases {
+        let mut h = harness_with(entry("src/app.txt", 'M'), menu, true, true);
+        h.run();
+        assert!(!h.get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
+        h.get_by_label(OPEN_IN_DIFF_TOOL).click();
+        h.run();
+        assert!(matches!(&h.state()[..], [Msg::Tools(ToolsMsg::OpenDiff(t))] if *t == want), "{want:?}");
+    }
 }
 
 /// Clicks the "Unstage and delete…" item and checks it asks to delete `path`.

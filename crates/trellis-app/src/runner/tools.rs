@@ -1,10 +1,12 @@
 //! Starting the external editor or a custom terminal (`Effect::Tool`), and the dialog that
-//! picks either program. Trellis never waits for the program; only a failure to start it is
-//! reported.
+//! picks a tool's program. Trellis never waits for the editor, terminal or diff tool; only a
+//! failure to start one is reported. The diff and merge tools are in `compare`.
 
 use crate::msg::Msg;
 use crate::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 use trellis_core::external_tools;
+
+mod compare;
 
 /// Runs `effect`: a launch reports only a failure, a dialog reports what was picked.
 pub(super) fn run(effect: ToolEffect) -> Option<Msg> {
@@ -30,6 +32,8 @@ pub(super) fn run(effect: ToolEffect) -> Option<Msg> {
             let title = match kind {
                 ToolKind::Editor => "Choose the editor program",
                 ToolKind::Terminal => "Choose the terminal program",
+                ToolKind::DiffTool => "Choose the diff tool program",
+                ToolKind::MergeTool => "Choose the merge tool program",
             };
             let mut dialog = rfd::FileDialog::new().set_title(title);
             if cfg!(windows) {
@@ -37,6 +41,8 @@ pub(super) fn run(effect: ToolEffect) -> Option<Msg> {
             }
             Some(Msg::Tools(ToolsMsg::ProgramPicked { kind, path: dialog.pick_file() }))
         }
+        ToolEffect::OpenDiff(req) => compare::open_diff(req),
+        ToolEffect::RunMerge(req) => Some(compare::run_merge(req)),
     }
 }
 

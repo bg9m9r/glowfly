@@ -120,7 +120,7 @@ fn menu_harness(e: HistoryEntry, in_workdir: bool) -> Harness<'static, Vec<Msg>>
             ui.ctx().set_theme(egui::Theme::Dark);
             egui::Frame::menu(ui.style()).show(ui, |ui| {
                 menu_style(ui.style_mut());
-                entry_menu(ui, msgs, &e, "src/app.txt", in_workdir);
+                entry_menu(ui, msgs, &e, "src/app.txt", in_workdir, Some(crate::state::tool_compare::NO_DIFF_TOOL));
             });
         },
         Vec::new(),

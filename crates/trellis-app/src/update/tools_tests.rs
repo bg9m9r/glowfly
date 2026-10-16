@@ -220,3 +220,49 @@ fn palette_entries_open_the_repository_and_the_page() {
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
     assert_eq!(st.palette_recent.position("tools-configure"), Some(0));
 }
+
+#[test]
+fn diff_and_merge_tool_programs_are_picked_and_saved() {
+    let mut st = state();
+    for kind in [ToolKind::DiffTool, ToolKind::MergeTool] {
+        assert!(matches!(&run(&mut st, ToolsMsg::Browse(kind))[..], [Effect::Tool(ToolEffect::PickProgram(k))] if *k == kind));
+    }
+    let fx = run(&mut st, ToolsMsg::ProgramPicked { kind: ToolKind::DiffTool, path: Some("/usr/bin/meld".into()) });
+    let meld = PathBuf::from("/usr/bin/meld").display().to_string();
+    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.external_tools.diff_tool == meld));
+    let fx = run(&mut st, ToolsMsg::ProgramPicked { kind: ToolKind::MergeTool, path: Some("/usr/bin/kdiff3".into()) });
+    let kdiff3 = PathBuf::from("/usr/bin/kdiff3").display().to_string();
+    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.external_tools.merge_tool == kdiff3 && s.external_tools.diff_tool == meld));
+}
+
+#[test]
+fn palette_offers_the_diff_and_merge_tools_for_what_is_open() {
+    use trellis_core::repo::DiffTarget;
+    let (diff_label, merge_label) = ("Open file in external diff tool", "Resolve conflict in external merge tool");
+    let find = |st: &AppState, l: &str| entries(st).into_iter().find(|e| e.label == l);
+    let (mut st, dir) = open("tools-palette-diff", "");
+    assert!(find(&st, diff_label).is_none(), "needs an open diff");
+    let target = DiffTarget::Unstaged("a.txt".into());
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
+    assert_eq!(find(&st, diff_label).and_then(|e| e.detail).as_deref(), Some("no diff tool set"));
+    st.settings.external_tools.diff_tool = "/opt/meld/bin/meld".into();
+    assert_eq!(find(&st, diff_label).and_then(|e| e.detail).as_deref(), Some("meld"));
+    assert!(find(&st, merge_label).is_none(), "needs the conflict view");
+    let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Tools(ToolsMsg::OpenDiff(target.clone())))), Instant::now());
+    assert!(matches!(&fx[..], [Effect::Tool(ToolEffect::OpenDiff(r))] if r.target == target), "{fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let dir = super::conflict_tests::conflicted_repo("tools-palette-merge");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Conflict(crate::msg::ConflictMsg::OpenConflict("a.txt".into())));
+    assert_eq!(find(&st, merge_label).and_then(|e| e.detail).as_deref(), Some("no merge tool set"));
+    st.settings.external_tools.merge_tool = "kdiff3".into();
+    let entry = find(&st, merge_label).expect("offered");
+    assert_eq!(entry.detail.as_deref(), Some("kdiff3"));
+    assert_eq!(entry.command, C::Tools(ToolsMsg::ResolveInMergeTool("a.txt".into())));
+    assert!(entry.shortcut.is_none(), "no keyboard shortcut");
+    let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(entry.command)), Instant::now());
+    assert!(matches!(&fx[..], [Effect::Tool(ToolEffect::RunMerge(r))] if r.path == "a.txt"), "{fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}

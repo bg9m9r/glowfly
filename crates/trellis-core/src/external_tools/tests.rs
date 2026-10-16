@@ -1,114 +1,9 @@
-//! Argument templates, finding programs and starting them.
+//! Finding programs, starting them, and waiting for them to exit.
 
 use super::*;
 
-fn strs(v: &[&str]) -> Vec<String> {
-    v.iter().map(|s| s.to_string()).collect()
-}
-
 fn os(v: &[&str]) -> Vec<OsString> {
     v.iter().map(OsString::from).collect()
-}
-
-/// `os`, with the paths in it spelled as `expand` fills them in on this system (`\` on Windows).
-fn nat(v: &[&str]) -> Vec<OsString> {
-    v.iter().map(|s| OsString::from(if cfg!(windows) { s.replace('/', "\\") } else { s.to_string() })).collect()
-}
-
-#[test]
-fn expand_fills_in_this_systems_spelling() {
-    let repo = Path::new("C:/x/y/");
-    let file = repo.join("src/a.txt");
-    let got = expand("{path} --cwd={repo}", &vars(&file, repo, 1)).unwrap();
-    if cfg!(windows) {
-        assert_eq!(got, os(&[r"C:\x\y\src\a.txt", r"--cwd=C:\x\y"]));
-    } else {
-        assert_eq!(got, os(&["C:/x/y/src/a.txt", "--cwd=C:/x/y"]));
-    }
-}
-
-#[test]
-fn split_separates_on_any_whitespace() {
-    assert_eq!(split("a b").unwrap(), strs(&["a", "b"]));
-    assert_eq!(split("  a\t\tb   c \n").unwrap(), strs(&["a", "b", "c"]));
-    assert_eq!(split("").unwrap(), Vec::<String>::new());
-    assert_eq!(split("   ").unwrap(), Vec::<String>::new());
-}
-
-#[test]
-fn split_groups_quoted_text() {
-    assert_eq!(split(r#"--goto "{path}:{line}""#).unwrap(), strs(&["--goto", "{path}:{line}"]));
-    assert_eq!(split(r#"a"b c"d"#).unwrap(), strs(&["ab cd"]));
-    assert_eq!(split(r#""""#).unwrap(), strs(&[""]));
-    assert_eq!(split(r#"x "" y"#).unwrap(), strs(&["x", "", "y"]));
-}
-
-#[test]
-fn split_keeps_backslashes() {
-    assert_eq!(split(r"C:\dir\ D:\x").unwrap(), strs(&[r"C:\dir\", r"D:\x"]));
-    assert_eq!(split(r#""C:\Program Files\" next"#).unwrap(), strs(&[r"C:\Program Files\", "next"]));
-}
-
-#[test]
-fn split_refuses_an_unmatched_quote() {
-    assert_eq!(split(r#"--goto "{path}"#), Err(TemplateError::UnmatchedQuote));
-    assert_eq!(split(r#"""""#), Err(TemplateError::UnmatchedQuote));
-    assert_eq!(TemplateError::UnmatchedQuote.to_string(), "unmatched quote");
-}
-
-fn vars<'a>(path: &'a Path, repo: &'a Path, line: u32) -> Vars<'a> {
-    Vars { path, line, repo }
-}
-
-#[test]
-fn expand_keeps_a_path_with_spaces_as_one_argument() {
-    let path = Path::new("/home/me/my repo/a file.txt");
-    let repo = Path::new("/home/me/my repo");
-    assert_eq!(expand("{path}", &vars(path, repo, 1)).unwrap(), nat(&["/home/me/my repo/a file.txt"]));
-    assert_eq!(expand("-n {repo}", &vars(path, repo, 1)).unwrap(), nat(&["-n", "/home/me/my repo"]));
-}
-
-#[test]
-fn expand_fills_placeholders_inside_arguments() {
-    let path = Path::new("/r/src/main.rs");
-    let repo = Path::new("/r");
-    let v = vars(path, repo, 42);
-    assert_eq!(expand("--goto={path}:{line}", &v).unwrap(), nat(&["--goto=/r/src/main.rs:42"]));
-    assert_eq!(expand(r#"--goto "{path}:{line}" --cwd={repo}"#, &v).unwrap(), nat(&["--goto", "/r/src/main.rs:42", "--cwd=/r"]));
-    assert_eq!(expand("{line}{line}", &v).unwrap(), nat(&["4242"]));
-}
-
-#[test]
-fn expand_is_single_pass() {
-    // A repository folder literally named {line} is not expanded again.
-    let repo = Path::new("/x/{line}");
-    let path = Path::new("/x/{line}/{repo}.txt");
-    assert_eq!(expand("{repo} {path}", &vars(path, repo, 7)).unwrap(), nat(&["/x/{line}", "/x/{line}/{repo}.txt"]));
-}
-
-#[test]
-fn expand_keeps_unknown_names_and_lone_braces() {
-    let p = Path::new("/r/a");
-    let v = vars(p, Path::new("/r"), 1);
-    assert_eq!(expand("{foo} { } {path {} }{line}", &v).unwrap(), nat(&["{foo}", "{", "}", "{path", "{}", "}1"]));
-    assert_eq!(expand(r#"--x "{path}"#, &v), Err(TemplateError::UnmatchedQuote));
-}
-
-#[cfg(unix)]
-#[test]
-fn expand_keeps_non_utf8_paths() {
-    use std::os::unix::ffi::OsStrExt;
-    let raw = OsStr::from_bytes(b"/r/caf\xe9.txt");
-    let args = expand("--file={path}", &vars(Path::new(raw), Path::new("/r"), 1)).unwrap();
-    assert_eq!(args[0].as_bytes(), b"--file=/r/caf\xe9.txt");
-}
-
-#[test]
-fn unknown_placeholders_lists_each_once() {
-    assert_eq!(unknown_placeholders("{path} {foo} {foo} {bar}"), strs(&["{foo}", "{bar}"]));
-    assert!(unknown_placeholders("{path}:{line} {repo}").is_empty());
-    assert!(unknown_placeholders("{ } {} { path} {a-b}").is_empty(), "only {{identifier}} counts");
-    assert_eq!(unknown_placeholders("--col={col}"), strs(&["{col}"]));
 }
 
 #[test]
@@ -235,15 +130,28 @@ fn unix_path_search_needs_the_executable_bit() {
 #[test]
 fn command_line_opens_app_bundles_on_macos() {
     let args = os(&["/r/file.txt"]);
-    let (p, a) = command_line(Path::new("/Applications/Ed.app"), &args, true);
+    let (p, a) = command_line(Path::new("/Applications/Ed.app"), &args, true, false);
     assert_eq!(p, PathBuf::from("open"));
     assert_eq!(a, os(&["-a", "/Applications/Ed.app", "/r/file.txt"]));
     // Options are the app's, not open's: they go after --args, to a new instance.
-    let (p, a) = command_line(Path::new("/Applications/Ed.app"), &os(&["--goto", "/r/file.txt:3"]), true);
+    let (p, a) = command_line(Path::new("/Applications/Ed.app"), &os(&["--goto", "/r/file.txt:3"]), true, false);
     assert_eq!(p, PathBuf::from("open"));
     assert_eq!(a, os(&["-n", "-a", "/Applications/Ed.app", "--args", "--goto", "/r/file.txt:3"]));
-    assert_eq!(command_line(Path::new("/Applications/Ed.app"), &args, false), (PathBuf::from("/Applications/Ed.app"), args.clone()));
-    assert_eq!(command_line(Path::new("/usr/bin/ed"), &args, true), (PathBuf::from("/usr/bin/ed"), args.clone()));
+    assert_eq!(command_line(Path::new("/Applications/Ed.app"), &args, false, false), (PathBuf::from("/Applications/Ed.app"), args.clone()));
+    assert_eq!(command_line(Path::new("/usr/bin/ed"), &args, true, false), (PathBuf::from("/usr/bin/ed"), args.clone()));
+}
+
+#[test]
+fn waiting_for_an_app_bundle_runs_open_with_wait() {
+    let args = os(&["/t/base", "/r/out.txt"]);
+    let (p, a) = command_line(Path::new("/Applications/Merge.app"), &args, true, true);
+    assert_eq!(p, PathBuf::from("open"));
+    assert_eq!(a, os(&["-W", "-a", "/Applications/Merge.app", "/t/base", "/r/out.txt"]));
+    let (_, a) = command_line(Path::new("/Applications/Merge.app"), &os(&["--auto", "/r/out.txt"]), true, true);
+    assert_eq!(a, os(&["-W", "-n", "-a", "/Applications/Merge.app", "--args", "--auto", "/r/out.txt"]));
+    // Elsewhere, and for plain programs, waiting changes nothing.
+    assert_eq!(command_line(Path::new("/usr/bin/merge"), &args, true, true), (PathBuf::from("/usr/bin/merge"), args.clone()));
+    assert_eq!(command_line(Path::new("/Applications/Merge.app"), &args, false, true).0, PathBuf::from("/Applications/Merge.app"));
 }
 
 #[test]
@@ -300,5 +208,20 @@ fn spawn_starts_a_program_from_path() {
     let dir = crate::testutil::scratch_repo("tools-spawn");
     let l = Launch { program: PathBuf::from("git"), args: os(&["--version"]), cwd: dir.clone(), own_console: false };
     spawn(&l).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn run_to_exit_reports_the_exit_code_and_what_it_said() {
+    let dir = crate::testutil::scratch_repo("tools-run-to-exit");
+    let l = Launch { program: PathBuf::from("git"), args: os(&["--version"]), cwd: dir.clone(), own_console: false };
+    let r = run_to_exit(&l).unwrap();
+    assert_eq!(r.code, Some(0));
+    assert!(r.success());
+    let r = run_to_exit(&Launch { args: os(&["no-such-command"]), ..l.clone() }).unwrap();
+    assert!(!r.success() && r.code.is_some(), "{r:?}");
+    assert!(!r.said.is_empty() && !r.said.contains('\n'), "{r:?}");
+    let missing = Launch { program: PathBuf::from(format!("trellis-no-such-tool-{}", std::process::id())), ..l };
+    assert!(run_to_exit(&missing).unwrap_err().is_not_found());
     let _ = std::fs::remove_dir_all(&dir);
 }

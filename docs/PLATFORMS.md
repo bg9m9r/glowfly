@@ -180,7 +180,13 @@ second one next to it.
 6. **Search PATH like the OS does** (`external_tools.rs`): on Unix the file needs an exec bit;
    on Windows match names in any case by listing the folder and try `PATHEXT`. Never search the
    cwd.
-7. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
+7. **Copies for external tools go only under `external_tools::temp::root()`:** `trellis-tools` in
+   the temporary folder, used on Unix only when it is a real folder this user owns with mode
+   0700, else `tool-files` in the cache folder. Copies are written through `persist`, marked
+   read-only, and keep the file's name (`names::portable`) so tools can highlight it. They hold
+   the stored bytes unless the repository is trusted, when `git cat-file --filters` gives the
+   checkout form. A macOS application bundle that Trellis waits for runs through `open -W`.
+8. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
    libdbus) on Linux. A missing notification server is an error the confirmation reports;
    never call it from update or views (`tests/layering.rs`).

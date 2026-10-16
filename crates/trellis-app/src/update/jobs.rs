@@ -1,5 +1,5 @@
 //! Starting the single active job: busy check, the trust gate (update/trust.rs), and the
-//! RunningJob plus effect it runs.
+//! RunningJob plus effect it runs (`begin_tool_job` for the merge tool, which skips the gate).
 
 use crate::effect::Effect;
 use crate::state::trust::Created;
@@ -94,6 +94,30 @@ pub(super) fn begin_job(
     let job =
         RunningJob { label: label.into(), workdir: None, quiet: false, clear_commit: false, then_push: false, then_open: None, keeps_undo };
     launch(st, job, None, effect, fx)
+}
+
+/// Makes a job labelled `label` the active one in the active tab's repository, running the
+/// effect `effect` builds for that folder, unless another job is running (said in the log).
+/// Unlike `begin_job`, the trust prompt never holds it: it is for a program the user chose in
+/// their own settings (the merge tool), and its copies of the repository's files are made
+/// without the repository's filters while the repository is not trusted, so nothing the
+/// repository configures runs.
+pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce(PathBuf) -> Effect, fx: &mut Vec<Effect>) -> Started {
+    if busy(st, false) {
+        return Started::No;
+    }
+    let Some(cwd) = st.workdir() else { return Started::No };
+    st.job = Some(RunningJob {
+        label: label.into(),
+        workdir: Some(cwd.clone()),
+        quiet: false,
+        clear_commit: false,
+        then_push: false,
+        then_open: None,
+        keeps_undo: false,
+    });
+    fx.push(effect(cwd));
+    Started::Now
 }
 
 /// Makes a job labelled `label` that runs in `cwd` (outside the active tab's repository: a clone
