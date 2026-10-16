@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn caller_env_overrides_the_defaults() {
-        let dir = std::env::temp_dir();
+        let dir = crate::paths::temp_dir();
         let (ok, out) = run_with_input(&dir, &args(&["var", "GIT_EDITOR"]), "", &[("GIT_EDITOR", "foo")]);
         assert!(ok, "{out}");
         assert_eq!(out.trim(), "foo");
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn no_prompts_fails_instead_of_asking() {
-        let dir = std::env::temp_dir();
+        let dir = crate::paths::temp_dir();
         let start = std::time::Instant::now();
         let a = args(&["-c", "credential.helper=", "credential", "fill"]);
         let (ok, out) = run_with_input(&dir, &a, "protocol=https\nhost=example.invalid\n\n", NO_PROMPTS);
@@ -276,7 +276,7 @@ mod tests {
 
     #[test]
     fn stdout_and_stderr_stay_apart() {
-        let dir = std::env::temp_dir();
+        let dir = crate::paths::temp_dir();
         let out = output(&dir, &args(&["version"]), "", &[], None);
         assert!(out.ok && out.code == Some(0) && out.stdout.starts_with("git version") && out.stderr.is_empty(), "{out:?}");
         let out = output(&dir, &args(&["config", "--no-such-option"]), "", &[], None);
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn output_bytes_keeps_raw_stdout() {
-        let dir = std::env::temp_dir();
+        let dir = crate::paths::temp_dir();
         let a = args(&["-c", r"alias.b=!printf '\377\376'", "b"]);
         let (out, bytes) = output_bytes(&dir, &a, &[], None);
         assert!(out.ok, "{out:?}");
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn messages_are_untranslated() {
-        let dir = std::env::temp_dir();
+        let dir = crate::paths::temp_dir();
         let env = |k: &str| {
             let a = args(&["-c", &format!("alias.e=!echo ${k}"), "e"]);
             output(&dir, &a, "", &[("LANG", "de_DE.UTF-8")], None).stdout
@@ -309,7 +309,7 @@ mod tests {
     #[test]
     fn large_input_does_not_deadlock() {
         // Several MB in and out: writing stdin before draining stdout would block both sides.
-        let dir = std::env::temp_dir();
+        let dir = crate::paths::temp_dir();
         let input = ("x".repeat(64) + "\n").repeat(100_000);
         let a = args(&["-c", "alias.cat=!cat", "cat"]);
         let out = output(&dir, &a, &input, &[], Some(Duration::from_secs(60)));
@@ -332,13 +332,13 @@ mod tests {
         for bad in ["", "hello", "git version", "git version x.y.z", "git version 2"] {
             assert_eq!(parse_version(bad), None, "{bad}");
         }
-        let v = version(&std::env::temp_dir()).expect("git runs");
+        let v = version(&crate::paths::temp_dir()).expect("git runs");
         assert!((v.0, v.1) >= crate::conflict_check::MIN_GIT, "{v:?}");
     }
 
     #[test]
     fn timeout_kills_the_command() {
-        let dir = std::env::temp_dir();
+        let dir = crate::paths::temp_dir();
         let start = Instant::now();
         let a = args(&["-c", "alias.wait=!sleep 30", "wait"]);
         let out = output(&dir, &a, "", &[], Some(Duration::from_millis(300)));

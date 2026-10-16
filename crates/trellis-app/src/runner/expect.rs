@@ -24,7 +24,7 @@ mod tests {
 
     #[test]
     fn checks_the_revision_still_names_the_commit() {
-        let dir = std::env::temp_dir().join(format!("trellis-app-test-expect-{}", std::process::id()));
+        let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-expect-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let git = |a: &[&str]| {

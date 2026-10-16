@@ -102,7 +102,7 @@ fn git_asks_through_the_helper() {
     let vars: Vec<(&str, String)> = gitcli::askpass_vars(&env).into_iter().map(|(k, v)| (k, os(v))).collect();
     let mut env: Vec<(&str, &str)> = vars.iter().map(|(k, v)| (*k, v.as_str())).collect();
     env.push(("GCM_INTERACTIVE", "never"));
-    let dir = std::env::temp_dir();
+    let dir = trellis_core::paths::temp_dir();
     let fill = args(&["-c", "credential.helper=", "credential", "fill"]);
     let input = "protocol=https\nhost=example.invalid\n\n";
 

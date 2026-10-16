@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn spawns_a_command_and_reports_output_and_exit() {
-        let dir = std::env::temp_dir().join(format!("trellis-pty-{}", std::process::id()));
+        let dir = crate::paths::temp_dir().join(format!("trellis-pty-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let shell = if cfg!(windows) {
             ShellCommand { program: "cmd.exe".into(), args: vec!["/C".into(), "echo trellis-pty".into()] }

@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn worktree_paths_are_classified() {
-        let wd = std::env::temp_dir().join("trellis-watch-classify-missing").join("wd");
+        let wd = crate::paths::temp_dir().join("trellis-watch-classify-missing").join("wd");
         let paths = WatchPaths::new(&wd, &wd.join(".git"));
         let mut seen = Vec::new();
         let mut ignored = |rel: &str| {
@@ -233,12 +233,12 @@ mod tests {
         assert_eq!(paths.classify(&wd.join("vendor/sub/.git/HEAD"), Touch::Modified, &mut ignored), Change::None);
         assert_eq!(paths.classify(&wd.join(".git").join("index"), Touch::Modified, &mut ignored), Change::Status, "the git rule wins");
         assert_eq!(paths.classify(&wd.join("target").join("debug").join("x.o"), Touch::Modified, &mut ignored), Change::None);
-        let outside = std::env::temp_dir().join("trellis-watch-elsewhere").join("a.rs");
+        let outside = crate::paths::temp_dir().join("trellis-watch-elsewhere").join("a.rs");
         assert_eq!(paths.classify(&outside, Touch::Modified, &mut ignored), Change::None);
         assert_eq!(seen, ["src/a.rs", "target/debug/x.o"], "relative and '/'-separated");
 
         // A linked worktree: the git dir lives elsewhere and `.git` is a file in the workdir.
-        let gd = std::env::temp_dir().join("trellis-watch-classify-missing").join("main").join(".git").join("worktrees").join("wd");
+        let gd = crate::paths::temp_dir().join("trellis-watch-classify-missing").join("main").join(".git").join("worktrees").join("wd");
         let linked = WatchPaths::new(&wd, &gd);
         assert_eq!(linked.classify(&gd.join("HEAD"), Touch::Modified, &mut |_| false), Change::Full);
         assert_eq!(linked.classify(&wd.join(".git"), Touch::Modified, &mut |_| false), Change::None);
@@ -268,7 +268,7 @@ mod tests {
         ig.clear();
         assert!(ig.dirs.is_empty());
 
-        let plain = std::env::temp_dir().join(format!("trellis-watch-plain-{}", std::process::id()));
+        let plain = crate::paths::temp_dir().join(format!("trellis-watch-plain-{}", std::process::id()));
         std::fs::create_dir_all(&plain).unwrap();
         let mut none = Ignores::open(&plain);
         assert!(!none.is_ignored("target/debug/x.o"));

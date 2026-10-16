@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn linked_worktree_folder_modifies_are_quiet() {
         use notify::event::{CreateKind, DataChange, MetadataKind, RemoveKind, RenameMode};
-        let wd = std::env::temp_dir().join("trellis-watch-kinds-missing");
+        let wd = trellis_core::paths::temp_dir().join("trellis-watch-kinds-missing");
         let gd = wd.join(".git");
         let paths = WatchPaths::new(&wd, &gd);
         let mut ignores = Ignores::open(&wd);
@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn watcher_reports_an_outside_edit() {
-        let dir: PathBuf = std::env::temp_dir().join(format!("trellis-app-test-watch-{}", std::process::id()));
+        let dir: PathBuf = trellis_core::paths::temp_dir().join(format!("trellis-app-test-watch-{}", std::process::id()));
         init_repo(&dir);
 
         let (tx, rx) = std::sync::mpsc::channel();
@@ -336,7 +336,7 @@ mod tests {
 
     #[test]
     fn index_writes_in_a_linked_worktree_stay_quiet() {
-        let dir: PathBuf = std::env::temp_dir().join(format!("trellis-app-test-watch-wt-{}", std::process::id()));
+        let dir: PathBuf = trellis_core::paths::temp_dir().join(format!("trellis-app-test-watch-wt-{}", std::process::id()));
         let linked = dir.with_file_name(format!("trellis-app-test-watch-wt-{}-linked", std::process::id()));
         let _ = std::fs::remove_dir_all(&linked);
         init_repo(&dir);

@@ -54,12 +54,12 @@ mod tests {
     }
 
     fn launch(program: &str) -> Launch {
-        Launch { program: program.into(), args: Vec::new(), cwd: std::env::temp_dir(), own_console: false }
+        Launch { program: program.into(), args: Vec::new(), cwd: trellis_core::paths::temp_dir(), own_console: false }
     }
 
     #[test]
     fn a_missing_file_is_reported_before_anything_starts() {
-        let gone = std::env::temp_dir().join(format!("trellis-no-such-file-{}", std::process::id())).join("gone.txt");
+        let gone = trellis_core::paths::temp_dir().join(format!("trellis-no-such-file-{}", std::process::id())).join("gone.txt");
         // `git` would start; the missing file stops it first.
         let m =
             run(ToolEffect::Launch { kind: ToolKind::Editor, launch: launch("git"), target: "gone.txt".into(), check: Some(gone.clone()) });

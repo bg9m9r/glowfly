@@ -19,7 +19,7 @@ fn head(dir: &Path) -> Oid {
 
 /// main with three commits, each adding a file.
 fn repo(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("trellis-seq-editor-{name}-{}", std::process::id()));
+    let dir = trellis_core::paths::temp_dir().join(format!("trellis-seq-editor-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "-b", "main"]);

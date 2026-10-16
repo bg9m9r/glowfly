@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn missing_paths_are_logged_without_launching_anything() {
-        let dir = std::env::temp_dir().join(format!("trellis-no-such-file-{}", std::process::id()));
+        let dir = trellis_core::paths::temp_dir().join(format!("trellis-no-such-file-{}", std::process::id()));
         let p = dir.join("gone.txt");
         for m in [open_path(&dir, "gone.txt", false), open_path(&dir, "gone.txt", true), reveal(&p)] {
             let (ok, text) = logged(m);

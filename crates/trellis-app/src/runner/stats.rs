@@ -110,7 +110,7 @@ mod tests {
         w.slot().running = true;
         let a = Oid::from_bytes(&[1; 20]).unwrap();
         let b = Oid::from_bytes(&[2; 20]).unwrap();
-        let dir = std::env::temp_dir().join("trellis-stats-no-repo");
+        let dir = trellis_core::paths::temp_dir().join("trellis-stats-no-repo");
         w.submit(dir.clone(), vec![a], tx.clone(), NoWake);
         w.submit(dir.clone(), vec![b], tx.clone(), NoWake);
         let Ok(Msg::Scoped { workdir, msg }) = rx.recv_timeout(Duration::from_secs(5)) else { panic!("a report") };
