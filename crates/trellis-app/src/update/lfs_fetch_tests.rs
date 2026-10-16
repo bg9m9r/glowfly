@@ -42,6 +42,7 @@ fn end(st: &mut AppState, label: &str, quiet: bool, ok: bool) -> Vec<Effect> {
         then_open: None,
         then_push: false,
         then_pr: None,
+        then_link: false,
         keeps_undo: true,
     });
     update(st, Msg::Job(JobMsg::JobDone { ok, output: String::new(), undo: None }), Instant::now())

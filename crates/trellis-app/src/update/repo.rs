@@ -264,6 +264,7 @@ pub(super) fn close_diff(st: &mut AppState) {
 fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
     st.known.learn_snapshot(&snap);
     if kind == LoadKind::Open && super::tabs::open_elsewhere(st, &snap, fx) {
+        super::deep_link_open::ready(st, now, fx);
         return;
     }
     st.view.base_set = None;
@@ -338,6 +339,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::onboarding::loaded(st, kind);
     let slow = st.snap.as_ref().and_then(|s| s.slow_status.clone());
     super::status_tip::check(st, slow.as_ref(), now, fx);
+    super::deep_link_open::ready(st, now, fx);
     if reload {
         super::refresh::reload_after(st, fx);
     }

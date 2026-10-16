@@ -78,6 +78,7 @@ impl Effect {
             Effect::Notify(_) => "desktop-note",
             Effect::Logs(_) => "logs",
             Effect::PullRequest(e) => e.name(),
+            Effect::DeepLink(e) => e.name(),
             Effect::Ui(_) => "ui",
         }
     }

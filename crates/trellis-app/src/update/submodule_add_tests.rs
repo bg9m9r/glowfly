@@ -172,6 +172,7 @@ fn add_waits_for_a_good_form() {
         then_open: None,
         then_push: false,
         then_pr: None,
+        then_link: false,
         keeps_undo: true,
     });
     assert!(run(&mut st, sm(SubmoduleMsg::Add)).is_empty());

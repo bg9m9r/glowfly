@@ -52,6 +52,7 @@ pub(super) fn running(st: &mut AppState) {
         clear_commit: false,
         then_push: false,
         then_pr: None,
+        then_link: false,
         then_open: None,
         keeps_undo: true,
     });
@@ -108,7 +109,8 @@ fn remote_group_menu() {
     assert!(h.query_by_label("No branches yet. Fetch this remote to load them.").is_some());
     let at = center(&h, "origin");
     click(&mut h, at, PointerButton::Secondary);
-    for item in ["Fetch origin", "Edit remote…", "Copy fetch URL", "Copy push URL", "Remove remote…"] {
+    for item in ["Fetch origin", "Edit remote…", "Copy fetch URL", "Copy link to repository on origin", "Copy push URL", "Remove remote…"]
+    {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
     // example.com is no hosting service Trellis knows: its page opens, but there are no forks.
@@ -127,6 +129,12 @@ fn remote_group_menu() {
     h.get_by_label("Copy fetch URL").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Copy(u) if u == "D:/backups/app.git")));
+    let at = center(&h, "backup");
+    click(&mut h, at, PointerButton::Secondary);
+    h.get_by_label("Copy link to repository on backup").click();
+    h.run();
+    let want = crate::deep_link::LinkTarget::Repository { remote: Some("backup".into()) };
+    assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
     h.press_key(eframe::egui::Key::Escape);
     h.run();
     drop(h);

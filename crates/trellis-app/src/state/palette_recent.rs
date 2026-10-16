@@ -121,6 +121,8 @@ impl PaletteCommand {
             C::Theme(ThemeChoice::Sand) => "theme-sand",
             C::Theme(ThemeChoice::Custom(_)) => return None,
             C::Checkout(_) | C::CheckoutRemote { .. } | C::CheckoutTag(_) | C::OpenRecent(_) => return None,
+            C::CopyLink(crate::deep_link::LinkTarget::Repository { .. }) => "copy-repo-link",
+            C::CopyLink(_) => return None,
             C::FileHistory => "file-history",
             C::Blame => "blame",
             C::ReviewTrust => "review-trust",

@@ -81,6 +81,7 @@ pub(super) fn open_failed(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.snap.is_some() {
         return;
     }
+    super::deep_link_open::open_failed(st);
     match st.tab_return.take() {
         Some(back) if back < st.tabs.len() && st.tabs.len() > 1 => {
             let failed = st.active_tab;

@@ -27,7 +27,7 @@ pub(super) fn scp_like(url: &str) -> bool {
 
 /// Splits an https, http, ssh or scp-like remote URL into (host, decoded path segments, is
 /// ssh). The host is lowercased and keeps an https port; SSH aliases become their web host.
-pub(super) fn split_url(url: &str) -> Option<(String, Vec<String>, bool)> {
+pub(crate) fn split_url(url: &str) -> Option<(String, Vec<String>, bool)> {
     let url = url.trim().trim_end_matches('/');
     let url = url.strip_suffix(".git").unwrap_or(url);
     let (host, path, ssh) = if let Some(rest) = url.strip_prefix("https://").or_else(|| url.strip_prefix("http://")) {

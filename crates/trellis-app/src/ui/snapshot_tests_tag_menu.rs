@@ -19,11 +19,12 @@ use std::path::PathBuf;
 use trellis_core::repo::LoadOptions;
 use trellis_core::settings::{FilterOp, GraphFilter, ThemeChoice};
 
-const ITEMS: [&str; 11] = [
+const ITEMS: [&str; 12] = [
     "Checkout (detached)",
     "Annotate…",
     "Hide v0.1.0 in graph",
     "Solo v0.1.0",
+    "Copy link to this tag",
     "Push to origin",
     "Push to backup",
     "Push to all remotes",
@@ -93,6 +94,12 @@ fn tag_row_menu() {
     h.run();
     let want = TagMsg::OpenAnnotate { tag: "v0.1.0".into() };
     assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
+
+    open_menu(&mut h);
+    h.get_by_label("Copy link to this tag").click();
+    h.run();
+    let want = crate::deep_link::LinkTarget::Tag("v0.1.0".into());
+    assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
 
     open_menu(&mut h);
     h.get_by_label("Hide v0.1.0 in graph").click();

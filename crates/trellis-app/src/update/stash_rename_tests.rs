@@ -129,6 +129,7 @@ fn refusals_leave_or_close_the_dialog() {
         then_open: None,
         then_push: false,
         then_pr: None,
+        then_link: false,
         keeps_undo: true,
     });
     assert!(run(&mut st, rename(first.oid, "renamed")).is_empty());

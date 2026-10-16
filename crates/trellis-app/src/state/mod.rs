@@ -11,6 +11,7 @@ pub mod clone_service;
 pub mod commit;
 pub mod conflict;
 pub mod conflict_check;
+pub mod deep_link;
 pub mod diff_nav;
 pub mod files;
 mod forge;
@@ -141,6 +142,9 @@ pub struct RunningJob {
     pub then_push: bool,
     /// Open the create pull request dialog for this branch once this (push) job succeeds.
     pub then_pr: Option<push_pr::PrStart>,
+    /// Check the repository again for a pending link's target once this (fetch) job succeeds
+    /// (update/deep_link_open.rs).
+    pub then_link: bool,
     /// The job can't make the undo history wrong (fetch, push, or an undo/redo itself).
     pub keeps_undo: bool,
 }
@@ -148,7 +152,11 @@ pub struct RunningJob {
 /// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter
 /// field. `ConflictReport` is a conflict check the user asked for (branch menus, Check again).
 pub enum Modal {
-    NewBranch { start: Option<String>, name: String, checkout: bool },
+    NewBranch {
+        start: Option<String>,
+        name: String,
+        checkout: bool,
+    },
     NewTag(tags::TagForm),
     AnnotateTag(tags::AnnotateForm),
     NewWorktree(worktrees::WorktreeForm),
@@ -156,18 +164,43 @@ pub enum Modal {
     LockWorktree(worktree_manage::LockForm),
     AddSubmodule(submodules::add::AddForm),
     RemoveSubmodule(submodules::remove::RemoveForm),
-    Confirm { title: String, body: String, button: String, then: Box<Msg> },
+    Confirm {
+        title: String,
+        body: String,
+        button: String,
+        then: Box<Msg>,
+    },
     Clone(clone::CloneForm),
     Init(init::InitForm),
-    CreatePr { source: String, target: String, targets: Vec<String>, title: String, description: String, draft: bool, items: String },
+    CreatePr {
+        source: String,
+        target: String,
+        targets: Vec<String>,
+        title: String,
+        description: String,
+        draft: bool,
+        items: String,
+    },
     Publish(Box<publish::PublishForm>),
-    RenameBranch { old: String, name: String },
+    RenameBranch {
+        old: String,
+        name: String,
+    },
     RenameStash(stashes::RenameStashForm),
     StashPush(stashes::StashPushForm),
-    SetUpstream { branch: String, remote: String, name: String },
+    SetUpstream {
+        branch: String,
+        remote: String,
+        name: String,
+    },
     NewFile(files::PathForm),
-    RenameFile { old: String, form: files::PathForm },
-    Shortcuts { filter: String },
+    RenameFile {
+        old: String,
+        form: files::PathForm,
+    },
+    Shortcuts {
+        filter: String,
+    },
     GitFlowStart(gitflow::StartForm),
     GitFlowFinish(gitflow::FinishForm),
     Remote(remotes::RemoteForm),
@@ -176,6 +209,8 @@ pub enum Modal {
     Trust(trust::TrustPrompt),
     ConflictReport(conflict_check::ConflictReport),
     ForgeFilter(Box<forge_filter_form::FilterForm>),
+    /// An invalid link, a linked repository not found, or several copies to choose from.
+    DeepLink(deep_link::LinkDialog),
 }
 
 /// The most commits "Load more" goes up to.
@@ -294,6 +329,8 @@ pub struct AppState {
     pub tag_job: Option<tags::RemoteTagJob>,
     /// The running Apply patch job (update/patch.rs), for its headline.
     pub patch_apply: Option<patch::PendingApply>,
+    /// The trellis:// link being opened and the scheme registration (global).
+    pub deep_link: deep_link::DeepLinkState,
     /// The profile a switch is writing to the global git config (app-wide: the config is
     /// global).
     pub profile_switch: Option<trellis_core::settings::ProfileId>,
@@ -374,6 +411,7 @@ impl AppState {
             gitflow_finish: None,
             tag_job: None,
             patch_apply: None,
+            deep_link: Default::default(),
             profile_switch: None,
             profile_switch_edits: Vec::new(),
             trust: Default::default(),

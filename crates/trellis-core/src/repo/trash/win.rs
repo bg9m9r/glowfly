@@ -2,14 +2,10 @@
 //! what a refusal means.
 
 use super::{BinSettings, TrashProblem, TrashRefusal, problem_of_hresult, problem_of_win32};
+use crate::native_path::wide;
 use std::ffi::OsStr;
-use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use windows::core::PCWSTR;
-
-fn wide(s: &OsStr) -> Vec<u16> {
-    s.encode_wide().chain(std::iter::once(0)).collect()
-}
 
 pub(super) fn has_recycle_bin(root: &OsStr) -> Result<(), String> {
     use windows::Win32::UI::Shell::{SHQUERYRBINFO, SHQueryRecycleBinW};

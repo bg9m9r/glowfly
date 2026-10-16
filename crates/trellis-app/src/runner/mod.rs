@@ -37,6 +37,7 @@ mod blame;
 mod clone;
 mod config;
 mod conflict_check;
+mod deep_link;
 mod expect;
 pub(crate) mod files;
 mod forge_calls;
@@ -47,6 +48,7 @@ mod git_ops;
 mod guard;
 mod highlight;
 mod init;
+mod instance;
 mod keys;
 mod logs;
 mod notify;
@@ -92,6 +94,9 @@ pub struct Runner<W: Waker + Clone> {
     watch: crate::watcher::WatchSlot,
     /// The credential-prompt listener, once started (never in tests).
     askpass: Option<Arc<trellis_core::askpass::Server>>,
+    /// The listener for links a second Trellis process hands over, once started (never in
+    /// tests); dropping it removes the instance file.
+    instance: Option<trellis_core::instance::Listener>,
     /// Counts HighlightDiff jobs started: a job whose number is no longer the latest stops.
     highlight_epoch: Arc<AtomicU64>,
     /// The built-in terminal's shell sessions.
@@ -117,6 +122,7 @@ impl<W: Waker + Clone> Runner<W> {
             waker,
             watch: Default::default(),
             askpass: None,
+            instance: None,
             highlight_epoch: Default::default(),
             terminals: Default::default(),
             saves: Default::default(),
@@ -366,6 +372,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Init(e) => Some(init::run(e)),
         Effect::Notify(note) => notify::run(note),
         Effect::PullRequest(e) => Some(pull_request::run(e)),
+        Effect::DeepLink(e) => Some(deep_link::run(e)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

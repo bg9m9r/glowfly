@@ -4,6 +4,7 @@
 use super::common::{menu_item, short};
 use super::ref_visibility;
 use super::theme::color;
+use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
@@ -56,6 +57,7 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, msgs: &mut Vec<Msg>) {
     }
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(sha.clone()));
     menu_item(msgs, ui, "Copy commit message", Msg::Copy(c.summary.clone()));
+    menu_item(msgs, ui, "Copy link to this commit", Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Commit(oid))));
 }
 
 /// The menu for a row of a multi-selection: actions on all the selected commits.
@@ -132,6 +134,8 @@ pub fn remote_branch_menu(
         }
     }
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(full.clone()));
+    let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
+    menu_item(msgs, ui, format!("Copy link to branch {full}"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
     ui.separator();
     ref_visibility::menu_items(ui, &format!("refs/remotes/{full}"), &full, filter, false, msgs);
     ui.separator();

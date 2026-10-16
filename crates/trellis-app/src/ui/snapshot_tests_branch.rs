@@ -93,6 +93,11 @@ fn branch_menu() {
     h.get_by_label("Fast-forward search to origin/search").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Branch(BranchMsg::FastForwardBranch(b)) if b == "search")));
+    open_menu(&mut h);
+    h.get_by_label("Copy link to branch search").click();
+    h.run();
+    let want = crate::deep_link::LinkTarget::LocalBranch("search".into());
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
     drop(h);
 
     // Diverged: no fast-forward, and the branch can be deleted together with origin/search.

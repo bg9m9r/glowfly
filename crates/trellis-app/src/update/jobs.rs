@@ -20,6 +20,8 @@ pub(super) struct JobSpec {
     pub then_push: bool,
     /// Open the create pull request dialog once the job (a push) succeeds.
     pub then_pr: Option<PrStart>,
+    /// Check the repository again for a pending link's target once the job (a fetch) ends.
+    pub then_link: bool,
     /// Open this repository in the active tab once the job succeeds; how it was made decides
     /// whether it is trusted (update/trust.rs).
     pub then_open: Option<(PathBuf, Created)>,
@@ -40,6 +42,7 @@ impl JobSpec {
             clear_commit: false,
             then_push: false,
             then_pr: None,
+            then_link: false,
             then_open: None,
             write_file: None,
             record: None,
@@ -76,6 +79,7 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         clear_commit: spec.clear_commit,
         then_push: spec.then_push,
         then_pr: spec.then_pr,
+        then_link: spec.then_link,
         then_open: spec.then_open,
         keeps_undo: super::undo::keeps_history(&spec.cmds),
     };
@@ -103,6 +107,7 @@ pub(super) fn begin_job(
         clear_commit: false,
         then_push: false,
         then_pr: None,
+        then_link: false,
         then_open: None,
         keeps_undo,
     };
@@ -128,6 +133,7 @@ pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce
         clear_commit: false,
         then_push: false,
         then_pr: None,
+        then_link: false,
         then_open: None,
         keeps_undo: true,
     });
@@ -153,6 +159,7 @@ pub(super) fn start_effect_job(
         clear_commit: false,
         then_push: false,
         then_pr: None,
+        then_link: false,
         then_open,
         keeps_undo: false,
     };

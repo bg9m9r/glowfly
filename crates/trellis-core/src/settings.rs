@@ -22,7 +22,7 @@ pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use file::{LoadProblem, settings_file};
 pub use forge_filters::RepoForgeFilters;
 pub use graph_filter::{FilterOp, GraphFilter};
-pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir};
+pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir, runtime_dir, xdg_data_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};

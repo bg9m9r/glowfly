@@ -8,6 +8,7 @@ use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
 use crate::conflict_check::ConflictCheckMsg;
+use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
@@ -84,6 +85,8 @@ pub fn local_branch_menu(
         menu_item(msgs, ui, "Unset upstream", Msg::Branch(BranchMsg::UnsetUpstream(name.to_owned())));
     }
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(name.to_owned()));
+    let link = Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::LocalBranch(name.to_owned())));
+    menu_item(msgs, ui, format!("Copy link to branch {name}"), link);
     ui.separator();
     ref_visibility::menu_items(ui, &format!("refs/heads/{name}"), name, filter, b.is_head, msgs);
     if !b.is_head {

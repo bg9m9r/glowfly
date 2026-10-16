@@ -59,6 +59,7 @@ fn add_to_agent_is_refused_with_a_reason() {
         then_open: None,
         then_push: false,
         then_pr: None,
+        then_link: false,
         keeps_undo: false,
     });
     refused(st, "Wait until Pull finishes");

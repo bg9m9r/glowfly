@@ -19,6 +19,13 @@ pub fn shown(path: &Path) -> String {
     native(path).display().to_string()
 }
 
+/// `s` as a NUL-terminated UTF-16 string for Windows API calls (unpaired surrogates kept).
+#[cfg(windows)]
+pub(crate) fn wide(s: &std::ffi::OsStr) -> Vec<u16> {
+    use std::os::windows::ffi::OsStrExt;
+    s.encode_wide().chain(std::iter::once(0)).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

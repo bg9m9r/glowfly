@@ -15,13 +15,7 @@ pub(super) const PARENT_CHECK_DELAY: Duration = Duration::from_millis(250);
 
 pub(super) fn handle(st: &mut AppState, msg: CloneMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        CloneMsg::Dialog => {
-            let parent = st.recent.first().and_then(|p| p.parent()).map(trellis_core::native_path::shown).unwrap_or_default();
-            let mut form = CloneForm::new(parent);
-            form.service.accounts = listing_accounts(&st.settings.connections);
-            st.modal = Some(Modal::Clone(form));
-            check_parent(st, Duration::ZERO, fx);
-        }
+        CloneMsg::Dialog => open_with(st, None, fx),
         CloneMsg::ParentEdited => check_parent(st, PARENT_CHECK_DELAY, fx),
         CloneMsg::ParentChecked { parent, found } => {
             if let Some(Modal::Clone(form)) = st.modal.as_mut()
@@ -56,6 +50,18 @@ pub(super) fn handle(st: &mut AppState, msg: CloneMsg, now: Instant, fx: &mut Ve
 
 /// Asks whether the open Clone dialog's parent folder exists, after `delay`. An empty field
 /// needs no answer.
+/// Opens the Clone dialog, with `url` filled in (a link's remote).
+pub(super) fn open_with(st: &mut AppState, url: Option<String>, fx: &mut Vec<Effect>) {
+    let parent = st.recent.first().and_then(|p| p.parent()).map(trellis_core::native_path::shown).unwrap_or_default();
+    let mut form = CloneForm::new(parent);
+    form.service.accounts = listing_accounts(&st.settings.connections);
+    if let Some(url) = url {
+        form.url = url;
+    }
+    st.modal = Some(Modal::Clone(form));
+    check_parent(st, Duration::ZERO, fx);
+}
+
 pub(super) fn check_parent(st: &AppState, delay: Duration, fx: &mut Vec<Effect>) {
     if let Some(Modal::Clone(form)) = &st.modal {
         let parent = form.parent.trim();

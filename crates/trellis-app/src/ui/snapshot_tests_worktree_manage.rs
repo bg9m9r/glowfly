@@ -87,6 +87,7 @@ fn worktree_remove_locked() {
         then_open: None,
         then_push: false,
         then_pr: None,
+        then_link: false,
         keeps_undo: true,
     });
     h.run_steps(2);

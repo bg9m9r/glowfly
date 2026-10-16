@@ -1,10 +1,11 @@
 //! The TAGS section of the left panel: one row per tag (a click jumps to its commit) and the row
 //! menu: checkout, annotate a lightweight tag, hide or solo it in the graph, push to each remote
-//! or all of them, delete locally, and delete from each remote or all of them (asked first).
+//! or all of them, copy a link to it, delete locally, and delete from each remote or all of them (asked first).
 
 use super::common::{menu_item, menu_item_if};
 use super::ref_visibility;
 use super::widgets;
+use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::Selection;
@@ -60,6 +61,8 @@ fn menu(ui: &mut egui::Ui, name: &str, snap: &Snapshot, graph: &GraphFilter, idl
     // Never disabled: a tag is never the checked-out branch, and these only change settings.
     ui.separator();
     ref_visibility::menu_items(ui, &format!("refs/tags/{name}"), name, graph, false, msgs);
+    ui.separator();
+    menu_item(msgs, ui, "Copy link to this tag", Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Tag(tag()))));
     if !remotes.is_empty() {
         ui.separator();
         for r in &remotes {

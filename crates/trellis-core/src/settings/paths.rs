@@ -121,6 +121,33 @@ pub fn log_dir() -> Option<PathBuf> {
     log_dir_for(Os::CURRENT, |k| std::env::var_os(k))
 }
 
+/// Where Trellis keeps files that only matter while it runs (the running window's address for
+/// links, `instance`): `$XDG_RUNTIME_DIR/trellis` on Linux (a private, per-login folder), else
+/// the cache folder.
+pub(crate) fn runtime_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
+    match os {
+        Os::Windows | Os::Mac => cache_dir_for(os, env),
+        Os::Xdg => abs_var(&env, "XDG_RUNTIME_DIR").map(|r| r.join("trellis")).or_else(|| cache_dir_for(os, env)),
+    }
+}
+
+pub fn runtime_dir() -> Option<PathBuf> {
+    runtime_dir_for(Os::CURRENT, |k| std::env::var_os(k))
+}
+
+/// The XDG data folder (`$XDG_DATA_HOME`, else `~/.local/share`), where desktop entries go
+/// (`applications/`). Only the XDG layout has one.
+pub(crate) fn data_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
+    match os {
+        Os::Windows | Os::Mac => None,
+        Os::Xdg => abs_var(&env, "XDG_DATA_HOME").or_else(|| abs_var(&env, "HOME").map(|h| h.join(".local").join("share"))),
+    }
+}
+
+pub fn xdg_data_dir() -> Option<PathBuf> {
+    data_dir_for(Os::CURRENT, |k| std::env::var_os(k))
+}
+
 /// The user's home folder as git and its ssh see it: `HOME` (Git for Windows sets it, and a user
 /// may point it elsewhere), else `USERPROFILE` on Windows. Never an empty or relative value,
 /// which would put `.ssh` in the working folder.
@@ -298,6 +325,25 @@ mod tests {
         assert_eq!(log_dir_for(Os::Windows, &env), None);
         assert_eq!(log_dir_for(Os::Mac, &env), None);
         assert_eq!(log_dir_for(Os::Xdg, &env), None);
+    }
+
+    #[test]
+    fn runtime_and_data_dirs_per_platform() {
+        let r = root("runtime");
+        let env = env_of(vec![("HOME", r.join("home")), ("LOCALAPPDATA", r.join("local")), ("XDG_RUNTIME_DIR", r.join("run"))]);
+        for os in [Os::Windows, Os::Mac] {
+            assert_eq!(runtime_dir_for(os, &env), cache_dir_for(os, &env));
+            assert_eq!(data_dir_for(os, &env), None);
+        }
+        assert_eq!(runtime_dir_for(Os::Xdg, &env), Some(r.join("run").join("trellis")));
+        // Unset or relative: the cache folder.
+        let env = env_of(vec![("HOME", r.join("home")), ("XDG_RUNTIME_DIR", PathBuf::from("run"))]);
+        assert_eq!(runtime_dir_for(Os::Xdg, &env), Some(r.join("home").join(".cache").join("trellis")));
+        let env = env_of(vec![("HOME", r.join("home"))]);
+        assert_eq!(runtime_dir_for(Os::Xdg, &env), Some(r.join("home").join(".cache").join("trellis")));
+        assert_eq!(data_dir_for(Os::Xdg, &env), Some(r.join("home").join(".local").join("share")));
+        let env = env_of(vec![("HOME", r.join("home")), ("XDG_DATA_HOME", r.join("data"))]);
+        assert_eq!(data_dir_for(Os::Xdg, &env), Some(r.join("data")));
     }
 
     #[test]

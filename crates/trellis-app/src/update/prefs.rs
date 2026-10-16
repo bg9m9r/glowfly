@@ -19,6 +19,8 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 prefs.jira_project = project;
             }
             st.prefs = Some(prefs);
+            // Which program opens trellis:// links (General), read again at every opening.
+            super::deep_link::check_scheme(st, fx);
             if page == PrefPage::RepoTracker {
                 super::trello::want_boards(st, fx);
             }
@@ -186,12 +188,14 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 FolderPurpose::CloneParent => "Clone into folder",
                 FolderPurpose::HooksPath => "Hooks folder",
                 FolderPurpose::WorktreeParent => "Create the worktree in…",
+                FolderPurpose::LocateLinkedRepo => "Locate the linked repository",
             };
             fx.push(Effect::PickFolder { title: title.into(), purpose });
         }
         PrefsMsg::FolderPicked { purpose, path: Some(path) } => match purpose {
             FolderPurpose::OpenRepo => super::tabs::open(st, path, fx),
             FolderPurpose::WorktreeParent => super::worktrees::parent_picked(st, path),
+            FolderPurpose::LocateLinkedRepo => super::deep_link::located(st, path, fx),
             FolderPurpose::InitRepo => {
                 if let Some(Modal::Init(form)) = st.modal.as_mut() {
                     form.folder = trellis_core::native_path::shown(&path);

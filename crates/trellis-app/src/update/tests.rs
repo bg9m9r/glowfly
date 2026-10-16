@@ -136,6 +136,12 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::Theme(_)
             // The log worker owns the log files (never attached in tests).
             | Effect::Logs(_)
+            // Would read or change which program opens links for the developer's account.
+            | Effect::DeepLink(
+                crate::deep_link::DeepLinkEffect::SchemeStatus
+                    | crate::deep_link::DeepLinkEffect::Register
+                    | crate::deep_link::DeepLinkEffect::Unregister
+            )
     )
 }
 

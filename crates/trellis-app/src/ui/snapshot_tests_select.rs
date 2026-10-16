@@ -176,6 +176,12 @@ fn graph_commit_menu() {
     let exported = h.state().1.iter().find_map(|m| if let Msg::Patch(PatchMsg::Export(o)) = m { Some(o.clone()) } else { None });
     assert_eq!(exported, Some(vec![fix]));
 
+    click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
+    h.get_by_label("Copy link to this commit").click();
+    h.run();
+    let want = crate::deep_link::LinkTarget::Commit(fix);
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
+
     // A merge commit has no patch of its own.
     click(&mut h, pos2(700.0, row_y(merge_row)), PointerButton::Secondary);
     assert!(h.get_by_label("Create patch…").is_disabled());

@@ -544,8 +544,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       logging (the in-session activity log exists)
 - [x] **Command-line companion**: `trellis <path>` and `trellis .` work (subcommands are under
       Later)
-- [ ] **Deep links**: `trellis://` links to a repo, branch, commit or tag (with
-      clone/locate when not found)
+- [x] **Deep links**: `trellis://` links to a repository, branch, commit or tag (named by root
+      commit and remote URL), copied from the branch, tag, remote and commit menus and the
+      palette, opened in the running window with Locate, Clone and Fetch when they don't match,
+      and registered per user in Preferences > General (Windows and XDG desktops)
 - [ ] **Packaging and updates**: the Release workflow publishes zip/tar.gz downloads. Missing:
       installers, an app icon, code signing, file association, auto-update and a release notes
       view
@@ -1511,3 +1513,16 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - A Preferences control to show the slow-status note again or turn it off
 - Report status read timings in the activity log (debug)
 - Refresh `Snapshot.collisions` on status reads so twins can be marked without scanning the index in the worker
+
+### Deep links
+
+- macOS: receive links as Apple events and declare the scheme in the app bundle's Info.plist (with Packaging and updates)
+- Offer to add the link's remote when the repository matched by root commit has no remote with that URL
+- Copy link to a commit or tag on a chosen remote
+- Forward `trellis <path>` to the running window too, not only links
+- A palette step to paste and open a trellis:// link
+- Links to a file or line at a commit, and to a stash or pull request
+- A progress toast while a link is resolved against long recent lists
+- Linux fallback that edits mimeapps.list when xdg-mime isn't installed
+- Show machine-wide or packaged registrations in the Preferences status on Windows
+- An https redirect page so links can be shared where custom schemes aren't clickable

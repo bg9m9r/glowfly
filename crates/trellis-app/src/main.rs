@@ -7,6 +7,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod conflict_check;
+mod deep_link;
 mod effect;
 mod file_op;
 mod git_env;
@@ -70,9 +71,14 @@ fn main() -> eframe::Result {
         tracing::warn!("could not move the settings folder from where an earlier version kept it: {e}");
     }
     // `args_os`: a path needn't be UTF-8 (`env::args` would panic on one).
-    // A relative one is relative to the shell it was typed in, so made absolute here, before the
-    // tabs and recent list keep it.
-    let start = argv.get(1).cloned().map(start_path).map(|p| std::path::absolute(&p).unwrap_or(p));
+    let start = argv.get(1).cloned().map(start_arg);
+    // A link goes to the window already running, when there is one.
+    if let Some(StartArg::Link(text)) = &start {
+        match trellis_core::instance::hand_off(text) {
+            Ok(()) => return Ok(()),
+            Err(e) => tracing::debug!("opening a window for the link: {e}"),
+        }
+    }
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Trellis")
@@ -81,6 +87,25 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start, logs)))))
+}
+
+/// What the command line asks the new window to open.
+pub enum StartArg {
+    /// A repository folder, made absolute.
+    Path(PathBuf),
+    /// A `trellis://` link (forwarded to a running window first).
+    Link(String),
+}
+
+/// Reads the command-line argument: a link (`trellis:` in any case), else a repository path. A
+/// relative path is relative to the shell it was typed in, so it is made absolute here, before
+/// the tabs and recent list keep it.
+fn start_arg(arg: OsString) -> StartArg {
+    if trellis_core::link::looks_like_link(&arg) {
+        return StartArg::Link(arg.to_string_lossy().into_owned());
+    }
+    let p = start_path(arg);
+    StartArg::Path(std::path::absolute(&p).unwrap_or(p))
 }
 
 /// The repository path given on the command line. On Windows, `trellis "C:\My Repo\"` arrives
@@ -176,6 +201,18 @@ mod start_path_tests {
             assert_eq!(start_path(OsString::from(r#"D:""#)), PathBuf::from(r"D:\"));
         }
         assert_eq!(start_path(OsString::from("/w/repo")), PathBuf::from("/w/repo"));
+    }
+
+    #[test]
+    fn links_and_paths_are_told_apart() {
+        let link = |s: &str| matches!(start_arg(OsString::from(s)), StartArg::Link(t) if t == s);
+        assert!(link("trellis://commit/0123456789abcdef0123456789abcdef01234567?root=0123456789abcdef0123456789abcdef01234567"));
+        assert!(link("TRELLIS://repo?root=0123456789abcdef0123456789abcdef01234567"));
+        // The Windows trailing-quote repair is for paths only.
+        assert!(link(r#"trellis://tag/v1?url=x""#));
+        let dir = trellis_core::paths::temp_dir().join("trellis-start-arg");
+        assert!(matches!(start_arg(dir.clone().into_os_string()), StartArg::Path(p) if p == dir));
+        assert!(matches!(start_arg(OsString::from("trellis")), StartArg::Path(p) if p.is_absolute()));
     }
 
     #[cfg(unix)]

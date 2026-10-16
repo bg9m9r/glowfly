@@ -14,6 +14,8 @@ mod palette_checkouts;
 mod palette_gitflow;
 #[path = "palette_logs.rs"]
 mod palette_logs;
+#[path = "palette_link.rs"]
+mod palette_link;
 #[path = "palette_pr.rs"]
 mod palette_pr;
 #[path = "palette_setup.rs"]
@@ -133,6 +135,8 @@ pub enum PaletteCommand {
     /// `git checkout refs/tags/<name>`: the tagged commit, detached.
     CheckoutTag(String),
     OpenRecent(PathBuf),
+    /// Copy a trellis:// link to the repository or a branch.
+    CopyLink(crate::deep_link::LinkTarget),
     /// Enter the file finder; picking a file runs `OpenFileHistory`.
     FileHistory,
     OpenFileHistory(String),
@@ -307,6 +311,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     let toggle = if st.terminal.open { "Hide terminal panel" } else { "Show terminal panel" };
     out.push(entry(C::ToggleTerminal, toggle, "built-in integrated embedded shell console prompt command line toggle"));
     out.push(entry(C::ShowInFileManager, SHOW_REPO_FOLDER, "folder directory explorer finder files browse"));
+    palette_link::link_entries(snap, out);
     out.push(match st.settings.diff_layout {
         DiffLayout::Inline => entry(C::DiffLayout(DiffLayout::Split), "Use split diff layout", "side by side columns two diff view"),
         DiffLayout::Split => entry(C::DiffLayout(DiffLayout::Inline), "Use inline diff layout", "one column unified diff view"),

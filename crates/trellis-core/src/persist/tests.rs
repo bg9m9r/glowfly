@@ -192,7 +192,7 @@ fn a_symlinked_file_stays_a_link_and_its_target_gets_the_bytes() {
     assert_eq!(leftovers(&dir), ["dotfiles", "settings.json"]);
     assert_eq!(leftovers(&dir.join("dotfiles")), ["settings.json"]);
     // A working-tree write refuses the link and changes nothing.
-    let refused = write_file(&link, b"x", WriteOptions { refuse_links: true, executable: None });
+    let refused = write_file(&link, b"x", WriteOptions { refuse_links: true, executable: None, private: false });
     assert!(refused.unwrap_err().to_string().contains("symbolic link"));
     assert_eq!(std::fs::read(&real).unwrap(), b"{\"a\":1}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -263,7 +263,7 @@ fn the_old_mode_is_kept_and_the_executable_bit_set_on_unix() {
     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)).unwrap();
     atomic_write(&file, b"new").unwrap();
     assert_eq!(std::fs::metadata(&file).unwrap().permissions().mode() & 0o7777, 0o600);
-    write_file(&file, b"newer", WriteOptions { refuse_links: true, executable: Some(true) }).unwrap();
+    write_file(&file, b"newer", WriteOptions { refuse_links: true, executable: Some(true), private: false }).unwrap();
     assert_eq!(std::fs::metadata(&file).unwrap().permissions().mode() & 0o7777, 0o700);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -312,5 +312,29 @@ fn remove_tree_removes_a_link_but_not_its_target() {
     remove_tree(&tree).unwrap();
     assert!(tree.symlink_metadata().is_err());
     assert_eq!(std::fs::read_to_string(outside.join("keep.txt")).unwrap(), "keep", "the target is untouched");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_private_write_keeps_the_file_to_its_user() {
+    let dir = scratch("private");
+    let file = dir.join("run").join("instance.json");
+    let private = WriteOptions { private: true, ..Default::default() };
+    write_file(&file, b"one", private).unwrap();
+    write_file(&file, b"two", private).unwrap();
+    assert_eq!(std::fs::read(&file).unwrap(), b"two");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&file), 0o600, "a new file and its replacement");
+        assert_eq!(mode(&dir.join("run")), 0o700, "the folder it made");
+        // A file that was readable by others is private once replaced.
+        let open = dir.join("open.json");
+        std::fs::write(&open, "x").unwrap();
+        std::fs::set_permissions(&open, std::fs::Permissions::from_mode(0o644)).unwrap();
+        write_file(&open, b"y", private).unwrap();
+        assert_eq!(mode(&open), 0o600);
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }

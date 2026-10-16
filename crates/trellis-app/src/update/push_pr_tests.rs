@@ -183,6 +183,7 @@ fn push_in_another_tab_only_logs() {
         clear_commit: false,
         then_push: false,
         then_pr: Some(PrStart { source: "topic".into(), target: None }),
+        then_link: false,
         then_open: None,
         keeps_undo: true,
     });

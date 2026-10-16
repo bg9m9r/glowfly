@@ -236,6 +236,27 @@ second one next to it.
    needs git 2.31 (`GIT_CONFIG_COUNT`) and GnuPG 2.1.12 (loopback allowed by default); with
    anything older, or an agent with `no-allow-loopback-pinentry`, GnuPG's own pinentry is used.
 
+### Links and the running window
+
+1. **Register the `trellis` scheme for this user only:** `HKEY_CURRENT_USER\Software\Classes\trellis`
+   on Windows, never HKLM; on XDG desktops `trellis-links.desktop` in `$XDG_DATA_HOME/applications`
+   (else `~/.local/share/applications`), made the default with `xdg-mime` (run with
+   `env_path::apply`). The Windows command quotes the program and `"%1"` through
+   `native_path::native` (`url_scheme::windows_command`: no `\\?\` prefix); a desktop entry's
+   `Exec` argument is quoted by `url_scheme::desktop_exec_arg` (reserved characters, `%%`, and the
+   desktop-file string escaping of `\`).
+2. **The instance file is private:** it is written with `persist::WriteOptions { private: true }`
+   (mode 0600, and 0700 for a folder the write creates, on Unix) under `settings::runtime_dir`
+   (`$XDG_RUNTIME_DIR/trellis` on Linux, else the cache folder). A file left by a window that
+   crashed names a closed port, which the second process treats as no window.
+3. **Windows refuses the foreground to a window its user didn't just use:** the process handing a
+   link over calls `AllowSetForegroundWindow` with the running window's process id first
+   (`instance/foreground.rs`); the window then un-minimizes, focuses and, if that still fails,
+   flashes its taskbar entry.
+4. **A link names its repository by root commit and remote URL, never by the folder it is in
+   here,** and opening one runs no git command until the user clicks Fetch or Clone; the
+   repository is found with libgit2 reads only.
+
 ### Watching and refresh
 
 1. **Don't follow links** (`notify::Config::with_follow_symlinks(false)` in `watcher.rs`): a link
@@ -335,6 +356,12 @@ Gaps that are accepted for now:
   binary posts under another app's identity through the deprecated NSUserNotification API.
 - **Trellis started with `GIT_CONFIG_COUNT` already set keeps GnuPG's own passphrase window:**
   the user's command-scope config is left alone rather than appended to.
+- **macOS doesn't receive links yet:** an application gets them as Apple events, with the
+  scheme declared in its bundle's Info.plist, which comes with packaging. Preferences says so.
+- **Wayland compositors may refuse to raise the window** for a link from another process; it
+  then only asks for attention.
+- **`xdg-mime` can't unset a default:** Unregister removes the desktop entry, and desktops ignore
+  a default whose file is gone.
 - **Keychain-backed pinentries (pinentry-mac and the like) are bypassed** while "Ask for the
   key's passphrase in Trellis" is on, since loopback skips the pinentry.
 

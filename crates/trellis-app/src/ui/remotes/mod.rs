@@ -8,6 +8,7 @@ use super::menus::remote_branch_menu;
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
+use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
@@ -123,6 +124,8 @@ fn group_menu(ui: &mut egui::Ui, info: &RemoteInfo, idle: bool, connections: &[C
     menu_item(msgs, ui, "Edit remote…", msg(RemoteMsg::EditDialog(name.clone())));
     if !info.fetch_url().is_empty() {
         menu_item(msgs, ui, "Copy fetch URL", Msg::Copy(info.fetch_url().to_owned()));
+        let link = LinkTarget::Repository { remote: Some(name.clone()) };
+        menu_item(msgs, ui, format!("Copy link to repository on {name}"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
     }
     if let Some(p) = info.separate_push_url() {
         menu_item(msgs, ui, "Copy push URL", Msg::Copy(p.to_owned()));

@@ -31,6 +31,9 @@ binary (package `trellis`).
 | `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
 | `native_path.rs`, `volume.rs` | The spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`); whether a folder is on a network or virtual file system. |
 | `askpass/` | Credential prompts: classifying git's and ssh's questions, the helper protocol, the app's listener and the helper's client. |
+| `instance/` | One window for links: the running app's loopback listener and its private instance file (address, token, process id in the runtime folder), and a second process handing its `trellis://` link over (letting the window take the foreground on Windows). |
+| `link.rs`, `link/find.rs` | `trellis://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit, and checking a folder for the linked repository and its target (libgit2 reads only). |
+| `url_scheme/` | Registering the `trellis` scheme for this user: the registry class key on Windows (`windows.rs`), a desktop entry and `xdg-mime` on XDG desktops (`xdg.rs`), and the pure decisions both read; macOS waits for packaging. |
 | `gpg_prompt/` | Signing passphrases: Trellis as git's gpg.program, running the user's gpg with loopback pinentry and asking through the askpass listener. |
 | `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `shallow_ops.rs`, `worktree_ops.rs`, `stash_ops.rs`, `sparse_ops.rs`, `patch_ops.rs`, `submodule_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning (with the sparse clone job: the clone, then the folders to check out), fetching more of a shallow clone's history, worktrees, submodules (the Add dialog's fields; removing one: deinit, `git rm`, then its stored module, with what would be lost) and stashes (renaming a stash list entry by dropping and storing the top of `refs/stash` again, and stash push command lines: all, staged only, chosen paths); sparse checkout state, paths and command lines; patch files: format-patch export, git apply command lines and errors. |
 | `init_ops.rs`, `init_ops/` | New repository files and the init job: `.gitignore` templates, license texts, what the chosen folder already holds, and init, write (never overwriting) and commit. |
@@ -62,11 +65,11 @@ binary (package `trellis`).
 
 | Module | Holds |
 | --- | --- |
-| `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`TRELLIS_GPG_WRAPPER`) and askpass helper. |
+| `main.rs` | Starts the window, or hands a `trellis://` argument to the window already running; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`TRELLIS_GPG_WRAPPER`) and askpass helper. |
 | `logging.rs` | The tracing setup, after the helper modes exit: warnings, errors and panics to `errors.log` (rotated; debug details with extended logging, switched at runtime), `RUST_LOG` to stderr, and the panic hook. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, `FilterMsg` in `forge_filters.rs`, …, one file per few areas; the first-run welcome and the tour carry `OnboardingMsg` from `onboarding.rs`), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
 | `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`, `forge_filters.rs` for PR and issue filter calls, `blame.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs and the SUBMODULES section (`clone.rs`, `init.rs`, `submodule.rs`), `Effect::name` (`names.rs`) and `Effect::scope` (`scope.rs`). |
-| `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs`, `logs.rs`, `onboarding.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
+| `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs`, `logs.rs`, `onboarding.rs`, `deep_link.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data (the Clone dialog in `clone.rs` and `clone_service.rs`, the Init dialog in `init.rs`). |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
 | `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work; `logs.rs` is the one ordered worker for the log files. |
@@ -114,7 +117,7 @@ binary (package `trellis`).
   never folds case, which is the volume's business. Settings saved per repository are keyed by
   `real_workdir` through `settings::repo_keys`.
 - **Job follow-ups**: a job can carry what to do once it succeeds (`JobSpec`/`RunningJob`
-  `then_push`, `then_open`, `then_pr`), handled in `update/ops.rs::finish_job`. Those that act
+  `then_push`, `then_open`, `then_pr`, `then_link`), handled in `update/ops.rs::finish_job`. Those that act
   on the repository run only while the job's tab is active and are logged otherwise. A follow-up that needs the refreshed snapshot waits for the
   reload: a push for a pull request sets `ForgeState::open_after_load`, and the next snapshot
   load opens the create dialog (`update/push_pr.rs::loaded`), never replacing another dialog.
@@ -181,6 +184,24 @@ binary (package `trellis`).
   user (`Effect::timed`) and gitcli's run observer times every git command; those taking
   `logs::SLOW` or more go to `performance.log`, and with extended logging each git command
   also comes back as `LogsMsg::GitRan` for a quiet activity line.
+- **Deep links** (`deep_link.rs`, `state/deep_link.rs`, `update/deep_link.rs`,
+  `update/deep_link_open.rs`): `main.rs` first hands a `trellis://` argument to a running window
+  (`trellis_core::instance`; `Runner::start_instance` listens, next to the askpass listener) and
+  exits; otherwise the new window opens it after restoring its tabs. Either way it arrives as
+  `DeepLinkMsg::Open`, which brings the window forward and, unless another dialog or Preferences
+  is open (a toast offers to open it later), parses it and sends `DeepLinkEffect::Find` over the
+  active tab, the other tabs, favorites and recent repositories. The runner checks each with
+  `link::find::check` (root commit, remote URL); `state::deep_link::best` keeps the top rank
+  (root and URL, root, URL), merges worktrees of one repository, and prefers the one open in a
+  tab. One match opens through `tabs::open`; several ask (Choose), none offers Locate or Clone.
+  The pending link (`DeepLinkState::pending`, numbered by `seq` so a newer link wins) waits in
+  `Awaiting::Ready` until its repository is the active tab: `deep_link_open::ready` runs at the
+  end of every snapshot load (and right after `tabs::open` for an open or parked tab) and selects
+  the target, or offers Fetch in a toast when it is missing. The fetch is an ordinary job with
+  `then_link`, after which `ops::finish_job` has the repository checked again. A clone from the
+  Not found dialog is recognised by its remote URL when it loads. Nothing runs git without a
+  click. Copying a link goes the other way: menus send `DeepLinkMsg::Copy`, update picks the
+  remote URL, and `DeepLinkEffect::Build` adds the root commit.
 - **`AppState`** holds no egui types; textures and fonts live in a `UiCache` owned by the UI
   layer.
 

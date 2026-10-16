@@ -12,6 +12,8 @@ mod clone_service;
 mod commit;
 mod conflict;
 mod conflict_check;
+mod deep_link;
+mod deep_link_open;
 mod diff;
 mod files;
 mod forge;
@@ -106,6 +108,10 @@ mod commit_tests;
 mod conflict_check_tests;
 #[cfg(test)]
 mod conflict_tests;
+#[cfg(test)]
+mod deep_link_open_tests;
+#[cfg(test)]
+mod deep_link_tests;
 #[cfg(test)]
 mod desktop_notify_tests;
 #[cfg(test)]
@@ -387,6 +393,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Theme(m) => themes::handle(st, m, now, &mut fx),
         Msg::Logs(m) => logs::handle(st, m, &mut fx),
         Msg::Onboarding(m) => onboarding::handle(st, m, now, &mut fx),
+        Msg::DeepLink(m) => deep_link::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).
@@ -413,6 +420,9 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             // Closing the trust prompt without a decision drops the job waiting for it.
             if matches!(st.modal, Some(crate::state::Modal::Trust(_))) {
                 trust::dismissed(st);
+            }
+            if matches!(st.modal, Some(crate::state::Modal::DeepLink(_))) {
+                deep_link::modal_closed(st);
             }
             st.modal = None;
         }

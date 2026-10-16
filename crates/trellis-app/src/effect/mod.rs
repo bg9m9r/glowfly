@@ -373,6 +373,8 @@ pub enum Effect {
     Logs(crate::logs::LogsEffect),
     /// The pull request panel's file list (scoped) and service calls (unscoped; pull_request.rs).
     PullRequest(crate::pull_request::PrEffect),
+    /// Building and finding trellis:// links, and the scheme registration (deep_link.rs); unscoped.
+    DeepLink(crate::deep_link::DeepLinkEffect),
     Ui(UiEffect),
 }
 
@@ -383,4 +385,6 @@ pub enum UiEffect {
     SetTitle(String),
     /// A credential prompt opened: flash the taskbar entry if the window isn't focused.
     RequestAttention,
+    /// A link arrived: un-minimize, raise and focus the window (or flash it when that fails).
+    FocusWindow,
 }

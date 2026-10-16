@@ -77,6 +77,7 @@ fn prefs_lfs_busy() {
         then_open: None,
         then_push: false,
         then_pr: None,
+        then_link: false,
         keeps_undo: false,
     });
     // The status bar's job spinner keeps repainting; a fixed number of frames (egui's clock

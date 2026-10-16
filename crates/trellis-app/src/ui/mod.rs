@@ -16,6 +16,7 @@ mod commit_box;
 pub(crate) mod common;
 mod conflict;
 mod conflict_check;
+mod deep_link_dialog;
 mod details;
 mod details_multi;
 mod diff;
@@ -94,6 +95,8 @@ mod snapshot_tests_columns;
 mod snapshot_tests_commit;
 #[cfg(test)]
 mod snapshot_tests_conflict_check;
+#[cfg(test)]
+mod snapshot_tests_deep_link;
 #[cfg(test)]
 mod snapshot_tests_diff;
 #[cfg(test)]
@@ -224,7 +227,6 @@ use crate::update::update;
 #[cfg(test)]
 use central::escape_key;
 use eframe::egui;
-use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
 use trellis_core::settings::Settings;
@@ -247,7 +249,7 @@ pub struct TrellisApp {
 }
 
 impl TrellisApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<PathBuf>, logs: crate::logging::LogSetup) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<crate::StartArg>, logs: crate::logging::LogSetup) -> Self {
         let (tx, results) = mpsc::channel();
         let (settings, problem) = Settings::load();
         // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
@@ -278,6 +280,8 @@ impl TrellisApp {
         // The log files, and earlier sessions' activity.
         app.runner.attach_logs(logs);
         app.dispatch(&cc.egui_ctx, Msg::Logs(crate::logs::LogsMsg::Start));
+        // Links opened while this window runs come here instead of a new window.
+        app.runner.start_instance();
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
         app.dispatch(&cc.egui_ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect));
         app.dispatch(&cc.egui_ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup));
@@ -289,8 +293,12 @@ impl TrellisApp {
         if !paths.is_empty() {
             app.dispatch(&cc.egui_ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, active }));
         }
-        if let Some(path) = start {
-            app.dispatch(&cc.egui_ctx, Msg::Repo(RepoMsg::Open(path)));
+        match start {
+            Some(crate::StartArg::Path(path)) => app.dispatch(&cc.egui_ctx, Msg::Repo(RepoMsg::Open(path))),
+            Some(crate::StartArg::Link(text)) => {
+                app.dispatch(&cc.egui_ctx, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Open(text)));
+            }
+            None => {}
         }
         app
     }
@@ -300,11 +308,12 @@ impl TrellisApp {
             match effect {
                 Effect::Ui(UiEffect::CopyText(text)) => ctx.copy_text(text),
                 Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
-                Effect::Ui(UiEffect::RequestAttention) => {
-                    if !ctx.input(|i| i.focused) {
-                        let attention = egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational);
-                        ctx.send_viewport_cmd(attention);
-                    }
+                Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
+                Effect::Ui(UiEffect::FocusWindow) => {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                    request_attention(ctx);
                 }
                 other => self.runner.run(other),
             }
@@ -319,6 +328,13 @@ impl TrellisApp {
         }
         self.st.view.was_focused = focused;
         shortcuts::input(ctx, &mut self.st, msgs);
+    }
+}
+
+/// Flashes the taskbar entry while the window isn't focused.
+fn request_attention(ctx: &egui::Context) {
+    if !ctx.input(|i| i.focused) {
+        ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational));
     }
 }
 

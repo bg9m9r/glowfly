@@ -257,6 +257,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
+        C::CopyLink(t) => Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)),
         C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
         C::OpenBlame(path) => Msg::Blame(BlameMsg::Open { path, at: None }),
         C::Remote(m) => Msg::Remote(m),

@@ -203,6 +203,6 @@ pub fn write(workdir: &Path, path: &str, content: Option<Saved>) -> Result<()> {
     let repo = Repository::open(workdir)?;
     let blob = repo.find_blob(saved.blob)?;
     let file_mode = repo.config().and_then(|c| c.get_bool("core.fileMode")).unwrap_or(true);
-    let opts = WriteOptions { refuse_links: true, executable: file_mode.then_some(saved.executable) };
+    let opts = WriteOptions { refuse_links: true, executable: file_mode.then_some(saved.executable), private: false };
     Ok(crate::persist::write_file(&f, blob.content(), opts)?)
 }

@@ -6,6 +6,7 @@ use crate::logs::LogsMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
+use crate::state::deep_link::SchemeView;
 use crate::state::files::TRASH;
 use crate::state::prefs::{Autocrlf, GitConfigValues};
 use crate::ui::theme::color;
@@ -27,6 +28,7 @@ pub fn general_page(
     git: Option<&mut GitConfigValues>,
     program: Option<&GitInfo>,
     keys: &Keymap,
+    scheme: &SchemeView,
     msgs: &mut Vec<Msg>,
 ) {
     row(ui, "Git", |ui| {
@@ -167,6 +169,7 @@ pub fn general_page(
             );
         }
     });
+    super::links::links_row(ui, scheme, msgs);
 }
 
 /// "git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.

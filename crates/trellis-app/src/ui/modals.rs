@@ -11,8 +11,8 @@
 //! `remotes/dialog.rs`), adding a fork as a remote and forking on the hosting service (drawn by
 //! `remotes/fork_pick.rs` and `remotes/fork_create.rs`), the keyboard shortcut sheet (drawn by
 //! `shortcuts/sheet.rs`), the repository trust prompt (drawn by `trust_dialog.rs`), a conflict
-//! check's report (drawn by `conflict_check.rs`) and a pull request or issue filter (drawn by
-//! `forge_filter_dialog.rs`).
+//! check's report (drawn by `conflict_check.rs`), a pull request or issue filter (drawn by
+//! `forge_filter_dialog.rs`) and the trellis:// link dialogs (drawn by `deep_link_dialog.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -199,6 +199,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::ForgeFilter(form) => {
                 if super::forge_filter_dialog::show(ui, form, fs, &repo_filters, !prompting, msgs) {
+                    close = true;
+                }
+            }
+            Modal::DeepLink(d) => {
+                if super::deep_link_dialog::show(ui, d, msgs) {
                     close = true;
                 }
             }

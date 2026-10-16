@@ -221,6 +221,7 @@ fn init_job(st: &mut AppState) {
         then_open: None,
         then_push: false,
         then_pr: None,
+        then_link: false,
         keeps_undo: true,
     });
 }

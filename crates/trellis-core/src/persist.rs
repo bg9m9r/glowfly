@@ -32,6 +32,11 @@ pub struct WriteOptions {
     /// old file's. Nowhere else has them. Failing to set them (FAT and exFAT drives, some
     /// network shares) doesn't fail the write.
     pub executable: Option<bool>,
+    /// Only this user may read the file: on Unix it is created with mode 0600 before any byte
+    /// is written (whatever the old file's mode was, and `executable` is ignored), and a folder
+    /// this write creates gets 0700. Elsewhere nothing changes (Windows profile folders are
+    /// already private to their user).
+    pub private: bool,
 }
 
 /// Replaces `path` with `bytes` atomically, creating its folder if needed. A symbolic link at
@@ -51,13 +56,26 @@ pub fn write_file(path: &Path, bytes: &[u8], opts: WriteOptions) -> std::io::Res
         link_target(path)?
     };
     let dir = target.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
+    let new_dir = opts.private && std::fs::symlink_metadata(dir).is_err();
     std::fs::create_dir_all(dir)?;
+    if new_dir {
+        make_private_dir(dir);
+    }
     let old = std::fs::metadata(&target).ok().filter(|m| m.is_file());
     let tmp = temp_sibling(&target);
     let written = (|| {
-        let mut f = std::fs::OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+        let mut open = std::fs::OpenOptions::new();
+        open.write(true).create_new(true);
+        #[cfg(unix)]
+        if opts.private {
+            use std::os::unix::fs::OpenOptionsExt;
+            open.mode(0o600);
+        }
+        let mut f = open.open(&tmp)?;
         f.write_all(bytes)?;
-        set_mode(&f, old.as_ref(), opts.executable);
+        if !opts.private {
+            set_mode(&f, old.as_ref(), opts.executable);
+        }
         f.sync_all()
     })();
     let result = written.and_then(|()| replace(&tmp, &target, old.as_ref()));
@@ -88,6 +106,17 @@ pub fn open_append(path: &Path) -> std::io::Result<std::fs::File> {
 /// leave).
 pub fn append(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     open_append(path)?.write_all(bytes)
+}
+
+/// Gives a folder that a private write just created mode 0700 on Unix (best effort).
+fn make_private_dir(dir: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+    }
+    #[cfg(not(unix))]
+    let _ = dir;
 }
 
 /// Removes the file at `path` (not following a link). A missing file is fine. On Windows a

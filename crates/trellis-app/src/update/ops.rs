@@ -292,6 +292,9 @@ pub(super) fn finish_job(
         (a, b) => a.is_none() && b.is_none(),
     };
     super::undo::finished(st, &job, ok, undo, here);
+    if job.then_link {
+        super::deep_link_open::fetched(st, ok, here, fx);
+    }
     if ok {
         if job.clear_commit {
             if here {

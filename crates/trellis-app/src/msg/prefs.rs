@@ -14,6 +14,8 @@ pub enum FolderPurpose {
     CloneParent,
     HooksPath,
     WorktreeParent,
+    /// The Repository not found dialog's Locate on disk….
+    LocateLinkedRepo,
 }
 
 /// What a file picker was opened for.

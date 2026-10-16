@@ -11,6 +11,7 @@ mod integrations;
 mod keyboard;
 mod keyboard_row;
 mod lfs;
+mod links;
 mod profile_setup;
 mod profiles;
 mod signing;
@@ -112,6 +113,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let git_state = &st.git;
     let settings = &mut st.settings;
     let keymap = &st.keymap;
+    let scheme = &st.deep_link.scheme;
     let Some(prefs) = st.prefs.as_mut() else { return };
     let fs = st.forge.as_ref();
     // Repository settings are keyed by where it really is (`settings::repo_keys`).
@@ -139,7 +141,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     return;
                 }
                 match page {
-                    PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), git_state.info.as_ref(), keymap, msgs),
+                    PrefPage::General => {
+                        general::general_page(ui, settings, prefs.git.as_mut(), git_state.info.as_ref(), keymap, scheme, msgs)
+                    }
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
