@@ -41,32 +41,66 @@ fn fixture_repo(name: &str) -> PathBuf {
     let dir = trellis_core::paths::temp_dir().join(format!("trellis-snap-{}-{name}", std::process::id())).join("demo");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
+    copy_dir(fixture_template(), &dir);
+    // The copies' file times no longer match the index; refresh it so the repository is in the
+    // state the build left it (otherwise a test that changes core.autocrlf, say, would see
+    // checked-out files as modified). It exits 1 for the modified README, as intended.
+    let _ = try_git(&dir, &["update-index", "-q", "--refresh"], "2026-01-05T10:00:00+00:00");
+    dir
+}
+
+/// The fixture, built once per test run (its ~25 git commands were most of a view test's time)
+/// and copied for each test. The fixed dates make every build identical anyway.
+fn fixture_template() -> &'static Path {
+    static TEMPLATE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    TEMPLATE.get_or_init(|| {
+        let dir = trellis_core::paths::temp_dir().join(format!("trellis-snap-{}-template", std::process::id())).join("demo");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        build_fixture(&dir);
+        dir
+    })
+}
+
+fn copy_dir(from: &Path, to: &Path) {
+    for entry in std::fs::read_dir(from).unwrap() {
+        let entry = entry.unwrap();
+        let dest = to.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            std::fs::create_dir_all(&dest).unwrap();
+            copy_dir(&entry.path(), &dest);
+        } else {
+            std::fs::copy(entry.path(), &dest).unwrap();
+        }
+    }
+}
+
+fn build_fixture(dir: &Path) {
     let d = "2026-01-05T10:00:00+00:00";
-    git(&dir, &["init", "-q", "-b", "main"], d);
-    git(&dir, &["config", "commit.gpgsign", "false"], d);
+    git(dir, &["init", "-q", "-b", "main"], d);
+    git(dir, &["config", "commit.gpgsign", "false"], d);
     let write = |f: &str, t: &str| std::fs::write(dir.join(f), t).unwrap();
     write("README.md", "# Demo\n");
-    git(&dir, &["add", "."], d);
-    git(&dir, &["commit", "-q", "-m", "Initial commit"], d);
+    git(dir, &["add", "."], d);
+    git(dir, &["commit", "-q", "-m", "Initial commit"], d);
     write("app.txt", "app\n");
-    git(&dir, &["add", "."], "2026-01-06T10:00:00+00:00");
-    git(&dir, &["commit", "-q", "-m", "Add app skeleton", "-m", "Project layout and CI."], "2026-01-06T10:00:00+00:00");
-    git(&dir, &["checkout", "-q", "-b", "login-page"], d);
+    git(dir, &["add", "."], "2026-01-06T10:00:00+00:00");
+    git(dir, &["commit", "-q", "-m", "Add app skeleton", "-m", "Project layout and CI."], "2026-01-06T10:00:00+00:00");
+    git(dir, &["checkout", "-q", "-b", "login-page"], d);
     write("login.txt", "login\n");
-    git(&dir, &["add", "."], "2026-01-07T10:00:00+00:00");
-    git(&dir, &["commit", "-q", "-m", "Add login page"], "2026-01-07T10:00:00+00:00");
-    git(&dir, &["checkout", "-q", "main"], d);
+    git(dir, &["add", "."], "2026-01-07T10:00:00+00:00");
+    git(dir, &["commit", "-q", "-m", "Add login page"], "2026-01-07T10:00:00+00:00");
+    git(dir, &["checkout", "-q", "main"], d);
     write("app.txt", "app\nfix\n");
-    git(&dir, &["commit", "-q", "-am", "Fix build on Windows"], "2026-01-08T10:00:00+00:00");
-    git(&dir, &["merge", "-q", "--no-ff", "login-page", "-m", "Merge branch 'login-page'"], "2026-01-09T10:00:00+00:00");
-    git(&dir, &["tag", "v0.1.0"], d);
-    git(&dir, &["checkout", "-q", "-b", "search"], d);
+    git(dir, &["commit", "-q", "-am", "Fix build on Windows"], "2026-01-08T10:00:00+00:00");
+    git(dir, &["merge", "-q", "--no-ff", "login-page", "-m", "Merge branch 'login-page'"], "2026-01-09T10:00:00+00:00");
+    git(dir, &["tag", "v0.1.0"], d);
+    git(dir, &["checkout", "-q", "-b", "search"], d);
     write("search.txt", "search\n");
-    git(&dir, &["add", "."], "2026-01-10T10:00:00+00:00");
-    git(&dir, &["commit", "-q", "-m", "Search results page"], "2026-01-10T10:00:00+00:00");
-    git(&dir, &["checkout", "-q", "main"], d);
+    git(dir, &["add", "."], "2026-01-10T10:00:00+00:00");
+    git(dir, &["commit", "-q", "-m", "Search results page"], "2026-01-10T10:00:00+00:00");
+    git(dir, &["checkout", "-q", "main"], d);
     write("README.md", "# Demo\n\nWork in progress.\n");
-    dir
 }
 
 pub(super) fn settings(theme: ThemeChoice) -> Settings {
