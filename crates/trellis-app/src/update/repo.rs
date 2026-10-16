@@ -230,6 +230,7 @@ pub(super) fn open_file_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec
     super::history::close(st);
     super::blame::close(st);
     super::pull_request::keep_for(st, &target);
+    super::issue::close(st);
     open_diff(st, target, fx);
 }
 
@@ -288,6 +289,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             super::history::close(st);
             super::blame::close(st);
             super::pull_request::close(st);
+            super::issue::close(st);
             super::rebase::close(st);
             st.gitflow_panel = false;
             st.draft = CommitDraft::default();
@@ -354,6 +356,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::blame::close(st);
     st.gitflow_panel = false;
     super::pull_request::close(st);
+    super::issue::close(st);
     fx.push(Effect::LoadDetail { workdir, oid });
     if scroll && let Some(row) = super::search::reveal(st, oid) {
         // Leave a few rows of context above the target.

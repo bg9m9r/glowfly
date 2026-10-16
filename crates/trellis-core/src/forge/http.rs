@@ -111,6 +111,9 @@ fn server_message(body: &str) -> String {
                     Some(detail) if detail != m => format!("{m} {detail}"),
                     _ => m.to_owned(),
                 })
+                // Jira's field errors, GitLab's validation messages.
+                .or_else(|| field_errors(&v["errors"]))
+                .or_else(|| field_errors(&v["message"]))
         })
         .unwrap_or_else(|| body.to_owned());
     let msg = crate::text::printable(&msg);
@@ -120,6 +123,24 @@ fn server_message(body: &str) -> String {
     let short: String = msg.chars().take(200).collect();
     let more = if short.len() < msg.len() { "…" } else { "" };
     format!("the server said \u{201c}{short}{more}\u{201d}")
+}
+
+/// An object of field errors as "field: message; field: message" (a message may be a list of
+/// messages); None when it isn't an object or says nothing.
+fn field_errors(v: &serde_json::Value) -> Option<String> {
+    let parts: Vec<String> = v
+        .as_object()?
+        .iter()
+        .filter_map(|(field, msg)| {
+            let text = match msg {
+                serde_json::Value::String(s) => s.clone(),
+                serde_json::Value::Array(items) => items.iter().filter_map(|i| i.as_str()).collect::<Vec<_>>().join(", "),
+                _ => return None,
+            };
+            (!text.is_empty()).then(|| format!("{field}: {text}"))
+        })
+        .collect();
+    (!parts.is_empty()).then(|| parts.join("; "))
 }
 
 fn read_error(code: u16, resp: ureq::Response) -> Error {
@@ -241,5 +262,17 @@ mod tests {
         let long = server_message(&"x".repeat(500));
         assert!(long.contains(&"x".repeat(200)) && !long.contains(&"x".repeat(201)) && long.contains('…'), "{long}");
         assert_eq!(server_message("  \r\n "), "");
+    }
+
+    #[test]
+    fn field_errors_are_spelled_out() {
+        let jira = r#"{"errorMessages":[],"errors":{"customfield_10011":"Epic Name is required."}}"#;
+        assert_eq!(server_message(jira), "the server said \u{201c}customfield_10011: Epic Name is required.\u{201d}");
+        let gitlab = server_message(r#"{"message":{"title":["can't be blank"],"labels":["is invalid","is too long"]}}"#);
+        assert!(gitlab.contains("title: can't be blank"), "{gitlab}");
+        assert!(gitlab.contains("labels: is invalid, is too long"), "{gitlab}");
+        // A plain message still wins over field errors.
+        assert_eq!(server_message(r#"{"message":"Bad","errors":{"x":"y"}}"#), "the server said \u{201c}Bad\u{201d}");
+        assert_eq!(server_message(r#"{"errorMessages":["No project"],"errors":{}}"#), "the server said \u{201c}No project\u{201d}");
     }
 }

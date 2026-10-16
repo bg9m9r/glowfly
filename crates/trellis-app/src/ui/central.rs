@@ -1,14 +1,15 @@
-//! The central area: which view fills it (the dashboard, welcome, conflict, blame, file history, the pull
-//! request panel, diff, the rebase and Git Flow panels, or the graph), and the Esc chain that
-//! closes them.
+//! The central area: which view fills it (the dashboard, welcome, conflict, blame, file history,
+//! the pull request panel or the issue panel, diff, the rebase and Git Flow panels, or the
+//! graph), and the Esc chain that closes them.
 
 use super::UiCache;
 use super::theme::color;
-use super::{blame, common, conflict, dashboard, diff, gitflow_panel, graph, history, pull_request, rebase};
+use super::{blame, common, conflict, dashboard, diff, gitflow_panel, graph, history, issue, pull_request, rebase};
 use crate::msg::BlameMsg;
 use crate::msg::ConflictMsg;
 use crate::msg::DiffMsg;
 use crate::msg::HistoryMsg;
+use crate::msg::IssueMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RebaseMsg;
@@ -19,7 +20,7 @@ use crate::state::AppState;
 use eframe::egui::{self, Key};
 
 /// Esc closes the innermost thing open: Preferences, the tour, the dashboard, the conflict view, the blame view, the
-/// file history, the diff (a line selection first), the pull request panel, the interactive
+/// file history, the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Git Flow panel, then a multi-selection, and
 /// finally the search bar. Dialogs (a credential prompt and the welcome included) and the command
 /// palette handle Esc themselves. In a text field Esc only leaves the field, and in the terminal it goes to the
@@ -52,6 +53,8 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(if st.view.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::Diff(DiffMsg::ClearLineSelection) });
     } else if st.pull_request.is_some() {
         msgs.push(Msg::PullRequest(PullRequestMsg::Close));
+    } else if st.issue.is_some() {
+        msgs.push(Msg::Issue(IssueMsg::Close));
     } else if let Some(p) = &st.rebase {
         // Esc first closes the message editor, then the panel.
         msgs.push(if p.editing.is_some() { Msg::Rebase(RebaseMsg::RebaseCancelMessage) } else { Msg::Rebase(RebaseMsg::CloseRebase) });
@@ -65,7 +68,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
 }
 
 /// The central panel: the dashboard while open, else the welcome screen without a repository, else the innermost view open
-/// (conflict, blame, file history, pull request panel, diff, rebase panel, Git Flow panel), else
+/// (conflict, blame, file history, pull request panel, issue panel, diff, rebase panel, Git Flow panel), else
 /// the graph. Returns where the panel was drawn (the tour outlines it).
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> egui::Rect {
     egui::CentralPanel::default()
@@ -83,6 +86,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
                 history::show(ui, st, cache, msgs);
             } else if st.pull_request.is_some() {
                 pull_request::show(ui, st, cache, msgs);
+            } else if st.issue.is_some() {
+                issue::show(ui, st, msgs);
             } else if st.diff.is_some() {
                 diff::show(ui, st, &mut cache.diff_rows, msgs);
             } else if st.rebase.is_some() {

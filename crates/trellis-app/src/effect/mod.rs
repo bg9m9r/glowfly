@@ -18,6 +18,7 @@ mod dashboard;
 mod forge;
 mod forge_filters;
 mod init;
+mod issue;
 mod names;
 mod notify;
 mod repo;
@@ -30,6 +31,7 @@ pub use dashboard::*;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
 pub use init::InitEffect;
+pub use issue::*;
 pub use notify::{DesktopNote, NoteKind};
 pub use repo::{KnownRepo, LocalOp, StatusRead, UndoResult, WatchTarget};
 pub use submodule::SubmoduleEffect;
@@ -380,6 +382,8 @@ pub enum Effect {
     /// The cross-repository dashboard (runner/dashboard.rs); unscoped; reads repositories with
     /// libgit2 and asks services.
     Dashboard(DashboardEffect),
+    /// The issue panel's and the Create issue dialog's calls to the tracker (unscoped; issue.rs).
+    Issue(IssueEffect),
     Ui(UiEffect),
 }
 

@@ -89,11 +89,29 @@ pub struct Hit {
     pub matched: Vec<usize>,
 }
 
-/// One row of an issue sub-list: the issue's state (shown dim, matched as a keyword) and the
-/// branch name built from it.
+/// One row of an issue sub-list: the issue's key, its state (shown dim, matched as a keyword)
+/// and the branch name built from it.
 pub struct IssuePickRow {
+    key: String,
     detail: String,
     name: String,
+}
+
+impl IssuePickRow {
+    fn of(i: &trellis_core::forge::Issue) -> Self {
+        IssuePickRow { key: i.key.clone(), detail: i.state.clone(), name: trellis_core::forge::branch_name_for(i) }
+    }
+}
+
+/// The issues the ISSUES section lists: assigned ones, then the shown filter's results, each once.
+pub fn issues_to_view(f: &ForgeState) -> Vec<&trellis_core::forge::Issue> {
+    let mut out: Vec<&trellis_core::forge::Issue> = Vec::new();
+    for i in f.my_issues.iter().chain(f.filters.issues.iter().flat_map(|l| l.items.iter())) {
+        if !out.iter().any(|o| o.key == i.key) {
+            out.push(i);
+        }
+    }
+    out
 }
 
 impl Pick {
@@ -126,10 +144,18 @@ impl Pick {
     /// user, labelled "<mention>  <title>".
     pub fn issues(kind: trellis_core::gitflow::FlowKind, f: &ForgeState) -> Self {
         let labels = f.my_issues.iter().map(|i| format!("{}  {}", f.mention(&i.key), i.title)).collect();
-        let row = |i: &trellis_core::forge::Issue| IssuePickRow { detail: i.state.clone(), name: trellis_core::forge::branch_name_for(i) };
-        let issues = f.my_issues.iter().map(row).collect();
+        let issues = f.my_issues.iter().map(IssuePickRow::of).collect();
         let kind = PickKind::GitFlowIssue(kind);
         Self { kind, items: Items::Ready(labels), stashes: Vec::new(), profiles: Vec::new(), issues, ranked: None }
+    }
+
+    /// The issue sub-list for opening the issue panel, over the listed issues (`issues_to_view`),
+    /// labelled "<mention>  <title>".
+    pub fn issues_to_view(f: &ForgeState) -> Self {
+        let listed = issues_to_view(f);
+        let labels = listed.iter().map(|i| format!("{}  {}", f.mention(&i.key), i.title)).collect();
+        let issues = listed.into_iter().map(IssuePickRow::of).collect();
+        Self { kind: PickKind::ViewIssue, items: Items::Ready(labels), stashes: Vec::new(), profiles: Vec::new(), issues, ranked: None }
     }
 
     /// The dim text at the right of item `index`: a stash's ref, or a profile's email.
@@ -137,7 +163,7 @@ impl Pick {
         match self.kind {
             PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
             PickKind::Profile => self.profiles.get(index).map(|r| r.detail.clone()),
-            PickKind::GitFlowIssue(_) => self.issues.get(index).map(|r| r.detail.clone()),
+            PickKind::GitFlowIssue(_) | PickKind::ViewIssue => self.issues.get(index).map(|r| r.detail.clone()),
             PickKind::FileHistory | PickKind::Blame => None,
         }
     }
@@ -153,6 +179,7 @@ impl Pick {
             PickKind::GitFlowIssue(kind) => {
                 self.issues.get(index).map(|r| PaletteCommand::StartGitFlowFromIssue { kind, name: r.name.clone() })
             }
+            PickKind::ViewIssue => self.issues.get(index).map(|r| PaletteCommand::ViewIssue(r.key.clone())),
         }
     }
 

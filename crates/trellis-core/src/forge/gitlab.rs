@@ -4,8 +4,9 @@ use super::checks::per_pr;
 use super::details::{self, PrDetails};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, CHECKED_PRS, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets,
-    PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks, page, post,
+    Account, Auth, CHECKED_PRS, Checks, Conditions, CreateOptions, FilterKind, FilterOptions, Issue, IssueDetails, IssueFacets, Me,
+    NewIssue, NewPullRequest, PrFacets, PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks, gitlab_issues, page,
+    post,
 };
 use crate::error::Result;
 use serde::Deserialize;
@@ -27,6 +28,7 @@ pub(super) static GITLAB_SELF_MANAGED: ProviderInfo = ProviderInfo {
     creates_forks: true,
     adds_ssh_keys: true,
     details_per_pr: true,
+    issues_in_app: true,
     service: &GitLab,
     ..DEFAULTS
 };
@@ -269,6 +271,18 @@ impl super::Forge for GitLab {
 
     fn filter_options(&self, t: &Target, auth: &Auth, _kind: FilterKind) -> Result<FilterOptions> {
         super::filters::gitlab::options(t, auth)
+    }
+
+    fn issue_details(&self, t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
+        gitlab_issues::details(t, auth, key)
+    }
+
+    fn issue_create_options(&self, t: &Target, auth: &Auth, _project: &str) -> Result<CreateOptions> {
+        gitlab_issues::options(t, auth)
+    }
+
+    fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
+        gitlab_issues::create(t, auth, new)
     }
 }
 

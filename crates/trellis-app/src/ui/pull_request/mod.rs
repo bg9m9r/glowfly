@@ -111,12 +111,12 @@ pub(super) fn tone_color(t: Tone) -> Color32 {
 }
 
 /// A wrapped label in `color`.
-pub(super) fn note(ui: &mut Ui, text: impl Into<String>, color: Color32) {
+pub(in crate::ui) fn note(ui: &mut Ui, text: impl Into<String>, color: Color32) {
     ui.add(egui::Label::new(RichText::new(text.into()).color(color)).wrap());
 }
 
 /// A section heading in the side panel.
-pub(super) fn heading(ui: &mut Ui, text: &str) {
+pub(in crate::ui) fn heading(ui: &mut Ui, text: &str) {
     ui.add_space(10.0);
     ui.separator();
     ui.label(RichText::new(text).strong().color(color::text()));

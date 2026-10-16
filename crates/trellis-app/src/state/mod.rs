@@ -26,6 +26,8 @@ pub mod gitflow;
 pub mod graph_rows;
 pub mod history;
 pub mod init;
+pub mod issue;
+pub mod issue_form;
 pub mod keys_page;
 pub mod known_folders;
 pub mod layout;
@@ -214,6 +216,7 @@ pub enum Modal {
     ForgeFilter(Box<forge_filter_form::FilterForm>),
     /// An invalid link, a linked repository not found, or several copies to choose from.
     DeepLink(deep_link::LinkDialog),
+    CreateIssue(Box<issue_form::IssueForm>),
 }
 
 /// The most commits "Load more" goes up to.
@@ -274,6 +277,10 @@ pub struct AppState {
     pub pull_request_gen: u64,
     /// Incremented for every request of the panel's page and whenever the panel closes.
     pub pull_request_page_gen: u64,
+    /// The open issue panel; in the pull request panel's place (the two never show together).
+    pub issue: Option<issue::IssueView>,
+    /// Incremented for every request of the panel's details and whenever the panel closes.
+    pub issue_gen: u64,
     /// The interactive rebase panel; shown instead of the graph (below a diff, the file history and a conflict).
     pub rebase: Option<rebase::RebasePanel>,
     /// Incremented for every rebase list request and whenever the panel closes; older
@@ -384,6 +391,8 @@ impl AppState {
             pull_request: None,
             pull_request_gen: 0,
             pull_request_page_gen: 0,
+            issue: None,
+            issue_gen: 0,
             rebase: None,
             rebase_gen: 0,
             gitflow_panel: false,

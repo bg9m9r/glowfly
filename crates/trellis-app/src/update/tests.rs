@@ -132,6 +132,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             // Never show real desktop notifications.
             | Effect::Notify(_)
             | Effect::PullRequest(crate::pull_request::PrEffect::Call(_))
+            | Effect::Issue(_)
             // Would read and write the developer's real config folder.
             | Effect::Theme(_)
             // The log worker owns the log files (never attached in tests).

@@ -28,6 +28,7 @@ pub(super) fn handle(st: &mut AppState, msg: RebaseMsg, now: Instant, fx: &mut V
             super::blame::close(st);
             st.gitflow_panel = false;
             super::pull_request::close(st);
+            super::issue::close(st);
             st.rebase = Some(RebasePanel::loading(base));
             request(st, fx);
         }

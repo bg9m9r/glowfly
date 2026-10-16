@@ -98,6 +98,8 @@ pub struct Parked {
     pub blame: Option<super::blame::BlameView>,
     /// The pull request panel (a file list in flight is asked for again on return).
     pub pull_request: Option<PrView>,
+    /// The issue panel (its details load again on return).
+    pub issue: Option<super::issue::IssueView>,
     /// The interactive rebase panel (a list still loading is requested again on return).
     pub rebase: Option<RebasePanel>,
     /// The Git Flow panel is open.

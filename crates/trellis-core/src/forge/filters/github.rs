@@ -55,11 +55,17 @@ pub(crate) fn options(t: &Target, auth: &Auth) -> Result<FilterOptions> {
         number: u64,
         title: String,
     }
-    let labels: Vec<Label> = page::by_link(auth, format!("{}/labels?per_page=100", repo_api(t)))?;
+    let labels = labels(t, auth)?;
     let milestones: Vec<ApiMilestone> = page::by_link(auth, format!("{}/milestones?state=open&per_page=100", repo_api(t)))?;
     Ok(FilterOptions {
-        labels: labels.into_iter().map(|l| l.name).collect(),
+        labels,
         milestones: milestones.into_iter().map(|m| Named { key: m.number.to_string(), title: m.title }).collect(),
         sprints: Vec::new(),
     })
+}
+
+/// The repository's label names (the filter dialog and the Create issue dialog).
+pub(crate) fn labels(t: &Target, auth: &Auth) -> Result<Vec<String>> {
+    let labels: Vec<Label> = page::by_link(auth, format!("{}/labels?per_page=100", repo_api(t)))?;
+    Ok(labels.into_iter().map(|l| l.name).collect())
 }

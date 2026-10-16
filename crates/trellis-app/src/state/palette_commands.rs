@@ -14,6 +14,8 @@ mod palette_checkouts;
 mod palette_gitflow;
 #[path = "palette_link.rs"]
 mod palette_link;
+#[path = "palette_issues.rs"]
+pub mod palette_issues;
 #[path = "palette_logs.rs"]
 mod palette_logs;
 #[path = "palette_pr.rs"]
@@ -107,6 +109,12 @@ pub enum PaletteCommand {
         kind: trellis_core::gitflow::FlowKind,
         name: String,
     },
+    /// Open the Create issue dialog.
+    CreateIssue,
+    /// Enter the issue sub-list; choosing an issue runs `ViewIssue`.
+    ChooseIssueToView,
+    /// Open the issue panel for the issue with this key.
+    ViewIssue(String),
     Refresh,
     OpenTerminal,
     /// Show or hide the built-in terminal panel.
@@ -305,6 +313,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     super::patch::palette_entries(out);
     palette_setup::setup_entries(out);
     palette_gitflow::gitflow_entries(st, snap, out);
+    palette_issues::issue_entries(st, out);
     // Here even without submodules: the SUBMODULES section (and its menu) only shows with some.
     let add = C::Submodule(crate::submodule::SubmoduleMsg::AddDialog);
     out.push(entry(add, "Add submodule…", "submodule add nested repository dependency vendor library"));

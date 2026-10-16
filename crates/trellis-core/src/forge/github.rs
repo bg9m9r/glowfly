@@ -1,10 +1,11 @@
 //! GitHub and GitHub Enterprise Server (REST API v3).
 
 use super::github_checks;
+pub(super) use super::github_issues::{ApiIssue, to_issue};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, Provider, PullRequest,
-    Reviewer, Target, enc, get, page, post,
+    Account, Auth, Checks, Conditions, CreateOptions, FilterKind, FilterOptions, Issue, IssueDetails, Me, NewIssue, NewPullRequest,
+    PrFacets, Provider, PullRequest, Reviewer, Target, enc, get, github_issues, page, post,
 };
 use crate::error::Result;
 use serde::Deserialize;
@@ -24,6 +25,7 @@ pub(super) static GITHUB_ENTERPRISE: ProviderInfo = ProviderInfo {
     lists_forks: true,
     creates_forks: true,
     adds_ssh_keys: true,
+    issues_in_app: true,
     service: &GitHub,
     ..DEFAULTS
 };
@@ -200,36 +202,6 @@ pub(super) struct Label {
     pub(super) name: String,
 }
 
-#[derive(Deserialize)]
-pub(super) struct ApiIssue {
-    number: u64,
-    title: String,
-    state: String,
-    html_url: String,
-    #[serde(default)]
-    labels: Vec<Label>,
-    #[serde(default)]
-    assignee: Option<Login>,
-    #[serde(default)]
-    milestone: Option<Title>,
-    /// Present when the "issue" is actually a pull request.
-    #[serde(default)]
-    pub(super) pull_request: Option<serde_json::Value>,
-}
-
-pub(super) fn to_issue(i: ApiIssue) -> Issue {
-    let labels: Vec<String> = i.labels.into_iter().map(|l| l.name).collect();
-    Issue {
-        key: i.number.to_string(),
-        title: i.title,
-        state: i.state,
-        kind: labels.first().cloned().unwrap_or_else(|| "Issue".into()),
-        assignee: i.assignee.map(|a| a.login),
-        url: i.html_url,
-        facets: IssueFacets { labels, milestone: i.milestone.map(|m| m.title) },
-    }
-}
-
 /// The GitHub [`Forge`](super::Forge).
 pub struct GitHub;
 
@@ -321,10 +293,23 @@ impl super::Forge for GitHub {
         }
         Ok(out)
     }
+
+    fn issue_details(&self, t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
+        github_issues::details(t, auth, key)
+    }
+
+    fn issue_create_options(&self, t: &Target, auth: &Auth, _project: &str) -> Result<CreateOptions> {
+        github_issues::options(t, auth)
+    }
+
+    fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
+        github_issues::create(t, auth, new)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::IssueFacets;
     use super::*;
 
     #[test]

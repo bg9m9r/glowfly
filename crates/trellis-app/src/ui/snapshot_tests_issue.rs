@@ -1,0 +1,202 @@
+//! The issue panel: a loaded GitHub issue with a linked branch, a Jira issue with its status,
+//! epic and rich text, a failed load, the ISSUES header's + with the open issue's row, and Esc
+//! closing the panel. Shares the fixture repository and renderer with `snapshot_tests`.
+
+use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
+use super::snapshot_tests_select::click;
+use crate::msg::{IssueMsg, Msg};
+use crate::state::issue::{Details, IssueView};
+use crate::state::{AppState, ForgeState, Status};
+use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::{PointerButton, pos2};
+use egui_kittest::kittest::Queryable;
+use std::path::PathBuf;
+use trellis_core::forge::{Account, Entry, EntryKind, Issue, IssueDetails, IssueFacets, Provider, Target};
+use trellis_core::repo::LoadOptions;
+use trellis_core::settings::ThemeChoice;
+
+fn github() -> Target {
+    Target { provider: Provider::GitHub, host: "github.com".into(), owner: "acme".into(), project: String::new(), repo: "demo".into() }
+}
+
+fn jira() -> Target {
+    Target::jira(&Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() }, "PROJ")
+}
+
+fn crash() -> Issue {
+    Issue {
+        key: "12".into(),
+        title: "Crash on start when the config folder is missing".into(),
+        state: "open".into(),
+        kind: "bug".into(),
+        assignee: Some("ada".into()),
+        url: "https://github.com/acme/demo/issues/12".into(),
+        facets: IssueFacets { labels: vec!["bug".into(), "ui".into()], milestone: Some("v1.2".into()) },
+    }
+}
+
+fn comment(author: &str, time: i64, body: &str) -> Entry {
+    Entry { author: author.into(), time, kind: EntryKind::Comment, body: body.into(), url: String::new() }
+}
+
+/// The fixture on GitHub (acme/demo) with `issue` assigned and, `with_branch`, a branch named
+/// after it; the panel open for it.
+fn with_issue(theme: ThemeChoice, name: &str, tracker: Target, issue: Issue, branch: Option<&str>) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_repo(theme, name);
+    let d = "2026-01-10T10:00:00+00:00";
+    git(&dir, &["remote", "add", "origin", "https://github.com/acme/demo.git"], d);
+    if let Some(b) = branch {
+        git(&dir, &["branch", b, "main"], d);
+    }
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    let other = if tracker.provider.is_jira() { "PROJ-14" } else { "14" };
+    let mut fs = ForgeState::new(Some(github()), "origin".into(), Some(tracker));
+    fs.host_status = Status::Ok;
+    fs.tracker_status = Status::Ok;
+    fs.my_issues = vec![issue.clone(), Issue { key: other.into(), title: "Faster search".into(), ..crash() }];
+    let view = IssueView::new(issue, &fs).unwrap();
+    st.forge = Some(fs);
+    st.issue = Some(view);
+    (st, dir)
+}
+
+fn set_details(st: &mut AppState, d: IssueDetails) {
+    let v = st.issue.as_mut().unwrap();
+    v.issue = d.issue.clone();
+    v.details = Details::Loaded(Box::new(d));
+}
+
+#[test]
+fn issue_panel_github_light() {
+    let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-gh", github(), crash(), Some("12-crash-on-start"));
+    set_details(
+        &mut st,
+        IssueDetails {
+            issue: crash(),
+            body: "Starting the app without ~/.config/demo panics.\n\nSteps:\n1. Remove the folder\n2. Start the app".into(),
+            author: "grace".into(),
+            created: 1_769_256_000,
+            assignees: vec!["ada".into(), "linus".into()],
+            epic: None,
+            comments: vec![
+                comment("ada", 1_769_342_400, "I can reproduce this on Windows."),
+                comment("linus", 1_769_860_800, "Fixed on the 12-crash-on-start branch, needs review."),
+            ],
+        },
+    );
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("issue_panel_github_light");
+    assert!(h.query_by_label("No branches for this issue yet.").is_none());
+    assert!(!h.get_by_label("Open in browser").is_disabled());
+    h.get_by_label("Copy #12").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if t == "#12")));
+    h.get_by_label("Close  (Esc)").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Close))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn issue_panel_jira_dark() {
+    let issue = Issue {
+        key: "PROJ-7".into(),
+        title: "Sign-in page rejects valid passwords".into(),
+        state: "In Progress".into(),
+        kind: "Story".into(),
+        assignee: Some("Ada Lovelace".into()),
+        url: "https://acme.atlassian.net/browse/PROJ-7".into(),
+        facets: IssueFacets { labels: vec!["auth".into()], milestone: Some("2.0".into()) },
+    };
+    let (mut st, dir) = with_issue(ThemeChoice::Dark, "issue-jira", jira(), issue.clone(), Some("feature/PROJ-7-sign-in"));
+    set_details(
+        &mut st,
+        IssueDetails {
+            issue,
+            body: "Users with a + in their password can't sign in.\n\n- Seen on Chrome and Firefox\n- Started after 1.9".into(),
+            author: "Grace Hopper".into(),
+            created: 1_769_256_000,
+            assignees: vec!["Ada Lovelace".into()],
+            epic: Some("PROJ-1  Accounts and sign-in".into()),
+            comments: Vec::new(),
+        },
+    );
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("issue_panel_jira_dark");
+    assert!(h.query_by_label("No comments yet.").is_some());
+    assert!(h.query_by_label("Status").is_some() && h.query_by_label("Fix version").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn issue_panel_failed() {
+    let (mut st, dir) = with_issue(ThemeChoice::Dark, "issue-failed", github(), crash(), None);
+    let v = st.issue.as_mut().unwrap();
+    v.issue.url = String::new();
+    v.details = Details::Failed("not found: Issue #12 wasn't found".into());
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("issue_panel_failed");
+    assert!(h.get_by_label("Open in browser").is_disabled(), "no link");
+    assert!(h.query_by_label("No branches for this issue yet.").is_some());
+    h.get_by_label("Try again").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Reload))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn sidebar_issues_with_add() {
+    let (st, dir) = with_issue(ThemeChoice::Light, "issue-sidebar", github(), crash(), None);
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("sidebar_issues_with_add");
+    h.get_by_label("Create issue").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::CreateDialog))));
+    assert!(h.state().0.view.sections.issues, "the + leaves the section open");
+
+    // A click on a row opens it; its menu offers View issue first.
+    h.state_mut().1.clear();
+    let row = h.get_by_label("#14  Faster search").bounding_box().expect("the row");
+    let center = pos2(((row.x0 + row.x1) / 2.0) as f32, ((row.y0 + row.y1) / 2.0) as f32);
+    click(&mut h, center, PointerButton::Primary);
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Open(k)) if k == "14")));
+    click(&mut h, center, PointerButton::Secondary);
+    h.get_by_label("View issue").click();
+    h.run();
+    assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Issue(IssueMsg::Open(k)) if k == "14")).count(), 2);
+    assert!(h.state().1.iter().all(|m| !matches!(m, Msg::OpenUrl(_))), "no browser for a click");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn create_is_disabled_with_the_reason() {
+    let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-sidebar-blocked", github(), crash(), None);
+    st.issue = None;
+    let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
+    st.forge.as_mut().unwrap().tracker = Some(bb);
+    let mut h = harness(st, false);
+    h.run();
+    assert!(h.get_by_label("Create issue").is_disabled());
+    assert!(h.query_by_label("View issue").is_none());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn esc_closes_the_issue_panel() {
+    let (st, dir) = with_issue(ThemeChoice::Dark, "issue-esc", github(), crash(), None);
+    let mut h = super::snapshot_tests_esc::app_harness(st);
+    h.run();
+    let msgs = super::snapshot_tests_esc::esc(&mut h);
+    assert!(msgs.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Close))));
+    drop(h);
+    remove_fixture(&dir);
+}

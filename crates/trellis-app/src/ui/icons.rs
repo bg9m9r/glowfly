@@ -1,5 +1,5 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench, warning, keyboard, external diff, into, comment, pencil), called from
+//! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue), called from
 //! `widgets::paint_icon`.
 
 use super::widgets::Icon;
@@ -204,6 +204,14 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.line_segment([end + n, end - n], thin);
             p.line_segment([end + n - d * 2.5, end - n - d * 2.5], thin);
             p.add(egui::Shape::convex_polygon(vec![neck + n, tip, neck - n], s.color, Stroke::NONE));
+        }
+        Icon::Plus => {
+            line(pos2(c.x - 5.0, c.y), pos2(c.x + 5.0, c.y));
+            line(pos2(c.x, c.y - 5.0), pos2(c.x, c.y + 5.0));
+        }
+        Icon::Issue => {
+            p.circle_stroke(c, 6.0, Stroke::new(1.6_f32, s.color));
+            p.circle_filled(c, 1.8, s.color);
         }
         _ => return false,
     }

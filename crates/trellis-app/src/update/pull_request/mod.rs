@@ -36,6 +36,7 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
             super::conflict::close(st);
             super::history::close(st);
             super::blame::close(st);
+            super::issue::close(st);
             st.pull_request = Some(view);
             request(st, fx);
             load(st, fx);

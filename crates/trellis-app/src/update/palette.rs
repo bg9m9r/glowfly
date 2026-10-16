@@ -12,6 +12,7 @@ use crate::msg::BranchMsg;
 use crate::msg::DiffMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::HistoryMsg;
+use crate::msg::IssueMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
@@ -61,6 +62,10 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             if let PaletteCommand::StashWithMessage(t) = &cmd
                 && t.trim().is_empty()
             {
+                return;
+            }
+            // Listed with the reason while creating is blocked; Enter leaves the palette open.
+            if cmd == PaletteCommand::CreateIssue && crate::state::issue_form::create_blocked(st).is_some() {
                 return;
             }
             st.palette = None;
@@ -161,6 +166,14 @@ fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
             let pick = Pick::issues(kind, f);
             open_step(st, Mode::Pick(pick));
         }
+        PickKind::ViewIssue => {
+            if !crate::state::palette_commands::palette_issues::can_view(st) {
+                return;
+            }
+            let Some(f) = st.forge.as_ref() else { return };
+            let pick = Pick::issues_to_view(f);
+            open_step(st, Mode::Pick(pick));
+        }
     }
 }
 
@@ -236,6 +249,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::FinishGitFlow(b) => Msg::GitFlow(crate::gitflow::GitFlowMsg::FinishDialog(b)),
         C::OpenGitFlowPanel => Msg::GitFlow(crate::gitflow::GitFlowMsg::OpenPanel),
         C::StartGitFlowFromIssue { kind, name } => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartFromIssue { kind, name }),
+        C::CreateIssue => Msg::Issue(IssueMsg::CreateDialog),
+        C::ViewIssue(key) => Msg::Issue(IssueMsg::Open(key)),
         C::Refresh => Msg::Repo(RepoMsg::Refresh),
         C::OpenTerminal => Msg::OpenTerminal,
         C::ToggleTerminal => Msg::Terminal(crate::terminal::TerminalMsg::Toggle),
@@ -280,6 +295,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         | C::ChooseStashToRename
         | C::ChooseProfile
         | C::ChooseGitFlowIssue(_)
+        | C::ChooseIssueToView
         | C::StashMessage
         | C::FetchMoreCommits => return,
     };

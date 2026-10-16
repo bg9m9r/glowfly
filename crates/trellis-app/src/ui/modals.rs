@@ -12,7 +12,8 @@
 //! `remotes/fork_pick.rs` and `remotes/fork_create.rs`), the keyboard shortcut sheet (drawn by
 //! `shortcuts/sheet.rs`), the repository trust prompt (drawn by `trust_dialog.rs`), a conflict
 //! check's report (drawn by `conflict_check.rs`), a pull request or issue filter (drawn by
-//! `forge_filter_dialog.rs`) and the trellis:// link dialogs (drawn by `deep_link_dialog.rs`).
+//! `forge_filter_dialog.rs`), the trellis:// link dialogs (drawn by `deep_link_dialog.rs`) and
+//! creating an issue (drawn by `issue/create_dialog.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -204,6 +205,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::DeepLink(d) => {
                 if super::deep_link_dialog::show(ui, d, msgs) {
+                    close = true;
+                }
+            }
+            Modal::CreateIssue(form) => {
+                if super::issue::create_dialog::show(ui, form, fs, !prompting, msgs) {
                     close = true;
                 }
             }

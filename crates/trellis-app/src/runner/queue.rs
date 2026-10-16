@@ -186,6 +186,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::PullRequest(_)
         | Effect::DeepLink(_)
         | Effect::Dashboard(_)
+        | Effect::Issue(_)
         | Effect::Ui(_) => None,
     }
 }

@@ -36,6 +36,7 @@ mod graph;
 mod history;
 mod icons;
 mod init_dialog;
+mod issue;
 mod layout;
 mod list_row;
 mod menus;
@@ -123,6 +124,10 @@ mod snapshot_tests_forks;
 mod snapshot_tests_gitflow;
 #[cfg(test)]
 mod snapshot_tests_init;
+#[cfg(test)]
+mod snapshot_tests_issue;
+#[cfg(test)]
+mod snapshot_tests_issue_create;
 #[cfg(test)]
 mod snapshot_tests_lfs;
 #[cfg(test)]

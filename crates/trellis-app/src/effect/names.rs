@@ -80,6 +80,7 @@ impl Effect {
             Effect::PullRequest(e) => e.name(),
             Effect::DeepLink(e) => e.name(),
             Effect::Dashboard(e) => e.name(),
+            Effect::Issue(e) => e.name(),
             Effect::Ui(_) => "ui",
         }
     }
@@ -143,7 +144,8 @@ impl Effect {
             | Effect::Clone(_)
             | Effect::Init(_)
             | Effect::PullRequest(_)
-            | Effect::DeepLink(_) => true,
+            | Effect::DeepLink(_)
+            | Effect::Issue(_) => true,
             // Some of their variants wait on the user (a file dialog, a passphrase prompt).
             Effect::Ssh(e) => e.timed(),
             Effect::Patch(p) => p.timed(),

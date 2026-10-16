@@ -57,6 +57,8 @@ pub struct ProviderInfo {
     /// Reads checks or votes with one call per pull request, so the list carries them only for
     /// the first `CHECKED_PRS` (the rest come from `pr_details`).
     pub details_per_pr: bool,
+    /// Issue details and creating issues work inside Trellis.
+    pub issues_in_app: bool,
     /// Request headers only this service understands.
     pub api_headers: &'static [(&'static str, &'static str)],
     /// The API implementation.
@@ -161,6 +163,10 @@ impl Provider {
     pub fn details_per_pr(self) -> bool {
         self.info().details_per_pr
     }
+
+    pub fn issues_in_app(self) -> bool {
+        self.info().issues_in_app
+    }
 }
 
 /// The settings most services share; each `ProviderInfo` overrides what differs.
@@ -183,6 +189,7 @@ pub(super) const DEFAULTS: ProviderInfo = ProviderInfo {
     creates_forks: false,
     adds_ssh_keys: false,
     details_per_pr: false,
+    issues_in_app: false,
     api_headers: &[],
     service: &NoService,
 };
@@ -252,6 +259,8 @@ mod tests {
             assert_eq!(p.adds_ssh_keys(), adds, "{p:?}");
             let per_pr = matches!(p, GitLab | GitLabSelfManaged | Bitbucket | BitbucketDataCenter | AzureDevOps);
             assert_eq!(p.details_per_pr(), per_pr, "{p:?}");
+            let in_app = matches!(p, GitHub | GitHubEnterprise | GitLab | GitLabSelfManaged | JiraCloud | JiraDataCenter);
+            assert_eq!(p.issues_in_app(), in_app, "{p:?}");
         }
     }
 }

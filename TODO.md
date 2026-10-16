@@ -521,7 +521,8 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Saved filters: mine, needs my review, assigned, mentioned, labels, milestones, sprints.
 - [ ] **Create and view issues**
   Create an issue (type, labels, assignees, epic); an issue detail panel with description and
-  comments; "create issue then branch".
+  comments; "create issue then branch". Done for GitHub, GitHub Enterprise Server, GitLab and Jira;
+  Bitbucket Cloud and Data Center issues, Azure DevOps work items and Trello cards remain.
 - [x] **Trello**
   Trello cards as an issue tracker.
 - [x] **Cross-repo dashboard**
@@ -1365,6 +1366,21 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Label suggestions on Jira Data Center; fix versions and sprints without a Jira project set
 - Mentions on trackers that can't search by them (GitLab to-dos, Jira watchers or comments)
 - A fuller search for Azure's Mentioning me, which covers only the last 30 days
+
+### Create and view issues
+
+- Post a comment and reply from the issue panel
+- Change an issue's state (Jira: its status, through a transition), assignees and labels from the panel
+- Threaded replies with show and collapse (GitLab discussions, Jira comment threads)
+- Render descriptions and comments as Markdown (links, code blocks, emphasis, images) rather than plain text
+- Choose the base branch when creating a branch from an issue
+- GitHub issue types and milestones when creating an issue
+- GitLab milestones, epics and several assignees (paid tiers) when creating an issue
+- Jira priority, components, fix versions, sprint, Epic Name and other required custom fields when creating an issue
+- Open the tracker's own new-issue page in the browser when creating in Trellis fails on required fields
+- GitHub issue templates in the Create issue dialog
+- Remember the "Create a branch for it afterwards" choice
+- Open the issue panel from issue references in commit details and branch names
 
 ### Limits found while building integrations
 

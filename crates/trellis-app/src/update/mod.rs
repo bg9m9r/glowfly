@@ -29,6 +29,8 @@ mod highlight;
 mod history;
 mod inactive;
 mod init;
+mod issue;
+mod issue_create;
 mod jobs;
 mod keys;
 mod layout;
@@ -166,6 +168,10 @@ mod history_tests;
 #[cfg(test)]
 mod init_tests;
 #[cfg(test)]
+mod issue_create_tests;
+#[cfg(test)]
+mod issue_tests;
+#[cfg(test)]
 mod keys_tests;
 #[cfg(test)]
 mod language_override_tests;
@@ -189,6 +195,8 @@ mod onboarding_tests;
 mod palette_blame_tests;
 #[cfg(test)]
 mod palette_checkout_tests;
+#[cfg(test)]
+mod palette_issue_tests;
 #[cfg(test)]
 mod palette_more_tests;
 #[cfg(test)]
@@ -377,6 +385,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
         Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
         Msg::PullRequest(m) => pull_request::handle(st, m, now, &mut fx),
+        Msg::Issue(m) => issue::handle(st, m, now, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
         Msg::ForgeFilter(m) => forge_filters::handle(st, m, &mut fx),
         Msg::Publish(m) => publish::handle(st, m, &mut fx),

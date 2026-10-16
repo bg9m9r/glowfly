@@ -3,11 +3,12 @@
 
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_color};
-use super::forge_filter_menu::{self, Picker};
+use super::forge_filter_menu::{self, AddButton, Picker};
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
 use crate::msg::BranchMsg;
+use crate::msg::IssueMsg;
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -50,6 +51,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
     let open_tabs = crate::state::tabs::open_places(&st.tabs);
+    let create_blocked = crate::state::issue_form::create_blocked(st);
+    let open_issue = st.issue.as_ref().map(|v| v.key.clone());
     let Some(snap) = &st.snap else { return };
     let repo_filters = st.settings.forge_filters_for(&snap.real_workdir);
     let filter = st.view.ref_filter.to_lowercase();
@@ -121,7 +124,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let title = if f.pr_noun() == "merge request" { "MERGE REQUESTS" } else { "PULL REQUESTS" };
         let view = forge_filters::pr_view(f, &repo_filters);
         let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
-        forge_filter_menu::header(ui, title, view.rows.len(), &mut sections.prs, picker, msgs);
+        forge_filter_menu::header(ui, title, view.rows.len(), &mut sections.prs, picker, None, msgs);
         if sections.prs {
             pull_requests(ui, snap, f, &view, &sel, &shown, msgs);
         }
@@ -130,9 +133,13 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let view = forge_filters::issue_view(f, &repo_filters);
         let provider = f.tracker.as_ref().map(|t| t.provider);
         let picker = Picker { kind: FilterKind::Issues, label: &view.label, filters: &repo_filters, provider };
-        forge_filter_menu::header(ui, "ISSUES", view.rows.len(), &mut sections.issues, picker, msgs);
+        let create = || Msg::Issue(IssueMsg::CreateDialog);
+        let add = AddButton { tooltip: format!("Create {}", f.issue_noun()), blocked: create_blocked.clone(), msg: create };
+        let header = forge_filter_menu::header(ui, "ISSUES", view.rows.len(), &mut sections.issues, picker, Some(add), msgs);
+        header.context_menu(|ui| menu_item_if(msgs, ui, format!("Create {}…", f.issue_noun()), create_blocked.as_deref(), create()));
         if sections.issues {
-            issues(ui, snap, f, &view, &shown, msgs);
+            let in_app = provider.is_some_and(forge::issues_in_app);
+            issues(ui, snap, f, &view, &shown, (open_issue.as_deref(), in_app), msgs);
         }
     }
     if let Some(s) = snap.gitflow.settings() {
@@ -229,7 +236,18 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
     }
 }
 
-fn issues(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &IssueView, shown: &Shown, msgs: &mut Vec<Msg>) {
+/// The ISSUES rows. Where the tracker has issue details in Trellis (`in_app`), a click opens
+/// the issue panel (and its row shows selected while `open`); elsewhere a double-click opens
+/// the issue's page.
+fn issues(
+    ui: &mut egui::Ui,
+    snap: &Snapshot,
+    f: &ForgeState,
+    view: &IssueView,
+    shown: &Shown,
+    (open, in_app): (Option<&str>, bool),
+    msgs: &mut Vec<Msg>,
+) {
     forge_filter_menu::hint(ui, &view.hint, msgs);
     if let Status::Error(e) = &f.tracker_status {
         forge_error_rows(ui, e, msgs);
@@ -239,17 +257,23 @@ fn issues(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &IssueView, 
             continue;
         }
         let text = format!("{}  {}", f.mention(&issue.key), issue.title);
-        let r = widgets::list_row(ui, 26.0, &text, Some((&issue.state, state_color(&issue.state))), false, false);
+        let selected = open == Some(issue.key.as_str());
+        let r = widgets::list_row(ui, 26.0, &text, Some((&issue.state, state_color(&issue.state))), selected, false);
         let assignee = issue.assignee.as_deref().unwrap_or("unassigned");
         let mut tip = format!("{} {}: {}\n{} · {assignee}", issue.kind, issue.key, issue.title, issue.state);
         if let Some(line) = forge_filters::facet_line(&issue.facets) {
             tip.push_str(&format!("\n{line}"));
         }
         let r = r.on_hover_text(tip);
-        if r.double_clicked() {
+        if in_app && r.clicked() {
+            msgs.push(Msg::Issue(IssueMsg::Open(issue.key.clone())));
+        } else if !in_app && r.double_clicked() {
             msgs.push(Msg::OpenUrl(issue.url.clone()));
         }
         r.context_menu(|ui| {
+            if in_app {
+                menu_item(msgs, ui, format!("View {}", f.issue_noun()), Msg::Issue(IssueMsg::Open(issue.key.clone())));
+            }
             menu_item(
                 msgs,
                 ui,

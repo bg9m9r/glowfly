@@ -58,13 +58,12 @@ pub(super) fn details(mut v: Vec<PrDetails>) -> Vec<PrDetails> {
 }
 
 pub(super) fn issues(t: &Target, items: Vec<Issue>) -> Vec<Issue> {
-    items
-        .into_iter()
-        .map(|mut i| {
-            i.url = web_url(t, std::mem::take(&mut i.url));
-            i
-        })
-        .collect()
+    items.into_iter().map(|i| issue(t, i)).collect()
+}
+
+pub(super) fn issue(t: &Target, mut i: Issue) -> Issue {
+    i.url = web_url(t, std::mem::take(&mut i.url));
+    i
 }
 
 #[cfg(test)]

@@ -13,9 +13,14 @@ pub mod dashboard;
 pub mod filters;
 mod github;
 mod github_checks;
+mod github_issues;
 mod gitlab;
 mod gitlab_checks;
+mod gitlab_issues;
+mod issue_details;
 mod jira;
+mod jira_adf;
+mod jira_issues;
 mod trello;
 
 use crate::error::{Error, Result};
@@ -48,6 +53,7 @@ pub use filters::{Builtin, Conditions, FilterChoice, FilterKind, FilterOptions, 
 pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find_my_fork, list_forks, remote_name_for, same_repository};
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
+pub use issue_details::{CreateOptions, IssueDetails, NewIssue, Person, create_issue, issue_create_options, issue_details, issues_in_app};
 pub use links::https_host;
 pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
@@ -169,7 +175,7 @@ impl PullRequest {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Issue {
     /// Display key: `123` for numbered trackers, `PROJ-123` for Jira.
     pub key: String,
@@ -285,6 +291,21 @@ pub trait Forge: Sync {
     /// is ready.
     fn create_fork(&self, _t: &Target, _auth: &Auth, _wait: &Wait) -> Result<CreatedFork> {
         Err(Error::Unsupported("forking isn't supported on this service".into()))
+    }
+
+    /// One issue with its description, people and comments (see `issue_details`).
+    fn issue_details(&self, _t: &Target, _auth: &Auth, _key: &str) -> Result<IssueDetails> {
+        Err(Error::Unsupported("issue details aren't supported on this service".into()))
+    }
+
+    /// The labels, people, types and epics the Create issue dialog offers for `project`.
+    fn issue_create_options(&self, _t: &Target, _auth: &Auth, _project: &str) -> Result<CreateOptions> {
+        Err(Error::Unsupported("creating issues isn't supported on this service".into()))
+    }
+
+    /// Creates an issue (already checked by `NewIssue::problems`) and returns it as listed.
+    fn create_issue(&self, _t: &Target, _auth: &Auth, _new: &NewIssue) -> Result<Issue> {
+        Err(Error::Unsupported("creating issues isn't supported on this service".into()))
     }
 }
 

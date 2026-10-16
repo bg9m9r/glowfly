@@ -19,6 +19,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             super::history::close(st);
             super::blame::close(st);
             super::pull_request::close(st);
+            super::issue::close(st);
             st.conflict = Some(ConflictView::loading(path));
             request_load(st, fx);
         }

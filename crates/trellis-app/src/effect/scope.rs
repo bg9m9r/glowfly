@@ -32,6 +32,7 @@ impl Effect {
             Effect::Submodule(e) => e.scope(),
             Effect::PullRequest(e) => e.scope(),
             Effect::DeepLink(e) => e.scope(),
+            Effect::Issue(e) => e.scope(),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
             Effect::LoadRepo { .. }

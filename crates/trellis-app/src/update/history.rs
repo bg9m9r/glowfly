@@ -18,6 +18,7 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
             super::conflict::close(st);
             super::blame::close(st);
             super::pull_request::close(st);
+            super::issue::close(st);
             st.history = Some(FileHistoryView::loading(path, at));
             request(st, at.map_or(HistoryStart::Head, HistoryStart::At), fx);
         }

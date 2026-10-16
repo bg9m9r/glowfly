@@ -22,6 +22,7 @@ mod forge;
 mod forge_filters;
 mod graph;
 mod init;
+mod issue;
 mod keys;
 mod layout;
 mod prefs;
@@ -43,6 +44,7 @@ pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
 pub use forge_filters::FilterMsg;
 pub use graph::{AvatarMsg, GraphMsg, PathsChunk, SearchMsg, SelectionMsg};
 pub use init::InitMsg;
+pub use issue::IssueMsg;
 pub use keys::KeysMsg;
 pub use layout::LayoutMsg;
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
@@ -122,6 +124,8 @@ pub enum Msg {
     ConflictCheck(crate::conflict_check::ConflictCheckMsg),
     /// The pull request panel (update/pull_request/).
     PullRequest(crate::pull_request::PullRequestMsg),
+    /// The issue panel and the Create issue dialog (update/issue.rs, update/issue_create.rs).
+    Issue(IssueMsg),
     /// Hosting services: pull requests, issues, connections (update/forge.rs).
     Forge(ForgeMsg),
     /// PR and issue filters: header pickers and the saved-filter dialog (update/forge_filters.rs,
@@ -254,6 +258,7 @@ impl Msg {
             Msg::Tools(m) => m.on_inactive(),
             Msg::ConflictCheck(m) => m.on_inactive(),
             Msg::PullRequest(m) => m.on_inactive(),
+            Msg::Issue(m) => m.on_inactive(),
             Msg::Forge(m) => m.on_inactive(),
             Msg::ForgeFilter(m) => m.on_inactive(),
             Msg::Publish(m) => m.on_inactive(),

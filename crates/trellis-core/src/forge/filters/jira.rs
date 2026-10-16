@@ -80,7 +80,7 @@ pub(crate) fn options(t: &Target, auth: &Auth, kind: FilterKind) -> Result<Filte
     }
     let base = api(&t.host, t.provider);
     if t.provider == Provider::JiraCloud {
-        out.labels = get::<Values<String>>(auth, &format!("{base}/label?maxResults=1000"))?.values;
+        out.labels = cloud_labels(t, auth)?;
     }
     let project = t.project.trim();
     if project.is_empty() {
@@ -100,4 +100,9 @@ pub(crate) fn options(t: &Target, auth: &Auth, kind: FilterKind) -> Result<Filte
         }
     }
     Ok(out)
+}
+
+/// The site's labels (Jira Cloud only: Data Center has no label list).
+pub(crate) fn cloud_labels(t: &Target, auth: &Auth) -> Result<Vec<String>> {
+    Ok(get::<Values<String>>(auth, &format!("{}/label?maxResults=1000", api(&t.host, t.provider)))?.values)
 }

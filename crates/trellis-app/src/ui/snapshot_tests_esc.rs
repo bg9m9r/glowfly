@@ -16,7 +16,7 @@ use trellis_core::settings::ThemeChoice;
 use trellis_core::spell::Speller;
 use trellis_core::terminal::TermScreen;
 
-fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
+pub(super) fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut cache: Option<UiCache> = None;
     Harness::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
@@ -33,7 +33,7 @@ fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     )
 }
 
-fn esc(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Vec<Msg> {
+pub(super) fn esc(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Vec<Msg> {
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
     h.run();

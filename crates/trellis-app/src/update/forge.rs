@@ -59,6 +59,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
                 detect(st, &snap);
                 st.snap = Some(snap);
             }
+            super::issue::tracker_changed(st);
             refresh(st, true, false, now, fx);
             super::trello::want_boards(st, fx);
         }
