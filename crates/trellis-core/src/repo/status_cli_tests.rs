@@ -40,10 +40,34 @@ fn git_and_libgit2_read_the_same_status() {
 #[test]
 fn conflicts_and_odd_records_parse() {
     let text = "u UU N... 100644 100644 100644 100644 a b c both.txt\0? x y.txt\0! ignored\0# branch.oid abc\0";
-    let (unstaged, staged) = parse(text);
+    let (unstaged, staged) = parse(text.as_bytes());
     let paths: Vec<_> = unstaged.iter().map(|f| (f.path.as_str(), f.status)).collect();
     assert_eq!(paths, [("both.txt", '!'), ("x y.txt", '?')]);
     assert!(staged.is_empty());
+}
+
+#[test]
+fn untracked_names_keep_their_leading_spaces() {
+    let (unstaged, _) = parse(b"?  a.txt\0? a.txt\0?   \0");
+    let paths: Vec<_> = unstaged.iter().map(|f| f.path.as_str()).collect();
+    assert_eq!(paths, ["  ", " a.txt", "a.txt"]);
+}
+
+#[test]
+fn git_s_status_tells_a_leading_space_apart() {
+    let dir = scratch_repo("status-cli-space");
+    write(&dir, "t.txt", "t\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    git(&dir, &["config", "core.untrackedCache", "true"]);
+    write(&dir, " a.txt", "space\n");
+    write(&dir, "a.txt", "plain\n");
+    let (unstaged, _, _) = status_at(&dir, true).unwrap();
+    let paths: Vec<_> = unstaged.iter().map(|f| (f.path.as_str(), f.status)).collect();
+    assert_eq!(paths, [(" a.txt", '?'), ("a.txt", '?')]);
+    let repo = Repository::open(&dir).unwrap();
+    assert_eq!(libgit2_status(&repo).unwrap().0, unstaged, "libgit2 reads the same names");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

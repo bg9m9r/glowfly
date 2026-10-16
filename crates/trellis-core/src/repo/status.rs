@@ -52,13 +52,11 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
     };
     for e in statuses.iter() {
         let s = e.status();
-        let path = e
-            .head_to_index()
-            .and_then(|d| d.new_file().path().map(|p| p.to_string_lossy().into_owned()))
-            .or_else(|| e.path().map(str::to_owned))
-            .unwrap_or_default();
+        // A staged rename is listed under its new path.
+        let bytes = e.head_to_index().and_then(|d| d.new_file().path_bytes()).unwrap_or_else(|| e.path_bytes());
+        let row = |status| super::rpath::entry(bytes, status);
         if s.is_conflicted() {
-            unstaged.push(FileEntry { path, status: '!' });
+            unstaged.push(row('!'));
             continue;
         }
         let index = if s.is_index_new() {
@@ -88,10 +86,10 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
             None
         };
         if let Some(c) = index {
-            staged.push(FileEntry { path: path.clone(), status: c });
+            staged.push(row(c));
         }
         if let Some(c) = worktree {
-            unstaged.push(FileEntry { path, status: c });
+            unstaged.push(row(c));
         }
     }
     drop_skipped(repo, &mut unstaged)?;

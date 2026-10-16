@@ -111,7 +111,7 @@ fn s_and_u_ignore_other_diffs_and_views() {
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S under Preferences");
     st.prefs = None;
 
-    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "f.txt".into(), status: '!' });
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("f.txt", '!'));
     assert!(key(&mut st, KeyAction::Stage).is_empty(), "S on a conflicted file");
     assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -150,7 +150,7 @@ fn stage_and_unstage_all_need_files() {
 #[test]
 fn stage_all_refuses_while_files_are_conflicted() {
     let (mut st, dir) = with_repo("keys-all-conflict", unstaged());
-    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "f.txt".into(), status: '!' });
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("f.txt", '!'));
     assert!(key(&mut st, KeyAction::StageAll).is_empty(), "the key stages nothing");
     assert!(update(&mut st, Msg::Stage(StageMsg::StageAll), Instant::now()).is_empty(), "nor does the button");
     let toast = st.toasts.last().expect("a toast says why");
@@ -254,7 +254,7 @@ fn palette_entry_and_hints_come_from_the_table() {
         assert_eq!(find(&st, "Refresh").unwrap().shortcut, Some("F5"));
         assert_eq!(find(&st, "Open Preferences").unwrap().shortcut, Some("Ctrl+,"));
     }
-    st.snap.as_mut().unwrap().staged.push(FileEntry { path: "b.txt".into(), status: 'A' });
+    st.snap.as_mut().unwrap().staged.push(FileEntry::new("b.txt", 'A'));
     #[cfg(not(target_os = "macos"))]
     assert_eq!(find(&st, "Unstage all files").unwrap().shortcut, Some("Ctrl+Shift+U"));
 

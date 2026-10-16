@@ -10,7 +10,7 @@ use super::head_tree;
 use super::removal::{Deleted, Removal};
 use super::workfile::contained;
 use crate::error::{Error, Result};
-use git2::{Delta, DiffFindOptions, IndexEntry, IndexTime, Repository};
+use git2::{Delta, DiffFindOptions, Repository};
 use std::path::Path;
 
 /// Deletes the working-tree file `path`, which is staged as a new file or as the new path of a
@@ -62,8 +62,8 @@ pub fn unstage_gone_new_file(workdir: &Path, path: &str) -> Result<()> {
 /// Checks that `path` is staged as new (a stage-0 entry that HEAD's tree lacks) and returns the
 /// source of the staged rename it is the new path of, if any. Run before anything changes:
 /// removing the new path's entry dissolves the rename.
-fn check_staged_new(repo: &Repository, path: &str) -> Result<Option<String>> {
-    if repo.index()?.get_path(Path::new(path), 0).is_none() {
+fn check_staged_new(repo: &Repository, path: &str) -> Result<Option<Vec<u8>>> {
+    if super::exact::index(repo)?.get_path(Path::new(path), 0).is_none() {
         return Err(Error::Other(format!("{path} isn't staged")));
     }
     // An unborn HEAD has no tree, so every staged path is new.
@@ -73,51 +73,36 @@ fn check_staged_new(repo: &Repository, path: &str) -> Result<Option<String>> {
     rename_source(repo, path)
 }
 
-/// The old path of the staged rename whose new path is `path`, as status pairs it (HEAD against
-/// the index). Explicit options, because the default reads `diff.renames` from config.
-fn rename_source(repo: &Repository, path: &str) -> Result<Option<String>> {
+/// The old path (git's bytes, which needn't be UTF-8) of the staged rename whose new path is
+/// `path`, as status pairs it (HEAD against the index). Explicit options, because the default
+/// reads `diff.renames` from config.
+fn rename_source(repo: &Repository, path: &str) -> Result<Option<Vec<u8>>> {
     let Some(tree) = head_tree(repo) else { return Ok(None) };
     let index = repo.index()?;
     let mut diff = repo.diff_tree_to_index(Some(&tree), Some(&index), None)?;
     diff.find_similar(Some(DiffFindOptions::new().renames(true)))?;
     let source = diff
         .deltas()
-        .find(|d| d.status() == Delta::Renamed && d.new_file().path() == Some(Path::new(path)))
-        .and_then(|d| d.old_file().path().map(|p| p.to_string_lossy().into_owned()));
+        .find(|d| d.status() == Delta::Renamed && super::rpath::is(&d.new_file(), path))
+        .and_then(|d| d.old_file().path_bytes().map(<[u8]>::to_vec));
     Ok(source)
 }
 
 /// Takes `path` out of the index and gives `source` back its HEAD entry, in one index write.
 ///
-/// Both are exact index edits rather than `unstage_paths`: that reads its paths as pathspecs, so
-/// a name such as `[id].tsx` would also reset every path it matches as a glob (`i.tsx`,
-/// `d.tsx`) and lose their staged changes.
-fn unstage(workdir: &Path, path: &str, source: Option<&str>) -> Result<()> {
+/// Both are exact index edits (`exact`) rather than `unstage_paths`' reset: a pathspec would
+/// read a name such as `[id].tsx` as a glob, and the repository's index would fold case with
+/// `core.ignorecase`, reaching other entries and losing their staged changes.
+fn unstage(workdir: &Path, path: &str, source: Option<&[u8]>) -> Result<()> {
     let repo = Repository::open(workdir)?;
-    let mut index = repo.index()?;
+    let mut index = super::exact::index(&repo)?;
     index.remove(Path::new(path), 0)?;
     if let Some(source) = source {
         // A rename source is in HEAD's tree: that is how status paired it.
         let tree = head_tree(&repo).ok_or_else(|| Error::Other("HEAD has no tree".into()))?;
-        let entry = tree.get_path(Path::new(source))?;
-        // With `core.ignorecase`, a case-only rename's source and new path are one index path;
-        // the new path's entry is already gone, so adding the source can't replace anything else.
-        let zero = IndexTime::new(0, 0);
-        index.add(&IndexEntry {
-            // No cached stat data, so the working file is always compared by content.
-            ctime: zero,
-            mtime: zero,
-            dev: 0,
-            ino: 0,
-            mode: u32::try_from(entry.filemode()).map_err(|_| Error::Other(format!("{source} has an unknown mode in HEAD")))?,
-            uid: 0,
-            gid: 0,
-            file_size: 0,
-            id: entry.id(),
-            flags: 0,
-            flags_extended: 0,
-            path: source.as_bytes().to_vec(),
-        })?;
+        let shown = String::from_utf8_lossy(source);
+        let entry = super::exact::tree_entry(&repo, &tree, source).ok_or_else(|| Error::NotFound(format!("{shown} isn't in HEAD")))?;
+        index.add(&super::exact::entry_from(&entry, source)?)?;
     }
     index.write()?;
     Ok(())

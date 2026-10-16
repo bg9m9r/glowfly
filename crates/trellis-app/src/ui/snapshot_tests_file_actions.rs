@@ -215,7 +215,7 @@ fn working_tree_diff_header_unchanged() {
 fn long_lists_draw_only_visible_rows() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "long-lists");
     let snap = st.snap.as_mut().unwrap();
-    let file = |i: usize| trellis_core::repo::FileEntry { path: format!("gen/file{i}.txt"), status: 'M' };
+    let file = |i: usize| trellis_core::repo::FileEntry::new(format!("gen/file{i}.txt"), 'M');
     snap.unstaged = (0..3000).map(file).collect();
     let branch = snap.locals[0].clone();
     snap.locals =

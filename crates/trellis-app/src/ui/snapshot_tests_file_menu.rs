@@ -89,7 +89,7 @@ pub(super) fn menu_style(style: &mut egui::Style) {
 }
 
 fn entry(path: &str, status: char) -> FileEntry {
-    FileEntry { path: path.into(), status }
+    FileEntry::new(path, status)
 }
 
 #[test]

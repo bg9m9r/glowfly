@@ -62,11 +62,12 @@ fn entry(tree: &Tree<'_>, path: &str) -> Option<(Oid, i32)> {
 fn renamed_from(repo: &Repository, parent_tree: &Tree<'_>, tree: &Tree<'_>, path: &str) -> Result<Option<String>> {
     let mut diff = repo.diff_tree_to_tree(Some(parent_tree), Some(tree), None)?;
     diff.find_similar(Some(DiffFindOptions::new().renames(true)))?;
-    let lossy = |p: Option<&Path>| p.map(|p| p.to_string_lossy().replace('\\', "/"));
+    // Byte for byte: a '\' is part of a name on Unix, not a separator. A source whose name
+    // isn't UTF-8 ends the walk there, as if the file had been added.
     Ok(diff
         .deltas()
-        .find(|d| d.status() == Delta::Renamed && lossy(d.new_file().path()).as_deref() == Some(path))
-        .and_then(|d| lossy(d.old_file().path())))
+        .find(|d| d.status() == Delta::Renamed && super::rpath::is(&d.new_file(), path))
+        .and_then(|d| d.old_file().path_bytes().and_then(super::rpath::text)))
 }
 
 /// Commits waiting to be examined: newest commit time first and, between equal times, the one

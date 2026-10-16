@@ -113,7 +113,7 @@ fn new_file_dialog_busy() {
 fn rename_file_dialog() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "rename-file");
     st.settings.stage_renames = false;
-    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "notes.txt".into(), status: '?' });
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("notes.txt", '?'));
     st.modal = Some(Modal::RenameFile { old: "README.md".into(), form: PathForm::new("notes.txt") });
     let mut h = harness(st, true);
     h.run();
@@ -165,7 +165,7 @@ fn rename_file_dialog_staged() {
 #[test]
 fn rename_untracked_has_no_stage_option() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "rename-untracked");
-    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "notes.txt".into(), status: '?' });
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("notes.txt", '?'));
     st.modal = Some(Modal::RenameFile { old: "notes.txt".into(), form: PathForm::new("docs/notes.txt") });
     let mut h = harness(st, true);
     h.run();
@@ -183,7 +183,7 @@ fn rename_untracked_has_no_stage_option() {
 fn confirm_delete_trash() {
     // The trash confirmation for an untracked file: the longer body wraps and the button fits.
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "confirm-delete-trash");
-    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "notes/scratch.txt".into(), status: '?' });
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("notes/scratch.txt", '?'));
     crate::update::update(
         &mut st,
         Msg::WorkFile(WorkFileMsg::DeleteFile { path: "notes/scratch.txt".into(), confirmed: false }),

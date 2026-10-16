@@ -248,7 +248,7 @@ fn compare_results() {
     let (mut st, f) = fixture("multi-compare");
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
-    let files = vec![FileEntry { path: "f.txt".into(), status: 'M' }];
+    let files = vec![FileEntry::new("f.txt", 'M')];
     let c = Comparison { files, absent: ["f.txt".to_owned()].into() };
     up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(3), to: f.c(5), result: Ok(c.clone()) }));
     assert_eq!(multi(&st).changes, Some(Ok(c.clone())));
@@ -272,7 +272,7 @@ fn two_commit_diff_end_to_end() {
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
     drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     let c = multi(&st).changes.clone().unwrap().unwrap();
-    assert_eq!(c.files, [FileEntry { path: "f.txt".into(), status: 'M' }]);
+    assert_eq!(c.files, [FileEntry::new("f.txt", 'M')]);
     assert!(c.absent.is_empty(), "f.txt is on disk");
 
     let target = DiffTarget::Between(f.c(3), f.c(5), "f.txt".into());

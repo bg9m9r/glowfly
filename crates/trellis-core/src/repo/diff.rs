@@ -64,12 +64,7 @@ fn trees_diff<'r>(repo: &'r Repository, from: Oid, to: Oid, opts: Option<&mut Di
 
 /// One entry per delta, named by its new path (the old one for a deletion).
 fn file_entries(diff: &Diff) -> Vec<FileEntry> {
-    diff.deltas()
-        .map(|d| FileEntry {
-            path: d.new_file().path().or(d.old_file().path()).map(|p| p.to_string_lossy().into_owned()).unwrap_or_default(),
-            status: delta_char(d.status()),
-        })
-        .collect()
+    diff.deltas().map(|d| super::rpath::entry(super::rpath::delta_bytes(&d), delta_char(d.status()))).collect()
 }
 
 /// The files that differ from commit `from` to commit `to`: a file only in `to` is 'A', only in
@@ -104,9 +99,10 @@ pub fn compare(workdir: &Path, from: Oid, to: Oid) -> Result<Comparison> {
 }
 
 /// The paths of `files` with nothing at them in the working tree (all of them in a bare
-/// repository). One stat per file, so views can tell which ones can be opened.
+/// repository, and every name that isn't UTF-8). One stat per file, so views can tell which
+/// ones can be opened.
 fn absent_paths(repo: &Repository, files: &[FileEntry]) -> HashSet<String> {
-    files.iter().filter(|f| !on_disk(repo, &f.path)).map(|f| f.path.clone()).collect()
+    files.iter().filter(|f| f.hazard.is_some() || !on_disk(repo, &f.path)).map(|f| f.path.clone()).collect()
 }
 
 /// Whether something is at `path` in the working tree (never in a bare repository).
@@ -274,10 +270,7 @@ pub(super) fn hunk_of(patch: &Patch<'_>, h: usize) -> Result<Hunk> {
 /// The patch for `path` in `diff`: `NotFound` when the file has no changes, `None` when it is
 /// binary. Shared by `load_diff` and line staging, so both see the same hunks and lines.
 pub(super) fn file_patch<'b>(diff: &Diff<'b>, path: &str) -> Result<Option<Patch<'b>>> {
-    let matches = |p: Option<&Path>| p.is_some_and(|p| p.to_string_lossy() == path);
-    let idx = diff
-        .deltas()
-        .position(|d| matches(d.new_file().path()) || matches(d.old_file().path()))
-        .ok_or_else(|| Error::NotFound(format!("no changes in {path}")))?;
+    let idx =
+        diff.deltas().position(|d| super::rpath::touches(&d, path)).ok_or_else(|| Error::NotFound(format!("no changes in {path}")))?;
     Ok(Patch::from_diff(diff, idx)?)
 }

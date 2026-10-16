@@ -233,10 +233,10 @@ fn start_is_refused_with_a_reason() {
 
     // Untracked files are fine; tracked changes are not.
     let snap = st.snap.as_mut().unwrap();
-    snap.unstaged.push(FileEntry { path: "c1.txt".into(), status: 'M' });
+    snap.unstaged.push(FileEntry::new("c1.txt", 'M'));
     assert!(start(&mut st).is_empty());
     assert_eq!(last_log(&st), TRACKED_CHANGES);
-    st.snap.as_mut().unwrap().unstaged = vec![FileEntry { path: "new.txt".into(), status: '?' }];
+    st.snap.as_mut().unwrap().unstaged = vec![FileEntry::new("new.txt", '?')];
 
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 0, action: RebaseAction::Squash }));
     assert!(start(&mut st).is_empty());

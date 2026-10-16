@@ -78,7 +78,7 @@ fn restore_warns_about_local_changes() {
     assert!(confirm_body(&st).contains("before commit"), "{}", confirm_body(&st));
 
     // An untracked file at the path counts as uncommitted changes too.
-    st.snap.as_mut().unwrap().unstaged = vec![FileEntry { path: "new.txt".into(), status: '?' }];
+    st.snap.as_mut().unwrap().unstaged = vec![FileEntry::new("new.txt", '?')];
     run(&mut st, ask(oid, "new.txt", true));
     assert!(confirm_body(&st).contains("overwritten"));
     let _ = std::fs::remove_dir_all(&dir);
@@ -87,7 +87,7 @@ fn restore_warns_about_local_changes() {
 #[test]
 fn restore_refuses_conflicted() {
     let (mut st, dir) = loaded("files-conflict");
-    st.snap.as_mut().unwrap().unstaged = vec![FileEntry { path: "a.txt".into(), status: '!' }];
+    st.snap.as_mut().unwrap().unstaged = vec![FileEntry::new("a.txt", '!')];
     assert!(run(&mut st, ask(head(&dir), "a.txt", false)).is_empty());
     assert!(st.modal.is_none());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("conflict") && l.text.contains("a.txt")));
@@ -185,7 +185,7 @@ fn end_to_end_restore() {
 fn comparison_restore_clears_absent() {
     let (mut st, dir) = loaded("files-compare-absent");
     let oid = head(&dir);
-    let files = vec![FileEntry { path: "a.txt".into(), status: 'D' }];
+    let files = vec![FileEntry::new("a.txt", 'D')];
     let changes = Comparison { files, absent: ["a.txt".to_owned()].into() };
     let other = Oid::from_str("1111111111111111111111111111111111111111").unwrap();
     st.selection = Selection::Commits(MultiSelection {

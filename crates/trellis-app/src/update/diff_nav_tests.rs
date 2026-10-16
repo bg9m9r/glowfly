@@ -215,7 +215,7 @@ fn conflicted_files_are_skipped() {
     let (mut st, dir) = nav_repo("conflicted");
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged.retain(|f| f.path != "b.bin");
-    snap.unstaged.insert(1, FileEntry { path: "b2.txt".into(), status: '!' });
+    snap.unstaged.insert(1, FileEntry::new("b2.txt", '!'));
     assert_eq!(diff_nav::next_file(&st, &unstaged("a.txt"), 1), Some(unstaged("c.txt")));
     assert_eq!(diff_nav::next_file(&st, &unstaged("c.txt"), -1), Some(unstaged("a.txt")));
     let _ = std::fs::remove_dir_all(&dir);

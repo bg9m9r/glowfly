@@ -87,7 +87,7 @@ fn shortcut_refusals_toast() {
     assert!(!update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now()).is_empty(), "stage-all has changes to stage");
     st.job = None;
 
-    st.snap.as_mut().unwrap().unstaged.push(FileEntry { path: "c.txt".into(), status: '!' });
+    st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("c.txt", '!'));
     assert!(update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now()).is_empty());
     assert_eq!(last_toast(&st), (false, "Resolve the conflicted files before staging everything.".into()));
     cleanup(&dir);

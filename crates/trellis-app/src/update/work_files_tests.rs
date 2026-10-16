@@ -27,7 +27,7 @@ pub(super) fn loaded(name: &str) -> (AppState, PathBuf) {
 }
 
 pub(super) fn entry(path: &str, status: char) -> FileEntry {
-    FileEntry { path: path.into(), status }
+    FileEntry::new(path, status)
 }
 
 pub(super) fn new_form(st: &AppState) -> &PathForm {
