@@ -17,6 +17,7 @@ The last 20 completed TODO items, newest first: when (local time), which item, a
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 - 2026-10-16 10:40 · **GPG passphrase prompts**: OpenPGP signing passphrases asked in Trellis's own dialog: Trellis runs as git's gpg.program for foreground jobs, signs with the user's gpg through loopback pinentry (asking again after a wrong passphrase), and falls back to GnuPG's own window when it can't or when Preferences > Commit Signing says so (`e55ae02`)
+- 2026-10-16 10:38 · **Rebind keyboard shortcuts**: Preferences > Keyboard: change, add and remove keys by recording them, with refused and clashing keys explained (Swap, Use here), per-row Reset and Reset all; saved to settings and applied at once, and every changeable key matched through the keymap (`e6d2105`)
 - 2026-10-16 09:34 · **Add and remove submodules**: Add submodule dialog (URL, path following the URL, optional branch, live checks of the folder against the index, the disk, .gitignore and leftover stored modules) from the SUBMODULES header menu and the palette, which adds the first one; Remove submodule… with a confirmation naming what is deleted and warning about changes, unpushed commits and stashes inside (`96c2c43`)
 - 2026-10-16 09:25 · **Profiles**: Each profile keeps its connected hosting-service accounts and its General, UI Customization and Editor preferences, switched with the identity once git config is written; new profiles can start with the current accounts, and shared sign-ins are kept while any profile lists the account (`a27393d`)
 - 2026-10-16 09:15 · **Blame gutter**: Blame view of a file at HEAD or a commit (git blame --porcelain, honouring .mailmap and blame.ignoreRevsFile) with a sticky author, date and commit gutter per run, line numbers and syntax colors, opened from file menus, the file history header and the palette's Blame file… finder; clicking a run selects its commit (`921cdd8`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 19:55 · **Conflict prediction**: Dry-run merge of the checked-out branch against its upstream or default branch with git merge-tree after loads and fetches: toolbar warning with the conflicting files, Merge/Rebase from its popover, and on-demand checks from the branch menus (`62f321b`)
 - 2026-10-15 19:44 · **External tools**: Preferences > External Tools: choose an editor (open a file from file rows, or the repository from the palette) with argument templates, and a custom terminal for Open in terminal (`e7ea38a`)
 - 2026-10-15 19:30 · **Profiles**: Named identity profiles in Preferences > Profile: add (copying the current identity), rename, delete (asking first) and switch from the page or the palette, writing user.name/email/signingkey to the global config; the first is seeded from the global identity (`764d3c6`)
-- 2026-10-15 17:54 · **Local patches**: Create patch… from one commit or a multi-selection in the graph menus (one mbox-style file, oldest first, binary-safe) and Apply patch… from the palette, checked first so nothing changes when it fails (`56ae4b4`)
 
 ---
 
