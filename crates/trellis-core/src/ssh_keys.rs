@@ -304,7 +304,7 @@ fn create_private_dir(dir: &Path) -> Result<()> {
 
 /// Generates an Ed25519 key pair at `new.path` (and `.pub`). Without `overwrite`, an existing
 /// file there is `Error::WouldOverwrite`. The pair is written under a temporary name first and
-/// then moved into place, so a failure leaves any old pair as it was.
+/// then moved into place (see [`install_pair`]), so a failure leaves any old pair as it was.
 pub fn generate(keygen: &Path, new: &NewKey, overwrite: bool) -> Result<SshKeyPair> {
     let path = &new.path;
     if path.is_dir() {
@@ -340,10 +340,49 @@ pub fn generate(keygen: &Path, new: &NewKey, overwrite: bool) -> Result<SshKeyPa
         let why = if stderr.is_empty() { out.status.to_string() } else { stderr };
         return Err(Error::Other(format!("ssh-keygen failed: {why}")));
     }
-    // A rename replaces an existing file on Windows and Unix alike.
-    if let Err(e) = std::fs::rename(&tmp, path).and_then(|()| std::fs::rename(&tmp_pub, &public)) {
+    if let Err(e) = install_pair([&tmp_pub, &tmp], [&public, path]) {
         clean();
         return Err(e.into());
     }
     read_pair(path, Some(keygen)).ok_or_else(|| Error::Other("the new key was not found".into()))
+}
+
+/// Moves the files `new` over `at`, in order, as one change: old files there are moved aside
+/// first and deleted only once every new file is in place. If a move fails, the new files
+/// already moved are taken out and the old ones go back, so the old key pair is never split
+/// from its other half or lost. (A rename replaces a file on Windows and Unix alike, but not a
+/// folder, and Windows refuses while another program holds the file.)
+fn install_pair(new: [&Path; 2], at: [&Path; 2]) -> std::io::Result<()> {
+    let mut backups: Vec<(&Path, PathBuf)> = Vec::new();
+    let undo = |backups: &[(&Path, PathBuf)], installed: &[&Path], e: std::io::Error| {
+        for p in installed {
+            let _ = crate::persist::remove_file(p);
+        }
+        let lost: Vec<String> = backups
+            .iter()
+            .filter(|(orig, backup)| std::fs::rename(backup, orig).is_err())
+            .map(|(_, backup)| backup.display().to_string())
+            .collect();
+        if lost.is_empty() { e } else { std::io::Error::other(format!("{e}; the old key files are kept as {}", lost.join(" and "))) }
+    };
+    for target in at {
+        // A folder in the way stays, and the move onto it fails below.
+        if std::fs::symlink_metadata(target).is_ok_and(|m| !m.is_dir()) {
+            match crate::persist::move_aside(target) {
+                Ok(backup) => backups.push((target, backup)),
+                Err(e) => return Err(undo(&backups, &[], e)),
+            }
+        }
+    }
+    let mut installed: Vec<&Path> = Vec::new();
+    for (from, to) in new.into_iter().zip(at) {
+        if let Err(e) = std::fs::rename(from, to) {
+            return Err(undo(&backups, &installed, e));
+        }
+        installed.push(to);
+    }
+    for (_, backup) in backups {
+        let _ = crate::persist::remove_file(&backup);
+    }
+    Ok(())
 }

@@ -179,3 +179,39 @@ fn generates_and_replaces_keys() {
     assert!(listed[0].fingerprint.is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_failed_install_keeps_the_old_pair() {
+    let dir = temp("install-fails");
+    let (tmp, tmp_pub) = (dir.join(".id.new"), dir.join(".id.new.pub"));
+    let (private, public) = (dir.join("id"), dir.join("id.pub"));
+    std::fs::write(&tmp, "NEW PRIVATE").unwrap();
+    std::fs::write(&tmp_pub, "NEW PUBLIC").unwrap();
+    std::fs::write(&private, "OLD PRIVATE").unwrap();
+    // A non-empty folder where the public key goes: no rename can replace it, on any system.
+    std::fs::create_dir_all(public.join("inside")).unwrap();
+    assert!(install_pair([&tmp_pub, &tmp], [&public, &private]).is_err());
+    assert_eq!(std::fs::read_to_string(&private).unwrap(), "OLD PRIVATE", "the old private key survives");
+    assert!(public.join("inside").is_dir());
+    let mut names: Vec<String> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+    names.sort();
+    assert_eq!(names, [".id.new", ".id.new.pub", "id", "id.pub"], "no backups left; the caller removes the new files");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_install_replaces_both_files_and_leaves_no_backups() {
+    let dir = temp("install-ok");
+    let (tmp, tmp_pub) = (dir.join(".id.new"), dir.join(".id.new.pub"));
+    let (private, public) = (dir.join("id"), dir.join("id.pub"));
+    for (p, text) in [(&tmp, "NEW PRIVATE"), (&tmp_pub, "NEW PUBLIC"), (&private, "OLD PRIVATE"), (&public, "OLD PUBLIC")] {
+        std::fs::write(p, text).unwrap();
+    }
+    install_pair([&tmp_pub, &tmp], [&public, &private]).unwrap();
+    assert_eq!(std::fs::read_to_string(&private).unwrap(), "NEW PRIVATE");
+    assert_eq!(std::fs::read_to_string(&public).unwrap(), "NEW PUBLIC");
+    let mut names: Vec<String> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+    names.sort();
+    assert_eq!(names, ["id", "id.pub"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
