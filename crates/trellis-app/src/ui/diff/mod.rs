@@ -3,6 +3,7 @@
 //! commit diffs, and next/previous change navigation. In the whole-file view long unchanged
 //! runs are folded into "N unchanged lines" rows that open in place when clicked; an opened
 //! run folds back from a control on its first line, and the header can open or close them all.
+//! With wrapping on, long lines continue on the next line and their rows grow to fit.
 
 mod fold;
 mod header;
@@ -11,6 +12,7 @@ pub(super) mod rows_cache;
 mod split;
 mod style;
 mod syntax;
+mod wrap;
 
 use super::file_buttons::CommitFile;
 use super::theme::color;
@@ -62,6 +64,8 @@ pub(super) struct DiffView<'a> {
     pub blocked: Option<&'static str>,
     /// Font, row height and gutters from Preferences > Editor.
     pub style: DiffStyle,
+    /// How long lines wrap, `None` when they don't.
+    pub wrap: Option<wrap::Wrap>,
 }
 
 impl DiffView<'_> {
@@ -106,8 +110,9 @@ pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs
             }),
             _ => None,
         };
-        let ws = (!diff.binary).then_some(ignore_ws);
-        header::header_bar(ui, target, commit_file.as_ref(), rows, nav, ws, fold_counts, msgs);
+        let toggles =
+            header::Toggles { ignore_ws: (!diff.binary).then_some(ignore_ws), wrap: has_rows.then_some(st.settings.diff_word_wrap) };
+        header::header_bar(ui, target, commit_file.as_ref(), rows, nav, toggles, fold_counts, msgs);
         ui.separator();
         if diff.binary {
             ui.label(RichText::new("Binary file not shown.").color(color::weak()));
@@ -159,10 +164,17 @@ fn rows(
     let layout = st.settings.diff_layout;
     let generation = (st.diff_gen, st.diff_shown_gen);
     cache.refresh(Source { diff, whole, generation, layout, expanded, tab: style.tab });
-    let view = DiffView { target, diff, whole, opened, hl, header_hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style };
+    let wrap = wrap::wrap_for(ui, &style, layout);
+    let lines: &FileDiff = whole.map_or(diff, |w| &w.diff);
+    // The same rows at new heights (a resize, or a font, number or tab change while wrapped)
+    // keep the row at the top in place.
+    let anchor = cache.refresh_heights(lines, style.row_h, style.tab, wrap);
+    let scroll_to = scroll_to.or(anchor.then_some(st.view.diff_top_row));
+    let m = cache.row_metrics(style.row_h);
+    let view = DiffView { target, diff, whole, opened, hl, header_hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style, wrap };
     Some(match layout {
-        DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, scroll_to, msgs),
-        DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, scroll_to, msgs),
+        DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, m, scroll_to, msgs),
+        DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, m, scroll_to, msgs),
     })
 }
 
@@ -290,29 +302,6 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
     };
     let bar = Rect::from_min_size(rect.min, vec2(3.0, rect.height()));
     ui.painter().with_clip_rect(rect.intersect(ui.clip_rect())).rect_filled(bar, 0.0, c);
-}
-
-/// Uniform rows in a scroll area shared by both layouts (one id, so switching layout doesn't
-/// leave a stale second scroll state), each `row_h` high. Scrolls `scroll_to` to the top if set,
-/// and returns the first visible row and how many rows fit in the viewport.
-pub(super) fn scroll(
-    ui: &mut Ui,
-    rows: usize,
-    row_h: f32,
-    scroll_to: Option<usize>,
-    mut add_row: impl FnMut(&mut Ui, usize),
-) -> (usize, usize) {
-    ui.spacing_mut().item_spacing.y = 0.0;
-    let mut area = egui::ScrollArea::both().id_salt("diff").auto_shrink([false, false]);
-    if let Some(row) = scroll_to {
-        area = area.vertical_scroll_offset(row as f32 * row_h);
-    }
-    let out = area.show_rows(ui, row_h, rows, |ui, range| {
-        for i in range {
-            add_row(ui, i);
-        }
-    });
-    ((out.state.offset.y / row_h).round() as usize, (out.inner_rect.height() / row_h).floor() as usize)
 }
 
 /// The diff's rows without the header bar, for views that embed a commit's diff of a file (the

@@ -207,6 +207,8 @@ mod work_files_unstage_tests;
 mod worktree_manage_tests;
 #[cfg(test)]
 mod worktree_tests;
+#[cfg(test)]
+mod wrap_tests;
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::{Inactive, Msg};

@@ -1,6 +1,7 @@
 //! The diff header bar: the file and its kind, then the file actions (Stage or Unstage file;
 //! Restore, Open and Show for a commit's file), next/previous change, the view mode and layout
-//! toggles, Expand all / Collapse all for whole-file folds and the whitespace toggle.
+//! toggles, Expand all / Collapse all for whole-file folds, and the whitespace and wrap
+//! toggles.
 
 use crate::keymap::{self, BindingId};
 use crate::msg::DiffMsg;
@@ -24,6 +25,14 @@ const EXPAND_ALL_OFF_TIP: &str = "Every unchanged run is already shown";
 const COLLAPSE_ALL_TIP: &str = "Fold every long unchanged run back into one row";
 const COLLAPSE_ALL_OFF_TIP: &str = "No opened runs to fold";
 
+/// The on/off toggles at the left end of the bar's right-hand group: the whitespace setting
+/// (`None` for binary diffs) and the wrap setting (`None` when there are no rows to lay out).
+#[derive(Clone, Copy)]
+pub(super) struct Toggles {
+    pub ignore_ws: Option<bool>,
+    pub wrap: Option<bool>,
+}
+
 /// How many folds of the whole file on screen are open and closed.
 #[derive(Clone, Copy)]
 pub(super) struct FoldCounts {
@@ -35,18 +44,18 @@ pub(super) struct FoldCounts {
 /// actions (Stage file or Unstage file for working-tree diffs; Show, Open and Restore for a
 /// commit's diff, from `file`, which is `None` when the commit detail doesn't list it),
 /// next/previous change, the layout toggle, the view mode toggle, Collapse all and
-/// Expand all, and the whitespace toggle. `rows` holds the layout and view mode, `None` when
+/// Expand all, and the whitespace and wrap toggles. `rows` holds the layout and view mode, `None` when
 /// there are no rows to lay out (binary or empty diffs); `nav` is where Previous and Next go.
 /// The arrows show when there are rows or a neighbouring file to step to, so a binary or empty
 /// file can be stepped past with the mouse; an arrow with nowhere to go is dimmed. `folds`
 /// counts the whole file's folds, `None` when it isn't on screen or has none; Expand all and
 /// Collapse all show only with it in the whole-file view, each disabled when there is nothing
-/// for it to do. `ignore_ws` is the whitespace setting, `None` for binary diffs. The whitespace
-/// toggle shows even with no rows, so a file it hid entirely can be shown again. When the bar
-/// is too narrow for the fold buttons, or the commit file buttons crowd it, they and the
-/// whitespace toggle move to a second row, right-aligned under the others, rather than run over
-/// the path. When even without them the file buttons would reach the path, the file buttons
-/// lead that second row too.
+/// for it to do. `toggles` holds the whitespace and wrap settings: the whitespace toggle shows
+/// for any text diff, even with no rows, so a file it hid entirely can be shown again; the wrap
+/// toggle only with rows. When the bar is too narrow for the fold buttons and the toggles, or
+/// the commit file buttons crowd it, they move to a second row, right-aligned under the others,
+/// rather than run over the path. When even without them the file buttons would reach the
+/// path, the file buttons lead that second row too.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn header_bar(
     ui: &mut Ui,
@@ -54,7 +63,7 @@ pub(super) fn header_bar(
     file: Option<&CommitFile>,
     rows: Option<(DiffLayout, DiffMode)>,
     nav: [StepKind; 2],
-    ignore_ws: Option<bool>,
+    toggles: Toggles,
     folds: Option<FoldCounts>,
     msgs: &mut Vec<Msg>,
 ) {
@@ -123,10 +132,9 @@ pub(super) fn header_bar(
                 segmented(ui, mode, &modes, |m| msgs.push(Msg::Diff(DiffMsg::SetDiffMode(m))));
             }
             // Once the file buttons have moved down, the tail joins them.
-            wrapped = files_wrapped
-                || ((folds.is_some() || file.is_some()) && tail_width(ui, folds.is_some(), ignore_ws.is_some()) > ui.available_width());
+            wrapped = files_wrapped || tail_width(ui, folds.is_some(), toggles) > ui.available_width();
             if !wrapped {
-                tail(ui, folds, ignore_ws, true, msgs);
+                tail(ui, folds, toggles, true, msgs);
             }
         });
     });
@@ -137,7 +145,7 @@ pub(super) fn header_bar(
                     file_buttons::show(ui, msgs, f, Labels::Compact);
                 }
                 if wrapped {
-                    tail(ui, folds, ignore_ws, files_wrapped, msgs);
+                    tail(ui, folds, toggles, files_wrapped, msgs);
                 }
             })
         });
@@ -148,6 +156,9 @@ const CLOSE: &str = "Close  (Esc)";
 const COLLAPSE_ALL: &str = "Collapse all";
 const EXPAND_ALL: &str = "Expand all";
 const IGNORE_WS: &str = "Ignore whitespace";
+const WRAP: &str = "Wrap lines";
+const WRAP_OFF_TIP: &str = "Continue long lines on the next line so they fit the width of the viewer";
+const WRAP_ON_TIP: &str = "Long lines continue on the next line. Turn off to scroll sideways instead.";
 
 /// The width a text button (or selectable label) takes in the bar, with the gap after it.
 fn button_w(ui: &Ui, text: &str) -> f32 {
@@ -170,18 +181,20 @@ fn middle_width(ui: &Ui, rows: bool, nav: bool) -> f32 {
     arrows + toggles
 }
 
-/// The width `tail` takes with the fold buttons when `folds`, and with the whitespace toggle
-/// when `ws`.
-fn tail_width(ui: &Ui, folds: bool, ws: bool) -> f32 {
+/// The width `tail` takes with the fold buttons when `folds`, and with the toggles that
+/// `toggles` shows.
+fn tail_width(ui: &Ui, folds: bool, toggles: Toggles) -> f32 {
     let folds = if folds { 10.0 + button_w(ui, COLLAPSE_ALL) + button_w(ui, EXPAND_ALL) } else { 0.0 };
-    let ws = if ws { 10.0 + button_w(ui, IGNORE_WS) } else { 0.0 };
-    folds + ws
+    let ws = if toggles.ignore_ws.is_some() { 10.0 + button_w(ui, IGNORE_WS) } else { 0.0 };
+    let wrap = if toggles.wrap.is_some() { 10.0 + button_w(ui, WRAP) } else { 0.0 };
+    folds + ws + wrap
 }
 
 /// The left end of the bar's right-hand group, laid out right to left: Collapse all and Expand
-/// all (with `folds`), then the whitespace toggle (with `ignore_ws`). `gap` puts space before
-/// the first of them, which a second row starting at the edge leaves out.
-fn tail(ui: &mut Ui, folds: Option<FoldCounts>, ignore_ws: Option<bool>, gap: bool, msgs: &mut Vec<Msg>) {
+/// all (with `folds`), then the whitespace toggle and the wrap toggle (as `toggles` has them).
+/// `gap` puts space before the first of them, which a second row starting at the edge leaves
+/// out.
+fn tail(ui: &mut Ui, folds: Option<FoldCounts>, toggles: Toggles, gap: bool, msgs: &mut Vec<Msg>) {
     if let Some(c) = folds {
         if gap {
             ui.add_space(10.0);
@@ -195,7 +208,7 @@ fn tail(ui: &mut Ui, folds: Option<FoldCounts>, ignore_ws: Option<bool>, gap: bo
             msgs.push(Msg::Diff(DiffMsg::ExpandAllUnchanged));
         }
     }
-    if let Some(on) = ignore_ws {
+    if let Some(on) = toggles.ignore_ws {
         if gap || folds.is_some() {
             ui.add_space(10.0);
         }
@@ -205,6 +218,15 @@ fn tail(ui: &mut Ui, folds: Option<FoldCounts>, ignore_ws: Option<bool>, gap: bo
             if on { format!("{what}. Hunk and line staging is unavailable while whitespace changes are hidden.") } else { what.to_owned() };
         if ui.selectable_label(on, IGNORE_WS).on_hover_text(tip).clicked() {
             msgs.push(Msg::Diff(DiffMsg::SetIgnoreWhitespace(!on)));
+        }
+    }
+    if let Some(on) = toggles.wrap {
+        if gap || folds.is_some() || toggles.ignore_ws.is_some() {
+            ui.add_space(10.0);
+        }
+        let tip = if on { WRAP_ON_TIP } else { WRAP_OFF_TIP };
+        if ui.selectable_label(on, WRAP).on_hover_text(tip).clicked() {
+            msgs.push(Msg::Diff(DiffMsg::SetWordWrap(!on)));
         }
     }
 }
@@ -246,25 +268,51 @@ mod tests {
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable;
 
-    /// The top of Expand all and of Close in a header bar `width` wide.
-    fn tops(width: f32) -> (f64, f64) {
+    const TOGGLES: Toggles = Toggles { ignore_ws: Some(false), wrap: Some(false) };
+
+    /// The top of Expand all, of Wrap lines and of Close in a header bar `width` wide.
+    fn tops(width: f32) -> (f64, f64, f64) {
         let target = DiffTarget::Unstaged("notes.txt".into());
         let folds = Some(FoldCounts { open: 1, closed: 1 });
         let rows = Some((DiffLayout::Inline, DiffMode::WholeFile));
         let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, None, rows, [StepKind::Change; 2], Some(false), folds, &mut Vec::new());
+            header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, folds, &mut Vec::new());
         });
         h.run();
         let top = |label: &str| h.get_by_label(label).bounding_box().expect("laid out").y0;
-        (top("Expand all"), top("Close  (Esc)"))
+        (top("Expand all"), top(WRAP), top("Close  (Esc)"))
     }
 
     #[test]
     fn fold_buttons_wrap_only_when_short_of_room() {
-        let (expand, close) = tops(1400.0);
+        let (expand, wrap, close) = tops(1400.0);
         assert!((expand - close).abs() < 4.0, "one row when wide: {expand} vs {close}");
-        let (expand, close) = tops(740.0);
+        assert!((wrap - close).abs() < 4.0, "Wrap lines on the first row: {wrap} vs {close}");
+        let (expand, wrap, close) = tops(740.0);
         assert!(expand > close + 10.0, "a second row when narrow: {expand} vs {close}");
+        assert!((wrap - expand).abs() < 4.0, "Wrap lines moves down with Expand all: {wrap} vs {expand}");
+    }
+
+    #[test]
+    fn wrap_toggle_sends_msg() {
+        let target = DiffTarget::Unstaged("notes.txt".into());
+        let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
+        let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui_state(
+            |ui, msgs: &mut Vec<Msg>| header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, msgs),
+            Vec::new(),
+        );
+        h.run();
+        h.get_by_label(WRAP).click();
+        h.run();
+        assert!(h.state().iter().any(|m| matches!(m, Msg::Diff(DiffMsg::SetWordWrap(true)))));
+
+        let no_rows = Toggles { ignore_ws: Some(false), wrap: None };
+        let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui(|ui| {
+            header_bar(ui, &target, None, None, [StepKind::End; 2], no_rows, None, &mut Vec::new());
+        });
+        h.run();
+        assert!(h.query_by_label(WRAP).is_none(), "no rows, no wrap toggle");
+        assert!(h.query_by_label(IGNORE_WS).is_some());
     }
 
     /// The top of Ignore whitespace, Open, Close and the path in a commit's header bar `width`
@@ -275,7 +323,7 @@ mod tests {
         let file = CommitFile { oid, path: "notes.txt", status: 'M', open_path: "notes.txt", in_workdir: true };
         let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
         let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, Some(&file), rows, [StepKind::Change; 2], Some(false), None, &mut Vec::new());
+            header_bar(ui, &target, Some(&file), rows, [StepKind::Change; 2], TOGGLES, None, &mut Vec::new());
         });
         h.run();
         let rect = |label: &str| h.get_by_label(label).bounding_box().expect("laid out");

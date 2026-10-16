@@ -97,6 +97,18 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             // Hunk rows change, so the diff reopens at the top; hunk operations wait for it.
             super::repo::reopen_diff(st, fx);
         }
+        DiffMsg::SetWordWrap(on) => {
+            if on == st.settings.diff_word_wrap {
+                return;
+            }
+            st.settings.diff_word_wrap = on;
+            // The rows and their indexes stay; only their heights change, so the view keeps
+            // the row at the top where it is.
+            if st.diff.is_some() {
+                st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
+            }
+            fx.push(super::prefs::save_settings(st));
+        }
         DiffMsg::SelectDiffLine { hunk, line, how } => {
             if st.line_ops_blocked().is_some() {
                 return;

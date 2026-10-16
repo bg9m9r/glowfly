@@ -1,17 +1,21 @@
 //! Painting diff line text with syntax colors. The spans come precomputed with the diff
 //! (`trellis_core::highlight`); this only lays them out in the palette's token colors, after
 //! expanding tabs to the tab stops. Hunk headers get the same treatment for their function
-//! context (`paint_header`).
+//! context (`paint_header`). A wrapped line paints one visual line under another, each with
+//! its slice of the spans and changed-word marks.
 
+use super::wrap::Wrap;
 use crate::ui::theme::color;
 use eframe::egui::text::{CCursor, LayoutJob, TextFormat};
 use eframe::egui::{Align2, Color32, FontId, Galley, Painter, Pos2, Rect, pos2};
 use std::ops::Range;
 use trellis_core::highlight::{Span, TokenKind};
 use trellis_core::tabs::{self, Expanded};
+use trellis_core::wrap::segments;
 
 /// `paint_code` for a raw diff line: tabs expand to stops every `tab` columns, and the byte
-/// ranges of `spans` and `marks` (into the raw text) move with them.
+/// ranges of `spans` and `marks` (into the raw text) move with them. With `wrap`, a line too
+/// long for its columns continues on visual lines below, `left_center` being the first one's.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_line(
     p: &Painter,
@@ -22,15 +26,70 @@ pub(super) fn paint_line(
     font: &FontId,
     fg: Color32,
     tab: usize,
+    wrap: Option<Wrap>,
 ) {
     let e = tabs::expand(text, tab);
     if matches!(e.text, std::borrow::Cow::Borrowed(_)) {
-        return paint_code(p, left_center, text, spans, marks, font, fg);
+        return paint_wrapped(p, left_center, text, spans, marks, font, fg, wrap);
     }
     let spans = remap(spans, &e);
     let ranges = marks.map(|(m, c)| (m.iter().map(|r| e.map(r.start)..e.map(r.end)).collect::<Vec<_>>(), c));
     let marks = ranges.as_ref().map(|(m, c)| (m.as_slice(), *c));
-    paint_code(p, left_center, &e.text, &spans, marks, font, fg);
+    paint_wrapped(p, left_center, &e.text, &spans, marks, font, fg, wrap);
+}
+
+/// `paint_code`, or with `wrap` and a line that needs more than one visual line, `paint_code`
+/// per visual line, `wrap.line_h` apart, each with its slice of `spans` and `marks`. Spans that
+/// don't fit the text are dropped (the line paints plain, as unwrapped), and so are bad marks.
+#[allow(clippy::too_many_arguments)]
+fn paint_wrapped(
+    p: &Painter,
+    left_center: Pos2,
+    text: &str,
+    spans: &[Span],
+    marks: Option<(&[Range<u32>], Color32)>,
+    font: &FontId,
+    fg: Color32,
+    wrap: Option<Wrap>,
+) {
+    let segs: Vec<Range<usize>> = match wrap {
+        Some(w) => segments(text, w.cols).collect(),
+        None => Vec::new(),
+    };
+    let (Some(w), true) = (wrap, segs.len() > 1) else {
+        return paint_code(p, left_center, text, spans, marks, font, fg);
+    };
+    let spans = if spans_fit(text, spans) { spans } else { &[] };
+    let marks = marks.map(|(m, c)| (m.iter().filter(|r| r.start <= r.end && r.end as usize <= text.len()).cloned().collect::<Vec<_>>(), c));
+    for (k, seg) in segs.iter().enumerate() {
+        let seg_spans: Vec<Span> =
+            spans.iter().filter_map(|s| clip(s.start..s.end, seg).map(|r| Span { start: r.start, end: r.end, kind: s.kind })).collect();
+        let seg_marks = marks.as_ref().map(|(m, c)| (m.iter().filter_map(|r| clip(r.clone(), seg)).collect::<Vec<_>>(), *c));
+        let at = pos2(left_center.x, left_center.y + k as f32 * w.line_h);
+        paint_code(p, at, &text[seg.clone()], &seg_spans, seg_marks.as_ref().map(|(m, c)| (m.as_slice(), *c)), font, fg);
+    }
+}
+
+/// The part of byte range `r` inside `seg`, relative to the segment's start; `None` when they
+/// don't overlap.
+fn clip(r: Range<u32>, seg: &Range<usize>) -> Option<Range<u32>> {
+    let (s0, s1) = (seg.start as u32, seg.end as u32);
+    let (start, end) = (r.start.max(s0), r.end.min(s1));
+    (start < end).then(|| start - s0..end - s0)
+}
+
+/// Whether `spans` fit `text` as `layout_job` needs them: in order, in bounds and on char
+/// boundaries.
+fn spans_fit(text: &str, spans: &[Span]) -> bool {
+    let mut pos = 0;
+    for span in spans {
+        let (start, end) = (span.start as usize, span.end as usize);
+        if start < pos || text.get(pos..start).is_none() || text.get(start..end).is_none() {
+            return false;
+        }
+        pos = end;
+    }
+    true
 }
 
 /// `spans` moved onto the expanded text; a span out of range stays out of range.
@@ -185,6 +244,32 @@ mod tests {
         assert!(layout_job("é", &[span(0, 1, TokenKind::String)], &font, Color32::WHITE).is_none(), "inside a char");
         let unordered = [span(2, 3, TokenKind::String), span(0, 1, TokenKind::String)];
         assert!(layout_job("abc", &unordered, &font, Color32::WHITE).is_none());
+    }
+
+    #[test]
+    fn clip_moves_ranges_into_the_segment() {
+        let spans = [span(0, 3, TokenKind::Keyword), span(3, 10, TokenKind::String), span(12, 14, TokenKind::Number)];
+        let seg = 2..6;
+        let clipped: Vec<Span> =
+            spans.iter().filter_map(|s| clip(s.start..s.end, &seg).map(|r| Span { start: r.start, end: r.end, kind: s.kind })).collect();
+        assert_eq!(clipped, [span(0, 1, TokenKind::Keyword), span(1, 4, TokenKind::String)], "the number is outside");
+        assert_eq!(clip(6..8, &seg), None, "touching the end is outside");
+        assert_eq!(clip(0..2, &seg), None, "touching the start is outside");
+    }
+
+    #[test]
+    fn spans_fit_rejects_bad_ranges_like_layout_job() {
+        assert!(spans_fit("let 1;", &[span(0, 3, TokenKind::Keyword), span(4, 5, TokenKind::Number)]));
+        assert!(spans_fit("", &[]));
+        let bad: [(&str, &[Span]); 3] = [
+            ("ab", &[span(0, 3, TokenKind::String)]),
+            ("é", &[span(0, 1, TokenKind::String)]),
+            ("abc", &[span(2, 3, TokenKind::String), span(0, 1, TokenKind::String)]),
+        ];
+        for (text, spans) in bad {
+            assert!(!spans_fit(text, spans), "{text:?} {spans:?}");
+            assert!(layout_job(text, spans, &FontId::monospace(12.0), Color32::WHITE).is_none());
+        }
     }
 
     #[test]

@@ -48,3 +48,4 @@ pub mod undo;
 pub mod watch;
 pub mod whole_file;
 pub mod worktree_ops;
+pub mod wrap;

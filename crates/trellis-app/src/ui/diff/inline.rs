@@ -2,6 +2,7 @@
 //! new number (unless line numbers are off).
 
 use super::syntax::paint_line;
+use super::wrap::RowMetrics;
 use super::{DiffView, fold, hunk_header, line_click, paint_mark};
 use crate::msg::Msg;
 use crate::ui::theme::color;
@@ -10,27 +11,30 @@ use trellis_core::diff_rows::DiffRow;
 use trellis_core::highlight::Span;
 
 /// Draws the rows and returns the first visible one and how many rows fit.
-/// `rows` and `widest` (in columns) come from the rows cache.
+/// `rows`, `widest` (in columns) and the rows' heights `m` come from the rows cache.
 pub(super) fn show(
     ui: &mut Ui,
     v: &DiffView,
     rows: &[DiffRow],
     widest: usize,
+    m: RowMetrics,
     scroll_to: Option<usize>,
     msgs: &mut Vec<Msg>,
 ) -> (usize, usize) {
     let diff = v.lines();
-    // Uniform rows so huge diffs stay fast. In the whole-file view `hunk` is always 0.
+    // Only the visible rows are drawn, so huge diffs stay fast. In the whole-file view `hunk`
+    // is always 0.
     let st = &v.style;
     let cols = st.inline_cols();
     let mono = &st.font;
     let char_w = ui.fonts(|f| f.glyph_width(mono, 'M'));
-    let width = ui.available_width().max(cols.text + widest as f32 * char_w + 40.0);
+    // Wrapped lines fit the viewer, so nothing scrolls sideways.
+    let width = if v.wrap.is_some() { ui.available_width() } else { ui.available_width().max(cols.text + widest as f32 * char_w + 40.0) };
 
-    super::scroll(ui, rows.len(), st.row_h, scroll_to, |ui, i| {
+    super::wrap::scroll(ui, rows.len(), m, scroll_to, |ui, i, h| {
         // Lines can be clicked (to select, or to clear the selection) unless it's a commit diff.
         let sense = if v.sel.is_some() && matches!(rows[i], DiffRow::Line { .. }) { Sense::click() } else { Sense::hover() };
-        let (rect, resp) = ui.allocate_exact_size(vec2(width, st.row_h), sense);
+        let (rect, resp) = ui.allocate_exact_size(vec2(width, h), sense);
         match rows[i] {
             // A change block's action row acts on its normal hunk, like that hunk's header.
             DiffRow::Header(h) | DiffRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
@@ -50,7 +54,8 @@ pub(super) fn show(
                 let p = ui.painter();
                 p.rect_filled(rect, 0.0, bg);
                 let num = |n: Option<u32>| n.map(|n| n.to_string()).unwrap_or_default();
-                let y = rect.center().y;
+                // Numbers and sign on the first visual line.
+                let y = rect.top() + st.row_h / 2.0;
                 for (x, n) in [(cols.old, dl.old), (cols.new, dl.new)] {
                     if let Some(x) = x {
                         p.text(pos2(rect.left() + x, y), Align2::RIGHT_CENTER, num(n), mono.clone(), color::faint());
@@ -67,7 +72,7 @@ pub(super) fn show(
                     '+' => Some((diff.intraline.line(hunk, line), color::diff_add_word())),
                     _ => None,
                 };
-                paint_line(p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab);
+                paint_line(p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab, v.wrap);
                 paint_mark(ui, rect, selected, hovered);
                 if let Some(f) = fold::opened_at(&v.opened, line) {
                     fold::fold_back(ui, rect, v, f, cols.sign, msgs);

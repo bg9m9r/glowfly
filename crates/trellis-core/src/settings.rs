@@ -189,6 +189,9 @@ pub struct Settings {
     pub diff_line_numbers: bool,
     /// Changed-word fills on paired -/+ lines (Preferences > Editor).
     pub diff_word_highlights: bool,
+    /// Wrap long diff lines to the viewer's width (diff header toggle and Preferences > Editor).
+    #[serde(default)]
+    pub diff_word_wrap: bool,
 
     /// Push the branch after each successful commit (commit box checkbox).
     pub push_after_commit: bool,
@@ -263,6 +266,7 @@ impl Default for Settings {
             tab_size: 4,
             diff_line_numbers: true,
             diff_word_highlights: true,
+            diff_word_wrap: false,
             push_after_commit: false,
             stage_renames: true,
             push_new_tags: false,

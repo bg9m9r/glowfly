@@ -30,6 +30,13 @@ pub fn editor_page(ui: &mut Ui, s: &mut Settings) {
         ui.checkbox(&mut s.diff_word_highlights, "");
         help(ui, "Marks the words that changed between a removed line and the added line paired with it.");
     });
+    row(ui, "Wrap long lines", |ui| {
+        ui.checkbox(&mut s.diff_word_wrap, "");
+        help(
+            ui,
+            "Long lines in the diff viewer (hunks, the whole-file view and file history) continue on the next line instead of running past the right edge. The diff header has the same toggle.",
+        );
+    });
     row(ui, "Editor settings", |ui| {
         if ui.button("Reset to defaults").clicked() {
             reset(s);
@@ -45,6 +52,7 @@ fn reset(s: &mut Settings) {
     s.diff_line_numbers = d.diff_line_numbers;
     s.syntax_highlighting = d.syntax_highlighting;
     s.diff_word_highlights = d.diff_word_highlights;
+    s.diff_word_wrap = d.diff_word_wrap;
 }
 
 #[cfg(test)]
@@ -59,6 +67,7 @@ mod tests {
             diff_line_numbers: false,
             syntax_highlighting: false,
             diff_word_highlights: false,
+            diff_word_wrap: true,
             auto_fetch_minutes: 9,
             ..Settings::default()
         };
@@ -66,6 +75,7 @@ mod tests {
         let d = Settings::default();
         assert_eq!((s.diff_font_size, s.tab_size), (d.diff_font_size, d.tab_size));
         assert!(s.diff_line_numbers && s.syntax_highlighting && s.diff_word_highlights);
+        assert!(!s.diff_word_wrap);
         assert_eq!(s.auto_fetch_minutes, 9);
     }
 }

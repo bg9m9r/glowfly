@@ -77,7 +77,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Notifications | ◐ location and behind alerts under UI Customization | Desktop notifications (P1 Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
-| Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights) | Font family, word wrap, EOL character |
+| Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights, word wrap) | Font family, EOL character |
 | In-App Terminal | ✘ | Shell, font, cursor style and dimming for the built-in terminal (P1 Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
@@ -138,7 +138,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Toolbar Undo/Redo and Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) for checkout, commit/amend, reset,
   branch delete and Discard all; per-tab, in-memory history of 20, refuses (and says why) when
   the repository no longer matches or local changes would be overwritten.
-- [ ] **Diff viewer upgrade**
+- [x] **Diff viewer upgrade**
   - [x] Split (side-by-side) vs inline view
   - [x] Next/previous change (F7 / Shift+F7, Alt+Down / Alt+Up)
   - [x] Syntax highlighting (`syntect`)
@@ -161,7 +161,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     - [x] Pair removed and added lines by similarity instead of by position
   - [x] Ignore leading/trailing whitespace (diff header toggle, saved in settings; hunk and line
     operations are off while it is on, since `apply_hunk` counts the unfiltered hunks)
-  - [ ] Word wrap toggle (header and editor preference); needs rows of varying height
+  - [x] Word wrap toggle (header and editor preference); needs rows of varying height
   - [x] Editor preferences page: font size, tab size (tab stops, was a fixed 4 spaces), line
     numbers on/off, syntax highlighting (moved from UI Customization) and word-level highlights
   - [x] Whole-file view (all lines, changes marked in place), keeping hunk actions on change blocks
@@ -650,6 +650,12 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Show which file of how many (e.g. 3 of 12) in the diff header
 - Cache the change rows behind the Previous/Next buttons too (their state rebuilds the change
   rows twice per frame)
+- Wrap long lines in the conflict view too (it keeps fixed-height rows)
+- Keep a wrapped line's indentation on its continuation lines
+- A marker in the gutter on continuation lines of a wrapped row
+- Wrap by display width so wide (CJK, emoji) characters count as two columns
+- A keyboard shortcut and a command palette entry for the wrap toggle
+- Wrap long hunk headers (their function context) instead of clipping them
 
 ### Line-level staging
 

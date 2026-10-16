@@ -140,6 +140,8 @@ mod snapshot_tests_worktree_manage;
 #[cfg(test)]
 mod snapshot_tests_worktrees;
 #[cfg(test)]
+mod snapshot_tests_wrap;
+#[cfg(test)]
 mod tabs_tests;
 
 use crate::effect::{Effect, UiEffect};

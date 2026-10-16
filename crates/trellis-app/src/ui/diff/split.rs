@@ -4,6 +4,7 @@
 
 use super::style::DiffStyle;
 use super::syntax::paint_line;
+use super::wrap::{RowMetrics, Wrap};
 use super::{DiffView, fold, hunk_header, line_click, paint_mark};
 use crate::msg::Msg;
 use crate::ui::theme::color;
@@ -23,12 +24,13 @@ enum Side {
 }
 
 /// Draws the rows and returns the first visible one and how many rows fit.
-/// `rows` and `widest` (in columns) come from the rows cache.
+/// `rows`, `widest` (in columns) and the rows' heights `m` come from the rows cache.
 pub(super) fn show(
     ui: &mut Ui,
     v: &DiffView,
     rows: &[SplitRow],
     widest: usize,
+    m: RowMetrics,
     scroll_to: Option<usize>,
     msgs: &mut Vec<Msg>,
 ) -> (usize, usize) {
@@ -36,12 +38,16 @@ pub(super) fn show(
     // In the whole-file view `hunk` is always 0.
     let st = &v.style;
     let char_w = ui.fonts(|f| f.glyph_width(&st.font, 'M'));
-    // Each column is wide enough for the longest line on either side.
-    let width = ui.available_width().max(2.0 * (st.split_cols().text + widest as f32 * char_w + 20.0));
+    // Each column is wide enough for the longest line on either side, unless lines wrap to fit.
+    let width = if v.wrap.is_some() {
+        ui.available_width()
+    } else {
+        ui.available_width().max(2.0 * (st.split_cols().text + widest as f32 * char_w + 20.0))
+    };
     let half = (width / 2.0).round();
 
-    super::scroll(ui, rows.len(), st.row_h, scroll_to, |ui, i| {
-        let (rect, _) = ui.allocate_exact_size(vec2(width, st.row_h), Sense::hover());
+    super::wrap::scroll(ui, rows.len(), m, scroll_to, |ui, i, h| {
+        let (rect, _) = ui.allocate_exact_size(vec2(width, h), Sense::hover());
         match rows[i] {
             // A change block's action row acts on its normal hunk, like that hunk's header.
             SplitRow::Header(h) | SplitRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
@@ -62,7 +68,7 @@ pub(super) fn show(
                 };
                 for (side, r, idx) in [(Side::Old, left, old), (Side::New, right, new)] {
                     let Some(idx) = idx else {
-                        cell(ui, r, None, side, st, false);
+                        cell(ui, r, None, side, st, v.wrap, false);
                         continue;
                     };
                     let dl = &lines[idx];
@@ -76,7 +82,7 @@ pub(super) fn show(
                         let resp = ui.interact(r, ui.id().with(("diff-cell", hunk, idx, side)), Sense::click());
                         line_click(ui, &resp, hunk, idx, origin, msgs)
                     };
-                    cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, selected);
+                    cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, v.wrap, selected);
                     paint_mark(ui, r, selected, hovered);
                 }
                 ui.painter().vline(left.right(), rect.y_range(), Stroke::new(1.0_f32, color::border()));
@@ -95,8 +101,9 @@ pub(super) fn show(
 /// One side of a row: background, line number, sign and text, clipped to the column so long
 /// lines never draw into the other side. `line` comes with its syntax spans and changed-word
 /// ranges; `None` is an empty cell. `selected` cells get the stronger background. `st` gives the
-/// font, the gutter and whether numbers and changed words are drawn.
-fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle, selected: bool) {
+/// font, the gutter and whether numbers and changed words are drawn; `wrap` how long lines
+/// continue below the first visual line, which holds the number and sign.
+fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle, wrap: Option<Wrap>, selected: bool) {
     let p = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
     let Some((dl, spans, words)) = line else {
         p.rect_filled(rect, 0.0, color::panel());
@@ -115,7 +122,7 @@ fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle,
         Side::Old => dl.old,
         Side::New => dl.new,
     };
-    let y = rect.center().y;
+    let y = rect.top() + st.row_h / 2.0;
     let (cols, mono) = (st.split_cols(), &st.font);
     if let Some(x) = cols.num {
         let number = number.map(|n| n.to_string()).unwrap_or_default();
@@ -128,5 +135,5 @@ fn cell(ui: &Ui, rect: Rect, line: Option<CellLine>, side: Side, st: &DiffStyle,
         ('+', Side::New) => Some((words, color::diff_add_word())),
         _ => None,
     };
-    paint_line(&p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab);
+    paint_line(&p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab, wrap);
 }

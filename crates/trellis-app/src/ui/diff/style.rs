@@ -16,6 +16,8 @@ pub(in crate::ui) struct DiffStyle {
     pub numbers: bool,
     /// Whether changed words are filled.
     pub words: bool,
+    /// Whether long lines wrap to the viewer's width.
+    pub wrap: bool,
 }
 
 /// Inline gutter: the right edges of the old and new numbers (`None` when hidden), then the
@@ -47,6 +49,7 @@ impl DiffStyle {
             tab: s.tab_columns(),
             numbers: s.diff_line_numbers,
             words: s.diff_word_highlights,
+            wrap: s.diff_word_wrap,
         }
     }
 
@@ -81,6 +84,8 @@ mod tests {
         assert_eq!(st.inline_cols(), InlineCols { old: Some(40.0), new: Some(84.0), sign: 94.0, text: 110.0 });
         assert_eq!(st.split_cols().text, 62.0);
         assert!(st.numbers && st.words);
+        assert!(!st.wrap, "lines don't wrap by default");
+        assert!(DiffStyle::new(&Settings { diff_word_wrap: true, ..Settings::default() }).wrap);
     }
 
     #[test]

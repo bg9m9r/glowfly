@@ -34,7 +34,7 @@ binary (package `trellis`).
 | `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`. |
 | `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
 | `graph.rs` | Lane layout for the commit graph. |
-| `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; which removed line sits beside which added line; tab stops. |
+| `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
 | `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds. |
 | `watch.rs` | Which file changes in a repository matter. |
 | `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |

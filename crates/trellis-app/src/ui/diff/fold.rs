@@ -66,7 +66,9 @@ pub(super) fn opened_at(opened: &[Fold], line: usize) -> Option<Fold> {
 /// together, highlighted on hover. A click folds the run into one row again.
 pub(super) fn fold_back(ui: &mut Ui, row: Rect, v: &DiffView, f: Fold, sign_x: f32, msgs: &mut Vec<Msg>) {
     let k = v.style.k;
-    let r = Rect::from_center_size(pos2(row.left() + sign_x + 4.0 * k, row.center().y), vec2(14.0 * k, v.style.row_h - 2.0));
+    // On the row's first visual line, when its line wraps.
+    let y = row.top() + v.style.row_h / 2.0;
+    let r = Rect::from_center_size(pos2(row.left() + sign_x + 4.0 * k, y), vec2(14.0 * k, v.style.row_h - 2.0));
     let resp = ui.interact(r, ui.id().with(("diff-fold-back", f.key)), Sense::click());
     let text = format!("Fold {} unchanged lines", f.len());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &text));

@@ -19,6 +19,8 @@ pub enum DiffMsg {
     SetDiffMode(DiffMode),
     /// Diff header toggle: hide whitespace-only changes and reload the open diff.
     SetIgnoreWhitespace(bool),
+    /// Diff header toggle: wrap long lines to the viewer's width (saved in settings).
+    SetWordWrap(bool),
     /// Scroll the diff to the next (1) or previous (-1) change; at either end, open the next or
     /// previous changed file of the list the diff came from (on its first or last change).
     JumpToChange(isize),
@@ -58,6 +60,7 @@ impl DiffMsg {
             Self::SetDiffLayout(..)
             | Self::SetDiffMode(..)
             | Self::SetIgnoreWhitespace(..)
+            | Self::SetWordWrap(..)
             | Self::JumpToChange(..)
             | Self::ExpandUnchanged(..)
             | Self::CollapseUnchanged(..)

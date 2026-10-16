@@ -94,6 +94,15 @@ fn editor_fields_roundtrip() {
 }
 
 #[test]
+fn word_wrap_defaults_off() {
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.diff_word_wrap);
+    let on = Settings { diff_word_wrap: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.diff_word_wrap);
+}
+
+#[test]
 fn editor_values_are_clamped() {
     let font = |diff_font_size| Settings { diff_font_size, ..Settings::default() }.diff_font_px();
     assert_eq!(font(2.0), 8.0);
