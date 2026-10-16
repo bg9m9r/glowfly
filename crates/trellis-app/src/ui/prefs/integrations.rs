@@ -1,6 +1,6 @@
 //! Preferences > Integrations (one page per hosting service) and Repo > Issue Tracker.
 
-use super::{LABEL_W, help, primary_button, row, text_field};
+use super::{LABEL_W, help, primary_button, row, text_field, trello};
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::state::profiles::accounts_owner;
@@ -86,22 +86,32 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
             text_field(ui, &mut prefs.int_host, provider.host_hint());
         });
     }
+    let is_trello = provider == Provider::Trello;
     if let Some(label) = provider.username_label() {
         row(ui, label, |ui| {
-            text_field(ui, &mut prefs.int_user, if label == "Email" { "you@example.com" } else { "username" });
+            let hint = match label {
+                "Email" => "you@example.com",
+                _ if is_trello => "32-character key",
+                _ => "username",
+            };
+            text_field(ui, &mut prefs.int_user, hint);
+            if is_trello {
+                trello::key_link(ui, msgs);
+            }
         });
     }
-    let token_label = if provider == Provider::Bitbucket {
-        "App Password"
-    } else if provider.is_jira() && provider == Provider::JiraCloud {
-        "API Token"
-    } else {
-        "Personal Access Token"
+    let token_label = match provider {
+        Provider::Bitbucket => "App Password",
+        Provider::JiraCloud => "API Token",
+        Provider::Trello => "Token",
+        _ => "Personal Access Token",
     };
     row(ui, token_label, |ui| {
         ui.add(egui::TextEdit::singleline(&mut prefs.int_token).password(true).desired_width(320.0).margin(vec2(8.0, 5.0)));
         help(ui, &format!("{} Stored in the Windows Credential Manager, never in Trellis's settings file.", provider.token_help()));
-        if let Some(url) = account.as_ref().and_then(Target::token_url)
+        if is_trello {
+            trello::token_link(ui, &prefs.int_user, msgs);
+        } else if let Some(url) = account.as_ref().and_then(Target::token_url)
             && ui.link("Create a token").clicked()
         {
             msgs.push(Msg::OpenUrl(url));
@@ -109,7 +119,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     });
     ui.horizontal(|ui| {
         ui.add_space(LABEL_W + 18.0);
-        let needs_user = provider == Provider::JiraCloud && prefs.int_user.trim().is_empty();
+        let needs_user = matches!(provider, Provider::JiraCloud | Provider::Trello) && prefs.int_user.trim().is_empty();
         let valid = !prefs.int_token.trim().is_empty() && account.is_some() && !prefs.int_busy && !needs_user;
         if primary_button(ui, "Connect", valid).clicked()
             && let Some(a) = &account
@@ -127,14 +137,14 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
             ui.label(RichText::new(e).color(color::red()));
         });
     }
-    if provider.is_jira() {
+    if provider.is_tracker_only() {
         ui.add_space(10.0);
-        row(ui, "", |ui| {
-            help(
-                ui,
-                "Jira is an issue tracker. Once connected, choose it for a repository under Repo-Specific Preferences > Issue Tracker.",
-            );
-        });
+        let text = if is_trello {
+            "Trello is an issue tracker. Once connected, choose it and a board for a repository under Repo-Specific Preferences > Issue Tracker."
+        } else {
+            "Jira is an issue tracker. Once connected, choose it for a repository under Repo-Specific Preferences > Issue Tracker."
+        };
+        row(ui, "", |ui| help(ui, text));
     }
 
     let mine: Vec<_> = s.connections.iter().filter(|c| c.account.provider == provider).cloned().collect();
@@ -175,7 +185,7 @@ pub fn tracker_page(
     let Some(workdir) = workdir else { return };
     let current = s.tracker_for(workdir);
     let host = fs.and_then(|f| f.host.as_ref());
-    let jira: Vec<Account> = s.connections.iter().filter(|c| c.account.provider.is_jira()).map(|c| c.account.clone()).collect();
+    let trackers: Vec<Account> = s.connections.iter().filter(|c| c.account.provider.is_tracker_only()).map(|c| c.account.clone()).collect();
     row(ui, "Issues Come From", |ui| {
         let auto_label = match host {
             Some(t) if t.provider == Provider::AzureDevOps => "Azure Boards (from the remote)".to_owned(),
@@ -186,22 +196,28 @@ pub fn tracker_page(
         if ui.radio(current == TrackerChoice::Auto, auto_label).clicked() {
             msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Auto)));
         }
-        for a in &jira {
-            let selected = matches!(&current, TrackerChoice::Jira { account, .. } if account == a);
-            if ui.radio(selected, format!("{} · {}", a.provider.name(), a.host)).clicked() {
-                msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Jira {
-                    account: a.clone(),
-                    project: prefs.jira_project.trim().to_owned(),
-                })));
+        for a in &trackers {
+            let selected = matches!(&current, TrackerChoice::Jira { account, .. } | TrackerChoice::Trello { account, .. } if account == a);
+            // Clicking the chosen one again keeps its project or board.
+            if ui.radio(selected, format!("{} · {}", a.provider.name(), a.host)).clicked() && !selected {
+                let choice = if a.provider == Provider::Trello {
+                    TrackerChoice::Trello { account: a.clone(), board: String::new(), board_name: String::new() }
+                } else {
+                    TrackerChoice::Jira { account: a.clone(), project: prefs.jira_project.trim().to_owned() }
+                };
+                msgs.push(Msg::Forge(ForgeMsg::SetTracker(choice)));
             }
         }
         if ui.radio(current == TrackerChoice::None, "None").clicked() {
             msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::None)));
         }
-        if jira.is_empty() {
-            help(ui, "Connect Jira Cloud or Jira Data Center under Integrations to use it here.");
+        if trackers.is_empty() {
+            help(ui, "Connect Jira Cloud, Jira Data Center or Trello under Integrations to use it here.");
         }
     });
+    if let TrackerChoice::Trello { account, board, board_name } = &current {
+        trello::board_row(ui, account, board, board_name, &prefs.trello_boards, msgs);
+    }
     if let TrackerChoice::Jira { account, project } = &current {
         row(ui, "Jira Project", |ui| {
             let r = text_field(ui, &mut prefs.jira_project, "all projects");

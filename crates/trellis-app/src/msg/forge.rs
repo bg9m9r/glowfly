@@ -3,7 +3,7 @@
 
 use crate::effect::ForgeReply;
 use std::path::PathBuf;
-use trellis_core::forge::{Account, CreatedRepo, NewPullRequest};
+use trellis_core::forge::{Account, CreatedRepo, NewPullRequest, TrelloBoard};
 use trellis_core::settings::TrackerChoice;
 
 /// Credential prompts from git and ssh through the askpass helper (state/askpass.rs,
@@ -68,6 +68,15 @@ pub enum ForgeMsg {
         token: Option<(Option<String>, String)>,
         result: Result<String, String>,
     },
+    /// Repo-Specific Preferences > Issue Tracker from the side list; loads Trello boards when
+    /// Trello is chosen.
+    ShowTrackerPage,
+    /// Load (or reload) a connected Trello account's boards for the Board picker.
+    LoadTrelloBoards(Account),
+    TrelloBoardsLoaded {
+        account: Account,
+        result: Result<Vec<TrelloBoard>, String>,
+    },
 }
 
 impl ForgeMsg {
@@ -85,7 +94,10 @@ impl ForgeMsg {
             | Self::CreatePr(..)
             | Self::ForgeReplied(..)
             | Self::TipsShown(..)
-            | Self::Connected { .. } => None,
+            | Self::Connected { .. }
+            | Self::ShowTrackerPage
+            | Self::LoadTrelloBoards(..)
+            | Self::TrelloBoardsLoaded { .. } => None,
         }
     }
 }

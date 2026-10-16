@@ -28,7 +28,7 @@ fn open_page(st: &mut AppState) {
 }
 
 /// The fixture with a develop branch and the gitflow config (version tag prefix v).
-fn initialized(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn initialized(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let d = "2026-01-05T10:00:00+00:00";
     git(&dir, &["branch", "develop"], d);
@@ -141,12 +141,12 @@ fn with_flow_branches(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn center(h: &H, label: &str) -> Pos2 {
+pub(super) fn center(h: &H, label: &str) -> Pos2 {
     let rect = h.get_by_label(label).bounding_box().expect("the row");
     pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32)
 }
 
-fn pushed(h: &H, want: &dyn Fn(&Msg) -> bool) -> bool {
+pub(super) fn pushed(h: &H, want: &dyn Fn(&Msg) -> bool) -> bool {
     h.state().1.iter().any(want)
 }
 

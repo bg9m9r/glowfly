@@ -107,7 +107,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
         Effect::Ui(_) | Effect::PickFolder { .. } | Effect::OpenUrl(_) | Effect::OpenTerminal(_) | Effect::OpenFolder(_)
             | Effect::Forge { .. } | Effect::Connect { .. } | Effect::SaveToken { .. } | Effect::DeleteToken(_)
             | Effect::RepoOwners { .. } | Effect::CreateRepo { .. }
-            | Effect::ForgetCredentialManager { .. } | Effect::SaveSettings(_) | Effect::SaveRecent(_)
+            | Effect::ForgetCredentialManager { .. } | Effect::TrelloBoards { .. } | Effect::SaveSettings(_) | Effect::SaveRecent(_)
             | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. }
             // Shells are never started by these tests.
             | Effect::Terminal(_)

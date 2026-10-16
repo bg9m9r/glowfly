@@ -31,12 +31,21 @@ impl Auth {
         Auth { header: format!("Basic {b}"), provider, source: source.into() }
     }
 
+    /// Trello's API key and token, in a header so they never appear in a URL (or a log). Only
+    /// letters and digits are kept, so neither can break out of its quotes.
+    fn trello(key: &str, token: &str, source: &str) -> Auth {
+        let clean = |s: &str| s.chars().filter(char::is_ascii_alphanumeric).collect::<String>();
+        let header = format!("OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"", clean(key), clean(token));
+        Auth { header, provider: Provider::Trello, source: source.into() }
+    }
+
     /// Builds the right header for a token (and optional username) on a given service.
     pub fn from_token(provider: Provider, user: Option<&str>, token: &str, source: &str) -> Auth {
         match (provider, user.filter(|u| !u.is_empty())) {
             (Provider::AzureDevOps, _) => Auth::basic(provider, "", token, source),
             (Provider::JiraCloud, Some(email)) => Auth::basic(provider, email, token, source),
             (Provider::Bitbucket, Some(u)) => Auth::basic(provider, u, token, source),
+            (Provider::Trello, user) => Auth::trello(user.unwrap_or_default(), token, source),
             _ => Auth::bearer(provider, token, source),
         }
     }
@@ -250,6 +259,14 @@ mod tests {
         assert!(!may_ask_gcm(&ghe, false));
         assert!(may_ask_gcm(&ghe, true));
         assert!(!may_ask_gcm(&acct(Provider::JiraCloud, "x.atlassian.net"), true), "Jira has no GCM sign-in");
+        assert!(!may_ask_gcm(&acct(Provider::Trello, "trello.com"), true), "Trello has no GCM sign-in");
+    }
+
+    #[test]
+    fn trello_header_keeps_only_letters_and_digits() {
+        let auth = Auth::from_token(Provider::Trello, Some("k\"e y\r\n"), " t\"ok ", "test");
+        assert_eq!(auth.header, r#"OAuth oauth_consumer_key="key", oauth_token="tok""#);
+        assert!(!is_public_host(&acct(Provider::Trello, "trello.com")));
     }
 
     #[test]

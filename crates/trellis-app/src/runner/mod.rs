@@ -283,6 +283,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             Some(Msg::Publish(PublishMsg::Published { workdir: cwd, branch, result }))
         }
         Effect::Connect { account, user, token, cwd } => Some(forge_calls::connect(account, user, token, &cwd)),
+        Effect::TrelloBoards { account, cwd } => Some(forge_calls::trello_boards(account, &cwd)),
         Effect::SaveToken { account, user, token } => forge::save_token(&account, user.as_deref(), &token)
             .err()
             .map(|e| Msg::Logged { ok: false, text: format!("Connected, but the token could not be saved: {e}") }),

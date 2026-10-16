@@ -10,13 +10,15 @@ pub enum RefStyle {
     Hash,
     /// `PROJ-123`
     Jira,
+    /// trello.com/c/<shortLink> card links
+    Trello,
 }
 
 pub fn mention(style: RefStyle, key: &str) -> String {
     match style {
         RefStyle::AzureBoards => format!("AB#{key}"),
         RefStyle::Hash => format!("#{key}"),
-        RefStyle::Jira => key.to_owned(),
+        RefStyle::Jira | RefStyle::Trello => key.to_owned(),
     }
 }
 
@@ -48,6 +50,7 @@ pub fn issue_refs(style: RefStyle, text: &str) -> Vec<String> {
                 }
             }
         }
+        RefStyle::Trello => trello_links(text, &mut out),
         RefStyle::Jira => {
             let mut i = 0;
             while i < b.len() {
@@ -80,12 +83,44 @@ pub fn issue_refs(style: RefStyle, text: &str) -> Vec<String> {
     out
 }
 
+/// Card ids from `trello.com/c/<id>` links (with or without `https://` or `www.`). The host
+/// must start at a boundary, so `eviltrello.com` and `a.trello.com` don't count.
+fn trello_links(text: &str, out: &mut Vec<String>) {
+    const LINK: &str = "trello.com/c/";
+    let lower = text.to_ascii_lowercase(); // same byte offsets as `text`
+    let b = lower.as_bytes();
+    let boundary = |at: usize| at == 0 || !(b[at - 1].is_ascii_alphanumeric() || matches!(b[at - 1], b'.' | b'-' | b'_'));
+    for (i, _) in lower.match_indices(LINK) {
+        let host_ok = boundary(i) || (i >= 4 && &b[i - 4..i] == b"www." && boundary(i - 4));
+        let start = i + LINK.len();
+        let len = b[start..].iter().take_while(|c| c.is_ascii_alphanumeric()).count();
+        if host_ok && len == 8 {
+            push_unique(out, text[start..start + 8].to_owned());
+        }
+    }
+}
+
+/// A Trello card id at the start of a branch's last segment: 8 letters or digits, then the
+/// end, `-` or `_`. Plain words and dates (`frontend-x`, `20261016-release`) look the same, so
+/// the id must not be all digits and must hold a digit or an uppercase letter. An all-lowercase
+/// id (about 0.1% of random ids) is missed, and a false match is skipped as an unknown card.
+fn trello_branch(last: &str) -> Option<String> {
+    let b = last.as_bytes();
+    let id = b.get(..8)?;
+    let ok = id.iter().all(u8::is_ascii_alphanumeric)
+        && matches!(b.get(8), None | Some(b'-') | Some(b'_'))
+        && !id.iter().all(u8::is_ascii_digit)
+        && id.iter().any(|c| c.is_ascii_digit() || c.is_ascii_uppercase());
+    ok.then(|| last[..8].to_owned())
+}
+
 /// An issue key encoded at the start of a branch's last path segment, e.g.
 /// `feature/1234-login-page`, `1234_fix`, or `bugfix/PROJ-12-crash`.
 pub fn branch_issue(style: RefStyle, branch: &str) -> Option<String> {
     let last = branch.rsplit('/').next()?;
     match style {
         RefStyle::Jira => issue_refs(RefStyle::Jira, last).into_iter().next().filter(|k| last.starts_with(k.as_str())),
+        RefStyle::Trello => trello_branch(last),
         _ => {
             let digits: String = last.chars().take_while(char::is_ascii_digit).collect();
             if digits.is_empty() {

@@ -54,7 +54,7 @@ impl UploadForm {
 
 /// The connected code-hosting accounts a key can be added to (issue trackers left out).
 pub fn services(connections: &[Connection]) -> Vec<&Connection> {
-    connections.iter().filter(|c| !c.account.provider.is_jira()).collect()
+    connections.iter().filter(|c| !c.account.provider.is_tracker_only()).collect()
 }
 
 /// The Add to service menu's label for an account.

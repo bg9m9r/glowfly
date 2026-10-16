@@ -40,6 +40,7 @@ impl Effect {
             Effect::SaveToken { .. } => "save-token",
             Effect::DeleteToken(_) => "delete-token",
             Effect::ForgetCredentialManager { .. } => "forget-gcm",
+            Effect::TrelloBoards { .. } => "trello-boards",
             Effect::Stats { .. } => "stats",
             Effect::SearchPaths { .. } => "search-paths",
             Effect::VerifySignature { .. } => "verify-signature",

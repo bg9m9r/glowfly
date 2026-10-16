@@ -247,6 +247,11 @@ pub enum Effect {
         accounts: Vec<Account>,
         cwd: PathBuf,
     },
+    /// The open boards of a connected Trello account (Issue Tracker > Board).
+    TrelloBoards {
+        account: Account,
+        cwd: PathBuf,
+    },
     Stats {
         workdir: PathBuf,
         oids: Vec<Oid>,

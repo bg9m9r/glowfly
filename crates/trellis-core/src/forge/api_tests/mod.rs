@@ -13,6 +13,7 @@ mod gitlab;
 mod paging;
 mod review;
 mod review_threads;
+mod trello;
 mod user_repos;
 
 fn remote(url: &str) -> Target {

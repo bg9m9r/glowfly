@@ -178,6 +178,8 @@ mod snapshot_tests_toasts;
 #[cfg(test)]
 mod snapshot_tests_tools;
 #[cfg(test)]
+mod snapshot_tests_trello;
+#[cfg(test)]
 mod snapshot_tests_trust;
 #[cfg(test)]
 mod snapshot_tests_whole;

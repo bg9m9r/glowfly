@@ -26,7 +26,7 @@ fn connected(st: &AppState, account: &Account) -> bool {
 /// a service Trellis can't add keys to.
 pub(super) fn choose(st: &mut AppState, key: &Path, account: Account, now: Instant, fx: &mut Vec<Effect>) {
     let Some((_, file, comment)) = listed(st, key) else { return };
-    if !connected(st, &account) || account.provider.is_jira() {
+    if !connected(st, &account) || account.provider.is_tracker_only() {
         return;
     }
     if !account.provider.adds_ssh_keys() {

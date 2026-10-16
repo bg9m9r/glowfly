@@ -1,5 +1,5 @@
-//! Calls to hosting services: pull requests and issues (`Effect::Forge`) and connecting an
-//! account (`Effect::Connect`).
+//! Calls to hosting services: pull requests and issues (`Effect::Forge`), connecting an
+//! account (`Effect::Connect`) and a Trello account's boards (`Effect::TrelloBoards`).
 
 use crate::effect::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, Msg};
@@ -18,6 +18,14 @@ pub(super) fn connect(account: Account, user: Option<String>, token: Option<Stri
     };
     let result = auth.and_then(|a| forge::verify(&account, &a)).map_err(|e| e.to_string());
     Msg::Forge(ForgeMsg::Connected { account, method, token: saved, result })
+}
+
+/// The open boards of a connected Trello account, for the Issue Tracker page's Board picker.
+/// `connected` is true: update sends this only for a connected account.
+pub(super) fn trello_boards(account: Account, cwd: &Path) -> Msg {
+    let result =
+        forge::resolve_auth(&account, cwd, false, true).and_then(|a| forge::trello_boards(&account, &a)).map_err(|e| e.to_string());
+    Msg::Forge(ForgeMsg::TrelloBoardsLoaded { account, result })
 }
 
 pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: bool, connected: bool, call: ForgeCall) -> ForgeReply {

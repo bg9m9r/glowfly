@@ -19,6 +19,7 @@ mod ssh_generate;
 mod ssh_git;
 mod ssh_service;
 mod tools;
+mod trello;
 
 use super::theme::color;
 use super::widgets::{self, Icon};
@@ -206,7 +207,10 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
             ui.add_space(4.0);
             go(ui, PrefPage::RepoIdentity, Icon::Identity, "Identity");
             go(ui, PrefPage::RepoHooks, Icon::Hook, "Git Hooks");
-            go(ui, PrefPage::RepoTracker, Icon::Activity, "Issue Tracker");
+            // Not `go`: the page loads Trello boards when it opens.
+            if widgets::nav_row(ui, Some(Icon::Activity), "Issue Tracker", page == PrefPage::RepoTracker, 15.0).clicked() {
+                msgs.push(Msg::Forge(crate::msg::ForgeMsg::ShowTrackerPage));
+            }
             // Not `go`: the page reads its status when it opens.
             if widgets::nav_row(ui, Some(Icon::Storage), "Git LFS", page == PrefPage::RepoLfs, 15.0).clicked() {
                 msgs.push(Msg::Lfs(crate::lfs::LfsMsg::ShowPage));

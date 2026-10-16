@@ -10,6 +10,7 @@ use crate::msg::RepoMsg;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
 use git2::{Oid, RepositoryState};
+use trellis_core::forge::{self, RefStyle};
 
 const LANE_COLORS: [Color32; 10] = [
     Color32::from_rgb(0x1f, 0xb5, 0xc9),
@@ -166,11 +167,12 @@ pub fn status_label_ui(ui: &mut egui::Ui, status: &Status, ok_text: &str, msgs: 
     }
 }
 
-/// Splits "12, #13 AB#14 PROJ-5" into issue keys.
+/// Splits "12, #13 AB#14 PROJ-5" into issue keys; a pasted Trello card link becomes its id.
 pub fn parse_keys(text: &str) -> Vec<String> {
     let mut out: Vec<String> = Vec::new();
     for part in text.split([',', ' ', ';']) {
-        let p = part.trim();
+        let card = forge::issue_refs(RefStyle::Trello, part).into_iter().next();
+        let p = card.as_deref().unwrap_or(part.trim());
         let p = p.strip_prefix("AB#").or_else(|| p.strip_prefix("ab#")).unwrap_or(p).trim_start_matches('#');
         if !p.is_empty() && !out.iter().any(|k| k == p) {
             out.push(p.to_owned());
@@ -238,6 +240,8 @@ mod tests {
     #[test]
     fn parses_issue_key_lists() {
         assert_eq!(parse_keys("12, #13 AB#14  PROJ-5,12"), ["12", "13", "14", "PROJ-5"]);
+        assert_eq!(parse_keys("https://trello.com/c/AbCd1234/3-x, Zz9Yy8Xx"), ["AbCd1234", "Zz9Yy8Xx"]);
+        assert_eq!(parse_keys("12, PROJ-5"), ["12", "PROJ-5"]);
         assert_eq!(capitalize("work item"), "Work item");
     }
 }

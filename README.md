@@ -2,8 +2,8 @@
 
 A fast, native Git GUI written in Rust (egui + libgit2): a central commit graph, a
 branch/remote/tag/stash sidebar, and a right-hand panel for commit details or staging and
-committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps and Jira for pull requests
-and issues.
+committing. It connects to GitHub, GitLab, Bitbucket, Azure DevOps, Jira and Trello for pull
+requests and issues.
 
 Trellis is an independent project. It is not affiliated with or endorsed by any other Git client
 or hosting service; product names are used only to describe compatibility.
@@ -59,24 +59,27 @@ With no path it reopens the last repository. See [TODO.md](TODO.md) for the road
 | Bitbucket Data Center | ✔ | (use Jira) | GCM, HTTP access token |
 | Azure DevOps | ✔ | Azure Boards | GCM, `AZURE_DEVOPS_EXT_PAT`, PAT |
 | Jira Cloud / Jira Data Center | — | ✔ | email + API token / PAT |
+| Trello | — | ✔ cards | API key + token |
 
 The code host is detected from the remote URL (`origin` preferred). Self-hosted servers are
 recognized once connected in Preferences, or by common URL shapes (`gitlab.*`, `github.*`,
 `/scm/` for Bitbucket); a server recognized only by its URL shape is not contacted until you
 connect it. The `*_TOKEN` environment variables are used only for github.com, gitlab.com and
 Azure DevOps, never for self-hosted servers. The issue tracker defaults to the host's own issues, and can be switched
-to a connected Jira site (optionally one project) under Repo-Specific Preferences > Issue
-Tracker.
+to a connected Jira site (optionally one project) or a connected Trello account (optionally one
+board) under Repo-Specific Preferences > Issue Tracker.
 
 - **Pull requests**: a PULL REQUESTS (or MERGE REQUESTS) sidebar section with drafts, approval
   counts and a reviewer tooltip, plus badges on the head commit in the graph. You can open,
   check out, and create them from the toolbar **PR** button or a branch's context menu. The
   target defaults to the repo's default branch.
 - **Issues**: the ISSUES section lists open issues assigned to you. "Create branch from issue"
-  names the branch `123-title` / `PROJ-12-title`. Commits that mention `#123`, `AB#123` or
-  `PROJ-123` show issue chips, and on an issue branch the commit panel offers to add the mention.
+  names the branch `123-title` / `PROJ-12-title` / `AbCd1234-title` (a Trello card id). Commits
+  that mention `#123`, `AB#123`, `PROJ-123` or a Trello card link (`trello.com/c/AbCd1234`) show
+  issue chips, and on an issue branch the commit panel offers to add the mention.
 - **Linking**: a new PR links the issues mentioned on its branch. Azure Boards links through the
-  API, GitHub and GitLab get `Closes #n`, Bitbucket gets `Resolves #n`, and Jira gets the key.
+  API, GitHub and GitLab get `Closes #n`, Bitbucket gets `Resolves #n`, Jira gets the key, and
+  Trello gets the card link.
 - **Credentials**: an environment variable, then a token saved in the Windows Credential Manager,
   then Git Credential Manager (the same sign-in `git push` uses). Background refreshes (every 5
   minutes) never show a sign-in window.
@@ -94,7 +97,8 @@ sub-list, and forms with right-aligned labels.
   Manager out of those hosts, after a confirmation.
 - **Profile**: global `user.name` / `user.email`.
 - **Integrations**: one page per service (GitHub, GitHub Enterprise Server, GitLab, GitLab
-  Self-Managed, Bitbucket, Bitbucket Data Center, Azure DevOps, Jira Cloud, Jira Data Center).
+  Self-Managed, Bitbucket, Bitbucket Data Center, Azure DevOps, Jira Cloud, Jira Data Center,
+  Trello).
   Each has a connection card with "Connect to …" (signs in through Git Credential Manager), or a
   host domain plus token. Credentials are verified before being saved.
 - **UI Customization**: author/date columns and date format (ISO, long, relative).

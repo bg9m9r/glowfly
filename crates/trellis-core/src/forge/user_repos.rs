@@ -33,7 +33,7 @@ pub fn my_repos(account: &Account, auth: &Auth) -> Result<MyRepos> {
         Provider::GitHub | Provider::GitHubEnterprise => github::list(account, auth)?,
         Provider::GitLab | Provider::GitLabSelfManaged => gitlab::list(account, auth)?,
         Provider::Bitbucket => bitbucket::list(auth)?,
-        Provider::BitbucketDataCenter | Provider::AzureDevOps | Provider::JiraCloud | Provider::JiraDataCenter => {
+        Provider::BitbucketDataCenter | Provider::AzureDevOps | Provider::JiraCloud | Provider::JiraDataCenter | Provider::Trello => {
             let name = account.provider.name();
             return Err(Error::Unsupported(format!("listing your repositories isn't supported on {name} yet")));
         }

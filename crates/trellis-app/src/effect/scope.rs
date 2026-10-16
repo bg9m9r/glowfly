@@ -49,6 +49,7 @@ impl Effect {
             | Effect::SaveToken { .. }
             | Effect::DeleteToken(_)
             | Effect::ForgetCredentialManager { .. }
+            | Effect::TrelloBoards { .. }
             | Effect::FetchAvatars(_)
             | Effect::ReadGitConfig { .. }
             | Effect::SetGitConfig { .. }

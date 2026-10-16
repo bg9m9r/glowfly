@@ -267,7 +267,11 @@ fn create_pr(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&Snapsh
     if fs.tracker.is_some() {
         ui.horizontal(|ui| {
             ui.label(format!("{}s", capitalize(fs.issue_noun())));
-            let hint = if fs.style() == Some(RefStyle::Jira) { "e.g. PROJ-12, PROJ-14" } else { "e.g. 123, 456" };
+            let hint = match fs.style() {
+                Some(RefStyle::Jira) => "e.g. PROJ-12, PROJ-14",
+                Some(RefStyle::Trello) => "e.g. AbCd1234 or a card link",
+                _ => "e.g. 123, 456",
+            };
             ui.add(egui::TextEdit::singleline(f.items).hint_text(hint).desired_width(220.0));
         });
         for k in &keys {

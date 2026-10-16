@@ -232,7 +232,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
 }
 
 fn issues(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
-    hint_row(ui, format!("{} · assigned to me", f.tracker_name()));
+    hint_row(ui, format!("{} · assigned to me", f.tracker_hint()));
     if let Status::Error(e) = &f.tracker_status {
         forge_error_rows(ui, e, msgs);
     }
@@ -255,9 +255,9 @@ fn issues(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, shown: &dyn Fn(&st
                 Msg::Branch(BranchMsg::NewBranch { start: None, name: forge::branch_name_for(issue) }),
             );
             super::gitflow_section::issue_items(ui, snap, f, issue, msgs);
-            menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(issue.url.clone()));
-            let m = f.mention(&issue.key);
-            menu_item(msgs, ui, format!("Copy {m}"), Msg::Copy(m.clone()));
+            menu_item(msgs, ui, f.open_issue_label(), Msg::OpenUrl(issue.url.clone()));
+            let (label, text) = f.copy_issue_item(issue);
+            menu_item(msgs, ui, label, Msg::Copy(text));
         });
     }
 }

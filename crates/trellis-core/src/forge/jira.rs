@@ -20,6 +20,7 @@ pub(super) static JIRA_DATA_CENTER: ProviderInfo = ProviderInfo {
     token_help: "A personal access token.",
     ref_style: RefStyle::Jira,
     is_jira: true,
+    tracker_only: true,
     service: &Jira,
     ..DEFAULTS
 };

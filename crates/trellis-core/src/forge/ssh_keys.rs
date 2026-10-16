@@ -62,7 +62,7 @@ pub fn ssh_keys_page(account: &Account) -> Option<String> {
         Provider::AzureDevOps if !account.org.is_empty() => {
             Some(format!("https://dev.azure.com/{}/_usersSettings/keys", enc(&account.org)))
         }
-        Provider::AzureDevOps | Provider::JiraCloud | Provider::JiraDataCenter => None,
+        Provider::AzureDevOps | Provider::JiraCloud | Provider::JiraDataCenter | Provider::Trello => None,
     }
 }
 

@@ -137,4 +137,16 @@ mod tests {
         assert_eq!(s.tracker_for(&real), TrackerChoice::None);
         assert_eq!(s.graph_filters.keys().collect::<Vec<_>>(), [&key(&real)]);
     }
+
+    #[test]
+    fn trello_tracker_choices_round_trip() {
+        use crate::forge::{Account, Provider};
+        let account = Account { provider: Provider::Trello, host: "trello.com".into(), org: String::new() };
+        let choice = TrackerChoice::Trello { account: account.clone(), board: "5f1a2b3c4d5e6f7a8b9c0d1e".into(), board_name: "Web".into() };
+        let back: TrackerChoice = serde_json::from_str(&serde_json::to_string(&choice).unwrap()).unwrap();
+        assert_eq!(back, choice);
+        // Saved without a board: all boards.
+        let old: TrackerChoice = serde_json::from_str(r#"{"Trello":{"account":{"provider":"Trello","host":"trello.com"}}}"#).unwrap();
+        assert_eq!(old, TrackerChoice::Trello { account, board: String::new(), board_name: String::new() });
+    }
 }

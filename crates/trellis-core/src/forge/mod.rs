@@ -1,6 +1,6 @@
 //! Hosting-service integrations ("forges"): remote detection, credentials, pull/merge requests,
 //! issues, forks, the user's own repositories and repository web pages for GitHub, GitLab,
-//! Bitbucket, Azure DevOps and Jira, behind one common model.
+//! Bitbucket, Azure DevOps, Jira and Trello, behind one common model.
 
 mod azure;
 mod azure_checks;
@@ -13,6 +13,7 @@ mod github_checks;
 mod gitlab;
 mod gitlab_checks;
 mod jira;
+mod trello;
 
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -51,6 +52,7 @@ pub use ssh_keys::{
     AddKeyOutcome, RegisteredKey, add_ssh_key, default_title, list_ssh_keys, needs_fallback, same_key, ssh_keys_page, title_problem,
 };
 use std::collections::HashMap;
+pub use trello::{TrelloBoard, authorize_url as trello_authorize_url, trello_boards};
 pub use user_repos::{HostedRepo, MyRepos, lists_my_repos, my_repos};
 pub use web::{NoWebPage, WebPage, web_page};
 
@@ -295,6 +297,9 @@ pub fn issues(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
 /// Text appended to a PR description to link an issue, for trackers linked by mention.
 pub fn link_line(code_host: Provider, tracker: Provider, key: &str) -> Option<String> {
     let host = code_host.info();
+    if tracker.ref_style() == RefStyle::Trello {
+        return Some(trello::card_url(key));
+    }
     if tracker.is_jira() {
         Some(key.to_owned())
     } else if code_host == tracker && host.links_issues_by_api {

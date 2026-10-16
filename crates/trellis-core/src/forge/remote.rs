@@ -76,7 +76,7 @@ pub fn parse_remote(url: &str, connections: &[Connection]) -> Option<Target> {
         let (owner, repo) = owner_repo(segs)?;
         Some(Target { provider: Provider::BitbucketDataCenter, host: host.clone(), owner, project: String::new(), repo })
     };
-    if let Some(c) = connections.iter().find(|c| c.account.host == host && !c.account.provider.is_jira()) {
+    if let Some(c) = connections.iter().find(|c| c.account.host == host && !c.account.provider.is_tracker_only()) {
         return match c.account.provider {
             Provider::BitbucketDataCenter => bitbucket_dc(&segs),
             p => make(p, &host, &segs),

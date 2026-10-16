@@ -3,7 +3,7 @@
 //! to its API. Adding a service means a `Provider` variant, its `ProviderInfo` (next to its API
 //! code) and an arm in [`Provider::info`].
 
-use super::{Forge, RefStyle, azure, bitbucket, bitbucket_dc, github, gitlab, jira};
+use super::{Forge, RefStyle, azure, bitbucket, bitbucket_dc, github, gitlab, jira, trello};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -17,6 +17,7 @@ pub enum Provider {
     AzureDevOps,
     JiraCloud,
     JiraDataCenter,
+    Trello,
 }
 
 /// One service's constants and API implementation.
@@ -39,8 +40,10 @@ pub struct ProviderInfo {
     /// How issues are mentioned in text.
     pub ref_style: RefStyle,
     pub has_issues: bool,
-    /// An issue tracker only, without repositories.
+    /// Jira Cloud or Jira Data Center.
     pub is_jira: bool,
+    /// An issue tracker only, without repositories, pull requests or Git Credential Manager sign-in.
+    pub tracker_only: bool,
     /// The word in a pull request description that closes an issue on merge (`Closes #3`).
     pub close_keyword: Option<&'static str>,
     /// Links its own issues to pull requests through the API rather than by mention.
@@ -59,7 +62,7 @@ pub struct ProviderInfo {
 
 impl Provider {
     /// In the order Preferences lists them.
-    pub const ALL: [Provider; 9] = [
+    pub const ALL: [Provider; 10] = [
         Provider::GitHub,
         Provider::GitHubEnterprise,
         Provider::GitLab,
@@ -69,6 +72,7 @@ impl Provider {
         Provider::AzureDevOps,
         Provider::JiraCloud,
         Provider::JiraDataCenter,
+        Provider::Trello,
     ];
 
     pub fn info(self) -> &'static ProviderInfo {
@@ -82,6 +86,7 @@ impl Provider {
             Provider::AzureDevOps => &azure::AZURE_DEVOPS,
             Provider::JiraCloud => &jira::JIRA_CLOUD,
             Provider::JiraDataCenter => &jira::JIRA_DATA_CENTER,
+            Provider::Trello => &trello::TRELLO,
         }
     }
 
@@ -93,13 +98,17 @@ impl Provider {
         self.info().is_jira
     }
 
+    pub fn is_tracker_only(self) -> bool {
+        self.info().tracker_only
+    }
+
     pub fn fixed_host(self) -> Option<&'static str> {
         self.info().fixed_host
     }
 
-    /// Git Credential Manager can sign in to every code host (not Jira).
+    /// Git Credential Manager can sign in to every code host (not the issue trackers).
     pub fn supports_gcm(self) -> bool {
-        !self.is_jira()
+        !self.is_tracker_only()
     }
 
     pub fn username_label(self) -> Option<&'static str> {
@@ -160,6 +169,7 @@ pub(super) const DEFAULTS: ProviderInfo = ProviderInfo {
     ref_style: RefStyle::Hash,
     has_issues: true,
     is_jira: false,
+    tracker_only: false,
     close_keyword: None,
     links_issues_by_api: false,
     lists_forks: false,
@@ -213,10 +223,12 @@ mod tests {
         assert_eq!(row(AzureDevOps), ("!", "pull request", Some("AZURE_DEVOPS_EXT_PAT"), None, RefStyle::AzureBoards, true));
         assert_eq!(row(JiraCloud), ("#", "pull request", None, Some("Email"), RefStyle::Jira, true));
         assert_eq!(row(JiraDataCenter), ("#", "pull request", None, None, RefStyle::Jira, true));
+        assert_eq!(row(Trello), ("#", "pull request", None, Some("API Key"), RefStyle::Trello, true));
         let fixed: Vec<_> = Provider::ALL.iter().filter_map(|p| p.fixed_host()).collect();
-        assert_eq!(fixed, ["github.com", "gitlab.com", "bitbucket.org"]);
-        assert!(Provider::ALL.iter().all(|p| p.supports_gcm() != p.is_jira()));
+        assert_eq!(fixed, ["github.com", "gitlab.com", "bitbucket.org", "trello.com"]);
+        assert!(Provider::ALL.iter().all(|p| p.supports_gcm() != p.is_tracker_only()));
         assert_eq!(Provider::ALL.iter().filter(|p| p.is_jira()).count(), 2);
+        assert_eq!(Provider::ALL.iter().filter(|p| p.is_tracker_only()).count(), 3);
         let forks = |p: Provider| (p.lists_forks(), p.creates_forks());
         for p in [GitHub, GitHubEnterprise, GitLab, GitLabSelfManaged] {
             assert_eq!(forks(p), (true, true), "{p:?}");
@@ -224,7 +236,7 @@ mod tests {
         for p in [Bitbucket, BitbucketDataCenter] {
             assert_eq!(forks(p), (true, false), "{p:?}");
         }
-        for p in [AzureDevOps, JiraCloud, JiraDataCenter] {
+        for p in [AzureDevOps, JiraCloud, JiraDataCenter, Trello] {
             assert_eq!(forks(p), (false, false), "{p:?}");
         }
         for p in Provider::ALL {

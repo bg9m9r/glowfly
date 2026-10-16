@@ -19,6 +19,9 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 prefs.jira_project = project;
             }
             st.prefs = Some(prefs);
+            if page == PrefPage::RepoTracker {
+                super::trello::want_boards(st, fx);
+            }
             if page == PrefPage::RepoGitFlow {
                 super::gitflow::fill(st);
             }

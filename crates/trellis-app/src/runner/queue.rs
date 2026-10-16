@@ -147,6 +147,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::SaveToken { .. }
         | Effect::DeleteToken(_)
         | Effect::ForgetCredentialManager { .. }
+        | Effect::TrelloBoards { .. }
         | Effect::Stats { .. }
         | Effect::SearchPaths { .. }
         | Effect::VerifySignature { .. }

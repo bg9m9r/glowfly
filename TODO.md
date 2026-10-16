@@ -56,7 +56,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - Preferences: General, Profile (named identity profiles), Integrations, UI, Commit Signing, plus
   repo-specific Identity, Hooks and Issue Tracker
 - Integrations: GitHub, GitHub Enterprise Server, GitLab, GitLab Self-Managed, Bitbucket,
-  Bitbucket Data Center, Azure DevOps, Jira Cloud, and Jira Data Center. Each supports listing
+  Bitbucket Data Center, Azure DevOps, Jira Cloud, Jira Data Center, and Trello. Each supports listing
   and creating pull requests where applicable, listing issues and mentions, creating a branch
   from an issue, and connecting through Git Credential Manager or a token.
 
@@ -71,7 +71,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | General | ✔ General | Missing: delete `.orig` files after merge, keep submodules updated, show all commits, path to `sh.exe`, extended logging, conflict detection |
 | Profiles | ✔ Profile (identity, connected accounts and app preferences per profile, switching) | Follow-ups in Later > Profiles |
 | SSH | ✔ SSH page (key pairs, generate a key, the key git uses, local agent, add a key to a hosting service) | Follow-ups in Later > SSH key management |
-| Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
+| Integrations | ✔ 10 services | PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ✔ Editor, terminal, diff tool and merge tool | Follow-ups in Later > External tools and Later > External diff and merge tools |
 | Notifications | ✔ location, behind alerts and desktop notifications under UI Customization | Per-kind choices, click to focus (Later > Notifications) |
@@ -522,7 +522,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Create and view issues**
   Create an issue (type, labels, assignees, epic); an issue detail panel with description and
   comments; "create issue then branch".
-- [ ] **Trello**
+- [x] **Trello**
   Trello cards as an issue tracker.
 - [ ] **Cross-repo dashboard**
   PRs and issues across all connected repos (local, with no cloud account).
@@ -1352,6 +1352,18 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - Make the branch-name issue heuristic configurable (`2024-cleanup` is currently read as issue
   2024)
+
+### Trello
+
+- Sign in through Trello's browser authorization flow (redirect back to Trellis) instead of
+  pasting the API key and token
+- Show card labels as coloured chips, and filter the ISSUES list by list or label
+- Recognise board-local card numbers (#12) and bare short ids in commit text, once a board is
+  chosen
+- The ISSUES error's Connect… button opens Integrations on the Trello page
+- Wait out a rate limit and retry automatically instead of waiting for a manual refresh
+- A token lifetime choice (1 day / 30 days / never) on the Allow a token link
+- Add the commit or pull request link to the card as an attachment (needs a write-scope token)
 
 ### Command-line companion
 

@@ -65,6 +65,14 @@ pub enum TrackerChoice {
         account: Account,
         project: String,
     },
+    /// A connected Trello account, optionally limited to one board (empty: all boards).
+    Trello {
+        account: Account,
+        #[serde(default)]
+        board: String,
+        #[serde(default)]
+        board_name: String,
+    },
 }
 
 /// Which parts of the commit graph are shown (UI Customization > graph toggles).

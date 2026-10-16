@@ -61,6 +61,7 @@ pub mod terminal;
 pub mod toasts;
 pub mod tool_compare;
 pub mod tools;
+pub mod trello;
 pub mod trust;
 pub mod undo;
 mod view;

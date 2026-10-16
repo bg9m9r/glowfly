@@ -118,7 +118,35 @@ impl ForgeState {
     pub fn issue_noun(&self) -> &'static str {
         match self.tracker.as_ref().map(|t| t.provider) {
             Some(Provider::AzureDevOps) => "work item",
+            Some(Provider::Trello) => "card",
             _ => "issue",
+        }
+    }
+
+    fn is_trello(&self) -> bool {
+        self.tracker.as_ref().is_some_and(|t| t.provider == Provider::Trello)
+    }
+
+    /// The ISSUES row menu item that opens an issue's web page.
+    pub fn open_issue_label(&self) -> &'static str {
+        if self.is_trello() { "View card in Trello" } else { "Open in browser" }
+    }
+
+    /// The ISSUES row menu item that copies an issue's reference, and what it copies: a card's
+    /// link (Trello has no mention syntax), else the mention.
+    pub fn copy_issue_item(&self, issue: &Issue) -> (String, String) {
+        if self.is_trello() {
+            return ("Copy card link".into(), issue.url.clone());
+        }
+        let m = self.mention(&issue.key);
+        (format!("Copy {m}"), m)
+    }
+
+    /// The tracker over the ISSUES list: its name, and for Trello the board.
+    pub fn tracker_hint(&self) -> String {
+        match self.tracker.as_ref().filter(|_| self.is_trello()) {
+            Some(t) => format!("Trello · {}", t.display()),
+            None => self.tracker_name().to_owned(),
         }
     }
 

@@ -161,3 +161,32 @@ fn service_links_and_names_per_provider() {
     assert_eq!(link_line(Provider::AzureDevOps, Provider::JiraCloud, "AB-1").as_deref(), Some("AB-1"));
     assert_eq!(link_line(Provider::GitHub, Provider::AzureDevOps, "5").as_deref(), Some("Closes #5"));
 }
+
+#[test]
+fn trello_card_links_and_branches() {
+    let text = "See https://trello.com/c/AbCd1234/12-login, (trello.com/c/Zz9Yy8Xx) and www.trello.com/c/Qq1Ww2Ee; not \
+                eviltrello.com/c/AAAA1111, a.trello.com/c/BBBB2222, trello.com/c/short or trello.com/c/AbCd12345";
+    assert_eq!(issue_refs(RefStyle::Trello, text), ["AbCd1234", "Zz9Yy8Xx", "Qq1Ww2Ee"]);
+    assert_eq!(issue_refs(RefStyle::Trello, "HTTPS://Trello.com/c/AbCd1234"), ["AbCd1234"]);
+    assert!(issue_refs(RefStyle::Trello, "Fixes AbCd1234").is_empty(), "a bare id isn't a link");
+    for b in ["feature/AbCd1234-login", "AbCd1234", "fix/AbCd1234_x"] {
+        assert_eq!(branch_issue(RefStyle::Trello, b).as_deref(), Some("AbCd1234"), "{b}");
+    }
+    for b in ["feature/frontend-x", "20261016-release", "AbCd12345-x", "AbCd-1234", "feature/login-AbCd1234", "short"] {
+        assert_eq!(branch_issue(RefStyle::Trello, b), None, "{b}");
+    }
+    assert_eq!(mention(RefStyle::Trello, "AbCd1234"), "AbCd1234");
+    let card = Issue {
+        key: "AbCd1234".into(),
+        title: "Fix login".into(),
+        state: String::new(),
+        kind: String::new(),
+        assignee: None,
+        url: String::new(),
+    };
+    assert_eq!(branch_name_for(&card), "AbCd1234-fix-login");
+    assert_eq!(link_line(Provider::GitHub, Provider::Trello, "AbCd1234").as_deref(), Some("https://trello.com/c/AbCd1234"));
+    assert_eq!(parse_host(Provider::Trello, ""), Some(("trello.com".into(), String::new())));
+    let account = Account { provider: Provider::Trello, host: "trello.com".into(), org: String::new() };
+    assert_eq!(Target::token_url(&account).as_deref(), Some("https://trello.com/power-ups/admin"));
+}

@@ -59,7 +59,11 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
                 st.snap = Some(snap);
             }
             refresh(st, true, false, now, fx);
+            super::trello::want_boards(st, fx);
         }
+        ForgeMsg::ShowTrackerPage => super::trello::show_page(st, fx),
+        ForgeMsg::LoadTrelloBoards(account) => super::trello::load_boards(st, account, fx),
+        ForgeMsg::TrelloBoardsLoaded { account, result } => super::trello::boards_loaded(st, account, result),
     }
 }
 
@@ -78,6 +82,7 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
         TrackerChoice::Auto => host.clone().filter(|t| t.provider.has_issues()),
         TrackerChoice::None => None,
         TrackerChoice::Jira { account, project } => Some(Target::jira(&account, &project)),
+        TrackerChoice::Trello { account, board, board_name } => Some(Target::trello(&account, &board, &board_name)),
     };
     if host.is_none() && tracker.is_none() {
         st.forge = None;
