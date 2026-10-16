@@ -39,7 +39,7 @@ fn preferences_ui_desktop_on() {
 
 #[test]
 fn group_worktree_tabs_row() {
-    let mut h = harness_sized(page(false), true, egui::vec2(1400.0, 1560.0));
+    let mut h = harness_sized(page(false), true, egui::vec2(1400.0, 1640.0));
     h.run();
     h.check_snapshot("prefs_ui_group_worktree_tabs");
     assert!(h.state().0.settings.group_worktree_tabs, "on by default");
