@@ -30,12 +30,13 @@ binary (package `trellis`).
 | `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
 | `native_path.rs`, `volume.rs` | The spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`); whether a folder is on a network or virtual file system. |
 | `askpass/` | Credential prompts: classifying git's and ssh's questions, the helper protocol, the app's listener and the helper's client. |
-| `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `shallow_ops.rs`, `worktree_ops.rs`, `stash_ops.rs`, `sparse_ops.rs`, `patch_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning, fetching more of a shallow clone's history, worktrees and stashes (renaming a stash list entry by dropping and storing the top of `refs/stash` again, and stash push command lines: all, staged only, chosen paths); sparse checkout state, paths and command lines; patch files: format-patch export, git apply command lines and errors. |
+| `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `shallow_ops.rs`, `worktree_ops.rs`, `stash_ops.rs`, `sparse_ops.rs`, `patch_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning (with the sparse clone job: the clone, then the folders to check out), fetching more of a shallow clone's history, worktrees and stashes (renaming a stash list entry by dropping and storing the top of `refs/stash` again, and stash push command lines: all, staged only, chosen paths); sparse checkout state, paths and command lines; patch files: format-patch export, git apply command lines and errors. |
+| `init_ops.rs`, `init_ops/` | New repository files and the init job: `.gitignore` templates, license texts, what the chosen folder already holds, and init, write (never overwriting) and commit. |
 | `lfs.rs`, `lfs/` | Git LFS: install and setup state, tracked patterns, LFS command lines. |
 | `gitflow.rs`, `gitflow/` | Git Flow with plain git: config, checks, start and finish plans, versions, branch groups by kind. |
 | `rebase/` | Interactive rebase: the plan, the todo file, running `git rebase -i`. |
 | `undo.rs` | Undo and redo of Trellis's own operations. |
-| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`; repository web pages (`web.rs`) and forks (`forks/`). |
+| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`; repository web pages (`web.rs`), forks (`forks/`) and the signed-in user's own repositories (`user_repos/`). |
 | `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
 | `graph.rs` | Lane layout for the commit graph. |
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
@@ -59,16 +60,16 @@ binary (package `trellis`).
 | Module | Holds |
 | --- | --- |
 | `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`) and askpass helper. |
-| `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
-| `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`), and `Effect::name` (`names.rs`). |
+| `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
+| `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`), grouped effects of the Clone and Init dialogs (`clone.rs`, `init.rs`), and `Effect::name` (`names.rs`). |
 | `lfs.rs`, `git_env.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
-| `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data. |
+| `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data (the Clone dialog in `clone.rs` and `clone_service.rs`, the Init dialog in `init.rs`). |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
 | `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |
 | `watcher.rs` | The file watcher for the active tab's repository, owned by the runner. |
 | `platform.rs` | OS integration: recent repositories and which listed folders are missing, open tabs, terminals, the file manager. |
 | `keymap.rs` | The keyboard binding table, shared by shortcuts, the palette and tooltips. |
-| `ui/` | egui views, one file or folder per region, plus snapshot tests (`snapshot_tests*.rs`). `ui/mod.rs` is the shell: it owns the runner and dispatches messages. |
+| `ui/` | egui views, one file or folder per region (the Clone dialog in `clone_dialog.rs` and `clone_service.rs`, the Init dialog in `init_dialog.rs`), plus snapshot tests (`snapshot_tests*.rs`). `ui/mod.rs` is the shell: it owns the runner and dispatches messages. |
 
 ### Tests outside `src/`
 

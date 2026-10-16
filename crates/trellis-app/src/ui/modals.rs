@@ -1,13 +1,14 @@
 //! Dialogs: confirmation, new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
 //! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
-//! `worktree_manage_dialog.rs`), clone (drawn by `clone_dialog.rs`), create pull request, publish
-//! (drawn by `publish.rs`), renaming a branch or setting its upstream (drawn by
-//! `branch_dialogs.rs`), renaming a stash (drawn by `stash_dialog.rs`), stashing with a message
-//! and a choice of what goes in (drawn by `stash_push_dialog.rs`), creating or renaming a
-//! working-tree file (drawn by `file_dialogs.rs`), starting a Git Flow branch (drawn by
-//! `gitflow_dialog.rs`), finishing one (drawn by `gitflow_finish_dialog.rs`), adding or editing a
-//! remote (drawn by `remotes/dialog.rs`), adding a fork as a remote and forking on the hosting
-//! service (drawn by `remotes/fork_pick.rs` and `remotes/fork_create.rs`), the keyboard shortcut sheet (drawn by
+//! `worktree_manage_dialog.rs`), clone (drawn by `clone_dialog.rs` and `clone_service.rs`), init
+//! (drawn by `init_dialog.rs`), create pull request, publish (drawn by `publish.rs`), renaming a
+//! branch or setting its upstream (drawn by `branch_dialogs.rs`), renaming a stash (drawn by
+//! `stash_dialog.rs`), stashing with a message and a choice of what goes in (drawn by
+//! `stash_push_dialog.rs`), creating or renaming a working-tree file (drawn by
+//! `file_dialogs.rs`), starting a Git Flow branch (drawn by `gitflow_dialog.rs`), finishing one
+//! (drawn by `gitflow_finish_dialog.rs`), adding or editing a remote (drawn by
+//! `remotes/dialog.rs`), adding a fork as a remote and forking on the hosting service (drawn by
+//! `remotes/fork_pick.rs` and `remotes/fork_create.rs`), the keyboard shortcut sheet (drawn by
 //! `shortcuts/sheet.rs`), the repository trust prompt (drawn by `trust_dialog.rs`) and a conflict
 //! check's report (drawn by `conflict_check.rs`).
 
@@ -24,6 +25,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Under a credential prompt, Esc and clicks belong to the prompt.
     let prompting = st.askpass.showing();
     let today = trellis_core::clone_ops::local_date(st.view.now, st.view.utc_offset);
+    let sparse_blocked = st.git.blocked(trellis_core::git_version::Feature::SparseCheckout);
     let Some(modal) = st.modal.as_mut() else { return };
     let snap = st.snap.as_ref();
     let fs = st.forge.as_ref();
@@ -82,7 +84,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             }
             Modal::Clone(form) => {
-                if super::clone_dialog::show(ui, form, today, msgs) {
+                if super::clone_dialog::show(ui, form, today, sparse_blocked.as_deref(), connections, !prompting, msgs) {
+                    close = true;
+                }
+            }
+            Modal::Init(form) => {
+                if super::init_dialog::show(ui, form, chrono::Datelike::year(&today), !prompting, msgs) {
                     close = true;
                 }
             }

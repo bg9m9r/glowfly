@@ -109,6 +109,8 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::Tool(_)
             // Would write the developer's global git config.
             | Effect::Profile(_)
+            // Asks a hosting service.
+            | Effect::Clone(crate::effect::CloneEffect::ListRepos { .. })
     )
 }
 

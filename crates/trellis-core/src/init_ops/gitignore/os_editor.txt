@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+._*
+# Windows
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+# JetBrains IDEs
+.idea/
+# Visual Studio Code (remove this line to share its settings)
+.vscode/
+# Vim and Emacs
+*.swp
+*.swo
+*~
+# Eclipse
+.project
+.classpath
+.settings/

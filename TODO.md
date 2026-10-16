@@ -400,14 +400,14 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   in the palette; hiding stashes is under Later.)
   - [x] Rename (edit the message of) an existing stash, from the sidebar and the palette
   - [x] Stash only staged changes or selected files, with a message, from the palette too
-- [ ] **Clone and init options**
+- [x] **Clone and init options**
   Shallow and sparse clone; init with a `.gitignore` template and a license; clone from a list
   of your repos on a connected service. (Creating the hosting-service repo on init is under
   Later; Publish to GitHub covers GitHub.)
   - [x] Shallow clone from the Clone dialog: by commit count or since a date, optionally one branch
-  - [ ] Sparse clone (choose folders to check out when cloning)
-  - [ ] Init with a .gitignore template and a license
-  - [ ] Clone from a list of your repositories on a connected hosting service
+  - [x] Sparse clone (choose folders to check out when cloning)
+  - [x] Init with a .gitignore template and a license
+  - [x] Clone from a list of your repositories on a connected hosting service
   - [x] Fetch the full history of a shallow clone later (unshallow, or deepen by more commits)
 - [x] **Sparse checkout**
   A repository page in Preferences (Sparse Checkout, also opened by the palette's Configure
@@ -1051,10 +1051,22 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Mark the shallow boundary commits in the graph
 - Unshallow shallow submodules when an update or reset needs missing commits
 - Confirm before unshallowing a very large repository, and cancel a running fetch
+- List your repositories on Azure DevOps and Bitbucket Data Center in the Clone dialog
+- List repositories for a service that isn't connected yet, signing in through Git Credential
+  Manager from the Clone dialog
+- Remember the SSH/HTTPS choice and the last account between Clone dialogs
+- Search a service's repositories on the server beyond the first 1000
+- Mark archived repositories and forks in the repository list, and double-click a row to clone
+- Sparse clone in patterns (non-cone) mode, and picking folders from the remote's tree before
+  cloning
+- Fetch missing file contents on demand in a partial clone (the diff views read through
+  libgit2, which can't fetch them)
+- Merge a .gitignore template into an existing .gitignore instead of keeping the old one
+- More .gitignore templates and licenses (AGPL, LGPL, EPL, ISC, CC0), and a README on init
+- A custom initial commit message in the Init dialog
 
 ### Sparse checkout
 
-- Sparse clone from the Clone dialog (tracked under Clone and init options)
 - Show in the toolbar or status bar that the worktree is sparse, and notice sparse changes made
   outside Trellis on a plain refresh
 - Explain when an opened or restored path is outside the sparse checkout, and keep left-out

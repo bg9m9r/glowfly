@@ -1,6 +1,6 @@
 //! Hosting-service integrations ("forges"): remote detection, credentials, pull/merge requests,
-//! issues, forks and repository web pages for GitHub, GitLab, Bitbucket, Azure DevOps and Jira,
-//! behind one common model.
+//! issues, forks, the user's own repositories and repository web pages for GitHub, GitLab,
+//! Bitbucket, Azure DevOps and Jira, behind one common model.
 
 mod azure;
 mod bitbucket;
@@ -21,6 +21,7 @@ mod provider;
 mod publish;
 mod refs;
 mod remote;
+mod user_repos;
 mod web;
 
 pub use auth::{
@@ -35,6 +36,7 @@ pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, mention};
 pub use remote::{Connection, parse_host, parse_remote};
+pub use user_repos::{HostedRepo, MyRepos, lists_my_repos, my_repos};
 pub use web::{NoWebPage, WebPage, web_page};
 
 /// A connection identity: which service, which host, and (Azure DevOps) which organization.

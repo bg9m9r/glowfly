@@ -118,7 +118,7 @@ fn hostname(host: &str) -> &str {
 /// The fork with only what is safe to show, open and clone: printable names, web links on the
 /// service's host, an https clone URL on that host and an SSH one on the same machine. None
 /// when neither clone URL is left.
-fn checked(t: &Target, f: Fork) -> Option<Fork> {
+pub(super) fn checked(t: &Target, f: Fork) -> Option<Fork> {
     let host = t.host.to_ascii_lowercase();
     let https = without_userinfo(f.https_url.trim());
     let https_url = if links::https_host(&https).as_deref() == Some(host.as_str()) { https } else { String::new() };

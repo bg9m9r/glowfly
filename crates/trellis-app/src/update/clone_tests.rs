@@ -32,7 +32,7 @@ fn request(options: CloneOptions) -> CloneRequest {
 }
 
 fn shallow(limit: HistoryLimit, branch: Option<&str>) -> CloneOptions {
-    CloneOptions { shallow: Some(Shallow { limit, branch: branch.map(str::to_owned) }) }
+    CloneOptions { shallow: Some(Shallow { limit, branch: branch.map(str::to_owned) }), sparse: None }
 }
 
 /// The single RunGit job in `fx`: (folder, commands, prompts).

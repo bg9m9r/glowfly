@@ -1,12 +1,15 @@
-//! The Clone dialog's form: the URL, the parent folder and the shallow clone options, with the
-//! pure rules that check them as the user types and the request they turn into.
+//! The Clone dialog's form: the URL (typed, or picked from the user's repositories on a
+//! connected service, `clone_service`), the parent folder, and the shallow and sparse clone
+//! options, with the pure rules that check them as the user types and the request they turn into.
 
+use super::clone_service::{CloneSource, ServicePicker};
 use chrono::NaiveDate;
 use std::path::{Path, PathBuf};
 use trellis_core::clone_ops::{
-    BRANCH_INVALID, CloneOptions, HistoryLimit, Shallow, check_clone_branch, parse_depth, parse_since, repo_name,
+    BRANCH_INVALID, CloneOptions, HistoryLimit, Shallow, Sparse, check_clone_branch, parse_depth, parse_since, repo_name,
 };
 use trellis_core::remote_ops::{UrlProblem, check_url};
+use trellis_core::sparse_ops::{PathProblem, SparseMode, parse_paths};
 
 /// How a shallow clone limits the history it downloads.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -21,6 +24,8 @@ pub enum LimitKind {
 /// never loses what was typed.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CloneForm {
+    /// Which tab supplies the URL.
+    pub source: CloneSource,
     pub url: String,
     pub parent: String,
     pub shallow: bool,
@@ -28,6 +33,14 @@ pub struct CloneForm {
     pub depth: String,
     pub since: String,
     pub branch: String,
+    /// Check out only some folders (`git clone --sparse`, then the folders in cone mode).
+    pub sparse: bool,
+    /// The folders, one per line.
+    pub sparse_folders: String,
+    /// Download file contents only for those folders (`--filter=blob:none`).
+    pub partial: bool,
+    /// The "Your repositories" tab.
+    pub service: ServicePicker,
     /// The parent folder text last checked on disk (trimmed) and the folder it names (`~`
     /// expanded, resolved) when it is one. Set by `update` from `CloneMsg::ParentChecked`; views
     /// never look at the disk.
@@ -43,6 +56,7 @@ pub struct CloneProblems {
     pub depth: Option<String>,
     pub since: Option<String>,
     pub branch: Option<String>,
+    pub sparse: Option<String>,
     pub blocked: bool,
 }
 
@@ -59,6 +73,7 @@ impl CloneForm {
     /// An empty form cloning into `parent`; shallow is off, with a depth of 1 ready.
     pub fn new(parent: String) -> Self {
         Self {
+            source: CloneSource::Url,
             url: String::new(),
             parent,
             shallow: false,
@@ -66,6 +81,10 @@ impl CloneForm {
             depth: "1".into(),
             since: String::new(),
             branch: String::new(),
+            sparse: false,
+            sparse_folders: String::new(),
+            partial: false,
+            service: ServicePicker::default(),
             parent_checked: None,
         }
     }
@@ -141,7 +160,16 @@ impl CloneForm {
                 p.blocked = true;
             }
         }
+        if let Some(Err(e)) = self.sparse_cleaned() {
+            p.sparse = Some(sparse_problem(&e));
+            p.blocked = true;
+        }
         p
+    }
+
+    /// The folders to check out, cleaned up, when sparse checkout is on.
+    pub fn sparse_cleaned(&self) -> Option<Result<Vec<String>, PathProblem>> {
+        self.sparse.then(|| parse_paths(&self.sparse_folders, SparseMode::Cone))
     }
 
     /// The request the form describes, or None when a field doesn't parse.
@@ -155,6 +183,10 @@ impl CloneForm {
         } else {
             None
         };
+        let sparse = match self.sparse_cleaned() {
+            Some(folders) => Some(Sparse { folders: folders.ok()?, partial: self.partial }),
+            None => None,
+        };
         let name = self.name();
         if name.is_empty() {
             return None;
@@ -164,7 +196,17 @@ impl CloneForm {
             // The folder the check found; the text itself only before any check (tests).
             parent: self.parent_folder().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from(self.parent.trim())),
             name,
-            options: CloneOptions { shallow },
+            options: CloneOptions { shallow, sparse },
         })
+    }
+}
+
+/// A folders line's problem, in the Clone dialog's words: patterns are set after cloning.
+fn sparse_problem(p: &PathProblem) -> String {
+    match p {
+        PathProblem::Pattern(l) => {
+            format!("\"{l}\" looks like a pattern. List folders here; patterns can be set after cloning in Preferences > Sparse Checkout.")
+        }
+        other => other.message(),
     }
 }

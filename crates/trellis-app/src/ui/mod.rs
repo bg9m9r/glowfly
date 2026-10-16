@@ -7,6 +7,7 @@ mod avatars;
 mod branch_dialogs;
 mod branch_menu;
 mod clone_dialog;
+mod clone_service;
 mod commit_box;
 pub(crate) mod common;
 mod conflict;
@@ -25,6 +26,7 @@ mod gitflow_section;
 mod graph;
 mod history;
 mod icons;
+mod init_dialog;
 mod menus;
 mod modals;
 mod palette;
@@ -67,6 +69,8 @@ mod snapshot_tests_branch;
 #[cfg(test)]
 mod snapshot_tests_clone;
 #[cfg(test)]
+mod snapshot_tests_clone_service;
+#[cfg(test)]
 mod snapshot_tests_columns;
 #[cfg(test)]
 mod snapshot_tests_commit;
@@ -90,6 +94,8 @@ mod snapshot_tests_file_menu_lfs;
 mod snapshot_tests_forks;
 #[cfg(test)]
 mod snapshot_tests_gitflow;
+#[cfg(test)]
+mod snapshot_tests_init;
 #[cfg(test)]
 mod snapshot_tests_lfs;
 #[cfg(test)]

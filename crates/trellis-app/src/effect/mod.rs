@@ -12,11 +12,15 @@ use trellis_core::repo::{DiffTarget, FileDiff, HistoryStart, Hunk, LoadOptions};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
 
+mod clone;
 mod forge;
+mod init;
 mod names;
 mod repo;
 
+pub use clone::CloneEffect;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
+pub use init::InitEffect;
 pub use repo::{KnownRepo, LocalOp, UndoResult, WatchTarget};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -341,6 +345,10 @@ pub enum Effect {
     CheckConflicts(crate::conflict_check::CheckJob),
     /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.
     Remote(crate::remote::RemoteEffect),
+    /// A sparse clone and listing the user's repositories for the Clone dialog; unscoped.
+    Clone(CloneEffect),
+    /// The Init dialog's folder checks and the init job; unscoped.
+    Init(InitEffect),
     Ui(UiEffect),
 }
 
@@ -414,6 +422,8 @@ impl Effect {
             | Effect::Tool(_)
             | Effect::GitEnv(_)
             | Effect::Remote(_)
+            | Effect::Clone(_)
+            | Effect::Init(_)
             | Effect::Ui(_) => None,
         }
     }

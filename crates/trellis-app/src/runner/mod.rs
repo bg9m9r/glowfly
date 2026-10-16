@@ -33,6 +33,7 @@ use trellis_core::repo;
 use trellis_core::undo::{self, Action, Plan};
 
 mod askpass;
+mod clone;
 mod config;
 mod conflict_check;
 mod expect;
@@ -42,6 +43,7 @@ mod forks;
 mod git_env;
 mod guard;
 mod highlight;
+mod init;
 mod keys;
 mod os;
 mod patches;
@@ -329,6 +331,8 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::GitEnv(e) => Some(git_env::run(e)),
         Effect::CheckConflicts(job) => Some(conflict_check::run(job)),
         Effect::Remote(e) => Some(forks::run(e)),
+        Effect::Clone(e) => Some(clone::run(e)),
+        Effect::Init(e) => Some(init::run(e)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

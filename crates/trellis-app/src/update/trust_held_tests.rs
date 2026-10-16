@@ -4,14 +4,16 @@
 use super::jobs::{JobSpec, Started, begin_job, start_job};
 use super::tests::{scratch_repo, state};
 use super::trust_tests::{asking, drive, open, real, run, untrusted_repo};
-use crate::effect::Effect;
-use crate::msg::{CloneMsg, CommitMsg, FolderPurpose, Msg, PrefsMsg, TrustMsg};
+use crate::effect::{Effect, InitEffect};
+use crate::msg::{CloneMsg, CommitMsg, InitMsg, Msg, TrustMsg};
 use crate::patch::PatchMsg;
 use crate::state::clone::CloneRequest;
+use crate::state::init::InitRequest;
 use crate::state::trust::{TrustPrompt, record, recorded};
 use crate::state::{AppState, Modal, RunningJob};
 use std::path::PathBuf;
 use trellis_core::gitcli::args;
+use trellis_core::init_ops::InitPlan;
 use trellis_core::settings::RepoTrust;
 
 /// `untrusted_repo` opened, with the first-open prompt dismissed.
@@ -208,10 +210,10 @@ fn a_trusted_or_clean_repository_runs_at_once() {
 #[test]
 fn clone_and_init_are_not_held() {
     let (mut st, dir) = held_repo("held-init");
-    let fx = run(&mut st, Msg::Prefs(PrefsMsg::FolderPicked { purpose: FolderPurpose::InitRepo, path: Some(dir.clone()) }));
-    let gits = run_gits(&fx);
-    let [Effect::RunGit { cmds, .. }] = gits.as_slice() else { panic!("init runs at once: {fx:?}") };
-    assert_eq!(cmds[0][0], "init");
+    let plan = InitPlan { branch: None, files: Vec::new(), commit: None };
+    let fx = run(&mut st, Msg::Init(InitMsg::Start(InitRequest { folder: dir.clone(), plan })));
+    let [Effect::Init(InitEffect::Run { folder, .. })] = fx.as_slice() else { panic!("init runs at once: {fx:?}") };
+    assert_eq!(folder, &dir);
     assert!(st.trust.held.is_none());
     st.job = None;
 

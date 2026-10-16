@@ -1,0 +1,18 @@
+# Build output
+bin/
+obj/
+# Per-user project and solution settings
+*.user
+*.suo
+*.userprefs
+# Visual Studio caches
+.vs/
+# Test results and coverage
+TestResults/
+*.trx
+coverage*.xml
+# Restored NuGet packages
+packages/
+*.nupkg
+# Rider caches
+.idea/.idea.*/

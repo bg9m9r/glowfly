@@ -63,14 +63,39 @@ pub enum CloneMsg {
     ParentChecked { parent: String, found: Option<std::path::PathBuf> },
     /// Clone a repository into a folder (the Clone dialog's request, options included).
     Start(crate::state::clone::CloneRequest),
+    /// Switch the Clone dialog between the URL tab and the Your repositories tab.
+    Source(crate::state::clone_service::CloneSource),
+    /// Choose account `.0` (an index into the tab's accounts).
+    ServiceAccount(usize),
+    /// Ask for the chosen account's repositories again after a failure.
+    RetryRepos,
+    /// Pick repository `.0` (an index into the unfiltered list) and fill in its clone URL.
+    PickRepo(usize),
+    /// Fill in the SSH clone URL (true) or the https one.
+    UseSsh(bool),
+    /// The repositories of `account`, or why they couldn't be listed.
+    ReposLoaded { account: trellis_core::forge::Account, result: Box<Result<trellis_core::forge::MyRepos, crate::effect::ForgeError>> },
+    /// A sparse clone job ended (`CloneEffect::Sparse`).
+    Finished(trellis_core::clone_ops::CloneOutcome),
 }
 
 impl CloneMsg {
     /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
-    /// drops it.
+    /// drops it. The Clone dialog's effects are unscoped, so their results always reach
+    /// `update` and are never wrapped in `Msg::Scoped`.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::Dialog | Self::ParentEdited | Self::ParentChecked { .. } | Self::Start(..) => None,
+            Self::Dialog
+            | Self::ParentEdited
+            | Self::ParentChecked { .. }
+            | Self::Start(..)
+            | Self::Source(..)
+            | Self::ServiceAccount(..)
+            | Self::RetryRepos
+            | Self::PickRepo(..)
+            | Self::UseSsh(..)
+            | Self::ReposLoaded { .. }
+            | Self::Finished(..) => None,
         }
     }
 }

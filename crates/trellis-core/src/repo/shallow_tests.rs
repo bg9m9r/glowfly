@@ -19,7 +19,7 @@ fn shallow_clone(name: &str, commits: usize, depth: u32) -> (PathBuf, PathBuf, V
     }
     let dest = src.with_file_name(format!("{}-sh", src.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&dest);
-    let opts = CloneOptions { shallow: Some(Shallow { limit: HistoryLimit::Depth(depth), branch: None }) };
+    let opts = CloneOptions { shallow: Some(Shallow { limit: HistoryLimit::Depth(depth), branch: None }), sparse: None };
     let cmd = clone_cmd(&src.display().to_string(), &dest.file_name().unwrap().to_string_lossy(), &opts);
     let (ok, out) = run(src.parent().unwrap(), &cmd);
     assert!(ok, "clone failed: {out}");

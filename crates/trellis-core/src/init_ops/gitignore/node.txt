@@ -1,0 +1,21 @@
+# Installed packages
+node_modules/
+# Build output
+dist/
+build/
+.next/
+out/
+coverage/
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+# Local environment settings, often holding secrets
+.env
+.env.local
+.env.*.local
+# Caches
+.cache/
+.eslintcache
+*.tsbuildinfo

@@ -1,0 +1,9 @@
+# Build output from cargo
+/target
+# Backups rustfmt leaves behind
+**/*.rs.bk
+# Debug symbols on Windows
+*.pdb
+# Coverage and profiling data
+*.profraw
+*.profdata

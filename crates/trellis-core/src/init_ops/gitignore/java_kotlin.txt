@@ -1,0 +1,18 @@
+# Compiled classes
+*.class
+# Build output from Gradle, Maven and IDEs
+build/
+out/
+target/
+.gradle/
+.kotlin/
+# Packaged archives, except the Gradle wrapper
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+*.ear
+# Crash logs from the JVM
+hs_err_pid*
+replay_pid*
+# Machine-specific settings
+local.properties

@@ -18,6 +18,7 @@ mod diff;
 mod files;
 mod forge;
 mod graph;
+mod init;
 mod prefs;
 mod rebase;
 mod recent;
@@ -33,6 +34,7 @@ pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
 pub use files::{FilesMsg, WorkFileMsg, not_opened, restore_failed};
 pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
 pub use graph::{AvatarMsg, GraphMsg, PathsChunk, SearchMsg, SelectionMsg};
+pub use init::InitMsg;
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use recent::{FolderCheck, RecentMsg};
@@ -86,6 +88,8 @@ pub enum Msg {
     Branch(BranchMsg),
     /// The Clone dialog (update/clone.rs).
     Clone(CloneMsg),
+    /// The Init dialog (update/init.rs).
+    Init(InitMsg),
     /// The New tag dialog and the TAGS section's remote push and delete (tag.rs).
     Tag(crate::tag::TagMsg),
     /// The REMOTE section and the Add/Edit remote dialog (remote.rs).
@@ -206,6 +210,7 @@ impl Msg {
             Msg::WorkFile(m) => m.on_inactive(),
             Msg::Branch(m) => m.on_inactive(),
             Msg::Clone(m) => m.on_inactive(),
+            Msg::Init(m) => m.on_inactive(),
             Msg::Tag(m) => m.on_inactive(),
             Msg::Remote(m) => m.on_inactive(),
             Msg::Worktree(m) => m.on_inactive(),

@@ -1,7 +1,8 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
-use crate::effect::{Effect, ForgeError, LoadKind, UndoResult};
+use crate::effect::{CloneEffect, Effect, ForgeError, InitEffect, LoadKind, UndoResult};
+use crate::msg::CloneMsg;
 use crate::msg::JobMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
@@ -12,7 +13,7 @@ use crate::remote::{RemoteEffect, RemoteMsg};
 use crate::ssh::{GenerateFailure, SshEffect, SshMsg};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
-use trellis_core::forge::Target;
+use trellis_core::forge::{Account, Target};
 
 /// What to report if an effect panics, worked out before it runs.
 pub(super) struct Recovery {
@@ -35,6 +36,8 @@ enum Kind {
     SshGenerate,
     /// A fork dialog's request: the dialog shows a spinner until its answer arrives.
     Fork(FailedFork),
+    /// The Clone dialog's list of the user's repositories on this account: a spinner until it ends.
+    Repos(Account),
     Log,
 }
 
@@ -68,7 +71,12 @@ impl Recovery {
         let kind = match effect {
             Effect::RunGit { record, .. } => Kind::Job(record.as_ref().map(|_| UndoResult::Recorded(None))),
             Effect::UndoRedo { redo, .. } => Kind::Job(Some(UndoResult::Failed { redo: *redo })),
-            Effect::RemoveWorktree(_) | Effect::RenameStash { .. } | Effect::SparseCheckout { .. } => Kind::Job(None),
+            Effect::RemoveWorktree(_)
+            | Effect::RenameStash { .. }
+            | Effect::SparseCheckout { .. }
+            | Effect::Clone(CloneEffect::Sparse { .. })
+            | Effect::Init(InitEffect::Run { .. }) => Kind::Job(None),
+            Effect::Clone(CloneEffect::ListRepos { account, .. }) => Kind::Repos(account.clone()),
             Effect::InteractiveRebase { .. } => Kind::Rebase,
             Effect::LocalOp { .. } => Kind::LocalOp,
             Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
@@ -94,6 +102,10 @@ impl Recovery {
             Kind::SshList(generation) => Msg::Ssh(SshMsg::Loaded { generation, result: Err(text) }),
             Kind::SshGenerate => Msg::Ssh(SshMsg::Generated(Err(GenerateFailure::Failed(text)))),
             Kind::Fork(f) => f.message(text),
+            Kind::Repos(account) => {
+                let result = Box::new(Err(ForgeError { message: text, auth: false }));
+                Msg::Clone(CloneMsg::ReposLoaded { account, result })
+            }
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {
@@ -188,6 +200,32 @@ mod tests {
         let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
         let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
         assert!(output.contains("boom") && output.contains("sparse-checkout"), "{output}");
+    }
+
+    #[test]
+    fn panicking_clone_and_init_effects_end_their_job_or_spinner() {
+        use trellis_core::forge::Provider;
+        let jobs = [
+            Effect::Clone(CloneEffect::Sparse { parent: "C:/p".into(), cmd: vec![], dest: "C:/p/r".into(), folders: vec![] }),
+            Effect::Init(InitEffect::Run {
+                folder: "C:/n".into(),
+                plan: trellis_core::init_ops::InitPlan { branch: None, files: vec![], commit: None },
+            }),
+        ];
+        for effect in jobs {
+            assert!(effect.scope().is_none(), "unscoped: the job ends whichever tab is active");
+            let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
+            let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };
+            assert!(output.contains("boom") && output.contains(effect.name()), "{output}");
+        }
+        let account = Account { provider: Provider::GitHub, host: "github.com".into(), org: String::new() };
+        let effect = Effect::Clone(CloneEffect::ListRepos { account: account.clone(), cwd: "C:/r".into() });
+        assert!(effect.scope().is_none());
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+        let Msg::Clone(CloneMsg::ReposLoaded { account: a, result }) = msg else { panic!("not a repository list result") };
+        let Err(e) = *result else { panic!("not a failure") };
+        assert_eq!(a, account);
+        assert!(e.message.contains("boom") && e.message.contains("list-my-repos") && !e.auth, "{e:?}");
     }
 
     #[test]

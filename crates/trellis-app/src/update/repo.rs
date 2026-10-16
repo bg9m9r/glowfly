@@ -13,9 +13,7 @@ use trellis_core::settings::DiffMode;
 pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         RepoMsg::PickRepo => fx.push(Effect::PickFolder { title: "Open a Git repository".into(), purpose: FolderPurpose::OpenRepo }),
-        RepoMsg::InitRepo => {
-            fx.push(Effect::PickFolder { title: "Initialize a repository in…".into(), purpose: FolderPurpose::InitRepo })
-        }
+        RepoMsg::InitRepo => super::init::open(st, fx),
         RepoMsg::Open(path) => super::tabs::open(st, path, fx),
         RepoMsg::Refresh => {
             // Keys or allowed signers may have changed outside Trellis.

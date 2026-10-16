@@ -10,7 +10,7 @@ fn date(y: i32, m: u32, d: u32) -> NaiveDate {
 }
 
 fn shallow(limit: HistoryLimit, branch: Option<&str>) -> CloneOptions {
-    CloneOptions { shallow: Some(Shallow { limit, branch: branch.map(str::to_owned) }) }
+    CloneOptions { shallow: Some(Shallow { limit, branch: branch.map(str::to_owned) }), sparse: None }
 }
 
 #[test]
@@ -181,4 +181,107 @@ fn shallow_since_today_keeps_todays_commits() {
     assert_eq!(out(&parent.join("since"), &["rev-list", "--count", "HEAD"]), "3");
     let _ = std::fs::remove_dir_all(&parent);
     let _ = std::fs::remove_dir_all(&src);
+}
+
+fn sparse(partial: bool) -> Option<Sparse> {
+    Some(Sparse { folders: vec!["a".into()], partial })
+}
+
+fn no_locals(cmd: &[String]) -> usize {
+    cmd.iter().filter(|a| *a == "--no-local").count()
+}
+
+#[test]
+fn sparse_clone_cmds() {
+    let opts = CloneOptions { sparse: sparse(false), ..CloneOptions::default() };
+    assert_eq!(clone_cmd(URL, "app", &opts), ["clone", "--sparse", "--", URL, "app"]);
+    let opts = CloneOptions { sparse: sparse(true), ..CloneOptions::default() };
+    assert_eq!(clone_cmd(URL, "app", &opts), ["clone", "--sparse", "--filter=blob:none", "--", URL, "app"]);
+    let opts = CloneOptions { sparse: sparse(true), ..shallow(HistoryLimit::Depth(1), Some("b")) };
+    assert_eq!(
+        clone_cmd(URL, "app", &opts),
+        ["clone", "--depth=1", "--single-branch", "--branch=b", "--sparse", "--filter=blob:none", "--", URL, "app"]
+    );
+}
+
+#[test]
+fn no_local_comes_once_and_only_when_needed() {
+    let local = r"C:\src\repo";
+    let partial = CloneOptions { sparse: sparse(true), ..CloneOptions::default() };
+    let cmd = clone_cmd(local, "repo", &partial);
+    assert_eq!(no_locals(&cmd), 1, "{cmd:?}");
+    assert_eq!(cmd[cmd.len() - 4], "--no-local");
+    let both = CloneOptions { sparse: sparse(true), ..shallow(HistoryLimit::Depth(1), None) };
+    assert_eq!(no_locals(&clone_cmd(local, "repo", &both)), 1);
+    let plain_sparse = CloneOptions { sparse: sparse(false), ..CloneOptions::default() };
+    assert_eq!(no_locals(&clone_cmd(local, "repo", &plain_sparse)), 0);
+    for opts in [&partial, &both, &plain_sparse] {
+        assert_eq!(no_locals(&clone_cmd("file:///c/src/repo", "repo", opts)), 0);
+    }
+}
+
+/// A repository with `a/x.txt`, `b/y.txt` and `root.txt` committed on `main`.
+fn folders_source(name: &str) -> PathBuf {
+    let dir = scratch_repo(name);
+    std::fs::create_dir_all(dir.join("a")).unwrap();
+    std::fs::create_dir_all(dir.join("b")).unwrap();
+    write(&dir, "a/x.txt", "x");
+    write(&dir, "b/y.txt", "y");
+    write(&dir, "root.txt", "root");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "folders"]);
+    dir
+}
+
+fn into(src: &Path) -> PathBuf {
+    let parent = src.with_file_name(format!("{}-into", src.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&parent);
+    std::fs::create_dir_all(&parent).unwrap();
+    parent
+}
+
+fn sparse_clone_of(name: &str, partial: bool) {
+    let src = folders_source(name);
+    let parent = into(&src);
+    let opts = CloneOptions { sparse: sparse(partial), ..CloneOptions::default() };
+    let cmd = clone_cmd(&src.display().to_string(), "copy", &opts);
+    let dest = parent.join("copy");
+    let o = run_sparse(&parent, &cmd, &dest, &["a".to_owned()]);
+    assert!(o.cloned && o.ok, "{}", o.output);
+    assert!(dest.join("a/x.txt").is_file() && dest.join("root.txt").is_file(), "{}", o.output);
+    assert!(!dest.join("b").exists(), "{}", o.output);
+    let status = crate::sparse_ops::status(&dest).unwrap();
+    assert!(status.enabled);
+    assert_eq!(status.mode, SparseMode::Cone);
+    assert_eq!(status.paths, ["a"]);
+    assert!(o.output.contains("$ git clone") && o.output.contains("sparse-checkout set"), "{}", o.output);
+    let _ = std::fs::remove_dir_all(&parent);
+    let _ = std::fs::remove_dir_all(&src);
+}
+
+#[test]
+fn sparse_clone_checks_out_only_the_chosen_folders() {
+    sparse_clone_of("clone-sparse", false);
+}
+
+#[test]
+fn partial_sparse_clone_of_a_folder_falls_back_cleanly() {
+    // A local source with --no-local: git may warn that filtering isn't supported and download
+    // everything, which is still a working clone.
+    sparse_clone_of("clone-partial", true);
+}
+
+#[test]
+fn a_failed_sparse_clone_runs_no_second_step() {
+    let src = crate::paths::temp_dir().join(format!("trellis-test-clone-missing-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&src);
+    let parent = into(&src);
+    let opts = CloneOptions { sparse: sparse(false), ..CloneOptions::default() };
+    let cmd = clone_cmd(&src.display().to_string(), "copy", &opts);
+    let dest = parent.join("copy");
+    let o = run_sparse(&parent, &cmd, &dest, &["a".to_owned()]);
+    assert!(!o.cloned && !o.ok, "{}", o.output);
+    assert!(!dest.exists());
+    assert!(!o.output.contains("sparse-checkout"), "{}", o.output);
+    let _ = std::fs::remove_dir_all(&parent);
 }

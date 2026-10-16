@@ -19,7 +19,7 @@ pub(super) static BITBUCKET: ProviderInfo = ProviderInfo {
     ..DEFAULTS
 };
 
-const CLOUD: &str = "https://api.bitbucket.org/2.0";
+pub(super) const CLOUD: &str = "https://api.bitbucket.org/2.0";
 
 pub(super) fn cloud_repo(t: &Target) -> String {
     format!("{CLOUD}/repositories/{}/{}", enc(&t.owner), enc(&t.repo))

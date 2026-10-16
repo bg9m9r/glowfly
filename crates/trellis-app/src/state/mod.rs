@@ -4,6 +4,7 @@
 pub mod askpass;
 pub mod branches;
 pub mod clone;
+pub mod clone_service;
 pub mod commit;
 pub mod conflict;
 pub mod conflict_check;
@@ -14,6 +15,7 @@ pub mod forks;
 pub mod git_env;
 pub mod gitflow;
 pub mod history;
+pub mod init;
 pub mod known_folders;
 pub mod lfs;
 pub mod lines;
@@ -138,6 +140,7 @@ pub enum Modal {
     LockWorktree(worktree_manage::LockForm),
     Confirm { title: String, body: String, button: String, then: Box<Msg> },
     Clone(clone::CloneForm),
+    Init(init::InitForm),
     CreatePr { source: String, target: String, targets: Vec<String>, title: String, description: String, draft: bool, items: String },
     Publish(Box<publish::PublishForm>),
     RenameBranch { old: String, name: String },

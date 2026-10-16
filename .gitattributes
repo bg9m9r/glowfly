@@ -3,3 +3,4 @@
 *.png binary
 *.sh text eol=lf
 *.sublime-syntax text eol=lf
+crates/trellis-core/src/init_ops/** text eol=lf

@@ -1,0 +1,16 @@
+# Built programs and libraries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# Test binaries and coverage profiles
+*.test
+*.out
+coverage.html
+# Dependencies, if you vendor them but don't commit them
+# vendor/
+# Workspace checksums
+go.work.sum
+# Local environment settings
+.env

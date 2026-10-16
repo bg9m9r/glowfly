@@ -1,9 +1,14 @@
 //! Cloning a repository: the `git clone` command line (a full clone, or a shallow one limited by
-//! a commit count or a start date, optionally of one branch) and the checks for the Clone
-//! dialog's fields. Everything here is pure; the app runs the command through `gitcli`, so
-//! credentials, config and hooks apply.
+//! a commit count or a start date, optionally of one branch, and optionally sparse: only some
+//! folders checked out, and with a partial clone only their file contents downloaded) and the
+//! checks for the Clone dialog's fields. The app runs a plain clone through `gitcli`, so
+//! credentials, config and hooks apply; a sparse clone is one job here ([`run_sparse`]): the
+//! clone, then `git sparse-checkout set` in the new folder.
 
+use crate::gitcli;
+use crate::sparse_ops::{self, SparseCommand, SparseMode};
 use chrono::{DateTime, NaiveDate};
+use std::path::Path;
 
 /// How much history a shallow clone downloads.
 #[derive(Clone, Debug, PartialEq)]
@@ -22,10 +27,19 @@ pub struct Shallow {
     pub branch: Option<String>,
 }
 
+/// A sparse clone: the folders to check out (cone mode; empty is only the files at the root)
+/// and whether to download file contents only for them (`--filter=blob:none`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Sparse {
+    pub folders: Vec<String>,
+    pub partial: bool,
+}
+
 /// How to clone. The default is a full clone.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CloneOptions {
     pub shallow: Option<Shallow>,
+    pub sparse: Option<Sparse>,
 }
 
 /// `git clone` arguments (without the leading `git`) that clone `url` into the folder `name`,
@@ -43,14 +57,53 @@ pub fn clone_cmd(url: &str, name: &str, opts: &CloneOptions) -> Vec<String> {
         if let Some(b) = &s.branch {
             cmd.push(format!("--branch={b}"));
         }
-        // git ignores --depth for a plain path ("local clone") unless the normal transport is
-        // used.
-        if is_local_source(url) {
-            cmd.push("--no-local".to_owned());
+    }
+    let partial = opts.sparse.as_ref().is_some_and(|s| s.partial);
+    if opts.sparse.is_some() {
+        cmd.push("--sparse".to_owned());
+        if partial {
+            cmd.push("--filter=blob:none".to_owned());
         }
+    }
+    // git ignores --depth and --filter for a plain path ("local clone") unless the normal
+    // transport is used.
+    if (opts.shallow.is_some() || partial) && is_local_source(url) {
+        cmd.push("--no-local".to_owned());
     }
     cmd.extend(["--".to_owned(), url.to_owned(), name.to_owned()]);
     cmd
+}
+
+/// What a sparse clone job did.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CloneOutcome {
+    /// The clone itself succeeded, so the new folder is a repository.
+    pub cloned: bool,
+    /// Every step succeeded.
+    pub ok: bool,
+    /// The job log: each command line, then git's output.
+    pub output: String,
+}
+
+/// Runs the clone `cmd` (from [`clone_cmd`] with `--sparse`) in `parent`, then sets the folders
+/// to check out in the new repository `dest` (cone mode, no sparse index). Credential prompts
+/// are allowed, as for any clone the user starts. A failed clone skips the second step.
+pub fn run_sparse(parent: &Path, cmd: &[String], dest: &Path, folders: &[String]) -> CloneOutcome {
+    let (ok, out) = gitcli::run_with_input(parent, cmd, "", &[]);
+    let mut output = crate::text::redact_credentials(&format!("$ git {}", cmd.join(" ")));
+    let out = out.trim();
+    if !out.is_empty() {
+        output.push('\n');
+        output.push_str(out);
+    }
+    if !ok {
+        return CloneOutcome { cloned: false, ok: false, output };
+    }
+    let set = SparseCommand::Set { mode: SparseMode::Cone, paths: folders.to_vec() };
+    let (set_ok, text) = sparse_ops::run(dest, &set);
+    output.push('\n');
+    output.push_str(&text);
+    CloneOutcome { cloned: true, ok: set_ok, output }
 }
 
 /// Whether git reads `url` as a path on this computer rather than a URL (git's own rules:

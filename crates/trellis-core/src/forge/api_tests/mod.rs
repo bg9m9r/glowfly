@@ -11,6 +11,7 @@ mod forks;
 mod github;
 mod gitlab;
 mod paging;
+mod user_repos;
 
 fn remote(url: &str) -> Target {
     parse_remote(url, &[]).unwrap_or_else(|| panic!("unrecognized remote {url}"))

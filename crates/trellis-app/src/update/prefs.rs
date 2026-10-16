@@ -6,7 +6,6 @@ use crate::msg::{FilePurpose, FolderPurpose};
 use crate::state::{AppState, Modal, PrefPage, PrefsState, host_text};
 use std::time::Instant;
 use trellis_core::forge::Provider;
-use trellis_core::gitcli::args;
 use trellis_core::settings::TrackerChoice;
 use trellis_core::signing::SigningFormat;
 
@@ -197,14 +196,10 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             FolderPurpose::OpenRepo => super::tabs::open(st, path, fx),
             FolderPurpose::WorktreeParent => super::worktrees::parent_picked(st, path),
             FolderPurpose::InitRepo => {
-                let branch = st.settings.default_branch.trim().to_owned();
-                let cmd = if branch.is_empty() { args(&["init"]) } else { args(&["init", "-b", &branch]) };
-                let spec = super::ops::JobSpec {
-                    cwd: Some(path.clone()),
-                    then_open: Some((path, crate::state::trust::Created::Init)),
-                    ..super::ops::JobSpec::new("Init".into(), vec![cmd])
-                };
-                super::ops::start_job(st, spec, fx);
+                if let Some(Modal::Init(form)) = st.modal.as_mut() {
+                    form.folder = trellis_core::native_path::shown(&path);
+                }
+                super::init::check_folder(st, std::time::Duration::ZERO, fx);
             }
             FolderPurpose::CloneParent => {
                 if let Some(Modal::Clone(form)) = st.modal.as_mut() {

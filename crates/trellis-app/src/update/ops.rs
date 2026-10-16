@@ -125,6 +125,16 @@ pub(super) fn clone_repo(st: &mut AppState, req: crate::state::clone::CloneReque
     }
     let dest = req.parent.join(&req.name);
     let cmd = trellis_core::clone_ops::clone_cmd(&req.url, &req.name, &req.options);
+    if let Some(sparse) = req.options.sparse {
+        if let Some(why) = st.git.blocked(trellis_core::git_version::Feature::SparseCheckout) {
+            st.log(false, format!("Could not clone: {why}"));
+            return;
+        }
+        let (then_open, folders) = (Some((dest.clone(), Created::Clone)), sparse.folders);
+        let effect = |parent| Effect::Clone(crate::effect::CloneEffect::Sparse { parent, cmd, dest, folders });
+        super::jobs::start_effect_job(st, "Clone", req.parent, then_open, effect, fx);
+        return;
+    }
     start_job(
         st,
         JobSpec { cwd: Some(req.parent), then_open: Some((dest, Created::Clone)), ..JobSpec::new("Clone".into(), vec![cmd]) },

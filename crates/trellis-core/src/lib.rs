@@ -21,6 +21,7 @@ pub mod gitflow;
 pub mod graph;
 pub mod highlight;
 pub mod identity;
+pub mod init_ops;
 pub mod intraline;
 pub mod lfs;
 pub mod line_pairs;

@@ -5,6 +5,7 @@ use crate::effect::Effect;
 use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob};
 use std::path::PathBuf;
+use std::time::Instant;
 use trellis_core::undo::UndoKind;
 
 /// A git command sequence to run as the (single) active job.
@@ -93,6 +94,49 @@ pub(super) fn begin_job(
     let job =
         RunningJob { label: label.into(), workdir: None, quiet: false, clear_commit: false, then_push: false, then_open: None, keeps_undo };
     launch(st, job, None, effect, fx)
+}
+
+/// Makes a job labelled `label` that runs in `cwd` (outside the active tab's repository: a clone
+/// or an init) the active one, running the effect `effect` builds for that folder; once it
+/// succeeds, `then_open` opens in the active tab. The trust gate applies as for git jobs.
+pub(super) fn start_effect_job(
+    st: &mut AppState,
+    label: &str,
+    cwd: PathBuf,
+    then_open: Option<(PathBuf, Created)>,
+    effect: impl FnOnce(PathBuf) -> Effect,
+    fx: &mut Vec<Effect>,
+) -> Started {
+    let job = RunningJob {
+        label: label.into(),
+        workdir: None,
+        quiet: false,
+        clear_commit: false,
+        then_push: false,
+        then_open,
+        keeps_undo: false,
+    };
+    launch(st, job, Some(cwd), effect, fx)
+}
+
+/// Ends a job that makes a repository (a sparse clone, an init): `made` says the repository
+/// exists, `ok` that every step after it worked too. A repository made by a job that failed
+/// later is still opened (and trusted as `then_open` says), under the failure's `headline`.
+pub(super) fn finish_made(
+    st: &mut AppState,
+    made: bool,
+    ok: bool,
+    output: String,
+    headline: Option<String>,
+    now: Instant,
+    fx: &mut Vec<Effect>,
+) {
+    let open = if made && !ok { st.job.as_mut().and_then(|j| j.then_open.take()) } else { None };
+    super::ops::finish_job(st, ok, output.clone(), headline, None, now, fx);
+    if let Some((p, how)) = open {
+        super::trust::created(st, &p, how, &output);
+        super::tabs::open(st, p, fx);
+    }
 }
 
 /// Makes `job` the active job (in the active tab) and pushes its effect for `cwd`, or the

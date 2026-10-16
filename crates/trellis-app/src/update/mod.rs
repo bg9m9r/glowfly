@@ -6,6 +6,7 @@ mod askpass;
 mod avatars;
 mod branches;
 mod clone;
+mod clone_service;
 mod commit;
 mod conflict;
 mod conflict_check;
@@ -19,6 +20,7 @@ mod graph_columns;
 mod graph_filter;
 mod highlight;
 mod history;
+mod init;
 mod jobs;
 mod lfs;
 mod notify;
@@ -64,6 +66,10 @@ mod askpass_tests;
 mod branch_tests;
 #[cfg(test)]
 mod cherry_pick_tests;
+#[cfg(test)]
+mod clone_service_tests;
+#[cfg(test)]
+mod clone_sparse_tests;
 #[cfg(test)]
 mod clone_tests;
 #[cfg(test)]
@@ -112,6 +118,8 @@ mod highlight_header_tests;
 mod highlight_tests;
 #[cfg(test)]
 mod history_tests;
+#[cfg(test)]
+mod init_tests;
 #[cfg(test)]
 mod language_override_tests;
 #[cfg(test)]
@@ -274,7 +282,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Files(m) => files::handle(st, m, now, &mut fx),
         Msg::WorkFile(m) => work_files::handle(st, m, now, &mut fx),
         Msg::Branch(m) => branches::handle(st, m, &mut fx),
-        Msg::Clone(m) => clone::handle(st, m, &mut fx),
+        Msg::Clone(m) => clone::handle(st, m, now, &mut fx),
+        Msg::Init(m) => init::handle(st, m, now, &mut fx),
         Msg::Tag(m) => tags::handle(st, m, &mut fx),
         Msg::Remote(m) => remotes::handle(st, m, &mut fx),
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
