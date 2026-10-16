@@ -15,11 +15,28 @@ pub(crate) fn scratch_repo(name: &str) -> PathBuf {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-b", "main"]);
-    git(&dir, &["config", "user.name", "Test"]);
-    git(&dir, &["config", "user.email", "test@example.com"]);
-    git(&dir, &["config", "core.autocrlf", "false"]);
-    git(&dir, &["config", "commit.gpgsign", "false"]);
+    set_config(
+        &dir,
+        &[
+            ("user.name", "Test"),
+            ("user.email", "test@example.com"),
+            ("core.autocrlf", "false"),
+            ("commit.gpgsign", "false"),
+            // Otherwise every commit starts a `git maintenance run --auto` process.
+            ("maintenance.auto", "false"),
+        ],
+    );
     dir
+}
+
+/// Writes `entries` to the repository's own config file, as `git config <key> <value>` would,
+/// without starting a git process for each (a few hundred ms apiece on a busy Windows machine).
+pub(crate) fn set_config(dir: &Path, entries: &[(&str, &str)]) {
+    let repo = git2::Repository::open(dir).unwrap();
+    let mut config = repo.config().unwrap().open_level(git2::ConfigLevel::Local).unwrap();
+    for (key, value) in entries {
+        config.set_str(key, value).unwrap();
+    }
 }
 
 pub(crate) fn write(dir: &Path, file: &str, text: &str) {
@@ -49,9 +66,7 @@ pub(crate) fn remote_commit(bare: &Path, branch: &str, file: &str, msg: &str) {
     let _ = std::fs::remove_dir_all(&tmp);
     let parent = tmp.parent().unwrap();
     git(parent, &["clone", "-q", "-b", branch, &bare.display().to_string(), &tmp.display().to_string()]);
-    git(&tmp, &["config", "user.name", "Test"]);
-    git(&tmp, &["config", "user.email", "test@example.com"]);
-    git(&tmp, &["config", "commit.gpgsign", "false"]);
+    set_config(&tmp, &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false")]);
     write(&tmp, file, msg);
     git(&tmp, &["add", "."]);
     git(&tmp, &["commit", "-q", "-m", msg]);
@@ -76,9 +91,7 @@ pub(crate) fn with_submodule(name: &str) -> (PathBuf, PathBuf) {
     git(&parent, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, "libs/lib"]);
     git(&parent, &["commit", "-q", "-m", "add lib"]);
     let sub = parent.join("libs/lib");
-    git(&sub, &["config", "user.name", "Test"]);
-    git(&sub, &["config", "user.email", "test@example.com"]);
-    git(&sub, &["config", "commit.gpgsign", "false"]);
+    set_config(&sub, &[("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false")]);
     (parent, sub)
 }
 

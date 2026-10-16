@@ -29,15 +29,26 @@ pub(super) fn git(dir: &Path, a: &[&str]) {
     assert!(ok, "git {a:?} failed: {out}");
 }
 
+/// Sets the test identity, no signing and no automatic maintenance (which every commit would
+/// otherwise start as another git process) in `dir`'s own config, as `git config` would but
+/// without a git process per key (a few hundred ms apiece on a busy Windows machine).
+pub(super) fn set_identity(dir: &Path) {
+    let repo = git2::Repository::open(dir).unwrap();
+    let mut config = repo.config().unwrap().open_level(git2::ConfigLevel::Local).unwrap();
+    for (key, value) in
+        [("user.name", "Test"), ("user.email", "test@example.com"), ("commit.gpgsign", "false"), ("maintenance.auto", "false")]
+    {
+        config.set_str(key, value).unwrap();
+    }
+}
+
 /// A repository with one commit and one modified file.
 pub(super) fn scratch_repo(name: &str) -> PathBuf {
     let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q", "-b", "main"]);
-    git(&dir, &["config", "user.name", "Test"]);
-    git(&dir, &["config", "user.email", "test@example.com"]);
-    git(&dir, &["config", "commit.gpgsign", "false"]);
+    set_identity(&dir);
     std::fs::write(dir.join("a.txt"), "one\n").unwrap();
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "first"]);

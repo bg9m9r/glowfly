@@ -63,10 +63,8 @@ pub(super) fn fixture(name: &str) -> (AppState, Fixture) {
     let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    for a in [&["init", "-q", "-b", "main"][..], &["config", "user.name", "Test"], &["config", "user.email", "test@example.com"]] {
-        git(&dir, a);
-    }
-    git(&dir, &["config", "commit.gpgsign", "false"]);
+    git(&dir, &["init", "-q", "-b", "main"]);
+    super::tests::set_identity(&dir);
     let write = |f: &str, t: &str| std::fs::write(dir.join(f), t).unwrap();
     let mut c = [Oid::zero(); 5];
     write("f.txt", &lines(&[]));
