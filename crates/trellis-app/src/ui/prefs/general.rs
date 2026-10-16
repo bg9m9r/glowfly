@@ -8,18 +8,18 @@ use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::deep_link::SchemeView;
-use crate::state::files::TRASH;
 use crate::state::prefs::{Autocrlf, GitConfigValues};
 use crate::ui::theme::color;
 use eframe::egui::{self, Color32, RichText, Ui};
 use trellis_core::git_version::GitInfo;
+use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
 
 /// The help under Watch for File Changes, naming Refresh's current key.
-fn watch_files_help(keys: &Keymap) -> String {
+fn watch_files_help(t: Lang, keys: &Keymap) -> String {
     match keys.hint(BindingId::Refresh) {
-        Some(k) => format!("When off, Trellis refreshes when its window regains focus or you press {k}."),
-        None => "When off, Trellis refreshes when its window regains focus or you choose Refresh.".to_owned(),
+        Some(k) => t.trf("prefs.general.watch_files.help_key", &[("key", &k)]),
+        None => t.tr("prefs.general.watch_files.help_no_key").to_owned(),
     }
 }
 
@@ -33,81 +33,76 @@ pub struct GeneralContext<'a> {
 
 pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValues>, cx: &GeneralContext, msgs: &mut Vec<Msg>) {
     let (program, keys, scheme) = (cx.program, cx.keys, cx.scheme);
-    row(ui, "Git", |ui| {
+    let t = s.lang();
+    super::language::language_row(ui, s);
+    row(ui, t.tr("prefs.general.git.label"), |ui| {
         ui.horizontal(|ui| {
-            ui.label(RichText::new(git_program_text(program)).color(color::text()));
-            if ui.button("Change…").clicked() {
+            ui.label(RichText::new(git_program_text(t, program)).color(color::text()));
+            if ui.button(t.tr("prefs.general.git.button")).clicked() {
                 msgs.push(Msg::GitEnv(crate::git_env::GitEnvMsg::ShowPage));
             }
         });
-        help(ui, "The git program Trellis runs for commits, fetches, pushes and hooks (Preferences > Git).");
+        help(ui, t.tr("prefs.general.git.help"));
     });
     super::updates_row::updates_row(ui, s, &cx.updates, msgs);
-    row(ui, "Auto-Fetch Interval", |ui| {
-        ui.add(egui::DragValue::new(&mut s.auto_fetch_minutes).range(0..=60).suffix(" min"));
-        help(ui, "In minutes, between 0 and 60 (0 disables auto-fetch). Fetches all remotes of the open repository.");
-        help(ui, "In repositories that store files in Git LFS, it also downloads the LFS files of the checked-out commit.");
-        warn(ui, "If you have many remotes, this may impact performance.");
+    row(ui, t.tr("prefs.general.auto_fetch.label"), |ui| {
+        ui.add(egui::DragValue::new(&mut s.auto_fetch_minutes).range(0..=60).suffix(t.tr("prefs.general.auto_fetch.suffix")));
+        help(ui, t.tr("prefs.general.auto_fetch.help"));
+        help(ui, t.tr("prefs.general.auto_fetch.help_lfs"));
+        warn(ui, t.tr("prefs.general.auto_fetch.warn"));
     });
-    row(ui, "Auto-Prune", |ui| {
-        ui.checkbox(&mut s.auto_prune, "Remove remote-tracking branches that no longer exist on the remote when fetching");
+    row(ui, t.tr("prefs.general.auto_prune.label"), |ui| {
+        ui.checkbox(&mut s.auto_prune, t.tr("prefs.general.auto_prune.check"));
     });
-    row(ui, "Default Branch Name", |ui| {
+    row(ui, t.tr("prefs.general.default_branch.label"), |ui| {
         text_field(ui, &mut s.default_branch, "main");
-        help(ui, "Sets the default branch name when initializing new repositories.");
+        help(ui, t.tr("prefs.general.default_branch.help"));
     });
-    row(ui, "Initial Commits in Graph", |ui| {
+    row(ui, t.tr("prefs.general.initial_commits.label"), |ui| {
         ui.add(egui::DragValue::new(&mut s.initial_commits).range(trellis_core::settings::MIN_INITIAL_COMMITS..=200_000).speed(50));
-        help(ui, "Minimum 500. Takes effect when you leave Preferences or refresh.");
-        warn(ui, "Increasing this value may adversely affect performance.");
+        help(ui, t.tr("prefs.general.initial_commits.help"));
+        warn(ui, t.tr("prefs.general.initial_commits.warn"));
     });
-    row(ui, "Load More While Scrolling", |ui| {
-        ui.checkbox(&mut s.load_more_on_scroll, "Load more commits when you scroll near the end of the graph");
-        help(ui, "When off, only the graph's Load more link adds commits past the limit.");
+    row(ui, t.tr("prefs.general.load_more.label"), |ui| {
+        ui.checkbox(&mut s.load_more_on_scroll, t.tr("prefs.general.load_more.check"));
+        help(ui, t.tr("prefs.general.load_more.help"));
     });
-    row(ui, "Reopen Last Repository", |ui| {
-        ui.checkbox(&mut s.reopen_last_repo, "Reopen the tabs from last time when Trellis starts");
+    row(ui, t.tr("prefs.general.reopen.label"), |ui| {
+        ui.checkbox(&mut s.reopen_last_repo, t.tr("prefs.general.reopen.check"));
     });
-    row(ui, "Watch for File Changes", |ui| {
-        ui.checkbox(&mut s.watch_files, "Refresh the working tree as soon as files change outside Trellis");
-        help(ui, &watch_files_help(keys));
+    row(ui, t.tr("prefs.general.watch_files.label"), |ui| {
+        ui.checkbox(&mut s.watch_files, t.tr("prefs.general.watch_files.check"));
+        help(ui, &watch_files_help(t, keys));
     });
-    row(ui, "Conflict Prediction", |ui| {
-        ui.checkbox(&mut s.conflict_check, "Check the current branch for conflicts with its upstream or default branch");
-        help(
-            ui,
-            "Runs after each refresh and fetch with git merge-tree, without touching your files. Needs git 2.38 or newer. \
-             Branch menus can still check on demand when this is off.",
-        );
+    row(ui, t.tr("prefs.general.conflict_check.label"), |ui| {
+        ui.checkbox(&mut s.conflict_check, t.tr("prefs.general.conflict_check.check"));
+        help(ui, t.tr("prefs.general.conflict_check.help"));
     });
-    row(ui, "Deleting Files", |ui| {
-        ui.checkbox(&mut s.delete_to_trash, format!("Move deleted files to the {TRASH}"));
-        help(ui, "When off, Delete… and discarding an untracked file remove it from disk straight away, and it can't be recovered.");
+    row(ui, t.tr("prefs.general.delete_to_trash.label"), |ui| {
+        let check = if cfg!(windows) {
+            t.tr("prefs.general.delete_to_trash.check_windows")
+        } else {
+            t.tr("prefs.general.delete_to_trash.check_other")
+        };
+        ui.checkbox(&mut s.delete_to_trash, check);
+        help(ui, t.tr("prefs.general.delete_to_trash.help"));
     });
-    row(ui, "Extended Logging", |ui| {
+    row(ui, t.tr("prefs.general.extended_logging.label"), |ui| {
         // Through a message, so the runner hears of it (the error log's level changes too).
         let mut on = s.extended_logging;
-        if ui.checkbox(&mut on, "Add the git commands Trellis runs, with their timings, to the activity log").changed() {
+        if ui.checkbox(&mut on, t.tr("prefs.general.extended_logging.check")).changed() {
             msgs.push(Msg::Logs(LogsMsg::SetExtended(on)));
         }
-        help(
-            ui,
-            "Also writes Trellis's informational and debug messages to the error log. Leave it off unless you're tracking down a \
-             problem: it adds a line for every git command, background refreshes included.",
-        );
+        help(ui, t.tr("prefs.general.extended_logging.help"));
     });
-    row(ui, "Logs", |ui| {
-        if ui.button("Open logs folder").clicked() {
+    row(ui, t.tr("prefs.general.logs.label"), |ui| {
+        if ui.button(t.tr("prefs.general.logs.button")).clicked() {
             msgs.push(Msg::Logs(LogsMsg::OpenFolder));
         }
-        help(
-            ui,
-            "activity.jsonl keeps the activity log across sessions, errors.log holds warnings, errors and crashes, and \
-             performance.log lists operations that took half a second or more.",
-        );
+        help(ui, t.tr("prefs.general.logs.help"));
     });
     if let Some(git) = git {
-        row(ui, "Longpaths", |ui| {
+        row(ui, t.tr("prefs.general.longpaths.label"), |ui| {
             if ui.checkbox(&mut git.longpaths, "").changed() {
                 msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
                     global: true,
@@ -115,25 +110,29 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
                     value: Some(git.longpaths.to_string()),
                 }));
             }
-            help(
-                ui,
-                "Sets core.longpaths in your global Git config. By default, Windows only supports file paths less than 260 characters. Enable support for longer file paths.",
-            );
+            help(ui, t.tr("prefs.general.longpaths.help"));
         });
-        row(ui, "AutoCRLF", |ui| {
+        row(ui, t.tr("prefs.general.autocrlf.label"), |ui| {
             let before = git.autocrlf.clone();
-            egui::ComboBox::from_id_salt("autocrlf").width(320.0).selected_text(git.autocrlf.label()).show_ui(ui, |ui| {
-                for (choice, label) in Autocrlf::CHOICES {
+            egui::ComboBox::from_id_salt("autocrlf").width(320.0).selected_text(git.autocrlf.label(t)).show_ui(ui, |ui| {
+                for (choice, label) in Autocrlf::choices(t) {
                     ui.selectable_value(&mut git.autocrlf, choice, label);
                 }
             });
             if git.autocrlf != before {
                 msgs.push(Msg::Prefs(PrefsMsg::GitConfig { global: true, key: "core.autocrlf".into(), value: git.autocrlf.value() }));
             }
-            help(ui, "Sets core.autocrlf in your global Git config: how line endings are converted between your files and commits.");
+            help(ui, t.tr("prefs.general.autocrlf.help"));
         });
     }
-    row(ui, "Forget All Connections", |ui| {
+    forget_row(ui, t, s, msgs);
+    super::links::links_row(ui, t, scheme, msgs);
+}
+
+/// Forget All Connections: forgetting the saved tokens, or those and Git Credential Manager's
+/// sign-ins (after asking).
+fn forget_row(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
+    row(ui, t.tr("prefs.general.forget.label"), |ui| {
         let n = s.connections.len();
         let danger = |text: &str, on: bool| {
             egui::Button::new(RichText::new(text).color(if on { Color32::WHITE } else { color::faint() })).fill(if on {
@@ -143,49 +142,42 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
             })
         };
         ui.horizontal(|ui| {
-            if ui.add_enabled(n > 0, danger("Forget All", n > 0)).clicked() {
+            if ui.add_enabled(n > 0, danger(t.tr("prefs.general.forget.button"), n > 0)).clicked() {
                 msgs.push(Msg::Forge(ForgeMsg::ForgetTokens { gcm: false }));
             }
             let gcm_hosts = s.connections.iter().filter(|c| c.account.provider.supports_gcm()).count();
-            if ui.add_enabled(gcm_hosts > 0, danger("Forget All + Git Credential Manager", gcm_hosts > 0)).clicked() {
+            if ui.add_enabled(gcm_hosts > 0, danger(t.tr("prefs.general.forget.gcm_button"), gcm_hosts > 0)).clicked() {
                 msgs.push(Msg::confirm(
-                    "Sign out of Git Credential Manager",
-                    format!(
-                        "This disconnects every integration and also removes the sign-ins Git Credential Manager stored for {gcm_hosts} host{}. \
-                         git push and pull to those hosts will ask you to sign in again.",
-                        if gcm_hosts == 1 { "" } else { "s" }
-                    ),
-                    "Forget All",
+                    t.tr("prefs.general.forget.confirm_title"),
+                    t.trn("prefs.general.forget.gcm_body", gcm_hosts, &[]),
+                    t.tr("prefs.general.forget.button"),
                     Msg::Forge(ForgeMsg::ForgetTokens { gcm: true }),
                 ));
             }
         });
         if n == 0 {
-            help(ui, "Trellis has no stored connections to remove.");
+            help(ui, t.tr("prefs.general.forget.none"));
         } else {
-            help(
-                ui,
-                &format!(
-                    "Disconnects {n} integration{} and deletes their saved tokens. The second button also signs Git Credential Manager out of those hosts.",
-                    if n == 1 { "" } else { "s" }
-                ),
-            );
+            help(ui, &t.trn("prefs.general.forget.connections", n, &[]));
         }
     });
-    super::links::links_row(ui, scheme, msgs);
 }
 
 /// "git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.
-pub(super) fn git_program_text(info: Option<&GitInfo>) -> String {
-    let Some(info) = info else { return "Checking…".to_owned() };
+pub(super) fn git_program_text(t: Lang, info: Option<&GitInfo>) -> String {
+    let Some(info) = info else { return t.tr("prefs.general.git_program.checking").to_owned() };
     let at = info.path.as_deref().map(trellis_core::native_path::shown);
     match (info.version, at) {
-        (Some(v), Some(at)) => format!("git {} at {at}", trellis_core::git_version::show(v)),
-        (Some(v), None) => format!("git {}", trellis_core::git_version::show(v)),
-        (None, Some(at)) => format!("{at} doesn't run"),
-        (None, None) => "Not found on your PATH".to_owned(),
+        (Some(v), Some(at)) => t.trf("prefs.general.git_program.at", &[("version", &trellis_core::git_version::show(v)), ("path", &at)]),
+        (Some(v), None) => t.trf("prefs.general.git_program.version", &[("version", &trellis_core::git_version::show(v))]),
+        (None, Some(at)) => t.trf("prefs.general.git_program.broken", &[("path", &at)]),
+        (None, None) => t.tr("prefs.general.git_program.missing").to_owned(),
     }
 }
+
+#[cfg(test)]
+#[path = "../snapshot_tests_language.rs"]
+mod snapshot_tests_language;
 
 #[cfg(test)]
 mod tests {
@@ -196,8 +188,8 @@ mod tests {
     fn watch_help_names_refreshs_current_key() {
         let mut keys = Keymap::default();
         keys.set(BindingId::Refresh, vec![Chord::plain(KeyName::F(9))]);
-        assert!(watch_files_help(&keys).ends_with("or you press F9."));
+        assert!(watch_files_help(Lang::En, &keys).ends_with("or you press F9."));
         keys.set(BindingId::Refresh, Vec::new());
-        assert!(watch_files_help(&keys).ends_with("or you choose Refresh."));
+        assert!(watch_files_help(Lang::En, &keys).ends_with("or you choose Refresh."));
     }
 }

@@ -55,6 +55,7 @@ binary (package `trellis`).
 | `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; reading the global identity; writing an identity to the global config in order. |
 | `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches); appends to logs. |
 | `logs.rs`, `logs/` | Trellis's log files: the activity log's file format and trimming (`activity.rs`), the size-rotating writer of the error and performance logs (`rotate.rs`), reading a log's end (`tail.rs`), and the text of performance and git command lines (`lines.rs`). |
+| `i18n.rs`, `i18n/`, `locales/` | The UI's translations: languages, the bundled catalogs (English base, per-language JSON), lookups with {name} placeholders and English fallback, the OS language read once at startup. |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
 | `ssh_keys.rs`, `ssh_keys/` | SSH key pairs in `~/.ssh`: listing them with `ssh-keygen` fingerprints (`listing.rs`), finding ssh's programs (`tools.rs`), generating Ed25519 keys with `ssh-keygen`, written under a temporary name and then moved into place (`generate.rs`), choosing the key git uses in `core.sshCommand` (`command.rs`), and finding the SSH agent and adding keys with `ssh-add` (`agent.rs`). |
 | `external_tools.rs`, `external_tools/` | External programs (Preferences > External Tools): argument templates and each tool's placeholders (`template.rs`), finding the program on PATH, starting it detached or waiting for it to exit (`run_to_exit`), the private folder for the copies diff and merge tools open (`temp.rs`: one session folder per opening, swept after 24 hours), and writing those copies for a diff or a conflict (`compare.rs`, from `repo/tool_sides.rs`). |
@@ -87,6 +88,7 @@ binary (package `trellis`).
 | Path | Checks |
 | --- | --- |
 | `crates/trellis-app/tests/layering.rs` | No I/O in `ui/`, `update/` or `state/` (see Rules). |
+| `crates/trellis-app/tests/i18n_keys.rs` | Every translation key the code looks up exists in English, and every English key is used. |
 | `crates/trellis-app/tests/sequence_editor.rs` | A rebase with the built executable as the sequence editor. |
 | `crates/trellis-app/tests/askpass.rs` | The built executable as the askpass helper. |
 | `crates/trellis-app/tests/gpg_prompt.rs` | The built executable as gpg.program: the loop guard, and (Unix) `git commit -S` through a fake gpg. |
@@ -266,6 +268,9 @@ binary (package `trellis`).
 9. Code that touches paths, files, processes, the environment or git follows
    `docs/PLATFORMS.md`, and uses the helpers it names (`paths`, `persist`, `names`, `repo/rpath.rs`,
    `env_path`, …) rather than writing new ones.
+10. Views and update build user-visible text with `st.settings.lang()` and `tr` / `trf` / `trn`
+    (keys in `crates/trellis-core/locales/`, see its README). Translated text is never matched
+    against git output or used as an egui id; ids use fixed `from_id_salt` strings.
 
 ## Recipe: adding a feature
 

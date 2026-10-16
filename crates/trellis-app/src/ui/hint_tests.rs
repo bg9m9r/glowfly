@@ -44,7 +44,7 @@ fn commit_tip_reads_the_keymap() {
         keys.hint(I::Commit).expect("Commit has a key"),
         keys.hint(I::StageAllAndCommit).expect("it has a key")
     );
-    assert_eq!(super::commit_box::shortcuts_tip(&keys), want);
+    assert_eq!(super::commit_box::shortcuts_tip(trellis_core::i18n::Lang::En, &keys), want);
 }
 
 #[test]

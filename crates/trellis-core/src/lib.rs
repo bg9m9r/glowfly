@@ -24,6 +24,7 @@ pub mod gitflow;
 pub mod gpg_prompt;
 pub mod graph;
 pub mod highlight;
+pub mod i18n;
 pub mod identity;
 pub mod init_ops;
 pub mod instance;

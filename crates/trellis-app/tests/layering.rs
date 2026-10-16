@@ -113,6 +113,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("dashboard", &["read_repo", "fetch_target", "run_bounded"]),
     ("git_program", &["set", "probe", "discover", "precheck"]),
     ("logs", &["read_tail"]),
+    ("i18n", &["detect_system_language"]),
     ("persist", &["append", "open_append"]),
     ("ActivityFile", &["open"]),
     ("settings", &["log_dir", "downloads_dir"]),

@@ -5,6 +5,7 @@
 use crate::tools::{LaunchFailure, ToolKind};
 use std::path::Path;
 use trellis_core::external_tools::{self, Launch, TemplateError, Vars};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::ExternalTools;
 
 /// The file rows' menu item.
@@ -81,25 +82,25 @@ pub fn bundle_warning(program: &str) -> bool {
 
 /// The warnings under an arguments field: an unmatched quote, and names that are not among
 /// `known`, that field's placeholders.
-pub fn template_warnings(template: &str, known: &[&str]) -> Vec<String> {
+pub fn template_warnings(t: Lang, template: &str, known: &[&str]) -> Vec<String> {
     let mut out = Vec::new();
     if external_tools::split(template).is_err() {
-        out.push("These arguments have an unmatched quote; they can't be used until it is fixed.".to_owned());
+        out.push(t.tr("prefs.tools.warn.unmatched_quote").to_owned());
     }
     out.extend(
         external_tools::unknown_placeholders(template, known)
             .into_iter()
-            .map(|p| format!("{p} is not a placeholder; it is passed as typed.")),
+            .map(|p| t.trf("prefs.tools.warn.not_placeholder", &[("placeholder", &p)])),
     );
     out
 }
 
 /// The warnings for each of `wanted` that no argument of `template` uses, so the tool won't be
 /// given that version.
-pub fn missing_warnings(template: &str, wanted: &[&str]) -> Vec<String> {
+pub fn missing_warnings(t: Lang, template: &str, wanted: &[&str]) -> Vec<String> {
     external_tools::missing_placeholders(template, wanted)
         .into_iter()
-        .map(|p| format!("{p} is missing, so the tool won't be given that version."))
+        .map(|p| t.trf("prefs.tools.warn.missing", &[("placeholder", &p)]))
         .collect()
 }
 
@@ -118,23 +119,23 @@ mod tests {
     #[test]
     fn warnings_name_the_problem() {
         let known = &external_tools::EDITOR_PLACEHOLDERS;
-        assert!(template_warnings("{path}", known).is_empty());
-        assert!(template_warnings("", known).is_empty());
-        let w = template_warnings(r#"--goto "{path}"#, known);
+        assert!(template_warnings(Lang::En, "{path}", known).is_empty());
+        assert!(template_warnings(Lang::En, "", known).is_empty());
+        let w = template_warnings(Lang::En, r#"--goto "{path}"#, known);
         assert_eq!(w.len(), 1);
         assert!(w[0].contains("unmatched quote"), "{w:?}");
-        assert_eq!(template_warnings("{path}:{col}", known), ["{col} is not a placeholder; it is passed as typed."]);
+        assert_eq!(template_warnings(Lang::En, "{path}:{col}", known), ["{col} is not a placeholder; it is passed as typed."]);
         let diff = &external_tools::DIFF_PLACEHOLDERS;
-        assert_eq!(template_warnings("{local} {remote}:{line}", diff), ["{line} is not a placeholder; it is passed as typed."]);
-        assert!(template_warnings("{base} {ours} {theirs} {output} {repo}", &external_tools::MERGE_PLACEHOLDERS).is_empty());
+        assert_eq!(template_warnings(Lang::En, "{local} {remote}:{line}", diff), ["{line} is not a placeholder; it is passed as typed."]);
+        assert!(template_warnings(Lang::En, "{base} {ours} {theirs} {output} {repo}", &external_tools::MERGE_PLACEHOLDERS).is_empty());
     }
 
     #[test]
     fn missing_warnings_name_each_absent_placeholder() {
         let want = ["{remote} is missing, so the tool won't be given that version."];
-        assert_eq!(missing_warnings("{local}", &["{local}", "{remote}"]), want);
-        assert!(missing_warnings("{local} --new={remote}", &["{local}", "{remote}"]).is_empty());
-        assert_eq!(missing_warnings("{base} {ours} {theirs}", &["{ours}", "{theirs}", "{output}"]).len(), 1);
+        assert_eq!(missing_warnings(Lang::En, "{local}", &["{local}", "{remote}"]), want);
+        assert!(missing_warnings(Lang::En, "{local} --new={remote}", &["{local}", "{remote}"]).is_empty());
+        assert_eq!(missing_warnings(Lang::En, "{base} {ours} {theirs}", &["{ours}", "{theirs}", "{output}"]).len(), 1);
     }
 
     #[test]

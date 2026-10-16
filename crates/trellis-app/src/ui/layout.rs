@@ -5,7 +5,7 @@ use super::theme::color;
 use crate::keymap::BindingId;
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
-use crate::state::layout::{Panel, zoom_chip_text};
+use crate::state::layout::Panel;
 use eframe::egui::{self, RichText};
 use trellis_core::settings::DEFAULT_ZOOM_PERCENT;
 
@@ -28,15 +28,19 @@ pub(super) fn apply_zoom(ctx: &egui::Context, st: &AppState) {
 /// The status bar's right-hand items, inside its right-to-left layout: the zoom level while it
 /// isn't 100% (a click resets it), then Show toolbar while the toolbar is hidden.
 pub(super) fn status_items(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     let level = st.settings.zoom_level();
     if level != DEFAULT_ZOOM_PERCENT {
-        let chip = egui::Button::new(RichText::new(zoom_chip_text(level)).color(color::weak())).frame(false);
-        if ui.add(chip).on_hover_text(st.keymap.tip("Reset zoom to 100%", BindingId::ZoomReset)).clicked() {
+        let chip = egui::Button::new(RichText::new(t.trf("status.zoom", &[("percent", &level)])).color(color::weak())).frame(false);
+        if ui.add(chip).on_hover_text(st.keymap.tip(t.tr("status.zoom_reset_tip"), BindingId::ZoomReset)).clicked() {
             msgs.push(Msg::Layout(LayoutMsg::ZoomReset));
         }
     }
     if !st.settings.show_toolbar
-        && ui.small_button("Show toolbar").on_hover_text(st.keymap.tip("Show the toolbar", BindingId::ToggleToolbar)).clicked()
+        && ui
+            .small_button(t.tr("status.show_toolbar"))
+            .on_hover_text(st.keymap.tip(t.tr("status.show_toolbar_tip"), BindingId::ToggleToolbar))
+            .clicked()
     {
         msgs.push(Msg::Layout(LayoutMsg::SetPanel { panel: Panel::Toolbar, shown: true }));
     }

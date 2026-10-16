@@ -180,6 +180,8 @@ mod keys_tests;
 #[cfg(test)]
 mod language_override_tests;
 #[cfg(test)]
+mod language_tests;
+#[cfg(test)]
 mod layout_tests;
 #[cfg(test)]
 mod lfs_fetch_tests;

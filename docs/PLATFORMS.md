@@ -242,6 +242,12 @@ second one next to it.
    the passphrase on fd 0 (`--passphrase-fd 0`), never in argv, a file or the environment. It
    needs git 2.31 (`GIT_CONFIG_COUNT`) and GnuPG 2.1.12 (loopback allowed by default); with
    anything older, or an agent with `no-allow-loopback-pinentry`, GnuPG's own pinentry is used.
+9. **The UI language comes only from `i18n::detect_system_language`**, called once in `main.rs`
+   before the window opens: sys-locale's ordered list (Windows: the user's preferred UI
+   languages; macOS: the preferred languages; Unix: `LANGUAGE`, then `LC_ALL`, `LC_MESSAGES`,
+   `LANG`); the first supported language wins, and `C`/`POSIX` first or nothing supported means
+   English. Never read `env::var("LANG")` for it, and never read it again while Trellis runs. It
+   is independent of the `LANGUAGE=C` that `gitcli` gives git children (rule 5).
 
 ### Links and the running window
 

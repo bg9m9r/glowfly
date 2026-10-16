@@ -5,6 +5,7 @@
 use super::AppState;
 use crate::deep_link::LinkTarget;
 use std::path::PathBuf;
+use trellis_core::i18n::Lang;
 use trellis_core::link::find::{Found, TargetState, rank};
 use trellis_core::link::{self, Link};
 use trellis_core::paths::same_spelling;
@@ -186,12 +187,15 @@ pub fn missing_text(link: &Link, repo_name: &str, remote: Option<&str>, has_remo
 }
 
 /// The Trellis Links row's status line, and whether it is an error.
-pub fn status_text(view: &SchemeView) -> (String, bool) {
+pub fn status_text(t: Lang, view: &SchemeView) -> (String, bool) {
     match view {
-        SchemeView::Unknown | SchemeView::Checking => ("Checking…".to_owned(), false),
-        SchemeView::Known(SchemeStatus::Registered) => ("trellis:// links open this copy of Trellis".to_owned(), false),
-        SchemeView::Known(SchemeStatus::OtherProgram(p)) => (format!("trellis:// links open another program: {p}"), false),
-        SchemeView::Known(SchemeStatus::NotRegistered) => ("trellis:// links aren't registered".to_owned(), false),
+        SchemeView::Unknown | SchemeView::Checking => (t.tr("prefs.links.status.checking").to_owned(), false),
+        SchemeView::Known(SchemeStatus::Registered) => (t.tr("prefs.links.status.registered").to_owned(), false),
+        SchemeView::Known(SchemeStatus::OtherProgram(p)) => (t.trf("prefs.links.status.other_program", &[("program", p)]), false),
+        SchemeView::Known(SchemeStatus::NotRegistered) => (t.tr("prefs.links.status.not_registered").to_owned(), false),
+        SchemeView::Known(SchemeStatus::Unsupported(why)) if *why == trellis_core::url_scheme::MACOS_NOTE => {
+            (t.tr("prefs.links.macos_note").to_owned(), false)
+        }
         SchemeView::Known(SchemeStatus::Unsupported(why)) => ((*why).to_owned(), false),
         SchemeView::Failed(e) => (e.clone(), true),
     }

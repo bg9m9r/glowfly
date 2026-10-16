@@ -1,5 +1,5 @@
-//! What switches with a profile besides its identity: the app preferences (General, UI
-//! Customization and Editor, except word wrap) and the connected hosting-service accounts.
+//! What switches with a profile besides its identity: the app preferences (General except the
+//! language, UI Customization and Editor except word wrap) and the connected hosting-service accounts.
 //! Everything else in `Settings` (repository-specific settings, trust, favorites, tools, diff
 //! header toggles, window and dialog state) stays global; a test makes every new setting pick
 //! a side.
@@ -122,6 +122,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "welcome_done",
     // The machine's update check and the release notes seen.
     "updates",
+    // The person at the machine reads one language whichever profile commits.
+    "language",
 ];
 
 /// What a profile switch changed in the settings in use.

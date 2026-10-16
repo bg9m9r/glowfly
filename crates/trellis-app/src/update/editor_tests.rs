@@ -78,7 +78,7 @@ fn open_editor_page() {
     let mut st = state();
     run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Editor)));
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Editor));
-    assert_eq!(PrefPage::Editor.title(), "Editor");
+    assert_eq!(PrefPage::Editor.title(trellis_core::i18n::Lang::En), "Editor");
 }
 
 #[test]

@@ -11,6 +11,7 @@ use crate::state::{AppState, ForgeState, PrefPage, Status};
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
 use git2::{Oid, RepositoryState};
 use trellis_core::forge::{self, RefStyle};
+use trellis_core::i18n::Lang;
 
 const LANE_COLORS: [Color32; 10] = [
     Color32::from_rgb(0x1f, 0xb5, 0xc9),
@@ -149,17 +150,17 @@ pub fn forge_error_rows(ui: &mut egui::Ui, error: &str, msgs: &mut Vec<Msg>) {
     ui.add_space(4.0);
 }
 
-pub fn status_label_ui(ui: &mut egui::Ui, status: &Status, ok_text: &str, msgs: &mut Vec<Msg>) {
+pub fn status_label_ui(ui: &mut egui::Ui, t: Lang, status: &Status, ok_text: &str, msgs: &mut Vec<Msg>) {
     match status {
         Status::Ok => {
             ui.label(RichText::new(format!("· {ok_text}")).color(color::weak()));
         }
         Status::Error(e) => {
             ui.label(RichText::new(format!("· {e}")).color(color::red()));
-            if ui.link("Sign in").clicked() {
+            if ui.link(t.tr("status.sign_in")).clicked() {
                 msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
             }
-            if ui.link("Connect…").clicked() {
+            if ui.link(t.tr("status.connect")).clicked() {
                 msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
             }
         }

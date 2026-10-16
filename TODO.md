@@ -543,6 +543,9 @@ Done except the group colors, which wait on repository groups in the repository 
 - [x] **Menu bar** (File / Edit / View / Window / Help), including Undo/Redo under Edit, an
       About dialog with the third-party notices, and a UI Customization toggle to hide it
 - [ ] **Language**: translate the UI (date locale and relative dates already exist)
+  - [x] Catalog (English base, Deutsch, Español) with system-language detection, Language on
+    Preferences > General, and translated Preferences navigation, General, Editor and External
+    Tools pages, commit box and status bar
 - [x] **Logs**: keep the activity log across sessions; error and performance logs; extended
       logging (the in-session activity log exists)
 - [x] **Command-line companion**: `trellis <path>` and `trellis .` work (subcommands are under
@@ -1596,3 +1599,13 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - A CI dry run that builds the installers on pull requests touching packaging/ or the release workflow
 - A beta channel that offers pre-releases to users who opt in
 - A per-machine (all users) MSI
+
+### Language
+
+- Key names in shortcut hints follow the language (e.g. "Strg" on German keyboards)
+- Plural rules beyond one/other (needed if a language with other forms is added)
+- Wrap or shrink right-aligned Preferences labels that are too long in a translation
+- Honour gettext's rule that LANGUAGE is ignored when the locale is C on Linux
+- Load user-supplied translation files from the settings folder
+- A palette command to switch the language
+- Right-to-left layout for right-to-left languages

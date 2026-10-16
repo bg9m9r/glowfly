@@ -12,6 +12,7 @@ use eframe::egui::{self, RichText, Ui};
 use std::path::PathBuf;
 use trellis_core::git_program::{Candidate, from_setting};
 use trellis_core::git_version::{Version, full_support, missing_for, show};
+use trellis_core::i18n::Lang;
 use trellis_core::native_path::shown;
 use trellis_core::paths::same_spelling;
 use trellis_core::settings::Settings;
@@ -29,7 +30,7 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
         if radio(ui, !busy, on_path, "Use git from your PATH") && !on_path {
             choose(msgs, None);
         }
-        if let Some(text) = path_text(git) {
+        if let Some(text) = path_text(s.lang(), git) {
             under(ui, |ui| help(ui, &text));
         }
         let others: Vec<&Candidate> = page.candidates.iter().flatten().filter(|c| !c.first_on_path).collect();
@@ -76,7 +77,7 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
         help(ui, HELP);
     });
     row(ui, "Version", |ui| {
-        ui.label(RichText::new(git_program_text(git.info.as_ref())).color(color::text()));
+        ui.label(RichText::new(git_program_text(s.lang(), git.info.as_ref())).color(color::text()));
         let missing = git.info.as_ref().map(|i| i.missing()).unwrap_or_default();
         if !missing.is_empty() {
             let (major, minor) = full_support();
@@ -88,7 +89,7 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
 
 /// What "Use git from your PATH" runs: the scan's PATH git, else what the startup check found
 /// while that is the PATH git. None while neither knows.
-fn path_text(git: &GitState) -> Option<String> {
+fn path_text(t: Lang, git: &GitState) -> Option<String> {
     if let Some(c) = git.page.path_git() {
         return Some(match &c.check {
             Ok(v) => format!("git {} at {}", show(*v), shown(&c.path)),
@@ -96,8 +97,8 @@ fn path_text(git: &GitState) -> Option<String> {
         });
     }
     match &git.info {
-        Some(info) if !info.chosen && info.path.is_some() => Some(git_program_text(Some(info))),
-        _ if git.page.candidates.is_some() => Some("Not found on your PATH".to_owned()),
+        Some(info) if !info.chosen && info.path.is_some() => Some(git_program_text(t, Some(info))),
+        _ if git.page.candidates.is_some() => Some(t.tr("prefs.general.git_program.missing").to_owned()),
         _ => None,
     }
 }
@@ -152,15 +153,15 @@ mod tests {
     #[test]
     fn the_path_row_says_what_path_runs() {
         let mut git = GitState::default();
-        assert_eq!(path_text(&git), None, "nothing known yet");
+        assert_eq!(path_text(Lang::En, &git), None, "nothing known yet");
         git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 39, 3)), chosen: false });
-        assert!(path_text(&git).unwrap().starts_with("git 2.39.3 at "));
+        assert!(path_text(Lang::En, &git).unwrap().starts_with("git 2.39.3 at "));
         git.info = Some(GitInfo { path: Some("/opt/git".into()), version: Some((2, 45, 1)), chosen: true });
-        assert_eq!(path_text(&git), None, "the chosen git isn't the PATH one");
+        assert_eq!(path_text(Lang::En, &git), None, "the chosen git isn't the PATH one");
         git.page.candidates = Some(Vec::new());
-        assert_eq!(path_text(&git).as_deref(), Some("Not found on your PATH"));
+        assert_eq!(path_text(Lang::En, &git).as_deref(), Some("Not found on your PATH"));
         git.page.candidates = Some(vec![candidate("/usr/local/bin/git", true, Ok((2, 45, 1)))]);
-        assert!(path_text(&git).unwrap().starts_with("git 2.45.1 at "));
+        assert!(path_text(Lang::En, &git).unwrap().starts_with("git 2.45.1 at "));
     }
 
     #[test]

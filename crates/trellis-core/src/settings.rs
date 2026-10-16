@@ -10,6 +10,7 @@ mod editor;
 mod file;
 mod forge_filters;
 mod graph_filter;
+mod language;
 mod paths;
 mod profiles;
 mod profiles_prefs;
@@ -175,6 +176,8 @@ pub struct Settings {
     /// Dry-run merge the current branch against its upstream or default branch after loads and
     /// fetches (Preferences > General).
     pub conflict_check: bool,
+    /// "system" or a code from i18n::Lang (Preferences > General).
+    pub language: String,
 
     // UI customization
     pub theme: ThemeChoice,
@@ -325,6 +328,7 @@ impl Default for Settings {
             reopen_last_repo: true,
             watch_files: true,
             conflict_check: true,
+            language: crate::i18n::SYSTEM.into(),
             theme: ThemeChoice::Dark,
             notification_location: Corner::BottomLeft,
             behind_alerts: true,

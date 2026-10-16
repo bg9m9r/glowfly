@@ -5,9 +5,16 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::state::AppState;
 use eframe::egui::{self, Align, Align2, Layout, RichText, Stroke, vec2};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::Corner;
 
+/// "3 open pull requests" (or merge requests, as the service calls them).
+fn open_requests_text(t: Lang, noun: &str, n: usize) -> String {
+    if noun == "merge request" { t.trn("status.open_merge_requests", n, &[]) } else { t.trn("status.open_pull_requests", n, &[]) }
+}
+
 pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     egui::TopBottomPanel::bottom("status")
         .exact_height(26.0)
         .frame(egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(10, 0)))
@@ -17,16 +24,17 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     if let Some(h) = &fs.host {
                         ui.label(RichText::new(h.provider.name()).color(color::blue()).strong());
                         ui.label(RichText::new(h.display()).color(color::weak()));
-                        let n = fs.prs.len();
-                        status_label_ui(ui, &fs.host_status, &format!("{n} open {}{}", fs.pr_noun(), if n == 1 { "" } else { "s" }), msgs);
+                        let open = open_requests_text(t, fs.pr_noun(), fs.prs.len());
+                        status_label_ui(ui, t, &fs.host_status, &open, msgs);
                         if let Some(a) = fs.auth.get(&h.account().key()) {
-                            ui.label(RichText::new(format!("· via {}", a.source)).color(color::faint()));
+                            ui.label(RichText::new(t.trf("status.via", &[("source", &a.source)])).color(color::faint()));
                         }
                     }
-                    if let Some(t) = fs.tracker.as_ref().filter(|t| Some(*t) != fs.host.as_ref()) {
+                    if let Some(tracker) = fs.tracker.as_ref().filter(|h| Some(*h) != fs.host.as_ref()) {
                         ui.label(RichText::new("·").color(color::faint()));
-                        ui.label(RichText::new(t.provider.name()).color(color::blue()).strong());
-                        status_label_ui(ui, &fs.tracker_status, &format!("{} assigned", fs.my_issues.len()), msgs);
+                        ui.label(RichText::new(tracker.provider.name()).color(color::blue()).strong());
+                        let assigned = t.trf("status.assigned", &[("count", &fs.my_issues.len())]);
+                        status_label_ui(ui, t, &fs.tracker_status, &assigned, msgs);
                     }
                     if fs.loading > 0 {
                         ui.add(egui::Spinner::new().size(12.0));
@@ -40,7 +48,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                         ui.label(RichText::new(format!("{}…", job.label)).color(color::weak()));
                         ui.add(egui::Spinner::new().size(12.0));
                     } else if st.loading {
-                        ui.label(RichText::new("Loading…").color(color::weak()));
+                        ui.label(RichText::new(t.tr("status.loading")).color(color::weak()));
                         ui.add(egui::Spinner::new().size(12.0));
                     }
                 });
@@ -95,4 +103,20 @@ pub fn toasts(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.add_space(6.0);
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn open_requests_text_counts_in_the_language() {
+        assert_eq!(open_requests_text(Lang::En, "pull request", 1), "1 open pull request");
+        assert_eq!(open_requests_text(Lang::En, "merge request", 2), "2 open merge requests");
+        assert_eq!(open_requests_text(Lang::En, "pull request", 0), "0 open pull requests");
+        let de = open_requests_text(Lang::De, "pull request", 2);
+        assert_eq!(de, Lang::De.trn("status.open_pull_requests", 2, &[]));
+        assert!(de.starts_with("2 ") && de != "2 open pull requests", "{de}");
+        assert_eq!(open_requests_text(Lang::De, "merge request", 1), Lang::De.trn("status.open_merge_requests", 1, &[]));
+    }
 }

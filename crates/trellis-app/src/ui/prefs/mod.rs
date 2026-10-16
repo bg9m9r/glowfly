@@ -10,6 +10,7 @@ mod gitflow;
 mod integrations;
 mod keyboard;
 mod keyboard_row;
+mod language;
 mod lfs;
 mod links;
 mod profile_setup;
@@ -89,6 +90,7 @@ pub(super) fn primary_button(ui: &mut Ui, text: &str, enabled: bool) -> egui::Re
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(page) = st.prefs.as_ref().map(|p| p.page) else { return };
+    let t = st.settings.lang();
     let repo_name = st.snap.as_ref().map(|s| s.name.clone());
     nav(ctx, page, repo_name.as_deref(), st, msgs);
     if page == PrefPage::Integrations {
@@ -128,7 +130,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
         .show(ctx, |ui| {
-            let title = if page == PrefPage::Integrations { prefs.int_provider.name() } else { page.title() };
+            let title = if page == PrefPage::Integrations { prefs.int_provider.name() } else { page.title(t) };
             ui.label(RichText::new(title).size(21.0).color(color::text()));
             ui.add_space(18.0);
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
@@ -141,7 +143,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 if needs_git && prefs.git.is_none() {
                     ui.horizontal(|ui| {
                         ui.add(egui::Spinner::new());
-                        ui.label(RichText::new("Reading git configuration…").color(color::weak()));
+                        ui.label(RichText::new(t.tr("prefs.common.reading_git_config")).color(color::weak()));
                     });
                     return;
                 }
@@ -175,16 +177,17 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 }
 
 fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     egui::SidePanel::left("prefs-nav").exact_width(250.0).resizable(false).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         ui.add_space(6.0);
-        if widgets::nav_row(ui, Some(Icon::Back), "Exit Preferences", false, 15.0).on_hover_text("Esc").clicked() {
+        if widgets::nav_row(ui, Some(Icon::Back), t.tr("prefs.nav.exit"), false, 15.0).on_hover_text("Esc").clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
         }
         ui.add_space(12.0);
-        caption(ui, "Preferences");
-        let mut go = |ui: &mut Ui, pg: PrefPage, icon: Icon, label: &str| {
-            if widgets::nav_row(ui, Some(icon), label, page == pg, 15.0).clicked()
+        caption(ui, t.tr("prefs.nav.caption"));
+        let mut go = |ui: &mut Ui, pg: PrefPage, icon: Icon| {
+            if widgets::nav_row(ui, Some(icon), pg.nav_label(t), page == pg, 15.0).clicked()
                 && let Some(p) = st.prefs.as_mut()
             {
                 // A key being recorded or a warning belongs to the page it was on.
@@ -196,49 +199,50 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
                 p.page = pg;
             }
         };
-        go(ui, PrefPage::General, Icon::Gear, "General");
+        go(ui, PrefPage::General, Icon::Gear);
         // Not `go`: the page looks for installed gits when it opens.
-        if widgets::nav_row(ui, Some(Icon::Branch), "Git", page == PrefPage::Git, 15.0).clicked() {
+        if widgets::nav_row(ui, Some(Icon::Branch), PrefPage::Git.nav_label(t), page == PrefPage::Git, 15.0).clicked() {
             msgs.push(Msg::GitEnv(crate::git_env::GitEnvMsg::ShowPage));
         }
         // Not `go`: the page seeds and fills its profiles when it opens.
-        if widgets::nav_row(ui, Some(Icon::User), "Profile", page == PrefPage::Profile, 15.0).clicked() {
+        if widgets::nav_row(ui, Some(Icon::User), PrefPage::Profile.nav_label(t), page == PrefPage::Profile, 15.0).clicked() {
             msgs.push(Msg::Profile(crate::profile::ProfileMsg::ShowPage));
         }
-        go(ui, PrefPage::Integrations, Icon::Plug, "Integrations");
-        go(ui, PrefPage::Ui, Icon::Brush, "UI Customization");
-        go(ui, PrefPage::Editor, Icon::Code, "Editor");
-        go(ui, PrefPage::Keyboard, Icon::Keyboard, "Keyboard");
-        go(ui, PrefPage::Tools, Icon::Tools, "External Tools");
-        go(ui, PrefPage::Signing, Icon::Key, "Commit Signing");
+        go(ui, PrefPage::Integrations, Icon::Plug);
+        go(ui, PrefPage::Ui, Icon::Brush);
+        go(ui, PrefPage::Editor, Icon::Code);
+        go(ui, PrefPage::Keyboard, Icon::Keyboard);
+        go(ui, PrefPage::Tools, Icon::Tools);
+        go(ui, PrefPage::Signing, Icon::Key);
         // Not `go`: the page reads ~/.ssh when it opens.
-        if widgets::nav_row(ui, Some(Icon::Lock), "SSH", page == PrefPage::Ssh, 15.0).clicked() {
+        if widgets::nav_row(ui, Some(Icon::Lock), PrefPage::Ssh.nav_label(t), page == PrefPage::Ssh, 15.0).clicked() {
             msgs.push(Msg::Ssh(crate::ssh::SshMsg::ShowPage));
         }
         if let Some(name) = repo_name {
             ui.add_space(20.0);
-            caption(ui, "Repo-Specific Preferences");
+            caption(ui, t.tr("prefs.nav.repo_caption"));
             ui.horizontal(|ui| {
                 ui.add_space(12.0);
-                ui.label(RichText::new(format!("Repo: {name}")).size(12.0).color(color::faint()));
+                ui.label(RichText::new(t.trf("prefs.nav.repo_name", &[("name", &name)])).size(12.0).color(color::faint()));
             });
             ui.add_space(4.0);
-            go(ui, PrefPage::RepoIdentity, Icon::Identity, "Identity");
-            go(ui, PrefPage::RepoHooks, Icon::Hook, "Git Hooks");
+            go(ui, PrefPage::RepoIdentity, Icon::Identity);
+            go(ui, PrefPage::RepoHooks, Icon::Hook);
             // Not `go`: the page loads Trello boards when it opens.
-            if widgets::nav_row(ui, Some(Icon::Activity), "Issue Tracker", page == PrefPage::RepoTracker, 15.0).clicked() {
+            if widgets::nav_row(ui, Some(Icon::Activity), PrefPage::RepoTracker.nav_label(t), page == PrefPage::RepoTracker, 15.0).clicked()
+            {
                 msgs.push(Msg::Forge(crate::msg::ForgeMsg::ShowTrackerPage));
             }
             // Not `go`: the page reads its status when it opens.
-            if widgets::nav_row(ui, Some(Icon::Storage), "Git LFS", page == PrefPage::RepoLfs, 15.0).clicked() {
+            if widgets::nav_row(ui, Some(Icon::Storage), PrefPage::RepoLfs.nav_label(t), page == PrefPage::RepoLfs, 15.0).clicked() {
                 msgs.push(Msg::Lfs(crate::lfs::LfsMsg::ShowPage));
             }
             // Not `go`: the page fills its form from the snapshot.
-            if widgets::nav_row(ui, Some(Icon::Flow), "Git Flow", page == PrefPage::RepoGitFlow, 15.0).clicked() {
+            if widgets::nav_row(ui, Some(Icon::Flow), PrefPage::RepoGitFlow.nav_label(t), page == PrefPage::RepoGitFlow, 15.0).clicked() {
                 msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ShowPage));
             }
             // Not `go`: the page reads its status when it opens.
-            if widgets::nav_row(ui, Some(Icon::Sparse), "Sparse Checkout", page == PrefPage::RepoSparse, 15.0).clicked() {
+            if widgets::nav_row(ui, Some(Icon::Sparse), PrefPage::RepoSparse.nav_label(t), page == PrefPage::RepoSparse, 15.0).clicked() {
                 msgs.push(Msg::Sparse(crate::msg::SparseMsg::ShowPage));
             }
         }

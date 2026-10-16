@@ -2,6 +2,7 @@
 //! Integrations connect form.
 
 use trellis_core::forge::{Account, Provider};
+use trellis_core::i18n::Lang;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PrefPage {
@@ -29,24 +30,33 @@ pub enum PrefPage {
 }
 
 impl PrefPage {
-    pub fn title(self) -> &'static str {
+    /// The title above the page's form.
+    pub fn title(self, t: Lang) -> &'static str {
         match self {
-            PrefPage::General => "General",
-            PrefPage::Git => "Git",
-            PrefPage::Profile => "Profile",
-            PrefPage::Integrations => "Integrations",
-            PrefPage::Ui => "UI Customization",
-            PrefPage::Editor => "Editor",
-            PrefPage::Keyboard => "Keyboard Shortcuts",
-            PrefPage::Tools => "External Tools",
-            PrefPage::Signing => "Commit Signing",
-            PrefPage::Ssh => "SSH",
-            PrefPage::RepoIdentity => "Identity",
-            PrefPage::RepoHooks => "Git Hooks",
-            PrefPage::RepoTracker => "Issue Tracker",
-            PrefPage::RepoLfs => "Git LFS",
-            PrefPage::RepoGitFlow => "Git Flow",
-            PrefPage::RepoSparse => "Sparse Checkout",
+            PrefPage::Keyboard => t.tr("prefs.title.keyboard"),
+            other => other.nav_label(t),
+        }
+    }
+
+    /// The page's entry in the navigation column.
+    pub fn nav_label(self, t: Lang) -> &'static str {
+        match self {
+            PrefPage::General => t.tr("prefs.nav.general"),
+            PrefPage::Git => t.tr("prefs.nav.git"),
+            PrefPage::Profile => t.tr("prefs.nav.profile"),
+            PrefPage::Integrations => t.tr("prefs.nav.integrations"),
+            PrefPage::Ui => t.tr("prefs.nav.ui"),
+            PrefPage::Editor => t.tr("prefs.nav.editor"),
+            PrefPage::Keyboard => t.tr("prefs.nav.keyboard"),
+            PrefPage::Tools => t.tr("prefs.nav.tools"),
+            PrefPage::Signing => t.tr("prefs.nav.signing"),
+            PrefPage::Ssh => t.tr("prefs.nav.ssh"),
+            PrefPage::RepoIdentity => t.tr("prefs.nav.identity"),
+            PrefPage::RepoHooks => t.tr("prefs.nav.hooks"),
+            PrefPage::RepoTracker => t.tr("prefs.nav.tracker"),
+            PrefPage::RepoLfs => t.tr("prefs.nav.lfs"),
+            PrefPage::RepoGitFlow => t.tr("prefs.nav.gitflow"),
+            PrefPage::RepoSparse => t.tr("prefs.nav.sparse"),
         }
     }
 }
@@ -65,18 +75,20 @@ pub enum Autocrlf {
 
 impl Autocrlf {
     /// The choices Preferences offers, with their labels.
-    pub const CHOICES: [(Autocrlf, &'static str); 4] = [
-        (Autocrlf::Unset, "Not set (git's default: false)"),
-        (Autocrlf::True, "true: check out CRLF, commit LF"),
-        (Autocrlf::Input, "input: commit LF, check out as is"),
-        (Autocrlf::False, "false: never convert"),
-    ];
+    pub fn choices(t: Lang) -> [(Autocrlf, &'static str); 4] {
+        [
+            (Autocrlf::Unset, t.tr("prefs.general.autocrlf.unset")),
+            (Autocrlf::True, t.tr("prefs.general.autocrlf.true")),
+            (Autocrlf::Input, t.tr("prefs.general.autocrlf.input")),
+            (Autocrlf::False, t.tr("prefs.general.autocrlf.false")),
+        ]
+    }
 
     /// How it is shown.
-    pub fn label(&self) -> String {
+    pub fn label(&self, t: Lang) -> String {
         match self {
-            Autocrlf::Other(raw) => format!("{raw} (not a value git knows)"),
-            known => Self::CHOICES.iter().find(|(c, _)| c == known).map(|(_, l)| (*l).to_owned()).unwrap_or_default(),
+            Autocrlf::Other(raw) => t.trf("prefs.general.autocrlf.unknown", &[("value", raw)]),
+            known => Self::choices(t).iter().find(|(c, _)| c == known).map(|(_, l)| (*l).to_owned()).unwrap_or_default(),
         }
     }
 
@@ -182,4 +194,20 @@ impl PrefsState {
 /// What a "Host Domain" field shows for a saved account.
 pub fn host_text(a: &Account) -> String {
     if a.provider == Provider::AzureDevOps { format!("{}/{}", a.host, a.org) } else { a.host.clone() }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn autocrlf_labels_follow_the_language_and_keep_raw_values() {
+        assert_eq!(Autocrlf::Input.label(Lang::En), "input: commit LF, check out as is");
+        assert_eq!(Autocrlf::Other("weird".into()).label(Lang::En), "weird (not a value git knows)");
+        let de = Autocrlf::Other("weird".into()).label(Lang::De);
+        assert!(de.starts_with("weird ") && de != "weird (not a value git knows)", "{de}");
+        assert_eq!(PrefPage::Keyboard.title(Lang::En), "Keyboard Shortcuts");
+        assert_eq!(PrefPage::Keyboard.nav_label(Lang::En), "Keyboard");
+        assert_eq!(PrefPage::General.title(Lang::De), PrefPage::General.nav_label(Lang::De));
+    }
 }

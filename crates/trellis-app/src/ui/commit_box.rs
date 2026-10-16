@@ -12,32 +12,30 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::commit::{commit_blocked, pushes_after};
 use eframe::egui::{self, Align, Color32, Key, Layout, Modifiers, RichText, vec2};
+use trellis_core::i18n::Lang;
 
 /// Height the commit box needs below the file lists (the lists share what is left).
 pub(super) const RESERVED_HEIGHT: f32 = 340.0;
 
 /// The commit button's tooltip: the keys that commit from the message fields.
-pub(super) fn shortcuts_tip(keys: &Keymap) -> String {
+pub(super) fn shortcuts_tip(t: Lang, keys: &Keymap) -> String {
     match (keys.hint(BindingId::Commit), keys.hint(BindingId::StageAllAndCommit)) {
-        (Some(c), Some(a)) => format!("{c} commits from the message fields; {a} stages all changes first."),
-        (Some(c), None) => format!("{c} commits from the message fields."),
-        (None, Some(a)) => format!("{a} stages all changes and commits from the message fields."),
-        (None, None) => "Commit the staged changes.".to_owned(),
+        (Some(c), Some(a)) => t.trf("commit.shortcuts.both", &[("commit", &c), ("all", &a)]),
+        (Some(c), None) => t.trf("commit.shortcuts.commit_only", &[("commit", &c)]),
+        (None, Some(a)) => t.trf("commit.shortcuts.all_only", &[("all", &a)]),
+        (None, None) => t.tr("commit.shortcuts.none").to_owned(),
     }
 }
-const PUSH_HINT: &str =
-    "After a successful commit, push the branch. A branch with no upstream is pushed to the default remote and tracks it.";
-const NO_PUSH_DETACHED: &str = "Nothing to push from a detached HEAD";
-const SKIP_HOOKS_HINT: &str = "Commit with --no-verify: the pre-commit and commit-msg hooks don't run.";
 
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
+    let t = st.settings.lang();
     ui.add_space(6.0);
     ui.separator();
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Commit").strong().color(color::text()));
+        ui.label(RichText::new(t.tr("commit.title")).strong().color(color::text()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.checkbox(&mut st.draft.amend, "Amend").changed() && st.draft.amend {
+            if ui.checkbox(&mut st.draft.amend, t.tr("commit.amend")).changed() && st.draft.amend {
                 msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
             }
         });
@@ -49,48 +47,47 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         let mentioned = fs.links_issue(&st.draft.summary, &key) || fs.links_issue(&st.draft.description, &key);
         ui.horizontal(|ui| {
             issue_chip(ui, fs, &key, msgs);
-            let what = if fs.message_ref(&key) == tag { "the mention" } else { "a link" };
-            let hover = format!("Adds {what} to the description");
-            if !mentioned && ui.small_button(format!("Link {tag}")).on_hover_text(hover).clicked() {
+            let hover = if fs.message_ref(&key) == tag { t.tr("commit.link_tip.mention") } else { t.tr("commit.link_tip.link") };
+            if !mentioned && ui.small_button(t.trf("commit.link_button", &[("tag", &tag)])).on_hover_text(hover).clicked() {
                 msgs.push(Msg::Commit(CommitMsg::AppendToDescription(fs.message_ref(&key))));
             }
         });
     }
 
     let spell = st.settings.spellcheck;
-    let s = spell_text_edit(ui, &mut st.draft.summary, "Commit summary", 1, &mut cache.speller, spell);
+    let s = spell_text_edit(ui, &mut st.draft.summary, t.tr("commit.summary_hint"), 1, &mut cache.speller, spell);
     if std::mem::take(&mut st.view.focus_message) {
         s.request_focus();
     }
     let len = st.draft.summary.chars().count();
     let c = if len > 72 { color::red() } else { color::faint() };
     ui.label(RichText::new(format!("{len}/72")).small().color(c));
-    let d = spell_text_edit(ui, &mut st.draft.description, "Description", 4, &mut cache.speller, spell);
-    if let Some(t) = &st.draft.template {
-        let note = format!("The template's lines starting with {} are left out of the message", t.comment_char);
+    let d = spell_text_edit(ui, &mut st.draft.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
+    if let Some(template) = &st.draft.template {
+        let note = t.trf("commit.template_note", &[("char", &template.comment_char)]);
         ui.label(RichText::new(note).small().color(color::faint()));
     }
 
     ui.horizontal_wrapped(|ui| {
         let mut push = st.settings.push_after_commit;
         let r = ui
-            .add_enabled(snap.head_branch.is_some(), egui::Checkbox::new(&mut push, "Push after committing"))
-            .on_hover_text(PUSH_HINT)
-            .on_disabled_hover_text(NO_PUSH_DETACHED);
+            .add_enabled(snap.head_branch.is_some(), egui::Checkbox::new(&mut push, t.tr("commit.push_after.check")))
+            .on_hover_text(t.tr("commit.push_after.tip"))
+            .on_disabled_hover_text(t.tr("commit.push_after.detached"));
         // The setting changes through update, which also saves it.
         if r.changed() {
             msgs.push(Msg::Commit(CommitMsg::SetPushAfterCommit(push)));
         }
-        ui.checkbox(&mut st.draft.skip_hooks, "Skip hooks").on_hover_text(SKIP_HOOKS_HINT);
+        ui.checkbox(&mut st.draft.skip_hooks, t.tr("commit.skip_hooks.check")).on_hover_text(t.tr("commit.skip_hooks.tip"));
     });
 
-    let label = st.draft.button_label(snap.staged.len(), pushes_after(st));
+    let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st));
     let blocked = commit_blocked(st, false);
     let enabled = blocked.is_none();
     let button = egui::Button::new(RichText::new(label).strong().color(if enabled { Color32::WHITE } else { color::faint() }))
         .fill(if enabled { color::primary() } else { color::toolbar() })
         .min_size(vec2(ui.available_width(), 34.0));
-    let r = ui.add_enabled(enabled, button).on_hover_text(shortcuts_tip(&st.keymap)).on_disabled_hover_text(blocked.unwrap_or_default());
+    let r = ui.add_enabled(enabled, button).on_hover_text(shortcuts_tip(t, &st.keymap)).on_disabled_hover_text(blocked.unwrap_or_default());
     if r.clicked() {
         msgs.push(Msg::Commit(CommitMsg::Commit));
     }

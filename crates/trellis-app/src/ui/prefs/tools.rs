@@ -12,116 +12,108 @@ use crate::state::tools::{bundle_warning, missing_warnings, template_warnings};
 use crate::tools::{ToolKind, ToolsMsg};
 use eframe::egui::Ui;
 use trellis_core::external_tools::{self, DIFF_PLACEHOLDERS, EDITOR_PLACEHOLDERS, MERGE_PLACEHOLDERS};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::{ExternalTools, Settings};
 
 const DIFF_TOOL_ARGS: &str = ExternalTools::DIFF_TOOL_ARGS;
 const MERGE_TOOL_ARGS: &str = ExternalTools::MERGE_TOOL_ARGS;
 
-const DIFF_HELP: &str = "{local} is the older version and {remote} the newer one. For unstaged changes {remote} is the working file itself, so edits saved there are kept. Every other version is a read-only copy in a temporary folder. {path} is the file's full path in the working tree (it may not exist there) and {repo} is the repository folder. Double quotes keep text with spaces together, and the arguments go straight to the program, without a shell.";
-const MERGE_HELP: &str = "{base} is the common ancestor (an empty file when both sides added the file), {ours} is your side, {theirs} is the side being merged in, {output} is the working file the result is saved to, and {repo} is the repository folder. Trellis waits until the program exits, so a program that hands off to a window that is already open needs its wait option. Console programs aren't supported.";
-const BUNDLE_WARNING: &str =
-    "An application bundle opens files, but extra options may be dropped. Choosing the program's command-line tool works best.";
-
-const PLACEHOLDER_HELP: &str = "{path} is the file's full path, {line} its line number (1 when no line is chosen) and {repo} the repository folder. Double quotes keep text with spaces together; there is no escape character, so backslashes in Windows paths are fine. The arguments go straight to the program, without a shell.";
-
 pub fn tools_page(ui: &mut Ui, s: &mut Settings, msgs: &mut Vec<Msg>) {
-    let t = &mut s.external_tools;
-    section(ui, "Editor");
-    row(ui, "Editor executable", |ui| {
-        program_field(ui, &mut t.editor, "Program name on your PATH, or a full path", ToolKind::Editor, msgs);
-        help(ui, "The program Trellis starts to open files and repositories. Leave it empty for none.");
-        if bundle_warning(&t.editor) {
-            warn(ui, BUNDLE_WARNING);
+    let t = s.lang();
+    let et = &mut s.external_tools;
+    section(ui, t.tr("prefs.tools.editor.section"));
+    row(ui, t.tr("prefs.tools.editor.label"), |ui| {
+        program_field(ui, t, &mut et.editor, t.tr("prefs.tools.program_hint"), ToolKind::Editor, msgs);
+        help(ui, t.tr("prefs.tools.editor.help"));
+        if bundle_warning(&et.editor) {
+            warn(ui, t.tr("prefs.tools.bundle_warn"));
         }
     });
-    row(ui, "Open file arguments", |ui| {
-        text_field(ui, &mut t.editor_file_args, "{path}");
-        help(ui, PLACEHOLDER_HELP);
-        warnings(ui, &t.editor_file_args, &EDITOR_PLACEHOLDERS, &[]);
+    row(ui, t.tr("prefs.tools.editor_file_args.label"), |ui| {
+        text_field(ui, &mut et.editor_file_args, "{path}");
+        help(ui, t.tr("prefs.tools.placeholder_help"));
+        warnings(ui, t, &et.editor_file_args, &EDITOR_PLACEHOLDERS, &[]);
     });
-    row(ui, "Open repository arguments", |ui| {
-        text_field(ui, &mut t.editor_repo_args, "{repo}");
-        help(ui, "{repo} (and {path}) is the repository folder.");
-        warnings(ui, &t.editor_repo_args, &EDITOR_PLACEHOLDERS, &[]);
+    row(ui, t.tr("prefs.tools.editor_repo_args.label"), |ui| {
+        text_field(ui, &mut et.editor_repo_args, "{repo}");
+        help(ui, t.tr("prefs.tools.editor_repo_args.help"));
+        warnings(ui, t, &et.editor_repo_args, &EDITOR_PLACEHOLDERS, &[]);
     });
-    row(ui, "Arguments", |ui| {
-        if ui.button("Restore default arguments").clicked() {
+    row(ui, t.tr("prefs.tools.arguments.label"), |ui| {
+        if ui.button(t.tr("prefs.tools.restore.button")).clicked() {
             reset(s);
         }
     });
 
-    let t = &mut s.external_tools;
-    section(ui, "Terminal");
-    row(ui, "Terminal executable", |ui| {
-        program_field(ui, &mut t.terminal, "Detect automatically", ToolKind::Terminal, msgs);
-        help(
-            ui,
-            "Leave it empty to use the system's usual terminal. When set, Open in terminal starts this program in the repository folder instead.",
-        );
+    let et = &mut s.external_tools;
+    section(ui, t.tr("prefs.tools.terminal.section"));
+    row(ui, t.tr("prefs.tools.terminal.label"), |ui| {
+        program_field(ui, t, &mut et.terminal, t.tr("prefs.tools.terminal.hint"), ToolKind::Terminal, msgs);
+        help(ui, t.tr("prefs.tools.terminal.help"));
     });
-    let custom = external_tools::program(&t.terminal).is_some();
-    row(ui, "Terminal arguments", |ui| {
+    let custom = external_tools::program(&et.terminal).is_some();
+    row(ui, t.tr("prefs.tools.terminal_args.label"), |ui| {
         ui.add_enabled_ui(custom, |ui| {
-            text_field(ui, &mut t.terminal_args, "");
+            text_field(ui, &mut et.terminal_args, "");
         });
-        help(ui, "{repo} is the repository folder; the program also starts in that folder.");
-        warnings(ui, &t.terminal_args, &EDITOR_PLACEHOLDERS, &[]);
+        help(ui, t.tr("prefs.tools.terminal_args.help"));
+        warnings(ui, t, &et.terminal_args, &EDITOR_PLACEHOLDERS, &[]);
     });
-    diff_section(ui, s, msgs);
-    merge_section(ui, s, msgs);
+    diff_section(ui, t, s, msgs);
+    merge_section(ui, t, s, msgs);
 }
 
 /// The diff tool: its program, its arguments and their own Restore default arguments.
-fn diff_section(ui: &mut Ui, s: &mut Settings, msgs: &mut Vec<Msg>) {
-    let t = &mut s.external_tools;
-    section(ui, "Diff tool");
-    row(ui, "Diff tool executable", |ui| {
-        program_field(ui, &mut t.diff_tool, "Program name on your PATH, or a full path", ToolKind::DiffTool, msgs);
-        help(ui, "The program that compares two versions of a file. Leave it empty for none.");
-        if bundle_warning(&t.diff_tool) {
-            warn(ui, BUNDLE_WARNING);
+fn diff_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
+    let et = &mut s.external_tools;
+    section(ui, t.tr("prefs.tools.diff.section"));
+    row(ui, t.tr("prefs.tools.diff.label"), |ui| {
+        program_field(ui, t, &mut et.diff_tool, t.tr("prefs.tools.program_hint"), ToolKind::DiffTool, msgs);
+        help(ui, t.tr("prefs.tools.diff.help"));
+        if bundle_warning(&et.diff_tool) {
+            warn(ui, t.tr("prefs.tools.bundle_warn"));
         }
     });
-    row(ui, "Diff tool arguments", |ui| {
-        text_field(ui, &mut t.diff_tool_args, DIFF_TOOL_ARGS);
-        help(ui, DIFF_HELP);
-        warnings(ui, &t.diff_tool_args, &DIFF_PLACEHOLDERS, &["{local}", "{remote}"]);
+    row(ui, t.tr("prefs.tools.diff_args.label"), |ui| {
+        text_field(ui, &mut et.diff_tool_args, DIFF_TOOL_ARGS);
+        help(ui, t.tr("prefs.tools.diff_help"));
+        warnings(ui, t, &et.diff_tool_args, &DIFF_PLACEHOLDERS, &["{local}", "{remote}"]);
     });
-    row(ui, "Arguments", |ui| {
-        if ui.button("Restore default arguments").clicked() {
+    row(ui, t.tr("prefs.tools.arguments.label"), |ui| {
+        if ui.button(t.tr("prefs.tools.restore.button")).clicked() {
             reset_diff(s);
         }
     });
 }
 
 /// The merge tool, laid out as the diff tool.
-fn merge_section(ui: &mut Ui, s: &mut Settings, msgs: &mut Vec<Msg>) {
-    let t = &mut s.external_tools;
-    section(ui, "Merge tool");
-    row(ui, "Merge tool executable", |ui| {
-        program_field(ui, &mut t.merge_tool, "Program name on your PATH, or a full path", ToolKind::MergeTool, msgs);
-        help(ui, "The program that resolves a conflicted file. Leave it empty for none.");
-        if bundle_warning(&t.merge_tool) {
-            warn(ui, BUNDLE_WARNING);
+fn merge_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
+    let et = &mut s.external_tools;
+    section(ui, t.tr("prefs.tools.merge.section"));
+    row(ui, t.tr("prefs.tools.merge.label"), |ui| {
+        program_field(ui, t, &mut et.merge_tool, t.tr("prefs.tools.program_hint"), ToolKind::MergeTool, msgs);
+        help(ui, t.tr("prefs.tools.merge.help"));
+        if bundle_warning(&et.merge_tool) {
+            warn(ui, t.tr("prefs.tools.bundle_warn"));
         }
     });
-    row(ui, "Merge tool arguments", |ui| {
-        text_field(ui, &mut t.merge_tool_args, MERGE_TOOL_ARGS);
-        help(ui, MERGE_HELP);
-        warnings(ui, &t.merge_tool_args, &MERGE_PLACEHOLDERS, &["{ours}", "{theirs}", "{output}"]);
+    row(ui, t.tr("prefs.tools.merge_args.label"), |ui| {
+        text_field(ui, &mut et.merge_tool_args, MERGE_TOOL_ARGS);
+        help(ui, t.tr("prefs.tools.merge_help"));
+        warnings(ui, t, &et.merge_tool_args, &MERGE_PLACEHOLDERS, &["{ours}", "{theirs}", "{output}"]);
     });
-    row(ui, "Arguments", |ui| {
-        if ui.button("Restore default arguments").clicked() {
+    row(ui, t.tr("prefs.tools.arguments.label"), |ui| {
+        if ui.button(t.tr("prefs.tools.restore.button")).clicked() {
             reset_merge(s);
         }
     });
 }
 
 /// A program's text field and its Browse… button.
-fn program_field(ui: &mut Ui, value: &mut String, hint: &str, kind: ToolKind, msgs: &mut Vec<Msg>) {
+fn program_field(ui: &mut Ui, t: Lang, value: &mut String, hint: &str, kind: ToolKind, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         text_field(ui, value, hint);
-        if ui.button("Browse…").clicked() {
+        if ui.button(t.tr("prefs.tools.browse.button")).clicked() {
             msgs.push(Msg::Tools(ToolsMsg::Browse(kind)));
         }
     });
@@ -129,8 +121,8 @@ fn program_field(ui: &mut Ui, value: &mut String, hint: &str, kind: ToolKind, ms
 
 /// The warnings under an arguments field whose placeholders are `known`, and which should name
 /// each of `wanted`.
-fn warnings(ui: &mut Ui, template: &str, known: &[&str], wanted: &[&str]) {
-    for w in template_warnings(template, known).into_iter().chain(missing_warnings(template, wanted)) {
+fn warnings(ui: &mut Ui, t: Lang, template: &str, known: &[&str], wanted: &[&str]) {
+    for w in template_warnings(t, template, known).into_iter().chain(missing_warnings(t, template, wanted)) {
         warn(ui, &w);
     }
 }

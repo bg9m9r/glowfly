@@ -67,6 +67,8 @@ fn main() -> eframe::Result {
     }
     // Only the window logs: the helper modes above exit before this.
     let logs = logging::init();
+    // The OS language, read once: "system" in the Language setting follows it.
+    trellis_core::i18n::detect_system_language();
     if let Err(e) = trellis_core::settings::migrate_old_config_dir() {
         tracing::warn!("could not move the settings folder from where an earlier version kept it: {e}");
     }

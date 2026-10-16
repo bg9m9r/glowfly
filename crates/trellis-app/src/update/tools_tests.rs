@@ -192,7 +192,7 @@ fn show_page_opens_external_tools() {
     let mut st = state();
     let fx = run(&mut st, ToolsMsg::ShowPage);
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
-    assert_eq!(PrefPage::Tools.title(), "External Tools");
+    assert_eq!(PrefPage::Tools.title(trellis_core::i18n::Lang::En), "External Tools");
     assert!(fx.iter().any(|e| matches!(e, Effect::ReadGitConfig { .. })), "{fx:?}");
 }
 

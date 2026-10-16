@@ -4,6 +4,7 @@
 use super::AppState;
 use std::path::Path;
 use trellis_core::gitcli::args;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::CommitTemplate;
 
 /// What the user is writing in the commit box. Views edit it in place.
@@ -66,23 +67,19 @@ impl CommitDraft {
         self.is_empty() || self.is_untouched_template()
     }
 
-    /// The commit button's text: the base label, then " and push" when `push`, then
-    /// " (skip hooks)" when hooks are skipped.
-    pub fn button_label(&self, staged: usize, push: bool) -> String {
-        let mut label = if self.amend {
-            "Amend previous commit".to_owned()
+    /// The commit button's text: the base label with its slots for " and push" (when `push`)
+    /// and " (skip hooks)" (when hooks are skipped), placed where the language puts them.
+    pub fn button_label(&self, t: Lang, staged: usize, push: bool) -> String {
+        let push_text = if push { t.tr("commit.button.and_push") } else { "" };
+        let skip_text = if self.skip_hooks { t.tr("commit.button.skip_hooks") } else { "" };
+        let slots: [(&str, &dyn std::fmt::Display); 2] = [("push", &push_text), ("skip", &skip_text)];
+        if self.amend {
+            t.trf("commit.button.amend", &slots)
         } else if staged == 0 {
-            "Stage files to commit".to_owned()
+            t.trf("commit.button.stage_first", &slots)
         } else {
-            format!("Commit changes to {staged} file{}", if staged == 1 { "" } else { "s" })
-        };
-        if push {
-            label.push_str(" and push");
+            t.trn("commit.button.commit", staged, &slots)
         }
-        if self.skip_hooks {
-            label.push_str(" (skip hooks)");
-        }
-        label
     }
 
     /// The git commands that commit this draft with its message in `file`: `add --all` first
@@ -120,21 +117,22 @@ fn without_template_comments(description: &str, t: &CommitTemplate) -> String {
 
 /// Why committing (or staging everything and committing) can't start now; None when it can.
 pub fn commit_blocked(st: &AppState, stage_all: bool) -> Option<&'static str> {
-    let Some(snap) = &st.snap else { return Some("Open a repository first.") };
+    let t = st.settings.lang();
+    let Some(snap) = &st.snap else { return Some(t.tr("commit.blocked.no_repo")) };
     let d = &st.draft;
     if st.job.is_some() {
-        Some("Another operation is still running.")
+        Some(t.tr("commit.blocked.job_running"))
     } else if d.is_untouched_template() {
-        Some("Edit the commit template before committing.")
+        Some(t.tr("commit.blocked.untouched_template"))
     } else if d.summary.trim().is_empty() {
-        Some("Write a summary for the commit.")
+        Some(t.tr("commit.blocked.no_summary"))
     } else if stage_all && snap.unstaged.iter().any(|f| f.status == '!') {
         // Staging a conflicted file marks it resolved.
-        Some("Resolve the conflicted files before staging everything.")
+        Some(t.tr("commit.blocked.conflicts"))
     } else if !d.amend && !stage_all && snap.staged.is_empty() {
-        Some("Stage files to commit.")
+        Some(t.tr("commit.blocked.nothing_staged"))
     } else if !d.amend && stage_all && snap.staged.is_empty() && snap.unstaged.is_empty() {
-        Some("There are no changes to commit.")
+        Some(t.tr("commit.blocked.no_changes"))
     } else {
         None
     }
@@ -155,14 +153,30 @@ mod tests {
 
     #[test]
     fn button_label_suffixes() {
+        let en = Lang::En;
         let mut d = CommitDraft::default();
-        assert_eq!(d.button_label(1, false), "Commit changes to 1 file");
-        assert_eq!(d.button_label(0, false), "Stage files to commit");
+        assert_eq!(d.button_label(en, 1, false), "Commit changes to 1 file");
+        assert_eq!(d.button_label(en, 0, false), "Stage files to commit");
         d.skip_hooks = true;
-        assert_eq!(d.button_label(2, true), "Commit changes to 2 files and push (skip hooks)");
+        assert_eq!(d.button_label(en, 2, true), "Commit changes to 2 files and push (skip hooks)");
         d.skip_hooks = false;
         d.amend = true;
-        assert_eq!(d.button_label(0, true), "Amend previous commit and push");
+        assert_eq!(d.button_label(en, 0, true), "Amend previous commit and push");
+    }
+
+    #[test]
+    fn button_label_places_the_suffixes_where_the_language_does() {
+        let de = Lang::De;
+        let d = CommitDraft { skip_hooks: true, ..CommitDraft::default() };
+        let want = trellis_core::i18n::fill(
+            de.tr("commit.button.commit.other"),
+            &[("count", &2), ("push", &de.tr("commit.button.and_push")), ("skip", &de.tr("commit.button.skip_hooks"))],
+        );
+        let got = d.button_label(de, 2, true);
+        assert_eq!(got, want);
+        assert!(got.contains(de.tr("commit.button.and_push").trim()) && got.contains(de.tr("commit.button.skip_hooks").trim()), "{got}");
+        assert!(!got.contains('{'), "{got}");
+        assert_ne!(got, d.button_label(Lang::En, 2, true));
     }
 
     #[test]
