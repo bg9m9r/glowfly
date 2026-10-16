@@ -258,6 +258,26 @@ pub fn url_key(url: &str) -> String {
     t.to_lowercase()
 }
 
+/// `url` as a link may carry it, without credentials: an http(s) or ftp(s) URL loses its whole
+/// user part (a token is often given as the user name), any other `scheme://user:password@`
+/// URL its password. An ssh user (`ssh://git@host`, `git@host:o/r`) is kept, since the clone
+/// needs it, and [`same_url`] ignores the user anyway.
+pub fn shareable_url(url: &str) -> String {
+    let Some(i) = url.find("://") else { return url.to_owned() };
+    let scheme = url[..i].to_ascii_lowercase();
+    let rest = &url[i + 3..];
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let Some(at) = rest[..end].rfind('@') else { return url.to_owned() };
+    let user = if scheme.starts_with("http") || scheme.starts_with("ftp") {
+        ""
+    } else {
+        let name = &rest[..at];
+        &name[..name.find(':').unwrap_or(name.len())]
+    };
+    let host = &rest[at + 1..];
+    if user.is_empty() { format!("{}{host}", &url[..i + 3]) } else { format!("{}{user}@{host}", &url[..i + 3]) }
+}
+
 /// Whether two remote URLs name the same repository (see [`url_key`]).
 pub fn same_url(a: &str, b: &str) -> bool {
     let (a, b) = (url_key(a), url_key(b));

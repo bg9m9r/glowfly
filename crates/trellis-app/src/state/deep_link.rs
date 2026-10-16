@@ -85,9 +85,10 @@ pub enum LinkDialog {
     Choose { what: String, paths: Vec<PathBuf>, picked: usize },
 }
 
-/// The URL of remote `name` in `snap` (libgit2's, with url.insteadOf applied).
+/// The URL of remote `name` in `snap` (libgit2's, with url.insteadOf applied), without any
+/// password or token in it, since a link is made to be shared.
 fn url_of(snap: &Snapshot, name: &str) -> Option<String> {
-    snap.remote_urls.iter().find(|(n, _)| n == name).map(|(_, u)| u.clone()).filter(|u| !u.is_empty())
+    snap.remote_urls.iter().find(|(n, _)| n == name).map(|(_, u)| link::shareable_url(u)).filter(|u| !u.is_empty())
 }
 
 /// The remote a link names when nothing else says which: the checked-out branch's upstream

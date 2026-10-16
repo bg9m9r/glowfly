@@ -260,3 +260,37 @@ fn clone_fills_the_url_and_the_clone_is_checked() {
     assert_eq!(candidates, vec![st.snap.as_ref().unwrap().workdir.clone()]);
     cleanup(&[&work, &bare]);
 }
+
+#[test]
+fn a_search_answer_waits_for_a_dialog_opened_meanwhile() {
+    let base = trellis_core::paths::temp_dir().join(format!("trellis-link-busy-{}", std::process::id()));
+    let (a, b) = (base.join("a"), base.join("b"));
+    let text = link_text("tag/v1");
+    let waits = |st: &AppState| {
+        assert!(st.deep_link.pending.is_none());
+        let toast = st.toasts.last().unwrap();
+        assert_eq!(toast.text, crate::state::deep_link::LINK_WAITING);
+        let action = toast.action.as_ref().unwrap();
+        let Msg::DeepLink(DeepLinkMsg::Open(t)) = &*action.msg else { panic!("expected Open link") };
+        assert_eq!(trellis_core::link::parse(t).unwrap().target, Target::Tag("v1".into()));
+    };
+    // None or several matches: the open dialog isn't replaced.
+    for matches in [Vec::new(), vec![found(&a, TargetState::Missing), found(&b, TargetState::Missing)]] {
+        let mut st = state();
+        send(&mut st, DeepLinkMsg::Open(text.clone()));
+        st.modal = Some(Modal::Shortcuts { filter: "typed".into() });
+        let seq = st.deep_link.seq;
+        send(&mut st, DeepLinkMsg::Found { seq, origin: FindOrigin::Search, result: Ok(matches) });
+        assert!(matches!(&st.modal, Some(Modal::Shortcuts { filter }) if filter == "typed"));
+        waits(&st);
+    }
+    // One match: no tab opens under Preferences.
+    let mut st = state();
+    send(&mut st, DeepLinkMsg::Open(text.clone()));
+    st.prefs = Some(crate::state::PrefsState::new(crate::state::PrefPage::General));
+    let seq = st.deep_link.seq;
+    let fx = send(&mut st, DeepLinkMsg::Found { seq, origin: FindOrigin::Search, result: Ok(vec![found(&a, TargetState::Missing)]) });
+    assert_eq!(loads(&fx, LoadKind::Open), None);
+    assert!(st.tabs.iter().all(|t| t.path.as_deref() != Some(a.as_path())));
+    waits(&st);
+}

@@ -69,10 +69,8 @@ fn copy(st: &mut AppState, t: &LinkTarget, now: Instant, fx: &mut Vec<Effect>) {
 /// repository, unless another dialog is open (a toast offers to open it later).
 fn open(st: &mut AppState, text: String, now: Instant, fx: &mut Vec<Effect>) {
     fx.push(Effect::Ui(UiEffect::FocusWindow));
-    if st.prefs.is_some() || st.modal.as_ref().is_some_and(|m| !matches!(m, Modal::DeepLink(_))) {
-        let action = ToastAction { label: "Open link".into(), msg: Box::new(Msg::DeepLink(DeepLinkMsg::Open(text))), workdir: None };
-        st.toast_action(true, dl::LINK_WAITING, action, now);
-        return;
+    if busy(st) {
+        return wait(st, text, now);
     }
     // A newer link replaces whatever an older one was doing.
     st.deep_link.seq += 1;
@@ -91,6 +89,18 @@ fn open(st: &mut AppState, text: String, now: Instant, fx: &mut Vec<Effect>) {
     }
 }
 
+/// Whether another dialog or Preferences is open, which a link's dialogs and tab switch must not
+/// replace or happen under.
+fn busy(st: &AppState) -> bool {
+    st.prefs.is_some() || st.modal.as_ref().is_some_and(|m| !matches!(m, Modal::DeepLink(_)))
+}
+
+/// A toast offers to open link `text` once the open dialog is closed.
+fn wait(st: &mut AppState, text: String, now: Instant) {
+    let action = ToastAction { label: "Open link".into(), msg: Box::new(Msg::DeepLink(DeepLinkMsg::Open(text))), workdir: None };
+    st.toast_action(true, dl::LINK_WAITING, action, now);
+}
+
 fn found(st: &mut AppState, seq: u64, origin: FindOrigin, result: Result<Vec<Found>, String>, now: Instant, fx: &mut Vec<Effect>) {
     if seq != st.deep_link.seq || st.deep_link.pending.is_none() {
         return; // superseded by a newer link, or given up
@@ -105,6 +115,12 @@ fn found(st: &mut AppState, seq: u64, origin: FindOrigin, result: Result<Vec<Fou
     };
     if origin == FindOrigin::AfterFetch {
         return after_fetch(st, matches, now, fx);
+    }
+    // A dialog or Preferences opened during the search: the link waits rather than replacing
+    // it or switching the tab under it.
+    if busy(st) {
+        let uri = st.deep_link.pending.take().map(|p| p.link.to_uri()).unwrap_or_default();
+        return wait(st, uri, now);
     }
     match (dl::best(matches, st), origin) {
         (Best::One(f), _) => go(st, f, now, fx),

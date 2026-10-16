@@ -122,3 +122,15 @@ fn labels_for_messages() {
     assert_eq!((l.describe(), l.repo_label()), ("tag v1".to_owned(), "https://h/o/r".to_owned()));
     assert_eq!(link(None, Some(ROOT), Target::Repository).describe(), "repository");
 }
+
+#[test]
+fn shared_urls_carry_no_credentials() {
+    assert_eq!(shareable_url("https://me:ghp_SECRET@github.com/o/r.git"), "https://github.com/o/r.git");
+    assert_eq!(shareable_url("HTTPS://ghp_token@h:8443/o/r?x=@y"), "HTTPS://h:8443/o/r?x=@y");
+    assert_eq!(shareable_url("ssh://git:pw@h/o/r"), "ssh://git@h/o/r");
+    assert_eq!(shareable_url("ssh://:pw@h/o/r"), "ssh://h/o/r");
+    for same in ["ssh://git@h:22/o/r", "git@github.com:o/r.git", "https://h/o@r", "/srv/git/r", "file:///srv/r", "https://h"] {
+        assert_eq!(shareable_url(same), same);
+    }
+    assert!(same_url(&shareable_url("https://u:p@github.com/o/r"), "git@github.com:o/r"));
+}

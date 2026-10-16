@@ -254,3 +254,19 @@ fn the_palette_copies_links_to_the_repository_and_branch() {
     assert!(!has(&st, "Copy link to branch main"));
     cleanup(&[&dir, &empty]);
 }
+
+#[test]
+fn a_copied_link_leaves_out_credentials() {
+    let (mut st, work, bare) = with_origin("link-secret");
+    let snap = st.snap.as_mut().unwrap();
+    snap.remote_urls = vec![
+        ("origin".into(), "https://me:ghp_SECRET@github.com/o/r.git".into()),
+        ("mirror".into(), "ssh://git:pw@example.com/o/r".into()),
+    ];
+    let oid = snap.head_oid.unwrap();
+    assert_eq!(copy(&mut st, LinkTarget::Commit(oid)).0.as_deref(), Some("https://github.com/o/r.git"));
+    assert_eq!(copy(&mut st, LinkTarget::Tag("v1".into())).0.as_deref(), Some("https://github.com/o/r.git"));
+    let mirror = LinkTarget::Repository { remote: Some("mirror".into()) };
+    assert_eq!(copy(&mut st, mirror).0.as_deref(), Some("ssh://git@example.com/o/r"));
+    cleanup(&[&work, &bare]);
+}
