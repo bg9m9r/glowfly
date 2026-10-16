@@ -2,7 +2,8 @@
 
 Trellis is a native Git client (Rust, egui, libgit2). This document describes its structure and
 the rules that keep it maintainable. Each module's `//!` comment says what it holds in more
-detail.
+detail. `docs/PLATFORMS.md` holds the rules for OS and file-system differences (paths, files,
+processes, the environment, git).
 
 ## Goals
 
@@ -132,6 +133,9 @@ binary (package `trellis`).
 7. `scripts/check.ps1` (fmt, clippy -D warnings, tests) must pass before committing.
 8. `trellis-core` returns `trellis_core::error::Error` (typed, via `thiserror`); decide behaviour
    from the variant (`is_auth()`, `is_not_found()`), never from message text.
+9. Code that touches paths, files, processes, the environment or git follows
+   `docs/PLATFORMS.md`, and uses the helpers it names (`paths`, `persist`, `names`, `repo/rpath.rs`,
+   `env_path`, …) rather than writing new ones.
 
 ## Recipe: adding a feature
 

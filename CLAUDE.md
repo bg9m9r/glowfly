@@ -40,6 +40,8 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/tr
 - Drawing: `ui/<region>.rs`. Views take `&mut AppState` only for text buffers and `view`
   state, plus `UiCache` for textures, and push `Msg`s for everything else. No I/O in views;
   `tests/layering.rs` checks.
+- Paths, files, processes, the environment or git calls: follow `docs/PLATFORMS.md` (the OS and
+  file-system rules and the helpers to use).
 - Settings: add a field with a default in `settings.rs` (`#[serde(default)]` keeps old files
   loading), then a control on the matching Preferences page.
 
