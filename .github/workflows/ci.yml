@@ -21,6 +21,21 @@ jobs:
       - name: Check
         shell: pwsh
         run: ./scripts/check.ps1
+      # Folder identity on a case-sensitive folder: `App` and `app` must stay two folders. Making
+      # one may need the WSL feature; without it the tests print a note and skip.
+      - name: Case-sensitive folder tests
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "trellis-cs"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          fsutil file setCaseSensitiveInfo $dir enable
+          if ($LASTEXITCODE -eq 0) {
+            $env:TRELLIS_TEST_CS_DIR = $dir
+          } else {
+            Write-Host "note: could not turn on case sensitivity for $dir; the case-sensitive checks skip"
+          }
+          cargo test --workspace case_twins -- --nocapture
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
   # Trellis is developed on Windows. These run the same lint and tests on macOS and Linux;
   # only the image comparisons in the view tests are skipped (the approved images are rendered
@@ -51,6 +66,14 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Tests
         run: cargo test --workspace --locked
+      # Folder identity on a case-sensitive APFS volume (the runner's own is case-insensitive):
+      # `App` and `app` must stay two folders.
+      - name: Case-sensitive volume tests
+        if: runner.os == 'macOS'
+        run: |
+          hdiutil create -size 200m -fs "Case-sensitive APFS" -volname cs "$RUNNER_TEMP/cs.dmg"
+          hdiutil attach "$RUNNER_TEMP/cs.dmg" -mountpoint "$RUNNER_TEMP/cs"
+          TRELLIS_TEST_CS_DIR="$RUNNER_TEMP/cs" cargo test --workspace --locked case_twins -- --nocapture
 
   # Known vulnerabilities, unmaintained crates and licenses of every dependency (deny.toml).
   deny:
