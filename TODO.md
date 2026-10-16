@@ -2,8 +2,9 @@
 
 What Trellis does today and what is planned next, roughly in priority order. Each item is a
 target to design, not a finished spec. A top-level item is the unit of work: it is ticked when
-its core behaviour works and every sub-item is done or moved to [Later](#later). New ideas,
-polish and follow-ups go to Later as plain bullets, not as new checkboxes.
+its core behaviour works and every sub-item is done or moved to [Later](#later). A substantial
+new feature becomes its own top-level item; smaller ideas, polish and follow-ups go to Later as
+plain bullets, and are built once the open items are done.
 
 Want to help? Pick an unticked item, open an issue to discuss the approach, then see
 [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -454,13 +455,34 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   and warn about overlapping files before you merge or open a PR.
 - [x] **External tools**
   Choose an editor, diff tool, merge tool and terminal (with custom commands); open the repo in
-  the editor. (Diff and merge tools are under Later.)
+  the editor. (Diff and merge tools are their own item below.)
   - [x] Editor (open a file or the repository) and a custom terminal command in Preferences > External Tools
 - [ ] **Notifications**
   Toasts for every operation exist. Missing: optional desktop notifications.
   - [x] "N commits behind" toast with Pull after a background fetch (UI Customization > Behind alerts)
   - [ ] Desktop (OS) notifications while the window is unfocused, for the behind alert and job
     results: an opt-in toggle with help text, confirmed once it is turned on
+
+- [ ] **Blame gutter**
+  Blame for a file: a gutter with author, date and commit per line (grouped by commit), opened
+  from file history, the file context menu and the palette's file finder; clicking a commit
+  selects it in the graph.
+- [ ] **Add and remove submodules**
+  - [ ] Add a submodule: URL, path and optional branch, through `git submodule add`, with checks
+    for a path that already exists or is already in the index
+  - [ ] Remove a submodule (deinit, `git rm`, clean its `.git/modules` entry) behind a
+    destructive confirmation
+- [ ] **External diff and merge tools**
+  - [ ] External diff tool: program and arguments ({local}, {remote}, {path}) in Preferences >
+    External Tools, opened from file rows and the diff header
+  - [ ] External merge tool: program and arguments ({base}, {ours}, {theirs}, {output}), and the
+    conflict view's Resolve in an external merge tool
+- [ ] **Rebind keyboard shortcuts**
+  Rebind keys in Preferences, saved in settings and matched through the shortcut table, with
+  conflict detection and reset to default.
+- [ ] **GPG passphrase prompts**
+  Ask for GPG passphrases for commit and tag signing in Trellis (a Trellis pinentry, or loopback
+  pinentry), like the existing SSH passphrase prompt.
 
 ## P2: integrations depth
 
@@ -532,7 +554,7 @@ These need a vendor account or cloud service rather than git:
 ## Later
 
 Ideas and polish beyond each item's core, grouped by the item they grew from. They are not
-tracked as checkboxes; treat them as candidates for future planning.
+tracked as checkboxes; they are built after the open items above, roughly in this order.
 
 ### Date/Time section
 
@@ -644,8 +666,6 @@ tracked as checkboxes; treat them as candidates for future planning.
 - Auto-resolve trivial conflicts (whitespace-only, or one side equal to the base), with a note
   that they were resolved automatically
 - Edit the output pane directly before saving
-- Resolve in an external merge tool (a configured merge tool command, launched with
-  base/ours/theirs/output files; see External tools)
 - Save the output while keeping conflict markers for chunks not picked yet
 - Mark several selected files resolved, Mark all resolved, and Mark conflicted (un-resolve,
   e.g. `git checkout -m <path>`)
@@ -659,8 +679,6 @@ tracked as checkboxes; treat them as candidates for future planning.
 
 ### File history and blame
 
-- Blame gutter with author, date and commit, opened from file history, the file context menu
-  and the palette's file finder
 - Start from HEAD when the file was renamed after the chosen commit (track renames forwards)
 - Refresh an open file history when HEAD moves (commit, checkout, pull, fetch)
 - Show the whole file at the selected commit (file view) as an alternative to its diff
@@ -715,7 +733,6 @@ tracked as checkboxes; treat them as candidates for future planning.
 
 ### Credential prompts
 
-- GPG passphrases for commit signing (a Trellis pinentry, or loopback pinentry)
 - Remember entered HTTPS credentials through `git credential approve` / the OS credential
   store, and reject them when they fail
 - Caps Lock warning on password fields (egui doesn't expose Caps Lock state yet)
@@ -841,7 +858,6 @@ tracked as checkboxes; treat them as candidates for future planning.
 
 - Topological next/previous (the next or previous commit on the selected commit's own branch
   line) and first/last row in the graph
-- Customization: rebind keys in Preferences, saved in settings, matched through the table
 - Match the older keys (tabs, undo/redo, F5, Ctrl+F, Ctrl+, , F7/Alt+arrows, the palette's
   keys) through the table too, so it is checked rather than kept in step by hand
 - A visible way to the shortcut sheet (a toolbar, status bar or Help entry naming Ctrl+/)
@@ -867,11 +883,7 @@ tracked as checkboxes; treat them as candidates for future planning.
 
 ### Submodules
 
-- Add a submodule: URL, path and optional branch, through `git submodule add`, with checks for
-  a path that already exists or is already in the index
 - Set a submodule's URL (`git submodule set-url`, then `git submodule sync`) and edit its branch
-- Remove a submodule (deinit, `git rm`, clean its `.git/modules` entry) behind a destructive
-  confirmation
 - "Keep submodules up to date": a General preference with a per-repository override (use global
   / on / off) that runs `git submodule update --init --recursive` after checkout, pull, merge,
   rebase and reset
@@ -1090,10 +1102,6 @@ tracked as checkboxes; treat them as candidates for future planning.
 
 ### External tools
 
-- External diff tool: program and arguments ({local}, {remote}, {path}), opened from file rows
-  and the diff header
-- External merge tool: program and arguments ({base}, {ours}, {theirs}, {output}), and the
-  conflict view's Resolve in an external merge tool
 - Open at the selected diff line: pass {line} from the diff or whole-file view
 - Presets for well-known editors and terminals (fill in the arguments when one is picked), and
   detecting installed ones
