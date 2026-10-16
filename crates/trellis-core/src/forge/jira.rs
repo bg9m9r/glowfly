@@ -2,7 +2,10 @@
 
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Issue, NewPullRequest, Provider, PullRequest, RefStyle, Target, enc, get};
+use super::{
+    Account, Auth, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, Provider, PullRequest, RefStyle, Target,
+    enc, get,
+};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 
@@ -25,9 +28,9 @@ pub(super) static JIRA_DATA_CENTER: ProviderInfo = ProviderInfo {
     ..DEFAULTS
 };
 
-const FIELDS: &str = "summary,status,issuetype,assignee";
+const FIELDS: &str = "summary,status,issuetype,assignee,labels,fixVersions";
 
-fn api(host: &str, provider: Provider) -> String {
+pub(super) fn api(host: &str, provider: Provider) -> String {
     let v = if provider == Provider::JiraCloud { 3 } else { 2 };
     format!("https://{host}/rest/api/{v}")
 }
@@ -52,10 +55,14 @@ struct Fields {
     status: Option<Named>,
     issuetype: Option<Named>,
     assignee: Option<User>,
+    #[serde(default)]
+    labels: Vec<String>,
+    #[serde(default, rename = "fixVersions")]
+    fix_versions: Vec<Named>,
 }
 
 #[derive(Deserialize)]
-struct ApiIssue {
+pub(super) struct ApiIssue {
     key: String,
     fields: Fields,
 }
@@ -91,7 +98,8 @@ struct ProjectPage {
     start_at: usize,
 }
 
-fn to_issue(host: &str, i: ApiIssue) -> Issue {
+pub(super) fn to_issue(host: &str, i: ApiIssue) -> Issue {
+    let milestone = i.fields.fix_versions.into_iter().next().map(|v| v.name);
     Issue {
         url: format!("https://{host}/browse/{}", i.key),
         key: i.key,
@@ -99,7 +107,26 @@ fn to_issue(host: &str, i: ApiIssue) -> Issue {
         state: i.fields.status.map(|s| s.name).unwrap_or_default(),
         kind: i.fields.issuetype.map(|s| s.name).unwrap_or_default(),
         assignee: i.fields.assignee.map(|a| a.display_name),
+        facets: IssueFacets { labels: i.fields.labels, milestone },
     }
+}
+
+/// Every issue the JQL query finds. Jira Cloud pages with a token, Data Center with a start index.
+pub(super) fn search(t: &Target, auth: &Auth, jql: &str) -> Result<Vec<Issue>> {
+    // Jira Cloud retired /search in favour of /search/jql.
+    let path = if t.provider == Provider::JiraCloud { "search/jql" } else { "search" };
+    let first = format!("{}/{path}?jql={}&fields={FIELDS}&maxResults=100", api(&t.host, t.provider), enc(jql));
+    let items = page::collect(first.clone(), |url| {
+        let s: Search = get(auth, url)?;
+        let read = s.start_at + s.issues.len();
+        let next = match (s.next_page_token, s.total) {
+            (Some(token), _) => Some(page::with_param(&first, "nextPageToken", &token)),
+            (None, Some(total)) if read < total => Some(page::with_param(&first, "startAt", &read.to_string())),
+            _ => None,
+        };
+        Ok(Page { items: s.issues, next })
+    })?;
+    Ok(items.into_iter().map(|i| to_issue(&t.host, i)).collect())
 }
 
 /// The Jira [`Forge`](super::Forge): an issue tracker only.
@@ -131,25 +158,15 @@ impl super::Forge for Jira {
 
     /// `t.project` optionally limits results to one project key.
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-        let mut jql = String::from("assignee = currentUser() AND statusCategory != Done");
-        if !t.project.trim().is_empty() {
-            jql.push_str(&format!(" AND project = \"{}\"", t.project.trim()));
-        }
-        jql.push_str(" ORDER BY updated DESC");
-        // Jira Cloud retired /search in favour of /search/jql.
-        let path = if t.provider == Provider::JiraCloud { "search/jql" } else { "search" };
-        let first = format!("{}/{path}?jql={}&fields={FIELDS}&maxResults=100", api(&t.host, t.provider), enc(&jql));
-        let items = page::collect(first.clone(), |url| {
-            let s: Search = get(auth, url)?;
-            let read = s.start_at + s.issues.len();
-            let next = match (s.next_page_token, s.total) {
-                (Some(token), _) => Some(page::with_param(&first, "nextPageToken", &token)),
-                (None, Some(total)) if read < total => Some(page::with_param(&first, "startAt", &read.to_string())),
-                _ => None,
-            };
-            Ok(Page { items: s.issues, next })
-        })?;
-        Ok(items.into_iter().map(|i| to_issue(&t.host, i)).collect())
+        search(t, auth, &super::filters::jira::jql(&super::Builtin::IssuesAssignedToMe.conditions(), &t.project))
+    }
+
+    fn find_issues(&self, t: &Target, auth: &Auth, c: &Conditions, _me: Option<&Me>) -> Result<Vec<Issue>> {
+        super::filters::jira::find_issues(t, auth, c)
+    }
+
+    fn filter_options(&self, t: &Target, auth: &Auth, kind: FilterKind) -> Result<FilterOptions> {
+        super::filters::jira::options(t, auth, kind)
     }
 
     /// Cloud pages through the project search; Data Center lists every project at once. A list
@@ -199,5 +216,14 @@ mod tests {
         assert_eq!((i.key.as_str(), i.state.as_str(), i.kind.as_str()), ("PROJ-12", "In Progress", "Bug"));
         assert_eq!(i.url, "https://acme.atlassian.net/browse/PROJ-12");
         assert_eq!(api("jira.acme.io", Provider::JiraDataCenter), "https://jira.acme.io/rest/api/2");
+    }
+
+    #[test]
+    fn issue_facets_from_labels_and_fix_versions() {
+        let i: ApiIssue = serde_json::from_str(
+            r#"{"key":"P-1","fields":{"summary":"S","labels":["ui","perf"],"fixVersions":[{"name":"2.0"},{"name":"2.1"}]}}"#,
+        )
+        .unwrap();
+        assert_eq!(to_issue("h", i).facets, IssueFacets { labels: vec!["ui".into(), "perf".into()], milestone: Some("2.0".into()) });
     }
 }

@@ -4,7 +4,10 @@ use super::checks::per_pr;
 use super::details::{PrDetails, checks_of};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Checks, Issue, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get, post};
+use super::{
+    Account, Auth, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, PullRequest, Reviewer,
+    Target, TipQuery, bitbucket_checks, enc, get, post,
+};
 use crate::error::Result;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -51,11 +54,16 @@ pub(super) fn cloud_list<T: DeserializeOwned>(auth: &Auth, first: String) -> Res
 }
 
 #[derive(Deserialize, Default)]
-struct CloudUser {
+pub(super) struct CloudUser {
     #[serde(default)]
-    display_name: String,
+    pub(super) display_name: String,
     #[serde(default)]
-    uuid: String,
+    pub(super) uuid: String,
+}
+
+#[derive(Deserialize)]
+pub(super) struct Name {
+    pub(super) name: String,
 }
 
 #[derive(Deserialize)]
@@ -115,6 +123,13 @@ struct CloudPr {
 }
 
 fn convert_cloud(p: CloudPr, checks: Option<Checks>) -> PullRequest {
+    let asked: Vec<&Participant> = p.participants.iter().filter(|x| x.role == "REVIEWER").collect();
+    let facets = PrFacets {
+        author_id: p.author.uuid.clone(),
+        reviewer_ids: asked.iter().map(|x| x.user.uuid.clone()).collect(),
+        awaiting_ids: asked.iter().filter(|x| !x.approved && x.state.is_none()).map(|x| x.user.uuid.clone()).collect(),
+        ..PrFacets::default()
+    };
     let reviewers = p
         .participants
         .into_iter()
@@ -142,11 +157,12 @@ fn convert_cloud(p: CloudPr, checks: Option<Checks>) -> PullRequest {
         merge_status: None,
         checks,
         url: p.links.html.href,
+        facets,
     }
 }
 
 #[derive(Deserialize)]
-struct CloudIssue {
+pub(super) struct CloudIssue {
     id: u64,
     title: String,
     #[serde(default)]
@@ -156,9 +172,11 @@ struct CloudIssue {
     #[serde(default)]
     assignee: Option<CloudUser>,
     links: Links,
+    #[serde(default)]
+    milestone: Option<Name>,
 }
 
-fn to_issue(i: CloudIssue) -> Issue {
+pub(super) fn to_issue(i: CloudIssue) -> Issue {
     Issue {
         key: i.id.to_string(),
         title: i.title,
@@ -166,6 +184,7 @@ fn to_issue(i: CloudIssue) -> Issue {
         kind: i.kind,
         assignee: i.assignee.map(|a| a.display_name),
         url: i.links.html.href,
+        facets: IssueFacets { labels: Vec::new(), milestone: i.milestone.map(|m| m.name) },
     }
 }
 
@@ -245,6 +264,18 @@ impl super::Forge for Bitbucket {
     fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
         super::forks::bitbucket::cloud(t, auth)
     }
+
+    fn me(&self, _t: &Target, auth: &Auth) -> Result<Me> {
+        super::filters::bitbucket::me(auth)
+    }
+
+    fn find_issues(&self, t: &Target, auth: &Auth, c: &Conditions, me: Option<&Me>) -> Result<Vec<Issue>> {
+        super::filters::bitbucket::find_issues(t, auth, c, me)
+    }
+
+    fn filter_options(&self, t: &Target, auth: &Auth, kind: FilterKind) -> Result<FilterOptions> {
+        super::filters::bitbucket::options(t, auth, kind)
+    }
 }
 
 #[cfg(test)]
@@ -262,5 +293,21 @@ mod tests {
         let pr = convert_cloud(p.values.into_iter().next().unwrap(), None);
         assert_eq!((pr.id, pr.source.as_str(), pr.approvals(), pr.reviewers.len()), (12, "7-fix", 1, 1));
         assert!(pr.head_matches("0123456789abcdef0000"));
+    }
+
+    #[test]
+    fn cloud_facets_use_account_uuids() {
+        let p: CloudPr = serde_json::from_str(
+            r#"{"id":1,"title":"T","source":{"branch":{"name":"x"}},"destination":{"branch":{"name":"main"}},
+            "author":{"display_name":"Ada","uuid":"{a}"},"links":{"html":{"href":"u"}},
+            "participants":[{"user":{"uuid":"{g}"},"role":"REVIEWER","approved":true},{"user":{"uuid":"{l}"},"role":"REVIEWER"},
+            {"user":{"uuid":"{b}"},"role":"PARTICIPANT"}]}"#,
+        )
+        .unwrap();
+        let f = convert_cloud(p, None).facets;
+        assert_eq!((f.author_id.as_str(), f.reviewer_ids.len(), f.awaiting_ids), ("{a}", 2, vec!["{l}".to_owned()]));
+        let i: CloudIssue =
+            serde_json::from_str(r#"{"id":3,"title":"C","links":{"html":{"href":"u"}},"milestone":{"name":"m1"}}"#).unwrap();
+        assert_eq!(to_issue(i).facets.milestone.as_deref(), Some("m1"));
     }
 }

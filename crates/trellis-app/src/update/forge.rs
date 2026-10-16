@@ -149,6 +149,7 @@ pub(super) fn refresh(st: &mut AppState, force: bool, interactive: bool, now: In
     if let (Some(t), false) = (tracker, same) {
         request(st, t, interactive, ForgeCall::MyIssues { project_keys }, fx);
     }
+    super::forge_filters::refresh(st, fx);
 }
 
 /// Fetches issues that are mentioned but not cached yet.
@@ -243,11 +244,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
                     }
                 }
             }
-            ForgeResult::DefaultBranch(b) => {
-                if b.is_some() {
-                    fs.default_branch = b;
-                }
-            }
+            ForgeResult::DefaultBranch(b) => fs.default_branch = b.or(fs.default_branch.take()),
             ForgeResult::Created(Ok(pr)) => {
                 logs.push((true, format!("Created {} {} {}\n{}", fs.pr_noun(), fs.pr_label(pr.id), pr.title, pr.url)));
                 fs.prs.insert(0, *pr);
@@ -262,6 +259,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
                 // Left unknown, so the next refresh asks again.
                 Err(e) => tracing::debug!("Jira project keys: {}", e.message),
             },
+            ForgeResult::Filter(r) => super::forge_filters::replied(fs, r, &key),
         }
     }
     for (ok, text) in logs {

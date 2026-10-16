@@ -177,6 +177,7 @@ fn with_issue(st: &mut AppState) {
         kind: "Issue".into(),
         assignee: Some("ada".into()),
         url: "https://github.com/o/r/issues/12".into(),
+        facets: Default::default(),
     }];
     st.forge = Some(f);
 }

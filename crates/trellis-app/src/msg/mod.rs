@@ -18,6 +18,7 @@ mod branch;
 mod diff;
 mod files;
 mod forge;
+mod forge_filters;
 mod graph;
 mod init;
 mod keys;
@@ -37,6 +38,7 @@ pub use branch::{BranchMsg, CloneMsg};
 pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
 pub use files::{FilesMsg, WorkFileMsg, not_opened, restore_failed};
 pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
+pub use forge_filters::FilterMsg;
 pub use graph::{AvatarMsg, GraphMsg, PathsChunk, SearchMsg, SelectionMsg};
 pub use init::InitMsg;
 pub use keys::KeysMsg;
@@ -120,6 +122,9 @@ pub enum Msg {
     PullRequest(crate::pull_request::PullRequestMsg),
     /// Hosting services: pull requests, issues, connections (update/forge.rs).
     Forge(ForgeMsg),
+    /// PR and issue filters: header pickers and the saved-filter dialog (update/forge_filters.rs,
+    /// update/forge_filter_edit.rs).
+    ForgeFilter(FilterMsg),
     /// Publishing a repository with no remote (update/publish.rs).
     Publish(PublishMsg),
     /// Credential prompts from git and ssh (update/askpass.rs).
@@ -239,6 +244,7 @@ impl Msg {
             Msg::ConflictCheck(m) => m.on_inactive(),
             Msg::PullRequest(m) => m.on_inactive(),
             Msg::Forge(m) => m.on_inactive(),
+            Msg::ForgeFilter(m) => m.on_inactive(),
             Msg::Publish(m) => m.on_inactive(),
             Msg::Credentials(m) => m.on_inactive(),
             Msg::Prefs(m) => m.on_inactive(),

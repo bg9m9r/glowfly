@@ -8,6 +8,7 @@ mod azure_remote;
 mod bitbucket;
 mod bitbucket_checks;
 mod bitbucket_dc;
+pub mod filters;
 mod github;
 mod github_checks;
 mod gitlab;
@@ -41,6 +42,7 @@ pub use auth::{
 pub use checks::{CHECKED_PRS, CheckState, Checks, TipQuery};
 use checks::{TIPS_PER_CALL, full_sha};
 pub use details::{DETAILS_PER_CALL, PrDetails};
+pub use filters::{Builtin, Conditions, FilterChoice, FilterKind, FilterOptions, IssueFacets, Me, PrFacets, SavedFilter};
 pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find_my_fork, list_forks, remote_name_for, same_repository};
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
@@ -150,6 +152,8 @@ pub struct PullRequest {
     pub checks: Option<Checks>,
     /// Web page; empty when the service sent no usable link.
     pub url: String,
+    /// What filters match on.
+    pub facets: PrFacets,
 }
 
 impl PullRequest {
@@ -171,6 +175,7 @@ pub struct Issue {
     pub kind: String,
     pub assignee: Option<String>,
     pub url: String,
+    pub facets: IssueFacets,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -256,6 +261,21 @@ pub trait Forge: Sync {
     /// The signed-in user and the fork of this repository they already have.
     fn my_fork(&self, _t: &Target, _auth: &Auth) -> Result<ForkLookup> {
         Err(Error::Unsupported("finding your fork isn't supported on this service".into()))
+    }
+
+    /// The signed-in user, by the ids `PrFacets` carry.
+    fn me(&self, _t: &Target, _auth: &Auth) -> Result<Me> {
+        Err(Error::Unsupported("finding your account isn't supported on this service".into()))
+    }
+
+    /// Open issues matching `c` (conditions the service can't apply are refused earlier).
+    fn find_issues(&self, _t: &Target, _auth: &Auth, _c: &Conditions, _me: Option<&Me>) -> Result<Vec<Issue>> {
+        Err(Error::Unsupported("searching issues isn't supported on this service".into()))
+    }
+
+    /// Labels, milestones and sprints for the filter dialog's pickers.
+    fn filter_options(&self, _t: &Target, _auth: &Auth, _kind: FilterKind) -> Result<FilterOptions> {
+        Ok(FilterOptions::default())
     }
 
     /// Forks this repository into the signed-in user's account, waiting (per `wait`) until it

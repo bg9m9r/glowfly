@@ -7,7 +7,8 @@ use super::http::get_paged;
 use super::page::{self, MAX_ITEMS, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Issue, NewPullRequest, PullRequest, RefStyle, Reviewer, Target, TipQuery, azure_checks, enc, get, post,
+    Account, Auth, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, PullRequest, RefStyle,
+    Reviewer, Target, TipQuery, azure_checks, enc, get, post,
 };
 use crate::error::{Error, Result};
 use serde::Deserialize;
@@ -48,8 +49,8 @@ pub fn work_item_url(t: &Target, key: &str) -> String {
 }
 
 #[derive(Deserialize)]
-struct List<T> {
-    value: Vec<T>,
+pub(super) struct List<T> {
+    pub(super) value: Vec<T>,
 }
 
 #[derive(Deserialize, Default)]
@@ -57,6 +58,13 @@ struct List<T> {
 struct Identity {
     #[serde(default)]
     display_name: String,
+    #[serde(default)]
+    id: String,
+}
+
+#[derive(Deserialize)]
+pub(super) struct Name {
+    pub(super) name: String,
 }
 
 #[derive(Deserialize)]
@@ -64,6 +72,11 @@ struct Identity {
 struct ApiReviewer {
     #[serde(default)]
     display_name: String,
+    #[serde(default)]
+    id: String,
+    /// A group or team rather than a person.
+    #[serde(default)]
+    is_container: bool,
     #[serde(default)]
     vote: i32,
     #[serde(default)]
@@ -97,6 +110,8 @@ struct ApiPr {
     last_merge_source_commit: Option<CommitRef>,
     #[serde(default)]
     repository: Option<ApiRepo>,
+    #[serde(default)]
+    labels: Vec<Name>,
 }
 
 #[derive(Deserialize)]
@@ -131,6 +146,14 @@ fn vote_label(vote: i32) -> &'static str {
 }
 
 fn convert(t: &Target, p: ApiPr, checks: Option<Checks>) -> PullRequest {
+    let people = || p.reviewers.iter().filter(|r| !r.is_container);
+    let facets = PrFacets {
+        author_id: p.created_by.id.clone(),
+        reviewer_ids: people().map(|r| r.id.clone()).collect(),
+        awaiting_ids: people().filter(|r| r.vote == 0).map(|r| r.id.clone()).collect(),
+        labels: p.labels.iter().map(|l| l.name.clone()).collect(),
+        ..PrFacets::default()
+    };
     PullRequest {
         id: p.pull_request_id,
         url: pr_url(t, p.pull_request_id),
@@ -148,6 +171,7 @@ fn convert(t: &Target, p: ApiPr, checks: Option<Checks>) -> PullRequest {
         head: p.last_merge_source_commit.map(|c| c.commit_id),
         merge_status: p.merge_status,
         checks,
+        facets,
     }
 }
 
@@ -161,6 +185,9 @@ struct Fields {
     kind: String,
     #[serde(rename = "System.AssignedTo", default)]
     assigned_to: Option<Identity>,
+    /// "a; b"
+    #[serde(rename = "System.Tags", default)]
+    tags: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -178,7 +205,46 @@ fn to_issue(t: &Target, w: WorkItem) -> Issue {
         state: w.fields.state,
         kind: w.fields.kind,
         assignee: w.fields.assigned_to.map(|a| a.display_name),
+        facets: IssueFacets { labels: super::filters::azure::tags(w.fields.tags.as_deref()), milestone: None },
     }
+}
+
+/// Open work items in this project matching the WIQL `where` clause, most recently changed first.
+pub(super) fn wiql(t: &Target, auth: &Auth, where_clause: &str) -> Result<Vec<Issue>> {
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Wiql {
+        #[serde(default)]
+        work_items: Vec<Ref>,
+    }
+    #[derive(Deserialize)]
+    struct Ref {
+        id: u32,
+    }
+    let query = format!("SELECT [System.Id] FROM WorkItems WHERE {where_clause} ORDER BY [System.ChangedDate] DESC");
+    let result: Wiql =
+        post(auth, &format!("{}/_apis/wit/wiql?$top={MAX_ITEMS}&api-version={V}", project_base(t)), json!({ "query": query }))?;
+    let ids: Vec<String> = result.work_items.iter().map(|w| w.id.to_string()).collect();
+    let mut items = work_items(t, auth, &ids)?;
+    items.sort_by_key(|w| ids.iter().position(|i| *i == w.key));
+    Ok(items)
+}
+
+fn work_items(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
+    let ids: Vec<&String> = keys.iter().filter(|k| k.parse::<u32>().is_ok()).collect();
+    let mut out = Vec::new();
+    // The batch endpoint accepts at most 200 ids per call.
+    for chunk in ids.chunks(200) {
+        let list: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
+        let url = format!(
+            "{}/_apis/wit/workitems?ids={}&fields=System.Title,System.State,System.WorkItemType,System.AssignedTo,System.Tags&errorPolicy=omit&api-version={V}",
+            project_base(t),
+            list.join(",")
+        );
+        // With errorPolicy=omit, ids that do not exist come back as null entries.
+        out.extend(get::<List<Option<WorkItem>>>(auth, &url)?.value.into_iter().flatten().map(|w| to_issue(t, w)));
+    }
+    Ok(out)
 }
 
 /// The AzureDevOps [`Forge`](super::Forge).
@@ -284,43 +350,23 @@ impl super::Forge for AzureDevOps {
 
     /// Open work items assigned to the signed-in user in this project, most recently changed first.
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
-        #[derive(Deserialize)]
-        #[serde(rename_all = "camelCase")]
-        struct Wiql {
-            #[serde(default)]
-            work_items: Vec<Ref>,
-        }
-        #[derive(Deserialize)]
-        struct Ref {
-            id: u32,
-        }
-        let query = "SELECT [System.Id] FROM WorkItems \
-            WHERE [System.TeamProject] = @project AND [System.AssignedTo] = @Me \
-            AND [System.State] NOT IN ('Closed', 'Done', 'Removed') \
-            ORDER BY [System.ChangedDate] DESC";
-        let result: Wiql =
-            post(auth, &format!("{}/_apis/wit/wiql?$top={MAX_ITEMS}&api-version={V}", project_base(t)), json!({ "query": query }))?;
-        let ids: Vec<String> = result.work_items.iter().map(|w| w.id.to_string()).collect();
-        let mut items = self.issues(t, auth, &ids)?;
-        items.sort_by_key(|w| ids.iter().position(|i| *i == w.key));
-        Ok(items)
+        wiql(t, auth, &super::filters::azure::wiql_where(&super::Builtin::IssuesAssignedToMe.conditions()))
     }
 
     fn issues(&self, t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
-        let ids: Vec<&String> = keys.iter().filter(|k| k.parse::<u32>().is_ok()).collect();
-        let mut out = Vec::new();
-        // The batch endpoint accepts at most 200 ids per call.
-        for chunk in ids.chunks(200) {
-            let list: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
-            let url = format!(
-                "{}/_apis/wit/workitems?ids={}&fields=System.Title,System.State,System.WorkItemType,System.AssignedTo&errorPolicy=omit&api-version={V}",
-                project_base(t),
-                list.join(",")
-            );
-            // With errorPolicy=omit, ids that do not exist come back as null entries.
-            out.extend(get::<List<Option<WorkItem>>>(auth, &url)?.value.into_iter().flatten().map(|w| to_issue(t, w)));
-        }
-        Ok(out)
+        work_items(t, auth, keys)
+    }
+
+    fn me(&self, t: &Target, auth: &Auth) -> Result<Me> {
+        super::filters::azure::me(t, auth)
+    }
+
+    fn find_issues(&self, t: &Target, auth: &Auth, c: &Conditions, _me: Option<&Me>) -> Result<Vec<Issue>> {
+        super::filters::azure::find_issues(t, auth, c)
+    }
+
+    fn filter_options(&self, t: &Target, auth: &Auth, kind: FilterKind) -> Result<FilterOptions> {
+        super::filters::azure::options(t, auth, kind)
     }
 }
 
@@ -350,5 +396,19 @@ mod tests {
         .unwrap();
         let issue = to_issue(&t, items.value.into_iter().flatten().next().unwrap());
         assert_eq!((issue.key.as_str(), issue.kind.as_str(), issue.assignee.as_deref()), ("5", "User Story", Some("Ada")));
+
+        // Filter facets: identity ids (not groups), labels and tags.
+        let p: ApiPr = serde_json::from_str(
+            r#"{"pullRequestId":1,"title":"T","sourceRefName":"refs/heads/x","targetRefName":"refs/heads/main","createdBy":{"id":"a-1"},
+            "reviewers":[{"id":"g-1","vote":0},{"id":"l-1","vote":10},{"id":"team","vote":0,"isContainer":true}],"labels":[{"name":"ux"}]}"#,
+        )
+        .unwrap();
+        let f = convert(&t, p, None).facets;
+        assert_eq!(
+            (f.author_id.as_str(), f.awaiting_ids, f.reviewer_ids.len(), f.labels),
+            ("a-1", vec!["g-1".to_owned()], 2, vec!["ux".to_owned()])
+        );
+        let w: WorkItem = serde_json::from_str(r#"{"id":5,"fields":{"System.Title":"L","System.Tags":"ux; needs design;"}}"#).unwrap();
+        assert_eq!(to_issue(&t, w).facets.labels, ["ux", "needs design"]);
     }
 }

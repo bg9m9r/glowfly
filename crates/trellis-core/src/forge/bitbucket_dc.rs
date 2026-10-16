@@ -5,7 +5,10 @@ use super::checks::{full_sha, per_pr};
 use super::details::{PrDetails, checks_of};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Checks, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get, get_text, post};
+use super::{
+    Account, Auth, Checks, Me, NewPullRequest, PrFacets, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get, get_text,
+    post,
+};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -51,6 +54,9 @@ struct DcRef {
 struct DcUser {
     #[serde(default)]
     display_name: String,
+    /// The username (slug), which whoami answers with.
+    #[serde(default)]
+    name: String,
 }
 
 #[derive(Deserialize)]
@@ -84,6 +90,12 @@ struct DcPr {
 }
 
 fn convert_dc(p: DcPr, checks: Option<Checks>) -> PullRequest {
+    let facets = PrFacets {
+        author_id: p.author.user.name.clone(),
+        reviewer_ids: p.reviewers.iter().map(|r| r.user.name.clone()).collect(),
+        awaiting_ids: p.reviewers.iter().filter(|r| r.status == "UNAPPROVED").map(|r| r.user.name.clone()).collect(),
+        ..PrFacets::default()
+    };
     PullRequest {
         id: p.id,
         title: p.title,
@@ -108,6 +120,7 @@ fn convert_dc(p: DcPr, checks: Option<Checks>) -> PullRequest {
         merge_status: None,
         checks,
         url: p.links.this.into_iter().next().map(|h| h.href).unwrap_or_default(),
+        facets,
     }
 }
 
@@ -186,6 +199,10 @@ impl super::Forge for BitbucketDc {
     fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
         super::forks::bitbucket::data_center(t, auth)
     }
+
+    fn me(&self, t: &Target, auth: &Auth) -> Result<Me> {
+        super::filters::bitbucket::dc_me(t, auth)
+    }
 }
 
 #[cfg(test)]
@@ -206,5 +223,17 @@ mod tests {
             ("PROJ-1-port", "master", "changes requested")
         );
         assert!(pr.url.ends_with("/pull-requests/3"));
+    }
+
+    #[test]
+    fn unapproved_reviewers_are_awaited() {
+        let p: DcPr = serde_json::from_str(
+            r#"{"id":3,"title":"Port","fromRef":{"displayId":"a"},"toRef":{"displayId":"master"},
+            "author":{"user":{"displayName":"Ada","name":"ada"}},"reviewers":[{"user":{"name":"linus"},"status":"UNAPPROVED"},
+            {"user":{"name":"grace"},"status":"APPROVED"}],"links":{"self":[]}}"#,
+        )
+        .unwrap();
+        let f = convert_dc(p, None).facets;
+        assert_eq!((f.author_id.as_str(), f.reviewer_ids.len(), f.awaiting_ids), ("ada", 2, vec!["linus".to_owned()]));
     }
 }

@@ -14,6 +14,8 @@ pub mod conflict_check;
 pub mod diff_nav;
 pub mod files;
 mod forge;
+pub mod forge_filter_form;
+pub mod forge_filters;
 pub mod forks;
 pub mod git_env;
 pub mod gitflow;
@@ -176,6 +178,7 @@ pub enum Modal {
     CreateFork(Box<forks::ForkCreate>),
     Trust(trust::TrustPrompt),
     ConflictReport(conflict_check::ConflictReport),
+    ForgeFilter(Box<forge_filter_form::FilterForm>),
 }
 
 /// The most commits "Load more" goes up to.

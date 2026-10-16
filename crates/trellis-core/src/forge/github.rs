@@ -2,7 +2,10 @@
 
 use super::github_checks;
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Checks, Issue, NewPullRequest, Provider, PullRequest, Reviewer, Target, enc, get, page, post};
+use super::{
+    Account, Auth, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, Provider, PullRequest,
+    Reviewer, Target, enc, get, page, post,
+};
 use crate::error::Result;
 use serde::Deserialize;
 use serde_json::json;
@@ -44,7 +47,7 @@ pub(super) fn repo_api(t: &Target) -> String {
 pub(super) struct User {
     pub(super) login: String,
     #[serde(default)]
-    name: Option<String>,
+    pub(super) name: Option<String>,
 }
 
 pub(super) fn me(host: &str, provider: Provider, auth: &Auth) -> Result<User> {
@@ -60,8 +63,13 @@ struct Ref {
 }
 
 #[derive(Deserialize)]
-struct Login {
-    login: String,
+pub(super) struct Login {
+    pub(super) login: String,
+}
+
+#[derive(Deserialize)]
+pub(super) struct Title {
+    pub(super) title: String,
 }
 
 #[derive(Deserialize)]
@@ -78,6 +86,12 @@ struct ApiPr {
     base: Ref,
     #[serde(default)]
     requested_reviewers: Vec<Login>,
+    #[serde(default)]
+    labels: Vec<Label>,
+    #[serde(default)]
+    assignees: Vec<Login>,
+    #[serde(default)]
+    milestone: Option<Title>,
 }
 
 #[derive(Deserialize)]
@@ -109,11 +123,20 @@ fn convert(p: ApiPr, d: Details) -> PullRequest {
         states.retain(|(u, _)| *u != user.login);
         states.push((user.login, label.into()));
     }
+    let awaiting_ids: Vec<String> = p.requested_reviewers.iter().map(|r| r.login.clone()).collect();
     for r in p.requested_reviewers {
         if !states.iter().any(|(u, _)| *u == r.login) {
             states.push((r.login, "requested".into()));
         }
     }
+    let facets = PrFacets {
+        author_id: p.user.login.clone(),
+        assignee_ids: p.assignees.into_iter().map(|a| a.login).collect(),
+        reviewer_ids: states.iter().map(|(u, _)| u.clone()).collect(),
+        awaiting_ids,
+        labels: p.labels.into_iter().map(|l| l.name).collect(),
+        milestone: p.milestone.map(|m| m.title),
+    };
     PullRequest {
         id: p.number,
         title: p.title,
@@ -127,6 +150,7 @@ fn convert(p: ApiPr, d: Details) -> PullRequest {
         merge_status: None,
         checks: d.checks,
         url: p.html_url,
+        facets,
     }
 }
 
@@ -172,12 +196,12 @@ fn details(t: &Target, auth: &Auth, numbers: &[u64]) -> HashMap<u64, Details> {
 }
 
 #[derive(Deserialize)]
-struct Label {
-    name: String,
+pub(super) struct Label {
+    pub(super) name: String,
 }
 
 #[derive(Deserialize)]
-struct ApiIssue {
+pub(super) struct ApiIssue {
     number: u64,
     title: String,
     state: String,
@@ -186,19 +210,23 @@ struct ApiIssue {
     labels: Vec<Label>,
     #[serde(default)]
     assignee: Option<Login>,
+    #[serde(default)]
+    milestone: Option<Title>,
     /// Present when the "issue" is actually a pull request.
     #[serde(default)]
-    pull_request: Option<serde_json::Value>,
+    pub(super) pull_request: Option<serde_json::Value>,
 }
 
-fn to_issue(i: ApiIssue) -> Issue {
+pub(super) fn to_issue(i: ApiIssue) -> Issue {
+    let labels: Vec<String> = i.labels.into_iter().map(|l| l.name).collect();
     Issue {
         key: i.number.to_string(),
         title: i.title,
         state: i.state,
-        kind: i.labels.into_iter().next().map(|l| l.name).unwrap_or_else(|| "Issue".into()),
+        kind: labels.first().cloned().unwrap_or_else(|| "Issue".into()),
         assignee: i.assignee.map(|a| a.login),
         url: i.html_url,
+        facets: IssueFacets { labels, milestone: i.milestone.map(|m| m.title) },
     }
 }
 
@@ -256,6 +284,18 @@ impl super::Forge for GitHub {
 
     fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
         super::forks::github::list(t, auth)
+    }
+
+    fn me(&self, t: &Target, auth: &Auth) -> Result<Me> {
+        super::filters::github::me(t, auth)
+    }
+
+    fn find_issues(&self, t: &Target, auth: &Auth, c: &Conditions, me: Option<&Me>) -> Result<Vec<Issue>> {
+        super::filters::github::find_issues(t, auth, c, me)
+    }
+
+    fn filter_options(&self, t: &Target, auth: &Auth, _kind: FilterKind) -> Result<FilterOptions> {
+        super::filters::github::options(t, auth)
     }
 
     fn my_fork(&self, t: &Target, auth: &Auth) -> Result<super::ForkLookup> {
@@ -324,5 +364,29 @@ mod tests {
         let t = super::super::parse_remote("https://github.com/%2E%2E/r", &[]).unwrap();
         assert_eq!(repo_api(&t), "https://api.github.com/repos/%2E%2E/r");
         assert_eq!(t.issue_url("1/../x"), "https://github.com/%2E%2E/r/issues/1%2F..%2Fx");
+    }
+
+    #[test]
+    fn fills_filter_facets() {
+        let p: ApiPr = serde_json::from_str(
+            r#"{"number":4,"title":"T","html_url":"u","user":{"login":"ada"},"head":{"ref":"x","sha":""},"base":{"ref":"main","sha":""},
+            "requested_reviewers":[{"login":"linus"}],"labels":[{"name":"bug"}],"assignees":[{"login":"grace"}],"milestone":{"title":"v1"}}"#,
+        )
+        .unwrap();
+        let reviews: Vec<Review> = serde_json::from_str(r#"[{"user":{"login":"bob"},"state":"APPROVED"}]"#).unwrap();
+        let f = convert(p, Details { reviews, checks: None }).facets;
+        assert_eq!(
+            (f.author_id.as_str(), f.assignee_ids.as_slice(), f.milestone.as_deref()),
+            ("ada", &["grace".to_owned()][..], Some("v1"))
+        );
+        assert_eq!(
+            (f.reviewer_ids, f.awaiting_ids, f.labels),
+            (vec!["bob".into(), "linus".into()], vec!["linus".into()], vec!["bug".into()])
+        );
+        let i: ApiIssue = serde_json::from_str(
+            r#"{"number":9,"title":"C","state":"open","html_url":"u","labels":[{"name":"bug"},{"name":"ui"}],"milestone":{"title":"v2"}}"#,
+        )
+        .unwrap();
+        assert_eq!(to_issue(i).facets, IssueFacets { labels: vec!["bug".into(), "ui".into()], milestone: Some("v2".into()) });
     }
 }

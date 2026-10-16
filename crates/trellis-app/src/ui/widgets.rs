@@ -70,6 +70,8 @@ pub enum Icon {
     Into,
     /// A speech bubble: code comment threads (pull request panel).
     Comment,
+    /// A pencil: edit an entry (the font lacks a pencil glyph).
+    Pencil,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -225,7 +227,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
-        Icon::ExternalDiff | Icon::Into | Icon::Comment => {}                                                                  // icons.rs
+        Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil => {}                                                                  // icons.rs
     }
 }
 

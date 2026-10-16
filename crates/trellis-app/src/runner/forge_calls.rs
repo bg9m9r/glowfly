@@ -67,6 +67,7 @@ pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: 
             vec![ForgeResult::TipChecks(tips, r)]
         }
         ForgeCall::PrDetails(prs) => vec![ForgeResult::PrDetails(forge::pr_details(t, &auth, &prs).map_err(ForgeError::from))],
+        ForgeCall::Filter(c) => vec![ForgeResult::Filter(super::forge_filter_calls::call(t, &auth, c))],
     };
     ForgeReply { target, auth: Some(auth), results }
 }

@@ -22,6 +22,7 @@ pub enum ForgeCall {
     /// The next chunk of the second pass: checks and votes of pull requests past the first
     /// `CHECKED_PRS` (up to `DETAILS_PER_CALL`).
     PrDetails(Vec<PullRequest>),
+    Filter(super::FilterCall),
 }
 
 /// A hosting-service failure, flagged when signing in again could fix it.
@@ -51,6 +52,7 @@ pub enum ForgeResult {
     PrDetails(Result<Vec<PrDetails>, ForgeError>),
     /// A Jira site's project keys; None when it has too many to list.
     ProjectKeys(Result<Option<Vec<String>>, ForgeError>),
+    Filter(super::FilterResult),
 }
 
 #[derive(Debug)]

@@ -39,6 +39,7 @@ mod conflict_check;
 mod expect;
 pub(crate) mod files;
 mod forge_calls;
+mod forge_filter_calls;
 mod forks;
 mod git_env;
 mod git_ops;

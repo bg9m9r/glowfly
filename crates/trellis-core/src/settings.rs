@@ -7,6 +7,7 @@ use std::ops::RangeInclusive;
 
 mod column_widths;
 mod file;
+mod forge_filters;
 mod graph_filter;
 mod paths;
 mod profiles;
@@ -19,6 +20,7 @@ mod trust;
 mod zoom;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use file::{LoadProblem, settings_file};
+pub use forge_filters::RepoForgeFilters;
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{cache_dir, config_dir, home_dir, migrate_old_config_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
@@ -251,6 +253,10 @@ pub struct Settings {
     /// Hidden and soloed refs per repository, keyed by its resolved working directory (`repo_keys`).
     #[serde(default)]
     pub graph_filters: HashMap<String, GraphFilter>,
+    /// Saved pull request and issue filters and the ones shown, per repository, keyed by its
+    /// resolved working directory (`repo_keys`).
+    #[serde(default)]
+    pub repo_forge_filters: HashMap<String, RepoForgeFilters>,
     /// Trust decisions per repository, keyed by its resolved working directory
     /// (`Snapshot::real_workdir`, through `repo_keys`); a repository with no entry is undecided.
     #[serde(default)]
@@ -333,6 +339,7 @@ impl Default for Settings {
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),
+            repo_forge_filters: HashMap::new(),
             repo_trust: HashMap::new(),
             favorite_repos: Vec::new(),
             external_tools: ExternalTools::default(),

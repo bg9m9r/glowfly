@@ -131,6 +131,7 @@ mod tests {
             merge_status: None,
             checks: Some(Checks { url: url.into(), ..Checks::from_counts(1, 0, 0, true) }),
             url: String::new(),
+            facets: Default::default(),
         };
         let gh = t(Provider::GitHub, "github.com");
         assert_eq!(pr(&gh, pr_with("http://ci.example.com/1")).checks.unwrap().url, "");

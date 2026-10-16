@@ -517,7 +517,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Open the failing (or latest) build's page in the browser from the PR row menu or tooltip
 - [x] **"Push and start a PR"**
   One action to push a branch and open the create-PR dialog; start a PR from a remote branch.
-- [ ] **PR and issue filters**
+- [x] **PR and issue filters**
   Saved filters: mine, needs my review, assigned, mentioned, labels, milestones, sprints.
 - [ ] **Create and view issues**
   Create an issue (type, labels, assignees, epic); an issue detail panel with description and
@@ -1346,6 +1346,22 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Re-read pending pull request checks sooner than the 5-minute refresh
 - A desktop notification when a build on the checked-out branch finishes
 - A Preferences switch to turn off branch-tip status requests
+
+### PR and issue filters
+
+- Azure Boards iterations (the current or a named iteration) as a sprint condition for work items
+- A typed filter query (author:, label:, base:, draft:, review:) with a syntax reference, as an
+  alternative to the form
+- Conditions on other people: author, assignee or reviewer by name, involves, reviewed by
+- Team and group review requests counting as Needs my review (GitHub teams, Azure groups)
+- Pull request conditions on CI status, review outcome and created or updated dates
+- Issue filters for closed or all states, and a choice of sort order
+- Saved filters shared by every repository, and importing and exporting filters
+- Palette commands and a shortcut for switching the shown pull request or issue filter
+- Searching closed or merged pull requests on the service (filters only narrow the open list)
+- Label suggestions on Jira Data Center; fix versions and sprints without a Jira project set
+- Mentions on trackers that can't search by them (GitLab to-dos, Jira watchers or comments)
+- A fuller search for Azure's Mentioning me, which covers only the last 30 days
 
 ### Limits found while building integrations
 

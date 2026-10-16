@@ -54,6 +54,8 @@ pub struct ForgeState {
     pub details: PrDetailPass,
     /// The Jira tracker's project keys.
     pub jira_projects: ProjectKeys,
+    /// The signed-in user, issue searches and dialog options of PR and issue filters.
+    pub filters: super::forge_filters::FilterState,
 }
 
 impl ForgeState {
@@ -77,6 +79,7 @@ impl ForgeState {
             open_after_load: None,
             details: PrDetailPass::default(),
             jira_projects: ProjectKeys::Unknown,
+            filters: Default::default(),
         }
     }
 
@@ -87,6 +90,7 @@ impl ForgeState {
         self.details.in_flight = false;
         self.details.asking.clear();
         self.details.queue.clear();
+        self.filters.replies_dropped();
     }
 
     pub fn pr_for_branch(&self, branch: &str) -> Option<&PullRequest> {

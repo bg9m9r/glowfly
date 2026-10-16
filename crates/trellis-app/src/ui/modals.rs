@@ -10,8 +10,9 @@
 //! (drawn by `gitflow_finish_dialog.rs`), adding or editing a remote (drawn by
 //! `remotes/dialog.rs`), adding a fork as a remote and forking on the hosting service (drawn by
 //! `remotes/fork_pick.rs` and `remotes/fork_create.rs`), the keyboard shortcut sheet (drawn by
-//! `shortcuts/sheet.rs`), the repository trust prompt (drawn by `trust_dialog.rs`) and a conflict
-//! check's report (drawn by `conflict_check.rs`).
+//! `shortcuts/sheet.rs`), the repository trust prompt (drawn by `trust_dialog.rs`), a conflict
+//! check's report (drawn by `conflict_check.rs`) and a pull request or issue filter (drawn by
+//! `forge_filter_dialog.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -37,6 +38,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let push_tags = st.settings.push_new_tags;
     let connections = &st.settings.connections;
     let keys = &st.keymap;
+    let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
     let first = msgs.len();
     let resp = egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
@@ -192,6 +194,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 let remote = snap.is_some_and(|s| crate::state::conflict_check::is_remote(s, &r.request.target));
                 let on_head = snap.is_some_and(|s| crate::state::conflict_check::for_head(r, s));
                 if super::conflict_check::report_modal(ui, r, remote, on_head, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::ForgeFilter(form) => {
+                if super::forge_filter_dialog::show(ui, form, fs, &repo_filters, !prompting, msgs) {
                     close = true;
                 }
             }

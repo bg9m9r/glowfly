@@ -139,6 +139,7 @@ fn tips_are_seeded_from_pull_requests() {
         merge_status: None,
         checks: Some(Checks { url: "https://ci.example.com/3".into(), ..checks(CheckState::Failed) }),
         url: String::new(),
+        facets: Default::default(),
     };
     let target = st.forge.as_ref().unwrap().host.clone().unwrap();
     let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr.clone()]))] };

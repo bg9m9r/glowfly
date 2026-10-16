@@ -102,6 +102,7 @@ fn finds_issue_references() {
         kind: String::new(),
         assignee: None,
         url: String::new(),
+        facets: Default::default(),
     };
     assert_eq!(branch_name_for(&issue), "PROJ-12-crash-on-start");
     assert_eq!(link_line(Provider::GitHub, Provider::GitHub, "5").as_deref(), Some("Closes #5"));

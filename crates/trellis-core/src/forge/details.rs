@@ -17,12 +17,14 @@ pub struct PrDetails {
     pub checks: Option<Checks>,
     /// Explicit votes only (GitLab: approvers as "approved"); None keeps the list's reviewers.
     pub votes: Option<Vec<Reviewer>>,
+    /// The ids of the approvers among `votes`, so the pull request's `facets` stop awaiting them.
+    pub approved_ids: Vec<String>,
 }
 
 impl PrDetails {
     /// Nothing read for `pr` (yet): no checks, and the list's reviewers stay.
     pub fn empty(pr: &PullRequest) -> PrDetails {
-        PrDetails { id: pr.id, head: pr.head.clone(), checks: None, votes: None }
+        PrDetails { id: pr.id, head: pr.head.clone(), checks: None, votes: None, approved_ids: Vec::new() }
     }
 }
 
@@ -35,6 +37,9 @@ impl PullRequest {
             self.checks = d.checks.clone();
         }
         let Some(votes) = &d.votes else { return };
+        // Votes are approvals: every reviewer who hasn't approved is still awaited.
+        let f = &mut self.facets;
+        f.awaiting_ids = f.reviewer_ids.iter().filter(|id| !d.approved_ids.contains(id)).cloned().collect();
         let mut reviewers = votes.clone();
         for r in std::mem::take(&mut self.reviewers) {
             if votes.iter().any(|v| v.name == r.name) {

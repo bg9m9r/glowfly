@@ -15,6 +15,8 @@ mod conflict_check;
 mod diff;
 mod files;
 mod forge;
+mod forge_filter_edit;
+mod forge_filters;
 mod git_env;
 mod gitflow;
 mod gitflow_finish;
@@ -120,6 +122,10 @@ mod files_undo_tests;
 mod fold_tests;
 #[cfg(test)]
 mod force_push_tests;
+#[cfg(test)]
+mod forge_filter_edit_tests;
+#[cfg(test)]
+mod forge_filters_tests;
 #[cfg(test)]
 mod forge_tests;
 #[cfg(test)]
@@ -355,6 +361,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
         Msg::PullRequest(m) => pull_request::handle(st, m, now, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
+        Msg::ForgeFilter(m) => forge_filters::handle(st, m, &mut fx),
         Msg::Publish(m) => publish::handle(st, m, &mut fx),
         Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),
         Msg::Prefs(m) => prefs::handle(st, m, now, &mut fx),

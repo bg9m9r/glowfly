@@ -21,6 +21,8 @@ mod diff;
 mod file_buttons;
 mod file_dialogs;
 mod file_menu;
+mod forge_filter_dialog;
+mod forge_filter_menu;
 mod git_banner;
 mod gitflow_dialog;
 mod gitflow_finish_dialog;
@@ -102,6 +104,8 @@ mod snapshot_tests_file_dialogs;
 mod snapshot_tests_file_menu;
 #[cfg(test)]
 mod snapshot_tests_file_menu_lfs;
+#[cfg(test)]
+mod snapshot_tests_forge_filters;
 #[cfg(test)]
 mod snapshot_tests_forks;
 #[cfg(test)]

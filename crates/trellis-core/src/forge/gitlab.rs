@@ -4,8 +4,8 @@ use super::checks::per_pr;
 use super::details::{self, PrDetails};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, CHECKED_PRS, Checks, Issue, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks,
-    page, post,
+    Account, Auth, CHECKED_PRS, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets,
+    PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks, page, post,
 };
 use crate::error::Result;
 use serde::Deserialize;
@@ -36,11 +36,16 @@ pub(super) fn project_api(t: &Target) -> String {
 }
 
 #[derive(Deserialize)]
-struct User {
+pub(super) struct User {
     #[serde(default)]
-    name: String,
+    pub(super) name: String,
     #[serde(default)]
-    username: String,
+    pub(super) username: String,
+}
+
+#[derive(Deserialize)]
+pub(super) struct Title {
+    pub(super) title: String,
 }
 
 #[derive(Deserialize)]
@@ -63,6 +68,12 @@ struct ApiMr {
     reviewers: Vec<User>,
     #[serde(default)]
     detailed_merge_status: Option<String>,
+    #[serde(default)]
+    labels: Vec<String>,
+    #[serde(default)]
+    assignees: Vec<User>,
+    #[serde(default)]
+    milestone: Option<Title>,
 }
 
 #[derive(Deserialize)]
@@ -76,8 +87,25 @@ struct ApprovedBy {
     user: User,
 }
 
-/// A merge request with `votes` (its approvers) merged in the same way as the second pass.
-fn convert(m: ApiMr, votes: Vec<Reviewer>, checks: Option<Checks>) -> PullRequest {
+/// A merge request's approvers: as "approved" votes, and by username.
+#[derive(Default)]
+struct Approved {
+    votes: Vec<Reviewer>,
+    ids: Vec<String>,
+}
+
+/// A merge request with its approvers merged in the same way as the second pass.
+fn convert(m: ApiMr, approved: Approved, checks: Option<Checks>) -> PullRequest {
+    let reviewer_ids: Vec<String> = m.reviewers.iter().map(|r| r.username.clone()).collect();
+    let facets = PrFacets {
+        author_id: m.author.username.clone(),
+        assignee_ids: m.assignees.iter().map(|a| a.username.clone()).collect(),
+        // `apply` drops the approvers.
+        awaiting_ids: reviewer_ids.clone(),
+        reviewer_ids,
+        labels: m.labels,
+        milestone: m.milestone.map(|t| t.title),
+    };
     let reviewers = m.reviewers.into_iter().map(|r| Reviewer { name: r.name, state: "no vote".into(), required: false }).collect();
     let mut pr = PullRequest {
         id: m.iid,
@@ -92,23 +120,26 @@ fn convert(m: ApiMr, votes: Vec<Reviewer>, checks: Option<Checks>) -> PullReques
         merge_status: m.detailed_merge_status,
         checks: None,
         url: m.web_url,
+        facets,
     };
-    pr.apply(&PrDetails { checks, votes: Some(votes), ..PrDetails::empty(&pr) });
+    pr.apply(&PrDetails { checks, votes: Some(approved.votes), approved_ids: approved.ids, ..PrDetails::empty(&pr) });
     pr
 }
 
-/// The merge request's approvers, as "approved" votes.
-fn votes(t: &Target, auth: &Auth, iid: u64) -> Result<Vec<Reviewer>> {
+/// The merge request's approvers.
+fn votes(t: &Target, auth: &Auth, iid: u64) -> Result<Approved> {
     let a: Approvals = get(auth, &format!("{}/merge_requests/{iid}/approvals", project_api(t)))?;
     Ok(approvers(a))
 }
 
-fn approvers(a: Approvals) -> Vec<Reviewer> {
-    a.approved_by.into_iter().map(|a| Reviewer { name: a.user.name, state: "approved".into(), required: false }).collect()
+fn approvers(a: Approvals) -> Approved {
+    let ids = a.approved_by.iter().map(|a| a.user.username.clone()).collect();
+    let votes = a.approved_by.into_iter().map(|a| Reviewer { name: a.user.name, state: "approved".into(), required: false }).collect();
+    Approved { votes, ids }
 }
 
 #[derive(Deserialize)]
-struct ApiIssue {
+pub(super) struct ApiIssue {
     iid: u64,
     title: String,
     state: String,
@@ -119,11 +150,14 @@ struct ApiIssue {
     assignee: Option<User>,
     #[serde(default)]
     issue_type: Option<String>,
+    #[serde(default)]
+    milestone: Option<Title>,
 }
 
-fn to_issue(i: ApiIssue) -> Issue {
-    let kind = i.labels.into_iter().next().or(i.issue_type).unwrap_or_else(|| "issue".into());
-    Issue { key: i.iid.to_string(), title: i.title, state: i.state, kind, assignee: i.assignee.map(|a| a.name), url: i.web_url }
+pub(super) fn to_issue(i: ApiIssue) -> Issue {
+    let kind = i.labels.first().cloned().or(i.issue_type).unwrap_or_else(|| "issue".into());
+    let facets = IssueFacets { labels: i.labels, milestone: i.milestone.map(|m| m.title) };
+    Issue { key: i.iid.to_string(), title: i.title, state: i.state, kind, assignee: i.assignee.map(|a| a.name), url: i.web_url, facets }
 }
 
 /// The GitLab [`Forge`](super::Forge).
@@ -150,8 +184,8 @@ impl super::Forge for GitLab {
         let mut out = Vec::with_capacity(mrs.len());
         for (i, (m, checks)) in mrs.into_iter().zip(checks).enumerate() {
             // An approvals lookup that fails leaves the merge request without votes.
-            let votes = if i < CHECKED_PRS { votes(t, auth, m.iid).unwrap_or_default() } else { Vec::new() };
-            out.push(convert(m, votes, checks));
+            let approved = if i < CHECKED_PRS { votes(t, auth, m.iid).unwrap_or_default() } else { Approved::default() };
+            out.push(convert(m, approved, checks));
         }
         Ok(out)
     }
@@ -161,7 +195,7 @@ impl super::Forge for GitLab {
     fn pr_details(&self, t: &Target, auth: &Auth, prs: &[PullRequest]) -> Result<Vec<PrDetails>> {
         let mut ask_pipelines = true;
         details::each(prs, |p| {
-            let votes = votes(t, auth, p.id)?;
+            let approved = votes(t, auth, p.id)?;
             let checks = if ask_pipelines {
                 gitlab_checks::head_pipeline(t, auth, p.id).unwrap_or_else(|e| {
                     ask_pipelines = e.is_not_found();
@@ -170,7 +204,7 @@ impl super::Forge for GitLab {
             } else {
                 None
             };
-            Ok(PrDetails { checks, votes: Some(votes), ..PrDetails::empty(p) })
+            Ok(PrDetails { checks, votes: Some(approved.votes), approved_ids: approved.ids, ..PrDetails::empty(p) })
         })
     }
 
@@ -192,7 +226,7 @@ impl super::Forge for GitLab {
             "remove_source_branch": false,
         });
         let created: ApiMr = post(auth, &format!("{}/merge_requests", project_api(t)), body)?;
-        Ok(convert(created, Vec::new(), None))
+        Ok(convert(created, Approved::default(), None))
     }
 
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
@@ -223,6 +257,18 @@ impl super::Forge for GitLab {
 
     fn create_fork(&self, t: &Target, auth: &Auth, wait: &super::Wait) -> Result<super::CreatedFork> {
         super::forks::gitlab::create(t, auth, wait)
+    }
+
+    fn me(&self, t: &Target, auth: &Auth) -> Result<Me> {
+        super::filters::gitlab::me(t, auth)
+    }
+
+    fn find_issues(&self, t: &Target, auth: &Auth, c: &Conditions, me: Option<&Me>) -> Result<Vec<Issue>> {
+        super::filters::gitlab::find_issues(t, auth, c, me)
+    }
+
+    fn filter_options(&self, t: &Target, auth: &Auth, _kind: FilterKind) -> Result<FilterOptions> {
+        super::filters::gitlab::options(t, auth)
     }
 }
 
@@ -255,5 +301,24 @@ mod tests {
         let i: ApiIssue =
             serde_json::from_str(r#"{"iid":2,"title":"Slow","state":"opened","web_url":"u","labels":[],"issue_type":"issue"}"#).unwrap();
         assert_eq!(to_issue(i).key, "2");
+    }
+
+    #[test]
+    fn reviewers_who_approved_are_not_awaited() {
+        let m: ApiMr = serde_json::from_str(
+            r#"{"iid":3,"title":"T","source_branch":"x","target_branch":"main","author":{"name":"Ada","username":"ada"},"web_url":"u",
+            "reviewers":[{"name":"Grace","username":"g"},{"name":"Linus","username":"l"}],"labels":["perf"],
+            "assignees":[{"name":"Bob","username":"b"}],"milestone":{"title":"16.0"}}"#,
+        )
+        .unwrap();
+        let a: Approvals = serde_json::from_str(r#"{"approved_by":[{"user":{"name":"Grace","username":"g"}}]}"#).unwrap();
+        let f = convert(m, approvers(a), None).facets;
+        assert_eq!((f.author_id.as_str(), f.awaiting_ids, f.reviewer_ids.len()), ("ada", vec!["l".to_owned()], 2));
+        assert_eq!((f.assignee_ids, f.labels, f.milestone), (vec!["b".into()], vec!["perf".into()], Some("16.0".into())));
+        let i: ApiIssue = serde_json::from_str(
+            r#"{"iid":2,"title":"S","state":"opened","web_url":"u","labels":["perf","ui"],"milestone":{"title":"16.1"}}"#,
+        )
+        .unwrap();
+        assert_eq!(to_issue(i).facets, IssueFacets { labels: vec!["perf".into(), "ui".into()], milestone: Some("16.1".into()) });
     }
 }

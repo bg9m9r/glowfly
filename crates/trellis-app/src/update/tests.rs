@@ -244,6 +244,7 @@ fn forge_replies_update_pull_requests_and_errors() {
         merge_status: None,
         checks: Some(checks.clone()),
         url: "u".into(),
+        facets: Default::default(),
     };
     let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());

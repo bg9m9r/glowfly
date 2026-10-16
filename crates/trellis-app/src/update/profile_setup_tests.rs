@@ -70,6 +70,7 @@ fn pr(id: u64) -> PullRequest {
         merge_status: None,
         url: "u".into(),
         checks: None,
+        facets: Default::default(),
     }
 }
 

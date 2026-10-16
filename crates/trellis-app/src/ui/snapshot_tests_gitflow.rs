@@ -245,6 +245,7 @@ fn gitflow_issue_menu() {
         kind: "Issue".into(),
         assignee: Some("ada".into()),
         url: "https://github.com/o/r/issues/12".into(),
+        facets: Default::default(),
     }];
     st.forge = Some(f);
     let mut h = harness(st, true);

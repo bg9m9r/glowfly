@@ -3,6 +3,7 @@
 
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_color};
+use super::forge_filter_menu::{self, Picker};
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
@@ -12,12 +13,15 @@ use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::StashMsg;
 use crate::pull_request::PullRequestMsg;
+use crate::state::forge_filters::{self, IssueView, PrView};
 use crate::state::palette::StashAction;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use eframe::egui;
-use trellis_core::forge;
+use trellis_core::forge::{self, FilterKind};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::GraphFilter;
+
+type Shown<'a> = dyn Fn(&str) -> bool + 'a;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     egui::SidePanel::left("refs")
@@ -47,6 +51,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
     let open_tabs = crate::state::tabs::open_places(&st.tabs);
     let Some(snap) = &st.snap else { return };
+    let repo_filters = st.settings.forge_filters_for(&snap.real_workdir);
     let filter = st.view.ref_filter.to_lowercase();
     let shown = |name: &str| trellis_core::matching::contains_lower(name, &filter);
     let current = snap.head_branch.clone().unwrap_or_default();
@@ -114,15 +119,20 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {
         let title = if f.pr_noun() == "merge request" { "MERGE REQUESTS" } else { "PULL REQUESTS" };
-        widgets::section_header(ui, title, Some(f.prs.len()), &mut sections.prs);
+        let view = forge_filters::pr_view(f, &repo_filters);
+        let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
+        forge_filter_menu::header(ui, title, view.rows.len(), &mut sections.prs, picker, msgs);
         if sections.prs {
-            pull_requests(ui, snap, f, &sel, &shown, msgs);
+            pull_requests(ui, snap, f, &view, &sel, &shown, msgs);
         }
     }
     if let Some(f) = fs.filter(|f| f.tracker.is_some()) {
-        widgets::section_header(ui, "ISSUES", Some(f.my_issues.len()), &mut sections.issues);
+        let view = forge_filters::issue_view(f, &repo_filters);
+        let provider = f.tracker.as_ref().map(|t| t.provider);
+        let picker = Picker { kind: FilterKind::Issues, label: &view.label, filters: &repo_filters, provider };
+        forge_filter_menu::header(ui, "ISSUES", view.rows.len(), &mut sections.issues, picker, msgs);
         if sections.issues {
-            issues(ui, snap, f, &shown, msgs);
+            issues(ui, snap, f, &view, &shown, msgs);
         }
     }
     if let Some(s) = snap.gitflow.settings() {
@@ -172,14 +182,17 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     ui.add_space(12.0);
 }
 
-fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selection, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
+fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrView, sel: &Selection, shown: &Shown, msgs: &mut Vec<Msg>) {
+    if let Some(h) = &view.hint {
+        forge_filter_menu::hint(ui, h, msgs);
+    }
     if let Status::Error(e) = &f.host_status {
         forge_error_rows(ui, e, msgs);
-    } else if f.prs.is_empty() {
-        hint_row(ui, if f.loading > 0 { "Loading…".to_owned() } else { format!("No open {}s", f.pr_noun()) });
+    } else if let Some(text) = &view.empty {
+        hint_row(ui, text.clone());
     }
-    let slot = if f.prs.iter().any(|p| p.checks.is_some()) { super::build_status::MARKER_SLOT } else { 0.0 };
-    for pr in f.prs.iter().filter(|p| shown(&p.title) || shown(&p.source) || shown(&p.id.to_string())) {
+    let slot = if view.rows.iter().any(|p| p.checks.is_some()) { super::build_status::MARKER_SLOT } else { 0.0 };
+    for pr in view.rows.iter().copied().filter(|p| shown(&p.title) || shown(&p.source) || shown(&p.id.to_string())) {
         if widgets::list_row_hidden(ui) {
             continue;
         }
@@ -231,19 +244,23 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
     }
 }
 
-fn issues(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
-    hint_row(ui, format!("{} · assigned to me", f.tracker_hint()));
+fn issues(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &IssueView, shown: &Shown, msgs: &mut Vec<Msg>) {
+    forge_filter_menu::hint(ui, &view.hint, msgs);
     if let Status::Error(e) = &f.tracker_status {
         forge_error_rows(ui, e, msgs);
     }
-    for issue in f.my_issues.iter().filter(|i| shown(&i.title) || shown(&i.key)) {
+    for issue in view.rows.iter().filter(|i| shown(&i.title) || shown(&i.key)) {
         if widgets::list_row_hidden(ui) {
             continue;
         }
         let text = format!("{}  {}", f.mention(&issue.key), issue.title);
         let r = widgets::list_row(ui, 26.0, &text, Some((&issue.state, state_color(&issue.state))), false, false);
         let assignee = issue.assignee.as_deref().unwrap_or("unassigned");
-        let r = r.on_hover_text(format!("{} {}: {}\n{} · {assignee}", issue.kind, issue.key, issue.title, issue.state));
+        let mut tip = format!("{} {}: {}\n{} · {assignee}", issue.kind, issue.key, issue.title, issue.state);
+        if let Some(line) = forge_filters::facet_line(&issue.facets) {
+            tip.push_str(&format!("\n{line}"));
+        }
+        let r = r.on_hover_text(tip);
         if r.double_clicked() {
             msgs.push(Msg::OpenUrl(issue.url.clone()));
         }

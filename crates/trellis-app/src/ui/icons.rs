@@ -1,5 +1,6 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench, warning, keyboard, external diff, into, comment), called from `widgets::paint_icon`.
+//! lock, wrench, warning, keyboard, external diff, into, comment, pencil), called from
+//! `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -191,6 +192,18 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             line(pos2(c.x - 5.0, c.y), pos2(c.x + 5.0, c.y));
             line(pos2(c.x + 5.0, c.y), pos2(c.x + 1.5, c.y - 3.5));
             line(pos2(c.x + 5.0, c.y), pos2(c.x + 1.5, c.y + 3.5));
+        }
+        Icon::Pencil => {
+            // A pencil leaning right: two sides, a capped end, and a filled tip at the bottom left.
+            let r = std::f32::consts::FRAC_1_SQRT_2;
+            let (d, n) = (vec2(r, -r), vec2(r, r) * 2.2);
+            let (tip, neck, end) = (pos2(c.x - 6.5, c.y + 6.5), pos2(c.x - 3.0, c.y + 3.0), pos2(c.x + 6.0, c.y - 6.0));
+            let thin = Stroke::new(1.4_f32, s.color);
+            line(neck + n, end + n);
+            line(neck - n, end - n);
+            p.line_segment([end + n, end - n], thin);
+            p.line_segment([end + n - d * 2.5, end - n - d * 2.5], thin);
+            p.add(egui::Shape::convex_polygon(vec![neck + n, tip, neck - n], s.color, Stroke::NONE));
         }
         _ => return false,
     }

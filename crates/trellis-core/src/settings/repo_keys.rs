@@ -1,9 +1,10 @@
-//! Settings saved per repository (graph filters, the issue tracker, trust decisions) are keyed
-//! by the repository's resolved working directory (`Snapshot::real_workdir`), saved losslessly
-//! (`paths::encode`). One set of helpers reads and writes every such map, so a repository opened
-//! by another spelling (a link, a short 8.3 name, libgit2's `C:/x/` form) finds its settings, a
-//! new entry replaces one saved under another spelling of the same path, and entries earlier
-//! versions saved under libgit2's spelling move to the resolved key when the repository loads.
+//! Settings saved per repository (graph filters, pull request and issue filters, the issue
+//! tracker, trust decisions) are keyed by the repository's resolved working directory
+//! (`Snapshot::real_workdir`), saved losslessly (`paths::encode`). One set of helpers reads and
+//! writes every such map, so a repository opened by another spelling (a link, a short 8.3 name,
+//! libgit2's `C:/x/` form) finds its settings, a new entry replaces one saved under another
+//! spelling of the same path, and entries earlier versions saved under libgit2's spelling move
+//! to the resolved key when the repository loads.
 
 use super::{GraphFilter, Settings, TrackerChoice};
 use crate::paths;
@@ -76,12 +77,13 @@ impl Settings {
         set(&mut self.repo_trackers, real, Some(choice));
     }
 
-    /// Moves the graph filter and issue tracker saved under `aliases` (libgit2's spelling, the
+    /// Moves the graph filter, pull request and issue filters and issue tracker saved under `aliases` (libgit2's spelling, the
     /// path it was opened by) to the repository's resolved key `real`. Trust decisions were
     /// always saved under the resolved key and are left alone. Returns whether anything moved.
     pub fn adopt_repo_keys(&mut self, real: &Path, aliases: &[&Path]) -> bool {
         let filters = adopt(&mut self.graph_filters, real, aliases);
-        adopt(&mut self.repo_trackers, real, aliases) | filters
+        let forge_filters = adopt(&mut self.repo_forge_filters, real, aliases);
+        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters
     }
 }
 
