@@ -22,8 +22,13 @@ fn today() -> NaiveDate {
     NaiveDate::from_ymd_opt(2026, 2, 1).unwrap()
 }
 
+/// A clone parent that is absolute on every OS (a drive letter means nothing outside Windows).
+fn work() -> &'static str {
+    if cfg!(windows) { "C:/work" } else { "/work" }
+}
+
 fn request(options: CloneOptions) -> CloneRequest {
-    CloneRequest { url: URL.into(), parent: PathBuf::from("C:/work"), name: "app".into(), options }
+    CloneRequest { url: URL.into(), parent: work().into(), name: "app".into(), options }
 }
 
 fn shallow(limit: HistoryLimit, branch: Option<&str>) -> CloneOptions {
@@ -47,9 +52,7 @@ fn form(st: &mut AppState) -> &mut CloneForm {
 
 /// A filled-in form whose folder check passes.
 fn filled() -> CloneForm {
-    // Absolute on every OS (a drive letter means nothing outside Windows).
-    let parent = if cfg!(windows) { "C:/work" } else { "/work" };
-    CloneForm { url: URL.into(), ..CloneForm::new(parent.into()) }
+    CloneForm { url: URL.into(), ..CloneForm::new(work().into()) }
 }
 
 #[test]
@@ -183,7 +186,7 @@ fn form_builds_the_request() {
     let req = f.request(t).unwrap();
     assert_eq!(req.url, URL);
     assert_eq!(req.name, "app");
-    assert_eq!(req.parent, PathBuf::from("C:/work"));
+    assert_eq!(req.parent, PathBuf::from(work()));
     assert_eq!(req.options, CloneOptions::default());
 
     let req = CloneForm { shallow: true, ..filled() }.request(t).unwrap();
