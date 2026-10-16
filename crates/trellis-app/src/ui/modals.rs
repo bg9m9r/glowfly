@@ -12,12 +12,10 @@
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
 use crate::msg::ForgeMsg;
-use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::state::{AppState, ForgeState, Modal};
-use eframe::egui::{self, Key, RichText};
+use eframe::egui::{self, RichText};
 use trellis_core::forge::{self, NewPullRequest, RefStyle};
-use trellis_core::gitcli::args;
 use trellis_core::repo::Snapshot;
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -50,35 +48,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 });
             }
             Modal::NewBranch { start, name, checkout } => {
-                let heading = match (start.as_deref(), snap.and_then(|s| s.head_branch.as_deref())) {
-                    (Some(s), _) => format!("New branch at {}", &s[..7.min(s.len())]),
-                    (None, Some(b)) => format!("New branch from {b}"),
-                    (None, None) => "New branch at HEAD".to_owned(),
-                };
-                ui.heading(heading);
-                ui.add_space(6.0);
-                let r = ui.add(egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
                 // Not under a credential prompt: its fields need the keyboard.
-                if !prompting {
-                    r.request_focus();
+                if super::branch_dialogs::new_branch(ui, start.as_deref(), name, checkout, snap, !prompting, msgs) {
+                    close = true;
                 }
-                ui.checkbox(checkout, "Check out after creating");
-                ui.add_space(8.0);
-                let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-                ui.horizontal(|ui| {
-                    let valid = !name.trim().is_empty() && !name.contains(' ');
-                    if ui.add_enabled(valid, egui::Button::new("Create")).clicked() || (submit && valid) {
-                        let mut cmd = if *checkout { args(&["checkout", "-b", name.trim()]) } else { args(&["branch", name.trim()]) };
-                        if let Some(s) = start {
-                            cmd.push(s.clone());
-                        }
-                        msgs.push(Msg::Job(JobMsg::Git { label: "Create branch".into(), cmds: vec![cmd] }));
-                        close = true;
-                    }
-                    if ui.button("Cancel").clicked() {
-                        close = true;
-                    }
-                });
             }
             Modal::NewTag(form) => {
                 if super::tag_dialog::new_tag(ui, form, snap, push_tags, !prompting, msgs) {

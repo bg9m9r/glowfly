@@ -7,6 +7,8 @@ use crate::msg::Msg;
 use crate::state::tags::{AnnotateForm, TagForm, annotate_problem, push_remote, tag_problem};
 use crate::tag::TagMsg;
 use eframe::egui::{self, Id, Key, Modifiers, RichText};
+use trellis_core::branch_ops::ref_name_warning;
+use trellis_core::names::blocks_here;
 use trellis_core::repo::Snapshot;
 use trellis_core::tag_ops::TagNameProblem;
 
@@ -35,6 +37,12 @@ pub fn new_tag(ui: &mut egui::Ui, form: &mut TagForm, snap: Option<&Snapshot>, p
     if let Some(p) = problem.as_ref().filter(|p| **p != TagNameProblem::Empty) {
         ui.add_space(4.0);
         ui.label(RichText::new(p.message(form.name.trim())).color(color::red()));
+    } else if problem.is_none()
+        && let Some(w) = ref_name_warning(form.name.trim(), blocks_here())
+    {
+        // Allowed here, but Windows can't store it as a ref file.
+        ui.add_space(4.0);
+        ui.label(RichText::new(w).color(color::amber()));
     }
     let hint = if form.annotated { "Message (required)" } else { "Message (optional, makes an annotated tag)" };
     ui.add(egui::TextEdit::multiline(&mut form.message).id(msg_id).hint_text(hint).desired_rows(3).desired_width(f32::INFINITY));

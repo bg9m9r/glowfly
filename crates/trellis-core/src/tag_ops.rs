@@ -4,6 +4,7 @@
 //! the user's git config apply.
 
 use crate::gitcli::args;
+use crate::names::{RefClash, WinNameProblem, blocks_here, ref_clash, ref_name_problem};
 
 /// Whether git accepts `name` as a tag name: `refs/tags/<name>` must pass the ref-format rules,
 /// and git itself refuses a tag starting with '-'.
@@ -25,6 +26,13 @@ pub enum TagNameProblem {
     Exists(String),
     /// The name is a folder of an existing tag, or the other way round.
     Clashes(String),
+    /// A folder of the name exists under another case or Unicode form: `typed` is `existing`.
+    FolderCase {
+        typed: String,
+        existing: String,
+    },
+    /// Windows can't store a part of the name as a ref file (refused on Windows only).
+    Windows(String, WinNameProblem),
 }
 
 impl TagNameProblem {
@@ -35,6 +43,10 @@ impl TagNameProblem {
             TagNameProblem::Invalid(reason) => (*reason).to_owned(),
             TagNameProblem::Exists(other) => format!("Tag {other} already exists."),
             TagNameProblem::Clashes(other) => format!("{name} clashes with tag {other}."),
+            TagNameProblem::FolderCase { typed, existing } => {
+                format!("The folder {typed} already exists as {existing}; use that spelling.")
+            }
+            TagNameProblem::Windows(part, why) => format!("{part} can't be used: {}.", why.reason()),
         }
     }
 }
@@ -66,25 +78,30 @@ fn invalid_reason(name: &str) -> &'static str {
 }
 
 /// Checks `name` (already trimmed) against git's rules for a tag and the `existing` tag names.
-/// Names are compared case-insensitively because loose ref files collide on Windows and macOS.
+/// Names and their folders are compared ignoring case and Unicode form on every OS, because
+/// loose ref files collide on Windows and macOS. A name Windows can't store is refused on
+/// Windows only; elsewhere `branch_ops::ref_name_warning` says so.
 pub fn check_tag_name(name: &str, existing: &[&str]) -> Result<(), TagNameProblem> {
+    check_tag_name_for(name, existing, blocks_here())
+}
+
+/// [`check_tag_name`] with Windows' naming rules refused when `windows`.
+pub fn check_tag_name_for(name: &str, existing: &[&str], windows: bool) -> Result<(), TagNameProblem> {
     if name.is_empty() {
         return Err(TagNameProblem::Empty);
     }
     if !is_valid_tag_name(name) {
         return Err(TagNameProblem::Invalid(invalid_reason(name)));
     }
-    let lower = name.to_lowercase();
-    for other in existing {
-        let o = other.to_lowercase();
-        if o == lower {
-            return Err(TagNameProblem::Exists((*other).to_owned()));
-        }
-        if o.starts_with(&format!("{lower}/")) || lower.starts_with(&format!("{o}/")) {
-            return Err(TagNameProblem::Clashes((*other).to_owned()));
-        }
+    if windows && let Some((part, why)) = ref_name_problem(name) {
+        return Err(TagNameProblem::Windows(part.to_owned(), why));
     }
-    Ok(())
+    match ref_clash(name, existing.iter().copied()) {
+        Some(RefClash::Exists(o)) => Err(TagNameProblem::Exists(o)),
+        Some(RefClash::Clashes(o)) => Err(TagNameProblem::Clashes(o)),
+        Some(RefClash::FolderCase { typed, existing }) => Err(TagNameProblem::FolderCase { typed, existing }),
+        None => Ok(()),
+    }
 }
 
 /// `git tag <name> <at>`, or with a message an annotated `git tag -a <name> <at> -m <message>`.

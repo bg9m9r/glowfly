@@ -1,6 +1,6 @@
-//! Branch operations: the rename and upstream dialogs, the local branch menu, and hiding or
-//! soloing branches from the left panel. Shares the fixture repository and renderer with
-//! `snapshot_tests`.
+//! Branch operations: the new branch, rename and upstream dialogs, the local branch menu, and
+//! hiding or soloing branches from the left panel. Shares the fixture repository and renderer
+//! with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, reload, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
@@ -45,6 +45,22 @@ fn rename_branch_dialog() {
     h.check_snapshot("rename_branch_dialog");
     assert!(h.query_by_label_contains("A branch named login-page already exists.").is_some());
     assert!(h.get_by_label("Rename").is_disabled());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// A folder of the new name exists in another case: on Windows and macOS the branch would land
+/// in it, so the name is refused on every OS.
+#[test]
+fn new_branch_dialog_folder_case() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "new-branch-folder-case");
+    branch(&mut st, "search").name = "feature/search".into();
+    st.modal = Some(Modal::NewBranch { start: None, name: "Feature/login".into(), checkout: true });
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("new_branch_dialog_folder_case");
+    assert!(h.query_by_label_contains("The folder Feature already exists as feature; use that spelling.").is_some());
+    assert!(h.get_by_label("Create").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

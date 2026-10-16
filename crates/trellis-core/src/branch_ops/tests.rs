@@ -299,3 +299,46 @@ fn push_to_chosen_remotes() {
     assert_eq!(ref_oid(&bare, "refs/heads/other"), ref_oid(&work, "refs/heads/y"));
     cleanup(&[&work, &bare, &backup]);
 }
+
+#[test]
+fn branch_folders_are_compared_ignoring_case_and_form() {
+    let existing = ["feature/foo", "caf\u{e9}/menu", "main"];
+    let check = |n: &str| check_branch_name_for(n, &existing, None, false);
+    let folder = |typed: &str, existing: &str| Err(NameProblem::FolderCase { typed: typed.into(), existing: existing.into() });
+    assert_eq!(check("Feature/bar"), folder("Feature", "feature"));
+    assert_eq!(check("cafe\u{301}/drinks"), folder("cafe\u{301}", "caf\u{e9}"));
+    assert_eq!(check("feature/bar"), Ok(()));
+    assert_eq!(check("CAFE\u{301}/MENU"), Err(NameProblem::Exists("caf\u{e9}/menu".into())), "case and form at once");
+    assert_eq!(check("Main/x"), Err(NameProblem::Clashes("main".into())));
+    assert_eq!(check_branch_name_for("Feature/bar", &existing, Some("feature/foo"), false), Ok(()), "renaming the only branch in it");
+    assert_eq!(
+        NameProblem::FolderCase { typed: "Feature".into(), existing: "feature".into() }.message("Feature/bar"),
+        "The folder Feature already exists as feature; use that spelling."
+    );
+}
+
+#[test]
+fn branch_names_windows_cant_store() {
+    use crate::names::WinNameProblem::{Char, Device, Trailing};
+    for (name, part, why) in [
+        ("aux", "aux", Device("aux".into())),
+        ("fix/con", "con", Device("con".into())),
+        ("lpt1.x", "lpt1.x", Device("lpt1".into())),
+        ("a|b", "a|b", Char('|')),
+        ("say\"hi\"", "say\"hi\"", Char('"')),
+        ("less<more", "less<more", Char('<')),
+        ("v1./x", "v1.", Trailing),
+    ] {
+        assert!(is_valid_branch_name(name), "git takes {name:?}");
+        assert_eq!(check_branch_name_for(name, &[], None, true), Err(NameProblem::Windows(part.into(), why.clone())), "{name:?}");
+        assert_eq!(check_branch_name_for(name, &[], None, false), Ok(()), "{name:?}");
+        assert_eq!(ref_name_warning(name, false), Some(why.warning(name)), "{name:?}");
+        assert_eq!(ref_name_warning(name, true), None);
+    }
+    assert_eq!(branch_name_warning("feature/ok"), None);
+    assert_eq!(check_branch_name("aux", &[], None).is_err(), cfg!(windows));
+    assert_eq!(
+        NameProblem::Windows("aux".into(), Device("aux".into())).message("aux"),
+        "aux can't be used: Windows reserves aux for a device."
+    );
+}

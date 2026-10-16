@@ -156,6 +156,9 @@ pub enum FinishProblem {
     TagExists(String),
     /// The tag and an existing tag (the second name) where one is a folder of the other.
     TagClashes(String, String),
+    /// Another reason the tag name can't be used (a folder spelled differently, a name Windows
+    /// can't store), with its message.
+    TagUnusable(String),
     EmptyMessage,
 }
 
@@ -176,6 +179,7 @@ impl FinishProblem {
             P::InvalidTag(t) => format!("{t} isn't a valid tag name."),
             P::TagExists(t) => format!("The tag {t} already exists."),
             P::TagClashes(t, other) => format!("{t} clashes with the tag {other}: one is a folder of the other."),
+            P::TagUnusable(why) => why.clone(),
             P::EmptyMessage => "Enter a tag message.".into(),
         }
     }
@@ -219,6 +223,7 @@ pub fn check_finish(
             TagNameProblem::Invalid(_) => P::InvalidTag(tag.to_owned()),
             TagNameProblem::Exists(other) => P::TagExists(other),
             TagNameProblem::Clashes(other) => P::TagClashes(tag.to_owned(), other),
+            p @ (TagNameProblem::FolderCase { .. } | TagNameProblem::Windows(..)) => P::TagUnusable(p.message(tag)),
         })?;
         if message.is_empty() {
             return Err(P::EmptyMessage);

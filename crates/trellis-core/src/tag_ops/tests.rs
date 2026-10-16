@@ -188,3 +188,20 @@ fn annotate_honours_tag_signing() {
     assert_eq!(repo.find_object(target, None).unwrap().kind(), Some(git2::ObjectType::Commit));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn tag_folders_and_windows_names() {
+    let existing = ["release/1.0"];
+    assert_eq!(
+        check_tag_name_for("Release/2.0", &existing, false),
+        Err(TagNameProblem::FolderCase { typed: "Release".into(), existing: "release".into() })
+    );
+    assert_eq!(check_tag_name_for("release/2.0", &existing, false), Ok(()));
+    assert_eq!(check_tag_name_for("con", &[], false), Ok(()));
+    let device = crate::names::WinNameProblem::Device("con".into());
+    assert_eq!(check_tag_name_for("con", &[], true), Err(TagNameProblem::Windows("con".into(), device)));
+    assert_eq!(
+        TagNameProblem::FolderCase { typed: "Release".into(), existing: "release".into() }.message("Release/2.0"),
+        "The folder Release already exists as release; use that spelling."
+    );
+}
