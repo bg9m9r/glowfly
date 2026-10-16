@@ -16,7 +16,7 @@ mod trust;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
-pub use paths::{config_dir, migrate_old_config_dir};
+pub use paths::{cache_dir, config_dir, home_dir, migrate_old_config_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::RepoTrust;

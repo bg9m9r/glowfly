@@ -1,4 +1,5 @@
-//! Where Trellis keeps its own files (settings, recent repositories, tabs, avatar cache):
+//! Where Trellis keeps its own files (settings, recent repositories, tabs; the avatar cache is in
+//! `cache_dir`):
 //!
 //! - Windows: `%APPDATA%\Trellis`
 //! - macOS: `~/Library/Application Support/Trellis`
@@ -80,6 +81,35 @@ pub fn config_dir() -> Option<PathBuf> {
     config_dir_for(Os::CURRENT, |k| std::env::var_os(k))
 }
 
+/// Where Trellis keeps files it can fetch again (the avatar cache): out of the roaming profile
+/// and the settings backups.
+///
+/// - Windows: `%LOCALAPPDATA%\Trellis`
+/// - macOS: `~/Library/Caches/Trellis`
+/// - Linux and other Unix: `$XDG_CACHE_HOME/trellis`, or `~/.cache/trellis`
+pub(crate) fn cache_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
+    match os {
+        Os::Windows => abs_var(&env, "LOCALAPPDATA").map(|a| a.join("Trellis")),
+        Os::Mac => abs_var(&env, "HOME").map(|h| h.join("Library").join("Caches").join("Trellis")),
+        Os::Xdg => abs_var(&env, "XDG_CACHE_HOME").or_else(|| abs_var(&env, "HOME").map(|h| h.join(".cache"))).map(|c| c.join("trellis")),
+    }
+}
+
+pub fn cache_dir() -> Option<PathBuf> {
+    cache_dir_for(Os::CURRENT, |k| std::env::var_os(k))
+}
+
+/// The user's home folder as git and its ssh see it: `HOME` (Git for Windows sets it, and a user
+/// may point it elsewhere), else `USERPROFILE` on Windows. Never an empty or relative value,
+/// which would put `.ssh` in the working folder.
+pub(crate) fn home_dir_for(os: Os, env: impl Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
+    abs_var(&env, "HOME").or_else(|| if os == Os::Windows { abs_var(&env, "USERPROFILE") } else { None })
+}
+
+pub fn home_dir() -> Option<PathBuf> {
+    home_dir_for(Os::CURRENT, |k| std::env::var_os(k))
+}
+
 /// Moves the settings folder from where an earlier version kept it (see the module docs), once,
 /// if there is nothing at the current location yet.
 pub fn migrate_old_config_dir() -> std::io::Result<()> {
@@ -104,7 +134,33 @@ pub(crate) fn move_dir_if_new_missing(old: &Path, new: &Path) -> std::io::Result
     if let Some(parent) = new.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    std::fs::rename(old, new)
+    move_dir_with(old, new, |a, b| std::fs::rename(a, b))
+}
+
+/// Moves the folder `old` to `new` with `rename`, or, where that fails (the two are on different
+/// volumes, EXDEV), by copying it and then removing the original. A copy that fails is removed
+/// again, leaving `old` as it was.
+fn move_dir_with(old: &Path, new: &Path, rename: impl Fn(&Path, &Path) -> std::io::Result<()>) -> std::io::Result<()> {
+    let Err(e) = rename(old, new) else { return Ok(()) };
+    if let Err(copy) = copy_tree(old, new) {
+        let _ = std::fs::remove_dir_all(new);
+        return Err(std::io::Error::new(copy.kind(), format!("{e}; copying instead failed too: {copy}")));
+    }
+    std::fs::remove_dir_all(old)
+}
+
+fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_tree(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), &target)?;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -113,7 +169,7 @@ mod tests {
 
     /// An absolute fake home (absolute on the host, whatever it is) and an environment over it.
     fn root(tag: &str) -> PathBuf {
-        std::env::temp_dir().join(format!("trellis-paths-{tag}-{}", std::process::id()))
+        crate::paths::temp_dir().join(format!("trellis-paths-{tag}-{}", std::process::id()))
     }
 
     fn env_of(vars: Vec<(&'static str, PathBuf)>) -> impl Fn(&str) -> Option<OsString> {
@@ -181,6 +237,47 @@ mod tests {
         assert!(old.exists());
         assert!(new.join("settings.json").exists());
         let _ = std::fs::remove_dir_all(&r);
+    }
+
+    #[test]
+    fn cache_and_home_per_platform() {
+        let r = root("cache");
+        let env = env_of(vec![("HOME", r.join("home")), ("LOCALAPPDATA", r.join("local")), ("USERPROFILE", r.join("profile"))]);
+        assert_eq!(cache_dir_for(Os::Windows, &env), Some(r.join("local").join("Trellis")));
+        assert_eq!(cache_dir_for(Os::Mac, &env), Some(r.join("home").join("Library").join("Caches").join("Trellis")));
+        assert_eq!(cache_dir_for(Os::Xdg, &env), Some(r.join("home").join(".cache").join("trellis")));
+        let env = env_of(vec![("HOME", r.join("home")), ("XDG_CACHE_HOME", r.join("xdg-cache"))]);
+        assert_eq!(cache_dir_for(Os::Xdg, &env), Some(r.join("xdg-cache").join("trellis")));
+
+        // git's own HOME first; USERPROFILE only on Windows, and never an empty or relative one.
+        let env = env_of(vec![("HOME", r.join("home")), ("USERPROFILE", r.join("profile"))]);
+        assert_eq!(home_dir_for(Os::Windows, &env), Some(r.join("home")));
+        let env = env_of(vec![("HOME", PathBuf::new()), ("USERPROFILE", r.join("profile"))]);
+        assert_eq!(home_dir_for(Os::Windows, &env), Some(r.join("profile")));
+        assert_eq!(home_dir_for(Os::Xdg, &env), None);
+        let env = env_of(vec![("HOME", PathBuf::from("rel"))]);
+        assert_eq!(home_dir_for(Os::Mac, &env), None);
+    }
+
+    #[test]
+    fn a_move_across_volumes_copies_then_removes() {
+        let base = root("exdev");
+        let _ = std::fs::remove_dir_all(&base);
+        let (old, new) = (base.join("old"), base.join("new").join("Trellis"));
+        std::fs::create_dir_all(old.join("avatars")).unwrap();
+        std::fs::write(old.join("settings.json"), "{}").unwrap();
+        std::fs::write(old.join("avatars").join("a.png"), "png").unwrap();
+        std::fs::create_dir_all(new.parent().unwrap()).unwrap();
+        let cross = |_: &Path, _: &Path| Err(std::io::Error::new(std::io::ErrorKind::CrossesDevices, "cross-device link"));
+        move_dir_with(&old, &new, cross).unwrap();
+        assert!(!old.exists());
+        assert_eq!(std::fs::read_to_string(new.join("settings.json")).unwrap(), "{}");
+        assert_eq!(std::fs::read_to_string(new.join("avatars").join("a.png")).unwrap(), "png");
+        // A copy that can't finish leaves the original alone.
+        let missing = base.join("not-there");
+        assert!(move_dir_with(&missing, &base.join("elsewhere"), cross).is_err());
+        assert!(!base.join("elsewhere").exists());
+        let _ = std::fs::remove_dir_all(&base);
     }
 
     #[test]

@@ -19,7 +19,7 @@ fn hash(email: &str) -> String {
 }
 
 fn cache_dir() -> Option<PathBuf> {
-    crate::settings::config_dir().map(|d| d.join("avatars"))
+    crate::settings::cache_dir().map(|d| d.join("avatars"))
 }
 
 /// The avatar URL for an email address.

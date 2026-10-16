@@ -158,8 +158,9 @@ pub fn list_ssh_keys(home: &Path) -> Vec<SigningKey> {
     keys
 }
 
+/// The home folder whose `.ssh` git's ssh reads (`settings::home_dir`).
 pub fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")).map(PathBuf::from)
+    crate::settings::home_dir()
 }
 
 /// Parameters for `gpg --batch --generate-key`: RSA 4096, expiring in two years.
@@ -246,7 +247,7 @@ uid:u::::1700000000::HASH::Encrypt Only <enc@example.com>::::::::::0:\n";
 
     #[test]
     fn lists_ssh_public_keys() {
-        let home = std::env::temp_dir().join(format!("trellis-ssh-{}", std::process::id()));
+        let home = crate::paths::temp_dir().join(format!("trellis-ssh-{}", std::process::id()));
         let ssh = home.join(".ssh");
         std::fs::create_dir_all(&ssh).unwrap();
         std::fs::write(ssh.join("id_ed25519.pub"), "ssh-ed25519 AAAAC3Nz ada@laptop\n").unwrap();
