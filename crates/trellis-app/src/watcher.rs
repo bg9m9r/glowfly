@@ -8,7 +8,7 @@ use crate::msg::WatchMsg;
 use crate::runner::Waker;
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -37,6 +37,13 @@ impl WatchSlot {
         let Some(target) = target else { return };
         let slot = Arc::clone(&self.0);
         let spawned = std::thread::Builder::new().name("trellis-watch-start".into()).spawn(move || {
+            // A network or virtual file system may never report changes made elsewhere.
+            if let Some(kind) = trellis_core::volume::remote_kind(&target.workdir) {
+                let msg = Msg::Watch(WatchMsg::RemoteVolume { workdir: target.workdir.clone(), kind });
+                if tx.send(msg).is_ok() {
+                    waker.wake();
+                }
+            }
             let started = start(&target, tx.clone(), waker.clone());
             let mut s = slot.lock().unwrap_or_else(|e| e.into_inner());
             if s.0 != generation {
@@ -63,24 +70,41 @@ pub struct RepoWatcher {
     _inner: notify::RecommendedWatcher,
 }
 
+/// Watches the work tree and git dir of `target` and, for a linked worktree, the refs, packed
+/// refs and HEAD it shares through the common git dir. Symbolic links are not followed: one
+/// pointing at a home folder would use up Linux's inotify watches, and what it points to isn't
+/// part of the repository.
 fn start<W: Waker + Clone>(target: &WatchTarget, tx: Sender<Msg>, waker: W) -> Result<RepoWatcher, String> {
     let (raw_tx, raw_rx) = std::sync::mpsc::channel::<notify::Result<Event>>();
-    let describe = |p: &Path, e: notify::Error| format!("could not watch {}: {e}", p.display());
-    let mut inner = notify::recommended_watcher(raw_tx).map_err(|e| format!("could not start a file watcher: {e}"))?;
+    let describe = |p: &Path, e: notify::Error| format!("could not watch {}: {e}", trellis_core::native_path::shown(p));
+    let config = notify::Config::default().with_follow_symlinks(false);
+    let mut inner = notify::RecommendedWatcher::new(raw_tx, config).map_err(|e| format!("could not start a file watcher: {e}"))?;
     inner.watch(&target.workdir, RecursiveMode::Recursive).map_err(|e| describe(&target.workdir, e))?;
     if !target.git_dir.starts_with(&target.workdir) {
         inner.watch(&target.git_dir, RecursiveMode::Recursive).map_err(|e| describe(&target.git_dir, e))?;
     }
+    let common = trellis_core::watch::common_dir(&target.git_dir);
+    if let Some(common) = &common {
+        let refs = common.join("refs");
+        if refs.is_dir() {
+            inner.watch(&refs, RecursiveMode::Recursive).map_err(|e| describe(&refs, e))?;
+        }
+        // HEAD and packed-refs sit in the folder itself.
+        inner.watch(common, RecursiveMode::NonRecursive).map_err(|e| describe(common, e))?;
+    }
     let target = target.clone();
     std::thread::Builder::new()
         .name("trellis-watch".into())
-        .spawn(move || event_loop(raw_rx, target, tx, waker))
+        .spawn(move || event_loop(raw_rx, target, common, tx, waker))
         .map_err(|e| format!("could not start the file watcher thread: {e}"))?;
     Ok(RepoWatcher { _inner: inner })
 }
 
-fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarget, tx: Sender<Msg>, waker: W) {
-    let paths = WatchPaths::new(&target.workdir, &target.git_dir);
+fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarget, common: Option<PathBuf>, tx: Sender<Msg>, waker: W) {
+    let mut paths = WatchPaths::new(&target.workdir, &target.git_dir);
+    if let Some(c) = &common {
+        paths = paths.with_common(c);
+    }
     let mut ignores = Ignores::open(&target.workdir);
     let mut burst = Burst::default();
     let mut reported = false;
@@ -194,173 +218,4 @@ impl Burst {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::PathBuf;
-    use trellis_core::gitcli::{args, run};
-
-    const MS: Duration = Duration::from_millis(1);
-
-    #[test]
-    fn bursts_wait_for_quiet() {
-        let t0 = Instant::now();
-        let mut b = Burst::default();
-        b.add(Change::Status, t0);
-        b.add(Change::Status, t0 + 100 * MS);
-        assert!(b.take_due(t0 + 350 * MS).is_none());
-        assert_eq!(b.wait(t0 + 350 * MS), Some(50 * MS));
-        assert_eq!(b.take_due(t0 + 400 * MS), Some((Change::Status, t0 + 100 * MS)));
-        assert_eq!(b.wait(t0 + 400 * MS), None, "reset after firing");
-        assert!(b.take_due(t0 + 5000 * MS).is_none());
-    }
-
-    #[test]
-    fn a_continuous_burst_fires_within_max_wait() {
-        let t0 = Instant::now();
-        let mut b = Burst::default();
-        let mut fired = None;
-        for i in 0..30u32 {
-            let t = t0 + i * 100 * MS;
-            if let Some(f) = b.take_due(t) {
-                fired = Some((t, f));
-                break;
-            }
-            b.add(Change::Status, t);
-        }
-        let (at, _) = fired.expect("fired during the burst");
-        assert!(at <= t0 + MAX_WAIT, "fired after {:?}", at - t0);
-    }
-
-    #[test]
-    fn bursts_merge_and_ignore_nothing() {
-        let t0 = Instant::now();
-        let mut b = Burst::default();
-        b.add(Change::Status, t0);
-        b.add(Change::Full, t0 + 10 * MS);
-        assert_eq!(b.take_due(t0 + 400 * MS).map(|(c, _)| c), Some(Change::Full));
-
-        b.add(Change::None, t0);
-        assert_eq!(b.wait(t0), None, "None doesn't start a burst");
-        b.add(Change::Status, t0);
-        b.add(Change::None, t0 + 200 * MS);
-        assert_eq!(b.take_due(t0 + 300 * MS), Some((Change::Status, t0)), "None doesn't extend it");
-    }
-
-    #[test]
-    fn linked_worktree_folder_modifies_are_quiet() {
-        use notify::event::{CreateKind, DataChange, MetadataKind, RemoveKind, RenameMode};
-        let wd = trellis_core::paths::temp_dir().join("trellis-watch-kinds-missing");
-        let gd = wd.join(".git");
-        let paths = WatchPaths::new(&wd, &gd);
-        let mut ignores = Ignores::open(&wd);
-        let mut c = |kind, rel: &str| classify(&Event::new(kind).add_path(gd.join(rel)), &paths, &mut ignores);
-        // What Windows reports for `.git/worktrees/wt` on every index write in that worktree.
-        assert_eq!(c(EventKind::Modify(ModifyKind::Any), "worktrees/wt"), Change::None);
-        assert_eq!(c(EventKind::Modify(ModifyKind::Metadata(MetadataKind::Any)), "worktrees/wt"), Change::None);
-        assert_eq!(c(EventKind::Modify(ModifyKind::Data(DataChange::Any)), "worktrees/wt/index"), Change::None);
-        // A worktree added, removed or renamed, and the files that describe it.
-        assert_eq!(c(EventKind::Create(CreateKind::Folder), "worktrees/wt"), Change::Full);
-        assert_eq!(c(EventKind::Remove(RemoveKind::Any), "worktrees/wt"), Change::Full);
-        assert_eq!(c(EventKind::Create(CreateKind::Any), "worktrees"), Change::Full);
-        assert_eq!(c(EventKind::Modify(ModifyKind::Name(RenameMode::Any)), "worktrees/wt"), Change::Full);
-        assert_eq!(c(EventKind::Any, "worktrees/wt"), Change::Full);
-        assert_eq!(c(EventKind::Modify(ModifyKind::Any), "worktrees/wt/locked"), Change::Full);
-        assert_eq!(c(EventKind::Modify(ModifyKind::Any), "index"), Change::Status);
-    }
-
-    #[derive(Clone)]
-    struct NoWake;
-    impl Waker for NoWake {
-        fn wake(&self) {}
-    }
-
-    fn git(dir: &Path, a: &[&str]) {
-        let (ok, out) = run(dir, &args(a));
-        assert!(ok, "git {a:?} failed: {out}");
-    }
-
-    /// The next `RepoChanged` for `workdir` within `timeout`, as `full`.
-    fn next_change(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<bool> {
-        match rx.recv_timeout(timeout).ok()? {
-            Msg::Scoped { workdir: w, msg } if w == workdir => match *msg {
-                Msg::Watch(WatchMsg::RepoChanged { full, .. }) => Some(full),
-                _ => panic!("unexpected scoped message"),
-            },
-            Msg::Watch(WatchMsg::WatchFailed { error, .. }) => panic!("watcher failed: {error}"),
-            _ => panic!("unexpected message"),
-        }
-    }
-
-    /// A fresh repository at `dir` with `a.txt` and a `.gitignore` for `target/` committed.
-    fn init_repo(dir: &Path) {
-        let _ = std::fs::remove_dir_all(dir);
-        std::fs::create_dir_all(dir).unwrap();
-        git(dir, &["init", "-q", "-b", "main"]);
-        git(dir, &["config", "user.name", "Test"]);
-        git(dir, &["config", "user.email", "test@example.com"]);
-        git(dir, &["config", "commit.gpgsign", "false"]);
-        std::fs::write(dir.join("a.txt"), "one\n").unwrap();
-        std::fs::write(dir.join(".gitignore"), "target/\n").unwrap();
-        git(dir, &["add", "."]);
-        git(dir, &["commit", "-q", "-m", "first"]);
-    }
-
-    #[test]
-    fn watcher_reports_an_outside_edit() {
-        let dir: PathBuf = trellis_core::paths::temp_dir().join(format!("trellis-app-test-watch-{}", std::process::id()));
-        init_repo(&dir);
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-        let watcher = start(&target, tx, NoWake).expect("watcher starts");
-        std::thread::sleep(Duration::from_millis(300));
-
-        std::fs::write(dir.join("a.txt"), "one\ntwo\n").unwrap();
-        assert_eq!(next_change(&rx, &dir, Duration::from_secs(10)), Some(false), "an edit re-reads the status");
-
-        git(&dir, &["checkout", "-q", "-b", "x"]);
-        let deadline = Instant::now() + Duration::from_secs(10);
-        while !next_change(&rx, &dir, deadline.saturating_duration_since(Instant::now())).expect("a full refresh") {}
-        // Let any trailing burst finish before checking that ignored files stay quiet.
-        while next_change(&rx, &dir, Duration::from_secs(1)).is_some() {}
-
-        std::fs::create_dir_all(dir.join("target/debug")).unwrap();
-        std::fs::write(dir.join("target/debug/x.o"), "obj").unwrap();
-        assert_eq!(next_change(&rx, &dir, Duration::from_secs(1)), None, "ignored files don't refresh");
-
-        // Dropping the watcher ends its thread, which drops the message sender.
-        drop(watcher);
-        assert!(matches!(rx.recv_timeout(Duration::from_secs(10)), Err(RecvTimeoutError::Disconnected)));
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn index_writes_in_a_linked_worktree_stay_quiet() {
-        let dir: PathBuf = trellis_core::paths::temp_dir().join(format!("trellis-app-test-watch-wt-{}", std::process::id()));
-        let linked = dir.with_file_name(format!("trellis-app-test-watch-wt-{}-linked", std::process::id()));
-        let _ = std::fs::remove_dir_all(&linked);
-        init_repo(&dir);
-        git(&dir, &["worktree", "add", "-q", "-b", "linked", &linked.display().to_string()]);
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        let target = WatchTarget { workdir: dir.clone(), git_dir: dir.join(".git") };
-        let watcher = start(&target, tx, NoWake).expect("watcher starts");
-        std::thread::sleep(Duration::from_millis(300));
-        while next_change(&rx, &dir, Duration::from_millis(500)).is_some() {}
-
-        // Staging and status in the linked worktree rewrite `.git/worktrees/<name>/index`.
-        for i in 0..3 {
-            std::fs::write(linked.join("a.txt"), format!("edit {i}\n")).unwrap();
-            git(&linked, &["add", "a.txt"]);
-            git(&linked, &["status", "--porcelain"]);
-        }
-        assert_eq!(next_change(&rx, &dir, Duration::from_secs(1)), None, "the main repository's tab doesn't reload");
-
-        git(&dir, &["worktree", "lock", &linked.display().to_string()]);
-        assert_eq!(next_change(&rx, &dir, Duration::from_secs(10)), Some(true), "locking it reloads in full");
-
-        drop(watcher);
-        let _ = std::fs::remove_dir_all(&linked);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-}
+mod tests;

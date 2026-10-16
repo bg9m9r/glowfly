@@ -437,3 +437,7 @@ impl eframe::App for TrellisApp {
         }
     }
 }
+        // The status is re-read on a timer where the watcher can be silent (see `poll_every`).
+        if let Some(every) = self.st.watch.poll_interval() {
+            ctx.request_repaint_after(every);
+        }

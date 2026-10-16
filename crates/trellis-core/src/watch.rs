@@ -30,6 +30,23 @@ pub enum Touch {
 pub struct WatchPaths {
     workdirs: Vec<PathBuf>,
     git_dirs: Vec<PathBuf>,
+    /// A linked worktree's common git dir (the main repository's `.git`), whose refs, packed
+    /// refs and HEAD it shares; empty when it is the git dir itself.
+    common_dirs: Vec<PathBuf>,
+}
+
+/// The common git dir of a linked worktree's git dir (`<repo>/.git/worktrees/<name>`): the
+/// folder its `commondir` file names (relative to `git_dir` unless absolute). None for any other
+/// git dir, which is its own common dir.
+pub fn common_dir(git_dir: &Path) -> Option<PathBuf> {
+    match std::fs::read_to_string(git_dir.join("commondir")) {
+        Ok(text) if !text.trim().is_empty() => {
+            let named = Path::new(text.trim_end_matches(['\n', '\r']));
+            let joined = if named.is_absolute() { named.to_path_buf() } else { git_dir.join(named) };
+            Some(crate::paths::resolve(&joined))
+        }
+        _ => None,
+    }
 }
 
 /// `path`, plus its canonical form when that differs (some platforms report real paths, others
@@ -46,7 +63,16 @@ fn with_canonical(path: &Path) -> Vec<PathBuf> {
 
 impl WatchPaths {
     pub fn new(workdir: &Path, git_dir: &Path) -> Self {
-        Self { workdirs: with_canonical(workdir), git_dirs: with_canonical(git_dir) }
+        Self { workdirs: with_canonical(workdir), git_dirs: with_canonical(git_dir), common_dirs: Vec::new() }
+    }
+
+    /// Also classifies paths in the common git dir `common` (unless it is the git dir).
+    pub fn with_common(mut self, common: &Path) -> Self {
+        let all = with_canonical(common);
+        if !all.iter().any(|c| self.git_dirs.contains(c)) {
+            self.common_dirs = all;
+        }
+        self
     }
 
     /// What `touch` on `path` calls for. `ignored` answers whether a work-tree path (relative,
@@ -55,6 +81,9 @@ impl WatchPaths {
         // The git dir usually sits inside the workdir, so it is checked first.
         if let Some(rel) = self.git_dirs.iter().find_map(|g| path.strip_prefix(g).ok()) {
             return git_change(rel, touch);
+        }
+        if let Some(rel) = self.common_dirs.iter().find_map(|c| path.strip_prefix(c).ok()) {
+            return common_change(rel);
         }
         let Some(rel) = self.workdirs.iter().find_map(|w| path.strip_prefix(w).ok()) else {
             return Change::None;
@@ -94,6 +123,18 @@ pub fn git_change(rel: &Path, touch: Touch) -> Change {
             Change::Full
         }
         ["index"] | ["info", "exclude"] => Change::Status,
+        _ => Change::None,
+    }
+}
+
+/// What a change to `rel`, a path in a linked worktree's common git dir, calls for: the refs
+/// it shares and the main worktree's HEAD (which branch is checked out there) reload everything;
+/// the rest belongs to the main worktree (its index, its rebase) or to no one.
+pub fn common_change(rel: &Path) -> Change {
+    let parts: Vec<&str> = rel.components().filter_map(|c| c.as_os_str().to_str()).collect();
+    match parts.as_slice() {
+        [.., last] if last.ends_with(".lock") => Change::None,
+        ["refs", ..] | ["packed-refs"] | ["HEAD"] => Change::Full,
         _ => Change::None,
     }
 }
@@ -191,6 +232,45 @@ mod tests {
         ] {
             assert_eq!(c(none), Change::None, "{none}");
         }
+    }
+
+    #[test]
+    fn a_linked_worktree_follows_the_refs_it_shares() {
+        let c = |p: &str| common_change(Path::new(p));
+        for full in ["refs/heads/main", "refs/remotes/origin/x", "packed-refs", "HEAD"] {
+            assert_eq!(c(full), Change::Full, "{full}");
+        }
+        for none in ["index", "refs/heads/main.lock", "objects/ab/cd", "config", "logs/HEAD", "rebase-merge/done", "worktrees/other/index"]
+        {
+            assert_eq!(c(none), Change::None, "{none}");
+        }
+        // Classified through WatchPaths: the linked worktree's own git dir first, then the common one.
+        let common = std::env::temp_dir().join("trellis-watch-common-missing").join(".git");
+        let git_dir = common.join("worktrees").join("wt");
+        let wd = std::env::temp_dir().join("trellis-watch-common-missing-wt");
+        let paths = WatchPaths::new(&wd, &git_dir).with_common(&common);
+        let mut never = |_: &str| false;
+        assert_eq!(paths.classify(&common.join("refs/heads/x"), Touch::Other, &mut never), Change::Full);
+        assert_eq!(paths.classify(&common.join("index"), Touch::Modified, &mut never), Change::None);
+        assert_eq!(paths.classify(&git_dir.join("index"), Touch::Modified, &mut never), Change::Status);
+        assert_eq!(paths.classify(&git_dir.join("HEAD"), Touch::Modified, &mut never), Change::Full);
+        // The main worktree's own git dir is not a second root.
+        let main = WatchPaths::new(&wd, &common).with_common(&common);
+        assert!(main.common_dirs.is_empty());
+    }
+
+    #[test]
+    fn common_dir_follows_the_commondir_file() {
+        let dir = scratch_repo("watch-commondir");
+        let linked = dir.with_file_name(format!("{}-linked", dir.file_name().unwrap().to_string_lossy()));
+        let _ = std::fs::remove_dir_all(&linked);
+        git(&dir, &["worktree", "add", "-q", "-b", "linked", &linked.display().to_string()]);
+        let repo = git2::Repository::open(&linked).unwrap();
+        let common = crate::paths::resolve(&dir.join(".git"));
+        assert_eq!(common_dir(repo.path()), Some(common.clone()));
+        assert_eq!(common_dir(&common), None, "the main git dir is its own");
+        let _ = std::fs::remove_dir_all(&linked);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

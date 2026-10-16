@@ -124,6 +124,9 @@ pub enum WatchMsg {
     RepoChanged { full: bool, last_event: Instant },
     /// The file watcher could not start or stopped working for `workdir`.
     WatchFailed { workdir: PathBuf, error: String },
+    /// `workdir` is on a network or virtual file system of this `kind` ("SMB", "WSL"…), which
+    /// may not report changes made elsewhere.
+    RemoteVolume { workdir: PathBuf, kind: &'static str },
 }
 
 impl WatchMsg {
@@ -131,7 +134,7 @@ impl WatchMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::RepoChanged { .. } | Self::WatchFailed { .. } => None,
+            Self::RepoChanged { .. } | Self::WatchFailed { .. } | Self::RemoteVolume { .. } => None,
         }
     }
 }

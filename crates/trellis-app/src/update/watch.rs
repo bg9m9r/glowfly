@@ -32,6 +32,13 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
                 super::repo::refresh_status(st, fx);
             }
         }
+        WatchMsg::RemoteVolume { workdir, kind } => {
+            if st.watch.remote.insert(workdir.clone(), kind).is_none() {
+                let text = remote_text(&workdir, kind);
+                st.toast(true, text.clone(), now);
+                st.log_quiet(true, text);
+            }
+        }
         WatchMsg::WatchFailed { workdir, error } => {
             tracing::warn!("file watching failed for {}: {error}", workdir.display());
             // Reported once per repository; it is retried (silently) when its tab is selected again.
@@ -57,6 +64,32 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
         st.watch.target = workdir;
         st.watch.quiet_until = None;
         fx.push(Effect::Watch(want));
+    }
+}
+
+/// What Trellis says about a repository on a network or virtual file system.
+pub(super) fn remote_text(workdir: &std::path::Path, kind: &str) -> String {
+    let secs = crate::state::watch::REMOTE_POLL.as_secs();
+    format!(
+        "{} is on {kind}, which may not report changes made from another computer or system. Trellis re-reads it every {secs} seconds while its window is focused, when the window regains focus and when you press F5.",
+        trellis_core::native_path::shown(workdir)
+    )
+}
+
+/// On the timer `poll_every` sets (a network or virtual file system, or Windows), re-reads the
+/// status while the window is focused and nothing else is reading or changing the repository.
+pub(super) fn poll(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    let Some(every) = st.watch.poll_interval() else { return };
+    if !st.view.was_focused || st.snap.is_none() || st.job.is_some() || st.loading {
+        return;
+    }
+    match st.watch.last_poll {
+        Some(last) if now.saturating_duration_since(last) < every => {}
+        Some(_) => {
+            st.watch.last_poll = Some(now);
+            super::repo::refresh_status(st, fx);
+        }
+        None => st.watch.last_poll = Some(now),
     }
 }
 

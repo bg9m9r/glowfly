@@ -202,6 +202,8 @@ mod undo_tests;
 mod watch_tests;
 #[cfg(test)]
 mod whitespace_tests;
+mod watch_poll_tests;
+#[cfg(test)]
 #[cfg(test)]
 mod whole_file_tests;
 #[cfg(test)]
@@ -274,7 +276,10 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).
-        Msg::Tick(t) => ops::auto_fetch(st, t, &mut fx),
+        Msg::Tick(t) => {
+            ops::auto_fetch(st, t, &mut fx);
+            watch::poll(st, t, &mut fx);
+        }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {
                 fx.extend(update(st, *msg, now));
