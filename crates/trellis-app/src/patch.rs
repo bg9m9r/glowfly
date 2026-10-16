@@ -51,4 +51,12 @@ impl PatchEffect {
             PatchEffect::PickOpen { .. } => "pick-patch",
         }
     }
+
+    /// Whether the runner times this for the performance log: the file dialogs wait on the user.
+    pub fn timed(&self) -> bool {
+        match self {
+            PatchEffect::Export { .. } => true,
+            PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. } => false,
+        }
+    }
 }

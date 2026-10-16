@@ -169,6 +169,19 @@ impl SshEffect {
         }
     }
 
+    /// Whether the runner times this for the performance log. `ssh-add` waits while the user
+    /// types the key's passphrase, and the upload may wait on a sign-in window.
+    pub fn timed(&self) -> bool {
+        match self {
+            SshEffect::List { .. }
+            | SshEffect::Generate { .. }
+            | SshEffect::ReadChoice { .. }
+            | SshEffect::SetKeyChoice { .. }
+            | SshEffect::Agent { .. } => true,
+            SshEffect::AddToAgent { .. } | SshEffect::AddToService { .. } => false,
+        }
+    }
+
     pub fn failure(&self) -> SshFailure {
         match self {
             SshEffect::List { generation } => SshFailure::List(*generation),

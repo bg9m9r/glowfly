@@ -111,6 +111,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("gitcli", &["run", "run_with_input", "version", "observe_runs"]),
     ("git_program", &["set", "probe", "discover", "precheck"]),
     ("logs", &["read_tail"]),
+    ("persist", &["append", "open_append"]),
     ("ActivityFile", &["open"]),
     ("settings", &["log_dir"]),
     ("conflict_check", &["predict"]),
@@ -379,6 +380,8 @@ fn the_check_catches_io() {
     assert_eq!(n("use trellis_core::askpass::{PromptKind, host};"), 0);
     assert_eq!(n("let s = pty::spawn(&d, 24, 80, &sh, o, e);"), 1);
     assert_eq!(n("let sh = pty::default_shell();"), 1);
+    assert_eq!(n("persist::append(&p, b\"line\n\")"), 1);
+    assert_eq!(n("use trellis_core::persist::{open_append, WriteOptions};"), 1);
     assert_eq!(n("use trellis_core::terminal::{TermScreen, encode};"), 0);
     // Whole families, not only known names.
     assert_eq!(n("let ok = Path::new(&p).is_dir();"), 1);

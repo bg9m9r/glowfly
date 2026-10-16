@@ -131,9 +131,7 @@ impl Effect {
             | Effect::SaveTabs { .. }
             | Effect::ListSigningKeys { .. }
             | Effect::ExportPublicKey { .. }
-            | Effect::Ssh(_)
             | Effect::Profile(_)
-            | Effect::Patch(_)
             | Effect::GitEnv(_)
             | Effect::Theme(_)
             | Effect::CheckConflicts(_)
@@ -141,6 +139,9 @@ impl Effect {
             | Effect::Clone(_)
             | Effect::Init(_)
             | Effect::PullRequest(_) => true,
+            // Some of their variants wait on the user (a file dialog, a passphrase prompt).
+            Effect::Ssh(e) => e.timed(),
+            Effect::Patch(p) => p.timed(),
             // They wait on the user, hand work to the system, or never run on a worker thread.
             Effect::OpenUrl(_)
             | Effect::OpenTerminal(_)
@@ -158,5 +159,26 @@ impl Effect {
             | Effect::Logs(_)
             | Effect::Ui(_) => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Effect;
+    use crate::patch::PatchEffect;
+    use crate::ssh::SshEffect;
+    use std::path::PathBuf;
+
+    #[test]
+    fn effects_that_wait_on_the_user_are_not_timed() {
+        let dir = PathBuf::from("repo");
+        let oids = vec![git2::Oid::zero()];
+        let pick_save = PatchEffect::PickSave { workdir: dir.clone(), oids: oids.clone(), name: "a.patch".into() };
+        assert!(!Effect::Patch(pick_save).timed());
+        assert!(!Effect::Patch(PatchEffect::PickOpen { workdir: dir.clone() }).timed());
+        assert!(Effect::Patch(PatchEffect::Export { workdir: dir.clone(), oids, dest: dir.join("a.patch") }).timed());
+        assert!(!Effect::Ssh(SshEffect::AddToAgent { ssh_add: "ssh-add".into(), key: dir.join("id") }).timed());
+        assert!(Effect::Ssh(SshEffect::Agent { generation: 1 }).timed());
+        assert!(Effect::Ssh(SshEffect::List { generation: 1 }).timed());
     }
 }
