@@ -164,7 +164,7 @@ const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/mod.rs", "platform::load_tabs", "the shell loads the last session's tabs once, at startup"),
     ("ui/mod.rs", "Instant::now", "the shell stamps each frame and message with the time"),
     ("ui/mod.rs", "Local::now", "the shell sets `st.view.now` once per frame"),
-    ("state/mod.rs", "std::env", "`any_dir` falls back to the temp folder's path; nothing is read"),
+    ("state/mod.rs", "std::env", "`outside_dir` (and `any_dir` without a repository) is the temp folder's path; nothing is read"),
 ];
 
 /// One problem found: the line (1-based), the matched pattern and what it reaches.

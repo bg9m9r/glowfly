@@ -53,7 +53,7 @@ pub(super) fn retry(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// repository: the dialog has nothing to do with the active tab, and a credential helper set in
 /// that repository's own config must not run while the repository isn't trusted.
 fn load(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let cwd = trellis_core::paths::temp_dir();
+    let cwd = AppState::outside_dir();
     let Some(f) = form(st) else { return };
     let p = &mut f.service;
     let Some(account) = p.selected().cloned() else { return };

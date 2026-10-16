@@ -362,7 +362,13 @@ impl AppState {
 
     /// Working directory for commands that don't need a repository (git config, sign-in).
     pub fn any_dir(&self) -> PathBuf {
-        self.workdir().unwrap_or_else(std::env::temp_dir)
+        self.workdir().unwrap_or_else(Self::outside_dir)
+    }
+
+    /// A folder outside any repository (the temp folder), for git calls that must not read the
+    /// active repository's own config, e.g. its credential helper while it isn't trusted.
+    pub fn outside_dir() -> PathBuf {
+        std::env::temp_dir()
     }
 
     /// How to load the repository at `workdir`, with the hidden and soloed refs saved for it.
