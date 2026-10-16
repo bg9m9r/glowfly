@@ -123,6 +123,17 @@ fn is_file(p: &Path) -> bool {
     p.is_file()
 }
 
+/// `is_file` with Windows' case-insensitive names, so the Windows lookup is tested the same way
+/// on case-sensitive file systems (Linux), where `code` + `.CMD` must still find `code.cmd`.
+fn is_file_any_case(p: &Path) -> bool {
+    let (Some(dir), Some(name)) = (p.parent(), p.file_name()) else {
+        return false;
+    };
+    let name = name.to_string_lossy().to_lowercase();
+    std::fs::read_dir(dir)
+        .is_ok_and(|entries| entries.flatten().any(|e| e.path().is_file() && e.file_name().to_string_lossy().to_lowercase() == name))
+}
+
 /// `found`'s text, lowercased: Windows file systems ignore case, so `code` + `.CMD` finds
 /// `code.cmd` as `code.CMD`.
 fn lower(found: Option<PathBuf>) -> Option<String> {
@@ -133,15 +144,18 @@ fn lower(found: Option<PathBuf>) -> Option<String> {
 fn resolve_finds_windows_wrappers_through_pathext() {
     let (root, path) = path_fixture("pathext", &["code.cmd", "tool.exe", "plain"]);
     let ext = OsStr::new(".COM;.EXE;.BAT;.CMD");
-    let found = resolve(Path::new("code"), Some(&path), Some(ext), true, &is_file);
+    let found = resolve(Path::new("code"), Some(&path), Some(ext), true, &is_file_any_case);
     assert_eq!(lower(found), lower(Some(root.join("two").join("code.cmd"))));
     // The default list when PATHEXT is unset.
-    assert_eq!(lower(resolve(Path::new("tool"), Some(&path), None, true, &is_file)), lower(Some(root.join("two").join("tool.exe"))));
+    assert_eq!(
+        lower(resolve(Path::new("tool"), Some(&path), None, true, &is_file_any_case)),
+        lower(Some(root.join("two").join("tool.exe")))
+    );
     // A name with an extension is not given another one.
-    assert_eq!(resolve(Path::new("code.exe"), Some(&path), Some(ext), true, &is_file), None);
-    assert_eq!(resolve(Path::new("tool.exe"), Some(&path), Some(ext), true, &is_file), Some(root.join("two").join("tool.exe")));
+    assert_eq!(resolve(Path::new("code.exe"), Some(&path), Some(ext), true, &is_file_any_case), None);
+    assert_eq!(resolve(Path::new("tool.exe"), Some(&path), Some(ext), true, &is_file_any_case), Some(root.join("two").join("tool.exe")));
     // A bare name without an extension is only tried with PATHEXT's extensions on Windows.
-    assert_eq!(resolve(Path::new("plain"), Some(&path), Some(ext), true, &is_file), None);
+    assert_eq!(resolve(Path::new("plain"), Some(&path), Some(ext), true, &is_file_any_case), None);
     let _ = std::fs::remove_dir_all(&root);
 }
 
