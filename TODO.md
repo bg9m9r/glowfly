@@ -16,7 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
-- 2026-10-16 03:00 · **Git Flow**: Git Flow panel in place of the graph, a GIT FLOW section in the left panel grouping flow branches by kind, and Start Git Flow feature/release/hotfix from an issue in the issue menu and palette (`5282476`)
+- 2026-10-16 03:00 · **Git Flow**: Git Flow panel in place of the graph, a GIT FLOW section in the left panel grouping flow branches by kind, and Start Git Flow feature/release/hotfix from an issue in the issue menu and palette (`0b54e13`)
 - 2026-10-16 00:41 · **Diff viewer upgrade**: Word wrap toggle in the diff header and Preferences > Editor, with variable-height rows (`bb11923`)
 - 2026-10-16 00:37 · **Repository trust**: git jobs started in an untrusted repository (pull, push, commit and its hooks, undo, …) wait for the trust prompt, which names the operation and offers Trust and run or Cancel (`0c57fb6`)
 - 2026-10-15 22:15 · **Notifications**: "N commits behind" toast with a Pull button when a background fetch leaves the checked-out branch further behind its upstream; toasts can carry an action button; Behind alerts setting under UI Customization (`90241d7`)
@@ -36,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 13:31 · **Repository trust**: Untrusted chip in the toolbar and a Review repository trust… palette command bring the trust prompt back (`6764632`)
 - 2026-10-15 12:24 · **File actions**: Undo and redo a restore from a commit: the overwritten working copy is kept and put back byte for byte (`977d157`)
 - 2026-10-15 12:14 · **Repository trust**: ask before running git in repositories whose config or hooks run commands; hold auto-fetch, hosting-service sign-in and git status until trusted (`8c0fb03`)
-- 2026-10-15 12:14 · **Diff viewer upgrade**: Pair removed and added lines by similarity in the split layout and for word highlights (`9e4288f`)
 
 ---
 
