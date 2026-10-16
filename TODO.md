@@ -19,6 +19,7 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 14:07 · **Worktrees**: WIP rows in the graph for other worktrees with uncommitted changes (counts, tooltip, click to open; UI Customization toggle) (`c6dae35`)
 - 2026-10-16 14:06 · **Git LFS**: Auto-fetch also downloads the checked-out commit's LFS files (quiet, never prompts, behind alert kept); restoring from a commit checks filtered (LFS) files with git before overwriting (`b640259`)
 - 2026-10-16 11:56 · **CI / build status**: Build status for GitLab pipelines, Azure DevOps build policies and statuses and Bitbucket Cloud and Data Center build statuses on pull requests, markers for branch tips on LOCAL and REMOTE rows and graph ref labels (throttled, cached per commit), and Open failed build / Open build page in the pull request menu (`cc9fd29`)
+- 2026-10-16 11:33 · **External diff and merge tools**: Diff tool and merge tool in Preferences > External Tools; Open in external diff tool from file rows, file history and the diff header (copies in a private temp folder, the working file for unstaged changes), and Resolve in external merge tool from conflicted rows and the conflict view, run as a job that reports whether the file was saved (`71147c8`)
 - 2026-10-16 11:25 · **CI / build status**: Check status on GitHub and GitHub Enterprise pull requests: check runs and commit statuses read with the reviews, a passed/failed/pending marker on PULL REQUESTS rows and a "Checks: N of M passed" tooltip line (`70961be`)
 - 2026-10-16 10:40 · **GPG passphrase prompts**: OpenPGP signing passphrases asked in Trellis's own dialog: Trellis runs as git's gpg.program for foreground jobs, signs with the user's gpg through loopback pinentry (asking again after a wrong passphrase), and falls back to GnuPG's own window when it can't or when Preferences > Commit Signing says so (`e55ae02`)
 - 2026-10-16 10:38 · **Rebind keyboard shortcuts**: Preferences > Keyboard: change, add and remove keys by recording them, with refused and clashing keys explained (Swap, Use here), per-row Reset and Reset all; saved to settings and applied at once, and every changeable key matched through the keymap (`e6d2105`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 03:57 · **Tag management**: Hide and solo tags in the graph from the TAGS row menu, with markers on hidden and soloed rows (`152cd40`)
 - 2026-10-16 03:00 · **Git Flow**: Git Flow panel in place of the graph, a GIT FLOW section in the left panel grouping flow branches by kind, and Start Git Flow feature/release/hotfix from an issue in the issue menu and palette (`8f751ea`)
 - 2026-10-16 00:41 · **Diff viewer upgrade**: Word wrap toggle in the diff header and Preferences > Editor, with variable-height rows (`bb11923`)
-- 2026-10-16 00:37 · **Repository trust**: git jobs started in an untrusted repository (pull, push, commit and its hooks, undo, …) wait for the trust prompt, which names the operation and offers Trust and run or Cancel (`0c57fb6`)
 
 ---
 
