@@ -15,7 +15,7 @@ mod todo;
 
 pub use plan::plan;
 pub use run::{start, stopped_at};
-pub use todo::{build, editor_command, install_todo, is_unchanged, listed_oids, problem, shell_quote};
+pub use todo::{build, editor_command, install_todo, is_unchanged, listed_oids, problem, shell_quote, shell_quote_for};
 
 /// Why Start refuses a list made before HEAD moved.
 pub const STALE: &str = "The branch changed since this list was made. Reset to reload it.";

@@ -71,10 +71,18 @@ fn guarded_amend(base: &str, file: &str) -> String {
     ) + "\n"
 }
 
-/// `s` quoted for `sh` (git runs editors and exec lines through it, also on Windows), with
-/// backslashes turned into forward slashes.
+/// `s` quoted for `sh` (git runs editors and exec lines through it, also on Windows); see
+/// [`shell_quote_for`].
 pub fn shell_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\\', "/").replace('\'', "'\\''"))
+    shell_quote_for(s, cfg!(windows))
+}
+
+/// `s` quoted for `sh`. With `windows`, backslashes (Windows' separators) become forward
+/// slashes, which Git for Windows' sh reads as the same path; on Unix a backslash is part of a
+/// file name and is kept.
+pub fn shell_quote_for(s: &str, windows: bool) -> String {
+    let s = if windows { s.replace('\\', "/") } else { s.to_owned() };
+    format!("'{}'", s.replace('\'', "'\\''"))
 }
 
 /// The `GIT_SEQUENCE_EDITOR` command that installs `prepared`; git appends the todo's path.

@@ -123,12 +123,20 @@ fn unchanged_lists() {
 
 #[test]
 fn quoting_and_editor_commands() {
-    assert_eq!(shell_quote("C:\\Program Files\\Trellis\\trellis.exe"), "'C:/Program Files/Trellis/trellis.exe'");
+    assert_eq!(shell_quote_for("C:\\Program Files\\Trellis\\trellis.exe", true), "'C:/Program Files/Trellis/trellis.exe'");
+    // On Unix a backslash is part of a name: `/tmp/a\b` is not `/tmp/a/b`.
+    assert_eq!(shell_quote_for("/tmp/a\\b/todo", false), "'/tmp/a\\b/todo'");
     assert_eq!(shell_quote("it's"), "'it'\\''s'");
-    let prepared = Path::new("C:\\repo\\.git\\trellis-rebase\\todo");
-    let exe = SequenceEditor::Helper("C:\\Apps\\trellis.exe".into());
-    assert_eq!(editor_command(&exe, prepared), "'C:/Apps/trellis.exe' --write-todo 'C:/repo/.git/trellis-rebase/todo'");
-    assert_eq!(editor_command(&SequenceEditor::Copy, prepared), "cp 'C:/repo/.git/trellis-rebase/todo'");
+    assert_eq!(shell_quote("/repo/x"), "'/repo/x'");
+    if cfg!(windows) {
+        let prepared = Path::new("C:\\repo\\.git\\trellis-rebase\\todo");
+        let exe = SequenceEditor::Helper("C:\\Apps\\trellis.exe".into());
+        assert_eq!(editor_command(&exe, prepared), "'C:/Apps/trellis.exe' --write-todo 'C:/repo/.git/trellis-rebase/todo'");
+        assert_eq!(editor_command(&SequenceEditor::Copy, prepared), "cp 'C:/repo/.git/trellis-rebase/todo'");
+    }
+    let prepared = Path::new("/repo/.git/trellis-rebase/todo");
+    let exe = SequenceEditor::Helper("/opt/trellis/trellis".into());
+    assert_eq!(editor_command(&exe, prepared), "'/opt/trellis/trellis' --write-todo '/repo/.git/trellis-rebase/todo'");
     assert_eq!(editor_command(&SequenceEditor::Shell("false".into()), prepared), "false");
 }
 
