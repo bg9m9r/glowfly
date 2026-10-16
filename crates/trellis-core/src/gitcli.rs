@@ -145,6 +145,7 @@ fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: 
         let input = input.as_bytes().to_vec();
         std::thread::spawn(move || {
             use std::io::Write;
+    crate::env_path::apply(&mut cmd);
             // A command that exits without reading all of stdin closes the pipe; that's fine.
             let _ = stdin.write_all(&input);
         });

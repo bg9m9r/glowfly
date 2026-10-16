@@ -10,6 +10,7 @@ pub mod conflict_check;
 pub mod conflict_rows;
 pub mod dates;
 pub mod diff_rows;
+pub mod env_path;
 pub mod error;
 pub mod external_tools;
 pub mod forge;

@@ -229,7 +229,7 @@ pub fn keygen_candidates(
 
 /// The ssh-keygen program to run, if one is installed.
 pub fn find_keygen(cwd: &Path) -> Option<PathBuf> {
-    let path_var = std::env::var_os("PATH");
+    let path_var = crate::env_path::path();
     let (exec_path, system_root) = if cfg!(windows) {
         let out = gitcli::read(cwd, &args(&["--exec-path"]));
         let exec = (out.ok && !out.stdout.trim().is_empty()).then(|| PathBuf::from(out.stdout.trim()));
@@ -239,7 +239,7 @@ pub fn find_keygen(cwd: &Path) -> Option<PathBuf> {
     };
     keygen_candidates(path_var.as_deref(), std::env::consts::EXE_SUFFIX, exec_path.as_deref(), system_root.as_deref())
         .into_iter()
-        .find(|p| p.is_file())
+        .find(|p| crate::external_tools::locate_here(p).is_some())
 }
 
 /// `ssh-keygen -l -f <public>`: the size, fingerprint and kind, or None if it fails.

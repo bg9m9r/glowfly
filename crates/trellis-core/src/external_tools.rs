@@ -12,6 +12,7 @@ use crate::native_path::native;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 /// Why a template can't be used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -72,8 +73,8 @@ pub struct Vars<'a> {
 
 /// The arguments of `template` with its placeholders filled in from `v`, in one pass (a value
 /// that itself contains `{line}` is not expanded again). Unknown `{names}` are kept as typed.
-pub fn expand(template: &str, v: &Vars) -> Result<Vec<OsString>, TemplateError> {
 /// Paths go in in this system's spelling (`C:\x\y`, never libgit2's `C:/x/y/`).
+pub fn expand(template: &str, v: &Vars) -> Result<Vec<OsString>, TemplateError> {
     Ok(split(template)?.iter().map(|a| substitute(a, v)).collect())
 }
 
@@ -129,19 +130,20 @@ pub fn program(text: &str) -> Option<PathBuf> {
 /// Windows' usual PATHEXT, for when the variable is unset.
 const DEFAULT_PATHEXT: &str = ".COM;.EXE;.BAT;.CMD";
 
-/// Where `program` is: a path (more than one component, or absolute) if it `exists`, else the
-/// first folder of `path_var` holding it. With `windows`, a bare name without an extension is
-/// tried with each of `pathext`'s extensions (so `code` finds `code.cmd`). Only PATH is
-/// searched, never the current folder.
+/// Where `program` is: a path (more than one component, or absolute) if `find` finds it, else
+/// the first folder of `path_var` holding it. With `windows`, a bare name without an extension
+/// is tried with each of `pathext`'s extensions (so `code` finds `code.cmd`). Only PATH is
+/// searched, never the current folder. `find` answers where a candidate really is (see
+/// [`locate`]), or None.
 pub fn resolve(
     program: &Path,
     path_var: Option<&OsStr>,
     pathext: Option<&OsStr>,
     windows: bool,
-    exists: &dyn Fn(&Path) -> bool,
+    find: &dyn Fn(&Path) -> Option<PathBuf>,
 ) -> Option<PathBuf> {
     if program.is_absolute() || program.components().count() > 1 {
-        return exists(program).then(|| program.to_owned());
+        return find(program);
     }
     let exts: Vec<String> = if windows && program.extension().is_none() {
         let list = pathext.and_then(OsStr::to_str).filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_PATHEXT);
@@ -156,13 +158,66 @@ pub fn resolve(
         for ext in &exts {
             let mut name = program.as_os_str().to_owned();
             name.push(ext);
-            let candidate = dir.join(name);
-            if exists(&candidate) {
-                return Some(candidate);
+            if let Some(found) = find(&dir.join(name)) {
+                return Some(found);
             }
         }
     }
     None
+}
+
+/// Where the program file `p` is, as a PATH search should see it:
+/// - with `windows`, names match whatever their case, by listing the folder when the exact
+///   name isn't there (a WSL folder, or one with per-directory case sensitivity, keeps
+///   `Code.exe` and `code.exe` apart);
+/// - on Unix (without `windows`), only a file with an executable bit counts, as for a shell;
+/// - with `macos`, an application bundle (a folder ending in `.app`) counts too.
+pub fn locate(p: &Path, windows: bool, macos: bool) -> Option<PathBuf> {
+    if let Ok(m) = std::fs::metadata(p) {
+        if m.is_file() && (windows || executable(&m)) {
+            return Some(p.to_owned());
+        }
+        if macos && m.is_dir() && has_extension(p, "app") {
+            return Some(p.to_owned());
+        }
+    }
+    if !windows {
+        return None;
+    }
+    let (dir, name) = (p.parent()?, p.file_name()?.to_str()?.to_lowercase());
+    std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .find(|e| e.file_name().to_str().is_some_and(|n| n.to_lowercase() == name))
+        .map(|e| e.path())
+        .filter(|found| found.is_file())
+}
+
+/// Whether a file's permissions let it run (always true where there are no such bits).
+fn executable(m: &std::fs::Metadata) -> bool {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        m.permissions().mode() & 0o111 != 0
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = m;
+        true
+    }
+}
+
+/// [`locate`] for this system.
+pub fn locate_here(p: &Path) -> Option<PathBuf> {
+    locate(p, cfg!(windows), cfg!(target_os = "macos"))
+}
+
+/// Where `program` is on this system's PATH (see [`resolve`]), honouring the PATH Trellis
+/// gives its children ([`crate::env_path`]).
+pub fn find_on_path(program: &Path) -> Option<PathBuf> {
+    let path_var = crate::env_path::path();
+    let pathext = std::env::var_os("PATHEXT");
+    resolve(program, path_var.as_deref(), pathext.as_deref(), cfg!(windows), &locate_here)
 }
 
 /// A program to start: `program` as the user typed it (resolved by `spawn`), its expanded
@@ -182,10 +237,19 @@ fn has_extension(p: &Path, ext: &str) -> bool {
 }
 
 /// The command line that starts `resolved` with `args`: on macOS an application bundle is
-/// started through `open -a`, everything else as is.
+/// started through `open -a`, everything else as is. `open -a App <files>` hands the files to
+/// the app as documents, even to a running one, but would take options meant for the app as its
+/// own; so when any argument is an option (`--goto`, `-n`) they go after `--args`, to a new
+/// instance (`-n`), since a running one never sees `--args` (editors that take options pass
+/// them on to the window that is already open).
 pub(crate) fn command_line(resolved: &Path, args: &[OsString], macos: bool) -> (PathBuf, Vec<OsString>) {
     if macos && has_extension(resolved, "app") {
-        let mut all = vec![OsString::from("-a"), resolved.as_os_str().to_owned()];
+        let options = args.iter().any(|a| a.to_string_lossy().starts_with('-'));
+        let mut all: Vec<OsString> = if options { vec!["-n".into()] } else { Vec::new() };
+        all.extend([OsString::from("-a"), resolved.as_os_str().to_owned()]);
+        if options {
+            all.push("--args".into());
+        }
         all.extend(args.iter().cloned());
         return (PathBuf::from("open"), all);
     }
@@ -218,22 +282,26 @@ pub(crate) fn console_setup(own_console: bool, batch_file: bool) -> ConsoleSetup
     }
 }
 
-/// Starts `l` without waiting for it, reaped on a background thread; see `console_setup` for
-/// its input and output. `Error::NotFound` when the program can't be found.
+/// How long a started program is watched for failing at once (a bad option, a missing file,
+/// `open` not finding the app). One still running then is left to run.
+pub const EARLY_EXIT: Duration = Duration::from_millis(1500);
+
+/// Starts `l`, watching it for [`EARLY_EXIT`]: an exit with an error in that time is reported
+/// with the first line it printed on stderr; after it, the program is left running, reaped on a
+/// background thread. See `console_setup` for its input and output. `Error::NotFound` when the
+/// program can't be found.
 pub fn spawn(l: &Launch) -> Result<()> {
     let macos = cfg!(target_os = "macos");
-    let exists = |p: &Path| p.is_file() || (macos && has_extension(p, "app") && p.is_dir());
-    let path_var = std::env::var_os("PATH");
-    let pathext = std::env::var_os("PATHEXT");
-    let resolved = resolve(&l.program, path_var.as_deref(), pathext.as_deref(), cfg!(windows), &exists)
-        .ok_or_else(|| Error::NotFound(l.program.display().to_string()))?;
+    let resolved = find_on_path(&l.program).ok_or_else(|| Error::NotFound(l.program.display().to_string()))?;
     let (program, args) = command_line(&resolved, &l.args, macos);
     let mut cmd = Command::new(&program);
-    cmd.args(&args).current_dir(&l.cwd);
+    cmd.args(&args).current_dir(native(&l.cwd));
+    crate::env_path::apply(&mut cmd);
     let batch = cfg!(windows) && (has_extension(&resolved, "cmd") || has_extension(&resolved, "bat"));
     let setup = console_setup(l.own_console, batch);
     if setup.null_stdio {
-        cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+        // stderr is kept, to say why a program that fails at once failed.
+        cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
     }
     #[cfg(windows)]
     {
@@ -244,11 +312,57 @@ pub fn spawn(l: &Launch) -> Result<()> {
         std::io::ErrorKind::NotFound => Error::NotFound(l.program.display().to_string()),
         _ => Error::Io(e),
     })?;
-    // Reaped so it leaves no zombie on Unix; Trellis never waits for the program.
+    let stderr = child.stderr.take().map(drain_stderr);
+    let deadline = Instant::now() + EARLY_EXIT;
+    while Instant::now() < deadline {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => return Ok(()),
+            Ok(Some(status)) => {
+                let said = stderr.and_then(|rx| rx.recv_timeout(Duration::from_millis(500)).ok()).unwrap_or_default();
+                return Err(Error::Other(early_exit_message(status.code(), &said)));
+            }
+            Ok(None) => std::thread::sleep(Duration::from_millis(20)),
+            Err(_) => break,
+        }
+    }
+    // Reaped so it leaves no zombie on Unix; Trellis doesn't wait for the program.
     let _ = std::thread::Builder::new().name("trellis-tool-wait".into()).spawn(move || {
         let _ = child.wait();
     });
     Ok(())
+}
+
+/// Reads a child's stderr to its end on a thread of its own (so a chatty program never blocks
+/// on a full pipe), keeping the first few kilobytes.
+fn drain_stderr(mut pipe: std::process::ChildStderr) -> std::sync::mpsc::Receiver<String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _ = std::thread::Builder::new().name("trellis-tool-stderr".into()).spawn(move || {
+        use std::io::Read;
+        let (mut kept, mut buf) = (Vec::new(), [0u8; 4096]);
+        while let Ok(n) = pipe.read(&mut buf) {
+            if n == 0 {
+                break;
+            }
+            if kept.len() < 4096 {
+                kept.extend_from_slice(&buf[..n]);
+            }
+        }
+        let _ = tx.send(String::from_utf8_lossy(&kept).into_owned());
+    });
+    rx
+}
+
+/// What to say about a program that exited with `code` right after starting, having printed
+/// `stderr`.
+pub fn early_exit_message(code: Option<i32>, stderr: &str) -> String {
+    let status = match code {
+        Some(c) => format!("it exited at once with code {c}"),
+        None => "it stopped at once".to_owned(),
+    };
+    match stderr.lines().map(str::trim).find(|l| !l.is_empty()) {
+        Some(line) => format!("{status}: {}", crate::text::printable(line)),
+        None => status,
+    }
 }
 
 #[cfg(test)]

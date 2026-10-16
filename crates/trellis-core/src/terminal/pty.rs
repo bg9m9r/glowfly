@@ -34,8 +34,10 @@ pub fn choose_shell(windows: bool, env: impl Fn(&str) -> Option<String>, on_path
 
 /// `choose_shell` for this system, from the environment and PATH.
 pub fn default_shell() -> ShellCommand {
-    let on_path =
-        |name: &str| std::env::var_os("PATH").is_some_and(|path| std::env::split_paths(&path).any(|dir| dir.join(name).is_file()));
+    let on_path = |name: &str| {
+        crate::env_path::path()
+            .is_some_and(|path| std::env::split_paths(&path).any(|dir| crate::external_tools::locate_here(&dir.join(name)).is_some()))
+    };
     choose_shell(cfg!(windows), |k| std::env::var(k).ok(), on_path)
 }
 
@@ -98,6 +100,11 @@ pub fn spawn(
     let mut cmd = CommandBuilder::new(&shell.program);
     cmd.args(&shell.args);
     cmd.cwd(cwd);
+    // Only when it differs from the inherited PATH (macOS), so the builder's own copy of the
+    // environment never has to match Windows' `Path` against `PATH`.
+    if let Some(p) = crate::env_path::override_path() {
+        cmd.env("PATH", p);
+    }
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
     let mut child = pair.slave.spawn_command(cmd).map_err(other)?;

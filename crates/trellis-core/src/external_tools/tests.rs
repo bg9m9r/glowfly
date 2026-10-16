@@ -131,24 +131,26 @@ fn path_fixture(name: &str, files: &[&str]) -> (PathBuf, OsString) {
     std::fs::create_dir_all(&b).unwrap();
     for f in files {
         std::fs::write(b.join(f), "").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(b.join(f), std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
     }
     let joined = std::env::join_paths([a, b]).unwrap();
     (root, joined)
 }
 
-fn is_file(p: &Path) -> bool {
-    p.is_file()
+/// A PATH search as on Unix: only executable files count.
+fn is_file(p: &Path) -> Option<PathBuf> {
+    locate(p, false, false)
 }
 
-/// `is_file` with Windows' case-insensitive names, so the Windows lookup is tested the same way
-/// on case-sensitive file systems (Linux), where `code` + `.CMD` must still find `code.cmd`.
-fn is_file_any_case(p: &Path) -> bool {
-    let (Some(dir), Some(name)) = (p.parent(), p.file_name()) else {
-        return false;
-    };
-    let name = name.to_string_lossy().to_lowercase();
-    std::fs::read_dir(dir)
-        .is_ok_and(|entries| entries.flatten().any(|e| e.path().is_file() && e.file_name().to_string_lossy().to_lowercase() == name))
+/// A PATH search as on Windows, whatever this system is: names match in any case, found by
+/// listing the folder, so on a case-sensitive file system (Linux, or a WSL folder on Windows)
+/// `code` + `.CMD` still finds `code.cmd`.
+fn is_file_any_case(p: &Path) -> Option<PathBuf> {
+    locate(p, true, false)
 }
 
 /// `found`'s text, lowercased: Windows file systems ignore case, so `code` + `.CMD` finds
@@ -199,11 +201,47 @@ fn resolve_takes_paths_only_if_they_exist() {
 }
 
 #[test]
+fn windows_names_match_in_any_case_by_listing_the_folder() {
+    let (root, path) = path_fixture("anycase", &["Code.CMD"]);
+    let ext = OsStr::new(".EXE;.CMD");
+    // Found even where the file system tells the two names apart.
+    let want = lower(Some(root.join("two").join("Code.CMD")));
+    assert_eq!(lower(resolve(Path::new("code"), Some(&path), Some(ext), true, &is_file_any_case)), want);
+    assert_eq!(lower(resolve(Path::new("CODE.cmd"), Some(&path), Some(ext), true, &is_file_any_case)), want);
+    assert_eq!(resolve(Path::new("cod"), Some(&path), Some(ext), true, &is_file_any_case), None);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[cfg(unix)]
+#[test]
+fn unix_path_search_needs_the_executable_bit() {
+    use std::os::unix::fs::PermissionsExt;
+    let (root, path) = path_fixture("execbit", &["ed"]);
+    // A plain file earlier on PATH doesn't hide the program later on.
+    let first = root.join("one").join("ed");
+    std::fs::write(&first, "not a program").unwrap();
+    std::fs::set_permissions(&first, std::fs::Permissions::from_mode(0o644)).unwrap();
+    assert_eq!(resolve(Path::new("ed"), Some(&path), None, false, &is_file), Some(root.join("two").join("ed")));
+    std::fs::set_permissions(root.join("two").join("ed"), std::fs::Permissions::from_mode(0o644)).unwrap();
+    assert_eq!(resolve(Path::new("ed"), Some(&path), None, false, &is_file), None);
+    assert_eq!(resolve(&first, Some(&path), None, false, &is_file), None, "a path needs the bit too");
+    // A folder is never a program, except a macOS application bundle.
+    std::fs::create_dir_all(root.join("two").join("Ed.app")).unwrap();
+    assert_eq!(locate(&root.join("two").join("Ed.app"), false, false), None);
+    assert_eq!(locate(&root.join("two").join("Ed.app"), false, true), Some(root.join("two").join("Ed.app")));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn command_line_opens_app_bundles_on_macos() {
     let args = os(&["/r/file.txt"]);
     let (p, a) = command_line(Path::new("/Applications/Ed.app"), &args, true);
     assert_eq!(p, PathBuf::from("open"));
     assert_eq!(a, os(&["-a", "/Applications/Ed.app", "/r/file.txt"]));
+    // Options are the app's, not open's: they go after --args, to a new instance.
+    let (p, a) = command_line(Path::new("/Applications/Ed.app"), &os(&["--goto", "/r/file.txt:3"]), true);
+    assert_eq!(p, PathBuf::from("open"));
+    assert_eq!(a, os(&["-n", "-a", "/Applications/Ed.app", "--args", "--goto", "/r/file.txt:3"]));
     assert_eq!(command_line(Path::new("/Applications/Ed.app"), &args, false), (PathBuf::from("/Applications/Ed.app"), args.clone()));
     assert_eq!(command_line(Path::new("/usr/bin/ed"), &args, true), (PathBuf::from("/usr/bin/ed"), args.clone()));
 }
@@ -236,6 +274,25 @@ fn spawn_reports_a_missing_program() {
     assert!(e.is_not_found(), "{e}");
     let l = Launch { program: crate::paths::temp_dir().join("trellis-no-such-dir").join("ed.exe"), ..l };
     assert!(spawn(&l).unwrap_err().is_not_found());
+}
+
+#[test]
+fn early_exits_say_what_the_program_said() {
+    assert_eq!(early_exit_message(Some(2), ""), "it exited at once with code 2");
+    assert_eq!(
+        early_exit_message(Some(1), "\n  error: unknown option '--goto'\nusage: ed\n"),
+        "it exited at once with code 1: error: unknown option '--goto'"
+    );
+    assert_eq!(early_exit_message(None, "x"), "it stopped at once: x");
+}
+
+#[test]
+fn spawn_reports_a_program_that_fails_at_once() {
+    let dir = crate::testutil::scratch_repo("tools-early-exit");
+    let l = Launch { program: PathBuf::from("git"), args: os(&["--no-such-option"]), cwd: dir.clone(), own_console: false };
+    let e = spawn(&l).unwrap_err().to_string();
+    assert!(e.contains("exited at once with code 129") && e.contains("no-such-option"), "{e}");
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
