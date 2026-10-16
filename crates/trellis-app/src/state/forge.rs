@@ -106,6 +106,17 @@ impl ForgeState {
         forge::mention(self.style().unwrap_or(RefStyle::Hash), key)
     }
 
+    /// The text a commit message carries to link `key`: the mention, or for Trello (which has no
+    /// mention syntax) the card's link.
+    pub fn message_ref(&self, key: &str) -> String {
+        if self.is_trello() { self.issue_url(key) } else { self.mention(key) }
+    }
+
+    /// Whether `text` already links `key` (see [`Self::message_ref`]).
+    pub fn links_issue(&self, text: &str, key: &str) -> bool {
+        if self.is_trello() { self.issue_refs(text).iter().any(|k| k == key) } else { text.contains(&self.mention(key)) }
+    }
+
     pub fn issue_url(&self, key: &str) -> String {
         self.cache
             .get(key)

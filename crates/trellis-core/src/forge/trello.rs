@@ -134,6 +134,17 @@ pub(super) fn trello_error(e: Error) -> Error {
     }
 }
 
+/// A card lookup that failed for that card alone: an unknown or malformed id, or a card on a
+/// board the member can't see (Trello answers 401 "unauthorized card permission requested",
+/// unlike a bad key or token).
+fn unreadable_card(e: &Error) -> bool {
+    match e {
+        Error::Auth(m) => m.to_ascii_lowercase().contains("permission"),
+        Error::Forbidden(_) | Error::Http { status: 400, .. } => true,
+        e => e.is_not_found(),
+    }
+}
+
 /// A card looked up by its short id; `key` is the spelling asked for, so caches match.
 fn looked_up(key: &str, c: ApiCard) -> Issue {
     let names: Vec<String> = c.members.iter().map(Member::display).filter(|n| !n.is_empty()).collect();
@@ -215,7 +226,8 @@ impl super::Forge for Trello {
         Ok(out)
     }
 
-    /// Looks cards up one by one by short id; unknown and malformed ids are skipped.
+    /// Looks cards up one by one by short id; unknown and malformed ids, and cards the member
+    /// can't see, are skipped.
     fn issues(&self, _t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
         let mut out: Vec<Issue> = Vec::new();
         let fields = "fields=name,shortLink,closed,idBoard,idList&list=true&list_fields=name&board=true&board_fields=name\
@@ -224,10 +236,10 @@ impl super::Forge for Trello {
             if out.iter().any(|i| i.key == *k) {
                 continue;
             }
-            match call::<ApiCard>(auth, &format!("{API}/cards/{}?{fields}", enc(k))) {
+            match get::<ApiCard>(auth, &format!("{API}/cards/{}?{fields}", enc(k))) {
                 Ok(c) => out.push(looked_up(k, c)),
-                Err(e) if e.is_not_found() || matches!(e, Error::Http { status: 400, .. }) => {}
-                Err(e) => return Err(e),
+                Err(e) if unreadable_card(&e) => {}
+                Err(e) => return Err(trello_error(e)),
             }
         }
         Ok(out)

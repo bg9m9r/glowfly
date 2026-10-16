@@ -111,6 +111,29 @@ fn cards_are_looked_up_by_short_link() {
 }
 
 #[test]
+fn cards_the_member_cannot_see_dont_hide_the_others() {
+    let m = Mock::start(|r| {
+        let (path, _) = r.path.split_once('?').unwrap_or((r.path.as_str(), ""));
+        match path {
+            "/1/cards/AbCd1234" => {
+                Reply::json(r#"{"name":"Fix login","shortLink":"AbCd1234","list":{"name":"Doing"},"board":{"name":"Website"}}"#)
+            }
+            "/1/cards/Pr1vate9" => Reply::status(401, "unauthorized card permission requested"),
+            "/1/cards/F0rbidd3" => Reply::status(403, "forbidden"),
+            _ => Reply::not_found(),
+        }
+    });
+    let t = Target::trello(&account(), "", "");
+    let keys = ["Pr1vate9", "F0rbidd3", "AbCd1234"].map(String::from);
+    let found = issues(&t, &auth(), &keys).unwrap();
+    assert_eq!(found.iter().map(|i| i.key.as_str()).collect::<Vec<_>>(), ["AbCd1234"]);
+    drop(m);
+    // A token Trello no longer accepts still fails the lookup, in words that say so.
+    let e = error_for(401, "invalid token", || issues(&t, &auth(), &keys).map(drop));
+    assert!(e.is_auth() && e.to_string().contains("expired or was revoked"), "{e}");
+}
+
+#[test]
 fn boards_for_the_picker() {
     let m = Mock::start(|r| match r.route().as_str() {
         "GET api.trello.com/1/members/me/boards?filter=open&fields=name" => Reply::json(

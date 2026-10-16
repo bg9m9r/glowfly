@@ -46,11 +46,13 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     // Link the issue encoded in the branch name (e.g. 1234-login or PROJ-12-crash).
     if let Some((fs, key)) = st.forge.as_ref().and_then(|f| Some((f, f.branch_issue(snap.head_branch.as_deref()?)?))) {
         let tag = fs.mention(&key);
-        let mentioned = st.draft.summary.contains(&tag) || st.draft.description.contains(&tag);
+        let mentioned = fs.links_issue(&st.draft.summary, &key) || fs.links_issue(&st.draft.description, &key);
         ui.horizontal(|ui| {
             issue_chip(ui, fs, &key, msgs);
-            if !mentioned && ui.small_button(format!("Link {tag}")).on_hover_text("Adds the mention to the description").clicked() {
-                msgs.push(Msg::Commit(CommitMsg::AppendToDescription(tag.clone())));
+            let what = if fs.message_ref(&key) == tag { "the mention" } else { "a link" };
+            let hover = format!("Adds {what} to the description");
+            if !mentioned && ui.small_button(format!("Link {tag}")).on_hover_text(hover).clicked() {
+                msgs.push(Msg::Commit(CommitMsg::AppendToDescription(fs.message_ref(&key))));
             }
         });
     }
