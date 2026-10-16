@@ -7,6 +7,7 @@
 //! and the commit count of a shallow clone's fetch. The Stash dialog's entries open that dialog.
 
 use crate::effect::Effect;
+use crate::msg::BlameMsg;
 use crate::msg::BranchMsg;
 use crate::msg::DiffMsg;
 use crate::msg::HistoryMsg;
@@ -78,7 +79,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
                 return;
             }
             let Some(Palette { mode: Mode::Pick(pick), selected, .. }) = st.palette.as_mut() else { return };
-            if pick.kind != PickKind::FileHistory {
+            if !pick.kind.lists_files() {
                 return;
             }
             *selected = 0;
@@ -121,7 +122,7 @@ fn open_step(st: &mut AppState, mode: Mode) -> bool {
 /// settings.
 fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
     match kind {
-        PickKind::FileHistory => {
+        PickKind::FileHistory | PickKind::Blame => {
             if !palette::can_pick_file(st) {
                 return;
             }
@@ -254,6 +255,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
         C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
+        C::OpenBlame(path) => Msg::Blame(BlameMsg::Open { path, at: None }),
         C::Remote(m) => Msg::Remote(m),
         C::Tools(m) => Msg::Tools(m),
         C::ApplyPatch => Msg::Patch(crate::patch::PatchMsg::PickToApply),
@@ -264,6 +266,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         }
         // Opens a step in `handle`; never run directly.
         C::FileHistory
+        | C::Blame
         | C::ChooseStash(_)
         | C::ChooseStashToRename
         | C::ChooseProfile

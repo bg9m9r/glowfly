@@ -274,6 +274,23 @@ fn palette_files_filtered_light() {
 }
 
 #[test]
+fn palette_blame_finder() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-blame");
+    let mut pk = Pick::new(PickKind::Blame);
+    pk.set_items(Items::Ready(repo::tracked_paths(&dir).unwrap()));
+    st.palette = Some(Palette { mode: Mode::Pick(pk), ..Default::default() });
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label_contains("Enter to blame").is_some());
+    h.check_snapshot("palette_blame_finder");
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::OpenBlame(p))) if p == "README.md")));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn palette_file_keys() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-file-keys");
     let paths = repo::tracked_paths(&dir).unwrap();

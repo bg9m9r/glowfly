@@ -154,6 +154,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         super::repo::refresh(st, fx);
         super::conflict::reload_pending(st, fx);
         super::history::reload_pending(st, fx);
+        super::blame::reload_pending(st, fx);
         super::rebase::reload_pending(st, fx);
         super::conflict_check::want(st, fx);
     } else if let Some(path) = st.tabs[i].path.clone() {
@@ -260,6 +261,7 @@ fn park(st: &mut AppState) -> Parked {
         // A save in flight reports to this tab only if it is still active, so don't wait for it.
         conflict: st.conflict.take().map(|c| ConflictView { saving: false, ..c }),
         history: st.history.take(),
+        blame: st.blame.take(),
         rebase: st.rebase.take(),
         gitflow_panel: std::mem::take(&mut st.gitflow_panel),
         draft: std::mem::take(&mut st.draft),
@@ -314,6 +316,9 @@ fn unpark(st: &mut AppState, p: Parked) {
     // History results for this tab were dropped while it was parked.
     st.history_gen += 1;
     st.view.history_scroll_to = st.history.as_ref().and_then(|h| h.selected);
+    st.blame = p.blame;
+    // Blame results for this tab were dropped while it was parked.
+    st.blame_gen += 1;
     st.rebase = p.rebase;
     // Rebase list results for this tab were dropped while it was parked.
     st.rebase_gen += 1;

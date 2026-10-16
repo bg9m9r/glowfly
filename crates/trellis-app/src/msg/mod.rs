@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::gitcli::args;
 
+mod blame;
 mod branch;
 mod diff;
 mod files;
@@ -29,6 +30,7 @@ mod tabs;
 mod trust;
 mod work;
 
+pub use blame::BlameMsg;
 pub use branch::{BranchMsg, CloneMsg};
 pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
 pub use files::{FilesMsg, WorkFileMsg, not_opened, restore_failed};
@@ -68,6 +70,8 @@ pub enum Msg {
     Conflict(ConflictMsg),
     /// A file's history (update/history.rs).
     History(HistoryMsg),
+    /// The blame view (update/blame.rs).
+    Blame(BlameMsg),
     /// The interactive rebase panel (update/rebase.rs).
     Rebase(RebaseMsg),
     /// The tab bar (update/tabs.rs).
@@ -200,6 +204,7 @@ impl Msg {
             Msg::Diff(m) => m.on_inactive(),
             Msg::Conflict(m) => m.on_inactive(),
             Msg::History(m) => m.on_inactive(),
+            Msg::Blame(m) => m.on_inactive(),
             Msg::Rebase(m) => m.on_inactive(),
             Msg::Tabs(m) => m.on_inactive(),
             Msg::Stage(m) => m.on_inactive(),

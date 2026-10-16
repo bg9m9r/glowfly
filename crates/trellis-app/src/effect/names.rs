@@ -14,6 +14,7 @@ impl Effect {
             Effect::HighlightDiff { .. } => "highlight",
             Effect::LoadConflict { .. } => "load-conflict",
             Effect::LoadFileHistory { .. } => "file-history",
+            Effect::LoadBlame(_) => "blame",
             Effect::LocalOp { .. } => "local-op",
             Effect::RevertHunk { .. } => "revert-hunk",
             Effect::RestoreFile { .. } => "restore-file",

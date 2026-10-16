@@ -33,6 +33,7 @@ use trellis_core::repo;
 use trellis_core::undo::{self, Action, Plan};
 
 mod askpass;
+mod blame;
 mod clone;
 mod config;
 mod conflict_check;
@@ -237,6 +238,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 repo::file_history(&workdir, &path, &start, limit).map_err(|e| format!("Could not load the history of {path}: {e}"));
             Some(Msg::History(HistoryMsg::FileHistoryLoaded { path, generation, result }))
         }
+        Effect::LoadBlame(r) => Some(blame::load(r)),
         Effect::LocalOp { workdir, op } => Some(Msg::Stage(StageMsg::LocalOpDone(local_op(&workdir, op).map_err(err)))),
         Effect::RevertHunk { workdir, target, index, expected } => {
             let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);

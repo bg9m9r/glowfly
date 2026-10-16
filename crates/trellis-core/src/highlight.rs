@@ -14,7 +14,8 @@
 //! toward the limits below. Without old text (added or binary files, a blob that doesn't match
 //! the hunks) or with too much of it, each hunk is parsed on its own from a fresh state; that
 //! per-hunk parse also gives the provisional spans shown while an in-context pass is pending.
-//! The whole-file view (`whole_file`) needs no old text: its one hunk is the whole file.
+//! The whole-file view (`whole_file`) needs no old text: its one hunk is the whole file. Whole
+//! files outside a diff (the blame view's lines) go through `highlight_file` (`file`).
 //!
 //! Two passes. `highlight_in_context` parses small diffs while they load (the inline pass,
 //! within `MAX_LINES` and `MAX_BYTES`). Larger ones come back pending: their hunks carry
@@ -37,6 +38,7 @@ use syntaxes::{SYNTAXES, find_syntax};
 use syntect::parsing::SyntaxReference;
 
 mod context;
+mod file;
 mod header;
 mod linguist;
 mod parse;
@@ -44,6 +46,7 @@ mod reuse;
 mod syntaxes;
 
 pub use context::OldText;
+pub use file::highlight_file;
 pub use header::context_start;
 pub use linguist::SyntaxHint;
 pub use syntaxes::syntax_name;

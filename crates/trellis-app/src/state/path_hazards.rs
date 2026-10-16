@@ -3,7 +3,7 @@
 //! whether the action destroys something; `update::hazards` refuses them before any effect.
 
 use super::{AppState, Selection};
-use crate::msg::{ConflictMsg, FilesMsg, HistoryMsg, Msg, RepoMsg, StageMsg, StashMsg, WorkFileMsg};
+use crate::msg::{BlameMsg, ConflictMsg, FilesMsg, HistoryMsg, Msg, RepoMsg, StageMsg, StashMsg, WorkFileMsg};
 use crate::tools::ToolsMsg;
 use trellis_core::repo::{Collision, FileEntry, Hazard, HunkOp, Snapshot};
 
@@ -33,6 +33,7 @@ pub fn target(msg: &Msg) -> Option<(&str, bool)> {
         Msg::WorkFile(WorkFileMsg::RenameFileDialog(p) | WorkFileMsg::RenameFile { from: p, .. }) => (p, false),
         Msg::Conflict(ConflictMsg::OpenConflict(p) | ConflictMsg::ResolveWithSide { path: p, .. }) => (p, false),
         Msg::History(HistoryMsg::OpenFileHistory { path, .. }) => (path, false),
+        Msg::Blame(BlameMsg::Open { path, .. }) => (path, false),
         Msg::Repo(RepoMsg::OpenDiff(t)) => (t.path(), false),
         Msg::Tools(ToolsMsg::OpenFile { path, .. }) => (path, false),
         // Stashing a file puts its HEAD version back on disk.

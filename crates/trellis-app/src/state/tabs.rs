@@ -93,6 +93,8 @@ pub struct Parked {
     pub conflict: Option<ConflictView>,
     /// The open file history (a request in flight is sent again on return).
     pub history: Option<FileHistoryView>,
+    /// The open blame view (a load in flight is requested again on return).
+    pub blame: Option<super::blame::BlameView>,
     /// The interactive rebase panel (a list still loading is requested again on return).
     pub rebase: Option<RebasePanel>,
     /// The Git Flow panel is open.

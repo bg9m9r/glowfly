@@ -99,6 +99,7 @@ fn picks_and_checkouts_are_not_recorded() {
         C::CheckoutTag("v1".into()),
         C::OpenRecent(dir.clone()),
         C::OpenFileHistory("a.txt".into()),
+        C::OpenBlame("a.txt".into()),
         C::FinishGitFlow("feature/x".into()),
         C::Remote(RemoteMsg::Fetch("origin".into())),
     ];
@@ -183,6 +184,7 @@ fn recall_keys_are_unique() {
         C::Theme(ThemeChoice::Light),
         C::Theme(ThemeChoice::System),
         C::FileHistory,
+        C::Blame,
         C::Remote(RemoteMsg::AddDialog),
     ];
     let keys: Vec<&str> = keyed.iter().map(|c| c.recall_key().unwrap_or_else(|| panic!("{c:?} has no key"))).collect();

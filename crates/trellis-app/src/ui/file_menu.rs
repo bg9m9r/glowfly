@@ -1,4 +1,4 @@
-//! File actions added to file rows' context menus: restore a file from a commit (one commit's
+//! File actions added to file rows' context menus: the file's history and blame, restore a file from a commit (one commit's
 //! rows, or the rows comparing two selected commits), open it in its default program or the
 //! external editor, show it in the file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
 //! for files in the working tree, track them in Git LFS, and the Stash dialog's entries (the
@@ -8,7 +8,9 @@
 
 use super::common::{menu_item, menu_item_if, short};
 use crate::lfs::LfsMsg;
+use crate::msg::BlameMsg;
 use crate::msg::FilesMsg;
+use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::StageMsg;
 use crate::msg::StashMsg;
@@ -32,6 +34,8 @@ pub(super) const SHOW_IN_FOLDER: &str = if cfg!(windows) {
     "Open containing folder"
 };
 pub(super) const OPEN_DEFAULT: &str = "Open with default app";
+pub(super) const FILE_HISTORY: &str = "File history";
+pub(super) const BLAME: &str = "Blame";
 pub(super) const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
 const DELETED_IN_WORKDIR: &str = "Not in your working tree (deleted)";
 const CONFLICTED: &str = "Resolve the conflict first";
@@ -49,6 +53,13 @@ pub(super) enum RowSource {
     Commit(Oid),
     /// The change from `older` to `newer` (two selected commits).
     Between { older: Oid, newer: Oid },
+}
+
+/// File history of `path` (from commit `at`, or HEAD), then Blame of it there, disabled with the
+/// reason `blame_blocked` when set.
+pub(super) fn history_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str, at: Option<Oid>, blame_blocked: Option<&str>) {
+    menu_item(msgs, ui, FILE_HISTORY, Msg::History(HistoryMsg::OpenFileHistory { path: path.to_owned(), at }));
+    menu_item_if(msgs, ui, BLAME, blame_blocked, Msg::Blame(BlameMsg::Open { path: path.to_owned(), at }));
 }
 
 /// The restore action's label, for a file the commit `deleted` or one it kept.

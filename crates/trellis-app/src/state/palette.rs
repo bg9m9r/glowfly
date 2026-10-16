@@ -138,7 +138,7 @@ impl Pick {
             PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
             PickKind::Profile => self.profiles.get(index).map(|r| r.detail.clone()),
             PickKind::GitFlowIssue(_) => self.issues.get(index).map(|r| r.detail.clone()),
-            PickKind::FileHistory => None,
+            PickKind::FileHistory | PickKind::Blame => None,
         }
     }
 
@@ -146,6 +146,7 @@ impl Pick {
     pub fn command(&self, index: usize) -> Option<PaletteCommand> {
         match self.kind {
             PickKind::FileHistory => Some(PaletteCommand::OpenFileHistory(self.label(index).to_owned())),
+            PickKind::Blame => Some(PaletteCommand::OpenBlame(self.label(index).to_owned())),
             PickKind::Stash(action) => self.stashes.get(index).map(|s| PaletteCommand::StashOp { action, oid: s.oid }),
             PickKind::RenameStash => self.stashes.get(index).map(|s| PaletteCommand::RenameStash { oid: s.oid }),
             PickKind::Profile => self.profiles.get(index).map(|r| PaletteCommand::SwitchProfile(r.id)),
@@ -183,7 +184,7 @@ impl Pick {
         let Items::Ready(items) = &self.items else { return };
         // One per item, so a detail can't land on another item (none at all for files).
         let details: Vec<String> = match self.kind {
-            PickKind::FileHistory => Vec::new(),
+            PickKind::FileHistory | PickKind::Blame => Vec::new(),
             _ => (0..items.len()).map(|i| self.detail(i).unwrap_or_default()).collect(),
         };
         let squash = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
@@ -261,13 +262,14 @@ pub fn shown(st: &AppState, query: &str) -> Vec<Shown> {
 }
 
 /// Whether the file finder can be offered: a repository with a born HEAD and a working tree,
-/// and no conflict view, interactive rebase panel or file history open.
+/// and no conflict view, interactive rebase panel, file history or blame view open.
 pub fn can_pick_file(st: &AppState) -> bool {
     st.snap.as_ref().is_some_and(|s| s.head_oid.is_some())
         && st.workdir().is_some()
         && st.conflict.is_none()
         && st.rebase.is_none()
         && st.history.is_none()
+        && st.blame.is_none()
 }
 
 /// Whether a stash sub-list can be offered: a repository with at least one stash.

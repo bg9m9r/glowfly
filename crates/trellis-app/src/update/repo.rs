@@ -72,6 +72,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         }
         RepoMsg::OpenDiff(target) => {
             super::history::close(st);
+            super::blame::close(st);
             open_diff(st, target, fx);
         }
         RepoMsg::DiffLoaded { target, reload, generation, result } => {
@@ -269,6 +270,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             close_diff(st);
             super::conflict::close(st);
             super::history::close(st);
+            super::blame::close(st);
             super::rebase::close(st);
             st.gitflow_panel = false;
             st.draft = CommitDraft::default();
@@ -324,6 +326,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     close_diff(st);
     super::conflict::close(st);
     super::history::close(st);
+    super::blame::close(st);
     st.gitflow_panel = false;
     fx.push(Effect::LoadDetail { workdir, oid });
     if scroll && let Some(row) = super::search::reveal(st, oid) {

@@ -17,7 +17,7 @@ use trellis_core::wrap::segments;
 /// ranges of `spans` and `marks` (into the raw text) move with them. With `wrap`, a line too
 /// long for its columns continues on visual lines below, `left_center` being the first one's.
 #[allow(clippy::too_many_arguments)]
-pub(super) fn paint_line(
+pub(in crate::ui) fn paint_line(
     p: &Painter,
     left_center: Pos2,
     text: &str,

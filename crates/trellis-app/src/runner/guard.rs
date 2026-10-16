@@ -2,6 +2,7 @@
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
 use crate::effect::{CloneEffect, Effect, ForgeError, InitEffect, LoadKind, UndoResult};
+use crate::msg::BlameMsg;
 use crate::msg::CloneMsg;
 use crate::msg::JobMsg;
 use crate::msg::LoadMsg;
@@ -37,6 +38,11 @@ enum Kind {
     Fork(FailedFork),
     /// The Clone dialog's list of the user's repositories on this account: a spinner until it ends.
     Repos(Account),
+    /// The blame view shows "Loading…" until its result arrives.
+    Blame {
+        path: String,
+        generation: u64,
+    },
     Log,
 }
 
@@ -82,6 +88,7 @@ impl Recovery {
             Effect::LoadStatus { generation, .. } => Kind::Status(*generation),
             Effect::Ssh(e) => Kind::Ssh(e.failure()),
             Effect::Remote(e) => Kind::Fork(FailedFork::of(e)),
+            Effect::LoadBlame(r) => Kind::Blame { path: r.path.clone(), generation: r.generation },
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -103,6 +110,7 @@ impl Recovery {
                 let result = Box::new(Err(ForgeError { message: text, auth: false }));
                 Msg::Clone(CloneMsg::ReposLoaded { account, result })
             }
+            Kind::Blame { path, generation } => Msg::Blame(BlameMsg::Loaded { path, generation, result: Err(text) }),
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {
@@ -224,6 +232,17 @@ mod tests {
         let Err(e) = *result else { panic!("not a failure") };
         assert_eq!(a, account);
         assert!(e.message.contains("boom") && e.message.contains("list-my-repos") && !e.auth, "{e:?}");
+    }
+
+    #[test]
+    fn a_panicking_blame_ends_the_views_loading() {
+        let r = crate::effect::BlameRequest { workdir: "C:/r".into(), path: "a.txt".into(), at: None, highlight: true, generation: 4 };
+        let effect = Effect::LoadBlame(r);
+        let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+        let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
+        assert!(
+            matches!(*msg, Msg::Blame(BlameMsg::Loaded { generation: 4, ref path, result: Err(ref e) }) if path == "a.txt" && e.contains("boom"))
+        );
     }
 
     #[test]

@@ -128,6 +128,10 @@ pub enum PaletteCommand {
     /// Enter the file finder; picking a file runs `OpenFileHistory`.
     FileHistory,
     OpenFileHistory(String),
+    /// Enter the file finder; picking a file runs `OpenBlame`.
+    Blame,
+    /// Blame this file at HEAD.
+    OpenBlame(String),
     /// A REMOTE section action (Add remote…, Fetch <remote>).
     Remote(crate::remote::RemoteMsg),
     /// Show the trust prompt again for the open repository.
@@ -263,11 +267,12 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if let Some(b) = snap.head_info() {
         out.push(entry(C::RenameBranch(b.name.clone()), format!("Rename branch {}…", b.name), "rename move branch"));
     }
-    if !snap.commits.is_empty() && st.conflict.is_none() && st.history.is_none() && st.rebase.is_none() {
+    if !snap.commits.is_empty() && st.conflict.is_none() && st.history.is_none() && st.blame.is_none() && st.rebase.is_none() {
         out.push(entry(C::SearchCommits, "Search commits", "find message author sha"));
     }
     if super::palette::can_pick_file(st) {
         out.push(entry(C::FileHistory, "File history…", "find open file path log"));
+        out.push(entry(C::Blame, "Blame file…", "find annotate author line who changed history"));
     }
     super::patch::palette_entries(out);
     palette_setup::setup_entries(out);

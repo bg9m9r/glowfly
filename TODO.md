@@ -188,10 +188,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [x] **File history and blame**
   File history: commits that changed a file, newest first, following renames, opened from a
   file's context menu in the commit details or WIP panel; each shows that commit's diff of the
-  file and links to the graph. Searches back in batches of the commit limit. (The blame gutter
-  itself is under Later.)
+  file and links to the graph. Searches back in batches of the commit limit. Blame opens from
+  the file history header and the file menus (see Blame gutter).
   - [x] Open file history or blame for any file from the command palette (a file finder), not
-    only from a changed-file list. History done; blame waits for the blame gutter
+    only from a changed-file list. Both history and blame open from the finder
 - [x] **Interactive rebase**
   "Interactive rebase from here…" on a commit (that commit and every later one on the current
   branch) and "Interactive rebase {current} onto {branch}…" on a local branch open a panel in
@@ -281,13 +281,13 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   refresh, open in terminal and in the file manager, diff layout and whitespace toggles, open a
   repository or a recent one, new and reopened tabs, close tab, Preferences, toolbar labels,
   theme, and checkout of local branches, remote branches (creating a tracking branch) and tags
-  (detached), a file finder for file history, apply, pop or delete a chosen stash, and stash
+  (detached), a file finder for file history and blame, apply, pop or delete a chosen stash, and stash
   with a message. Entries whose command also has a global key
   show it dimmed at the right (Ctrl+F, Ctrl+W, F5, Ctrl+Z/Y, Ctrl+T, Ctrl+Shift+T and Ctrl+,).
   The list shows at most 200 rows; typing more narrows the rest. A Commands button in the
   toolbar opens the palette. The last 10 plain commands run from it (per session) are listed
   first for an empty query, and break ties between equally good matches for a typed one.
-  - [x] File finder: pick any tracked file to open its history (blame waits for the blame gutter)
+  - [x] File finder: pick any tracked file to open its history or blame it
   - [x] Create tag and annotated tag
     - [x] Check tag names live in the New tag dialog (ref-format rules, an existing tag)
     - [x] Push the new tag to a remote right after creating it
@@ -469,10 +469,11 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Desktop (OS) notifications while the window is unfocused, for the behind alert and job
     results: an opt-in toggle with help text, confirmed once it is turned on
 
-- [ ] **Blame gutter**
+- [x] **Blame gutter**
   Blame for a file: a gutter with author, date and commit per line (grouped by commit), opened
   from file history, the file context menu and the palette's file finder; clicking a commit
-  selects it in the graph.
+  selects it in the graph. Runs `git blame --porcelain` (honouring .mailmap and
+  blame.ignoreRevsFile), with the editor font, tab size and syntax colors.
 - [ ] **Add and remove submodules**
   - [ ] Add a submodule: URL, path and optional branch, through `git submodule add`, with checks
     for a path that already exists or is already in the index
@@ -696,6 +697,22 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Show the whole file at the selected commit (file view) as an alternative to its diff
 - History of a folder
 - Let `diff::show` delegate to `diff::body` once the diff header changes in flight have landed
+
+### Blame gutter
+
+- Blame the parent of a line's commit (step back past a change), and skip a chosen commit
+- Live re-blame of working-tree edits (uncommitted lines shown as not committed yet)
+- Hover tooltips with the commit's full message (body), not just the summary
+- Re-blame when HEAD moves while a HEAD blame is open (commit, checkout, pull)
+- Horizontal scrolling or word wrap for long lines (they are clipped now)
+- Blame a file the commit deleted (its version just before the deletion)
+- Open the file history from the blame header, and jump between blame and history at one commit
+- Ignore-whitespace (-w) and move/copy detection (-M/-C) toggles in the blame header
+- Show which lines blame.ignoreRevsFile re-attributed (ignored and unblamable marks)
+- Age colouring of the gutter (newer commits stronger)
+- Find in blame, go to line, and copy a line or SHA from a blame row's context menu
+- Keyboard navigation between runs (previous/next commit)
+- Re-highlight an open blame when the syntax highlighting preference changes
 
 ### Interactive rebase
 

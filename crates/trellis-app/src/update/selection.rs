@@ -54,6 +54,7 @@ fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
             super::repo::close_diff(st);
             super::conflict::close(st);
             super::history::close(st);
+            super::blame::close(st);
             request_compare(st, fx);
         }
         Selection::None | Selection::Wip => {

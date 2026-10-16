@@ -11,6 +11,7 @@ impl PaletteCommand {
     pub fn pick_kind(&self) -> Option<PickKind> {
         match self {
             PaletteCommand::FileHistory => Some(PickKind::FileHistory),
+            PaletteCommand::Blame => Some(PickKind::Blame),
             PaletteCommand::ChooseStash(a) => Some(PickKind::Stash(*a)),
             PaletteCommand::ChooseStashToRename => Some(PickKind::RenameStash),
             PaletteCommand::ChooseProfile => Some(PickKind::Profile),
@@ -61,6 +62,8 @@ impl StashAction {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PickKind {
     FileHistory,
+    /// Choose a tracked file to blame.
+    Blame,
     Stash(StashAction),
     /// Choose a stash to open the Rename stash dialog for.
     RenameStash,
@@ -75,6 +78,7 @@ impl PickKind {
     pub fn title(self) -> &'static str {
         match self {
             PickKind::FileHistory => "File history",
+            PickKind::Blame => "Blame",
             PickKind::Stash(StashAction::Apply) => "Apply stash",
             PickKind::Stash(StashAction::Pop) => "Pop stash",
             PickKind::Stash(StashAction::Drop) => "Delete stash",
@@ -90,6 +94,7 @@ impl PickKind {
     pub fn prompt(self) -> &'static str {
         match self {
             PickKind::FileHistory => "Find a file to show its history",
+            PickKind::Blame => "Find a file to blame",
             PickKind::Stash(StashAction::Apply) => "Find a stash to apply",
             PickKind::Stash(StashAction::Pop) => "Find a stash to pop",
             PickKind::Stash(StashAction::Drop) => "Find a stash to delete",
@@ -103,7 +108,7 @@ impl PickKind {
 
     pub fn loading(self) -> &'static str {
         match self {
-            PickKind::FileHistory => "Loading files…",
+            PickKind::FileHistory | PickKind::Blame => "Loading files…",
             PickKind::Stash(_) | PickKind::RenameStash => "Loading stashes…",
             PickKind::Profile => "Loading profiles…",
             PickKind::GitFlowIssue(_) => "Loading issues…",
@@ -113,7 +118,7 @@ impl PickKind {
     /// Shown when nothing matches the query.
     pub fn none_text(self) -> &'static str {
         match self {
-            PickKind::FileHistory => "No matching files",
+            PickKind::FileHistory | PickKind::Blame => "No matching files",
             PickKind::Stash(_) | PickKind::RenameStash => "No matching stashes",
             PickKind::Profile => "No matching profiles",
             PickKind::GitFlowIssue(_) => "No matching issues",
@@ -123,7 +128,7 @@ impl PickKind {
     /// Shown when there is nothing to pick at all.
     pub fn empty_text(self) -> &'static str {
         match self {
-            PickKind::FileHistory => "This repository has no tracked files",
+            PickKind::FileHistory | PickKind::Blame => "This repository has no tracked files",
             PickKind::Stash(_) | PickKind::RenameStash => "This repository has no stashes",
             PickKind::Profile => "No profiles yet",
             PickKind::GitFlowIssue(_) => "No issues are assigned to you",
@@ -133,6 +138,7 @@ impl PickKind {
     pub fn footer(self) -> &'static str {
         match self {
             PickKind::FileHistory => "Up/Down to choose, Enter to show history, Backspace or Esc to go back",
+            PickKind::Blame => "Up/Down to choose, Enter to blame, Backspace or Esc to go back",
             PickKind::Stash(a) => match a {
                 StashAction::Apply => "Up/Down to choose, Enter to apply, Backspace or Esc to go back",
                 StashAction::Pop => "Up/Down to choose, Enter to pop, Backspace or Esc to go back",
@@ -147,7 +153,7 @@ impl PickKind {
     /// The line under a list cut short at `shown` of `total` matches.
     pub fn more_text(self, shown: usize, total: usize) -> String {
         let noun = match self {
-            PickKind::FileHistory => "files",
+            PickKind::FileHistory | PickKind::Blame => "files",
             PickKind::Stash(_) | PickKind::RenameStash => "stashes",
             PickKind::Profile => "profiles",
             PickKind::GitFlowIssue(_) => "issues",
@@ -155,9 +161,14 @@ impl PickKind {
         format!("Showing {shown} of {total} {noun}. Type more to narrow the list.")
     }
 
+    /// Whether the step lists the tracked files (`Effect::LoadTrackedPaths`).
+    pub fn lists_files(self) -> bool {
+        matches!(self, PickKind::FileHistory | PickKind::Blame)
+    }
+
     /// Whether rows dim their folder part (through the last '/').
     pub fn dims_folders(self) -> bool {
-        matches!(self, PickKind::FileHistory)
+        self.lists_files()
     }
 }
 

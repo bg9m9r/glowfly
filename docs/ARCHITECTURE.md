@@ -24,7 +24,7 @@ binary (package `trellis`).
 
 | Module | Holds |
 | --- | --- |
-| `repo/` | The repository model on libgit2: loading history, refs and status; diffs; staging, line staging, revert, restore; conflicts and their resolution; working-tree files; submodules, worktrees, remotes, shallow-clone boundaries. |
+| `repo/` | The repository model on libgit2: loading history, refs and status; diffs; staging, line staging, revert, restore; conflicts and their resolution; blame through `git blame --porcelain`; working-tree files; submodules, worktrees, remotes, shallow-clone boundaries. |
 | `gitcli.rs` | The git CLI, for commands that honour hooks, credentials and signing. |
 | `git_version.rs`, `env_path.rs` | Which git runs (found on the PATH children get) and the features its version lacks; that PATH, which on macOS merges in the login shell's. |
 | `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
@@ -40,7 +40,7 @@ binary (package `trellis`).
 | `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
 | `graph.rs` | Lane layout for the commit graph. |
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
-| `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds. |
+| `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds; whole files too (`highlight_file`, for blame). |
 | `watch.rs` | Which file changes in a repository matter. |
 | `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
@@ -61,7 +61,7 @@ binary (package `trellis`).
 | --- | --- |
 | `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`) and askpass helper. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
-| `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs (`clone.rs`, `init.rs`), and `Effect::name` (`names.rs`). |
+| `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`, `blame.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs (`clone.rs`, `init.rs`), and `Effect::name` (`names.rs`). |
 | `lfs.rs`, `git_env.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data (the Clone dialog in `clone.rs` and `clone_service.rs`, the Init dialog in `init.rs`). |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
@@ -69,7 +69,7 @@ binary (package `trellis`).
 | `watcher.rs` | The file watcher for the active tab's repository, owned by the runner. |
 | `platform.rs` | OS integration: recent repositories and which listed folders are missing, open tabs, terminals, the file manager. |
 | `keymap.rs` | The keyboard binding table, shared by shortcuts, the palette and tooltips. |
-| `ui/` | egui views, one file or folder per region (the Clone dialog in `clone_dialog.rs` and `clone_service.rs`, the Init dialog in `init_dialog.rs`), plus snapshot tests (`snapshot_tests*.rs`). `ui/mod.rs` is the shell: it owns the runner and dispatches messages. |
+| `ui/` | egui views, one file or folder per region (the Clone dialog in `clone_dialog.rs` and `clone_service.rs`, the Init dialog in `init_dialog.rs`), plus snapshot tests (`snapshot_tests*.rs`). `ui/mod.rs` is the shell: it owns the runner and dispatches messages; `central.rs` holds the central-area routing (which view fills it) and the Esc chain. |
 
 ### Tests outside `src/`
 

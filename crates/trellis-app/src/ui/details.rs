@@ -7,7 +7,6 @@ use super::graph::draw_avatar;
 use super::theme::color;
 use crate::keymap::{BindingId, hint};
 use crate::msg::ConflictMsg;
-use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
@@ -174,7 +173,8 @@ pub(super) fn changed_file_row(
             msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
         }
         r.context_menu(|ui| {
-            menu_item(msgs, ui, "File history", Msg::History(HistoryMsg::OpenFileHistory { path: f.path.clone(), at: Some(history_at) }));
+            let deleted = (f.status == 'D').then_some("This commit deletes the file");
+            file_menu::history_items(ui, msgs, &f.path, Some(history_at), deleted);
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
             if let Some((src, in_wd, lfs)) = actions {
                 let items = if in_wd { track_items(&f.path, lfs) } else { Vec::new() };
@@ -312,7 +312,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
             }
             file_menu::stash_file_item(ui, msgs, snap, f);
             if f.status != '?' {
-                menu_item(msgs, ui, "File history", Msg::History(HistoryMsg::OpenFileHistory { path: f.path.clone(), at: None }));
+                file_menu::history_items(ui, msgs, &f.path, None, (f.status == 'A').then_some("Not committed yet"));
             }
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
             let unstages = crate::state::files::unstages_on_delete(snap, &f.path);

@@ -4,8 +4,10 @@
 
 mod askpass;
 mod avatars;
+mod blame;
 mod branch_dialogs;
 mod branch_menu;
+mod central;
 mod clone_dialog;
 mod clone_service;
 mod commit_box;
@@ -64,6 +66,8 @@ mod snapshot_check;
 mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_askpass;
+#[cfg(test)]
+mod snapshot_tests_blame;
 #[cfg(test)]
 mod snapshot_tests_branch;
 #[cfg(test)]
@@ -169,17 +173,15 @@ use crate::effect::{Effect, UiEffect};
 use crate::msg::AvatarMsg;
 use crate::msg::ConflictMsg;
 use crate::msg::DiffMsg;
-use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
-use crate::msg::RebaseMsg;
 use crate::msg::RecentMsg;
 use crate::msg::RepoMsg;
-use crate::msg::SelectionMsg;
 use crate::msg::TabsMsg;
 use crate::runner::Runner;
 use crate::state::AppState;
 use crate::update::update;
+use central::{escape_key, step_shortcuts};
 use eframe::egui::{self, Key};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
@@ -290,7 +292,7 @@ impl TrellisApp {
             shortcuts::undo_keys(ctx, msgs);
         }
         // Text fields (the commit message) keep Alt+arrows.
-        let stepping = self.st.conflict.is_some() || self.st.diff.is_some();
+        let stepping = self.st.blame.is_none() && (self.st.conflict.is_some() || self.st.diff.is_some());
         if stepping
             && self.st.prefs.is_none()
             && !dialog
@@ -316,59 +318,6 @@ impl TrellisApp {
     }
 }
 
-/// Esc closes the innermost thing open: Preferences, the conflict view, the file history, the
-/// diff (a line selection first), the interactive rebase panel (its message editor first), the
-/// Git Flow panel, then a multi-selection, and finally the search bar. Dialogs (a credential
-/// prompt included) and the command palette handle Esc themselves. In a text field Esc only
-/// leaves the field, and in the terminal it goes to the shell.
-fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    if !ctx.input(|i| i.key_pressed(Key::Escape))
-        || st.modal.is_some()
-        || st.askpass.showing()
-        || st.palette.is_some()
-        || st.terminal.focused
-        || st.view.was_typing
-    {
-        return;
-    }
-    if st.prefs.is_some() {
-        msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
-    } else if st.conflict.is_some() {
-        msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
-    } else if st.history.is_some() {
-        msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
-    } else if st.diff.is_some() {
-        // Esc first drops a line selection, then closes the diff.
-        msgs.push(if st.view.diff_lines.is_empty() { Msg::Repo(RepoMsg::CloseDiff) } else { Msg::Diff(DiffMsg::ClearLineSelection) });
-    } else if let Some(p) = &st.rebase {
-        // Esc first closes the message editor, then the panel.
-        msgs.push(if p.editing.is_some() { Msg::Rebase(RebaseMsg::RebaseCancelMessage) } else { Msg::Rebase(RebaseMsg::CloseRebase) });
-    } else if st.gitflow_panel {
-        msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel));
-    } else if matches!(st.selection, crate::state::Selection::Commits(_)) {
-        msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
-    } else {
-        st.view.show_search = false;
-    }
-}
-
-/// F7 / Shift+F7 and Alt+Down / Alt+Up: the next (1) or previous (-1) change in the open diff
-/// (at either end, continuing into the next or previous changed file), or conflict in the
-/// conflict view.
-fn step_shortcuts(ctx: &egui::Context) -> Option<isize> {
-    use egui::Modifiers;
-    ctx.input_mut(|i| {
-        // Shift first: consume_key ignores extra Shift, so F7 would also match Shift+F7.
-        if i.consume_key(Modifiers::SHIFT, Key::F7) || i.consume_key(Modifiers::ALT, Key::ArrowUp) {
-            Some(-1)
-        } else if i.consume_key(Modifiers::NONE, Key::F7) || i.consume_key(Modifiers::ALT, Key::ArrowDown) {
-            Some(1)
-        } else {
-            None
-        }
-    })
-}
-
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     status::status_bar(ctx, st, msgs);
@@ -388,23 +337,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         } else {
             st.terminal.focused = false;
         }
-        egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |ui| {
-            if st.snap.is_none() {
-                common::welcome(ui, st, msgs);
-            } else if st.conflict.is_some() {
-                conflict::show(ui, st, msgs);
-            } else if st.history.is_some() {
-                history::show(ui, st, cache, msgs);
-            } else if st.diff.is_some() {
-                diff::show(ui, st, &mut cache.diff_rows, msgs);
-            } else if st.rebase.is_some() {
-                rebase::show(ui, st, cache, msgs);
-            } else if st.gitflow_panel {
-                gitflow_panel::show(ui, st, msgs);
-            } else {
-                graph::show(ui, st, cache, msgs);
-            }
-        });
+        central::show(ctx, st, cache, msgs);
     }
     // Before the dialogs, so a dialog or credential prompt opened over it stacks on top.
     palette::show(ctx, st, msgs);

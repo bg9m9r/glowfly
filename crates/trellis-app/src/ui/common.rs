@@ -68,6 +68,20 @@ pub fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
+/// One line of text cut to `max_w` with an ellipsis, vertically centred on `pos.y` from
+/// `pos.x`; returns its width.
+pub fn paint_cut_line(ui: &egui::Ui, pos: egui::Pos2, text: &str, font: egui::FontId, c: Color32, max_w: f32) -> f32 {
+    if max_w <= 0.0 {
+        return 0.0;
+    }
+    let mut job = egui::text::LayoutJob::simple_singleline(text.to_owned(), font, c);
+    job.wrap = egui::text::TextWrapping::truncate_at_width(max_w);
+    let galley = ui.fonts(|f| f.layout_job(job));
+    let w = galley.size().x;
+    ui.painter().galley(pos2(pos.x, pos.y - galley.size().y / 2.0), galley, c);
+    w
+}
+
 pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, m: Msg) {
     if ui.button(label).clicked() {
         msgs.push(m);

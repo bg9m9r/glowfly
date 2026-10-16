@@ -4,6 +4,7 @@
 
 mod askpass;
 mod avatars;
+mod blame;
 mod branches;
 mod clone;
 mod clone_service;
@@ -64,6 +65,8 @@ mod worktrees;
 
 #[cfg(test)]
 mod askpass_tests;
+#[cfg(test)]
+mod blame_tests;
 #[cfg(test)]
 mod branch_tests;
 #[cfg(test)]
@@ -136,6 +139,8 @@ mod lines_tests;
 mod load_more_tests;
 #[cfg(test)]
 mod notify_tests;
+#[cfg(test)]
+mod palette_blame_tests;
 #[cfg(test)]
 mod palette_checkout_tests;
 #[cfg(test)]
@@ -283,6 +288,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Diff(m) => diff::handle(st, m, &mut fx),
         Msg::Conflict(m) => conflict::handle(st, m, &mut fx),
         Msg::History(m) => history::handle(st, m, now, &mut fx),
+        Msg::Blame(m) => blame::handle(st, m, now, &mut fx),
         Msg::Rebase(m) => rebase::handle(st, m, now, &mut fx),
         Msg::Tabs(m) => tabs::handle(st, m, &mut fx),
         Msg::Stage(m) => ops::stage(st, m, now, &mut fx),

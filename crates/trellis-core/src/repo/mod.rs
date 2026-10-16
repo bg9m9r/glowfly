@@ -3,7 +3,7 @@
 //! that should run hooks or talk to remotes go through `gitcli`.
 //!
 //! The types are here (the diff ones in `diff_types`); the work is split by area: `load`
-//! (history, refs, status), `diff`, `history` (one file's commits), `index` and `lines`
+//! (history, refs, status), `diff`, `history` (one file's commits), `blame`, `index` and `lines`
 //! (staging, line staging), `revert`, `restore`, `conflict` and `resolve`, `template`
 //! (commit.template), `touching` (commits that changed a searched path), `workfile`,
 //! `workfile_mv`, `workfile_rm`, `noclobber` and `removal` (working-tree files), `tracked`,
@@ -17,6 +17,8 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 mod attrs;
+mod blame;
+mod blame_porcelain;
 mod collide;
 mod conflict;
 mod diff;
@@ -52,6 +54,7 @@ mod workfile_rename;
 mod workfile_rm;
 mod worktrees;
 
+pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameRun, blame_file};
 pub use collide::{Collision, Folding, probe};
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{

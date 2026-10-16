@@ -3,16 +3,16 @@
 //! commit can restore its version of the file; Open and Show act on the file as it is today.
 
 use super::UiCache;
-use super::common::{menu_item, short, status_color};
+use super::common::{menu_item, paint_cut_line, short, status_color};
 use super::file_buttons::{self, CommitFile, Labels};
 use super::file_menu;
 use super::theme::color;
+use crate::msg::BlameMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::history::FileHistoryView;
-use eframe::egui::text::{LayoutJob, TextWrapping};
-use eframe::egui::{self, Align, Align2, Color32, CursorIcon, FontId, Key, Layout, Pos2, RichText, Sense, Ui, pos2, vec2};
+use eframe::egui::{self, Align, Align2, CursorIcon, FontId, Key, Layout, RichText, Sense, Ui, pos2, vec2};
 use trellis_core::repo::{DiffTarget, HistoryEntry};
 
 const ROW_H: f32 = 44.0;
@@ -47,21 +47,24 @@ fn header(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
             if ui.button("Close  (Esc)").clicked() {
                 msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
             }
+            let entry = view.selected_entry();
+            let blocked = match entry {
+                None => Some("Select a commit first"),
+                Some(e) if e.status == 'D' => Some("This commit deletes the file"),
+                Some(_) => None,
+            };
+            let r = ui.add_enabled(blocked.is_none(), egui::Button::new(file_menu::BLAME));
+            let r = match blocked {
+                Some(why) => r.on_disabled_hover_text(why),
+                None => r.on_hover_text("Blame the file as of the selected commit"),
+            };
+            if r.clicked()
+                && let Some(e) = entry
+            {
+                msgs.push(Msg::Blame(BlameMsg::Open { path: e.path.clone(), at: Some(e.oid) }));
+            }
         });
     });
-}
-
-/// One line of text cut to `max_w` with an ellipsis.
-fn paint_line(ui: &Ui, pos: Pos2, text: &str, font: FontId, c: Color32, max_w: f32) -> f32 {
-    if max_w <= 0.0 {
-        return 0.0;
-    }
-    let mut job = LayoutJob::simple_singleline(text.to_owned(), font, c);
-    job.wrap = TextWrapping::truncate_at_width(max_w);
-    let galley = ui.fonts(|f| f.layout_job(job));
-    let w = galley.size().x;
-    ui.painter().galley(pos2(pos.x, pos.y - galley.size().y / 2.0), galley, c);
-    w
 }
 
 fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
@@ -120,20 +123,20 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry) {
     let y1 = rect.top() + 13.0;
     let y2 = rect.top() + 31.0;
 
-    let sha_w = paint_line(ui, pos2(left, y1), &short(e.oid), mono.clone(), color::weak(), 80.0);
-    paint_line(ui, pos2(left + sha_w + 8.0, y1), &e.summary, body, color::text(), right - left - sha_w - 8.0);
+    let sha_w = paint_cut_line(ui, pos2(left, y1), &short(e.oid), mono.clone(), color::weak(), 80.0);
+    paint_cut_line(ui, pos2(left + sha_w + 8.0, y1), &e.summary, body, color::text(), right - left - sha_w - 8.0);
 
     let date = st.settings.format_time(e.time, st.view.now, st.view.utc_offset);
     let date_w = ui.fonts(|f| f.layout_no_wrap(date.clone(), small.clone(), color::weak()).size().x);
     ui.painter().text(pos2(right, y2), Align2::RIGHT_CENTER, date, small.clone(), color::weak());
-    let status_w = paint_line(ui, pos2(left, y2), &e.status.to_string(), mono, status_color(e.status), 20.0);
+    let status_w = paint_cut_line(ui, pos2(left, y2), &e.status.to_string(), mono, status_color(e.status), 20.0);
     let mut x = left + status_w.max(8.0) + 8.0;
     let limit = right - date_w - 12.0;
     let author = if e.author.is_empty() { "Unknown" } else { e.author.as_str() };
-    x += paint_line(ui, pos2(x, y2), author, small.clone(), color::text(), limit - x);
+    x += paint_cut_line(ui, pos2(x, y2), author, small.clone(), color::text(), limit - x);
     if let Some(old) = &e.old_path {
         x += 10.0;
-        paint_line(ui, pos2(x, y2), &format!("renamed from {old}"), small, color::weak(), limit - x);
+        paint_cut_line(ui, pos2(x, y2), &format!("renamed from {old}"), small, color::weak(), limit - x);
     }
 }
 

@@ -32,6 +32,7 @@ fn a_name_that_is_not_utf8_refuses_every_file_action() {
         Msg::Files(FilesMsg::OpenWorkingFile(p())),
         Msg::Files(FilesMsg::ShowWorkingFile(p())),
         Msg::History(HistoryMsg::OpenFileHistory { path: p(), at: None }),
+        Msg::Blame(crate::msg::BlameMsg::Open { path: p(), at: None }),
         Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged(p()))),
     ] {
         assert!(refused(&mut st, msg), "{:?}", st.toasts.last().map(|t| &t.text));

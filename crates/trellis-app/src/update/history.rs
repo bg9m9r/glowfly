@@ -16,6 +16,7 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
             }
             super::repo::close_diff(st);
             super::conflict::close(st);
+            super::blame::close(st);
             st.history = Some(FileHistoryView::loading(path, at));
             request(st, at.map_or(HistoryStart::Head, HistoryStart::At), fx);
         }
@@ -59,14 +60,15 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
                 close(st);
                 super::repo::select_commit(st, oid, true, fx);
             } else {
-                let text = format!(
-                    "{} is not visible on the graph: its branch is hidden or it is older than the commit limit",
-                    &oid.to_string()[..7]
-                );
-                st.toast(false, text, now);
+                st.toast(false, not_on_graph(oid), now);
             }
         }
     }
+}
+
+/// Why commit `oid` can't be selected on the graph.
+pub(super) fn not_on_graph(oid: git2::Oid) -> String {
+    format!("{} is not visible on the graph: its branch is hidden or it is older than the commit limit", &oid.to_string()[..7])
 }
 
 /// Selects entry `i` and opens that commit's diff of the file (at its path then).

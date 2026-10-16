@@ -2,6 +2,7 @@
 //! transient view state (`ViewState`) and text buffers that views edit in place.
 
 pub mod askpass;
+pub mod blame;
 pub mod branches;
 pub mod clone;
 pub mod clone_service;
@@ -206,6 +207,10 @@ pub struct AppState {
     /// Incremented for every history request and whenever the view closes; older
     /// `FileHistoryLoaded` results are ignored.
     pub history_gen: u64,
+    /// The open blame view; shown above the file history, a diff and the panels, below a conflict.
+    pub blame: Option<blame::BlameView>,
+    /// Incremented for every blame request and whenever the view closes (stale `Loaded` results are dropped).
+    pub blame_gen: u64,
     /// The interactive rebase panel; shown instead of the graph (below a diff, the file history and a conflict).
     pub rebase: Option<rebase::RebasePanel>,
     /// Incremented for every rebase list request and whenever the panel closes; older
@@ -298,6 +303,8 @@ impl AppState {
             conflict_gen: 0,
             history: None,
             history_gen: 0,
+            blame: None,
+            blame_gen: 0,
             rebase: None,
             rebase_gen: 0,
             gitflow_panel: false,

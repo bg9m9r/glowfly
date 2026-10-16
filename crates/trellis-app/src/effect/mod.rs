@@ -12,6 +12,7 @@ use trellis_core::repo::{DiffTarget, FileDiff, HistoryStart, Hunk, LoadOptions};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
 
+mod blame;
 mod clone;
 mod forge;
 mod init;
@@ -19,6 +20,7 @@ mod names;
 mod notify;
 mod repo;
 
+pub use blame::BlameRequest;
 pub use clone::CloneEffect;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use init::InitEffect;
@@ -174,6 +176,8 @@ pub enum Effect {
         limit: usize,
         generation: u64,
     },
+    /// Blames one file (`git blame`), reported as `BlameMsg::Loaded`.
+    LoadBlame(BlameRequest),
     /// Runs git commands in order, stopping at the first failure. `write_file` is written first
     /// (used for commit messages). With `record`, the state before and after is compared and
     /// the resulting undoable action reported back. Without `prompts` (background jobs) git
@@ -382,6 +386,7 @@ impl Effect {
             | Effect::VerifySignature { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             Effect::CheckConflicts(j) => Some(&j.workdir),
+            Effect::LoadBlame(r) => Some(&r.workdir),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
             Effect::LoadRepo { .. }

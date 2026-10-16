@@ -111,9 +111,10 @@ impl PaletteCommand {
             C::Theme(ThemeChoice::System) => "theme-system",
             C::Checkout(_) | C::CheckoutRemote { .. } | C::CheckoutTag(_) | C::OpenRecent(_) => return None,
             C::FileHistory => "file-history",
+            C::Blame => "blame",
             C::ReviewTrust => "review-trust",
             C::ApplyPatch => "apply-patch",
-            C::OpenFileHistory(_) => return None,
+            C::OpenFileHistory(_) | C::OpenBlame(_) => return None,
             C::Remote(m) => match m {
                 RemoteMsg::AddDialog => "add-remote",
                 _ => return None,
