@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 11:56 · **CI / build status**: Build status for GitLab pipelines, Azure DevOps build policies and statuses and Bitbucket Cloud and Data Center build statuses on pull requests, markers for branch tips on LOCAL and REMOTE rows and graph ref labels (throttled, cached per commit), and Open failed build / Open build page in the pull request menu (`318504f`)
 - 2026-10-16 11:25 · **CI / build status**: Check status on GitHub and GitHub Enterprise pull requests: check runs and commit statuses read with the reviews, a passed/failed/pending marker on PULL REQUESTS rows and a "Checks: N of M passed" tooltip line (`e1f3a8e`)
 - 2026-10-16 10:40 · **GPG passphrase prompts**: OpenPGP signing passphrases asked in Trellis's own dialog: Trellis runs as git's gpg.program for foreground jobs, signs with the user's gpg through loopback pinentry (asking again after a wrong passphrase), and falls back to GnuPG's own window when it can't or when Preferences > Commit Signing says so (`e55ae02`)
 - 2026-10-16 10:38 · **Rebind keyboard shortcuts**: Preferences > Keyboard: change, add and remove keys by recording them, with refused and clashing keys explained (Swap, Use here), per-row Reset and Reset all; saved to settings and applied at once, and every changeable key matched through the keymap (`e6d2105`)
@@ -36,7 +37,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 22:15 · **Notifications**: "N commits behind" toast with a Pull button when a background fetch leaves the checked-out branch further behind its upstream; toasts can carry an action button; Behind alerts setting under UI Customization (`90241d7`)
 - 2026-10-15 19:55 · **Conflict prediction**: Dry-run merge of the checked-out branch against its upstream or default branch with git merge-tree after loads and fetches: toolbar warning with the conflicting files, Merge/Rebase from its popover, and on-demand checks from the branch menus (`62f321b`)
 - 2026-10-15 19:44 · **External tools**: Preferences > External Tools: choose an editor (open a file from file rows, or the repository from the palette) with argument templates, and a custom terminal for Open in terminal (`e7ea38a`)
-- 2026-10-15 19:30 · **Profiles**: Named identity profiles in Preferences > Profile: add (copying the current identity), rename, delete (asking first) and switch from the page or the palette, writing user.name/email/signingkey to the global config; the first is seeded from the global identity (`764d3c6`)
 
 ---
 
