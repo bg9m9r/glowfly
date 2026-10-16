@@ -95,10 +95,10 @@ pub fn fetch(email: &str) -> Option<Image> {
         let _ = std::fs::create_dir_all(dir);
         match &bytes {
             Some(b) => {
-                let _ = std::fs::write(dir.join(format!("{key}.img")), b);
+                let _ = crate::persist::atomic_write(&dir.join(format!("{key}.img")), b);
             }
             None => {
-                let _ = std::fs::write(dir.join(format!("{key}.none")), b"");
+                let _ = crate::persist::atomic_write(&dir.join(format!("{key}.none")), b"");
             }
         }
     }

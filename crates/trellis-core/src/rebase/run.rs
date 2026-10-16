@@ -38,10 +38,10 @@ pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Res
     std::fs::create_dir_all(&msg_dir)?;
     let (todo, files) = build(&req.items, &msg_dir);
     for (path, text) in files {
-        std::fs::write(path, text)?;
+        crate::persist::atomic_write(&path, text.as_bytes())?;
     }
     let prepared = msg_dir.join("todo");
-    std::fs::write(&prepared, todo)?;
+    crate::persist::atomic_write(&prepared, todo.as_bytes())?;
 
     let upstream = match req.upstream {
         Upstream::Commit(o) => o.to_string(),

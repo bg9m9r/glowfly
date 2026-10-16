@@ -1,33 +1,104 @@
-//! Crash-safe writes of Trellis's own files (settings, recent repositories, open tabs) and of files
-//! written for the user (saved patches).
+//! Every file Trellis writes goes through here: its own files (settings, recent repositories,
+//! open tabs), files written for the user (saved patches), and working-tree files it puts back
+//! itself (undo and redo of a discard or restore).
 //!
 //! A file is written to a temporary sibling, flushed to disk, then renamed over the target, so a
-//! crash or power cut leaves either the old file or the new one, never half of each.
-//! [`LatestOnly`] keeps saves that run on separate threads from landing out of order.
+//! crash or power cut leaves either the old file or the new one, never half of each. On Unix the
+//! folder is flushed too, so the rename itself survives a power cut. The new file keeps the old
+//! one's permissions (and, on Windows, its read-only attribute). A symbolic link at the target
+//! is followed to the file it names and stays a link, or, for working-tree files, refused.
+//! Windows refuses a rename while another program (a virus scanner, an indexer, a sync client)
+//! briefly holds the file, so that is retried. Temporary files a crash left behind are removed
+//! by the next write of the same file. [`LatestOnly`] keeps saves that run on separate threads
+//! from landing out of order.
 
+mod replace;
+
+use replace::{clean_stale_temps, replace, set_mode, sync_dir};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-/// Replaces `path` with `bytes` atomically, creating its folder if needed.
-pub fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let dir = path.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
-    std::fs::create_dir_all(dir)?;
-    let tmp = temp_sibling(path);
-    let written = (|| {
-        let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(bytes)?;
-        f.sync_all()
-    })();
-    let result = written.and_then(|()| replace(&tmp, path));
-    if result.is_err() {
-        let _ = std::fs::remove_file(&tmp);
-    }
-    result
+/// How [`write_file`] treats what is already at the target.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct WriteOptions {
+    /// Refuse when the target is a symbolic link, instead of following it to the file it names.
+    /// Working-tree files set this: a link in a repository can point anywhere.
+    pub refuse_links: bool,
+    /// Set (`Some(true)`) or clear (`Some(false)`) the executable bits on Unix; `None` keeps the
+    /// old file's. Nowhere else has them. Failing to set them (FAT and exFAT drives, some
+    /// network shares) doesn't fail the write.
+    pub executable: Option<bool>,
 }
 
-/// A temporary name next to `path` that no other writer (thread or process) is using.
+/// Replaces `path` with `bytes` atomically, creating its folder if needed. A symbolic link at
+/// `path` is followed and stays a link.
+pub fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    write_file(path, bytes, WriteOptions::default())
+}
+
+/// Replaces `path` with `bytes` atomically, creating its folder if needed, as `opts` says.
+pub fn write_file(path: &Path, bytes: &[u8], opts: WriteOptions) -> std::io::Result<()> {
+    let target = if opts.refuse_links {
+        if is_link(path) {
+            return Err(std::io::Error::other(format!("{} is a symbolic link; Trellis doesn't write through links", path.display())));
+        }
+        path.to_owned()
+    } else {
+        link_target(path)?
+    };
+    let dir = target.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
+    std::fs::create_dir_all(dir)?;
+    let old = std::fs::metadata(&target).ok().filter(|m| m.is_file());
+    let tmp = temp_sibling(&target);
+    let written = (|| {
+        let mut f = std::fs::OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+        f.write_all(bytes)?;
+        set_mode(&f, old.as_ref(), opts.executable);
+        f.sync_all()
+    })();
+    let result = written.and_then(|()| replace(&tmp, &target, old.as_ref()));
+    if result.is_err() {
+        let _ = replace::remove(&tmp);
+        return result;
+    }
+    sync_dir(dir);
+    if let Some(name) = target.file_name() {
+        clean_stale_temps(dir, &name.to_string_lossy());
+    }
+    Ok(())
+}
+
+/// Removes the file at `path` (not following a link). A missing file is fine. On Windows a
+/// read-only file is removed too, and a file another program briefly holds is retried.
+pub fn remove_file(path: &Path) -> std::io::Result<()> {
+    match replace::remove(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        r => r,
+    }
+}
+
+fn is_link(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink())
+}
+
+/// Where a chain of symbolic links starting at `path` ends (possibly a file that doesn't exist
+/// yet); `path` itself when it isn't a link. Relative targets are relative to the link's folder.
+fn link_target(path: &Path) -> std::io::Result<PathBuf> {
+    let mut p = path.to_owned();
+    for _ in 0..40 {
+        if !is_link(&p) {
+            return Ok(p);
+        }
+        let to = std::fs::read_link(&p)?;
+        p = if to.is_absolute() { to } else { p.parent().unwrap_or(Path::new("")).join(to) };
+    }
+    Err(std::io::Error::other(format!("{} is a chain of too many symbolic links", path.display())))
+}
+
+/// A temporary name next to `path` that no other writer (thread or process) is using:
+/// `.<name>.<process id>.<counter>.tmp`.
 fn temp_sibling(path: &Path) -> PathBuf {
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let n = COUNTER.fetch_add(1, Ordering::Relaxed);
@@ -35,21 +106,34 @@ fn temp_sibling(path: &Path) -> PathBuf {
     path.with_file_name(format!(".{name}.{}.{n}.tmp", std::process::id()))
 }
 
-/// Renames `from` over `to`. `std::fs::rename` replaces an existing target on every platform
-/// (on Windows through `MoveFileExW` with `MOVEFILE_REPLACE_EXISTING`). Windows refuses while
-/// another program (a virus scanner, an indexer) briefly holds the target open, so that is
-/// retried a few times.
-fn replace(from: &Path, to: &Path) -> std::io::Result<()> {
-    let mut attempt = 0;
-    loop {
-        match std::fs::rename(from, to) {
-            Err(e) if cfg!(windows) && attempt < 5 && e.kind() == std::io::ErrorKind::PermissionDenied => {
-                attempt += 1;
-                std::thread::sleep(std::time::Duration::from_millis(20 * attempt));
-            }
-            other => return other,
-        }
+/// Whether `candidate` is a name [`temp_sibling`] makes for a file called `name`.
+fn is_temp_of(name: &str, candidate: &str) -> bool {
+    let Some(rest) = candidate.strip_prefix('.').and_then(|r| r.strip_prefix(name)).and_then(|r| r.strip_suffix(".tmp")) else {
+        return false;
+    };
+    let mut parts = rest.split('.');
+    let digits = |s: Option<&str>| s.is_some_and(|s| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit()));
+    parts.next() == Some("") && digits(parts.next()) && digits(parts.next()) && parts.next().is_none()
+}
+
+/// The Unix permission bits a replacement gets: the old file's (`old`), or those a new file is
+/// created with (`created`, the umask applied), with the executable bits set or cleared as
+/// `executable` says. Setting them adds `x` wherever `r` is set, as git does.
+#[cfg_attr(not(unix), allow(dead_code))]
+pub(crate) fn wanted_mode(old: Option<u32>, created: u32, executable: Option<bool>) -> u32 {
+    let mode = old.unwrap_or(created) & 0o7777;
+    match executable {
+        None => mode,
+        Some(true) => mode | ((mode & 0o444) >> 2),
+        Some(false) => mode & !0o111,
     }
+}
+
+/// Whether a file with permission bits `have` needs a chmod to get `want`. Skipping one that
+/// isn't needed matters on file systems that refuse every chmod (FAT, exFAT).
+#[cfg_attr(not(unix), allow(dead_code))]
+pub(crate) fn needs_chmod(have: u32, want: u32) -> bool {
+    have & 0o7777 != want & 0o7777
 }
 
 /// Moves `path` aside to the first free `<name>.bak`, `<name>.bak-2`, `<name>.bak-3`, … and
@@ -58,7 +142,7 @@ pub fn move_aside(path: &Path) -> std::io::Result<PathBuf> {
     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let backup = (1..)
         .map(|i| path.with_file_name(if i == 1 { format!("{name}.bak") } else { format!("{name}.bak-{i}") }))
-        .find(|p| !p.exists())
+        .find(|p| p.symlink_metadata().is_err())
         .expect("an unused backup name");
     std::fs::rename(path, &backup)?;
     Ok(backup)

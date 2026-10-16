@@ -128,6 +128,6 @@ pub fn install_todo(prepared: &Path, git_todo: &Path) -> Result<()> {
             _ => return Err(Error::Unsupported(CHANGED.into())),
         }
     }
-    std::fs::write(git_todo, text)?;
+    crate::persist::atomic_write(git_todo, text.as_bytes())?;
     Ok(())
 }

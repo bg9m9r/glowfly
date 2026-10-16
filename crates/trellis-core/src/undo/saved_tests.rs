@@ -90,3 +90,55 @@ fn nothing_to_undo_when_nothing_changed_or_the_discard_failed() {
     assert_eq!(read(&dir, "f.txt").unwrap(), b"kept\n");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+fn set_readonly(path: &Path, on: bool) {
+    let mut p = std::fs::metadata(path).unwrap().permissions();
+    #[allow(clippy::permissions_set_readonly_false)]
+    p.set_readonly(on);
+    std::fs::set_permissions(path, p).unwrap();
+}
+
+#[test]
+fn undo_and_redo_replace_a_read_only_file() {
+    let dir = base("sv-readonly");
+    let f = dir.join("f.txt");
+    std::fs::write(&f, "edited\n").unwrap();
+    let a = discard_saving(&dir, "f.txt", || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
+    // Read-only by the time of the undo (a tool or the user marked it so).
+    set_readonly(&f, true);
+    apply(&dir, &a, false);
+    assert_eq!(read(&dir, "f.txt").unwrap(), b"edited\n");
+    assert!(std::fs::metadata(&f).unwrap().permissions().readonly(), "still read-only");
+    apply(&dir, &a, true);
+    assert_eq!(read(&dir, "f.txt").unwrap(), b"one\ntwo\n");
+    set_readonly(&f, false);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn undo_deletes_a_read_only_file() {
+    let dir = base("sv-readonly-delete");
+    let f = dir.join("f.txt");
+    std::fs::remove_file(&f).unwrap();
+    let a = discard_saving(&dir, "f.txt", || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
+    set_readonly(&f, true);
+    apply(&dir, &a, false);
+    assert!(read(&dir, "f.txt").is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn undo_puts_the_executable_bit_back_unless_git_ignores_it() {
+    use std::os::unix::fs::PermissionsExt;
+    let mode = |dir: &Path| std::fs::metadata(dir.join("f.txt")).unwrap().permissions().mode() & 0o111;
+    for file_mode in [true, false] {
+        let dir = base(&format!("sv-exec-{file_mode}"));
+        git(&dir, &["config", "core.fileMode", if file_mode { "true" } else { "false" }]);
+        let saved = Saved { blob: Repository::open(&dir).unwrap().blob(b"#!/bin/sh\n").unwrap(), executable: true };
+        write_saved(&dir, "f.txt", Some(saved)).unwrap();
+        assert_eq!(read(&dir, "f.txt").unwrap(), b"#!/bin/sh\n");
+        assert_eq!(mode(&dir) != 0, file_mode, "core.fileMode={file_mode}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

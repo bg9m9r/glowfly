@@ -378,7 +378,7 @@ fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
 /// open a credential prompt.
 fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::PathBuf, String)>, prompts: bool) -> (bool, String) {
     if let Some((path, contents)) = write_file
-        && let Err(e) = std::fs::write(&path, contents)
+        && let Err(e) = trellis_core::persist::atomic_write(&path, contents.as_bytes())
     {
         return (false, format!("Could not write {}: {e}", path.display()));
     }

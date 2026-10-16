@@ -5,6 +5,7 @@
 
 use super::{Action, Plan, stale};
 use crate::error::{Error, Result};
+use crate::persist::WriteOptions;
 use crate::repo::RestoredFrom;
 use git2::{ObjectType, Oid, Repository};
 use std::path::{Path, PathBuf};
@@ -190,34 +191,18 @@ pub(super) fn plan(workdir: &Path, path: &str, before: Option<Saved>, after: Opt
     Ok(Plan::Write { path: path.to_owned(), content: target })
 }
 
-/// Makes `path` hold `content` exactly (deleting it for `None`).
+/// Makes `path` hold `content` exactly (deleting it for `None`). The file is replaced
+/// crash-safely, keeping its permissions (and a read-only attribute); a symbolic link there is
+/// refused rather than written through. The executable bit is set as saved unless the
+/// repository ignores it (`core.fileMode=false`), and failing to set it doesn't fail the write.
 pub fn write(workdir: &Path, path: &str, content: Option<Saved>) -> Result<()> {
     let f = file(workdir, path)?;
     let Some(saved) = content else {
-        return match std::fs::remove_file(&f) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.into()),
-            _ => Ok(()),
-        };
+        return Ok(crate::persist::remove_file(&f)?);
     };
     let repo = Repository::open(workdir)?;
     let blob = repo.find_blob(saved.blob)?;
-    if let Some(parent) = f.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(&f, blob.content())?;
-    set_executable(&f, saved.executable)
-}
-
-#[cfg(unix)]
-fn set_executable(f: &Path, on: bool) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = std::fs::metadata(f)?.permissions();
-    let mode = perms.mode();
-    perms.set_mode(if on { mode | ((mode & 0o444) >> 2) } else { mode & !0o111 });
-    Ok(std::fs::set_permissions(f, perms)?)
-}
-
-#[cfg(not(unix))]
-fn set_executable(_: &Path, _: bool) -> Result<()> {
-    Ok(())
+    let file_mode = repo.config().and_then(|c| c.get_bool("core.fileMode")).unwrap_or(true);
+    let opts = WriteOptions { refuse_links: true, executable: file_mode.then_some(saved.executable) };
+    Ok(crate::persist::write_file(&f, blob.content(), opts)?)
 }

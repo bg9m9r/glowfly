@@ -86,3 +86,131 @@ fn concurrent_saves_newest_wins() {
     assert_eq!(leftovers(&dir), ["settings.json"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+fn set_readonly(path: &Path, on: bool) {
+    let mut p = std::fs::metadata(path).unwrap().permissions();
+    #[allow(clippy::permissions_set_readonly_false)]
+    p.set_readonly(on);
+    std::fs::set_permissions(path, p).unwrap();
+}
+
+#[test]
+fn a_read_only_target_is_replaced_and_stays_read_only() {
+    let dir = scratch("readonly");
+    let file = dir.join("notes.txt");
+    std::fs::write(&file, "old").unwrap();
+    set_readonly(&file, true);
+    atomic_write(&file, b"new").unwrap();
+    assert_eq!(std::fs::read(&file).unwrap(), b"new");
+    assert!(std::fs::metadata(&file).unwrap().permissions().readonly(), "keeps the old file's read-only state");
+    assert_eq!(leftovers(&dir), ["notes.txt"]);
+    // Removing one works too.
+    remove_file(&file).unwrap();
+    assert!(!file.exists());
+    remove_file(&file).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Makes `link` a symbolic link to `target`; false where links can't be made (Windows without
+/// Developer Mode or the privilege).
+fn symlink_file(target: &Path, link: &Path) -> bool {
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(target, link);
+    #[cfg(windows)]
+    let made = std::os::windows::fs::symlink_file(target, link);
+    made.is_ok()
+}
+
+#[test]
+fn a_symlinked_file_stays_a_link_and_its_target_gets_the_bytes() {
+    let dir = scratch("symlink");
+    let real = dir.join("dotfiles").join("settings.json");
+    std::fs::create_dir_all(real.parent().unwrap()).unwrap();
+    std::fs::write(&real, "{}").unwrap();
+    let link = dir.join("settings.json");
+    // A relative link, as dotfile managers make them.
+    if !symlink_file(Path::new("dotfiles/settings.json"), &link) {
+        eprintln!("skipped: this system refused to create a symbolic link");
+        return;
+    }
+    atomic_write(&link, b"{\"a\":1}").unwrap();
+    assert!(link.symlink_metadata().unwrap().file_type().is_symlink(), "still a link");
+    assert_eq!(std::fs::read(&real).unwrap(), b"{\"a\":1}");
+    assert_eq!(leftovers(&dir), ["dotfiles", "settings.json"]);
+    assert_eq!(leftovers(&dir.join("dotfiles")), ["settings.json"]);
+    // A working-tree write refuses the link and changes nothing.
+    let refused = write_file(&link, b"x", WriteOptions { refuse_links: true, executable: None });
+    assert!(refused.unwrap_err().to_string().contains("symbolic link"));
+    assert_eq!(std::fs::read(&real).unwrap(), b"{\"a\":1}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn temp_names_are_recognised() {
+    for (candidate, ours) in [
+        (".settings.json.123.0.tmp", true),
+        (".settings.json.1.99.tmp", true),
+        (".settings.json.123.tmp", false),
+        (".settings.json.a.0.tmp", false),
+        (".settings.json..0.tmp", false),
+        ("settings.json.123.0.tmp", false),
+        (".settings.json.123.0.tmp.bak", false),
+        (".other.json.123.0.tmp", false),
+        (".settings.json.x.123.0.tmp", false),
+    ] {
+        assert_eq!(is_temp_of("settings.json", candidate), ours, "{candidate}");
+    }
+}
+
+#[test]
+fn stale_temp_files_are_cleaned_up() {
+    let dir = scratch("stale");
+    let file = dir.join("tabs.txt");
+    let stale = dir.join(".tabs.txt.4242.7.tmp");
+    let fresh = dir.join(".tabs.txt.4243.0.tmp");
+    let unrelated = dir.join(".other.txt.4242.7.tmp");
+    for p in [&stale, &fresh, &unrelated] {
+        std::fs::write(p, "half").unwrap();
+    }
+    let long_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    for p in [&stale, &unrelated] {
+        std::fs::File::options().write(true).open(p).unwrap().set_modified(long_ago).unwrap();
+    }
+    atomic_write(&file, b"a").unwrap();
+    assert_eq!(leftovers(&dir), [".other.txt.4242.7.tmp", ".tabs.txt.4243.0.tmp", "tabs.txt"], "only the old one for this file goes");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn modes_follow_the_old_file_and_the_executable_bit() {
+    // (old, created, executable) -> wanted
+    for (old, created, exec, want) in [
+        (Some(0o100600), 0o644, None, 0o600),
+        (Some(0o755), 0o644, Some(false), 0o644),
+        (Some(0o644), 0o600, Some(true), 0o755),
+        (Some(0o640), 0o600, Some(true), 0o750),
+        (None, 0o644, None, 0o644),
+        (None, 0o644, Some(true), 0o755),
+        (None, 0o600, Some(true), 0o700),
+    ] {
+        assert_eq!(wanted_mode(old, created, exec), want, "{old:?} {created:o} {exec:?}");
+    }
+    assert!(!needs_chmod(0o100644, 0o644), "the file type bits don't count");
+    assert!(!needs_chmod(0o755, 0o755));
+    assert!(needs_chmod(0o644, 0o755));
+}
+
+#[cfg(unix)]
+#[test]
+fn the_old_mode_is_kept_and_the_executable_bit_set_on_unix() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = scratch("mode");
+    let file = dir.join("run.sh");
+    std::fs::write(&file, "old").unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)).unwrap();
+    atomic_write(&file, b"new").unwrap();
+    assert_eq!(std::fs::metadata(&file).unwrap().permissions().mode() & 0o7777, 0o600);
+    write_file(&file, b"newer", WriteOptions { refuse_links: true, executable: Some(true) }).unwrap();
+    assert_eq!(std::fs::metadata(&file).unwrap().permissions().mode() & 0o7777, 0o700);
+    let _ = std::fs::remove_dir_all(&dir);
+}
