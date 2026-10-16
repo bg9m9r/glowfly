@@ -109,7 +109,7 @@ fn a_held_repository_gets_no_note() {
 #[test]
 fn an_older_git_gets_no_button() {
     let (mut st, dir) = opened("tip-old-git");
-    st.git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 36, 1)) });
+    st.git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 36, 1)), chosen: false });
     read_slowly(&mut st, speedups(false, false));
     let toast = st.toasts.last().unwrap();
     assert!(toast.action.is_none() && toast.text.contains("core.fsmonitor") && !toast.text.contains("untracked"), "{}", toast.text);
