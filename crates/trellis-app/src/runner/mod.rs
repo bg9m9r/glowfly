@@ -7,7 +7,7 @@
 //! folder's per-area files (`files`, `worktrees`, `rebase`, `highlight`, …); the git, file and
 //! network code itself lives in `trellis-core`.
 
-use crate::effect::{Effect, LocalOp, UndoResult};
+use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::ConflictMsg;
@@ -28,9 +28,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 use trellis_core::avatars;
 use trellis_core::forge;
-use trellis_core::gitcli;
 use trellis_core::repo;
-use trellis_core::undo::{self, Action, Plan};
+use trellis_core::undo;
 
 mod askpass;
 mod blame;
@@ -42,6 +41,7 @@ pub(crate) mod files;
 mod forge_calls;
 mod forks;
 mod git_env;
+mod git_ops;
 mod guard;
 mod highlight;
 mod init;
@@ -240,7 +240,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             Some(Msg::History(HistoryMsg::FileHistoryLoaded { path, generation, result }))
         }
         Effect::LoadBlame(r) => Some(blame::load(r)),
-        Effect::LocalOp { workdir, op } => Some(Msg::Stage(StageMsg::LocalOpDone(local_op(&workdir, op).map_err(err)))),
+        Effect::LocalOp { workdir, op } => Some(Msg::Stage(StageMsg::LocalOpDone(git_ops::local_op(&workdir, op).map_err(err)))),
         Effect::RevertHunk { workdir, target, index, expected } => {
             let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
             Some(Msg::Stage(StageMsg::HunkReverted { path: target.path().to_owned(), result }))
@@ -262,12 +262,12 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 return Some(Msg::Job(JobMsg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) }));
             }
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
-            let (ok, output) = run_git(&cwd, &cmds, write_file, prompts);
+            let (ok, output) = git_ops::run_git(&cwd, &cmds, write_file, prompts);
             let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
             let undo = record.map(|k| UndoResult::Recorded(recorded(k)));
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo }))
         }
-        Effect::UndoRedo { cwd, action, redo } => Some(undo_redo(&cwd, action, redo)),
+        Effect::UndoRedo { cwd, action, redo } => Some(git_ops::undo_redo(&cwd, action, redo)),
         Effect::LoadRebasePlan { workdir, base, generation } => Some(rebase::load_plan(&workdir, &base, generation)),
         Effect::InteractiveRebase { cwd, request } => Some(rebase::start(&cwd, &request)),
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
@@ -348,78 +348,4 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             None
         }
     }
-}
-
-/// Runs a local op. Discards save the file's contents first and return the undo action.
-fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<Option<Action>> {
-    use trellis_core::repo::HunkOp::Discard;
-    let saving = |path: &str, f: &dyn Fn() -> trellis_core::error::Result<()>| undo::discard_saving(workdir, path, f);
-    let done = |r: trellis_core::error::Result<()>| r.map(|()| None);
-    match op {
-        LocalOp::StageFile(p) => done(repo::stage_file(workdir, &p)),
-        LocalOp::StageAll => done(repo::stage_all(workdir)),
-        LocalOp::UnstagePaths(paths) => done(repo::unstage_paths(workdir, &paths)),
-        LocalOp::DiscardFile(path) => saving(&path, &|| repo::discard_file(workdir, &path)),
-        LocalOp::Hunk { op: Discard, path, index, expected } => {
-            saving(&path, &|| repo::apply_hunk(workdir, &path, index, &expected, Discard))
-        }
-        LocalOp::Hunk { op, path, index, expected } => done(repo::apply_hunk(workdir, &path, index, &expected, op)),
-        LocalOp::Lines { op: Discard, path, hunk, expected, lines } => {
-            saving(&path, &|| repo::apply_lines(workdir, &path, hunk, &expected, &lines, Discard))
-        }
-        LocalOp::Lines { op, path, hunk, expected, lines } => done(repo::apply_lines(workdir, &path, hunk, &expected, &lines, op)),
-        LocalOp::ResolveConflict { path, contents, expected } => done(repo::write_resolution(workdir, &path, &contents, &expected)),
-        LocalOp::ResolveWithSide { path, side, expected } => done(repo::resolve_with_side(workdir, &path, side, &expected)),
-    }
-}
-
-/// Checks that `action` still applies, then runs the git commands that undo or redo it.
-fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
-    let failed = |output: String| Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Failed { redo }) });
-    match undo::plan(cwd, &action, redo) {
-        Err(e) => failed(e.to_string()),
-        Ok(Plan::Refuse(r)) => Msg::Job(JobMsg::JobDone {
-            ok: false,
-            output: r.message().into(),
-            undo: Some(UndoResult::Refused { redo, stale: r.is_stale() }),
-        }),
-        Ok(Plan::Write { path, content }) => match undo::write_saved(cwd, &path, content) {
-            Ok(()) => {
-                let output = action.wrote(redo);
-                Msg::Job(JobMsg::JobDone { ok: true, output, undo: Some(UndoResult::Done { redo, before: action.clone(), after: action }) })
-            }
-            Err(e) => failed(format!("Could not write {path}: {e}")),
-        },
-        Ok(Plan::Run(cmds)) => {
-            let (ok, output) = run_git(cwd, &cmds, None, true);
-            if !ok {
-                return failed(output);
-            }
-            let after = if redo { undo::redone(cwd, action.clone()).unwrap_or_else(|_| action.clone()) } else { action.clone() };
-            Msg::Job(JobMsg::JobDone { ok, output, undo: Some(UndoResult::Done { redo, before: action, after }) })
-        }
-    }
-}
-
-/// Runs `cmds` in order, stopping at the first failure. Without `prompts`, git fails rather than
-/// open a credential prompt.
-fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::PathBuf, String)>, prompts: bool) -> (bool, String) {
-    if let Some((path, contents)) = write_file
-        && let Err(e) = trellis_core::persist::atomic_write(&path, contents.as_bytes())
-    {
-        return (false, format!("Could not write {}: {e}", path.display()));
-    }
-    let mut output = String::new();
-    for c in cmds {
-        output.push_str(&format!("$ git {}\n", trellis_core::text::redact_credentials(&c.join(" "))));
-        let (success, text) = gitcli::run_with_input(cwd, c, "", if prompts { &[] } else { gitcli::NO_PROMPTS });
-        if !text.is_empty() {
-            output.push_str(&text);
-            output.push('\n');
-        }
-        if !success {
-            return (false, output.trim_end().to_owned());
-        }
-    }
-    (true, output.trim_end().to_owned())
 }

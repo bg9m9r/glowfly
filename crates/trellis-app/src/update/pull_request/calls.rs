@@ -5,7 +5,7 @@
 //! and an action's result is logged even when the panel has closed, since it happened on the
 //! service.
 
-use super::ops::{JobSpec, busy, start_job};
+use super::super::ops::{JobSpec, busy, start_job};
 use crate::effect::{Effect, ForgeError};
 use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PrRequest};
 use crate::state::AppState;
@@ -203,14 +203,14 @@ pub(super) fn replied(
             if open {
                 load(st, fx);
             }
-            super::forge::refresh(st, true, false, now, fx);
+            super::super::forge::refresh(st, true, false, now, fx);
         }
         PrReply::Merged { remote, source, delete, result: Ok(_), .. } => {
             st.toast(true, text, now);
             if open {
                 load(st, fx);
             }
-            super::forge::refresh(st, true, false, now, fx);
+            super::super::forge::refresh(st, true, false, now, fx);
             after_merge(st, &remote, &source, delete, fx);
         }
         _ => {}

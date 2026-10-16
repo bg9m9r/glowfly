@@ -1,5 +1,5 @@
 //! Messages and effects of the pull request panel (state/pull_request.rs,
-//! state/pull_request_actions.rs, update/pull_request.rs, update/pull_request_calls.rs,
+//! state/pull_request_actions.rs, update/pull_request/mod.rs, update/pull_request/calls.rs,
 //! runner/pull_request.rs, ui/pull_request/). Its files open through `RepoMsg::OpenDiff`, its
 //! Fetch button sends `RemoteMsg::Fetch`, and the browser and copy actions are `Msg::OpenUrl`
 //! and `Msg::Copy`.

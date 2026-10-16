@@ -1,9 +1,9 @@
 //! Headless tests for the pull request panel's service calls: loading the page, comments,
 //! reviews and merging, with replies fed by hand (the calls themselves never run here).
 
-use super::pull_request_tests::{cleanup, github, pr_target, rev, setup};
-use super::tests::finish_keeping;
-use super::update;
+use super::super::tests::finish_keeping;
+use super::super::update;
+use super::tests::{cleanup, github, pr_target, rev, setup};
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
 use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};

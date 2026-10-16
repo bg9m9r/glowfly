@@ -2,9 +2,9 @@
 //! remote-tracking branches, opening them in the panel, notes for missing or moved branches,
 //! closing, refreshes of the refs and of the service's list, and tab switches.
 
-use super::branch_tests::{remote_commit, with_origin};
-use super::tests::{drive, git};
-use super::update;
+use super::super::branch_tests::{remote_commit, with_origin};
+use super::super::tests::{drive, git};
+use super::super::update;
 use crate::effect::{Effect, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, HistoryMsg, Msg, RepoMsg, TabsMsg};
 use crate::pull_request::{PrEffect, PullRequestMsg};

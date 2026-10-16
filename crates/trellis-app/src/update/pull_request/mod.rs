@@ -2,15 +2,23 @@
 //! from the local remote-tracking branches, following refreshes of the refs and of the
 //! service's list, switching tabs, and closing it. Its files' diffs are the shared `st.diff`,
 //! opened through `RepoMsg::OpenDiff`; its page and actions on the service are in
-//! pull_request_calls.rs.
+//! calls.rs.
 
-use super::pull_request_calls::{self as calls, load};
 use crate::effect::Effect;
 use crate::pull_request::{FilesJob, PrEffect, PullRequestMsg};
 use crate::state::AppState;
 use crate::state::pull_request::{Files, PrTab, PrView, Tips};
+use calls::load;
 use std::time::Instant;
 use trellis_core::repo::DiffTarget;
+
+pub(super) mod calls;
+#[cfg(test)]
+mod calls_tests;
+#[cfg(test)]
+mod merge_tests;
+#[cfg(test)]
+mod tests;
 
 pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {

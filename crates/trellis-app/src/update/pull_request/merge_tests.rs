@@ -2,8 +2,8 @@
 //! result starts (deleting the source branch and fetching), for the active tab, a closed panel
 //! and another tab.
 
-use super::pull_request_calls_tests::{calls, done, err, git_jobs, loaded, loads, merged_ok, opened, refreshes, reply_msg, run, view};
-use super::update;
+use super::super::update;
+use super::calls_tests::{calls, done, err, git_jobs, loaded, loads, merged_ok, opened, refreshes, reply_msg, run, view};
 use crate::msg::Msg;
 use crate::pull_request::{PrCall, PrReply, PullRequestMsg};
 use crate::state::pull_request::PrAction;

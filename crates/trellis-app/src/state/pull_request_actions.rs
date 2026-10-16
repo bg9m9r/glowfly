@@ -1,6 +1,6 @@
 //! The pull request panel's action forms (comment, review, merge) and their rules: why each
 //! action or choice is unavailable, the labels and explanations, the merge confirmation and
-//! the post-merge branch deletion. Pure; the calls are made by update/pull_request_calls.rs.
+//! the post-merge branch deletion. Pure; the calls are made by update/pull_request/calls.rs.
 
 use super::pull_request::{PrAction, PrView, Tone};
 use crate::msg::Msg;
