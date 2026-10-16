@@ -12,10 +12,12 @@ use crate::state::AppState;
 use crate::state::PrefPage;
 use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL};
 use crate::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, ToolEffect, ToolsMsg};
+use git2::Oid;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::repo::DiffTarget;
 use trellis_core::settings::ExternalTools;
+use trellis_core::undo::Action;
 
 fn run(st: &mut AppState, m: ToolsMsg) -> Vec<Effect> {
     update(st, Msg::Tools(m), Instant::now())
@@ -187,6 +189,25 @@ fn other_merge_ends_are_reported() {
         let (ok, text, action) = toast(&st);
         assert_eq!((ok, action.as_deref()), (want_ok, want_action), "{end:?}: {text}");
         assert!(text.contains("a.txt") || text.contains("kdiff3"), "{text}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_merge_tool_run_keeps_the_undo_history() {
+    let (mut st, dir) = running("tc-undo");
+    let deleted = Action::DeleteBranch { name: "b".into(), oid: Oid::zero(), upstream: None };
+    for end in [MergeEnd::Saved, MergeEnd::Resolved] {
+        if st.job.is_none() {
+            merge_request(run(&mut st, ToolsMsg::ResolveInMergeTool("a.txt".into())));
+        }
+        assert!(st.job.as_ref().is_some_and(|j| j.keeps_undo));
+        st.undo.clear();
+        st.undo.record(deleted.clone());
+        exited(&mut st, end.clone());
+        assert!(st.job.is_none() && toast(&st).0, "{end:?}");
+        assert_eq!(st.undo.undo, [deleted.clone()], "{end:?}: the merge tool moves no refs");
+        assert!(st.undo.blocked.is_none(), "{end:?}");
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

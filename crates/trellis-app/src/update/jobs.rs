@@ -101,7 +101,8 @@ pub(super) fn begin_job(
 /// Unlike `begin_job`, the trust prompt never holds it: it is for a program the user chose in
 /// their own settings (the merge tool), and its copies of the repository's files are made
 /// without the repository's filters while the repository is not trusted, so nothing the
-/// repository configures runs.
+/// repository configures runs. It keeps the undo history: the tool edits (and at most stages)
+/// a working file and moves no refs, like the conflict view's Save and Mark resolved.
 pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce(PathBuf) -> Effect, fx: &mut Vec<Effect>) -> Started {
     if busy(st, false) {
         return Started::No;
@@ -114,7 +115,7 @@ pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce
         clear_commit: false,
         then_push: false,
         then_open: None,
-        keeps_undo: false,
+        keeps_undo: true,
     });
     fx.push(effect(cwd));
     Started::Now
