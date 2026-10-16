@@ -5,7 +5,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply};
-use crate::msg::{ForgeMsg, IssueMsg, Msg, RepoMsg, TabsMsg};
+use crate::msg::{BlameMsg, ForgeMsg, IssueMsg, Msg, RepoMsg, TabsMsg};
 use crate::pull_request::PullRequestMsg;
 use crate::state::history::FileHistoryView;
 use crate::state::issue::Details;
@@ -286,5 +286,33 @@ fn switching_tabs_parks_the_panel_and_reloads_on_return() {
     assert_eq!(l.len(), 1, "and load again");
     assert!(l[0].generation > before && l[0].generation == st.issue_gen);
     assert!(view(&st).reloading);
+    done(st, dir);
+}
+
+#[test]
+fn blame_and_another_tracker_close_it() {
+    let (mut st, dir) = open_repo("issue-blame-remote");
+    run(&mut st, IssueMsg::Open("12".into()));
+    update(&mut st, Msg::Blame(BlameMsg::Open { path: "a.txt".into(), at: None }), Instant::now());
+    assert!(st.issue.is_none(), "opening blame");
+
+    // The same key on another tracker is another issue.
+    run(&mut st, IssueMsg::Open("12".into()));
+    let r2 = Target { repo: "r2".into(), ..github() };
+    st.forge.as_mut().unwrap().tracker = Some(r2.clone());
+    let fx = run(&mut st, IssueMsg::Open("12".into()));
+    assert_eq!(view(&st).target, r2);
+    assert!(loads(&fx).first().is_some_and(|j| j.req.target == r2));
+    st.forge.as_mut().unwrap().tracker = Some(github());
+    st.issue = None;
+
+    // An edited remote changes the tracker on the next refresh.
+    run(&mut st, IssueMsg::Open("12".into()));
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(st.issue.is_some(), "the same tracker keeps it");
+    git(&dir, &["remote", "set-url", "origin", "https://github.com/o/r2"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert_eq!(st.forge.as_ref().unwrap().tracker.as_ref(), Some(&r2));
+    assert!(st.issue.is_none(), "the remote's new tracker closes it");
     done(st, dir);
 }

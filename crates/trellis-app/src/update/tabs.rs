@@ -271,6 +271,7 @@ fn park(st: &mut AppState) -> Parked {
         blame: st.blame.take(),
         pull_request: st.pull_request.take(),
         issue: st.issue.take(),
+        issue_form: super::issue_create::park(st),
         rebase: st.rebase.take(),
         gitflow_panel: std::mem::take(&mut st.gitflow_panel),
         draft: std::mem::take(&mut st.draft),
@@ -332,6 +333,7 @@ fn unpark(st: &mut AppState, p: Parked) {
     // File lists for this tab were dropped while it was parked.
     st.pull_request_gen += 1;
     st.issue = p.issue;
+    super::issue_create::unpark(st, p.issue_form);
     // Details for this tab were dropped while it was parked.
     st.issue_gen += 1;
     st.rebase = p.rebase;

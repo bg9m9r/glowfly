@@ -17,6 +17,7 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
                 return;
             }
             super::conflict::close(st);
+            super::issue::close(st);
             // Over the file history, its diff stays underneath; elsewhere no hidden diff stays
             // open for shortcuts to act on.
             if st.history.is_none() {

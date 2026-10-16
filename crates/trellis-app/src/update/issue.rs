@@ -30,7 +30,7 @@ pub(super) fn handle(st: &mut AppState, msg: IssueMsg, now: Instant, fx: &mut Ve
 
 fn open(st: &mut AppState, key: String, fx: &mut Vec<Effect>) {
     let (Some(_), Some(fs)) = (&st.snap, &st.forge) else { return };
-    if fs.tracker.is_none() || st.issue.as_ref().is_some_and(|v| v.key == key) {
+    if fs.tracker.is_none() || st.issue.as_ref().is_some_and(|v| v.key == key && fs.tracker.as_ref() == Some(&v.target)) {
         return;
     }
     let Some(view) = IssueView::new(listed_or_bare(fs, &key), fs) else { return };
@@ -145,13 +145,24 @@ pub(super) fn close(st: &mut AppState) {
 /// After a tab switch: the details load again in the background (the last ones stay meanwhile).
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     load(st, fx);
+    super::issue_create::reload_pending(st, fx);
 }
 
-/// The issue tracker changed (Repo-Specific Preferences): the panel and a Create issue dialog
-/// for the old tracker close.
+/// The issue tracker was chosen again (Repo-Specific Preferences): the panel closes, and so
+/// does a Create issue dialog for another tracker.
 pub(super) fn tracker_changed(st: &mut AppState) {
-    let tracker = st.forge.as_ref().and_then(|f| f.tracker.clone());
     close(st);
+    tracker_detected(st);
+}
+
+/// The tracker was worked out again (after a refresh, a new connection or a profile switch):
+/// a panel or a Create issue dialog for another tracker closes, since its calls would now go
+/// to the new one.
+pub(super) fn tracker_detected(st: &mut AppState) {
+    let tracker = st.forge.as_ref().and_then(|f| f.tracker.clone());
+    if st.issue.as_ref().is_some_and(|v| Some(&v.target) != tracker.as_ref()) {
+        close(st);
+    }
     if let Some(Modal::CreateIssue(form)) = &st.modal
         && Some(&form.target) != tracker.as_ref()
     {

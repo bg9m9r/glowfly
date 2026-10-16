@@ -100,6 +100,9 @@ pub struct Parked {
     pub pull_request: Option<PrView>,
     /// The issue panel (its details load again on return).
     pub issue: Option<super::issue::IssueView>,
+    /// The Create issue dialog, unless an issue was being created (its choices load again on
+    /// return).
+    pub issue_form: Option<Box<super::issue_form::IssueForm>>,
     /// The interactive rebase panel (a list still loading is requested again on return).
     pub rebase: Option<RebasePanel>,
     /// The Git Flow panel is open.

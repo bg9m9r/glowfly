@@ -2,9 +2,10 @@
 //! labels, people, types and epics it offers (per Jira project), creating the issue, and the
 //! reply: logged and toasted with a View action, cached, the ISSUES list refreshed, and the New
 //! branch dialog opened when asked. A failure keeps the dialog open with the server's words;
-//! a reply after the dialog closed (or for another tab) is only logged.
+//! a reply after the dialog closed (or for another tab) is only logged. The dialog is parked
+//! with its tab, and its calls go only to the tracker it was opened for.
 
-use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob};
+use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueRequest};
 use crate::msg::{IssueMsg, Msg};
 use crate::state::issue_form::{IssueForm, OptionsState, create_blocked};
 use crate::state::{AppState, Modal, ToastAction};
@@ -29,9 +30,19 @@ pub(super) fn open_dialog(st: &mut AppState, fx: &mut Vec<Effect>) {
     ask_options(st, fx);
 }
 
+/// A request to the dialog's own tracker: the active repository's, or why not.
+fn request(st: &AppState, form: &IssueForm) -> Result<IssueRequest, String> {
+    let req = super::issue::request(st)?;
+    if req.target != form.target {
+        return Err("The repository's issue tracker changed. Close this dialog and open it again.".to_owned());
+    }
+    Ok(req)
+}
+
 /// Asks for the choices of the dialog's project; on Jira only once a project is chosen.
 fn ask_options(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let req = super::issue::request(st);
+    let Some(Modal::CreateIssue(form)) = &st.modal else { return };
+    let req = request(st, form);
     let generation = st.issue_gen;
     let Some(form) = form_mut(st) else { return };
     let project = form.project.clone();
@@ -64,7 +75,8 @@ pub(super) fn set_project(st: &mut AppState, project: String, fx: &mut Vec<Effec
 
 /// Sends the dialog's issue, unless it has problems or is already being created.
 pub(super) fn create(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let req = super::issue::request(st);
+    let Some(Modal::CreateIssue(form)) = &st.modal else { return };
+    let req = request(st, form);
     let generation = st.issue_gen;
     let Some(form) = form_mut(st) else { return };
     if form.busy || form.submit_blocked().is_some() {
@@ -161,5 +173,34 @@ pub(super) fn created(
                 None => st.toast(false, format!("Couldn't create the issue: {}", e.message), now),
             }
         }
+    }
+}
+
+/// The active tab is being parked: its dialog goes with it, unless an issue is being created
+/// (that reply is only logged, so a dialog kept for it would never finish).
+pub(super) fn park(st: &mut AppState) -> Option<Box<IssueForm>> {
+    match st.modal.take() {
+        Some(Modal::CreateIssue(f)) if !f.busy => Some(f),
+        Some(Modal::CreateIssue(_)) => None,
+        other => {
+            st.modal = other;
+            None
+        }
+    }
+}
+
+/// The tab is active again: its parked dialog comes back, unless another dialog is open.
+pub(super) fn unpark(st: &mut AppState, form: Option<Box<IssueForm>>) {
+    if let Some(f) = form
+        && st.modal.is_none()
+    {
+        st.modal = Some(Modal::CreateIssue(f));
+    }
+}
+
+/// After a tab switch: choices that were loading while the tab was parked are asked again.
+pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if form_mut(st).is_some_and(|f| f.options == OptionsState::Loading) {
+        ask_options(st, fx);
     }
 }

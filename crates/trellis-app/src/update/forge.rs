@@ -76,11 +76,8 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
         None => (String::new(), None),
     };
     let tracker = tracker_target(st.settings.tracker_for(&snap.real_workdir), host.as_ref());
-    if host.is_none() && tracker.is_none() {
-        st.forge = None;
-        return;
-    }
     st.forge = match st.forge.take() {
+        _ if host.is_none() && tracker.is_none() => None,
         // The same service: keep its loaded state, following a renamed remote.
         Some(mut existing) if existing.host == host && existing.tracker == tracker => {
             existing.remote = remote;
@@ -88,6 +85,8 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
         }
         _ => Some(ForgeState::new(host, remote, tracker)),
     };
+    // An edited remote, a new connection or another profile can change the tracker.
+    super::issue::tracker_detected(st);
 }
 
 /// Calls the service, unless it is a self-hosted server only guessed from the remote URL: those

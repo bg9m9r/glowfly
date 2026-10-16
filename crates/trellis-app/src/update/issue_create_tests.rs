@@ -1,11 +1,13 @@
 //! Headless tests for the Create issue dialog: opening it per tracker, loading its choices per
 //! project, the checks that hold Create back, creating, and the replies (success with its
-//! toast, cache, refresh and branch dialog; failure; after Cancel; for another tab).
+//! toast, cache, refresh and branch dialog; failure; after Cancel; for another tab), tab
+//! switches and tracker changes.
 
 use super::issue_tests::{done, err, github, jobs, open_repo, reply, run};
+use super::tests::{drive, git};
 use super::update;
 use crate::effect::{Effect, ForgeCall, IssueCall, IssueReply};
-use crate::msg::{IssueMsg, Msg};
+use crate::msg::{IssueMsg, Msg, RepoMsg, TabsMsg};
 use crate::state::issue_form::{IssueForm, OptionsState};
 use crate::state::{AppState, Modal};
 use std::time::Instant;
@@ -239,5 +241,45 @@ fn after_cancel_or_for_another_tab_the_reply_is_only_reported() {
     assert_eq!(st.toasts.len(), toasts, "only logged");
     assert!(st.log.last().is_some_and(|l| l.text == "Created issue #14 in other-repo"));
     assert!(!st.forge.as_ref().unwrap().cache.contains_key("14"));
+    done(st, dir);
+}
+
+#[test]
+fn the_dialog_is_parked_with_its_tab() {
+    let (mut st, dir) = ready("issue-create-tabs");
+    form_mut(&mut st).labels = vec!["bug".into()];
+    update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
+    assert!(st.modal.is_none(), "parked with its tab");
+    assert!(run(&mut st, IssueMsg::Create).is_empty(), "nothing is sent from the other tab");
+    let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
+    assert_eq!((form(&st).title.as_str(), &form(&st).labels), ("Crash on start", &vec!["bug".to_owned()]));
+    assert_eq!(options_calls(&fx), [String::new()], "the choices still loading are asked again");
+
+    // One being created isn't kept: its reply is only logged.
+    run(&mut st, IssueMsg::Create);
+    assert!(form(&st).busy);
+    update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
+    update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
+    assert!(st.modal.is_none());
+    done(st, dir);
+}
+
+#[test]
+fn calls_go_only_to_the_dialogs_tracker_and_a_new_one_closes_it() {
+    let (mut st, dir) = ready("issue-create-tracker");
+    st.forge.as_mut().unwrap().tracker = Some(Target { repo: "r2".into(), ..github() });
+    assert!(creates(&run(&mut st, IssueMsg::Create)).is_empty());
+    assert!(!form(&st).busy && form(&st).error.as_deref().is_some_and(|e| e.contains("changed")));
+    form_mut(&mut st).options = OptionsState::Failed("timed out".into());
+    assert!(options_calls(&run(&mut st, IssueMsg::SetProject(String::new()))).is_empty(), "Try again");
+    assert!(matches!(&form(&st).options, OptionsState::Failed(e) if e.contains("changed")));
+    st.forge.as_mut().unwrap().tracker = Some(github());
+
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(st.modal.is_some(), "the same tracker keeps it");
+    git(&dir, &["remote", "set-url", "origin", "https://github.com/o/r2"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert_eq!(st.forge.as_ref().unwrap().tracker.as_ref().map(|t| t.repo.as_str()), Some("r2"));
+    assert!(st.modal.is_none(), "an edited remote closes it");
     done(st, dir);
 }
