@@ -1609,3 +1609,4 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Load user-supplied translation files from the settings folder
 - A palette command to switch the language
 - Right-to-left layout for right-to-left languages
+- Translate the update check (General's Updates row, the status bar chip, the release notes dialog) and the menu bar
