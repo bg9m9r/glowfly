@@ -4,20 +4,18 @@
 use super::palette_kinds::StashAction;
 use super::{AppState, Selection};
 use crate::keymap::BindingId;
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::{DiffLayout, ThemeChoice};
 
+#[path = "palette_checkouts.rs"]
+mod palette_checkouts;
 #[path = "palette_gitflow.rs"]
 mod palette_gitflow;
 #[path = "palette_setup.rs"]
 mod palette_setup;
 #[path = "palette_shallow.rs"]
 mod palette_shallow;
-
-/// Recent repositories offered by the palette.
-const MAX_RECENT: usize = 10;
 
 /// The label of the entry that shows the repository folder in the system file manager.
 pub const SHOW_REPO_FOLDER: &str = if cfg!(windows) {
@@ -187,7 +185,7 @@ fn at_label(st: &AppState) -> String {
 }
 
 /// A folder's own name, or the whole path when it has none.
-fn folder_name(path: &Path) -> String {
+pub(super) fn folder_name(path: &Path) -> String {
     path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string())
 }
 
@@ -195,6 +193,7 @@ fn folder_name(path: &Path) -> String {
 /// app commands, local branch checkouts, recent repositories, then remote branch and tag
 /// checkouts (last, so a repository with many refs doesn't push the rest past the row cap).
 pub fn entries(st: &AppState) -> Vec<Entry> {
+    use palette_checkouts::{checkout_entries, recent_entries, remote_checkout_entries, tag_checkout_entries};
     let mut out = Vec::new();
     if let Some(snap) = &st.snap {
         repo_entries(st, snap, &mut out);
@@ -315,66 +314,4 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
         out.push(with_detail(e, (st.settings.theme == choice).then(|| "current".to_owned())));
     }
     super::palette_tools::palette_entries(st, out);
-}
-
-/// A checkout entry for each local branch other than HEAD's.
-fn checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
-    for b in snap.locals.iter().filter(|b| !b.is_head) {
-        let e = entry(PaletteCommand::Checkout(b.name.clone()), format!("Checkout {}", b.name), "switch branch");
-        out.push(with_detail(e, b.upstream.clone()));
-    }
-}
-
-/// A checkout entry for each remote branch that no local branch shares a name with or tracks
-/// (its configured upstream counts even when the ref is gone): checking one out creates a local
-/// branch tracking it.
-fn remote_checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
-    let local: HashSet<&str> = snap.locals.iter().map(|b| b.name.as_str()).collect();
-    let mut tracked: HashSet<String> = HashSet::new();
-    for b in &snap.locals {
-        tracked.extend(b.upstream.clone());
-        if let Some(t) = b.tracking.as_ref().filter(|t| t.is_remote()) {
-            tracked.insert(t.display());
-        }
-    }
-    for (remote, branches) in &snap.remotes {
-        for (branch, _) in branches {
-            if branch == "HEAD" || local.contains(branch.as_str()) || tracked.contains(&format!("{remote}/{branch}")) {
-                continue;
-            }
-            let command = PaletteCommand::CheckoutRemote { remote: remote.clone(), branch: branch.clone() };
-            let e = entry(command, format!("Checkout {remote}/{branch}"), "switch branch remote track tracking");
-            out.push(with_detail(e, Some("creates local branch".to_owned())));
-        }
-    }
-}
-
-/// Hidden words for tag checkouts. "detached" comes first: after "release" its letters would
-/// let a query such as "create" match every tag.
-const TAG_KEYWORDS: &str = "detached switch tag release version";
-
-/// A checkout entry for each tag, except one at the commit HEAD is already detached at.
-fn tag_checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
-    let detached_at = if snap.head_branch.is_none() { snap.head_oid } else { None };
-    for (name, oid) in &snap.tags {
-        if Some(*oid) == detached_at {
-            continue;
-        }
-        let e = entry(PaletteCommand::CheckoutTag(name.clone()), format!("Checkout tag {name}"), TAG_KEYWORDS);
-        out.push(with_detail(e, Some(format!("detached at {}", &oid.to_string()[..7]))));
-    }
-}
-
-/// Recent repositories other than the active one.
-fn recent_entries(st: &AppState, out: &mut Vec<Entry>) {
-    let active = st.workdir();
-    for path in st.recent.iter().take(MAX_RECENT) {
-        let is_active =
-            active.as_deref().is_some_and(|w| st.same_folder(w, path)) || st.snap.as_ref().is_some_and(|s| st.names_repo(s, path));
-        if is_active || super::repo_lists::is_missing(st, path) {
-            continue;
-        }
-        let e = entry(PaletteCommand::OpenRecent(path.clone()), format!("Open {}", folder_name(path)), "recent repository");
-        out.push(with_detail(e, Some(path.display().to_string())));
-    }
 }
