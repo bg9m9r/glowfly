@@ -48,6 +48,7 @@ fn reset_forge(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     if let Some(provider) = st.prefs.as_ref().map(|p| p.int_provider) {
         super::prefs::select_integration(st, provider);
     }
+    super::dashboard::connections_changed(st, fx);
 }
 
 /// Deletes the stored sign-ins of `accounts` that no profile lists any more.

@@ -58,8 +58,9 @@ pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
 }
 
 /// Opens `path`: selects its tab if it is already open, uses the active tab if it is empty,
-/// and otherwise opens a new tab.
+/// and otherwise opens a new tab. The dashboard, if open, closes to show it.
 pub(super) fn open(st: &mut AppState, path: PathBuf, fx: &mut Vec<Effect>) {
+    super::dashboard::leave(st);
     if let Some(i) = st.tab_showing(&path) {
         if i == st.active_tab {
             super::repo::refresh(st, fx);

@@ -242,3 +242,20 @@ fn deleting_profile_forgets_only_its_accounts() {
     assert!(st.settings.profile(PERSONAL).is_none());
     assert_eq!(token_deletes(&fx), vec![gitlab().account], "GitHub is still connected here");
 }
+
+#[test]
+fn the_dashboard_forgets_the_previous_profiles_sign_ins() {
+    use crate::state::dashboard::{AccountRow, AccountState};
+    let mut st = with_setups();
+    let account = github().account;
+    let d = &mut st.dashboard;
+    d.auth.insert(account.key(), trellis_core::forge::Auth::from_token(Provider::GitHub, None, "t", "test"));
+    let me = Some(trellis_core::forge::Me { id: "work-user".into(), name: "Work User".into() });
+    d.accounts = vec![AccountRow { me, ..AccountRow::new(account.clone(), AccountState::Ok) }];
+    d.fetched = Some(std::time::Instant::now());
+    switch(&mut st, PERSONAL);
+    let d = &st.dashboard;
+    assert!(d.auth.is_empty(), "no credential carries over");
+    assert!(d.account(&account).is_some_and(|a| a.me.is_none()), "nor the signed-in user");
+    assert!(d.fetched.is_none(), "the results are stale");
+}

@@ -6,7 +6,7 @@ use super::super::update;
 use crate::effect::{AccountReply, DashboardEffect, Effect, FetchJob, FetchReply, ForgeError, TargetReply};
 use crate::msg::{DashboardMsg, ForgeMsg, Msg};
 use crate::state::AppState;
-use crate::state::dashboard::{AccountState, DashShow, Phase};
+use crate::state::dashboard::{AccountRow, AccountState, DashShow, Phase};
 use crate::state::dashboard_rows::{counts, sections};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -314,18 +314,47 @@ fn connecting_or_disconnecting_drops_the_credential_and_refreshes_while_open() {
     let cached = |st: &mut AppState| {
         st.dashboard.auth.insert(account.key(), token(Provider::GitHub));
         st.dashboard.fetched = Some(Instant::now());
+        let me = Some(Me { id: "ada".into(), name: "Ada".into() });
+        st.dashboard.accounts = vec![AccountRow { me, ..AccountRow::new(account.clone(), AccountState::Ok) }];
+    };
+    // The credential, the signed-in user (the new connection may be someone else) and the
+    // results' freshness all go.
+    let dropped = |st: &AppState| {
+        let d = &st.dashboard;
+        !d.auth.contains_key(&account.key()) && d.fetched.is_none() && d.account(&account).is_some_and(|a| a.me.is_none())
     };
     for open in [false, true] {
         st.dashboard.open = open;
         cached(&mut st);
         let fx = update(&mut st, connected(&account), Instant::now());
-        assert!(!st.dashboard.auth.contains_key(&account.key()) && st.dashboard.fetched.is_none());
+        assert!(dropped(&st));
         assert_eq!(scan_of(&fx).is_some(), open, "open: {open}");
         cached(&mut st);
         let fx = update(&mut st, Msg::Forge(ForgeMsg::Disconnect(account.clone())), Instant::now());
-        assert!(!st.dashboard.auth.contains_key(&account.key()) && st.dashboard.fetched.is_none());
+        assert!(dropped(&st));
         assert_eq!(scan_of(&fx).is_some(), open, "open: {open}");
     }
+    // The next refresh looks the user up again.
+    st.dashboard.open = true;
+    cached(&mut st);
+    update(&mut st, connected(&account), Instant::now());
+    let job = fetch_of(deliver(&mut st, vec![scanned("a", &[("origin", "https://github.com/o/r")], &[])])).unwrap();
+    assert!(job.accounts[0].me.is_none() && job.accounts[0].auth.is_none());
+}
+
+#[test]
+fn a_scan_with_nothing_to_ask_counts_as_fresh() {
+    let mut st = state();
+    st.recent = vec![path("local")];
+    let now = Instant::now();
+    let fx = update(&mut st, Msg::Dashboard(DashboardMsg::Open), now);
+    assert!(scan_of(&fx).is_some());
+    let fx = deliver(&mut st, vec![scanned("local", &[("origin", "../elsewhere.git")], &[])]);
+    assert!(fetch_of(fx).is_none());
+    assert_eq!(st.dashboard.phase, Phase::Idle);
+    assert!(st.dashboard.fetched.is_some() && st.dashboard.fetched_at.is_some());
+    run(&mut st, DashboardMsg::Close);
+    assert!(update(&mut st, Msg::Dashboard(DashboardMsg::Open), now).is_empty(), "reopening sends nothing");
 }
 
 #[test]

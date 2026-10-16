@@ -123,6 +123,26 @@ fn choosing_a_tab_closes_the_dashboard_but_keeps_its_results() {
     cleanup(&[&a, &b]);
 }
 
+#[test]
+fn opening_a_repository_any_other_way_closes_the_dashboard() {
+    let (a, b) = (repo("dash-elsewhere-a", "a"), repo("dash-elsewhere-b", "b"));
+    let mut st = state();
+    st.dashboard.open = true;
+    st.dashboard.targets.push(TargetData::new(gh("acme", "a")));
+    // The toolbar's Open… or a recent or favorite entry.
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
+    assert!(!st.dashboard.open);
+    assert!(st.snap.as_ref().is_some_and(|s| same(&s.workdir, &a)));
+    assert_eq!(st.dashboard.targets.len(), 1, "its results are kept");
+    // Already open in a tab: that tab is selected.
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
+    st.dashboard.open = true;
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
+    assert!(!st.dashboard.open);
+    assert_eq!(st.active_tab, 0);
+    cleanup(&[&a, &b]);
+}
+
 fn has_entry(st: &AppState) -> bool {
     crate::state::palette_commands::entries(st).iter().any(|e| e.label == "Open dashboard" && e.command == PaletteCommand::Dashboard)
 }

@@ -28,10 +28,7 @@ pub(super) fn handle(st: &mut AppState, msg: DashboardMsg, now: Instant, fx: &mu
         DashboardMsg::Refresh => start(st, fx),
         DashboardMsg::Show(s) => st.dashboard.show = s,
         DashboardMsg::SignIn(account) => sign_in(st, account, fx),
-        DashboardMsg::OpenRepo(path) => {
-            st.dashboard.open = false;
-            super::tabs::open(st, path, fx);
-        }
+        DashboardMsg::OpenRepo(path) => super::tabs::open(st, path, fx),
         DashboardMsg::OpenPr { path, target, id } => open_pr(st, path, target, id, now, fx),
         DashboardMsg::Scanned { generation, repos } => {
             if generation != st.dashboard.generation {
@@ -53,7 +50,10 @@ pub(super) fn handle(st: &mut AppState, msg: DashboardMsg, now: Instant, fx: &mu
             d.unreadable.extend(p.unreadable);
             d.over_limit = p.over_limit;
             if p.jobs.is_empty() {
+                // Nothing to ask: the scan is the whole refresh.
                 d.phase = Phase::Idle;
+                d.fetched_at = Some(st.view.now);
+                d.fetched = Some(now);
                 return;
             }
             d.phase = Phase::Fetching;
@@ -191,7 +191,6 @@ fn listed(st: &AppState, id: u64) -> bool {
 }
 
 fn open_pr(st: &mut AppState, path: PathBuf, target: Target, id: u64, now: Instant, fx: &mut Vec<Effect>) {
-    st.dashboard.open = false;
     super::tabs::open(st, path.clone(), fx);
     if showing(st, &path, &target) && listed(st, id) {
         super::pull_request::handle(st, PullRequestMsg::Open(id), now, fx);
@@ -220,17 +219,37 @@ pub(super) fn prs_arrived(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>)
     }
 }
 
-/// An account was connected or disconnected: its cached credential goes, and the results are
-/// stale (asked again at once while the dashboard is open).
+/// An account was connected or disconnected: its cached credential and signed-in user go (the
+/// new connection may be someone else), and the results are stale (asked again at once while
+/// the dashboard is open).
 pub(super) fn account_changed(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
-    st.dashboard.auth.remove(&account.key());
+    let d = &mut st.dashboard;
+    d.auth.remove(&account.key());
+    if let Some(row) = d.account_mut(account) {
+        (row.me, row.me_error) = (None, None);
+    }
+    stale(st, fx);
+}
+
+/// Another profile's connections were loaded: every cached credential and signed-in user goes.
+pub(super) fn connections_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let d = &mut st.dashboard;
+    d.auth.clear();
+    for row in &mut d.accounts {
+        (row.me, row.me_error) = (None, None);
+    }
+    stale(st, fx);
+}
+
+fn stale(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.dashboard.fetched = None;
     if st.dashboard.open {
         start(st, fx);
     }
 }
 
-/// Selecting, cycling to, opening or reopening a tab shows that tab instead of the dashboard.
+/// Selecting, cycling to, opening or reopening a tab, or opening a repository any way, shows
+/// that tab instead of the dashboard.
 pub(super) fn leave(st: &mut AppState) {
     st.dashboard.open = false;
 }
