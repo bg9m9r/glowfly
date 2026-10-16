@@ -2,7 +2,8 @@
 //! `tests/snapshots`. Run `UPDATE_SNAPSHOTS=1 cargo test -p trellis` to accept changes, then
 //! review the new images.
 
-use super::{UiCache, avatars::Avatars, draw, theme::color};
+use super::theme::{self, color, color::Palette};
+use super::{UiCache, avatars::Avatars, draw};
 use crate::msg::Msg;
 use crate::state::{AppState, PrefPage, PrefsState, Selection, Tab};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -116,17 +117,26 @@ pub(super) fn harness(st: AppState, dark: bool) -> Harness<'static, (AppState, V
     harness_sized(st, dark, SIZE)
 }
 
+/// `harness` drawing in the palette `p`.
+pub(super) fn harness_palette(st: AppState, p: Palette) -> Harness<'static, (AppState, Vec<Msg>)> {
+    harness_palette_sized(st, p, SIZE)
+}
+
 /// `harness` with a window of `size` (a tall one shows a long page without scrolling).
-pub(super) fn harness_sized(mut st: AppState, dark: bool, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
+pub(super) fn harness_sized(st: AppState, dark: bool, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
+    harness_palette_sized(st, if dark { theme::DARK } else { theme::LIGHT }, size)
+}
+
+fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
     Harness::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             // Like the app, pick the palette at the start of every frame.
-            color::set_dark(dark);
-            super::theme::apply_theme(ctx);
-            ctx.set_theme(if dark { egui::Theme::Dark } else { egui::Theme::Light });
+            color::set_palette(&p);
+            theme::apply_style(ctx, &p);
+            ctx.set_theme(theme::egui_theme(&p));
             let cache = cache.get_or_insert_with(|| UiCache {
                 avatars: Avatars::default(),
                 speller: Speller::new(),

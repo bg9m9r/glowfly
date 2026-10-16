@@ -321,9 +321,13 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
     let labels = st.settings.toolbar_labels;
     let label = if labels { "Hide toolbar labels" } else { "Show toolbar labels" };
     out.push(entry(C::ToolbarLabels(!labels), label, "toolbar buttons text captions icons compact"));
-    for (choice, name) in [(ThemeChoice::Dark, "Dark"), (ThemeChoice::Light, "Light"), (ThemeChoice::System, "Follow system")] {
-        let e = entry(C::Theme(choice), format!("Theme: {name}"), "appearance colour color");
-        out.push(with_detail(e, (st.settings.theme == choice).then(|| "current".to_owned())));
+    let files =
+        st.themes.catalog.files.iter().map(|f| (ThemeChoice::Custom(f.id.clone()), f.name.clone(), "appearance colour color custom"));
+    let built_in = ThemeChoice::BUILT_IN.into_iter().map(|t| (t.clone(), t.palette_label(), "appearance colour color"));
+    for (choice, name, words) in built_in.chain(files) {
+        let current = st.settings.theme == choice;
+        let e = entry(C::Theme(choice), format!("Theme: {name}"), words);
+        out.push(with_detail(e, current.then(|| "current".to_owned())));
     }
     super::palette_tools::palette_entries(st, out);
 }

@@ -63,6 +63,7 @@ mod tabs;
 mod tag_annotate;
 mod tags;
 mod terminal;
+mod themes;
 mod tool_compare;
 mod tools;
 mod trello;
@@ -175,6 +176,8 @@ mod palette_stash_tests;
 #[cfg(test)]
 mod palette_tests;
 #[cfg(test)]
+mod palette_theme_tests;
+#[cfg(test)]
 mod patch_tests;
 #[cfg(test)]
 mod path_alias_tests;
@@ -258,6 +261,8 @@ mod tag_tests;
 mod terminal_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod themes_tests;
 #[cfg(test)]
 mod tool_compare_tests;
 #[cfg(test)]
@@ -358,6 +363,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Palette(m) => palette::handle(st, m, now, &mut fx),
         Msg::Trust(m) => trust::handle(st, m, now, &mut fx),
         Msg::GitEnv(m) => git_env::handle(st, m, now, &mut fx),
+        Msg::Theme(m) => themes::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).

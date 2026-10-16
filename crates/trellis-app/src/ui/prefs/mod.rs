@@ -18,6 +18,7 @@ mod ssh;
 mod ssh_generate;
 mod ssh_git;
 mod ssh_service;
+mod theme_row;
 mod tools;
 mod trello;
 
@@ -115,6 +116,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Repository settings are keyed by where it really is (`settings::repo_keys`).
     let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
     let now = (st.view.now, st.view.utc_offset);
+    let themes = &st.themes;
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 24, right: 24, top: 18, bottom: 18 }))
         .show(ctx, |ui| {
@@ -139,7 +141,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), git_program.as_ref(), keymap, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
-                    PrefPage::Ui => appearance::ui_page(ui, settings, now, msgs),
+                    PrefPage::Ui => appearance::ui_page(ui, settings, themes, now, msgs),
                     PrefPage::Editor => editor::editor_page(ui, settings),
                     PrefPage::Keyboard => keyboard::keyboard_page(ui, &mut prefs.keys, keymap, msgs),
                     PrefPage::Tools => tools::tools_page(ui, settings, msgs),

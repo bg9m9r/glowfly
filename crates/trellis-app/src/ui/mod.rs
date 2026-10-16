@@ -174,6 +174,8 @@ mod snapshot_tests_tag_menu;
 #[cfg(test)]
 mod snapshot_tests_terminal;
 #[cfg(test)]
+mod snapshot_tests_themes;
+#[cfg(test)]
 mod snapshot_tests_toasts;
 #[cfg(test)]
 mod snapshot_tests_tools;
@@ -210,8 +212,7 @@ use eframe::egui;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
 use std::time::{Duration, Instant};
-use theme::color;
-use trellis_core::settings::{Settings, ThemeChoice};
+use trellis_core::settings::Settings;
 use trellis_core::spell::Speller;
 
 /// Resources owned by the UI thread (textures, the spell checker's COM object).
@@ -226,11 +227,12 @@ pub struct TrellisApp {
     cache: UiCache,
     runner: Runner<egui::Context>,
     results: Receiver<Msg>,
+    /// The palette for the chosen theme, set at the start of every frame.
+    theme: theme::ThemeCache,
 }
 
 impl TrellisApp {
     pub fn new(cc: &eframe::CreationContext<'_>, start: Option<PathBuf>) -> Self {
-        theme::apply_theme(&cc.egui_ctx);
         let (tx, results) = mpsc::channel();
         let (settings, problem) = Settings::load();
         let recent = crate::platform::load_recent();
@@ -246,7 +248,13 @@ impl TrellisApp {
             cache: UiCache { avatars: avatars::Avatars::default(), speller: Speller::new(), diff_rows: Default::default() },
             runner: Runner::new(tx, cc.egui_ctx.clone()),
             results,
+            theme: theme::ThemeCache::default(),
         };
+        // Read now, not through the runner, so the first frame already has the theme's colors;
+        // the folder sits next to the settings file just read.
+        let themes = trellis_core::settings::themes::load_all();
+        crate::themes::trace_problems(&themes);
+        app.dispatch(&cc.egui_ctx, Msg::Theme(crate::themes::ThemeMsg::Loaded(themes)));
         // git and ssh ask for missing credentials through a dialog from now on.
         app.runner.start_askpass();
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
@@ -281,17 +289,9 @@ impl TrellisApp {
         }
     }
 
-    fn apply_theme(&self, ctx: &egui::Context) {
-        let dark = match self.st.settings.theme {
-            ThemeChoice::Dark => true,
-            ThemeChoice::Light => false,
-            ThemeChoice::System => ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark),
-        };
-        color::set_dark(dark);
-        let theme = if dark { egui::Theme::Dark } else { egui::Theme::Light };
-        if ctx.options(|o| o.theme_preference) != theme.into() {
-            ctx.set_theme(theme);
-        }
+    fn apply_theme(&mut self, ctx: &egui::Context) {
+        let system_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
+        self.theme.select(ctx, &self.st.settings.theme, &self.st.themes, system_dark);
     }
 
     /// Keyboard shortcuts and window events, turned into messages or view-state changes.

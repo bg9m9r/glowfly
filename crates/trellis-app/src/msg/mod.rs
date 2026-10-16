@@ -141,6 +141,8 @@ pub enum Msg {
     /// Which git runs and what it can do; repositories git refuses for their owner
     /// (update/git_env.rs).
     GitEnv(crate::git_env::GitEnvMsg),
+    /// Theme files: loading, reloading, the folder and new files (update/themes.rs).
+    Theme(crate::themes::ThemeMsg),
     /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
@@ -244,6 +246,7 @@ impl Msg {
             Msg::Palette(m) => m.on_inactive(),
             Msg::Trust(m) => m.on_inactive(),
             Msg::GitEnv(m) => m.on_inactive(),
+            Msg::Theme(m) => m.on_inactive(),
             Msg::Tick(_)
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }

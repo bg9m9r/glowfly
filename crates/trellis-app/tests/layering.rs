@@ -63,6 +63,9 @@ const DENIED: &[(&str, &str)] = &[
     ("Local::now", CLOCK),
     ("Utc::now", CLOCK),
     ("Settings::load", "the settings file"),
+    ("themes::load_all", "the theme files"),
+    ("themes::load_dir", "the theme files"),
+    ("themes::create", "the theme files"),
     (".save()", "the settings file"),
 ];
 
@@ -164,6 +167,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
 /// Justified exceptions, as (file under `src/`, pattern as reported, reason).
 const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/mod.rs", "Settings::load", "the shell loads the settings once, at startup"),
+    ("ui/mod.rs", "themes::load_all", "the shell loads the theme files once, at startup, from the folder settings.json was just read from"),
     ("ui/mod.rs", "platform::load_recent", "the shell loads the recent list once, at startup"),
     ("ui/mod.rs", "platform::load_tabs", "the shell loads the last session's tabs once, at startup"),
     ("ui/mod.rs", "Instant::now", "the shell stamps each frame and message with the time"),

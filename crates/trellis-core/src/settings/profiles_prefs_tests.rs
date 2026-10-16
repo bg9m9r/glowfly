@@ -106,7 +106,7 @@ fn swap_saves_outgoing_and_loads_incoming() {
     let mut s = two();
     let dark = ProfilePrefs::from_settings(&s);
     assert_eq!(s.swap_profile_setup(B), SetupSwap { connections: true, prefs: true });
-    assert_eq!((s.theme, s.tab_size), (ThemeChoice::Light, 2));
+    assert_eq!((s.theme.clone(), s.tab_size), (ThemeChoice::Light, 2));
     assert_eq!(s.connections, vec![conn(Provider::GitLab, "gitlab.com", "ada-l")]);
     let a = s.profile(A).unwrap();
     assert_eq!(a.prefs.as_ref(), Some(&dark));
@@ -152,7 +152,7 @@ fn swap_to_unsaved_profile_keeps_live() {
     (b.prefs, b.connections) = (None, None);
     let mut expected = s.clone();
     assert_eq!(s.swap_profile_setup(B), SetupSwap::default());
-    assert_eq!((s.theme, s.connections.clone()), (expected.theme, expected.connections.clone()));
+    assert_eq!((s.theme.clone(), s.connections.clone()), (expected.theme.clone(), expected.connections.clone()));
     let a = s.profile(A).unwrap();
     assert_eq!(a.prefs, Some(ProfilePrefs::from_settings(&expected)));
     assert_eq!(a.connections.as_ref(), Some(&expected.connections));
@@ -193,4 +193,17 @@ fn account_in_use() {
     assert!(s.account_in_use(&github), "live");
     assert!(s.account_in_use(&gitlab), "another profile's saved list");
     assert!(!s.account_in_use(&other));
+}
+
+#[test]
+fn swap_carries_a_theme_file() {
+    let mut s = two();
+    s.theme = ThemeChoice::Custom("ocean".into());
+    if let Some(prefs) = s.profiles[1].prefs.as_mut() {
+        prefs.theme = ThemeChoice::Custom("forest".into());
+    }
+    s.swap_profile_setup(B);
+    assert_eq!(s.theme, ThemeChoice::Custom("forest".into()), "in from the incoming profile");
+    let a = s.profile(A).and_then(|p| p.prefs.as_ref()).map(|p| p.theme.clone());
+    assert_eq!(a, Some(ThemeChoice::Custom("ocean".into())), "out to the outgoing profile");
 }

@@ -75,6 +75,7 @@ impl Effect {
             | Effect::Patch(_)
             | Effect::Tool(_)
             | Effect::GitEnv(_)
+            | Effect::Theme(_)
             | Effect::Remote(_)
             | Effect::Clone(_)
             | Effect::Init(_)

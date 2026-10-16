@@ -131,6 +131,8 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             // Never show real desktop notifications.
             | Effect::Notify(_)
             | Effect::PullRequest(crate::pull_request::PrEffect::Call(_))
+            // Would read and write the developer's real config folder.
+            | Effect::Theme(_)
     )
 }
 

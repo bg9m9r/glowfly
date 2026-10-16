@@ -351,6 +351,8 @@ pub enum Effect {
     Tool(crate::tools::ToolEffect),
     /// Finding git and its version, and adding a folder to safe.directory (git_env.rs); unscoped.
     GitEnv(crate::git_env::GitEnvEffect),
+    /// Reading the themes folder, opening it and writing a new theme file (themes.rs); unscoped.
+    Theme(crate::themes::ThemeEffect),
     /// Dry-runs a merge with git merge-tree (conflict_check.rs); reads only.
     CheckConflicts(crate::conflict_check::CheckJob),
     /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.

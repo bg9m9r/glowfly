@@ -534,7 +534,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 
 ## P3: app polish and platform
 
-- [ ] **Custom themes** (dark, light and follow-the-system exist)
+- [x] **Custom themes**: High Contrast Dark, High Contrast Light and Trellis Sand built in, plus
+      JSON theme files in the config folder's `themes` folder (a base theme and the colors it
+      changes, as #rrggbb or another color's name), listed in Preferences and the palette
 - [ ] **Zoom** in/out/reset; show/hide the left, detail and toolbar panels
 - [ ] **Menu bar** (File / Edit / View / Window / Help), including Undo/Redo under Edit
 - [ ] **Language**: translate the UI (date locale and relative dates already exist)
@@ -1419,3 +1421,17 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Remember Show resolved / Show outdated per repository
 - Load threads with more than 100 comments in full (a link opens the rest on the service now)
 - Previous / next code comment thread in the diff
+
+### Custom themes
+
+- Reload theme files automatically when they change on disk (watch the themes folder)
+- Follow system with a chosen dark and light theme pair (today it picks Trellis Dark or Trellis Light)
+- A theme file based on another theme file (inheritance, with loops detected across files)
+- Edit colors in Preferences with a color picker and live preview, saved to the theme file
+- Suggest the closest color name for an unknown key ("acent" -> "accent")
+- Warn when a theme file's text or syntax colors fall below the contrast rules
+- Translucent colors (#rrggbbaa) in theme files
+- Theme the graph lane colors, avatar initials colors and the terminal's ANSI palette from theme files
+- Import or share a theme file from Preferences (copy it into the themes folder)
+- A toast with an Open Preferences button when the selected theme is missing or broken at startup
+- A per-repository theme

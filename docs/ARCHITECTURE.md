@@ -47,7 +47,7 @@ binary (package `trellis`).
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
 | `commit_query.rs` | Commit search queries: author and path terms, matching rows, the author list. |
 | `path_query.rs` | Path terms of the commit search: folder, file name or glob, matched ignoring case and Unicode form. |
-| `settings.rs`, `settings/` | Preferences, graph column widths, per-repository graph filters, repository trust decisions and named profiles with their identity (seeding, syncing with git, name checks), saved connected accounts and app preferences (`profiles_prefs.rs`: what switches with a profile, and every setting classified as per-profile or global). |
+| `settings.rs`, `settings/` | Preferences, theme choices and theme files (`themes.rs` parses them, aliases and loops included; `themes_io.rs` reads the themes folder and writes new files), graph column widths, per-repository graph filters, repository trust decisions and named profiles with their identity (seeding, syncing with git, name checks), saved connected accounts and app preferences (`profiles_prefs.rs`: what switches with a profile, and every setting classified as per-profile or global). |
 | `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; writing an identity to the global config in order. |
 | `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches). |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |
@@ -63,7 +63,7 @@ binary (package `trellis`).
 | `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`), gpg.program wrapper (`TRELLIS_GPG_WRAPPER`) and askpass helper. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
 | `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`, `blame.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs and the SUBMODULES section (`clone.rs`, `init.rs`, `submodule.rs`), `Effect::name` (`names.rs`) and `Effect::scope` (`scope.rs`). |
-| `lfs.rs`, `git_env.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
+| `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data (the Clone dialog in `clone.rs` and `clone_service.rs`, the Init dialog in `init.rs`). |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
 | `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |
@@ -164,8 +164,11 @@ binary (package `trellis`).
 4. New views get an `egui_kittest` snapshot when practical. Views read time from
    `st.view.now` / `st.view.utc_offset` (never the system clock) so images are reproducible.
 5. No global mutable state; pass values in. The one exception is the active palette
-   (`ui::theme::color`): a thread-local flag the shell sets at the start of each frame, so
-   renders on different threads (parallel snapshot tests) can't affect each other. Immutable
+   (`ui::theme::color`): a thread-local copy of a `Palette`, set by reference
+   (`color::set_palette`) at the start of each frame, so renders on different threads (parallel
+   snapshot tests) can't affect each other. Palettes built from theme files are values owned by
+   the shell's `ThemeCache`, worked out again only when the theme, the theme files or the OS
+   setting change. Immutable
    data loaded once (the syntax definitions in `highlight/syntaxes.rs`) is not mutable state,
    and neither is the askpass environment in `gitcli` (`enable_askpass`): set once by the app
    shell at startup, never changed afterwards and never set in tests. The PATH children get

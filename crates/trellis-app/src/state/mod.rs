@@ -275,6 +275,8 @@ pub struct AppState {
     pub lfs_install: lfs::LfsInstall,
     /// The git Trellis runs and what it can do (global): checked at startup.
     pub git: git_env::GitState,
+    /// The theme files in the themes folder (global): read at startup and on Reload.
+    pub themes: crate::themes::ThemeState,
     /// The command palette, while open (global, not per tab).
     pub palette: Option<palette::Palette>,
     /// Incremented for every palette list request; older `TrackedPathsLoaded` results are ignored.
@@ -357,6 +359,7 @@ impl AppState {
             askpass: Default::default(),
             lfs_install: Default::default(),
             git: Default::default(),
+            themes: Default::default(),
             palette: None,
             palette_gen: 0,
             palette_recent: Default::default(),

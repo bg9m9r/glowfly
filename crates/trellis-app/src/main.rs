@@ -25,6 +25,7 @@ mod state;
 mod submodule;
 mod tag;
 mod terminal;
+mod themes;
 mod tools;
 mod ui;
 mod update;

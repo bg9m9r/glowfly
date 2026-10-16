@@ -87,6 +87,9 @@ fn entries_without_repo() {
             "Theme: Dark",
             "Theme: Light",
             "Theme: Follow system",
+            "Theme: High contrast dark",
+            "Theme: High contrast light",
+            "Theme: Sand",
             "Configure external tools"
         ]
     );
@@ -137,17 +140,17 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 9);
+    assert_eq!(shown(&st, "").len(), 12);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 8);
+    assert_eq!(p.selected, 11);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
 
-    // Three theme entries match "theme".
+    // Six theme entries match "theme".
     st.palette.as_mut().unwrap().query = "theme".into();
-    for _ in 0..3 {
+    for _ in 0..6 {
         run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     }
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);

@@ -142,7 +142,12 @@ fn diff_hunk_context() {
 
 /// A one-word edit in a Rust file, highlighted and word-marked as the runner does.
 fn with_word_diff(layout: DiffLayout, theme: ThemeChoice) -> (AppState, PathBuf) {
-    let (mut st, dir) = with_repo(theme, &format!("diff-words-{layout:?}"));
+    with_word_diff_in(layout, theme, &format!("diff-words-{layout:?}"))
+}
+
+/// `with_word_diff` in the fixture folder `name` (tests running in parallel need their own).
+pub(super) fn with_word_diff_in(layout: DiffLayout, theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_repo(theme, name);
     let before = "fn total(price: u32, quantity: u32) -> u32 {
     let total = price * quantity;
     total

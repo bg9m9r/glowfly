@@ -69,6 +69,7 @@ impl Effect {
             Effect::Patch(p) => p.name(),
             Effect::Tool(t) => t.name(),
             Effect::GitEnv(e) => e.name(),
+            Effect::Theme(e) => e.name(),
             Effect::CheckConflicts(_) => "check-conflicts",
             Effect::Remote(e) => e.name(),
             Effect::Clone(e) => e.name(),

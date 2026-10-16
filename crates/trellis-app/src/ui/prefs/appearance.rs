@@ -2,6 +2,7 @@
 
 use super::{LABEL_W, help, row};
 use crate::msg::{Msg, PrefsMsg};
+use crate::themes::ThemeState;
 use crate::ui::theme::color;
 use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
 use trellis_core::settings::Settings;
@@ -36,11 +37,9 @@ pub fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str,
     });
 }
 
-pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32), msgs: &mut Vec<Msg>) {
-    use trellis_core::settings::{BranchVisibility as BV, ColumnWidths, Corner, DescriptionMode as DM, GraphColumns, ThemeChoice as TC};
-    row(ui, "Theme", |ui| {
-        combo(ui, "theme", &mut s.theme, &[(TC::Dark, "Trellis Dark"), (TC::Light, "Trellis Light"), (TC::System, "Match system")])
-    });
+pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, now: (i64, i32), msgs: &mut Vec<Msg>) {
+    use trellis_core::settings::{BranchVisibility as BV, ColumnWidths, Corner, DescriptionMode as DM, GraphColumns};
+    super::theme_row::theme_row(ui, s, themes, msgs);
     row(ui, "Notification Location", |ui| {
         combo(
             ui,

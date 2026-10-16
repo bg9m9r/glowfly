@@ -78,18 +78,22 @@ fn switch_applies_incoming_setup() {
     let mut st = with_setups();
     assert!(st.watch.enabled);
     profile(&mut st, ProfileMsg::Switch(PERSONAL));
-    assert_eq!((st.settings.theme, st.settings.connections.clone()), (ThemeChoice::Dark, vec![github()]), "unchanged while pending");
+    assert_eq!(
+        (st.settings.theme.clone(), st.settings.connections.clone()),
+        (ThemeChoice::Dark, vec![github()]),
+        "unchanged while pending"
+    );
 
     let fx = profile(&mut st, ProfileMsg::Applied { id: PERSONAL, result: Ok(values("Ada L", "ada@home.example")) });
     assert_eq!(st.settings.theme, ThemeChoice::Light);
     assert_eq!(st.settings.connections, vec![gitlab()]);
     assert!(!st.watch.enabled, "the watcher follows the new General settings");
     let work = st.settings.profile(WORK).unwrap();
-    assert_eq!(work.prefs.as_ref().map(|p| p.theme), Some(ThemeChoice::Dark));
+    assert_eq!(work.prefs.as_ref().map(|p| p.theme.clone()), Some(ThemeChoice::Dark));
     assert_eq!(work.connections, Some(vec![github()]));
     assert_eq!(saves(&fx), 1);
     let saved = fx.iter().find_map(|e| if let Effect::SaveSettings(s) = e { Some(s) } else { None }).unwrap();
-    assert_eq!((saved.theme, saved.active_profile), (ThemeChoice::Light, Some(PERSONAL)), "saved after the swap");
+    assert_eq!((saved.theme.clone(), saved.active_profile), (ThemeChoice::Light, Some(PERSONAL)), "saved after the swap");
     assert!(st.toasts.iter().any(|t| t.ok && t.text == "Switched to profile Personal"));
 }
 
@@ -99,10 +103,10 @@ fn switching_back_restores_work() {
     switch(&mut st, PERSONAL);
     switch(&mut st, WORK);
     assert_eq!(st.settings.active_profile, Some(WORK));
-    assert_eq!((st.settings.theme, st.settings.connections.clone()), (ThemeChoice::Dark, vec![github()]));
+    assert_eq!((st.settings.theme.clone(), st.settings.connections.clone()), (ThemeChoice::Dark, vec![github()]));
     assert!(st.watch.enabled);
     let personal = st.settings.profile(PERSONAL).unwrap();
-    assert_eq!(personal.prefs.as_ref().map(|p| (p.theme, p.watch_files)), Some((ThemeChoice::Light, false)));
+    assert_eq!(personal.prefs.as_ref().map(|p| (p.theme.clone(), p.watch_files)), Some((ThemeChoice::Light, false)));
     assert_eq!(personal.connections, Some(vec![gitlab()]));
     let work = st.settings.profile(WORK).unwrap();
     assert!(work.prefs.is_none() && work.connections.is_none(), "the current profile's are the live ones");
@@ -126,7 +130,7 @@ fn unsaved_profile_keeps_current_prefs_and_accounts() {
     st.forge.as_mut().unwrap().prs = vec![pr(1)];
     let fx = switch(&mut st, PERSONAL);
     assert_eq!(st.settings.active_profile, Some(PERSONAL));
-    assert_eq!((st.settings.theme, st.settings.connections.clone()), (ThemeChoice::Dark, vec![github()]));
+    assert_eq!((st.settings.theme.clone(), st.settings.connections.clone()), (ThemeChoice::Dark, vec![github()]));
     assert_eq!(forge_calls(&fx), 0, "{fx:?}");
     assert_eq!(st.forge.as_ref().unwrap().prs.len(), 1, "pull requests stay");
     assert_eq!(st.settings.profile(WORK).unwrap().connections, Some(vec![github()]), "Work keeps its own");

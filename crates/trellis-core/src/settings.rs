@@ -12,6 +12,8 @@ mod paths;
 mod profiles;
 mod profiles_prefs;
 pub mod repo_keys;
+pub mod themes;
+mod themes_io;
 mod tools;
 mod trust;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
@@ -20,15 +22,23 @@ pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{cache_dir, config_dir, home_dir, migrate_old_config_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
+pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::RepoTrust;
 
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
+/// The theme in use (Preferences > UI Customization > Theme). Old files' "Dark", "Light" and
+/// "System" load unchanged; a theme file is saved as `{"Custom": "ocean"}`.
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum ThemeChoice {
     Dark,
     Light,
     /// Follow the operating system.
     System,
+    HighContrastDark,
+    HighContrastLight,
+    Sand,
+    /// A theme file in the themes folder, by file stem ("ocean" for themes/ocean.json).
+    Custom(String),
 }
 
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]

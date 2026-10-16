@@ -338,3 +338,44 @@ fn keybindings_default_and_roundtrip() {
     let back: Settings = serde_json::from_str(&text).unwrap();
     assert_eq!(back.keybindings, keys);
 }
+
+#[test]
+fn theme_choices_old_and_new() {
+    for (text, theme) in [("Dark", ThemeChoice::Dark), ("Light", ThemeChoice::Light), ("System", ThemeChoice::System)] {
+        let s: Settings = serde_json::from_str(&format!(r#"{{"theme": "{text}"}}"#)).unwrap();
+        assert_eq!(s.theme, theme, "files written before custom themes");
+    }
+    for theme in [ThemeChoice::Custom("ocean".into()), ThemeChoice::HighContrastLight] {
+        let (dir, file) = scratch_settings("theme-roundtrip", b"{}");
+        Settings { theme: theme.clone(), ..Settings::default() }.save_to(&file).unwrap();
+        let (back, problem) = Settings::load_from(&file);
+        assert_eq!((back.theme, problem), (theme, None));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    let custom = serde_json::to_value(ThemeChoice::Custom("ocean".into())).unwrap();
+    assert_eq!(custom, serde_json::json!({"Custom": "ocean"}));
+}
+
+#[test]
+fn unreadable_theme_resets_only_theme() {
+    for text in [&br#"{"theme": {"Custom": 5}, "tab_size": 3}"#[..], br#"{"theme": "Neon", "tab_size": 3}"#] {
+        let (dir, file) = scratch_settings("theme-bad", text);
+        let (s, problem) = Settings::load_from(&file);
+        assert_eq!((s.theme, s.tab_size), (ThemeChoice::Dark, 3));
+        assert_eq!(problem.unwrap().reset, Some(vec!["theme".to_owned()]));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
+fn theme_choice_builtin_mapping() {
+    use super::themes::BuiltinTheme as B;
+    assert_eq!(ThemeChoice::System.builtin(true), Some(B::Dark));
+    assert_eq!(ThemeChoice::System.builtin(false), Some(B::Light));
+    assert_eq!(ThemeChoice::Dark.builtin(false), Some(B::Dark));
+    assert_eq!(ThemeChoice::Light.builtin(true), Some(B::Light));
+    assert_eq!(ThemeChoice::HighContrastDark.builtin(false), Some(B::HighContrastDark));
+    assert_eq!(ThemeChoice::HighContrastLight.builtin(true), Some(B::HighContrastLight));
+    assert_eq!(ThemeChoice::Sand.builtin(true), Some(B::Sand));
+    assert_eq!(ThemeChoice::Custom("ocean".into()).builtin(true), None);
+}
