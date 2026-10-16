@@ -498,18 +498,11 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 
 - [ ] **In-app pull request view**
   - [x] Files changed (from the local remote-tracking branches: merge base to source tip, with fetch notes)
-  - [ ] The conversation (comments) from the service
+  - [x] The conversation (comments) from the service
   - [ ] Inline code comments: reply, resolve, show outdated
-  - [ ] Approve, request changes, finish review
-  - [ ] Merge with merge, squash or rebase
-  - [ ] Delete the branch after merge
-  - [ ] Fork pull requests: fetch the head ref (e.g. refs/pull/N/head) when the source branch isn't on the remote
-  - [ ] Use the head SHA directly when that commit is already here but the remote-tracking branch is missing or behind
-  - [ ] A note when the local target branch differs from the service's base (needs the base SHA from the service)
-  - [ ] Show pull request from the graph's PR chip, a local branch's menu and the command palette
-  - [ ] A Commits tab: the commits between the merge base and the source tip
-  - [ ] Fetch more history from the no-common-commit note in a shallow clone
-  - [ ] CI / build status in the panel (with the CI / build status item)
+  - [x] Approve, request changes, finish review
+  - [x] Merge with merge, squash or rebase
+  - [x] Delete the branch after merge
 - [x] **CI / build status**
   Check status on PRs and on branch tips (GitHub checks, GitLab pipelines, Azure Pipelines,
   Bitbucket builds).
@@ -1373,3 +1366,30 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - For a diverged branch, offer a force push with lease and then the pull request (today it is refused with the reason)
 - A Preferences setting to create pull requests as drafts by default
 - Push-and-create entries in the graph's commit and ref-label menus
+
+### In-app pull request view
+
+- GitLab merge request notes, approve / unapprove and merge (merge, squash, fast-forward) in the
+  panel
+- Bitbucket Cloud and Data Center comments, approve / request changes and merge strategies in the
+  panel
+- Azure DevOps threads, votes (approve / wait for author / reject) and completion with a merge
+  type in the panel
+- Fork pull requests: fetch the head ref (e.g. refs/pull/N/head) when the source branch isn't on
+  the remote
+- Use the head SHA directly when that commit is already here but the remote-tracking branch is
+  missing or behind
+- A note when the local target branch differs from the service's base (the base SHA is loaded now)
+- Show the pull request from the graph's PR chip, a local branch's menu and the command palette
+- A Commits tab: the commits between the merge base and the source tip
+- Fetch more history from the no-common-commit note in a shallow clone
+- The pull request's CI / build status in the panel, with a link to the build page
+- Render comment and description Markdown (links, code, lists) instead of plain text
+- Delete the local branch too after a merge
+- Remember the last merge method per repository
+- Ctrl+Enter to post a comment or submit a review
+- Edit or delete your own comments, and reactions
+- Re-request a review, and a participants list
+- Mark a draft ready for review, and enable auto-merge
+- Choose the commit email for a merge
+- Open a single comment or review in the browser
