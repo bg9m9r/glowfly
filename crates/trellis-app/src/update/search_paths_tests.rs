@@ -161,6 +161,24 @@ fn new_path_terms_start_again_and_old_reports_are_ignored() {
 }
 
 #[test]
+fn new_path_terms_drop_the_old_terms_matches() {
+    let (mut st, dir) = repo("search-paths-new-terms-matches");
+    search_all(&mut st, "path:docs");
+    assert_eq!(st.search.matches, [1, 2, 4]);
+    let asked = search(&mut st, "path:src");
+    assert_eq!(asked.len(), 1);
+    assert!(st.search.matches.is_empty(), "no commit is known to touch src yet");
+    assert_eq!(st.search.count_text(None).as_deref(), Some("Searching files…"));
+    let before = st.selection.clone();
+    up(&mut st, SearchMsg::Next);
+    assert_eq!(st.selection, before, "Enter doesn't land on a docs commit");
+    let chunk = PathsChunk { searched: oids(&st, &[0, 1, 2]), touching: oids(&st, &[0, 1]), done: false };
+    report(&mut st, asked[0].0, Ok(chunk));
+    assert_eq!(st.search.matches, [0, 1]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn partial_reports_match_and_enter_steps_through_them() {
     let (mut st, dir) = repo("search-paths-partial");
     let request = search(&mut st, "path:docs")[0].0;

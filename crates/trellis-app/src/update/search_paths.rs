@@ -19,7 +19,10 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     if s.paths.terms != s.query.paths() {
         s.paths = PathSearch { terms: s.query.paths().to_vec(), requests: s.paths.requests, ..Default::default() };
+        // The matches were found with the old terms' answers; none are known for these yet.
+        super::search::recompute(st);
     }
+    let s = &mut st.search;
     let Some(snap) = &st.snap else {
         s.paths.pending = None;
         return;
