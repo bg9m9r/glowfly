@@ -18,8 +18,9 @@ pub enum ProfileMsg {
     ShowPage,
     /// Edit this profile's fields on the page.
     Select(ProfileId),
-    /// The New profile form's Add button.
-    Add { name: String, copy_current: bool },
+    /// The New profile form's Add button: copy the current identity, and start with the current
+    /// connected accounts.
+    Add { name: String, copy_current: bool, copy_accounts: bool },
     /// The inline rename field was committed.
     Rename { id: ProfileId, name: String },
     /// An identity field lost focus with this text.

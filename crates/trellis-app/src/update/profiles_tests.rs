@@ -14,18 +14,18 @@ use std::time::Instant;
 use trellis_core::identity::Identity;
 use trellis_core::settings::{Profile, ProfileId};
 
-const WORK: ProfileId = ProfileId(1);
-const PERSONAL: ProfileId = ProfileId(2);
+pub(super) const WORK: ProfileId = ProfileId(1);
+pub(super) const PERSONAL: ProfileId = ProfileId(2);
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn profile(st: &mut AppState, m: ProfileMsg) -> Vec<Effect> {
+pub(super) fn profile(st: &mut AppState, m: ProfileMsg) -> Vec<Effect> {
     run(st, Msg::Profile(m))
 }
 
-fn values(name: &str, email: &str) -> GitConfigValues {
+pub(super) fn values(name: &str, email: &str) -> GitConfigValues {
     GitConfigValues { user_name: name.into(), user_email: email.into(), signing_format: "openpgp".into(), ..Default::default() }
 }
 
@@ -37,7 +37,7 @@ fn page_mut(st: &mut AppState) -> &mut ProfilesPage {
     &mut st.prefs.as_mut().expect("Preferences open").profiles
 }
 
-fn saves(fx: &[Effect]) -> usize {
+pub(super) fn saves(fx: &[Effect]) -> usize {
     fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
 }
 
@@ -52,16 +52,24 @@ fn git_writes(fx: &[Effect]) -> Vec<(String, Option<String>)> {
 
 /// "Work" (current) and "Personal", Preferences open on the Profile page with Work's identity
 /// in git config.
-fn two_profiles() -> AppState {
+pub(super) fn two_profiles() -> AppState {
     let mut st = state();
     st.settings.profiles = vec![
-        Profile { id: WORK, name: "Work".into(), author_name: "Ada".into(), author_email: "ada@work.example".into(), signing_key: None },
+        Profile {
+            id: WORK,
+            name: "Work".into(),
+            author_name: "Ada".into(),
+            author_email: "ada@work.example".into(),
+            signing_key: None,
+            ..Profile::default()
+        },
         Profile {
             id: PERSONAL,
             name: "Personal".into(),
             author_name: "Ada L".into(),
             author_email: "ada@home.example".into(),
             signing_key: Some("HOMEKEY".into()),
+            ..Profile::default()
         },
     ];
     st.settings.active_profile = Some(WORK);
@@ -119,7 +127,7 @@ fn show_page_syncs_an_outside_change() {
 fn adding_copies_the_current_identity() {
     let mut st = two_profiles();
     page_mut(&mut st).adding = Some(AddForm::new());
-    let fx = profile(&mut st, ProfileMsg::Add { name: " Client ".into(), copy_current: true });
+    let fx = profile(&mut st, ProfileMsg::Add { name: " Client ".into(), copy_current: true, copy_accounts: false });
     assert_eq!(saves(&fx), 1);
     let new = st.settings.profiles.last().unwrap().clone();
     assert_eq!((new.name.as_str(), new.author_name.as_str(), new.author_email.as_str()), ("Client", "Ada", "ada@work.example"));
@@ -127,7 +135,7 @@ fn adding_copies_the_current_identity() {
     assert!(page(&st).adding.is_none());
     assert_eq!(page(&st).selected, Some(new.id));
 
-    let fx = profile(&mut st, ProfileMsg::Add { name: "Blank".into(), copy_current: false });
+    let fx = profile(&mut st, ProfileMsg::Add { name: "Blank".into(), copy_current: false, copy_accounts: false });
     assert_eq!(saves(&fx), 1);
     assert_eq!(st.settings.profiles.last().unwrap().identity(), Identity::default());
 }
@@ -137,7 +145,7 @@ fn adding_refuses_blank_and_taken_names() {
     let mut st = two_profiles();
     page_mut(&mut st).adding = Some(AddForm::new());
     for name in ["  ", "work"] {
-        let fx = profile(&mut st, ProfileMsg::Add { name: name.into(), copy_current: true });
+        let fx = profile(&mut st, ProfileMsg::Add { name: name.into(), copy_current: true, copy_accounts: false });
         assert_eq!(saves(&fx), 0);
         assert!(page(&st).adding.as_ref().unwrap().error.is_some(), "{name:?}");
     }

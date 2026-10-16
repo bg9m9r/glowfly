@@ -54,18 +54,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             if serde_json::to_string(&st.settings).ok().as_deref() != Some(st.saved_settings.as_str()) {
                 fx.push(save_settings(st));
             }
-            if st.settings.watch_files != st.watch.enabled {
-                st.watch.enabled = st.settings.watch_files;
-                super::watch::sync(st, fx);
-            }
-            // Sent every frame while Preferences is open: both branches are no-ops when nothing changed.
-            if !st.settings.conflict_check {
-                if !st.conflict_checks.is_empty() {
-                    st.conflict_checks.clear();
-                }
-            } else {
-                super::conflict_check::want(st, fx);
-            }
+            sync_live_settings(st, fx);
         }
         PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {
@@ -247,8 +236,24 @@ pub(super) fn save_settings(st: &mut AppState) -> Effect {
     Effect::SaveSettings(Box::new(st.settings.clone()))
 }
 
+/// Makes the file watcher and the conflict check follow the settings. Sent every frame while
+/// Preferences is open (and after a profile switch): both are no-ops when nothing changed.
+pub(super) fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if st.settings.watch_files != st.watch.enabled {
+        st.watch.enabled = st.settings.watch_files;
+        super::watch::sync(st, fx);
+    }
+    if !st.settings.conflict_check {
+        if !st.conflict_checks.is_empty() {
+            st.conflict_checks.clear();
+        }
+    } else {
+        super::conflict_check::want(st, fx);
+    }
+}
+
 /// Switches the Integrations page to `provider`, prefilling the host for the open repository.
-fn select_integration(st: &mut AppState, provider: Provider) {
+pub(super) fn select_integration(st: &mut AppState, provider: Provider) {
     let host = st.forge.as_ref().and_then(|f| f.host.clone()).filter(|t| t.provider == provider);
     let saved = st.settings.connections.iter().find(|c| c.account.provider == provider).map(|c| c.account.clone());
     let Some(p) = st.prefs.as_mut() else { return };

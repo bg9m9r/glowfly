@@ -46,7 +46,7 @@ binary (package `trellis`).
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
 | `commit_query.rs` | Commit search queries: author and path terms, matching rows, the author list. |
 | `path_query.rs` | Path terms of the commit search: folder, file name or glob, matched ignoring case and Unicode form. |
-| `settings.rs`, `settings/` | Preferences, graph column widths, per-repository graph filters, repository trust decisions and named identity profiles (seeding, syncing with git, name checks). |
+| `settings.rs`, `settings/` | Preferences, graph column widths, per-repository graph filters, repository trust decisions and named profiles with their identity (seeding, syncing with git, name checks), saved connected accounts and app preferences (`profiles_prefs.rs`: what switches with a profile, and every setting classified as per-profile or global). |
 | `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; writing an identity to the global config in order. |
 | `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches). |
 | `dates.rs`, `spell.rs`, `signing.rs`, `avatars.rs`, `text.rs`, `error.rs` | Dates, spell checking, signing keys, avatar fetching, safe display of outside text, typed errors. |

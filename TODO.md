@@ -69,7 +69,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Page | Trellis | Gap |
 |---|---|---|
 | General | ✔ General | Missing: delete `.orig` files after merge, keep submodules updated, show all commits, path to `sh.exe`, extended logging, conflict detection |
-| Profiles | ◐ Profile (named identity profiles, switching) | Per-profile integrations and preferences (P1 Profiles) |
+| Profiles | ✔ Profile (identity, connected accounts and app preferences per profile, switching) | Follow-ups in Later > Profiles |
 | SSH | ✔ SSH page (key pairs, generate a key, the key git uses, local agent, add a key to a hosting service) | Follow-ups in Later > SSH key management |
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
@@ -443,13 +443,13 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Choose the key pair git uses for SSH remotes (core.sshCommand with `-i <key> -o IdentitiesOnly=yes`, globally or per repository), show the current choice and stop using it
   - [x] Use local SSH agent: detect a running agent (ssh-add -l, the Windows OpenSSH agent service or a Pageant-style agent), add the selected key to it, and leave core.sshCommand unset while it is on
   - [x] Add the public key to a connected hosting service through its API (optional key title, check whether it is already registered, fallback: copy the key and open the service's SSH key settings page)
-- [ ] **Profiles**
+- [x] **Profiles**
   Several named profiles (identity, integrations, preferences) with quick switching.
   - [x] Named identity profiles: add, rename, delete (asking first), switch from Preferences >
     Profile or the palette (writes user.name/email/signingkey to the global config); the first
     is seeded from the global identity
-  - [ ] Per-profile integrations: each profile keeps its own connected hosting-service accounts
-  - [ ] Per-profile app preferences: theme, UI customization, editor and general settings
+  - [x] Per-profile integrations: each profile keeps its own connected hosting-service accounts
+  - [x] Per-profile app preferences: theme, UI customization, editor and general settings
     switch with the profile
 - [x] **Local patches**
   Export commits, files or the WIP to a `.patch` file; open and apply a patch.
@@ -1172,6 +1172,14 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Automatic per-repository or per-folder profiles (includeIf / local identity applied on open)
 - Import and export of profiles, and sharing them between machines
 - A keyboard shortcut for Switch profile
+- Separate stored sign-ins per profile for the same service account (e.g. two GitHub users on github.com)
+- Warn when connecting an account another profile already uses with a different user
+- Per-profile diff header toggles (inline/split layout, hunks/whole file, ignore whitespace)
+- Per-profile External Tools (editor and terminal programs)
+- Per-profile repository-specific settings (issue tracker, hidden/soloed refs)
+- A "Saved with profile X" caption on the General, UI Customization and Editor pages
+- Copy or reset one profile's preferences from another profile on the Profile page
+- Refresh an open Clone dialog's account list when the profile switches
 
 ### Local patches
 

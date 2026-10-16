@@ -1,9 +1,11 @@
-//! Named identity profiles (Preferences > Profile): each keeps an author identity, and the
-//! current one's identity is the global git config's. Checks for names, seeding the first
-//! profile from git, keeping the current one in step with git, and adding, renaming and
-//! deleting.
+//! Named profiles (Preferences > Profile): each keeps an author identity, and the current one's
+//! identity is the global git config's; other profiles also keep the connected accounts and app
+//! preferences saved when they were last current (`profiles_prefs`). Checks for names, seeding
+//! the first profile from git, keeping the current one in step with git, and adding, renaming
+//! and deleting.
 
-use super::Settings;
+use super::{ProfilePrefs, Settings};
+use crate::forge::Connection;
 use crate::identity::Identity;
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +24,13 @@ pub struct Profile {
     /// None: switching leaves git's user.signingkey as it is.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signing_key: Option<String>,
+    /// The connected accounts saved while another profile is current (the current one's are
+    /// `Settings.connections`). None: nothing saved, so switching to it keeps the current list.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connections: Option<Vec<Connection>>,
+    /// The app preferences saved while another profile is current, with the same None rule.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefs: Option<ProfilePrefs>,
 }
 
 impl Profile {
@@ -119,11 +128,12 @@ impl Settings {
         changed
     }
 
-    /// Adds a profile (not made current) and returns its id.
-    pub fn add_profile(&mut self, name: &str, identity: Identity) -> Result<ProfileId, ProfileProblem> {
+    /// Adds a profile (not made current) with these connected accounts and returns its id. Its
+    /// preferences start unsaved, so it takes the current ones when first switched to.
+    pub fn add_profile(&mut self, name: &str, identity: Identity, connections: Vec<Connection>) -> Result<ProfileId, ProfileProblem> {
         let name = self.check_profile_name(name, None)?;
         let id = ProfileId(self.profiles.iter().map(|p| p.id.0).max().unwrap_or(0) + 1);
-        let mut p = Profile { id, name, ..Profile::default() };
+        let mut p = Profile { id, name, connections: Some(connections), ..Profile::default() };
         p.set_identity(&identity);
         self.profiles.push(p);
         Ok(id)

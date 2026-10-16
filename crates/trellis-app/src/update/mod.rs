@@ -29,6 +29,7 @@ mod ops;
 mod palette;
 mod patch;
 mod prefs;
+mod profile_setup;
 mod profiles;
 mod publish;
 mod rebase;
@@ -167,6 +168,8 @@ mod path_hazards_tests;
 mod perf_tests;
 #[cfg(test)]
 mod pr_checkout_tests;
+#[cfg(test)]
+mod profile_setup_tests;
 #[cfg(test)]
 mod profiles_tests;
 #[cfg(test)]

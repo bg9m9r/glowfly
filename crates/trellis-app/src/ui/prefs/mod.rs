@@ -8,6 +8,7 @@ mod git;
 mod gitflow;
 mod integrations;
 mod lfs;
+mod profile_setup;
 mod profiles;
 mod signing;
 mod sparse;

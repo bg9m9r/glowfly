@@ -25,6 +25,7 @@ fn add(st: &mut AppState, id: u32, name: &str, email: &str) {
         author_name: "Ada".into(),
         author_email: email.into(),
         signing_key: None,
+        ..Profile::default()
     });
 }
 

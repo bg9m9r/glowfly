@@ -10,6 +10,7 @@ mod file;
 mod graph_filter;
 mod paths;
 mod profiles;
+mod profiles_prefs;
 pub mod repo_keys;
 mod tools;
 mod trust;
@@ -18,6 +19,7 @@ pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{cache_dir, config_dir, home_dir, migrate_old_config_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
+pub use profiles_prefs::{ProfilePrefs, SetupSwap};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::RepoTrust;
 
@@ -228,8 +230,8 @@ pub struct Settings {
     /// Preferences > External Tools.
     #[serde(default)]
     pub external_tools: ExternalTools,
-    /// Named author identities (Preferences > Profile); seeded from the global git identity
-    /// when the page first opens.
+    /// Named profiles (Preferences > Profile): identities, and the accounts and preferences of
+    /// the ones not current; seeded from the global git identity when the page first opens.
     #[serde(default)]
     pub profiles: Vec<Profile>,
     /// The profile whose identity is in the global git config.

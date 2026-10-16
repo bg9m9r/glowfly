@@ -40,7 +40,9 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
                 disconnect(st, a, fx);
             }
             if gcm {
-                let gcm_accounts = accounts.iter().filter(|a| a.provider.supports_gcm()).cloned().collect();
+                // Another profile's saved accounts keep their sign-in.
+                let gcm_accounts =
+                    accounts.iter().filter(|a| a.provider.supports_gcm() && !st.settings.account_in_use(a)).cloned().collect();
                 fx.push(Effect::ForgetCredentialManager { accounts: gcm_accounts, cwd: st.any_dir() });
             }
             let extra = if gcm { " and signed Git Credential Manager out of those hosts" } else { "" };
@@ -338,9 +340,13 @@ fn connected(
     }
 }
 
+/// Removes the connection; its stored token goes too unless another profile still lists the
+/// account (sign-ins are shared per account).
 fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
-    fx.push(Effect::DeleteToken(account.clone()));
     st.settings.connections.retain(|c| &c.account != account);
+    if !st.settings.account_in_use(account) {
+        fx.push(Effect::DeleteToken(account.clone()));
+    }
     fx.push(super::prefs::save_settings(st));
     if let Some(fs) = st.forge.as_mut() {
         fs.auth.remove(&account.key());

@@ -1,13 +1,21 @@
 //! Profiles in settings files, seeding and syncing from git, and the name checks.
 
 use super::*;
+use crate::forge::{Account, Connection, Provider};
 
 fn git(name: &str, email: &str, key: Option<&str>) -> Identity {
     Identity { name: name.into(), email: email.into(), signing_key: key.map(str::to_owned) }
 }
 
 fn profile(id: u32, name: &str, email: &str) -> Profile {
-    Profile { id: ProfileId(id), name: name.into(), author_name: name.into(), author_email: email.into(), signing_key: None }
+    Profile {
+        id: ProfileId(id),
+        name: name.into(),
+        author_name: name.into(),
+        author_email: email.into(),
+        signing_key: None,
+        ..Profile::default()
+    }
 }
 
 /// "Work" (1, current) and "Personal" (2).
@@ -84,18 +92,18 @@ fn a_stale_current_id_falls_back_to_the_first() {
 #[test]
 fn adding_checks_the_name() {
     let mut s = two();
-    assert_eq!(s.add_profile("  Client  ", Identity::default()), Ok(ProfileId(3)));
+    assert_eq!(s.add_profile("  Client  ", Identity::default(), Vec::new()), Ok(ProfileId(3)));
     assert_eq!(s.profiles[2].name, "Client");
-    assert_eq!(s.add_profile("   ", Identity::default()), Err(ProfileProblem::Blank));
-    assert_eq!(s.add_profile("personal", Identity::default()), Err(ProfileProblem::Taken));
+    assert_eq!(s.add_profile("   ", Identity::default(), Vec::new()), Err(ProfileProblem::Blank));
+    assert_eq!(s.add_profile("personal", Identity::default(), Vec::new()), Err(ProfileProblem::Taken));
     assert_eq!(s.active_profile, Some(ProfileId(1)), "a new profile isn't made current");
 
     let mut empty = Settings::default();
-    assert_eq!(empty.add_profile("First", git("Ada", "a@b", None)), Ok(ProfileId(1)));
+    assert_eq!(empty.add_profile("First", git("Ada", "a@b", None), Vec::new()), Ok(ProfileId(1)));
     assert_eq!(empty.profiles[0].author_name, "Ada");
     // Ids grow from the largest, not the count.
     s.delete_profile(ProfileId(2)).unwrap();
-    assert_eq!(s.add_profile("Again", Identity::default()), Ok(ProfileId(4)));
+    assert_eq!(s.add_profile("Again", Identity::default(), Vec::new()), Ok(ProfileId(4)));
 }
 
 #[test]
@@ -120,4 +128,19 @@ fn deleting_refuses_the_current_profile() {
     // The last one stays, even when no profile is marked current.
     s.active_profile = None;
     assert_eq!(s.delete_profile(ProfileId(1)), Err(ProfileProblem::Current));
+}
+
+#[test]
+fn adding_stores_its_accounts_but_no_preferences() {
+    let mut s = two();
+    let gh = Connection {
+        account: Account { provider: Provider::GitHub, host: "github.com".into(), org: String::new() },
+        user: "ada".into(),
+        method: "access token".into(),
+    };
+    let empty = s.add_profile("Empty", Identity::default(), Vec::new()).unwrap();
+    let copied = s.add_profile("Copied", Identity::default(), vec![gh.clone()]).unwrap();
+    assert_eq!(s.profile(empty).unwrap().connections, Some(Vec::new()));
+    assert_eq!(s.profile(copied).unwrap().connections, Some(vec![gh]));
+    assert!(s.profile(empty).unwrap().prefs.is_none() && s.profile(copied).unwrap().prefs.is_none());
 }

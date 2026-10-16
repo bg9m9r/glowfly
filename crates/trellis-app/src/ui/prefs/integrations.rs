@@ -3,6 +3,7 @@
 use super::{LABEL_W, help, primary_button, row, text_field};
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
+use crate::state::profiles::accounts_owner;
 use crate::state::{ForgeState, PrefsState};
 use crate::ui::theme::color;
 use crate::ui::widgets::{self, Icon};
@@ -16,6 +17,14 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     let account = forge::parse_host(provider, &prefs.int_host).map(|(host, org)| Account { provider, host, org });
     let connection = account.as_ref().and_then(|a| s.connection(a)).cloned();
 
+    // Which profile the accounts switch with, over the card.
+    if let Some(p) = s.active_profile() {
+        ui.horizontal(|ui| {
+            ui.add_space(LABEL_W - 20.0);
+            help(ui, &accounts_owner(&p.name));
+        });
+        ui.add_space(6.0);
+    }
     // Connection card, centered over the form.
     ui.horizontal(|ui| {
         ui.add_space(LABEL_W - 20.0);

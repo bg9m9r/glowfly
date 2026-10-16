@@ -1,7 +1,8 @@
-//! Named identity profiles: seeding the first from the global identity and keeping the current
-//! one in step with git config while Preferences > Profile is open, adding, renaming, editing
-//! and deleting (asking first) profiles, and switching, which writes the profile's identity to
-//! the global git config in the background. Its effects are unscoped: git config is global.
+//! Named profiles: seeding the first from the global identity and keeping the current one in
+//! step with git config while Preferences > Profile is open, adding, renaming, editing and
+//! deleting (asking first) profiles, and switching, which writes the profile's identity to the
+//! global git config in the background and, once that worked, swaps in its accounts and
+//! preferences (profile_setup.rs). Its effects are unscoped: git config is global.
 
 use super::prefs::save_settings;
 use crate::effect::Effect;
@@ -29,10 +30,11 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
             p.profiles.fill(&st.settings, Some(id));
             p.profiles.renaming = None;
         }
-        ProfileMsg::Add { name, copy_current } => {
+        ProfileMsg::Add { name, copy_current, copy_accounts } => {
             let identity =
                 if copy_current { st.settings.active_profile().map(|p| p.identity()).unwrap_or_default() } else { Identity::default() };
-            match st.settings.add_profile(&name, identity) {
+            let connections = if copy_accounts { st.settings.connections.clone() } else { Vec::new() };
+            match st.settings.add_profile(&name, identity, connections) {
                 Ok(id) => {
                     if let Some(p) = st.prefs.as_mut() {
                         p.profiles.adding = None;
@@ -85,8 +87,9 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
                 return;
             }
             match st.settings.delete_profile(id) {
-                Ok(_) => {
+                Ok(removed) => {
                     fx.push(save_settings(st));
+                    super::profile_setup::forget_tokens(st, removed.connections.into_iter().flatten().map(|c| c.account), fx);
                     if let Some(p) = st.prefs.as_mut() {
                         if p.profiles.renaming.as_ref().is_some_and(|f| f.id == id) {
                             p.profiles.renaming = None;
@@ -187,8 +190,11 @@ fn applied(
         Ok(values) => {
             match &name {
                 Some(name) => {
+                    // The accounts and preferences switch with the identity.
+                    let swap = st.settings.swap_profile_setup(id);
                     st.settings.active_profile = Some(id);
                     fx.push(save_settings(st));
+                    super::profile_setup::switched(st, swap, now, fx);
                     st.toast(true, switched(name), now);
                 }
                 None => st.log(false, GONE_AFTER_SWITCH),

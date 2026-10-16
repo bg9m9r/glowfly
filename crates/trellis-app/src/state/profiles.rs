@@ -1,7 +1,9 @@
 //! Preferences > Profile: which profile the page edits, the text buffers of its fields, the
-//! inline rename and New profile forms, and the texts the page, its dialog and toasts show.
+//! inline rename and New profile forms, and the texts the page, its dialog and toasts show
+//! (and the Integrations page's line naming the profile its accounts belong to).
 
 use crate::state::prefs::GitConfigValues;
+use trellis_core::forge::Connection;
 use trellis_core::identity::Identity;
 use trellis_core::settings::{ProfileId, Settings};
 
@@ -11,7 +13,7 @@ pub const STILL_SWITCHING: &str = "A profile switch is still running.";
 pub const GONE_AFTER_SWITCH: &str = "Switched Git identity, but that profile no longer exists.";
 
 pub const LIST_LABEL: &str = "Profiles";
-pub const LIST_HELP: &str = "Each profile keeps an author identity. Switching writes it to your global Git config.";
+pub const LIST_HELP: &str = "Each profile keeps an author identity, connected accounts and app preferences. Switching writes the identity to your global Git config and brings back the profile's accounts and preferences.";
 pub const CURRENT_CHIP: &str = "Current profile";
 pub const NO_IDENTITY: &str = "No author identity";
 pub const SWITCH_BUTTON: &str = "Switch to this profile";
@@ -22,12 +24,64 @@ pub const NEW_LABEL: &str = "New profile";
 pub const NAME_LABEL: &str = "Profile name";
 pub const NEW_NAME_HINT: &str = "Work";
 pub const COPY_CURRENT: &str = "Copy the identity of the current profile";
+pub const COPY_ACCOUNTS: &str = "Start with the current profile's connected accounts";
 pub const CURRENT_HELP: &str = "Changes to the current profile are saved to your global Git config (user.name / user.email / user.signingkey) when you leave the field.";
 pub const OTHER_HELP: &str = "Saved with the profile. Written to your global Git config when you switch to it.";
 pub const KEY_HELP: &str = "Leave empty to keep whatever key Git has when you switch to this profile.";
+pub const ACCOUNTS_LABEL: &str = "Accounts";
+pub const PREFS_LABEL: &str = "Preferences";
+pub const NO_ACCOUNTS: &str = "No connected accounts";
+pub const ACCOUNTS_INHERIT: &str = "Uses the current profile's accounts until you switch to it";
+pub const ACCOUNTS_CURRENT_HELP: &str = "Connect or disconnect accounts in Integrations; they belong to this profile.";
+pub const ACCOUNTS_OTHER_HELP: &str = "Connected again when you switch to this profile. Sign-ins are shared per account.";
+pub const PREFS_CURRENT_HELP: &str = "Your General, UI Customization and Editor settings are saved with this profile.";
+pub const PREFS_SAVED_HELP: &str =
+    "General, UI Customization and Editor settings are saved with this profile; they come back when you switch to it.";
+pub const PREFS_INHERIT_HELP: &str = "None saved yet: switching to this profile keeps the current preferences.";
 
 pub fn delete_body(name: &str) -> String {
-    format!("Delete the profile \"{name}\"? Your Git config is not changed. This can't be undone.")
+    format!(
+        "Delete the profile \"{name}\"? Its saved accounts and preferences go with it. Your Git config is not changed. This can't be undone."
+    )
+}
+
+/// The Integrations page's line over the connection card.
+pub fn accounts_owner(name: &str) -> String {
+    format!("Accounts connected here belong to the profile {name}.")
+}
+
+/// One connected account on the Profile page.
+pub fn account_line(c: &Connection) -> String {
+    format!("{} · {} · {}", c.account.provider.name(), c.account.display(), c.user)
+}
+
+/// The accounts a profile has: the ones in use for the current profile, else what it saved.
+pub enum SetupView<'a> {
+    Live(&'a [Connection]),
+    Saved(&'a [Connection]),
+    /// Nothing saved: switching to it keeps the current accounts.
+    Inherit,
+}
+
+pub fn accounts_of(settings: &Settings, id: ProfileId) -> SetupView<'_> {
+    if settings.active_profile == Some(id) {
+        return SetupView::Live(&settings.connections);
+    }
+    match settings.profile(id).and_then(|p| p.connections.as_deref()) {
+        Some(list) => SetupView::Saved(list),
+        None => SetupView::Inherit,
+    }
+}
+
+/// The Preferences row's text for a profile.
+pub fn prefs_status(settings: &Settings, id: ProfileId) -> &'static str {
+    if settings.active_profile == Some(id) {
+        PREFS_CURRENT_HELP
+    } else if settings.profile(id).is_some_and(|p| p.prefs.is_some()) {
+        PREFS_SAVED_HELP
+    } else {
+        PREFS_INHERIT_HELP
+    }
 }
 
 pub fn switched(name: &str) -> String {
@@ -99,12 +153,14 @@ impl RenameForm {
 pub struct AddForm {
     pub name: String,
     pub copy_current: bool,
+    /// Start with the current profile's connected accounts (off: none).
+    pub copy_accounts: bool,
     pub error: Option<String>,
 }
 
 impl AddForm {
     pub fn new() -> Self {
-        Self { name: String::new(), copy_current: true, error: None }
+        Self { name: String::new(), copy_current: true, copy_accounts: false, error: None }
     }
 }
 

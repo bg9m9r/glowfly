@@ -1,15 +1,16 @@
 //! Preferences > Profile: the profile list (current marker, switch, inline rename, delete), the
-//! New profile form, and the selected profile's identity fields. The view edits only text
-//! buffers and which form is open; everything else is a `Msg`.
+//! New profile form, and the selected profile's identity fields, then what else switches with
+//! it (profile_setup.rs). The view edits only text buffers and which form is open; everything
+//! else is a `Msg`.
 
 use super::{help, primary_button, row, text_field};
 use crate::msg::Msg;
 use crate::profile::{IdentityField, ProfileMsg};
 use crate::state::prefs::GitConfigValues;
 use crate::state::profiles::{
-    ADD_BUTTON, AddForm, COPY_CURRENT, CURRENT_CHIP, CURRENT_HELP, DELETE_BUTTON, DELETE_DISABLED, KEY_HELP, LIST_HELP, LIST_LABEL,
-    NAME_LABEL, NEW_LABEL, NEW_NAME_HINT, NO_IDENTITY, OTHER_HELP, ProfilesPage, RENAME_BUTTON, RenameForm, SWITCH_BUTTON, editing_caption,
-    identity_line, key_hint,
+    ADD_BUTTON, AddForm, COPY_ACCOUNTS, COPY_CURRENT, CURRENT_CHIP, CURRENT_HELP, DELETE_BUTTON, DELETE_DISABLED, KEY_HELP, LIST_HELP,
+    LIST_LABEL, NAME_LABEL, NEW_LABEL, NEW_NAME_HINT, NO_IDENTITY, OTHER_HELP, ProfilesPage, RENAME_BUTTON, RenameForm, SWITCH_BUTTON,
+    editing_caption, identity_line, key_hint,
 };
 use crate::ui::theme::color;
 use crate::ui::widgets;
@@ -154,10 +155,15 @@ fn add_form(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(e).size(12.0).color(color::red()));
         }
         ui.checkbox(&mut form.copy_current, COPY_CURRENT);
+        ui.checkbox(&mut form.copy_accounts, COPY_ACCOUNTS);
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             if primary_button(ui, "Add", !blank).clicked() || (enter && !blank) {
-                msgs.push(Msg::Profile(ProfileMsg::Add { name: form.name.clone(), copy_current: form.copy_current }));
+                msgs.push(Msg::Profile(ProfileMsg::Add {
+                    name: form.name.clone(),
+                    copy_current: form.copy_current,
+                    copy_accounts: form.copy_accounts,
+                }));
             }
             cancel = ui.button("Cancel").clicked();
         });
@@ -194,4 +200,5 @@ fn fields(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, git: &GitCo
         }
         help(ui, KEY_HELP);
     });
+    super::profile_setup::setup_rows(ui, settings, p, current);
 }
