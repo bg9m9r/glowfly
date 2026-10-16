@@ -71,6 +71,21 @@ fn fixture(name: &str) -> (std::path::PathBuf, Oid, Oid, Oid) {
     (dir, first, adds, renames)
 }
 
+#[test]
+fn a_submodule_whose_path_is_not_utf8_is_left_out() {
+    let dir = scratch_repo("bytes-submodule");
+    let mut gitmodules = b"[submodule \"x\"]\n\tpath = ".to_vec();
+    gitmodules.extend_from_slice(CAFE);
+    gitmodules.extend_from_slice(b"\n\turl = ../x\n");
+    std::fs::write(dir.join(".gitmodules"), gitmodules).unwrap();
+    let mut entry = format!("160000 {}\t", "1".repeat(40)).into_bytes();
+    entry.extend_from_slice(CAFE);
+    entry.push(b'\n');
+    git_in(&dir, &["update-index", "--index-info"], &entry);
+    assert!(submodules_at(&dir).unwrap().is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 fn not_utf8(f: &FileEntry) -> bool {
     f.path == CAFE_SHOWN && f.hazard == Some(Hazard::NotUtf8(CAFE.to_vec()))
 }

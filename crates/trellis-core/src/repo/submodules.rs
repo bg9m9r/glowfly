@@ -63,9 +63,14 @@ impl SubmoduleInfo {
 /// classified from its ids alone.
 pub(super) fn list(repo: &Repository) -> Vec<SubmoduleInfo> {
     let Ok(subs) = repo.submodules() else { return Vec::new() };
+    // A snapshot: only a snapshot hands out values as bytes.
+    let gitmodules = repo.workdir().and_then(|w| git2::Config::open(&w.join(".gitmodules")).and_then(|mut c| c.snapshot()).ok());
     let mut out: Vec<SubmoduleInfo> = subs
         .iter()
         .filter_map(|sm| {
+            if !path_is_text(sm, gitmodules.as_ref()) {
+                return None;
+            }
             let recorded = sm.index_id()?;
             let path = sm.path().to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/");
             let name = sm.name().map(str::to_owned).unwrap_or_else(|| path.clone());
@@ -78,6 +83,17 @@ pub(super) fn list(repo: &Repository) -> Vec<SubmoduleInfo> {
         .collect();
     out.sort_by(|a, b| a.path.cmp(&b.path));
     out
+}
+
+/// Whether `sm`'s path is UTF-8, so `Submodule::path()` can be called: git2 panics on Windows
+/// for a path that isn't. The path is .gitmodules' `submodule.<name>.path`, or the name itself
+/// for a gitlink .gitmodules doesn't list. Such a submodule is left out of the list.
+fn path_is_text(sm: &Submodule<'_>, gitmodules: Option<&git2::Config>) -> bool {
+    let Some(name) = sm.name() else { return false };
+    match gitmodules.and_then(|c| c.get_bytes(&format!("submodule.{name}.path")).ok()) {
+        Some(path) => std::str::from_utf8(path).is_ok(),
+        None => true,
+    }
 }
 
 /// The submodules of the repository at `workdir` (see `list`).

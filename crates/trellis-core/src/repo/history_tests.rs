@@ -199,3 +199,19 @@ fn history_reports_whether_the_path_is_on_disk() {
     assert!(more.on_disk && !more.entries.is_empty(), "a resumed batch reports it too");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// On Unix a '\' is an ordinary character in a file name, not a separator.
+#[cfg(unix)]
+#[test]
+fn history_follows_a_rename_from_a_name_with_a_backslash() {
+    let dir = scratch_repo("history-backslash");
+    let odd = r"x\y.txt";
+    commit(&dir, odd, &lines(10), "add");
+    git(&dir, &["mv", odd, "b.txt"]);
+    commit(&dir, "b.txt", &lines(10).replace("line 3\n", "line three\n"), "rename");
+    let h = file_history(&dir, "b.txt", &HistoryStart::Head, 100).unwrap();
+    let paths: Vec<&str> = h.entries.iter().map(|e| e.path.as_str()).collect();
+    assert_eq!(paths, ["b.txt", odd]);
+    assert_eq!(h.entries[0].old_path.as_deref(), Some(odd));
+    let _ = std::fs::remove_dir_all(&dir);
+}
