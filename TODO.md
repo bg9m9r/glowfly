@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 08:28 · **SSH key management**: Choose the key git uses for SSH remotes (core.sshCommand, for all repositories or a trusted repository), a Use local SSH agent setting with agent status and Add to agent, and Add to service for GitHub, GitLab and Bitbucket Cloud with a copy-and-open fallback (`5e922b7`)
 - 2026-10-16 08:05 · **Clone and init options**: Sparse clone (chosen folders, optional partial clone) and a Your repositories tab (GitHub, GitLab, Bitbucket Cloud accounts) in the Clone dialog; Init opens a dialog with an initial branch, a .gitignore template, a license and an initial commit (`00790e2`)
 - 2026-10-16 08:00 · **Search and filter**: Search the graph by changed file with path: and file: terms (folder, file name or glob), searched off the UI thread with a live count (`ec3df76`)
 - 2026-10-16 07:30 · **Graph columns and loading**: Load more commits automatically when the graph is scrolled near the end of a truncated history, with a loading row and a General preference to turn it off (`9d30255`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 16:54 · **Signing beyond config**: Signature badge for the selected commit in the details panel: verified, unverified, unknown key or bad signature, checked with git and cached per commit (`07ab360`)
 - 2026-10-15 16:43 · **Repository management**: Favorite repositories above Recent on the welcome screen and in the repository menu, remove one recent entry or clear the list, and missing folders marked (`59fc992`)
 - 2026-10-15 16:02 · **Sparse checkout**: Sparse Checkout page in Preferences: turn on with folders or patterns, save, reapply and turn off; palette entry; libgit2 status hides left-out files (`0969dcf`)
-- 2026-10-15 15:59 · **Graph columns and loading**: resizable graph columns: drag the header dividers to resize, double-click to reset (`3bc171e`)
 
 ---
 
