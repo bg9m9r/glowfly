@@ -6,7 +6,7 @@
 use super::forge::request;
 use crate::effect::{Effect, FilterCall, FilterResult, ForgeCall};
 use crate::msg::FilterMsg;
-use crate::state::forge_filters::{IssueList, MeState};
+use crate::state::forge_filters::{IssueList, MeState, OptionsState};
 use crate::state::{AppState, ForgeState, Status};
 use trellis_core::forge::filters::matching;
 use trellis_core::forge::{FilterChoice, FilterKind};
@@ -74,8 +74,9 @@ fn ensure_me(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let before = std::mem::replace(&mut fs.filters.me, MeState::Asking);
+    let epoch = fs.filters.host_epoch;
     let sent = fx.len();
-    request(st, host, false, ForgeCall::Filter(FilterCall::Me), fx);
+    request(st, host, false, ForgeCall::Filter(FilterCall::Me { epoch }), fx);
     if fx.len() == sent
         && let Some(fs) = st.forge.as_mut()
     {
@@ -104,7 +105,8 @@ fn run_issue_query(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     fs.filters.issues = Some(IssueList { choice, conditions: conditions.clone(), items, status: Status::Idle });
     // The code host's user is the tracker's only when they are the same service.
     let me = fs.filters.known_me().filter(|_| fs.host.as_ref() == Some(&tracker)).cloned();
-    request(st, tracker, false, ForgeCall::Filter(FilterCall::Issues { choice, conditions, me }), fx);
+    let epoch = fs.filters.tracker_epoch;
+    request(st, tracker, false, ForgeCall::Filter(FilterCall::Issues { choice, conditions, me, epoch }), fx);
 }
 
 /// After a refresh's requests: the signed-in user if still needed, and the shown issue search
@@ -114,17 +116,34 @@ pub(super) fn refresh(st: &mut AppState, fx: &mut Vec<Effect>) {
     run_issue_query(st, true, fx);
 }
 
-/// A filter call's answer from the service whose account key is `key`.
-pub(super) fn replied(fs: &mut ForgeState, r: FilterResult, key: &str) {
+/// A filter call's answer from the service whose account key is `key`; `from_host` and
+/// `from_tracker` say which of the repository's services it is. An answer from a service the
+/// state no longer uses for that kind (the tracker changed), or asked under an earlier account,
+/// is dropped.
+pub(super) fn replied(fs: &mut ForgeState, r: FilterResult, key: &str, from_host: bool, from_tracker: bool) {
     match r {
-        FilterResult::Me(Ok(me)) => fs.filters.me = MeState::Known(me),
-        FilterResult::Me(Err(e)) => {
-            if e.auth {
-                fs.auth.remove(key);
+        FilterResult::Me { epoch, result } => {
+            if !from_host || epoch != fs.filters.host_epoch {
+                return;
             }
-            fs.filters.me = MeState::Failed(e.message);
+            match result {
+                Ok(me) => fs.filters.me = MeState::Known(me),
+                Err(e) => {
+                    if e.auth {
+                        fs.auth.remove(key);
+                    }
+                    fs.filters.me = MeState::Failed(e.message);
+                }
+            }
         }
-        FilterResult::Issues { choice, conditions, result } => {
+        FilterResult::Issues { choice, conditions, epoch, me, result } => {
+            if !from_tracker || epoch != fs.filters.tracker_epoch {
+                return;
+            }
+            // The user a search looked up is the code host's when the host is the tracker.
+            if let Some(me) = me.filter(|_| from_host && fs.filters.known_me().is_none()) {
+                fs.filters.me = MeState::Known(me);
+            }
             // A reply for a filter no longer shown (or changed since) is dropped.
             let Some(list) = fs.filters.issues.as_mut().filter(|l| l.choice == choice && l.conditions == conditions) else { return };
             match result {
@@ -145,13 +164,20 @@ pub(super) fn replied(fs: &mut ForgeState, r: FilterResult, key: &str) {
             }
         }
         FilterResult::Options(kind, result) => {
+            let from_target = match kind {
+                FilterKind::Prs => from_host,
+                FilterKind::Issues => from_tracker,
+            };
+            if !from_target {
+                return;
+            }
             let state = match result {
-                Ok(o) => crate::state::forge_filters::OptionsState::Loaded(o),
+                Ok(o) => OptionsState::Loaded(o),
                 Err(e) => {
                     if e.auth {
                         fs.auth.remove(key);
                     }
-                    crate::state::forge_filters::OptionsState::Failed(e.message)
+                    OptionsState::Failed(e.message)
                 }
             };
             *fs.filters.options_mut(kind) = state;

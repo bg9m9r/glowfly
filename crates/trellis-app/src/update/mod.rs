@@ -125,6 +125,8 @@ mod force_push_tests;
 #[cfg(test)]
 mod forge_filter_edit_tests;
 #[cfg(test)]
+mod forge_filters_account_tests;
+#[cfg(test)]
 mod forge_filters_tests;
 #[cfg(test)]
 mod forge_tests;

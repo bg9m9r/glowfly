@@ -5,7 +5,7 @@ use super::pr_details::PrDetailPass;
 use git2::Oid;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
-use trellis_core::forge::{self, Auth, Issue, Provider, PullRequest, RefStyle, Target};
+use trellis_core::forge::{self, Account, Auth, Issue, Provider, PullRequest, RefStyle, Target};
 
 /// A Jira site's project keys, read once per tracker to tell keys from look-alikes (`UTF-8`).
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -95,6 +95,12 @@ impl ForgeState {
 
     pub fn pr_for_branch(&self, branch: &str) -> Option<&PullRequest> {
         self.prs.iter().find(|p| p.source == branch)
+    }
+
+    /// Whether the code host and the tracker are on `account`.
+    pub fn uses_account(&self, account: &Account) -> (bool, bool) {
+        let on = |t: &Option<Target>| t.as_ref().is_some_and(|t| t.account() == *account);
+        (on(&self.host), on(&self.tracker))
     }
 
     pub fn host_provider(&self) -> Option<Provider> {

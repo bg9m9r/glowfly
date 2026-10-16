@@ -196,6 +196,12 @@ pub fn matching_prs<'a>(prs: &'a [PullRequest], c: &Conditions, me: Option<&Me>)
     Some(prs.iter().filter(|p| matches(p, c, me)).collect())
 }
 
+/// Whether `p`'s issue searches name the signed-in user by their id, so a search on "me" needs
+/// them looked up first (Azure DevOps and Jira queries say "me" themselves).
+pub fn issue_search_names_user(p: Provider) -> bool {
+    github_family(p) || gitlab_family(p) || p == Provider::Bitbucket
+}
+
 /// Whether issue searches name a milestone by its number (GitHub), so only listed ones can be
 /// picked; elsewhere the title is the key.
 pub fn milestones_by_number(p: Provider) -> bool {

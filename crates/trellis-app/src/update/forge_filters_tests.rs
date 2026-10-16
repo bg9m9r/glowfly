@@ -113,7 +113,7 @@ fn choosing_mine_saves_it_and_asks_who_i_am_once() {
     assert_eq!(settings.forge_filters_for(&real).choice(FilterKind::Prs), FilterChoice::Builtin(Builtin::MyPrs));
     let calls = filter_calls(&fx);
     assert_eq!(calls.len(), 1);
-    assert!(matches!(calls[0], (t, FilterCall::Me) if *t == host(&st)));
+    assert!(matches!(calls[0], (t, FilterCall::Me { .. }) if *t == host(&st)));
     assert_eq!(fs(&st).filters.me, MeState::Asking);
     assert!(filter_calls(&send(&mut st, choose(FilterKind::Prs, Builtin::NeedsMyReview))).is_empty(), "already asking");
 
@@ -121,7 +121,7 @@ fn choosing_mine_saves_it_and_asks_who_i_am_once() {
     let filters = st.settings.forge_filters_for(&real);
     assert!(matches!(pr_view(fs(&st), &filters).hint, Some(Hint::Faint(h)) if h == "Finding your GitHub account…"));
     let h = host(&st);
-    reply(&mut st, h, FilterResult::Me(Ok(ada())));
+    reply(&mut st, h, FilterResult::Me { epoch: 0, result: Ok(ada()) });
     let view = pr_view(fs(&st), &filters);
     assert!(view.rows.is_empty(), "nobody asked Ada for a review");
     assert_eq!(view.empty.as_deref(), Some("No open pull requests match \u{201c}Needs my review\u{201d}"));
@@ -139,11 +139,11 @@ fn a_failed_lookup_shows_the_error_and_the_next_refresh_asks_again() {
     let (mut st, dir) = open("ff-me-failed");
     send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs));
     let h = host(&st);
-    reply(&mut st, h, FilterResult::Me(Err(error(false))));
+    reply(&mut st, h, FilterResult::Me { epoch: 0, result: Err(error(false)) });
     let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
     assert_eq!(pr_view(fs(&st), &filters).hint, Some(Hint::Error("boom".into())));
     let fx = update(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: false }), Instant::now());
-    assert!(filter_calls(&fx).iter().any(|(_, c)| matches!(c, FilterCall::Me)));
+    assert!(filter_calls(&fx).iter().any(|(_, c)| matches!(c, FilterCall::Me { .. })));
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -160,7 +160,11 @@ fn issue_filters_search_the_tracker() {
     );
     let choice = FilterChoice::Builtin(Builtin::IssuesCreatedByMe);
     let tracker = fs(&st).tracker.clone().unwrap();
-    reply(&mut st, tracker.clone(), FilterResult::Issues { choice, conditions: created.clone(), result: Ok(vec![issue("7")]) });
+    reply(
+        &mut st,
+        tracker.clone(),
+        FilterResult::Issues { choice, conditions: created.clone(), epoch: 0, me: None, result: Ok(vec![issue("7")]) },
+    );
     let list = fs(&st).filters.issues.as_ref().unwrap();
     assert_eq!((list.items.len(), &list.status), (1, &Status::Ok));
     assert!(fs(&st).cache.contains_key("7"), "mention chips resolve");
@@ -171,7 +175,7 @@ fn issue_filters_search_the_tracker() {
     // A newer choice wins over a late reply for the old one; loading still goes down.
     send(&mut st, choose(FilterKind::Issues, Builtin::IssuesMentioningMe));
     let loading = fs(&st).loading;
-    reply(&mut st, tracker.clone(), FilterResult::Issues { choice, conditions: created, result: Ok(vec![issue("8")]) });
+    reply(&mut st, tracker.clone(), FilterResult::Issues { choice, conditions: created, epoch: 0, me: None, result: Ok(vec![issue("8")]) });
     assert_eq!(fs(&st).loading, loading - 1);
     let list = fs(&st).filters.issues.as_ref().unwrap();
     assert_eq!((list.items.len(), &list.status), (0, &Status::Idle));
@@ -201,7 +205,7 @@ fn an_auth_error_drops_the_saved_sign_in() {
     send(&mut st, choose(FilterKind::Issues, Builtin::IssuesCreatedByMe));
     let (choice, conditions) = (FilterChoice::Builtin(Builtin::IssuesCreatedByMe), Builtin::IssuesCreatedByMe.conditions());
     let h = host(&st);
-    reply(&mut st, h, FilterResult::Issues { choice, conditions, result: Err(error(true)) });
+    reply(&mut st, h, FilterResult::Issues { choice, conditions, epoch: 0, me: None, result: Err(error(true)) });
     assert!(!fs(&st).auth.contains_key(&key));
     assert_eq!(fs(&st).filters.issues.as_ref().unwrap().status, Status::Error("boom".into()));
     let _ = std::fs::remove_dir_all(dir);
@@ -217,7 +221,7 @@ fn a_refresh_runs_the_shown_filters_again() {
     assert!(fx.iter().any(|e| matches!(e, Effect::Forge { call: ForgeCall::Refresh { with_issues: true, .. }, .. })));
     let calls = filter_calls(&fx);
     assert!(calls.iter().any(|(_, c)| matches!(c, FilterCall::Issues { .. })), "{calls:?}");
-    assert!(calls.iter().any(|(_, c)| matches!(c, FilterCall::Me)), "{calls:?}");
+    assert!(calls.iter().any(|(_, c)| matches!(c, FilterCall::Me { .. })), "{calls:?}");
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -261,7 +265,7 @@ fn dropped_replies_are_asked_for_again() {
         msg: Box::new(Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply {
             target: host(&st),
             auth: None,
-            results: vec![ForgeResult::Filter(FilterResult::Me(Ok(ada())))],
+            results: vec![ForgeResult::Filter(FilterResult::Me { epoch: 0, result: Ok(ada()) })],
         }))),
     };
     update(&mut st, other, Instant::now());

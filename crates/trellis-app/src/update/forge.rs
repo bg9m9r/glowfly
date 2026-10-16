@@ -259,7 +259,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
                 // Left unknown, so the next refresh asks again.
                 Err(e) => tracing::debug!("Jira project keys: {}", e.message),
             },
-            ForgeResult::Filter(r) => super::forge_filters::replied(fs, r, &key),
+            ForgeResult::Filter(r) => super::forge_filters::replied(fs, r, &key, is_host, is_tracker),
         }
     }
     for (ok, text) in logs {
@@ -301,6 +301,8 @@ fn connected(
             // A new connection can make a self-hosted remote recognizable.
             if let Some(fs) = st.forge.as_mut() {
                 fs.auth.remove(&account.key());
+                let (host, tracker) = fs.uses_account(&account);
+                fs.filters.account_changed(host, tracker);
                 fs.host_status = Status::Idle;
                 fs.tracker_status = Status::Idle;
             }
@@ -329,14 +331,16 @@ fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
     if let Some(fs) = st.forge.as_mut() {
         fs.auth.remove(&account.key());
         let msg = format!("not connected to {}", account.provider.name());
-        if fs.host.as_ref().is_some_and(|t| t.account() == *account) {
+        let (host, tracker) = fs.uses_account(account);
+        fs.filters.account_changed(host, tracker);
+        if host {
             fs.prs.clear();
             fs.details.clear();
             fs.pr_heads.clear();
             fs.tips = Default::default();
             fs.host_status = Status::Error(msg.clone());
         }
-        if fs.tracker.as_ref().is_some_and(|t| t.account() == *account) {
+        if tracker {
             fs.my_issues.clear();
             fs.tracker_status = Status::Error(msg);
         }

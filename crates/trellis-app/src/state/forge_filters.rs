@@ -14,6 +14,11 @@ pub struct FilterState {
     pub issues: Option<IssueList>,
     pub pr_options: OptionsState,
     pub issue_options: OptionsState,
+    /// Bumped when the account behind the code host changes, so a lookup of the user asked
+    /// under the old one is dropped.
+    pub host_epoch: u32,
+    /// The same for the tracker's account and its issue searches.
+    pub tracker_epoch: u32,
 }
 
 /// The signed-in user on the code host.
@@ -57,6 +62,21 @@ impl FilterState {
             }
         }
         // An issue list still loading stays `Idle`; the next refresh searches again.
+    }
+
+    /// The account behind the code host (`host`) and/or the tracker (`tracker`) was connected
+    /// again or disconnected: forget what was learned under it and drop answers still on the way.
+    pub fn account_changed(&mut self, host: bool, tracker: bool) {
+        if host {
+            self.host_epoch = self.host_epoch.wrapping_add(1);
+            self.me = MeState::Unknown;
+            self.pr_options = OptionsState::NotAsked;
+        }
+        if tracker {
+            self.tracker_epoch = self.tracker_epoch.wrapping_add(1);
+            self.issues = None;
+            self.issue_options = OptionsState::NotAsked;
+        }
     }
 
     pub fn known_me(&self) -> Option<&Me> {
