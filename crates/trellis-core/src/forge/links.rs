@@ -1,7 +1,9 @@
 //! Links that came back from a hosting service's API. A compromised or malicious server could
-//! return any URL, so only `https://` links on the service's own host are kept.
+//! return any URL, so only `https://` links on the service's own host are kept (build pages,
+//! which often live on another site, only need to be safe `https://` links).
 
-use super::{Issue, Provider, PullRequest, Target};
+use super::{Checks, Issue, Provider, PullRequest, Target};
+use std::collections::HashMap;
 
 /// The host part of an `https://` URL, lowercased, when the URL is safe to hand to a browser:
 /// no whitespace, control or bidi characters, no `user@` part and no backslashes.
@@ -23,12 +25,28 @@ pub(super) fn web_url(t: &Target, url: String) -> String {
     if ok { url } else { String::new() }
 }
 
+/// `url` when it is a safe `https://` link on any host (CI often runs on another site),
+/// otherwise an empty string.
+pub(super) fn build_url(url: String) -> String {
+    if https_host(&url).is_some() { url } else { String::new() }
+}
+
+pub(super) fn checks_map(mut map: HashMap<String, Checks>) -> HashMap<String, Checks> {
+    for c in map.values_mut() {
+        c.url = build_url(std::mem::take(&mut c.url));
+    }
+    map
+}
+
 pub(super) fn prs(t: &Target, prs: Vec<PullRequest>) -> Vec<PullRequest> {
     prs.into_iter().map(|p| pr(t, p)).collect()
 }
 
 pub(super) fn pr(t: &Target, mut p: PullRequest) -> PullRequest {
     p.url = web_url(t, std::mem::take(&mut p.url));
+    if let Some(c) = &mut p.checks {
+        c.url = build_url(std::mem::take(&mut c.url));
+    }
     p
 }
 
@@ -79,5 +97,39 @@ mod tests {
             web_url(&az, "https://dev.azure.com/contoso/p/_git/r/pullrequest/1".into()),
             "https://dev.azure.com/contoso/p/_git/r/pullrequest/1"
         );
+    }
+
+    #[test]
+    fn build_url_keeps_https_links_on_any_host() {
+        assert_eq!(build_url("https://ci.example.com/build/7".into()), "https://ci.example.com/build/7");
+        for bad in [
+            "http://ci.example.com/build/7",
+            "javascript:alert(1)",
+            "https://a@b/x",
+            r"https://ci.example.com\x",
+            "https://ci.example.com/\u{202e}x",
+        ] {
+            assert_eq!(build_url(bad.into()), "", "{bad}");
+        }
+        let pr_with = |url: &str| PullRequest {
+            id: 1,
+            title: String::new(),
+            description: String::new(),
+            source: String::new(),
+            target: String::new(),
+            author: String::new(),
+            draft: false,
+            reviewers: Vec::new(),
+            head: None,
+            merge_status: None,
+            checks: Some(Checks { url: url.into(), ..Checks::from_counts(1, 0, 0, true) }),
+            url: String::new(),
+        };
+        let gh = t(Provider::GitHub, "github.com");
+        assert_eq!(pr(&gh, pr_with("http://ci.example.com/1")).checks.unwrap().url, "");
+        assert_eq!(pr(&gh, pr_with("https://ci.example.com/1")).checks.unwrap().url, "https://ci.example.com/1");
+        let map =
+            checks_map(HashMap::from([("a".to_owned(), Checks { url: "javascript:x".into(), ..Checks::from_counts(1, 0, 0, true) })]));
+        assert_eq!(map["a"].url, "");
     }
 }

@@ -1,10 +1,15 @@
 //! GitLab.com and GitLab Self-Managed (REST API v4).
 
+use super::checks::per_pr;
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Issue, NewPullRequest, PullRequest, Reviewer, Target, enc, enc_path, get, page, post};
+use super::{
+    Account, Auth, CHECKED_PRS, Checks, Issue, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, enc, enc_path, get, gitlab_checks,
+    page, post,
+};
 use crate::error::Result;
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
 
 pub(super) static GITLAB: ProviderInfo =
     ProviderInfo { name: "GitLab", fixed_host: Some("gitlab.com"), host_hint: "", ..GITLAB_SELF_MANAGED };
@@ -69,7 +74,7 @@ struct ApprovedBy {
     user: User,
 }
 
-fn convert(m: ApiMr, approvals: Approvals) -> PullRequest {
+fn convert(m: ApiMr, approvals: Approvals, checks: Option<Checks>) -> PullRequest {
     let approved: Vec<String> = approvals.approved_by.into_iter().map(|a| a.user.name).collect();
     let mut reviewers: Vec<Reviewer> =
         approved.iter().map(|n| Reviewer { name: n.clone(), state: "approved".into(), required: false }).collect();
@@ -89,7 +94,7 @@ fn convert(m: ApiMr, approvals: Approvals) -> PullRequest {
         reviewers,
         head: m.sha,
         merge_status: m.detailed_merge_status,
-        checks: None,
+        checks,
         url: m.web_url,
     }
 }
@@ -133,14 +138,15 @@ impl super::Forge for GitLab {
 
     fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
         let mrs: Vec<ApiMr> = page::by_link(auth, format!("{}/merge_requests?state=opened&per_page=100", project_api(t)))?;
+        let checks = per_pr(&mrs, |m| gitlab_checks::head_pipeline(t, auth, m.iid));
         let mut out = Vec::with_capacity(mrs.len());
-        for (i, m) in mrs.into_iter().enumerate() {
-            let approvals = if i < 25 {
+        for (i, (m, checks)) in mrs.into_iter().zip(checks).enumerate() {
+            let approvals = if i < CHECKED_PRS {
                 get(auth, &format!("{}/merge_requests/{}/approvals", project_api(t), m.iid)).unwrap_or_default()
             } else {
                 Approvals::default()
             };
-            out.push(convert(m, approvals));
+            out.push(convert(m, approvals, checks));
         }
         Ok(out)
     }
@@ -163,7 +169,7 @@ impl super::Forge for GitLab {
             "remove_source_branch": false,
         });
         let created: ApiMr = post(auth, &format!("{}/merge_requests", project_api(t)), body)?;
-        Ok(convert(created, Approvals::default()))
+        Ok(convert(created, Approvals::default(), None))
     }
 
     fn my_issues(&self, t: &Target, auth: &Auth) -> Result<Vec<Issue>> {
@@ -178,6 +184,10 @@ impl super::Forge for GitLab {
         }
         let url = format!("{}/issues?scope=all&per_page=100&{}", project_api(t), iids.join("&"));
         Ok(page::by_link::<ApiIssue>(auth, url)?.into_iter().map(to_issue).collect())
+    }
+
+    fn commit_checks(&self, t: &Target, auth: &Auth, tips: &[TipQuery]) -> Result<HashMap<String, Checks>> {
+        gitlab_checks::commit_checks(t, auth, tips)
     }
 
     fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
@@ -215,7 +225,7 @@ mod tests {
         )
         .unwrap();
         let a: Approvals = serde_json::from_str(r#"{"approved_by":[{"user":{"name":"Grace","username":"g"}}]}"#).unwrap();
-        let pr = convert(m, a);
+        let pr = convert(m, a, None);
         assert!(pr.draft);
         assert_eq!(pr.approvals(), 1);
         assert_eq!(pr.reviewers.len(), 2);

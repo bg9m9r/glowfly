@@ -101,3 +101,94 @@ fn a_sign_in_page_is_an_auth_error_and_anonymous_is_refused() {
     });
     assert!(verify(&t().account(), &token(Provider::AzureDevOps)).unwrap_err().is_auth());
 }
+
+const REPO: &str = "dev.azure.com/contoso/Fabrikam%20Web/_apis/git/repositories/web%20app";
+const BUILD: &str = "0609b952-1397-4640-95ec-e00a01b2c241";
+
+#[test]
+fn pull_requests_carry_build_policies_and_statuses() {
+    let m = Mock::start(|r| {
+        let route = r.route();
+        if route == format!("GET {REPO}/pullrequests?searchCriteria.status=active&$top=100&api-version=7.1") {
+            Reply::json(PRS.replace(r#""lastMergeSourceCommit""#, r#""repository":{"project":{"id":"p-1"}},"lastMergeSourceCommit""#))
+        } else if route
+            == format!(
+                "GET {BASE}/_apis/policy/evaluations?artifactId=vstfs%3A%2F%2F%2FCodeReview%2FCodeReviewId%2Fp-1%2F17&api-version=7.1-preview.1"
+            )
+        {
+            Reply::json(format!(
+                r#"{{"value":[
+                  {{"status":"approved","configuration":{{"isEnabled":true,"type":{{"id":"{BUILD}"}}}},"context":{{"buildId":41}}}},
+                  {{"status":"rejected","configuration":{{"isEnabled":true,"type":{{"id":"{BUILD}"}}}},"context":{{"buildId":42}}}},
+                  {{"status":"rejected","configuration":{{"isEnabled":true,"type":{{"id":"fa4e907d-c16b-4a4c-9dfa-4906e5d171dd"}}}}}},
+                  {{"status":"notApplicable","configuration":{{"isEnabled":true,"type":{{"id":"{BUILD}"}}}}}},
+                  {{"status":"rejected","configuration":{{"isEnabled":false,"type":{{"id":"{BUILD}"}}}}}}]}}"#
+            ))
+        } else if route == format!("GET {REPO}/pullRequests/17/statuses?api-version=7.1") {
+            Reply::json(
+                r#"{"value":[{"id":1,"state":"pending","context":{"genre":"ci","name":"lint"},"targetUrl":"https://ci.example.com/1"},
+                  {"id":2,"state":"succeeded","context":{"genre":"ci","name":"lint"},"targetUrl":"https://ci.example.com/2"}]}"#,
+            )
+        } else {
+            Reply::not_found()
+        }
+    });
+    let prs = pull_requests(&t(), &token(Provider::AzureDevOps)).unwrap();
+    let c = prs[0].checks.as_ref().unwrap();
+    assert_eq!((c.state, c.passed, c.failed, c.pending, c.complete), (CheckState::Failed, 2, 1, 0, true));
+    assert_eq!(c.url, "https://dev.azure.com/contoso/Fabrikam%20Web/_build/results?buildId=42");
+    assert_eq!(routes(&m).len(), 3);
+}
+
+#[test]
+fn commit_checks_use_branch_builds_and_statuses() {
+    let sha = "c".repeat(40);
+    let builds = format!(
+        "GET {BASE}/_apis/build/builds?branchName=refs%2Fheads%2Ffeature%2F5-login&queryOrder=queueTimeDescending&$top=20&api-version=7.1"
+    );
+    let statuses = format!("GET {REPO}/commits/{sha}/statuses?latestOnly=true&api-version=7.1");
+    let server = |deny_builds: bool| {
+        let (builds, statuses, sha) = (builds.clone(), statuses.clone(), sha.clone());
+        Mock::start(move |r| {
+            let route = r.route();
+            if route == builds {
+                if deny_builds {
+                    return Reply::status(403, r#"{"message":"no Build scope"}"#);
+                }
+                let b = |status: &str, result: &str, version: &str, repo: &str, def: u32, href: &str| {
+                    format!(
+                        r#"{{"status":"{status}","result":{result},"sourceVersion":"{version}","repository":{{"name":"{repo}"}},
+                        "definition":{{"id":{def}}},"_links":{{"web":{{"href":"{href}"}}}}}}"#
+                    )
+                };
+                let list = [
+                    b("inProgress", "null", &sha, "web app", 1, "https://dev.azure.com/contoso/Fabrikam%20Web/_build/results?buildId=9"),
+                    b("completed", r#""failed""#, &sha, "web app", 1, "https://dev.azure.com/x/8"),
+                    b("completed", r#""failed""#, &"d".repeat(40), "web app", 2, "https://dev.azure.com/x/7"),
+                    b("completed", r#""failed""#, &sha, "other", 3, "https://dev.azure.com/x/6"),
+                ];
+                Reply::json(format!(r#"{{"value":[{}]}}"#, list.join(",")))
+            } else if route == statuses {
+                Reply::json(
+                    r#"{"value":[{"id":5,"state":"succeeded","context":{"genre":"sec","name":"scan"},"targetUrl":"https://scan.example.com/5"}]}"#,
+                )
+            } else {
+                Reply::not_found()
+            }
+        })
+    };
+    let tips = [TipQuery { sha: sha.clone(), branch: "feature/5-login".into() }];
+    let m = server(false);
+    let got = commit_checks(&t(), &token(Provider::AzureDevOps), &tips).unwrap();
+    let c = &got[&sha];
+    assert_eq!((c.state, c.passed, c.failed, c.pending), (CheckState::Pending, 1, 0, 1));
+    assert_eq!(c.url, "https://dev.azure.com/contoso/Fabrikam%20Web/_build/results?buildId=9");
+    assert_eq!(routes(&m).len(), 2);
+    drop(m);
+
+    // Without access to builds the statuses still count.
+    let _m = server(true);
+    let got = commit_checks(&t(), &token(Provider::AzureDevOps), &tips).unwrap();
+    let c = &got[&sha];
+    assert_eq!((c.state, c.passed, c.url.as_str()), (CheckState::Passed, 1, "https://scan.example.com/5"));
+}

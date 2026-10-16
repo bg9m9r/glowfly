@@ -226,6 +226,8 @@ fn forge_replies_update_pull_requests_and_errors() {
     let target =
         Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
     st.forge = Some(ForgeState::new(Some(target.clone()), "origin".into(), Some(target.clone())));
+    let checks =
+        Checks { state: CheckState::Pending, passed: 1, failed: 0, pending: 1, complete: true, url: "https://ci.example.com/1".into() };
     let pr = PullRequest {
         id: 7,
         title: "Add search".into(),
@@ -237,14 +239,14 @@ fn forge_replies_update_pull_requests_and_errors() {
         reviewers: Vec::new(),
         head: None,
         merge_status: None,
-        checks: Some(Checks { state: CheckState::Pending, passed: 1, failed: 0, pending: 1, complete: true }),
+        checks: Some(checks.clone()),
         url: "u".into(),
     };
     let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
     let fs = st.forge.as_ref().unwrap();
     assert_eq!(fs.prs.len(), 1);
-    assert_eq!(fs.prs[0].checks, Some(Checks { state: CheckState::Pending, passed: 1, failed: 0, pending: 1, complete: true }));
+    assert_eq!(fs.prs[0].checks, Some(checks));
     assert_eq!(fs.host_status, Status::Ok);
     assert_eq!(fs.pr_label(7), "#7");
 

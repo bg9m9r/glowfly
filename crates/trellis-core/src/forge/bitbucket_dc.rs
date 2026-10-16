@@ -1,13 +1,15 @@
 //! Bitbucket Data Center / Server (REST 1.0). It has no issue tracker.
 
 use super::bitbucket::{Href, Values};
+use super::checks::{full_sha, per_pr};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, NewPullRequest, PullRequest, Reviewer, Target, enc, get, get_text, post};
+use super::{Account, Auth, Checks, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get, get_text, post};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use std::collections::HashMap;
 
 pub(super) static BITBUCKET_DATA_CENTER: ProviderInfo = ProviderInfo {
     name: "Bitbucket Data Center",
@@ -79,7 +81,7 @@ struct DcPr {
     links: DcLinks,
 }
 
-fn convert_dc(p: DcPr) -> PullRequest {
+fn convert_dc(p: DcPr, checks: Option<Checks>) -> PullRequest {
     PullRequest {
         id: p.id,
         title: p.title,
@@ -102,7 +104,7 @@ fn convert_dc(p: DcPr) -> PullRequest {
             .collect(),
         head: p.from_ref.latest_commit,
         merge_status: None,
-        checks: None,
+        checks,
         url: p.links.this.into_iter().next().map(|h| h.href).unwrap_or_default(),
     }
 }
@@ -123,7 +125,12 @@ impl super::Forge for BitbucketDc {
 
     fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
         let url = format!("{}/pull-requests?state=OPEN&limit=100", dc_repo(t));
-        Ok(dc_list::<DcPr>(auth, url)?.into_iter().map(convert_dc).collect())
+        let prs = dc_list::<DcPr>(auth, url)?;
+        let checks = per_pr(&prs, |p| match p.from_ref.latest_commit.as_deref().filter(|c| full_sha(c)) {
+            Some(sha) => bitbucket_checks::dc_commit(auth, &t.host, sha),
+            None => Ok(None),
+        });
+        Ok(prs.into_iter().zip(checks).map(|(p, c)| convert_dc(p, c)).collect())
     }
 
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
@@ -147,7 +154,7 @@ impl super::Forge for BitbucketDc {
             "fromRef": { "id": format!("refs/heads/{}", pr.source), "repository": repo },
             "toRef": { "id": format!("refs/heads/{}", pr.target), "repository": repo },
         });
-        Ok(convert_dc(post(auth, &format!("{}/pull-requests", dc_repo(t)), body)?))
+        Ok(convert_dc(post(auth, &format!("{}/pull-requests", dc_repo(t)), body)?, None))
     }
 
     fn token_url(&self, account: &Account) -> Option<String> {
@@ -160,6 +167,10 @@ impl super::Forge for BitbucketDc {
             Some(user) => format!("https://{}/users/{}/repos/{}/browse", t.host, enc(user), enc(&t.repo)),
             None => format!("https://{}/projects/{}/repos/{}/browse", t.host, enc(&t.owner), enc(&t.repo)),
         }
+    }
+
+    fn commit_checks(&self, t: &Target, auth: &Auth, tips: &[TipQuery]) -> Result<HashMap<String, Checks>> {
+        bitbucket_checks::dc_commits(t, auth, tips)
     }
 
     fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
@@ -179,7 +190,7 @@ mod tests {
             "links":{"self":[{"href":"https://bb.acme.io/projects/P/repos/r/pull-requests/3"}]}}]}"#,
         )
         .unwrap();
-        let pr = convert_dc(d.values.into_iter().next().unwrap());
+        let pr = convert_dc(d.values.into_iter().next().unwrap(), None);
         assert_eq!(
             (pr.source.as_str(), pr.target.as_str(), pr.reviewers[0].state.as_str()),
             ("PROJ-1-port", "master", "changes requested")

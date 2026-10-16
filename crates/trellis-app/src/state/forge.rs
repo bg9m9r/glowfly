@@ -1,5 +1,6 @@
 //! Pull requests and issues for the open repository.
 
+use super::build_status::TipChecks;
 use git2::Oid;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
@@ -33,6 +34,8 @@ pub struct ForgeState {
     pub pending: HashSet<String>,
     pub default_branch: Option<String>,
     pub last_refresh: Option<Instant>,
+    /// CI status of the branch tips on screen.
+    pub tips: TipChecks,
 }
 
 impl ForgeState {
@@ -52,7 +55,14 @@ impl ForgeState {
             pending: HashSet::new(),
             default_branch: None,
             last_refresh: None,
+            tips: TipChecks::default(),
         }
+    }
+
+    /// Replies in flight were dropped (the tab was parked): nothing is loading any more.
+    pub fn replies_dropped(&mut self) {
+        self.loading = 0;
+        self.tips.in_flight.clear();
     }
 
     pub fn pr_for_branch(&self, branch: &str) -> Option<&PullRequest> {

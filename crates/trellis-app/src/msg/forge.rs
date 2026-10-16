@@ -50,6 +50,9 @@ pub enum ForgeMsg {
     CreatePrDialog(String),
     CreatePr(NewPullRequest),
     ForgeReplied(ForgeReply),
+    /// The branch tips drawn this frame (LOCAL and REMOTE rows, graph ref labels), sent by the
+    /// shell when the set changes.
+    TipsShown(Vec<git2::Oid>),
     Connected {
         account: Account,
         method: String,
@@ -71,6 +74,7 @@ impl ForgeMsg {
             | Self::CreatePrDialog(..)
             | Self::CreatePr(..)
             | Self::ForgeReplied(..)
+            | Self::TipsShown(..)
             | Self::Connected { .. } => None,
         }
     }

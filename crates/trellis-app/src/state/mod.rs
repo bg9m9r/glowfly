@@ -4,6 +4,7 @@
 pub mod askpass;
 pub mod blame;
 pub mod branches;
+pub mod build_status;
 pub mod clone;
 pub mod clone_service;
 pub mod commit;

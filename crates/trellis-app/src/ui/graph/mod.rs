@@ -20,12 +20,14 @@ use crate::msg::GraphMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::state::build_status::MAX_SEEN;
 use crate::state::search::GraphRows;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, RichText, Sense, Stroke, pos2, vec2};
 use git2::Oid;
 use paint::{Columns, draw_lanes, draw_ref_labels, lane_x, paint_pencil, wip_counts};
 use std::collections::HashMap;
+use trellis_core::repo::RefKind;
 use trellis_core::settings::DescriptionMode;
 
 const ROW_H: f32 = 30.0;
@@ -104,6 +106,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let stats = &st.stats;
         let mut want_stats: Vec<Oid> = Vec::new();
         let mut hover_tip_next = None;
+        let tips = st.forge.as_ref().map(|f| &f.tips);
+        let mut tips_seen: Vec<Oid> = Vec::new();
         let pointer = ui.ctx().pointer_hover_pos();
         // While more history loads, one more row below the last commit says so.
         let more_row = st.shows_loading_more_row();
@@ -197,7 +201,12 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     let rp = painter.with_clip_rect(cols.rect(cols.refs, rect));
                     let mut labels_end = cols.refs.0;
                     if let Some(labels) = snap.refs.get(&c.oid) {
-                        let (label_rect, end) = draw_ref_labels(&rp, cols.refs.0 + 6.0, cols.refs.1 - 6.0, mid, labels, lane_col);
+                        let mut mark = None;
+                        if tips.is_some() && labels.iter().any(|l| matches!(l.kind, RefKind::Local | RefKind::Remote)) {
+                            tips_seen.push(c.oid);
+                            mark = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
+                        }
+                        let (label_rect, end) = draw_ref_labels(&rp, cols.refs.0 + 6.0, cols.refs.1 - 6.0, mid, labels, lane_col, mark);
                         if cols_cfg.tree {
                             gp.line_segment([pos2(cols.graph.0, mid), pos2(node_x - 10.0, mid)], Stroke::new(1.5_f32, lane_col));
                             rp.line_segment([pos2(end, mid), pos2(cols.refs.1, mid)], Stroke::new(1.5_f32, lane_col));
@@ -329,6 +338,12 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         }
         if hover_tip_next.is_some() {
             st.view.hover_tip_next = hover_tip_next;
+        }
+        let seen = &mut st.view.tips_seen;
+        for o in tips_seen {
+            if seen.len() < MAX_SEEN && !seen.contains(&o) {
+                seen.push(o);
+            }
         }
         if !want_stats.is_empty() {
             msgs.push(Msg::Repo(RepoMsg::WantStats(want_stats)));

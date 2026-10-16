@@ -54,6 +54,8 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let idle = st.job.is_none();
     let sections = &mut st.view.sections;
     let hover_next = &mut st.view.hover_tip_next;
+    let tips_seen = &mut st.view.tips_seen;
+    let slot = super::build_status::tip_slot(fs);
 
     widgets::section_header(ui, "LOCAL", Some(snap.locals.len()), &mut sections.local);
     if sections.local {
@@ -73,13 +75,23 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             }
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
             let selected = b.oid.is_some_and(|o| sel == Selection::Commit(o));
-            let r = widgets::list_row(ui, 26.0, &label, (!right.is_empty()).then_some((right.trim(), color::weak())), selected, b.is_head);
+            let right = (!right.is_empty()).then_some((right.trim(), color::weak()));
+            let (r, marker) = widgets::list_row_slot(ui, 26.0, &label, right, slot, selected, b.is_head);
             if r.hovered() {
                 *hover_next = b.oid;
             }
-            let r = match (&b.upstream, &b.tracking) {
-                (Some(u), _) => r.on_hover_text(format!("tracking {u}")),
-                (None, Some(t)) => r.on_hover_text(format!("tracking {} (not on the remote)", t.display())),
+            let tip = super::build_status::tip_row(ui, &r, marker, fs, b.oid, tips_seen);
+            let tracking = match (&b.upstream, &b.tracking) {
+                (Some(u), _) => Some(format!("tracking {u}")),
+                (None, Some(t)) => Some(format!("tracking {} (not on the remote)", t.display())),
+                (None, None) => None,
+            };
+            let r = match (tracking, tip) {
+                (Some(t), Some(c)) => r.on_hover_text(format!(
+                    "{t}
+{c}"
+                )),
+                (Some(t), None) | (None, Some(t)) => r.on_hover_text(t),
                 (None, None) => r,
             };
             if r.double_clicked() {
@@ -97,7 +109,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let connections = &st.settings.connections;
     let ctx =
         super::remotes::Ctx { shown: &shown, sel: &sel, current: &current, fs, graph, idle, filtering: !filter.is_empty(), connections };
-    super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, msgs);
+    super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, tips_seen, msgs);
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {
         let title = if f.pr_noun() == "merge request" { "MERGE REQUESTS" } else { "PULL REQUESTS" };
@@ -204,6 +216,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
         }
         r.context_menu(|ui| {
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));
+            super::build_status::pr_menu_item(ui, pr, msgs);
             let checkout = crate::state::branches::pr_checkout(snap, &f.remote, &pr.source);
             let (blocked, cmds) = match checkout {
                 Ok(cmd) => (None, vec![cmd]),

@@ -32,7 +32,7 @@ pub(super) fn api(host: &str, provider: Provider) -> String {
     if provider == Provider::GitHub { "https://api.github.com".into() } else { format!("https://{host}/api/v3") }
 }
 
-fn graphql_url(t: &Target) -> String {
+pub(super) fn graphql_url(t: &Target) -> String {
     if t.provider == Provider::GitHub { "https://api.github.com/graphql".into() } else { format!("https://{}/api/graphql", t.host) }
 }
 
@@ -264,6 +264,10 @@ impl super::Forge for GitHub {
 
     fn create_fork(&self, t: &Target, auth: &Auth, wait: &super::Wait) -> Result<super::CreatedFork> {
         super::forks::github::create(t, auth, wait)
+    }
+
+    fn commit_checks(&self, t: &Target, auth: &Auth, tips: &[super::TipQuery]) -> Result<HashMap<String, Checks>> {
+        github_checks::commit_rollups(t, auth, tips)
     }
 
     fn issues(&self, t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {

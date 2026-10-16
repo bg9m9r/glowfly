@@ -88,3 +88,85 @@ fn forbidden_is_reported_as_such() {
     let err = default_branch(&remote("https://gitlab.com/g/app"), &token(Provider::GitLab)).unwrap_err();
     assert!(matches!(err, Error::Forbidden(_)), "{err}");
 }
+
+const GL: &str = "GET gitlab.com/api/v4/projects/g%2Fapp";
+
+/// `count` merge requests numbered from 1.
+fn many_mrs(count: usize) -> String {
+    let mr = |n: usize| {
+        format!(
+            r#"{{"iid":{n},"title":"M","source_branch":"b{n}","target_branch":"main","author":{{"name":"Ada"}},
+            "web_url":"https://gitlab.com/g/app/-/merge_requests/{n}"}}"#
+        )
+    };
+    format!("[{}]", (1..=count).map(mr).collect::<Vec<_>>().join(","))
+}
+
+fn mr_lookups(m: &Mock) -> usize {
+    routes(m).iter().filter(|r| r.starts_with(&format!("{GL}/merge_requests/")) && !r.ends_with("/approvals")).count()
+}
+
+#[test]
+fn merge_requests_carry_the_head_pipeline() {
+    let m = Mock::start(|r| {
+        let route = r.route();
+        match route.strip_prefix(GL) {
+            Some("/merge_requests?state=opened&per_page=100") => {
+                Reply::json(MRS.replace("gitlab.acme.io/group/sub/app", "gitlab.com/g/app"))
+            }
+            Some("/merge_requests/3") => Reply::json(
+                r#"{"iid":3,"head_pipeline":{"status":"failed","web_url":"https://gitlab.com/g/app/-/pipelines/9","detailed_status":{"group":"failed"}}}"#,
+            ),
+            Some("/merge_requests/4") => Reply::json(r#"{"iid":4,"head_pipeline":null}"#),
+            _ => Reply::json(r#"{"approved_by":[]}"#),
+        }
+    });
+    let (t, auth) = (remote("https://gitlab.com/g/app"), token(Provider::GitLab));
+    let prs = pull_requests(&t, &auth).unwrap();
+    let c = prs[0].checks.as_ref().unwrap();
+    assert_eq!((c.state, c.complete, c.url.as_str()), (CheckState::Failed, false, "https://gitlab.com/g/app/-/pipelines/9"));
+    assert_eq!(c.summary(), "Checks: some failed");
+    assert_eq!(prs[1].checks, None);
+    assert_eq!(mr_lookups(&m), 2);
+    drop(m);
+
+    // A token that can't read pipelines: the first refusal stops the lookups.
+    let m = Mock::start(|r| match r.route().strip_prefix(GL) {
+        Some("/merge_requests?state=opened&per_page=100") => Reply::json(many_mrs(5)),
+        Some(p) if p.ends_with("/approvals") => Reply::json(r#"{"approved_by":[]}"#),
+        _ => Reply::status(403, r#"{"message":"403 Forbidden"}"#),
+    });
+    let prs = pull_requests(&t, &auth).unwrap();
+    assert!(prs.iter().all(|p| p.checks.is_none()));
+    assert_eq!(mr_lookups(&m), 1);
+    drop(m);
+
+    // Past the first CHECKED_PRS merge requests, nothing is asked.
+    let m = Mock::start(|r| match r.route().strip_prefix(GL) {
+        Some("/merge_requests?state=opened&per_page=100") => Reply::json(many_mrs(30)),
+        Some(p) if p.ends_with("/approvals") => Reply::json(r#"{"approved_by":[]}"#),
+        _ => Reply::json(r#"{"head_pipeline":{"status":"success","web_url":"https://gitlab.com/g/app/-/pipelines/1"}}"#),
+    });
+    let prs = pull_requests(&t, &auth).unwrap();
+    assert_eq!(prs.iter().filter(|p| p.checks.is_some()).count(), CHECKED_PRS);
+    assert!(prs[CHECKED_PRS..].iter().all(|p| p.checks.is_none()));
+    assert_eq!(mr_lookups(&m), CHECKED_PRS);
+}
+
+#[test]
+fn commit_checks_read_the_last_pipeline() {
+    let (a, b) = ("a".repeat(40), "b".repeat(40));
+    let running = format!("{GL}/repository/commits/{a}");
+    let _m = Mock::start(move |r| {
+        if r.route() == running {
+            Reply::json(r#"{"id":"a","last_pipeline":{"status":"running","web_url":"https://gitlab.com/g/app/-/pipelines/4"}}"#)
+        } else {
+            Reply::not_found()
+        }
+    });
+    let tips = [TipQuery { sha: a.clone(), branch: "main".into() }, TipQuery { sha: b.clone(), branch: "gone".into() }];
+    let got = commit_checks(&remote("https://gitlab.com/g/app"), &token(Provider::GitLab), &tips).unwrap();
+    assert_eq!(got.len(), 1);
+    assert_eq!((got[&a].state, got[&a].url.as_str()), (CheckState::Pending, "https://gitlab.com/g/app/-/pipelines/4"));
+    assert!(!got.contains_key(&b));
+}

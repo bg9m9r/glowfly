@@ -12,9 +12,9 @@ const REVIEWS: &str = r#"{"data":{"repository":{
   "p4":{"reviews":{"nodes":[{"author":{"login":"grace"},"state":"CHANGES_REQUESTED"},{"author":{"login":"grace"},"state":"APPROVED"},
     {"author":{"login":"bob"},"state":"COMMENTED"},{"author":null,"state":"APPROVED"}]},
     "commits":{"nodes":[{"commit":{"statusCheckRollup":{"state":"FAILURE","contexts":{"totalCount":3,"nodes":[
-      {"__typename":"CheckRun","status":"COMPLETED","conclusion":"SUCCESS"},
-      {"__typename":"CheckRun","status":"COMPLETED","conclusion":"FAILURE"},
-      {"__typename":"StatusContext","state":"SUCCESS"}]}}}}]}},
+      {"__typename":"CheckRun","status":"COMPLETED","conclusion":"SUCCESS","detailsUrl":"https://ci.example.com/ok","url":"https://github.com/o/r/runs/1"},
+      {"__typename":"CheckRun","status":"COMPLETED","conclusion":"FAILURE","detailsUrl":"https://ci.example.com/build/7","url":"https://github.com/o/r/runs/2"},
+      {"__typename":"StatusContext","state":"SUCCESS","targetUrl":"https://ci.example.com/s"}]}}}}]}},
   "p5":{"reviews":{"nodes":[]},"commits":{"nodes":[{"commit":{"statusCheckRollup":null}}]}}}}}"#;
 
 /// `graphql` is the GraphQL endpoint's route.
@@ -53,7 +53,10 @@ fn lists_pull_requests_with_review_states() {
     let states: Vec<(&str, &str)> = p.reviewers.iter().map(|r| (r.name.as_str(), r.state.as_str())).collect();
     assert_eq!(states, [("grace", "approved"), ("linus", "requested")]);
     assert!(p.head_matches("abcdef1234567"));
-    assert_eq!(p.checks, Some(Checks { state: CheckState::Failed, passed: 2, failed: 1, pending: 0, complete: true }));
+    let c = p.checks.as_ref().unwrap();
+    assert_eq!((c.state, c.passed, c.failed, c.pending, c.complete), (CheckState::Failed, 2, 1, 0, true));
+    // The failing run's page is the one offered.
+    assert_eq!(c.url, "https://ci.example.com/build/7");
     // A link to another host is dropped; the rest of the pull request stays.
     assert_eq!((prs[1].id, prs[1].url.as_str(), prs[1].head.as_deref()), (5, "", None));
     // No CI on this one.
@@ -230,4 +233,50 @@ fn verifies_and_reads_the_default_branch() {
     let auth = token(Provider::GitHub);
     assert_eq!(verify(&t.account(), &auth).unwrap(), "ada");
     assert_eq!(default_branch(&t, &auth).unwrap().as_deref(), Some("trunk"));
+}
+
+fn sha(n: u8) -> String {
+    format!("{n:x}").repeat(40)
+}
+
+fn tip(sha: String, branch: &str) -> TipQuery {
+    TipQuery { sha, branch: branch.into() }
+}
+
+#[test]
+fn commit_checks_are_batched_by_oid() {
+    let m = Mock::start(|r| match r.route().as_str() {
+        "POST api.github.com/graphql" => Reply::json(
+            r#"{"data":{"repository":{
+              "c0":{"statusCheckRollup":{"state":"PENDING","contexts":{"totalCount":1,"nodes":[
+                {"__typename":"CheckRun","status":"IN_PROGRESS","conclusion":null,"detailsUrl":"javascript:alert(1)"}]}}},
+              "c1":null}}}"#,
+        ),
+        _ => Reply::not_found(),
+    });
+    let tips = [tip(sha(1), "main"), tip("abc1234".into(), "short"), tip(sha(2), "gone")];
+    let got = commit_checks(&remote("https://github.com/o/r"), &token(Provider::GitHub), &tips).unwrap();
+    assert_eq!(got.len(), 1);
+    let c = &got[&sha(1)];
+    // An unsafe link is dropped.
+    assert_eq!((c.state, c.pending, c.url.as_str()), (CheckState::Pending, 1, ""));
+    let sent = find(&m, "POST api.github.com/graphql").json();
+    let query = sent["query"].as_str().unwrap();
+    assert!(query.contains("c0: object(oid: $o0)") && query.contains("... on Commit") && query.contains("$o1: GitObjectID!"), "{query}");
+    // The short id was never sent.
+    assert_eq!(sent["variables"], serde_json::json!({"owner":"o","repo":"r","o0":sha(1),"o1":sha(2)}));
+    assert!(!query.contains("$o2"), "{query}");
+    // Nothing to ask: no call at all.
+    let none = commit_checks(&remote("https://github.com/o/r"), &token(Provider::GitHub), &[tip("HEAD".into(), "x")]).unwrap();
+    assert!(none.is_empty());
+    assert_eq!(routes(&m).len(), 1);
+}
+
+#[test]
+fn commit_checks_unsupported_server() {
+    let _m =
+        Mock::start(|_| Reply::json(r#"{"data":{"repository":null},"errors":[{"message":"Field 'statusCheckRollup' doesn't exist"}]}"#));
+    let t = remote("https://github.acme.io/o/r");
+    let err = commit_checks(&t, &token(Provider::GitHubEnterprise), &[tip(sha(3), "main")]).unwrap_err();
+    assert!(matches!(err, Error::Unsupported(_)), "{err}");
 }

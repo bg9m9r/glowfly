@@ -88,6 +88,9 @@ pub struct ViewState {
     /// Branch tip under the pointer (sidebar or BRANCH/TAG column), for row highlighting.
     pub hover_tip: Option<Oid>,
     pub hover_tip_next: Option<Oid>,
+    /// Branch tips drawn this frame (LOCAL and REMOTE rows, graph ref labels), filled by the
+    /// views and taken by the shell.
+    pub tips_seen: Vec<Oid>,
     /// The hovered ref's tip and the commits on its branch, for row highlighting. Set by
     /// `update` (`GraphMsg::HoverRef`); the graph only reads it.
     pub highlight: Option<(Oid, HashSet<Oid>)>,
@@ -143,6 +146,7 @@ impl Default for ViewState {
             diff_visible_rows: 0,
             hover_tip: None,
             hover_tip_next: None,
+            tips_seen: Vec::new(),
             highlight: None,
             base_set: None,
             was_focused: true,

@@ -48,6 +48,10 @@ pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: 
         ForgeCall::Create(pr) => {
             vec![ForgeResult::Created(forge::create_pull_request(t, &auth, &pr).map(Box::new).map_err(ForgeError::from))]
         }
+        ForgeCall::TipChecks(tips) => {
+            let r = forge::commit_checks(t, &auth, &tips).map_err(ForgeError::from);
+            vec![ForgeResult::TipChecks(tips, r)]
+        }
     };
     ForgeReply { target, auth: Some(auth), results }
 }

@@ -31,7 +31,7 @@ fn cloud_pull_requests_with_app_password() {
     assert!(p.head_matches("0123456789abcdef"));
     // Plain-http links are dropped.
     assert_eq!((prs[1].id, prs[1].url.as_str()), (13, ""));
-    let req = find(&m, "GET api.bitbucket.org/");
+    let req = find(&m, "GET api.bitbucket.org/2.0/repositories/team/app/pullrequests?");
     assert_eq!(req.header("Authorization"), Some(basic("ada", "app-pass").as_str()));
     assert_eq!(req.header("X-GitHub-Api-Version"), None);
 }
@@ -140,4 +140,72 @@ fn data_center_sign_in_page_is_not_a_user_name() {
     let _m = Mock::start(|_| Reply::text("<!DOCTYPE html><html>log in</html>"));
     let t = remote("https://bitbucket.acme.io/scm/PROJ/api.git");
     assert!(verify(&t.account(), &token(Provider::BitbucketDataCenter)).unwrap_err().is_auth());
+}
+
+const STATUSES: &str = r#"{"values":[{"state":"SUCCESSFUL","url":"https://ci.example.com/1"},{"state":"FAILED","url":"https://ci.example.com/2"},
+  {"state":"INPROGRESS","url":"https://ci.example.com/3"},{"state":"STOPPED"}]}"#;
+
+#[test]
+fn cloud_pull_requests_carry_build_statuses() {
+    let m = Mock::start(|r| match r.route().as_str() {
+        "GET api.bitbucket.org/2.0/repositories/team/app/pullrequests?state=OPEN&pagelen=50&fields=%2Bvalues.participants" => {
+            Reply::json(CLOUD_PRS)
+        }
+        "GET api.bitbucket.org/2.0/repositories/team/app/pullrequests/12/statuses?pagelen=100" => Reply::json(STATUSES),
+        _ => Reply::not_found(),
+    });
+    let prs = pull_requests(&remote("https://bitbucket.org/team/app"), &token(Provider::Bitbucket)).unwrap();
+    let c = prs[0].checks.as_ref().unwrap();
+    assert_eq!((c.state, c.passed, c.failed, c.pending, c.complete), (CheckState::Failed, 1, 2, 1, true));
+    assert_eq!(c.url, "https://ci.example.com/2");
+    // Unknown to the statuses API (404): none, and the next pull request was still asked.
+    assert_eq!(prs[1].checks, None);
+    assert_eq!(routes(&m).len(), 3);
+}
+
+#[test]
+fn cloud_commit_checks() {
+    let sha = "e".repeat(40);
+    let route = format!("GET api.bitbucket.org/2.0/repositories/team/app/commit/{sha}/statuses?pagelen=100");
+    let _m = Mock::start(move |r| {
+        if r.route() == route {
+            Reply::json(
+                r#"{"values":[{"state":"SUCCESSFUL","url":"https://ci.example.com/9"}],"next":"https://api.bitbucket.org/2.0/x?page=2"}"#,
+            )
+        } else {
+            Reply::not_found()
+        }
+    });
+    let tips = [TipQuery { sha: sha.clone(), branch: "main".into() }];
+    let got = commit_checks(&remote("https://bitbucket.org/team/app"), &token(Provider::Bitbucket), &tips).unwrap();
+    // A second page means not every status was read.
+    assert_eq!((got[&sha].state, got[&sha].complete, got[&sha].url.as_str()), (CheckState::Passed, false, "https://ci.example.com/9"));
+}
+
+#[test]
+fn data_center_pull_requests_carry_build_statuses() {
+    let head = "f".repeat(40);
+    let prs = DC_PRS.replace("deadbeef00", &head);
+    let statuses = format!("GET bitbucket.acme.io/rest/build-status/1.0/commits/{head}?limit=100");
+    let m = Mock::start(move |r| {
+        let route = r.route();
+        if route == "GET bitbucket.acme.io/rest/api/1.0/projects/PROJ/repos/api/pull-requests?state=OPEN&limit=100" {
+            Reply::json(prs.clone())
+        } else if route == statuses {
+            Reply::json(r#"{"isLastPage":false,"values":[{"state":"INPROGRESS","url":"https://jenkins.acme.io/job/1"}]}"#)
+        } else {
+            Reply::not_found()
+        }
+    });
+    let t = remote("https://bitbucket.acme.io/scm/PROJ/api.git");
+    let auth = token(Provider::BitbucketDataCenter);
+    let got = pull_requests(&t, &auth).unwrap();
+    let c = got[0].checks.as_ref().unwrap();
+    assert_eq!((c.state, c.complete, c.url.as_str()), (CheckState::Pending, false, "https://jenkins.acme.io/job/1"));
+    assert_eq!(c.summary(), "Checks: pending");
+
+    let tips = [TipQuery { sha: head.clone(), branch: "PROJ-1-port".into() }, TipQuery { sha: "0".repeat(40), branch: "x".into() }];
+    let by_sha = commit_checks(&t, &auth, &tips).unwrap();
+    assert_eq!(by_sha.keys().collect::<Vec<_>>(), [&head]);
+    assert_eq!(routes(&m).len(), 4);
 }

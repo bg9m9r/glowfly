@@ -15,10 +15,14 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
             if let Some(fs) = st.forge.as_mut() {
                 fs.host_status = Status::Idle;
                 fs.tracker_status = Status::Idle;
+                if interactive {
+                    fs.tips.expire();
+                }
             }
             refresh(st, true, interactive, now, fx);
         }
         ForgeMsg::ForgeReplied(reply) => replied(st, reply, now),
+        ForgeMsg::TipsShown(oids) => super::build_status::shown(st, oids),
         ForgeMsg::CreatePrDialog(source) => open_create_pr(st, source, fx),
         ForgeMsg::CreatePr(pr) => {
             if let Some(target) = st.forge.as_ref().and_then(|f| f.host.clone()) {
@@ -93,7 +97,7 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
 
 /// Calls the service, unless it is a self-hosted server only guessed from the remote URL: those
 /// are contacted (and sent credentials) only once the user connects them in Preferences.
-fn request(st: &mut AppState, target: Target, interactive: bool, call: ForgeCall, fx: &mut Vec<Effect>) {
+pub(super) fn request(st: &mut AppState, target: Target, interactive: bool, call: ForgeCall, fx: &mut Vec<Effect>) {
     // Signing in (resolve_auth) may ask the repository's own credential helper.
     if !st.runs_git_unasked() {
         tracing::debug!("forge request held: repository not trusted");
@@ -243,6 +247,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant) {
                 prs_changed = true;
             }
             ForgeResult::Created(Err(e)) => logs.push((false, format!("Creating the {} failed: {}", fs.pr_noun(), e.message))),
+            ForgeResult::TipChecks(asked, r) => super::build_status::replied(fs, &asked, r.map_err(drop), now),
         }
     }
     for (ok, text) in logs {
@@ -251,6 +256,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant) {
     }
     if prs_changed {
         resolve_pr_heads(st);
+        super::build_status::seed_from_prs(st, now);
     }
 }
 
@@ -354,6 +360,7 @@ fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
         if fs.host.as_ref().is_some_and(|t| t.account() == *account) {
             fs.prs.clear();
             fs.pr_heads.clear();
+            fs.tips = Default::default();
             fs.host_status = Status::Error(msg.clone());
         }
         if fs.tracker.as_ref().is_some_and(|t| t.account() == *account) {

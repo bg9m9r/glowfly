@@ -1,12 +1,14 @@
 //! Bitbucket Cloud (API 2.0). Data Center / Server is in `bitbucket_dc`.
 
+use super::checks::per_pr;
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Issue, NewPullRequest, PullRequest, Reviewer, Target, enc, get, post};
+use super::{Account, Auth, Checks, Issue, NewPullRequest, PullRequest, Reviewer, Target, TipQuery, bitbucket_checks, enc, get, post};
 use crate::error::Result;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use std::collections::HashMap;
 
 pub(super) static BITBUCKET: ProviderInfo = ProviderInfo {
     name: "Bitbucket",
@@ -110,7 +112,7 @@ struct CloudPr {
     participants: Vec<Participant>,
 }
 
-fn convert_cloud(p: CloudPr) -> PullRequest {
+fn convert_cloud(p: CloudPr, checks: Option<Checks>) -> PullRequest {
     let reviewers = p
         .participants
         .into_iter()
@@ -136,7 +138,7 @@ fn convert_cloud(p: CloudPr) -> PullRequest {
         // Bitbucket Cloud reports a 12-character hash prefix.
         head: p.source.commit.map(|c| c.hash).filter(|h| !h.is_empty()),
         merge_status: None,
-        checks: None,
+        checks,
         url: p.links.html.href,
     }
 }
@@ -175,7 +177,9 @@ impl super::Forge for Bitbucket {
 
     fn pull_requests(&self, t: &Target, auth: &Auth) -> Result<Vec<PullRequest>> {
         let url = format!("{}/pullrequests?state=OPEN&pagelen=50&fields=%2Bvalues.participants", cloud_repo(t));
-        Ok(cloud_list::<CloudPr>(auth, url)?.into_iter().map(convert_cloud).collect())
+        let prs = cloud_list::<CloudPr>(auth, url)?;
+        let checks = per_pr(&prs, |p| bitbucket_checks::cloud_pr(t, auth, p.id));
+        Ok(prs.into_iter().zip(checks).map(|(p, c)| convert_cloud(p, c)).collect())
     }
 
     fn default_branch(&self, t: &Target, auth: &Auth) -> Result<Option<String>> {
@@ -194,7 +198,7 @@ impl super::Forge for Bitbucket {
             "source": { "branch": { "name": pr.source } },
             "destination": { "branch": { "name": pr.target } },
         });
-        Ok(convert_cloud(post(auth, &format!("{}/pullrequests", cloud_repo(t)), body)?))
+        Ok(convert_cloud(post(auth, &format!("{}/pullrequests", cloud_repo(t)), body)?, None))
     }
 
     /// Assigned open issues; repositories with the issue tracker turned off have none.
@@ -228,6 +232,10 @@ impl super::Forge for Bitbucket {
         Some("https://bitbucket.org/account/settings/app-passwords/".into())
     }
 
+    fn commit_checks(&self, t: &Target, auth: &Auth, tips: &[TipQuery]) -> Result<HashMap<String, Checks>> {
+        bitbucket_checks::cloud_commits(t, auth, tips)
+    }
+
     fn forks(&self, t: &Target, auth: &Auth) -> Result<super::ForkList> {
         super::forks::bitbucket::cloud(t, auth)
     }
@@ -245,7 +253,7 @@ mod tests {
             "participants":[{"user":{"display_name":"Grace"},"role":"REVIEWER","approved":true},{"user":{"display_name":"Bob"},"role":"PARTICIPANT","approved":false}]}]}"#,
         )
         .unwrap();
-        let pr = convert_cloud(p.values.into_iter().next().unwrap());
+        let pr = convert_cloud(p.values.into_iter().next().unwrap(), None);
         assert_eq!((pr.id, pr.source.as_str(), pr.approvals(), pr.reviewers.len()), (12, "7-fix", 1, 1));
         assert!(pr.head_matches("0123456789abcdef0000"));
     }

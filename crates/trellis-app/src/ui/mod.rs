@@ -7,8 +7,8 @@ mod avatars;
 mod blame;
 mod branch_dialogs;
 mod branch_menu;
-mod central;
 mod build_status;
+mod central;
 mod clone_dialog;
 mod clone_service;
 mod commit_box;
@@ -120,10 +120,11 @@ mod snapshot_tests_path_warnings;
 #[cfg(test)]
 mod snapshot_tests_platform_dialogs;
 #[cfg(test)]
+mod snapshot_tests_pr_checks;
+#[cfg(test)]
 mod snapshot_tests_prefs_keyboard;
 #[cfg(test)]
 mod snapshot_tests_prefs_notify;
-mod snapshot_tests_pr_checks;
 #[cfg(test)]
 mod snapshot_tests_profiles;
 #[cfg(test)]
@@ -339,9 +340,11 @@ impl eframe::App for TrellisApp {
         self.st.view.now = chrono::Local::now().timestamp();
         self.st.view.utc_offset = trellis_core::dates::local_offset();
 
-        let mut msgs = vec![Msg::Tick(Instant::now())];
+        let now = Instant::now();
+        let mut msgs = vec![Msg::Tick(now)];
         self.input(ctx, &mut msgs);
         draw(ctx, &mut self.st, &mut self.cache, &mut msgs);
+        build_status::after_draw(&mut self.st, ctx, now, &mut msgs);
         let wanted = self.cache.avatars.take_wanted();
         if !wanted.is_empty() {
             msgs.push(Msg::Avatars(AvatarMsg::WantAvatars(wanted)));

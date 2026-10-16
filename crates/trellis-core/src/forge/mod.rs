@@ -3,19 +3,23 @@
 //! Bitbucket, Azure DevOps and Jira, behind one common model.
 
 mod azure;
+mod azure_checks;
+mod azure_remote;
 mod bitbucket;
+mod bitbucket_checks;
 mod bitbucket_dc;
 mod github;
 mod github_checks;
 mod gitlab;
+mod gitlab_checks;
 mod jira;
 
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 mod auth;
-mod forks;
 mod checks;
+mod forks;
 mod http;
 mod links;
 mod page;
@@ -31,8 +35,9 @@ pub use auth::{
     Auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact, resolve_auth,
     save_token,
 };
+pub use checks::{CHECKED_PRS, CheckState, Checks, TipQuery};
+use checks::{TIPS_PER_CALL, full_sha};
 pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find_my_fork, list_forks, remote_name_for, same_repository};
-pub use checks::{CheckState, Checks};
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
 pub use links::https_host;
@@ -43,6 +48,7 @@ pub use remote::{Connection, parse_host, parse_remote};
 pub use ssh_keys::{
     AddKeyOutcome, RegisteredKey, add_ssh_key, default_title, list_ssh_keys, needs_fallback, same_key, ssh_keys_page, title_problem,
 };
+use std::collections::HashMap;
 pub use user_repos::{HostedRepo, MyRepos, lists_my_repos, my_repos};
 pub use web::{NoWebPage, WebPage, web_page};
 
@@ -132,7 +138,8 @@ pub struct PullRequest {
     /// Head commit SHA (Bitbucket Cloud reports only a 12-character prefix).
     pub head: Option<String>,
     pub merge_status: Option<String>,
-    /// CI status of the head commit; None when the service reported none (only GitHub is read so far).
+    /// CI status of the head commit; None when the service reported none (or the pull request
+    /// is past the first `CHECKED_PRS` on a service asked once per pull request).
     pub checks: Option<Checks>,
     /// Web page; empty when the service sent no usable link.
     pub url: String,
@@ -205,6 +212,11 @@ pub trait Forge: Sync {
         String::new()
     }
 
+    /// CI status of branch tips, by full commit id; commits left out of the map have none.
+    fn commit_checks(&self, _t: &Target, _auth: &Auth, _tips: &[TipQuery]) -> Result<HashMap<String, Checks>> {
+        Ok(HashMap::new())
+    }
+
     /// Where to create a personal access token.
     fn token_url(&self, account: &Account) -> Option<String>;
 
@@ -255,6 +267,16 @@ pub fn default_branch(t: &Target, auth: &Auth) -> Result<Option<String>> {
 
 pub fn create_pull_request(t: &Target, auth: &Auth, pr: &NewPullRequest) -> Result<PullRequest> {
     service(t.provider).create_pull_request(t, auth, pr).map(|p| links::pr(t, p))
+}
+
+/// CI status of up to `TIPS_PER_CALL` branch tips, by full commit id. Ids that aren't full
+/// SHAs are never sent.
+pub fn commit_checks(t: &Target, auth: &Auth, tips: &[TipQuery]) -> Result<HashMap<String, Checks>> {
+    let tips: Vec<TipQuery> = tips.iter().filter(|q| full_sha(&q.sha)).take(TIPS_PER_CALL).cloned().collect();
+    if tips.is_empty() {
+        return Ok(HashMap::new());
+    }
+    service(t.provider).commit_checks(t, auth, &tips).map(links::checks_map)
 }
 
 pub fn my_issues(t: &Target, auth: &Auth) -> Result<Vec<Issue>> {

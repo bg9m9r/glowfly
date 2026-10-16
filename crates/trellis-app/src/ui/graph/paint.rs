@@ -2,17 +2,21 @@
 
 use super::LANE_W;
 use crate::ui::avatars::Avatars;
+use crate::ui::build_status;
 use crate::ui::common::lane_color;
 use crate::ui::theme::color;
 use crate::ui::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
 use std::collections::HashMap;
+use trellis_core::forge::CheckState;
 use trellis_core::graph::GraphRow;
 use trellis_core::repo::{self, RefKind, Snapshot};
 use trellis_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
 
 /// The narrowest a drag leaves the message column.
 const MIN_MSG_W: f32 = 120.0;
+/// Room a ref chip adds at its right end for a build marker.
+const MARK_W: f32 = 14.0;
 
 /// Horizontal extent of each column for one row (empty ranges for hidden columns).
 pub struct Columns {
@@ -135,7 +139,17 @@ fn solid(lane: Color32, dark_alpha: f32) -> Color32 {
 }
 
 /// Draws the first ref label (plus a +N count); returns (label rect, right edge).
-pub fn draw_ref_labels(p: &egui::Painter, x: f32, max_x: f32, y: f32, labels: &[repo::RefLabel], lane: Color32) -> (Rect, f32) {
+/// The first label as a chip (with the tip's build `marker` inside its right end when known),
+/// then a "+N" chip for the rest.
+pub fn draw_ref_labels(
+    p: &egui::Painter,
+    x: f32,
+    max_x: f32,
+    y: f32,
+    labels: &[repo::RefLabel],
+    lane: Color32,
+    marker: Option<CheckState>,
+) -> (Rect, f32) {
     let first = &labels[0];
     let (fill, fg, text) = match first.kind {
         RefKind::Head => (Color32::from_gray(200), Color32::BLACK, "HEAD".to_owned()),
@@ -148,12 +162,18 @@ pub fn draw_ref_labels(p: &egui::Painter, x: f32, max_x: f32, y: f32, labels: &[
     let extra = labels.len() - 1;
     let reserve = if extra > 0 { 30.0 } else { 0.0 };
     let g = p.layout_no_wrap(text, FontId::proportional(12.5), fg);
-    let w = (g.size().x + 14.0).min(max_x - x - reserve);
+    let mark_w = if marker.is_some() { MARK_W } else { 0.0 };
+    let w = (g.size().x + 14.0 + mark_w).min(max_x - x - reserve);
     let r = Rect::from_min_size(pos2(x, y - 11.0), vec2(w, 22.0));
     p.rect_filled(r, CornerRadius::same(3), fill);
     p.rect_stroke(r, CornerRadius::same(3), Stroke::new(1.0_f32, lane), egui::StrokeKind::Inside);
     let gh = g.size().y;
-    p.with_clip_rect(r.shrink(2.0)).galley(pos2(x + 7.0, y - gh / 2.0), g, fg);
+    let mut text_clip = r.shrink(2.0);
+    text_clip.max.x -= mark_w;
+    p.with_clip_rect(text_clip).galley(pos2(x + 7.0, y - gh / 2.0), g, fg);
+    if let Some(state) = marker {
+        build_status::paint_marker_on(&p.with_clip_rect(r), pos2(r.right() - 9.0, y), state);
+    }
     let mut end = r.right();
     if extra > 0 {
         end += 4.0;

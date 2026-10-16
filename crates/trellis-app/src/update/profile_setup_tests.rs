@@ -69,6 +69,7 @@ fn pr(id: u64) -> PullRequest {
         head: None,
         merge_status: None,
         url: "u".into(),
+        checks: None,
     }
 }
 

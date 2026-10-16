@@ -6,6 +6,7 @@ mod askpass;
 mod avatars;
 mod blame;
 mod branches;
+mod build_status;
 mod clone;
 mod clone_service;
 mod commit;
@@ -75,6 +76,8 @@ mod askpass_tests;
 mod blame_tests;
 #[cfg(test)]
 mod branch_tests;
+#[cfg(test)]
+mod build_status_tests;
 #[cfg(test)]
 mod cherry_pick_tests;
 #[cfg(test)]
@@ -341,6 +344,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Tick(t) => {
             ops::auto_fetch(st, t, &mut fx);
             watch::poll(st, t, &mut fx);
+            build_status::tick(st, t, &mut fx);
         }
         Msg::Scoped { workdir, msg } => {
             if st.workdir().is_some_and(|w| w == workdir) {

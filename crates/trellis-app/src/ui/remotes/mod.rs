@@ -47,8 +47,10 @@ pub(in crate::ui) fn section(
     open: &mut bool,
     c: Ctx,
     hover_next: &mut Option<Oid>,
+    tips: &mut Vec<Oid>,
     msgs: &mut Vec<Msg>,
 ) {
+    let slot = super::build_status::tip_slot(c.fs);
     let count = snap.remotes.iter().map(|(_, b)| b.len()).sum();
     let h = widgets::section_header(ui, "REMOTE", Some(count), open);
     h.context_menu(|ui| menu_item(msgs, ui, "Add remote…", Msg::Remote(RemoteMsg::AddDialog)));
@@ -73,10 +75,14 @@ pub(in crate::ui) fn section(
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let r = widgets::list_row(ui, 34.0, name, None, *c.sel == Selection::Commit(*oid), false);
+            let (r, marker) = widgets::list_row_slot(ui, 34.0, name, None, slot, *c.sel == Selection::Commit(*oid), false);
             if r.hovered() {
                 *hover_next = Some(*oid);
             }
+            let r = match super::build_status::tip_row(ui, &r, marker, c.fs, Some(*oid), tips) {
+                Some(line) => r.on_hover_text(line),
+                None => r,
+            };
             let full = format!("{remote}/{name}");
             if r.double_clicked() {
                 msgs.push(Msg::git("Checkout", &["checkout", "--track", &full]));

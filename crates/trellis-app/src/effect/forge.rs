@@ -1,6 +1,7 @@
 //! What the forge effect asks a hosting service, and what comes back.
 
-use trellis_core::forge::{Auth, Issue, NewPullRequest, PullRequest, Target};
+use std::collections::HashMap;
+use trellis_core::forge::{Auth, Checks, Issue, NewPullRequest, PullRequest, Target, TipQuery};
 
 /// What to ask a hosting service.
 #[derive(Debug)]
@@ -13,6 +14,8 @@ pub enum ForgeCall {
     MyIssues,
     Issues(Vec<String>),
     Create(NewPullRequest),
+    /// CI status of branch tips on the host.
+    TipChecks(Vec<TipQuery>),
 }
 
 /// A hosting-service failure, flagged when signing in again could fix it.
@@ -37,6 +40,8 @@ pub enum ForgeResult {
     DefaultBranch(Option<String>),
     /// Boxed: a pull request is far larger than the other results.
     Created(Result<Box<PullRequest>, ForgeError>),
+    /// The tips asked about, and their status by full commit id.
+    TipChecks(Vec<TipQuery>, Result<HashMap<String, Checks>, ForgeError>),
 }
 
 #[derive(Debug)]

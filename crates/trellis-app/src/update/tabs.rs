@@ -328,7 +328,7 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.forge = p.forge;
     // Replies that were in flight for this tab were dropped while it was parked.
     if let Some(f) = st.forge.as_mut() {
-        f.loading = 0;
+        f.replies_dropped();
     }
     st.stats = p.stats;
     st.signatures = p.signatures;

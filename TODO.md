@@ -502,22 +502,18 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - Approve, request changes, finish review
   - Merge with merge, squash or rebase
   - Delete the branch after merge
-- [ ] **CI / build status**
+- [x] **CI / build status**
   Check status on PRs and on branch tips (GitHub checks, GitLab pipelines, Azure Pipelines,
   Bitbucket builds).
   - [x] GitHub and GitHub Enterprise pull requests: check runs and commit statuses read with the
     reviews (same batched GraphQL call), a passed/failed/pending marker on PULL REQUESTS rows
     and a "Checks: N of M passed" line in the row tooltip
-  - [ ] GitLab pipelines: the head pipeline status on merge requests
-  - [ ] Azure Pipelines: build and policy status on Azure DevOps pull requests
-  - [ ] Bitbucket builds: commit build statuses for Bitbucket Cloud and Data Center pull requests
-  - [ ] Status on branch tips: markers on LOCAL and REMOTE rows and on graph ref labels, with or
+  - [x] GitLab pipelines: the head pipeline status on merge requests
+  - [x] Azure Pipelines: build and policy status on Azure DevOps pull requests
+  - [x] Bitbucket builds: commit build statuses for Bitbucket Cloud and Data Center pull requests
+  - [x] Status on branch tips: markers on LOCAL and REMOTE rows and on graph ref labels, with or
     without a pull request
-  - [ ] Open the failing (or latest) build's page in the browser from the PR row menu or tooltip
-  - [ ] Per-check detail (names, durations, required or optional, cancelled, skipped and
-    action required told apart) in the in-app pull request view
-  - [ ] Name the permission build status needs in the GitHub token help, once it is confirmed
-    which fine-grained permissions expose check runs and commit statuses
+  - [x] Open the failing (or latest) build's page in the browser from the PR row menu or tooltip
 - [ ] **"Push and start a PR"**
   One action to push a branch and open the create-PR dialog; start a PR from a remote branch.
 - [ ] **PR and issue filters**
@@ -1292,6 +1288,24 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Wording for smartcard PIN and touch requests (loopback with a card is unverified)
 - Show the key's expiry date in the passphrase dialog
 - Signing passphrase prompts for git commands typed in the terminal panel
+
+### CI / build status
+
+- Per-check detail (names, durations, required or optional, cancelled, skipped and action
+  required told apart, and a "no build status" empty state) in the in-app pull request view
+- Name the permission build status needs in the GitHub token help, once it is confirmed which
+  fine-grained permissions expose check runs and commit statuses
+- Open the build page from the LOCAL and REMOTE branch menus and from graph ref labels
+- A tooltip with the checks line on graph ref label markers
+- GitLab: job counts for the pipeline (N of M jobs passed) and external commit statuses
+- Azure Pipelines: partially succeeded builds as warnings, and optional build policies counted
+  apart from required ones
+- Bitbucket Data Center: one batched build-status call for many commits
+- GitHub without GraphQL access: a REST fallback for branch-tip status
+- Branch-tip status for branches on other remotes (forks) and their services
+- Re-read pending pull request checks sooner than the 5-minute refresh
+- A desktop notification when a build on the checked-out branch finishes
+- A Preferences switch to turn off branch-tip status requests
 
 ### Limits found while building integrations
 
