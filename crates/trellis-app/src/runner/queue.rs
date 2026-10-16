@@ -226,28 +226,33 @@ mod tests {
         assert_eq!(done_rx.recv_timeout(Duration::from_secs(10)).unwrap(), "stage");
     }
 
-    /// Whether a job for `second` waits for a long job for `first`: one queue for both.
-    fn one_queue(q: &RepoQueues, first: &Path, second: &Path) -> bool {
+    /// Checks whether a job for `second` waits for a long job for `first` (`same`: one queue
+    /// for both) or runs meanwhile. Waits generously for the job that should run, so a busy
+    /// machine can't make two queues look like one.
+    fn assert_queues(q: &RepoQueues, first: &Path, second: &Path, same: bool) {
         let (gate_tx, gate_rx) = mpsc::channel::<()>();
         let (done_tx, done_rx) = mpsc::channel::<&'static str>();
         let d = done_tx.clone();
         q.submit(
             first,
             Box::new(move || {
-                let _ = gate_rx.recv_timeout(Duration::from_secs(10));
+                let _ = gate_rx.recv_timeout(Duration::from_secs(30));
                 d.send("first").unwrap();
             }),
         )
         .ok()
         .unwrap();
         q.submit(second, Box::new(move || done_tx.send("second").unwrap())).ok().unwrap();
-        let waited = done_rx.recv_timeout(Duration::from_millis(300)).is_err();
-        gate_tx.send(()).unwrap();
-        let mut rest: Vec<_> = (0..if waited { 2 } else { 1 }).map(|_| done_rx.recv_timeout(Duration::from_secs(10)).unwrap()).collect();
-        if waited {
-            assert_eq!(rest.remove(0), "first", "in order");
+        if same {
+            assert!(done_rx.recv_timeout(Duration::from_millis(300)).is_err(), "{} waits for {}", second.display(), first.display());
+            gate_tx.send(()).unwrap();
+            assert_eq!(done_rx.recv_timeout(Duration::from_secs(30)).unwrap(), "first", "in order");
+            assert_eq!(done_rx.recv_timeout(Duration::from_secs(30)).unwrap(), "second");
+        } else {
+            assert_eq!(done_rx.recv_timeout(Duration::from_secs(30)).unwrap(), "second", "{} doesn't wait", second.display());
+            gate_tx.send(()).unwrap();
+            assert_eq!(done_rx.recv_timeout(Duration::from_secs(30)).unwrap(), "first");
         }
-        waited
     }
 
     #[test]
@@ -268,11 +273,11 @@ mod tests {
                 .is_ok_and(|o| o.status.success());
         assert!(made, "made a link");
         let q = RepoQueues::default();
-        assert!(one_queue(&q, &dir, &link), "a link to the folder");
-        assert!(one_queue(&q, &dir, &dir.join(".")), "another spelling");
+        assert_queues(&q, &dir, &link, true);
+        assert_queues(&q, &dir, &dir.join("."), true);
         let other = dir.with_file_name(format!("trellis-queue-other-{}", std::process::id()));
         std::fs::create_dir_all(&other).unwrap();
-        assert!(!one_queue(&q, &dir, &other), "another folder");
+        assert_queues(&q, &dir, &other, false);
         let _ = std::fs::remove_dir(&link).or_else(|_| std::fs::remove_file(&link));
         let _ = std::fs::remove_dir_all(&dir);
         let _ = std::fs::remove_dir_all(&other);
@@ -288,8 +293,8 @@ mod tests {
             Key::Spelling(p.to_path_buf())
         }
         let (upper, lower) = (Path::new("/v/App"), Path::new("/v/app"));
-        assert!(one_queue(&RepoQueues { router: Mutex::new(None), identify: ignores_case }, upper, lower));
-        assert!(!one_queue(&RepoQueues { router: Mutex::new(None), identify: tells_apart }, upper, lower));
+        assert_queues(&RepoQueues { router: Mutex::new(None), identify: ignores_case }, upper, lower, true);
+        assert_queues(&RepoQueues { router: Mutex::new(None), identify: tells_apart }, upper, lower, false);
     }
 
     #[test]
