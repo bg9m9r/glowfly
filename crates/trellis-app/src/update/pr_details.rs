@@ -27,7 +27,10 @@ pub(super) fn list_arrived(fs: &mut ForgeState, now: Instant) {
             pr.apply(d);
         }
     }
-    fs.details.queue = rest.iter().filter(|p| fs.details.stale(p, now)).map(|p| p.id).collect();
+    // A chunk in flight is checked again when it returns.
+    let d = &fs.details;
+    let queue = rest.iter().filter(|p| !d.asking.contains(&p.id) && d.stale(p, now)).map(|p| p.id).collect();
+    fs.details.queue = queue;
     let listed: HashSet<u64> = fs.prs.iter().map(|p| p.id).collect();
     fs.details.cache.retain(|id, _| listed.contains(id));
 }
@@ -49,12 +52,12 @@ pub(super) fn send_next(st: &mut AppState, fx: &mut Vec<Effect>) {
     if chunk.is_empty() {
         return;
     }
-    let (loading, asked) = (fs.loading, chunk.len());
+    let (loading, asking) = (fs.loading, chunk.iter().map(|p| p.id).collect());
     super::forge::request(st, host, false, ForgeCall::PrDetails(chunk), fx);
     let Some(fs) = st.forge.as_mut() else { return };
     if fs.loading > loading {
         fs.details.in_flight = true;
-        fs.details.asked = asked;
+        fs.details.asking = asking;
     } else {
         // Held back (an untrusted repository, a host that may not be contacted).
         fs.details.queue.clear();
@@ -66,6 +69,7 @@ pub(super) fn send_next(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// host's status or what is shown.
 pub(super) fn replied(fs: &mut ForgeState, result: Result<Vec<PrDetails>, ForgeError>, key: &str, now: Instant) -> bool {
     fs.details.in_flight = false;
+    let asking = std::mem::take(&mut fs.details.asking);
     let list = match result {
         Ok(list) => list,
         Err(e) => {
@@ -77,17 +81,24 @@ pub(super) fn replied(fs: &mut ForgeState, result: Result<Vec<PrDetails>, ForgeE
             return false;
         }
     };
-    if list.len() < fs.details.asked {
-        tracing::debug!("pull request details: {} of {} read", list.len(), fs.details.asked);
+    let cut_short = list.len() < asking.len();
+    if cut_short {
+        tracing::debug!("pull request details: {} of {} read", list.len(), asking.len());
         fs.details.queue.clear();
     }
     let mut changed = false;
     for d in list {
+        // One that left the list while it was read is dropped.
         if let Some(pr) = fs.prs.iter_mut().find(|p| p.id == d.id) {
             pr.apply(&d);
             changed = true;
+            fs.details.record(d, now);
         }
-        fs.details.record(d, now);
+    }
+    if !cut_short {
+        // A list that arrived meanwhile may have moved one of them to a new head.
+        let moved: Vec<u64> = fs.prs.iter().filter(|p| asking.contains(&p.id) && fs.details.stale(p, now)).map(|p| p.id).collect();
+        fs.details.queue.extend(moved);
     }
     changed
 }

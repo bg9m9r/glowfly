@@ -171,3 +171,31 @@ fn disconnecting_or_parking_drops_the_pass() {
     let d = &fs(&st).details;
     assert!(d.cache.is_empty() && d.queue.is_empty() && !d.in_flight);
 }
+
+#[test]
+fn a_failed_sign_in_for_details_stops_only_the_pass() {
+    let now = Instant::now();
+    let mut st = host(Provider::GitLab, "gitlab.com");
+    list(&mut st, prs(60), now);
+    // How the runner answers a details chunk whose sign-in failed.
+    let err = ForgeError { message: "no token".into(), auth: true };
+    assert!(reply(&mut st, ForgeResult::PrDetails(Err(err)), now).is_empty());
+    assert_eq!(fs(&st).host_status, Status::Ok);
+    assert!(!fs(&st).details.in_flight);
+    assert_eq!(list(&mut st, prs(60), now), [ids(26..=50)], "the next list starts the pass again");
+}
+
+#[test]
+fn a_list_arriving_mid_chunk_doesnt_read_that_chunk_twice() {
+    let now = Instant::now();
+    let mut st = host(Provider::GitLab, "gitlab.com");
+    assert_eq!(list(&mut st, prs(60), now), [ids(26..=50)]);
+    // A refresh lands while 26..=50 are read; one of them has a new head.
+    let mut moved = prs(60);
+    moved[29].head = Some("f".repeat(40));
+    assert!(list(&mut st, moved, now).is_empty(), "the chunk is still in flight");
+    assert_eq!(fs(&st).details.queue, ids(51..=60));
+    // The chunk returns (read before the move): only the moved one is asked again.
+    assert_eq!(details(&mut st, &ids(26..=50), now), [ids(51..=60).into_iter().chain([30]).collect::<Vec<_>>()]);
+    assert_eq!(fs(&st).prs[30].checks, passed());
+}

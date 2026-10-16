@@ -85,6 +85,7 @@ impl ForgeState {
         self.loading = 0;
         self.tips.in_flight.clear();
         self.details.in_flight = false;
+        self.details.asking.clear();
         self.details.queue.clear();
     }
 

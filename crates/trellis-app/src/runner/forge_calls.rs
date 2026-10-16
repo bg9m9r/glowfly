@@ -33,7 +33,7 @@ pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: 
         Some(a) => a,
         None => match forge::resolve_auth(&target.account(), cwd, interactive, connected) {
             Ok(a) => a,
-            Err(e) => return ForgeReply { target, auth: None, results: vec![ForgeResult::AuthFailed(e.to_string())] },
+            Err(e) => return ForgeReply { target, auth: None, results: auth_failed(&call, e.to_string()) },
         },
     };
     let t = &target;
@@ -69,4 +69,26 @@ pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: 
         ForgeCall::PrDetails(prs) => vec![ForgeResult::PrDetails(forge::pr_details(t, &auth, &prs).map_err(ForgeError::from))],
     };
     ForgeReply { target, auth: Some(auth), results }
+}
+
+/// A failed sign-in, answered in the shape the call expects where that matters: the second pass
+/// over pull requests stops on its own failure and leaves the host's status alone.
+fn auth_failed(call: &ForgeCall, message: String) -> Vec<ForgeResult> {
+    match call {
+        ForgeCall::PrDetails(_) => vec![ForgeResult::PrDetails(Err(ForgeError { message, auth: true }))],
+        _ => vec![ForgeResult::AuthFailed(message)],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failed_sign_in_for_pull_request_details_answers_as_details() {
+        let r = auth_failed(&ForgeCall::PrDetails(Vec::new()), "no token".into());
+        assert!(matches!(&r[..], [ForgeResult::PrDetails(Err(ForgeError { auth: true, .. }))]));
+        let r = auth_failed(&ForgeCall::Issues(Vec::new()), "no token".into());
+        assert!(matches!(&r[..], [ForgeResult::AuthFailed(m)] if m == "no token"));
+    }
 }

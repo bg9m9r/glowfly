@@ -17,8 +17,9 @@ pub struct PrDetailPass {
     pub queue: VecDeque<u64>,
     /// A chunk is being read.
     pub in_flight: bool,
-    /// How many pull requests the last chunk asked about (an answer with fewer was cut short).
-    pub asked: usize,
+    /// The pull requests the last chunk asked about (an answer with fewer was cut short; a list
+    /// arriving meanwhile doesn't queue them again).
+    pub asking: Vec<u64>,
 }
 
 impl PrDetailPass {
