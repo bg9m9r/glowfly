@@ -9,6 +9,7 @@
 mod conflict_check;
 mod effect;
 mod file_op;
+mod git_env;
 mod gitflow;
 mod keymap;
 mod lfs;

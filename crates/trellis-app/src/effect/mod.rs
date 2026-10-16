@@ -326,6 +326,8 @@ pub enum Effect {
     Patch(crate::patch::PatchEffect),
     /// Launching the external editor or a custom terminal, and their program pickers (tools.rs); unscoped.
     Tool(crate::tools::ToolEffect),
+    /// Finding git and its version, and adding a folder to safe.directory (git_env.rs); unscoped.
+    GitEnv(crate::git_env::GitEnvEffect),
     /// Dry-runs a merge with git merge-tree (conflict_check.rs); reads only.
     CheckConflicts(crate::conflict_check::CheckJob),
     Ui(UiEffect),
@@ -398,6 +400,7 @@ impl Effect {
             | Effect::Terminal(_)
             | Effect::Patch(_)
             | Effect::Tool(_)
+            | Effect::GitEnv(_)
             | Effect::Ui(_) => None,
         }
     }

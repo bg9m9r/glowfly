@@ -1,5 +1,6 @@
 //! Questions that come from what the operating system would do: running a working-tree file
-//! that opens as a program, and retrying a move to the trash that another program blocked.
+//! that opens as a program, retrying a move to the trash that another program blocked, a git
+//! too old for some features, and a repository another user owns.
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -43,4 +44,41 @@ fn trash_in_use_retry() {
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmAccepted)), "Retry accepts");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// The banner while git is older than every feature needs; Dismiss closes it.
+#[test]
+fn git_too_old_banner() {
+    use crate::git_env::GitEnvMsg;
+    use trellis_core::git_version::GitInfo;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "git-too-old");
+    let info = GitInfo { path: Some("C:/Program Files/Git/cmd/git.exe".into()), version: Some((2, 34, 1)) };
+    crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::Detected(info)), std::time::Instant::now());
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("git_too_old_banner");
+    h.get_by_label("Dismiss").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::GitEnv(GitEnvMsg::DismissBanner))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// What opening a repository another user owns asks.
+#[test]
+fn repository_owned_by_another_user() {
+    use crate::effect::LoadKind;
+    use crate::git_env::GitEnvMsg;
+    use crate::msg::RepoMsg;
+    let mut st = crate::state::AppState::new(super::snapshot_tests::settings(ThemeChoice::Light), Vec::new(), std::time::Instant::now());
+    let root = std::path::PathBuf::from(if cfg!(windows) { r"\\nas\team\app" } else { "/mnt/nas/team/app" });
+    crate::update::update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), std::time::Instant::now());
+    let generation = st.load_gen;
+    crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, root }), std::time::Instant::now());
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("repository_owned_by_another_user");
+    h.get_by_label("Trust and open").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmAccepted)));
 }

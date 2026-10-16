@@ -92,6 +92,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let sparse_cx = sparse::SparseContext { repo_name: repo_name.clone(), job: st.job.as_ref().map(|j| j.label.clone()) };
     let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some() };
     let switching = st.profile_switch;
+    let git_program = st.git.info.clone();
     let settings = &mut st.settings;
     let Some(prefs) = st.prefs.as_mut() else { return };
     let fs = st.forge.as_ref();
@@ -119,7 +120,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     return;
                 }
                 match page {
-                    PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), msgs),
+                    PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), git_program.as_ref(), msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
                     PrefPage::Ui => appearance::ui_page(ui, settings, now),

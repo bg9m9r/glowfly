@@ -29,7 +29,12 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             let paths = st.snap.as_ref().map(|s| s.staged.iter().map(|f| f.path.clone()).collect()).unwrap_or_default();
             local(st, LocalOp::UnstagePaths(paths), fx);
         }
-        StageMsg::DiscardFile(path) => local(st, LocalOp::DiscardFile(path), fx),
+        StageMsg::DiscardFile(path) => {
+            // `git restore` writes the file, so filters and attributes apply.
+            if super::git_env::allows(st, trellis_core::git_version::Feature::Restore, now) {
+                local(st, LocalOp::DiscardFile(path), fx);
+            }
+        }
         StageMsg::Hunk { op, path, index, generation } => {
             // A confirm dialog or a message sent before whitespace was hidden can still arrive.
             if let Some(why) = st.hunk_ops_blocked() {
@@ -196,7 +201,8 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
     };
     let has_upstream = snap.head_info().is_some_and(|b| b.upstream.is_some());
     if force {
-        let Some(cmd) = snap.head_info().and_then(|b| force_push_cmd(b, snap)) else {
+        let if_includes = st.git.has(trellis_core::git_version::Feature::ForceIfIncludes);
+        let Some(cmd) = snap.head_info().and_then(|b| force_push_cmd(b, snap, if_includes)) else {
             // No remote to push to: offer to create the repository on GitHub.
             super::publish::open(st, fx);
             return;
@@ -219,12 +225,16 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
 /// A force push of `b` that only replaces the remote branch if it still is where the snapshot
 /// last saw it (or still doesn't exist): bare `--force-with-lease` compares against the
 /// remote-tracking ref, which background fetches keep moving, so it would overwrite commits
-/// the user never saw. `--force-if-includes` also requires that tip to be in `b`'s reflog.
-pub(super) fn force_push_cmd(b: &trellis_core::repo::BranchInfo, snap: &Snapshot) -> Option<Vec<String>> {
+/// the user never saw. With `if_includes` (git 2.30 or newer), `--force-if-includes` also
+/// requires that tip to be in `b`'s reflog.
+pub(super) fn force_push_cmd(b: &trellis_core::repo::BranchInfo, snap: &Snapshot, if_includes: bool) -> Option<Vec<String>> {
     let (remote, dest, set_upstream) = crate::state::branches::push_target(b, snap, None)?;
     let seen = snap.remotes.iter().find(|(r, _)| *r == remote).and_then(|(_, bs)| bs.iter().find(|(n, _)| *n == dest)).map(|(_, o)| *o);
     let expect = seen.map(|o| o.to_string()).unwrap_or_default();
-    let mut cmd = args(&["push", &format!("--force-with-lease=refs/heads/{dest}:{expect}"), "--force-if-includes"]);
+    let mut cmd = args(&["push", &format!("--force-with-lease=refs/heads/{dest}:{expect}")]);
+    if if_includes {
+        cmd.push("--force-if-includes".into());
+    }
     if set_upstream {
         cmd.push("-u".into());
     }

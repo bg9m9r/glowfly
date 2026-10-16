@@ -170,6 +170,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Terminal(_)
         | Effect::Patch(_)
         | Effect::Tool(_)
+        | Effect::GitEnv(_)
         | Effect::CheckConflicts(_)
         | Effect::Ui(_) => None,
     }

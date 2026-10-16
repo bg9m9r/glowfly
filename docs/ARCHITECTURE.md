@@ -25,6 +25,9 @@ binary (package `trellis`).
 | --- | --- |
 | `repo/` | The repository model on libgit2: loading history, refs and status; diffs; staging, line staging, revert, restore; conflicts and their resolution; working-tree files; submodules, worktrees, remotes, shallow-clone boundaries. |
 | `gitcli.rs` | The git CLI, for commands that honour hooks, credentials and signing. |
+| `git_version.rs`, `env_path.rs` | Which git runs (found on the PATH children get) and the features its version lacks; that PATH, which on macOS merges in the login shell's. |
+| `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
+| `native_path.rs`, `volume.rs` | The spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`); whether a folder is on a network or virtual file system. |
 | `askpass/` | Credential prompts: classifying git's and ssh's questions, the helper protocol, the app's listener and the helper's client. |
 | `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`, `clone_ops.rs`, `shallow_ops.rs`, `worktree_ops.rs`, `stash_ops.rs`, `sparse_ops.rs`, `patch_ops.rs` | Command lines and input checks for branches, tags, remotes, cloning, fetching more of a shallow clone's history, worktrees and stashes (renaming a stash list entry by dropping and storing the top of `refs/stash` again); sparse checkout state, paths and command lines; patch files: format-patch export, git apply command lines and errors. |
 | `lfs.rs`, `lfs/` | Git LFS: install and setup state, tracked patterns, LFS command lines. |
@@ -56,7 +59,7 @@ binary (package `trellis`).
 | `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`) and askpass helper. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
 | `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`), and `Effect::name` (`names.rs`). |
-| `lfs.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
+| `lfs.rs`, `git_env.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data. |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
 | `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work. |
@@ -123,7 +126,8 @@ binary (package `trellis`).
    renders on different threads (parallel snapshot tests) can't affect each other. Immutable
    data loaded once (the syntax definitions in `highlight/syntaxes.rs`) is not mutable state,
    and neither is the askpass environment in `gitcli` (`enable_askpass`): set once by the app
-   shell at startup, never changed afterwards and never set in tests.
+   shell at startup, never changed afterwards and never set in tests. The PATH children get
+   (`env_path`) is likewise computed once, on first use, and never changed.
 6. Each hosting provider implements `Forge`; the UI never matches on provider-specific types.
 7. `scripts/check.ps1` (fmt, clippy -D warnings, tests) must pass before committing.
 8. `trellis-core` returns `trellis_core::error::Error` (typed, via `thiserror`); decide behaviour

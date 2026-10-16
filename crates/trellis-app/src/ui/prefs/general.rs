@@ -8,9 +8,14 @@ use crate::state::files::TRASH;
 use crate::state::prefs::{Autocrlf, GitConfigValues};
 use crate::ui::theme::color;
 use eframe::egui::{self, Color32, RichText, Ui};
+use trellis_core::git_version::GitInfo;
 use trellis_core::settings::Settings;
 
-pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValues>, msgs: &mut Vec<Msg>) {
+pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValues>, program: Option<&GitInfo>, msgs: &mut Vec<Msg>) {
+    row(ui, "Git", |ui| {
+        ui.label(RichText::new(git_program_text(program)).color(color::text()));
+        help(ui, "The git program Trellis runs for commits, fetches, pushes and hooks: the first one on your PATH.");
+    });
     row(ui, "Auto-Fetch Interval", |ui| {
         ui.add(egui::DragValue::new(&mut s.auto_fetch_minutes).range(0..=60).suffix(" min"));
         help(ui, "In minutes, between 0 and 60 (0 disables auto-fetch). Fetches all remotes of the open repository.");
@@ -113,4 +118,16 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
             );
         }
     });
+}
+
+/// "git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.
+pub(crate) fn git_program_text(info: Option<&GitInfo>) -> String {
+    let Some(info) = info else { return "Checking…".to_owned() };
+    let at = info.path.as_deref().map(trellis_core::native_path::shown);
+    match (info.version, at) {
+        (Some(v), Some(at)) => format!("git {} at {at}", trellis_core::git_version::show(v)),
+        (Some(v), None) => format!("git {}", trellis_core::git_version::show(v)),
+        (None, Some(at)) => format!("{at} doesn't run"),
+        (None, None) => "Not found on your PATH".to_owned(),
+    }
 }

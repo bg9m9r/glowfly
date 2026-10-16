@@ -38,6 +38,7 @@ mod conflict_check;
 mod expect;
 pub(crate) mod files;
 mod forge_calls;
+mod git_env;
 mod guard;
 mod highlight;
 mod keys;
@@ -185,8 +186,10 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
                 return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp }));
             }
-            let result =
-                repo::load_cached(&path, &opts, graph_cache).map(Box::new).map_err(|e| format!("Could not open {}: {e}", path.display()));
+            let result = match repo::load_cached(&path, &opts, graph_cache) {
+                Err(trellis_core::error::Error::NotOwned(root)) => return Some(git_env::not_owned(generation, kind, root)),
+                r => r.map(Box::new).map_err(|e| format!("Could not open {}: {e}", trellis_core::native_path::shown(&path))),
+            };
             Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result }))
         }
         Effect::LoadStatus { workdir, generation, submodules, open, git_status } => {
@@ -311,6 +314,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Profile(e) => Some(profiles::run(e)),
         Effect::Patch(p) => Some(patches::run(p)),
         Effect::Tool(t) => tools::run(t),
+        Effect::GitEnv(e) => Some(git_env::run(e)),
         Effect::CheckConflicts(job) => Some(conflict_check::run(job)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");

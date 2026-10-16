@@ -10,6 +10,7 @@ pub mod conflict_check;
 pub mod diff_nav;
 pub mod files;
 mod forge;
+pub mod git_env;
 pub mod gitflow;
 pub mod history;
 pub mod known_folders;
@@ -233,6 +234,8 @@ pub struct AppState {
     pub askpass: askpass::CredentialPrompts,
     /// Whether git-lfs is installed (global, not per tab): checked at startup and whenever Preferences > Git LFS reads its status.
     pub lfs_install: lfs::LfsInstall,
+    /// The git Trellis runs and what it can do (global): checked at startup.
+    pub git: git_env::GitState,
     /// The command palette, while open (global, not per tab).
     pub palette: Option<palette::Palette>,
     /// Incremented for every palette list request; older `TrackedPathsLoaded` results are ignored.
@@ -307,6 +310,7 @@ impl AppState {
             watch,
             askpass: Default::default(),
             lfs_install: Default::default(),
+            git: Default::default(),
             palette: None,
             palette_gen: 0,
             palette_recent: Default::default(),

@@ -12,6 +12,7 @@ mod conflict_check;
 mod diff;
 mod files;
 mod forge;
+mod git_env;
 mod gitflow;
 mod gitflow_finish;
 mod graph_columns;
@@ -88,6 +89,8 @@ mod fold_tests;
 mod force_push_tests;
 #[cfg(test)]
 mod forge_tests;
+#[cfg(test)]
+mod git_env_tests;
 #[cfg(test)]
 mod gitflow_finish_tests;
 #[cfg(test)]
@@ -199,11 +202,11 @@ mod trust_tests;
 #[cfg(test)]
 mod undo_tests;
 #[cfg(test)]
+mod watch_poll_tests;
+#[cfg(test)]
 mod watch_tests;
 #[cfg(test)]
 mod whitespace_tests;
-mod watch_poll_tests;
-#[cfg(test)]
 #[cfg(test)]
 mod whole_file_tests;
 #[cfg(test)]
@@ -273,6 +276,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Profile(m) => profiles::handle(st, m, now, &mut fx),
         Msg::Palette(m) => palette::handle(st, m, now, &mut fx),
         Msg::Trust(m) => trust::handle(st, m, now, &mut fx),
+        Msg::GitEnv(m) => git_env::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).

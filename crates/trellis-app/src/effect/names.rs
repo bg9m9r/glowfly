@@ -65,6 +65,7 @@ impl Effect {
             Effect::Terminal(_) => "terminal",
             Effect::Patch(p) => p.name(),
             Effect::Tool(t) => t.name(),
+            Effect::GitEnv(e) => e.name(),
             Effect::CheckConflicts(_) => "check-conflicts",
             Effect::Ui(_) => "ui",
         }

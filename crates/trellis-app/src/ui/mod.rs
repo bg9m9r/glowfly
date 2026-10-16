@@ -17,6 +17,7 @@ mod diff;
 mod file_buttons;
 mod file_dialogs;
 mod file_menu;
+mod git_banner;
 mod gitflow_dialog;
 mod gitflow_finish_dialog;
 mod gitflow_panel;
@@ -207,6 +208,7 @@ impl TrellisApp {
         // git and ssh ask for missing credentials through a dialog from now on.
         app.runner.start_askpass();
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
+        app.dispatch(&cc.egui_ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect));
         app.dispatch(&cc.egui_ctx, Msg::Recent(RecentMsg::CheckFolders));
         if let Some(problem) = problem {
             tracing::warn!("settings: {}", problem.message());
@@ -361,6 +363,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     } else {
         tabs::show(ctx, st, msgs);
         toolbar::show(ctx, st, msgs);
+        git_banner::show(ctx, st, msgs);
         status::activity_log(ctx, st, msgs);
         if st.snap.is_some() {
             sidebar::show(ctx, st, msgs);
@@ -435,9 +438,9 @@ impl eframe::App for TrellisApp {
         } else if self.st.settings.auto_fetch_minutes > 0 {
             ctx.request_repaint_after(Duration::from_secs(5));
         }
-    }
-}
         // The status is re-read on a timer where the watcher can be silent (see `poll_every`).
         if let Some(every) = self.st.watch.poll_interval() {
             ctx.request_repaint_after(every);
         }
+    }
+}

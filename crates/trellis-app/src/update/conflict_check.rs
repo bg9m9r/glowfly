@@ -14,7 +14,8 @@ use trellis_core::conflict_check::{MergeTarget, TargetKind};
 /// target, nothing is known for these inputs yet and no check is running (otherwise one is
 /// queued behind it).
 pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if !st.settings.conflict_check || !st.runs_git_unasked() {
+    // An old git can't (the banner says so); the branch menus' checks still explain it.
+    if !st.settings.conflict_check || !st.runs_git_unasked() || !st.git.has(trellis_core::git_version::Feature::MergeTree) {
         return;
     }
     let Some(snap) = &st.snap else { return };

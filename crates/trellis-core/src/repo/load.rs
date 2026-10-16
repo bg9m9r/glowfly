@@ -17,7 +17,7 @@ pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
 pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Result<Snapshot> {
     let loaded_with = opts.clone();
     let max_commits = opts.max_commits.max(1);
-    let mut repo = Repository::discover(path).map_err(|_| Error::NotARepository(path.display().to_string()))?;
+    let mut repo = Repository::discover(path).map_err(|e| crate::safe_directory::open_error(path, &e))?;
     if repo.is_bare() {
         return Err(Error::Unsupported("bare repositories are not supported".into()));
     }

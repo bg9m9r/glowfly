@@ -10,6 +10,10 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("{0} is not a git repository")]
     NotARepository(String),
+    /// git refuses the repository in this folder because another user owns it, until it is
+    /// listed in `safe.directory` (see `safe_directory`).
+    #[error("git won't open {} because another user owns it", crate::native_path::shown(.0))]
+    NotOwned(std::path::PathBuf),
     /// Missing, rejected or expired credentials.
     #[error("authentication failed: {0}")]
     Auth(String),
