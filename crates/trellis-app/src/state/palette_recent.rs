@@ -6,8 +6,8 @@
 use super::layout::Panel;
 use super::palette_commands::PaletteCommand;
 use super::palette_kinds::StashAction;
-use crate::msg::LayoutMsg;
 use crate::logs::{LogKind, LogsMsg};
+use crate::msg::LayoutMsg;
 use crate::remote::RemoteMsg;
 use crate::submodule::SubmoduleMsg;
 use crate::tools::ToolsMsg;
@@ -148,6 +148,7 @@ impl PaletteCommand {
                 LayoutMsg::SetPanel { panel: Panel::Details, .. } => "details-panel",
                 LayoutMsg::SetPanel { panel: Panel::Toolbar, .. } => "toolbar",
                 LayoutMsg::TogglePanel(_) => return None,
+            },
             C::Logs(m) => match m {
                 LogsMsg::Show(LogKind::Activity) => "view-activity-log",
                 LogsMsg::Show(LogKind::Errors) => "view-error-log",
