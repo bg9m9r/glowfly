@@ -138,3 +138,16 @@ fn palette_pr_entries() {
     assert!(pr_commands(&st).is_empty());
     cleanup(&work, &bare);
 }
+#[test]
+fn open_pr_is_found_by_the_upstream_name() {
+    let (mut st, work, bare) = with_host("pr-open-by-upstream");
+    git(&work, &["checkout", "-q", "-b", "wip", "--track", "origin/feature"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    st.forge.as_mut().unwrap().prs = vec![pr_for("feature")];
+    let (snap, fs) = (st.snap.as_ref().unwrap(), st.forge.as_ref().unwrap());
+    assert_eq!(push_pr::open_pr(snap, fs, "wip").map(|p| p.id), Some(7), "wip is feature on the host");
+    assert!(push_pr::open_pr(snap, fs, "topic").is_none());
+    assert!(matches!(push_pr::push_item(snap, fs), Err(why) if why.contains("already has")));
+    assert!(pr_commands(&st).is_empty(), "no create entries for a branch with an open pull request");
+    cleanup(&work, &bare);
+}

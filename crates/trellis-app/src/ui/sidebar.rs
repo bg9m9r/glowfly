@@ -70,7 +70,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             if b.behind > 0 {
                 right.push_str(&format!("{}↓", b.behind));
             }
-            if let Some((f, pr)) = fs.and_then(|f| Some((f, f.pr_for_branch(&b.name)?))) {
+            if let Some((f, pr)) = fs.and_then(|f| Some((f, crate::state::push_pr::open_pr(snap, f, &b.name)?))) {
                 right.push_str(&format!(" {}", f.pr_label(pr.id)));
             }
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };

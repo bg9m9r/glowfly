@@ -6,6 +6,7 @@
 use super::branches;
 use super::{ForgeState, Selection};
 use git2::Oid;
+use trellis_core::forge::PullRequest;
 use trellis_core::repo::{BranchInfo, Snapshot};
 
 /// A create dialog to open once a push lands: `source` is the branch's name on the code host's
@@ -103,7 +104,7 @@ pub fn chosen_target_for(
 /// name when it can be pushed for a new pull request, else why not.
 pub fn push_item(snap: &Snapshot, fs: &ForgeState) -> Result<String, String> {
     let Some(b) = snap.head_info() else { return Err("Check out a branch first.".to_owned()) };
-    if let Some(pr) = fs.pr_for_branch(&b.name) {
+    if let Some(pr) = open_pr(snap, fs, &b.name) {
         return Err(format!("{} already has {} {}.", b.name, fs.pr_noun(), fs.pr_label(pr.id)));
     }
     match host_branch(b, snap, fs) {
@@ -136,4 +137,10 @@ pub fn pr_source(snap: &Snapshot, fs: &ForgeState, name: &str) -> String {
         .filter(|t| t.remote == fs.remote)
         .map(|t| t.merge.clone())
         .unwrap_or_else(|| name.to_owned())
+}
+
+/// The open pull request from branch `name`, found by the name the code host knows it by (a
+/// local branch's upstream there may be named differently).
+pub fn open_pr<'a>(snap: &Snapshot, fs: &'a ForgeState, name: &str) -> Option<&'a PullRequest> {
+    fs.pr_for_branch(&pr_source(snap, fs, name))
 }

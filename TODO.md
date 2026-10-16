@@ -17,7 +17,7 @@ The last 20 completed TODO items, newest first: when (local time), which item, a
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 - 2026-10-16 14:30 · **External diff and merge tools**: Diff tool and merge tool in Preferences > External Tools; Open in external diff tool from file rows, file history and the diff header (copies in a private temp folder, the working file for unstaged changes), and Resolve in external merge tool from conflicted rows and the conflict view, run as a job that reports whether the file was saved (`837a315`)
-- 2026-10-16 14:19 · **"Push and start a PR"**: Push a branch and open the create dialog in one action from the LOCAL, GIT FLOW and REMOTE row menus, the toolbar's Push and PR dropdowns and the palette (into the selected branch, or from the checked-out branch into a remote one), with a push note and button in the create dialog; diverged branches are refused with the reason, never forced (`42dac54`)
+- 2026-10-16 14:19 · **"Push and start a PR"**: Push a branch and open the create dialog in one action from the LOCAL, GIT FLOW and REMOTE row menus, the toolbar's Push and PR dropdowns and the palette (into the selected branch, or from the checked-out branch into a remote one), with a push note and button in the create dialog; diverged branches are refused with the reason, never forced (`fba5d7d`)
 - 2026-10-16 14:07 · **Worktrees**: WIP rows in the graph for other worktrees with uncommitted changes (counts, tooltip, click to open; UI Customization toggle) (`c6dae35`)
 - 2026-10-16 14:06 · **Git LFS**: Auto-fetch also downloads the checked-out commit's LFS files (quiet, never prompts, behind alert kept); restoring from a commit checks filtered (LFS) files with git before overwriting (`b640259`)
 - 2026-10-16 11:56 · **CI / build status**: Build status for GitLab pipelines, Azure DevOps build policies and statuses and Bitbucket Cloud and Data Center build statuses on pull requests, markers for branch tips on LOCAL and REMOTE rows and graph ref labels (throttled, cached per commit), and Open failed build / Open build page in the pull request menu (`cc9fd29`)
@@ -1361,7 +1361,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Pull requests across forks: a source on a fork remote, or pushing to your own fork and opening the pull request against the upstream repository
 - On a LOCAL row, create a pull request from the checked-out branch into that branch (the REMOTE row has it)
 - Choose source and target by selecting two branch rows
-- Find a branch's open pull request by its upstream's name when the local name differs
 - Remember the last target used per branch and preselect it next time
 - For a diverged branch, offer a force push with lease and then the pull request (today it is refused with the reason)
 - A Preferences setting to create pull requests as drafts by default

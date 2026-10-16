@@ -11,7 +11,7 @@ use trellis_core::repo::Snapshot;
 pub(super) fn pr_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     let Some(fs) = st.forge.as_ref().filter(|f| f.host.is_some()) else { return };
     let Some(b) = snap.head_info() else { return };
-    if fs.pr_for_branch(&b.name).is_some() {
+    if push_pr::open_pr(snap, fs, &b.name).is_some() {
         return;
     }
     let (name, noun) = (&b.name, fs.pr_noun());

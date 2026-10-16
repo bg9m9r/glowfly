@@ -23,7 +23,7 @@ fn push(branch: &str, target: Option<&str>) -> Msg {
 /// A LOCAL row: open the branch's pull request, or create one, pushing first when needed.
 pub(super) fn local(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, sel: &Selection, msgs: &mut Vec<Msg>) {
     let (name, noun) = (b.name.as_str(), fs.pr_noun());
-    if let Some(pr) = fs.pr_for_branch(name) {
+    if let Some(pr) = push_pr::open_pr(snap, fs, name) {
         menu_item(msgs, ui, format!("Open {noun} {}", fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone()));
         return;
     }
@@ -59,7 +59,7 @@ pub(super) fn remote(ui: &mut egui::Ui, name: &str, oid: Oid, snap: &Snapshot, f
         menu_item(msgs, ui, format!("Create {noun} into {t}…"), create(name, Some(&t)));
     }
     let Some(head) = snap.head_info() else { return };
-    if fs.pr_for_branch(&head.name).is_some() || push_pr::pr_source(snap, fs, &head.name) == name {
+    if push_pr::open_pr(snap, fs, &head.name).is_some() || push_pr::pr_source(snap, fs, &head.name) == name {
         return;
     }
     let h = head.name.as_str();
@@ -74,9 +74,15 @@ pub(super) fn remote(ui: &mut egui::Ui, name: &str, oid: Oid, snap: &Snapshot, f
     }
 }
 
-/// The PR tool button's menu: Create, and Push and create.
+/// The PR tool button's menu: Create (or Open, once the checked-out branch has an open pull
+/// request), and Push and create.
 pub(super) fn pr_menu(ui: &mut egui::Ui, snap: &Snapshot, fs: &ForgeState, idle: bool, msgs: &mut Vec<Msg>) {
     let head = snap.head_info();
+    if let Some(pr) = head.and_then(|b| push_pr::open_pr(snap, fs, &b.name)) {
+        menu_item(msgs, ui, format!("Open {} {}", fs.pr_noun(), fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone()));
+        push_pr_item(ui, snap, fs, idle, msgs);
+        return;
+    }
     let r = ui.add_enabled(idle && head.is_some(), egui::Button::new(format!("Create {}…", fs.pr_noun())));
     if r.clicked()
         && let Some(b) = head

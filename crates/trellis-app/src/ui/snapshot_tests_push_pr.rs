@@ -13,7 +13,7 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use std::path::PathBuf;
-use trellis_core::forge::{Provider, Target};
+use trellis_core::forge::{Provider, PullRequest, Target};
 use trellis_core::repo::{BranchInfo, Tracking};
 use trellis_core::settings::ThemeChoice;
 
@@ -152,6 +152,61 @@ fn toolbar_push_menu_pr_item() {
     h.run();
     open_push_menu(&mut h);
     assert!(h.get_by_label(label).is_disabled(), "search is up to date on origin");
+    drop(h);
+    remove_fixture(&dir);
+}
+/// `search` tracks origin/topic (named differently), which has open pull request #7; `head`
+/// checks it out.
+fn with_open_pr(name: &str, head: bool) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_host(ThemeChoice::Dark, name, &["main"]);
+    let search = tip(&st, "search");
+    st.snap.as_mut().unwrap().remotes[0].1.push(("topic".into(), search));
+    let b = branch(&mut st, "search");
+    b.tracking = Some(Tracking { remote: "origin".into(), merge: "topic".into() });
+    b.upstream = Some("origin/topic".into());
+    b.upstream_ref = Some("refs/remotes/origin/topic".into());
+    let pr = PullRequest {
+        id: 7,
+        title: "Search results page".into(),
+        description: String::new(),
+        source: "topic".into(),
+        target: "main".into(),
+        author: "ada".into(),
+        draft: false,
+        reviewers: Vec::new(),
+        head: None,
+        merge_status: None,
+        checks: None,
+        url: "https://github.com/o/r/pull/7".into(),
+    };
+    st.forge.as_mut().unwrap().prs = vec![pr];
+    if head {
+        check_out_search(&mut st);
+    }
+    (st, dir)
+}
+
+#[test]
+fn open_pr_under_another_upstream_name() {
+    let (st, dir) = with_open_pr("open-pr-upstream-name", true);
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("More pull request actions").click();
+    h.run();
+    assert!(h.query_by_label("Open pull request #7").is_some());
+    assert!(h.query_by_label("Create pull request…").is_none(), "search already has #7");
+    assert!(h.get_by_label("Push search and create a pull request…").is_disabled());
+    drop(h);
+
+    let (st, _) = with_open_pr("open-pr-upstream-name", false);
+    let mut h = harness(st, true);
+    h.run();
+    open_row_menu(&mut h, true);
+    assert!(h.query_by_label("Open pull request #7").is_some());
+    assert!(h.query_by_label("Create pull request…").is_none());
+    h.get_by_label("Open pull request #7").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u.ends_with("/pull/7"))));
     drop(h);
     remove_fixture(&dir);
 }
