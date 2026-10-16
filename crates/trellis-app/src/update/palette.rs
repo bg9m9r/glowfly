@@ -257,6 +257,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
         C::OpenBlame(path) => Msg::Blame(BlameMsg::Open { path, at: None }),
         C::Remote(m) => Msg::Remote(m),
+        C::Submodule(m) => Msg::Submodule(m),
         C::Tools(m) => Msg::Tools(m),
         C::ApplyPatch => Msg::Patch(crate::patch::PatchMsg::PickToApply),
         C::SwitchProfile(id) => Msg::Profile(crate::profile::ProfileMsg::Switch(id)),

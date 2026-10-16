@@ -1,7 +1,8 @@
 //! Dialogs: confirmation, new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
 //! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
-//! `worktree_manage_dialog.rs`), clone (drawn by `clone_dialog.rs` and `clone_service.rs`), init
-//! (drawn by `init_dialog.rs`), create pull request, publish (drawn by `publish.rs`), renaming a
+//! `worktree_manage_dialog.rs`), add and remove submodule (drawn by `submodule_dialogs.rs`),
+//! clone (drawn by `clone_dialog.rs` and `clone_service.rs`), init (drawn by
+//! `init_dialog.rs`), create pull request, publish (drawn by `publish.rs`), renaming a
 //! branch or setting its upstream (drawn by `branch_dialogs.rs`), renaming a stash (drawn by
 //! `stash_dialog.rs`), stashing with a message and a choice of what goes in (drawn by
 //! `stash_push_dialog.rs`), creating or renaming a working-tree file (drawn by
@@ -80,6 +81,16 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::LockWorktree(form) => {
                 if super::worktree_manage_dialog::lock(ui, form, !prompting, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::AddSubmodule(form) => {
+                if super::submodule_dialogs::add(ui, form, snap, !prompting, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::RemoveSubmodule(form) => {
+                if super::submodule_dialogs::remove(ui, form, idle, msgs) {
                     close = true;
                 }
             }

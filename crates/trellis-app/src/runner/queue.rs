@@ -8,7 +8,7 @@
 //! disk (`paths::FolderId`), so `submit` hands each job to a router thread that looks the folder
 //! up (once per spelling) and passes the job on, in order; the UI thread never waits on it.
 
-use crate::effect::Effect;
+use crate::effect::{Effect, SubmoduleEffect};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -116,6 +116,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
         Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } | Effect::InteractiveRebase { cwd, .. } => Some(cwd),
         Effect::RemoveWorktree(r) => Some(&r.repo),
+        Effect::Submodule(SubmoduleEffect::Remove(r)) => Some(&r.repo),
         Effect::RenameStash { cwd, .. } => Some(cwd),
         Effect::SparseCheckout { cwd, .. } => Some(cwd),
         // Reads, network calls, Trellis's own files (ordered by `saves`), git config (which no
@@ -131,7 +132,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::LoadFileHistory { .. }
         | Effect::LoadBlame(_)
         | Effect::LoadTrackedPaths { .. }
-        | Effect::CheckSubmodule { .. }
+        | Effect::Submodule(SubmoduleEffect::Check { .. } | SubmoduleEffect::CheckAddPath { .. } | SubmoduleEffect::CheckRemove { .. })
         | Effect::CheckWorktreeFolder(_)
         | Effect::CheckCloneParent { .. }
         | Effect::CheckRepoFolders(_)

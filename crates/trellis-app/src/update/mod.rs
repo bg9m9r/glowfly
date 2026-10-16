@@ -50,6 +50,8 @@ mod ssh_service;
 mod ssh_use;
 mod stash;
 mod stash_push;
+mod submodule_add;
+mod submodule_remove;
 mod submodules;
 mod tabs;
 mod tag_annotate;
@@ -217,6 +219,10 @@ mod stash_rename_tests;
 #[cfg(test)]
 mod stash_tests;
 #[cfg(test)]
+mod submodule_add_tests;
+#[cfg(test)]
+mod submodule_remove_tests;
+#[cfg(test)]
 mod submodule_tests;
 #[cfg(test)]
 mod tabs_tests;
@@ -306,7 +312,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Tag(m) => tags::handle(st, m, &mut fx),
         Msg::Remote(m) => remotes::handle(st, m, &mut fx),
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
-        Msg::Submodule(m) => submodules::handle(st, m, &mut fx),
+        Msg::Submodule(m) => submodules::handle(st, m, now, &mut fx),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
         Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
         Msg::Tools(m) => tools::handle(st, m, now, &mut fx),

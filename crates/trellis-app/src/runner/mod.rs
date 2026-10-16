@@ -247,7 +247,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::RestoreFile { workdir, oid, path, overwrite } => Some(files::restore(&workdir, oid, path, overwrite)),
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
-        Effect::CheckSubmodule { workdir, path } => Some(submodules::check(&workdir, path)),
+        Effect::Submodule(e) => Some(submodules::run(e)),
         Effect::CheckWorktreeFolder(r) => Some(worktrees::check(r)),
         Effect::CheckCloneParent { parent, delay } => Some(files::check_clone_parent(parent, delay)),
         Effect::DetectLfs { cwd } => Some(Msg::Lfs(LfsMsg::Detected(trellis_core::lfs::installed(&cwd)))),

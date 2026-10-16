@@ -7,7 +7,8 @@
 //! (staging, line staging), `revert`, `restore`, `conflict` and `resolve`, `template`
 //! (commit.template), `touching` (commits that changed a searched path), `workfile`,
 //! `workfile_mv`, `workfile_rm`, `noclobber` and `removal` (working-tree files), `tracked`,
-//! `attrs` (gitattributes), `submodules`, `worktrees`, `remotes` and `shallow`. Paths: `entry`
+//! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
+//! folder), `worktrees`, `remotes` and `shallow`. Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
 //! one path exactly) and `collide` (paths a file system can't keep apart).
 
@@ -41,6 +42,7 @@ mod rpath;
 mod shallow;
 mod status;
 mod status_cli;
+mod submodule_add;
 mod submodules;
 mod template;
 mod touching;
@@ -76,6 +78,7 @@ pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
 pub use status::status_at;
+pub use submodule_add::check_submodule_path;
 pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
 pub use touching::{Touching, commits_touching};

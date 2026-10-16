@@ -46,6 +46,7 @@ mod spell_edit;
 mod stash_dialog;
 mod stash_push_dialog;
 mod status;
+mod submodule_dialogs;
 mod submodules;
 mod tabs;
 mod tag_dialog;
@@ -142,6 +143,8 @@ mod snapshot_tests_ssh;
 mod snapshot_tests_stash;
 #[cfg(test)]
 mod snapshot_tests_stash_push;
+#[cfg(test)]
+mod snapshot_tests_submodule_dialogs;
 #[cfg(test)]
 mod snapshot_tests_submodules;
 #[cfg(test)]

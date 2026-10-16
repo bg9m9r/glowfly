@@ -6,6 +6,7 @@
 use super::palette_commands::PaletteCommand;
 use super::palette_kinds::StashAction;
 use crate::remote::RemoteMsg;
+use crate::submodule::SubmoduleMsg;
 use crate::tools::ToolsMsg;
 use trellis_core::gitflow::FlowKind;
 use trellis_core::settings::ThemeChoice;
@@ -117,6 +118,10 @@ impl PaletteCommand {
             C::OpenFileHistory(_) | C::OpenBlame(_) => return None,
             C::Remote(m) => match m {
                 RemoteMsg::AddDialog => "add-remote",
+                _ => return None,
+            },
+            C::Submodule(m) => match m {
+                SubmoduleMsg::AddDialog => "add-submodule",
                 _ => return None,
             },
             C::Tools(m) => match m {

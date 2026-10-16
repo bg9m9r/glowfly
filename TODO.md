@@ -474,10 +474,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   from file history, the file context menu and the palette's file finder; clicking a commit
   selects it in the graph. Runs `git blame --porcelain` (honouring .mailmap and
   blame.ignoreRevsFile), with the editor font, tab size and syntax colors.
-- [ ] **Add and remove submodules**
-  - [ ] Add a submodule: URL, path and optional branch, through `git submodule add`, with checks
+- [x] **Add and remove submodules**
+  Add submodule… from the SUBMODULES header menu and the palette (the palette is how the first
+  one is added, since the section only shows with submodules); Remove submodule… in the row menu.
+  - [x] Add a submodule: URL, path and optional branch, through `git submodule add`, with checks
     for a path that already exists or is already in the index
-  - [ ] Remove a submodule (deinit, `git rm`, clean its `.git/modules` entry) behind a
+  - [x] Remove a submodule (deinit, `git rm`, clean its `.git/modules` entry) behind a
     destructive confirmation
 - [ ] **External diff and merge tools**
   - [ ] External diff tool: program and arguments ({local}, {remote}, {path}) in Preferences >
@@ -939,7 +941,17 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   explain that a submodule's own changes are committed inside it
 - Fetch and pull inside a submodule; recurse-submodules options for fetch, pull and push; a
   clear message when checkout or reset fails because of submodule changes
-- Palette commands for opening, initializing and updating submodules
+- Palette commands for opening, initializing, updating and removing submodules
+- Add recursively, cloning the new submodule's own submodules too
+- Shallow add (`--depth`) and a single-branch clone for large submodules
+- Choose a submodule name other than its path (`--name`), which also gets past a leftover stored
+  module
+- Add a repository that is already inside the working tree as a submodule
+- Browse… for a local repository URL, and a picker of the hosting service's repositories, in the
+  Add submodule dialog
+- Remove a gitlink that has no .gitmodules entry (`git rm --cached`, then clear its folder)
+- Send a removed submodule's stored module to the OS trash instead of deleting it
+- Undo for adding or removing a submodule
 - A context-menu entry to show or hide the SUBMODULES section
 
 ### Worktrees

@@ -134,6 +134,8 @@ pub enum PaletteCommand {
     OpenBlame(String),
     /// A REMOTE section action (Add remote…, Fetch <remote>).
     Remote(crate::remote::RemoteMsg),
+    /// A SUBMODULES action (Add submodule…).
+    Submodule(crate::submodule::SubmoduleMsg),
     /// Show the trust prompt again for the open repository.
     ReviewTrust,
     /// Pick a patch file and apply it to the working tree.
@@ -277,6 +279,9 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     super::patch::palette_entries(out);
     palette_setup::setup_entries(out);
     palette_gitflow::gitflow_entries(st, snap, out);
+    // Here even without submodules: the SUBMODULES section (and its menu) only shows with some.
+    let add = C::Submodule(crate::submodule::SubmoduleMsg::AddDialog);
+    out.push(entry(add, "Add submodule…", "submodule add nested repository dependency vendor library"));
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));
     let toggle = if st.terminal.open { "Hide terminal panel" } else { "Show terminal panel" };

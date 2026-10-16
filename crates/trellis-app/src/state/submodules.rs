@@ -1,16 +1,20 @@
 //! The SUBMODULES section's text and rules, shared by the view and `update`: the status word,
 //! the tooltip, why open, update and copy are blocked, the update confirmation (with the commits
-//! it would leave behind) and the update command.
+//! it would leave behind) and the update command. The Add submodule dialog's rules are in
+//! `add.rs`, the Remove submodule confirmation's in `remove.rs`.
 
 use git2::Oid;
 use trellis_core::gitcli::args;
 use trellis_core::repo::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState};
 
-/// How many left-behind commits the confirmation names.
+pub mod add;
+pub mod remove;
+
+/// How many commits a confirmation names.
 const NAMED: usize = 5;
 
 /// The first 7 hex characters of `oid`.
-fn short(oid: Oid) -> String {
+pub(crate) fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
@@ -96,11 +100,31 @@ pub fn job_label(sm: &SubmoduleInfo) -> String {
 
 /// "1 commit", "3 commits", or "50 or more commits" when the list was cut off.
 fn commit_count(sm: &SubmoduleInfo) -> String {
-    match sm.left_behind.len() {
+    count_commits(sm.left_behind.len())
+}
+
+/// "1 commit", "3 commits", or "50 or more commits" for a list cut off at `LEFT_BEHIND_MAX`.
+pub(crate) fn count_commits(n: usize) -> String {
+    match n {
         1 => "1 commit".to_owned(),
         LEFT_BEHIND_MAX => format!("{LEFT_BEHIND_MAX} or more commits"),
         n => format!("{n} commits"),
     }
+}
+
+/// The first commits of `list` as indented "<short id> <summary>" lines, each after a line
+/// break, then "and [at least] N more" for the rest ("at least" when the list was cut off at
+/// `LEFT_BEHIND_MAX`).
+pub(crate) fn named_commits(list: &[(Oid, String)]) -> String {
+    let mut out = String::new();
+    for (id, summary) in list.iter().take(NAMED) {
+        out.push_str(&format!("\n    {} {summary}", short(*id)));
+    }
+    if list.len() > NAMED {
+        let at_least = if list.len() == LEFT_BEHIND_MAX { "at least " } else { "" };
+        out.push_str(&format!("\n    and {at_least}{} more", list.len() - NAMED));
+    }
+    out
 }
 
 /// The confirmation before updating a submodule that is checked out at another commit. When
@@ -123,13 +147,7 @@ pub fn confirm_update_body(sm: &SubmoduleInfo) -> String {
         if one { "that commit" } else { "these commits" },
         if one { "it" } else { "them" },
     );
-    for (id, summary) in sm.left_behind.iter().take(NAMED) {
-        out.push_str(&format!("\n    {} {summary}", short(*id)));
-    }
-    if sm.left_behind.len() > NAMED {
-        let at_least = if sm.left_behind.len() == LEFT_BEHIND_MAX { "at least " } else { "" };
-        out.push_str(&format!("\n    and {at_least}{} more", sm.left_behind.len() - NAMED));
-    }
+    out.push_str(&named_commits(&sm.left_behind));
     out.push_str(&format!(
         "\n\nAfterwards only the submodule's reflog finds {}, until it expires. To keep {0}, cancel, open the submodule and \
          create a branch at {now}.",

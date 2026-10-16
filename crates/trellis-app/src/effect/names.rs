@@ -20,7 +20,7 @@ impl Effect {
             Effect::RestoreFile { .. } => "restore-file",
             Effect::WorkFile { .. } => "work-file",
             Effect::LoadTrackedPaths { .. } => "tracked-paths",
-            Effect::CheckSubmodule { .. } => "check-submodule",
+            Effect::Submodule(e) => e.name(),
             Effect::CheckWorktreeFolder(_) => "check-worktree-folder",
             Effect::CheckCloneParent { .. } => "check-clone-parent",
             Effect::DetectLfs { .. } => "lfs-detect",

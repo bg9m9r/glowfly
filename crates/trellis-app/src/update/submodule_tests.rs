@@ -5,7 +5,7 @@
 use super::tests::same_place;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
+use crate::effect::{Effect, LoadKind, SubmoduleEffect};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
@@ -20,11 +20,11 @@ use std::time::Instant;
 use trellis_core::repo::{SubmoduleInfo, SubmoduleState};
 use trellis_core::undo::Action;
 
-const PATH: &str = "libs/lib";
+pub(super) const PATH: &str = "libs/lib";
 
 /// A repository with a submodule at libs/lib (added from a sibling repository and committed),
 /// opened in `st`. Returns (state, parent, sibling library repository).
-fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
+pub(super) fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
     let lib = scratch_repo(&format!("{name}-lib"));
     let parent = scratch_repo(name);
     let url = format!("../{}", lib.file_name().unwrap().to_string_lossy());
@@ -39,7 +39,7 @@ fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
     (st, parent, lib)
 }
 
-fn sub(st: &AppState) -> SubmoduleInfo {
+pub(super) fn sub(st: &AppState) -> SubmoduleInfo {
     st.snap.as_ref().expect("a repository is open").submodules.first().cloned().expect("a submodule")
 }
 
@@ -61,7 +61,7 @@ fn finish(st: &mut AppState, fx: Vec<Effect>) {
     }
 }
 
-fn last_log(st: &AppState) -> (bool, String) {
+pub(super) fn last_log(st: &AppState) -> (bool, String) {
     st.log.last().map(|l| (l.ok, l.text.clone())).expect("a log entry")
 }
 
@@ -79,7 +79,7 @@ fn commit_inside(st: &mut AppState, parent: &Path) {
     assert_eq!(sub(st).state, SubmoduleState::OutOfSync);
 }
 
-fn cleanup(dirs: &[&Path]) {
+pub(super) fn cleanup(dirs: &[&Path]) {
     for d in dirs {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -213,7 +213,7 @@ fn update_names_commits_it_would_leave_behind() {
     assert_eq!(sub(&st).left_behind.len(), 1);
 
     let fx = update(&mut st, msg(PATH, false), Instant::now());
-    assert!(matches!(&fx[..], [Effect::CheckSubmodule { path, .. }] if path == PATH), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Submodule(SubmoduleEffect::Check { path, .. })] if path == PATH), "{fx:?}");
     assert!(st.modal.is_none() && st.job.is_none());
     finish_checks(&mut st, fx);
     let left = sub(&st).left_behind;
@@ -254,9 +254,9 @@ fn checked_submodule_gone_or_unreadable_is_logged() {
     cleanup(&[&parent, &lib]);
 }
 
-/// Runs the `CheckSubmodule` effects in `fx` and handles their results.
+/// Runs the `SubmoduleEffect::Check` effects in `fx` and handles their results.
 fn finish_checks(st: &mut AppState, fx: Vec<Effect>) {
-    for e in fx.into_iter().filter(|e| matches!(e, Effect::CheckSubmodule { .. })) {
+    for e in fx.into_iter().filter(|e| matches!(e, Effect::Submodule(SubmoduleEffect::Check { .. }))) {
         if let Some(m) = runner::execute(e) {
             drive(st, m);
         }

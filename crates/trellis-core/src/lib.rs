@@ -45,6 +45,7 @@ pub mod sparse_ops;
 pub mod spell;
 pub mod ssh_keys;
 pub mod stash_ops;
+pub mod submodule_ops;
 pub mod tabs;
 pub mod tag_ops;
 pub mod terminal;

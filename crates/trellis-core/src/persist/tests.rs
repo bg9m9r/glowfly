@@ -214,3 +214,50 @@ fn the_old_mode_is_kept_and_the_executable_bit_set_on_unix() {
     assert_eq!(std::fs::metadata(&file).unwrap().permissions().mode() & 0o7777, 0o700);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Makes `link` a link to the folder `target`: a symbolic link, or on Windows a junction where
+/// symbolic links need rights the account lacks. False when neither can be made.
+fn dir_link(target: &Path, link: &Path) -> bool {
+    #[cfg(unix)]
+    let made = std::os::unix::fs::symlink(target, link).is_ok();
+    #[cfg(windows)]
+    let made = std::os::windows::fs::symlink_dir(target, link).is_ok()
+        || std::process::Command::new("cmd").args(["/c", "mklink", "/J"]).arg(link).arg(target).output().is_ok_and(|o| o.status.success());
+    made
+}
+
+#[test]
+fn remove_tree_removes_nested_folders_and_read_only_files() {
+    let dir = scratch("tree");
+    let tree = dir.join("modules").join("lib");
+    std::fs::create_dir_all(tree.join("objects").join("pack")).unwrap();
+    std::fs::write(tree.join("HEAD"), "ref: refs/heads/main\n").unwrap();
+    let pack = tree.join("objects").join("pack").join("pack-1.pack");
+    std::fs::write(&pack, "pack").unwrap();
+    set_readonly(&pack, true);
+    remove_tree(&tree).unwrap();
+    assert!(tree.symlink_metadata().is_err());
+    assert!(dir.join("modules").is_dir(), "only the tree itself goes");
+    // Nothing there is fine.
+    remove_tree(&tree).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn remove_tree_removes_a_link_but_not_its_target() {
+    let dir = scratch("tree-link");
+    let outside = dir.join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(outside.join("keep.txt"), "keep").unwrap();
+    let tree = dir.join("tree");
+    std::fs::create_dir_all(&tree).unwrap();
+    if !dir_link(&outside, &tree.join("link")) {
+        eprintln!("skipped: this account can't make folder links");
+        let _ = std::fs::remove_dir_all(&dir);
+        return;
+    }
+    remove_tree(&tree).unwrap();
+    assert!(tree.symlink_metadata().is_err());
+    assert_eq!(std::fs::read_to_string(outside.join("keep.txt")).unwrap(), "keep", "the target is untouched");
+    let _ = std::fs::remove_dir_all(&dir);
+}

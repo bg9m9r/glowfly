@@ -1,16 +1,19 @@
 //! The SUBMODULES section: opening a submodule in a tab, and initializing or updating one as a
 //! git job. Updating one that is checked out at another commit reads it again first, then asks,
-//! naming any commits on no branch or tag that the update would leave behind.
+//! naming any commits on no branch or tag that the update would leave behind. Adding one is in
+//! `submodule_add.rs`, removing one in `submodule_remove.rs`.
 
 use super::ops::{JobSpec, start_job};
-use crate::effect::Effect;
+use super::{submodule_add as add, submodule_remove as remove};
+use crate::effect::{Effect, SubmoduleEffect};
 use crate::msg::Msg;
 use crate::state::submodules::{confirm_update_body, confirm_update_button, job_label, open_blocked, update_args, update_blocked};
 use crate::state::{AppState, Modal};
 use crate::submodule::SubmoduleMsg;
+use std::time::Instant;
 use trellis_core::repo::SubmoduleInfo;
 
-pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         SubmoduleMsg::Open(path) => {
             let Some(sm) = find(st, &path) else { return };
@@ -33,7 +36,7 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, fx: &mut Vec<Effect>)
                 // Read it again: the commits left behind are only listed on loads, so one made
                 // inside since then (on a detached HEAD, say) could be missing from the warning.
                 let Some(workdir) = st.workdir() else { return };
-                fx.push(Effect::CheckSubmodule { workdir, path });
+                fx.push(Effect::Submodule(SubmoduleEffect::Check { workdir, path }));
                 return;
             }
             start_job(st, JobSpec::new(job_label(&sm), vec![update_args(&sm.path)]), fx);
@@ -64,11 +67,19 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, fx: &mut Vec<Effect>)
                 then: Box::new(Msg::Submodule(SubmoduleMsg::Update { path, confirmed: true })),
             });
         }
+        SubmoduleMsg::AddDialog => add::dialog(st),
+        SubmoduleMsg::AddEdited => add::edited(st, fx),
+        SubmoduleMsg::AddPathChecked { repo, path, result } => add::path_checked(st, repo, path, result),
+        SubmoduleMsg::Add => add::submit(st, fx),
+        SubmoduleMsg::RemoveDialog(path) => remove::dialog(st, path, fx),
+        SubmoduleMsg::RemoveChecked { path, result } => remove::checked(st, path, result),
+        SubmoduleMsg::Remove => remove::confirm(st, fx),
+        SubmoduleMsg::Removed { request, report } => remove::removed(st, request, report, now, fx),
     }
 }
 
 /// The submodule at `path` in the active tab's snapshot; logs when it is gone.
-fn find(st: &mut AppState, path: &str) -> Option<SubmoduleInfo> {
+pub(super) fn find(st: &mut AppState, path: &str) -> Option<SubmoduleInfo> {
     let found = st.snap.as_ref().and_then(|s| s.submodules.iter().find(|m| m.path == path).cloned());
     if found.is_none() {
         st.log(false, format!("Submodule {path} is no longer in this repository."));

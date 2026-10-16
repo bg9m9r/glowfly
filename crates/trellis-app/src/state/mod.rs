@@ -141,6 +141,8 @@ pub enum Modal {
     NewWorktree(worktrees::WorktreeForm),
     RemoveWorktree(worktree_manage::RemoveForm),
     LockWorktree(worktree_manage::LockForm),
+    AddSubmodule(submodules::add::AddForm),
+    RemoveSubmodule(submodules::remove::RemoveForm),
     Confirm { title: String, body: String, button: String, then: Box<Msg> },
     Clone(clone::CloneForm),
     Init(init::InitForm),

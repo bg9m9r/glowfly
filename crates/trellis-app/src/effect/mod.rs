@@ -19,6 +19,7 @@ mod init;
 mod names;
 mod notify;
 mod repo;
+mod submodule;
 
 pub use blame::BlameRequest;
 pub use clone::CloneEffect;
@@ -26,6 +27,7 @@ pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use init::InitEffect;
 pub use notify::{DesktopNote, NoteKind};
 pub use repo::{KnownRepo, LocalOp, UndoResult, WatchTarget};
+pub use submodule::SubmoduleEffect;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum LoadKind {
@@ -122,12 +124,8 @@ pub enum Effect {
         workdir: PathBuf,
         generation: u64,
     },
-    /// Reads the submodule at `path` (repo-relative) again, with the commits an update would
-    /// leave behind, before confirming the update.
-    CheckSubmodule {
-        workdir: PathBuf,
-        path: String,
-    },
+    /// Reading, checking and removing submodules (submodule.rs).
+    Submodule(SubmoduleEffect),
     /// Checks the folder of a worktree about to be created (missing, or an empty folder) before
     /// `git worktree add` runs. Unscoped: the dialog waits for the answer even if tabs change.
     CheckWorktreeFolder(crate::worktree::NewWorktree),
@@ -373,7 +371,6 @@ impl Effect {
             | Effect::LoadConflict { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }
             | Effect::LoadTrackedPaths { workdir, .. }
-            | Effect::CheckSubmodule { workdir, .. }
             | Effect::LoadLfs { workdir, .. }
             | Effect::LoadSparse { workdir, .. }
             | Effect::LoadRebasePlan { workdir, .. }
@@ -387,6 +384,7 @@ impl Effect {
             Effect::Forge { cwd, .. } => Some(cwd),
             Effect::CheckConflicts(j) => Some(&j.workdir),
             Effect::LoadBlame(r) => Some(&r.workdir),
+            Effect::Submodule(e) => e.scope(),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
             Effect::LoadRepo { .. }

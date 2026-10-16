@@ -133,3 +133,50 @@ fn submodule_menu() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[test]
+fn submodule_remove_menu_item() {
+    let (st, dir) = with_submodules(ThemeChoice::Dark, "submodule-remove-item");
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h, "libs/core");
+    h.get_by_label("Remove submodule…").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::RemoveDialog(p)) if p == "libs/core")));
+    drop(h);
+
+    // No .gitmodules entry, or unstaged changes to .gitmodules: git would refuse.
+    let (mut st, _) = with_submodules(ThemeChoice::Dark, "submodule-remove-item");
+    st.snap.as_mut().unwrap().unstaged.push(trellis_core::repo::FileEntry::new(".gitmodules", 'M'));
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h, "libs/core");
+    assert!(h.get_by_label("Remove submodule…").is_disabled());
+    h.press_key(eframe::egui::Key::Escape);
+    h.run();
+    drop(h);
+    let (st, _) = with_submodules(ThemeChoice::Dark, "submodule-remove-item");
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h, "tools/gen");
+    assert!(h.get_by_label("Remove submodule…").is_disabled());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn submodule_header_menu() {
+    let (st, dir) = with_submodules(ThemeChoice::Dark, "submodule-header-menu");
+    let mut h = harness(st, true);
+    h.run();
+    // The header, 12 + 15 px above the first row's center.
+    let rect = h.get_by_label("libs/core").bounding_box().expect("the row");
+    let row = pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32);
+    click(&mut h, pos2(row.x, row.y - 27.0), PointerButton::Secondary);
+    h.check_snapshot("submodule_header_menu");
+    h.get_by_label("Add submodule…").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::AddDialog))));
+    drop(h);
+    remove_fixture(&dir);
+}

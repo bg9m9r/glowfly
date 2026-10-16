@@ -1,6 +1,7 @@
 //! Every file Trellis writes goes through here: its own files (settings, recent repositories,
 //! open tabs), files written for the user (saved patches), and working-tree files it puts back
-//! itself (undo and redo of a discard or restore).
+//! itself (undo and redo of a discard or restore). [`remove_tree`] deletes a folder Trellis
+//! owns the removal of (a submodule's stored module) without following links.
 //!
 //! A file is written to a temporary sibling, flushed to disk, then renamed over the target, so a
 //! crash or power cut leaves either the old file or the new one, never half of each. On Unix the
@@ -77,6 +78,42 @@ pub fn remove_file(path: &Path) -> std::io::Result<()> {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
         r => r,
     }
+}
+
+/// Removes the folder (or file) at `path` and everything in it, depth first, never following a
+/// link: a symbolic link or junction inside is removed as a link, and its target is left alone.
+/// Files go through [`remove_file`] (read-only ones too, as pack files under `.git` are on
+/// Windows). A missing path is fine.
+pub fn remove_tree(path: &Path) -> std::io::Result<()> {
+    let meta = match std::fs::symlink_metadata(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        r => r?,
+    };
+    if meta.file_type().is_symlink() {
+        return remove_link(path, &meta);
+    }
+    if !meta.is_dir() {
+        return remove_file(path);
+    }
+    for entry in std::fs::read_dir(path)? {
+        remove_tree(&entry?.path())?;
+    }
+    std::fs::remove_dir(path)
+}
+
+/// Removes the link at `path` itself. Windows removes a link to a folder (or a junction) as a
+/// folder, which leaves its target as it is.
+fn remove_link(path: &Path, meta: &std::fs::Metadata) -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::FileTypeExt;
+        if meta.file_type().is_symlink_dir() {
+            return std::fs::remove_dir(path);
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = meta;
+    remove_file(path)
 }
 
 fn is_link(path: &Path) -> bool {
