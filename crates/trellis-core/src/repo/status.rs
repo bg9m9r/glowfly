@@ -23,9 +23,21 @@ pub(super) fn load_status(repo: &Repository, git_status: bool) -> Result<(Vec<Fi
         && wants_git(repo)
         && let Some(lists) = super::status_cli::status(workdir)
     {
-        return Ok(lists);
+        return Ok(mark_twins(repo, lists));
     }
-    libgit2_status(repo)
+    libgit2_status(repo).map(|lists| mark_twins(repo, lists))
+}
+
+/// Marks the rows whose path shares one file on disk with another index path.
+fn mark_twins(repo: &Repository, (mut unstaged, mut staged): (Vec<FileEntry>, Vec<FileEntry>)) -> (Vec<FileEntry>, Vec<FileEntry>) {
+    use super::collide;
+    let found = repo.index().map(|i| collide::collisions(&i)).unwrap_or_default();
+    if !found.is_empty() {
+        let (folding, ignorecase) = (collide::folding(repo.path()), collide::ignorecase(repo));
+        collide::mark(&mut unstaged, &found, folding, ignorecase);
+        collide::mark(&mut staged, &found, folding, ignorecase);
+    }
+    (unstaged, staged)
 }
 
 /// Entries past which git's own status is faster than libgit2's.

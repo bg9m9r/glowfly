@@ -35,6 +35,7 @@ fn short(oid: Oid) -> String {
 /// neither the index nor a commit can bring back (it is untracked or ignored, has unstaged edits,
 /// or has edits git is told to skip); that refusal is [`Error::WouldOverwrite`].
 pub fn restore_file(workdir: &Path, oid: Oid, path: &str, overwrite: bool) -> Result<RestoredFrom> {
+    super::collide::refuse(workdir, path, "restore")?;
     let repo = Repository::open(workdir)?;
     let root = repo.workdir().ok_or_else(|| Error::Unsupported("a bare repository has no working tree".into()))?.to_path_buf();
     let commit = repo.find_commit(oid)?;

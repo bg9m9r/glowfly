@@ -24,6 +24,7 @@ pub mod palette_profiles;
 pub mod palette_recent;
 pub mod palette_tools;
 pub mod patch;
+pub mod path_hazards;
 pub mod prefs;
 pub mod profiles;
 pub mod publish;

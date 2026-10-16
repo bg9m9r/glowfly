@@ -15,6 +15,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 mod attrs;
+mod collide;
 mod conflict;
 mod diff;
 mod diff_types;
@@ -47,6 +48,7 @@ mod workfile_rename;
 mod workfile_rm;
 mod worktrees;
 
+pub use collide::{Collision, Folding, probe};
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{
     Comparison, ViewDiff, commit_detail, commit_stats, commit_stats_until, compare, compare_files, load_diff, load_diff_for_view,
@@ -169,8 +171,8 @@ impl FileEntry {
 /// Why Trellis won't act on a file row (see `FileEntry::hazard`).
 #[derive(Clone, PartialEq, Debug)]
 pub enum Hazard {
-    /// The name isn't UTF-8 (these are its bytes): `path` shows it with U+FFFD in place of the
-    /// bytes it can't show, so it names another file or none.
+    /// The name isn't UTF-8 (these are its bytes): `path` shows each byte it can't show as
+    /// `\xHH`, so it names another file or none.
     NotUtf8(Vec<u8>),
     /// Other index paths that this file system, or git with `core.ignorecase`, treats as the
     /// same file (they differ only in case or Unicode normalization): one file on disk stands
@@ -255,6 +257,13 @@ pub struct Snapshot {
     pub stashes: Vec<StashInfo>,
     pub unstaged: Vec<FileEntry>,
     pub staged: Vec<FileEntry>,
+    /// What the work tree's file system treats as one name (probed in the git dir).
+    pub folding: Folding,
+    /// `core.ignorecase`.
+    pub ignorecase: bool,
+    /// Index paths that are one name to some file system (case or Unicode normalization), from
+    /// full loads. Rows of the ones that share a file here carry `Hazard::Twins`.
+    pub collisions: Vec<Collision>,
     /// The index's submodules sorted by path; refreshed by full loads and by status reloads when
     /// the repository has any (`submodules_if_any`).
     pub submodules: Vec<SubmoduleInfo>,
@@ -294,6 +303,16 @@ impl Snapshot {
 
     pub fn is_dirty(&self) -> bool {
         !self.unstaged.is_empty() || !self.staged.is_empty()
+    }
+
+    /// Why `core.ignorecase` and the file system disagree, when they do: git then matches
+    /// paths differently from the disk (a repository copied between systems).
+    pub fn case_mismatch(&self) -> Option<&'static str> {
+        match (self.folding.case, self.ignorecase) {
+            (Some(true), false) => Some("This file system ignores case, but core.ignorecase is false: git may see one file as two."),
+            (Some(false), true) => Some("This file system is case-sensitive, but core.ignorecase is true: git may match the wrong file."),
+            _ => None,
+        }
     }
 
     pub fn head_info(&self) -> Option<&BranchInfo> {
@@ -359,6 +378,8 @@ impl LoadOptions {
 #[cfg(test)]
 mod bytes_tests;
 #[cfg(test)]
+mod collide_tests;
+#[cfg(test)]
 mod compare_tests;
 #[cfg(test)]
 mod conflict_tests;
@@ -369,9 +390,9 @@ mod convert_write_tests;
 #[cfg(test)]
 mod diff_tests;
 #[cfg(test)]
-mod exact_tests;
-#[cfg(test)]
 mod discard_tests;
+#[cfg(test)]
+mod exact_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]

@@ -76,6 +76,7 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
         });
         ui.add_space(6.0);
     }
+    super::path_warnings::banner(ui, snap);
 
     let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / 2.0).max(80.0);
     let lfs = TrackContext::of(st);
@@ -168,6 +169,7 @@ pub(super) fn changed_file_row(
     ui.horizontal(|ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
         let r = ui.selectable_label(open == Some(&target), &f.path);
+        super::path_warnings::mark(ui, f);
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
         }
@@ -255,7 +257,9 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
             (false, true) => "Mark resolved",
             (false, false) => "Stage",
         };
-        if ui.small_button(action).clicked() {
+        // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
+        let usable = !matches!(f.hazard, Some(trellis_core::repo::Hazard::NotUtf8(_)));
+        if ui.add_enabled(usable, egui::Button::new(action).small()).clicked() {
             msgs.push(toggle());
         }
         let selected = match open.diff {
@@ -265,6 +269,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
             _ => false,
         };
         let r = ui.selectable_label(selected, &f.path);
+        super::path_warnings::mark(ui, f);
         if r.clicked() {
             msgs.push(if conflicted {
                 Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone()))

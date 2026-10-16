@@ -14,6 +14,9 @@ use std::path::Path;
 /// the selection is refused as stale with `NotFound`. Stage and Discard act on the unstaged
 /// diff, Unstage on the staged one.
 pub fn apply_lines(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk, lines: &[usize], op: HunkOp) -> Result<()> {
+    if op == HunkOp::Discard {
+        super::collide::refuse(workdir, path, "discard changes to")?;
+    }
     let repo = Repository::open(workdir)?;
     if op != HunkOp::Unstage {
         super::attrs::refuse_converted(&repo, path, if op == HunkOp::Stage { "staging" } else { "discarding" })?;

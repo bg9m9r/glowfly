@@ -28,6 +28,7 @@ mod icons;
 mod menus;
 mod modals;
 mod palette;
+mod path_warnings;
 mod prefs;
 mod publish;
 mod rebase;
@@ -96,6 +97,8 @@ mod snapshot_tests_palette;
 mod snapshot_tests_palette_recent;
 #[cfg(test)]
 mod snapshot_tests_palette_stash;
+#[cfg(test)]
+mod snapshot_tests_path_warnings;
 #[cfg(test)]
 mod snapshot_tests_platform_dialogs;
 #[cfg(test)]

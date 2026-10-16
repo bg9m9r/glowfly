@@ -252,6 +252,7 @@ pub fn create_file(workdir: &Path, path: &str) -> Result<Written> {
 /// folders it leaves empty. The index is untouched, so a tracked file shows up as an unstaged
 /// deletion. When the trash can't take the file, nothing changes (`Error::TrashRefused`).
 pub fn delete_file(workdir: &Path, path: &str, removal: Removal) -> Result<Deleted> {
+    super::collide::refuse(workdir, path, "delete")?;
     let rel = contained(path)?;
     let (repo, root) = open_root(workdir)?;
     check_parents(&root, rel)?;

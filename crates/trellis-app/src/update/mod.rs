@@ -140,6 +140,8 @@ mod path_alias_tests;
 #[cfg(test)]
 mod path_case_tests;
 #[cfg(test)]
+mod path_hazards_tests;
+#[cfg(test)]
 mod perf_tests;
 #[cfg(test)]
 mod pr_checkout_tests;
@@ -234,6 +236,11 @@ use std::time::Instant;
 
 pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     let mut fx = Vec::new();
+    // A row whose path could reach the wrong file: refused before any handler runs.
+    if let Some(why) = crate::state::path_hazards::refusal(st, &msg) {
+        st.toast(false, why, now);
+        return fx;
+    }
     match msg {
         // Each area's messages go to its handler, which matches them exhaustively.
         Msg::Repo(m) => repo::handle(st, m, now, &mut fx),

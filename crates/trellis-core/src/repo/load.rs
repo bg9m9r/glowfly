@@ -175,6 +175,9 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let trust_scan = crate::trust::scan(&repo);
     let git_status = opts.trusted || trust_scan.is_empty();
     let (unstaged, staged) = super::status::load_status(&repo, git_status)?;
+    let folding = super::collide::folding(repo.path());
+    let ignorecase = super::collide::ignorecase(&repo);
+    let collisions = super::collide::collisions(&repo.index()?);
     let submodules = submodules::list(&repo);
     let worktrees = worktrees::list(&repo);
     let shallow_roots = super::shallow::roots(&repo);
@@ -243,6 +246,9 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         stashes,
         unstaged,
         staged,
+        folding,
+        ignorecase,
+        collisions,
         submodules,
         worktrees,
         trust_scan,

@@ -23,6 +23,9 @@ pub(super) fn git(workdir: &Path, a: &[&str]) -> Result<()> {
 /// unless git produces exactly the same hunk now (header and every line), the index may name
 /// another hunk, so the operation is refused as stale with `NotFound` and nothing changes.
 pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk, op: HunkOp) -> Result<()> {
+    if op == HunkOp::Discard {
+        collide::refuse(workdir, path, "discard changes to")?;
+    }
     let repo = Repository::open(workdir)?;
     if op != HunkOp::Unstage {
         // Unstaging only moves blobs between HEAD and the index, where no conversion applies.
@@ -95,6 +98,7 @@ pub fn unstage_paths(workdir: &Path, paths: &[String]) -> Result<()> {
 
 /// Reverts a tracked file's unstaged changes to the index version.
 pub fn discard_file(workdir: &Path, path: &str) -> Result<()> {
+    collide::refuse(workdir, path, "discard changes to")?;
     git(workdir, &["restore", "--worktree", "--", path])
 }
 

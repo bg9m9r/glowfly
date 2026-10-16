@@ -13,8 +13,20 @@ use git2::{DiffDelta, DiffFile};
 pub(super) fn entry(bytes: &[u8], status: char) -> FileEntry {
     match std::str::from_utf8(bytes) {
         Ok(path) => FileEntry::new(path, status),
-        Err(_) => FileEntry { path: String::from_utf8_lossy(bytes).into_owned(), status, hazard: Some(Hazard::NotUtf8(bytes.to_vec())) },
+        Err(_) => FileEntry { path: shown(bytes), status, hazard: Some(Hazard::NotUtf8(bytes.to_vec())) },
     }
+}
+
+/// `bytes` for the screen: the UTF-8 parts as they are, each other byte as `\xHH`.
+pub(super) fn shown(bytes: &[u8]) -> String {
+    let mut out = String::with_capacity(bytes.len() + 8);
+    for chunk in bytes.utf8_chunks() {
+        out.push_str(chunk.valid());
+        for b in chunk.invalid() {
+            out.push_str(&format!("\\x{b:02X}"));
+        }
+    }
+    out
 }
 
 /// The path `bytes` as text, or None when it isn't UTF-8.

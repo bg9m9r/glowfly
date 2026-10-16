@@ -10,7 +10,7 @@ use std::process::{Command, Stdio};
 
 /// "café.txt" in Latin-1: not UTF-8.
 const CAFE: &[u8] = b"caf\xe9.txt";
-const CAFE_SHOWN: &str = "caf\u{FFFD}.txt";
+const CAFE_SHOWN: &str = "caf\\xE9.txt";
 
 /// Runs `git <a>` in `dir` with `input` on stdin; returns its stdout as bytes.
 pub(super) fn git_bytes(dir: &Path, a: &[&str], input: &[u8]) -> Vec<u8> {
