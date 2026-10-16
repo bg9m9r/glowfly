@@ -50,6 +50,7 @@ mod init;
 mod keys;
 mod logs;
 mod notify;
+mod onboarding;
 mod os;
 mod patches;
 mod path_search;
@@ -357,6 +358,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Patch(p) => Some(patches::run(p)),
         Effect::Tool(t) => tools::run(t),
         Effect::GitEnv(e) => Some(git_env::run(e)),
+        Effect::Onboarding(e) => Some(onboarding::run(e)),
         Effect::Theme(e) => themes::run(e),
         Effect::CheckConflicts(job) => Some(conflict_check::run(job)),
         Effect::Remote(e) => Some(forks::run(e)),

@@ -118,6 +118,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             | Effect::Tool(_)
             // Would write the developer's global git config.
             | Effect::Profile(_)
+            | Effect::Onboarding(_)
             // Asks a hosting service.
             | Effect::Clone(crate::effect::CloneEffect::ListRepos { .. })
             // Would write the global git config, run ssh-keygen or ssh-add, or call a service.

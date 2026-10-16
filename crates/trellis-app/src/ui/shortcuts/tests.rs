@@ -152,3 +152,29 @@ fn a_focused_text_field_keeps_plain_keys() {
     assert_eq!(press(&mut h, CMD_SHIFT, Key::M), [KeyAction::FocusMessage]);
     assert_eq!(press(&mut h, Modifiers::COMMAND, Key::Slash), [KeyAction::ToggleSheet]);
 }
+
+#[test]
+fn shortcuts_are_blocked_under_the_welcome() {
+    let mut st = unstaged();
+    st.onboarding.welcome = Some(Default::default());
+    all_quiet(st, "the welcome");
+    let mut st = unstaged();
+    st.onboarding.welcome = Some(Default::default());
+    let mut h = harness(st, false);
+    h.state_mut().msgs.clear();
+    let input = h.input_mut();
+    input.modifiers = CMD_SHIFT;
+    input.events.push(Event::Key { key: Key::L, physical_key: None, pressed: true, repeat: false, modifiers: CMD_SHIFT });
+    h.step();
+    h.input_mut().modifiers = Modifiers::NONE;
+    assert!(h.state().msgs.is_empty(), "no panel toggle under the welcome");
+    let mut st = unstaged();
+    st.onboarding.welcome = Some(Default::default());
+    let mut h = harness(st, false);
+    assert_eq!(press(&mut h, Modifiers::COMMAND, Key::P), [], "nor the palette");
+    // Under Preferences the welcome isn't drawn and Preferences alone decides.
+    let mut st = unstaged();
+    st.onboarding.welcome = Some(Default::default());
+    st.prefs = Some(PrefsState::new(PrefPage::General));
+    all_quiet(st, "Preferences over the welcome");
+}

@@ -83,6 +83,7 @@ fn entries_without_repo() {
             "New tab",
             "Open Preferences",
             "Keyboard shortcuts",
+            "Show the welcome",
             "Hide toolbar labels",
             "Zoom in",
             "Zoom out",
@@ -104,11 +105,11 @@ fn entries_without_repo() {
         ]
     );
     let list = shown(&st, "");
-    assert_eq!(list[10].entry.detail.as_deref(), Some("current"));
-    assert!(list[11].entry.detail.is_none() && list[12].entry.detail.is_none());
+    assert_eq!(list[11].entry.detail.as_deref(), Some("current"));
+    assert!(list[12].entry.detail.is_none() && list[13].entry.detail.is_none());
 
     st.settings.theme = ThemeChoice::System;
-    assert_eq!(shown(&st, "")[12].entry.detail.as_deref(), Some("current"));
+    assert_eq!(shown(&st, "")[13].entry.detail.as_deref(), Some("current"));
 
     st.tabs.push(Tab::empty());
     assert!(has(&st, "Close tab"));
@@ -157,17 +158,17 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 22);
+    assert_eq!(shown(&st, "").len(), 23);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 21);
+    assert_eq!(p.selected, 22);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
 
-    // Six theme entries match "theme".
+    // Six theme entries and "Show the welcome" match "theme".
     st.palette.as_mut().unwrap().query = "theme".into();
-    for _ in 0..6 {
+    for _ in 0..7 {
         run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     }
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);

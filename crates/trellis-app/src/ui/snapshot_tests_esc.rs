@@ -107,3 +107,32 @@ fn esc_closes_blame_before_history() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[test]
+fn esc_closes_the_tour_and_leaves_the_welcome_to_itself() {
+    use crate::onboarding::OnboardingMsg;
+    use crate::state::onboarding_tour::TourStep;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-tour");
+    st.onboarding.tour = Some(TourStep::Graph);
+    st.diff = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
+    let mut h = app_harness(st);
+    h.run();
+    let msgs = esc(&mut h);
+    assert!(msgs.iter().any(|m| matches!(m, Msg::Onboarding(OnboardingMsg::CloseTour))), "the tour closes first");
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))));
+
+    h.state_mut().0.onboarding.tour = None;
+    let mut w = crate::state::onboarding::Welcome::new();
+    w.identity.reading = false;
+    h.state_mut().0.onboarding.welcome = Some(w);
+    h.run();
+    let msgs = esc(&mut h);
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))), "the central chain leaves Esc to the welcome");
+    assert!(msgs.iter().any(|m| matches!(m, Msg::Onboarding(OnboardingMsg::CloseWelcome))), "which closes itself");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+fn empty_diff() -> FileDiff {
+    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
+}

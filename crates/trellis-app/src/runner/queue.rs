@@ -155,6 +155,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::ReadGitConfig { .. }
         | Effect::SetGitConfig { .. }
         | Effect::Profile(_)
+        | Effect::Onboarding(_)
         | Effect::SaveSettings(_)
         | Effect::SaveRecent(_)
         | Effect::SaveTabs { .. }
@@ -350,6 +351,9 @@ mod tests {
         let apply =
             crate::profile::ProfileEffect::Apply { cwd: w.clone(), has_repo: true, id: trellis_core::settings::ProfileId(1), identity };
         assert_eq!(repo_of(&Effect::Profile(apply)), None);
+        // So does the welcome's identity step.
+        let write = crate::onboarding::OnboardingEffect::WriteIdentity { cwd: w.clone(), identity: Default::default() };
+        assert_eq!(repo_of(&Effect::Onboarding(write)), None);
         // Fork lists and forking call the hosting service only; the remote is added by a job.
         use crate::remote::{ForkRequest, RemoteEffect};
         let target = trellis_core::forge::parse_remote("https://github.com/team/app", &[]).unwrap();

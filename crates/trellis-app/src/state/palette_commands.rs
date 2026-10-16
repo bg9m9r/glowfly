@@ -158,6 +158,8 @@ pub enum PaletteCommand {
     SwitchProfile(trellis_core::settings::ProfileId),
     /// Zoom and panel visibility (update/layout.rs).
     Layout(crate::msg::LayoutMsg),
+    /// The welcome and the tour (update/onboarding.rs).
+    Onboarding(crate::onboarding::OnboardingMsg),
 }
 
 impl PaletteCommand {
@@ -329,6 +331,7 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
     out.push(entry(C::OpenPrefs, "Open Preferences", "settings options configure"));
     super::palette_profiles::profile_entries(st, out);
     out.push(entry(C::KeyboardShortcuts, "Keyboard shortcuts", "keys keyboard bindings hotkeys help reference list"));
+    super::palette_onboarding::entries(st, out);
     let labels = st.settings.toolbar_labels;
     let label = if labels { "Hide toolbar labels" } else { "Show toolbar labels" };
     out.push(entry(C::ToolbarLabels(!labels), label, "toolbar buttons text captions icons compact"));

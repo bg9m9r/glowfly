@@ -335,6 +335,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     reload_diff(st, fx);
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
     super::push_pr::loaded(st, fx);
+    super::onboarding::loaded(st, kind);
     if reload {
         super::refresh::reload_after(st, fx);
     }

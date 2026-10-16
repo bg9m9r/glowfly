@@ -7,7 +7,7 @@ use super::widgets::{self, Icon};
 use crate::msg::{Msg, RecentMsg, RepoMsg};
 use crate::state::AppState;
 use crate::state::repo_lists::{clear_recent_confirm, favorite_label, favorites, is_favorite, is_missing, recent_rows};
-use eframe::egui::{self, Align, Color32, CornerRadius, Layout, Response, RichText, Sense, Stroke, vec2};
+use eframe::egui::{self, Align, Color32, Layout, Response, RichText, Sense, Stroke};
 use std::path::Path;
 
 /// The width of the welcome screen's repository column, when the window is wide enough.
@@ -111,7 +111,7 @@ fn row(ui: &mut egui::Ui, st: &AppState, path: &Path, place: Place, section: Sec
     let remove = || Msg::Recent(RecentMsg::Remove(path.to_path_buf()));
     ui.horizontal(|ui| {
         let (icon, col) = if fav { (Icon::StarFilled, color::amber()) } else { (Icon::Star, color::weak()) };
-        if small_icon(ui, icon, favorite_label(fav), col).clicked() {
+        if widgets::small_icon(ui, icon, favorite_label(fav), col).clicked() {
             msgs.push(favorite());
         }
         if place == Place::Menu {
@@ -124,13 +124,13 @@ fn row(ui: &mut egui::Ui, st: &AppState, path: &Path, place: Place, section: Sec
                 msgs.push(open());
                 ui.close_menu();
             }
-            if section == Section::Recent && small_icon(ui, Icon::Close, "Remove from recent", color::weak()).clicked() {
+            if section == Section::Recent && widgets::small_icon(ui, Icon::Close, "Remove from recent", color::weak()).clicked() {
                 msgs.push(remove());
             }
             return;
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if section == Section::Recent && small_icon(ui, Icon::Close, "Remove from recent", color::weak()).clicked() {
+            if section == Section::Recent && widgets::small_icon(ui, Icon::Close, "Remove from recent", color::weak()).clicked() {
                 msgs.push(remove());
             }
             if missing {
@@ -162,15 +162,4 @@ fn link(ui: &mut egui::Ui, text: &str, col: Color32) -> Response {
         ui.painter().hline(r.rect.x_range(), y, Stroke::new(1.0_f32, col));
     }
     r.on_hover_cursor(egui::CursorIcon::PointingHand)
-}
-
-/// A small clickable painted icon with a tooltip (the fonts have no star or cross glyphs).
-fn small_icon(ui: &mut egui::Ui, icon: Icon, tooltip: &str, col: Color32) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::click());
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tooltip));
-    if resp.hovered() {
-        ui.painter().rect_filled(rect, CornerRadius::same(3), color::hover());
-    }
-    widgets::paint_icon(ui.painter(), rect.center(), icon, col);
-    resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(tooltip)
 }

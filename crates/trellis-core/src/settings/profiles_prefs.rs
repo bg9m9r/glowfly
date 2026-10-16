@@ -115,6 +115,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "keybindings",
     // The git program belongs to the machine, not to whoever is committing.
     "git_program",
+    // Whether this install has shown the first-run welcome.
+    "welcome_done",
 ];
 
 /// What a profile switch changed in the settings in use.

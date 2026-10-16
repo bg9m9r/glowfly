@@ -8,6 +8,7 @@ use super::palette_commands::PaletteCommand;
 use super::palette_kinds::StashAction;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::LayoutMsg;
+use crate::onboarding::OnboardingMsg;
 use crate::remote::RemoteMsg;
 use crate::submodule::SubmoduleMsg;
 use crate::tools::ToolsMsg;
@@ -157,6 +158,9 @@ impl PaletteCommand {
                 LogsMsg::SetExtended(_) => "extended-logging",
                 _ => return None,
             },
+            C::Onboarding(OnboardingMsg::ShowWelcome) => "show-welcome",
+            C::Onboarding(OnboardingMsg::StartTour) => "tour",
+            C::Onboarding(_) => return None,
         })
     }
 }

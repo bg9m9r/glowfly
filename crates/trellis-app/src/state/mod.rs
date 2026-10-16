@@ -29,9 +29,12 @@ pub mod lfs;
 pub mod lines;
 pub mod logs;
 pub mod notify;
+pub mod onboarding;
+pub mod onboarding_tour;
 pub mod palette;
 pub mod palette_commands;
 pub mod palette_kinds;
+pub mod palette_onboarding;
 pub mod palette_profiles;
 pub mod palette_recent;
 pub mod palette_tools;
@@ -299,6 +302,9 @@ pub struct AppState {
     pub profile_switch_edits: Vec<trellis_core::settings::ProfileId>,
     /// Repository trust prompts asked and repositories just created, this session.
     pub trust: trust::TrustSession,
+    /// The first-run welcome and the tour (global, not per tab; nothing saved but the welcome
+    /// flag).
+    pub onboarding: onboarding::Onboarding,
     pub view: ViewState,
 }
 
@@ -371,6 +377,7 @@ impl AppState {
             profile_switch: None,
             profile_switch_edits: Vec::new(),
             trust: Default::default(),
+            onboarding: Default::default(),
             view: ViewState::default(),
         };
         for p in key_problems {

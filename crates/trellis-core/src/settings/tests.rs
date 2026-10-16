@@ -222,11 +222,11 @@ fn favorite_repos_default_empty_and_round_trip() {
     assert_eq!(back.favorite_repos, ["C:/work/web-app", "C:/work/api"]);
 }
 
-fn json(s: &Settings) -> serde_json::Value {
+pub(super) fn json(s: &Settings) -> serde_json::Value {
     serde_json::to_value(s).unwrap()
 }
 
-fn scratch_settings(name: &str, text: &[u8]) -> (std::path::PathBuf, std::path::PathBuf) {
+pub(super) fn scratch_settings(name: &str, text: &[u8]) -> (std::path::PathBuf, std::path::PathBuf) {
     let dir = crate::paths::temp_dir().join(format!("trellis-settings-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -240,7 +240,7 @@ fn torn_settings_file_is_backed_up_and_defaults_used() {
     let torn = br#"{"auto_fetch_minutes": 5, "connections": [{"acc"#;
     let (dir, file) = scratch_settings("torn", torn);
     let (s, problem) = Settings::load_from(&file);
-    assert_eq!(json(&s), json(&Settings::default()));
+    assert_eq!(json(&s), json(&Settings { welcome_done: true, ..Settings::default() }));
     let problem = problem.expect("a problem to report");
     assert_eq!(problem.reset, None);
     let backup = dir.join("settings.json.bak");
@@ -258,7 +258,7 @@ fn torn_settings_file_is_backed_up_and_defaults_used() {
 fn garbage_bytes_are_backed_up() {
     let (dir, file) = scratch_settings("garbage", &[0xff, 0xfe, 0x00, 0x42]);
     let (s, problem) = Settings::load_from(&file);
-    assert_eq!(json(&s), json(&Settings::default()));
+    assert_eq!(json(&s), json(&Settings { welcome_done: true, ..Settings::default() }));
     assert!(problem.unwrap().backup.is_some());
     assert_eq!(std::fs::read(dir.join("settings.json.bak")).unwrap(), [0xff, 0xfe, 0x00, 0x42]);
     let _ = std::fs::remove_dir_all(&dir);

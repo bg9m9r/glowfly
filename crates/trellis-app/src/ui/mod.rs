@@ -62,8 +62,11 @@ mod tags;
 mod terminal;
 pub mod theme;
 mod toolbar;
+mod tour;
 mod trust_chip;
 mod trust_dialog;
+mod welcome;
+mod welcome_steps;
 pub mod widgets;
 mod worktree_dialog;
 mod worktree_manage_dialog;
@@ -119,6 +122,7 @@ mod snapshot_tests_lfs;
 mod snapshot_tests_load_more;
 #[cfg(test)]
 mod snapshot_tests_logs;
+mod snapshot_tests_onboarding;
 #[cfg(test)]
 mod snapshot_tests_palette;
 #[cfg(test)]
@@ -275,6 +279,7 @@ impl TrellisApp {
         app.dispatch(&cc.egui_ctx, Msg::Logs(crate::logs::LogsMsg::Start));
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
         app.dispatch(&cc.egui_ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect));
+        app.dispatch(&cc.egui_ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup));
         app.dispatch(&cc.egui_ctx, Msg::Recent(RecentMsg::CheckFolders));
         if let Some(problem) = problem {
             tracing::warn!("settings: {}", problem.message());
@@ -303,11 +308,6 @@ impl TrellisApp {
                 other => self.runner.run(other),
             }
         }
-    }
-
-    fn apply_theme(&mut self, ctx: &egui::Context) {
-        let system_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
-        self.theme.select(ctx, &self.st.settings.theme, &self.st.themes, system_dark);
     }
 
     /// Keyboard shortcuts and window events, turned into messages or view-state changes.
@@ -346,25 +346,22 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         } else {
             st.terminal.focused = false;
         }
-        central::show(ctx, st, cache, msgs);
+        let central = central::show(ctx, st, cache, msgs);
+        tour::show(ctx, st, central, msgs);
     }
-    // Before the dialogs, so a dialog or credential prompt opened over it stacks on top.
+    // Before the dialogs, so a dialog or credential prompt opened over them stacks on top.
     palette::show(ctx, st, msgs);
+    welcome::show(ctx, st, msgs);
     modals::show(ctx, st, msgs);
     // After the other dialogs, so a credential prompt stacks on top of them.
     askpass::show(ctx, st, msgs);
     status::toasts(ctx, st, msgs);
-    st.view.was_typing = text_field_focused(ctx);
-}
-
-/// Whether the widget with the keyboard focus is a text field.
-fn text_field_focused(ctx: &egui::Context) -> bool {
-    ctx.memory(|m| m.focused()).is_some_and(|id| egui::text_edit::TextEditState::load(ctx, id).is_some())
+    st.view.was_typing = shortcuts::text_field_focused(ctx);
 }
 
 impl eframe::App for TrellisApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.apply_theme(ctx);
+        self.theme.apply(ctx, &self.st.settings, &self.st.themes);
         layout::apply_zoom(ctx, &self.st);
         self.st.view.focused = ctx.input(|i| i.focused);
         while let Ok(msg) = self.results.try_recv() {

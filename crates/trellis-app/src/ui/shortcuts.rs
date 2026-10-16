@@ -26,3 +26,8 @@ mod tests;
 pub(super) use caps::Caps;
 pub(super) use global::input;
 pub(super) use sheet::show as sheet;
+
+/// Whether the widget with the keyboard focus is a text field.
+pub(super) fn text_field_focused(ctx: &eframe::egui::Context) -> bool {
+    ctx.memory(|m| m.focused()).is_some_and(|id| eframe::egui::text_edit::TextEditState::load(ctx, id).is_some())
+}

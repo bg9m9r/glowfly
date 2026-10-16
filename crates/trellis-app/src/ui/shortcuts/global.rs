@@ -50,7 +50,8 @@ impl Live {
             palette: st.palette.is_some(),
             askpass: st.askpass.showing(),
             sheet,
-            dialog: st.modal.is_some() && !sheet,
+            // The welcome counts as a dialog, except while Preferences hides it.
+            dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
             typing: ctx.wants_keyboard_input(),
             working_diff: st.diff.as_ref().is_some_and(|(t, _)| t.is_working_tree()),
             stepping: st.blame.is_none() && (st.conflict.is_some() || st.diff.is_some()),

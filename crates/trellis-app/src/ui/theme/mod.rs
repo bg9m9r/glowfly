@@ -73,6 +73,12 @@ pub struct ThemeCache {
 }
 
 impl ThemeCache {
+    /// `select` for the theme in the settings, with the OS's light or dark setting from egui.
+    pub fn apply(&mut self, ctx: &egui::Context, settings: &trellis_core::settings::Settings, themes: &ThemeState) {
+        let system_dark = ctx.system_theme().is_none_or(|t| t == egui::Theme::Dark);
+        self.select(ctx, &settings.theme, themes, system_dark);
+    }
+
     /// Makes the chosen theme's palette active for this frame and styles egui when it changed.
     pub fn select(&mut self, ctx: &egui::Context, choice: &ThemeChoice, themes: &ThemeState, system_dark: bool) {
         let fresh = matches!(&self.key, Some((c, g, s)) if c == choice && *g == themes.generation && *s == system_dark);

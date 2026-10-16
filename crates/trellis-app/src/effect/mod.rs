@@ -355,6 +355,8 @@ pub enum Effect {
     GitEnv(crate::git_env::GitEnvEffect),
     /// Reading the themes folder, opening it and writing a new theme file (themes.rs); unscoped.
     Theme(crate::themes::ThemeEffect),
+    /// The welcome's git identity read and write (runner/onboarding.rs); unscoped.
+    Onboarding(crate::onboarding::OnboardingEffect),
     /// Dry-runs a merge with git merge-tree (conflict_check.rs); reads only.
     CheckConflicts(crate::conflict_check::CheckJob),
     /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.

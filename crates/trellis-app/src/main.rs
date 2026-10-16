@@ -16,6 +16,7 @@ mod lfs;
 mod logging;
 mod logs;
 mod msg;
+mod onboarding;
 mod patch;
 mod platform;
 mod profile;

@@ -50,14 +50,14 @@ impl Settings {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return (Settings::default(), None),
             Err(e) => {
                 let detail = format!("could not read {}: {e}", path.display());
-                return (Settings::default(), Some(LoadProblem { backup: None, reset: None, detail }));
+                return (existing_defaults(), Some(LoadProblem { backup: None, reset: None, detail }));
             }
         };
         let (settings, reset, detail) = match serde_json::from_slice::<Settings>(&bytes) {
             Ok(s) => return (migrate(s), None),
             Err(e) => match lenient(&bytes) {
                 Some((s, reset)) => (s, Some(reset), e.to_string()),
-                None => (Settings::default(), None, e.to_string()),
+                None => (existing_defaults(), None, e.to_string()),
             },
         };
         let backup = match crate::persist::move_aside(path) {
@@ -65,7 +65,7 @@ impl Settings {
             Err(e) => {
                 // Keep the original where it is; defaults are used but the file isn't lost.
                 let detail = format!("{detail}; could not back it up: {e}");
-                return (Settings::default(), Some(LoadProblem { backup: None, reset: None, detail }));
+                return (existing_defaults(), Some(LoadProblem { backup: None, reset: None, detail }));
             }
         };
         let settings = migrate(settings);
@@ -89,6 +89,18 @@ impl Settings {
     }
 }
 
+/// The serde default of `welcome_done`: a file without the key was written before the welcome
+/// existed, by someone who already uses Trellis.
+pub(super) fn seen() -> bool {
+    true
+}
+
+/// Defaults for a settings file that existed but couldn't be read: its owner has seen Trellis
+/// before, so the first-run welcome stays away.
+fn existing_defaults() -> Settings {
+    Settings { welcome_done: true, ..Settings::default() }
+}
+
 /// Early builds stored a preset name ("Iso", "Long", "Relative") in `date_format`.
 fn migrate(mut s: Settings) -> Settings {
     if matches!(s.date_format.as_str(), "Iso" | "Long" | "Relative") {
@@ -103,7 +115,8 @@ fn migrate(mut s: Settings) -> Settings {
 /// of the settings that were reset, or `None` when the file isn't a JSON object at all.
 fn lenient(bytes: &[u8]) -> Option<(Settings, Vec<String>)> {
     let Ok(Value::Object(file)) = serde_json::from_slice::<Value>(bytes) else { return None };
-    let Ok(Value::Object(mut kept)) = serde_json::to_value(Settings::default()) else { return None };
+    // Seeded as an existing user's: a damaged file that lacks the key was still written before.
+    let Ok(Value::Object(mut kept)) = serde_json::to_value(existing_defaults()) else { return None };
     let mut reset = Vec::new();
     for (key, value) in file {
         let mut trial: Map<String, Value> = kept.clone();

@@ -382,3 +382,14 @@ pub fn icon_button(ui: &mut Ui, icon: Icon, tooltip: &str) -> Response {
     paint_icon(p, rect.center(), icon, if enabled { color::text() } else { color::faint() });
     resp.on_hover_text(tooltip).on_disabled_hover_text(tooltip)
 }
+
+/// A small clickable painted icon with a tooltip, for icons the fonts lack (star, cross).
+pub fn small_icon(ui: &mut Ui, icon: Icon, tooltip: &str, col: Color32) -> Response {
+    let (rect, resp) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::click());
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tooltip));
+    if resp.hovered() {
+        ui.painter().rect_filled(rect, CornerRadius::same(3), color::hover());
+    }
+    paint_icon(ui.painter(), rect.center(), icon, col);
+    resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(tooltip)
+}

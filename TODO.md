@@ -555,7 +555,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       off the UI thread)
 - [ ] **Input reliability**: the first click after the window gains focus was dropped while
       testing with synthetic input; check with real input
-- [ ] **Onboarding**: first-run welcome and tutorial
+- [x] **Onboarding**: first-run welcome and tutorial
 
 ## Out of scope
 
@@ -1488,3 +1488,14 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Keep two Trellis instances' activity logs apart (one file per instance or a lock during trims)
 - Add log entries to the Help menu once the menu bar exists
 - Open a log file in the system's text editor from the panel
+
+### Onboarding
+
+- A hands-on tutorial in a practice repository (make a branch, commit and merge in a sandbox)
+- A Check again button on the welcome's git step (git is looked for once, at startup)
+- Choosing a theme in the welcome itself (it links to UI Customization for now)
+- A welcome step that names the first profile or sets up signing and SSH keys
+- Tour steps for tabs, the terminal panel, the activity log and the status bar
+- Keep tour progress across restarts
+- Highlight the toolbar's Commands button on the tour's palette step
+- First-use tips in context (first diff, first conflict, first pull request panel)

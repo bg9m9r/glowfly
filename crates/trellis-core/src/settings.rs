@@ -293,6 +293,10 @@ pub struct Settings {
     /// The git program Trellis runs (Preferences > Git): an absolute path, or None for git from
     /// PATH.
     pub git_program: Option<String>,
+    /// The first-run welcome was finished or closed. Files written before it existed lack it and
+    /// read as true, so only a new install shows the welcome.
+    #[serde(default = "file::seen")]
+    pub welcome_done: bool,
 }
 
 impl Default for Settings {
@@ -356,6 +360,7 @@ impl Default for Settings {
             extended_logging: false,
             keybindings: BTreeMap::new(),
             git_program: None,
+            welcome_done: false,
         }
     }
 }
@@ -407,3 +412,5 @@ impl Settings {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod welcome_tests;

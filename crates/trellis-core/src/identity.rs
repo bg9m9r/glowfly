@@ -1,5 +1,6 @@
-//! The author identity git writes into commits (user.name, user.email, user.signingkey), and
-//! the one path Trellis uses to write a git config value through the git CLI.
+//! The author identity git writes into commits (user.name, user.email, user.signingkey), reading
+//! the global identity, and the one path Trellis uses to write a git config value through the
+//! git CLI.
 
 use crate::gitcli::{self, args};
 use serde::{Deserialize, Serialize};
@@ -42,6 +43,16 @@ pub fn set_config(cwd: &Path, global: bool, key: &str, value: Option<&str>, env:
 /// written before it get their earlier global values back, so git never keeps half of `id`.
 pub fn write_global(cwd: &Path, id: &Identity, env: &[(&str, &str)]) -> Result<(), String> {
     write_global_all(cwd, &writes(id), env)
+}
+
+/// The identity in the global config (user.name, user.email, user.signingkey; blank or unset
+/// values read as empty, a blank key as None). The one read the first-run welcome uses. Goes
+/// through the git CLI, so includes and the XDG config count like they do for git.
+pub fn read_global(cwd: &Path, env: &[(&str, &str)]) -> Result<Identity, String> {
+    let name = global_value(cwd, "user.name", env)?.unwrap_or_default();
+    let email = global_value(cwd, "user.email", env)?.unwrap_or_default();
+    let signing_key = global_value(cwd, "user.signingkey", env)?.filter(|k| !k.trim().is_empty());
+    Ok(Identity { name, email, signing_key })
 }
 
 /// Applies `writes` to the global config in order, undoing the done ones on the first failure.
@@ -141,6 +152,35 @@ mod tests {
         env[0].1 = folder.display().to_string();
         let env = borrowed(&env);
         let err = write_global(&dir, &id("Ada", "ada@example.com", None), &env).unwrap_err();
+        assert!(err.contains("user.name"), "{err}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_global_reads_the_global_file() {
+        let dir = scratch_repo("identity-read");
+        let env = empty_global_config(&dir);
+        let env = borrowed(&env);
+        assert_eq!(read_global(&dir, &env), Ok(Identity::default()), "the repository's own Test is not global");
+        write_global(&dir, &id("Ada", "ada@example.com", Some("ABCD")), &env).unwrap();
+        assert_eq!(read_global(&dir, &env), Ok(id("Ada", "ada@example.com", Some("ABCD"))));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_global_fails_on_an_unreadable_config() {
+        let dir = scratch_repo("identity-read-fail");
+        let env = empty_global_config(&dir);
+        // A config file git can't parse (a folder reads as empty on some systems).
+        std::fs::write(
+            &env[0].1,
+            "[user
+	name = Ada
+",
+        )
+        .unwrap();
+        let env = borrowed(&env);
+        let err = read_global(&dir, &env).unwrap_err();
         assert!(err.contains("user.name"), "{err}");
         let _ = std::fs::remove_dir_all(&dir);
     }

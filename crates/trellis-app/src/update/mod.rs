@@ -32,6 +32,7 @@ mod layout;
 mod lfs;
 mod logs;
 mod notify;
+mod onboarding;
 mod ops;
 mod palette;
 mod patch;
@@ -173,6 +174,8 @@ mod lines_tests;
 mod load_more_tests;
 #[cfg(test)]
 mod notify_tests;
+#[cfg(test)]
+mod onboarding_tests;
 #[cfg(test)]
 mod palette_blame_tests;
 #[cfg(test)]
@@ -381,6 +384,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::GitEnv(m) => git_env::handle(st, m, now, &mut fx),
         Msg::Theme(m) => themes::handle(st, m, now, &mut fx),
         Msg::Logs(m) => logs::handle(st, m, &mut fx),
+        Msg::Onboarding(m) => onboarding::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).
