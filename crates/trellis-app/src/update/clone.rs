@@ -19,11 +19,11 @@ pub(super) fn handle(st: &mut AppState, msg: CloneMsg, fx: &mut Vec<Effect>) {
             check_parent(st, Duration::ZERO, fx);
         }
         CloneMsg::ParentEdited => check_parent(st, PARENT_CHECK_DELAY, fx),
-        CloneMsg::ParentChecked { parent, is_dir } => {
+        CloneMsg::ParentChecked { parent, found } => {
             if let Some(Modal::Clone(form)) = st.modal.as_mut()
                 && form.parent.trim() == parent
             {
-                form.parent_checked = Some((parent, is_dir));
+                form.parent_checked = Some((parent, found));
             }
         }
         CloneMsg::Start(req) => super::ops::clone_repo(st, req, fx),

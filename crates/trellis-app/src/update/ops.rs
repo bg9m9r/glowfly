@@ -112,6 +112,11 @@ pub(super) fn clone_repo(st: &mut AppState, req: crate::state::clone::CloneReque
         st.log(false, format!("Could not clone: {} isn't a URL or folder git can clone.", req.url));
         return;
     }
+    // Never resolved against the process's working folder.
+    if !req.parent.is_absolute() {
+        st.log(false, format!("Could not clone: {} isn't the full path of a folder.", req.parent.display()));
+        return;
+    }
     let dest = req.parent.join(&req.name);
     let cmd = trellis_core::clone_ops::clone_cmd(&req.url, &req.name, &req.options);
     start_job(

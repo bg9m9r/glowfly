@@ -58,8 +58,9 @@ pub enum CloneMsg {
     Dialog,
     /// The Clone dialog's parent folder text changed: check it on disk after a short pause.
     ParentEdited,
-    /// Whether the Clone dialog's parent folder (the trimmed text `parent`) is a folder.
-    ParentChecked { parent: String, is_dir: bool },
+    /// What the Clone dialog's parent folder text (trimmed, `parent`) names: the folder, `~`
+    /// expanded and resolved, or None when it isn't one.
+    ParentChecked { parent: String, found: Option<std::path::PathBuf> },
     /// Clone a repository into a folder (the Clone dialog's request, options included).
     Start(crate::state::clone::CloneRequest),
 }

@@ -47,7 +47,9 @@ fn form(st: &mut AppState) -> &mut CloneForm {
 
 /// A filled-in form whose folder check passes.
 fn filled() -> CloneForm {
-    CloneForm { url: URL.into(), ..CloneForm::new("C:/work".into()) }
+    // Absolute on every OS (a drive letter means nothing outside Windows).
+    let parent = if cfg!(windows) { "C:/work" } else { "/work" };
+    CloneForm { url: URL.into(), ..CloneForm::new(parent.into()) }
 }
 
 #[test]
@@ -145,6 +147,11 @@ fn form_rules() {
     let p = filled().problems(t, false);
     assert_eq!(p.folder.as_deref(), Some("That folder doesn't exist."));
     assert!(p.blocked);
+    // A relative folder is refused, not resolved against the working folder; `~` is fine.
+    let p = CloneForm { parent: "src".into(), ..filled() }.problems(t, true);
+    assert_eq!(p.folder.as_deref(), Some("Enter the full path of the folder (it may start with ~)."));
+    assert!(p.blocked);
+    assert!(!CloneForm { parent: "~/src".into(), ..filled() }.problems(t, true).blocked);
 
     let p = CloneForm { shallow: true, depth: "0".into(), ..filled() }.problems(t, true);
     assert_eq!(p.depth.as_deref(), Some("Download at least one commit."));
@@ -238,7 +245,7 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     assert_eq!((parent.clone(), *delay), (dir.display().to_string(), super::clone::PARENT_CHECK_DELAY));
     let answer = crate::runner::execute(Effect::CheckCloneParent { parent: parent.clone(), delay: Default::default() }).unwrap();
     // An answer for text that has changed since is dropped.
-    update(&mut st, Msg::Clone(CloneMsg::ParentChecked { parent: "elsewhere".into(), is_dir: true }), now);
+    update(&mut st, Msg::Clone(CloneMsg::ParentChecked { parent: "elsewhere".into(), found: Some("elsewhere".into()) }), now);
     assert_eq!(form(&mut st).parent_is_dir(), None);
     update(&mut st, answer, now);
     assert_eq!(form(&mut st).parent_is_dir(), Some(true));

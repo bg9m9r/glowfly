@@ -2,7 +2,7 @@
 //! pure rules that check them as the user types and the request they turn into.
 
 use chrono::NaiveDate;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use trellis_core::clone_ops::{
     BRANCH_INVALID, CloneOptions, HistoryLimit, Shallow, check_clone_branch, parse_depth, parse_since, repo_name,
 };
@@ -28,9 +28,10 @@ pub struct CloneForm {
     pub depth: String,
     pub since: String,
     pub branch: String,
-    /// The parent folder text last checked on disk (trimmed) and whether it is a folder. Set
-    /// by `update` from `CloneMsg::ParentChecked`; views never look at the disk.
-    pub parent_checked: Option<(String, bool)>,
+    /// The parent folder text last checked on disk (trimmed) and the folder it names (`~`
+    /// expanded, resolved) when it is one. Set by `update` from `CloneMsg::ParentChecked`; views
+    /// never look at the disk.
+    pub parent_checked: Option<(String, Option<PathBuf>)>,
 }
 
 /// What is wrong with the form: each field's red line (None when it is fine or empty in a way
@@ -72,7 +73,12 @@ impl CloneForm {
     /// Whether the parent folder exists, by the last check of the text now in the field; None
     /// until that text has been checked.
     pub fn parent_is_dir(&self) -> Option<bool> {
-        self.parent_checked.as_ref().filter(|(text, _)| text == self.parent.trim()).map(|&(_, is_dir)| is_dir)
+        self.parent_checked.as_ref().filter(|(text, _)| text == self.parent.trim()).map(|(_, found)| found.is_some())
+    }
+
+    /// The parent folder as the last check of the text now in the field found it.
+    pub fn parent_folder(&self) -> Option<&Path> {
+        self.parent_checked.as_ref().filter(|(text, _)| text == self.parent.trim()).and_then(|(_, found)| found.as_deref())
     }
 
     /// `problems` with the last check of the parent folder. Until the text in the field has
@@ -107,6 +113,9 @@ impl CloneForm {
             Ok(()) => {}
         }
         if self.parent.trim().is_empty() {
+            p.blocked = true;
+        } else if !trellis_core::paths::typed_is_absolute(&self.parent) {
+            p.folder = Some("Enter the full path of the folder (it may start with ~).".into());
             p.blocked = true;
         } else if !parent_is_dir {
             p.folder = Some("That folder doesn't exist.".into());
@@ -152,7 +161,8 @@ impl CloneForm {
         }
         Some(CloneRequest {
             url: self.url.trim().to_owned(),
-            parent: PathBuf::from(self.parent.trim()),
+            // The folder the check found; the text itself only before any check (tests).
+            parent: self.parent_folder().map(Path::to_path_buf).unwrap_or_else(|| PathBuf::from(self.parent.trim())),
             name,
             options: CloneOptions { shallow },
         })

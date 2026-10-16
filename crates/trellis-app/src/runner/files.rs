@@ -40,7 +40,7 @@ const TRASHER: repo::Trasher = test_trash;
 /// The stand-in trash of the app's test build: a folder in the temp dir, one per process.
 #[cfg(test)]
 pub(crate) fn test_bin() -> std::path::PathBuf {
-    std::env::temp_dir().join(format!("trellis-app-test-bin-{}", std::process::id()))
+    trellis_core::paths::temp_dir().join(format!("trellis-app-test-bin-{}", std::process::id()))
 }
 
 /// Moves `full` into `test_bin()` under a unique name (the temp dir and scratch repositories
@@ -92,12 +92,34 @@ pub(super) fn tracked_paths(workdir: &Path, generation: u64) -> Msg {
     Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result })
 }
 
-/// Whether `parent` is a folder, looked at after `delay` (`update` drops answers for text the
-/// user has changed since).
+/// The folder the typed `parent` names (`~` expanded, resolved), when it is one, looked at after
+/// `delay` (`update` drops answers for text the user has changed since). Typed text that isn't a
+/// full path names nothing: it is never resolved against the process's working folder.
 pub(super) fn check_clone_parent(parent: String, delay: std::time::Duration) -> Msg {
     if !delay.is_zero() {
         std::thread::sleep(delay);
     }
-    let is_dir = Path::new(&parent).is_dir();
-    Msg::Clone(CloneMsg::ParentChecked { parent, is_dir })
+    let found = clone_parent(&parent, trellis_core::settings::home_dir().as_deref());
+    Msg::Clone(CloneMsg::ParentChecked { parent, found })
+}
+
+fn clone_parent(text: &str, home: Option<&Path>) -> Option<std::path::PathBuf> {
+    let path = trellis_core::paths::expand_home(text, home);
+    (path.is_absolute() && path.is_dir()).then(|| trellis_core::paths::resolve(&path))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clone_parent;
+
+    #[test]
+    fn the_clone_parent_is_expanded_resolved_and_never_relative() {
+        let home = trellis_core::paths::temp_dir();
+        assert_eq!(clone_parent(" ~ ", Some(&home)), Some(home.clone()));
+        assert_eq!(clone_parent(&home.display().to_string(), None), Some(home.clone()));
+        assert_eq!(clone_parent("~/no-such-folder-for-trellis", Some(&home)), None);
+        // A relative path would be the process's working folder (System32 for a GUI start).
+        assert_eq!(clone_parent(".", Some(&home)), None);
+        assert_eq!(clone_parent("~", None), None);
+    }
 }
