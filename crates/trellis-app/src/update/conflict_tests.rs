@@ -54,7 +54,6 @@ fn fake_file(n: usize) -> ConflictFile {
         ids: ConflictIds { ancestor: None, ours: None, theirs: None },
         labels: SideLabels { operation: Operation::Merge, ours: "main".into(), theirs: "other".into() },
         content: ConflictContent::Text(segs),
-        crlf: false,
         no_ancestor: false,
     }
 }

@@ -84,8 +84,6 @@ pub struct ConflictFile {
     pub ids: ConflictIds,
     pub labels: SideLabels,
     pub content: ConflictContent,
-    /// The working file uses CR LF line endings.
-    pub crlf: bool,
     /// Both sides added the file (no common ancestor).
     pub no_ancestor: bool,
 }
@@ -122,14 +120,13 @@ pub fn load_conflict(workdir: &Path, path: &str) -> Result<ConflictFile> {
         ours: conflict.our.as_ref().map(|e| e.id),
         theirs: conflict.their.as_ref().map(|e| e.id),
     };
-    let crlf = std::fs::read(workdir.join(path)).is_ok_and(|b| b.windows(2).any(|w| w == b"\r\n"));
     let no_ancestor = conflict.ancestor.is_none();
     let content = match (&conflict.our, &conflict.their) {
         (None, _) => ConflictContent::DeletedBy(Side::Ours),
         (_, None) => ConflictContent::DeletedBy(Side::Theirs),
         (Some(ours), Some(theirs)) => merged(&repo, conflict.ancestor.as_ref(), ours, theirs)?,
     };
-    Ok(ConflictFile { path: path.to_owned(), ids, labels: side_labels(&repo), content, crlf, no_ancestor })
+    Ok(ConflictFile { path: path.to_owned(), ids, labels: side_labels(&repo), content, no_ancestor })
 }
 
 /// Merges both sides with markers and splits the result into segments.

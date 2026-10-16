@@ -57,7 +57,7 @@ fn conflict_chunks_from_a_real_merge() {
     assert_eq!(chunks.len(), 2);
     assert_eq!(chunks[0], &Chunk { base: lines(&["line 2"]), ours: lines(&["line 2 ours"]), theirs: lines(&["line 2 theirs"]) });
     assert_eq!(chunks[1].theirs, lines(&["line 10 theirs"]));
-    assert!(!f.no_ancestor && !f.crlf);
+    assert!(!f.no_ancestor);
     assert_eq!(f.labels, SideLabels { operation: Operation::Merge, ours: "main".into(), theirs: "other".into() });
     assert!(f.ids.ancestor.is_some() && f.ids.ours.is_some() && f.ids.theirs.is_some());
     assert!(load_conflict(&dir, "missing.txt").unwrap_err().is_not_found());
@@ -206,7 +206,6 @@ fn crlf_and_missing_final_newline_are_kept() {
     let base = "one\r\ntwo\r\nthree\r\nfour\r\n";
     let dir = merge_conflict("conflict-crlf", "w.txt", base, &base.replace("two", "two ours"), &base.replace("two", "two theirs"));
     let f = load_conflict(&dir, "w.txt").unwrap();
-    assert!(f.crlf);
     let out = render_output(&f, &[Choice::Theirs]).unwrap();
     assert_eq!(out, "one\r\ntwo theirs\r\nthree\r\nfour\r\n");
     let _ = std::fs::remove_dir_all(&dir);

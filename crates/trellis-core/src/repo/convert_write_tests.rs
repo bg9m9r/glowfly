@@ -50,17 +50,6 @@ fn write_resolution_stores_the_repository_form_and_smudges_the_working_file() {
 }
 
 #[test]
-fn write_resolution_drops_the_crs_render_added_for_a_crlf_working_file() {
-    let dir = conflicted("cvw-resolution-crlf");
-    let file = load_conflict(&dir, "a.up").unwrap();
-    let out = render_output(&ConflictFile { crlf: true, ..file.clone() }, &[Choice::Ours]).unwrap();
-    assert!(out.contains("\r\n"));
-    write_resolution(&dir, "a.up", &out, &file.ids).unwrap();
-    assert_eq!(index_text(&dir, "a.up"), out.replace("\r\n", "\n"), "the stages have LF endings, so the resolution does too");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
 fn resolve_with_side_stages_the_side_and_smudges_the_working_file() {
     let dir = conflicted("cvw-side");
     let file = load_conflict(&dir, "a.up").unwrap();

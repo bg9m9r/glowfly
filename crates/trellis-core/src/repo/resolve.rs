@@ -1,7 +1,12 @@
 //! Resolving a conflict: the side(s) picked per chunk, the file they produce, and writing and
 //! staging it (which clears the conflict).
+//!
+//! A resolution is always built in repository form, from the stages' own bytes, staged as a
+//! blob, and then written to the working tree by git (`checkout-index`). So line endings,
+//! `core.autocrlf`, `eol` and `filter` attributes, `working-tree-encoding` and the executable
+//! bit (with `core.fileMode`) come out exactly as git itself would write them, and Trellis never
+//! rewrites line endings or calls chmod on the working file.
 
-use super::attrs;
 use super::conflict::{ConflictContent, ConflictFile, ConflictIds, Segment, Side};
 use crate::error::{Error, Result};
 use git2::build::CheckoutBuilder;
@@ -56,7 +61,9 @@ impl Choice {
     }
 }
 
-/// The file as it will be saved, or `None` until every chunk has a choice.
+/// The file as it will be staged, or `None` until every chunk has a choice. It is in
+/// repository form: each line keeps the ending it has in the stage it came from, so a file that
+/// mixes LF and CR LF lines keeps them as they are.
 pub fn render_output(file: &ConflictFile, choices: &[Choice]) -> Option<String> {
     let ConflictContent::Text(segs) = &file.content else { return None };
     if choices.len() != file.chunk_count() || choices.contains(&Choice::Unresolved) {
@@ -64,9 +71,10 @@ pub fn render_output(file: &ConflictFile, choices: &[Choice]) -> Option<String> 
     }
     let mut out = String::new();
     let mut push = |line: &str| {
-        // A side without a final newline followed by more text still needs a line break.
+        // A side without a final newline followed by more text still needs a line break: the
+        // one the text so far uses.
         if !out.is_empty() && !out.ends_with('\n') {
-            out.push('\n');
+            out.push_str(if out.contains("\r\n") { "\r\n" } else { "\n" });
         }
         out.push_str(line);
     };
@@ -82,21 +90,7 @@ pub fn render_output(file: &ConflictFile, choices: &[Choice]) -> Option<String> 
             }
         }
     }
-    Some(if file.crlf { to_crlf(&out) } else { out })
-}
-
-/// Turns every LF not already preceded by CR into CR LF.
-fn to_crlf(text: &str) -> String {
-    let mut out = String::with_capacity(text.len() + text.len() / 32);
-    let mut prev = '\0';
-    for c in text.chars() {
-        if c == '\n' && prev != '\r' {
-            out.push('\r');
-        }
-        out.push(c);
-        prev = c;
-    }
-    out
+    Some(out)
 }
 
 /// Opens the index and checks the conflict at `path` still has the stages it was loaded with.
@@ -112,36 +106,21 @@ fn ids_of(c: &IndexConflict) -> ConflictIds {
     ConflictIds { ancestor: c.ancestor.as_ref().map(|e| e.id), ours: c.our.as_ref().map(|e| e.id), theirs: c.their.as_ref().map(|e| e.id) }
 }
 
-/// Writes `contents` to the working file and stages it, which marks the conflict resolved.
+/// Stages `contents` (in repository form, as [`render_output`] makes it) as the resolution of
+/// `path`, which marks the conflict resolved, and has git write the working file from it.
 /// Refused if the conflict changed since `expected` was read.
-///
-/// When git converts the file's content (a `filter` driver or `working-tree-encoding`), the
-/// resolution is in repository form, as the stages it was merged from are: it is staged as is
-/// and git checks it out, so the smudge runs and the working file is what git would write.
 pub fn write_resolution(workdir: &Path, path: &str, contents: &str, expected: &ConflictIds) -> Result<()> {
     let repo = Repository::open(workdir)?;
     let (mut index, conflict) = checked_index(&repo, path, expected)?;
-    if attrs::content_conversion(&repo, path).is_some() {
-        let has_crlf = |e: &IndexEntry| repo.find_blob(e.id).is_ok_and(|b| b.content().windows(2).any(|w| w == b"\r\n"));
-        let stages = [&conflict.ancestor, &conflict.our, &conflict.their];
-        // `render_output` adds CRs to match a CR LF working file; the stages it took lines
-        // from may have none, and then neither does the stored form.
-        let stored =
-            if stages.iter().filter_map(|e| e.as_ref()).any(has_crlf) { contents.to_owned() } else { contents.replace("\r\n", "\n") };
-        let side = conflict.our.or(conflict.their);
-        let mut entry = side.ok_or_else(|| Error::Other(format!("{path} has no side to resolve to")))?;
-        entry.id = repo.blob(stored.as_bytes())?;
-        if entry.mode & TYPE_MASK != REGULAR {
-            entry.mode = 0o100644;
-        }
-        stage_entry(&mut index, path, entry)?;
-        index.write()?;
-        return check_out(workdir, path, index, repo);
+    let side = conflict.our.or(conflict.their);
+    let mut entry = side.ok_or_else(|| Error::Other(format!("{path} has no side to resolve to")))?;
+    entry.id = repo.blob(contents.as_bytes())?;
+    if entry.mode & TYPE_MASK != REGULAR {
+        entry.mode = 0o100644;
     }
-    write_file(workdir, path, contents.as_bytes())?;
-    index.add_path(Path::new(path))?;
+    stage_entry(&mut index, path, entry)?;
     index.write()?;
-    Ok(())
+    check_out(workdir, path, index, repo)
 }
 
 const TYPE_MASK: u32 = 0o170000;
@@ -178,29 +157,11 @@ pub fn resolve_with_side(workdir: &Path, path: &str, side: Side, expected: &Conf
             co.force().recreate_missing(true).skip_unmerged(true).disable_pathspec_match(true).path(path);
             repo.checkout_index(Some(&mut index), Some(&mut co))?;
         }
-        // A converted file: stage the side's blob and let git write it, running the smudge.
-        _ if attrs::content_conversion(&repo, path).is_some() => {
+        // A file: stage the side's blob as it is and let git write it.
+        _ => {
             stage_entry(&mut index, path, entry)?;
             index.write()?;
             return check_out(workdir, path, index, repo);
-        }
-        _ => {
-            let blob = repo.find_blob(entry.id)?;
-            let crlf = !is_link(&full) && std::fs::read(&full).is_ok_and(|b| b.windows(2).any(|w| w == b"\r\n"));
-            match std::str::from_utf8(blob.content()) {
-                Ok(text) if crlf && !blob.is_binary() => write_file(workdir, path, to_crlf(text).as_bytes())?,
-                _ => write_file(workdir, path, blob.content())?,
-            }
-            set_executable(&full, entry.mode)?;
-            index.add_path(Path::new(path))?;
-            // Where the file system can't say (no executable bit, links off), the mode comes from
-            // the old entry: keep the chosen side's instead.
-            if let Some(mut e) = index.get_path(Path::new(path), 0)
-                && e.mode != entry.mode
-            {
-                e.mode = entry.mode;
-                index.add(&e)?;
-            }
         }
     }
     index.write()?;
@@ -238,43 +199,17 @@ fn remove_working(full: &Path) -> Result<()> {
     match std::fs::symlink_metadata(full) {
         Ok(m) if m.is_dir() => Ok(()),
         // A Windows link to a directory is removed as a directory.
-        Ok(m) => Ok(std::fs::remove_file(full).or_else(|e| if m.file_type().is_symlink() { std::fs::remove_dir(full) } else { Err(e) })?),
+        Ok(m) => {
+            Ok(crate::persist::remove_file(full)
+                .or_else(|e| if m.file_type().is_symlink() { std::fs::remove_dir(full) } else { Err(e) })?)
+        }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(e) => Err(e.into()),
     }
 }
 
-#[cfg(unix)]
-fn set_executable(full: &Path, mode: u32) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = std::fs::metadata(full)?.permissions();
-    let exec = mode & 0o111 != 0;
-    let bits = perms.mode();
-    perms.set_mode(if exec { bits | ((bits & 0o444) >> 2) } else { bits & !0o111 });
-    std::fs::set_permissions(full, perms)?;
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn set_executable(_full: &Path, _mode: u32) -> Result<()> {
-    Ok(())
-}
-
 fn is_link(full: &Path) -> bool {
     std::fs::symlink_metadata(full).is_ok_and(|m| m.file_type().is_symlink())
-}
-
-/// Writes a regular file at `path`, replacing a link there rather than writing through it.
-fn write_file(workdir: &Path, path: &str, bytes: &[u8]) -> Result<()> {
-    let full = workdir.join(path);
-    if is_link(&full) {
-        remove_working(&full)?;
-    }
-    if let Some(parent) = full.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    std::fs::write(full, bytes)?;
-    Ok(())
 }
 
 #[cfg(test)]
@@ -307,10 +242,5 @@ mod tests {
         assert!(TheirsThenOurs.takes(O) && TheirsThenOurs.takes(T));
         assert_eq!((Choice::only(O), Choice::only(T)), (Ours, Theirs));
         assert_eq!(Choice::default(), Unresolved);
-    }
-
-    #[test]
-    fn crlf_conversion_keeps_existing_pairs() {
-        assert_eq!(to_crlf("a\nb\r\nc"), "a\r\nb\r\nc");
     }
 }
