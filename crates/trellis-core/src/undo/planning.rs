@@ -1,7 +1,8 @@
 //! Planning an undo or redo: checking the repository still matches the recorded action and
 //! choosing the git commands (or file write) that reverse or re-apply it.
 
-use super::{Action, HeadPos, Plan, Refusal, discard_command, head, ref_exists, reset, saved};
+use super::record::{head, ref_exists};
+use super::{Action, HeadPos, Plan, Refusal, discard_command, reset, saved};
 use crate::error::Result;
 use crate::gitcli::args;
 use git2::{Oid, Repository, RepositoryState};

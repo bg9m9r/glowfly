@@ -6,6 +6,7 @@ use super::*;
 use crate::error::Error;
 use crate::repo::RestoredFrom;
 use crate::testutil::*;
+use git2::Repository;
 use std::path::{Path, PathBuf};
 
 fn read(dir: &Path, f: &str) -> Option<Vec<u8>> {

@@ -4,6 +4,7 @@
 use super::*;
 use crate::gitcli::run;
 use crate::testutil::*;
+use git2::Repository;
 use std::path::Path;
 
 fn head_oid(dir: &Path) -> Oid {
