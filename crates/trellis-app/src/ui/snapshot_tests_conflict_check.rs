@@ -5,7 +5,7 @@
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
 use crate::conflict_check::CheckRequest;
 use crate::msg::{JobMsg, Msg};
-use crate::state::conflict_check::{ConflictReport, current_request};
+use crate::state::conflict_check::{ConflictReport, HEAD_MOVED, current_request};
 use crate::state::{AppState, Modal};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
@@ -49,16 +49,18 @@ fn conflict_popover() {
     remove_fixture(&dir);
 }
 
-fn report(kind: TargetKind, result: Result<Prediction, String>) -> ConflictReport {
+/// A check of merging search into main, made for main's tip as checked out in `st`.
+fn report(st: &AppState, kind: TargetKind, result: Result<Prediction, String>) -> ConflictReport {
     let target = MergeTarget { name: "search".into(), oid: git2::Oid::zero(), kind };
-    ConflictReport { request: CheckRequest { branch: "main".into(), ours: git2::Oid::zero(), target }, result }
+    let ours = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
+    ConflictReport { request: CheckRequest { branch: "main".into(), ours, target }, result }
 }
 
 #[test]
 fn conflict_report_modal() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "conflict-report");
     let paths: Vec<String> = (0..60).map(|i| format!("src/module_{i:02}.rs")).collect();
-    st.modal = Some(Modal::ConflictReport(report(TargetKind::Chosen, Ok(Prediction::Conflicts(paths)))));
+    st.modal = Some(Modal::ConflictReport(report(&st, TargetKind::Chosen, Ok(Prediction::Conflicts(paths)))));
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("conflict_report_modal");
@@ -72,11 +74,11 @@ fn conflict_report_modal() {
 #[test]
 fn conflict_report_clean() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "conflict-clean");
-    st.modal = Some(Modal::ConflictReport(report(TargetKind::Chosen, Ok(Prediction::Clean))));
+    st.modal = Some(Modal::ConflictReport(report(&st, TargetKind::Chosen, Ok(Prediction::Clean))));
     render("conflict_report_clean", st, true);
 
     let (mut st, _) = with_repo(ThemeChoice::Dark, "conflict-clean");
-    st.modal = Some(Modal::ConflictReport(report(TargetKind::Chosen, Ok(Prediction::UpToDate))));
+    st.modal = Some(Modal::ConflictReport(report(&st, TargetKind::Chosen, Ok(Prediction::UpToDate))));
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("main already contains everything on search.").is_some());
@@ -85,6 +87,35 @@ fn conflict_report_clean() {
     h.get_by_label("Close").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn conflict_report_after_a_checkout_offers_no_actions() {
+    // The check was for main; login-page was checked out before its reply arrived.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "conflict-moved");
+    let r = report(&st, TargetKind::Chosen, conflicts(&["a.txt"]));
+    git(&dir, &["checkout", "-q", "login-page"], "2026-01-10T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    st.modal = Some(Modal::ConflictReport(r));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Merging search into main would stop with conflicts in 1 file:").is_some());
+    assert!(h.query_by_label("Merge search into main").is_none(), "would merge into login-page");
+    assert!(h.query_by_label("Rebase main onto search").is_none(), "would rebase login-page");
+    assert!(h.query_by_label(HEAD_MOVED).is_some());
+    drop(h);
+
+    // A commit on main since the check: the prediction is out of date, too.
+    let (mut st, _) = with_repo(ThemeChoice::Dark, "conflict-moved");
+    let mut r = report(&st, TargetKind::Chosen, conflicts(&["a.txt"]));
+    r.request.ours = git2::Oid::zero();
+    st.modal = Some(Modal::ConflictReport(r));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Merge search into main").is_none());
+    assert!(h.query_by_label(HEAD_MOVED).is_some());
     drop(h);
     remove_fixture(&dir);
 }

@@ -76,6 +76,21 @@ fn an_f5_during_a_check_is_still_owed() {
 }
 
 #[test]
+fn an_f5_is_answered_by_one_check_however_often_it_is_asked_for() {
+    let mut c = ConflictChecks::default();
+    let req = request(1, TargetKind::DefaultBranch);
+    let g = c.start().unwrap();
+    c.finish(g, report(req.clone(), conflicts(&["a.txt"])));
+    c.invalidate();
+    let g = c.start().unwrap();
+    // Asked for again on every frame while it runs (Preferences open): queued.
+    assert_eq!(c.start(), None);
+    let f = c.finish(g, report(req.clone(), Ok(Prediction::Clean)));
+    assert!(f.queued);
+    assert!(!c.wants(&req), "that check answered the F5");
+}
+
+#[test]
 fn clear_drops_everything_and_ignores_late_replies() {
     let mut c = ConflictChecks::default();
     let req = request(1, TargetKind::DefaultBranch);
@@ -97,7 +112,7 @@ fn parking_keeps_the_result_and_drops_the_check_in_flight() {
     let mut parked = c.parked();
     assert!(c.is_empty(), "nothing stays behind");
     assert!(parked.shown(Some(&req)).is_some());
-    assert!(!parked.wants(&req));
+    assert!(parked.wants(&req), "the dropped check (only an F5 starts one for known inputs) is owed");
     assert_eq!(parked.finish(late, report(req.clone(), Ok(Prediction::Clean))), Finished::default(), "the old reply is ignored");
     assert!(parked.start().is_some(), "nothing runs after a return");
     assert_ne!(c.start(), Some(late));

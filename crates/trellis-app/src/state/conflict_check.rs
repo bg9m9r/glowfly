@@ -28,7 +28,8 @@ pub struct ConflictReport {
 #[derive(Default)]
 pub struct ConflictChecks {
     last: Option<ConflictReport>,
-    /// F5 asked for the last result to be checked again (it stays shown until then).
+    /// F5 asked for the last result to be checked again (it stays shown until then). The next
+    /// check to start answers it, so one that came while a check ran is still owed afterwards.
     stale: bool,
     running: bool,
     /// A check was asked for while one ran: ask again when it returns.
@@ -64,6 +65,7 @@ impl ConflictChecks {
             return None;
         }
         self.running = true;
+        self.stale = false;
         Some(self.generation)
     }
 
@@ -74,8 +76,6 @@ impl ConflictChecks {
         }
         self.running = false;
         let queued = std::mem::take(&mut self.queued);
-        // An F5 that came while this check ran is still owed a check.
-        self.stale = self.stale && queued;
         let new_error = match &report.result {
             Err(e) if self.logged_error.as_deref() == Some(e) => None,
             Err(e) => {
@@ -124,7 +124,8 @@ impl ConflictChecks {
         self.generation += 1;
         let parked = ConflictChecks {
             last: self.last.take(),
-            stale: self.stale,
+            // The check dropped here may have been answering an F5: ask again on return.
+            stale: self.stale || self.running,
             running: false,
             queued: false,
             generation: self.generation,
@@ -213,3 +214,12 @@ pub fn file_list(paths: &[String]) -> (Vec<String>, Option<String>) {
 pub fn offers_actions(report: &ConflictReport) -> bool {
     matches!(report.result, Ok(Prediction::Conflicts(_) | Prediction::Clean))
 }
+
+/// Whether `report` was made for the branch and commit checked out in `snap`. Merge and Rebase
+/// act on whatever is checked out, so a report made before a checkout or commit offers neither.
+pub fn for_head(report: &ConflictReport, snap: &Snapshot) -> bool {
+    snap.head_branch.as_deref() == Some(report.request.branch.as_str()) && snap.head_oid == Some(report.request.ours)
+}
+
+/// What the report dialog says in place of Merge and Rebase when it isn't `for_head`.
+pub const HEAD_MOVED: &str = "The checked-out branch has changed since this check, so it can't merge or rebase from here.";

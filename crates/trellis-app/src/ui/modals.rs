@@ -176,7 +176,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::ConflictReport(r) => {
                 let remote = snap.is_some_and(|s| crate::state::conflict_check::is_remote(s, &r.request.target));
-                if super::conflict_check::report_modal(ui, r, remote, idle, msgs) {
+                let on_head = snap.is_some_and(|s| crate::state::conflict_check::for_head(r, s));
+                if super::conflict_check::report_modal(ui, r, remote, on_head, idle, msgs) {
                     close = true;
                 }
             }

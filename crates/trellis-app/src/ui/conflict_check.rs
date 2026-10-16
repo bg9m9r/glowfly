@@ -67,6 +67,7 @@ fn popover(ui: &mut egui::Ui, report: &ConflictReport, paths: &[String], remote:
     }
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
+        // The chip shows only a result for the inputs on screen.
         if let Some(m) = actions(ui, report, idle) {
             ui.memory_mut(|mem| mem.close_popup());
             msgs.push(m);
@@ -80,8 +81,9 @@ fn popover(ui: &mut egui::Ui, report: &ConflictReport, paths: &[String], remote:
     ui.label(RichText::new("Turn this check off in Preferences > General.").small().color(color::faint()));
 }
 
-/// The report dialog's contents; returns true when Close was clicked.
-pub fn report_modal(ui: &mut egui::Ui, report: &ConflictReport, remote: bool, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+/// The report dialog's contents; returns true when Close was clicked. `on_head`: the report is
+/// for what is checked out now (otherwise it offers no Merge or Rebase).
+pub fn report_modal(ui: &mut egui::Ui, report: &ConflictReport, remote: bool, on_head: bool, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     ui.heading("Conflict check");
     ui.add_space(6.0);
     if let Some(note) = cc::target_note(&report.request.target, &report.request.branch, remote) {
@@ -95,10 +97,14 @@ pub fn report_modal(ui: &mut egui::Ui, report: &ConflictReport, remote: bool, id
         ui.add_space(4.0);
         file_list(ui, paths);
     }
+    if cc::offers_actions(report) && !on_head {
+        ui.add_space(8.0);
+        ui.label(RichText::new(cc::HEAD_MOVED).color(color::weak()));
+    }
     ui.add_space(12.0);
     let mut close = false;
     ui.horizontal(|ui| {
-        if let Some(m) = actions(ui, report, idle) {
+        if on_head && let Some(m) = actions(ui, report, idle) {
             msgs.push(Msg::CloseModal);
             msgs.push(m);
         }

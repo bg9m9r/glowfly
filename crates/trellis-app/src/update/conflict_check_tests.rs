@@ -184,6 +184,33 @@ fn f5_checks_again_without_flicker() {
 }
 
 #[test]
+fn f5_with_preferences_open_checks_once() {
+    let dir = diverged("cc-f5-prefs");
+    let mut st = state();
+    let job = open(&mut st, &dir).pop().unwrap();
+    deliver(&mut st, job);
+    // F5 while Preferences sends SettingsEdited every frame.
+    let mut jobs = drive_holding(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert_eq!(jobs.len(), 1, "{jobs:?}");
+    for _ in 0..3 {
+        assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
+    }
+    assert!(deliver(&mut st, jobs.remove(0)).is_empty(), "no second check");
+    assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
+
+    // An F5 where no check can start isn't owed later, either.
+    git(&dir, &["checkout", "-q", "--detach"]);
+    assert!(drive_holding(&mut st, Msg::Repo(RepoMsg::Refresh)).is_empty(), "detached HEAD");
+    git(&dir, &["checkout", "-q", "feature"]);
+    let mut jobs = reload(&mut st, &dir);
+    assert_eq!(jobs.len(), 1, "the F5 is answered once back on the branch");
+    for _ in 0..3 {
+        assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
+    }
+    assert!(deliver(&mut st, jobs.remove(0)).is_empty(), "and only once");
+}
+
+#[test]
 fn a_repeated_error_is_logged_once() {
     let dir = diverged("cc-errors");
     let mut st = state();
