@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 03:00 · **Git Flow**: Git Flow panel in place of the graph, a GIT FLOW section in the left panel grouping flow branches by kind, and Start Git Flow feature/release/hotfix from an issue in the issue menu and palette (`5282476`)
 - 2026-10-16 00:41 · **Diff viewer upgrade**: Word wrap toggle in the diff header and Preferences > Editor, with variable-height rows (`bb11923`)
 - 2026-10-16 00:37 · **Repository trust**: git jobs started in an untrusted repository (pull, push, commit and its hooks, undo, …) wait for the trust prompt, which names the operation and offers Trust and run or Cancel (`0c57fb6`)
 - 2026-10-15 22:15 · **Notifications**: "N commits behind" toast with a Pull button when a background fetch leaves the checked-out branch further behind its upstream; toasts can carry an action button; Behind alerts setting under UI Customization (`90241d7`)
@@ -81,7 +82,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | In-App Terminal | ✘ | Shell, font, cursor style and dimming for the built-in terminal (P1 Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
-| *Repo:* Gitflow | ◐ Git Flow page, Start and Finish | Git Flow panel, branch from issue, finish options (P1 Git Flow) |
+| *Repo:* Gitflow | ✔ Git Flow page, Start and Finish, Git Flow panel, branch from issue | Finish options (Later > Git Flow) |
 | *Repo:* Git Hooks | ✔ hooks path | — |
 | *Repo:* Commit | ✘ | Commit template, push after commit, skip hooks per repo |
 | *Repo:* Agents | — | Out of scope |
@@ -354,7 +355,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] Honour smudge filters when restoring a file from a commit, by writing through
     `git restore --source` so LFS files aren't left as pointers (the same item as under File
     actions > Restore)
-- [ ] **Git Flow**
+- [x] **Git Flow**
   Initialize with prefixes; start/finish feature, release and hotfix; a Git Flow panel; and
   "create Git Flow branch from issue".
   - [x] Preferences > Git Flow (repo-specific), with plain git and the git-flow config keys:
@@ -369,9 +370,15 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     the steps checked live (changes, operations in progress, other worktrees, tag name), palette
     'Finish Git Flow <kind> <name>…' entries and a Finish row on the Git Flow page; a stopped
     job names the failed step and what is still to do
-  - [ ] A Git Flow panel listing feature, release and hotfix branches by type with Start and
-    Finish, a palette entry to open it, and a Git Flow group in the left panel
-  - [ ] Create a feature, release or hotfix branch from an issue (issue menu and palette)
+  - [x] A Git Flow panel listing feature, release and hotfix branches by type with Start and
+    Finish, a palette entry to open it, and a Git Flow group in the left panel: the panel
+    replaces the graph (production and development tips, Start per kind, Finish and Checkout per
+    branch, closed by Esc or jumping to a commit, parked with its tab); the GIT FLOW section
+    groups the local flow branches by the longest matching prefix, with a Start '+' per group,
+    Finish in each row's menu and the header menu opening the panel
+  - [x] Create a feature, release or hotfix branch from an issue (issue menu and palette): three
+    Start Git Flow items in the issue menu, and palette entries that list the assigned issues;
+    the Start dialog opens with the issue's branch name typed
 - [ ] **Remote management**
   Add/edit/remove remotes (separate pull and push URLs), fetch one remote, view a remote in the
   browser, add a teammate's fork, fork on the service.
@@ -972,6 +979,16 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Fetch before Start, and publish or track flow branches on the remote
 - Read the newer per-branch config layout (gitflow.branch.<name>.type / parent) and
   gitflow.origin
+- Show how far each flow branch is ahead of or behind its base in the panel and the GIT FLOW
+  section
+- Bugfix and support branch groups in the panel and the GIT FLOW section
+- List flow branches that exist only on a remote, with a track and checkout action
+- Link a branch started from an issue back to the issue (mention it in the merge or tag
+  message, move the issue to in progress)
+- Publish, pull and rebase actions for flow branches in the panel and the section
+- Order release and hotfix rows by version (1.10.0 after 1.9.0)
+- Hide or show the GIT FLOW section from a left-panel context menu
+- Show which issue a flow branch was started from in the Start dialog
 
 ### Remote management
 
