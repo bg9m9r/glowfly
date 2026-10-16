@@ -5,8 +5,9 @@ use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, finish, git, same_place};
 use super::update;
 use crate::effect::{Effect, LoadKind};
-use crate::msg::{Msg, RepoMsg, TabsMsg};
+use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
 use crate::runner;
+use crate::state::lfs::LfsInstall;
 use crate::state::notify::BehindWatch;
 use crate::state::{AppState, ToastAction};
 use std::path::{Path, PathBuf};
@@ -174,5 +175,54 @@ fn pull_action_for_another_tab_is_refused() {
     let count = st.toasts.len();
     assert!(update(&mut st, Msg::ToastAction(9999), now).is_empty());
     assert_eq!(st.toasts.len(), count);
+    cleanup(&[&work, &bare]);
+}
+
+/// An origin one commit ahead, in a repository that stores `*.bin` in LFS, with git-lfs
+/// installed: a successful auto-fetch is followed by the LFS download.
+fn lfs_behind(name: &str) -> (AppState, PathBuf, PathBuf) {
+    let (mut st, work, bare) = with_origin(name);
+    std::fs::write(work.join(".gitattributes"), "*.bin filter=lfs diff=lfs merge=lfs -text\n").unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    st.lfs_install = LfsInstall::Installed("3.7.1".into());
+    remote_commit(&bare, "main", "r1.txt");
+    (st, work, bare)
+}
+
+fn is_lfs_fetch(e: &Effect) -> bool {
+    matches!(e, Effect::RunGit { cmds, .. } if *cmds == [args(&["lfs", "fetch"])])
+}
+
+fn assert_alert(st: &AppState) {
+    let t = st.toasts.iter().find(|t| t.action.is_some()).expect("the behind alert");
+    assert_eq!(t.text, "main is 1 commit behind origin/main");
+    assert_eq!(t.action.as_ref().map(|a| a.label.as_str()), Some("Pull"));
+}
+
+#[test]
+fn a_failed_lfs_download_after_auto_fetch_keeps_the_behind_alert() {
+    let (mut st, work, bare) = lfs_behind("notify-lfs-failed");
+    st.settings.auto_fetch_minutes = 1;
+    let tick = st.last_fetch + Duration::from_secs(61);
+    let mut fx = update(&mut st, Msg::Tick(tick), Instant::now());
+    let done = runner::execute(fx.remove(0)).expect("the fetch's result");
+    let (lfs, mut rest): (Vec<_>, Vec<_>) = update(&mut st, done, Instant::now()).into_iter().partition(is_lfs_fetch);
+    assert_eq!(lfs.len(), 1, "the LFS download started");
+    let failed = Msg::Job(JobMsg::JobDone { ok: false, output: "$ git lfs fetch\nfailed".into(), undo: None });
+    rest.extend(update(&mut st, failed, Instant::now()));
+    finish(&mut st, rest);
+    assert_alert(&st);
+    assert!(st.log.iter().any(|l| l.text.starts_with("Auto-fetch LFS files FAILED")));
+    assert!(st.toasts.iter().all(|t| t.ok), "a background failure only reaches the log");
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn an_lfs_download_ending_before_the_reload_keeps_the_alert() {
+    // `finish` handles the newest result first, so the download ends before the reload lands.
+    let (mut st, work, bare) = lfs_behind("notify-lfs-first");
+    auto_fetch(&mut st);
+    assert!(st.log.iter().any(|l| l.text.starts_with("Auto-fetch LFS files")), "the download ran");
+    assert_alert(&st);
     cleanup(&[&work, &bare]);
 }

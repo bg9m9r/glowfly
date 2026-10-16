@@ -1,6 +1,7 @@
 //! The "N commits behind" alert: an auto-fetch in the active tab records how far behind the
 //! checked-out branch was (`fetched`), the reload after it compares (`loaded`), and the toast's
-//! Pull button comes back as `Msg::ToastAction` (`toast_action`).
+//! Pull button comes back as `Msg::ToastAction` (`toast_action`). The LFS download that may
+//! follow an auto-fetch leaves the watch alone.
 //!
 //! Desktop notifications: while the setting is on and the window is in the background, behind
 //! alerts and finished jobs also go to the OS (`desktop`); turning the setting on sends one to
@@ -17,9 +18,16 @@ use trellis_core::repo::Snapshot;
 /// The background fetch's job label (update/ops.rs `auto_fetch`).
 pub(super) const AUTO_FETCH: &str = "Auto-fetch";
 
+/// The LFS download started after a successful auto-fetch (update/lfs.rs).
+pub(super) const AUTO_FETCH_LFS: &str = "Auto-fetch LFS files";
+
 /// A job in the active tab ended, before its refresh is requested. A successful auto-fetch
 /// records the baseline; any other job clears an older one.
 pub(super) fn fetched(st: &mut AppState, label: &str, quiet: bool, ok: bool) {
+    // Downloading LFS files moves no refs, so the watch stays for the reload after the fetch.
+    if quiet && label == AUTO_FETCH_LFS {
+        return;
+    }
     let watch = ok && quiet && label == AUTO_FETCH && st.settings.behind_alerts;
     st.behind_watch = watch.then(|| st.snap.as_ref().and_then(|s| notify::baseline(s, st.load_gen))).flatten();
 }

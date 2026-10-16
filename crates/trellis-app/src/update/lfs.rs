@@ -1,7 +1,10 @@
 //! The Git LFS preferences page: reading the status, setting LFS up, tracking and untracking
 //! patterns, and the LFS commands, each run as the active git job. Also whether git-lfs is
 //! installed (checked at startup and by each status read) and the file menu's Track in Git LFS.
+//! A successful auto-fetch in a repository that stores files in LFS is followed by a quiet
+//! download of the checked-out commit's LFS files.
 
+use super::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::lfs::LfsMsg;
@@ -75,9 +78,13 @@ fn read(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
 
 /// A job finished in the active tab: refresh the page if it is open, keeping it on screen
 /// meanwhile. A successful Initialize may lead to the pull offer once the new status arrives.
-/// Background jobs (auto-fetch) can't change the LFS setup or patterns, so they leave it alone.
+/// Background jobs (auto-fetch) can't change the LFS setup or patterns, so they leave it alone;
+/// a successful auto-fetch may start the LFS download.
 pub(super) fn job_finished(st: &mut AppState, label: &str, ok: bool, quiet: bool, fx: &mut Vec<Effect>) {
     if quiet {
+        if ok && label == AUTO_FETCH {
+            fetch_after_auto_fetch(st, fx);
+        }
         return;
     }
     let Some(p) = st.prefs.as_mut().filter(|p| p.page == PrefPage::RepoLfs) else { return };
@@ -85,6 +92,19 @@ pub(super) fn job_finished(st: &mut AppState, label: &str, ok: bool, quiet: bool
         p.lfs.offer_pull = true;
     }
     read(st, true, fx);
+}
+
+/// A background fetch ended in the active tab: in a repository that stores files in LFS, also
+/// download the LFS files of the checked-out commit, as another quiet job (it never prompts,
+/// and a failure only reaches the log). git-lfs picks the remote and honours its fetch filters.
+fn fetch_after_auto_fetch(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Some(snap) = &st.snap else { return };
+    let uses_lfs = matches!(st.lfs_install, LfsInstall::Installed(_)) && !snap.lfs_patterns.is_empty() && snap.head_oid.is_some();
+    if !uses_lfs || !st.runs_git_unasked() {
+        return;
+    }
+    let spec = JobSpec::new(AUTO_FETCH_LFS.into(), vec![LfsCommand::Fetch.args(None)]);
+    start_job(st, JobSpec { quiet: true, ..spec }, fx);
 }
 
 fn status(st: &AppState) -> Option<&LfsStatus> {

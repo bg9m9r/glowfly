@@ -35,6 +35,7 @@ pub fn general_page(
     row(ui, "Auto-Fetch Interval", |ui| {
         ui.add(egui::DragValue::new(&mut s.auto_fetch_minutes).range(0..=60).suffix(" min"));
         help(ui, "In minutes, between 0 and 60 (0 disables auto-fetch). Fetches all remotes of the open repository.");
+        help(ui, "In repositories that store files in Git LFS, it also downloads the LFS files of the checked-out commit.");
         warn(ui, "If you have many remotes, this may impact performance.");
     });
     row(ui, "Auto-Prune", |ui| {
