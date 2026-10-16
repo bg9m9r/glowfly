@@ -2,6 +2,7 @@
 //! stash list is numbered from the newest entry, so a stash made or dropped elsewhere since the
 //! snapshot shifts every `stash@{N}`: the job names the entry by position for git but carries
 //! the commit the user picked, and the runner refuses it if that position now holds another stash.
+//! The Stash dialog's messages go to update/stash_push.rs.
 
 use super::ops::{self, JobSpec, start_job};
 use crate::effect::Effect;
@@ -32,6 +33,8 @@ pub(super) fn handle(st: &mut AppState, msg: StashMsg, fx: &mut Vec<Effect>) {
             None => st.log(false, GONE),
         },
         StashMsg::Rename { oid, message } => rename(st, oid, &message, fx),
+        StashMsg::PushDialog { scope, path } => super::stash_push::open(st, scope, path),
+        StashMsg::Push { scope, message, paths } => super::stash_push::push(st, scope, &message, paths, fx),
     }
 }
 

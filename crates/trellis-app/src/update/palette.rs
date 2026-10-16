@@ -4,7 +4,7 @@
 //! two-step commands open: the file finder (loading its items in the background), the stash
 //! sub-lists (apply, pop, delete and rename), the profile sub-list (switching profiles), the
 //! assigned-issue sub-lists (starting a Git Flow branch from an issue), the stash message step
-//! and the commit count of a shallow clone's fetch.
+//! and the commit count of a shallow clone's fetch. The Stash dialog's entries open that dialog.
 
 use crate::effect::Effect;
 use crate::msg::BranchMsg;
@@ -213,6 +213,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             }
             Msg::git("Stash", &["stash", "push", "-u", "-m", t])
         }
+        C::StashDialog(scope) => Msg::Stash(StashMsg::PushDialog { scope, path: None }),
         C::StageAll => Msg::Stage(StageMsg::StageAll),
         C::UnstageAll => Msg::Stage(StageMsg::UnstageAll),
         C::Undo => Msg::Job(JobMsg::Undo),

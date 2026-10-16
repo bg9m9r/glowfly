@@ -40,6 +40,7 @@ mod sidebar;
 mod signature_badge;
 mod spell_edit;
 mod stash_dialog;
+mod stash_push_dialog;
 mod status;
 mod submodules;
 mod tabs;
@@ -127,6 +128,8 @@ mod snapshot_tests_sparse;
 mod snapshot_tests_ssh;
 #[cfg(test)]
 mod snapshot_tests_stash;
+#[cfg(test)]
+mod snapshot_tests_stash_push;
 #[cfg(test)]
 mod snapshot_tests_submodules;
 #[cfg(test)]

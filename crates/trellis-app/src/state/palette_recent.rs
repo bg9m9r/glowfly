@@ -9,6 +9,7 @@ use crate::remote::RemoteMsg;
 use crate::tools::ToolsMsg;
 use trellis_core::gitflow::FlowKind;
 use trellis_core::settings::ThemeChoice;
+use trellis_core::stash_ops::StashScope;
 
 /// Most commands the palette remembers.
 pub const MAX_RECENT_COMMANDS: usize = 10;
@@ -67,6 +68,9 @@ impl PaletteCommand {
             C::RenameStash { .. } => return None,
             C::StashMessage => "stash-message",
             C::StashWithMessage(_) => return None,
+            C::StashDialog(StashScope::All) => "stash-dialog",
+            C::StashDialog(StashScope::Staged) => "stash-staged",
+            C::StashDialog(StashScope::Files) => "stash-files",
             C::StageAll => "stage-all",
             C::UnstageAll => "unstage-all",
             C::Undo => "undo",

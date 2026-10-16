@@ -2,7 +2,8 @@
 //! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
 //! `worktree_manage_dialog.rs`), clone (drawn by `clone_dialog.rs`), create pull request, publish
 //! (drawn by `publish.rs`), renaming a branch or setting its upstream (drawn by
-//! `branch_dialogs.rs`), renaming a stash (drawn by `stash_dialog.rs`), creating or renaming a
+//! `branch_dialogs.rs`), renaming a stash (drawn by `stash_dialog.rs`), stashing with a message
+//! and a choice of what goes in (drawn by `stash_push_dialog.rs`), creating or renaming a
 //! working-tree file (drawn by `file_dialogs.rs`), starting a Git Flow branch (drawn by
 //! `gitflow_dialog.rs`), finishing one (drawn by `gitflow_finish_dialog.rs`), adding or editing a
 //! remote (drawn by `remotes/dialog.rs`), adding a fork as a remote and forking on the hosting
@@ -107,6 +108,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::RenameStash(form) => {
                 if super::stash_dialog::rename(ui, form, !prompting, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::StashPush(form) => {
+                if super::stash_push_dialog::show(ui, form, snap, !prompting, idle, msgs) {
                     close = true;
                 }
             }

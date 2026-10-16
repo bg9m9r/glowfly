@@ -1,7 +1,8 @@
 //! File actions added to file rows' context menus: restore a file from a commit (one commit's
 //! rows, or the rows comparing two selected commits), open it in its default program or the
 //! external editor, show it in the file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
-//! for files in the working tree, track them in Git LFS. Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
+//! for files in the working tree, track them in Git LFS, and the Stash dialog's entries (the
+//! Staged Files header's menu, Stash this file… on working-tree rows). Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
 //! opening a popup. `file_buttons` reuses the labels, reasons and restore message for the same
 //! actions as header buttons.
 
@@ -9,6 +10,8 @@ use super::common::{menu_item, menu_item_if, short};
 use crate::lfs::LfsMsg;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
+use crate::msg::StageMsg;
+use crate::msg::StashMsg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::folder_prefill;
 pub(super) use crate::state::lfs::TRACK_IN_LFS;
@@ -17,7 +20,8 @@ pub(super) use crate::state::tools::OPEN_IN_EDITOR;
 use crate::tools::ToolsMsg;
 use eframe::egui;
 use git2::Oid;
-use trellis_core::repo::FileEntry;
+use trellis_core::repo::{FileEntry, Snapshot};
+use trellis_core::stash_ops::StashScope;
 
 /// The show-in-file-manager label for this platform.
 pub(super) const SHOW_IN_FOLDER: &str = if cfg!(windows) {
@@ -35,6 +39,8 @@ pub(super) const NEW_FILE_HERE: &str = "New file in this folder…";
 pub(super) const RENAME: &str = "Rename…";
 pub(super) const DELETE: &str = "Delete…";
 pub(super) const UNSTAGE_DELETE: &str = "Unstage and delete…";
+pub(super) const STASH_STAGED: &str = "Stash staged changes…";
+pub(super) const STASH_FILE: &str = "Stash this file…";
 
 /// Where a commit file row's change comes from.
 #[derive(Clone, Copy)]
@@ -158,4 +164,21 @@ pub(super) fn wip_file_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEnt
     if !missing {
         lfs_submenu(ui, msgs, lfs);
     }
+}
+
+/// The Staged Files header's menu: open the Stash dialog on the staged changes (disabled while
+/// nothing is staged or a file is conflicted), and unstage everything.
+pub(super) fn staged_header_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, snap: &Snapshot) {
+    let blocked = crate::state::stashes::push_blocked(snap, StashScope::Staged, &[]);
+    menu_item_if(msgs, ui, STASH_STAGED, blocked, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Staged, path: None }));
+    let nothing = snap.staged.is_empty().then_some("Nothing is staged");
+    menu_item_if(msgs, ui, "Unstage all", nothing, Msg::Stage(StageMsg::UnstageAll));
+}
+
+/// Opens the Stash dialog on Selected files with only `path` ticked; disabled while any file is
+/// conflicted, since git can't stash then.
+pub(super) fn stash_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, snap: &Snapshot, path: &str) {
+    let conflicted = snap.unstaged.iter().any(|f| f.status == '!').then_some("Resolve the conflicted files first");
+    let m = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some(path.to_owned()) });
+    menu_item_if(msgs, ui, STASH_FILE, conflicted, m);
 }

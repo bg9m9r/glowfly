@@ -4,12 +4,18 @@
 //!
 //! Two limits follow from that: the stash commit's own message (what the commit details show)
 //! keeps the old text, and the reflog dates of `stash@{0..N}` become the time of the rename.
+//!
+//! `push` builds the Stash dialog's `git stash push` command lines (every change, only the
+//! staged changes, or chosen paths).
 
 use crate::error::Result;
 use crate::gitcli::{self, args};
 use crate::repo::StashInfo;
 use git2::Oid;
 use std::path::Path;
+
+mod push;
+pub use push::{PATHS_ON_COMMAND_LINE, PushCommand, STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 
 /// Splits a stash list text into the branch it was made on and the part the user can edit:
 /// "On <branch>: <rest>" and "WIP on <branch>: <rest>" give `(Some(branch), rest)`, anything
@@ -144,3 +150,7 @@ fn rename_with(workdir: &Path, index: usize, oid: Oid, message: &str, run: &mut 
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "stash_ops/push_tests.rs"]
+mod push_tests;

@@ -42,6 +42,7 @@ mod signatures;
 mod sparse;
 mod ssh;
 mod stash;
+mod stash_push;
 mod submodules;
 mod tabs;
 mod tag_annotate;
@@ -178,6 +179,8 @@ mod signature_tests;
 mod sparse_tests;
 #[cfg(test)]
 mod ssh_tests;
+#[cfg(test)]
+mod stash_push_tests;
 #[cfg(test)]
 mod stash_rename_tests;
 #[cfg(test)]

@@ -193,42 +193,52 @@ struct OpenFile<'a> {
 /// The Unstaged or Staged Files list of the working tree.
 fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, lfs: TrackContext, msgs: &mut Vec<Msg>) {
     let (title, files) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
-    egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
-        ui.horizontal(|ui| {
-            ui.label(RichText::new(format!("{title} ({})", files.len())).strong().color(color::text()));
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if staged {
-                    let tip = format!("Unstage every file ({})", hint(BindingId::UnstageAll));
-                    if !files.is_empty() && ui.small_button("Unstage all").on_hover_text(tip).clicked() {
-                        msgs.push(Msg::Stage(StageMsg::UnstageAll));
+    // The Staged header's background opens its menu; registered before the header's buttons, so
+    // they keep their own clicks.
+    let sense = if staged { Sense::click() } else { Sense::hover() };
+    let header = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
+        egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                // Not selectable, so a right-click on the title reaches the header's menu.
+                let text = RichText::new(format!("{title} ({})", files.len())).strong().color(color::text());
+                ui.add(egui::Label::new(text).selectable(false));
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    if staged {
+                        let tip = format!("Unstage every file ({})", hint(BindingId::UnstageAll));
+                        if !files.is_empty() && ui.small_button("Unstage all").on_hover_text(tip).clicked() {
+                            msgs.push(Msg::Stage(StageMsg::UnstageAll));
+                        }
+                        return;
                     }
-                    return;
-                }
-                if !files.is_empty() {
-                    let tip = format!("Stage every changed file ({})", hint(BindingId::StageAll));
-                    if ui.small_button("Stage all").on_hover_text(tip).clicked() {
-                        msgs.push(Msg::Stage(StageMsg::StageAll));
-                    }
-                    if ui.small_button("Discard all").clicked() {
-                        // Discarding goes through a stash so it can be recovered.
-                        msgs.push(Msg::confirm(
-                            "Discard all changes",
-                            format!(
-                                "All uncommitted changes will be moved into a stash named \"{DISCARD_STASH_MESSAGE}\". Undo (Ctrl+Z) \
+                    if !files.is_empty() {
+                        let tip = format!("Stage every changed file ({})", hint(BindingId::StageAll));
+                        if ui.small_button("Stage all").on_hover_text(tip).clicked() {
+                            msgs.push(Msg::Stage(StageMsg::StageAll));
+                        }
+                        if ui.small_button("Discard all").clicked() {
+                            // Discarding goes through a stash so it can be recovered.
+                            msgs.push(Msg::confirm(
+                                "Discard all changes",
+                                format!(
+                                    "All uncommitted changes will be moved into a stash named \"{DISCARD_STASH_MESSAGE}\". Undo (Ctrl+Z) \
                                  or applying that stash brings them back; dropping the stash deletes them permanently."
-                            ),
-                            "Discard all",
-                            Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]),
-                        ));
+                                ),
+                                "Discard all",
+                                Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]),
+                            ));
+                        }
                     }
-                }
-                // Drawn last, so it sits leftmost; shown even when nothing has changed.
-                if ui.small_button("New file…").clicked() {
-                    msgs.push(Msg::WorkFile(WorkFileMsg::NewFileDialog(String::new())));
-                }
+                    // Drawn last, so it sits leftmost; shown even when nothing has changed.
+                    if ui.small_button("New file…").clicked() {
+                        msgs.push(Msg::WorkFile(WorkFileMsg::NewFileDialog(String::new())));
+                    }
+                });
             });
         });
     });
+    if staged {
+        header.response.context_menu(|ui| file_menu::staged_header_items(ui, msgs, snap));
+    }
     let area = egui::ScrollArea::vertical().id_salt(title).max_height(max_h).auto_shrink([false, true]);
     if files.is_empty() {
         area.show(ui, |ui| ui.label(RichText::new("None").color(color::faint())));
@@ -300,6 +310,7 @@ fn wip_file_row(ui: &mut egui::Ui, snap: &Snapshot, f: &FileEntry, staged: bool,
                     );
                 }
             }
+            file_menu::stash_file_item(ui, msgs, snap, &f.path);
             if f.status != '?' {
                 menu_item(msgs, ui, "File history", Msg::History(HistoryMsg::OpenFileHistory { path: f.path.clone(), at: None }));
             }

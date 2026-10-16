@@ -15,7 +15,7 @@ use trellis_core::gitcli::args;
 use trellis_core::settings::RepoTrust;
 
 /// `untrusted_repo` opened, with the first-open prompt dismissed.
-fn held_repo(name: &str) -> (AppState, PathBuf) {
+pub(super) fn held_repo(name: &str) -> (AppState, PathBuf) {
     let dir = untrusted_repo(name);
     let mut st = state();
     open(&mut st, &dir);

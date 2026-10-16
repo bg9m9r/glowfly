@@ -142,6 +142,7 @@ pub enum Modal {
     Publish(Box<publish::PublishForm>),
     RenameBranch { old: String, name: String },
     RenameStash(stashes::RenameStashForm),
+    StashPush(stashes::StashPushForm),
     SetUpstream { branch: String, remote: String, name: String },
     NewFile(files::PathForm),
     RenameFile { old: String, form: files::PathForm },

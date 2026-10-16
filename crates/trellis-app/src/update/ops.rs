@@ -100,7 +100,8 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             // Always called so a stale pending tag job or patch apply is cleared.
             let tag = super::tags::headline(st, ok, &output);
             let patch = super::patch::headline(st, ok, &output);
-            let headline = flow.or(tag).or(patch);
+            let stash = super::stash_push::headline(st, ok, &output);
+            let headline = flow.or(tag).or(patch).or(stash);
             finish_job(st, ok, output, headline.clone(), undo, now, fx);
             // Toasts fade after a few seconds; the log keeps what a stopped Finish left to do.
             if let (false, Some(h)) = (ok, headline) {

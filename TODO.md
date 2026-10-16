@@ -395,11 +395,11 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Delete a tag from one or all remotes and push it to all remotes, from the TAGS row menu
   - [x] Annotate an existing lightweight tag (replace it with an annotated tag at the same commit)
   - [x] Hide tags in the graph (see Hide/solo)
-- [ ] **Stash improvements**
+- [x] **Stash improvements**
   Stash selected files only, a stash message field, rename a stash. (Stash with a message exists
   in the palette; hiding stashes is under Later.)
   - [x] Rename (edit the message of) an existing stash, from the sidebar and the palette
-  - [ ] Stash only staged changes or selected files, with a message, from the palette too
+  - [x] Stash only staged changes or selected files, with a message, from the palette too
 - [ ] **Clone and init options**
   Shallow and sparse clone; init with a `.gitignore` template and a license; clone from a list
   of your repos on a connected service. (Creating the hosting-service repo on init is under
@@ -1031,6 +1031,15 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Share one stash-action message builder between the sidebar and the palette, Rename… included
 - Undo a stash rename (record the old message so Ctrl+Z restores it)
 - Rank recently picked stashes first in the rename sub-list
+- Keep the index when stashing (`--keep-index`) as a Stash dialog option
+- Stash ignored files too (`--all`) from the Stash dialog
+- Stash chosen hunks or lines of a file, not only whole files
+- Filter field above the Stash dialog's file checklist for large working trees
+- When a staged rename's new path is chosen, stash its old path too, so the rename moves as a whole
+- Check the installed git version before offering "Only staged changes", instead of explaining after git refuses
+- Right-click menu on the toolbar Stash button with the Stash dialog's choices
+- "Stash…" entry in the STASHES section header menu that opens the Stash dialog
+- Stash the files selected in the WIP lists once working-tree files can be multi-selected
 
 ### Clone and init options
 

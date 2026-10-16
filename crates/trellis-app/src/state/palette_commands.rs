@@ -16,6 +16,8 @@ mod palette_gitflow;
 mod palette_setup;
 #[path = "palette_shallow.rs"]
 mod palette_shallow;
+#[path = "palette_stash.rs"]
+mod palette_stash;
 
 /// The label of the entry that shows the repository folder in the system file manager.
 pub const SHOW_REPO_FOLDER: &str = if cfg!(windows) {
@@ -59,6 +61,8 @@ pub enum PaletteCommand {
     StashMessage,
     /// Stash every change, untracked files included, under this message.
     StashWithMessage(String),
+    /// Open the Stash dialog with this choice.
+    StashDialog(trellis_core::stash_ops::StashScope),
     StageAll,
     UnstageAll,
     Undo,
@@ -233,26 +237,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if snap.head_branch.is_some() {
         out.push(entry(C::Push, "Push", "upload publish"));
     }
-    if snap.is_dirty() {
-        out.push(entry(C::Stash, "Stash changes", "save shelve park untracked wip stash push"));
-        out.push(entry(C::StashMessage, "Stash with message…", "save shelve park untracked wip stash push name describe message"));
-    }
-    if let Some(top) = snap.stashes.first() {
-        out.push(with_detail(entry(C::PopStash, "Pop stash", "unstash apply restore stash"), Some(top.message.clone())));
-    }
-    if !snap.stashes.is_empty() {
-        let len = snap.stashes.len();
-        let n = format!("{len} stash{}", if len == 1 { "" } else { "es" });
-        let choose = [
-            (StashAction::Apply, "Apply stash…", "unstash restore keep stash"),
-            (StashAction::Pop, "Pop stash…", "unstash apply restore remove stash"),
-            (StashAction::Drop, "Delete stash…", "drop remove discard clear stash"),
-        ];
-        for (action, label, keywords) in choose {
-            out.push(with_detail(entry(C::ChooseStash(action), label, keywords), Some(n.clone())));
-        }
-        out.push(with_detail(entry(C::ChooseStashToRename, "Rename stash…", "edit reword message describe name stash"), Some(n)));
-    }
+    palette_stash::stash_entries(snap, out);
     if !snap.unstaged.is_empty() {
         out.push(entry(C::StageAll, "Stage all files", "add everything"));
     }

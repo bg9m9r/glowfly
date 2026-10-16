@@ -76,7 +76,7 @@ pub enum Msg {
     Commit(CommitMsg),
     /// Git jobs: commands, push, stash, undo and redo, and their end (update/ops.rs).
     Job(JobMsg),
-    /// Renaming a stash (update/stash.rs).
+    /// Renaming a stash and the Stash dialog (update/stash.rs).
     Stash(StashMsg),
     /// Restoring a file from a commit, opening or showing a working-tree file (update/files.rs).
     Files(FilesMsg),
