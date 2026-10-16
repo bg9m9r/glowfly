@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 14:56 · **Limits found while building integrations**: Checks and votes for every pull request on GitLab, Bitbucket Cloud and Data Center and Azure DevOps (a paced background pass past the first 25, cached by head and age), Jira look-alike keys such as `UTF-8` skipped using the site's project keys, the project filter applied to branch names, and paging tests for every issue list (`cc23487`)
 - 2026-10-16 14:48 · **Trello**: Trello cards as an issue tracker: connect with an API key and a read-only token, choose Trello and optionally a board under Issue Tracker, assigned open cards in ISSUES (View card in Trello, Copy card link, branch and Git Flow from a card), card links and card-id branch names as chips, and PRs that link the card (`5d48e6a`)
 - 2026-10-16 14:40 · **In-app pull request view**: Inline code comment threads for GitHub: threads in the conversation and in a pane under each file's diff, with line markers, Reply, Resolve / Unresolve, outdated and resolved threads hidden behind Show toggles, and going from a thread to its line in Files changed (`7782b79`)
 - 2026-10-16 14:30 · **External diff and merge tools**: Diff tool and merge tool in Preferences > External Tools; Open in external diff tool from file rows, file history and the diff header (copies in a private temp folder, the working file for unstaged changes), and Resolve in external merge tool from conflicted rows and the conflict view, run as a job that reports whether the file was saved (`837a315`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 08:00 · **Search and filter**: Search the graph by changed file with path: and file: terms (folder, file name or glob), searched off the UI thread with a live count (`ec3df76`)
 - 2026-10-16 07:30 · **Graph columns and loading**: Load more commits automatically when the graph is scrolled near the end of a truncated history, with a loading row and a General preference to turn it off (`9d30255`)
 - 2026-10-16 07:15 · **Stash improvements**: Stash dialog with a message and a choice of all changes, only staged changes or chosen files, from the palette, the Staged Files header menu and Stash this file… on WIP rows (`25ab29a`)
-- 2026-10-16 06:51 · **Remote management**: View a remote on its hosting service, add a teammate's fork from the service's list of forks, and fork a repository into your account (GitHub, GitLab) then add and fetch it, from the REMOTE row menu and the palette (`dc17a10`)
 
 ---
 
