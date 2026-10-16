@@ -79,6 +79,8 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 fx.push(save_settings(st));
             }
         }
+        PrefsMsg::SetDesktopNotifications(on) => super::notify::set_desktop(st, on, fx),
+        PrefsMsg::DesktopNotificationFailed { text, confirm } => super::notify::desktop_failed(st, text, confirm, now),
         PrefsMsg::GitConfigLoaded(values) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.ssh.prefill_comment(&values.user_email);

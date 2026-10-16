@@ -94,7 +94,11 @@ pub struct ViewState {
     /// The commits reachable from the default branch, walked on the first hover after a load
     /// (`ref_rows::default_ancestry`); cleared when a new snapshot or tab arrives.
     pub base_set: Option<HashSet<Oid>>,
+    /// The window had the keyboard focus last frame (for the WindowFocused transition).
     pub was_focused: bool,
+    /// The window has the keyboard focus this frame. The shell sets it before handling results;
+    /// update reads it to decide desktop notifications.
+    pub focused: bool,
     /// A text field had the keyboard when the last frame was drawn. egui takes the focus
     /// away when Esc is pressed before the shell sees the key, so Esc checks this instead.
     pub was_typing: bool,
@@ -142,6 +146,7 @@ impl Default for ViewState {
             highlight: None,
             base_set: None,
             was_focused: true,
+            focused: true,
             was_typing: false,
             now: 0,
             utc_offset: 0,

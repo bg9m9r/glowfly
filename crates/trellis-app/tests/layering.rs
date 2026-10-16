@@ -49,6 +49,7 @@ const DENIED: &[(&str, &str)] = &[
     ("UdpSocket", "the network"),
     ("ureq", "the network"),
     ("keyring::", "the credential store"),
+    ("notify_rust", "desktop notifications"),
     ("Repository::", "the repository"),
     ("std::thread", "threads"),
     ("thread::spawn", "threads"),

@@ -176,6 +176,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Remote(_)
         | Effect::Clone(_)
         | Effect::Init(_)
+        | Effect::Notify(_)
         | Effect::Ui(_) => None,
     }
 }

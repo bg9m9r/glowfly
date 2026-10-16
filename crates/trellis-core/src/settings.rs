@@ -152,6 +152,8 @@ pub struct Settings {
     pub notification_location: Corner,
     /// After a background fetch, toast when the checked-out branch falls (further) behind its upstream (Preferences > UI Customization).
     pub behind_alerts: bool,
+    /// While the window is unfocused, also show behind alerts and finished jobs as OS notifications (Preferences > UI Customization).
+    pub desktop_notifications: bool,
     /// "system" or a locale such as "de_DE".
     pub date_locale: String,
     /// moment.js-style patterns.
@@ -252,6 +254,7 @@ impl Default for Settings {
             theme: ThemeChoice::Dark,
             notification_location: Corner::BottomLeft,
             behind_alerts: true,
+            desktop_notifications: false,
             date_locale: "system".into(),
             date_format: "MM/DD/YYYY".into(),
             date_word_format: "MMMM D, YYYY".into(),

@@ -78,15 +78,23 @@ pub(super) fn drive(st: &mut AppState, msg: Msg) {
 
 /// Runs effects `update` returned, and everything they lead to, to completion (as `drive`).
 pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
+    finish_keeping(st, fx);
+}
+
+/// `finish`, returning every effect it skipped (raised anywhere along the way), in order.
+pub(super) fn finish_keeping(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let mut queue = Vec::new();
+    let mut kept = Vec::new();
     let mut fx = fx;
     loop {
         for effect in fx {
-            if !skipped(&effect) {
+            if skipped(&effect) {
+                kept.push(effect);
+            } else {
                 queue.extend(runner::execute(effect));
             }
         }
-        let Some(m) = queue.pop() else { return };
+        let Some(m) = queue.pop() else { return kept };
         fx = update(st, m, Instant::now());
     }
 }
@@ -120,6 +128,8 @@ pub(super) fn skipped(effect: &Effect) -> bool {
                     | SshEffect::AddToService { .. }
                     | SshEffect::Generate { .. }
             )
+            // Never show real desktop notifications.
+            | Effect::Notify(_)
     )
 }
 

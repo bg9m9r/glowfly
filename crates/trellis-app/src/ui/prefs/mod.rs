@@ -134,7 +134,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), git_program.as_ref(), msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
-                    PrefPage::Ui => appearance::ui_page(ui, settings, now),
+                    PrefPage::Ui => appearance::ui_page(ui, settings, now, msgs),
                     PrefPage::Editor => editor::editor_page(ui, settings),
                     PrefPage::Tools => tools::tools_page(ui, settings, msgs),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),

@@ -49,6 +49,13 @@ pub enum PrefsMsg {
     SetTheme(ThemeChoice),
     /// Show or hide the text under toolbar buttons (saved in settings).
     SetToolbarLabels(bool),
+    /// The Desktop notifications checkbox (the view only asks; update saves).
+    SetDesktopNotifications(bool),
+    /// The OS refused a desktop notification; `confirm` when it was the one sent on turning them on.
+    DesktopNotificationFailed {
+        text: String,
+        confirm: bool,
+    },
     GitConfigLoaded(GitConfigValues),
     FilePicked {
         purpose: FilePurpose,
@@ -82,6 +89,8 @@ impl PrefsMsg {
             | Self::PickFile(..)
             | Self::SetTheme(..)
             | Self::SetToolbarLabels(..)
+            | Self::SetDesktopNotifications(..)
+            | Self::DesktopNotificationFailed { .. }
             | Self::GitConfigLoaded(..)
             | Self::FilePicked { .. }
             | Self::SigningKeysLoaded(..)

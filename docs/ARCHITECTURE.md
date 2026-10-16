@@ -61,7 +61,7 @@ binary (package `trellis`).
 | --- | --- |
 | `main.rs` | Starts the window; also runs as git's sequence editor (`--write-todo`) and askpass helper. |
 | `msg/` | `Msg`: user intents and background results, one variant per area carrying that area's enum (`RepoMsg`, `DiffMsg`, `StageMsg`, `InitMsg` in `init.rs`, …, one file per few areas), plus a few cross-cutting messages (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …). |
-| `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`), grouped effects of the Clone and Init dialogs (`clone.rs`, `init.rs`), and `Effect::name` (`names.rs`). |
+| `effect/` | `Effect`: everything slow or outside the process (`mod.rs`), the data some effects carry (`repo.rs`, `forge.rs`, `notify.rs` for desktop notifications), grouped effects of the Clone and Init dialogs (`clone.rs`, `init.rs`), and `Effect::name` (`names.rs`). |
 | `lfs.rs`, `git_env.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data (the Clone dialog in `clone.rs` and `clone_service.rs`, the Init dialog in `init.rs`). |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`). |
@@ -111,6 +111,14 @@ binary (package `trellis`).
 - **Toasts** (`state/toasts.rs`) can carry one action button with a stored `Msg`. A click
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
   while the toast's repository is the active tab.
+- **Desktop notifications**: `update/notify.rs::desktop` returns `Effect::Notify` (a
+  `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and
+  `st.view.focused` is false; the shell sets `view.focused` from egui at the start of each frame,
+  before runner results are handled, so `update` never asks egui. Finished non-quiet jobs
+  (`update/ops.rs::finish_job`) and behind alerts use it; turning the setting on sends one
+  confirmation regardless of focus. `runner/notify.rs` shows the note through notify-rust (the
+  only caller, `tests/layering.rs`) and reports a refusal as
+  `PrefsMsg::DesktopNotificationFailed`.
 - **`AppState`** holds no egui types; textures and fonts live in a `UiCache` owned by the UI
   layer.
 

@@ -74,7 +74,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
 | AI | ✘ | Possible later: opt-in features on the Claude API |
 | External Tools | ◐ Editor and terminal | Diff tool, merge tool (P1 External tools) |
-| Notifications | ◐ location and behind alerts under UI Customization | Desktop notifications (P1 Notifications) |
+| Notifications | ✔ location, behind alerts and desktop notifications under UI Customization | Per-kind choices, click to focus (Later > Notifications) |
 | UI Customization | ✔ UI Customization | Repo group colors and worktree tab grouping (wait on those features) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
 | Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights, word wrap) | Font family, EOL character |
@@ -463,10 +463,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   Choose an editor, diff tool, merge tool and terminal (with custom commands); open the repo in
   the editor. (Diff and merge tools are their own item below.)
   - [x] Editor (open a file or the repository) and a custom terminal command in Preferences > External Tools
-- [ ] **Notifications**
+- [x] **Notifications**
   Toasts for every operation exist. Missing: optional desktop notifications.
   - [x] "N commits behind" toast with Pull after a background fetch (UI Customization > Behind alerts)
-  - [ ] Desktop (OS) notifications while the window is unfocused, for the behind alert and job
+  - [x] Desktop (OS) notifications while the window is unfocused, for the behind alert and job
     results: an opt-in toggle with help text, confirmed once it is turned on
 
 - [ ] **Blame gutter**
@@ -1207,6 +1207,16 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   alert when several have new commits
 - Pull request activity alerts (new pull requests, review requests, finished checks)
 - Keep a toast up while the pointer is over it, and a close button on toasts
+- Choose which events go to the desktop (job successes, job failures, behind alerts) instead of
+  one switch
+- Click a desktop notification to bring Trellis to the front and switch to that repository's tab
+- A Pull button on the desktop behind alert, like the toast's
+- Show desktop notifications under Trellis's own name and icon: register an app id on Windows
+  (now attributed to PowerShell) and set the bundle id on macOS once Trellis ships as an app bundle
+- Desktop notifications for results outside git jobs (interactive rebase, pull request creation
+  and other hosting-service calls)
+- Turn desktop notifications off automatically, or offer to, when the OS refuses the confirming
+  notification
 
 ### Limits found while building integrations
 

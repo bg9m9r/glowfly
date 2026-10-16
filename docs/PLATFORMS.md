@@ -28,6 +28,7 @@ second one next to it.
 | Trash | Recycle Bin per volume; none on shares; can be turned off or sized so the shell deletes for good without a word | Trash; none on some volumes | freedesktop trash, copied across devices; may be missing |
 | PATH and environment | Variable names ignore case; `PATHEXT`; cmd.exe can't start in a UNC folder | Apps started from the Dock or Finder get a minimal PATH (no Homebrew) | The desktop session's PATH |
 | Timestamps | NTFS 100 ns; FAT 2 s | APFS ns; HFS+ 1 s | ns on ext4 and btrfs; network attribute caches lag |
+| Notifications | WinRT toasts; Focus Assist can hide them | Notification Center; Do Not Disturb can hide them | freedesktop notifications over D-Bus; needs a notification server |
 | git builds | Git for Windows (MinGW), often a newer version | Apple's `/usr/bin/git` (older) or Homebrew's | Whatever the distribution ships, sometimes old |
 
 ## Rules
@@ -179,6 +180,10 @@ second one next to it.
 6. **Search PATH like the OS does** (`external_tools.rs`): on Unix the file needs an exec bit;
    on Windows match names in any case by listing the folder and try `PATHEXT`. Never search the
    cwd.
+7. **Desktop notifications go only through `runner/notify.rs` (notify-rust):** WinRT toasts on
+   Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
+   libdbus) on Linux. A missing notification server is an error the confirmation reports;
+   never call it from update or views (`tests/layering.rs`).
 
 ### Environment and git
 
@@ -284,6 +289,9 @@ Gaps that are accepted for now:
   takes a while for large files on network mounts.
 - **Windows file watching can drop events** without an error (`notify` sends no rescan on
   overflow); the 30 s poll covers it.
+- **Desktop notifications don't carry Trellis's name yet:** on Windows they are attributed to
+  PowerShell's app id until Trellis registers its own AppUserModelID; on macOS an unbundled
+  binary posts under another app's identity through the deprecated NSUserNotification API.
 
 Unverified, needs a real machine:
 
@@ -294,4 +302,8 @@ Unverified, needs a real machine:
 - `DISPLAY` with OpenSSH before 8.4;
 - whether `\\wsl$\X` and `\\wsl.localhost\X` give one `FolderId`;
 - trash for paths over 260 characters on Windows (expected: `NoTrash` and a permanent-delete
-  offer).
+  offer);
+- whether a minimized window handles results before it is restored, on each OS (if not, they
+  land while it is focused and only toast);
+- desktop notifications while Focus Assist or Do Not Disturb is on (expected: hidden, no
+  error).

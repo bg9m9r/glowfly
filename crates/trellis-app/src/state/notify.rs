@@ -1,7 +1,9 @@
 //! The "N commits behind" alert after a background fetch: what to remember when the fetch ends
-//! and what to say once the reload after it shows the branch further behind (update/notify.rs).
+//! and what to say once the reload after it shows the branch further behind; and the text of
+//! desktop notifications (update/notify.rs).
 
 use super::branches::commits;
+use crate::effect::{DesktopNote, NoteKind};
 use std::path::PathBuf;
 use trellis_core::repo::{BranchInfo, Snapshot};
 
@@ -44,9 +46,44 @@ pub fn alert_text(w: &BehindWatch, head: Option<&BranchInfo>) -> Option<String> 
     Some(text)
 }
 
+/// `text` on one line (newlines become spaces), trimmed, and at most `max` characters, ending
+/// in "…" when cut.
+pub fn clip(text: &str, max: usize) -> String {
+    let flat = text.lines().map(str::trim).filter(|l| !l.is_empty()).collect::<Vec<_>>().join(" ");
+    if flat.chars().count() <= max {
+        return flat;
+    }
+    let mut cut: String = flat.chars().take(max.saturating_sub(1)).collect();
+    cut.truncate(cut.trim_end().len());
+    cut.push('…');
+    cut
+}
+
+/// A desktop notification with its title and body clipped to what notification centres show.
+pub fn desktop_note(kind: NoteKind, title: &str, body: &str) -> DesktopNote {
+    DesktopNote { kind, title: clip(title, 120), body: clip(body, 200) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn clip_flattens_and_cuts_on_char_boundaries() {
+        assert_eq!(clip("Push failed:\nremote rejected\r\n", 120), "Push failed: remote rejected");
+        assert_eq!(clip("  Pull succeeded  ", 120), "Pull succeeded");
+        assert_eq!(clip("abcde", 5), "abcde", "at the limit");
+        assert_eq!(clip("abcdef", 5), "abcd…");
+        let cut = clip(&"é".repeat(300), 120);
+        assert_eq!(cut.chars().count(), 120);
+        assert!(cut.ends_with('…'));
+        let cjk = clip(&"変更を取得しました".repeat(30), 200);
+        assert_eq!(cjk.chars().count(), 200);
+        assert!(cjk.starts_with("変更"));
+        let note = desktop_note(NoteKind::Job, &"x".repeat(500), &"y\n".repeat(500));
+        assert_eq!(note.title.chars().count(), 120);
+        assert!(note.body.chars().count() <= 200 && !note.body.contains('\n'));
+    }
 
     fn watch(behind: usize) -> BehindWatch {
         BehindWatch { workdir: "w".into(), branch: "main".into(), upstream: "origin/main".into(), behind, after_gen: 1 }

@@ -333,3 +333,13 @@ fn behind_alerts_default_on() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
     assert!(!back.behind_alerts);
 }
+
+#[test]
+fn desktop_notifications_default_off() {
+    assert!(!Settings::default().desktop_notifications);
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.desktop_notifications, "old files load with desktop notifications off");
+    let on = Settings { desktop_notifications: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.desktop_notifications);
+}

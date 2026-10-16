@@ -1,7 +1,7 @@
 //! Staging, committing, git commands (push, pull, branch…), and auto-fetch. Jobs start in
 //! update/jobs.rs, re-exported here.
 
-use crate::effect::{Effect, LocalOp, UndoResult};
+use crate::effect::{Effect, LocalOp, NoteKind, UndoResult};
 use crate::msg::{JobMsg, StageMsg};
 use crate::state::trust::Created;
 use crate::state::{AppState, CommitDraft};
@@ -276,6 +276,7 @@ pub(super) fn finish_job(
         let headline = headline.unwrap_or_else(|| {
             if ok { format!("{} succeeded", job.label) } else { format!("{} failed: {}", job.label, last_line(&output)) }
         });
+        super::notify::desktop(st, NoteKind::Job, &headline, job.workdir.as_deref(), fx);
         st.toast(ok, headline, now);
         st.log(ok, text);
     }

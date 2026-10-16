@@ -71,6 +71,7 @@ impl Effect {
             Effect::Remote(e) => e.name(),
             Effect::Clone(e) => e.name(),
             Effect::Init(e) => e.name(),
+            Effect::Notify(_) => "desktop-note",
             Effect::Ui(_) => "ui",
         }
     }

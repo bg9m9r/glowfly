@@ -111,6 +111,8 @@ mod snapshot_tests_path_warnings;
 #[cfg(test)]
 mod snapshot_tests_platform_dialogs;
 #[cfg(test)]
+mod snapshot_tests_prefs_notify;
+#[cfg(test)]
 mod snapshot_tests_profiles;
 #[cfg(test)]
 mod snapshot_tests_rebase;
@@ -273,7 +275,7 @@ impl TrellisApp {
         terminal::shortcut(ctx, &self.st, msgs);
         // The open palette keeps the keyboard: no other shortcut reaches what is under it.
         let palette = self.st.palette.is_some();
-        let focused = ctx.input(|i| i.focused);
+        let focused = self.st.view.focused;
         if focused && !self.st.view.was_focused {
             msgs.push(Msg::Repo(RepoMsg::WindowFocused));
         }
@@ -421,6 +423,7 @@ fn text_field_focused(ctx: &egui::Context) -> bool {
 impl eframe::App for TrellisApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.apply_theme(ctx);
+        self.st.view.focused = ctx.input(|i| i.focused);
         while let Ok(msg) = self.results.try_recv() {
             self.dispatch(ctx, msg);
         }

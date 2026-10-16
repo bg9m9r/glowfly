@@ -1,6 +1,7 @@
 //! Preferences > UI Customization.
 
 use super::{LABEL_W, help, row};
+use crate::msg::{Msg, PrefsMsg};
 use crate::ui::theme::color;
 use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
 use trellis_core::settings::Settings;
@@ -35,7 +36,7 @@ pub fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str,
     });
 }
 
-pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32)) {
+pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32), msgs: &mut Vec<Msg>) {
     use trellis_core::settings::{BranchVisibility as BV, ColumnWidths, Corner, DescriptionMode as DM, GraphColumns, ThemeChoice as TC};
     row(ui, "Theme", |ui| {
         combo(ui, "theme", &mut s.theme, &[(TC::Dark, "Trellis Dark"), (TC::Light, "Trellis Light"), (TC::System, "Match system")])
@@ -56,6 +57,17 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32)) {
     row(ui, "Behind alerts", |ui| {
         ui.checkbox(&mut s.behind_alerts, "");
         help(ui, "After a background fetch, say when the checked-out branch has fallen behind its upstream, with a button to pull.");
+    });
+    row(ui, "Desktop notifications", |ui| {
+        // Not bound to the setting: update saves it and sends the confirming notification.
+        let mut on = s.desktop_notifications;
+        if ui.checkbox(&mut on, "Show system notifications while Trellis is in the background").changed() {
+            msgs.push(Msg::Prefs(PrefsMsg::SetDesktopNotifications(on)));
+        }
+        help(
+            ui,
+            "Finished jobs and behind alerts also appear as desktop notifications when Trellis's window isn't focused. Background fetches stay quiet. Turning this on sends one notification so you can check that they reach you.",
+        );
     });
 
     section(ui, "Date/Time");

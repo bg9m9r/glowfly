@@ -45,6 +45,7 @@ mod guard;
 mod highlight;
 mod init;
 mod keys;
+mod notify;
 mod os;
 mod patches;
 mod path_search;
@@ -333,6 +334,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Remote(e) => Some(forks::run(e)),
         Effect::Clone(e) => Some(clone::run(e)),
         Effect::Init(e) => Some(init::run(e)),
+        Effect::Notify(note) => notify::run(note),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

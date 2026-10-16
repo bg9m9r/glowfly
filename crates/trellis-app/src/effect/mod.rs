@@ -16,11 +16,13 @@ mod clone;
 mod forge;
 mod init;
 mod names;
+mod notify;
 mod repo;
 
 pub use clone::CloneEffect;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use init::InitEffect;
+pub use notify::{DesktopNote, NoteKind};
 pub use repo::{KnownRepo, LocalOp, UndoResult, WatchTarget};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -349,6 +351,8 @@ pub enum Effect {
     Clone(CloneEffect),
     /// The Init dialog's folder checks and the init job; unscoped.
     Init(InitEffect),
+    /// A desktop notification (runner/notify.rs); unscoped.
+    Notify(DesktopNote),
     Ui(UiEffect),
 }
 
@@ -424,6 +428,7 @@ impl Effect {
             | Effect::Remote(_)
             | Effect::Clone(_)
             | Effect::Init(_)
+            | Effect::Notify(_)
             | Effect::Ui(_) => None,
         }
     }
