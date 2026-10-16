@@ -56,6 +56,15 @@ pub(crate) fn write(dir: &Path, file: &str, text: &str) {
     std::fs::write(dir.join(file), text).unwrap();
 }
 
+/// git-lfs's version, or None (with a note) so tests that need it can skip.
+pub(crate) fn lfs_or_skip(test: &str) -> Option<String> {
+    let v = crate::lfs::installed(&crate::paths::temp_dir());
+    if v.is_none() {
+        eprintln!("{test}: git-lfs is not installed, skipping");
+    }
+    v
+}
+
 /// A repository with one commit on `main`, pushed with upstream to a bare `origin` next to it.
 /// Returns (working repository, bare repository).
 pub(crate) fn with_origin(name: &str) -> (PathBuf, PathBuf) {

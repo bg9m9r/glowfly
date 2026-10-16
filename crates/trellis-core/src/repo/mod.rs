@@ -372,6 +372,8 @@ mod resolve_eol_tests;
 #[cfg(test)]
 mod resolve_tests;
 #[cfg(test)]
+mod restore_lfs_tests;
+#[cfg(test)]
 mod restore_tests;
 #[cfg(test)]
 mod revert_tests;

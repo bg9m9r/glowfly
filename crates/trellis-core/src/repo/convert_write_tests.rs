@@ -5,10 +5,12 @@
 
 use super::convert_tests::{filtered_repo, index_text, read};
 use super::*;
+use crate::error::Error;
 use crate::gitcli::{args, run};
 use crate::testutil::*;
 use git2::{Oid, Repository};
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 fn status(dir: &Path) -> String {
     run(dir, &args(&["status", "--porcelain"])).1
@@ -71,6 +73,24 @@ fn restore_file_runs_the_smudge_filter() {
     assert_eq!(read(&dir, "a.up"), (1..=20).map(|i| format!("line {i}\n")).collect::<String>(), "smudged");
     assert_eq!(index_text(&dir, "a.up"), staged, "the index is left alone");
     assert_eq!(status(&dir), " M a.up");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn restore_file_sees_a_clean_filtered_file_with_stale_stat_data_as_clean() {
+    let dir = filtered_repo("cvw-restore-stale");
+    git(&dir, &["checkout", "--", "a.up"]);
+    let base = Repository::open(&dir).unwrap().head().unwrap().target().unwrap();
+    write(&dir, "a.up", &read(&dir, "a.up").replace("line 3\n", "line three\n"));
+    git(&dir, &["commit", "-q", "-am", "edit"]);
+    // Same contents, older mtime: the index's stat data no longer matches the file.
+    let file = std::fs::File::options().write(true).open(dir.join("a.up")).unwrap();
+    file.set_modified(SystemTime::now() - Duration::from_secs(3600)).unwrap();
+    drop(file);
+    assert_eq!(restore_file(&dir, base, "a.up", false).unwrap(), RestoredFrom::Commit, "a clean file is no reason to ask");
+    assert_eq!(read(&dir, "a.up"), (1..=20).map(|i| format!("line {i}\n")).collect::<String>());
+    write(&dir, "a.up", "a local edit\n");
+    assert!(matches!(restore_file(&dir, base, "a.up", false), Err(Error::WouldOverwrite(_))), "a real edit still asks");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

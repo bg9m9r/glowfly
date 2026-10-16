@@ -1,6 +1,7 @@
 //! Restoring one file from a commit into the working tree, without touching the index or HEAD.
 
 use crate::error::{Error, Result};
+use crate::gitcli::{self, args};
 use git2::build::CheckoutBuilder;
 use git2::{ErrorCode, IndexEntryExtendedFlag, IndexEntryFlag, ObjectType, Oid, Repository, Status, Tree};
 use std::path::Path;
@@ -33,7 +34,8 @@ fn short(oid: Oid) -> String {
 ///
 /// Unless `overwrite` is set, nothing is written when the working-tree file holds contents that
 /// neither the index nor a commit can bring back (it is untracked or ignored, has unstaged edits,
-/// or has edits git is told to skip); that refusal is [`Error::WouldOverwrite`].
+/// or has edits git is told to skip); that refusal is [`Error::WouldOverwrite`]. For a converted
+/// file, git itself says whether it has unstaged edits, since only git runs the clean filter.
 pub fn restore_file(workdir: &Path, oid: Oid, path: &str, overwrite: bool) -> Result<RestoredFrom> {
     super::collide::refuse(workdir, path, "restore")?;
     let repo = Repository::open(workdir)?;
@@ -111,8 +113,28 @@ fn unrecoverable(repo: &Repository, root: &Path, path: &str) -> Result<Option<St
             full.symlink_metadata().is_ok_and(|m| m.is_file()) && Oid::hash_file(ObjectType::Blob, &full).is_ok_and(|id| id == entry.id);
         return Ok((!same).then(|| format!("{path} is marked so that git skips its local edits, so status doesn't show them")));
     }
-    let changed = Status::WT_MODIFIED | Status::WT_TYPECHANGE | Status::WT_RENAMED | Status::WT_NEW;
-    Ok(repo.status_file(Path::new(path))?.intersects(changed).then(|| format!("{path} has uncommitted changes")))
+    let changed = if super::attrs::content_conversion(repo, path).is_some() {
+        // libgit2 can't run the clean filter (LFS, other drivers, encodings), so a clean file
+        // whose stat data is stale would hash differently from its blob; git compares the
+        // cleaned bytes.
+        worktree_differs(root, path)?
+    } else {
+        let changed = Status::WT_MODIFIED | Status::WT_TYPECHANGE | Status::WT_RENAMED | Status::WT_NEW;
+        repo.status_file(Path::new(path))?.intersects(changed)
+    };
+    Ok(changed.then(|| format!("{path} has uncommitted changes")))
+}
+
+/// Whether git sees unstaged changes in the tracked file `path`, after running its clean
+/// filter. No timeout: cleaning a large LFS file can take a while.
+fn worktree_differs(root: &Path, path: &str) -> Result<bool> {
+    let a = args(&["--no-optional-locks", "--literal-pathspecs", "diff", "--quiet", "--no-ext-diff", "--", path]);
+    let out = gitcli::output(root, &a, "", gitcli::NO_PROMPTS, None);
+    match out.code {
+        Some(0) => Ok(false),
+        Some(1) => Ok(true),
+        _ => Err(Error::Other(out.combined())),
+    }
 }
 
 /// The tree to restore `path` from: the commit's, or its first parent's when the commit
