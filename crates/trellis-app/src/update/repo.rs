@@ -300,7 +300,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     super::notify::loaded(st, &snap, kind, now);
     st.snap = Some(snap);
-    super::search::snapshot_changed(st);
+    super::search::snapshot_changed(st, fx);
     super::trust::loaded(st, kind, fx);
     super::conflict_check::want(st, fx);
     super::gitflow::snapshot_changed(st);

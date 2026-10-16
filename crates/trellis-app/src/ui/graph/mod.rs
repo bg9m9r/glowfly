@@ -63,7 +63,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         let widths = header::column_header(ui, snap, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
         if filtered && total == 0 {
-            ui.centered_and_justified(|ui| ui.label(RichText::new("No commits match this search.").color(color::weak())));
+            let text = if st.search.searching_files() { "Searching changed files…" } else { "No commits match this search." };
+            ui.centered_and_justified(|ui| ui.label(RichText::new(text).color(color::weak())));
             return;
         }
 

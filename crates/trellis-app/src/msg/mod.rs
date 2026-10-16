@@ -32,7 +32,7 @@ pub use branch::{BranchMsg, CloneMsg};
 pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
 pub use files::{FilesMsg, WorkFileMsg, not_opened, restore_failed};
 pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
-pub use graph::{AvatarMsg, GraphMsg, SearchMsg, SelectionMsg};
+pub use graph::{AvatarMsg, GraphMsg, PathsChunk, SearchMsg, SelectionMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use recent::{FolderCheck, RecentMsg};

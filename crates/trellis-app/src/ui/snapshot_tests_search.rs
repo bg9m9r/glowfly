@@ -66,6 +66,7 @@ fn search_msgs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<String> {
                 SearchMsg::Close => "Close".to_owned(),
                 SearchMsg::WantAuthors => "WantAuthors".to_owned(),
                 SearchMsg::PickAuthor(a) => format!("PickAuthor({a:?})"),
+                SearchMsg::PathsSearched { request, .. } => format!("PathsSearched({request})"),
             }),
             _ => None,
         })
@@ -111,6 +112,66 @@ fn graph_search_no_matches() {
     assert!(h.query_by_label("No matches").is_some());
     assert!(h.query_by_label("No commits match this search.").is_some());
     h.check_snapshot("graph_search_no_matches");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Sends `msg`, runs the path searches it asks for and feeds their reports back.
+fn send_and_search(st: &mut AppState, msg: SearchMsg) {
+    let fx = crate::update::update(st, Msg::Search(msg), Instant::now());
+    for effect in fx {
+        if matches!(effect, crate::effect::Effect::SearchPaths { .. })
+            && let Some(reply) = crate::runner::execute(effect)
+        {
+            crate::update::update(st, reply, Instant::now());
+        }
+    }
+}
+
+#[test]
+fn graph_search_paths_pending() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-paths-pending");
+    send(&mut st, SearchMsg::ToggleFilter);
+    // The effect isn't run: the changed files are still being looked through.
+    searching(&mut st, "path:notes.txt");
+    assert!(st.search.searching_files());
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Searching files…").is_some());
+    assert!(h.query_by_label("Searching changed files…").is_some());
+    h.check_snapshot("graph_search_paths_pending");
+
+    // A first chunk found some: they show, and the count says the search goes on.
+    let st = &mut h.state_mut().0;
+    let request = st.search.paths.pending.expect("a request");
+    let commits = &st.snap.as_ref().unwrap().commits;
+    let first: Vec<_> = commits[..3].iter().map(|c| c.oid).collect();
+    let touching = vec![commits[0].oid];
+    let chunk = crate::msg::PathsChunk { searched: first, touching, done: false };
+    send(st, SearchMsg::PathsSearched { request, result: Ok(chunk) });
+    h.run();
+    assert!(h.query_by_label("1 so far, searching…").is_some());
+    h.check_snapshot("graph_search_paths_partial");
+    drop(h);
+
+    remove_fixture(&dir);
+}
+
+#[test]
+fn graph_search_paths() {
+    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-paths");
+    st.view.show_search = true;
+    send(&mut st, SearchMsg::ToggleFilter);
+    st.view.search = "path:notes.txt".into();
+    send_and_search(&mut st, SearchMsg::QueryChanged);
+    assert!(!st.search.searching_files());
+    let snap = st.snap.as_ref().unwrap();
+    let shown: Vec<&str> = st.search.matches.iter().map(|&i| snap.commits[i].summary.as_str()).collect();
+    assert_eq!(shown, ["Write release notes"]);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("1 match").is_some());
+    h.check_snapshot("graph_search_paths");
     drop(h);
     remove_fixture(&dir);
 }

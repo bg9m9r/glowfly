@@ -12,8 +12,12 @@ use trellis_core::matching::contains_lower;
 /// How many authors the picker lists before asking for a narrower filter.
 const MAX_AUTHORS: usize = 200;
 
-/// Room for the Filter toggle, author picker, match count and Close after the query field.
-const CONTROLS_W: f32 = 360.0;
+/// Room for the Filter toggle, author picker, match count ("12 so far, searching…") and Close
+/// after the query field.
+const CONTROLS_W: f32 = 430.0;
+
+/// The empty query field's hint, also its hover text while empty (a narrow graph clips it).
+const HINT: &str = "Search messages, authors and SHAs; narrow with author: or path:";
 
 /// Ctrl+F (Cmd+F) shows or hides the bar; Ctrl+Shift+F shows it and turns the filter on or off.
 pub(crate) fn find_keys(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -31,11 +35,10 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         ui.add_space(8.0);
         // The field gives up width before the controls after it run out of room.
         let width = (ui.available_width() - CONTROLS_W).clamp(160.0, 420.0);
-        let r = ui.add(
-            egui::TextEdit::singleline(&mut st.view.search)
-                .hint_text("Search messages, authors and SHAs; author:name narrows by author")
-                .desired_width(width),
-        );
+        let empty = st.view.search.is_empty();
+        let r = ui.add(egui::TextEdit::singleline(&mut st.view.search).hint_text(HINT).desired_width(width));
+        let r = if empty { r.on_hover_text(HINT) } else { r };
+
         // A credential prompt, the command palette or the author picker keeps the keyboard.
         let covered = st.askpass.showing() || st.palette.is_some();
         let picking = ui.memory(|m| m.any_popup_open());
@@ -67,7 +70,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         };
         if let Some(text) = st.search.count_text(selected) {
             let r = ui.label(RichText::new(text).color(color::weak()));
-            if let Some(snap) = st.snap.as_ref().filter(|s| s.truncated) {
+            if st.search.searching_files() {
+                r.on_hover_text("Looking through the files each loaded commit changed");
+            } else if let Some(snap) = st.snap.as_ref().filter(|s| s.truncated) {
                 let len = snap.commits.len();
                 r.on_hover_text(format!("Searches the newest {len} loaded commits; Load more searches further back."));
             }

@@ -242,6 +242,15 @@ pub enum Effect {
         workdir: PathBuf,
         oids: Vec<Oid>,
     },
+    /// Which of `oids` (newest first) changed a path matching `terms`, for search request
+    /// `request`; reported in chunks as SearchMsg::PathsSearched. Handled by Runner::run's
+    /// path-search worker: a newer request replaces one waiting and stops one running.
+    SearchPaths {
+        workdir: PathBuf,
+        request: u64,
+        terms: Vec<trellis_core::path_query::PathTerm>,
+        oids: Vec<Oid>,
+    },
     /// Checks commit `oid`'s signature (in `format`) with git, for the details panel's badge.
     VerifySignature {
         workdir: PathBuf,
@@ -357,6 +366,7 @@ impl Effect {
             | Effect::RestoreFile { workdir, .. }
             | Effect::WorkFile { workdir, .. }
             | Effect::Stats { workdir, .. }
+            | Effect::SearchPaths { workdir, .. }
             | Effect::VerifySignature { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             Effect::CheckConflicts(j) => Some(&j.workdir),

@@ -35,6 +35,7 @@ mod remote_forks;
 mod remotes;
 mod repo;
 mod search;
+mod search_paths;
 mod selection;
 mod shallow;
 mod shortcuts;
@@ -167,6 +168,8 @@ mod remote_fork_tests;
 mod remote_tests;
 #[cfg(test)]
 mod revert_tests;
+#[cfg(test)]
+mod search_paths_tests;
 #[cfg(test)]
 mod search_tests;
 #[cfg(test)]

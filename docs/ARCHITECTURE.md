@@ -43,7 +43,8 @@ binary (package `trellis`).
 | `watch.rs` | Which file changes in a repository matter. |
 | `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
-| `commit_query.rs` | Commit search queries: author terms, matching rows, the author list. |
+| `commit_query.rs` | Commit search queries: author and path terms, matching rows, the author list. |
+| `path_query.rs` | Path terms of the commit search: folder, file name or glob, matched ignoring case and Unicode form. |
 | `settings.rs`, `settings/` | Preferences, graph column widths, per-repository graph filters, repository trust decisions and named identity profiles (seeding, syncing with git, name checks). |
 | `identity.rs` | The author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; writing an identity to the global config in order. |
 | `persist.rs` | Crash-safe writes of Trellis's own files and of files saved for the user (patches). |

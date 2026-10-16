@@ -74,6 +74,19 @@ pub enum SearchMsg {
     WantAuthors,
     /// The author picker's choice: an author's email, or `None` for "Any author".
     PickAuthor(Option<String>),
+    /// A report from Effect::SearchPaths request `request`: a chunk of the commits it looked at
+    /// and which of them touch the path terms; `done` on its last chunk.
+    PathsSearched { request: u64, result: Result<PathsChunk, String> },
+}
+
+/// Part of the answer to a path search (`SearchMsg::PathsSearched`).
+pub struct PathsChunk {
+    /// The commits looked at in this chunk, newest first.
+    pub searched: Vec<Oid>,
+    /// Those of them that changed a path matching a term.
+    pub touching: Vec<Oid>,
+    /// This is the request's last chunk.
+    pub done: bool,
 }
 
 impl SearchMsg {
@@ -83,6 +96,9 @@ impl SearchMsg {
         match self {
             // All are intents for the active tab.
             Self::QueryChanged | Self::Next | Self::ToggleFilter | Self::Close | Self::WantAuthors | Self::PickAuthor(..) => None,
+            // The tab asks again for what is unsearched when it is shown (tabs::activate →
+            // search_paths::resume).
+            Self::PathsSearched { .. } => None,
         }
     }
 }

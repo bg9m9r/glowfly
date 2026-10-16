@@ -1,9 +1,11 @@
-//! The graph's commit search: the parsed query, its matches, the filter flag and the author
-//! list, plus which rows the graph lays out while it filters (`GraphRows`).
+//! The graph's commit search: the parsed query, its matches, the filter flag, the author list
+//! and the answers for its path terms, plus which rows the graph lays out while it filters
+//! (`GraphRows`).
 
 use git2::Oid;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use trellis_core::commit_query::{AuthorCount, CommitQuery};
+use trellis_core::path_query::PathTerm;
 use trellis_core::repo::Snapshot;
 
 /// The active tab's commit search (parked with the tab). Changed only by update; the view edits
@@ -21,6 +23,24 @@ pub struct CommitSearch {
     /// The loaded history's distinct authors for the author picker, worked out when it first
     /// opens and dropped whenever the history changes.
     pub authors: Option<Vec<AuthorCount>>,
+    /// Which loaded commits touch the query's path terms, as far as found.
+    pub paths: PathSearch,
+}
+
+/// Answers for the query's path terms, found off the UI thread (update/search_paths.rs). A
+/// commit's changed paths never change, so the answers stay valid by oid across reloads.
+#[derive(Default)]
+pub struct PathSearch {
+    /// The terms these answers are for.
+    pub terms: Vec<PathTerm>,
+    /// The commits looked at.
+    pub searched: HashSet<Oid>,
+    /// Those of them that touch a term.
+    pub touching: HashSet<Oid>,
+    /// The request still reporting, if any.
+    pub pending: Option<u64>,
+    /// Counts requests; never reset, so a stale report can't pass for a newer request.
+    pub requests: u64,
 }
 
 impl CommitSearch {
@@ -29,18 +49,28 @@ impl CommitSearch {
         !self.query.is_empty()
     }
 
+    /// Whether the changed files of loaded commits are still being looked through for the
+    /// query's path terms.
+    pub fn searching_files(&self) -> bool {
+        self.query.has_paths() && self.paths.pending.is_some()
+    }
+
     /// Where commit `commit_index` is among the matches (0-based), if it matches.
     pub fn position(&self, commit_index: usize) -> Option<usize> {
         self.matches.binary_search(&commit_index).ok()
     }
 
-    /// The match count for the search bar ("No matches", "2 of 5", "5 matches", "1 match");
-    /// `selected` is the selected commit's index. `None` when there is no search.
+    /// The match count for the search bar ("No matches", "2 of 5", "5 matches", "1 match", or
+    /// while path terms are searched "Searching files…" and "3 so far, searching…"); `selected`
+    /// is the selected commit's index. `None` when there is no search.
     pub fn count_text(&self, selected: Option<usize>) -> Option<String> {
         if !self.active() {
             return None;
         }
         let m = self.matches.len();
+        if self.searching_files() {
+            return Some(if m == 0 { "Searching files…".to_owned() } else { format!("{m} so far, searching…") });
+        }
         Some(match (m, selected.and_then(|i| self.position(i))) {
             (0, _) => "No matches".to_owned(),
             (_, Some(n)) => format!("{} of {m}", n + 1),
@@ -195,5 +225,23 @@ mod tests {
         assert_eq!(search(vec![2], false).count_text(Some(2)).as_deref(), Some("1 of 1"));
         assert_eq!(search(vec![0, 2, 5], false).count_text(Some(1)).as_deref(), Some("3 matches"));
         assert_eq!(search(vec![0, 2, 5], false).count_text(Some(2)).as_deref(), Some("2 of 3"));
+    }
+
+    #[test]
+    fn count_text_while_files_are_searched() {
+        let mut s = CommitSearch { query: CommitQuery::parse("path:src"), ..Default::default() };
+        s.paths.pending = Some(1);
+        assert!(s.searching_files());
+        assert_eq!(s.count_text(None).as_deref(), Some("Searching files…"));
+        s.matches = vec![0, 3];
+        assert_eq!(s.count_text(Some(3)).as_deref(), Some("2 so far, searching…"));
+        s.paths.pending = None;
+        assert!(!s.searching_files());
+        assert_eq!(s.count_text(Some(3)).as_deref(), Some("2 of 2"));
+        // A query without path terms isn't searching files, whatever is pending.
+        let mut s = search(vec![1], false);
+        s.paths.pending = Some(2);
+        assert!(!s.searching_files());
+        assert_eq!(s.count_text(None).as_deref(), Some("1 match"));
     }
 }

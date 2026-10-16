@@ -1,17 +1,18 @@
 //! The graph's search bar: parsing the query, its matches over the loaded history, stepping
-//! through them, filtering the graph to them, and the author picker. All of it scans the
-//! loaded commits in memory, so nothing here needs an effect.
+//! through them, filtering the graph to them, and the author picker. Text and author terms
+//! scan the loaded commits in memory; path terms need each commit's changed files, which
+//! update/search_paths.rs asks the runner for.
 
 use crate::effect::Effect;
 use crate::msg::SearchMsg;
-use crate::state::search::GraphRows;
+use crate::state::search::{GraphRows, PathSearch};
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use trellis_core::commit_query::{self, CommitQuery};
 
 pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
     match msg {
-        SearchMsg::QueryChanged => query_changed(st),
+        SearchMsg::QueryChanged => query_changed(st, fx),
         SearchMsg::Next => next(st, fx),
         SearchMsg::ToggleFilter => {
             st.search.filter = !st.search.filter;
@@ -21,6 +22,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
             st.view.show_search = false;
             st.view.search.clear();
             st.search.filter = false;
+            st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
             recompute(st);
         }
         SearchMsg::WantAuthors => {
@@ -33,13 +35,15 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
         SearchMsg::PickAuthor(author) => {
             st.view.search = commit_query::with_author(&st.view.search, author.as_deref());
             st.view.author_filter.clear();
-            query_changed(st);
+            query_changed(st, fx);
         }
+        SearchMsg::PathsSearched { request, result } => super::search_paths::searched(st, request, result),
     }
 }
 
-fn query_changed(st: &mut AppState) {
+fn query_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     recompute(st);
+    super::search_paths::want(st, fx);
     // The next Enter lands on the first (newest) match.
     st.search.cursor = st.snap.as_ref().map_or(0, |s| s.commits.len().saturating_sub(1));
     if st.search.filter {
@@ -47,16 +51,20 @@ fn query_changed(st: &mut AppState) {
     }
 }
 
-/// Parses the query and finds its matches in the loaded history.
-fn recompute(st: &mut AppState) {
+/// Parses the query and finds its matches in the loaded history (path terms as far as found).
+pub(super) fn recompute(st: &mut AppState) {
     st.search.query = CommitQuery::parse(&st.view.search);
-    st.search.matches = st.snap.as_ref().map(|s| st.search.query.matching_rows(&s.commits)).unwrap_or_default();
+    let touching = &st.search.paths.touching;
+    st.search.matches = st.snap.as_ref().map(|s| st.search.query.matching_rows(&s.commits, touching)).unwrap_or_default();
 }
 
-/// A new history was loaded: the same query is matched against it, and the author list is
-/// worked out again when the picker next opens.
-pub(super) fn snapshot_changed(st: &mut AppState) {
+/// A new history was loaded: the same query is matched against it, path answers are kept for
+/// the commits still loaded (the new ones are asked for), and the author list is worked out
+/// again when the picker next opens.
+pub(super) fn snapshot_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
+    super::search_paths::history_changed(st);
     recompute(st);
+    super::search_paths::want(st, fx);
     st.search.authors = None;
     let last = st.snap.as_ref().map_or(0, |s| s.commits.len().saturating_sub(1));
     st.search.cursor = st.search.cursor.min(last);
@@ -64,9 +72,11 @@ pub(super) fn snapshot_changed(st: &mut AppState) {
 
 /// Enter: selects the first match after the one Enter last landed on, wrapping to the newest.
 fn next(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if !st.search.active() {
+    // While files are still searched, Enter steps through the matches found so far.
+    if !st.search.active() || (st.search.searching_files() && st.search.matches.is_empty()) {
         return;
     }
+
     let cursor = st.search.cursor;
     let found = st.search.matches.iter().copied().find(|&m| m > cursor).or_else(|| st.search.matches.first().copied());
     let oid = found.and_then(|i| st.snap.as_ref()?.commits.get(i).map(|c| (i, c.oid)));

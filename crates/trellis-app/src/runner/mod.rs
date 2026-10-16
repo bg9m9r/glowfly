@@ -45,6 +45,7 @@ mod highlight;
 mod keys;
 mod os;
 mod patches;
+mod path_search;
 mod profiles;
 mod queue;
 mod rebase;
@@ -90,6 +91,8 @@ pub struct Runner<W: Waker + Clone> {
     queues: Arc<queue::RepoQueues>,
     /// Works out the graph's line counts, newest request first.
     stats: stats::StatsWorker,
+    /// Finds the commits touching the search's path terms, newest request first.
+    path_search: path_search::PathSearchWorker,
     /// Ahead/behind and containment answers, kept between repository loads.
     graph_cache: Arc<repo::GraphCache>,
 }
@@ -107,6 +110,7 @@ impl<W: Waker + Clone> Runner<W> {
             queues: Default::default(),
             graph_cache: Default::default(),
             stats: Default::default(),
+            path_search: Default::default(),
         }
     }
 
@@ -119,6 +123,10 @@ impl<W: Waker + Clone> Runner<W> {
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
             Effect::Terminal(t) => return self.terminal(t),
             Effect::Stats { workdir, oids } => return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone()),
+            Effect::SearchPaths { workdir, request, terms, oids } => {
+                let r = path_search::Request { workdir, request, terms, oids };
+                return self.path_search.submit(r, self.tx.clone(), self.waker.clone());
+            }
             other => match self.save(other) {
                 Some(other) => other,
                 None => return,
@@ -281,6 +289,9 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             (!failures.is_empty()).then(|| Msg::Logged { ok: false, text: failures.join("\n") })
         }
         Effect::Stats { workdir, oids } => Some(Msg::Repo(RepoMsg::StatsLoaded(repo::commit_stats(&workdir, &oids)))),
+        Effect::SearchPaths { workdir, request, terms, oids } => {
+            Some(path_search::once(path_search::Request { workdir, request, terms, oids }))
+        }
         Effect::VerifySignature { workdir, oid, format, generation } => Some(signatures::verify(&workdir, oid, format, generation)),
         Effect::FetchAvatars(emails) => Some(Msg::Avatars(AvatarMsg::AvatarsLoaded(
             emails

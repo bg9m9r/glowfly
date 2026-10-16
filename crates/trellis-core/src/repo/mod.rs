@@ -5,11 +5,11 @@
 //! The types are here (the diff ones in `diff_types`); the work is split by area: `load`
 //! (history, refs, status), `diff`, `history` (one file's commits), `index` and `lines`
 //! (staging, line staging), `revert`, `restore`, `conflict` and `resolve`, `template`
-//! (commit.template), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and `removal`
-//! (working-tree files), `tracked`, `attrs` (gitattributes), `submodules`, `worktrees`,
-//! `remotes` and `shallow`. Paths: `entry` (file rows and their hazards), `rpath` (git's path
-//! bytes), `exact` (index edits that match one path exactly) and `collide` (paths a file system
-//! can't keep apart).
+//! (commit.template), `touching` (commits that changed a searched path), `workfile`,
+//! `workfile_mv`, `workfile_rm`, `noclobber` and `removal` (working-tree files), `tracked`,
+//! `attrs` (gitattributes), `submodules`, `worktrees`, `remotes` and `shallow`. Paths: `entry`
+//! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
+//! one path exactly) and `collide` (paths a file system can't keep apart).
 
 use crate::graph::Layout;
 use git2::{Oid, RepositoryState};
@@ -41,6 +41,7 @@ mod status;
 mod status_cli;
 mod submodules;
 mod template;
+mod touching;
 mod tracked;
 mod trash;
 mod walk;
@@ -74,6 +75,7 @@ pub use revert::revert_hunk;
 pub use status::status_at;
 pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
+pub use touching::{Touching, commits_touching};
 pub use tracked::tracked_paths;
 pub use trash::{TrashProblem, TrashRefusal, os_trash};
 pub(crate) use workfile::contained;
@@ -379,6 +381,8 @@ mod submodules_tests;
 mod template_tests;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod touching_tests;
 #[cfg(test)]
 mod tracked_tests;
 #[cfg(test)]

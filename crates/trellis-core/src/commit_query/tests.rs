@@ -2,6 +2,12 @@ use super::*;
 use crate::repo::{LoadOptions, load};
 use crate::testutil::*;
 use git2::Oid;
+use std::collections::HashSet;
+
+/// No commits found touching a path term.
+fn none() -> HashSet<Oid> {
+    HashSet::new()
+}
 
 fn commit(summary: &str, author: &str, email: &str) -> CommitInfo {
     CommitInfo {
@@ -18,7 +24,7 @@ fn commit(summary: &str, author: &str, email: &str) -> CommitInfo {
 #[test]
 fn plain_text_is_one_phrase() {
     let q = CommitQuery::parse("  Fix   the ");
-    assert_eq!(q, CommitQuery { text: "fix the".into(), authors: vec![] });
+    assert_eq!(q, CommitQuery { text: "fix the".into(), authors: vec![], paths: vec![] });
     assert!(q.matches(&commit("Fix the Parser", "Ada", "ada@example.com")));
     assert!(!q.matches(&commit("the fix", "Ada", "ada@example.com")));
 }
@@ -77,18 +83,18 @@ fn a_full_address_matches_only_that_email() {
     let ba = commit("four", "Ba", "ba@x.com");
     let commits = [ann.clone(), joann, a, ba];
     // As the picker writes it, and in any case.
-    assert_eq!(CommitQuery::parse(&with_author("", Some("ann@example.com"))).matching_rows(&commits), [0]);
-    assert_eq!(CommitQuery::parse("author:ANN@Example.COM").matching_rows(&commits), [0]);
-    assert_eq!(CommitQuery::parse("author:a@x.com").matching_rows(&commits), [2]);
-    assert_eq!(CommitQuery::parse("author:joann@example.com").matching_rows(&commits), [1]);
+    assert_eq!(CommitQuery::parse(&with_author("", Some("ann@example.com"))).matching_rows(&commits, &none()), [0]);
+    assert_eq!(CommitQuery::parse("author:ANN@Example.COM").matching_rows(&commits, &none()), [0]);
+    assert_eq!(CommitQuery::parse("author:a@x.com").matching_rows(&commits, &none()), [2]);
+    assert_eq!(CommitQuery::parse("author:joann@example.com").matching_rows(&commits, &none()), [1]);
     // A longer domain is a different address.
     assert!(!CommitQuery::parse("author:ann@example.co").matches(&ann));
     // Partial addresses still match as text.
     for q in ["author:ann@", "author:@example.com", "author:ann@example"] {
-        assert_eq!(CommitQuery::parse(q).matching_rows(&commits), [0, 1], "{q}");
+        assert_eq!(CommitQuery::parse(q).matching_rows(&commits, &none()), [0, 1], "{q}");
     }
     // Several picked addresses: either, exactly.
-    assert_eq!(CommitQuery::parse("author:ann@example.com author:a@x.com").matching_rows(&commits), [0, 2]);
+    assert_eq!(CommitQuery::parse("author:ann@example.com author:a@x.com").matching_rows(&commits, &none()), [0, 2]);
 }
 
 #[test]
@@ -117,10 +123,10 @@ fn matching_rows_are_ascending() {
         commit("other", "Ada", "ada@example.com"),
         commit("fix two", "Grace", "grace@example.com"),
     ];
-    assert_eq!(CommitQuery::parse("fix").matching_rows(&commits), [0, 2]);
-    assert_eq!(CommitQuery::parse("author:grace").matching_rows(&commits), [2]);
-    assert!(CommitQuery::parse("").matching_rows(&commits).is_empty());
-    assert!(CommitQuery::parse("author:").matching_rows(&commits).is_empty());
+    assert_eq!(CommitQuery::parse("fix").matching_rows(&commits, &none()), [0, 2]);
+    assert_eq!(CommitQuery::parse("author:grace").matching_rows(&commits, &none()), [2]);
+    assert!(CommitQuery::parse("").matching_rows(&commits, &none()).is_empty());
+    assert!(CommitQuery::parse("author:").matching_rows(&commits, &none()).is_empty());
 }
 
 #[test]
@@ -159,6 +165,69 @@ fn authors_of_a_repository_group_by_email() {
     let grace: Vec<usize> =
         snap.commits.iter().enumerate().filter(|(_, c)| c.email.eq_ignore_ascii_case("grace@example.com")).map(|(i, _)| i).collect();
     assert_eq!(grace.len(), 3);
-    assert_eq!(CommitQuery::parse("author:grace").matching_rows(&snap.commits), grace);
+    assert_eq!(CommitQuery::parse("author:grace").matching_rows(&snap.commits, &none()), grace);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn paths(q: &str) -> Vec<PathTerm> {
+    CommitQuery::parse(q).paths().to_vec()
+}
+
+fn term(v: &str) -> PathTerm {
+    PathTerm::parse(v).unwrap()
+}
+
+#[test]
+fn path_terms_are_parsed() {
+    for q in ["path:src", "PATH:src", "file:src", "File:SRC", "path:\"src\""] {
+        assert_eq!(paths(q), [term("src")], "{q}");
+    }
+    assert_eq!(paths("path:\"My Docs/\" fix"), [term("My Docs/")]);
+    let q = CommitQuery::parse("fix path:\"My Do");
+    assert_eq!(q.paths(), [term("My Do")], "an open quote runs to the end");
+    assert_eq!(q.text, "fix");
+    for empty in ["path:", "path:/", "path:./", "file:\"\""] {
+        let q = CommitQuery::parse(empty);
+        assert!(q.is_empty() && !q.has_paths(), "{empty}");
+    }
+    assert_eq!(paths("path:src file:SRC path:docs file:\"src \""), [term("src"), term("docs")], "repeats collapse");
+    assert_eq!(paths("path:./src path:/src"), [term("/src")], "a leading ./ or / anchors at the root");
+    let q = CommitQuery::parse("author:ada path:src/ui fix it file:*.rs");
+    assert_eq!(q.authors(), ["ada"]);
+    assert_eq!(q.text, "fix it");
+    assert_eq!(q.paths(), [term("src/ui"), term("*.rs")]);
+    assert!(q.has_paths() && !q.is_empty());
+    assert!(CommitQuery::parse("path:x").has_paths() && !CommitQuery::parse("path:x").is_empty());
+    assert!(!CommitQuery::parse("fix").has_paths());
+    // A word that only contains the prefix is text.
+    assert_eq!(CommitQuery::parse("xpath:src").text, "xpath:src");
+}
+
+#[test]
+fn matching_rows_need_a_touching_commit_for_path_terms() {
+    let oid = |i: u8| Oid::from_bytes(&[i; 20]).unwrap();
+    let with_oid = |i: u8, summary: &str, author: &str| CommitInfo { oid: oid(i), ..commit(summary, author, "x@example.com") };
+    let commits = [with_oid(1, "fix one", "Ada"), with_oid(2, "fix two", "Grace"), with_oid(3, "other", "Ada")];
+    let touching: HashSet<Oid> = [oid(1), oid(2), oid(3)].into();
+    let only = |o: &[u8]| o.iter().map(|&i| oid(i)).collect::<HashSet<_>>();
+    assert_eq!(CommitQuery::parse("path:src").matching_rows(&commits, &touching), [0, 1, 2]);
+    assert_eq!(CommitQuery::parse("path:src fix").matching_rows(&commits, &only(&[2, 3])), [1]);
+    assert_eq!(CommitQuery::parse("path:src author:ada").matching_rows(&commits, &only(&[2, 3])), [2]);
+    assert!(CommitQuery::parse("path:src").matching_rows(&commits, &none()).is_empty());
+    // Without path terms the set is ignored.
+    assert_eq!(CommitQuery::parse("fix").matching_rows(&commits, &none()), [0, 1]);
+    assert_eq!(CommitQuery::parse("fix").matching_rows(&commits, &only(&[3])), [0, 1]);
+    assert!(CommitQuery::parse("path:").matching_rows(&commits, &touching).is_empty());
+}
+
+#[test]
+fn with_author_keeps_path_terms_as_written() {
+    assert_eq!(
+        with_author("fix path:\"My Docs/\" author:ada file:x", Some("grace@example.com")),
+        "author:grace@example.com fix path:\"My Docs/\" file:x"
+    );
+    assert_eq!(with_author("PATH:src author:ada", None), "PATH:src");
+    let q = CommitQuery::parse(&with_author("path:\"My Docs/\" file:x", Some("Ada Lovelace")));
+    assert_eq!(q.paths(), [term("My Docs/"), term("x")]);
+    assert_eq!(q.authors(), ["ada lovelace"]);
 }

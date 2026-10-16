@@ -29,6 +29,7 @@ pub mod names;
 pub mod native_path;
 pub mod opens;
 pub mod patch_ops;
+pub mod path_query;
 pub mod paths;
 pub mod persist;
 pub mod rebase;

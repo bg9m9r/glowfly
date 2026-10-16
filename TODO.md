@@ -426,12 +426,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Resize columns: drag the header dividers (BRANCH/TAG, SHA, changes, author, date), double-click to reset, saved in settings
   - [x] Lazy-load more history when scrolling past the commit limit (the General page's "lazy
     loading"); jumping to a pinned branch goes with pinning in Branch operations
-- [ ] **Search and filter**
+- [x] **Search and filter**
   Filter the graph to matches (not just dim them), filter by author, search by file path.
   (Background indexing for large repos is under Later.)
   - [x] Filter the graph to matches (Filter toggle, Ctrl+Shift+F, live match count)
   - [x] Author filter (author: terms and an author picker)
-  - [ ] Search by file path
+  - [x] Search by file path (path: and file: terms: a folder, a file name or a glob)
 - [x] **Signing beyond config**
   Done on the Commit Signing page: generate a GPG key, copy the public key, gpg/ssh program
   path, SSH allowed-signers, sign tags.
@@ -1096,6 +1096,12 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Search and filter
 
 - Background indexing for large repos
+- Path picker beside the author picker (tracked files and folders) that writes a path: term
+- Follow renames for path: terms (match a file's earlier names, like file history does)
+- Search paths across all merge parents, not only the first
+- Show commits touching a file from the details panel or file list menu (fills path: in)
+- Remember path answers across query changes (recent term sets) so going back doesn't search again
+- Match path: terms against stashes and the WIP row's changed files
 
 ### Signing beyond config
 

@@ -1,31 +1,40 @@
-//! Commit search queries for the graph: free text plus `author:` terms, the loaded commits that
-//! match, the history's distinct authors (for the author picker) and rewriting a query's author
-//! term.
+//! Commit search queries for the graph: free text plus `author:` and `path:` terms, the loaded
+//! commits that match, the history's distinct authors (for the author picker) and rewriting a
+//! query's author term.
 //!
 //! Syntax: whitespace-separated words. A word starting with `author:` (any case) is an author
-//! term; its value may be quoted to hold spaces (`author:"Ada Lovelace"`), and a quote left open
+//! term, and one starting with `path:` or `file:` a path term ([`PathTerm`]); a term's value may
+//! be quoted to hold spaces (`author:"Ada Lovelace"`, `path:"My Docs/"`), and a quote left open
 //! runs to the end of the query. Every other word is free text, matched as one phrase (words
 //! joined by single spaces) against the summary, body and author name, or as a prefix of the
 //! commit id. An author value that looks like a full email address (as the author picker writes
 //! it) must equal the commit's email; any other value is found in the author name or email.
-//! Several author terms are alternatives; text and authors must both match.
+//! Several author terms are alternatives, and so are several path terms; text, authors and
+//! paths must all match. Path terms need each commit's changed files, so [`CommitQuery::matches`]
+//! leaves them out and [`CommitQuery::matching_rows`] takes the commits found touching them.
 
 use crate::matching::{contains_lower, hex_starts_with};
+use crate::path_query::PathTerm;
 use crate::repo::CommitInfo;
-use std::collections::HashMap;
+use git2::Oid;
+use std::collections::{HashMap, HashSet};
 
 #[cfg(test)]
 mod tests;
 
 const AUTHOR: &str = "author:";
+const PATH_PREFIXES: [&str; 2] = ["path:", "file:"];
 
-/// A parsed search query. Both parts are lowercase, so matching never allocates for ASCII text.
+/// A parsed search query. The text parts are lowercase, so matching never allocates for ASCII
+/// text.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CommitQuery {
-    /// The free text: the words that aren't author terms, joined by single spaces.
+    /// The free text: the words that aren't author or path terms, joined by single spaces.
     text: String,
     /// The author terms' values (never empty).
     authors: Vec<String>,
+    /// The path terms, without repeats, in the order written.
+    paths: Vec<PathTerm>,
 }
 
 /// One word of a query, as written.
@@ -33,9 +42,29 @@ enum Token<'a> {
     Word(&'a str),
     /// An author term's value, without the prefix and quotes.
     Author(&'a str),
+    /// A path term's value, without the prefix and quotes, and the whole term as written.
+    Path {
+        value: &'a str,
+        raw: &'a str,
+    },
 }
 
-/// Splits `q` into words and author terms.
+#[derive(Clone, Copy)]
+enum Kind {
+    Author,
+    Path,
+}
+
+/// The kind of term `rest` starts with (its prefix in any case), and what follows the prefix.
+fn prefixed(rest: &str) -> Option<(Kind, &str)> {
+    let starts = |p: &str| rest.get(..p.len()).is_some_and(|s| s.eq_ignore_ascii_case(p));
+    if starts(AUTHOR) {
+        return Some((Kind::Author, &rest[AUTHOR.len()..]));
+    }
+    PATH_PREFIXES.iter().find(|p| starts(p)).map(|p| (Kind::Path, &rest[p.len()..]))
+}
+
+/// Splits `q` into words and author and path terms.
 fn tokens(q: &str) -> Vec<Token<'_>> {
     let mut out = Vec::new();
     let mut rest = q;
@@ -44,9 +73,7 @@ fn tokens(q: &str) -> Vec<Token<'_>> {
         if rest.is_empty() {
             return out;
         }
-        let is_author = rest.get(..AUTHOR.len()).is_some_and(|p| p.eq_ignore_ascii_case(AUTHOR));
-        if is_author {
-            let after = &rest[AUTHOR.len()..];
+        if let Some((kind, after)) = prefixed(rest) {
             let (value, tail) = match after.strip_prefix('"') {
                 Some(inner) => match inner.find('"') {
                     Some(end) => (&inner[..end], &inner[end + 1..]),
@@ -54,7 +81,11 @@ fn tokens(q: &str) -> Vec<Token<'_>> {
                 },
                 None => after.split_at(after.find(char::is_whitespace).unwrap_or(after.len())),
             };
-            out.push(Token::Author(value));
+            let raw = &rest[..rest.len() - tail.len()];
+            out.push(match kind {
+                Kind::Author => Token::Author(value),
+                Kind::Path => Token::Path { value, raw },
+            });
             rest = tail;
         } else {
             let (word, tail) = rest.split_at(rest.find(char::is_whitespace).unwrap_or(rest.len()));
@@ -69,6 +100,7 @@ impl CommitQuery {
     pub fn parse(q: &str) -> CommitQuery {
         let mut words = Vec::new();
         let mut authors = Vec::new();
+        let mut paths: Vec<PathTerm> = Vec::new();
         for t in tokens(q) {
             match t {
                 Token::Word(w) => words.push(w),
@@ -78,14 +110,21 @@ impl CommitQuery {
                         authors.push(a);
                     }
                 }
+                Token::Path { value, .. } => {
+                    if let Some(p) = PathTerm::parse(value)
+                        && !paths.contains(&p)
+                    {
+                        paths.push(p);
+                    }
+                }
             }
         }
-        CommitQuery { text: words.join(" ").to_lowercase(), authors }
+        CommitQuery { text: words.join(" ").to_lowercase(), authors, paths }
     }
 
-    /// Whether there is nothing to search for (no free text and no author value).
+    /// Whether there is nothing to search for (no free text, author value or path term).
     pub fn is_empty(&self) -> bool {
-        self.text.is_empty() && self.authors.is_empty()
+        self.text.is_empty() && self.authors.is_empty() && self.paths.is_empty()
     }
 
     /// The author terms' values, lowercase.
@@ -93,9 +132,20 @@ impl CommitQuery {
         &self.authors
     }
 
-    /// Whether commit `c` matches: the free text (if any) is in its summary, body or author
-    /// name, or starts its id, and one of the author values (if any) matches its author (see
-    /// [`author_matches`]).
+    /// The path terms, in the order written.
+    pub fn paths(&self) -> &[PathTerm] {
+        &self.paths
+    }
+
+    /// Whether the query has a path term, so its matches need the commits' changed files.
+    pub fn has_paths(&self) -> bool {
+        !self.paths.is_empty()
+    }
+
+    /// Whether commit `c` matches the text and author terms: the free text (if any) is in its
+    /// summary, body or author name, or starts its id, and one of the author values (if any)
+    /// matches its author (see [`author_matches`]). Path terms are checked by
+    /// [`matching_rows`](Self::matching_rows).
     pub fn matches(&self, c: &CommitInfo) -> bool {
         let q = self.text.as_str();
         let text = q.is_empty()
@@ -106,12 +156,15 @@ impl CommitQuery {
         text && (self.authors.is_empty() || self.authors.iter().any(|a| author_matches(a, c)))
     }
 
-    /// Indexes of the matching commits, ascending; empty for an empty query.
-    pub fn matching_rows(&self, commits: &[CommitInfo]) -> Vec<usize> {
+    /// Indexes of the matching commits, ascending; empty for an empty query. With path terms a
+    /// commit must also be in `touching` (the commits found to change a matching path); without
+    /// them `touching` is ignored.
+    pub fn matching_rows(&self, commits: &[CommitInfo], touching: &HashSet<Oid>) -> Vec<usize> {
         if self.is_empty() {
             return Vec::new();
         }
-        commits.iter().enumerate().filter(|(_, c)| self.matches(c)).map(|(i, _)| i).collect()
+        let paths = |c: &CommitInfo| self.paths.is_empty() || touching.contains(&c.oid);
+        commits.iter().enumerate().filter(|(_, c)| self.matches(c) && paths(c)).map(|(i, _)| i).collect()
     }
 }
 
@@ -170,7 +223,7 @@ pub fn authors(commits: &[CommitInfo]) -> Vec<AuthorCount> {
 }
 
 /// `query` with its author terms replaced by one for `author` (placed first), or removed when
-/// `author` is `None`. The other words keep their order and spelling.
+/// `author` is `None`. The other words and the path terms keep their order and spelling.
 pub fn with_author(query: &str, author: Option<&str>) -> String {
     let mut parts: Vec<String> = Vec::new();
     if let Some(a) = author.map(str::trim).filter(|a| !a.is_empty()) {
@@ -178,8 +231,9 @@ pub fn with_author(query: &str, author: Option<&str>) -> String {
         parts.push(if needs_quotes { format!("{AUTHOR}\"{}\"", a.replace('"', "")) } else { format!("{AUTHOR}{a}") });
     }
     for t in tokens(query) {
-        if let Token::Word(w) = t {
-            parts.push(w.to_owned());
+        match t {
+            Token::Word(w) | Token::Path { raw: w, .. } => parts.push(w.to_owned()),
+            Token::Author(_) => {}
         }
     }
     parts.join(" ")
