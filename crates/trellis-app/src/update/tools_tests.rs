@@ -261,7 +261,7 @@ fn palette_offers_the_diff_and_merge_tools_for_what_is_open() {
     let entry = find(&st, merge_label).expect("offered");
     assert_eq!(entry.detail.as_deref(), Some("kdiff3"));
     assert_eq!(entry.command, C::Tools(ToolsMsg::ResolveInMergeTool("a.txt".into())));
-    assert!(entry.shortcut.is_none(), "no keyboard shortcut");
+    assert!(entry.shortcut(&st.keymap).is_none(), "no keyboard shortcut");
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(entry.command)), Instant::now());
     assert!(matches!(&fx[..], [Effect::Tool(ToolEffect::RunMerge(r))] if r.path == "a.txt"), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);

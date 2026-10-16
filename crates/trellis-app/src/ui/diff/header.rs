@@ -323,7 +323,9 @@ mod tests {
         let target = DiffTarget::Unstaged("notes.txt".into());
         let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
         let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui_state(
-            |ui, msgs: &mut Vec<Msg>| header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, msgs),
+            |ui, msgs: &mut Vec<Msg>| {
+                header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, msgs)
+            },
             Vec::new(),
         );
         h.run();
