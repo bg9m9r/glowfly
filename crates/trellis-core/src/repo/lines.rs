@@ -60,7 +60,10 @@ pub fn apply_lines(workdir: &Path, path: &str, hunk_index: usize, expected: &Hun
     let borrowed: Vec<(char, &[u8])> = content.iter().map(|(o, c)| (*o, c.as_slice())).collect();
     let Some(bytes) = build_patch(path, target, pre_start, &borrowed, &selected, reverse) else { return Ok(()) };
     let partial = Diff::from_buffer(&bytes)?;
-    repo.apply(&partial, location, None)?;
+    match location {
+        ApplyLocation::WorkDir => repo.apply(&partial, location, None)?,
+        _ => super::exact::apply_to_index(&repo, &partial, path, &mut git2::ApplyOptions::new())?,
+    }
     Ok(())
 }
 

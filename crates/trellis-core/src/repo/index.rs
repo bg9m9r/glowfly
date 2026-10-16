@@ -52,14 +52,20 @@ pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk
             (repo.diff_tree_to_index(tree.as_ref(), None, Some(&mut o))?, ApplyLocation::Index)
         }
     };
+    // Only `path`'s own delta: with `core.ignorecase` the diff can also hold a path that differs
+    // only in case, and hunks are counted across every delta that is applied.
     let mut seen = 0usize;
     let mut opts = ApplyOptions::new();
+    opts.delta_callback(|d| d.is_some_and(|d| rpath::touches(&d, path)));
     opts.hunk_callback(|_| {
         let keep = seen == hunk_index;
         seen += 1;
         keep
     });
-    repo.apply(&diff, location, Some(&mut opts))?;
+    match location {
+        ApplyLocation::WorkDir => repo.apply(&diff, location, Some(&mut opts))?,
+        _ => exact::apply_to_index(&repo, &diff, path, &mut opts)?,
+    }
     Ok(())
 }
 
@@ -73,19 +79,17 @@ pub fn stage_all(workdir: &Path) -> Result<()> {
     git(workdir, &["add", "--all"])
 }
 
+/// Unstages each of `paths` (exact paths, never globs or case-folded matches): its index entry
+/// goes back to HEAD's version, or out of the index when HEAD doesn't have it (or there is no
+/// commit yet). One index write for all of them.
 pub fn unstage_paths(workdir: &Path, paths: &[String]) -> Result<()> {
     let repo = Repository::open(workdir)?;
-    match repo.head().ok().and_then(|h| h.peel_to_commit().ok()) {
-        Some(head) => repo.reset_default(Some(head.as_object()), paths.iter().map(String::as_str))?,
-        None => {
-            // No commits yet: unstaging means removing the entry from the index.
-            let mut index = repo.index()?;
-            for p in paths {
-                index.remove_path(Path::new(p))?;
-            }
-            index.write()?;
-        }
+    let head = head_tree(&repo);
+    let mut index = exact::index(&repo)?;
+    for p in paths {
+        exact::reset_path(&repo, &mut index, head.as_ref(), p)?;
     }
+    index.write()?;
     Ok(())
 }
 

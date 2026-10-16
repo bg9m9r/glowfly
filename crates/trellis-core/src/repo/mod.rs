@@ -369,6 +369,8 @@ mod convert_write_tests;
 #[cfg(test)]
 mod diff_tests;
 #[cfg(test)]
+mod exact_tests;
+#[cfg(test)]
 mod discard_tests;
 #[cfg(test)]
 mod history_tests;
