@@ -135,6 +135,7 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
                 })
                 .collect();
             p.add(egui::Shape::line(pts, s));
+        }
         Icon::Warning => {
             // A triangle about 16px wide around an exclamation mark.
             let (top, left, right) = (pos2(c.x, c.y - 7.5), pos2(c.x - 8.0, c.y + 7.0), pos2(c.x + 8.0, c.y + 7.0));
