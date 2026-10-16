@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 03:57 · **Tag management**: Hide and solo tags in the graph from the TAGS row menu, with markers on hidden and soloed rows (`152cd40`)
 - 2026-10-16 03:00 · **Git Flow**: Git Flow panel in place of the graph, a GIT FLOW section in the left panel grouping flow branches by kind, and Start Git Flow feature/release/hotfix from an issue in the issue menu and palette (`8f751ea`)
 - 2026-10-16 00:41 · **Diff viewer upgrade**: Word wrap toggle in the diff header and Preferences > Editor, with variable-height rows (`bb11923`)
 - 2026-10-16 00:37 · **Repository trust**: git jobs started in an untrusted repository (pull, push, commit and its hooks, undo, …) wait for the trust prompt, which names the operation and offers Trust and run or Cancel (`0c57fb6`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 13:39 · **Tag management**: Annotate an existing lightweight tag from the TAGS row menu: one job replaces it with an annotated tag on the same commit, signed when tag signing is on (`082c49c`)
 - 2026-10-15 13:31 · **Repository trust**: Untrusted chip in the toolbar and a Review repository trust… palette command bring the trust prompt back (`6764632`)
 - 2026-10-15 12:24 · **File actions**: Undo and redo a restore from a commit: the overwritten working copy is kept and put back byte for byte (`977d157`)
-- 2026-10-15 12:14 · **Repository trust**: ask before running git in repositories whose config or hooks run commands; hold auto-fetch, hosting-service sign-in and git status until trusted (`8c0fb03`)
 
 ---
 
@@ -389,12 +389,12 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [ ] View a remote on its hosting service in the browser (row menu, from the remote URL)
   - [ ] Add a teammate's fork as a remote (pick from the service's forks of this repository)
   - [ ] Fork the repository on the hosting service and add the fork as a remote
-- [ ] **Tag management**
+- [x] **Tag management**
   Annotate an existing tag, delete from one or all remotes, push to all remotes, hide tags.
   (Push a tag and delete it locally exist; tag signing is on the Commit Signing page.)
   - [x] Delete a tag from one or all remotes and push it to all remotes, from the TAGS row menu
   - [x] Annotate an existing lightweight tag (replace it with an annotated tag at the same commit)
-  - [ ] Hide tags in the graph (see Hide/solo)
+  - [x] Hide tags in the graph (see Hide/solo)
 - [ ] **Stash improvements**
   Stash selected files only, a stash message field, rename a stash. (Stash with a message exists
   in the palette; hiding stashes is under Later.)
@@ -772,7 +772,7 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Hide / solo branches in the graph
 
 - Hide / solo from the graph's BRANCH/TAG ref-label menus
-- Hide tags (and stashes) in the graph, with hidden markers on TAGS rows
+- Hide stashes in the graph
 - Hide, solo or stop soloing several selected branches at once (multi-select in the left panel)
 - Hide all / show all per section (LOCAL, REMOTE, TAGS) from the section header menu
 - Hover toggles (hide / solo) on rows that are not hidden or soloed
