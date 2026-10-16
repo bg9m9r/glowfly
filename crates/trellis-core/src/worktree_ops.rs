@@ -50,14 +50,13 @@ pub fn add_cmd(folder: &Path, base: &WorktreeBase, new_branch: Option<&str>) -> 
     cmd
 }
 
-/// A folder name made from a branch name: characters that can't be in a file name, and
-/// whitespace, become '-', and leading or trailing '-' and '.' are dropped.
+/// A folder name made from a branch name: characters that can't be in a file name, control
+/// characters and whitespace become '-', leading or trailing '-' and '.' are dropped, and a
+/// name Windows reserves for a device gets "-wt" (`aux` becomes `aux-wt`).
 pub fn folder_slug(name: &str) -> String {
-    let mapped: String = name
-        .chars()
-        .map(|c| if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') || c.is_whitespace() { '-' } else { c })
-        .collect();
-    mapped.trim_matches(|c| c == '-' || c == '.').to_owned()
+    let bad = |c: char| matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') || c.is_whitespace() || c.is_control();
+    let mapped: String = name.chars().map(|c| if bad(c) { '-' } else { c }).collect();
+    crate::names::portable(mapped.trim_matches(|c| c == '-' || c == '.'), "-wt")
 }
 
 /// Why a folder can't hold a new worktree.

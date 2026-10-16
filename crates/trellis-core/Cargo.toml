@@ -17,6 +17,7 @@ serde.workspace = true
 serde_json.workspace = true
 sys-locale.workspace = true
 base64 = "0.23.1"
+icu_normalizer = "2.3"
 getrandom = "0.3"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 keyring = { version = "3", features = ["windows-native", "apple-native"] }
@@ -24,6 +25,7 @@ sha2 = "0.11.1"
 syntect = { version = "5.3", default-features = false, features = ["parsing", "dump-load", "regex-fancy"] }
 ureq = { version = "2", features = ["json"] }
 percent-encoding = "2.3"
+same-file = "1"
 thiserror = "2"
 trash = "5.2"
 portable-pty = "0.9"

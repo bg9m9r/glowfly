@@ -69,6 +69,12 @@ fn repo_names() {
     assert_eq!(repo_name("https://example.com/team/app/"), "app");
     assert_eq!(repo_name("C:\\src\\proj"), "proj");
     assert_eq!(repo_name(""), "");
+    // Names Windows can't have as a folder.
+    assert_eq!(repo_name("https://example.com/o/con.git"), "con-repo");
+    assert_eq!(repo_name("https://example.com/o/AUX"), "AUX-repo");
+    assert_eq!(repo_name("https://example.com/o/lpt1.d.git"), "lpt1-repo.d");
+    assert_eq!(repo_name("https://example.com/o/odd..git"), "odd");
+    assert_eq!(repo_name("https://example.com/o/a%7Cb?x=1"), "a%7Cb-x=1");
 }
 
 #[test]

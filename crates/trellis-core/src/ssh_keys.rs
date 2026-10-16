@@ -77,6 +77,9 @@ pub enum LocationProblem {
     Relative,
     PublicFile,
     NotAFile,
+    /// Windows can't use the file name (checked on Windows only: the key stays on this
+    /// computer, so elsewhere the name is fine).
+    WindowsName,
 }
 
 impl LocationProblem {
@@ -86,6 +89,9 @@ impl LocationProblem {
             LocationProblem::Relative => "Enter a full path, such as ~/.ssh/id_ed25519_work.",
             LocationProblem::PublicFile => "Enter the private key's path; the public key is saved next to it with .pub added.",
             LocationProblem::NotAFile => "Enter a file name, not a folder.",
+            LocationProblem::WindowsName => {
+                "Windows can't use that file name: no device name such as CON or NUL, none of < > : \" | ? *, and no dot or space at the end."
+            }
         }
     }
 }
@@ -149,6 +155,11 @@ pub fn kind_from_type(t: &str) -> String {
 /// The private key path a typed save location means. `~/` (or `~\`) is the home folder. Pure:
 /// nothing is read from the disk.
 pub fn resolve_location(text: &str, home: &Path) -> Result<PathBuf, LocationProblem> {
+    resolve_location_for(text, home, crate::names::blocks_here())
+}
+
+/// [`resolve_location`], refusing a file name Windows can't use when `windows`.
+pub fn resolve_location_for(text: &str, home: &Path, windows: bool) -> Result<PathBuf, LocationProblem> {
     let t = text.trim();
     if t.is_empty() {
         return Err(LocationProblem::Empty);
@@ -165,6 +176,10 @@ pub fn resolve_location(text: &str, home: &Path) -> Result<PathBuf, LocationProb
     }
     if !path.is_absolute() {
         return Err(LocationProblem::Relative);
+    }
+    let name = t.rsplit(['/', '\\']).next().unwrap_or(t);
+    if windows && crate::names::win_name_problem(name).is_some() {
+        return Err(LocationProblem::WindowsName);
     }
     Ok(path)
 }

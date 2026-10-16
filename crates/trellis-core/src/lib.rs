@@ -23,6 +23,7 @@ pub mod intraline;
 pub mod lfs;
 pub mod line_pairs;
 pub mod matching;
+pub mod names;
 pub mod opens;
 pub mod patch_ops;
 pub mod paths;

@@ -75,9 +75,11 @@ pub fn is_local_source(url: &str) -> bool {
     }
 }
 
-/// The folder name `git clone <url>` would create.
+/// The folder name `git clone <url>` would create, made usable on Windows too (see
+/// `names::portable`): a repository called `con` or `aux` clones into `con-repo`.
 pub fn repo_name(url: &str) -> String {
-    url.trim().trim_end_matches('/').rsplit(['/', ':', '\\']).next().unwrap_or_default().trim_end_matches(".git").to_owned()
+    let raw = url.trim().trim_end_matches('/').rsplit(['/', ':', '\\']).next().unwrap_or_default().trim_end_matches(".git");
+    crate::names::portable(raw, "-repo")
 }
 
 /// Why the commit count of a shallow clone can't be used.

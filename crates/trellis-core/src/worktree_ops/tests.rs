@@ -36,6 +36,13 @@ fn slugs() {
     assert_eq!(folder_slug("/.x/"), "x");
     assert_eq!(folder_slug("..-y-."), "y");
     assert_eq!(folder_slug("a\\b*c?d\"e<f>g|h\ti"), "a-b-c-d-e-f-g-h-i");
+    assert_eq!(folder_slug("aux"), "aux-wt");
+    assert_eq!(folder_slug("Con.d"), "Con-wt.d");
+    assert_eq!(folder_slug("bell\u{7}"), "bell");
+    assert_eq!(folder_slug("COM\u{b9}"), "COM\u{b9}-wt");
+    for name in ["aux", "nul.x", "feature/lpt9", "x. ", "fix/conin$"] {
+        assert_eq!(crate::names::win_name_problem(&folder_slug(name)), None, "{name:?}");
+    }
 }
 
 #[test]

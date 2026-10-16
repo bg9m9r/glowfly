@@ -76,6 +76,13 @@ fn resolves_locations() {
     assert_eq!(r(&format!("{abs}.PUB")), Err(LocationProblem::PublicFile));
     assert_eq!(r(&format!("  {abs}  ")), Ok(PathBuf::from(abs)));
     assert!(LocationProblem::Relative.message().contains("full path"));
+    // A name Windows can't use would open a device (con) or lose its trailing dot.
+    for bad in ["~/.ssh/con", "~/.ssh/NUL.key", "~/.ssh/id.", "~/.ssh/a|b", "~/.ssh/COM\u{b9}"] {
+        assert_eq!(resolve_location_for(bad, &h, true), Err(LocationProblem::WindowsName), "{bad}");
+        assert!(resolve_location_for(bad, &h, false).is_ok(), "{bad}");
+    }
+    assert!(resolve_location_for("~/.ssh/console_key", &h, true).is_ok());
+    assert!(resolve_location_for(abs, &h, true).is_ok(), "a drive letter isn't the file name");
     assert_eq!(comment_problem("a\nb"), Some("The comment can't contain line breaks or control characters."));
     assert_eq!(comment_problem("ada@example.com"), None);
     assert_eq!(default_location(&h), h.join(".ssh").join("id_ed25519"));

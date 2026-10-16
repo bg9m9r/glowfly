@@ -43,23 +43,12 @@ fn slug(subject: &str) -> String {
     let slug = trim(&cut);
     if slug.is_empty() {
         "commit".to_owned()
-    } else if is_device_name(&slug) {
+    } else if crate::names::win_name_problem(&slug).is_some() {
+        // Only a device name can get this far (CON, COM¹...): the rest was mapped to '-'.
         format!("{slug}-commit")
     } else {
         slug
     }
-}
-
-/// Whether Windows reserves `name` (with any extension) for a device: CON, PRN, AUX, NUL,
-/// COM0-9 and LPT0-9 (also with a superscript 1-3), in any case.
-fn is_device_name(name: &str) -> bool {
-    let upper = name.to_uppercase();
-    if matches!(upper.as_str(), "CON" | "PRN" | "AUX" | "NUL") {
-        return true;
-    }
-    let Some(number) = upper.strip_prefix("COM").or_else(|| upper.strip_prefix("LPT")) else { return false };
-    let mut chars = number.chars();
-    matches!((chars.next(), chars.next()), (Some(c), None) if c.is_ascii_digit() || matches!(c, '¹' | '²' | '³'))
 }
 
 /// The command that prints commit `oid` as a patch on stdout (binary diffs included, which

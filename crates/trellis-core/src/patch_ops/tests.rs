@@ -44,6 +44,8 @@ fn file_name_slugs() {
     assert_eq!(file_name("lpt9", 2), "lpt9-commit-and-1-more.patch");
     assert_eq!(file_name("CONsole", 1), "CONsole.patch");
     assert_eq!(file_name("COM10", 1), "COM10.patch");
+    assert_eq!(file_name("COM\u{b3}", 1), "COM\u{b3}-commit.patch");
+    assert_eq!(file_name("lpt0", 1), "lpt0-commit.patch");
     assert_eq!(file_name("Add search", 3), "Add-search-and-2-more.patch");
 }
 
