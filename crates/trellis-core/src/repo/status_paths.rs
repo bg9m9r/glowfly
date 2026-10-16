@@ -12,6 +12,7 @@ use super::{FileEntry, collide, rpath, status, status_cli};
 use crate::error::Result;
 use crate::watch::{MAX_WATCH_PATHS, prefixes};
 use git2::{Index, Repository, StatusOptions, StatusShow};
+use std::collections::HashSet;
 use std::path::Path;
 
 /// The unstaged rows under some work-tree paths, read again (see `merge_unstaged`).
@@ -58,7 +59,10 @@ pub fn status_of_paths(workdir: &Path, paths: &[String], git_status: bool) -> Re
     covered.extend(more);
     normalize(&mut covered);
     let mut rows = if git_status && status::wants_git(&repo) {
-        match status_cli::status_of(workdir, &covered) {
+        // git matches pathspecs case-sensitively even under core.ignorecase, while the watcher
+        // reports the name on disk: the index's spelling is asked for too.
+        let asked = if collide::ignorecase(&repo) { with_index_spellings(&index, &covered) } else { covered.clone() };
+        match status_cli::status_of(workdir, &asked) {
             Some((unstaged, _staged)) => unstaged,
             None => return Ok(None),
         }
@@ -99,6 +103,33 @@ fn widen(index: &Index, workdir: &Path, p: String) -> (String, bool) {
         }
     }
     (p, false)
+}
+
+/// `covered` plus the index's spelling of each path in it that the index spells in another case
+/// (a file, or a folder some index path is below).
+fn with_index_spellings(index: &Index, covered: &[String]) -> Vec<String> {
+    let exact: HashSet<&str> = covered.iter().map(String::as_str).collect();
+    let folded: HashSet<String> = covered.iter().map(|c| c.to_lowercase()).collect();
+    let mut other: HashSet<String> = HashSet::new();
+    for entry in index.iter() {
+        let Ok(path) = std::str::from_utf8(&entry.path) else { continue };
+        let lower = path.to_lowercase();
+        // Folding case keeps the '/' separators, so the nth folder of each is the same one.
+        let ends = path.match_indices('/').map(|(i, _)| i).chain(std::iter::once(path.len()));
+        let lower_ends = lower.match_indices('/').map(|(i, _)| i).chain(std::iter::once(lower.len()));
+        for (end, lower_end) in ends.zip(lower_ends) {
+            let (spelled, key) = (&path[..end], &lower[..lower_end]);
+            if folded.contains(key) {
+                if !exact.contains(spelled) && !other.contains(spelled) {
+                    other.insert(spelled.to_owned());
+                }
+                break;
+            }
+        }
+    }
+    let mut asked: Vec<String> = covered.iter().cloned().chain(other).collect();
+    normalize(&mut asked);
+    asked
 }
 
 /// Sorts and de-duplicates `paths`, dropping each one below another.

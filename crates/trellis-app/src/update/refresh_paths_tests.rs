@@ -181,6 +181,75 @@ fn the_open_diff_is_read_again_only_when_its_file_is_covered_and_changed() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A repository with a.txt edited and its unstaged diff open, read once by a path read.
+fn diff_open(name: &str) -> (AppState, PathBuf, PathBuf) {
+    let (mut st, dir, workdir) = opened(name);
+    std::fs::write(
+        dir.join("a.txt"),
+        "edited
+",
+    )
+    .unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))));
+    let ask = update(&mut st, changed(&workdir, false, Some(&["a.txt"])), Instant::now());
+    let fx = run_read(&mut st, ask);
+    finish(&mut st, fx);
+    assert!(st.refresh.open_stamp.is_some());
+    (st, dir, workdir)
+}
+
+#[test]
+fn a_deferred_read_of_the_open_file_has_the_next_path_read_cover_it() {
+    let (mut st, dir, workdir) = diff_open("paths-deferred");
+    std::fs::write(
+        dir.join("a.txt"),
+        "edited again
+and more
+",
+    )
+    .unwrap();
+    let first = update(&mut st, changed(&workdir, false, Some(&["a.txt"])), Instant::now());
+    std::fs::write(
+        dir.join("b.txt"),
+        "new
+",
+    )
+    .unwrap();
+    assert!(update(&mut st, changed(&workdir, false, Some(&["b.txt"])), Instant::now()).is_empty());
+    let fx = run_read(&mut st, first);
+    assert_eq!(diff_loads(&fx), 0, "left to the next read: {fx:?}");
+    assert_eq!(read_paths(&fx), Some(owned(&["a.txt", "b.txt"])), "the open file is read again too");
+    assert!(matches!(&fx[..], [Effect::LoadStatus { open: Some(p), .. }] if p == "a.txt"), "{fx:?}");
+    let fx = run_read(&mut st, fx);
+    assert_eq!(diff_loads(&fx), 1, "the diff catches up: {fx:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_deferred_whole_read_has_the_next_path_read_cover_the_open_file() {
+    let (mut st, dir, workdir) = diff_open("paths-deferred-whole");
+    git(&dir, &["add", "a.txt"]);
+    let first = update(&mut st, changed(&workdir, false, None), Instant::now());
+    assert_eq!(read_paths(&first), None);
+    std::fs::write(
+        dir.join("b.txt"),
+        "new
+",
+    )
+    .unwrap();
+    assert!(update(&mut st, changed(&workdir, false, Some(&["b.txt"])), Instant::now()).is_empty());
+    let fx = run_read(&mut st, first);
+    assert_eq!(read_paths(&fx), Some(owned(&["a.txt", "b.txt"])));
+    let fx = run_read(&mut st, fx);
+    assert_eq!(diff_loads(&fx), 1, "the staged file's diff is read again: {fx:?}");
+
+    // A deferred read that doesn't cover the open file leaves the next one as asked.
+    let first = update(&mut st, changed(&workdir, false, Some(&["b.txt"])), Instant::now());
+    update(&mut st, changed(&workdir, false, Some(&["c.txt"])), Instant::now());
+    assert_eq!(read_paths(&run_read(&mut st, first)), Some(owned(&["c.txt"])));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn trellis_s_own_operations_and_polls_read_everything() {
     let (mut st, dir, _workdir) = opened("paths-own");

@@ -252,7 +252,8 @@ second one next to it.
    (`refs_key::stamp_trustworthy`): FAT has 2 s timestamps and HFS+ 1 s.
 5. **Match the watcher's work-tree paths the way git does** when only they are re-read
    (`repo::status_of_paths`, `repo::covers`, `repo::merge_unstaged`): ignoring case only under
-   `core.ignorecase` (the watcher reports the name on disk, the index may spell it differently),
+   `core.ignorecase` (the watcher reports the name on disk, the index may spell it differently;
+   git's pathspecs stay case-sensitive under it, so git is also given the index's spelling),
    NFC-normalized under `core.precomposeunicode` (as git composes its own arguments on macOS),
    and literally (`--literal-pathspecs`, libgit2's path list), never as patterns. A name that
    isn't UTF-8, or any sign of lost events (a notify error, a rescan flag), reads the whole

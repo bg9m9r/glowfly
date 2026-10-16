@@ -2,8 +2,8 @@
 //! with `paths`): only the unstaged rows under them are read again and merged into the lists on
 //! screen; the staged list stays, since only an index change (a whole read) can change it.
 
-use super::refresh::{diff_changed, must_reload, open_file, status_set};
-use crate::effect::Effect;
+use super::refresh::{diff_changed, must_reload, open_file, set_status, status_set};
+use crate::effect::{Effect, StatusRead};
 use crate::state::AppState;
 use crate::state::refresh::Wanted;
 use std::time::Instant;
@@ -33,6 +33,33 @@ pub(super) fn merge_into(snap: &mut Snapshot, ps: PathsStatus, submodules: Optio
     repo::merge_unstaged(&mut snap.unstaged, &ps.covered, ps.unstaged, snap.ignorecase);
     snap.state = ps.state;
     status_set(snap, was_dirty, submodules);
+}
+
+/// Shows a read that is already out of date (`queued` was asked for while it ran) without
+/// reading the diff again, and returns `queued` for the next read. When the read may have changed
+/// the open working-tree diff's file (a whole read, or one covering it), that file joins a queued
+/// path read, so the next read checks its stamp in place of this one.
+pub(super) fn show_deferred(
+    st: &mut AppState,
+    result: Result<StatusRead, String>,
+    submodules: Option<Vec<SubmoduleInfo>>,
+    queued: Wanted,
+) -> Wanted {
+    let open = open_file(st);
+    let (Ok(read), Some(snap)) = (result, st.snap.as_mut()) else { return queued };
+    let fold = snap.ignorecase;
+    let open = open.filter(|p| match &read {
+        StatusRead::Whole(..) => true,
+        StatusRead::Paths(ps) => repo::covers(&ps.covered, p, fold),
+    });
+    match read {
+        StatusRead::Whole(u, s, state) => set_status(snap, (u, s, state), submodules),
+        StatusRead::Paths(ps) => merge_into(snap, ps, submodules),
+    }
+    match open {
+        Some(p) => Wanted::queue(Some(queued), Wanted::Paths([p].into())),
+        None => queued,
+    }
 }
 
 /// Shows a read of some paths. The open diff is read again only when a request is outstanding,

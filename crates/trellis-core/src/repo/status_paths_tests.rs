@@ -178,37 +178,139 @@ fn a_conflicted_file_is_listed_once() {
 
 #[test]
 fn files_a_sparse_checkout_leaves_out_stay_quiet() {
-    let dir = scratch_repo("paths-sparse");
-    commit_files(&dir, &[("r.txt", "r\n"), ("src/x.txt", "x\n"), ("docs/d.txt", "d\n")]);
-    git(&dir, &["sparse-checkout", "set", "--cone", "--no-sparse-index", "src"]);
-    assert!(!dir.join("docs/d.txt").exists());
-    let before = full(&dir, false);
-    let after = check(&dir, &before, &["docs/d.txt"], false);
-    assert!(after.0.is_empty(), "{:?}", after.0);
-    assert!(check(&dir, &before, &["docs"], false).0.is_empty());
-    let _ = std::fs::remove_dir_all(&dir);
+    for g in [false, true] {
+        let dir = scratch_repo(&format!("paths-sparse-{}", if g { "git" } else { "lib" }));
+        if g {
+            set_config(&dir, &[("core.untrackedCache", "true")]);
+        }
+        commit_files(
+            &dir,
+            &[
+                (
+                    "r.txt", "r
+",
+                ),
+                (
+                    "src/x.txt",
+                    "x
+",
+                ),
+                (
+                    "docs/d.txt",
+                    "d
+",
+                ),
+            ],
+        );
+        git(&dir, &["sparse-checkout", "set", "--cone", "--no-sparse-index", "src"]);
+        assert!(!dir.join("docs/d.txt").exists());
+        let before = full(&dir, g);
+        let after = check(&dir, &before, &["docs/d.txt"], g);
+        assert!(after.0.is_empty(), "{:?} (git: {g})", after.0);
+        assert!(check(&dir, &before, &["docs"], g).0.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
 
 #[test]
 fn twins_are_marked_as_a_whole_read_marks_them() {
-    let dir = scratch_repo("paths-twins");
-    git(&dir, &["config", "core.ignorecase", "false"]);
-    commit_files(&dir, &[("other.txt", "other\n")]);
-    for p in ["a.txt", "A.txt"] {
-        let id = blob(&dir, &format!("{p}\n"));
-        git(&dir, &["update-index", "--add", "--cacheinfo", &format!("100644,{id},{p}")]);
+    for g in [false, true] {
+        let dir = scratch_repo(&format!("paths-twins-{}", if g { "git" } else { "lib" }));
+        git(&dir, &["config", "core.ignorecase", "false"]);
+        if g {
+            set_config(&dir, &[("core.untrackedCache", "true")]);
+        }
+        commit_files(
+            &dir,
+            &[(
+                "other.txt",
+                "other
+",
+            )],
+        );
+        for p in ["a.txt", "A.txt"] {
+            let id = blob(
+                &dir,
+                &format!(
+                    "{p}
+"
+                ),
+            );
+            git(&dir, &["update-index", "--add", "--cacheinfo", &format!("100644,{id},{p}")]);
+        }
+        git(&dir, &["commit", "-q", "-m", "twins"]);
+        write(
+            &dir, "a.txt", "a.txt
+",
+        );
+        let before = full(&dir, g);
+        write(
+            &dir, "a.txt", "edited
+",
+        );
+        // The name on disk only; on a volume that folds case it is also A.txt's file.
+        let after = check(&dir, &before, &["a.txt"], g);
+        let a = after.0.iter().find(|r| r.path == "a.txt").expect("a.txt changed");
+        if collide::folding(Repository::open(&dir).unwrap().path()).case != Some(false) {
+            assert!(matches!(&a.hazard, Some(super::super::Hazard::Twins(t)) if t == &["A.txt".to_string()]), "{:?} (git: {g})", a.hazard);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
-    git(&dir, &["commit", "-q", "-m", "twins"]);
-    write(&dir, "a.txt", "a.txt\n");
-    let before = full(&dir, false);
-    write(&dir, "a.txt", "edited\n");
-    // The name on disk only; on a volume that folds case it is also A.txt's file.
-    let after = check(&dir, &before, &["a.txt"], false);
-    let a = after.0.iter().find(|r| r.path == "a.txt").expect("a.txt changed");
-    if collide::folding(Repository::open(&dir).unwrap().path()).case != Some(false) {
-        assert!(matches!(&a.hazard, Some(super::super::Hazard::Twins(t)) if t == &["A.txt".to_string()]), "{:?}", a.hazard);
-    }
-    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_name_on_disk_in_another_case_reads_the_index_s_entry() {
+    both(
+        "paths-case",
+        &[
+            (
+                "README.md",
+                "r
+",
+            ),
+            (
+                "Docs/x.txt",
+                "x
+",
+            ),
+        ],
+        |dir, g| {
+            let repo = Repository::open(dir).unwrap();
+            if !collide::ignorecase(&repo) || collide::folding(repo.path()).case != Some(true) {
+                return; // a file system that tells cases apart
+            }
+            // Renamed by case only (no change to git), then edited.
+            std::fs::rename(dir.join("README.md"), dir.join("tmp.md")).unwrap();
+            std::fs::rename(dir.join("tmp.md"), dir.join("readme.md")).unwrap();
+            std::fs::rename(dir.join("Docs"), dir.join("tmp")).unwrap();
+            std::fs::rename(dir.join("tmp"), dir.join("docs")).unwrap();
+            let before = full(dir, g);
+            assert!(before.0.is_empty(), "{:?}", before.0);
+            write(
+                dir,
+                "readme.md",
+                "edited
+",
+            );
+            let after = check(dir, &before, &["readme.md"], g);
+            assert_eq!(rows(&after.0), [("README.md", 'M')], "git: {g}");
+            write(
+                dir,
+                "docs/x.txt",
+                "edited
+",
+            );
+            write(
+                dir,
+                "docs/new.txt",
+                "new
+",
+            );
+            let after = check(dir, &after, &["docs/x.txt", "docs/new.txt"], g);
+            let after = check(dir, &after, &["docs"], g);
+            assert_eq!(after.0.len(), 3, "{:?}", after.0);
+        },
+    );
 }
 
 #[test]

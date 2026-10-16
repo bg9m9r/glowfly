@@ -44,13 +44,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             st.refresh.status_busy = false;
             if let Some(queued) = st.refresh.status_queued.take() {
                 // Already out of date: show it, but leave the diff to the next read.
-                if let (Ok(read), Some(snap)) = (result, st.snap.as_mut()) {
-                    match read {
-                        StatusRead::Whole(u, s, state) => set_status(snap, (u, s, state), submodules),
-                        StatusRead::Paths(ps) => super::refresh_paths::merge_into(snap, ps, submodules),
-                    }
-                }
-                match queued {
+                match super::refresh_paths::show_deferred(st, result, submodules, queued) {
                     Wanted::Whole => refresh_status(st, fx),
                     Wanted::Paths(set) => super::refresh_paths::refresh_paths(st, set.into_iter().collect(), fx),
                 }
