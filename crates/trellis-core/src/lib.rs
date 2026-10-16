@@ -15,6 +15,7 @@ pub mod error;
 pub mod external_tools;
 pub mod forge;
 pub mod fuzzy;
+pub mod git_program;
 pub mod git_version;
 pub mod gitcli;
 pub mod gitflow;

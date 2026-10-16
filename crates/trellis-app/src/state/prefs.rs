@@ -6,6 +6,8 @@ use trellis_core::forge::{Account, Provider};
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PrefPage {
     General,
+    /// Which git program Trellis runs.
+    Git,
     Profile,
     Integrations,
     Ui,
@@ -30,6 +32,7 @@ impl PrefPage {
     pub fn title(self) -> &'static str {
         match self {
             PrefPage::General => "General",
+            PrefPage::Git => "Git",
             PrefPage::Profile => "Profile",
             PrefPage::Integrations => "Integrations",
             PrefPage::Ui => "UI Customization",

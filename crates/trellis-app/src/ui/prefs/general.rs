@@ -29,8 +29,13 @@ pub fn general_page(
     msgs: &mut Vec<Msg>,
 ) {
     row(ui, "Git", |ui| {
-        ui.label(RichText::new(git_program_text(program)).color(color::text()));
-        help(ui, "The git program Trellis runs for commits, fetches, pushes and hooks: the first one on your PATH.");
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(git_program_text(program)).color(color::text()));
+            if ui.button("Change…").clicked() {
+                msgs.push(Msg::GitEnv(crate::git_env::GitEnvMsg::ShowPage));
+            }
+        });
+        help(ui, "The git program Trellis runs for commits, fetches, pushes and hooks (Preferences > Git).");
     });
     row(ui, "Auto-Fetch Interval", |ui| {
         ui.add(egui::DragValue::new(&mut s.auto_fetch_minutes).range(0..=60).suffix(" min"));
@@ -142,7 +147,7 @@ pub fn general_page(
 }
 
 /// "git 2.45.1 at C:\Program Files\Git\cmd\git.exe", or what is missing.
-pub(crate) fn git_program_text(info: Option<&GitInfo>) -> String {
+pub(super) fn git_program_text(info: Option<&GitInfo>) -> String {
     let Some(info) = info else { return "Checking…".to_owned() };
     let at = info.path.as_deref().map(trellis_core::native_path::shown);
     match (info.version, at) {

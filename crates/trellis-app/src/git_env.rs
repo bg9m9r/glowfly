@@ -1,10 +1,12 @@
 //! Messages and effects about git itself (update/git_env.rs, runner/git_env.rs,
-//! ui/git_banner.rs): which git runs and what it can do, checked once at startup and shown in
-//! Preferences and, when it is missing or too old, in a banner; and repositories git refuses
-//! because another user owns them, which can be added to `safe.directory`.
+//! ui/git_banner.rs, ui/prefs/git_program.rs): which git runs and what it can do, checked at
+//! startup and shown in Preferences and, when it is missing or too old, in a banner; choosing
+//! another git in Preferences > Git; and repositories git refuses because another user owns
+//! them, which can be added to `safe.directory`.
 
 use crate::effect::LoadKind;
 use std::path::PathBuf;
+use trellis_core::git_program::Candidate;
 use trellis_core::git_version::GitInfo;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -15,6 +17,14 @@ pub enum GitEnvMsg {
     DismissBanner,
     /// The user agreed to list `root` in `safe.directory` (then it opens again).
     AddSafeDirectory(PathBuf),
+    /// Open Preferences on the Git page (opening Preferences when closed) and look for gits.
+    ShowPage,
+    /// Look for installed gits again.
+    Rescan,
+    /// Use this git from now on (None: git from PATH), once it is checked.
+    Choose(Option<PathBuf>),
+    /// Pick a git program with a file dialog.
+    Browse,
     // ---- from the runner
     Detected(GitInfo),
     /// A load was refused because another user owns the repository at `root`.
@@ -27,6 +37,18 @@ pub enum GitEnvMsg {
         root: PathBuf,
         result: Result<(), String>,
     },
+    /// The gits found by the scan numbered `generation`.
+    Discovered {
+        generation: u64,
+        candidates: Vec<Candidate>,
+    },
+    /// What the file dialog picked (None: cancelled).
+    Picked(Option<PathBuf>),
+    /// The check of a chosen git: on success it is already in effect, with this info.
+    Switched {
+        program: Option<PathBuf>,
+        result: Result<GitInfo, String>,
+    },
 }
 
 impl GitEnvMsg {
@@ -34,7 +56,19 @@ impl GitEnvMsg {
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             Self::NotOwned { root, .. } => Some(crate::msg::Inactive::Log(not_owned_text(&root))),
-            Self::Detect | Self::DismissBanner | Self::AddSafeDirectory(_) | Self::Detected(_) | Self::SafeDirectoryAdded { .. } => None,
+            // The rest is about git itself, the same for every tab.
+            Self::Detect
+            | Self::DismissBanner
+            | Self::AddSafeDirectory(_)
+            | Self::ShowPage
+            | Self::Rescan
+            | Self::Choose(_)
+            | Self::Browse
+            | Self::Detected(_)
+            | Self::SafeDirectoryAdded { .. }
+            | Self::Discovered { .. }
+            | Self::Picked(_)
+            | Self::Switched { .. } => None,
         }
     }
 }
@@ -50,8 +84,22 @@ pub fn not_owned_text(root: &std::path::Path) -> String {
 /// Run by runner/git_env.rs.
 #[derive(Debug)]
 pub enum GitEnvEffect {
-    Detect { cwd: PathBuf },
+    Detect {
+        cwd: PathBuf,
+    },
     AddSafeDirectory(PathBuf),
+    /// Find and check the installed gits.
+    Discover {
+        generation: u64,
+        cwd: PathBuf,
+    },
+    /// Check `program` (None: git from PATH) and, when it works, run it from now on.
+    Use {
+        program: Option<PathBuf>,
+        cwd: PathBuf,
+    },
+    /// The file dialog that picks a git program.
+    PickProgram,
 }
 
 impl GitEnvEffect {
@@ -60,6 +108,9 @@ impl GitEnvEffect {
         match self {
             GitEnvEffect::Detect { .. } => "detect-git",
             GitEnvEffect::AddSafeDirectory(_) => "add-safe-directory",
+            GitEnvEffect::Discover { .. } => "discover-git",
+            GitEnvEffect::Use { .. } => "use-git",
+            GitEnvEffect::PickProgram => "pick-git",
         }
     }
 }

@@ -549,7 +549,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [ ] **Packaging and updates**: the Release workflow publishes zip/tar.gz downloads. Missing:
       installers, an app icon, code signing, file association, auto-update and a release notes
       view
-- [ ] **Git engine choice**: choose
+- [x] **Git engine choice**: choose
       which git executable to use and show its version
 - [ ] **Performance**: incremental status for very large working trees (loading already runs
       off the UI thread)
@@ -1463,3 +1463,14 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - A palette entry and key for showing or hiding the activity log
 - Per-repository panel layout
 - View menu entries for zoom and panels once the menu bar exists
+
+### Git engine choice
+
+- Warn when the chosen git is a minimal install with no shell for hook scripts (on Windows, no sh.exe next to it)
+- Show the OpenSSH version the chosen git will use
+- Find gits bundled inside other applications and IDEs (versioned app folders) during discovery
+- Type or paste a git path in a text field as well as Browse…
+- Choose a git per repository (e.g. a WSL git for repositories under `\\wsl$`)
+- Re-check the chosen git's version automatically when it is upgraded while Trellis runs (Look again covers it by hand)
+- Offer to fall back to the PATH git when the saved one disappears, instead of only explaining it in the banner
+- Run every command of a multi-command job with the git it started with, even when another git is chosen meanwhile

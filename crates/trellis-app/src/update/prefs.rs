@@ -34,6 +34,9 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             if page == PrefPage::Ssh {
                 super::ssh::load(st, fx);
             }
+            if page == PrefPage::Git {
+                super::git_env::discover(st, fx);
+            }
             // Start the Integrations page on the open repository's service.
             let provider = st.forge.as_ref().and_then(|f| f.host_provider()).unwrap_or(Provider::GitHub);
             select_integration(st, provider);

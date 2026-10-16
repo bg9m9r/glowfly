@@ -1,5 +1,6 @@
 //! Which OpenPGP program the user configured, so the wrapper runs that one.
 
+use std::ffi::OsString;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -28,12 +29,24 @@ pub fn user_program(self_exe: &Path) -> String {
     query(self_exe, |_| {})
 }
 
+/// The git the wrapper asks: the one that ran it, from [`super::ENV_GIT`] (set by Trellis next to
+/// `gpg.program`), so a git chosen in Preferences > Git reads its own system config and gives
+/// the same answer it would give itself. `git` from PATH when the variable is unset or empty.
+pub fn wrapper_git() -> OsString {
+    git_from(std::env::var_os(super::ENV_GIT))
+}
+
+/// [`wrapper_git`] for the variable's value. Pure.
+pub(super) fn git_from(value: Option<OsString>) -> OsString {
+    value.filter(|v| !v.is_empty()).unwrap_or_else(|| "git".into())
+}
+
 /// `user_program`, with `setup` adjusting the `git config` command first (tests point it at a
 /// fixture's folder and config files). git treats `gpg.program` as a path, expanding `~/` and
 /// `%(prefix)/` before running it, so the value is read as one (`--type=path`) and the wrapper
 /// runs the same file git would.
 pub(super) fn query(self_exe: &Path, setup: impl FnOnce(&mut Command)) -> String {
-    let mut cmd = Command::new("git");
+    let mut cmd = Command::new(wrapper_git());
     cmd.args(["config", "-z", "--type=path", "--get-regexp", r"^gpg\.(openpgp\.)?program$"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

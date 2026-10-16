@@ -1,4 +1,4 @@
-use super::program::{from_config, query};
+use super::program::{from_config, git_from, query};
 use std::path::Path;
 
 fn me() -> &'static Path {
@@ -15,6 +15,13 @@ fn the_users_program_is_the_last_that_isnt_trellis() {
     assert_eq!(from_config(&out, me()).as_deref(), Some("C:/GnuPG/bin/gpg.exe"));
     let out = format!("gpg.program\ngpg2\0gpg.openpgp.program\n/usr/local/bin/gpg\0gpg.program\n{}\0", me_text());
     assert_eq!(from_config(&out, me()).as_deref(), Some("/usr/local/bin/gpg"), "the later key wins");
+}
+
+#[test]
+fn the_wrapper_asks_the_git_that_ran_it() {
+    assert_eq!(git_from(None), "git");
+    assert_eq!(git_from(Some("".into())), "git");
+    assert_eq!(git_from(Some("/opt/git/bin/git".into())), "/opt/git/bin/git");
 }
 
 #[test]

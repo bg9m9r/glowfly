@@ -109,6 +109,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
         ],
     ),
     ("gitcli", &["run", "run_with_input", "version"]),
+    ("git_program", &["set", "probe", "discover", "precheck"]),
     ("conflict_check", &["predict"]),
     (
         "forge",
@@ -167,6 +168,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
 /// Justified exceptions, as (file under `src/`, pattern as reported, reason).
 const ALLOWED: &[(&str, &str, &str)] = &[
     ("ui/mod.rs", "Settings::load", "the shell loads the settings once, at startup"),
+    ("ui/mod.rs", "git_program::set", "the shell puts the saved git into effect once, at startup, before any git runs"),
     ("ui/mod.rs", "themes::load_all", "the shell loads the theme files once, at startup, from the folder settings.json was just read from"),
     ("ui/mod.rs", "platform::load_recent", "the shell loads the recent list once, at startup"),
     ("ui/mod.rs", "platform::load_tabs", "the shell loads the last session's tabs once, at startup"),

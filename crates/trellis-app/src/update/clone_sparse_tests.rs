@@ -74,7 +74,7 @@ fn a_sparse_clone_is_one_job_that_opens_the_clone() {
 #[test]
 fn an_old_git_refuses_a_sparse_clone() {
     let mut st = state();
-    st.git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 30, 1)) });
+    st.git.info = Some(GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 30, 1)), chosen: false });
     let fx = update(&mut st, Msg::Clone(CloneMsg::Start(sparse_request(&["docs"]))), Instant::now());
     assert!(fx.is_empty(), "{fx:?}");
     assert!(st.job.is_none());

@@ -46,17 +46,21 @@ fn trash_in_use_retry() {
     remove_fixture(&dir);
 }
 
-/// The banner while git is older than every feature needs; Dismiss closes it.
+/// The banner while git is older than every feature needs; Choose git… opens Preferences > Git
+/// and Dismiss closes it.
 #[test]
 fn git_too_old_banner() {
     use crate::git_env::GitEnvMsg;
     use trellis_core::git_version::GitInfo;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "git-too-old");
-    let info = GitInfo { path: Some("C:/Program Files/Git/cmd/git.exe".into()), version: Some((2, 34, 1)) };
+    let info = GitInfo { path: Some("C:/Program Files/Git/cmd/git.exe".into()), version: Some((2, 34, 1)), chosen: false };
     crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::Detected(info)), std::time::Instant::now());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("git_too_old_banner");
+    h.get_by_label("Choose git…").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::GitEnv(GitEnvMsg::ShowPage))), "opens Preferences > Git");
     h.get_by_label("Dismiss").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::GitEnv(GitEnvMsg::DismissBanner))));

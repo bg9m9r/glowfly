@@ -5,6 +5,7 @@ mod appearance;
 mod editor;
 mod general;
 mod git;
+mod git_program;
 mod gitflow;
 mod integrations;
 mod keyboard;
@@ -108,7 +109,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         job: st.job.as_ref().map(|j| j.label.clone()),
     };
     let switching = st.profile_switch;
-    let git_program = st.git.info.clone();
+    let git_state = &st.git;
     let settings = &mut st.settings;
     let keymap = &st.keymap;
     let Some(prefs) = st.prefs.as_mut() else { return };
@@ -138,7 +139,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     return;
                 }
                 match page {
-                    PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), git_program.as_ref(), keymap, msgs),
+                    PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), git_state.info.as_ref(), keymap, msgs),
+                    PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
                     PrefPage::Ui => appearance::ui_page(ui, settings, themes, now, msgs),
@@ -185,6 +187,10 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
             }
         };
         go(ui, PrefPage::General, Icon::Gear, "General");
+        // Not `go`: the page looks for installed gits when it opens.
+        if widgets::nav_row(ui, Some(Icon::Branch), "Git", page == PrefPage::Git, 15.0).clicked() {
+            msgs.push(Msg::GitEnv(crate::git_env::GitEnvMsg::ShowPage));
+        }
         // Not `go`: the page seeds and fills its profiles when it opens.
         if widgets::nav_row(ui, Some(Icon::User), "Profile", page == PrefPage::Profile, 15.0).clicked() {
             msgs.push(Msg::Profile(crate::profile::ProfileMsg::ShowPage));

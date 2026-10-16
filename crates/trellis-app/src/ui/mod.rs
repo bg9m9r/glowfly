@@ -129,6 +129,8 @@ mod snapshot_tests_platform_dialogs;
 #[cfg(test)]
 mod snapshot_tests_pr_checks;
 #[cfg(test)]
+mod snapshot_tests_prefs_git;
+#[cfg(test)]
 mod snapshot_tests_prefs_keyboard;
 #[cfg(test)]
 mod snapshot_tests_prefs_notify;
@@ -240,6 +242,8 @@ impl TrellisApp {
     pub fn new(cc: &eframe::CreationContext<'_>, start: Option<PathBuf>) -> Self {
         let (tx, results) = mpsc::channel();
         let (settings, problem) = Settings::load();
+        // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
+        trellis_core::git_program::set(trellis_core::git_program::from_setting(settings.git_program.as_deref()).as_deref());
         let recent = crate::platform::load_recent();
         // Restore the last session's tabs (or, before tabs were saved, the last repository).
         let (mut paths, active) = if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), 0) };

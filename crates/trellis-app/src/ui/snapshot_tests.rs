@@ -212,7 +212,7 @@ fn preferences_general() {
     prefs.git = Some(GitConfigValues { autocrlf: crate::state::prefs::Autocrlf::Input, ..Default::default() });
     st.prefs = Some(prefs);
     let program = if cfg!(windows) { "C:/Program Files/Git/cmd/git.exe" } else { "/opt/homebrew/bin/git" };
-    st.git.info = Some(trellis_core::git_version::GitInfo { path: Some(program.into()), version: Some((2, 45, 1)) });
+    st.git.info = Some(trellis_core::git_version::GitInfo { path: Some(program.into()), version: Some((2, 45, 1)), chosen: false });
     render("prefs_general", st, true);
 }
 

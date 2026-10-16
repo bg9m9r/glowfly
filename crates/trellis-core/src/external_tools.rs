@@ -41,25 +41,37 @@ pub fn resolve(
     if program.is_absolute() || program.components().count() > 1 {
         return find(program);
     }
-    let exts: Vec<String> = if windows && program.extension().is_none() {
-        let list = pathext.and_then(OsStr::to_str).filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_PATHEXT);
-        list.split(';').map(str::trim).filter(|e| !e.is_empty()).map(str::to_owned).collect()
-    } else {
-        vec![String::new()]
-    };
+    let names = candidate_names(program, pathext, windows);
     for dir in std::env::split_paths(path_var?) {
         if dir.as_os_str().is_empty() {
             continue;
         }
-        for ext in &exts {
-            let mut name = program.as_os_str().to_owned();
-            name.push(ext);
+        for name in &names {
             if let Some(found) = find(&dir.join(name)) {
                 return Some(found);
             }
         }
     }
     None
+}
+
+/// The file names a PATH search tries in each folder for the bare name `program`: with
+/// `windows` and no extension, `program` plus each of `pathext`'s extensions (Windows' usual
+/// list when it is unset or empty); otherwise `program` itself.
+pub(crate) fn candidate_names(program: &Path, pathext: Option<&OsStr>, windows: bool) -> Vec<OsString> {
+    if !(windows && program.extension().is_none()) {
+        return vec![program.as_os_str().to_owned()];
+    }
+    let list = pathext.and_then(OsStr::to_str).filter(|s| !s.trim().is_empty()).unwrap_or(DEFAULT_PATHEXT);
+    list.split(';')
+        .map(str::trim)
+        .filter(|e| !e.is_empty())
+        .map(|ext| {
+            let mut name = program.as_os_str().to_owned();
+            name.push(ext);
+            name
+        })
+        .collect()
 }
 
 /// Where the program file `p` is, as a PATH search should see it:

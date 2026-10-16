@@ -54,6 +54,17 @@ fn use_ssh_agent_defaults_off() {
 }
 
 #[test]
+fn git_program_defaults_to_path() {
+    // Files written before the setting existed run git from PATH.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert_eq!(s.git_program, None);
+    let path = crate::paths::temp_dir().join("tools").join("git").display().to_string();
+    let chosen = Settings { git_program: Some(path.clone()), ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&chosen).unwrap()).unwrap();
+    assert_eq!(back.git_program, Some(path));
+}
+
+#[test]
 fn gpg_prompts_in_app_default_on() {
     // Files written before the setting existed ask for signing passphrases in Trellis.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

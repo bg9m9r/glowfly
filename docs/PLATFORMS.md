@@ -199,9 +199,19 @@ second one next to it.
 2. **On macOS, merge in the login shell's PATH** (`env_path::read_login_path`, off the UI thread,
    `LOGIN_SHELL_TIMEOUT` of 3 s), falling back to `env_path::MACOS_FALLBACK`
    (`/opt/homebrew/bin:/usr/local/bin`).
-3. **Check git once at startup** (`git_version::detect`). Show which git runs and its version
-   (Preferences > General), gate features by `git_version::Feature` (`Restore` 2.23,
-   `ForceIfIncludes` 2.30, `SparseCheckout` 2.35, `MergeTree` 2.38), and show
+3. **Run the git chosen in Preferences > Git, and check it at startup and on every switch**
+   (`git_version::detect`). Every git child is started as `git_program::program()` (the chosen
+   absolute path, else `git` from PATH); `TrellisApp::new` puts the saved choice into effect
+   before any git runs, and a switch is probed off the UI thread (`git_program::probe`:
+   `--version` with a 10 s timeout, `NO_PROMPTS`, `CREATE_NO_WINDOW`, outside any repository)
+   before `git_program::set`. Launchers (`git-bash`, `git-cmd`, `git-gui`, `gitk`) are refused
+   by name without being run. The PATH is never changed for the choice: the built-in terminal
+   and external tools keep the user's PATH git. Discovery lists every git on PATH plus
+   well-known install folders, one row per file (`paths::resolve`) in the spelling found first;
+   on macOS `/usr/bin/git` is only listed when the developer tools exist, since Apple's shim
+   would open their install dialog. Show which git runs and its version (Preferences > General
+   and > Git), gate features by `git_version::Feature` (`Restore` 2.23, `ForceIfIncludes` 2.30,
+   `SparseCheckout` 2.35, `MergeTree` 2.38), re-detect them when the git changes, and show
    `GitInfo::banner` with the reasons.
 4. **Read git config booleans with `--type=bool`** (`runner/config.rs`): `yes`, `1` and `TRUE`
    are true. `core.autocrlf` is three-way (`true`, `input`, `false`), and a value that can't be
@@ -217,7 +227,8 @@ second one next to it.
 8. **The gpg.program wrapper runs the gpg git would have run** (`gpg_prompt/`): the last
    `gpg.program` / `gpg.openpgp.program` from any scope (system, global, repository, worktree)
    that isn't Trellis, else `gpg` on the PATH git passes on (on Windows that is Git for Windows'
-   bundled gpg or a Gpg4win install, whichever git itself would find). It keeps git's PATH (no
+   bundled gpg or a Gpg4win install, whichever git itself would find), read through the git in
+   `TRELLIS_GIT_PROGRAM` (the one that ran the wrapper). It keeps git's PATH (no
    `env_path::apply` in the wrapper), starts its gpg children with `CREATE_NO_WINDOW`, and feeds
    the passphrase on fd 0 (`--passphrase-fd 0`), never in argv, a file or the environment. It
    needs git 2.31 (`GIT_CONFIG_COUNT`) and GnuPG 2.1.12 (loopback allowed by default); with

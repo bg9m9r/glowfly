@@ -1,7 +1,8 @@
-//! Which git Trellis runs and what it can do. Checked once at startup: the program found on the
-//! PATH children get ([`crate::env_path`]) and its version, and from that the features that
-//! need a newer git than the one installed, which are then turned off with a reason instead of
-//! failing with git's usage text.
+//! Which git Trellis runs and what it can do. Checked at startup and again whenever another git
+//! is chosen in Preferences > Git: the program ([`crate::git_program`]: the chosen one, else the
+//! one found on the PATH children get) and its version, and from that the features that need a
+//! newer git than the one installed, which are then turned off with a reason instead of failing
+//! with git's usage text.
 
 use crate::gitcli;
 use std::path::{Path, PathBuf};
@@ -80,10 +81,12 @@ pub fn missing_for(version: Option<Version>) -> Vec<Feature> {
 /// What is known about the git Trellis runs.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GitInfo {
-    /// Where the `git` program is, when it was found on PATH.
+    /// Where the `git` program is: the chosen one, or the one found on PATH.
     pub path: Option<PathBuf>,
     /// Its version, when it ran and said.
     pub version: Option<Version>,
+    /// The program was chosen in Preferences > Git rather than found on PATH.
+    pub chosen: bool,
 }
 
 impl GitInfo {
@@ -103,8 +106,12 @@ impl GitInfo {
         let (major, minor) = full_support();
         let Some(v) = self.version else {
             return Some(match &self.path {
+                Some(p) if self.chosen => format!(
+                    "Trellis couldn't run git at {}, the git chosen in Preferences > Git. Choose another there.",
+                    crate::native_path::shown(p)
+                ),
                 Some(p) => format!("Trellis couldn't run git at {}. Commits, fetches and pushes need it.", crate::native_path::shown(p)),
-                None => "Trellis couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then restart Trellis."
+                None => "Trellis couldn't find git on your PATH. Commits, fetches and pushes need it: install git, then choose it in                          Preferences > Git or restart Trellis."
                     .to_owned(),
             });
         };
@@ -121,9 +128,14 @@ impl GitInfo {
     }
 }
 
-/// Which git runs (looked up on the PATH children get) and its version, asked in `cwd`.
+/// Which git runs (the one chosen in Preferences > Git, else the one looked up on the PATH
+/// children get) and its version, asked in `cwd`.
 pub fn detect(cwd: &Path) -> GitInfo {
-    GitInfo { path: crate::external_tools::find_on_path(Path::new("git")), version: gitcli::version(cwd) }
+    if let Some(p) = crate::git_program::chosen() {
+        let version = crate::git_program::probe(&p, cwd).ok();
+        return GitInfo { path: Some(p), version, chosen: true };
+    }
+    GitInfo { path: crate::external_tools::find_on_path(Path::new("git")), version: gitcli::version(cwd), chosen: false }
 }
 
 #[cfg(test)]
@@ -145,13 +157,17 @@ mod tests {
 
     #[test]
     fn the_banner_names_the_minimum_and_what_is_off() {
-        let old = GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 34, 1)) };
+        let old = GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 34, 1)), chosen: false };
         let b = old.banner().unwrap();
         assert!(b.contains("2.34.1") && b.contains("2.38 or newer") && b.contains("sparse checkout, predicting merge conflicts"), "{b}");
         assert!(!old.has(Feature::MergeTree) && old.has(Feature::Restore));
-        assert_eq!(GitInfo { path: None, version: Some((2, 45, 0)) }.banner(), None);
-        assert!(GitInfo::default().banner().unwrap().contains("couldn't find git"));
-        assert!(GitInfo { path: Some("/x/git".into()), version: None }.banner().unwrap().contains("couldn't run git"));
+        assert_eq!(GitInfo { path: None, version: Some((2, 45, 0)), chosen: false }.banner(), None);
+        let none = GitInfo::default().banner().unwrap();
+        assert!(none.contains("couldn't find git") && none.contains("Preferences > Git"), "{none}");
+        let broken = GitInfo { path: Some("/x/git".into()), version: None, chosen: false }.banner().unwrap();
+        assert!(broken.contains("couldn't run git") && !broken.contains("Preferences > Git"), "{broken}");
+        let chosen = GitInfo { path: Some("/x/git".into()), version: None, chosen: true }.banner().unwrap();
+        assert!(chosen.contains("couldn't run git") && chosen.contains("chosen in Preferences > Git"), "{chosen}");
         assert_eq!(Feature::SparseCheckout.needs_text(Some((2, 30, 1))), "Sparse checkout needs git 2.35 or newer (you have 2.30.1).");
     }
 

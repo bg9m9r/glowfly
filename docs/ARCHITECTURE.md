@@ -27,6 +27,7 @@ binary (package `trellis`).
 | `repo/` | The repository model on libgit2: loading history, refs and status; diffs; staging, line staging, revert, restore; conflicts and their resolution; blame through `git blame --porcelain`; working-tree files; submodules (and whether a new one can go in a folder: the index, the disk, .gitignore, a leftover stored module), worktrees, remotes, shallow-clone boundaries. |
 | `gitcli.rs` | The git CLI, for commands that honour hooks, credentials and signing. |
 | `git_version.rs`, `env_path.rs` | Which git runs (found on the PATH children get) and the features its version lacks; that PATH, which on macOS merges in the login shell's. |
+| `git_program.rs` | The git program every git child runs (chosen in Preferences > Git, else `git` from PATH), checking a program before it is used, and finding the installed gits. |
 | `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
 | `native_path.rs`, `volume.rs` | The spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`); whether a folder is on a network or virtual file system. |
 | `askpass/` | Credential prompts: classifying git's and ssh's questions, the helper protocol, the app's listener and the helper's client. |
@@ -179,7 +180,10 @@ binary (package `trellis`).
    data loaded once (the syntax definitions in `highlight/syntaxes.rs`) is not mutable state,
    and neither is the askpass environment in `gitcli` (`enable_askpass`): set once by the app
    shell at startup, never changed afterwards and never set in tests. The PATH children get
-   (`env_path`) is likewise computed once, on first use, and never changed.
+   (`env_path`) is likewise computed once, on first use, and never changed. The git program
+   (`git_program`) is the one setting that changes while Trellis runs: the shell sets it from
+   the saved setting at startup, and afterwards only the runner sets it, after checking the new
+   program (`GitEnvEffect::Use`); tests set it only to the git already on PATH.
 6. Each hosting provider implements `Forge`; the UI never matches on provider-specific types.
 7. `scripts/check.ps1` (fmt, clippy -D warnings, tests) must pass before committing.
 8. `trellis-core` returns `trellis_core::error::Error` (typed, via `thiserror`); decide behaviour

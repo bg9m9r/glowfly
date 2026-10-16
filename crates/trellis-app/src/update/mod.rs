@@ -133,6 +133,8 @@ mod forge_tests;
 #[cfg(test)]
 mod git_env_tests;
 #[cfg(test)]
+mod git_program_tests;
+#[cfg(test)]
 mod gitflow_finish_tests;
 #[cfg(test)]
 mod gitflow_panel_tests;

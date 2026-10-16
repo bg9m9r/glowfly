@@ -1,14 +1,43 @@
-//! The git Trellis runs, as `update` and the views see it: found and asked its version once at
-//! startup, then shown in Preferences and, while it is missing or too old, in a banner.
+//! The git Trellis runs, as `update` and the views see it: found and asked its version at
+//! startup and whenever another one is chosen, then shown in Preferences and, while it is missing
+//! or too old, in a banner. Also the Preferences > Git page's scan and check.
 
+use std::path::PathBuf;
+use trellis_core::git_program::Candidate;
 use trellis_core::git_version::{Feature, GitInfo};
 
 #[derive(Default)]
 pub struct GitState {
     /// None until the startup check answers.
     pub info: Option<GitInfo>,
-    /// The banner was closed (until Trellis restarts).
+    /// The banner was closed (until Trellis restarts or another git is chosen).
     pub banner_dismissed: bool,
+    pub page: GitPage,
+}
+
+/// Preferences > Git: the gits found and the one being checked.
+#[derive(Default)]
+pub struct GitPage {
+    /// Numbers each scan, so an older answer is dropped.
+    pub generation: u64,
+    /// None while a scan runs.
+    pub candidates: Option<Vec<Candidate>>,
+    pub checking: Option<Checking>,
+    /// The last choice that was refused: (its shown path, why).
+    pub refusal: Option<(String, String)>,
+}
+
+/// A chosen git being checked before it is used.
+pub struct Checking {
+    /// None: git from PATH.
+    pub program: Option<PathBuf>,
+}
+
+impl GitPage {
+    /// The git a bare `git` runs, when the scan found one.
+    pub fn path_git(&self) -> Option<&Candidate> {
+        self.candidates.as_ref()?.iter().find(|c| c.first_on_path)
+    }
 }
 
 impl GitState {

@@ -1,5 +1,7 @@
 //! Thin wrapper around the `git` executable, used for operations that should honour the
 //! user's git configuration, hooks, signing and credential helpers (commit, fetch, push, ...).
+//! The program run is [`crate::git_program::program`]: the git chosen in Preferences > Git, else
+//! `git` from the PATH children get.
 //!
 //! Once the app has started its credential-prompt listener ([`enable_askpass`]), every git
 //! child also gets Trellis as its `GIT_ASKPASS` / `SSH_ASKPASS` program (see
@@ -8,7 +10,7 @@
 //! passphrases are asked the same way. A command that must never prompt passes [`NO_PROMPTS`]
 //! as its environment, which also leaves `gpg.program` alone.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::OnceLock;
@@ -61,7 +63,11 @@ pub fn askpass_env() -> Vec<(&'static str, OsString)> {
 fn gpg_env(env: &[(&str, &str)]) -> Vec<(&'static str, OsString)> {
     use crate::gpg_prompt::env::{allows_prompts, vars};
     let inherited = std::env::var_os("GIT_CONFIG_COUNT");
-    ASKPASS.get().filter(|_| allows_prompts(env)).map(|a| vars(&a.exe, inherited.as_deref())).unwrap_or_default()
+    ASKPASS
+        .get()
+        .filter(|_| allows_prompts(env))
+        .map(|a| vars(&a.exe, inherited.as_deref(), &crate::git_program::program()))
+        .unwrap_or_default()
 }
 
 /// The `DISPLAY` to set for ssh children so OpenSSH before 8.4 uses the askpass helper: `:0`
@@ -139,10 +145,40 @@ pub fn output_bytes(cwd: &Path, args: &[String], env: &[(&str, &str)], timeout: 
     raw(cwd, args, "", env, timeout)
 }
 
-/// Runs git as [`output`] describes, returning stdout undecoded next to the result, whose
-/// `stdout` is left empty (stderr is decoded).
+/// [`output`] with `program` run instead of the chosen git (checking a program before it is
+/// chosen, [`crate::git_program::probe`]).
+pub fn output_with(
+    program: &OsStr,
+    cwd: &Path,
+    args: &[String],
+    input: &str,
+    env: &[(&str, &str)],
+    timeout: Option<Duration>,
+) -> GitOutput {
+    let (mut out, stdout) = raw_with(program, cwd, args, input, env, timeout);
+    out.stdout = String::from_utf8_lossy(&stdout).into_owned();
+    out
+}
+
+/// What [`GitOutput::stderr`] starts with when the program couldn't be started or waited for.
+pub(crate) const SPAWN_FAILED: &str = "failed to run git: ";
+
+/// Runs the chosen git as [`output`] describes, returning stdout undecoded next to the result,
+/// whose `stdout` is left empty (stderr is decoded).
 fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: Option<Duration>) -> (GitOutput, Vec<u8>) {
-    let mut cmd = Command::new("git");
+    raw_with(&crate::git_program::program(), cwd, args, input, env, timeout)
+}
+
+/// [`raw`] running `program`.
+fn raw_with(
+    program: &OsStr,
+    cwd: &Path,
+    args: &[String],
+    input: &str,
+    env: &[(&str, &str)],
+    timeout: Option<Duration>,
+) -> (GitOutput, Vec<u8>) {
+    let mut cmd = Command::new(program);
     cmd.args(args)
         .current_dir(cwd)
         .stdin(if input.is_empty() { Stdio::null() } else { Stdio::piped() })
@@ -171,7 +207,7 @@ fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: 
     }
     let mut child = match cmd.spawn() {
         Ok(c) => c,
-        Err(e) => return (GitOutput::failed(format!("failed to run git: {e}")), Vec::new()),
+        Err(e) => return (GitOutput::failed(format!("{SPAWN_FAILED}{e}")), Vec::new()),
     };
     // Feed stdin and drain both pipes on their own threads, so a large input or output can't
     // leave git and Trellis each waiting for the other.
@@ -187,7 +223,7 @@ fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: 
     let stderr = drain(child.stderr.take());
     let (status, timed_out) = match wait(&mut child, timeout) {
         Ok(s) => s,
-        Err(e) => return (GitOutput::failed(format!("failed to run git: {e}")), Vec::new()),
+        Err(e) => return (GitOutput::failed(format!("{SPAWN_FAILED}{e}")), Vec::new()),
     };
     // After a kill, a grandchild (a hook, ssh) may still hold the pipes; don't wait on it.
     let grace = timed_out.then_some(Duration::from_secs(1));

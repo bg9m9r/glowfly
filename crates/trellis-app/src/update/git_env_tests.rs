@@ -17,7 +17,7 @@ fn run(st: &mut AppState, m: GitEnvMsg) -> Vec<Effect> {
 }
 
 fn git_version(st: &mut AppState, v: (u32, u32, u32)) {
-    run(st, GitEnvMsg::Detected(GitInfo { path: Some("/usr/bin/git".into()), version: Some(v) }));
+    run(st, GitEnvMsg::Detected(GitInfo { path: Some("/usr/bin/git".into()), version: Some(v), chosen: false }));
 }
 
 #[test]

@@ -111,6 +111,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "gpg_prompts_in_app",
     // Preferences > Keyboard is not one of the pages a profile keeps.
     "keybindings",
+    // The git program belongs to the machine, not to whoever is committing.
+    "git_program",
 ];
 
 /// What a profile switch changed in the settings in use.

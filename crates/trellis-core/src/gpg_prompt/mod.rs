@@ -51,6 +51,10 @@ use std::ffi::{OsStr, OsString};
 /// (`nested`), so a `gpg.program` that leads back to Trellis stops instead of looping.
 pub const ENV_WRAPPER: &str = "TRELLIS_GPG_WRAPPER";
 
+/// The git program Trellis ran (the one chosen in Preferences > Git, or `git`), so the wrapper
+/// reads `gpg.program` with the same git that started it.
+pub const ENV_GIT: &str = "TRELLIS_GIT_PROGRAM";
+
 /// How many passphrases are tried before git is told signing failed.
 pub const MAX_TRIES: usize = 3;
 

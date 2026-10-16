@@ -287,6 +287,9 @@ pub struct Settings {
     /// ignores what it can't use.
     #[serde(default)]
     pub keybindings: BTreeMap<String, Vec<String>>,
+    /// The git program Trellis runs (Preferences > Git): an absolute path, or None for git from
+    /// PATH.
+    pub git_program: Option<String>,
 }
 
 impl Default for Settings {
@@ -348,6 +351,7 @@ impl Default for Settings {
             use_ssh_agent: false,
             gpg_prompts_in_app: true,
             keybindings: BTreeMap::new(),
+            git_program: None,
         }
     }
 }
