@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 14:07 · **Worktrees**: WIP rows in the graph for other worktrees with uncommitted changes (counts, tooltip, click to open; UI Customization toggle) (`c6dae35`)
 - 2026-10-16 14:06 · **Git LFS**: Auto-fetch also downloads the checked-out commit's LFS files (quiet, never prompts, behind alert kept); restoring from a commit checks filtered (LFS) files with git before overwriting (`b640259`)
 - 2026-10-16 11:56 · **CI / build status**: Build status for GitLab pipelines, Azure DevOps build policies and statuses and Bitbucket Cloud and Data Center build statuses on pull requests, markers for branch tips on LOCAL and REMOTE rows and graph ref labels (throttled, cached per commit), and Open failed build / Open build page in the pull request menu (`cc9fd29`)
 - 2026-10-16 11:25 · **CI / build status**: Check status on GitHub and GitHub Enterprise pull requests: check runs and commit statuses read with the reviews, a passed/failed/pending marker on PULL REQUESTS rows and a "Checks: N of M passed" tooltip line (`70961be`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 03:00 · **Git Flow**: Git Flow panel in place of the graph, a GIT FLOW section in the left panel grouping flow branches by kind, and Start Git Flow feature/release/hotfix from an issue in the issue menu and palette (`8f751ea`)
 - 2026-10-16 00:41 · **Diff viewer upgrade**: Word wrap toggle in the diff header and Preferences > Editor, with variable-height rows (`bb11923`)
 - 2026-10-16 00:37 · **Repository trust**: git jobs started in an untrusted repository (pull, push, commit and its hooks, undo, …) wait for the trust prompt, which names the operation and offers Trust and run or Cancel (`0c57fb6`)
-- 2026-10-15 22:15 · **Notifications**: "N commits behind" toast with a Pull button when a background fetch leaves the checked-out branch further behind its upstream; toasts can carry an action button; Behind alerts setting under UI Customization (`90241d7`)
 
 ---
 
