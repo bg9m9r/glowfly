@@ -178,6 +178,22 @@ fn command_line_opens_app_bundles_on_macos() {
 }
 
 #[test]
+fn a_terminal_keeps_its_console_handles() {
+    // Nulled handles would leave a console shell reading NUL, so cmd would quit at once.
+    let t = console_setup(true, false);
+    assert!(!t.null_stdio);
+    assert_eq!(t.creation_flags, CREATE_NEW_CONSOLE);
+    // A batch-file terminal still gets a window of its own.
+    assert_eq!(console_setup(true, true), t);
+}
+
+#[test]
+fn an_editor_gets_no_input_output_or_wrapper_window() {
+    assert_eq!(console_setup(false, false), ConsoleSetup { null_stdio: true, creation_flags: 0 });
+    assert_eq!(console_setup(false, true), ConsoleSetup { null_stdio: true, creation_flags: CREATE_NO_WINDOW });
+}
+
+#[test]
 fn spawn_reports_a_missing_program() {
     let l = Launch {
         program: PathBuf::from(format!("trellis-no-such-program-{}", std::process::id())),

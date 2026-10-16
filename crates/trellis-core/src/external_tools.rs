@@ -170,7 +170,8 @@ pub struct Launch {
     pub program: PathBuf,
     pub args: Vec<OsString>,
     pub cwd: PathBuf,
-    /// A terminal: always started normally, so a console program gets its own window.
+    /// A terminal: started in a console window of its own, keeping that console's input and
+    /// output, so a console program (cmd, PowerShell, a shell) is usable.
     pub own_console: bool,
 }
 
@@ -189,8 +190,34 @@ pub(crate) fn command_line(resolved: &Path, args: &[OsString], macos: bool) -> (
     (resolved.to_owned(), args.to_vec())
 }
 
-/// Starts `l` without waiting for it: no input or output, reaped on a background thread.
-/// `Error::NotFound` when the program can't be found.
+/// How a launch is attached to consoles.
+#[derive(Debug, PartialEq)]
+pub(crate) struct ConsoleSetup {
+    /// Standard input, output and error go to the null device.
+    pub null_stdio: bool,
+    /// Windows process-creation flags.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub creation_flags: u32,
+}
+
+const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// The console setup for a launch. An editor gets no input or output, and a batch-file wrapper
+/// (such as an editor's command-line script) gets no window, which would only flash. A terminal
+/// keeps the inherited handles and, on Windows, gets a new console: Windows then gives it that
+/// console's handles. Nulled handles would stay pointed at NUL, so cmd would read end of input
+/// and quit at once, and PowerShell would print nowhere.
+pub(crate) fn console_setup(own_console: bool, batch_file: bool) -> ConsoleSetup {
+    match (own_console, batch_file) {
+        (true, _) => ConsoleSetup { null_stdio: false, creation_flags: CREATE_NEW_CONSOLE },
+        (false, true) => ConsoleSetup { null_stdio: true, creation_flags: CREATE_NO_WINDOW },
+        (false, false) => ConsoleSetup { null_stdio: true, creation_flags: 0 },
+    }
+}
+
+/// Starts `l` without waiting for it, reaped on a background thread; see `console_setup` for
+/// its input and output. `Error::NotFound` when the program can't be found.
 pub fn spawn(l: &Launch) -> Result<()> {
     let macos = cfg!(target_os = "macos");
     let exists = |p: &Path| p.is_file() || (macos && has_extension(p, "app") && p.is_dir());
@@ -200,13 +227,16 @@ pub fn spawn(l: &Launch) -> Result<()> {
         .ok_or_else(|| Error::NotFound(l.program.display().to_string()))?;
     let (program, args) = command_line(&resolved, &l.args, macos);
     let mut cmd = Command::new(&program);
-    cmd.args(&args).current_dir(&l.cwd).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    cmd.args(&args).current_dir(&l.cwd);
+    let batch = cfg!(windows) && (has_extension(&resolved, "cmd") || has_extension(&resolved, "bat"));
+    let setup = console_setup(l.own_console, batch);
+    if setup.null_stdio {
+        cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    }
     #[cfg(windows)]
-    if !l.own_console && (has_extension(&resolved, "cmd") || has_extension(&resolved, "bat")) {
-        // A batch-file wrapper (such as an editor's command-line script) would flash a console.
+    {
         use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.creation_flags(setup.creation_flags);
     }
     let mut child = cmd.spawn().map_err(|e| match e.kind() {
         std::io::ErrorKind::NotFound => Error::NotFound(l.program.display().to_string()),
