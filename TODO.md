@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 14:06 · **Git LFS**: Auto-fetch also downloads the checked-out commit's LFS files (quiet, never prompts, behind alert kept); restoring from a commit checks filtered (LFS) files with git before overwriting (`b640259`)
 - 2026-10-16 11:56 · **CI / build status**: Build status for GitLab pipelines, Azure DevOps build policies and statuses and Bitbucket Cloud and Data Center build statuses on pull requests, markers for branch tips on LOCAL and REMOTE rows and graph ref labels (throttled, cached per commit), and Open failed build / Open build page in the pull request menu (`cc9fd29`)
 - 2026-10-16 11:25 · **CI / build status**: Check status on GitHub and GitHub Enterprise pull requests: check runs and commit statuses read with the reviews, a passed/failed/pending marker on PULL REQUESTS rows and a "Checks: N of M passed" tooltip line (`70961be`)
 - 2026-10-16 10:40 · **GPG passphrase prompts**: OpenPGP signing passphrases asked in Trellis's own dialog: Trellis runs as git's gpg.program for foreground jobs, signs with the user's gpg through loopback pinentry (asking again after a wrong passphrase), and falls back to GnuPG's own window when it can't or when Preferences > Commit Signing says so (`e55ae02`)
@@ -35,8 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 00:41 · **Diff viewer upgrade**: Word wrap toggle in the diff header and Preferences > Editor, with variable-height rows (`bb11923`)
 - 2026-10-16 00:37 · **Repository trust**: git jobs started in an untrusted repository (pull, push, commit and its hooks, undo, …) wait for the trust prompt, which names the operation and offers Trust and run or Cancel (`0c57fb6`)
 - 2026-10-15 22:15 · **Notifications**: "N commits behind" toast with a Pull button when a background fetch leaves the checked-out branch further behind its upstream; toasts can carry an action button; Behind alerts setting under UI Customization (`90241d7`)
-- 2026-10-15 19:55 · **Conflict prediction**: Dry-run merge of the checked-out branch against its upstream or default branch with git merge-tree after loads and fetches: toolbar warning with the conflicting files, Merge/Rebase from its popover, and on-demand checks from the branch menus (`62f321b`)
-- 2026-10-15 19:44 · **External tools**: Preferences > External Tools: choose an editor (open a file from file rows, or the repository from the palette) with argument templates, and a custom terminal for Open in terminal (`e7ea38a`)
 
 ---
 
@@ -87,7 +86,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | *Repo:* Commit | ✘ | Commit template, push after commit, skip hooks per repo |
 | *Repo:* Agents | — | Out of scope |
 | *Repo:* Conflict Prevention | ✘ (on/off is under General) | Per-repo enable and target branch rules (P1 Conflict prediction) |
-| *Repo:* LFS | ◐ Git LFS page, Track in Git LFS on file rows | LFS-aware auto-fetch (P1 Git LFS) |
+| *Repo:* LFS | ✔ Git LFS page, Track in Git LFS on file rows, LFS-aware auto-fetch | — |
 | *Repo:* Sparse Checkout | ◐ Sparse Checkout page | Sparse clone, indicators (P1 Sparse checkout) |
 | *Repo:* Issue Tracker | ✔ | — |
 | *Repo:* Team | — | Out of scope (cloud teams) |
@@ -342,7 +341,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     header menu or a missing row
   - [ ] Show worktree WIP nodes in the graph: a WIP row per worktree with uncommitted changes, at
     its HEAD commit
-- [ ] **Git LFS**
+- [x] **Git LFS**
   Initialize, track patterns (file, extension, folder), fetch/pull/push/prune, view
   `.gitattributes`, and LFS-aware auto-fetch.
   - [x] Preferences > Git LFS (repo-specific): status, Initialize, tracked patterns with Untrack
@@ -350,9 +349,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
     'Initialize Git LFS' and 'Configure Git LFS…'
   - [x] Track from a file's context menu: that one file (`git lfs track --filename`), all files
     with its extension, or all files in its folder
-  - [ ] LFS-aware auto-fetch: fetch LFS objects for the checked-out commit after a background
+  - [x] LFS-aware auto-fetch: fetch LFS objects for the checked-out commit after a background
     fetch, and say so on the auto-fetch preference
-  - [ ] Honour smudge filters when restoring a file from a commit, by writing through
+  - [x] Honour smudge filters when restoring a file from a commit, by writing through
     `git restore --source` so LFS files aren't left as pointers (the same item as under File
     actions > Restore)
 - [x] **Git Flow**
@@ -838,7 +837,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Choose which side to restore from comparison rows for a file the newer commit modified
 - Re-check which comparison and commit-detail paths are on disk after a status refresh (Open /
   Show can go stale until the commits are reselected)
-- Honour smudge filters when restoring (tracked as core under Git LFS)
 - Explain when a restored or opened path is outside a sparse checkout
 - Restore, Open and Show buttons in the diff header for two-commit comparisons (restoring the
   newer commit's version, as the comparison rows do)
@@ -1015,6 +1013,17 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Show LFS pointer files and LFS status in file lists and diffs (for example "stored in LFS"
   instead of the pointer text)
 - Check for a minimum git and git-lfs version and say clearly when either is too old
+- After auto-fetch, also download the LFS files of the checked-out branch's upstream, so a later
+  pull doesn't wait on them
+- Detect LFS use from nested .gitattributes files too when deciding whether auto-fetch downloads
+  LFS files
+- A per-repository switch to leave LFS downloads out of auto-fetch
+- Show a failed background LFS download outside the log (for example a status-bar note with Retry)
+- Say on the Git LFS page that auto-fetch downloads the checked-out commit's LFS files
+- Restore from a commit: compare skip-worktree or assume-unchanged converted (LFS) files by their
+  cleaned contents instead of raw bytes
+- Restore from a commit: explain a failed LFS smudge (object not on the remote, or offline) and
+  offer LFS fetch
 
 ### Git Flow
 
