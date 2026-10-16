@@ -10,6 +10,7 @@ use crate::state::tags::{RemoteTagJob, RemoteTagOp, TagForm, job_label, tag_prob
 use crate::state::{AppState, Modal};
 use crate::tag::TagMsg;
 use trellis_core::tag_ops::{delete_remote_tag_cmd, is_valid_tag_name, push_tag_cmd, tag_cmd};
+use trellis_core::undo::UndoKind;
 
 pub(super) fn handle(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
     match msg {
@@ -48,6 +49,8 @@ fn create(st: &mut AppState, at: &str, name: &str, message: &str, push: Option<S
     if ops::busy(st, false) {
         return;
     }
+    // Undo deletes a local tag; one also pushed would stay on the remote, so that isn't recorded.
+    let record = push.is_none().then(|| UndoKind::CreateTag(name.into()));
     let mut cmds = vec![tag_cmd(name, at, message)];
     let label = match push {
         Some(r) => {
@@ -56,9 +59,8 @@ fn create(st: &mut AppState, at: &str, name: &str, message: &str, push: Option<S
         }
         None => "Create tag".to_owned(),
     };
-    // Tags aren't undoable, so nothing is recorded.
     let before = fx.len();
-    ops::start_job(st, JobSpec::new(label, cmds), fx);
+    ops::start_job(st, JobSpec { record, ..JobSpec::new(label, cmds) }, fx);
     if fx.len() > before && matches!(st.modal, Some(Modal::NewTag(_))) {
         st.modal = None;
     }

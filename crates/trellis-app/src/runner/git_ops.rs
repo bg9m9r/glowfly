@@ -1,12 +1,12 @@
 //! Local git operations run by the runner: staging and discarding ops, undo and redo, and
 //! running a list of git commands.
 
-use crate::effect::{LocalOp, UndoResult};
+use crate::effect::{LocalOp, UndoOpts, UndoResult};
 use crate::msg::{JobMsg, Msg};
 use std::path::Path;
 use trellis_core::gitcli;
 use trellis_core::repo;
-use trellis_core::undo::{self, Action, Plan};
+use trellis_core::undo::{self, Action, Plan, Refusal};
 
 /// Runs a local op. Discards save the file's contents first and return the undo action.
 pub(super) fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<Option<Action>> {
@@ -33,20 +33,37 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Resu
     }
 }
 
-/// Checks that `action` still applies, then runs the git commands that undo or redo it.
-pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
-    let failed = |output: String| Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Failed { redo }) });
-    match undo::plan(cwd, &action, redo) {
+/// Checks that `action` still applies, then runs the git commands that undo or redo it. With
+/// `opts.stash_first`, local changes are stashed before anything is checked; the stash's output
+/// leads every result.
+pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool, opts: UndoOpts) -> Msg {
+    let mut stashed = String::new();
+    if opts.stash_first {
+        let (ok, output) = run_git(cwd, &[undo::stash_first_command()], None, true);
+        if !ok {
+            return Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Failed { redo }) });
+        }
+        stashed = format!(
+            "{output}
+Your changes were stashed as \"{}\".
+",
+            undo::UNDO_STASH_MESSAGE
+        );
+    }
+    let done = |ok: bool, output: String, undo: UndoResult| {
+        Msg::Job(JobMsg::JobDone { ok, output: format!("{stashed}{output}"), undo: Some(undo) })
+    };
+    let failed = |output: String| done(false, output, UndoResult::Failed { redo });
+    match undo::plan_with(cwd, &action, redo, undo::Options { delete_created: opts.delete_created }) {
         Err(e) => failed(e.to_string()),
-        Ok(Plan::Refuse(r)) => Msg::Job(JobMsg::JobDone {
-            ok: false,
-            output: r.message().into(),
-            undo: Some(UndoResult::Refused { redo, stale: r.is_stale() }),
-        }),
+        Ok(Plan::Refuse(r)) => {
+            let offer_stash = matches!(r, Refusal::Dirty(_)) && action.offers_stash(redo) && !opts.stash_first;
+            done(false, r.message().into(), UndoResult::Refused { redo, stale: r.is_stale(), offer_stash })
+        }
         Ok(Plan::Write { path, content }) => match undo::write_saved(cwd, &path, content) {
             Ok(()) => {
                 let output = action.wrote(redo);
-                Msg::Job(JobMsg::JobDone { ok: true, output, undo: Some(UndoResult::Done { redo, before: action.clone(), after: action }) })
+                done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) })
             }
             Err(e) => failed(format!("Could not write {path}: {e}")),
         },
@@ -56,7 +73,7 @@ pub(super) fn undo_redo(cwd: &Path, action: Action, redo: bool) -> Msg {
                 return failed(output);
             }
             let after = if redo { undo::redone(cwd, action.clone()).unwrap_or_else(|_| action.clone()) } else { action.clone() };
-            Msg::Job(JobMsg::JobDone { ok, output, undo: Some(UndoResult::Done { redo, before: action, after }) })
+            done(ok, output, UndoResult::Done { redo, before: action, after: Box::new(after) })
         }
     }
 }

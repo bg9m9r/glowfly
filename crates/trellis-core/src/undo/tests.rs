@@ -6,7 +6,7 @@ use git2::{BranchType, Repository};
 use std::path::Path;
 
 /// Runs `git <a>` as an undoable operation and returns what it recorded.
-fn record(dir: &Path, a: &[&str]) -> Option<Action> {
+pub(super) fn record(dir: &Path, a: &[&str]) -> Option<Action> {
     let argv = args(a);
     let kind = UndoKind::classify(&argv).expect("an undoable command");
     let b = before(dir, &kind).unwrap();
@@ -14,7 +14,7 @@ fn record(dir: &Path, a: &[&str]) -> Option<Action> {
     after(dir, kind, b).unwrap()
 }
 
-fn run_plan(dir: &Path, plan: Plan) {
+pub(super) fn run_plan(dir: &Path, plan: Plan) {
     let Plan::Run(cmds) = plan else { panic!("expected commands, got {plan:?}") };
     for c in cmds {
         let (ok, out) = run(dir, &c);
@@ -22,32 +22,32 @@ fn run_plan(dir: &Path, plan: Plan) {
     }
 }
 
-fn head_oid(dir: &Path) -> Oid {
+pub(super) fn head_oid(dir: &Path) -> Oid {
     Repository::open(dir).unwrap().head().unwrap().target().unwrap()
 }
 
-fn commit(dir: &Path, file: &str, text: &str, msg: &str) -> Oid {
+pub(super) fn commit(dir: &Path, file: &str, text: &str, msg: &str) -> Oid {
     write(dir, file, text);
     git(dir, &["add", "."]);
     git(dir, &["commit", "-q", "-m", msg]);
     head_oid(dir)
 }
 
-fn refused(plan: Plan) -> Refusal {
+pub(super) fn refused(plan: Plan) -> Refusal {
     match plan {
         Plan::Refuse(r) => r,
         other => panic!("expected a refusal, got {other:?}"),
     }
 }
 
-fn cmds(list: &[&[&str]]) -> Plan {
+pub(super) fn cmds(list: &[&[&str]]) -> Plan {
     Plan::Run(list.iter().map(|a| args(a)).collect())
 }
 
 #[test]
 fn describe_names_the_action() {
     let o = Oid::from_str("1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b").unwrap();
-    let checkout = |to| Action::Checkout { from: HeadPos::Branch("main".into()), to };
+    let checkout = |to| Action::Checkout { from: HeadPos::Branch("main".into()), to, created: None };
     assert_eq!(checkout(HeadPos::Branch("feature".into())).describe(), "checkout of feature");
     assert_eq!(checkout(HeadPos::Detached(o)).describe(), "checkout of 1a2b3c4");
     let commit = |message: &str, amend| Action::Commit { branch: None, from: o, to: o, message: message.into(), amend };
@@ -58,6 +58,37 @@ fn describe_names_the_action() {
     assert_eq!(Action::Reset { mode: ResetMode::Mixed, branch: None, from: o, to: o, stash: None }.describe(), "mixed reset to 1a2b3c4");
     assert_eq!(Action::DeleteBranch { name: "feature".into(), oid: o, upstream: None }.describe(), "delete of branch feature");
     assert_eq!(Action::DiscardAll { stash: o, head: o }.describe(), "Discard all changes");
+    let moved = |op, detail: Option<&str>| Action::Moved { op, detail: detail.map(Into::into), branch: None, from: o, to: o };
+    assert_eq!(moved(MoveOp::Merge, Some("refs/remotes/origin/x")).describe(), "merge of origin/x");
+    assert_eq!(moved(MoveOp::Merge, Some("feature")).describe(), "merge of feature");
+    assert_eq!(moved(MoveOp::Pull, None).describe(), "pull");
+    assert_eq!(moved(MoveOp::Rebase, Some("main")).describe(), "rebase onto main");
+    assert_eq!(moved(MoveOp::CherryPick, Some("3 commits")).describe(), "cherry-pick of 3 commits");
+    assert_eq!(moved(MoveOp::Revert, Some("1a2b3c4")).describe(), "revert of 1a2b3c4");
+    assert_eq!(Action::CreateBranch { name: "x".into(), oid: o, upstream: None }.describe(), "creation of branch x");
+    assert_eq!(Action::CreateTag { name: "v1.0".into(), oid: o }.describe(), "creation of tag v1.0");
+    let created = Some(Created { name: "x".into(), oid: o, upstream: None });
+    let new_branch = Action::Checkout { from: HeadPos::Branch("main".into()), to: HeadPos::Branch("x".into()), created };
+    assert_eq!(new_branch.describe(), "checkout of new branch x");
+    let push = Action::StashPush { stash: o, head: o, message: "On main: wip".into(), replay: None };
+    assert_eq!(push.describe(), "stash 'On main: wip'");
+    let apply = |pop| Action::StashApply { pop, stash: o, head: o, message: long.clone(), left: Changes(vec![]) };
+    assert_eq!(apply(true).describe(), format!("pop of stash '{}…'", "x".repeat(50)));
+    assert_eq!(apply(false).describe(), format!("apply of stash '{}…'", "x".repeat(50)));
+}
+
+#[test]
+fn only_hard_reset_and_discard_all_offer_to_stash() {
+    let o = Oid::zero();
+    let reset = |mode| Action::Reset { mode, branch: None, from: o, to: o, stash: None };
+    assert!(reset(ResetMode::Hard).offers_stash(false));
+    assert!(!reset(ResetMode::Hard).offers_stash(true), "redoing a hard reset stashes by itself");
+    assert!(!reset(ResetMode::Mixed).offers_stash(false));
+    assert!(Action::DiscardAll { stash: o, head: o }.offers_stash(false));
+    assert!(!Action::DiscardAll { stash: o, head: o }.offers_stash(true));
+    assert!(!Action::Moved { op: MoveOp::Merge, detail: None, branch: None, from: o, to: o }.offers_stash(false));
+    assert_eq!(stash_first_command(), args(&["stash", "push", "-u", "-m", UNDO_STASH_MESSAGE]));
+    assert_eq!(UNDO_STASH_MESSAGE, "Trellis: changes before undo");
 }
 
 #[test]
@@ -103,11 +134,11 @@ fn checkout_undo_branch_and_detached() {
     let base = commit(&dir, "a.txt", "one\n", "base");
     git(&dir, &["branch", "feature"]);
     let to_feature = record(&dir, &["checkout", "feature"]).expect("recorded");
-    assert_eq!(to_feature, Action::Checkout { from: HeadPos::Branch("main".into()), to: HeadPos::Branch("feature".into()) });
+    assert_eq!(to_feature, Action::Checkout { from: HeadPos::Branch("main".into()), to: HeadPos::Branch("feature".into()), created: None });
     assert_eq!(plan(&dir, &to_feature, false).unwrap(), cmds(&[&["checkout", "main", "--"]]));
 
     let detach = record(&dir, &["checkout", &base.to_string()]).expect("recorded");
-    assert_eq!(detach, Action::Checkout { from: HeadPos::Branch("feature".into()), to: HeadPos::Detached(base) });
+    assert_eq!(detach, Action::Checkout { from: HeadPos::Branch("feature".into()), to: HeadPos::Detached(base), created: None });
     assert_eq!(plan(&dir, &detach, false).unwrap(), cmds(&[&["checkout", "feature", "--"]]));
 
     git(&dir, &["branch", "-D", "feature"]);
@@ -245,7 +276,7 @@ fn busy_repository_refuses() {
 
     let actions = [
         Action::Commit { branch: Some("main".into()), from: base, to: ours, message: "ours".into(), amend: false },
-        Action::Checkout { from: HeadPos::Branch("other".into()), to: HeadPos::Branch("main".into()) },
+        Action::Checkout { from: HeadPos::Branch("other".into()), to: HeadPos::Branch("main".into()), created: None },
         Action::DiscardAll { stash: base, head: ours },
     ];
     for a in &actions {

@@ -73,6 +73,7 @@ mod toolbar;
 mod tour;
 mod trust_chip;
 mod trust_dialog;
+mod undo_dialog;
 mod update_notice;
 mod welcome;
 mod welcome_steps;
@@ -217,6 +218,8 @@ mod snapshot_tests_tools;
 mod snapshot_tests_trello;
 #[cfg(test)]
 mod snapshot_tests_trust;
+#[cfg(test)]
+mod snapshot_tests_undo;
 #[cfg(test)]
 mod snapshot_tests_updates;
 #[cfg(test)]

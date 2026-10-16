@@ -96,6 +96,10 @@ fn git_jobs_record_their_kind() {
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(UndoKind::Commit { amend: false }), .. }]), "{fx:?}");
     st.job = None;
     let fx = update(&mut st, Msg::git("Merge", &["merge", "x"]), Instant::now());
+    let merge = UndoKind::Move { op: trellis_core::undo::MoveOp::Merge, detail: Some("x".into()) };
+    assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == merge), "{fx:?}");
+    st.job = None;
+    let fx = update(&mut st, Msg::git("Rename branch", &["branch", "-m", "x", "y"]), Instant::now());
     assert!(matches!(&fx[..], [Effect::RunGit { record: None, .. }]), "{fx:?}");
     st.job = None;
     let fx = update(&mut st, Msg::git("Checkout", &["checkout", "x"]), Instant::now());
@@ -113,11 +117,12 @@ fn unrecorded_job_blocks_and_fetch_keeps_history() {
     done(&mut st, false);
     assert_eq!(st.undo.undo.len(), 1, "a failed job changes nothing");
 
-    update(&mut st, Msg::git("Merge", &["merge", "x"]), Instant::now());
+    update(&mut st, Msg::git("Rename branch", &["branch", "-m", "main", "trunk"]), Instant::now());
     done(&mut st, true);
     assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty());
-    assert_eq!(st.undo.blocked.as_deref(), Some("Merge"));
-    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Can't undo Merge"), "{}", st.undo.undo_tooltip(&st.keymap));
+    assert_eq!(st.undo.blocked.as_deref(), Some("Rename branch"));
+    let tip = st.undo.undo_tooltip(&st.keymap);
+    assert!(tip.starts_with("Can't undo Rename branch"), "{tip}");
 
     let fx = update(&mut st, Msg::Job(JobMsg::Undo), Instant::now());
     assert!(fx.is_empty());

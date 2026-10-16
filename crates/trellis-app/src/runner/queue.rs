@@ -404,6 +404,7 @@ mod tests {
                 cwd: w.clone(),
                 action: trellis_core::undo::Action::DiscardAll { stash: git2::Oid::zero(), head: git2::Oid::zero() },
                 redo: false,
+                opts: Default::default(),
             },
             Effect::InteractiveRebase {
                 cwd: w.clone(),

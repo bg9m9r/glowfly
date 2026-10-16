@@ -297,12 +297,14 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 return Some(Msg::Job(JobMsg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) }));
             }
             let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
+            // A pop onto local changes mixes them with the stash's, so it can't be undone.
+            let irreversible = before.as_ref().is_some_and(undo::irreversible);
             let (ok, output) = git_ops::run_git(&cwd, &cmds, write_file, prompts);
             let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
-            let undo = record.map(|k| UndoResult::Recorded(recorded(k)));
+            let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo }))
         }
-        Effect::UndoRedo { cwd, action, redo } => Some(git_ops::undo_redo(&cwd, action, redo)),
+        Effect::UndoRedo { cwd, action, redo, opts } => Some(git_ops::undo_redo(&cwd, action, redo, opts)),
         Effect::LoadRebasePlan { workdir, base, generation } => Some(rebase::load_plan(&workdir, &base, generation)),
         Effect::InteractiveRebase { cwd, request } => Some(rebase::start(&cwd, &request)),
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {

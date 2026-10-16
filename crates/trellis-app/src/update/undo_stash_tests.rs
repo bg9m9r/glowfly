@@ -1,0 +1,160 @@
+//! Headless tests for undoing stashes and pops, and for the "Stash changes and undo" offer when
+//! local changes block undoing a hard reset or Discard all.
+
+use super::tests::{drive, git, scratch_repo, state};
+use super::update;
+use crate::effect::{Effect, UndoResult};
+use crate::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
+use crate::runner;
+use crate::state::AppState;
+use crate::state::palette::StashAction;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
+use trellis_core::undo::{Action, DISCARD_STASH_MESSAGE, UNDO_STASH_MESSAGE, UndoKind};
+
+fn read(dir: &Path, f: &str) -> String {
+    std::fs::read_to_string(dir.join(f)).unwrap().replace("\r\n", "\n")
+}
+
+fn dirty(st: &AppState) -> bool {
+    st.snap.as_ref().unwrap().is_dirty()
+}
+
+fn head_summary(st: &AppState) -> String {
+    let snap = st.snap.as_ref().unwrap();
+    snap.commits[snap.row_of[&snap.head_oid.unwrap()]].summary.clone()
+}
+
+fn opened(name: &str) -> (AppState, PathBuf) {
+    let dir = scratch_repo(name);
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    (st, dir)
+}
+
+/// Clicks the newest toast's action button.
+fn click_toast_action(st: &mut AppState) {
+    let id = st.toasts.last().unwrap().id;
+    drive(st, Msg::ToastAction(id));
+}
+
+fn cleanup(dirs: &[&Path]) {
+    for d in dirs {
+        let _ = std::fs::remove_dir_all(d);
+    }
+}
+
+#[test]
+fn toolbar_stash_undo_and_redo() {
+    let (mut st, dir) = opened("undo-stash-toolbar");
+    drive(&mut st, Msg::git("Stash", &["stash", "push", "-u"]));
+    assert!(!dirty(&st));
+    assert!(matches!(st.undo.undo.last(), Some(Action::StashPush { .. })), "{:?}", st.undo.undo);
+    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Undo stash 'WIP on main"));
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(read(&dir, "a.txt"), "one\ntwo\n");
+    assert!(st.snap.as_ref().unwrap().stashes.is_empty());
+    drive(&mut st, Msg::Job(JobMsg::Redo));
+    assert!(!dirty(&st));
+    let snap = st.snap.as_ref().unwrap();
+    assert!(matches!(st.undo.undo.last(), Some(Action::StashPush { stash, .. }) if *stash == snap.stashes[0].oid));
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
+    let (mut st, dir) = opened("undo-stash-pop");
+    git(&dir, &["stash", "push", "-q", "-m", "wip"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    let oid = st.snap.as_ref().unwrap().stashes[0].oid;
+    let pop = Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid });
+    let fx = update(&mut st, pop, Instant::now());
+    let want = UndoKind::StashApply { pop: true, rev: Some("stash@{0}".into()) };
+    assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == want), "start_job recognises it: {fx:?}");
+    super::tests::finish(&mut st, fx);
+    assert!(dirty(&st));
+    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Undo pop of stash 'On main: wip'"));
+
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    let snap = st.snap.as_ref().unwrap();
+    assert!(!snap.is_dirty());
+    assert_eq!((snap.stashes.len(), snap.stashes[0].oid), (1, oid), "the stash is back");
+
+    // Onto local changes: the pop can't be told apart from them.
+    std::fs::write(dir.join("b.txt"), "local\n").unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid }));
+    assert!(st.undo.undo.is_empty());
+    let (_, why) = st.undo.undo_entry(true);
+    assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Pop stash")), "{why:?}");
+    cleanup(&[&dir]);
+}
+
+/// A repository with "Second line" committed on "first", open.
+fn committed(name: &str) -> (AppState, PathBuf) {
+    let (mut st, dir) = opened(name);
+    drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
+    st.draft.summary = "Second line".into();
+    drive(&mut st, Msg::Commit(CommitMsg::Commit));
+    (st, dir)
+}
+
+fn has_undo_stash(st: &AppState) -> bool {
+    st.snap.as_ref().unwrap().stashes.iter().any(|s| s.message.ends_with(UNDO_STASH_MESSAGE))
+}
+
+#[test]
+fn stash_changes_and_undo_a_hard_reset() {
+    let (mut st, dir) = committed("undo-stash-offer-reset");
+    let first = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "first").unwrap().oid.to_string();
+    std::fs::write(dir.join("a.txt"), "before the reset\n").unwrap();
+    drive(&mut st, Msg::git("Reset (hard)", &["reset", "--hard", &first]));
+    std::fs::write(dir.join("a.txt"), "after the reset\n").unwrap();
+
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    let t = st.toasts.last().unwrap();
+    assert!(!t.ok && t.text.contains("Commit or stash"), "{}", t.text);
+    assert_eq!(t.action.as_ref().map(|a| a.label.as_str()), Some("Stash changes and undo"));
+    click_toast_action(&mut st);
+    assert_eq!(head_summary(&st), "Second line");
+    assert_eq!(read(&dir, "a.txt"), "before the reset\n");
+    assert!(has_undo_stash(&st));
+    assert!(st.toasts.last().is_some_and(|t| t.ok && t.text.starts_with("Stash changes and undo hard reset")));
+    assert!(st.log.iter().any(|l| l.text.contains("Your changes were stashed as \"Trellis: changes before undo\".")));
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn stash_changes_and_undo_discard_all() {
+    let (mut st, dir) = opened("undo-stash-offer-discard");
+    drive(&mut st, Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]));
+    std::fs::write(dir.join("b.txt"), "new\n").unwrap();
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(st.toasts.last().unwrap().action.as_ref().map(|a| a.label.as_str()), Some("Stash changes and undo"));
+    click_toast_action(&mut st);
+    assert_eq!(read(&dir, "a.txt"), "one\ntwo\n");
+    assert!(!dir.join("b.txt").exists(), "the new file went into the stash");
+    assert!(has_undo_stash(&st));
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn refusal_for_an_inactive_tab_offers_nothing() {
+    let (a, b) = (scratch_repo("undo-stash-offer-a"), scratch_repo("undo-stash-offer-b"));
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
+    drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
+    drive(&mut st, Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]));
+    std::fs::write(a.join("b.txt"), "new\n").unwrap();
+
+    let effect =
+        update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).into_iter().find(|e| matches!(e, Effect::UndoRedo { .. })).expect("undo");
+    update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
+    let reply = runner::execute(effect).expect("a result");
+    assert!(matches!(&reply, Msg::Job(JobMsg::JobDone { undo: Some(UndoResult::Refused { offer_stash: true, .. }), .. })));
+    update(&mut st, reply, Instant::now());
+    let t = st.toasts.last().unwrap();
+    assert!(!t.ok && t.action.is_none());
+    cleanup(&[&a, &b]);
+}

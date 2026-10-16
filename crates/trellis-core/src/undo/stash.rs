@@ -1,0 +1,150 @@
+//! Undoing stashes. A stash push is undone by popping that stash back (with its index), as long
+//! as none of the paths it holds has changed since. A pop or apply onto a clean working tree is
+//! undone by putting the stash back in the list (when it was dropped) and clearing what it
+//! applied, as long as the working tree is exactly as the pop left it: `changes` fingerprints it.
+
+use super::planning::{dirty, gone, is_clean, stale};
+use super::{Action, Changes, Plan, reset::stash_index};
+use crate::error::{Error, Result};
+use crate::gitcli::args;
+use crate::repo::{FileEntry, Hazard, status_at};
+use git2::{Diff, ObjectType, Oid, Repository, TreeWalkMode, TreeWalkResult};
+use std::collections::BTreeSet;
+use std::path::Path;
+
+/// Every path stash `oid` holds: its working-tree and index changes and its untracked files.
+fn stash_paths(repo: &Repository, oid: Oid) -> Result<BTreeSet<String>> {
+    let stash = repo.find_commit(oid)?;
+    let base = stash.parent(0)?.tree()?;
+    let mut paths = BTreeSet::new();
+    let mut add = |diff: Diff| {
+        for d in diff.deltas() {
+            for f in [d.old_file(), d.new_file()] {
+                if let Some(p) = f.path_bytes() {
+                    paths.insert(String::from_utf8_lossy(p).into_owned());
+                }
+            }
+        }
+    };
+    add(repo.diff_tree_to_tree(Some(&base), Some(&stash.tree()?), None)?);
+    if let Ok(index) = stash.parent(1) {
+        add(repo.diff_tree_to_tree(Some(&base), Some(&index.tree()?), None)?);
+    }
+    if let Ok(untracked) = stash.parent(2) {
+        untracked.tree()?.walk(TreeWalkMode::PreOrder, |root, entry| {
+            if entry.kind() != Some(ObjectType::Tree) {
+                paths.insert(format!("{root}{}", String::from_utf8_lossy(entry.name_bytes())));
+            }
+            TreeWalkResult::Ok
+        })?;
+    }
+    Ok(paths)
+}
+
+/// The changed paths now (staged, unstaged and untracked), sorted.
+fn status_entries(workdir: &Path) -> Result<Vec<FileEntry>> {
+    let (unstaged, staged, _) = status_at(workdir, true)?;
+    Ok(unstaged.into_iter().chain(staged).collect())
+}
+
+/// The hash of the working file `path` as it is: `None` when absent, the link text's hash for a
+/// symbolic link, and zero for a folder (a submodule).
+fn hash(workdir: &Path, path: &str) -> Result<Option<Oid>> {
+    let f = workdir.join(crate::repo::contained(path)?);
+    let meta = match f.symlink_metadata() {
+        Ok(m) => m,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+    Ok(Some(if meta.is_file() {
+        Oid::hash_file(ObjectType::Blob, &f)?
+    } else if meta.file_type().is_symlink() {
+        Oid::hash_object(ObjectType::Blob, std::fs::read_link(&f)?.to_string_lossy().as_bytes())?
+    } else {
+        Oid::zero()
+    }))
+}
+
+/// The working tree's fingerprint: each changed path with its working file's hash. Refused for
+/// a path that isn't UTF-8, which can't be read back reliably.
+pub(super) fn changes(workdir: &Path) -> Result<Changes> {
+    let mut paths = BTreeSet::new();
+    for e in status_entries(workdir)? {
+        if matches!(e.hazard, Some(Hazard::NotUtf8(_))) {
+            return Err(Error::Unsupported("A changed file's name isn't UTF-8".into()));
+        }
+        paths.insert(e.path);
+    }
+    let mut out = Vec::with_capacity(paths.len());
+    for p in paths {
+        let h = hash(workdir, &p)?;
+        out.push((p, h));
+    }
+    Ok(Changes(out))
+}
+
+fn stash_ref(n: usize) -> String {
+    format!("stash@{{{n}}}")
+}
+
+/// Undoes (or redoes) a stash push.
+pub(super) fn plan_push(workdir: &Path, repo: &Repository, action: &Action, head_oid: Option<Oid>, redo: bool) -> Result<Plan> {
+    let Action::StashPush { stash, head, replay, .. } = action else { unreachable!("a stash push") };
+    if redo {
+        let Some(replay) = replay else { return Ok(stale("This stash listed its files in a file, so it can't be redone")) };
+        if head_oid != Some(*head) {
+            return Ok(stale("HEAD has moved since the stash"));
+        }
+        let now = status_entries(workdir)?;
+        let any = match stash_paths(repo, *stash) {
+            Ok(paths) => now.iter().any(|e| paths.contains(&e.path)),
+            Err(_) => !now.is_empty(),
+        };
+        return Ok(if any { Plan::Run(vec![replay.clone()]) } else { stale("No changes to stash") });
+    }
+    if head_oid != Some(*head) {
+        return Ok(stale("HEAD has moved since the stash"));
+    }
+    let Some(n) = stash_index(workdir, *stash)? else { return Ok(stale("The stash was dropped or applied since")) };
+    let paths = stash_paths(repo, *stash)?;
+    if status_entries(workdir)?.iter().any(|e| paths.contains(&e.path)) {
+        return Ok(dirty(action, redo));
+    }
+    Ok(Plan::Run(vec![args(&["stash", "pop", "--index", &stash_ref(n)])]))
+}
+
+/// Undoes (or redoes) a pop or apply onto a clean working tree.
+pub(super) fn plan_apply(workdir: &Path, repo: &Repository, action: &Action, head_oid: Option<Oid>, redo: bool) -> Result<Plan> {
+    let Action::StashApply { pop, stash, head, message, left } = action else { unreachable!("a pop or apply") };
+    if redo {
+        if !is_clean(workdir)? {
+            return Ok(dirty(action, redo));
+        }
+        if head_oid != Some(*head) {
+            return Ok(stale(format!("HEAD has moved since the {}", action.describe())));
+        }
+        let Some(n) = stash_index(workdir, *stash)? else { return Ok(stale("The stash was dropped since")) };
+        return Ok(Plan::Run(vec![args(&["stash", if *pop { "pop" } else { "apply" }, &stash_ref(n)])]));
+    }
+    if head_oid != Some(*head) {
+        return Ok(stale(format!("HEAD has moved since the {}", action.describe())));
+    }
+    if changes(workdir).ok().as_ref() != Some(left) {
+        return Ok(stale(format!("The working tree has changed since the {}", action.describe())));
+    }
+    let mut cmds = Vec::new();
+    if stash_index(workdir, *stash)?.is_none() {
+        if repo.find_commit(*stash).is_err() {
+            return Ok(gone());
+        }
+        cmds.push(args(&["stash", "store", "-m", message, &stash.to_string()]));
+    }
+    cmds.push(args(&["reset", "--hard", "-q"]));
+    let untracked: Vec<String> = status_entries(workdir)?.into_iter().filter(|e| e.status == '?').map(|e| e.path).collect();
+    if !untracked.is_empty() {
+        let mut clean = args(&["--literal-pathspecs", "clean", "-f", "-q", "--"]);
+        clean.extend(untracked);
+        cmds.push(clean);
+    }
+    Ok(Plan::Run(cmds))
+}

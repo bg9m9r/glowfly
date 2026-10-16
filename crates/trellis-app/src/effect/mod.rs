@@ -34,7 +34,7 @@ pub use forge_filters::{FilterCall, FilterResult};
 pub use init::InitEffect;
 pub use issue::*;
 pub use notify::{DesktopNote, NoteKind};
-pub use repo::{ConflictRead, KnownRepo, LocalOp, StatusRead, UndoResult, WatchTarget};
+pub use repo::{ConflictRead, KnownRepo, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use submodule::SubmoduleEffect;
 pub use updates::UpdateEffect;
 
@@ -225,6 +225,7 @@ pub enum Effect {
         cwd: PathBuf,
         action: Action,
         redo: bool,
+        opts: UndoOpts,
     },
     Forge {
         target: Target,

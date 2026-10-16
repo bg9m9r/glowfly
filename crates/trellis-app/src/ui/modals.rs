@@ -14,7 +14,8 @@
 //! check's report (drawn by `conflict_check.rs`), a pull request or issue filter (drawn by
 //! `forge_filter_dialog.rs`), the trellis:// link dialogs (drawn by `deep_link_dialog.rs`),
 //! creating an issue (drawn by `issue/create_dialog.rs`), the About dialog (drawn by
-//! `menu_bar/about.rs`) and the release notes (drawn by `release_notes.rs`).
+//! `menu_bar/about.rs`), the release notes (drawn by `release_notes.rs`) and undoing a checkout
+//! that created a branch (drawn by `undo_dialog.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -222,6 +223,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::ReleaseNotes(d) => {
                 if super::release_notes::show(ui, d, msgs) {
+                    close = true;
+                }
+            }
+            Modal::UndoCreated(form) => {
+                if super::undo_dialog::created_branch(ui, form, msgs) {
                     close = true;
                 }
             }

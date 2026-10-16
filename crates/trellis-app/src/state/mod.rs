@@ -227,6 +227,7 @@ pub enum Modal {
     About,
     /// The release notes, with a newer release on top when one is on offer.
     ReleaseNotes(Box<release_notes::NotesDialog>),
+    UndoCreated(undo::UndoCreatedForm),
 }
 
 /// The most commits "Load more" goes up to.

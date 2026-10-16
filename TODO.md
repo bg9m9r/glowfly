@@ -137,8 +137,11 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Drag to reorder tabs; tab context menu (close others, close to the right)
 - [x] **Undo / Redo**
   Toolbar Undo/Redo and Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) for checkout, commit/amend, reset,
-  branch delete and Discard all; per-tab, in-memory history of 20, refuses (and says why) when
-  the repository no longer matches or local changes would be overwritten.
+  merge, pull, rebase, cherry-pick, revert, creating or deleting a branch or tag, stash push,
+  pop and apply, Discard all and file discards and restores; per-tab, in-memory history of 20,
+  refuses (and says why) when the repository no longer matches or local changes would be
+  overwritten. A hard reset or Discard all blocked by local changes offers "Stash changes and
+  undo"; undoing a checkout that created a branch asks whether to delete the branch too.
 - [x] **Diff viewer upgrade**
   - [x] Split (side-by-side) vs inline view
   - [x] Next/previous change (F7 / Shift+F7, Alt+Down / Alt+Up)
@@ -600,10 +603,17 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - Undo per-file, per-hunk and per-line discard (needs a safety stash or blob backup first)
 - Undo across restarts by rebuilding actions from the HEAD, branch and stash reflogs
-- Undo merge, rebase, pull, cherry-pick, revert, create branch/tag, stash, pop and apply
-- Safety stash before `reset --hard`, so undoing the reset restores discarded changes; offer to
-  stash local changes when undoing or redoing a hard reset or Discard all
-- When undoing `checkout --track` / `checkout -b`, offer to delete the created branch
+- Offer "Stash changes and undo" for merge, pull, rebase, cherry-pick, revert and stash undos
+  refused for local changes (the runner already supports it)
+- Undo of Create tag and push: also delete the tag from the remote it was pushed to
+- Undo of the interactive rebase dialog's rebase (record before/after around its effect)
+- Undo of a rebase, merge, cherry-pick or revert finished with --continue after conflicts
+- Undo of stash drop (put the dropped commit back with `stash store`)
+- Undo of branch rename and of the new branch made by `worktree add -b`
+- Undo of a Git Flow start or finish as one step
+- Roll back the remote-tracking refs a pull fetched when undoing it
+- Restore a popped stash at its original position in the list instead of at the top
+- Undo of a pop or apply onto a working tree that already had changes
 
 ### Diff viewer upgrade
 

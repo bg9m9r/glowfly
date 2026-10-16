@@ -20,7 +20,7 @@ fn cherry_pick_orders_oldest_first() {
     refresh(&mut st);
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f.c(4), f.c(2), f.c(3)])));
     let expected = args(&["cherry-pick", &f.c(2).to_string(), &f.c(3).to_string(), &f.c(4).to_string()]);
-    assert!(matches!(&fx[..], [Effect::RunGit { cmds, record: None, .. }] if *cmds == vec![expected]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::RunGit { cmds, record: Some(_), .. }] if *cmds == vec![expected]), "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Cherry-pick 3 commits"));
     let _ = std::fs::remove_dir_all(&f.dir);
 }
@@ -56,7 +56,7 @@ fn cherry_pick_refusals() {
 }
 
 /// A repository on `main` with `feature` holding `commits` (message, contents of f.txt).
-fn feature_repo(name: &str, feature: &[(&str, &str)], main_edit: Option<&str>) -> (AppState, PathBuf, Vec<Oid>) {
+pub(super) fn feature_repo(name: &str, feature: &[(&str, &str)], main_edit: Option<&str>) -> (AppState, PathBuf, Vec<Oid>) {
     let dir = super::tests::scratch_repo(name);
     git(&dir, &["checkout", "--", "a.txt"]);
     std::fs::write(dir.join("f.txt"), "base\n").unwrap();

@@ -26,7 +26,8 @@ pub(super) struct JobSpec {
     /// whether it is trusted (update/trust.rs).
     pub then_open: Option<(PathBuf, Created)>,
     pub write_file: Option<(PathBuf, String)>,
-    /// Record the job for undo when it is this kind of operation.
+    /// Record the job for undo when it is this kind of operation. Left `None`, a single command
+    /// run in the active tab's repository is recognised by `UndoKind::classify`.
     pub record: Option<UndoKind>,
     /// Run nothing unless this revision still resolves to this commit.
     pub expect: Option<(String, git2::Oid)>,
@@ -85,7 +86,11 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     };
     // Background jobs fail rather than pop up a credential prompt.
     let prompts = !spec.quiet;
-    let (cmds, write_file, record, expect) = (spec.cmds, spec.write_file, spec.record, spec.expect);
+    let record = spec.record.or_else(|| match (spec.cmds.as_slice(), &spec.cwd) {
+        ([c], None) => UndoKind::classify(c),
+        _ => None,
+    });
+    let (cmds, write_file, expect) = (spec.cmds, spec.write_file, spec.expect);
     launch(st, job, spec.cwd, move |cwd| Effect::RunGit { cwd, cmds, write_file, record, prompts, expect }, fx)
 }
 

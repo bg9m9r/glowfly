@@ -1,10 +1,34 @@
 //! Per-tab undo history: Trellis's own recent operations that can be reversed, most recent last.
-//! In memory only, so it ends with the tab or the app.
+//! In memory only, so it ends with the tab or the app. Also the form of the dialog that asks
+//! whether undoing a checkout should delete the branch it created (`Modal::UndoCreated`).
 
 use trellis_core::undo::Action;
 
 /// Undo steps kept per tab; older ones are dropped.
 pub const MAX_UNDO: usize = 20;
+
+/// What can be undone, for the reason Undo is unavailable after something else.
+const UNDOABLE: &str = "only checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, creating or deleting a branch or tag, stash, pop, apply, discards and file restores can be undone";
+
+/// The dialog shown before undoing a checkout that created `branch`, which still points where
+/// the checkout made it: switch back to `back_to`, and also delete the branch when `delete`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UndoCreatedForm {
+    pub action: Action,
+    pub branch: String,
+    pub back_to: String,
+    pub delete: bool,
+}
+
+impl UndoCreatedForm {
+    pub fn new(action: Action, back_to: String) -> Self {
+        let branch = match &action {
+            Action::Checkout { created: Some(c), .. } => c.name.clone(),
+            _ => String::new(),
+        };
+        Self { action, branch, back_to, delete: true }
+    }
+}
 
 #[derive(Default, Debug)]
 pub struct UndoHistory {
@@ -86,9 +110,7 @@ impl UndoHistory {
     /// Why there is nothing to undo.
     fn undo_reason(&self) -> String {
         match &self.blocked {
-            Some(label) => {
-                format!("Can't undo {label}: only checkout, commit, reset, branch delete, discards and file restores can be undone")
-            }
+            Some(label) => format!("Can't undo {label}: {UNDOABLE}"),
             None => "Nothing to undo".to_owned(),
         }
     }
@@ -118,7 +140,7 @@ mod tests {
     use trellis_core::undo::HeadPos;
 
     fn checkout() -> Action {
-        Action::Checkout { from: HeadPos::Branch("dev".into()), to: HeadPos::Branch("main".into()) }
+        Action::Checkout { from: HeadPos::Branch("dev".into()), to: HeadPos::Branch("main".into()), created: None }
     }
 
     #[test]
@@ -132,10 +154,11 @@ mod tests {
         h.undone(checkout());
         assert_eq!(h.redo_entry(true), ("Redo checkout of main".to_owned(), None));
         assert_eq!(h.redo_entry(false).1.as_deref(), Some(JOB_RUNNING));
-        h.invalidate("Merge");
+        h.invalidate("Rename branch");
         let (label, why) = h.undo_entry(true);
         assert_eq!(label, "Undo");
-        assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Merge: only checkout, commit")), "{why:?}");
+        assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Rename branch: only checkout, commit")), "{why:?}");
+        assert_eq!(why.as_deref(), Some(format!("Can't undo Rename branch: {UNDOABLE}").as_str()));
     }
 
     #[test]
@@ -146,10 +169,8 @@ mod tests {
         assert_eq!(h.redo_tooltip(&keys), "Nothing to redo");
         h.record(checkout());
         assert_eq!(h.undo_tooltip(&keys), keys.tip("Undo checkout of main", BindingId::Undo));
-        h.invalidate("Merge");
-        assert_eq!(
-            h.undo_tooltip(&keys),
-            "Can't undo Merge: only checkout, commit, reset, branch delete, discards and file restores can be undone"
-        );
+        h.invalidate("Rename branch");
+        assert_eq!(h.undo_tooltip(&keys), format!("Can't undo Rename branch: {UNDOABLE}"));
+        assert!(UNDOABLE.contains("merge, pull, rebase, cherry-pick, revert") && UNDOABLE.contains("stash, pop, apply"));
     }
 }

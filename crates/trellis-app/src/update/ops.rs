@@ -107,6 +107,7 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
         JobMsg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),
         JobMsg::Undo => super::undo::run(st, false, now, fx),
         JobMsg::Redo => super::undo::run(st, true, now, fx),
+        JobMsg::UndoWith { redo, action, opts } => super::undo::run_with(st, redo, *action, opts, fx),
         JobMsg::JobDone { ok, output, undo } => {
             let flow = super::gitflow_finish::headline(st, ok, &output);
             // Always called so a stale pending tag job or patch apply is cleared.

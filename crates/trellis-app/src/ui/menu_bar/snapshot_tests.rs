@@ -103,7 +103,7 @@ fn menu_bar_file_recent() {
 #[test]
 fn menu_bar_edit() {
     let (mut st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-edit");
-    st.undo.record(Action::Checkout { from: HeadPos::Branch("search".into()), to: HeadPos::Branch("main".into()) });
+    st.undo.record(Action::Checkout { from: HeadPos::Branch("search".into()), to: HeadPos::Branch("main".into()), created: None });
     let mut h = opened(st, true, "Edit");
     h.check_snapshot("menu_bar_edit");
     h.get_by_label("Undo checkout of main").click();

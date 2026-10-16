@@ -92,10 +92,21 @@ pub enum UndoResult {
     /// An undoable job ran; `None` when it changed nothing that can be undone.
     Recorded(Option<Action>),
     /// An undo or redo ran. `before` is the history entry and `after` the entry as it stands now
-    /// (they differ only for a redone discard, which makes a new stash).
-    Done { redo: bool, before: Action, after: Action },
+    /// (they differ for a redo that makes a new stash or leaves a new working tree).
+    Done { redo: bool, before: Action, after: Box<Action> },
     /// The reversing git commands failed; the entry stays.
     Failed { redo: bool },
     /// The undo or redo was refused before running anything; a stale history is cleared.
-    Refused { redo: bool, stale: bool },
+    /// `offer_stash`: the refusal was for local changes that "Stash changes and undo" can move
+    /// out of the way.
+    Refused { redo: bool, stale: bool, offer_stash: bool },
+}
+
+/// Choices for one undo or redo.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct UndoOpts {
+    /// Stash local changes (untracked files too) before planning the undo.
+    pub stash_first: bool,
+    /// Undoing a checkout that created a branch also deletes the branch.
+    pub delete_created: bool,
 }

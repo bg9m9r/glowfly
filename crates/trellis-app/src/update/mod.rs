@@ -321,6 +321,12 @@ mod trust_held_tests;
 #[cfg(test)]
 mod trust_tests;
 #[cfg(test)]
+mod undo_ops_tests;
+#[cfg(test)]
+mod undo_refs_tests;
+#[cfg(test)]
+mod undo_stash_tests;
+#[cfg(test)]
 mod undo_tests;
 #[cfg(test)]
 mod updates_notes_tests;

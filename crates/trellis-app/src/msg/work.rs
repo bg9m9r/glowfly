@@ -2,7 +2,7 @@
 //! update/undo.rs, update/stash.rs).
 
 use super::Inactive;
-use crate::effect::UndoResult;
+use crate::effect::{UndoOpts, UndoResult};
 use git2::Oid;
 use trellis_core::repo::HunkOp;
 
@@ -109,6 +109,13 @@ pub enum JobMsg {
     /// Undo the active tab's most recent undoable operation.
     Undo,
     Redo,
+    /// Runs the undo (or redo) of `action` with `opts`, only while it is still the top of that
+    /// stack: the undo-created-branch dialog and the "Stash changes and undo" toast send it.
+    UndoWith {
+        redo: bool,
+        action: Box<trellis_core::undo::Action>,
+        opts: UndoOpts,
+    },
     JobDone {
         ok: bool,
         output: String,
@@ -127,6 +134,7 @@ impl JobMsg {
             | Self::Deepen(..)
             | Self::Undo
             | Self::Redo
+            | Self::UndoWith { .. }
             | Self::JobDone { .. } => None,
         }
     }
