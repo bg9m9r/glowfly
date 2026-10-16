@@ -206,7 +206,7 @@ fn a_merge_tool_run_keeps_the_undo_history() {
         st.undo.record(deleted.clone());
         exited(&mut st, end.clone());
         assert!(st.job.is_none() && toast(&st).0, "{end:?}");
-        assert_eq!(st.undo.undo, [deleted.clone()], "{end:?}: the merge tool moves no refs");
+        assert_eq!(st.undo.undo, std::slice::from_ref(&deleted), "{end:?}: the merge tool moves no refs");
         assert!(st.undo.blocked.is_none(), "{end:?}");
     }
     let _ = std::fs::remove_dir_all(&dir);
