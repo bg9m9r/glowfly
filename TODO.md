@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 15:41 · **PR and issue filters**: Built-in and saved filters for the PULL REQUESTS and ISSUES sections, chosen from a filter chip in each section header (`8d97841`)
 - 2026-10-16 15:35 · **Zoom**: Zoom in, out and reset from 50% to 200% with keys, the palette, a toast and a status bar reset, plus show or hide the left, details and toolbar panels from keys, the palette and Preferences > UI Customization, kept per profile (`92464c7`)
 - 2026-10-16 15:12 · **Custom themes**: High Contrast Dark, High Contrast Light and Trellis Sand built in; JSON theme files in the config folder's themes folder (a base theme plus #rrggbb colors or color names, loops detected, problems listed in Preferences and logged), with Open themes folder, Reload and Create from current, and every theme in the palette (`3639791`)
 - 2026-10-16 14:56 · **Limits found while building integrations**: Checks and votes for every pull request on GitLab, Bitbucket Cloud and Data Center and Azure DevOps (a paced background pass past the first 25, cached by head and age), Jira look-alike keys such as `UTF-8` skipped using the site's project keys, the project filter applied to branch names, and paging tests for every issue list (`cc23487`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 08:38 · **Notifications**: Desktop notifications while Trellis is in the background: finished jobs and behind alerts also go to the OS, opt-in under UI Customization with a confirming notification when turned on (`8d3cd61`)
 - 2026-10-16 08:28 · **SSH key management**: Choose the key git uses for SSH remotes (core.sshCommand, for all repositories or a trusted repository), a Use local SSH agent setting with agent status and Add to agent, and Add to service for GitHub, GitLab and Bitbucket Cloud with a copy-and-open fallback (`1159cdb`)
 - 2026-10-16 08:05 · **Clone and init options**: Sparse clone (chosen folders, optional partial clone) and a Your repositories tab (GitHub, GitLab, Bitbucket Cloud accounts) in the Clone dialog; Init opens a dialog with an initial branch, a .gitignore template, a license and an initial commit (`00790e2`)
-- 2026-10-16 08:00 · **Search and filter**: Search the graph by changed file with path: and file: terms (folder, file name or glob), searched off the UI thread with a live count (`ec3df76`)
 
 ---
 
