@@ -1,5 +1,5 @@
 use super::*;
-use trellis_core::forge::Reviewer;
+use trellis_core::forge::{MergeState, PrDetail, Provider, Reviewer, Target};
 
 fn oid(n: u8) -> Oid {
     Oid::from_bytes(&[n; 20]).unwrap()
@@ -22,7 +22,21 @@ fn pr(head: Option<&str>) -> PullRequest {
 }
 
 fn view(pr: PullRequest, tips: Tips) -> PrView {
-    PrView { pr, label: "#7".into(), noun: "pull request", remote: "origin".into(), listed: true, tips, files: Files::Missing }
+    PrView {
+        pr,
+        label: "#7".into(),
+        noun: "pull request",
+        remote: "origin".into(),
+        listed: true,
+        tips,
+        files: Files::Missing,
+        tab: PrTab::Overview,
+        page: Page::Loading,
+        reloading: false,
+        busy: None,
+        action_error: None,
+        forms: Default::default(),
+    }
 }
 
 fn reviewer(name: &str, state: &str) -> Reviewer {
@@ -97,4 +111,49 @@ fn files_texts_name_the_branches() {
     assert_eq!(empty_text(&v), "No files differ: feature has nothing that main doesn't.");
     assert!(!unrelated_text(&v, false).contains("shallow"));
     assert!(unrelated_text(&v, true).ends_with("This is a shallow clone: fetching more history may find it."));
+}
+
+#[test]
+fn a_merged_source_reads_as_deleted() {
+    let both = Tips { target: Some(oid(1)), source: Some(oid(2)) };
+    let mut v = view(pr(None), Tips { source: None, ..both });
+    let mut detail = merged_detail();
+    v.page = Page::Loaded(Box::new(PrPage { detail: detail.clone(), entries: Vec::new() }));
+    assert_eq!(out_of_sync(&v), [OutOfSync::SourceDeleted]);
+    assert_eq!(OutOfSync::SourceDeleted.text(&v), "origin/feature was deleted after the merge.");
+    detail.state = PrState::Open;
+    v.page = Page::Loaded(Box::new(PrPage { detail, entries: Vec::new() }));
+    assert_eq!(out_of_sync(&v), [OutOfSync::SourceMissing]);
+}
+
+#[test]
+fn only_services_with_in_app_reviews_load_a_page() {
+    let fs = |provider| {
+        let t = Target { provider, host: "example.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+        ForgeState::new(Some(t), "origin".into(), None)
+    };
+    assert_eq!(initial_page(&fs(Provider::GitHub)), Page::Loading);
+    assert_eq!(initial_page(&fs(Provider::GitHubEnterprise)), Page::Loading);
+    assert_eq!(initial_page(&fs(Provider::GitLab)), Page::Unsupported);
+    assert_eq!(initial_page(&fs(Provider::AzureDevOps)), Page::Unsupported);
+    assert_eq!(initial_page(&ForgeState::new(None, "origin".into(), None)), Page::Unsupported);
+}
+
+fn merged_detail() -> PrDetail {
+    PrDetail {
+        state: PrState::Merged,
+        draft: false,
+        locked: false,
+        mergeable: None,
+        merge_state: MergeState::Unknown,
+        head_sha: String::new(),
+        base_sha: String::new(),
+        same_repo: true,
+        author: "ada".into(),
+        me: "grace".into(),
+        can_merge: Some(true),
+        methods: Vec::new(),
+        deletes_merged_branches: false,
+        pending_review: None,
+    }
 }

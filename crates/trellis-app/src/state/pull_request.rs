@@ -1,10 +1,12 @@
 //! The pull request panel (update/pull_request.rs, ui/pull_request/): a copy of the pull
-//! request, the remote-tracking tips it is compared from, the files it changes, and the texts
-//! that describe them. Pure: the files are loaded by `Effect::LoadPrFiles`.
+//! request, the remote-tracking tips it is compared from, the files it changes, the service's
+//! page with its conversation, and the texts that describe them. Pure: the files and the page
+//! are loaded by `Effect::PullRequest`; the action forms' rules are in pull_request_actions.rs.
 
 use super::ForgeState;
+use super::pull_request_actions::PrForms;
 use git2::Oid;
-use trellis_core::forge::PullRequest;
+use trellis_core::forge::{PrPage, PrState, PullRequest, reviews_in_app};
 use trellis_core::repo::{BranchChanges, DiffTarget, Snapshot};
 use trellis_core::text::is_bidi_control;
 
@@ -47,6 +49,34 @@ pub enum Files {
     Failed(String),
 }
 
+/// The panel's tabs.
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum PrTab {
+    #[default]
+    Overview,
+    Files,
+}
+
+/// The service's page for the pull request.
+#[derive(Clone, PartialEq, Debug)]
+pub enum Page {
+    /// The service has no conversation, reviews or merging in Trellis.
+    Unsupported,
+    /// The repository isn't trusted, so nothing is asked.
+    Held,
+    Loading,
+    Loaded(Box<PrPage>),
+    Failed(String),
+}
+
+/// An action sent to the service; one runs at a time.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum PrAction {
+    Comment,
+    Review,
+    Merge,
+}
+
 /// The open pull request panel.
 #[derive(Clone, Debug)]
 pub struct PrView {
@@ -62,12 +92,48 @@ pub struct PrView {
     pub listed: bool,
     pub tips: Tips,
     pub files: Files,
+    pub tab: PrTab,
+    pub page: Page,
+    /// The page is loading again while the last one stays on screen.
+    pub reloading: bool,
+    pub busy: Option<PrAction>,
+    /// The last action's failure, shown under its button.
+    pub action_error: Option<(PrAction, String)>,
+    pub forms: PrForms,
 }
 
 impl PrView {
     pub fn new(pr: PullRequest, fs: &ForgeState, snap: &Snapshot) -> PrView {
         let tips = Tips::of(snap, &fs.remote, &pr);
-        PrView { label: fs.pr_label(pr.id), noun: fs.pr_noun(), remote: fs.remote.clone(), listed: true, tips, files: Files::Missing, pr }
+        let page = initial_page(fs);
+        PrView {
+            label: fs.pr_label(pr.id),
+            noun: fs.pr_noun(),
+            remote: fs.remote.clone(),
+            listed: true,
+            tips,
+            files: Files::Missing,
+            pr,
+            tab: PrTab::Overview,
+            page,
+            reloading: false,
+            busy: None,
+            action_error: None,
+            forms: PrForms::default(),
+        }
+    }
+
+    /// The loaded page, if any.
+    pub fn loaded(&self) -> Option<&PrPage> {
+        match &self.page {
+            Page::Loaded(p) => Some(p),
+            _ => None,
+        }
+    }
+
+    /// The service's state for it, once the page is loaded.
+    pub fn state(&self) -> Option<PrState> {
+        self.loaded().map(|p| p.detail.state)
     }
 
     /// Whether `t` is the diff of one of this view's files.
@@ -95,11 +161,19 @@ impl PrView {
     }
 }
 
+/// The page a newly opened panel starts with: loading, or none for a service without in-app
+/// reviews.
+pub fn initial_page(fs: &ForgeState) -> Page {
+    if fs.host_provider().is_some_and(reviews_in_app) { Page::Loading } else { Page::Unsupported }
+}
+
 /// Why the local branches may not show the pull request as the service has it.
 #[derive(Clone, PartialEq, Debug)]
 pub enum OutOfSync {
     TargetMissing,
     SourceMissing,
+    /// The source branch is gone because it was deleted once merged.
+    SourceDeleted,
     /// The local source tip is not the head the service reported.
     SourceDiffers {
         local: Oid,
@@ -115,6 +189,7 @@ impl OutOfSync {
             OutOfSync::SourceMissing => {
                 format!("{r}/{} isn't in this repository. Fetch {r} to compare. A branch on a fork can't be fetched from {r}.", pr.source)
             }
+            OutOfSync::SourceDeleted => format!("{r}/{} was deleted after the merge.", pr.source),
             OutOfSync::SourceDiffers { local, head } => format!(
                 "{r}/{} is at {}, but the {} is at {}. Fetch {r} to see its latest changes.",
                 pr.source,
@@ -137,6 +212,7 @@ pub fn out_of_sync(v: &PrView) -> Vec<OutOfSync> {
         notes.push(OutOfSync::TargetMissing);
     }
     match (v.tips.source, &v.pr.head) {
+        (None, _) if v.state() == Some(PrState::Merged) => notes.push(OutOfSync::SourceDeleted),
         (None, _) => notes.push(OutOfSync::SourceMissing),
         (Some(local), Some(head)) if !v.pr.head_matches(&local.to_string()) => {
             notes.push(OutOfSync::SourceDiffers { local, head: head.clone() })
@@ -162,6 +238,8 @@ pub fn review_summary(pr: &PullRequest) -> String {
 pub enum Tone {
     Good,
     Bad,
+    /// Needs attention, but isn't a failure (amber).
+    Warn,
     Neutral,
 }
 

@@ -171,6 +171,10 @@ pub(crate) fn post<T: DeserializeOwned>(auth: &Auth, url: &str, body: serde_json
     json(call(request("POST", auth, url)?, Some(body))?)
 }
 
+pub(crate) fn put<T: DeserializeOwned>(auth: &Auth, url: &str, body: serde_json::Value) -> Result<T> {
+    json(call(request("PUT", auth, url)?, Some(body))?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,12 +1,12 @@
-//! The pull request panel: details, reviewers and the files changed with one file's diff open,
-//! and a pull request whose source branch isn't in the repository. Shares the fixture
-//! repository and renderer with `snapshot_tests`.
+//! The pull request panel's Files changed tab: the files with one file's diff open, and a pull
+//! request whose source branch isn't in the repository. Shares the fixture repository and
+//! renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
-use crate::state::pull_request::{Files, PrView};
+use crate::state::pull_request::{Files, PrTab, PrView};
 use crate::state::{AppState, ForgeState, Status};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
@@ -25,7 +25,7 @@ fn tip(st: &AppState, name: &str) -> git2::Oid {
 
 /// The fixture with origin on GitHub (acme/demo) and pull request #12 from `search` into
 /// `main`, open in the panel; `refs/remotes/origin/search` only `with_source`.
-fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) -> (AppState, PathBuf) {
+pub(super) fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let d = "2026-01-10T10:00:00+00:00";
     git(&dir, &["remote", "add", "origin", "https://github.com/acme/demo.git"], d);
@@ -69,6 +69,7 @@ fn with_pr(theme: ThemeChoice, name: &str, with_source: bool) -> (AppState, Path
 fn pull_request_dark() {
     let (mut st, dir) = with_pr(ThemeChoice::Dark, "pr-view", true);
     let v = st.pull_request.as_mut().unwrap();
+    v.tab = PrTab::Files;
     let (main, search) = v.tips.pair().expect("both branches are on origin");
     let changes = repo::branch_changes(&dir, main, search).unwrap().unwrap();
     let target = DiffTarget::Between(changes.base, search, "search.txt".into());
@@ -80,7 +81,7 @@ fn pull_request_dark() {
     h.run();
     h.check_snapshot("pull_request_dark");
     assert!(h.query_by_label("1 file changed").is_some());
-    assert!(h.query_by_label("1 of 2 approved").is_some());
+    assert!(h.query_by_label("Files changed  1").is_some());
     assert!(h.query_by_label_contains("Fetch origin").is_none(), "nothing is out of sync");
     drop(h);
     remove_fixture(&dir);
@@ -88,13 +89,13 @@ fn pull_request_dark() {
 
 #[test]
 fn pull_request_out_of_sync_light() {
-    let (st, dir) = with_pr(ThemeChoice::Light, "pr-view-sync", false);
+    let (mut st, dir) = with_pr(ThemeChoice::Light, "pr-view-sync", false);
+    st.pull_request.as_mut().unwrap().tab = PrTab::Files;
     assert_eq!(st.pull_request.as_ref().unwrap().files, Files::Missing);
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("pull_request_out_of_sync_light");
     assert!(h.query_by_label_contains("origin/search isn't in this repository.").is_some());
-    assert!(h.query_by_label("No reviewers").is_some());
     assert!(!h.get_by_label("Fetch origin").is_disabled());
     h.get_by_label("Close  (Esc)").click();
     h.run();

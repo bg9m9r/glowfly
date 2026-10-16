@@ -130,6 +130,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
             )
             // Never show real desktop notifications.
             | Effect::Notify(_)
+            | Effect::PullRequest(crate::pull_request::PrEffect::Call(_))
     )
 }
 

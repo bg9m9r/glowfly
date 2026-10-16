@@ -73,7 +73,7 @@ impl Effect {
             Effect::Clone(e) => e.name(),
             Effect::Init(e) => e.name(),
             Effect::Notify(_) => "desktop-note",
-            Effect::LoadPrFiles(_) => "load-pr-files",
+            Effect::PullRequest(e) => e.name(),
             Effect::Ui(_) => "ui",
         }
     }

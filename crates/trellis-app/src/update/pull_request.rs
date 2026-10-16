@@ -1,15 +1,18 @@
 //! The pull request panel: opening it for a listed pull request, loading the files it changes
 //! from the local remote-tracking branches, following refreshes of the refs and of the
-//! service's list, and closing it. Its files' diffs are the shared `st.diff`, opened through
-//! `RepoMsg::OpenDiff`.
+//! service's list, switching tabs, and closing it. Its files' diffs are the shared `st.diff`,
+//! opened through `RepoMsg::OpenDiff`; its page and actions on the service are in
+//! pull_request_calls.rs.
 
+use super::pull_request_calls::{self as calls, load};
 use crate::effect::Effect;
-use crate::pull_request::{FilesJob, PullRequestMsg};
+use crate::pull_request::{FilesJob, PrEffect, PullRequestMsg};
 use crate::state::AppState;
-use crate::state::pull_request::{Files, PrView, Tips};
+use crate::state::pull_request::{Files, PrTab, PrView, Tips};
+use std::time::Instant;
 use trellis_core::repo::DiffTarget;
 
-pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         PullRequestMsg::Open(id) => {
             let (Some(snap), Some(fs)) = (&st.snap, &st.forge) else { return };
@@ -21,8 +24,10 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, fx: &mut Vec<Effect
             super::repo::close_diff(st);
             super::conflict::close(st);
             super::history::close(st);
+            super::blame::close(st);
             st.pull_request = Some(view);
             request(st, fx);
+            load(st, fx);
         }
         PullRequestMsg::Close => close(st),
         PullRequestMsg::FilesLoaded { id, tips, generation, result } => {
@@ -39,6 +44,18 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, fx: &mut Vec<Effect
                 }
             }
         }
+        PullRequestMsg::Tab(t) => {
+            if let Some(v) = st.pull_request.as_mut() {
+                v.tab = t;
+            }
+        }
+        PullRequestMsg::Reload => load(st, fx),
+        PullRequestMsg::PostComment => calls::post_comment(st, fx),
+        PullRequestMsg::SubmitReview => calls::submit_review(st, fx),
+        PullRequestMsg::Merge => calls::merge(st, fx),
+        PullRequestMsg::Replied { workdir, target, id, generation, reply } => {
+            calls::replied(st, &workdir, &target, id, generation, *reply, now, fx)
+        }
     }
 }
 
@@ -52,7 +69,7 @@ fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
     match (view.tips.pair(), workdir) {
         (Some(tips), Some(workdir)) => {
             view.files = Files::Loading;
-            fx.push(Effect::LoadPrFiles(FilesJob { workdir, id: view.pr.id, tips, generation }));
+            fx.push(Effect::PullRequest(PrEffect::Files(FilesJob { workdir, id: view.pr.id, tips, generation })));
         }
         _ => view.files = Files::Missing,
     }
@@ -66,22 +83,24 @@ fn shows_diff(st: &AppState) -> bool {
     }
 }
 
-/// Closes the panel, and the diff when it is one of its files; a list still in flight must
-/// not reopen it.
+/// Closes the panel, and the diff when it is one of its files; a list or page still in flight
+/// must not reopen it.
 pub(super) fn close(st: &mut AppState) {
     let shown = shows_diff(st);
     if st.pull_request.take().is_some() {
         st.pull_request_gen += 1;
+        st.pull_request_page_gen += 1;
         if shown {
             super::repo::close_diff(st);
         }
     }
 }
 
-/// A diff is opening: the panel stays only when it is one of its files.
+/// A diff is opening: the panel stays only when it is one of its files, and then shows them.
 pub(super) fn keep_for(st: &mut AppState, target: &DiffTarget) {
-    if !st.pull_request.as_ref().is_some_and(|v| v.shows(target)) {
-        close(st);
+    match st.pull_request.as_mut() {
+        Some(v) if v.shows(target) => v.tab = PrTab::Files,
+        _ => close(st),
     }
 }
 
@@ -97,22 +116,34 @@ pub(super) fn refreshed(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// The service's list was replaced: the panel's copy follows it, or notes that it is gone.
-pub(super) fn prs_changed(st: &mut AppState) {
+/// When the listed head moved past the loaded page's, the page loads again (its mergeability
+/// and head belong to the old one).
+pub(super) fn prs_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(view) = st.pull_request.as_mut() else { return };
+    let mut stale = false;
     match st.forge.as_ref().and_then(|f| f.prs.iter().find(|p| p.id == view.pr.id)) {
         Some(pr) => {
             view.pr = pr.clone();
             view.listed = true;
+            stale = view.loaded().is_some_and(|p| pr.head.is_some() && !pr.head_matches(&p.detail.head_sha));
         }
         None => view.listed = false,
+    }
+    if stale {
+        load(st, fx);
     }
 }
 
 /// After a tab switch: a list dropped while the tab was parked, or one whose tips moved, is
-/// asked for again.
+/// asked for again, and the page loads again in the background. An action's reply that came
+/// while the tab was parked was only logged, so the panel no longer waits for it.
 pub(super) fn reload_pending(st: &mut AppState, fx: &mut Vec<Effect>) {
     let loading = st.pull_request.as_ref().is_some_and(|v| v.files == Files::Loading);
+    if let Some(v) = st.pull_request.as_mut() {
+        v.busy = None;
+    }
     retip(st, fx, loading);
+    load(st, fx);
 }
 
 /// Reads the tips again from the snapshot; requests the list when they changed or `again`.

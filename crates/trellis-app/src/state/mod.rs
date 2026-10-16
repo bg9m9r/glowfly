@@ -36,6 +36,7 @@ pub mod prefs;
 pub mod profiles;
 pub mod publish;
 pub mod pull_request;
+pub mod pull_request_actions;
 pub mod push_pr;
 pub mod rebase;
 pub mod ref_rows;
@@ -228,6 +229,8 @@ pub struct AppState {
     pub pull_request: Option<pull_request::PrView>,
     /// Incremented for every file-list request and whenever the panel closes.
     pub pull_request_gen: u64,
+    /// Incremented for every request of the panel's page and whenever the panel closes.
+    pub pull_request_page_gen: u64,
     /// The interactive rebase panel; shown instead of the graph (below a diff, the file history and a conflict).
     pub rebase: Option<rebase::RebasePanel>,
     /// Incremented for every rebase list request and whenever the panel closes; older
@@ -326,6 +329,7 @@ impl AppState {
             blame_gen: 0,
             pull_request: None,
             pull_request_gen: 0,
+            pull_request_page_gen: 0,
             rebase: None,
             rebase_gen: 0,
             gitflow_panel: false,

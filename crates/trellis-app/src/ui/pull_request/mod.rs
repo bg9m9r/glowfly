@@ -1,9 +1,13 @@
-//! The pull request panel, in place of the graph: a header with the title and links, the pull
-//! request's details and changed files on the left (`info`, `files`), and the open file's diff
-//! on the right.
+//! The pull request panel, in place of the graph: a header with the title and links, then two
+//! tabs. Overview has the details, the review and merge forms on the left (`info`, `review`,
+//! `merge`) and the conversation in the middle (`conversation`); Files changed has the changed
+//! files on the left (`files`) and the open file's diff in the middle.
 
+mod conversation;
 mod files;
 mod info;
+mod merge;
+mod review;
 
 use super::UiCache;
 use super::theme::color;
@@ -11,42 +15,98 @@ use super::widgets::{self, Icon};
 use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
-use crate::state::pull_request::PrView;
-use eframe::egui::{self, Align, FontId, Layout, Margin, RichText, Sense, Ui, vec2};
+use crate::state::pull_request::{Files, PrTab, PrView, Tone};
+use eframe::egui::{self, Align, Color32, FontId, Layout, Margin, RichText, Sense, Ui, vec2};
 use trellis_core::text::printable;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.pull_request else { return };
     let shows_diff = st.diff.as_ref().is_some_and(|(t, _)| view.shows(t));
+    let tab = view.tab;
     ui.add_space(6.0);
     header(ui, view, msgs);
+    tabs(ui, view, msgs);
     ui.separator();
-    egui::SidePanel::left("pull-request-info")
+    let side = egui::SidePanel::left("pull-request-side")
         .resizable(true)
         .default_width(380.0)
         .width_range(280.0..=600.0)
-        .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::symmetric(10, 8)))
-        .show_inside(ui, |ui| {
-            let Some(view) = &st.pull_request else { return };
-            egui::ScrollArea::vertical()
-                .id_salt("pr-info")
-                .max_height(ui.available_height() * 0.5)
-                .auto_shrink([false, true])
-                .show(ui, |ui| info::show(ui, view));
-            ui.separator();
-            files::show(ui, st, view, msgs);
-        });
-    egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show_inside(ui, |ui| {
-        if shows_diff {
-            super::diff::show(ui, st, &mut cache.diff_rows, msgs);
-        } else {
-            ui.add_space(12.0);
-            ui.horizontal(|ui| {
-                ui.add_space(12.0);
-                ui.label(RichText::new("Select a file to see its changes.").color(color::weak()));
+        .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::symmetric(10, 8)));
+    let center = egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg()));
+    match tab {
+        PrTab::Overview => {
+            side.show_inside(ui, |ui| {
+                egui::ScrollArea::vertical().id_salt("pr-side").auto_shrink([false, false]).show(ui, |ui| {
+                    let default_branch = st.forge.as_ref().and_then(|f| f.default_branch.clone());
+                    let Some(view) = st.pull_request.as_mut() else { return };
+                    info::show(ui, view);
+                    review::show(ui, view, msgs);
+                    merge::show(ui, view, st.snap.as_ref(), default_branch.as_deref(), msgs);
+                });
+            });
+            center.show_inside(ui, |ui| conversation::show(ui, st, msgs));
+        }
+        PrTab::Files => {
+            side.show_inside(ui, |ui| {
+                let Some(view) = &st.pull_request else { return };
+                files::show(ui, st, view, msgs);
+            });
+            center.show_inside(ui, |ui| {
+                if shows_diff {
+                    super::diff::show(ui, st, &mut cache.diff_rows, msgs);
+                } else {
+                    ui.add_space(12.0);
+                    ui.horizontal(|ui| {
+                        ui.add_space(12.0);
+                        ui.label(RichText::new("Select a file to see its changes.").color(color::weak()));
+                    });
+                }
             });
         }
+    }
+}
+
+/// Overview and Files changed (with the count once known), and a note while the page reloads.
+fn tabs(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
+    ui.add_space(2.0);
+    ui.horizontal(|ui| {
+        ui.add_space(8.0);
+        let files = match &v.files {
+            Files::Loaded(c) => format!("Files changed  {}", c.comparison.files.len()),
+            _ => "Files changed".to_owned(),
+        };
+        for (tab, label) in [(PrTab::Overview, "Overview".to_owned()), (PrTab::Files, files)] {
+            if ui.selectable_label(v.tab == tab, label).clicked() && v.tab != tab {
+                msgs.push(Msg::PullRequest(PullRequestMsg::Tab(tab)));
+            }
+        }
+        if v.reloading {
+            ui.add_space(8.0);
+            ui.label(RichText::new("Updating…").color(color::weak()));
+        }
     });
+}
+
+/// The color of a tone.
+pub(super) fn tone_color(t: Tone) -> Color32 {
+    match t {
+        Tone::Good => color::green(),
+        Tone::Bad => color::red(),
+        Tone::Warn => color::amber(),
+        Tone::Neutral => color::weak(),
+    }
+}
+
+/// A wrapped label in `color`.
+pub(super) fn note(ui: &mut Ui, text: impl Into<String>, color: Color32) {
+    ui.add(egui::Label::new(RichText::new(text.into()).color(color)).wrap());
+}
+
+/// A section heading in the side panel.
+pub(super) fn heading(ui: &mut Ui, text: &str) {
+    ui.add_space(10.0);
+    ui.separator();
+    ui.label(RichText::new(text).strong().color(color::text()));
 }
 
 /// The icon, label, title and Draft chip, the links and Close; below, the author and branches.

@@ -27,6 +27,7 @@ mod provider;
 mod publish;
 mod refs;
 mod remote;
+mod review;
 mod ssh_keys;
 mod user_repos;
 mod web;
@@ -45,6 +46,7 @@ pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, mention};
 pub use remote::{Connection, parse_host, parse_remote};
+pub use review::*;
 pub use ssh_keys::{
     AddKeyOutcome, RegisteredKey, add_ssh_key, default_title, list_ssh_keys, needs_fallback, same_key, ssh_keys_page, title_problem,
 };

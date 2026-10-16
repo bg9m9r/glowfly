@@ -35,6 +35,7 @@ mod profile_setup;
 mod profiles;
 mod publish;
 mod pull_request;
+mod pull_request_calls;
 mod push_pr;
 mod rebase;
 mod recent;
@@ -190,6 +191,10 @@ mod profiles_tests;
 #[cfg(test)]
 mod publish_tests;
 #[cfg(test)]
+mod pull_request_calls_tests;
+#[cfg(test)]
+mod pull_request_merge_tests;
+#[cfg(test)]
 mod pull_request_tests;
 #[cfg(test)]
 mod push_pr_state_tests;
@@ -340,7 +345,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
         Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
         Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),
-        Msg::PullRequest(m) => pull_request::handle(st, m, &mut fx),
+        Msg::PullRequest(m) => pull_request::handle(st, m, now, &mut fx),
         Msg::Forge(m) => forge::handle(st, m, now, &mut fx),
         Msg::Publish(m) => publish::handle(st, m, &mut fx),
         Msg::Credentials(m) => askpass::handle(st, m, now, &mut fx),

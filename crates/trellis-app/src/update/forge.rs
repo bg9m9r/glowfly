@@ -22,7 +22,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
             }
             refresh(st, true, interactive, now, fx);
         }
-        ForgeMsg::ForgeReplied(reply) => replied(st, reply, now),
+        ForgeMsg::ForgeReplied(reply) => replied(st, reply, now, fx),
         ForgeMsg::TipsShown(oids) => super::build_status::shown(st, oids),
         ForgeMsg::CreatePrDialog { source, target } => super::push_pr::open_dialog(st, source, target, fx),
         ForgeMsg::PushAndStartPr { branch, target } => super::push_pr::start(st, &branch, target, fx),
@@ -174,7 +174,7 @@ pub(super) fn resolve_pr_heads(st: &mut AppState) {
     }
 }
 
-fn replied(st: &mut AppState, reply: ForgeReply, now: Instant) {
+fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effect>) {
     let mut logs: Vec<(bool, String)> = Vec::new();
     let mut prs_changed = false;
     let Some(fs) = st.forge.as_mut() else { return };
@@ -255,7 +255,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant) {
     if prs_changed {
         resolve_pr_heads(st);
         super::build_status::seed_from_prs(st, now);
-        super::pull_request::prs_changed(st);
+        super::pull_request::prs_changed(st, fx);
     }
 }
 

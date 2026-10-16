@@ -7,7 +7,7 @@ use super::tests::{drive, git};
 use super::update;
 use crate::effect::{Effect, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, HistoryMsg, Msg, RepoMsg, TabsMsg};
-use crate::pull_request::PullRequestMsg;
+use crate::pull_request::{PrEffect, PullRequestMsg};
 use crate::remote::RemoteMsg;
 use crate::state::pull_request::{Files, OutOfSync, fetch_blocked, out_of_sync};
 use crate::state::{AppState, ForgeState};
@@ -17,15 +17,15 @@ use std::time::Instant;
 use trellis_core::forge::{Provider, PullRequest, Target};
 use trellis_core::repo::DiffTarget;
 
-fn github() -> Target {
+pub(super) fn github() -> Target {
     Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() }
 }
 
-fn rev(dir: &Path, spec: &str) -> Oid {
+pub(super) fn rev(dir: &Path, spec: &str) -> Oid {
     git2::Repository::open(dir).unwrap().revparse_single(spec).unwrap().peel_to_commit().unwrap().id()
 }
 
-fn pr(id: u64, head: Option<Oid>) -> PullRequest {
+pub(super) fn pr(id: u64, head: Option<Oid>) -> PullRequest {
     PullRequest {
         id,
         title: "Add f".into(),
@@ -44,7 +44,7 @@ fn pr(id: u64, head: Option<Oid>) -> PullRequest {
 /// A repository with origin: f.txt (and `more`) committed on feature, m.txt on main, both
 /// pushed, and pull request 7 from feature into main listed by the service. Returns (state,
 /// working repository, bare repository, merge base).
-fn setup(name: &str, more: &[&str]) -> (AppState, PathBuf, PathBuf, Oid) {
+pub(super) fn setup(name: &str, more: &[&str]) -> (AppState, PathBuf, PathBuf, Oid) {
     let (mut st, work, bare) = with_origin(name);
     let base = rev(&work, "main");
     git(&work, &["checkout", "-q", "feature"]);
@@ -71,7 +71,7 @@ fn set_pr(st: &mut AppState, f: impl FnOnce(&mut PullRequest)) {
     f(&mut st.forge.as_mut().unwrap().prs[0]);
 }
 
-fn open(st: &mut AppState) {
+pub(super) fn open(st: &mut AppState) {
     drive(st, Msg::PullRequest(PullRequestMsg::Open(7)));
 }
 
@@ -82,11 +82,11 @@ fn paths(st: &AppState) -> Vec<String> {
     }
 }
 
-fn pr_target(st: &AppState, path: &str) -> DiffTarget {
+pub(super) fn pr_target(st: &AppState, path: &str) -> DiffTarget {
     st.pull_request.as_ref().unwrap().diff_target(path).unwrap()
 }
 
-fn cleanup(dirs: &[&Path]) {
+pub(super) fn cleanup(dirs: &[&Path]) {
     for d in dirs {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -143,7 +143,7 @@ fn missing_refs_are_noted_and_nothing_loads() {
     let (mut st, work, bare, _) = setup("pr-missing", &[]);
     set_pr(&mut st, |p| p.source = "from-a-fork".into());
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadPrFiles(_))));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_)))));
     let v = st.pull_request.as_ref().unwrap();
     assert_eq!(v.files, Files::Missing);
     assert_eq!(out_of_sync(v), [OutOfSync::SourceMissing]);
@@ -154,7 +154,7 @@ fn missing_refs_are_noted_and_nothing_loads() {
         p.target = "release".into();
     });
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadPrFiles(_))));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_)))));
     assert_eq!(out_of_sync(st.pull_request.as_ref().unwrap()), [OutOfSync::TargetMissing]);
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(fetch_blocked(snap, "origin", true), None);
@@ -240,7 +240,10 @@ fn refresh_updates_the_copy() {
 fn parked_tab_reloads_a_pending_list() {
     let (mut st, work, bare, _) = setup("pr-park", &[]);
     let fx = update(&mut st, Msg::PullRequest(PullRequestMsg::Open(7)), Instant::now());
-    let Some(Effect::LoadPrFiles(job)) = fx.into_iter().find(|e| matches!(e, Effect::LoadPrFiles(_))) else { panic!("no request") };
+    let Some(Effect::PullRequest(PrEffect::Files(job))) = fx.into_iter().find(|e| matches!(e, Effect::PullRequest(PrEffect::Files(_))))
+    else {
+        panic!("no request")
+    };
     assert_eq!(st.pull_request.as_ref().unwrap().files, Files::Loading);
 
     // A result for another repository's tab is dropped.
@@ -257,7 +260,7 @@ fn parked_tab_reloads_a_pending_list() {
     assert!(st.pull_request.is_some(), "restored");
     assert!(st.pull_request_gen > before);
     let again = fx.iter().find_map(|e| match e {
-        Effect::LoadPrFiles(j) => Some(j),
+        Effect::PullRequest(PrEffect::Files(j)) => Some(j),
         _ => None,
     });
     let again = again.expect("asked for again");

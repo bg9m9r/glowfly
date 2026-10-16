@@ -1,39 +1,38 @@
-//! The pull request panel's details: status lines, reviewers and the description.
+//! The pull request panel's details: status lines and reviewers.
 
 use super::super::theme::color;
-use crate::state::pull_request::{PrView, Tone, description_text, review_summary, reviewer_tone};
-use eframe::egui::{self, Color32, RichText, Ui};
+use super::{note, tone_color};
+use crate::state::pull_request::{PrView, review_summary, reviewer_tone};
+use eframe::egui::{RichText, Ui};
+use trellis_core::forge::PrState;
 use trellis_core::text::printable;
 
 pub(super) fn show(ui: &mut Ui, v: &PrView) {
     status(ui, v);
     reviewers(ui, v);
-    ui.add_space(8.0);
-    ui.label(RichText::new("Description").strong().color(color::text()));
-    let d = description_text(v.pr.description.trim());
-    if d.is_empty() {
-        ui.label(RichText::new("No description.").color(color::weak()));
-    } else {
-        ui.add(egui::Label::new(RichText::new(d).color(color::text())).wrap());
-    }
-    ui.add_space(4.0);
 }
 
-/// Draft, the service's merge status, and whether the last refresh still listed it.
+/// Draft, merged or closed, the service's merge status, and whether the last refresh still
+/// listed it (only while it may still be open).
 fn status(ui: &mut Ui, v: &PrView) {
     let pr = &v.pr;
     let mut any = false;
     if pr.draft {
-        ui.add(egui::Label::new(RichText::new("Draft: still in progress, not ready to merge.").color(color::amber())).wrap());
+        note(ui, "Draft: still in progress, not ready to merge.", color::amber());
         any = true;
     }
+    match v.state() {
+        Some(PrState::Merged) => note(ui, format!("Merged into {}", printable(&pr.target)), color::green()),
+        Some(PrState::Closed) => note(ui, "Closed without merging", color::weak()),
+        _ => {}
+    }
+    any |= matches!(v.state(), Some(PrState::Merged | PrState::Closed));
     if let Some(ms) = &pr.merge_status {
-        ui.add(egui::Label::new(RichText::new(format!("Merge status: {}", printable(ms))).color(color::text())).wrap());
+        note(ui, format!("Merge status: {}", printable(ms)), color::text());
         any = true;
     }
-    if !v.listed {
-        let text = format!("No longer in the list of open {}s.", v.noun);
-        ui.add(egui::Label::new(RichText::new(text).color(color::weak())).wrap());
+    if !v.listed && matches!(v.state(), None | Some(PrState::Open)) {
+        note(ui, format!("No longer in the list of open {}s.", v.noun), color::weak());
         any = true;
     }
     if any {
@@ -56,13 +55,5 @@ fn reviewers(ui: &mut Ui, v: &PrView) {
                 ui.label(RichText::new(" (required)").color(color::weak()));
             }
         });
-    }
-}
-
-fn tone_color(t: Tone) -> Color32 {
-    match t {
-        Tone::Good => color::green(),
-        Tone::Bad => color::red(),
-        Tone::Neutral => color::weak(),
     }
 }

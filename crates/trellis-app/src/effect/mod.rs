@@ -355,8 +355,8 @@ pub enum Effect {
     Init(InitEffect),
     /// A desktop notification (runner/notify.rs); unscoped.
     Notify(DesktopNote),
-    /// The files a pull request changes, from local refs (pull_request.rs); reads only.
-    LoadPrFiles(crate::pull_request::FilesJob),
+    /// The pull request panel's file list (scoped) and service calls (unscoped; pull_request.rs).
+    PullRequest(crate::pull_request::PrEffect),
     Ui(UiEffect),
 }
 
@@ -387,7 +387,7 @@ impl Effect {
             Effect::CheckConflicts(j) => Some(&j.workdir),
             Effect::LoadBlame(r) => Some(&r.workdir),
             Effect::Submodule(e) => e.scope(),
-            Effect::LoadPrFiles(j) => Some(&j.workdir),
+            Effect::PullRequest(e) => e.scope(),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
             Effect::LoadRepo { .. }
