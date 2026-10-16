@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 09:34 · **Add and remove submodules**: Add submodule dialog (URL, path following the URL, optional branch, live checks of the folder against the index, the disk, .gitignore and leftover stored modules) from the SUBMODULES header menu and the palette, which adds the first one; Remove submodule… with a confirmation naming what is deleted and warning about changes, unpushed commits and stashes inside (`96c2c43`)
 - 2026-10-16 09:25 · **Profiles**: Each profile keeps its connected hosting-service accounts and its General, UI Customization and Editor preferences, switched with the identity once git config is written; new profiles can start with the current accounts, and shared sign-ins are kept while any profile lists the account (`a27393d`)
 - 2026-10-16 09:15 · **Blame gutter**: Blame view of a file at HEAD or a commit (git blame --porcelain, honouring .mailmap and blame.ignoreRevsFile) with a sticky author, date and commit gutter per run, line numbers and syntax colors, opened from file menus, the file history header and the palette's Blame file… finder; clicking a run selects its commit (`921cdd8`)
 - 2026-10-16 08:38 · **Notifications**: Desktop notifications while Trellis is in the background: finished jobs and behind alerts also go to the OS, opt-in under UI Customization with a confirming notification when turned on (`8d3cd61`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 19:30 · **Profiles**: Named identity profiles in Preferences > Profile: add (copying the current identity), rename, delete (asking first) and switch from the page or the palette, writing user.name/email/signingkey to the global config; the first is seeded from the global identity (`764d3c6`)
 - 2026-10-15 17:54 · **Local patches**: Create patch… from one commit or a multi-selection in the graph menus (one mbox-style file, oldest first, binary-safe) and Apply patch… from the palette, checked first so nothing changes when it fails (`56ae4b4`)
 - 2026-10-15 17:46 · **Search and filter**: Filter the graph to search matches (Filter toggle, Ctrl+Shift+F) with a live match count, and narrow by author with author: terms and an author picker (`b922cb6`)
-- 2026-10-15 17:37 · **SSH key management**: SSH page in Preferences: list the key pairs in ~/.ssh with fingerprints, copy a public key, and generate an Ed25519 key with ssh-keygen, asking before replacing one (`cac1207`)
 
 ---
 
