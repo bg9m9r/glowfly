@@ -1,9 +1,7 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
-use crate::effect::{
-    CloneEffect, Effect, ForgeError, InitEffect, LoadKind, RebaseEffect, SubmoduleEffect, UndoResult, UpdateEffect,
-};
+use crate::effect::{CloneEffect, Effect, ForgeError, InitEffect, LoadKind, RebaseEffect, SubmoduleEffect, UndoResult, UpdateEffect};
 use crate::msg::BlameMsg;
 use crate::msg::CloneMsg;
 use crate::msg::JobMsg;
