@@ -155,6 +155,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         super::conflict::reload_pending(st, fx);
         super::history::reload_pending(st, fx);
         super::blame::reload_pending(st, fx);
+        super::pull_request::reload_pending(st, fx);
         super::rebase::reload_pending(st, fx);
         super::conflict_check::want(st, fx);
     } else if let Some(path) = st.tabs[i].path.clone() {
@@ -262,6 +263,7 @@ fn park(st: &mut AppState) -> Parked {
         conflict: st.conflict.take().map(|c| ConflictView { saving: false, ..c }),
         history: st.history.take(),
         blame: st.blame.take(),
+        pull_request: st.pull_request.take(),
         rebase: st.rebase.take(),
         gitflow_panel: std::mem::take(&mut st.gitflow_panel),
         draft: std::mem::take(&mut st.draft),
@@ -319,6 +321,9 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.blame = p.blame;
     // Blame results for this tab were dropped while it was parked.
     st.blame_gen += 1;
+    st.pull_request = p.pull_request;
+    // File lists for this tab were dropped while it was parked.
+    st.pull_request_gen += 1;
     st.rebase = p.rebase;
     // Rebase list results for this tab were dropped while it was parked.
     st.rebase_gen += 1;

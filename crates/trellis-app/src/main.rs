@@ -17,6 +17,7 @@ mod msg;
 mod patch;
 mod platform;
 mod profile;
+mod pull_request;
 mod remote;
 mod runner;
 mod ssh;

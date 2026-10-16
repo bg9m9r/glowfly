@@ -255,6 +255,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant) {
     if prs_changed {
         resolve_pr_heads(st);
         super::build_status::seed_from_prs(st, now);
+        super::pull_request::prs_changed(st);
     }
 }
 

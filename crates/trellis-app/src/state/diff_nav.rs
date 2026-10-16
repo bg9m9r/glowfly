@@ -98,8 +98,8 @@ pub fn next_file(st: &AppState, from: &DiffTarget, dir: isize) -> Option<DiffTar
 
 /// The file list `from` was opened from, in on-screen order, as diff targets: the Unstaged then
 /// the Staged Files list (conflicted entries open the conflict view, so they are left out), the
-/// commit details list, or the comparison list. `None` in the file history, which shows one
-/// file, or when the list isn't the one on screen.
+/// commit details list, the open pull request's list, or the comparison list. `None` in the
+/// file history, which shows one file, or when the list isn't the one on screen.
 fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
     if st.history.is_some() {
         return None;
@@ -115,12 +115,17 @@ fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
             let d = st.detail.as_ref().filter(|d| d.oid == *oid)?;
             Some(d.files.iter().map(|f| DiffTarget::Commit(*oid, f.path.clone())).collect())
         }
-        DiffTarget::Between(a, b, _) => match &st.selection {
-            Selection::Commits(m) if m.pair() == Some((*a, *b)) => match &m.changes {
-                Some(Ok(c)) => Some(c.files.iter().map(|f| DiffTarget::Between(*a, *b, f.path.clone())).collect()),
+        DiffTarget::Between(a, b, _) => {
+            if let Some(t) = st.pull_request.as_ref().and_then(|v| v.diff_targets(*a, *b)) {
+                return Some(t);
+            }
+            match &st.selection {
+                Selection::Commits(m) if m.pair() == Some((*a, *b)) => match &m.changes {
+                    Some(Ok(c)) => Some(c.files.iter().map(|f| DiffTarget::Between(*a, *b, f.path.clone())).collect()),
+                    _ => None,
+                },
                 _ => None,
-            },
-            _ => None,
-        },
+            }
+        }
     }
 }

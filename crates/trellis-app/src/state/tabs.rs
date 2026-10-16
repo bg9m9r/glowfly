@@ -3,6 +3,7 @@
 
 use super::conflict::ConflictView;
 use super::history::FileHistoryView;
+use super::pull_request::PrView;
 use super::rebase::RebasePanel;
 use super::undo::UndoHistory;
 use super::{CommitDraft, ForgeState, Selection};
@@ -95,6 +96,8 @@ pub struct Parked {
     pub history: Option<FileHistoryView>,
     /// The open blame view (a load in flight is requested again on return).
     pub blame: Option<super::blame::BlameView>,
+    /// The pull request panel (a file list in flight is asked for again on return).
+    pub pull_request: Option<PrView>,
     /// The interactive rebase panel (a list still loading is requested again on return).
     pub rebase: Option<RebasePanel>,
     /// The Git Flow panel is open.

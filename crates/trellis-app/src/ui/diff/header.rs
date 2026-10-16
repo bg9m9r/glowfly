@@ -58,7 +58,9 @@ pub(super) struct FoldCounts {
 /// toggle only with rows. When the bar is too narrow for the fold buttons and the toggles, or
 /// the commit file buttons crowd it, they move to a second row, right-aligned under the others,
 /// rather than run over the path. When even without them the file buttons would reach the
-/// path, the file buttons lead that second row too.
+/// path, the file buttons lead that second row too. When even the arrows and toggles would reach
+/// the path (a narrow panel), they move down as well, and the tail to a third row if it doesn't
+/// fit beside them.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn header_bar(
     ui: &mut Ui,
@@ -74,24 +76,33 @@ pub(super) fn header_bar(
 ) {
     let folds = folds.filter(|_| matches!(rows, Some((_, DiffMode::WholeFile))));
     let show_nav = rows.is_some() || nav.iter().any(|k| *k != StepKind::End);
+    let kind = match target {
+        DiffTarget::Commit(o, _) => format!("commit {}", short(*o)),
+        DiffTarget::Unstaged(_) => "unstaged".into(),
+        DiffTarget::Staged(_) => "staged".into(),
+        DiffTarget::Between(a, b, _) => format!("{}..{}", short(*a), short(*b)),
+    };
+    // In a narrow bar (a panel beside the diff) the arrows and toggles move down too, rather
+    // than run over the path.
+    let stage_w = match target {
+        DiffTarget::Unstaged(_) => button_w(ui, STAGE_FILE),
+        DiffTarget::Staged(_) => button_w(ui, UNSTAGE_FILE),
+        _ => 0.0,
+    };
+    let middle_w = middle_width(ui, rows.is_some(), show_nav);
+    let middle_down =
+        middle_w > 0.0 && lead_width(ui, target.path(), &kind) + button_w(ui, CLOSE) + icon_w(ui) + stage_w + middle_w > ui.available_width();
     let mut wrapped = false;
     let mut files_wrapped = false;
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        let kind = match target {
-            DiffTarget::Commit(o, _) => format!("commit {}", short(*o)),
-            DiffTarget::Unstaged(_) => "unstaged".into(),
-            DiffTarget::Staged(_) => "staged".into(),
-            DiffTarget::Between(a, b, _) => format!("{}..{}", short(*a), short(*b)),
-        };
         ui.label(RichText::new(target.path()).strong().size(15.0).color(color::text()));
         ui.label(RichText::new(kind).color(color::weak()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             // The commit file buttons move down too when even without the tail they would reach
             // the path.
             files_wrapped = file.is_some()
-                && button_w(ui, CLOSE) + icon_w(ui) + file_buttons_width(ui) + middle_width(ui, rows.is_some(), show_nav)
-                    > ui.available_width();
+                && (middle_down || button_w(ui, CLOSE) + icon_w(ui) + file_buttons_width(ui) + middle_w > ui.available_width());
             if ui.button(CLOSE).clicked() {
                 msgs.push(Msg::Repo(RepoMsg::CloseDiff));
             }
@@ -107,7 +118,7 @@ pub(super) fn header_bar(
                         Some(k) => format!("Stage this file ({k}). With lines selected, {k} stages only those lines."),
                         None => "Stage this file".to_owned(),
                     };
-                    if ui.button("Stage file").on_hover_text(tip).clicked() {
+                    if ui.button(STAGE_FILE).on_hover_text(tip).clicked() {
                         msgs.push(Msg::Stage(StageMsg::StageFile(p.clone())));
                     }
                 }
@@ -116,7 +127,7 @@ pub(super) fn header_bar(
                         Some(k) => format!("Unstage this file ({k}). With lines selected, {k} unstages only those lines."),
                         None => "Unstage this file".to_owned(),
                     };
-                    if ui.button("Unstage file").on_hover_text(tip).clicked() {
+                    if ui.button(UNSTAGE_FILE).on_hover_text(tip).clicked() {
                         msgs.push(Msg::Stage(StageMsg::UnstageFile(p.clone())));
                     }
                 }
@@ -127,26 +138,10 @@ pub(super) fn header_bar(
                 }
                 DiffTarget::Between(..) => {}
             }
-            if show_nav {
-                ui.add_space(10.0);
-                let [prev, next] = nav;
-                // Arrows are painted: the bundled fonts have no arrow glyphs.
-                if step_button(ui, Icon::NextChange, next, &step_tip(keys, true, next)).clicked() {
-                    msgs.push(Msg::Diff(DiffMsg::JumpToChange(1)));
-                }
-                if step_button(ui, Icon::PrevChange, prev, &step_tip(keys, false, prev)).clicked() {
-                    msgs.push(Msg::Diff(DiffMsg::JumpToChange(-1)));
-                }
+            if middle_down {
+                return;
             }
-            if let Some((layout, mode)) = rows {
-                ui.add_space(10.0);
-                let layouts =
-                    [(DiffLayout::Split, "Split", "Old and new side by side"), (DiffLayout::Inline, "Inline", "Changes in one column")];
-                segmented(ui, layout, &layouts, |l| msgs.push(Msg::Diff(DiffMsg::SetDiffLayout(l))));
-                ui.add_space(10.0);
-                let modes = [(DiffMode::WholeFile, "Whole file", WHOLE_FILE_TIP), (DiffMode::Hunks, "Hunks", HUNKS_TIP)];
-                segmented(ui, mode, &modes, |m| msgs.push(Msg::Diff(DiffMsg::SetDiffMode(m))));
-            }
+            middle(ui, rows, nav, show_nav, keys, msgs);
             // Once the file buttons have moved down, the tail joins them.
             wrapped = files_wrapped || tail_width(ui, folds.is_some(), toggles) > ui.available_width();
             if !wrapped {
@@ -154,7 +149,25 @@ pub(super) fn header_bar(
             }
         });
     });
-    if wrapped || files_wrapped {
+    if middle_down {
+        // The file buttons, arrows and toggles on a second row; the tail joins them if it fits.
+        let mut tail_down = false;
+        ui.horizontal(|ui| {
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                if let Some(f) = file {
+                    file_buttons::show(ui, msgs, f, Labels::Compact);
+                }
+                middle(ui, rows, nav, show_nav, keys, msgs);
+                tail_down = tail_width(ui, folds.is_some(), toggles) > ui.available_width();
+                if !tail_down {
+                    tail(ui, folds, toggles, true, msgs);
+                }
+            })
+        });
+        if tail_down {
+            ui.horizontal(|ui| ui.with_layout(Layout::right_to_left(Align::Center), |ui| tail(ui, folds, toggles, false, msgs)));
+        }
+    } else if wrapped || files_wrapped {
         ui.horizontal(|ui| {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if let Some(f) = file.filter(|_| files_wrapped) {
@@ -168,7 +181,40 @@ pub(super) fn header_bar(
     }
 }
 
+/// Next/previous change (with `show_nav`) and the layout and view mode toggles (with `rows`),
+/// laid out right to left.
+fn middle(ui: &mut Ui, rows: Option<(DiffLayout, DiffMode)>, nav: [StepKind; 2], show_nav: bool, keys: &Keymap, msgs: &mut Vec<Msg>) {
+    if show_nav {
+        ui.add_space(10.0);
+        let [prev, next] = nav;
+        // Arrows are painted: the bundled fonts have no arrow glyphs.
+        if step_button(ui, Icon::NextChange, next, &step_tip(keys, true, next)).clicked() {
+            msgs.push(Msg::Diff(DiffMsg::JumpToChange(1)));
+        }
+        if step_button(ui, Icon::PrevChange, prev, &step_tip(keys, false, prev)).clicked() {
+            msgs.push(Msg::Diff(DiffMsg::JumpToChange(-1)));
+        }
+    }
+    if let Some((layout, mode)) = rows {
+        ui.add_space(10.0);
+        let layouts = [(DiffLayout::Split, "Split", "Old and new side by side"), (DiffLayout::Inline, "Inline", "Changes in one column")];
+        segmented(ui, layout, &layouts, |l| msgs.push(Msg::Diff(DiffMsg::SetDiffLayout(l))));
+        ui.add_space(10.0);
+        let modes = [(DiffMode::WholeFile, "Whole file", WHOLE_FILE_TIP), (DiffMode::Hunks, "Hunks", HUNKS_TIP)];
+        segmented(ui, mode, &modes, |m| msgs.push(Msg::Diff(DiffMsg::SetDiffMode(m))));
+    }
+}
+
+/// The width of the path and its kind at the left of the bar.
+fn lead_width(ui: &Ui, path: &str, kind: &str) -> f32 {
+    let body = egui::TextStyle::Body.resolve(ui.style());
+    let w = |t: &str, font: egui::FontId| ui.fonts(|f| f.layout_no_wrap(t.to_owned(), font, color::text()).size().x);
+    8.0 + w(path, egui::FontId::proportional(15.0)) + w(kind, body) + 2.0 * ui.spacing().item_spacing.x
+}
+
 const CLOSE: &str = "Close  (Esc)";
+const STAGE_FILE: &str = "Stage file";
+const UNSTAGE_FILE: &str = "Unstage file";
 const COLLAPSE_ALL: &str = "Collapse all";
 const EXPAND_ALL: &str = "Expand all";
 const IGNORE_WS: &str = "Ignore whitespace";
@@ -287,99 +333,5 @@ fn segmented<T: Copy + PartialEq>(ui: &mut Ui, current: T, options: &[(T, &str, 
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use eframe::egui::vec2;
-    use egui_kittest::Harness;
-    use egui_kittest::kittest::Queryable;
-
-    const TOGGLES: Toggles = Toggles { ignore_ws: Some(false), wrap: Some(false) };
-
-    /// The top of Expand all, of Wrap lines and of Close in a header bar `width` wide.
-    fn tops(width: f32) -> (f64, f64, f64) {
-        let target = DiffTarget::Unstaged("notes.txt".into());
-        let folds = Some(FoldCounts { open: 1, closed: 1 });
-        let rows = Some((DiffLayout::Inline, DiffMode::WholeFile));
-        let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, folds, &Keymap::default(), None, &mut Vec::new());
-        });
-        h.run();
-        let top = |label: &str| h.get_by_label(label).bounding_box().expect("laid out").y0;
-        (top("Expand all"), top(WRAP), top("Close  (Esc)"))
-    }
-
-    #[test]
-    fn fold_buttons_wrap_only_when_short_of_room() {
-        let (expand, wrap, close) = tops(1400.0);
-        assert!((expand - close).abs() < 4.0, "one row when wide: {expand} vs {close}");
-        assert!((wrap - close).abs() < 4.0, "Wrap lines on the first row: {wrap} vs {close}");
-        let (expand, wrap, close) = tops(740.0);
-        assert!(expand > close + 10.0, "a second row when narrow: {expand} vs {close}");
-        assert!((wrap - expand).abs() < 4.0, "Wrap lines moves down with Expand all: {wrap} vs {expand}");
-    }
-
-    #[test]
-    fn wrap_toggle_sends_msg() {
-        let target = DiffTarget::Unstaged("notes.txt".into());
-        let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
-        let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui_state(
-            |ui, msgs: &mut Vec<Msg>| {
-                header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, msgs)
-            },
-            Vec::new(),
-        );
-        h.run();
-        h.get_by_label(WRAP).click();
-        h.run();
-        assert!(h.state().iter().any(|m| matches!(m, Msg::Diff(DiffMsg::SetWordWrap(true)))));
-
-        let no_rows = Toggles { ignore_ws: Some(false), wrap: None };
-        let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, None, None, [StepKind::End; 2], no_rows, None, &Keymap::default(), None, &mut Vec::new());
-        });
-        h.run();
-        assert!(h.query_by_label(WRAP).is_none(), "no rows, no wrap toggle");
-        assert!(h.query_by_label(IGNORE_WS).is_some());
-    }
-
-    /// The top of Ignore whitespace, Open, Close and the path in a commit's header bar `width`
-    /// wide, and the right edge of the path's kind and the left edge of the leftmost toggle.
-    fn commit_layout(width: f32) -> ([f64; 4], f64, f64) {
-        let oid = git2::Oid::from_bytes(&[7; 20]).unwrap();
-        let target = DiffTarget::Commit(oid, "notes.txt".into());
-        let file = CommitFile { oid, path: "notes.txt", status: 'M', open_path: "notes.txt", in_workdir: true };
-        let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
-        let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-            header_bar(ui, &target, Some(&file), rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, &mut Vec::new());
-        });
-        h.run();
-        let rect = |label: &str| h.get_by_label(label).bounding_box().expect("laid out");
-        let tops = [rect(IGNORE_WS).y0, rect(file_buttons::OPEN_SHORT).y0, rect(CLOSE).y0, rect("notes.txt").y0];
-        (tops, rect("commit 0707070").x1, rect("Whole file").x0)
-    }
-
-    #[test]
-    fn tail_wraps_for_commit_file_buttons() {
-        let ([ws, open, close, _], _, _) = commit_layout(1400.0);
-        assert!((ws - close).abs() < 4.0 && (open - close).abs() < 4.0, "one row when wide: {ws}, {open} vs {close}");
-        let ([ws, open, close, _], _, _) = commit_layout(900.0);
-        assert!(ws > close + 10.0, "the tail moves to a second row: {ws} vs {close}");
-        assert!((open - close).abs() < 4.0, "the file buttons stay on the first row: {open} vs {close}");
-        // Narrower still, the file buttons move down too rather than run over the path.
-        for width in [760.0, 700.0] {
-            let ([ws, open, close, _], kind_right, toggles_left) = commit_layout(width);
-            assert!(open > close + 10.0 && (ws - open).abs() < 4.0, "{width}: {ws}, {open} vs {close}");
-            assert!(toggles_left >= kind_right, "{width}: the path is not overrun: {toggles_left} vs {kind_right}");
-        }
-    }
-
-    #[test]
-    fn step_tips_follow_the_keymap() {
-        let mut keys = Keymap::default();
-        assert_eq!(step_tip(&keys, true, StepKind::Change), "Next change (F7)");
-        keys.set(BindingId::NextChange, vec![crate::keymap::Chord::plain(crate::keymap::KeyName::F(8))]);
-        assert_eq!(step_tip(&keys, true, StepKind::File), "Next change, in the next file (F8)");
-        keys.set(BindingId::PrevChange, Vec::new());
-        assert_eq!(step_tip(&keys, false, StepKind::End), "No changes before this file", "no key, no parentheses");
-    }
-}
+#[path = "header_tests.rs"]
+mod tests;

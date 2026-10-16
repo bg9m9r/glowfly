@@ -1,5 +1,5 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench, warning, keyboard, external diff), called from `widgets::paint_icon`.
+//! lock, wrench, warning, keyboard, external diff, into), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -178,6 +178,11 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.line_segment([from, tip], arrow);
             p.line_segment([tip, pos2(tip.x - 3.5, tip.y)], arrow);
             p.line_segment([tip, pos2(tip.x, tip.y + 3.5)], arrow);
+        }
+        Icon::Into => {
+            line(pos2(c.x - 5.0, c.y), pos2(c.x + 5.0, c.y));
+            line(pos2(c.x + 5.0, c.y), pos2(c.x + 1.5, c.y - 3.5));
+            line(pos2(c.x + 5.0, c.y), pos2(c.x + 1.5, c.y + 3.5));
         }
         _ => return false,
     }

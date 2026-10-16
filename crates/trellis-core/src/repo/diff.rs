@@ -92,10 +92,36 @@ impl Comparison {
 
 /// `compare_files` plus which of the files are missing from the working tree.
 pub fn compare(workdir: &Path, from: Oid, to: Oid) -> Result<Comparison> {
-    let repo = Repository::open(workdir)?;
-    let files = file_entries(&trees_diff(&repo, from, to, None)?);
-    let absent = absent_paths(&repo, &files);
+    comparison(&Repository::open(workdir)?, from, to)
+}
+
+fn comparison(repo: &Repository, from: Oid, to: Oid) -> Result<Comparison> {
+    let files = file_entries(&trees_diff(repo, from, to, None)?);
+    let absent = absent_paths(repo, &files);
     Ok(Comparison { files, absent })
+}
+
+/// What a branch brings to its target: the files that differ from the merge base of `target`
+/// and `source` to `source`.
+#[derive(Clone, PartialEq, Debug)]
+pub struct BranchChanges {
+    pub base: Oid,
+    pub comparison: Comparison,
+}
+
+/// The change `source` brings to `target`, as the comparison from their merge base to
+/// `source`. `None` when the two share no history (or none that is in this repository). A
+/// commit missing from the repository is an error.
+pub fn branch_changes(workdir: &Path, target: Oid, source: Oid) -> Result<Option<BranchChanges>> {
+    let repo = Repository::open(workdir)?;
+    repo.find_commit(target)?;
+    repo.find_commit(source)?;
+    let base = match repo.merge_base(target, source) {
+        Ok(base) => base,
+        Err(e) if e.code() == git2::ErrorCode::NotFound => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+    Ok(Some(BranchChanges { base, comparison: comparison(&repo, base, source)? }))
 }
 
 /// The paths of `files` with nothing at them in the working tree (all of them in a bare

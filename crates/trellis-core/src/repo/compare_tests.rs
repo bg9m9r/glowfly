@@ -143,3 +143,62 @@ fn compare_reports_absent_paths() {
     assert!(!c.in_workdir("c.txt"));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn branch_changes_start_at_the_merge_base() {
+    let dir = scratch_repo("branch-changes-base");
+    write(&dir, "base.txt", "base\n");
+    let c1 = commit_all(&dir, "c1");
+    git(&dir, &["checkout", "-q", "-b", "feature"]);
+    write(&dir, "f.txt", "feature\n");
+    let feature = commit_all(&dir, "feature");
+    git(&dir, &["checkout", "-q", "main"]);
+    write(&dir, "m.txt", "main\n");
+    let main = commit_all(&dir, "main");
+
+    let c = branch_changes(&dir, main, feature).unwrap().expect("the branches share c1");
+    assert_eq!(c.base, c1);
+    assert_eq!(entries(&c.comparison.files), [("f.txt", 'A')], "m.txt is the target's own change");
+    assert!(!c.comparison.in_workdir("f.txt"), "main is checked out");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn branch_changes_of_unrelated_histories_is_none() {
+    let dir = scratch_repo("branch-changes-orphan");
+    write(&dir, "a.txt", "a\n");
+    let main = commit_all(&dir, "main");
+    git(&dir, &["checkout", "-q", "--orphan", "other"]);
+    git(&dir, &["rm", "-rfq", "."]);
+    write(&dir, "o.txt", "o\n");
+    let other = commit_all(&dir, "other");
+
+    assert_eq!(branch_changes(&dir, main, other).unwrap(), None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn branch_changes_of_a_merged_branch_is_empty() {
+    let dir = scratch_repo("branch-changes-merged");
+    write(&dir, "a.txt", "a\n");
+    let source = commit_all(&dir, "c1");
+    write(&dir, "b.txt", "b\n");
+    let target = commit_all(&dir, "c2");
+
+    let c = branch_changes(&dir, target, source).unwrap().unwrap();
+    assert_eq!(c.base, source);
+    assert!(c.comparison.files.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn branch_changes_with_an_unknown_commit_fails() {
+    let dir = scratch_repo("branch-changes-unknown");
+    write(&dir, "a.txt", "a\n");
+    let main = commit_all(&dir, "c1");
+    let unknown = Oid::from_str("1234567890123456789012345678901234567890").unwrap();
+
+    assert!(branch_changes(&dir, main, unknown).is_err());
+    assert!(branch_changes(&dir, unknown, main).is_err());
+    let _ = std::fs::remove_dir_all(&dir);
+}

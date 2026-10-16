@@ -74,6 +74,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         RepoMsg::OpenDiff(target) => {
             super::history::close(st);
             super::blame::close(st);
+            super::pull_request::keep_for(st, &target);
             open_diff(st, target, fx);
         }
         RepoMsg::DiffLoaded { target, reload, generation, result } => {
@@ -272,6 +273,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             super::conflict::close(st);
             super::history::close(st);
             super::blame::close(st);
+            super::pull_request::close(st);
             super::rebase::close(st);
             st.gitflow_panel = false;
             st.draft = CommitDraft::default();
@@ -314,6 +316,9 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
         super::conflict::status_changed(st, now);
     }
     super::forge::resolve_pr_heads(st);
+    if kind == LoadKind::Refresh {
+        super::pull_request::refreshed(st, fx);
+    }
     reload_diff(st, fx);
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
     super::push_pr::loaded(st, fx);
@@ -330,6 +335,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::history::close(st);
     super::blame::close(st);
     st.gitflow_panel = false;
+    super::pull_request::close(st);
     fx.push(Effect::LoadDetail { workdir, oid });
     if scroll && let Some(row) = super::search::reveal(st, oid) {
         // Leave a few rows of context above the target.

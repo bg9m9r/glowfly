@@ -38,6 +38,7 @@ mod path_warnings;
 mod pr_menu_items;
 mod prefs;
 mod publish;
+mod pull_request;
 mod rebase;
 mod ref_visibility;
 mod remotes;
@@ -128,6 +129,8 @@ mod snapshot_tests_prefs_keyboard;
 mod snapshot_tests_prefs_notify;
 #[cfg(test)]
 mod snapshot_tests_profiles;
+#[cfg(test)]
+mod snapshot_tests_pull_request;
 #[cfg(test)]
 mod snapshot_tests_push_pr;
 #[cfg(test)]

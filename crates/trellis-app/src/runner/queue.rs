@@ -179,6 +179,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Clone(_)
         | Effect::Init(_)
         | Effect::Notify(_)
+        | Effect::LoadPrFiles(_)
         | Effect::Ui(_) => None,
     }
 }

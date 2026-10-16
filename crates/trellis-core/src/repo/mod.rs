@@ -62,8 +62,8 @@ pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameRun, blame_file};
 pub use collide::{Collision, Folding, probe};
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
 pub use diff::{
-    Comparison, ViewDiff, commit_detail, commit_stats, commit_stats_until, compare, compare_files, load_diff, load_diff_for_view,
-    load_diff_with,
+    BranchChanges, Comparison, ViewDiff, branch_changes, commit_detail, commit_stats, commit_stats_until, compare, compare_files,
+    load_diff, load_diff_for_view, load_diff_with,
 };
 use diff::{head_tree, path_opts, workdir_opts};
 pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions};

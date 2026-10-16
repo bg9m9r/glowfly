@@ -51,6 +51,7 @@ mod os;
 mod patches;
 mod path_search;
 mod profiles;
+mod pull_request;
 mod queue;
 mod rebase;
 mod saves;
@@ -337,6 +338,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Clone(e) => Some(clone::run(e)),
         Effect::Init(e) => Some(init::run(e)),
         Effect::Notify(note) => notify::run(note),
+        Effect::LoadPrFiles(job) => Some(pull_request::run(job)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

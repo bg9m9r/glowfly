@@ -497,11 +497,19 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 ## P2: integrations depth
 
 - [ ] **In-app pull request view**
-  - Files changed and the conversation
-  - Inline code comments: reply, resolve, show outdated
-  - Approve, request changes, finish review
-  - Merge with merge, squash or rebase
-  - Delete the branch after merge
+  - [x] Files changed (from the local remote-tracking branches: merge base to source tip, with fetch notes)
+  - [ ] The conversation (comments) from the service
+  - [ ] Inline code comments: reply, resolve, show outdated
+  - [ ] Approve, request changes, finish review
+  - [ ] Merge with merge, squash or rebase
+  - [ ] Delete the branch after merge
+  - [ ] Fork pull requests: fetch the head ref (e.g. refs/pull/N/head) when the source branch isn't on the remote
+  - [ ] Use the head SHA directly when that commit is already here but the remote-tracking branch is missing or behind
+  - [ ] A note when the local target branch differs from the service's base (needs the base SHA from the service)
+  - [ ] Show pull request from the graph's PR chip, a local branch's menu and the command palette
+  - [ ] A Commits tab: the commits between the merge base and the source tip
+  - [ ] Fetch more history from the no-common-commit note in a shallow clone
+  - [ ] CI / build status in the panel (with the CI / build status item)
 - [x] **CI / build status**
   Check status on PRs and on branch tips (GitHub checks, GitLab pipelines, Azure Pipelines,
   Bitbucket builds).

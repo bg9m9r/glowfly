@@ -35,6 +35,7 @@ pub mod path_hazards;
 pub mod prefs;
 pub mod profiles;
 pub mod publish;
+pub mod pull_request;
 pub mod push_pr;
 pub mod rebase;
 pub mod ref_rows;
@@ -222,6 +223,11 @@ pub struct AppState {
     pub blame: Option<blame::BlameView>,
     /// Incremented for every blame request and whenever the view closes (stale `Loaded` results are dropped).
     pub blame_gen: u64,
+    /// The open pull request panel; shown instead of a diff or the graph (below a conflict and
+    /// the file history).
+    pub pull_request: Option<pull_request::PrView>,
+    /// Incremented for every file-list request and whenever the panel closes.
+    pub pull_request_gen: u64,
     /// The interactive rebase panel; shown instead of the graph (below a diff, the file history and a conflict).
     pub rebase: Option<rebase::RebasePanel>,
     /// Incremented for every rebase list request and whenever the panel closes; older
@@ -318,6 +324,8 @@ impl AppState {
             history_gen: 0,
             blame: None,
             blame_gen: 0,
+            pull_request: None,
+            pull_request_gen: 0,
             rebase: None,
             rebase_gen: 0,
             gitflow_panel: false,

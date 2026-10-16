@@ -11,6 +11,7 @@ use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::StashMsg;
+use crate::pull_request::PullRequestMsg;
 use crate::state::palette::StashAction;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use eframe::egui;
@@ -208,13 +209,14 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
         }
         let r = r.on_hover_text(tooltip);
         if r.double_clicked() {
-            msgs.push(Msg::OpenUrl(pr.url.clone()));
+            msgs.push(Msg::PullRequest(PullRequestMsg::Open(pr.id)));
         } else if r.clicked()
             && let Some(o) = tip
         {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
         }
         r.context_menu(|ui| {
+            menu_item(msgs, ui, format!("Show {}", f.pr_noun()), Msg::PullRequest(PullRequestMsg::Open(pr.id)));
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));
             super::build_status::pr_menu_item(ui, pr, msgs);
             let checkout = crate::state::branches::pr_checkout(snap, &f.remote, &pr.source);

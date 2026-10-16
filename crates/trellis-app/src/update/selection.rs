@@ -55,6 +55,7 @@ fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
             super::conflict::close(st);
             super::history::close(st);
             super::blame::close(st);
+            super::pull_request::close(st);
             request_compare(st, fx);
         }
         Selection::None | Selection::Wip => {
