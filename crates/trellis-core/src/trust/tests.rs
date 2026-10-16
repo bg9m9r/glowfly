@@ -211,3 +211,27 @@ fn checked_out_submodules_are_scanned_too() {
     let _ = std::fs::remove_dir_all(&top);
     let _ = std::fs::remove_dir_all(&sub);
 }
+
+#[test]
+fn hook_names_match_any_case_on_every_os() {
+    // A Linux FAT, exFAT, CIFS or casefold mount runs Post-Checkout as post-checkout, so the
+    // check can't depend on the OS.
+    for name in
+        ["pre-commit", "Pre-Commit", "POST-CHECKOUT", "pre-comm\u{131}t", "po\u{17f}t-merge", "pre-com\u{200C}mit", "\u{FEFF}update"]
+    {
+        assert!(is_hook_name(name), "{name:?}");
+    }
+    for name in ["pre-commit.sample", "notes.txt", "pre-commits", "precommit"] {
+        assert!(!is_hook_name(name), "{name:?}");
+    }
+    assert_eq!(is_hook_name("pre-commit.exe"), cfg!(windows), "Git for Windows also runs .exe hooks");
+}
+
+#[test]
+fn a_hook_in_another_case_is_listed_on_every_os() {
+    let dir = scratch_repo("trust-hooks-case");
+    let hooks = dir.join(".git/hooks");
+    hook(&hooks, "Post-Checkout");
+    assert_eq!(scan_at(&dir).unwrap().hooks, ["Post-Checkout"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
