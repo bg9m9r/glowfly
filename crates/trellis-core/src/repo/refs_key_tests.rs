@@ -1,5 +1,7 @@
 use super::refs_key;
+use super::refs_key::{RACY_WINDOW, stamp_trustworthy};
 use crate::testutil::*;
+use std::time::{Duration, SystemTime};
 
 #[test]
 fn refs_key_follows_refs_config_and_stashes_but_not_the_working_tree() {
@@ -32,5 +34,45 @@ fn refs_key_follows_refs_config_and_stashes_but_not_the_working_tree() {
     let k5 = key();
     git(&dir, &["config", "branch.side.description", "x"]);
     assert_ne!(key(), k5, "config");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn recent_modification_times_are_not_trusted() {
+    let now = SystemTime::now();
+    assert!(stamp_trustworthy(Some(now - RACY_WINDOW), now));
+    assert!(stamp_trustworthy(Some(now - Duration::from_secs(3600)), now));
+    assert!(!stamp_trustworthy(Some(now - Duration::from_millis(1999)), now), "within one coarse tick");
+    assert!(!stamp_trustworthy(Some(now), now));
+    assert!(!stamp_trustworthy(Some(now + Duration::from_secs(5)), now), "from the future: the clock moved");
+    assert!(!stamp_trustworthy(None, now), "no time at all");
+}
+
+#[test]
+fn a_same_length_config_rewrite_with_the_same_time_is_seen() {
+    // `git remote set-url` to a URL of the same length within one tick of a coarse clock leaves
+    // the config's size and time as they were.
+    let dir = scratch_repo("refs-key-racy");
+    write(&dir, "a.txt", "one\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    git(&dir, &["remote", "add", "origin", "https://example.com/aaaa.git"]);
+    let config = dir.join(".git").join("config");
+    let when = std::fs::metadata(&config).unwrap().modified().unwrap();
+    let k0 = refs_key(&dir).unwrap();
+    git(&dir, &["remote", "set-url", "origin", "https://example.com/bbbb.git"]);
+    let f = std::fs::File::options().write(true).open(&config).unwrap();
+    f.set_modified(when).unwrap();
+    drop(f);
+    assert_eq!(std::fs::metadata(&config).unwrap().modified().unwrap(), when);
+    assert_ne!(refs_key(&dir).unwrap(), k0, "the remote's URL changed");
+
+    // An old modification time is trusted for a large file only; a small one is always read.
+    let old = SystemTime::now() - Duration::from_secs(3600);
+    let f = std::fs::File::options().write(true).open(&config).unwrap();
+    f.set_modified(old).unwrap();
+    drop(f);
+    let k1 = refs_key(&dir).unwrap();
+    assert_eq!(refs_key(&dir).unwrap(), k1, "nothing changed");
     let _ = std::fs::remove_dir_all(&dir);
 }

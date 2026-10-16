@@ -8,7 +8,7 @@ use git2::Repository;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 /// The fingerprint of the repository at `workdir` (see the module docs). Only meaningful when
 /// compared with another taken in the same run of the app.
@@ -17,6 +17,8 @@ pub fn refs_key(workdir: &Path) -> Result<u64> {
 }
 
 pub(super) fn key_of(repo: &Repository) -> Result<u64> {
+    let now = SystemTime::now();
+    let file_stamp = |p: &Path| file_stamp(p, now);
     let mut h = DefaultHasher::new();
     (repo.state() as u32).hash(&mut h);
     match repo.find_reference("HEAD") {
@@ -66,15 +68,54 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
 /// Taken before reading the status, so a change made meanwhile shows up next time.
 pub fn open_file_stamp(workdir: &Path, path: &str) -> Option<u64> {
     let repo = Repository::open(workdir).ok()?;
+    let now = SystemTime::now();
     let mut h = DefaultHasher::new();
     path.hash(&mut h);
-    file_stamp(&workdir.join(path)).hash(&mut h);
-    file_stamp(&repo.path().join("index")).hash(&mut h);
+    file_stamp(&workdir.join(path), now).hash(&mut h);
+    file_stamp(&repo.path().join("index"), now).hash(&mut h);
     Some(h.finish())
 }
 
-/// The size and modification time of the file at `p`, or None when there is none.
-fn file_stamp(p: &Path) -> Option<(u64, Option<SystemTime>)> {
-    let m = std::fs::metadata(p).ok()?;
-    Some((m.len(), m.modified().ok()))
+/// How recently before a stamp is taken a file may have been modified for its size and time
+/// to still prove it unchanged later: a rewrite of the same length within one tick of a coarse
+/// clock (FAT: 2 s; HFS+ and ext3: 1 s; a network file system's attribute cache) leaves both as
+/// they were. git's "racy git" rule.
+pub const RACY_WINDOW: Duration = Duration::from_secs(2);
+
+/// Files up to this size are fingerprinted by their bytes, which costs little and needs no
+/// trust in timestamps.
+const HASHED_UP_TO: u64 = 64 * 1024;
+
+/// Whether a file last modified at `modified` can be stamped by size and time at `taken_at`: it
+/// was modified at least [`RACY_WINDOW`] earlier (not later: the clock may have been set back).
+pub fn stamp_trustworthy(modified: Option<SystemTime>, taken_at: SystemTime) -> bool {
+    modified.is_some_and(|m| taken_at.duration_since(m).is_ok_and(|age| age >= RACY_WINDOW))
+}
+
+/// A fingerprint of the file at `p` at `taken_at`.
+#[derive(Hash)]
+enum Stamp {
+    Missing,
+    /// A small file's length and the hash of its bytes.
+    Bytes(u64, u64),
+    /// A larger file's length and modification time, old enough to trust.
+    Settled(u64, SystemTime),
+    /// A larger file modified too recently to trust its stamp: differs from every other stamp
+    /// (the time it was taken), so the next comparison reads it again.
+    Unsettled(u128),
+}
+
+fn file_stamp(p: &Path, taken_at: SystemTime) -> Stamp {
+    let Ok(m) = std::fs::metadata(p) else { return Stamp::Missing };
+    if m.len() <= HASHED_UP_TO
+        && let Ok(bytes) = std::fs::read(p)
+    {
+        let mut h = DefaultHasher::new();
+        bytes.hash(&mut h);
+        return Stamp::Bytes(bytes.len() as u64, h.finish());
+    }
+    match m.modified() {
+        Ok(t) if stamp_trustworthy(Some(t), taken_at) => Stamp::Settled(m.len(), t),
+        _ => Stamp::Unsettled(taken_at.duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or_default()),
+    }
 }
