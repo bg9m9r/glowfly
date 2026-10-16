@@ -37,12 +37,18 @@ fn staged_rename_result_toast_and_diff() {
     let (mut st, dir) = loaded("wf-stage-done");
     let op = || FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: true };
     st.diff = Some((DiffTarget::Staged("a.txt".into()), empty_diff().into()));
-    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Written { ignored: false }) }));
+    run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Written { ignored: false, warnings: vec![] }) }),
+    );
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Renamed a.txt to b.txt and staged the rename."));
     assert!(st.diff.is_none());
 
     // Never "ignored": the new path stays tracked.
-    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Written { ignored: true }) }));
+    run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Written { ignored: true, warnings: vec![] }) }),
+    );
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Renamed a.txt to b.txt and staged the rename."));
 
     st.snap.as_mut().unwrap().unstaged = vec![entry("a.txt", 'M')];

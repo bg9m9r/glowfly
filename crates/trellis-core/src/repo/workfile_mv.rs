@@ -5,7 +5,10 @@
 //! working file's bytes both move unchanged, so no clean or smudge filter is involved. The path checks are the ones
 //! the plain rename in `workfile` uses; the index is only read here, never written.
 
-use super::workfile::{create_parents, ensure_inside, plan_rename, prune_empty_parents, remove_dirs};
+use super::workfile::{Written, create_parents, prune_empty_parents, remove_dirs};
+use super::workfile_disk::ensure_inside;
+use super::workfile_disk::{DISK, Disk};
+use super::workfile_rename::{plan_rename_on, temp_name};
 use crate::error::{Error, Result};
 use crate::gitcli::{NO_PROMPTS, args, run_with_input};
 use std::path::Path;
@@ -13,9 +16,13 @@ use std::path::Path;
 /// Renames the tracked working-tree file `from` to the typed path `to` with `git mv`, so the
 /// index records the rename. Same refusals as `rename_file`, plus: `from` must have a
 /// stage-0 index entry, and no other index entry may sit at `to`, at a folder above it, or
-/// inside it.
-pub fn rename_file_staged(workdir: &Path, from: &str, to: &str) -> Result<()> {
-    let (repo, p) = plan_rename(workdir, from, to)?;
+/// inside it. Returns warnings about the new name (the path stays tracked, so never ignored).
+pub fn rename_file_staged(workdir: &Path, from: &str, to: &str) -> Result<Written> {
+    rename_file_staged_on(workdir, from, to, &DISK)
+}
+
+pub(super) fn rename_file_staged_on(workdir: &Path, from: &str, to: &str, disk: &Disk) -> Result<Written> {
+    let (repo, p) = plan_rename_on(workdir, from, to, disk)?;
     let index = repo.index()?;
     if index.get_path(Path::new(&p.from), 0).is_none() {
         return Err(Error::Other(format!("{} isn't tracked by git, so the rename can't be staged", p.from)));
@@ -35,15 +42,30 @@ pub fn rename_file_staged(workdir: &Path, from: &str, to: &str) -> Result<()> {
         remove_dirs(&created);
         return Err(e);
     }
-    let a = args(&["--literal-pathspecs", "mv", "--", &p.from, &p.to]);
-    let (ok, out) = run_with_input(&p.root, &a, "", NO_PROMPTS);
-    if !ok {
+    let moved = if p.case_only { git_mv_via_temp(&p.root, &p.from, &p.to) } else { git_mv(&p.root, &p.from, &p.to) };
+    if let Err(e) = moved {
         remove_dirs(&created);
-        return Err(Error::Other(git_message(&out)));
+        return Err(e);
     }
     // git mv leaves the source's emptied folders behind.
     prune_empty_parents(&p.root, &p.from);
-    Ok(())
+    Ok(Written { ignored: false, warnings: p.warnings })
+}
+
+fn git_mv(root: &Path, from: &str, to: &str) -> Result<()> {
+    let a = args(&["--literal-pathspecs", "mv", "--", from, to]);
+    let (ok, out) = run_with_input(root, &a, "", NO_PROMPTS);
+    if ok { Ok(()) } else { Err(Error::Other(git_message(&out))) }
+}
+
+/// A change of case or Unicode form, in two moves through a temporary name: git's own check
+/// folds ASCII letters only, so `git mv Ärger.txt ärger.txt` would find the destination taken.
+fn git_mv_via_temp(root: &Path, from: &str, to: &str) -> Result<()> {
+    let temp = temp_name(from);
+    git_mv(root, from, &temp)?;
+    git_mv(root, &temp, to).inspect_err(|_| {
+        let _ = git_mv(root, &temp, from);
+    })
 }
 
 /// The index entry (of any stage) that a staged rename of `from` onto `to` would replace: one

@@ -86,20 +86,27 @@ fn form_for<'a>(modal: &'a mut Option<Modal>, op: &FileOp) -> Option<&'a mut Pat
 }
 
 fn success_text(op: &FileOp, ok: WorkFileOk) -> String {
-    let ignored = matches!(ok, WorkFileOk::Written { ignored: true });
     let deleted = if let WorkFileOk::Deleted(d) = ok { d } else { trellis_core::repo::Deleted::Permanently };
+    let (ignored, warnings) = match ok {
+        WorkFileOk::Written { ignored, warnings } => (ignored, warnings),
+        _ => (false, Vec::new()),
+    };
     let mut text = match op {
         FileOp::Create(p) => format!("Created {p}."),
-        // The new path stays tracked, so the result is never "ignored".
-        FileOp::Rename { from, to, stage: true } => return format!("Renamed {from} to {to} and staged the rename."),
+        FileOp::Rename { from, to, stage: true } => format!("Renamed {from} to {to} and staged the rename."),
         FileOp::Rename { from, to, stage: false } => format!("Renamed {from} to {to}."),
         FileOp::Delete { path, mode } => return deleted_text(path, *mode, deleted, false),
         FileOp::UnstageDelete { path, mode } => return deleted_text(path, *mode, deleted, true),
         FileOp::UnstageGone(p) => return format!("Removed {p} from the staging area."),
         FileOp::Discard { path, mode } => return deleted_text(path, *mode, deleted, false),
     };
-    if ignored {
+    // A staged rename's new path stays tracked, so it is never "ignored".
+    if ignored && !matches!(op, FileOp::Rename { stage: true, .. }) {
         text.push_str(" Git ignores it, so it isn't listed with your changes.");
+    }
+    for w in warnings {
+        text.push(' ');
+        text.push_str(&w);
     }
     text
 }

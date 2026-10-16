@@ -63,18 +63,16 @@ fn removal(mode: DeleteMode) -> repo::Removal {
 }
 
 /// Runs `op` in `workdir`. A create or plain rename reports whether git ignores the new path (a
-/// staged rename's new path stays tracked); a delete reports how the working copy went. A staged
+/// staged rename's new path stays tracked) and any warnings about the new name; a delete reports how the working copy went. A staged
 /// rename goes through git mv; UnstageDelete also takes the file out of the index, and
 /// UnstageGone only does that. Discard deletes an untracked file, refusing one that is tracked by
 /// then. When the trash refuses a file, nothing has changed and the result
 /// is `WorkFileMsg::TrashRefused`, so the user can retry or be asked about deleting it permanently.
 pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
     let r = match &op {
-        FileOp::Create(p) => repo::create_file(workdir, p).map(|ignored| WorkFileOk::Written { ignored }),
-        FileOp::Rename { from, to, stage: true } => {
-            repo::rename_file_staged(workdir, from, to).map(|()| WorkFileOk::Written { ignored: false })
-        }
-        FileOp::Rename { from, to, stage: false } => repo::rename_file(workdir, from, to).map(|ignored| WorkFileOk::Written { ignored }),
+        FileOp::Create(p) => repo::create_file(workdir, p).map(WorkFileOk::written),
+        FileOp::Rename { from, to, stage: true } => repo::rename_file_staged(workdir, from, to).map(WorkFileOk::written),
+        FileOp::Rename { from, to, stage: false } => repo::rename_file(workdir, from, to).map(WorkFileOk::written),
         FileOp::Delete { path, mode } => repo::delete_file(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
         FileOp::UnstageDelete { path, mode } => repo::delete_staged_new_file(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
         FileOp::UnstageGone(p) => repo::unstage_gone_new_file(workdir, p).map(|()| WorkFileOk::Unstaged),

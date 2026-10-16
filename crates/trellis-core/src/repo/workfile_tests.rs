@@ -54,31 +54,44 @@ fn check_new_path_normalizes_and_refuses() {
     for t in ["../x", "a/../../x", "a/.."] {
         assert_eq!(check_new_path(t), Err(OutsideRepo), "{t:?}");
     }
-    for t in [".git/config", "sub/.GIT/hooks/x", ".git./x", "GIT~1/x", ".git", ".git /x"] {
+    for t in
+        [".git/config", "sub/.GIT/hooks/x", ".git./x", "GIT~1/x", ".git", ".git /x", ".g\u{200C}it/x", "\u{FEFF}.GIT/hooks/post-checkout"]
+    {
         assert_eq!(check_new_path(t), Err(InsideGitDir), "{t:?}");
     }
     assert_eq!(check_new_path("dir/"), Err(Folder));
+    // Names Windows can't use: refused there, allowed with a warning elsewhere.
     for (t, bad) in [
         ("a:b", "a:b"),
         ("what?.txt", "what?.txt"),
         ("nul", "nul"),
         ("Com1.txt", "Com1.txt"),
+        ("conin$", "conin$"),
+        ("COM\u{b9}.txt", "COM\u{b9}.txt"),
         ("x/trailing.", "trailing."),
         ("tab\tname", "tab\tname"),
         ("lpt9", "lpt9"),
         ("a/quote\"", "quote\""),
+        ("aux/x.c", "aux"),
     ] {
-        assert_eq!(check_new_path(t), Err(BadName(bad.into())), "{t:?}");
+        let why = crate::names::win_name_problem(bad).unwrap();
+        assert_eq!(check_new_path_for(t, true), Err(BadName(bad.into(), why.clone())), "{t:?}");
+        assert!(check_new_path_for(t, false).is_ok(), "{t:?}");
+        assert_eq!(new_path_warning_for(&check_new_path_for(t, false).unwrap(), false), Some(why.warning(bad)), "{t:?}");
+        assert_eq!(new_path_warning_for(t, true), None);
+        assert_eq!(check_new_path(t).is_err(), cfg!(windows), "{t:?}");
     }
     for t in [".gitignore", "my.git/x", "com10.txt", "console.log", "héllo.txt", "abé"] {
-        assert!(check_new_path(t).is_ok(), "{t:?}");
+        assert!(check_new_path_for(t, true).is_ok(), "{t:?}");
+        assert_eq!(new_path_warning_for(t, false), None, "{t:?}");
     }
     assert_eq!(Empty.message(), "Enter a file name.");
     assert_eq!(Absolute.message(), "Enter a path inside the repository.");
     assert_eq!(OutsideRepo.message(), "That path leads outside the repository.");
     assert_eq!(InsideGitDir.message(), "Files can't be created inside the .git folder.");
     assert_eq!(Folder.message(), "Enter a file name, not a folder.");
-    assert_eq!(BadName("a:b".into()).message(), "a:b isn't a valid file name.");
+    let colon = crate::names::WinNameProblem::Char(':');
+    assert_eq!(BadName("a:b".into(), colon).message(), "a:b can't be used: Windows doesn't allow : in names.");
 }
 
 #[test]
@@ -86,7 +99,7 @@ fn creates_in_new_nested_folder() {
     let dir = scratch_repo("wf-create");
     commit(&dir, &[("a.txt", "a\n")], "one");
     let before = index_id(&dir, "a.txt");
-    assert!(!create_file(&dir, "deep/er/new.txt").unwrap());
+    assert!(!create_file(&dir, "deep/er/new.txt").unwrap().ignored);
     assert_eq!(text(&dir, "deep/er/new.txt"), "");
     assert_eq!(status(&dir), "?? deep/");
     assert_eq!(index_id(&dir, "a.txt"), before);
@@ -119,7 +132,7 @@ fn create_refuses_existing_paths() {
 fn create_in_ignored_folder_reports_ignored() {
     let dir = scratch_repo("wf-create-ignored");
     commit(&dir, &[(".gitignore", "build/\n")], "ignore");
-    assert!(create_file(&dir, "build/out.log").unwrap());
+    assert!(create_file(&dir, "build/out.log").unwrap().ignored);
     assert!(dir.join("build/out.log").is_file());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -186,7 +199,7 @@ fn renames_untracked_into_new_folder() {
     commit(&dir, &[("a.txt", "a\n")], "one");
     std::fs::create_dir_all(dir.join("old/sub")).unwrap();
     write(&dir, "old/sub/n.txt", "note\n");
-    assert!(!rename_file(&dir, "old/sub/n.txt", "new/place/n.txt").unwrap());
+    assert!(!rename_file(&dir, "old/sub/n.txt", "new/place/n.txt").unwrap().ignored);
     assert_eq!(text(&dir, "new/place/n.txt"), "note\n");
     assert!(!dir.join("old").exists(), "the emptied folders are removed");
     assert_eq!(status(&dir), "?? new/");
@@ -198,7 +211,7 @@ fn rename_tracked_leaves_index() {
     let dir = scratch_repo("wf-rename-tracked");
     commit(&dir, &[("old.txt", "x\n")], "one");
     let before = index_id(&dir, "old.txt");
-    assert!(!rename_file(&dir, "old.txt", "new.txt").unwrap());
+    assert!(!rename_file(&dir, "old.txt", "new.txt").unwrap().ignored);
     assert_eq!(status(&dir), " D old.txt\n?? new.txt");
     assert_eq!(index_id(&dir, "old.txt"), before);
     let _ = std::fs::remove_dir_all(&dir);

@@ -78,12 +78,19 @@ impl FileOp {
 }
 
 /// What a successful `FileOp` did.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum WorkFileOk {
-    /// Created or renamed; whether git ignores the new path.
-    Written { ignored: bool },
+    /// Created or renamed; whether git ignores the new path, and warnings about the new name
+    /// (it won't check out on Windows, or it is one name with a tracked path there and on macOS).
+    Written { ignored: bool, warnings: Vec<String> },
     /// Deleted or discarded (UnstageDelete also unstaged); how the working copy went.
     Deleted(Deleted),
     /// UnstageGone: only the index changed.
     Unstaged,
+}
+
+impl WorkFileOk {
+    pub fn written(w: trellis_core::repo::Written) -> Self {
+        WorkFileOk::Written { ignored: w.ignored, warnings: w.warnings }
+    }
 }

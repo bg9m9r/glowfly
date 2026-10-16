@@ -225,15 +225,33 @@ fn create_result_closes_or_shows_the_error() {
     let create = || FileOp::Create("docs/a.md".into());
     run(&mut st, Msg::WorkFile(WorkFileMsg::NewFileDialog("docs/a.md".into())));
     run(&mut st, Msg::WorkFile(WorkFileMsg::CreateFile("docs/a.md".into())));
-    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: false }) }));
+    let fx = run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: false, warnings: vec![] }) }),
+    );
     assert!(st.modal.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Created docs/a.md."));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     finish(&mut st, fx);
 
-    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: true }) }));
+    let fx = run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: true, warnings: vec![] }) }),
+    );
     finish(&mut st, fx);
     assert!(st.toasts.last().unwrap().text.contains("Git ignores it"));
+
+    // Core's warnings about the new name follow the result.
+    let warnings = vec!["Docs/A.md is also tracked; Windows and macOS see it and docs/a.md as one file.".to_owned()];
+    let fx = run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Ok(WorkFileOk::Written { ignored: false, warnings }) }),
+    );
+    finish(&mut st, fx);
+    assert_eq!(
+        st.toasts.last().map(|t| t.text.as_str()),
+        Some("Created docs/a.md. Docs/A.md is also tracked; Windows and macOS see it and docs/a.md as one file.")
+    );
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::NewFileDialog("docs/a.md".into())));
     run(&mut st, Msg::WorkFile(WorkFileMsg::CreateFile("docs/a.md".into())));
@@ -258,10 +276,13 @@ fn rename_or_delete_closes_the_old_paths_diff() {
     let (mut st, dir) = loaded("wf-close-diff");
     for (op, ok) in [
         (FileOp::Delete { path: "a.txt".into(), mode: DeleteMode::Trash }, WorkFileOk::Deleted(Deleted::Trashed)),
-        (FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: false }, WorkFileOk::Written { ignored: false }),
+        (
+            FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: false },
+            WorkFileOk::Written { ignored: false, warnings: vec![] },
+        ),
     ] {
         st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
-        run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op.clone(), result: Ok(ok) }));
+        run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op.clone(), result: Ok(ok.clone()) }));
         assert!(st.diff.is_none(), "{op:?}");
 
         st.diff = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));

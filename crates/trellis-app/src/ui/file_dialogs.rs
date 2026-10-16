@@ -8,7 +8,7 @@ use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
 use eframe::egui::{self, Key, RichText};
-use trellis_core::repo::{PathProblem, Snapshot, check_new_path};
+use trellis_core::repo::{PathProblem, Snapshot, check_new_path, new_path_warning};
 
 /// The New file dialog; returns true when it should close (Cancel). Its field keeps the keyboard
 /// focus unless `focus` is false (a credential prompt is open above it).
@@ -75,6 +75,10 @@ fn path_field(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, o
     let problem = if unchanged { None } else { problem(&form.text, snap, old).or_else(|| form.current_error().map(str::to_owned)) };
     if let Some(p) = &problem {
         error_line(ui, p);
+    } else if let Some(w) = checked.as_deref().ok().filter(|_| !unchanged).and_then(new_path_warning) {
+        // Allowed here, but the repository won't check out on Windows.
+        ui.add_space(4.0);
+        ui.label(RichText::new(w).color(color::amber()));
     }
     if let Ok(path) = &checked
         && path != form.text.trim()
