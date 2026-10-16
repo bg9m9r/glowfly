@@ -305,3 +305,24 @@ fn submodule_update_keeps_undo_history() {
     assert!(st.undo.blocked.is_none());
     cleanup(&[&parent, &lib]);
 }
+
+#[test]
+fn submodule_update_reads_its_path_literally() {
+    // `lib[1]` as a glob also matches `lib1`: only the submodule named exactly is updated.
+    let lib = scratch_repo("sm-literal-lib");
+    let parent = scratch_repo("sm-literal");
+    let url = format!("../{}", lib.file_name().unwrap().to_string_lossy());
+    // git checks for an existing entry with a glob too: the bracketed one goes in first.
+    for p in ["lib[1]", "lib1"] {
+        git(&parent, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, p]);
+    }
+    git(&parent, &["commit", "-q", "-m", "add libs"]);
+    git(&parent, &["submodule", "deinit", "-q", "-f", "--all"]);
+    let checked_out = |p: &str| std::fs::read_dir(parent.join(p)).map(|d| d.count() > 0).unwrap_or(false);
+    assert!(!checked_out("lib1") && !checked_out("lib[1]"));
+    let (ok, out) = trellis_core::gitcli::run(&parent, &update_args("lib[1]"));
+    assert!(ok, "{out}");
+    assert!(checked_out("lib[1]"));
+    assert!(!checked_out("lib1"), "the glob reading would have updated lib1 too");
+    cleanup(&[&parent, &lib]);
+}

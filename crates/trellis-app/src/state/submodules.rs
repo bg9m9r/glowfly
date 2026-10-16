@@ -143,11 +143,13 @@ pub fn confirm_update_button(sm: &SubmoduleInfo) -> String {
     if sm.left_behind.is_empty() { "Update".to_owned() } else { format!("Update and leave {} behind", commit_count(sm)) }
 }
 
-/// `git submodule update --init --checkout -- <path>`: clones it if needed and checks out the
+/// `git submodule update --init --checkout -- :(literal)<path>` (the path is never a
+/// glob: `lib[1]` would update `lib1`; `git --literal-pathspecs` doesn't reach `submodule update`,
+/// as of git 2.54, but the pathspec magic does): clones it if needed and checks out the
 /// recorded commit. `--checkout` overrides a `submodule.<name>.update` of rebase, merge or none,
 /// so the action does what its label says.
 pub fn update_args(path: &str) -> Vec<String> {
-    args(&["submodule", "update", "--init", "--checkout", "--", path])
+    args(&["submodule", "update", "--init", "--checkout", "--", &format!(":(literal){path}")])
 }
 
 #[cfg(test)]
@@ -210,7 +212,7 @@ mod tests {
         let body = confirm_update_body(&out);
         assert!(body.contains("bbbbbbb") && body.contains("aaaaaaa") && body.contains("Branches inside"), "{body}");
         assert_eq!(confirm_update_button(&out), "Update");
-        assert_eq!(update_args("libs/core"), ["submodule", "update", "--init", "--checkout", "--", "libs/core"]);
+        assert_eq!(update_args("libs/core"), ["submodule", "update", "--init", "--checkout", "--", ":(literal)libs/core"]);
     }
 
     fn with_left_behind(n: usize) -> SubmoduleInfo {
