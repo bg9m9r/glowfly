@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 16:39 · **Performance**: Incremental working-tree status: the file watcher's changed paths re-read only their unstaged rows (merged into the lists on screen, with whole reads for index, ignore, ref and HEAD changes), queued status reads merge, and a slow full read offers once per repository to turn on git's untracked cache (`b01e155`)
 - 2026-10-16 16:22 · **Onboarding**: First-run welcome on a new install (name and email for the global git config, connecting a hosting service, the git check, then open, clone or start a repository) and a five-step tour of the main window that dims around each area, both offered again from the palette (`09c0207`)
 - 2026-10-16 16:06 · **Logs**: The activity log kept across sessions (earlier sessions dimmed under their start time, Clear deletes the file), warnings, errors and panics in a size-rotated error log, effects and git commands of 500 ms or more in a performance log, Activity / Errors / Performance tabs in the panel, and extended logging that adds every git command with its timing to the activity log (`d1dc9b9`)
 - 2026-10-16 16:02 · **Git engine choice**: Preferences > Git chooses which git program Trellis runs (PATH or any git found on this machine, or browsed to), checked off the UI thread before use and applied at startup, with version warnings and the git banner pointing there (`29855da`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 10:38 · **Rebind keyboard shortcuts**: Preferences > Keyboard: change, add and remove keys by recording them, with refused and clashing keys explained (Swap, Use here), per-row Reset and Reset all; saved to settings and applied at once, and every changeable key matched through the keymap (`e6d2105`)
 - 2026-10-16 09:34 · **Add and remove submodules**: Add submodule dialog (URL, path following the URL, optional branch, live checks of the folder against the index, the disk, .gitignore and leftover stored modules) from the SUBMODULES header menu and the palette, which adds the first one; Remove submodule… with a confirmation naming what is deleted and warning about changes, unpushed commits and stashes inside (`96c2c43`)
 - 2026-10-16 09:25 · **Profiles**: Each profile keeps its connected hosting-service accounts and its General, UI Customization and Editor preferences, switched with the identity once git config is written; new profiles can start with the current accounts, and shared sign-ins are kept while any profile lists the account (`a27393d`)
-- 2026-10-16 09:15 · **Blame gutter**: Blame view of a file at HEAD or a commit (git blame --porcelain, honouring .mailmap and blame.ignoreRevsFile) with a sticky author, date and commit gutter per run, line numbers and syntax colors, opened from file menus, the file history header and the palette's Blame file… finder; clicking a run selects its commit (`921cdd8`)
 
 ---
 
