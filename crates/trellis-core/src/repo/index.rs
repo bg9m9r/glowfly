@@ -97,7 +97,7 @@ pub fn discard_file(workdir: &Path, path: &str) -> Result<()> {
 /// Discards the untracked file `path`: deletes it the way `removal` asks (to the trash, or
 /// for good) and prunes the folders it leaves empty. Refused, changing nothing, when `path`
 /// has an index entry (it is tracked or staged now), when the trash can't take it
-/// (`Error::NoTrash`), and for every reason `delete_file` refuses.
+/// (`Error::TrashRefused`), and for every reason `delete_file` refuses.
 pub fn discard_untracked(workdir: &Path, path: &str, removal: Removal) -> Result<Deleted> {
     let rel = workfile::contained(path)?;
     let repo = Repository::open(workdir)?;

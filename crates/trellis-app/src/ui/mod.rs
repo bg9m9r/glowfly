@@ -94,6 +94,8 @@ mod snapshot_tests_palette_recent;
 #[cfg(test)]
 mod snapshot_tests_palette_stash;
 #[cfg(test)]
+mod snapshot_tests_platform_dialogs;
+#[cfg(test)]
 mod snapshot_tests_profiles;
 #[cfg(test)]
 mod snapshot_tests_rebase;

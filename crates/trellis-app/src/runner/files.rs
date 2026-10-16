@@ -46,12 +46,13 @@ pub(crate) fn test_bin() -> std::path::PathBuf {
 /// Moves `full` into `test_bin()` under a unique name (the temp dir and scratch repositories
 /// share a volume, so a rename works).
 #[cfg(test)]
-fn test_trash(full: &Path) -> Result<(), String> {
+fn test_trash(full: &Path) -> Result<(), repo::TrashRefusal> {
+    let other = |e: std::io::Error| repo::TrashRefusal::new(repo::TrashProblem::Other, e.to_string());
     let bin = test_bin();
-    std::fs::create_dir_all(&bin).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&bin).map_err(other)?;
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
     let name = full.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    std::fs::rename(full, bin.join(format!("{nanos}-{name}"))).map_err(|e| e.to_string())
+    std::fs::rename(full, bin.join(format!("{nanos}-{name}"))).map_err(other)
 }
 
 fn removal(mode: DeleteMode) -> repo::Removal {
@@ -66,7 +67,7 @@ fn removal(mode: DeleteMode) -> repo::Removal {
 /// rename goes through git mv; UnstageDelete also takes the file out of the index, and
 /// UnstageGone only does that. Discard deletes an untracked file, refusing one that is tracked by
 /// then. When the trash refuses a file, nothing has changed and the result
-/// is `WorkFileMsg::TrashRefused`, so the user can be asked about deleting it permanently.
+/// is `WorkFileMsg::TrashRefused`, so the user can retry or be asked about deleting it permanently.
 pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
     let r = match &op {
         FileOp::Create(p) => repo::create_file(workdir, p).map(|ignored| WorkFileOk::Written { ignored }),
@@ -80,7 +81,7 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
         FileOp::Discard { path, mode } => repo::discard_untracked(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
     };
     match r {
-        Err(Error::NoTrash(reason)) => Msg::WorkFile(WorkFileMsg::TrashRefused { op, reason }),
+        Err(Error::TrashRefused(refusal)) => Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal }),
         r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|e| e.to_string()) }),
     }
 }

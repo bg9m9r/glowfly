@@ -83,7 +83,7 @@ pub enum WorkFileMsg {
     /// A WorkFile effect finished.
     WorkFileDone { op: FileOp, result: Result<WorkFileOk, String> },
     /// The trash refused `op`'s file; nothing changed.
-    TrashRefused { op: FileOp, reason: String },
+    TrashRefused { op: FileOp, refusal: trellis_core::repo::TrashRefusal },
 }
 
 impl WorkFileMsg {
@@ -100,7 +100,7 @@ impl WorkFileMsg {
             | Self::DeleteFile { .. }
             | Self::DeleteConfirmed(..) => None,
             Self::WorkFileDone { op, result } => Some(Inactive::WorkFile { op, result }),
-            Self::TrashRefused { op, reason } => Some(Inactive::Log(op.not_deleted(&reason))),
+            Self::TrashRefused { op, refusal } => Some(Inactive::Log(op.not_deleted(&refusal.detail))),
         }
     }
 }

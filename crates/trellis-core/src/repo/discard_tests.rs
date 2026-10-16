@@ -46,8 +46,8 @@ fn discard_untracked_trash_refusal_changes_nothing() {
     let before = status(&dir);
 
     match discard_untracked(&dir, "sub/deep/new.txt", Removal::Trash(no_bin)) {
-        Err(Error::NoTrash(r)) => assert!(r.contains("no bin here"), "{r}"),
-        other => panic!("expected NoTrash, got {other:?}"),
+        Err(Error::TrashRefused(r)) => assert!(r.detail.contains("no bin here"), "{r}"),
+        other => panic!("expected TrashRefused, got {other:?}"),
     }
     assert_eq!(text(&dir, "sub/deep/new.txt"), "stay\n");
     assert!(dir.join("sub/deep").is_dir());

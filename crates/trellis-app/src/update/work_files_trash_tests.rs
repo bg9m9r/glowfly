@@ -12,7 +12,7 @@ use crate::msg::WorkFileMsg;
 use crate::state::Modal;
 use crate::state::files::TRASH;
 use std::path::PathBuf;
-use trellis_core::repo::Deleted;
+use trellis_core::repo::{Deleted, TrashProblem, TrashRefusal};
 
 fn delete(path: &str, mode: DeleteMode) -> FileOp {
     FileOp::Delete { path: path.into(), mode }
@@ -144,7 +144,10 @@ fn trash_refused_offers_permanent() {
     let (mut st, dir) = loaded("wft-refused");
     let fx = run(
         &mut st,
-        Msg::WorkFile(WorkFileMsg::TrashRefused { op: delete("a.txt", DeleteMode::Trash), reason: "this drive has no Recycle Bin".into() }),
+        Msg::WorkFile(WorkFileMsg::TrashRefused {
+            op: delete("a.txt", DeleteMode::Trash),
+            refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin"),
+        }),
     );
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     let (title, body, button, then) = confirm(&st);
@@ -159,7 +162,13 @@ fn trash_refused_offers_permanent() {
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert_eq!(work_ops(&fx), [delete("a.txt", DeleteMode::PermanentNoTrash)]);
 
-    run(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op: unstage_delete("n.txt", DeleteMode::Trash), reason: "no bin".into() }));
+    run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::TrashRefused {
+            op: unstage_delete("n.txt", DeleteMode::Trash),
+            refusal: TrashRefusal::new(TrashProblem::NoTrash, "no bin"),
+        }),
+    );
     let (_, body, _, then) = confirm(&st);
     assert!(body.ends_with("This can't be undone. It also leaves the staging area."), "{body}");
     assert!(
@@ -221,11 +230,61 @@ fn delete_toasts() {
 #[test]
 fn trash_refused_on_inactive_tab_logs() {
     let (mut st, dir) = loaded("wft-scoped");
-    let msg = Msg::WorkFile(WorkFileMsg::TrashRefused { op: delete("x.txt", DeleteMode::Trash), reason: "no bin".into() });
+    let msg = Msg::WorkFile(WorkFileMsg::TrashRefused {
+        op: delete("x.txt", DeleteMode::Trash),
+        refusal: TrashRefusal::new(TrashProblem::NoTrash, "no bin"),
+    });
     let fx = run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.modal.is_none());
     assert_eq!(last_log(&st), "Did not delete x.txt: no bin.");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn trash_refused_for_other_reasons_offers_retry_never_a_permanent_delete() {
+    let (mut st, dir) = loaded("wft-retry");
+    let cases = [
+        (
+            TrashProblem::InUse,
+            "windows error: The process cannot access the file because it is being used by another process. (0x80070020)",
+            "File in use".to_owned(),
+            format!("a.txt is open in another program, so it couldn't be moved to the {TRASH}.\n\nClose it there, then try again."),
+        ),
+        (
+            TrashProblem::AccessDenied,
+            "Permission denied (os error 13)",
+            format!("Can't move to {TRASH}"),
+            format!(
+                "Trellis isn't allowed to move a.txt to the {TRASH}: Permission denied (os error 13).\n\nCheck that the file isn't locked and that you may change its folder, then try again."
+            ),
+        ),
+        (
+            TrashProblem::Other,
+            "Some operations were aborted",
+            format!("Can't move to {TRASH}"),
+            format!(
+                "a.txt couldn't be moved to the {TRASH}: Some operations were aborted.\n\nTry again. To delete files for good instead, turn off \"Move deleted files to the {TRASH}\" in Preferences."
+            ),
+        ),
+    ];
+    for op in [
+        delete("a.txt", DeleteMode::Trash),
+        unstage_delete("a.txt", DeleteMode::Trash),
+        FileOp::Discard { path: "a.txt".into(), mode: DeleteMode::Trash },
+    ] {
+        for (problem, detail, want_title, want_body) in &cases {
+            let refusal = TrashRefusal::new(*problem, *detail);
+            run(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op: op.clone(), refusal }));
+            let (title, body, button, then) = confirm(&st);
+            assert_eq!((title, body, button), (want_title.as_str(), want_body.as_str(), "Retry"), "{problem:?} {op:?}");
+            assert!(!body.contains("permanently"), "{body}");
+            // Retry runs the same delete, to the trash again.
+            assert!(matches!(then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(o)) if *o == op));
+            let fx = run(&mut st, Msg::ConfirmAccepted);
+            assert_eq!(work_ops(&fx), std::slice::from_ref(&op));
+        }
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -330,7 +330,7 @@ fn rename_via_temp(from: &Path, to: &Path) -> std::io::Result<()> {
 
 /// Deletes the working-tree file (or symbolic link) `path` the way `removal` asks, and the
 /// folders it leaves empty. The index is untouched, so a tracked file shows up as an unstaged
-/// deletion. When the trash can't take the file, nothing changes (`Error::NoTrash`).
+/// deletion. When the trash can't take the file, nothing changes (`Error::TrashRefused`).
 pub fn delete_file(workdir: &Path, path: &str, removal: Removal) -> Result<Deleted> {
     let rel = contained(path)?;
     let (repo, root) = open_root(workdir)?;

@@ -14,7 +14,7 @@ use crate::msg::WorkFileMsg;
 use crate::state::files::TRASH;
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
-use trellis_core::repo::{Deleted, DiffTarget};
+use trellis_core::repo::{Deleted, DiffTarget, TrashProblem, TrashRefusal};
 
 fn discard(path: &str, mode: DeleteMode) -> FileOp {
     FileOp::Discard { path: path.into(), mode }
@@ -100,7 +100,10 @@ fn discard_refuses_non_untracked() {
 fn discard_trash_refused_offers_permanent() {
     let (mut st, dir) = loaded("wfd-refused");
     let op = discard("u.txt", DeleteMode::Trash);
-    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op, reason: "this drive has no Recycle Bin".into() }));
+    let fx = run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin") }),
+    );
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
     let (title, body, button, then) = confirm(&st);
     assert_eq!((title, button), ("Delete permanently?", "Delete permanently"));
@@ -115,7 +118,13 @@ fn discard_trash_refused_offers_permanent() {
     assert_eq!(work_ops(&fx), [discard("u.txt", DeleteMode::PermanentNoTrash)]);
 
     // Cancelling changes nothing.
-    run(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op: discard("u.txt", DeleteMode::Trash), reason: "no bin".into() }));
+    run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::TrashRefused {
+            op: discard("u.txt", DeleteMode::Trash),
+            refusal: TrashRefusal::new(TrashProblem::NoTrash, "no bin"),
+        }),
+    );
     assert!(run(&mut st, Msg::CloseModal).is_empty());
     assert!(st.modal.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -162,7 +171,10 @@ fn discard_failure_logs_and_closes_diff() {
 fn discard_inactive_tab() {
     let (mut st, dir) = loaded("wfd-scoped");
     let elsewhere = || PathBuf::from("C:/elsewhere");
-    let msg = Msg::WorkFile(WorkFileMsg::TrashRefused { op: discard("u.txt", DeleteMode::Trash), reason: "no bin".into() });
+    let msg = Msg::WorkFile(WorkFileMsg::TrashRefused {
+        op: discard("u.txt", DeleteMode::Trash),
+        refusal: TrashRefusal::new(TrashProblem::NoTrash, "no bin"),
+    });
     assert!(run(&mut st, Msg::Scoped { workdir: elsewhere(), msg: Box::new(msg) }).is_empty());
     assert!(st.modal.is_none());
     assert_eq!(last_log(&st), "Did not delete u.txt: no bin.");

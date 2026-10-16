@@ -41,8 +41,8 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
             }
             op => tracing::debug!("ignored a confirmed {op:?}, which isn't a delete"),
         },
-        WorkFileMsg::TrashRefused { op, reason } => {
-            trash_refused(st, op, reason);
+        WorkFileMsg::TrashRefused { op, refusal } => {
+            trash_refused(st, op, refusal);
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }

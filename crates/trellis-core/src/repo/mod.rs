@@ -36,6 +36,7 @@ mod status_cli;
 mod submodules;
 mod template;
 mod tracked;
+mod trash;
 mod walk;
 mod workfile;
 mod workfile_mv;
@@ -56,7 +57,7 @@ pub use lines::apply_lines;
 pub use load::{load, load_cached, messages_between};
 pub use refs_key::{open_file_stamp, refs_key};
 pub use remotes::RemoteInfo;
-pub use removal::{Deleted, Removal, Trasher, os_trash};
+pub use removal::{Deleted, Removal, Trasher};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
@@ -64,6 +65,7 @@ pub use status::status_at;
 pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
 pub use tracked::tracked_paths;
+pub use trash::{TrashProblem, TrashRefusal, os_trash};
 pub(crate) use workfile::contained;
 pub use workfile::{PathProblem, check_new_path, create_file, delete_file, rename_file};
 pub use workfile_mv::rename_file_staged;
@@ -325,9 +327,9 @@ mod remotes_tests;
 #[cfg(test)]
 mod removal_tests;
 #[cfg(test)]
-mod resolve_tests;
-#[cfg(test)]
 mod resolve_eol_tests;
+#[cfg(test)]
+mod resolve_tests;
 #[cfg(test)]
 mod restore_tests;
 #[cfg(test)]

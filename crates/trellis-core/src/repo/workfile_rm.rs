@@ -21,7 +21,7 @@ use std::path::Path;
 ///
 /// Refused, changing nothing, when `path` has no stage-0 index entry (untracked, or
 /// conflicted) or is in HEAD's tree (then it isn't new and only its working copy should go),
-/// when the trash can't take it (`Error::NoTrash`), and for every other reason `delete_file`
+/// when the trash can't take it (`Error::TrashRefused`), and for every other reason `delete_file`
 /// refuses.
 ///
 /// The working copy goes first: when that fails nothing has changed, and when changing the

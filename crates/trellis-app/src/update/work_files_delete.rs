@@ -11,7 +11,7 @@ use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{TRASH, staged_rename, unstages_on_delete};
 use crate::state::{AppState, Modal};
-use trellis_core::repo::Deleted;
+use trellis_core::repo::{Deleted, TrashProblem, TrashRefusal};
 
 /// Opens the confirmation for deleting `path`, worded by what status says about it. Conflicted
 /// paths are refused, and so are files already gone from the working tree unless they are staged
@@ -127,21 +127,51 @@ pub(super) fn unstage_confirm(path: String, renamed: bool, gone: bool, edits: bo
     Modal::Confirm { title: title.into(), body, button: "Unstage and delete".into(), then }
 }
 
-/// The trash couldn't take `op`'s file and nothing changed: ask before deleting it permanently.
-pub(super) fn trash_refused(st: &mut AppState, op: FileOp, reason: String) {
+/// The trash couldn't take `op`'s file and nothing changed. Only when there is definitely no
+/// trash for it is a permanent delete offered; a file in use, a permission problem or anything
+/// else gets its own message and Retry, since deleting it for good would lose what the trash
+/// was meant to keep.
+pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal) {
     let Some(path) = op.delete_path().map(str::to_owned) else {
         return tracing::debug!("the trash refused {op:?}, which isn't a delete");
     };
-    let reason = reason.trim_end_matches('.');
-    let mut body = format!("{path} couldn't be moved to the {TRASH}: {reason}.\n\nDelete it permanently instead? This can't be undone.");
-    if matches!(op, FileOp::UnstageDelete { .. }) {
-        body.push_str(" It also leaves the staging area.");
-    }
-    st.modal = Some(Modal::Confirm {
-        title: "Delete permanently?".into(),
+    let detail = refusal.detail.trim().trim_end_matches('.');
+    let retry = |title: String, body: String| Modal::Confirm {
+        title,
         body,
-        button: "Delete permanently".into(),
-        then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.permanent()))),
+        button: "Retry".into(),
+        then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone()))),
+    };
+    st.modal = Some(match refusal.problem {
+        TrashProblem::NoTrash => {
+            let mut body =
+                format!("{path} couldn't be moved to the {TRASH}: {detail}.\n\nDelete it permanently instead? This can't be undone.");
+            if matches!(op, FileOp::UnstageDelete { .. }) {
+                body.push_str(" It also leaves the staging area.");
+            }
+            Modal::Confirm {
+                title: "Delete permanently?".into(),
+                body,
+                button: "Delete permanently".into(),
+                then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone().permanent()))),
+            }
+        }
+        TrashProblem::InUse => retry(
+            "File in use".into(),
+            format!("{path} is open in another program, so it couldn't be moved to the {TRASH}.\n\nClose it there, then try again."),
+        ),
+        TrashProblem::AccessDenied => retry(
+            format!("Can't move to {TRASH}"),
+            format!(
+                "Trellis isn't allowed to move {path} to the {TRASH}: {detail}.\n\nCheck that the file isn't locked and that you may change its folder, then try again."
+            ),
+        ),
+        TrashProblem::Other => retry(
+            format!("Can't move to {TRASH}"),
+            format!(
+                "{path} couldn't be moved to the {TRASH}: {detail}.\n\nTry again. To delete files for good instead, turn off \"Move deleted files to the {TRASH}\" in Preferences."
+            ),
+        ),
     });
 }
 

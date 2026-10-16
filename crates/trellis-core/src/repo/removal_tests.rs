@@ -13,24 +13,25 @@ pub(super) fn test_bin() -> PathBuf {
 }
 
 /// Moves the file into this process's stand-in bin under a unique name.
-pub(super) fn fake_bin(full: &Path) -> Result<(), String> {
+pub(super) fn fake_bin(full: &Path) -> Result<(), TrashRefusal> {
+    let other = |e: std::io::Error| TrashRefusal::new(TrashProblem::Other, e.to_string());
     let bin = test_bin();
-    std::fs::create_dir_all(&bin).map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&bin).map_err(other)?;
     let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
     let name = full.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    std::fs::rename(full, bin.join(format!("{nanos}-{name}"))).map_err(|e| e.to_string())
+    std::fs::rename(full, bin.join(format!("{nanos}-{name}"))).map_err(other)
 }
 
-pub(super) fn no_bin(_: &Path) -> Result<(), String> {
-    Err("no bin here".into())
+pub(super) fn no_bin(_: &Path) -> Result<(), TrashRefusal> {
+    Err(TrashRefusal::new(TrashProblem::NoTrash, "no bin here"))
 }
 
-fn removes_then_errors(full: &Path) -> Result<(), String> {
-    std::fs::remove_file(full).map_err(|e| e.to_string())?;
-    Err("lost track".into())
+fn removes_then_errors(full: &Path) -> Result<(), TrashRefusal> {
+    std::fs::remove_file(full).map_err(|e| TrashRefusal::new(TrashProblem::Other, e.to_string()))?;
+    Err(TrashRefusal::new(TrashProblem::Other, "lost track"))
 }
 
-pub(super) fn never_called(full: &Path) -> Result<(), String> {
+pub(super) fn never_called(full: &Path) -> Result<(), TrashRefusal> {
     panic!("the trash was asked to take {}", full.display())
 }
 
@@ -60,8 +61,8 @@ fn trash_refusal_changes_nothing() {
     commit(&dir, &[("sub/deep/a.txt", "a\n")], "one");
     let before = status(&dir);
     match delete_file(&dir, "sub/deep/a.txt", Removal::Trash(no_bin)) {
-        Err(Error::NoTrash(r)) => assert!(r.contains("no bin here"), "{r}"),
-        other => panic!("expected NoTrash, got {other:?}"),
+        Err(Error::TrashRefused(r)) => assert_eq!(r, TrashRefusal::new(TrashProblem::NoTrash, "no bin here")),
+        other => panic!("expected TrashRefused, got {other:?}"),
     }
     assert_eq!(text(&dir, "sub/deep/a.txt"), "a\n");
     assert!(dir.join("sub/deep").is_dir());
@@ -108,8 +109,8 @@ fn staged_new_file_to_trash() {
     let before = status(&dir);
 
     match delete_staged_new_file(&dir, "n.txt", Removal::Trash(no_bin)) {
-        Err(Error::NoTrash(_)) => {}
-        other => panic!("expected NoTrash, got {other:?}"),
+        Err(Error::TrashRefused(_)) => {}
+        other => panic!("expected TrashRefused, got {other:?}"),
     }
     assert!(index_id(&dir, "n.txt").is_some(), "still staged");
     assert_eq!(text(&dir, "n.txt"), "new rm-staged-new\n");
@@ -130,7 +131,7 @@ fn staged_rename_refusal_keeps_rename() {
     let before = status(&dir);
     assert!(before.starts_with('R'), "{before}");
 
-    assert!(matches!(delete_staged_new_file(&dir, "new.txt", Removal::Trash(no_bin)), Err(Error::NoTrash(_))));
+    assert!(matches!(delete_staged_new_file(&dir, "new.txt", Removal::Trash(no_bin)), Err(Error::TrashRefused(_))));
     assert_eq!(status(&dir), before, "the rename is still staged");
     assert_eq!(index_id(&dir, "old.txt"), None, "the source isn't back in the index");
     assert_eq!(text(&dir, "new.txt"), "one\ntwo\nthree\n");
@@ -165,7 +166,7 @@ fn real_os_trash() {
 #[cfg(windows)]
 #[test]
 fn volume_roots() {
-    use super::removal::volume_root_of;
+    use super::trash::volume_root_of;
     let root = |p: &str| volume_root_of(Path::new(p)).map(|r| r.to_string_lossy().into_owned());
     assert_eq!(root(r"C:\repo\a.txt").as_deref(), Some(r"C:\"));
     assert_eq!(root("D:/repo/sub/a.txt").as_deref(), Some(r"D:\"));
