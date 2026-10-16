@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 08:00 · **Search and filter**: Search the graph by changed file with path: and file: terms (folder, file name or glob), searched off the UI thread with a live count (`ec3df76`)
 - 2026-10-16 07:30 · **Graph columns and loading**: Load more commits automatically when the graph is scrolled near the end of a truncated history, with a loading row and a General preference to turn it off (`9d30255`)
 - 2026-10-16 07:15 · **Stash improvements**: Stash dialog with a message and a choice of all changes, only staged changes or chosen files, from the palette, the Staged Files header menu and Stash this file… on WIP rows (`25ab29a`)
 - 2026-10-16 06:51 · **Remote management**: View a remote on its hosting service, add a teammate's fork from the service's list of forks, and fork a repository into your account (GitHub, GitLab) then add and fetch it, from the REMOTE row menu and the palette (`dc17a10`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 16:02 · **Sparse checkout**: Sparse Checkout page in Preferences: turn on with folders or patterns, save, reapply and turn off; palette entry; libgit2 status hides left-out files (`0969dcf`)
 - 2026-10-15 15:59 · **Graph columns and loading**: resizable graph columns: drag the header dividers to resize, double-click to reset (`3bc171e`)
 - 2026-10-15 14:14 · **Clone and init options**: Fetch full history or N more commits of a shallow clone from the palette and the graph header (`94affbb`)
-- 2026-10-15 14:01 · **Stash improvements**: Rename (edit the message of) a stash from the STASHES row menu and the palette, keeping its commit and position (`a6ee8cb`)
 
 ---
 
