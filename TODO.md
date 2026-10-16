@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 15:35 · **Zoom**: Zoom in, out and reset from 50% to 200% with keys, the palette, a toast and a status bar reset, plus show or hide the left, details and toolbar panels from keys, the palette and Preferences > UI Customization, kept per profile (`92464c7`)
 - 2026-10-16 15:12 · **Custom themes**: High Contrast Dark, High Contrast Light and Trellis Sand built in; JSON theme files in the config folder's themes folder (a base theme plus #rrggbb colors or color names, loops detected, problems listed in Preferences and logged), with Open themes folder, Reload and Create from current, and every theme in the palette (`3639791`)
 - 2026-10-16 14:56 · **Limits found while building integrations**: Checks and votes for every pull request on GitLab, Bitbucket Cloud and Data Center and Azure DevOps (a paced background pass past the first 25, cached by head and age), Jira look-alike keys such as `UTF-8` skipped using the site's project keys, the project filter applied to branch names, and paging tests for every issue list (`cc23487`)
 - 2026-10-16 14:48 · **Trello**: Trello cards as an issue tracker: connect with an API key and a read-only token, choose Trello and optionally a board under Issue Tracker, assigned open cards in ISSUES (View card in Trello, Copy card link, branch and Git Flow from a card), card links and card-id branch names as chips, and PRs that link the card (`5d48e6a`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 08:28 · **SSH key management**: Choose the key git uses for SSH remotes (core.sshCommand, for all repositories or a trusted repository), a Use local SSH agent setting with agent status and Add to agent, and Add to service for GitHub, GitLab and Bitbucket Cloud with a copy-and-open fallback (`1159cdb`)
 - 2026-10-16 08:05 · **Clone and init options**: Sparse clone (chosen folders, optional partial clone) and a Your repositories tab (GitHub, GitLab, Bitbucket Cloud accounts) in the Clone dialog; Init opens a dialog with an initial branch, a .gitignore template, a license and an initial commit (`00790e2`)
 - 2026-10-16 08:00 · **Search and filter**: Search the graph by changed file with path: and file: terms (folder, file name or glob), searched off the UI thread with a live count (`ec3df76`)
-- 2026-10-16 07:30 · **Graph columns and loading**: Load more commits automatically when the graph is scrolled near the end of a truncated history, with a loading row and a General preference to turn it off (`9d30255`)
 
 ---
 
