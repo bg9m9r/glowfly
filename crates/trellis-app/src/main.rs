@@ -58,7 +58,10 @@ fn main() -> eframe::Result {
     if let Err(e) = trellis_core::settings::migrate_old_config_dir() {
         tracing::warn!("could not move the settings folder from where an earlier version kept it: {e}");
     }
-    let start = std::env::args().nth(1).map(PathBuf::from);
+    // `args_os`: a path needn't be UTF-8 (`env::args` would panic on one).
+    // A relative one is relative to the shell it was typed in, so made absolute here, before the
+    // tabs and recent list keep it.
+    let start = argv.get(1).cloned().map(start_path).map(|p| std::path::absolute(&p).unwrap_or(p));
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Trellis")
@@ -67,6 +70,20 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native("Trellis", options, Box::new(move |cc| Ok(Box::new(ui::TrellisApp::new(cc, start)))))
+}
+
+/// The repository path given on the command line. On Windows, `trellis "C:\My Repo\"` arrives
+/// as `C:\My Repo"`: the C runtime's rules read `\"` as a quote. A Windows file name can't hold
+/// `"`, so a trailing one is always that mistake and is dropped (with the backslash it ate).
+fn start_path(arg: OsString) -> PathBuf {
+    if cfg!(windows)
+        && let Some(s) = arg.to_str()
+        && let Some(trimmed) = s.strip_suffix('"')
+    {
+        let trimmed = trimmed.trim_end_matches('"');
+        return PathBuf::from(if trimmed.ends_with(':') { format!("{trimmed}\\") } else { trimmed.to_owned() });
+    }
+    PathBuf::from(arg)
 }
 
 /// `--write-todo <prepared> <git todo>`: replaces git's todo list with the prepared one after
@@ -127,5 +144,29 @@ fn askpass_helper(prompt: Option<&OsString>) -> i32 {
             eprintln!("Trellis: could not reach the app for a credential prompt: {e}");
             2
         }
+    }
+}
+
+#[cfg(test)]
+mod start_path_tests {
+    use super::*;
+
+    #[test]
+    fn a_quoted_trailing_backslash_is_undone_on_windows() {
+        let got = start_path(OsString::from(r#"C:\My Repo""#));
+        assert_eq!(got, PathBuf::from(if cfg!(windows) { r"C:\My Repo" } else { r#"C:\My Repo""# }));
+        if cfg!(windows) {
+            // `"D:\"` names the drive's root, not the current folder on D:.
+            assert_eq!(start_path(OsString::from(r#"D:""#)), PathBuf::from(r"D:\"));
+        }
+        assert_eq!(start_path(OsString::from("/w/repo")), PathBuf::from("/w/repo"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_path_that_is_not_utf8_is_kept() {
+        use std::os::unix::ffi::OsStrExt;
+        let arg = std::ffi::OsStr::from_bytes(b"/w/caf\xe9").to_os_string();
+        assert_eq!(start_path(arg.clone()), PathBuf::from(arg));
     }
 }
