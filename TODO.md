@@ -36,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 09:15 · **Blame gutter**: Blame view of a file at HEAD or a commit (git blame --porcelain, honouring .mailmap and blame.ignoreRevsFile) with a sticky author, date and commit gutter per run, line numbers and syntax colors, opened from file menus, the file history header and the palette's Blame file… finder; clicking a run selects its commit (`921cdd8`)
 - 2026-10-16 08:38 · **Notifications**: Desktop notifications while Trellis is in the background: finished jobs and behind alerts also go to the OS, opt-in under UI Customization with a confirming notification when turned on (`8d3cd61`)
 - 2026-10-16 08:28 · **SSH key management**: Choose the key git uses for SSH remotes (core.sshCommand, for all repositories or a trusted repository), a Use local SSH agent setting with agent status and Add to agent, and Add to service for GitHub, GitLab and Bitbucket Cloud with a copy-and-open fallback (`1159cdb`)
-- 2026-10-16 08:05 · **Clone and init options**: Sparse clone (chosen folders, optional partial clone) and a Your repositories tab (GitHub, GitLab, Bitbucket Cloud accounts) in the Clone dialog; Init opens a dialog with an initial branch, a .gitignore template, a license and an initial commit (`00790e2`)
 
 ---
 
