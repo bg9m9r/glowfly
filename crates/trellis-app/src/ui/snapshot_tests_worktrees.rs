@@ -24,8 +24,11 @@ use trellis_core::worktree_ops::{FolderProblem, WorktreeBase};
 
 pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
-/// `s` with the platform's separators, as libgit2's paths are after loading.
+/// `s` with the platform's separators, as libgit2's paths are after loading. The fixed paths
+/// are written as Windows ones (the approved images show them); elsewhere the drive is dropped
+/// so they stay absolute (`/work/app`), as the dialog requires of a folder.
 pub(super) fn p(s: &str) -> PathBuf {
+    let s = if cfg!(windows) { s } else { s.strip_prefix("C:").unwrap_or(s) };
     Path::new(s).components().collect()
 }
 

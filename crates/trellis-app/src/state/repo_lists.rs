@@ -63,7 +63,13 @@ mod tests {
     fn recent_rows_leave_out_favorites() {
         let st = state(&["/w/a", "/w/b", "/w/c"], &["/w/b/"]);
         assert_eq!(recent_rows(&st), [&PathBuf::from("/w/a"), &PathBuf::from("/w/c")]);
+        // Case is ignored where the file system ignores it by default (NTFS, APFS)...
         if cfg!(any(windows, target_os = "macos")) {
+            let st = state(&["/Work/A", "/work/b"], &["/work/a"]);
+            assert_eq!(recent_rows(&st), [&PathBuf::from("/work/b")]);
+        }
+        // ...and only Windows reads a backslash as a separator.
+        if cfg!(windows) {
             let st = state(&["C:/Work/A", "C:/work/b"], &["c:\\work\\a"]);
             assert_eq!(recent_rows(&st), [&PathBuf::from("C:/work/b")]);
         }
