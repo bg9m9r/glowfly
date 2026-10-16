@@ -84,6 +84,9 @@ fn stage_unstage_discard_hunks() {
     assert!(s.graph.wip.is_some());
     let st: Vec<_> = s.unstaged.iter().map(|f| (f.path.as_str(), f.status)).collect();
     assert_eq!(st, [("f.txt", 'M'), ("new.txt", '?')]);
+    assert_eq!(s.changes, ChangeCounts::of(&s.staged, &s.unstaged), "kept with the lists");
+    assert_eq!((s.changes.modified, s.changes.added), (1, 1));
+    assert_eq!(s.slow_status, None, "a small repository reads quickly");
 
     let diff = load_diff(&dir, &DiffTarget::Unstaged("f.txt".into())).unwrap();
     assert_eq!(diff.hunks.len(), 2);

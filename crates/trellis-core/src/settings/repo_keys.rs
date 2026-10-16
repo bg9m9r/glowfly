@@ -77,13 +77,25 @@ impl Settings {
         set(&mut self.repo_trackers, real, Some(choice));
     }
 
-    /// Moves the graph filter, pull request and issue filters and issue tracker saved under `aliases` (libgit2's spelling, the
-    /// path it was opened by) to the repository's resolved key `real`. Trust decisions were
-    /// always saved under the resolved key and are left alone. Returns whether anything moved.
+    /// Whether the slow-status note was shown for the repository at `real`.
+    pub fn status_tip_shown_for(&self, real: &Path) -> bool {
+        get(&self.status_tip_shown, real).copied().unwrap_or(false)
+    }
+
+    /// Remembers that the slow-status note was shown for the repository at `real`.
+    pub fn mark_status_tip_shown(&mut self, real: &Path) {
+        set(&mut self.status_tip_shown, real, Some(true));
+    }
+
+    /// Moves the graph filter, pull request and issue filters, issue tracker and slow-status note
+    /// saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
+    /// resolved key `real`. Trust decisions were always saved under the resolved key and are left
+    /// alone. Returns whether anything moved.
     pub fn adopt_repo_keys(&mut self, real: &Path, aliases: &[&Path]) -> bool {
         let filters = adopt(&mut self.graph_filters, real, aliases);
         let forge_filters = adopt(&mut self.repo_forge_filters, real, aliases);
-        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters
+        let tips = adopt(&mut self.status_tip_shown, real, aliases);
+        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips
     }
 }
 
@@ -138,6 +150,22 @@ mod tests {
         assert_eq!(s.graph_filter_for(&real), f);
         assert_eq!(s.tracker_for(&real), TrackerChoice::None);
         assert_eq!(s.graph_filters.keys().collect::<Vec<_>>(), [&key(&real)]);
+
+        s.status_tip_shown.insert("C:/x/repo/".into(), true);
+        assert!(s.adopt_repo_keys(&real, &[Path::new("C:/x/repo/")]));
+        assert!(s.status_tip_shown_for(&real));
+        assert_eq!(s.status_tip_shown.keys().collect::<Vec<_>>(), [&key(&real)]);
+    }
+
+    #[test]
+    fn the_slow_status_note_is_remembered_per_repository() {
+        let mut s = Settings::default();
+        let (a, b) = (PathBuf::from("/w/a"), PathBuf::from("/w/b"));
+        assert!(!s.status_tip_shown_for(&a));
+        s.mark_status_tip_shown(&a);
+        assert!(s.status_tip_shown_for(&a) && !s.status_tip_shown_for(&b));
+        s.mark_status_tip_shown(&PathBuf::from("/w/a/"));
+        assert_eq!(s.status_tip_shown.len(), 1, "one entry whatever the spelling");
     }
 
     #[test]

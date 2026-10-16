@@ -116,7 +116,7 @@ fn status_reads_merge_and_a_new_change_relayouts_the_graph() {
     let workdir = st.workdir().unwrap();
     let changed = || Msg::Scoped {
         workdir: workdir.clone(),
-        msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, last_event: Instant::now() })),
+        msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })),
     };
     let first = update(&mut st, changed(), Instant::now());
     assert!(matches!(&first[..], [Effect::LoadStatus { .. }]), "{first:?}");
@@ -130,7 +130,7 @@ fn status_reads_merge_and_a_new_change_relayouts_the_graph() {
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.is_dirty() && snap.graph.wip.is_some(), "the WIP row appears without a reload");
     finish(&mut st, fx);
-    assert!(!st.refresh.status_busy && !st.refresh.status_queued);
+    assert!(!st.refresh.status_busy && st.refresh.status_queued.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -138,7 +138,8 @@ fn status_reads_merge_and_a_new_change_relayouts_the_graph() {
 fn a_watcher_rescan_checks_refs_before_loading() {
     let (mut st, dir) = opened("refresh-rescan");
     let workdir = st.workdir().unwrap();
-    let msg = Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: true, last_event: Instant::now() })) };
+    let msg =
+        Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: true, paths: None, last_event: Instant::now() })) };
     let fx = update(&mut st, msg, Instant::now());
     assert!(matches!(loads(&fx)[..], [Effect::LoadRepo { known: Some(_), .. }]), "{fx:?}");
     assert!(matches!(run_load(fx), Msg::Load(LoadMsg::RepoUnchanged { .. })));
@@ -152,7 +153,8 @@ fn diff_loads(fx: &[Effect]) -> usize {
 /// Asks for the status and runs the read: the effects its result leads to.
 fn read_status(st: &mut AppState) -> Vec<Effect> {
     let workdir = st.workdir().unwrap();
-    let changed = Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, last_event: Instant::now() })) };
+    let changed =
+        Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })) };
     let fx = update(st, changed, Instant::now());
     let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::execute).expect("a status read");
     update(st, status, Instant::now())

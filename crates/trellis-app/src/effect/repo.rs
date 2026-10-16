@@ -1,8 +1,9 @@
 //! Data the repository effects carry: index and working-tree edits, what a refresh compares
 //! against, the watcher's target, and what a git job means for the undo history.
 
+use git2::RepositoryState;
 use std::path::PathBuf;
-use trellis_core::repo::{ConflictIds, Hunk, HunkOp, Side};
+use trellis_core::repo::{ConflictIds, FileEntry, Hunk, HunkOp, PathsStatus, Side};
 use trellis_core::undo::Action;
 
 /// Quick index/working-tree edits (through libgit2, or git where filters must run).
@@ -41,6 +42,15 @@ pub enum LocalOp {
         side: Side,
         expected: ConflictIds,
     },
+}
+
+/// What a status read found (`LoadMsg::StatusLoaded`).
+#[derive(Debug)]
+pub enum StatusRead {
+    /// Everything: (unstaged, staged, state).
+    Whole(Vec<FileEntry>, Vec<FileEntry>, RepositoryState),
+    /// Only the unstaged rows under some work-tree paths, to merge into the lists on screen.
+    Paths(PathsStatus),
 }
 
 /// What a refresh compares against before loading everything again.

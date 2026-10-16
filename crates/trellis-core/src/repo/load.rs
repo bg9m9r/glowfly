@@ -174,7 +174,10 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     // user trusts it, or when nothing in it would run.
     let trust_scan = crate::trust::scan(&repo);
     let git_status = opts.trusted || trust_scan.is_empty();
+    let started = std::time::Instant::now();
     let (unstaged, staged) = super::status::load_status(&repo, git_status)?;
+    let slow_status = super::status_speed::slow(started.elapsed(), &workdir);
+    let changes = ChangeCounts::of(&staged, &unstaged);
     let folding = super::collide::folding(repo.path());
     let ignorecase = super::collide::ignorecase(&repo);
     let collisions = super::collide::collisions(&repo.index()?);
@@ -249,6 +252,8 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         stashes,
         unstaged,
         staged,
+        changes,
+        slow_status,
         folding,
         ignorecase,
         collisions,

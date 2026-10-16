@@ -327,7 +327,14 @@ mod tests {
         let op = Effect::LocalOp { workdir: w.clone(), op: crate::effect::LocalOp::StageAll };
         assert_eq!(repo_of(&op), Some(w.as_path()));
         assert_eq!(
-            repo_of(&Effect::LoadStatus { workdir: w.clone(), generation: 0, submodules: false, open: None, git_status: true }),
+            repo_of(&Effect::LoadStatus {
+                workdir: w.clone(),
+                generation: 0,
+                submodules: false,
+                open: None,
+                git_status: true,
+                paths: None
+            }),
             None
         );
         // Saving a patch only reads the repository.

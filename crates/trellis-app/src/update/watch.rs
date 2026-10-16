@@ -24,7 +24,7 @@ pub(super) fn failed_text(keys: &Keymap) -> String {
 pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         // Only arrives through `Msg::Scoped`, so it is for the active tab.
-        WatchMsg::RepoChanged { full, last_event } => {
+        WatchMsg::RepoChanged { full, paths, last_event } => {
             if !st.settings.watch_files || st.snap.is_none() {
                 return;
             }
@@ -38,10 +38,11 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             if st.watch.quiet_until.is_some_and(|q| last_event <= q) {
                 return; // caused by a job or local op that already refreshed
             }
-            if full {
-                super::repo::refresh(st, fx);
-            } else {
-                super::repo::refresh_status(st, fx);
+            match (full, paths) {
+                (true, _) => super::repo::refresh(st, fx),
+                // Only these work-tree paths changed: re-read just their rows.
+                (false, Some(paths)) => super::refresh_paths::refresh_paths(st, paths, fx),
+                (false, None) => super::repo::refresh_status(st, fx),
             }
         }
         WatchMsg::RemoteVolume { workdir, kind } => {

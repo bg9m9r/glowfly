@@ -30,7 +30,7 @@ use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, RichText, Sense, St
 use git2::Oid;
 use paint::{Columns, draw_lanes, draw_ref_labels, lane_x};
 use std::collections::HashMap;
-use trellis_core::repo::{ChangeCounts, RefKind};
+use trellis_core::repo::RefKind;
 use trellis_core::settings::DescriptionMode;
 
 const ROW_H: f32 = 30.0;
@@ -185,7 +185,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
                     let right = worktree_wip::wip_box(&mp, cols.msg.0, mid, "// WIP");
-                    worktree_wip::draw_counts(&mp, right + 12.0, mid, ChangeCounts::of(&snap.staged, &snap.unstaged));
+                    worktree_wip::draw_counts(&mp, right + 12.0, mid, snap.changes);
                     if resp.clicked() {
                         msgs.push(Msg::Repo(RepoMsg::SelectWip));
                     }

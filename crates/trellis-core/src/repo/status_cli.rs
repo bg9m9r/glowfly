@@ -19,6 +19,20 @@ pub(super) fn status(workdir: &Path) -> Option<(Vec<FileEntry>, Vec<FileEntry>)>
     Some(parse(&stdout))
 }
 
+/// `status` of only the work-tree paths `paths` (each taken literally, a folder covering
+/// everything below it), or None when their command line would be too long
+/// (`status_paths::CLI_PATH_BYTES`) or git failed.
+pub(super) fn status_of(workdir: &Path, paths: &[String]) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
+    if paths.iter().map(|p| p.len() + 1).sum::<usize>() > super::status_paths::CLI_PATH_BYTES {
+        return None;
+    }
+    // Literal pathspecs, so a name like `[ab].txt` isn't a pattern matching `a.txt`.
+    let mut cmd = args(&["--no-optional-locks", "--literal-pathspecs", "status", "--porcelain=v2", "-z", "--untracked-files=all", "--"]);
+    cmd.extend(paths.iter().cloned());
+    let (out, stdout) = output_bytes(workdir, &cmd, NO_PROMPTS, Some(READ_TIMEOUT));
+    out.ok.then(|| parse(&stdout))
+}
+
 /// Parses porcelain v2 records separated by NULs. Paths are taken whole, exactly as git wrote
 /// them: a name may start or end with spaces.
 pub(super) fn parse(out: &[u8]) -> (Vec<FileEntry>, Vec<FileEntry>) {

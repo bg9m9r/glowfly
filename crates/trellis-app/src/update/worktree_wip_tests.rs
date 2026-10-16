@@ -76,7 +76,7 @@ fn a_status_read_keeps_the_worktree_rows() {
     assert!(st.snap.as_ref().unwrap().graph.wip.is_some());
     git(&dir, &["checkout", "--", "a.txt"]);
     let workdir = st.workdir().unwrap();
-    let changed = Msg::Watch(WatchMsg::RepoChanged { full: false, last_event: Instant::now() });
+    let changed = Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
     let seen = loads(&mut st, Msg::Scoped { workdir, msg: Box::new(changed) });
     assert!(seen.iter().any(|e| e.starts_with("LoadStatus")), "{seen:?}");
     assert!(!seen.iter().any(|e| e.starts_with("LoadRepo")), "{seen:?}");

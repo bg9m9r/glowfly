@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 fn changed(workdir: &Path, full: bool, last_event: Instant) -> Msg {
-    Msg::Scoped { workdir: workdir.to_path_buf(), msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full, last_event })) }
+    Msg::Scoped { workdir: workdir.to_path_buf(), msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full, paths: None, last_event })) }
 }
 
 fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {

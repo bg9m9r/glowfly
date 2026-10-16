@@ -29,7 +29,7 @@ pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
 pub use init::InitEffect;
 pub use notify::{DesktopNote, NoteKind};
-pub use repo::{KnownRepo, LocalOp, UndoResult, WatchTarget};
+pub use repo::{KnownRepo, LocalOp, StatusRead, UndoResult, WatchTarget};
 pub use submodule::SubmoduleEffect;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -59,6 +59,8 @@ pub enum Effect {
         /// Let git read the status (fsmonitor, untracked cache); false while the repository
         /// isn't trusted.
         git_status: bool,
+        /// Re-read only these work-tree paths' unstaged rows; None reads everything.
+        paths: Option<Vec<String>>,
     },
     LoadDetail {
         workdir: PathBuf,

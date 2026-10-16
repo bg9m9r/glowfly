@@ -64,6 +64,7 @@ mod sparse;
 mod ssh;
 mod stashes;
 mod stats;
+mod status;
 mod submodules;
 mod terminal;
 mod terminal_out;
@@ -220,9 +221,11 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 && repo::refs_key(&path).is_ok_and(|key| key == k.refs_key)
             {
                 let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
+                let started = std::time::Instant::now();
                 let result = repo::status_at(&path, k.git_status).map_err(err);
+                let slow = repo::slow(started.elapsed(), &path);
                 let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
-                return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp }));
+                return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow }));
             }
             let result = match repo::load_cached(&path, &opts, graph_cache) {
                 Err(trellis_core::error::Error::NotOwned(root)) => return Some(git_env::not_owned(generation, kind, root)),
@@ -230,11 +233,8 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             };
             Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result }))
         }
-        Effect::LoadStatus { workdir, generation, submodules, open, git_status } => {
-            let open_stamp = open.and_then(|p| repo::open_file_stamp(&workdir, &p));
-            let result = repo::status_at(&workdir, git_status).map_err(err);
-            let submodules = repo::submodules_if_any(&workdir, submodules).ok().flatten();
-            Some(Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp }))
+        Effect::LoadStatus { workdir, generation, submodules, open, git_status, paths } => {
+            Some(status::load(&workdir, generation, submodules, open, git_status, paths))
         }
         Effect::LoadDetail { workdir, oid } => {
             Some(Msg::Repo(RepoMsg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }))

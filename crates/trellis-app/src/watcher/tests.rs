@@ -11,11 +11,11 @@ const MS: Duration = Duration::from_millis(1);
 fn bursts_wait_for_quiet() {
     let t0 = Instant::now();
     let mut b = Burst::default();
-    b.add(Change::Status, t0);
-    b.add(Change::Status, t0 + 100 * MS);
+    b.add(Change::Status, Vec::new(), t0);
+    b.add(Change::Status, Vec::new(), t0 + 100 * MS);
     assert!(b.take_due(t0 + 350 * MS).is_none());
     assert_eq!(b.wait(t0 + 350 * MS), Some(50 * MS));
-    assert_eq!(b.take_due(t0 + 400 * MS), Some((Change::Status, t0 + 100 * MS)));
+    assert_eq!(b.take_due(t0 + 400 * MS), Some((Change::Status, Vec::new(), t0 + 100 * MS)));
     assert_eq!(b.wait(t0 + 400 * MS), None, "reset after firing");
     assert!(b.take_due(t0 + 5000 * MS).is_none());
 }
@@ -31,7 +31,7 @@ fn a_continuous_burst_fires_within_max_wait() {
             fired = Some((t, f));
             break;
         }
-        b.add(Change::Status, t);
+        b.add(Change::Status, Vec::new(), t);
     }
     let (at, _) = fired.expect("fired during the burst");
     assert!(at <= t0 + MAX_WAIT, "fired after {:?}", at - t0);
@@ -41,15 +41,15 @@ fn a_continuous_burst_fires_within_max_wait() {
 fn bursts_merge_and_ignore_nothing() {
     let t0 = Instant::now();
     let mut b = Burst::default();
-    b.add(Change::Status, t0);
-    b.add(Change::Full, t0 + 10 * MS);
-    assert_eq!(b.take_due(t0 + 400 * MS).map(|(c, _)| c), Some(Change::Full));
+    b.add(Change::Status, Vec::new(), t0);
+    b.add(Change::Full, Vec::new(), t0 + 10 * MS);
+    assert_eq!(b.take_due(t0 + 400 * MS).map(|(c, _, _)| c), Some(Change::Full));
 
-    b.add(Change::None, t0);
+    b.add(Change::None, Vec::new(), t0);
     assert_eq!(b.wait(t0), None, "None doesn't start a burst");
-    b.add(Change::Status, t0);
-    b.add(Change::None, t0 + 200 * MS);
-    assert_eq!(b.take_due(t0 + 300 * MS), Some((Change::Status, t0)), "None doesn't extend it");
+    b.add(Change::Status, Vec::new(), t0);
+    b.add(Change::None, Vec::new(), t0 + 200 * MS);
+    assert_eq!(b.take_due(t0 + 300 * MS), Some((Change::Status, Vec::new(), t0)), "None doesn't extend it");
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn linked_worktree_folder_modifies_are_quiet() {
     let gd = wd.join(".git");
     let paths = WatchPaths::new(&wd, &gd);
     let mut ignores = Ignores::open(&wd);
-    let mut c = |kind, rel: &str| classify(&Event::new(kind).add_path(gd.join(rel)), &paths, &mut ignores);
+    let mut c = |kind, rel: &str| classify(&Event::new(kind).add_path(gd.join(rel)), &paths, &mut ignores).0;
     // What Windows reports for `.git/worktrees/wt` on every index write in that worktree.
     assert_eq!(c(EventKind::Modify(ModifyKind::Any), "worktrees/wt"), Change::None);
     assert_eq!(c(EventKind::Modify(ModifyKind::Metadata(MetadataKind::Any)), "worktrees/wt"), Change::None);
@@ -74,6 +74,50 @@ fn linked_worktree_folder_modifies_are_quiet() {
     assert_eq!(c(EventKind::Modify(ModifyKind::Any), "index"), Change::Status);
 }
 
+fn owned(p: &[&str]) -> Vec<String> {
+    p.iter().map(|s| s.to_string()).collect()
+}
+
+#[test]
+fn bursts_collect_paths_until_something_else_changes() {
+    let t0 = Instant::now();
+    let mut b = Burst::default();
+    b.add(Change::Paths, owned(&["b.txt", "a.txt"]), t0);
+    b.add(Change::Paths, owned(&["a.txt", "src/c.rs"]), t0 + 10 * MS);
+    assert_eq!(b.take_due(t0 + 400 * MS), Some((Change::Paths, owned(&["a.txt", "b.txt", "src/c.rs"]), t0 + 10 * MS)), "sorted, once each");
+
+    for other in [Change::Status, Change::Full] {
+        b.add(Change::Paths, owned(&["a.txt"]), t0);
+        b.add(other, Vec::new(), t0);
+        b.add(Change::Paths, owned(&["b.txt"]), t0);
+        assert_eq!(b.take_due(t0 + 400 * MS), Some((other, Vec::new(), t0)), "{other:?} drops the paths");
+    }
+
+    let many: Vec<String> = (0..=MAX_WATCH_PATHS).map(|i| format!("f{i}.txt")).collect();
+    b.add(Change::Paths, many[..MAX_WATCH_PATHS].to_vec(), t0);
+    b.add(Change::Paths, many[..1].to_vec(), t0);
+    assert_eq!(b.paths.len(), MAX_WATCH_PATHS, "a repeat doesn't count");
+    b.add(Change::Paths, many[MAX_WATCH_PATHS..].to_vec(), t0);
+    assert_eq!(b.take_due(t0 + 400 * MS), Some((Change::Status, Vec::new(), t0)), "past the cap: the whole status");
+}
+
+#[test]
+fn events_name_their_work_tree_paths() {
+    use notify::event::{CreateKind, ModifyKind, RenameMode};
+    let wd = trellis_core::paths::temp_dir().join("trellis-watch-names-missing");
+    let paths = WatchPaths::new(&wd, &wd.join(".git"));
+    let mut ignores = Ignores::open(&wd);
+    let rename =
+        Event::new(EventKind::Modify(ModifyKind::Name(RenameMode::Both))).add_path(wd.join("a.txt")).add_path(wd.join("dir").join("b.txt"));
+    assert_eq!(classify(&rename, &paths, &mut ignores), (Change::Paths, owned(&["a.txt", "dir/b.txt"])));
+    let with_index = Event::new(EventKind::Create(CreateKind::Any)).add_path(wd.join("a.txt")).add_path(wd.join(".git").join("index"));
+    assert_eq!(classify(&with_index, &paths, &mut ignores), (Change::Status, Vec::new()), "the index reads everything");
+    let ignore = Event::new(EventKind::Create(CreateKind::Any)).add_path(wd.join(".gitignore"));
+    assert_eq!(classify(&ignore, &paths, &mut ignores), (Change::Status, Vec::new()));
+    let rescan = Event::new(EventKind::Any).add_path(wd.join("a.txt")).set_flag(notify::event::Flag::Rescan);
+    assert_eq!(classify(&rescan, &paths, &mut ignores), (Change::Full, Vec::new()));
+}
+
 #[derive(Clone)]
 struct NoWake;
 impl Waker for NoWake {
@@ -85,11 +129,11 @@ fn git(dir: &Path, a: &[&str]) {
     assert!(ok, "git {a:?} failed: {out}");
 }
 
-/// The next `RepoChanged` for `workdir` within `timeout`, as `full`.
-fn next_change(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<bool> {
+/// The next `RepoChanged` for `workdir` within `timeout`, as (`full`, `paths`).
+fn next_report(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<(bool, Option<Vec<String>>)> {
     match rx.recv_timeout(timeout).ok()? {
         Msg::Scoped { workdir: w, msg } if w == workdir => match *msg {
-            Msg::Watch(WatchMsg::RepoChanged { full, .. }) => Some(full),
+            Msg::Watch(WatchMsg::RepoChanged { full, paths, .. }) => Some((full, paths)),
             _ => panic!("unexpected scoped message"),
         },
         Msg::Watch(WatchMsg::WatchFailed { error, .. }) => panic!("watcher failed: {error}"),
@@ -98,6 +142,11 @@ fn next_change(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<
 }
 
 /// A fresh repository at `dir` with `a.txt` and a `.gitignore` for `target/` committed.
+/// The next `RepoChanged` for `workdir` within `timeout`, as `full`.
+fn next_change(rx: &Receiver<Msg>, workdir: &Path, timeout: Duration) -> Option<bool> {
+    next_report(rx, workdir, timeout).map(|(full, _)| full)
+}
+
 fn init_repo(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
     std::fs::create_dir_all(dir).unwrap();
@@ -122,7 +171,9 @@ fn watcher_reports_an_outside_edit() {
     std::thread::sleep(Duration::from_millis(300));
 
     std::fs::write(dir.join("a.txt"), "one\ntwo\n").unwrap();
-    assert_eq!(next_change(&rx, &dir, Duration::from_secs(10)), Some(false), "an edit re-reads the status");
+    assert_eq!(next_report(&rx, &dir, Duration::from_secs(10)), Some((false, Some(owned(&["a.txt"])))), "an edit re-reads its path");
+    std::fs::write(dir.join(".gitignore"), "target/\n*.log\n").unwrap();
+    assert_eq!(next_report(&rx, &dir, Duration::from_secs(10)), Some((false, None)), "an ignore file re-reads everything");
 
     git(&dir, &["checkout", "-q", "-b", "x"]);
     let deadline = Instant::now() + Duration::from_secs(10);

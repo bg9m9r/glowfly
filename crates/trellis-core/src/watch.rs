@@ -10,7 +10,10 @@ pub enum Change {
     /// Nothing to reload.
     #[default]
     None,
-    /// The working tree or index changed: re-read the status.
+    /// Only some work-tree paths changed: re-read the unstaged rows under them.
+    Paths,
+    /// The index, an ignore or attributes file changed, or events were lost: re-read the whole
+    /// status.
     Status,
     /// HEAD, refs or a merge/rebase state changed: reload everything.
     Full,
@@ -25,6 +28,10 @@ pub enum Touch {
     /// It was created, removed or renamed, or the platform didn't say what happened.
     Other,
 }
+
+/// The most distinct work-tree paths one burst re-reads on their own; past it the whole status is
+/// read again.
+pub const MAX_WATCH_PATHS: usize = 512;
 
 /// The roots a watcher reports paths under.
 pub struct WatchPaths {
@@ -78,22 +85,32 @@ impl WatchPaths {
     /// What `touch` on `path` calls for. `ignored` answers whether a work-tree path (relative,
     /// '/'-separated) is ignored by `.gitignore` or `info/exclude`.
     pub fn classify(&self, path: &Path, touch: Touch, ignored: &mut impl FnMut(&str) -> bool) -> Change {
+        self.classify_path(path, touch, ignored).0
+    }
+
+    /// `classify`, plus the work-tree path ('/'-separated, relative) when only it changed
+    /// (`Change::Paths`). An ignore, attributes or `.gitmodules` file, or a name that isn't
+    /// UTF-8, calls for the whole status.
+    pub fn classify_path(&self, path: &Path, touch: Touch, ignored: &mut impl FnMut(&str) -> bool) -> (Change, Option<String>) {
         // The git dir usually sits inside the workdir, so it is checked first.
         if let Some(rel) = self.git_dirs.iter().find_map(|g| path.strip_prefix(g).ok()) {
-            return git_change(rel, touch);
+            return (git_change(rel, touch), None);
         }
         if let Some(rel) = self.common_dirs.iter().find_map(|c| path.strip_prefix(c).ok()) {
-            return common_change(rel);
+            return (common_change(rel), None);
         }
         let Some(rel) = self.workdirs.iter().find_map(|w| path.strip_prefix(w).ok()) else {
-            return Change::None;
+            return (Change::None, None);
         };
         let parts: Vec<String> = rel.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
         // The root itself, and anything inside a nested repository or submodule.
-        if parts.is_empty() || parts.iter().any(|p| p == ".git") {
-            return Change::None;
+        if parts.is_empty() || parts.iter().any(|p| p == ".git") || ignored(&parts.join("/")) {
+            return (Change::None, None);
         }
-        if ignored(&parts.join("/")) { Change::None } else { Change::Status }
+        let whole = rel.components().any(|c| c.as_os_str().to_str().is_none())
+            || matches!(parts.last().map(String::as_str), Some(".gitignore" | ".gitattributes"))
+            || parts == [".gitmodules"];
+        if whole { (Change::Status, None) } else { (Change::Paths, Some(parts.join("/"))) }
     }
 }
 
@@ -181,179 +198,10 @@ impl Ignores {
 }
 
 /// The parent folders of `rel`, shallowest first: "a", "a/b" for "a/b/c".
-fn prefixes(rel: &str) -> impl Iterator<Item = &str> {
+pub(crate) fn prefixes(rel: &str) -> impl Iterator<Item = &str> {
     rel.match_indices('/').map(|(i, _)| &rel[..i])
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::testutil::{git, scratch_repo, write};
-
-    #[test]
-    fn git_internals_are_classified() {
-        let c = |p: &str| git_change(Path::new(p), Touch::Modified);
-        assert_eq!(c("index"), Change::Status);
-        assert_eq!(c("info/exclude"), Change::Status);
-        for full in ["worktrees/wt/HEAD", "worktrees/wt/locked", "worktrees/wt/gitdir"] {
-            assert_eq!(c(full), Change::Full, "{full}");
-        }
-        for none in ["worktrees/wt/index", "worktrees/wt/logs/HEAD", "worktrees/wt/ORIG_HEAD"] {
-            assert_eq!(c(none), Change::None, "{none}");
-        }
-        for full in [
-            "HEAD",
-            "packed-refs",
-            "refs/heads/main",
-            "refs/remotes/origin/x",
-            "refs/stash",
-            "MERGE_HEAD",
-            "CHERRY_PICK_HEAD",
-            "REBASE_HEAD",
-            "rebase-merge/done",
-            "rebase-apply/next",
-            "sequencer/todo",
-        ] {
-            assert_eq!(c(full), Change::Full, "{full}");
-        }
-        for none in [
-            "index.lock",
-            "refs/heads/main.lock",
-            "HEAD.lock",
-            "objects/ab/cdef",
-            "logs/HEAD",
-            "FETCH_HEAD",
-            "ORIG_HEAD",
-            "COMMIT_EDITMSG",
-            "TRELLIS_COMMIT_EDITMSG",
-            "config",
-            "hooks/pre-commit",
-            "",
-        ] {
-            assert_eq!(c(none), Change::None, "{none}");
-        }
-    }
-
-    #[test]
-    fn a_linked_worktree_follows_the_refs_it_shares() {
-        let c = |p: &str| common_change(Path::new(p));
-        for full in ["refs/heads/main", "refs/remotes/origin/x", "packed-refs", "HEAD"] {
-            assert_eq!(c(full), Change::Full, "{full}");
-        }
-        for none in ["index", "refs/heads/main.lock", "objects/ab/cd", "config", "logs/HEAD", "rebase-merge/done", "worktrees/other/index"]
-        {
-            assert_eq!(c(none), Change::None, "{none}");
-        }
-        // Classified through WatchPaths: the linked worktree's own git dir first, then the common one.
-        let common = std::env::temp_dir().join("trellis-watch-common-missing").join(".git");
-        let git_dir = common.join("worktrees").join("wt");
-        let wd = std::env::temp_dir().join("trellis-watch-common-missing-wt");
-        let paths = WatchPaths::new(&wd, &git_dir).with_common(&common);
-        let mut never = |_: &str| false;
-        assert_eq!(paths.classify(&common.join("refs/heads/x"), Touch::Other, &mut never), Change::Full);
-        assert_eq!(paths.classify(&common.join("index"), Touch::Modified, &mut never), Change::None);
-        assert_eq!(paths.classify(&git_dir.join("index"), Touch::Modified, &mut never), Change::Status);
-        assert_eq!(paths.classify(&git_dir.join("HEAD"), Touch::Modified, &mut never), Change::Full);
-        // The main worktree's own git dir is not a second root.
-        let main = WatchPaths::new(&wd, &common).with_common(&common);
-        assert!(main.common_dirs.is_empty());
-    }
-
-    #[test]
-    fn common_dir_follows_the_commondir_file() {
-        let dir = scratch_repo("watch-commondir");
-        let linked = dir.with_file_name(format!("{}-linked", dir.file_name().unwrap().to_string_lossy()));
-        let _ = std::fs::remove_dir_all(&linked);
-        git(&dir, &["worktree", "add", "-q", "-b", "linked", &linked.display().to_string()]);
-        let repo = git2::Repository::open(&linked).unwrap();
-        let common = crate::paths::resolve(&dir.join(".git"));
-        assert_eq!(common_dir(repo.path()), Some(common.clone()));
-        assert_eq!(common_dir(&common), None, "the main git dir is its own");
-        let _ = std::fs::remove_dir_all(&linked);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn linked_worktree_folders_count_only_when_they_come_or_go() {
-        let c = |p: &str, touch| git_change(Path::new(p), touch);
-        // Windows reports these folders modified on every index write in a linked worktree.
-        for p in ["worktrees", "worktrees/wt"] {
-            assert_eq!(c(p, Touch::Modified), Change::None, "{p}");
-            assert_eq!(c(p, Touch::Other), Change::Full, "{p}");
-        }
-        // The files inside are judged the same way whatever happened to them.
-        for touch in [Touch::Modified, Touch::Other] {
-            assert_eq!(c("worktrees/wt/gitdir", touch), Change::Full);
-            assert_eq!(c("worktrees/wt/index", touch), Change::None);
-            assert_eq!(c("worktrees/wt/index.lock", touch), Change::None);
-            assert_eq!(c("refs/heads/main", touch), Change::Full);
-            assert_eq!(c("index", touch), Change::Status);
-        }
-    }
-
-    #[test]
-    fn the_shallow_file_reloads_everything() {
-        for touch in [Touch::Modified, Touch::Other] {
-            assert_eq!(git_change(Path::new("shallow"), touch), Change::Full);
-            assert_eq!(git_change(Path::new("shallow.lock"), touch), Change::None);
-        }
-    }
-
-    #[test]
-    fn worktree_paths_are_classified() {
-        let wd = crate::paths::temp_dir().join("trellis-watch-classify-missing").join("wd");
-        let paths = WatchPaths::new(&wd, &wd.join(".git"));
-        let mut seen = Vec::new();
-        let mut ignored = |rel: &str| {
-            seen.push(rel.to_owned());
-            rel.starts_with("target/")
-        };
-        assert_eq!(paths.classify(&wd.join("src").join("a.rs"), Touch::Modified, &mut ignored), Change::Status);
-        assert_eq!(paths.classify(&wd, Touch::Modified, &mut ignored), Change::None);
-        assert_eq!(paths.classify(&wd.join("vendor/sub/.git/HEAD"), Touch::Modified, &mut ignored), Change::None);
-        assert_eq!(paths.classify(&wd.join(".git").join("index"), Touch::Modified, &mut ignored), Change::Status, "the git rule wins");
-        assert_eq!(paths.classify(&wd.join("target").join("debug").join("x.o"), Touch::Modified, &mut ignored), Change::None);
-        let outside = crate::paths::temp_dir().join("trellis-watch-elsewhere").join("a.rs");
-        assert_eq!(paths.classify(&outside, Touch::Modified, &mut ignored), Change::None);
-        assert_eq!(seen, ["src/a.rs", "target/debug/x.o"], "relative and '/'-separated");
-
-        // A linked worktree: the git dir lives elsewhere and `.git` is a file in the workdir.
-        let gd = crate::paths::temp_dir().join("trellis-watch-classify-missing").join("main").join(".git").join("worktrees").join("wd");
-        let linked = WatchPaths::new(&wd, &gd);
-        assert_eq!(linked.classify(&gd.join("HEAD"), Touch::Modified, &mut |_| false), Change::Full);
-        assert_eq!(linked.classify(&wd.join(".git"), Touch::Modified, &mut |_| false), Change::None);
-
-        assert_eq!(Change::Status.max(Change::Full), Change::Full);
-        assert_eq!(Change::None.max(Change::Status), Change::Status);
-    }
-
-    #[test]
-    fn ignores_follow_gitignore() {
-        let dir = scratch_repo("watch-ignores");
-        write(&dir, ".gitignore", "target/\n*.log\n");
-        std::fs::create_dir_all(dir.join("target/debug")).unwrap();
-        write(&dir, "target/debug/x.o", "obj");
-        git(&dir, &["add", ".gitignore"]);
-        let mut ig = Ignores::open(&dir);
-        assert!(ig.is_ignored("target/debug/x.o"));
-        assert!(ig.dirs.contains("target"), "{:?}", ig.dirs);
-        assert_eq!(ig.dirs.len(), 1);
-        // Answered from the cache: even a repository-less lookup would say no.
-        let repo = ig.repo.take();
-        assert!(ig.is_ignored("target/release/y.o"));
-        ig.repo = repo;
-        assert!(ig.is_ignored("a.log"));
-        assert!(!ig.is_ignored("src/main.rs"));
-        assert!(!ig.is_ignored(".gitignore"));
-        ig.clear();
-        assert!(ig.dirs.is_empty());
-
-        let plain = crate::paths::temp_dir().join(format!("trellis-watch-plain-{}", std::process::id()));
-        std::fs::create_dir_all(&plain).unwrap();
-        let mut none = Ignores::open(&plain);
-        assert!(!none.is_ignored("target/debug/x.o"));
-        assert!(!none.is_ignored("a.log"));
-        let _ = std::fs::remove_dir_all(&plain);
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-}
+#[path = "watch_tests.rs"]
+mod tests;

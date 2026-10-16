@@ -3,20 +3,20 @@
 //! refresh asked for while a load runs waits for it (requests merge into one), and so do status
 //! reads.
 
-use crate::effect::{Effect, KnownRepo, LoadKind};
+use crate::effect::{Effect, KnownRepo, LoadKind, StatusRead};
 use crate::msg::LoadMsg;
-use crate::state::refresh::{Depth, RefreshState, can_load_more};
+use crate::state::refresh::{Depth, RefreshState, Wanted, can_load_more};
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
 use std::path::PathBuf;
 use std::time::Instant;
-use trellis_core::repo::{FileEntry, Snapshot, SubmoduleInfo};
+use trellis_core::repo::{ChangeCounts, FileEntry, Snapshot, SubmoduleInfo};
 
-type Status = (Vec<FileEntry>, Vec<FileEntry>, RepositoryState);
+pub(super) type Status = (Vec<FileEntry>, Vec<FileEntry>, RepositoryState);
 
 pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp } => {
+        LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow } => {
             if generation != st.load_gen {
                 return; // superseded by a newer load
             }
@@ -30,27 +30,40 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 st.snap = Some(snap);
             }
             apply_status(st, result, submodules, open_stamp, now, fx);
+            super::status_tip::check(st, slow.as_ref(), now, fx);
             // A dialog may have been open when the repository loaded.
             super::trust::maybe_ask(st, false);
             super::forge::refresh(st, false, false, now, fx);
             super::push_pr::loaded(st, fx);
             load_finished(st, fx);
         }
-        LoadMsg::StatusLoaded { generation, result, submodules, open_stamp } => {
+        LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow } => {
             if generation != st.load_gen {
                 return;
             }
             st.refresh.status_busy = false;
-            if std::mem::take(&mut st.refresh.status_queued) {
+            if let Some(queued) = st.refresh.status_queued.take() {
                 // Already out of date: show it, but leave the diff to the next read.
-                if let (Ok(status), Some(snap)) = (result, st.snap.as_mut()) {
-                    set_status(snap, status, submodules);
+                if let (Ok(read), Some(snap)) = (result, st.snap.as_mut()) {
+                    match read {
+                        StatusRead::Whole(u, s, state) => set_status(snap, (u, s, state), submodules),
+                        StatusRead::Paths(ps) => super::refresh_paths::merge_into(snap, ps, submodules),
+                    }
                 }
-                refresh_status(st, fx);
-                return;
+                match queued {
+                    Wanted::Whole => refresh_status(st, fx),
+                    Wanted::Paths(set) => super::refresh_paths::refresh_paths(st, set.into_iter().collect(), fx),
+                }
+            } else {
+                match result {
+                    Ok(StatusRead::Paths(ps)) => super::refresh_paths::apply(st, ps, submodules, open_stamp, now, fx),
+                    Ok(StatusRead::Whole(u, s, state)) => apply_status(st, Ok((u, s, state)), submodules, open_stamp, now, fx),
+                    Err(e) => apply_status(st, Err(e), submodules, open_stamp, now, fx),
+                }
             }
-            apply_status(st, result, submodules, open_stamp, now, fx);
+            super::status_tip::check(st, slow.as_ref(), now, fx);
         }
+        LoadMsg::SpeedUpStatus(speedups) => super::status_tip::speed_up(st, speedups, fx),
         LoadMsg::LoadMoreCommits if st.snap.as_ref().is_some_and(can_load_more) => more_commits(st, fx),
         LoadMsg::NearHistoryEnd if st.settings.load_more_on_scroll && st.snap.as_ref().is_some_and(can_load_more) && !st.loading_more() => {
             more_commits(st, fx)
@@ -134,17 +147,17 @@ pub(super) fn load_finished(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     if st.refresh.status_busy {
-        st.refresh.status_queued = true;
+        st.refresh.status_queued = Some(Wanted::queue(st.refresh.status_queued.take(), Wanted::Whole));
         return;
     }
     st.refresh.status_busy = true;
     let submodules = st.snap.as_ref().is_some_and(|s| !s.submodules.is_empty());
     let git_status = st.runs_git_unasked();
-    fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules, open: open_file(st), git_status });
+    fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules, open: open_file(st), git_status, paths: None });
 }
 
 /// The file whose working-tree or index diff is open.
-fn open_file(st: &AppState) -> Option<String> {
+pub(super) fn open_file(st: &AppState) -> Option<String> {
     st.diff.as_ref().filter(|(t, _)| t.is_working_tree()).map(|(t, _)| t.path().to_owned())
 }
 
@@ -152,21 +165,33 @@ fn open_file(st: &AppState) -> Option<String> {
 /// at `stamp`. A commit or comparison diff never changes; a working-tree or index diff only when
 /// its file or the index did. Always when a request is outstanding (a hunk operation waits for
 /// the reload) or the file history's entry is missing.
-fn diff_changed(st: &mut AppState, stamp: Option<u64>) -> bool {
+pub(super) fn diff_changed(st: &mut AppState, stamp: Option<u64>) -> bool {
     let last = std::mem::replace(&mut st.refresh.open_stamp, stamp);
-    let Some((target, _)) = &st.diff else { return true };
-    if st.diff_gen != st.diff_shown_gen || super::history::missing_diff(st).is_some() {
+    if must_reload(st) {
         return true;
     }
-    target.is_working_tree() && (stamp.is_none() || stamp != last)
+    st.diff.as_ref().is_some_and(|(target, _)| target.is_working_tree()) && (stamp.is_none() || stamp != last)
 }
 
-fn set_status(snap: &mut Snapshot, status: Status, submodules: Option<Vec<SubmoduleInfo>>) {
+/// Whether the diff must be read again whatever its file's stamp: no diff is open, a request is
+/// outstanding (a hunk operation waits for the reload), or the file history's entry is missing.
+pub(super) fn must_reload(st: &AppState) -> bool {
+    st.diff.is_none() || st.diff_gen != st.diff_shown_gen || super::history::missing_diff(st).is_some()
+}
+
+pub(super) fn set_status(snap: &mut Snapshot, status: Status, submodules: Option<Vec<SubmoduleInfo>>) {
     let (unstaged, staged, state) = status;
     let was_dirty = snap.is_dirty();
     snap.unstaged = unstaged;
     snap.staged = staged;
     snap.state = state;
+    status_set(snap, was_dirty, submodules);
+}
+
+/// What follows new status lists in `snap` (dirty before them: `was_dirty`): their counts, the
+/// submodules read with them, and the graph's WIP row.
+pub(super) fn status_set(snap: &mut Snapshot, was_dirty: bool, submodules: Option<Vec<SubmoduleInfo>>) {
+    snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
     // A commit or checkout inside a submodule changes its row, not the history.
     if let Some(list) = submodules {
         snap.submodules = list;

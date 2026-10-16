@@ -2,9 +2,10 @@
 //! Reads (history, refs, status, diffs) and index/working-tree edits happen here; operations
 //! that should run hooks or talk to remotes go through `gitcli`.
 //!
-//! The types are here (the diff ones in `diff_types`); the work is split by area: `load`
-//! (history, refs, status), `diff`, `history` (one file's commits), `blame`, `index` and `lines`
-//! (staging, line staging), `revert`, `restore`, `conflict` and `resolve`, `template`
+//! The types are here (the diff ones in `diff_types`, `Snapshot`'s queries in `snapshot_impl`);
+//! the work is split by area: `load` (history, refs, status), `status_paths` and `status_merge`
+//! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`,
+//! `history` (one file's commits), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict` and `resolve`, `template`
 //! (commit.template), `tool_sides` (versions for external tools), `touching` (commits that
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and
 //! `removal` (working-tree files), `tracked`,
@@ -41,8 +42,12 @@ mod restore;
 mod revert;
 mod rpath;
 mod shallow;
+mod snapshot_impl;
 mod status;
 mod status_cli;
+mod status_merge;
+mod status_paths;
+mod status_speed;
 mod submodule_add;
 mod submodules;
 mod template;
@@ -80,6 +85,12 @@ pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
 pub use status::{ChangeCounts, status_at};
+pub use status_merge::{covers, merge_unstaged};
+pub use status_paths::{CLI_PATH_BYTES, PathsStatus, status_of_paths};
+pub use status_speed::{
+    SLOW_STATUS, SlowStatus, StatusSpeedups, UNTRACKED_CACHE_ALL, slow, status_speedups, untracked_cache_cmds, untracked_cache_helps,
+    untracked_cache_works,
+};
 pub use submodule_add::check_submodule_path;
 pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
@@ -222,6 +233,10 @@ pub struct Snapshot {
     pub stashes: Vec<StashInfo>,
     pub unstaged: Vec<FileEntry>,
     pub staged: Vec<FileEntry>,
+    /// The counts of `staged` and `unstaged`, kept with them.
+    pub changes: ChangeCounts,
+    /// The status read took long (`SLOW_STATUS`); what could speed it up.
+    pub slow_status: Option<SlowStatus>,
     /// What the work tree's file system treats as one name (probed in the git dir).
     pub folding: Folding,
     /// `core.ignorecase`.
@@ -243,55 +258,6 @@ pub struct Snapshot {
     pub refs_key: u64,
     /// The options the snapshot was loaded with.
     pub loaded_with: LoadOptions,
-}
-
-impl Snapshot {
-    /// Loaded commits reachable from `from` but not from `exclude` (newest first), e.g. the
-    /// commits a branch would contribute to its target. Limited to the loaded history.
-    pub fn commits_between(&self, from: Oid, exclude: Option<Oid>) -> Vec<&CommitInfo> {
-        let reach = |start: Oid| {
-            let mut seen = HashSet::new();
-            let mut stack = vec![start];
-            while let Some(o) = stack.pop() {
-                if let Some(&row) = self.row_of.get(&o)
-                    && seen.insert(o)
-                {
-                    stack.extend(self.commits[row].parents.iter().copied());
-                }
-            }
-            seen
-        };
-        let excluded = exclude.map(reach).unwrap_or_default();
-        let wanted = reach(from);
-        self.commits.iter().filter(|c| wanted.contains(&c.oid) && !excluded.contains(&c.oid)).collect()
-    }
-
-    pub fn is_dirty(&self) -> bool {
-        !self.unstaged.is_empty() || !self.staged.is_empty()
-    }
-
-    /// Why `core.ignorecase` and the file system disagree, when they do: git then matches
-    /// paths differently from the disk (a repository copied between systems).
-    pub fn case_mismatch(&self) -> Option<&'static str> {
-        match (self.folding.case, self.ignorecase) {
-            (Some(true), false) => Some("This file system ignores case, but core.ignorecase is false: git may see one file as two."),
-            (Some(false), true) => Some("This file system is case-sensitive, but core.ignorecase is true: git may match the wrong file."),
-            _ => None,
-        }
-    }
-
-    pub fn head_info(&self) -> Option<&BranchInfo> {
-        self.locals.iter().find(|b| b.is_head)
-    }
-
-    /// Whether status says `path` is gone from the working tree: deleted there (unstaged 'D'),
-    /// or deleted in the index ('D' staged) with nothing at the path since.
-    pub fn missing_from_workdir(&self, path: &str) -> bool {
-        if let Some(u) = self.unstaged.iter().find(|f| f.path == path) {
-            return u.status == 'D';
-        }
-        self.staged.iter().any(|f| f.path == path && f.status == 'D')
-    }
 }
 
 pub struct CommitDetail {

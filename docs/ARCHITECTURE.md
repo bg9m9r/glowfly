@@ -24,7 +24,7 @@ binary (package `trellis`).
 
 | Module | Holds |
 | --- | --- |
-| `repo/` | The repository model on libgit2: loading history, refs and status; diffs; staging, line staging, revert, restore; conflicts and their resolution; blame through `git blame --porcelain`; working-tree files; submodules (and whether a new one can go in a folder: the index, the disk, .gitignore, a leftover stored module), worktrees, remotes, shallow-clone boundaries. |
+| `repo/` | The repository model on libgit2: loading history, refs and status (re-reading only some work-tree paths: `status_paths.rs`, merged by `status_merge.rs`; what speeds git's status up and the slow-read note's commands: `status_speed.rs`); diffs; staging, line staging, revert, restore; conflicts and their resolution; blame through `git blame --porcelain`; working-tree files; submodules (and whether a new one can go in a folder: the index, the disk, .gitignore, a leftover stored module), worktrees, remotes, shallow-clone boundaries. |
 | `gitcli.rs` | The git CLI, for commands that honour hooks, credentials and signing; reports every command's timing to the observer the app sets. |
 | `git_version.rs`, `env_path.rs` | Which git runs (found on the PATH children get) and the features its version lacks; that PATH, which on macOS merges in the login shell's. |
 | `git_program.rs` | The git program every git child runs (chosen in Preferences > Git, else `git` from PATH), checking a program before it is used, and finding the installed gits. |
@@ -43,7 +43,7 @@ binary (package `trellis`).
 | `graph.rs` | Lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes. |
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view, and the row of a file line (`diff_rows/line_row.rs`); word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
 | `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds; whole files too (`highlight_file`, for blame). |
-| `watch.rs` | Which file changes in a repository matter. |
+| `watch.rs` | Which file changes in a repository matter, and the work-tree paths a change names (`Change::Paths`, at most `MAX_WATCH_PATHS` per burst). |
 | `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
 | `commit_query.rs` | Commit search queries: author and path terms, matching rows, the author list. |
@@ -129,6 +129,18 @@ binary (package `trellis`).
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
   while the toast's repository is the active tab. `toast_replacing` updates a toast still on
   screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
+- **Incremental status**: the watcher (`watcher.rs`) collects the work-tree paths of a burst
+  when nothing else changed (no index, `info/exclude`, `.gitignore`, `.gitattributes`, HEAD or
+  ref change, no lost events, at most `watch::MAX_WATCH_PATHS`) and sends them in
+  `WatchMsg::RepoChanged { paths }`. `update/refresh_paths.rs` asks for
+  `Effect::LoadStatus { paths: Some }`; the runner (`runner/status.rs`) reads only the unstaged
+  rows under them (`repo::status_of_paths`, widened to a submodule's or nested repository's root)
+  or, when they can't be read on their own, the whole status in the same effect. `update` merges
+  the rows into the lists on screen (`repo::merge_unstaged`) and keeps the staged list, which only
+  an index change (always a whole read) can change. Trellis's own refreshes and the polls read
+  everything; reads asked for while one runs merge (`state::refresh::Wanted`). A whole read slower
+  than `repo::SLOW_STATUS` shows a note once per repository (`update/status_tip.rs`) whose
+  button turns on git's untracked cache in a job.
 - **Zoom and panels** are settings, not view state: `update/layout.rs` changes and saves them
   (`LayoutMsg`), and the shell applies `settings.zoom_percent` to egui every frame
   (`ui/layout.rs::apply_zoom`, like the theme), so a profile switch or a Preferences edit takes

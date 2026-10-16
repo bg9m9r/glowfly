@@ -2,10 +2,11 @@
 //! (update/repo.rs, update/refresh.rs, update/watch.rs).
 
 use crate::effect::LoadKind;
+use crate::effect::StatusRead;
 use git2::Oid;
 use std::path::PathBuf;
 use std::time::Instant;
-use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, Snapshot};
+use trellis_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, SlowStatus, Snapshot};
 use trellis_core::signature_check::SignatureCheck;
 
 /// Opening the repository, selecting a commit or the working tree, opening a diff, and their
@@ -97,16 +98,24 @@ pub enum LoadMsg {
         result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
         submodules: Option<Vec<trellis_core::repo::SubmoduleInfo>>,
         open_stamp: Option<u64>,
+        /// The status read was slow (`repo::SLOW_STATUS`), and what could speed it up.
+        slow: Option<SlowStatus>,
     },
     StatusLoaded {
         generation: u64,
-        result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
+        /// The whole status, or only some work-tree paths' unstaged rows.
+        result: Result<StatusRead, String>,
         /// The submodules read again; None when the repository has none (or they couldn't be read).
         submodules: Option<Vec<trellis_core::repo::SubmoduleInfo>>,
         /// `repo::open_file_stamp` of the file asked about; while it stays the same, the open
         /// diff isn't read again.
         open_stamp: Option<u64>,
+        /// A whole read was slow (`repo::SLOW_STATUS`), and what could speed it up.
+        slow: Option<SlowStatus>,
     },
+    /// Turn on git's untracked cache for the active repository (the slow-status note's button),
+    /// whose speed-ups were these when the note was shown.
+    SpeedUpStatus(trellis_core::repo::StatusSpeedups),
 }
 
 impl LoadMsg {
@@ -114,7 +123,11 @@ impl LoadMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::LoadMoreCommits | Self::NearHistoryEnd | Self::RepoUnchanged { .. } | Self::StatusLoaded { .. } => None,
+            Self::LoadMoreCommits
+            | Self::NearHistoryEnd
+            | Self::RepoUnchanged { .. }
+            | Self::StatusLoaded { .. }
+            | Self::SpeedUpStatus(_) => None,
         }
     }
 }
@@ -122,9 +135,10 @@ impl LoadMsg {
 /// The file watcher's reports (update/watch.rs).
 pub enum WatchMsg {
     /// Files changed outside Trellis (debounced). Sent wrapped in `Msg::Scoped` for the watched
-    /// repository; `full` when HEAD, refs or a merge/rebase state changed; `last_event` is when
-    /// the burst's last relevant event arrived.
-    RepoChanged { full: bool, last_event: Instant },
+    /// repository; `full` when HEAD, refs or a merge/rebase state changed; `paths`: the
+    /// work-tree paths that changed, when nothing else did; None re-reads the whole status;
+    /// `last_event` is when the burst's last relevant event arrived.
+    RepoChanged { full: bool, paths: Option<Vec<String>>, last_event: Instant },
     /// The file watcher could not start or stopped working for `workdir`.
     WatchFailed { workdir: PathBuf, error: String },
     /// `workdir` is on a network or virtual file system of this `kind` ("SMB", "WSL"…), which

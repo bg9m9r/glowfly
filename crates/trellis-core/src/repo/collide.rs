@@ -46,7 +46,7 @@ impl Collision {
     }
 }
 
-fn nfc(s: &str) -> String {
+pub(super) fn nfc(s: &str) -> String {
     ComposingNormalizerBorrowed::new_nfc().normalize(s).into_owned()
 }
 

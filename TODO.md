@@ -551,8 +551,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
       view
 - [x] **Git engine choice**: choose
       which git executable to use and show its version
-- [ ] **Performance**: incremental status for very large working trees (loading already runs
-      off the UI thread)
+- [x] **Performance**: incremental status for very large working trees: the watcher's changed
+      paths re-read only their unstaged rows, and a slow full read offers git's untracked cache
+      once per repository (loading already runs off the UI thread)
 - [ ] **Input reliability**: the first click after the window gains focus was dropped while
       testing with synthetic input; check with real input
 - [x] **Onboarding**: first-run welcome and tutorial
@@ -1499,3 +1500,14 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Keep tour progress across restarts
 - Highlight the toolbar's Commands button on the tour's palette step
 - First-use tips in context (first diff, first conflict, first pull request panel)
+
+### Performance
+
+- Edits to tracked files that match an ignore pattern are dropped by the watcher; check the index before dropping
+- Read the staged list incrementally on index changes (compare the old and new index) instead of a whole status read
+- Turn on git's built-in fsmonitor from Trellis (suggest watchman on Linux), checking that the daemon runs
+- Make the Windows 30 s safety poll cheaper for huge trees (read only folders changed since the last read)
+- Re-read only the submodules a path read touched instead of the whole submodule list
+- A Preferences control to show the slow-status note again or turn it off
+- Report status read timings in the activity log (debug)
+- Refresh `Snapshot.collisions` on status reads so twins can be marked without scanning the index in the worker

@@ -1,6 +1,7 @@
 //! The file watcher for the active tab's repository: notify reports raw events, a thread of its
 //! own drops the ones that don't matter (`trellis_core::watch`), coalesces the rest into bursts
-//! and sends one `WatchMsg::RepoChanged` per burst. Owned by the runner (`Effect::Watch`).
+//! and sends one `WatchMsg::RepoChanged` per burst, with the work-tree paths it saw when nothing
+//! else changed. Owned by the runner (`Effect::Watch`).
 
 use crate::effect::WatchTarget;
 use crate::msg::Msg;
@@ -8,11 +9,12 @@ use crate::msg::WatchMsg;
 use crate::runner::Waker;
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use trellis_core::watch::{Change, Ignores, Touch, WatchPaths};
+use trellis_core::watch::{Change, Ignores, MAX_WATCH_PATHS, Touch, WatchPaths};
 
 /// A burst fires this long after its last relevant event…
 pub const QUIET: Duration = Duration::from_millis(300);
@@ -115,8 +117,8 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
         };
         match next {
             Ok(Ok(ev)) => {
-                let change = classify(&ev, &paths, &mut ignores);
-                burst.add(change, Instant::now());
+                let (change, changed) = classify(&ev, &paths, &mut ignores);
+                burst.add(change, changed, Instant::now());
             }
             Ok(Err(e)) => {
                 if !reported {
@@ -128,15 +130,18 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
                     waker.wake();
                 }
                 // Events may have been lost.
-                burst.add(Change::Full, Instant::now());
+                burst.add(Change::Full, Vec::new(), Instant::now());
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return,
         }
-        if let Some((change, last_event)) = burst.take_due(Instant::now()) {
+        if let Some((change, changed, last_event)) = burst.take_due(Instant::now()) {
             let full = change == Change::Full;
-            tracing::debug!(workdir = %target.workdir.display(), full, "files changed outside Trellis");
-            let msg = Msg::Watch(WatchMsg::RepoChanged { full, last_event });
+            // Paths with none named (only folders' own modifications): read everything.
+            let paths = (change == Change::Paths && !changed.is_empty()).then_some(changed);
+            let count = paths.as_ref().map_or(0, Vec::len);
+            tracing::debug!(workdir = %target.workdir.display(), full, paths = count, "files changed outside Trellis");
+            let msg = Msg::Watch(WatchMsg::RepoChanged { full, paths, last_event });
             if tx.send(Msg::Scoped { workdir: target.workdir.clone(), msg: Box::new(msg) }).is_err() {
                 return;
             }
@@ -145,15 +150,17 @@ fn event_loop<W: Waker>(raw: Receiver<notify::Result<Event>>, target: WatchTarge
     }
 }
 
-/// What one raw event calls for.
-fn classify(ev: &Event, paths: &WatchPaths, ignores: &mut Ignores) -> Change {
+/// What one raw event calls for, with the work-tree paths it names while that is only
+/// `Change::Paths`.
+fn classify(ev: &Event, paths: &WatchPaths, ignores: &mut Ignores) -> (Change, Vec<String>) {
     if matches!(ev.kind, EventKind::Access(_)) {
-        return Change::None;
+        return (Change::None, Vec::new());
     }
     if ev.need_rescan() {
-        return Change::Full; // the OS dropped events
+        return (Change::Full, Vec::new()); // the OS dropped events
     }
     let mut change = Change::None;
+    let mut changed = Vec::new();
     let what = touch(&ev.kind);
     for p in &ev.paths {
         let name = p.file_name().and_then(|n| n.to_str());
@@ -161,12 +168,21 @@ fn classify(ev: &Event, paths: &WatchPaths, ignores: &mut Ignores) -> Change {
         if name == Some(".gitignore") || (name == Some("exclude") && parent == Some("info")) {
             ignores.clear();
         }
-        change = change.max(paths.classify(p, what, &mut |rel| ignores.is_ignored(rel)));
+        let (c, rel) = paths.classify_path(p, what, &mut |rel| ignores.is_ignored(rel));
+        change = change.max(c);
+        // A folder's own modification (Windows reports one whenever an entry inside is written)
+        // names no change of its own: the entry's event does.
+        if let Some(rel) = rel.filter(|_| change == Change::Paths && !(what == Touch::Modified && p.is_dir())) {
+            changed.push(rel);
+        }
         if change == Change::Full {
             break;
         }
     }
-    change
+    if change != Change::Paths {
+        changed.clear();
+    }
+    (change, changed)
 }
 
 /// A content or metadata change, as opposed to a path coming, going or being renamed.
@@ -184,17 +200,30 @@ struct Burst {
     first: Option<Instant>,
     last: Option<Instant>,
     change: Change,
+    /// The work-tree paths seen while the burst is only `Change::Paths`.
+    paths: BTreeSet<String>,
 }
 
 impl Burst {
-    /// Adds an event at `at`; `Change::None` neither starts nor extends a burst.
-    fn add(&mut self, change: Change, at: Instant) {
+    /// Adds an event naming `paths` at `at`; `Change::None` neither starts nor extends a burst.
+    /// Past `MAX_WATCH_PATHS` paths, or once anything but paths changed, the burst re-reads the
+    /// whole status and keeps no paths.
+    fn add(&mut self, change: Change, paths: Vec<String>, at: Instant) {
         if change == Change::None {
             return;
         }
         self.first.get_or_insert(at);
         self.last = Some(at);
         self.change = self.change.max(change);
+        if self.change != Change::Paths {
+            self.paths.clear();
+            return;
+        }
+        self.paths.extend(paths);
+        if self.paths.len() > MAX_WATCH_PATHS {
+            self.change = Change::Status;
+            self.paths.clear();
+        }
     }
 
     fn due_at(&self) -> Option<Instant> {
@@ -206,14 +235,14 @@ impl Burst {
         self.due_at().map(|d| d.saturating_duration_since(now))
     }
 
-    /// The burst's change and its last event's time once it is due, starting over.
-    fn take_due(&mut self, now: Instant) -> Option<(Change, Instant)> {
+    /// The burst's change, its paths and its last event's time once it is due, starting over.
+    fn take_due(&mut self, now: Instant) -> Option<(Change, Vec<String>, Instant)> {
         if now < self.due_at()? {
             return None;
         }
         let last = self.last?;
-        let change = std::mem::take(self).change;
-        Some((change, last))
+        let Burst { change, paths, .. } = std::mem::take(self);
+        Some((change, paths.into_iter().collect(), last))
     }
 }
 

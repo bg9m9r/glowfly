@@ -336,6 +336,8 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
     super::push_pr::loaded(st, fx);
     super::onboarding::loaded(st, kind);
+    let slow = st.snap.as_ref().and_then(|s| s.slow_status.clone());
+    super::status_tip::check(st, slow.as_ref(), now, fx);
     if reload {
         super::refresh::reload_after(st, fx);
     }

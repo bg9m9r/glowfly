@@ -103,6 +103,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "graph_filters",
     "repo_forge_filters",
     "repo_trust",
+    "status_tip_shown",
     "favorite_repos",
     "external_tools",
     "profiles",

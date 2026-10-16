@@ -261,6 +261,9 @@ pub struct Settings {
     /// (`Snapshot::real_workdir`, through `repo_keys`); a repository with no entry is undecided.
     #[serde(default)]
     pub repo_trust: HashMap<String, RepoTrust>,
+    /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
+    #[serde(default)]
+    pub status_tip_shown: HashMap<String, bool>,
     /// Favorite repositories (welcome screen and repository menu), as working-directory paths in
     /// the order they were added.
     #[serde(default)]
@@ -351,6 +354,7 @@ impl Default for Settings {
             graph_filters: HashMap::new(),
             repo_forge_filters: HashMap::new(),
             repo_trust: HashMap::new(),
+            status_tip_shown: HashMap::new(),
             favorite_repos: Vec::new(),
             external_tools: ExternalTools::default(),
             profiles: Vec::new(),

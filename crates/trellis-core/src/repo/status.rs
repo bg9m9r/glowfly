@@ -2,7 +2,7 @@
 
 use super::FileEntry;
 use crate::error::Result;
-use git2::{Repository, RepositoryState, StatusOptions};
+use git2::{Repository, RepositoryState, Status, StatusOptions};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -67,7 +67,10 @@ pub(super) fn load_status(repo: &Repository, git_status: bool) -> Result<(Vec<Fi
 }
 
 /// Marks the rows whose path shares one file on disk with another index path.
-fn mark_twins(repo: &Repository, (mut unstaged, mut staged): (Vec<FileEntry>, Vec<FileEntry>)) -> (Vec<FileEntry>, Vec<FileEntry>) {
+pub(super) fn mark_twins(
+    repo: &Repository,
+    (mut unstaged, mut staged): (Vec<FileEntry>, Vec<FileEntry>),
+) -> (Vec<FileEntry>, Vec<FileEntry>) {
     use super::collide;
     let found = repo.index().map(|i| collide::collisions(&i)).unwrap_or_default();
     if !found.is_empty() {
@@ -82,11 +85,10 @@ fn mark_twins(repo: &Repository, (mut unstaged, mut staged): (Vec<FileEntry>, Ve
 const LARGE_INDEX: usize = 50_000;
 
 /// Whether git reads the status faster than libgit2 here.
-fn wants_git(repo: &Repository) -> bool {
+pub(super) fn wants_git(repo: &Repository) -> bool {
     let Ok(config) = repo.config() else { return false };
-    // core.fsmonitor is a boolean (the built-in daemon) or a hook's path.
-    let fsmonitor = config.get_bool("core.fsmonitor").unwrap_or_else(|_| config.get_string("core.fsmonitor").is_ok_and(|s| !s.is_empty()));
-    fsmonitor || config.get_bool("core.untrackedCache").unwrap_or(false) || repo.index().is_ok_and(|i| i.len() > LARGE_INDEX)
+    let speedups = super::status_speed::speedups_of(&config);
+    speedups.fsmonitor || speedups.untracked_cache || repo.index().is_ok_and(|i| i.len() > LARGE_INDEX)
 }
 
 /// (unstaged, staged) read by libgit2 alone: no fsmonitor hook, filter or other program runs.
@@ -123,19 +125,7 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
         } else {
             None
         };
-        let worktree = if s.is_wt_new() {
-            Some('?')
-        } else if s.is_wt_modified() {
-            Some('M')
-        } else if s.is_wt_deleted() {
-            Some('D')
-        } else if s.is_wt_renamed() {
-            Some('R')
-        } else if s.is_wt_typechange() {
-            Some('T')
-        } else {
-            None
-        };
+        let worktree = worktree_char(s);
         if let Some(c) = index {
             staged.push(row(c));
         }
@@ -149,9 +139,26 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
     Ok((unstaged, staged))
 }
 
+/// The unstaged row's status letter for libgit2's flags (None: nothing changed in the work tree).
+pub(super) fn worktree_char(s: Status) -> Option<char> {
+    if s.is_wt_new() {
+        Some('?')
+    } else if s.is_wt_modified() {
+        Some('M')
+    } else if s.is_wt_deleted() {
+        Some('D')
+    } else if s.is_wt_renamed() {
+        Some('R')
+    } else if s.is_wt_typechange() {
+        Some('T')
+    } else {
+        None
+    }
+}
+
 /// Drops unstaged deletions of files a sparse checkout leaves out (skip-worktree): libgit2
 /// reports them as deleted, git doesn't.
-fn drop_skipped(repo: &Repository, unstaged: &mut Vec<FileEntry>) -> Result<()> {
+pub(super) fn drop_skipped(repo: &Repository, unstaged: &mut Vec<FileEntry>) -> Result<()> {
     if !unstaged.iter().any(|f| f.status == 'D') {
         return Ok(());
     }
