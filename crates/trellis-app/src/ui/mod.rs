@@ -99,6 +99,7 @@ mod snapshot_tests_commit;
 mod snapshot_tests_conflict_check;
 #[cfg(test)]
 mod snapshot_tests_dashboard;
+#[cfg(test)]
 mod snapshot_tests_deep_link;
 #[cfg(test)]
 mod snapshot_tests_diff;

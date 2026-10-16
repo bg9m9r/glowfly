@@ -106,11 +106,11 @@ fn entries_without_repo() {
         ]
     );
     let list = shown(&st, "");
-    assert_eq!(list[11].entry.detail.as_deref(), Some("current"));
-    assert!(list[12].entry.detail.is_none() && list[13].entry.detail.is_none());
+    assert_eq!(list[12].entry.detail.as_deref(), Some("current"));
+    assert!(list[13].entry.detail.is_none() && list[14].entry.detail.is_none());
 
     st.settings.theme = ThemeChoice::System;
-    assert_eq!(shown(&st, "")[13].entry.detail.as_deref(), Some("current"));
+    assert_eq!(shown(&st, "")[14].entry.detail.as_deref(), Some("current"));
 
     st.tabs.push(Tab::empty());
     assert!(has(&st, "Close tab"));
@@ -160,10 +160,10 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 23);
+    assert_eq!(shown(&st, "").len(), 24);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 22);
+    assert_eq!(p.selected, 23);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
