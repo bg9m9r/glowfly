@@ -5,7 +5,7 @@
 
 use crate::effect::{Effect, KnownRepo, LoadKind};
 use crate::msg::LoadMsg;
-use crate::state::refresh::{Depth, RefreshState};
+use crate::state::refresh::{Depth, RefreshState, can_load_more};
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
 use std::path::PathBuf;
@@ -50,13 +50,20 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             }
             apply_status(st, result, submodules, open_stamp, now, fx);
         }
-        LoadMsg::LoadMoreCommits if st.snap.as_ref().is_some_and(|s| s.truncated) => {
-            st.refresh.extra_commits += st.settings.commit_limit();
-            refresh(st, fx);
+        LoadMsg::LoadMoreCommits if st.snap.as_ref().is_some_and(can_load_more) => more_commits(st, fx),
+        LoadMsg::NearHistoryEnd if st.settings.load_more_on_scroll && st.snap.as_ref().is_some_and(can_load_more) && !st.loading_more() => {
+            more_commits(st, fx)
         }
-        // Everything is loaded already.
-        LoadMsg::LoadMoreCommits => {}
+        // Everything is loaded already, the preference is off, or a load for more is pending.
+        LoadMsg::LoadMoreCommits | LoadMsg::NearHistoryEnd => {}
     }
+}
+
+/// Loads another commit limit's worth of history into the active tab (a full walk, since the
+/// load options change), after any load still running.
+fn more_commits(st: &mut AppState, fx: &mut Vec<Effect>) {
+    st.refresh.extra_commits += st.settings.commit_limit();
+    refresh(st, fx);
 }
 
 /// Loads the repository at `path` into the active tab, superseding any load in flight.

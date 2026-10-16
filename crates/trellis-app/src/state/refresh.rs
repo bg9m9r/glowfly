@@ -1,6 +1,9 @@
 //! Keeping repository reloads from piling up: at most one load and one status read run for the
 //! active tab at a time, and requests made meanwhile are merged into one more run afterwards.
 
+use crate::state::{AppState, MAX_COMMITS};
+use trellis_core::repo::Snapshot;
+
 /// How much a refresh reads.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Depth {
@@ -24,4 +27,30 @@ pub struct RefreshState {
     /// The open file's `repo::open_file_stamp` when its diff was last read again after a status
     /// read.
     pub open_stamp: Option<u64>,
+}
+
+/// Whether `snap` stops short of the whole history and may load more of it (below the cap). A
+/// truncated walk loads exactly `max_commits` commits.
+pub fn can_load_more(snap: &Snapshot) -> bool {
+    snap.truncated && snap.loaded_with.max_commits < MAX_COMMITS
+}
+
+impl AppState {
+    /// How many commits the active tab's history walk loads: the limit plus what Load more
+    /// added, up to the cap.
+    pub fn commits_wanted(&self) -> usize {
+        let limit = self.settings.commit_limit();
+        (limit + self.refresh.extra_commits).min(MAX_COMMITS.max(limit))
+    }
+
+    /// Whether more commits were asked for than the snapshot was loaded with: a load for more is
+    /// running or queued.
+    pub fn loading_more(&self) -> bool {
+        self.snap.as_ref().is_some_and(|s| s.loaded_with.max_commits < self.commits_wanted())
+    }
+
+    /// Whether the graph shows its "Loading more commits…" row.
+    pub fn shows_loading_more_row(&self) -> bool {
+        self.loading && self.loading_more()
+    }
 }

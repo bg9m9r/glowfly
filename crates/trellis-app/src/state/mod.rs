@@ -368,8 +368,7 @@ impl AppState {
         // Smart visibility also keeps branches that have open pull requests.
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
         let f = self.settings.graph_filter_for(&self.repo_key(workdir));
-        let max_commits = (self.settings.commit_limit() + self.refresh.extra_commits).min(MAX_COMMITS.max(self.settings.commit_limit()));
-        LoadOptions { max_commits, smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted: self.trusts(workdir) }
+        LoadOptions { max_commits: self.commits_wanted(), smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted: self.trusts(workdir) }
     }
 
     pub fn log(&mut self, ok: bool, text: impl Into<String>) {

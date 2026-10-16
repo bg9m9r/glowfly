@@ -68,7 +68,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 
 | Page | Trellis | Gap |
 |---|---|---|
-| General | ✔ General | Missing: delete `.orig` files after merge, keep submodules updated, show all commits, lazy loading, path to `sh.exe`, extended logging, conflict detection |
+| General | ✔ General | Missing: delete `.orig` files after merge, keep submodules updated, show all commits, path to `sh.exe`, extended logging, conflict detection |
 | Profiles | ◐ Profile (named identity profiles, switching) | Per-profile integrations and preferences (P1 Profiles) |
 | SSH | ◐ SSH page (list key pairs, copy a public key, generate an Ed25519 key) | Choose the key git uses, use local agent, add a key to a hosting service (P1 SSH key management) |
 | Integrations | ✔ 9 services | Trello; PR/issue depth (P2) |
@@ -421,10 +421,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [x] **Repository management**
   Favorites section above Recent on the welcome screen and in the repository menu; remove one
   recent entry or clear the list; missing folders marked.
-- [ ] **Graph columns and loading**
+- [x] **Graph columns and loading**
   Column toggles, compact layout and row highlighting are done (UI Customization). Missing:
   - [x] Resize columns: drag the header dividers (BRANCH/TAG, SHA, changes, author, date), double-click to reset, saved in settings
-  - [ ] Lazy-load more history when scrolling past the commit limit (the General page's "lazy
+  - [x] Lazy-load more history when scrolling past the commit limit (the General page's "lazy
     loading"); jumping to a pinned branch goes with pinning in Branch operations
 - [ ] **Search and filter**
   Filter the graph to matches (not just dim them), filter by author, search by file path.
@@ -1081,6 +1081,17 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   because its folder is gone
 - Palette commands to favorite or unfavorite the active repository, with favorites listed first
   among the palette's repositories
+
+### Graph columns and loading
+
+- Retry a failed load-more by itself after a delay, or show the failure in the loading row
+  instead of only in the log
+- Keep loading further back while a filtering search finds too few matches (search the whole
+  history without scrolling)
+- Hide or disable the header's Load more link while a load for more is already running
+- A per-repository commit limit, or remembering the extra loaded commits across tab switches
+  and restarts
+- Keep the top visible commit in place when a load-more refresh also brings new commits above it
 
 ### Search and filter
 

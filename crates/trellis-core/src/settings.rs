@@ -137,6 +137,9 @@ pub struct Settings {
     pub auto_prune: bool,
     pub default_branch: String,
     pub initial_commits: usize,
+    /// Load more history when the graph is scrolled near the end of a truncated history
+    /// (Preferences > General).
+    pub load_more_on_scroll: bool,
     pub reopen_last_repo: bool,
     /// Refresh when files change outside Trellis (Preferences > General).
     pub watch_files: bool,
@@ -239,6 +242,7 @@ impl Default for Settings {
             auto_prune: true,
             default_branch: "main".into(),
             initial_commits: 2000,
+            load_more_on_scroll: true,
             reopen_last_repo: true,
             watch_files: true,
             conflict_check: true,

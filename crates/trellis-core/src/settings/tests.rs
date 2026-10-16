@@ -33,6 +33,16 @@ fn syntax_highlighting_defaults_on() {
 }
 
 #[test]
+fn load_more_on_scroll_defaults_on() {
+    // Files written before the setting existed load more while scrolling.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.load_more_on_scroll);
+    let off = Settings { load_more_on_scroll: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.load_more_on_scroll);
+}
+
+#[test]
 fn ignore_whitespace_defaults_off() {
     // Files written before the toggle existed show every whitespace change.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

@@ -2,6 +2,7 @@
 //! author, date), avatars, ghost refs, and branch highlighting.
 
 mod header;
+mod more;
 mod paint;
 mod resize;
 mod search_bar;
@@ -17,6 +18,7 @@ use super::theme::color;
 use super::widgets;
 use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
+use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::search::GraphRows;
@@ -103,8 +105,17 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let mut want_stats: Vec<Oid> = Vec::new();
         let mut hover_tip_next = None;
         let pointer = ui.ctx().pointer_hover_pos();
-        let out = area.show_rows(ui, ROW_H, total, |ui, range| {
+        // While more history loads, one more row below the last commit says so.
+        let more_row = st.shows_loading_more_row();
+        let shown_rows = total + more_row as usize;
+        let out = area.show_rows(ui, ROW_H, shown_rows, |ui, range| {
+            let last = range.end.min(total);
             for row in range {
+                if more_row && row == total {
+                    let line = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), ROW_H));
+                    more::loading_row(ui, ROW_H, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0);
+                    continue;
+                }
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
                 let painter = ui.painter_at(rect);
                 let cols = Columns::new(rect, graph_w, &cols_cfg, &widths);
@@ -310,8 +321,12 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     _ => commit_menu(ui, c, msgs),
                 });
             }
+            last
         });
         st.view.graph_scroll = (out.state.offset.y, out.inner_rect.height());
+        if more::wants_more(st, out.inner, total, filtered) {
+            msgs.push(Msg::Load(LoadMsg::NearHistoryEnd));
+        }
         if hover_tip_next.is_some() {
             st.view.hover_tip_next = hover_tip_next;
         }

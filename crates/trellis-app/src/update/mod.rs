@@ -120,6 +120,8 @@ mod lfs_track_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
+mod load_more_tests;
+#[cfg(test)]
 mod notify_tests;
 #[cfg(test)]
 mod palette_checkout_tests;

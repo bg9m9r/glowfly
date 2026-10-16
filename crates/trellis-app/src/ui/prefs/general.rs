@@ -33,6 +33,10 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         help(ui, "Minimum 500. Takes effect when you leave Preferences or refresh.");
         warn(ui, "Increasing this value may adversely affect performance.");
     });
+    row(ui, "Load More While Scrolling", |ui| {
+        ui.checkbox(&mut s.load_more_on_scroll, "Load more commits when you scroll near the end of the graph");
+        help(ui, "When off, only the graph's Load more link adds commits past the limit.");
+    });
     row(ui, "Reopen Last Repository", |ui| {
         ui.checkbox(&mut s.reopen_last_repo, "Reopen the tabs from last time when Trellis starts");
     });

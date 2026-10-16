@@ -96,7 +96,7 @@ impl Notes {
     fn of(snap: &Snapshot) -> Self {
         let shallow = snap.is_shallow();
         Self {
-            load_more: snap.truncated && snap.commits.len() < crate::state::MAX_COMMITS,
+            load_more: crate::state::refresh::can_load_more(snap),
             fetch_full: shallow && history_remote(snap).is_some(),
             count: snap.truncated,
             shallow,

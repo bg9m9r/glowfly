@@ -87,6 +87,9 @@ impl RepoMsg {
 pub enum LoadMsg {
     /// Show more of the history than the commit limit (the graph's "Load more").
     LoadMoreCommits,
+    /// The graph was scrolled near the last loaded commit (pushed by the view each frame it is
+    /// there and nothing is pending); loads more when the preference allows.
+    NearHistoryEnd,
     /// A refresh found refs, HEAD, config and worktrees as the snapshot has them: only the
     /// status was read (as for `StatusLoaded`).
     RepoUnchanged {
@@ -111,7 +114,7 @@ impl LoadMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::LoadMoreCommits | Self::RepoUnchanged { .. } | Self::StatusLoaded { .. } => None,
+            Self::LoadMoreCommits | Self::NearHistoryEnd | Self::RepoUnchanged { .. } | Self::StatusLoaded { .. } => None,
         }
     }
 }
