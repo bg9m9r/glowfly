@@ -5,7 +5,7 @@ use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::files::TRASH;
-use crate::state::prefs::GitConfigValues;
+use crate::state::prefs::{Autocrlf, GitConfigValues};
 use crate::ui::theme::color;
 use eframe::egui::{self, Color32, RichText, Ui};
 use trellis_core::settings::Settings;
@@ -62,14 +62,16 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
             );
         });
         row(ui, "AutoCRLF", |ui| {
-            if ui.checkbox(&mut git.autocrlf, "").changed() {
-                msgs.push(Msg::Prefs(PrefsMsg::GitConfig {
-                    global: true,
-                    key: "core.autocrlf".into(),
-                    value: Some(git.autocrlf.to_string()),
-                }));
+            let before = git.autocrlf.clone();
+            egui::ComboBox::from_id_salt("autocrlf").width(320.0).selected_text(git.autocrlf.label()).show_ui(ui, |ui| {
+                for (choice, label) in Autocrlf::CHOICES {
+                    ui.selectable_value(&mut git.autocrlf, choice, label);
+                }
+            });
+            if git.autocrlf != before {
+                msgs.push(Msg::Prefs(PrefsMsg::GitConfig { global: true, key: "core.autocrlf".into(), value: git.autocrlf.value() }));
             }
-            help(ui, "Sets core.autocrlf in your global Git config.");
+            help(ui, "Sets core.autocrlf in your global Git config: how line endings are converted between your files and commits.");
         });
     }
     row(ui, "Forget All Connections", |ui| {

@@ -45,11 +45,53 @@ impl PrefPage {
     }
 }
 
+/// The global `core.autocrlf`: three values git knows, or unset, or text git can't read (shown
+/// as it is, never rewritten unasked).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum Autocrlf {
+    #[default]
+    Unset,
+    True,
+    Input,
+    False,
+    Other(String),
+}
+
+impl Autocrlf {
+    /// The choices Preferences offers, with their labels.
+    pub const CHOICES: [(Autocrlf, &'static str); 4] = [
+        (Autocrlf::Unset, "Not set (git's default: false)"),
+        (Autocrlf::True, "true: check out CRLF, commit LF"),
+        (Autocrlf::Input, "input: commit LF, check out as is"),
+        (Autocrlf::False, "false: never convert"),
+    ];
+
+    /// How it is shown.
+    pub fn label(&self) -> String {
+        match self {
+            Autocrlf::Other(raw) => format!("{raw} (not a value git knows)"),
+            known => Self::CHOICES.iter().find(|(c, _)| c == known).map(|(_, l)| (*l).to_owned()).unwrap_or_default(),
+        }
+    }
+
+    /// The value to write; None unsets it.
+    pub fn value(&self) -> Option<String> {
+        match self {
+            Autocrlf::Unset => None,
+            Autocrlf::True => Some("true".into()),
+            Autocrlf::Input => Some("input".into()),
+            Autocrlf::False => Some("false".into()),
+            Autocrlf::Other(raw) => Some(raw.clone()),
+        }
+    }
+}
+
 /// Git config values shown in Preferences, read in the background when Preferences opens.
+/// Booleans are read as git reads them (`yes`, `on`, `1`…).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct GitConfigValues {
     pub longpaths: bool,
-    pub autocrlf: bool,
+    pub autocrlf: Autocrlf,
     pub user_name: String,
     pub user_email: String,
     pub gpgsign: bool,
