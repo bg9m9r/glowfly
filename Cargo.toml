@@ -28,9 +28,12 @@ codegen-units = 1
 strip = true
 
 # Debug builds and tests: line tables are enough for panics and backtraces, and dependencies
-# need none. Much less to write and link than full debug info.
+# need none. Much less to write and link than full debug info. Dependencies (egui, wgpu, image,
+# syntect, libgit2, ...) are lightly optimized so tests run faster; workspace crates stay at
+# opt-level 0 so they rebuild quickly.
 [profile.dev]
 debug = "line-tables-only"
 
 [profile.dev.package."*"]
 debug = false
+opt-level = 1
