@@ -260,6 +260,7 @@ fn park(st: &mut AppState) -> Parked {
         conflict: st.conflict.take().map(|c| ConflictView { saving: false, ..c }),
         history: st.history.take(),
         rebase: st.rebase.take(),
+        gitflow_panel: std::mem::take(&mut st.gitflow_panel),
         draft: std::mem::take(&mut st.draft),
         undo: std::mem::take(&mut st.undo),
         forge: st.forge.take(),
@@ -315,6 +316,7 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.rebase = p.rebase;
     // Rebase list results for this tab were dropped while it was parked.
     st.rebase_gen += 1;
+    st.gitflow_panel = p.gitflow_panel;
     st.draft = p.draft;
     st.undo = p.undo;
     st.forge = p.forge;

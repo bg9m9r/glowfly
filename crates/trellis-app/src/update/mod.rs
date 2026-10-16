@@ -91,6 +91,8 @@ mod forge_tests;
 #[cfg(test)]
 mod gitflow_finish_tests;
 #[cfg(test)]
+mod gitflow_panel_tests;
+#[cfg(test)]
 mod gitflow_tests;
 #[cfg(test)]
 mod graph_columns_tests;

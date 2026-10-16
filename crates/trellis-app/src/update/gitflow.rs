@@ -1,6 +1,7 @@
 //! Git Flow: filling the preferences form from the snapshot, Initialize / Save (one git job that
-//! creates any missing branch and writes the config), and starting a feature, release or hotfix
-//! branch (finishing one is in gitflow_finish.rs). Everything is checked again here against the
+//! creates any missing branch and writes the config), starting a feature, release or hotfix
+//! branch (also with an issue's branch name typed), and opening and closing the Git Flow panel
+//! (finishing a branch is in gitflow_finish.rs). Everything is checked again here against the
 //! current snapshot before a job starts.
 
 use super::ops::{JobSpec, busy, start_job};
@@ -8,12 +9,10 @@ use crate::effect::Effect;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
-use crate::state::gitflow::{INIT_LABEL, SAVE_LABEL, StartForm};
+use crate::state::gitflow::{INIT_LABEL, NOT_SET_UP, SAVE_LABEL, StartForm};
 use crate::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
 use trellis_core::gitflow::{self, Branches, FlowKind, StartProblem};
-
-pub(super) const NOT_SET_UP: &str = "Git Flow isn't set up in this repository. Set it up in Preferences > Git Flow.";
 
 pub(super) fn handle(st: &mut AppState, m: GitFlowMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
@@ -30,10 +29,13 @@ pub(super) fn handle(st: &mut AppState, m: GitFlowMsg, now: Instant, fx: &mut Ve
                 p.gitflow.error = None;
             }
         }
-        GitFlowMsg::StartDialog(kind) => start_dialog(st, kind),
+        GitFlowMsg::StartDialog(kind) => start_dialog(st, kind, None),
+        GitFlowMsg::StartFromIssue { kind, name } => start_dialog(st, kind, Some(name)),
         GitFlowMsg::Start { kind, name } => start(st, kind, &name, now, fx),
         GitFlowMsg::FinishDialog(b) => super::gitflow_finish::dialog(st, &b),
         GitFlowMsg::Finish { branch, options } => super::gitflow_finish::finish(st, &branch, options, now, fx),
+        GitFlowMsg::OpenPanel => open_panel(st),
+        GitFlowMsg::ClosePanel => st.gitflow_panel = false,
     }
 }
 
@@ -82,7 +84,22 @@ fn apply(st: &mut AppState, fx: &mut Vec<Effect>) {
     start_job(st, JobSpec::new(label.into(), cmds), fx);
 }
 
-fn start_dialog(st: &mut AppState, kind: FlowKind) {
+/// Shows the Git Flow panel in place of the graph, closing the diff, the conflict view, the
+/// file history and the interactive rebase panel; nothing while a rebase is starting.
+fn open_panel(st: &mut AppState) {
+    if st.snap.is_none() || st.rebase.as_ref().is_some_and(|p| p.starting) {
+        return;
+    }
+    super::repo::close_diff(st);
+    super::conflict::close(st);
+    super::history::close(st);
+    super::rebase::close(st);
+    st.gitflow_panel = true;
+}
+
+/// Opens the Start dialog for `kind` with `given` typed after the prefix, else the next version
+/// for a release or hotfix.
+fn start_dialog(st: &mut AppState, kind: FlowKind, given: Option<String>) {
     let Some(snap) = st.snap.as_ref() else { return };
     let Some(s) = snap.gitflow.settings() else {
         st.log(false, NOT_SET_UP);
@@ -95,7 +112,7 @@ fn start_dialog(st: &mut AppState, kind: FlowKind) {
         st.log(false, problem.message());
         return;
     }
-    let name = gitflow::suggest_version(&b.tags, &s.version_tag, kind).unwrap_or_default();
+    let name = given.unwrap_or_else(|| gitflow::suggest_version(&b.tags, &s.version_tag, kind).unwrap_or_default());
     st.modal = Some(Modal::GitFlowStart(StartForm { kind, name }));
 }
 

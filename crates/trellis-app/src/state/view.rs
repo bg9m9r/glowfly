@@ -17,11 +17,22 @@ pub struct Sections {
     pub stashes: bool,
     pub submodules: bool,
     pub worktrees: bool,
+    pub gitflow: bool,
 }
 
 impl Default for Sections {
     fn default() -> Self {
-        Self { local: true, remote: true, prs: true, issues: true, tags: false, stashes: true, submodules: true, worktrees: true }
+        Self {
+            local: true,
+            remote: true,
+            prs: true,
+            issues: true,
+            tags: false,
+            stashes: true,
+            submodules: true,
+            worktrees: true,
+            gitflow: true,
+        }
     }
 }
 

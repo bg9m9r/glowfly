@@ -1,9 +1,10 @@
 //! The palette's second steps: the sub-lists a command opens (tracked files, stashes,
-//! profiles) and free-text steps (a stash message, a commit count), with their titles, prompts
+//! profiles, assigned issues) and free-text steps (a stash message, a commit count), with their titles, prompts
 //! and footers, and which command opens which step.
 
 use super::palette_commands::PaletteCommand;
 use trellis_core::clone_ops::parse_depth;
+use trellis_core::gitflow::FlowKind;
 
 impl PaletteCommand {
     /// The sub-list this command opens instead of running at once.
@@ -13,6 +14,7 @@ impl PaletteCommand {
             PaletteCommand::ChooseStash(a) => Some(PickKind::Stash(*a)),
             PaletteCommand::ChooseStashToRename => Some(PickKind::RenameStash),
             PaletteCommand::ChooseProfile => Some(PickKind::Profile),
+            PaletteCommand::ChooseGitFlowIssue(k) => Some(PickKind::GitFlowIssue(*k)),
             _ => None,
         }
     }
@@ -64,6 +66,8 @@ pub enum PickKind {
     RenameStash,
     /// Choose a profile to switch to.
     Profile,
+    /// Choose an assigned issue to start a flow branch of this kind from.
+    GitFlowIssue(FlowKind),
 }
 
 impl PickKind {
@@ -76,6 +80,9 @@ impl PickKind {
             PickKind::Stash(StashAction::Drop) => "Delete stash",
             PickKind::RenameStash => "Rename stash",
             PickKind::Profile => "Switch profile",
+            PickKind::GitFlowIssue(FlowKind::Feature) => "Start feature from issue",
+            PickKind::GitFlowIssue(FlowKind::Release) => "Start release from issue",
+            PickKind::GitFlowIssue(FlowKind::Hotfix) => "Start hotfix from issue",
         }
     }
 
@@ -88,6 +95,9 @@ impl PickKind {
             PickKind::Stash(StashAction::Drop) => "Find a stash to delete",
             PickKind::RenameStash => "Find a stash to rename",
             PickKind::Profile => "Find a profile to switch to",
+            PickKind::GitFlowIssue(FlowKind::Feature) => "Find an issue to start a feature from",
+            PickKind::GitFlowIssue(FlowKind::Release) => "Find an issue to start a release from",
+            PickKind::GitFlowIssue(FlowKind::Hotfix) => "Find an issue to start a hotfix from",
         }
     }
 
@@ -96,6 +106,7 @@ impl PickKind {
             PickKind::FileHistory => "Loading files…",
             PickKind::Stash(_) | PickKind::RenameStash => "Loading stashes…",
             PickKind::Profile => "Loading profiles…",
+            PickKind::GitFlowIssue(_) => "Loading issues…",
         }
     }
 
@@ -105,6 +116,7 @@ impl PickKind {
             PickKind::FileHistory => "No matching files",
             PickKind::Stash(_) | PickKind::RenameStash => "No matching stashes",
             PickKind::Profile => "No matching profiles",
+            PickKind::GitFlowIssue(_) => "No matching issues",
         }
     }
 
@@ -114,6 +126,7 @@ impl PickKind {
             PickKind::FileHistory => "This repository has no tracked files",
             PickKind::Stash(_) | PickKind::RenameStash => "This repository has no stashes",
             PickKind::Profile => "No profiles yet",
+            PickKind::GitFlowIssue(_) => "No issues are assigned to you",
         }
     }
 
@@ -127,6 +140,7 @@ impl PickKind {
             },
             PickKind::RenameStash => "Up/Down to choose, Enter to rename, Backspace or Esc to go back",
             PickKind::Profile => "Up/Down to choose, Enter to switch, Backspace or Esc to go back",
+            PickKind::GitFlowIssue(_) => "Up/Down to choose, Enter to start, Backspace or Esc to go back",
         }
     }
 
@@ -136,6 +150,7 @@ impl PickKind {
             PickKind::FileHistory => "files",
             PickKind::Stash(_) | PickKind::RenameStash => "stashes",
             PickKind::Profile => "profiles",
+            PickKind::GitFlowIssue(_) => "issues",
         };
         format!("Showing {shown} of {total} {noun}. Type more to narrow the list.")
     }

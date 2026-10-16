@@ -272,6 +272,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             super::conflict::close(st);
             super::history::close(st);
             super::rebase::close(st);
+            st.gitflow_panel = false;
             st.draft = CommitDraft::default();
             st.undo = Default::default();
             st.view.scroll_to_row = Some(0);
@@ -325,6 +326,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     close_diff(st);
     super::conflict::close(st);
     super::history::close(st);
+    st.gitflow_panel = false;
     fx.push(Effect::LoadDetail { workdir, oid });
     if scroll && let Some(row) = super::search::reveal(st, oid) {
         // Leave a few rows of context above the target.

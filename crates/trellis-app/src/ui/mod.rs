@@ -19,6 +19,8 @@ mod file_dialogs;
 mod file_menu;
 mod gitflow_dialog;
 mod gitflow_finish_dialog;
+mod gitflow_panel;
+mod gitflow_section;
 mod graph;
 mod history;
 mod icons;
@@ -297,10 +299,10 @@ impl TrellisApp {
 }
 
 /// Esc closes the innermost thing open: Preferences, the conflict view, the file history, the
-/// diff (a line selection first), the interactive rebase panel (its message editor first), then
-/// a multi-selection, and finally the search bar. Dialogs (a credential prompt included) and the
-/// command palette handle Esc themselves. In a text field Esc only leaves the field, and in the
-/// terminal it goes to the shell.
+/// diff (a line selection first), the interactive rebase panel (its message editor first), the
+/// Git Flow panel, then a multi-selection, and finally the search bar. Dialogs (a credential
+/// prompt included) and the command palette handle Esc themselves. In a text field Esc only
+/// leaves the field, and in the terminal it goes to the shell.
 fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !ctx.input(|i| i.key_pressed(Key::Escape))
         || st.modal.is_some()
@@ -323,6 +325,8 @@ fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     } else if let Some(p) = &st.rebase {
         // Esc first closes the message editor, then the panel.
         msgs.push(if p.editing.is_some() { Msg::Rebase(RebaseMsg::RebaseCancelMessage) } else { Msg::Rebase(RebaseMsg::CloseRebase) });
+    } else if st.gitflow_panel {
+        msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel));
     } else if matches!(st.selection, crate::state::Selection::Commits(_)) {
         msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
     } else {
@@ -376,6 +380,8 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
                 diff::show(ui, st, &mut cache.diff_rows, msgs);
             } else if st.rebase.is_some() {
                 rebase::show(ui, st, cache, msgs);
+            } else if st.gitflow_panel {
+                gitflow_panel::show(ui, st, msgs);
             } else {
                 graph::show(ui, st, cache, msgs);
             }

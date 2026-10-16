@@ -1,5 +1,5 @@
-//! Left panel: local and remote branches, pull requests, issues, tags, stashes, worktrees and
-//! submodules.
+//! Left panel: local and remote branches, pull requests, issues, Git Flow branches, tags,
+//! stashes, worktrees and submodules.
 
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_color};
@@ -107,8 +107,12 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     if let Some(f) = fs.filter(|f| f.tracker.is_some()) {
         widgets::section_header(ui, "ISSUES", Some(f.my_issues.len()), &mut sections.issues);
         if sections.issues {
-            issues(ui, f, &shown, msgs);
+            issues(ui, snap, f, &shown, msgs);
         }
+    }
+    if let Some(s) = snap.gitflow.settings() {
+        let rows = super::gitflow_section::Rows { shown: &shown, sel: &sel, fs, graph, filtering: !filter.is_empty() };
+        super::gitflow_section::section(ui, snap, &s, &mut sections.gitflow, rows, hover_next, msgs);
     }
 
     let rows = super::tags::Rows { shown: &shown, sel: &sel, idle };
@@ -203,7 +207,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, sel: &Selec
     }
 }
 
-fn issues(ui: &mut egui::Ui, f: &ForgeState, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
+fn issues(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, shown: &dyn Fn(&str) -> bool, msgs: &mut Vec<Msg>) {
     hint_row(ui, format!("{} · assigned to me", f.tracker_name()));
     if let Status::Error(e) = &f.tracker_status {
         forge_error_rows(ui, e, msgs);
@@ -226,6 +230,7 @@ fn issues(ui: &mut egui::Ui, f: &ForgeState, shown: &dyn Fn(&str) -> bool, msgs:
                 format!("Create branch from {}…", f.issue_noun()),
                 Msg::Branch(BranchMsg::NewBranch { start: None, name: forge::branch_name_for(issue) }),
             );
+            super::gitflow_section::issue_items(ui, snap, f, issue, msgs);
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(issue.url.clone()));
             let m = f.mention(&issue.key);
             menu_item(msgs, ui, format!("Copy {m}"), Msg::Copy(m.clone()));

@@ -2,7 +2,6 @@
 //! the job starts, the job's commands, the headline when it ends (finished, or stopped by a
 //! conflict), and the palette entries, end to end against real repositories.
 
-use super::gitflow::NOT_SET_UP;
 use super::gitflow_finish::stopped;
 use super::gitflow_tests::{cleanup, flow, git_job, initialized, job_label, last_log, open, rev, run};
 use super::tests::{drive, git};
@@ -11,6 +10,7 @@ use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
+use crate::state::gitflow::NOT_SET_UP;
 use crate::state::palette::{PaletteCommand as C, entries};
 use crate::state::{AppState, Modal, PrefPage};
 use git2::RepositoryState;

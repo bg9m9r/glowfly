@@ -1,6 +1,7 @@
-//! Messages of the Git Flow preferences page and the Start and Finish dialogs (state/gitflow.rs,
-//! update/gitflow.rs, update/gitflow_finish.rs, ui/prefs/gitflow.rs, ui/gitflow_dialog.rs,
-//! ui/gitflow_finish_dialog.rs).
+//! Messages of the Git Flow preferences page, the Start and Finish dialogs, the Git Flow panel
+//! and the left panel's GIT FLOW section (state/gitflow.rs, update/gitflow.rs,
+//! update/gitflow_finish.rs, ui/prefs/gitflow.rs, ui/gitflow_dialog.rs,
+//! ui/gitflow_finish_dialog.rs, ui/gitflow_panel.rs, ui/gitflow_section.rs).
 
 use trellis_core::gitflow::FlowKind;
 
@@ -19,6 +20,13 @@ pub enum GitFlowMsg {
     FinishDialog(String),
     /// Merge, tag and delete as planned by core::gitflow::check_finish.
     Finish { branch: String, options: trellis_core::gitflow::FinishOptions },
+    /// Show the Git Flow panel in place of the graph (section header menu, palette).
+    OpenPanel,
+    /// Close the panel (Close button, Esc).
+    ClosePanel,
+    /// Open the Start dialog for `kind` with `name` typed after the prefix (an issue's branch
+    /// name; issue menu, palette).
+    StartFromIssue { kind: FlowKind, name: String },
 }
 
 impl GitFlowMsg {
@@ -32,7 +40,10 @@ impl GitFlowMsg {
             | Self::StartDialog(..)
             | Self::Start { .. }
             | Self::FinishDialog(..)
-            | Self::Finish { .. } => None,
+            | Self::Finish { .. }
+            | Self::OpenPanel
+            | Self::ClosePanel
+            | Self::StartFromIssue { .. } => None,
         }
     }
 }

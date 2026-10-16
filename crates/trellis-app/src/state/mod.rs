@@ -200,6 +200,9 @@ pub struct AppState {
     /// Incremented for every rebase list request and whenever the panel closes; older
     /// `RebasePlanLoaded` results are ignored.
     pub rebase_gen: u64,
+    /// The Git Flow panel is open; shown in place of the graph (below the rebase panel). Parked
+    /// with the tab.
+    pub gitflow_panel: bool,
     pub draft: CommitDraft,
     pub job: Option<RunningJob>,
     /// The active tab's undo history.
@@ -284,6 +287,7 @@ impl AppState {
             history_gen: 0,
             rebase: None,
             rebase_gen: 0,
+            gitflow_panel: false,
             draft: CommitDraft::default(),
             job: None,
             undo: undo::UndoHistory::default(),

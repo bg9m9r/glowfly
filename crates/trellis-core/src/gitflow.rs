@@ -1,5 +1,6 @@
 //! Git Flow config, defaults, checks and command lines for setting up, starting and finishing
-//! (`finish.rs`) feature, release and hotfix branches, implemented natively with plain git.
+//! (`finish.rs`) feature, release and hotfix branches, implemented natively with plain git, and
+//! the local flow branches grouped by kind (`groups.rs`).
 //! The settings live in the repository's git config under the `gitflow.*` keys the git-flow
 //! command-line tool also uses, so either can work in the same repository. Only `read_config`
 //! touches a repository; everything else is pure.
@@ -12,6 +13,7 @@ mod checks;
 mod finish;
 #[cfg(test)]
 mod finish_tests;
+mod groups;
 mod start;
 #[cfg(test)]
 mod tests;
@@ -22,6 +24,7 @@ pub use finish::{
     FinishOptions, FinishPlan, FinishProblem, FinishStep, WorkState, check_finish, default_tag, default_tag_message, flow_branches,
     flow_kind, short_name, targets,
 };
+pub use groups::{FlowBranch, FlowGroup, grouped, total};
 pub use start::{StartProblem, check_start, open_branches, start_cmd};
 pub use version::suggest_version;
 

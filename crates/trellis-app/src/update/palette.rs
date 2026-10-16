@@ -3,7 +3,8 @@
 //! commands among the recently run ones), and the second steps that
 //! two-step commands open: the file finder (loading its items in the background), the stash
 //! sub-lists (apply, pop, delete and rename), the profile sub-list (switching profiles), the
-//! stash message step and the commit count of a shallow clone's fetch.
+//! assigned-issue sub-lists (starting a Git Flow branch from an issue), the stash message step
+//! and the commit count of a shallow clone's fetch.
 
 use crate::effect::Effect;
 use crate::msg::BranchMsg;
@@ -150,6 +151,14 @@ fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
             let pick = Pick::profiles(&st.settings);
             open_step(st, Mode::Pick(pick));
         }
+        PickKind::GitFlowIssue(kind) => {
+            if !crate::state::gitflow::issues_ready(st) {
+                return;
+            }
+            let Some(f) = st.forge.as_ref() else { return };
+            let pick = Pick::issues(kind, f);
+            open_step(st, Mode::Pick(pick));
+        }
     }
 }
 
@@ -220,6 +229,8 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::ConfigureSparse => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoSparse)),
         C::StartGitFlow(k) => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartDialog(k)),
         C::FinishGitFlow(b) => Msg::GitFlow(crate::gitflow::GitFlowMsg::FinishDialog(b)),
+        C::OpenGitFlowPanel => Msg::GitFlow(crate::gitflow::GitFlowMsg::OpenPanel),
+        C::StartGitFlowFromIssue { kind, name } => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartFromIssue { kind, name }),
         C::Refresh => Msg::Repo(RepoMsg::Refresh),
         C::OpenTerminal => Msg::OpenTerminal,
         C::ToggleTerminal => Msg::Terminal(crate::terminal::TerminalMsg::Toggle),
@@ -251,7 +262,13 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
             Msg::Trust(TrustMsg::Ask { real: s.real_workdir.clone() })
         }
         // Opens a step in `handle`; never run directly.
-        C::FileHistory | C::ChooseStash(_) | C::ChooseStashToRename | C::ChooseProfile | C::StashMessage | C::FetchMoreCommits => return,
+        C::FileHistory
+        | C::ChooseStash(_)
+        | C::ChooseStashToRename
+        | C::ChooseProfile
+        | C::ChooseGitFlowIssue(_)
+        | C::StashMessage
+        | C::FetchMoreCommits => return,
     };
     fx.extend(super::update(st, msg, now));
 }

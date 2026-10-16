@@ -78,3 +78,15 @@ fn esc_closes_preferences_opened_while_the_terminal_had_focus() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[test]
+fn esc_closes_the_git_flow_panel() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-gitflow-panel");
+    st.gitflow_panel = true;
+    let mut h = app_harness(st);
+    h.run();
+    let msgs = esc(&mut h);
+    assert!(msgs.iter().any(|m| matches!(m, Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel))));
+    drop(h);
+    remove_fixture(&dir);
+}

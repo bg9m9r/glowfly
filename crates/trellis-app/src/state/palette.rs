@@ -3,7 +3,7 @@
 //! and the tests all build the list through `entries` and `listed` (or `shown`), which keep at
 //! most `MAX_COMMAND_ROWS` of the ranked matches; the commands themselves are
 //! in `palette_commands`. Some commands open a second step: a list of items for that command
-//! (`Mode::Pick`), such as tracked files, stashes or profiles, or a free-text field (`Mode::Input`), such
+//! (`Mode::Pick`), such as tracked files, stashes, profiles or assigned issues, or a free-text field (`Mode::Input`), such
 //! as a stash message. The steps' texts are in `palette_kinds`. With an empty query, recently
 //! run commands (`palette_recent`) come first; with a query, recency only breaks score ties.
 
@@ -11,6 +11,7 @@ pub use super::palette_commands::{Entry, PaletteCommand, entries};
 pub use super::palette_kinds::{InputKind, PickKind, StashAction};
 
 use super::AppState;
+use super::forge::ForgeState;
 use super::palette_profiles::{ProfileRow, profile_rows};
 use trellis_core::fuzzy;
 use trellis_core::repo::StashInfo;
@@ -65,6 +66,8 @@ pub struct Pick {
     stashes: Vec<StashInfo>,
     /// The profiles behind the items of the profile sub-list (empty for other kinds).
     profiles: Vec<ProfileRow>,
+    /// The issues behind the items of an issue sub-list (empty for other kinds).
+    issues: Vec<IssuePickRow>,
     /// The ranking for the last query, kept until the query or the items change.
     ranked: Option<Ranked>,
 }
@@ -86,9 +89,16 @@ pub struct Hit {
     pub matched: Vec<usize>,
 }
 
+/// One row of an issue sub-list: the issue's state (shown dim, matched as a keyword) and the
+/// branch name built from it.
+pub struct IssuePickRow {
+    detail: String,
+    name: String,
+}
+
 impl Pick {
     pub fn new(kind: PickKind) -> Self {
-        Self { kind, items: Items::Loading, stashes: Vec::new(), profiles: Vec::new(), ranked: None }
+        Self { kind, items: Items::Loading, stashes: Vec::new(), profiles: Vec::new(), issues: Vec::new(), ranked: None }
     }
 
     /// A stash sub-list over `list`, labelled by the stash messages.
@@ -103,13 +113,23 @@ impl Pick {
 
     fn over_stashes(kind: PickKind, list: &[StashInfo]) -> Self {
         let items = Items::Ready(list.iter().map(|s| s.message.clone()).collect());
-        Self { kind, items, stashes: list.to_vec(), profiles: Vec::new(), ranked: None }
+        Self { kind, items, stashes: list.to_vec(), profiles: Vec::new(), issues: Vec::new(), ranked: None }
     }
 
     /// The profile sub-list, labelled by the profile names in settings order.
     pub fn profiles(settings: &Settings) -> Self {
         let (names, profiles) = profile_rows(settings);
-        Self { kind: PickKind::Profile, items: Items::Ready(names), stashes: Vec::new(), profiles, ranked: None }
+        Self { kind: PickKind::Profile, items: Items::Ready(names), stashes: Vec::new(), profiles, issues: Vec::new(), ranked: None }
+    }
+
+    /// The issue sub-list for starting a `kind` flow branch, over the issues assigned to the
+    /// user, labelled "<mention>  <title>".
+    pub fn issues(kind: trellis_core::gitflow::FlowKind, f: &ForgeState) -> Self {
+        let labels = f.my_issues.iter().map(|i| format!("{}  {}", f.mention(&i.key), i.title)).collect();
+        let row = |i: &trellis_core::forge::Issue| IssuePickRow { detail: i.state.clone(), name: trellis_core::forge::branch_name_for(i) };
+        let issues = f.my_issues.iter().map(row).collect();
+        let kind = PickKind::GitFlowIssue(kind);
+        Self { kind, items: Items::Ready(labels), stashes: Vec::new(), profiles: Vec::new(), issues, ranked: None }
     }
 
     /// The dim text at the right of item `index`: a stash's ref, or a profile's email.
@@ -117,6 +137,7 @@ impl Pick {
         match self.kind {
             PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
             PickKind::Profile => self.profiles.get(index).map(|r| r.detail.clone()),
+            PickKind::GitFlowIssue(_) => self.issues.get(index).map(|r| r.detail.clone()),
             PickKind::FileHistory => None,
         }
     }
@@ -128,6 +149,9 @@ impl Pick {
             PickKind::Stash(action) => self.stashes.get(index).map(|s| PaletteCommand::StashOp { action, oid: s.oid }),
             PickKind::RenameStash => self.stashes.get(index).map(|s| PaletteCommand::RenameStash { oid: s.oid }),
             PickKind::Profile => self.profiles.get(index).map(|r| PaletteCommand::SwitchProfile(r.id)),
+            PickKind::GitFlowIssue(kind) => {
+                self.issues.get(index).map(|r| PaletteCommand::StartGitFlowFromIssue { kind, name: r.name.clone() })
+            }
         }
     }
 

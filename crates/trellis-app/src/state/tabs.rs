@@ -95,6 +95,8 @@ pub struct Parked {
     pub history: Option<FileHistoryView>,
     /// The interactive rebase panel (a list still loading is requested again on return).
     pub rebase: Option<RebasePanel>,
+    /// The Git Flow panel is open.
+    pub gitflow_panel: bool,
     pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,

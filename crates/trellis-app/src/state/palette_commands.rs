@@ -83,6 +83,16 @@ pub enum PaletteCommand {
     StartGitFlow(trellis_core::gitflow::FlowKind),
     /// Open the Finish dialog for this flow branch.
     FinishGitFlow(String),
+    /// Show the Git Flow panel.
+    OpenGitFlowPanel,
+    /// Enter the issue sub-list for starting this kind; choosing an issue runs
+    /// `StartGitFlowFromIssue`.
+    ChooseGitFlowIssue(trellis_core::gitflow::FlowKind),
+    /// Open the Start dialog for this kind with this name typed.
+    StartGitFlowFromIssue {
+        kind: trellis_core::gitflow::FlowKind,
+        name: String,
+    },
     Refresh,
     OpenTerminal,
     /// Show or hide the built-in terminal panel.
@@ -276,7 +286,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     }
     super::patch::palette_entries(out);
     palette_setup::setup_entries(out);
-    palette_gitflow::gitflow_entries(snap, out);
+    palette_gitflow::gitflow_entries(st, snap, out);
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));
     let toggle = if st.terminal.open { "Hide terminal panel" } else { "Show terminal panel" };

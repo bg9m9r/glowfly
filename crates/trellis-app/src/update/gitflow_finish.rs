@@ -2,11 +2,11 @@
 //! planned merges, tag and delete as one git job (it stops at the first failing step), and the
 //! headline when that job ends: the plan's summary, or which step stopped it and what is left.
 
-use super::gitflow::NOT_SET_UP;
 use super::ops::{JobSpec, Started, busy, last_line, start_job};
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
+use crate::state::gitflow::NOT_SET_UP;
 use crate::state::gitflow::{FinishForm, FinishJob};
 use crate::state::{AppState, Modal};
 use std::time::Instant;
