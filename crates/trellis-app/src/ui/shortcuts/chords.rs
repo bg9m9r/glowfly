@@ -4,7 +4,7 @@
 use crate::keymap::{BindingId, Chord, KeyName, Keymap, Mods};
 use eframe::egui::{Event, InputState, Key, Modifiers};
 
-/// The keymap's name for `k`; None for keys it can't bind (F13 and up, Copy, Plus, braces…).
+/// The keymap's name for `k`; None for keys it can't bind (F13 and up, Copy, braces…).
 /// egui's key names are the settings-file names.
 pub(crate) fn key_name(k: Key) -> Option<KeyName> {
     KeyName::parse(k.name())

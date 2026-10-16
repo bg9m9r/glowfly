@@ -11,6 +11,8 @@ mod record;
 mod sheet;
 
 #[cfg(test)]
+mod layout_tests;
+#[cfg(test)]
 mod platform_tests;
 #[cfg(test)]
 mod rebound_tests;

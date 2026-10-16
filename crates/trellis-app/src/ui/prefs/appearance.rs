@@ -103,6 +103,26 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, now: (i64, i3
     });
 
     section(ui, "Interface");
+    row(ui, "Zoom", |ui| {
+        egui::ComboBox::from_id_salt("zoom").selected_text(format!("{}%", s.zoom_level())).width(230.0).show_ui(ui, |ui| {
+            for p in trellis_core::settings::ZOOM_STEPS {
+                ui.selectable_value(&mut s.zoom_percent, p, format!("{p}%"));
+            }
+        });
+    });
+    row(ui, "Show left panel", |ui| {
+        ui.checkbox(&mut s.show_left_panel, "");
+    });
+    row(ui, "Show commit details panel", |ui| {
+        ui.checkbox(&mut s.show_details_panel, "");
+    });
+    row(ui, "Show toolbar", |ui| {
+        ui.checkbox(&mut s.show_toolbar, "");
+        help(
+            ui,
+            "While the toolbar is hidden, the status bar has a Show toolbar button, and the command palette and keyboard shortcuts keep working.",
+        );
+    });
     row(ui, "Show toolbar icon labels", |ui| {
         ui.checkbox(&mut s.toolbar_labels, "");
     });

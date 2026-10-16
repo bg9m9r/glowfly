@@ -152,11 +152,14 @@ pub enum PaletteCommand {
     ChooseProfile,
     /// Write this profile's identity to the global git config and make it current.
     SwitchProfile(trellis_core::settings::ProfileId),
+    /// Zoom and panel visibility (update/layout.rs).
+    Layout(crate::msg::LayoutMsg),
 }
 
 impl PaletteCommand {
     /// The binding that does the same thing; the palette shows its current key.
     pub(crate) fn binding(&self) -> Option<BindingId> {
+        use crate::msg::LayoutMsg;
         use PaletteCommand as C;
         Some(match self {
             C::SearchCommits => BindingId::Search,
@@ -171,6 +174,10 @@ impl PaletteCommand {
             C::UnstageAll => BindingId::UnstageAll,
             C::KeyboardShortcuts => BindingId::Sheet,
             C::ToggleTerminal => BindingId::ToggleTerminal,
+            C::Layout(LayoutMsg::ZoomIn) => BindingId::ZoomIn,
+            C::Layout(LayoutMsg::ZoomOut) => BindingId::ZoomOut,
+            C::Layout(LayoutMsg::ZoomReset) => BindingId::ZoomReset,
+            C::Layout(LayoutMsg::SetPanel { panel, .. } | LayoutMsg::TogglePanel(panel)) => panel.binding(),
             _ => return None,
         })
     }
@@ -321,6 +328,7 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
     let labels = st.settings.toolbar_labels;
     let label = if labels { "Hide toolbar labels" } else { "Show toolbar labels" };
     out.push(entry(C::ToolbarLabels(!labels), label, "toolbar buttons text captions icons compact"));
+    super::layout::palette_entries(st, out);
     let files =
         st.themes.catalog.files.iter().map(|f| (ThemeChoice::Custom(f.id.clone()), f.name.clone(), "appearance colour color custom"));
     let built_in = ThemeChoice::BUILT_IN.into_iter().map(|t| (t.clone(), t.palette_label(), "appearance colour color"));

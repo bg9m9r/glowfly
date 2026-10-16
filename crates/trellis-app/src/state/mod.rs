@@ -22,6 +22,7 @@ pub mod history;
 pub mod init;
 pub mod keys_page;
 pub mod known_folders;
+pub mod layout;
 pub mod lfs;
 pub mod lines;
 pub mod notify;

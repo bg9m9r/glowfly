@@ -53,6 +53,17 @@ impl AppState {
         }
     }
 
+    /// Updates the toast `previous` in place (its text, colour and timer) while it is still up,
+    /// else shows a new one. Returns the toast's id, for the next call.
+    pub fn toast_replacing(&mut self, previous: Option<u64>, ok: bool, text: impl Into<String>, now: Instant) -> u64 {
+        let text = text.into();
+        if let Some(t) = previous.and_then(|id| self.toasts.iter_mut().find(|t| t.id == id)) {
+            (t.text, t.ok, t.at) = (text, ok, now);
+            return t.id;
+        }
+        self.push_toast(ok, text, None, now)
+    }
+
     fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, now: Instant) -> u64 {
         self.toast_seq += 1;
         self.toasts.push(Toast { ok, text, at: now, id: self.toast_seq, action });

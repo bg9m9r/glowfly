@@ -124,7 +124,14 @@ binary (package `trellis`).
   the host's status.
 - **Toasts** (`state/toasts.rs`) can carry one action button with a stored `Msg`. A click
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
-  while the toast's repository is the active tab.
+  while the toast's repository is the active tab. `toast_replacing` updates a toast still on
+  screen instead of stacking another (the zoom toast keeps its id in `view.zoom_toast`).
+- **Zoom and panels** are settings, not view state: `update/layout.rs` changes and saves them
+  (`LayoutMsg`), and the shell applies `settings.zoom_percent` to egui every frame
+  (`ui/layout.rs::apply_zoom`, like the theme), so a profile switch or a Preferences edit takes
+  effect on the next frame. egui's built-in zoom keys are turned off at start-up so the keymap
+  owns them. `show_left_panel`, `show_details_panel` and `show_toolbar` are checked by
+  `ui/mod.rs::draw`, which simply skips a hidden panel.
 - **Desktop notifications**: `update/notify.rs::desktop` returns `Effect::Notify` (a
   `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and
   `st.view.focused` is false; the shell sets `view.focused` from egui at the start of each frame,

@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 33] = [
+    const FROZEN: [&str; 39] = [
         "stage",
         "unstage",
         "stage-all",
@@ -54,6 +54,12 @@ fn ids_are_stable() {
         "redo",
         "dialog-submit",
         "toggle-terminal",
+        "zoom-in",
+        "zoom-out",
+        "zoom-reset",
+        "toggle-left-panel",
+        "toggle-details-panel",
+        "toggle-toolbar",
     ];
     let keys: Vec<&str> = BindingId::ALL.iter().map(|id| id.key()).collect();
     assert_eq!(keys, FROZEN);
@@ -89,6 +95,12 @@ fn rebindable_set() {
         I::Undo,
         I::Redo,
         I::ToggleTerminal,
+        I::ZoomIn,
+        I::ZoomOut,
+        I::ZoomReset,
+        I::ToggleLeftPanel,
+        I::ToggleDetailsPanel,
+        I::ToggleToolbar,
     ];
     assert_eq!(rebindable, want);
 }
@@ -109,6 +121,25 @@ fn chord_text() {
     assert_eq!(keys.keys_text(I::NextChange), "F7 or Alt+Down");
     assert_eq!(keys.tip("New tab", I::NewTab), "New tab (Ctrl+T)");
     assert_eq!(Chord::cmd_shift(KeyName::Letter('M')).parts(), ["Ctrl", "Shift", "M"]);
+    assert_eq!(keys.hint(I::ZoomIn), Some("Ctrl+="));
+    assert_eq!(keys.keys_text(I::ZoomIn), "Ctrl+= or Ctrl+Plus");
+    assert_eq!(keys.hint(I::ZoomReset), Some("Ctrl+0"));
+    assert_eq!(keys.hint(I::ToggleToolbar), Some("Ctrl+Shift+B"));
+}
+
+#[test]
+fn zoom_keys_by_default() {
+    let keys = Keymap::default();
+    let fold = fold_ctrl();
+    assert_eq!(keys.lookup(Chord::cmd(KeyName::Equals), fold), Some(I::ZoomIn));
+    assert_eq!(keys.lookup(Chord::cmd(KeyName::Plus), fold), Some(I::ZoomIn));
+    assert_eq!(keys.lookup(Chord::cmd(KeyName::Minus), fold), Some(I::ZoomOut));
+    assert_eq!(keys.lookup(Chord::cmd(KeyName::Digit(0)), fold), Some(I::ZoomReset));
+    assert_eq!(keys.lookup(Chord::cmd_shift(KeyName::Letter('L')), fold), Some(I::ToggleLeftPanel));
+    assert_eq!(keys.lookup(Chord::cmd_shift(KeyName::Letter('D')), fold), Some(I::ToggleDetailsPanel));
+    assert_eq!(keys.lookup(Chord::cmd_shift(KeyName::Letter('B')), fold), Some(I::ToggleToolbar));
+    let view: Vec<BindingId> = BINDINGS.iter().filter(|b| b.group == Group::View).map(|b| b.id).collect();
+    assert!(view.contains(&I::ToggleTerminal) && view.contains(&I::ZoomIn), "{view:?}");
 }
 
 #[test]

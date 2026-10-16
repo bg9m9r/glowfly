@@ -537,7 +537,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 - [x] **Custom themes**: High Contrast Dark, High Contrast Light and Trellis Sand built in, plus
       JSON theme files in the config folder's `themes` folder (a base theme and the colors it
       changes, as #rrggbb or another color's name), listed in Preferences and the palette
-- [ ] **Zoom** in/out/reset; show/hide the left, detail and toolbar panels
+- [x] **Zoom** in/out/reset; show/hide the left, detail and toolbar panels
 - [ ] **Menu bar** (File / Edit / View / Window / Help), including Undo/Redo under Edit
 - [ ] **Language**: translate the UI (date locale and relative dates already exist)
 - [ ] **Logs**: keep the activity log across sessions; error and performance logs; extended
@@ -921,7 +921,7 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Warn when a key is taken by the OS on the current system (Cmd+Tab, Cmd+Q, Cmd+H on macOS;
   Alt+F4 on Windows), including a Mod+Tab synced from another OS
 - Let a focused terminal keep keys that are bound to global shortcuts
-- Record keys the table can't name yet (F13–F24, Plus, curly brackets, media keys)
+- Record keys the table can't name yet (F13–F24, curly brackets, media keys)
 - Rebind the fixed context keys (Commit's Ctrl+Enter, list arrows, palette keys) with their own
   per-context conflict rules
 - Per-repository keymaps
@@ -1435,3 +1435,15 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Import or share a theme file from Preferences (copy it into the themes folder)
 - A toast with an Open Preferences button when the selected theme is missing or broken at startup
 - A per-repository theme
+
+### Zoom
+
+- Toggle full screen (a key such as F11 and a palette entry)
+- A mouse way to bring back a hidden side panel (a thin edge rail or a collapse/expand button)
+- Remember the left and details panel widths across restarts
+- Fine-grained zoom: Ctrl+mouse wheel, a slider in the status bar, custom percentages
+- Offer to show a hidden details panel when the WIP row or a commit is selected
+- Keep the trust chip and conflict-prediction indicator visible while the toolbar is hidden
+- A palette entry and key for showing or hiding the activity log
+- Per-repository panel layout
+- View menu entries for zoom and panels once the menu bar exists

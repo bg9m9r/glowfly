@@ -40,6 +40,7 @@ fn every_key_round_trips_and_has_text() {
         K::Backtick,
         K::Minus,
         K::Equals,
+        K::Plus,
         K::OpenBracket,
         K::CloseBracket,
     ];
@@ -55,6 +56,20 @@ fn every_key_round_trips_and_has_text() {
     assert_eq!(Chord::plain(K::PageUp).text(), "PgUp");
     assert_eq!(Chord::plain(K::Backslash).text(), "\\");
     assert_eq!(Chord::plain(K::Backslash).config(), "Backslash");
+}
+
+#[test]
+fn plus_is_a_named_key() {
+    assert_eq!(KeyName::parse("Plus"), Some(KeyName::Plus));
+    let c = Chord::parse("Mod+Plus").unwrap();
+    assert_eq!(c, Chord::cmd(KeyName::Plus));
+    assert_eq!(c.config(), "Mod+Plus");
+}
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn plus_reads_as_a_word() {
+    assert_eq!(Chord::cmd(KeyName::Plus).text(), "Ctrl+Plus");
 }
 
 #[test]

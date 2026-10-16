@@ -16,6 +16,7 @@ pub mod themes;
 mod themes_io;
 mod tools;
 mod trust;
+mod zoom;
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use file::{LoadProblem, settings_file};
 pub use graph_filter::{FilterOp, GraphFilter};
@@ -25,6 +26,7 @@ pub use profiles_prefs::{ProfilePrefs, SetupSwap};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::RepoTrust;
+pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
 
 /// The theme in use (Preferences > UI Customization > Theme). Old files' "Dark", "Light" and
 /// "System" load unchanged; a theme file is saved as `{"Custom": "ocean"}`.
@@ -184,6 +186,15 @@ pub struct Settings {
     /// Show "3 hours ago" in the graph instead of the Date/Time format.
     pub relative_dates: bool,
     pub toolbar_labels: bool,
+    /// Window zoom in percent (keys, palette, Preferences > UI Customization); read through
+    /// `zoom_level()`/`zoom_factor()`.
+    pub zoom_percent: u16,
+    /// Draw the left panel of branches, remotes and other refs.
+    pub show_left_panel: bool,
+    /// Draw the right panel with WIP, commit and multi-commit details.
+    pub show_details_panel: bool,
+    /// Draw the toolbar at the top of the window.
+    pub show_toolbar: bool,
     pub spellcheck: bool,
     /// Initials instead of Gravatar / hosting-service avatars.
     pub use_initials: bool,
@@ -294,6 +305,10 @@ impl Default for Settings {
             date_verbose_format: "MMMM D, YYYY h:mm A".into(),
             relative_dates: false,
             toolbar_labels: true,
+            zoom_percent: DEFAULT_ZOOM_PERCENT,
+            show_left_panel: true,
+            show_details_panel: true,
+            show_toolbar: true,
             spellcheck: true,
             use_initials: false,
             ghost_refs: true,

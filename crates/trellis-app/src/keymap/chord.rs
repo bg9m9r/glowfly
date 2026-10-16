@@ -44,12 +44,14 @@ pub enum KeyName {
     Backtick,
     Minus,
     Equals,
+    /// The numpad +, and + on layouts that type it without Shift.
+    Plus,
     OpenBracket,
     CloseBracket,
 }
 
 /// The keys with a fixed name: (key, settings-file name, display text).
-const NAMED: [(KeyName, &str, &str); 26] = [
+const NAMED: [(KeyName, &str, &str); 27] = [
     (KeyName::Enter, "Enter", "Enter"),
     (KeyName::Escape, "Escape", "Esc"),
     (KeyName::Tab, "Tab", "Tab"),
@@ -74,6 +76,8 @@ const NAMED: [(KeyName, &str, &str); 26] = [
     (KeyName::Backtick, "Backtick", "`"),
     (KeyName::Minus, "Minus", "-"),
     (KeyName::Equals, "Equals", "="),
+    // "Plus", not "+", so a chord reads "Ctrl+Plus" rather than "Ctrl++".
+    (KeyName::Plus, "Plus", "Plus"),
     (KeyName::OpenBracket, "OpenBracket", "["),
     (KeyName::CloseBracket, "CloseBracket", "]"),
 ];

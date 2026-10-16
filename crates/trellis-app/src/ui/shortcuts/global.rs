@@ -6,7 +6,8 @@
 use super::chords::take_press;
 use super::record;
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName};
-use crate::msg::{ConflictMsg, DiffMsg, JobMsg, Msg, PaletteMsg, PrefsMsg, RepoMsg, SearchMsg, TabsMsg};
+use crate::msg::{ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RepoMsg, SearchMsg, TabsMsg};
+use crate::state::layout::Panel;
 use crate::state::{AppState, Modal, PrefPage};
 use crate::terminal::TerminalMsg;
 use crate::ui::central;
@@ -70,7 +71,9 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         I::FocusMessage => !covered && !l.sheet,
         I::StageAll | I::UnstageAll => !covered && !l.sheet && !l.typing,
         I::Stage | I::Unstage => !covered && !l.sheet && !l.typing && l.working_diff,
-        I::ToggleTerminal => !covered && !l.sheet,
+        I::ToggleTerminal | I::ToggleLeftPanel | I::ToggleDetailsPanel | I::ToggleToolbar => !covered && !l.sheet,
+        // Zoom works over everything (recording a key takes every press before this).
+        I::ZoomIn | I::ZoomOut | I::ZoomReset => true,
         I::NewTab | I::CloseTab | I::ReopenTab | I::NextTab | I::PrevTab | I::LastTab | I::GoToTab => !l.prefs && !l.palette,
         I::Undo | I::Redo => !covered && !l.sheet && !l.typing,
         I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
@@ -109,6 +112,12 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::Undo => Msg::Job(JobMsg::Undo),
         I::Redo => Msg::Job(JobMsg::Redo),
         I::ToggleTerminal => Msg::Terminal(TerminalMsg::Toggle),
+        I::ZoomIn => Msg::Layout(LayoutMsg::ZoomIn),
+        I::ZoomOut => Msg::Layout(LayoutMsg::ZoomOut),
+        I::ZoomReset => Msg::Layout(LayoutMsg::ZoomReset),
+        I::ToggleLeftPanel => Msg::Layout(LayoutMsg::TogglePanel(Panel::Left)),
+        I::ToggleDetailsPanel => Msg::Layout(LayoutMsg::TogglePanel(Panel::Details)),
+        I::ToggleToolbar => Msg::Layout(LayoutMsg::TogglePanel(Panel::Toolbar)),
         I::NewTab => Msg::Tabs(TabsMsg::NewTab),
         I::CloseTab => Msg::Tabs(TabsMsg::CloseTab(usize::MAX)),
         I::ReopenTab => Msg::Tabs(TabsMsg::ReopenClosedTab),

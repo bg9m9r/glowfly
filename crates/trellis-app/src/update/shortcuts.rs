@@ -70,6 +70,7 @@ fn focus_message(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     if st.snap.is_none() {
         return;
     }
+    super::layout::reveal_details(st, fx);
     if st.selection != Selection::Wip {
         fx.extend(super::update(st, Msg::Repo(RepoMsg::SelectWip), now));
     }

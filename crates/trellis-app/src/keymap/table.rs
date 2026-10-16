@@ -10,11 +10,12 @@ pub enum Group {
     Diff,
     Tabs,
     Palette,
+    View,
     General,
 }
 
 /// The groups in the order the sheet and Preferences > Keyboard show them.
-pub const GROUPS: [Group; 6] = [Group::Staging, Group::Navigation, Group::Diff, Group::Tabs, Group::Palette, Group::General];
+pub const GROUPS: [Group; 7] = [Group::Staging, Group::Navigation, Group::Diff, Group::Tabs, Group::Palette, Group::View, Group::General];
 
 impl Group {
     pub fn title(self) -> &'static str {
@@ -24,6 +25,7 @@ impl Group {
             Group::Diff => "Diff and conflicts",
             Group::Tabs => "Tabs",
             Group::Palette => "Command palette",
+            Group::View => "View",
             Group::General => "General",
         }
     }
@@ -113,12 +115,18 @@ pub enum BindingId {
     Redo,
     DialogSubmit,
     ToggleTerminal,
+    ZoomIn,
+    ZoomOut,
+    ZoomReset,
+    ToggleLeftPanel,
+    ToggleDetailsPanel,
+    ToggleToolbar,
 }
 
 use BindingId as I;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
-const KEYS: [(BindingId, &str); 33] = [
+const KEYS: [(BindingId, &str); 39] = [
     (I::Stage, "stage"),
     (I::Unstage, "unstage"),
     (I::StageAll, "stage-all"),
@@ -152,14 +160,20 @@ const KEYS: [(BindingId, &str); 33] = [
     (I::Redo, "redo"),
     (I::DialogSubmit, "dialog-submit"),
     (I::ToggleTerminal, "toggle-terminal"),
+    (I::ZoomIn, "zoom-in"),
+    (I::ZoomOut, "zoom-out"),
+    (I::ZoomReset, "zoom-reset"),
+    (I::ToggleLeftPanel, "toggle-left-panel"),
+    (I::ToggleDetailsPanel, "toggle-details-panel"),
+    (I::ToggleToolbar, "toggle-toolbar"),
 ];
 
 impl BindingId {
     /// Every id, in declaration order (`id as usize` indexes it).
-    pub const ALL: [BindingId; 33] = {
-        let mut all = [I::Stage; 33];
+    pub const ALL: [BindingId; 39] = {
+        let mut all = [I::Stage; 39];
         let mut n = 0;
-        while n < 33 {
+        while n < 39 {
             all[n] = KEYS[n].0;
             n += 1;
         }
@@ -244,10 +258,16 @@ pub const BINDINGS: &[Binding] = &[
         W::PaletteStep,
     ),
     fixed(I::PaletteClose, G::Palette, "Close the palette", &[C::plain(K::Escape)], W::InPalette),
+    b(I::ZoomIn, G::View, "Zoom in", &[C::cmd(K::Equals), C::cmd(K::Plus)], W::Anywhere),
+    b(I::ZoomOut, G::View, "Zoom out", &[C::cmd(K::Minus)], W::Anywhere),
+    b(I::ZoomReset, G::View, "Reset zoom to 100%", &[C::cmd(K::Digit(0))], W::Anywhere),
+    b(I::ToggleLeftPanel, G::View, "Show or hide the left panel", &[C::cmd_shift(K::Letter('L'))], W::Anywhere),
+    b(I::ToggleDetailsPanel, G::View, "Show or hide the commit details panel", &[C::cmd_shift(K::Letter('D'))], W::Anywhere),
+    b(I::ToggleToolbar, G::View, "Show or hide the toolbar", &[C::cmd_shift(K::Letter('B'))], W::Anywhere),
+    b(I::ToggleTerminal, G::View, "Show or hide the terminal", &[C::ctrl(K::Backtick)], W::Anywhere),
     b(I::Sheet, G::General, "Keyboard shortcuts", &[C::cmd(K::Slash)], W::Anywhere),
     b(I::Prefs, G::General, "Preferences", &[C::cmd(K::Comma)], W::Anywhere),
     b(I::Refresh, G::General, "Refresh", &[C::plain(K::F(5))], W::Anywhere),
-    b(I::ToggleTerminal, G::General, "Show or hide the terminal", &[C::ctrl(K::Backtick)], W::Anywhere),
     b(I::Undo, G::General, "Undo", &[C::cmd(K::Letter('Z'))], W::NotTyping),
     b(I::Redo, G::General, "Redo", &[C::cmd(K::Letter('Y')), C::cmd_shift(K::Letter('Z'))], W::NotTyping),
     fixed(I::DialogSubmit, G::General, "Confirm a dialog's name field", &[C::plain(K::Enter)], W::Dialog),

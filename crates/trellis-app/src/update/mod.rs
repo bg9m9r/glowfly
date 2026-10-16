@@ -26,6 +26,7 @@ mod inactive;
 mod init;
 mod jobs;
 mod keys;
+mod layout;
 mod lfs;
 mod notify;
 mod ops;
@@ -147,6 +148,8 @@ mod init_tests;
 mod keys_tests;
 #[cfg(test)]
 mod language_override_tests;
+#[cfg(test)]
+mod layout_tests;
 #[cfg(test)]
 mod lfs_fetch_tests;
 #[cfg(test)]
@@ -346,6 +349,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Worktree(m) => worktrees::handle(st, m, now, &mut fx),
         Msg::Submodule(m) => submodules::handle(st, m, now, &mut fx),
         Msg::Terminal(m) => terminal::handle(st, m, &mut fx),
+        Msg::Layout(m) => layout::handle(st, m, now, &mut fx),
         Msg::Patch(m) => patch::handle(st, m, now, &mut fx),
         Msg::Tools(m) => tools::handle(st, m, now, &mut fx),
         Msg::ConflictCheck(m) => conflict_check::handle(st, m, now, &mut fx),

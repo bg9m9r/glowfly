@@ -87,7 +87,7 @@ fn presses_become_chords_on_each_system() {
         chord_from_press(Key::F7, alt_shift, false),
         Some(Chord { mods: Mods { alt: true, shift: true, ..Mods::default() }, key: K::F(7) })
     );
-    for key in [Key::F13, Key::Copy, Key::Plus, Key::Pipe, Key::OpenCurlyBracket, Key::Colon, Key::Questionmark] {
+    for key in [Key::F13, Key::Copy, Key::Pipe, Key::OpenCurlyBracket, Key::Colon, Key::Questionmark] {
         assert_eq!(chord_from_press(key, Modifiers::NONE, false), None, "{key:?}");
     }
 }

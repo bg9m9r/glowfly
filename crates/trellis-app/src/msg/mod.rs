@@ -21,6 +21,7 @@ mod forge;
 mod graph;
 mod init;
 mod keys;
+mod layout;
 mod prefs;
 mod rebase;
 mod recent;
@@ -39,6 +40,7 @@ pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
 pub use graph::{AvatarMsg, GraphMsg, PathsChunk, SearchMsg, SelectionMsg};
 pub use init::InitMsg;
 pub use keys::KeysMsg;
+pub use layout::LayoutMsg;
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use recent::{FolderCheck, RecentMsg};
@@ -106,6 +108,8 @@ pub enum Msg {
     Submodule(SubmoduleMsg),
     /// The built-in terminal panel (terminal.rs).
     Terminal(TerminalMsg),
+    /// Zoom and showing or hiding the left, details and toolbar panels (update/layout.rs).
+    Layout(LayoutMsg),
     /// Saving commits as a patch file and applying one (update/patch.rs).
     Patch(crate::patch::PatchMsg),
     /// External editor and terminal (update/tools.rs).
@@ -229,6 +233,7 @@ impl Msg {
             Msg::Worktree(m) => m.on_inactive(),
             Msg::Submodule(m) => m.on_inactive(),
             Msg::Terminal(m) => m.on_inactive(),
+            Msg::Layout(m) => m.on_inactive(),
             Msg::Patch(m) => m.on_inactive(),
             Msg::Tools(m) => m.on_inactive(),
             Msg::ConflictCheck(m) => m.on_inactive(),

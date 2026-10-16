@@ -84,6 +84,11 @@ fn entries_without_repo() {
             "Open Preferences",
             "Keyboard shortcuts",
             "Hide toolbar labels",
+            "Zoom in",
+            "Zoom out",
+            "Hide left panel",
+            "Hide commit details panel",
+            "Hide toolbar",
             "Theme: Dark",
             "Theme: Light",
             "Theme: Follow system",
@@ -94,11 +99,11 @@ fn entries_without_repo() {
         ]
     );
     let list = shown(&st, "");
-    assert_eq!(list[5].entry.detail.as_deref(), Some("current"));
-    assert!(list[6].entry.detail.is_none() && list[7].entry.detail.is_none());
+    assert_eq!(list[10].entry.detail.as_deref(), Some("current"));
+    assert!(list[11].entry.detail.is_none() && list[12].entry.detail.is_none());
 
     st.settings.theme = ThemeChoice::System;
-    assert_eq!(shown(&st, "")[7].entry.detail.as_deref(), Some("current"));
+    assert_eq!(shown(&st, "")[12].entry.detail.as_deref(), Some("current"));
 
     st.tabs.push(Tab::empty());
     assert!(has(&st, "Close tab"));
@@ -140,10 +145,10 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 12);
+    assert_eq!(shown(&st, "").len(), 17);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 11);
+    assert_eq!(p.selected, 16);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);

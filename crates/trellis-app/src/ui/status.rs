@@ -34,6 +34,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                 }
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     ui.label(RichText::new(concat!("Trellis ", env!("CARGO_PKG_VERSION"))).color(color::faint()));
+                    super::layout::status_items(ui, st, msgs);
                     if let Some(job) = &st.job {
                         ui.label(RichText::new(format!("{}…", job.label)).color(color::weak()));
                         ui.add(egui::Spinner::new().size(12.0));

@@ -129,6 +129,8 @@ pub struct ViewState {
     pub focus_message: bool,
     /// The header divider being dragged (set and cleared by the graph view).
     pub column_drag: Option<ColumnDrag>,
+    /// The zoom toast's id, so the next zoom step updates it (set only by update).
+    pub zoom_toast: Option<u64>,
 }
 
 impl Default for ViewState {
@@ -169,6 +171,7 @@ impl Default for ViewState {
             focus_search: false,
             focus_message: false,
             column_drag: None,
+            zoom_toast: None,
         }
     }
 }

@@ -379,3 +379,17 @@ fn theme_choice_builtin_mapping() {
     assert_eq!(ThemeChoice::Sand.builtin(true), Some(B::Sand));
     assert_eq!(ThemeChoice::Custom("ocean".into()).builtin(true), None);
 }
+
+#[test]
+fn zoom_and_panels_default_for_old_files() {
+    // Files written before zoom and panel visibility existed open at 100% with every panel shown
+    // (a per-field #[serde(default)] on the bools would make them false).
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert_eq!(s.zoom_percent, 100);
+    assert!(s.show_left_panel && s.show_details_panel && s.show_toolbar);
+    let s: Settings = serde_json::from_str(r#"{"zoom_percent": 1000}"#).unwrap();
+    assert_eq!(s.zoom_level(), 200);
+    let off = Settings { show_toolbar: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.show_toolbar && back.show_left_panel);
+}

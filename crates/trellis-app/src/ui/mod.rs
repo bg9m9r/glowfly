@@ -30,6 +30,7 @@ mod graph;
 mod history;
 mod icons;
 mod init_dialog;
+mod layout;
 mod list_row;
 mod menus;
 mod modals;
@@ -255,6 +256,7 @@ impl TrellisApp {
         let themes = trellis_core::settings::themes::load_all();
         crate::themes::trace_problems(&themes);
         app.dispatch(&cc.egui_ctx, Msg::Theme(crate::themes::ThemeMsg::Loaded(themes)));
+        layout::start(&cc.egui_ctx, &app.st);
         // git and ssh ask for missing credentials through a dialog from now on.
         app.runner.start_askpass();
         app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
@@ -314,12 +316,18 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         prefs::show(ctx, st, msgs);
     } else {
         tabs::show(ctx, st, msgs);
-        toolbar::show(ctx, st, msgs);
+        if st.settings.show_toolbar {
+            toolbar::show(ctx, st, msgs);
+        }
         git_banner::show(ctx, st, msgs);
         status::activity_log(ctx, st, msgs);
         if st.snap.is_some() {
-            sidebar::show(ctx, st, msgs);
-            details::show(ctx, st, cache, msgs);
+            if st.settings.show_left_panel {
+                sidebar::show(ctx, st, msgs);
+            }
+            if st.settings.show_details_panel {
+                details::show(ctx, st, cache, msgs);
+            }
             terminal::show(ctx, st, msgs);
         } else {
             st.terminal.focused = false;
@@ -343,6 +351,7 @@ fn text_field_focused(ctx: &egui::Context) -> bool {
 impl eframe::App for TrellisApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.apply_theme(ctx);
+        layout::apply_zoom(ctx, &self.st);
         self.st.view.focused = ctx.input(|i| i.focused);
         while let Ok(msg) = self.results.try_recv() {
             self.dispatch(ctx, msg);

@@ -207,3 +207,17 @@ fn swap_carries_a_theme_file() {
     let a = s.profile(A).and_then(|p| p.prefs.as_ref()).map(|p| p.theme.clone());
     assert_eq!(a, Some(ThemeChoice::Custom("ocean".into())), "out to the outgoing profile");
 }
+
+#[test]
+fn swap_carries_zoom_and_panels() {
+    let mut s = two();
+    s.zoom_percent = 150;
+    s.profile_mut(B).unwrap().prefs.as_mut().unwrap().show_left_panel = false;
+    s.swap_profile_setup(B);
+    assert_eq!(s.zoom_percent, 100);
+    assert!(!s.show_left_panel);
+    s.active_profile = Some(B);
+    s.swap_profile_setup(A);
+    assert_eq!(s.zoom_percent, 150);
+    assert!(s.show_left_panel);
+}

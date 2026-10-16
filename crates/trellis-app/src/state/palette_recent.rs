@@ -3,8 +3,10 @@
 //! file, stash or path have a key; a toggle is remembered by what it controls, not by which way
 //! it flips, so the entry that now reads the other way still ranks first.
 
+use super::layout::Panel;
 use super::palette_commands::PaletteCommand;
 use super::palette_kinds::StashAction;
+use crate::msg::LayoutMsg;
 use crate::remote::RemoteMsg;
 use crate::submodule::SubmoduleMsg;
 use crate::tools::ToolsMsg;
@@ -136,6 +138,15 @@ impl PaletteCommand {
                 ToolsMsg::OpenDiff(_) => "open-in-diff-tool",
                 ToolsMsg::ResolveInMergeTool(_) => "resolve-in-merge-tool",
                 _ => return None,
+            },
+            C::Layout(m) => match m {
+                LayoutMsg::ZoomIn => "zoom-in",
+                LayoutMsg::ZoomOut => "zoom-out",
+                LayoutMsg::ZoomReset => "zoom-reset",
+                LayoutMsg::SetPanel { panel: Panel::Left, .. } => "left-panel",
+                LayoutMsg::SetPanel { panel: Panel::Details, .. } => "details-panel",
+                LayoutMsg::SetPanel { panel: Panel::Toolbar, .. } => "toolbar",
+                LayoutMsg::TogglePanel(_) => return None,
             },
         })
     }
