@@ -1,10 +1,10 @@
-//! Help: the shortcut sheet, the palette, the welcome and the tour, the logs, the project's links
-//! and About.
+//! Help: the shortcut sheet, the palette, the welcome and the tour, the logs, the project's links,
+//! the release notes and Check for updates, and About.
 
 use super::items::item;
 use crate::keymap::{BindingId as I, KeyAction};
 use crate::logs::{LogKind, LogsMsg};
-use crate::msg::{AppMsg, Msg, PaletteMsg};
+use crate::msg::{AppMsg, Msg, PaletteMsg, UpdateMsg};
 use crate::onboarding::OnboardingMsg;
 use crate::state::AppState;
 use crate::state::menu_bar::{ISSUES, WEBSITE};
@@ -29,6 +29,9 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         item(ui, keys, "Trellis website", None, None, Msg::OpenUrl(WEBSITE.to_owned()), msgs);
         item(ui, keys, "Report an issue", None, None, Msg::OpenUrl(ISSUES.to_owned()), msgs);
         ui.separator();
+        item(ui, keys, "Release notes", None, None, Msg::Updates(UpdateMsg::ShowNotes), msgs);
+        let checking = st.updates.busy().then_some("A check or download is already running");
+        item(ui, keys, "Check for updates", None, checking, Msg::Updates(UpdateMsg::CheckNow), msgs);
         item(ui, keys, "About Trellis…", None, None, Msg::App(AppMsg::ShowAbout), msgs);
     });
 }

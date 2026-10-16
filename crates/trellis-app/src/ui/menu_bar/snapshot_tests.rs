@@ -1,7 +1,7 @@
 //! The menu bar and its menus, the About dialog, and what clicking items sends. Shares the
 //! fixture repository and renderer with `ui/snapshot_tests.rs`.
 
-use crate::msg::{AppMsg, JobMsg, LayoutMsg, Msg, TabsMsg};
+use crate::msg::{AppMsg, JobMsg, LayoutMsg, Msg, TabsMsg, UpdateMsg};
 use crate::state::layout::Panel;
 use crate::state::menu_bar::VERSION;
 use crate::state::{AppState, Modal, git_env::GitState};
@@ -162,7 +162,7 @@ type Case = (&'static str, &'static str, &'static str, fn(&Msg) -> bool);
 
 #[test]
 fn menu_items_send_their_messages() {
-    let cases: [Case; 5] = [
+    let cases: [Case; 6] = [
         ("menu-click-new-tab", "File", "New tab", |m| matches!(m, Msg::Tabs(TabsMsg::NewTab))),
         ("menu-click-quit", "File", "Quit", |m| matches!(m, Msg::App(AppMsg::Quit))),
         ("menu-click-zoom", "View", "Zoom in", |m| matches!(m, Msg::Layout(LayoutMsg::ZoomIn))),
@@ -170,6 +170,7 @@ fn menu_items_send_their_messages() {
             matches!(m, Msg::Layout(LayoutMsg::SetPanel { panel: Panel::MenuBar, shown: false }))
         }),
         ("menu-click-about", "Help", "About Trellis…", |m| matches!(m, Msg::App(AppMsg::ShowAbout))),
+        ("menu-click-check-updates", "Help", "Check for updates", |m| matches!(m, Msg::Updates(UpdateMsg::CheckNow))),
     ];
     for (name, title, item, want) in cases {
         let (h, dir) = click(name, title, item, |_| {});

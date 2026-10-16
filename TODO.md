@@ -1581,7 +1581,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Repository and Branch menus (fetch, pull, push, stash, new branch and tag)
 - Recently closed tabs as a submenu, to reopen any of them
 - The OS and architecture in the About dialog's copied version info
-- A Check for updates item in the Help menu once updates exist
 
 ### Packaging and updates
 
