@@ -1,6 +1,8 @@
 //! The repository's worktrees: the main one and the linked ones registered under the common git
-//! dir, read through libgit2 for the left panel.
+//! dir, read through libgit2 for the left panel, and the other worktrees' uncommitted changes
+//! for their WIP rows in the graph.
 
+use super::status::ChangeCounts;
 use crate::error::Result;
 use git2::{Oid, Repository, WorktreeLockStatus};
 use std::path::{Component, Path, PathBuf};
@@ -28,6 +30,10 @@ pub struct WorktreeInfo {
     /// The folder's identity on disk when listed (`paths::FolderId`): what tells whether a tab
     /// shows this worktree under another spelling. None when it is missing.
     pub folder: Option<crate::paths::FolderId>,
+    /// Its uncommitted changes, counted by full loads for worktrees other than the current one.
+    /// Zero for the current one, a missing one, one that can't be read, or when
+    /// `LoadOptions::worktree_wips` is off; `worktrees_at` never counts.
+    pub changes: ChangeCounts,
 }
 
 impl WorktreeInfo {
@@ -59,7 +65,18 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
         let (branch, head) = read_head(common.path(), &common);
         let current = is_current(&path);
         let folder = crate::paths::FolderId::of(&path);
-        out.push(WorktreeInfo { name: None, path, branch, head, current, locked: None, missing: false, prunable: false, folder });
+        out.push(WorktreeInfo {
+            name: None,
+            path,
+            branch,
+            head,
+            current,
+            locked: None,
+            missing: false,
+            prunable: false,
+            folder,
+            changes: ChangeCounts::default(),
+        });
     }
     let Ok(names) = common.worktrees() else { return out };
     let mut linked: Vec<WorktreeInfo> = names
@@ -77,12 +94,44 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
             let (branch, head) = read_head(&common.commondir().join("worktrees").join(name), &common);
             let current = is_current(&path);
             let folder = crate::paths::FolderId::of(&path);
-            Some(WorktreeInfo { name: Some(name.to_owned()), path, branch, head, current, locked, missing, prunable, folder })
+            Some(WorktreeInfo {
+                name: Some(name.to_owned()),
+                path,
+                branch,
+                head,
+                current,
+                locked,
+                missing,
+                prunable,
+                folder,
+                changes: ChangeCounts::default(),
+            })
         })
         .collect();
     linked.sort_by(|a, b| a.path.cmp(&b.path));
     out.extend(linked);
     out
+}
+
+/// Counts the uncommitted changes of every listed worktree other than the current one and the
+/// missing ones. Read by libgit2 alone (never the git CLI), so no hook, fsmonitor or filter
+/// runs: safe while the repository isn't trusted. One that can't be opened or read counts as
+/// clean.
+pub(super) fn count_changes(list: &mut [WorktreeInfo]) {
+    for wt in list.iter_mut().filter(|w| !w.current && !w.missing) {
+        let lists = Repository::open(&wt.path).ok().and_then(|repo| super::status::libgit2_status(&repo).ok());
+        wt.changes = lists.map(|(unstaged, staged)| ChangeCounts::of(&staged, &unstaged)).unwrap_or_default();
+    }
+}
+
+/// (index in `list`, HEAD commit) of each worktree that gets a WIP row in the graph: not the
+/// current one, not missing, with a HEAD commit and uncommitted changes. In list order.
+pub fn worktree_wip_heads(list: &[WorktreeInfo]) -> Vec<(usize, Oid)> {
+    list.iter()
+        .enumerate()
+        .filter(|(_, w)| !w.current && !w.missing && !w.changes.is_empty())
+        .filter_map(|(i, w)| Some((i, w.head?)))
+        .collect()
 }
 
 /// `path` rebuilt from its components: platform separators, no trailing separator.
@@ -107,3 +156,7 @@ fn read_head(git_dir: &Path, common: &Repository) -> (Option<String>, Option<Oid
         Err(_) => (None, None),
     }
 }
+
+#[cfg(test)]
+#[path = "worktree_wip_tests.rs"]
+mod wip_tests;

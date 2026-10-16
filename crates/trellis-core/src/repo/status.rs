@@ -1,9 +1,47 @@
-//! Reading the working-tree status: (unstaged, staged) file lists.
+//! Reading the working-tree status: (unstaged, staged) file lists, and their counts by kind.
 
 use super::FileEntry;
 use crate::error::Result;
 use git2::{Repository, RepositoryState, StatusOptions};
+use std::collections::HashMap;
 use std::path::Path;
+
+/// How many changed paths a working tree has, by kind: each path counted once.
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub struct ChangeCounts {
+    /// Modified, renamed, type-changed or conflicted paths.
+    pub modified: usize,
+    /// New paths, staged or untracked.
+    pub added: usize,
+    pub deleted: usize,
+}
+
+impl ChangeCounts {
+    /// The counts of a status read. A path in both lists counts once, by its staged entry.
+    pub fn of(staged: &[FileEntry], unstaged: &[FileEntry]) -> Self {
+        let mut seen: HashMap<&str, char> = HashMap::new();
+        for f in staged.iter().chain(unstaged) {
+            seen.entry(&f.path).or_insert(f.status);
+        }
+        let mut out = Self::default();
+        for s in seen.values() {
+            match s {
+                'A' | '?' => out.added += 1,
+                'D' => out.deleted += 1,
+                _ => out.modified += 1,
+            }
+        }
+        out
+    }
+
+    pub fn total(&self) -> usize {
+        self.modified + self.added + self.deleted
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.total() == 0
+    }
+}
 
 /// Working-tree status only: (unstaged, staged, repository state). `git_status` false: libgit2
 /// only, so no fsmonitor hook or filter runs (repositories not trusted).
@@ -51,6 +89,7 @@ fn wants_git(repo: &Repository) -> bool {
     fsmonitor || config.get_bool("core.untrackedCache").unwrap_or(false) || repo.index().is_ok_and(|i| i.len() > LARGE_INDEX)
 }
 
+/// (unstaged, staged) read by libgit2 alone: no fsmonitor hook, filter or other program runs.
 pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     let mut opts = StatusOptions::new();
     opts.include_untracked(true).recurse_untracked_dirs(true).renames_head_to_index(true).include_ignored(false);
@@ -120,4 +159,24 @@ fn drop_skipped(repo: &Repository, unstaged: &mut Vec<FileEntry>) -> Result<()> 
     let skip = git2::IndexEntryExtendedFlag::SKIP_WORKTREE.bits();
     unstaged.retain(|f| f.status != 'D' || index.get_path(Path::new(&f.path), 0).is_none_or(|e| e.flags_extended & skip == 0));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn e(path: &str, status: char) -> FileEntry {
+        FileEntry::new(path, status)
+    }
+
+    #[test]
+    fn change_counts_count_each_path_once_by_kind() {
+        let staged = [e("new.rs", 'A'), e("gone.rs", 'D'), e("moved.rs", 'R')];
+        let unstaged = [e("new.rs", 'M'), e("loose.txt", '?'), e("edit.rs", 'M'), e("kind", 'T'), e("both.rs", '!')];
+        let c = ChangeCounts::of(&staged, &unstaged);
+        assert_eq!(c, ChangeCounts { modified: 4, added: 2, deleted: 1 });
+        assert_eq!((c.total(), c.is_empty()), (7, false));
+        assert!(ChangeCounts::of(&[], &[]).is_empty());
+        assert_eq!(ChangeCounts::of(&[], &[e("x", 'D')]).deleted, 1);
+    }
 }

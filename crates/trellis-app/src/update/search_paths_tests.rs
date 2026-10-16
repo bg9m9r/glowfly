@@ -6,7 +6,7 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::{Msg, PathsChunk, RepoMsg, SearchMsg, TabsMsg};
 use crate::runner;
-use crate::state::search::GraphRows;
+use crate::state::graph_rows::GraphRows;
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use std::path::{Path, PathBuf};

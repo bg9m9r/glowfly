@@ -171,6 +171,9 @@ pub struct Settings {
     pub use_initials: bool,
     pub ghost_refs: bool,
     pub highlight_ref_rows: bool,
+    /// Show a WIP row in the graph for each other worktree with uncommitted changes
+    /// (Preferences > UI Customization).
+    pub worktree_wips: bool,
     pub branch_visibility: BranchVisibility,
     pub columns: GraphColumns,
     /// Graph column widths in px (drag a header divider); read through ColumnWidths::get.
@@ -277,6 +280,7 @@ impl Default for Settings {
             use_initials: false,
             ghost_refs: true,
             highlight_ref_rows: true,
+            worktree_wips: true,
             branch_visibility: BranchVisibility::All,
             columns: GraphColumns::default(),
             column_widths: ColumnWidths::default(),

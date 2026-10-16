@@ -39,7 +39,7 @@ binary (package `trellis`).
 | `undo.rs` | Undo and redo of Trellis's own operations. |
 | `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira), each described once in a `ProviderInfo`, mapped to one common model (pull requests with their reviewers and CI checks, issues); CI checks on pull requests and commits (`checks.rs`, `*_checks.rs`), repository web pages (`web.rs`), forks (`forks/`), the signed-in user's own repositories (`user_repos/`) and SSH public keys on the user's account (`ssh_keys.rs`). |
 | `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
-| `graph.rs` | Lane layout for the commit graph. |
+| `graph.rs` | Lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes. |
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view; word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
 | `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds; whole files too (`highlight_file`, for blame). |
 | `watch.rs` | Which file changes in a repository matter. |

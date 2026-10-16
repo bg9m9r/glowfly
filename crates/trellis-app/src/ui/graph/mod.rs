@@ -1,5 +1,5 @@
 //! The commit graph: configurable, resizable columns (branch/tag, graph, SHA, message, changes,
-//! author, date), avatars, ghost refs, and branch highlighting.
+//! author, date), avatars, ghost refs, branch highlighting, and other worktrees' WIP rows.
 
 mod header;
 mod more;
@@ -7,6 +7,7 @@ mod paint;
 mod resize;
 mod search_bar;
 mod select;
+mod worktree_wip;
 
 pub use paint::draw_avatar;
 
@@ -21,13 +22,15 @@ use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::build_status::MAX_SEEN;
-use crate::state::search::GraphRows;
+use crate::state::graph_rows::{DisplayRow, GraphRows};
+use crate::state::worktrees::{open_blocked, wip_tooltip};
 use crate::state::{AppState, Selection};
+use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, RichText, Sense, Stroke, pos2, vec2};
 use git2::Oid;
-use paint::{Columns, draw_lanes, draw_ref_labels, lane_x, paint_pencil, wip_counts};
+use paint::{Columns, draw_lanes, draw_ref_labels, lane_x};
 use std::collections::HashMap;
-use trellis_core::repo::RefKind;
+use trellis_core::repo::{ChangeCounts, RefKind};
 use trellis_core::settings::DescriptionMode;
 
 const ROW_H: f32 = 30.0;
@@ -53,7 +56,6 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let rows = GraphRows::new(snap, &st.search, st.view.show_search);
         let filtered = rows.filtered();
         let searching = st.view.show_search && st.search.active();
-        let has_wip = rows.has_wip();
         let total = rows.len();
         // While filtering every node sits in the first lane, without lane lines.
         let lanes = if filtered { 1 } else { snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES) };
@@ -123,17 +125,28 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
                 let painter = ui.painter_at(rect);
                 let cols = Columns::new(rect, graph_w, &cols_cfg, &widths);
-                let (index, commit, g) = match rows.commit_at(row) {
-                    Some(i) => match (snap.commits.get(i), snap.graph.rows.get(i)) {
-                        (Some(c), Some(g)) => (i, Some(c), g),
-                        _ => continue, // a layout that doesn't match the history draws nothing
-                    },
-                    None => match snap.graph.wip.as_ref() {
-                        Some(g) if has_wip && row == 0 => (0, None, g),
+                // A layout that doesn't match the history or the worktrees draws nothing.
+                let (index, commit, g, worktree) = match rows.at(row) {
+                    Some(DisplayRow::Commit(i)) => match (snap.commits.get(i), snap.graph.rows.get(i)) {
+                        (Some(c), Some(g)) => (i, Some(c), g, None),
                         _ => continue,
                     },
+                    Some(DisplayRow::Wip) => match snap.graph.wip.as_ref() {
+                        Some(g) => (0, None, g, None),
+                        None => continue,
+                    },
+                    Some(DisplayRow::Worktree(k)) => match snap.graph.worktree_wips.get(k) {
+                        Some(w) => match snap.worktrees.get(w.worktree) {
+                            Some(wt) => (0, None, &w.row, Some((w, wt))),
+                            None => continue,
+                        },
+                        None => continue,
+                    },
+                    None => continue,
                 };
+                // Another worktree's row is never selected.
                 let selected = match (selection, commit) {
+                    _ if worktree.is_some() => false,
                     (Selection::Wip, None) => true,
                     (s, Some(c)) => s.includes(c.oid),
                     _ => false,
@@ -153,6 +166,15 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let gp = painter.with_clip_rect(cols.rect(cols.graph, rect));
                 let node_x = lane_x(cols.graph.0, if filtered { 0 } else { g.col });
                 let mid = rect.center().y;
+                // Another worktree's row: a click opens (or switches to) that worktree's tab.
+                if let Some((w, wt)) = worktree {
+                    worktree_wip::draw(&painter, &gp, &cols, rect, w, wt, cols_cfg.tree);
+                    let resp = resp.on_hover_text(wip_tooltip(wt));
+                    if resp.clicked() && open_blocked(wt).is_none() {
+                        msgs.push(Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
+                    }
+                    continue;
+                }
                 if cols_cfg.tree && !filtered {
                     draw_lanes(&gp, cols.graph.0, rect, g);
                 }
@@ -162,23 +184,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         widgets::dashed_circle(&gp, pos2(node_x, mid), 10.0, Stroke::new(1.6_f32, color::weak()));
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
-                    let box_r = Rect::from_min_size(pos2(cols.msg.0, mid - 11.0), vec2(96.0, 22.0));
-                    mp.rect_filled(box_r, CornerRadius::same(3), color::input());
-                    mp.text(pos2(box_r.left() + 8.0, mid), Align2::LEFT_CENTER, "// WIP", FontId::proportional(13.0), color::weak());
-                    let (m, a, d) = wip_counts(snap);
-                    let mut x = box_r.right() + 12.0;
-                    for (n, sym, col) in [(m, "", color::amber()), (a, "+", color::green()), (d, "−", color::red())] {
-                        if n > 0 {
-                            if sym.is_empty() {
-                                paint_pencil(&mp, pos2(x + 5.0, mid), col);
-                                x += 14.0;
-                            }
-                            let g = mp.layout_no_wrap(format!("{sym} {n}").trim().to_owned(), FontId::proportional(13.0), col);
-                            let w = g.size().x;
-                            mp.galley(pos2(x, mid - g.size().y / 2.0), g, col);
-                            x += w + 12.0;
-                        }
-                    }
+                    let right = worktree_wip::wip_box(&mp, cols.msg.0, mid, "// WIP");
+                    worktree_wip::draw_counts(&mp, right + 12.0, mid, ChangeCounts::of(&snap.staged, &snap.unstaged));
                     if resp.clicked() {
                         msgs.push(Msg::Repo(RepoMsg::SelectWip));
                     }

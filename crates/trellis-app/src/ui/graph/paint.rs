@@ -7,10 +7,9 @@ use crate::ui::common::lane_color;
 use crate::ui::theme::color;
 use crate::ui::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
-use std::collections::HashMap;
 use trellis_core::forge::CheckState;
 use trellis_core::graph::GraphRow;
-use trellis_core::repo::{self, RefKind, Snapshot};
+use trellis_core::repo::{self, RefKind};
 use trellis_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
 
 /// The narrowest a drag leaves the message column.
@@ -186,20 +185,4 @@ pub fn paint_pencil(p: &egui::Painter, c: egui::Pos2, col: Color32) {
     let s = Stroke::new(2.0_f32, col);
     p.line_segment([pos2(c.x - 4.0, c.y + 4.0), pos2(c.x + 4.0, c.y - 4.0)], s);
     p.line_segment([pos2(c.x - 5.0, c.y + 5.0), pos2(c.x - 3.0, c.y + 5.0)], Stroke::new(1.5_f32, col));
-}
-
-pub fn wip_counts(snap: &Snapshot) -> (usize, usize, usize) {
-    let mut seen: HashMap<&str, char> = HashMap::new();
-    for f in snap.staged.iter().chain(&snap.unstaged) {
-        seen.entry(&f.path).or_insert(f.status);
-    }
-    let mut counts = (0, 0, 0);
-    for s in seen.values() {
-        match s {
-            'A' | '?' => counts.1 += 1,
-            'D' => counts.2 += 1,
-            _ => counts.0 += 1,
-        }
-    }
-    counts
 }

@@ -179,7 +179,10 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let ignorecase = super::collide::ignorecase(&repo);
     let collisions = super::collide::collisions(&repo.index()?);
     let submodules = submodules::list(&repo);
-    let worktrees = worktrees::list(&repo);
+    let mut worktrees = worktrees::list(&repo);
+    if opts.worktree_wips {
+        worktrees::count_changes(&mut worktrees);
+    }
     let shallow_roots = super::shallow::roots(&repo);
 
     let mut starts: Vec<Oid> = head_oid.into_iter().collect();
@@ -215,7 +218,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let (commits, truncated) = super::walk::newest_commits(&repo, &starts, max_commits)?;
     let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
     let dirty = !unstaged.is_empty() || !staged.is_empty();
-    let graph = graph::layout(&commits, head_oid, dirty);
+    let graph = graph::layout(&commits, head_oid, dirty, &worktrees::worktree_wip_heads(&worktrees));
 
     Ok(Snapshot {
         workdir,

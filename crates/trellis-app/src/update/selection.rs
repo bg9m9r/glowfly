@@ -3,7 +3,7 @@
 
 use crate::effect::Effect;
 use crate::msg::SelectionMsg;
-use crate::state::search::GraphRows;
+use crate::state::graph_rows::GraphRows;
 use crate::state::selection as sel;
 use crate::state::{AppState, Selection};
 use git2::Oid;

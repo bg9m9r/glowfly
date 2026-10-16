@@ -323,7 +323,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   `git submodule update --init` for it as a job (asking first when it is out of sync, and naming
   any commits inside that no branch or tag contains, which the update would leave behind); Copy
   URL copies the .gitmodules URL. The left-panel filter also filters the section.
-- [ ] **Worktrees**
+- [x] **Worktrees**
   WORKTREES section: create from a branch or commit, open (in a new tab), lock/unlock, prune,
   remove (optionally deleting the branch); show worktree WIP nodes in the graph.
   - [x] WORKTREES section (shown when a linked worktree exists): folder name, branch or detached
@@ -339,8 +339,9 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   - [x] Lock / unlock a worktree with an optional reason (`git worktree lock --reason` / `unlock`)
   - [x] Prune worktree records whose folders are gone (`git worktree prune`), from the section
     header menu or a missing row
-  - [ ] Show worktree WIP nodes in the graph: a WIP row per worktree with uncommitted changes, at
-    its HEAD commit
+  - [x] Show worktree WIP nodes in the graph: a WIP row per worktree with uncommitted changes, at
+    its HEAD commit (dashed node, "// WIP · <folder>" with counts, a tooltip, click to open its
+    tab; counted with libgit2 on full loads; UI Customization > Show other worktrees' changes)
 - [x] **Git LFS**
   Initialize, track patterns (file, extension, folder), fetch/pull/push/prune, view
   `.gitattributes`, and LFS-aware auto-fetch.
@@ -989,6 +990,18 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   folder delete
 - A context-menu entry to show or hide the WORKTREES section; optionally group worktree tabs
   next to their main repository's tab
+- Refresh other worktrees' WIP counts on watcher and status-only reloads and on returning to the
+  tab (today only full loads count them)
+- A Refresh worktree changes item in the WORKTREES header menu that counts again without walking
+  the history
+- Watch other worktrees' folders so their WIP rows update live
+- A context menu on a worktree WIP row (open, open folder, copy path, lock, remove), reusing the
+  WORKTREES row menu
+- A WIP row for a worktree whose HEAD is outside the loaded history (hidden or soloed branch,
+  truncated history), e.g. pinned at the top
+- Select a worktree WIP row to preview its changed files in the details panel without opening
+  its tab
+- Cap or time-limit the status read of very large linked worktrees during loads
 
 ### Git LFS
 

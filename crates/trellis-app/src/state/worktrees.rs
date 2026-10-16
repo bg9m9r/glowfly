@@ -1,13 +1,14 @@
-//! The WORKTREES section's text and the Create worktree dialog's form and rules, shared by the
-//! views and `update` so a disabled item or a refused request shows the same words. Pure: paths
-//! are compared component by component, never resolved on disk.
+//! The WORKTREES section's text, the text of other worktrees' WIP rows in the graph, and the
+//! Create worktree dialog's form and rules, shared by the views and `update` so a disabled item
+//! or a refused request shows the same words. Pure: paths are compared component by component,
+//! never resolved on disk.
 
 use crate::worktree::NewWorktree;
 use git2::Oid;
 use std::path::Path;
 use trellis_core::branch_ops::check_branch_name;
 use trellis_core::paths::{is_within, same_spelling};
-use trellis_core::repo::{Snapshot, WorktreeInfo};
+use trellis_core::repo::{ChangeCounts, Snapshot, WorktreeInfo};
 use trellis_core::worktree_ops::{WorktreeBase, folder_slug, parse_folder};
 
 /// What the Create worktree dialog is editing.
@@ -86,22 +87,56 @@ pub fn tooltip(wt: &WorktreeInfo) -> String {
         Some(n) => format!("Linked worktree ({n})"),
     }];
     lines.push(trellis_core::native_path::shown(&wt.path));
-    match (&wt.branch, wt.head) {
-        (Some(b), _) => lines.push(format!("Branch: {b}")),
-        (None, Some(oid)) => lines.push(format!("Detached HEAD at {}", short(oid))),
-        (None, None) => {}
-    }
-    match wt.locked.as_deref() {
-        Some("") => lines.push("Locked".to_owned()),
-        Some(r) => lines.push(format!("Locked: {r}")),
-        None => {}
-    }
+    lines.extend(head_line(wt));
+    lines.extend(lock_line(wt));
     if wt.missing {
         lines.push("The folder is missing. git can prune this record.".to_owned());
     }
     if wt.current {
         lines.push("Open in this tab.".to_owned());
     }
+    lines.join("\n")
+}
+
+/// "Branch: <b>" or "Detached HEAD at <sha7>"; nothing when HEAD can't be read.
+fn head_line(wt: &WorktreeInfo) -> Option<String> {
+    match (&wt.branch, wt.head) {
+        (Some(b), _) => Some(format!("Branch: {b}")),
+        (None, Some(oid)) => Some(format!("Detached HEAD at {}", short(oid))),
+        (None, None) => None,
+    }
+}
+
+/// "Locked: <reason>", or "Locked" without a reason; nothing when it isn't locked.
+fn lock_line(wt: &WorktreeInfo) -> Option<String> {
+    match wt.locked.as_deref()? {
+        "" => Some("Locked".to_owned()),
+        r => Some(format!("Locked: {r}")),
+    }
+}
+
+/// Uncommitted changes in words, zeros left out: "2 modified, 1 added, 3 deleted".
+pub fn counts_text(c: ChangeCounts) -> String {
+    let parts: Vec<String> = [(c.modified, "modified"), (c.added, "added"), (c.deleted, "deleted")]
+        .into_iter()
+        .filter(|(n, _)| *n > 0)
+        .map(|(n, word)| format!("{n} {word}"))
+        .collect();
+    parts.join(", ")
+}
+
+/// The text in the box of another worktree's WIP row in the graph.
+pub fn wip_label(wt: &WorktreeInfo) -> String {
+    format!("// WIP · {}", wt.folder_name())
+}
+
+/// The hover text of another worktree's WIP row, one fact per line.
+pub fn wip_tooltip(wt: &WorktreeInfo) -> String {
+    let mut lines = vec![format!("Uncommitted changes in {}", wt.folder_name()), trellis_core::native_path::shown(&wt.path)];
+    lines.extend(head_line(wt));
+    lines.push(counts_text(wt.changes));
+    lines.extend(lock_line(wt));
+    lines.push("Click to open it in a tab.".to_owned());
     lines.join("\n")
 }
 

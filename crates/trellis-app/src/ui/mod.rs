@@ -174,6 +174,8 @@ mod snapshot_tests_whole;
 #[cfg(test)]
 mod snapshot_tests_worktree_manage;
 #[cfg(test)]
+mod snapshot_tests_worktree_wip;
+#[cfg(test)]
 mod snapshot_tests_worktrees;
 #[cfg(test)]
 mod snapshot_tests_wrap;

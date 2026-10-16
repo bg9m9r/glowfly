@@ -4,7 +4,7 @@ use super::ROW_H;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
-use crate::state::search::GraphRows;
+use crate::state::graph_rows::{DisplayRow, GraphRows};
 use crate::state::{Selection, ViewState};
 use eframe::egui::{self, Key};
 use git2::Oid;
@@ -32,7 +32,8 @@ pub(super) fn current_row(sel: &Selection, rows: &GraphRows) -> Option<usize> {
     }
 }
 
-/// Arrow Up/Down: select the shown row above or below and keep it in view.
+/// Arrow Up/Down: select the shown row above or below (skipping other worktrees' rows) and keep
+/// it in view.
 pub(super) fn keyboard_nav(ui: &egui::Ui, sel: &Selection, snap: &Snapshot, rows: &GraphRows, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let typing = ui.ctx().memory(|m| m.focused().is_some());
     if typing || rows.is_empty() {
@@ -50,12 +51,15 @@ pub(super) fn keyboard_nav(ui: &egui::Ui, sel: &Selection, snap: &Snapshot, rows
     if step == 0 {
         return;
     }
-    let current = current_row(sel, rows);
-    let next = current.map_or(0, |c| (c as i64 + step).clamp(0, rows.len() as i64 - 1) as usize);
-    msgs.push(match rows.commit_at(next).and_then(|i| snap.commits.get(i)) {
-        Some(c) => Msg::Repo(RepoMsg::SelectCommit(c.oid)),
-        None if rows.has_wip() && next == 0 => Msg::Repo(RepoMsg::SelectWip),
-        None => return,
+    // Other worktrees' WIP rows are skipped: they can't be selected.
+    let Some(next) = rows.step(current_row(sel, rows), step) else { return };
+    msgs.push(match rows.at(next) {
+        Some(DisplayRow::Commit(i)) => match snap.commits.get(i) {
+            Some(c) => Msg::Repo(RepoMsg::SelectCommit(c.oid)),
+            None => return,
+        },
+        Some(DisplayRow::Wip) => Msg::Repo(RepoMsg::SelectWip),
+        Some(DisplayRow::Worktree(_)) | None => return,
     });
     let (offset, height) = view.graph_scroll;
     let top = next as f32 * ROW_H;

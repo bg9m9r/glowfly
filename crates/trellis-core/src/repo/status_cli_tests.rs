@@ -100,7 +100,7 @@ fn an_untrusted_fsmonitor_hook_never_runs() {
 }
 
 /// Writes a hook script that creates `marker`, and returns its path with forward slashes.
-fn marker_script(path: &std::path::Path, marker: &std::path::Path) -> String {
+pub(super) fn marker_script(path: &std::path::Path, marker: &std::path::Path) -> String {
     let slashes = |p: &std::path::Path| p.display().to_string().replace('\\', "/");
     std::fs::write(path, format!("#!/bin/sh\ntouch \"{}\"\nexit 1\n", slashes(marker))).unwrap();
     #[cfg(unix)]

@@ -279,6 +279,8 @@ mod worktree_manage_tests;
 #[cfg(test)]
 mod worktree_tests;
 #[cfg(test)]
+mod worktree_wip_tests;
+#[cfg(test)]
 mod wrap_tests;
 
 use crate::effect::{Effect, UiEffect};

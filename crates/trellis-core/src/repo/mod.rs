@@ -77,7 +77,7 @@ pub use removal::{Deleted, Removal, Trasher};
 pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;
-pub use status::status_at;
+pub use status::{ChangeCounts, status_at};
 pub use submodule_add::check_submodule_path;
 pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
@@ -91,7 +91,7 @@ pub use workfile::{
 pub use workfile_mv::rename_file_staged;
 pub use workfile_rename::rename_file;
 pub use workfile_rm::{delete_staged_new_file, unstage_gone_new_file};
-pub use worktrees::{WorktreeInfo, worktrees_at};
+pub use worktrees::{WorktreeInfo, worktree_wip_heads, worktrees_at};
 
 #[derive(Clone)]
 pub struct CommitInfo {
@@ -329,11 +329,13 @@ pub struct LoadOptions {
     /// The user trusts this repository: git may read its status even when the scan finds
     /// commands. Default false.
     pub trusted: bool,
+    /// Count other worktrees' uncommitted changes and give each changed one a WIP row in the graph.
+    pub worktree_wips: bool,
 }
 
 impl LoadOptions {
     pub fn all(max_commits: usize) -> Self {
-        Self { max_commits, ..Self::default() }
+        Self { max_commits, worktree_wips: true, ..Self::default() }
     }
 }
 

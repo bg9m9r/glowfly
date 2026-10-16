@@ -131,6 +131,13 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32), msgs: &mut Vec<Ms
     row(ui, "Highlight associated rows when hovering over a branch", |ui| {
         ui.checkbox(&mut s.highlight_ref_rows, "");
     });
+    row(ui, "Show other worktrees' changes in the graph", |ui| {
+        ui.checkbox(&mut s.worktree_wips, "");
+        help(
+            ui,
+            "Adds a row above a worktree's checked-out commit while it has uncommitted changes, with counts. Click it to open that worktree. Counts are read when the repository loads.",
+        );
+    });
     row(ui, "Branch visibility in commit graph", |ui| {
         combo(ui, "visibility", &mut s.branch_visibility, &[(BV::All, "All"), (BV::Smart, "Smart")]);
         help(ui, "Smart shows the checked-out branch, its upstream, the default branch, and branches with open pull requests.");

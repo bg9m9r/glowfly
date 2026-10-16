@@ -170,9 +170,11 @@ fn set_status(snap: &mut Snapshot, status: Status, submodules: Option<Vec<Submod
     if let Some(list) = submodules {
         snap.submodules = list;
     }
-    // Clean <-> dirty adds or removes the WIP row above HEAD: lay the graph out again.
+    // Clean <-> dirty adds or removes the WIP row above HEAD: lay the graph out again, keeping
+    // the other worktrees' rows with the counts of the last full load.
     if was_dirty != snap.is_dirty() {
-        snap.graph = trellis_core::graph::layout(&snap.commits, snap.head_oid, snap.is_dirty());
+        let worktrees = trellis_core::repo::worktree_wip_heads(&snap.worktrees);
+        snap.graph = trellis_core::graph::layout(&snap.commits, snap.head_oid, snap.is_dirty(), &worktrees);
     }
 }
 

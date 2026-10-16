@@ -18,7 +18,7 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
 use git2::Oid;
 use std::path::{Path, PathBuf};
-use trellis_core::repo::WorktreeInfo;
+use trellis_core::repo::{ChangeCounts, WorktreeInfo};
 use trellis_core::settings::ThemeChoice;
 use trellis_core::worktree_ops::{FolderProblem, WorktreeBase};
 
@@ -43,6 +43,7 @@ fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>
         missing: false,
         prunable: false,
         folder: None,
+        changes: ChangeCounts::default(),
     }
 }
 

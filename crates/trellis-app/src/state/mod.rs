@@ -16,6 +16,7 @@ mod forge;
 pub mod forks;
 pub mod git_env;
 pub mod gitflow;
+pub mod graph_rows;
 pub mod history;
 pub mod init;
 pub mod keys_page;
@@ -395,11 +396,11 @@ impl AppState {
 
     /// How to load the repository at `workdir`, with the hidden and soloed refs saved for it.
     pub fn load_options(&self, workdir: &Path) -> LoadOptions {
-        let smart = self.settings.branch_visibility == BranchVisibility::Smart;
+        let (smart, trusted) = (self.settings.branch_visibility == BranchVisibility::Smart, self.trusts(workdir));
         // Smart visibility also keeps branches that have open pull requests.
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
-        let f = self.settings.graph_filter_for(&self.repo_key(workdir));
-        LoadOptions { max_commits: self.commits_wanted(), smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted: self.trusts(workdir) }
+        let (f, worktree_wips) = (self.settings.graph_filter_for(&self.repo_key(workdir)), self.settings.worktree_wips);
+        LoadOptions { max_commits: self.commits_wanted(), smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted, worktree_wips }
     }
 
     pub fn log(&mut self, ok: bool, text: impl Into<String>) {

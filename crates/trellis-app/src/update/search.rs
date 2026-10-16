@@ -5,7 +5,8 @@
 
 use crate::effect::Effect;
 use crate::msg::SearchMsg;
-use crate::state::search::{GraphRows, PathSearch};
+use crate::state::graph_rows::GraphRows;
+use crate::state::search::PathSearch;
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use trellis_core::commit_query::{self, CommitQuery};
