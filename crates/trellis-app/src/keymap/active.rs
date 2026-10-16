@@ -122,6 +122,12 @@ impl Keymap {
         if chords.is_empty() { "No key".to_owned() } else { chords.iter().map(Chord::text).collect::<Vec<_>>().join(" or ") }
     }
 
+    /// The default keys of `id` as text, joined with " or "; "No key" when it has none.
+    pub fn defaults_text(&self, id: BindingId) -> String {
+        let defaults = binding(id).defaults;
+        if defaults.is_empty() { "No key".to_owned() } else { defaults.iter().map(Chord::text).collect::<Vec<_>>().join(" or ") }
+    }
+
     pub fn is_default(&self, id: BindingId) -> bool {
         self.chords(id) == binding(id).defaults
     }

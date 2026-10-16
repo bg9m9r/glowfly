@@ -74,7 +74,8 @@ pub fn refusal(id: BindingId, c: Chord) -> Option<Refusal> {
     if primary && !c.mods.shift && !c.mods.alt && matches!(c.key, K::Letter('C' | 'X' | 'V' | 'A')) {
         return Some(Refusal::ClipboardKey);
     }
-    let typed = !matches!(c.key, K::F(_) | K::Insert | K::Delete);
+    // Delete edits text in every field and the terminal; F-keys and Insert don't.
+    let typed = !matches!(c.key, K::F(_) | K::Insert);
     if plain && typed && binding(id).when == When::Anywhere {
         return Some(Refusal::NeedsModifier);
     }

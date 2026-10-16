@@ -2,12 +2,24 @@
 //! refreshing when it reports changes made outside Trellis.
 
 use crate::effect::{Effect, WatchTarget};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::WatchMsg;
 use crate::state::AppState;
 use crate::state::watch::WATCH_SETTLE;
 use std::time::Instant;
 
-const FAILED: &str = "Trellis can't watch this repository for changes, so changes made outside Trellis show up when its window regains focus or you press F5.";
+/// How the user refreshes by hand: "press F5" with Refresh's current key, else "choose Refresh".
+pub(super) fn refresh_by_hand(keys: &Keymap) -> String {
+    keys.hint(BindingId::Refresh).map_or_else(|| "choose Refresh".to_owned(), |k| format!("press {k}"))
+}
+
+/// What Trellis says when it can't watch a repository.
+pub(super) fn failed_text(keys: &Keymap) -> String {
+    format!(
+        "Trellis can't watch this repository for changes, so changes made outside Trellis show up when its window regains focus or you {}.",
+        refresh_by_hand(keys)
+    )
+}
 
 pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -34,7 +46,7 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
         }
         WatchMsg::RemoteVolume { workdir, kind } => {
             if st.watch.remote.insert(workdir.clone(), kind).is_none() {
-                let text = remote_text(&workdir, kind);
+                let text = remote_text(&workdir, kind, &st.keymap);
                 st.toast(true, text.clone(), now);
                 st.log_quiet(true, text);
             }
@@ -43,7 +55,7 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             tracing::warn!("file watching failed for {}: {error}", workdir.display());
             // Reported once per repository; it is retried (silently) when its tab is selected again.
             if st.watch.failed.insert(workdir.clone()) {
-                st.toast(false, FAILED, now);
+                st.toast(false, failed_text(&st.keymap), now);
                 // Quiet: this shouldn't pop the activity log open.
                 st.log_quiet(false, format!("File watching stopped for {}: {error}", trellis_core::native_path::shown(&workdir)));
             }
@@ -68,11 +80,12 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// What Trellis says about a repository on a network or virtual file system.
-pub(super) fn remote_text(workdir: &std::path::Path, kind: &str) -> String {
+pub(super) fn remote_text(workdir: &std::path::Path, kind: &str, keys: &Keymap) -> String {
     let secs = crate::state::watch::REMOTE_POLL.as_secs();
     format!(
-        "{} is on {kind}, which may not report changes made from another computer or system. Trellis re-reads it every {secs} seconds while its window is focused, when the window regains focus and when you press F5.",
-        trellis_core::native_path::shown(workdir)
+        "{} is on {kind}, which may not report changes made from another computer or system. Trellis re-reads it every {secs} seconds while its window is focused, when the window regains focus and when you {}.",
+        trellis_core::native_path::shown(workdir),
+        refresh_by_hand(keys)
     )
 }
 

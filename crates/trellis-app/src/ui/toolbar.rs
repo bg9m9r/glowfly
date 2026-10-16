@@ -3,7 +3,7 @@
 use super::common::{caret_after, menu_item, short};
 use super::theme::color;
 use super::widgets::{self, Icon};
-use crate::keymap::BindingId;
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::BranchMsg;
 use crate::msg::CloneMsg;
 use crate::msg::ForgeMsg;
@@ -131,7 +131,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.add_space(6.0);
                 ui.separator();
                 ui.add_space(6.0);
-                terminal_button(ui, st.terminal.open, labels, msgs);
+                terminal_button(ui, st.terminal.open, labels, &terminal_tip(&st.keymap, st.terminal.open), msgs);
                 if tool(ui, Icon::Folder, "Folder", true).clicked() {
                     msgs.push(Msg::OpenFolder(snap.workdir.clone()));
                 }
@@ -151,7 +151,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     if tool(ui, Icon::Activity, "Activity", true).clicked() {
                         st.view.show_log = !st.view.show_log;
                     }
-                    if tool(ui, Icon::Refresh, "Refresh", true).on_hover_text("F5").clicked() {
+                    if tool(ui, Icon::Refresh, "Refresh", true).on_hover_text(st.keymap.tip("Refresh", BindingId::Refresh)).clicked() {
                         msgs.push(Msg::Repo(RepoMsg::Refresh));
                     }
                     ui.add_space(6.0);
@@ -161,11 +161,15 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         });
 }
 
+/// The terminal button's tooltip, with the current key of Show or hide the terminal.
+pub(super) fn terminal_tip(keys: &Keymap, open: bool) -> String {
+    let verb = if open { "Hide" } else { "Show" };
+    format!("{verb} the terminal panel{}\nRight-click to open an external terminal", keys.paren(BindingId::ToggleTerminal))
+}
+
 /// Shows or hides the terminal panel; right-click opens an external terminal instead. A bar
 /// under the button marks the panel as open.
-fn terminal_button(ui: &mut egui::Ui, open: bool, labels: bool, msgs: &mut Vec<Msg>) {
-    let verb = if open { "Hide" } else { "Show" };
-    let tip = format!("{verb} the terminal panel (Ctrl+`)\nRight-click to open an external terminal");
+fn terminal_button(ui: &mut egui::Ui, open: bool, labels: bool, tip: &str, msgs: &mut Vec<Msg>) {
     let resp = widgets::tool_button(ui, Icon::Terminal, "Terminal", true, labels).on_hover_text(tip);
     if open {
         let r = resp.rect;

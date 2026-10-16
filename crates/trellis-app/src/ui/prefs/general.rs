@@ -1,6 +1,7 @@
 //! Preferences > General.
 
 use super::{help, row, text_field, warn};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
@@ -11,7 +12,22 @@ use eframe::egui::{self, Color32, RichText, Ui};
 use trellis_core::git_version::GitInfo;
 use trellis_core::settings::Settings;
 
-pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValues>, program: Option<&GitInfo>, msgs: &mut Vec<Msg>) {
+/// The help under Watch for File Changes, naming Refresh's current key.
+fn watch_files_help(keys: &Keymap) -> String {
+    match keys.hint(BindingId::Refresh) {
+        Some(k) => format!("When off, Trellis refreshes when its window regains focus or you press {k}."),
+        None => "When off, Trellis refreshes when its window regains focus or you choose Refresh.".to_owned(),
+    }
+}
+
+pub fn general_page(
+    ui: &mut Ui,
+    s: &mut Settings,
+    git: Option<&mut GitConfigValues>,
+    program: Option<&GitInfo>,
+    keys: &Keymap,
+    msgs: &mut Vec<Msg>,
+) {
     row(ui, "Git", |ui| {
         ui.label(RichText::new(git_program_text(program)).color(color::text()));
         help(ui, "The git program Trellis runs for commits, fetches, pushes and hooks: the first one on your PATH.");
@@ -42,7 +58,7 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     });
     row(ui, "Watch for File Changes", |ui| {
         ui.checkbox(&mut s.watch_files, "Refresh the working tree as soon as files change outside Trellis");
-        help(ui, "When off, Trellis refreshes when its window regains focus or you press F5.");
+        help(ui, &watch_files_help(keys));
     });
     row(ui, "Conflict Prediction", |ui| {
         ui.checkbox(&mut s.conflict_check, "Check the current branch for conflicts with its upstream or default branch");
@@ -133,5 +149,20 @@ pub(crate) fn git_program_text(info: Option<&GitInfo>) -> String {
         (Some(v), None) => format!("git {}", trellis_core::git_version::show(v)),
         (None, Some(at)) => format!("{at} doesn't run"),
         (None, None) => "Not found on your PATH".to_owned(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::keymap::{Chord, KeyName};
+
+    #[test]
+    fn watch_help_names_refreshs_current_key() {
+        let mut keys = Keymap::default();
+        keys.set(BindingId::Refresh, vec![Chord::plain(KeyName::F(9))]);
+        assert!(watch_files_help(&keys).ends_with("or you press F9."));
+        keys.set(BindingId::Refresh, Vec::new());
+        assert!(watch_files_help(&keys).ends_with("or you choose Refresh."));
     }
 }

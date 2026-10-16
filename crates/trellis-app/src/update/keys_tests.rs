@@ -223,3 +223,14 @@ fn tooltips_follow_rebinding() {
     st.keymap.set(I::Undo, Vec::new());
     assert!(!st.undo.undo_tooltip(&st.keymap).contains('('), "no empty parentheses");
 }
+
+#[test]
+fn watch_notices_name_refreshs_current_key() {
+    let mut keys = Keymap::default();
+    keys.set(I::Refresh, vec![Chord::plain(K::F(9))]);
+    assert!(super::watch::failed_text(&keys).ends_with("or you press F9."));
+    let remote = super::watch::remote_text(std::path::Path::new("share"), "SMB", &keys);
+    assert!(remote.ends_with("when you press F9."), "{remote}");
+    keys.set(I::Refresh, Vec::new());
+    assert!(super::watch::failed_text(&keys).ends_with("or you choose Refresh."));
+}

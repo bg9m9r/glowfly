@@ -253,3 +253,11 @@ fn filter_follows_rebinding() {
     assert_eq!(ids(&keys.filter("ctrl+r")), [I::Refresh]);
     assert!(ids(&keys.filter("f5")).is_empty());
 }
+
+#[test]
+fn defaults_text_names_the_default_keys() {
+    let mut k = Keymap::default();
+    k.set(I::NextChange, vec![Chord::plain(KeyName::F(8))]);
+    assert_eq!(k.defaults_text(I::NextChange), "F7 or Alt+Down", "the defaults, not the current keys");
+    assert_eq!(k.keys_text(I::NextChange), "F8");
+}

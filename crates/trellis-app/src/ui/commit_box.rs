@@ -6,6 +6,7 @@ use super::UiCache;
 use super::common::issue_chip;
 use super::spell_edit::spell_text_edit;
 use super::theme::color;
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::CommitMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -15,11 +16,14 @@ use eframe::egui::{self, Align, Color32, Key, Layout, Modifiers, RichText, vec2}
 /// Height the commit box needs below the file lists (the lists share what is left).
 pub(super) const RESERVED_HEIGHT: f32 = 340.0;
 
-/// The commit keys are fixed, so their defaults are the keys in effect.
-fn shortcuts_tip() -> String {
-    use crate::keymap::{BindingId, binding};
-    let key = |id| binding(id).defaults[0].text();
-    format!("{} commits from the message fields; {} stages all changes first.", key(BindingId::Commit), key(BindingId::StageAllAndCommit))
+/// The commit button's tooltip: the keys that commit from the message fields.
+pub(super) fn shortcuts_tip(keys: &Keymap) -> String {
+    match (keys.hint(BindingId::Commit), keys.hint(BindingId::StageAllAndCommit)) {
+        (Some(c), Some(a)) => format!("{c} commits from the message fields; {a} stages all changes first."),
+        (Some(c), None) => format!("{c} commits from the message fields."),
+        (None, Some(a)) => format!("{a} stages all changes and commits from the message fields."),
+        (None, None) => "Commit the staged changes.".to_owned(),
+    }
 }
 const PUSH_HINT: &str =
     "After a successful commit, push the branch. A branch with no upstream is pushed to the default remote and tracks it.";
@@ -84,7 +88,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     let button = egui::Button::new(RichText::new(label).strong().color(if enabled { Color32::WHITE } else { color::faint() }))
         .fill(if enabled { color::primary() } else { color::toolbar() })
         .min_size(vec2(ui.available_width(), 34.0));
-    let r = ui.add_enabled(enabled, button).on_hover_text(shortcuts_tip()).on_disabled_hover_text(blocked.unwrap_or_default());
+    let r = ui.add_enabled(enabled, button).on_hover_text(shortcuts_tip(&st.keymap)).on_disabled_hover_text(blocked.unwrap_or_default());
     if r.clicked() {
         msgs.push(Msg::Commit(CommitMsg::Commit));
     }

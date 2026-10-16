@@ -135,7 +135,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     return;
                 }
                 match page {
-                    PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), git_program.as_ref(), msgs),
+                    PrefPage::General => general::general_page(ui, settings, prefs.git.as_mut(), git_program.as_ref(), keymap, msgs),
                     PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
                     PrefPage::Ui => appearance::ui_page(ui, settings, now, msgs),

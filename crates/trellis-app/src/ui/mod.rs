@@ -62,6 +62,8 @@ mod worktree_manage_dialog;
 mod worktrees;
 
 #[cfg(test)]
+mod hint_tests;
+#[cfg(test)]
 mod snapshot_check;
 #[cfg(test)]
 mod snapshot_tests;

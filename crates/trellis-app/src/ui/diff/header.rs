@@ -120,10 +120,10 @@ pub(super) fn header_bar(
                 ui.add_space(10.0);
                 let [prev, next] = nav;
                 // Arrows are painted: the bundled fonts have no arrow glyphs.
-                if step_button(ui, Icon::NextChange, next, NEXT_TIPS).clicked() {
+                if step_button(ui, Icon::NextChange, next, &step_tip(keys, true, next)).clicked() {
                     msgs.push(Msg::Diff(DiffMsg::JumpToChange(1)));
                 }
-                if step_button(ui, Icon::PrevChange, prev, PREV_TIPS).clicked() {
+                if step_button(ui, Icon::PrevChange, prev, &step_tip(keys, false, prev)).clicked() {
                     msgs.push(Msg::Diff(DiffMsg::JumpToChange(-1)));
                 }
             }
@@ -236,18 +236,22 @@ fn tail(ui: &mut Ui, folds: Option<FoldCounts>, toggles: Toggles, gap: bool, msg
     }
 }
 
-/// Tooltips for a step that stays in the file, opens another file, or goes nowhere.
-const NEXT_TIPS: [&str; 3] = ["Next change (F7)", "Next change, in the next file (F7)", "No more changes after this file (F7)"];
-const PREV_TIPS: [&str; 3] =
-    ["Previous change (Shift+F7)", "Previous change, in the previous file (Shift+F7)", "No changes before this file (Shift+F7)"];
+/// The tooltip of the next (`forward`) or previous change arrow for a step that stays in the
+/// file, opens another file, or goes nowhere, with the step's current key.
+pub(super) fn step_tip(keys: &Keymap, forward: bool, kind: StepKind) -> String {
+    let (id, text) = match (forward, kind) {
+        (true, StepKind::Change) => (BindingId::NextChange, "Next change"),
+        (true, StepKind::File) => (BindingId::NextChange, "Next change, in the next file"),
+        (true, StepKind::End) => (BindingId::NextChange, "No more changes after this file"),
+        (false, StepKind::Change) => (BindingId::PrevChange, "Previous change"),
+        (false, StepKind::File) => (BindingId::PrevChange, "Previous change, in the previous file"),
+        (false, StepKind::End) => (BindingId::PrevChange, "No changes before this file"),
+    };
+    keys.tip(text, id)
+}
 
 /// A next or previous change arrow, dimmed and inert when the step goes nowhere.
-fn step_button(ui: &mut Ui, icon: Icon, kind: StepKind, tips: [&str; 3]) -> Response {
-    let tip = match kind {
-        StepKind::Change => tips[0],
-        StepKind::File => tips[1],
-        StepKind::End => tips[2],
-    };
+fn step_button(ui: &mut Ui, icon: Icon, kind: StepKind, tip: &str) -> Response {
     ui.add_enabled_ui(kind != StepKind::End, |ui| icon_button(ui, icon, tip)).inner
 }
 
@@ -349,5 +353,15 @@ mod tests {
             assert!(open > close + 10.0 && (ws - open).abs() < 4.0, "{width}: {ws}, {open} vs {close}");
             assert!(toggles_left >= kind_right, "{width}: the path is not overrun: {toggles_left} vs {kind_right}");
         }
+    }
+
+    #[test]
+    fn step_tips_follow_the_keymap() {
+        let mut keys = Keymap::default();
+        assert_eq!(step_tip(&keys, true, StepKind::Change), "Next change (F7)");
+        keys.set(BindingId::NextChange, vec![crate::keymap::Chord::plain(crate::keymap::KeyName::F(8))]);
+        assert_eq!(step_tip(&keys, true, StepKind::File), "Next change, in the next file (F8)");
+        keys.set(BindingId::PrevChange, Vec::new());
+        assert_eq!(step_tip(&keys, false, StepKind::End), "No changes before this file", "no key, no parentheses");
     }
 }

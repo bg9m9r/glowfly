@@ -190,6 +190,15 @@ struct OpenFile<'a> {
     conflict: Option<&'a str>,
 }
 
+/// The Discard all confirmation, naming Undo's current key.
+pub(super) fn discard_all_text(keys: &Keymap) -> String {
+    format!(
+        "All uncommitted changes will be moved into a stash named \"{DISCARD_STASH_MESSAGE}\". Undo{} or applying that stash brings \
+         them back; dropping the stash deletes them permanently.",
+        keys.paren(BindingId::Undo)
+    )
+}
+
 /// The Unstaged or Staged Files list of the working tree.
 #[allow(clippy::too_many_arguments)]
 fn file_list(
@@ -229,10 +238,7 @@ fn file_list(
                             // Discarding goes through a stash so it can be recovered.
                             msgs.push(Msg::confirm(
                                 "Discard all changes",
-                                format!(
-                                    "All uncommitted changes will be moved into a stash named \"{DISCARD_STASH_MESSAGE}\". Undo (Ctrl+Z) \
-                                 or applying that stash brings them back; dropping the stash deletes them permanently."
-                                ),
+                                discard_all_text(keys),
                                 "Discard all",
                                 Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]),
                             ));

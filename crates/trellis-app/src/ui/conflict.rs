@@ -5,6 +5,7 @@
 use super::diff::{ROW_H, mono};
 use super::theme::color;
 use super::widgets::{Icon, icon_button};
+use crate::keymap::{BindingId, Keymap};
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::msg::StageMsg;
@@ -22,7 +23,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
     let Some(view) = &st.conflict else { return };
     ui.add_space(6.0);
-    header_bar(ui, view, msgs);
+    header_bar(ui, view, &st.keymap, msgs);
     ui.separator();
     let Some(file) = &view.file else {
         ui.label(RichText::new("Loading…").color(color::weak()));
@@ -55,7 +56,7 @@ fn operation_text(l: &SideLabels) -> String {
 
 /// Path and operation on the left; on the right (from the edge inwards) Close, Mark resolved,
 /// Save, Reset and the conflict counter with previous/next.
-fn header_bar(ui: &mut Ui, view: &ConflictView, msgs: &mut Vec<Msg>) {
+fn header_bar(ui: &mut Ui, view: &ConflictView, keys: &Keymap, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         ui.label(RichText::new(&view.path).strong().size(15.0).color(color::text()));
@@ -98,18 +99,25 @@ fn header_bar(ui: &mut Ui, view: &ConflictView, msgs: &mut Vec<Msg>) {
                 return;
             }
             // Right to left: next first. Arrows are painted (the bundled fonts lack them).
-            let next = ui.add_enabled_ui(view.current + 1 < n, |ui| icon_button(ui, Icon::NextChange, "Next conflict (F7)")).inner;
+            let tip = step_tip(keys, true);
+            let next = ui.add_enabled_ui(view.current + 1 < n, |ui| icon_button(ui, Icon::NextChange, &tip)).inner;
             if next.clicked() {
                 msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(1)));
             }
             let counter = if n == 1 { "1 conflict".to_owned() } else { format!("conflict {} of {n}", view.current + 1) };
             ui.label(RichText::new(counter).color(color::text()));
-            let prev = ui.add_enabled_ui(view.current > 0, |ui| icon_button(ui, Icon::PrevChange, "Previous conflict (Shift+F7)")).inner;
+            let tip = step_tip(keys, false);
+            let prev = ui.add_enabled_ui(view.current > 0, |ui| icon_button(ui, Icon::PrevChange, &tip)).inner;
             if prev.clicked() {
                 msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(-1)));
             }
         });
     });
+}
+
+/// The tooltip of the next (`forward`) or previous conflict arrow, with the step's current key.
+pub(super) fn step_tip(keys: &Keymap, forward: bool) -> String {
+    if forward { keys.tip("Next conflict", BindingId::NextChange) } else { keys.tip("Previous conflict", BindingId::PrevChange) }
 }
 
 /// Trims the terminator and shows tabs as 4 spaces (the file is written unchanged).

@@ -69,7 +69,13 @@ fn check_same_and_refused() {
     assert_eq!(check(&k, I::Palette, Chord::shift(K::Comma), true), Check::Refused(Refusal::NeedsModifier));
     assert_eq!(check(&k, I::Undo, Chord::plain(K::Letter('Z')), true), Check::Ok, "NotTyping takes plain keys");
     assert_eq!(check(&k, I::Refresh, Chord::plain(K::F(9)), true), Check::Ok, "F-keys need no modifier");
-    assert_eq!(check(&k, I::Refresh, Chord::plain(K::Delete), true), Check::Ok);
+    assert_eq!(check(&k, I::Refresh, Chord::plain(K::Insert), true), Check::Ok);
+    // Delete edits text, so an action that works while typing can't take it plain.
+    for c in [Chord::plain(K::Delete), Chord::shift(K::Delete)] {
+        assert_eq!(check(&k, I::CloseTab, c, true), Check::Refused(Refusal::NeedsModifier), "{c:?}");
+    }
+    assert_eq!(check(&k, I::CloseTab, Chord::cmd(K::Delete), true), Check::Ok);
+    assert_eq!(check(&k, I::Undo, Chord::plain(K::Delete), true), Check::Ok, "NotTyping takes plain Delete");
 }
 
 #[test]
