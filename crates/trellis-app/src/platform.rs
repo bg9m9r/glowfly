@@ -146,7 +146,7 @@ mod tests {
     fn names_that_are_not_utf8_survive_the_files() {
         use std::os::unix::ffi::OsStrExt;
         let p = PathBuf::from(std::ffi::OsStr::from_bytes(b"/w/caf\xe9"));
-        assert_eq!(parse_tabs(&format_tabs(std::slice::from_ref(&p), 0)).0, [p.clone()]);
+        assert_eq!(parse_tabs(&format_tabs(std::slice::from_ref(&p), 0)).0, std::slice::from_ref(&p));
         assert_eq!(parse_recent(&format_recent(std::slice::from_ref(&p))), [p]);
     }
 }
