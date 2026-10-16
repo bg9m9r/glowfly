@@ -83,6 +83,7 @@ impl Effect {
             | Effect::Init(_)
             | Effect::Notify(_)
             | Effect::Logs(_)
+            | Effect::Dashboard(_)
             | Effect::Ui(_) => None,
         }
     }

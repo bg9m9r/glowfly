@@ -16,6 +16,8 @@ mod commit_box;
 pub(crate) mod common;
 mod conflict;
 mod conflict_check;
+mod dashboard;
+mod dashboard_rows;
 mod deep_link_dialog;
 mod details;
 mod details_multi;
@@ -96,6 +98,7 @@ mod snapshot_tests_commit;
 #[cfg(test)]
 mod snapshot_tests_conflict_check;
 #[cfg(test)]
+mod snapshot_tests_dashboard;
 mod snapshot_tests_deep_link;
 #[cfg(test)]
 mod snapshot_tests_diff;
@@ -352,7 +355,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         }
         git_banner::show(ctx, st, msgs);
         activity_log::show(ctx, st, msgs);
-        if st.snap.is_some() {
+        if st.snap.is_some() && !st.dashboard.open {
             if st.settings.show_left_panel {
                 sidebar::show(ctx, st, msgs);
             }

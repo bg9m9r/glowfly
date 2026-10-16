@@ -164,6 +164,8 @@ pub enum PaletteCommand {
     Layout(crate::msg::LayoutMsg),
     /// The welcome and the tour (update/onboarding.rs).
     Onboarding(crate::onboarding::OnboardingMsg),
+    /// Open the cross-repository dashboard.
+    Dashboard,
 }
 
 impl PaletteCommand {
@@ -321,7 +323,8 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     out.push(entry(C::IgnoreWhitespace(!ignoring), label, "whitespace spaces indentation trailing hide diff"));
 }
 
-/// Commands that work with or without a repository: tabs, Preferences and appearance.
+/// Commands that work with or without a repository: tabs, the dashboard, Preferences and
+/// appearance.
 fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
     use PaletteCommand as C;
     out.push(entry(C::OpenRepo, "Open repository…", "folder add"));
@@ -333,6 +336,7 @@ fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
     if st.snap.is_some() || st.tabs.len() > 1 {
         out.push(entry(C::CloseTab, "Close tab", "close repository"));
     }
+    out.push(entry(C::Dashboard, "Open dashboard", "pull requests issues reviews assigned across repositories overview inbox"));
     out.push(entry(C::OpenPrefs, "Open Preferences", "settings options configure"));
     super::palette_profiles::profile_entries(st, out);
     out.push(entry(C::KeyboardShortcuts, "Keyboard shortcuts", "keys keyboard bindings hotkeys help reference list"));

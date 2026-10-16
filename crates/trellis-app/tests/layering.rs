@@ -109,6 +109,7 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
         ],
     ),
     ("gitcli", &["run", "run_with_input", "version", "observe_runs"]),
+    ("dashboard", &["read_repo", "fetch_target", "run_bounded"]),
     ("git_program", &["set", "probe", "discover", "precheck"]),
     ("logs", &["read_tail"]),
     ("persist", &["append", "open_append"]),

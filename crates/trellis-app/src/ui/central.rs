@@ -1,10 +1,10 @@
-//! The central area: which view fills it (welcome, conflict, blame, file history, the pull
+//! The central area: which view fills it (the dashboard, welcome, conflict, blame, file history, the pull
 //! request panel, diff, the rebase and Git Flow panels, or the graph), and the Esc chain that
 //! closes them.
 
 use super::UiCache;
 use super::theme::color;
-use super::{blame, common, conflict, diff, gitflow_panel, graph, history, pull_request, rebase};
+use super::{blame, common, conflict, dashboard, diff, gitflow_panel, graph, history, pull_request, rebase};
 use crate::msg::BlameMsg;
 use crate::msg::ConflictMsg;
 use crate::msg::DiffMsg;
@@ -18,7 +18,7 @@ use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use eframe::egui::{self, Key};
 
-/// Esc closes the innermost thing open: Preferences, the tour, the conflict view, the blame view, the
+/// Esc closes the innermost thing open: Preferences, the tour, the dashboard, the conflict view, the blame view, the
 /// file history, the diff (a line selection first), the pull request panel, the interactive
 /// rebase panel (its message editor first), the Git Flow panel, then a multi-selection, and
 /// finally the search bar. Dialogs (a credential prompt and the welcome included) and the command
@@ -39,6 +39,8 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
     } else if st.onboarding.tour.is_some() {
         msgs.push(Msg::Onboarding(crate::onboarding::OnboardingMsg::CloseTour));
+    } else if st.dashboard.open {
+        msgs.push(Msg::Dashboard(crate::msg::DashboardMsg::Close));
     } else if st.conflict.is_some() {
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.blame.is_some() {
@@ -62,14 +64,16 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     }
 }
 
-/// The central panel: the welcome screen without a repository, else the innermost view open
+/// The central panel: the dashboard while open, else the welcome screen without a repository, else the innermost view open
 /// (conflict, blame, file history, pull request panel, diff, rebase panel, Git Flow panel), else
 /// the graph. Returns where the panel was drawn (the tour outlines it).
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> egui::Rect {
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()))
         .show(ctx, |ui| {
-            if st.snap.is_none() {
+            if st.dashboard.open {
+                dashboard::show(ui, st, msgs);
+            } else if st.snap.is_none() {
                 common::welcome(ui, st, msgs);
             } else if st.conflict.is_some() {
                 conflict::show(ui, st, msgs);

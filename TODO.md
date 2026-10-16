@@ -524,7 +524,7 @@ Done except the two items that wait on other features (repo groups, tabs and wor
   comments; "create issue then branch".
 - [x] **Trello**
   Trello cards as an issue tracker.
-- [ ] **Cross-repo dashboard**
+- [x] **Cross-repo dashboard**
   PRs and issues across all connected repos (local, with no cloud account).
 - [x] **Limits found while building integrations**
   - [x] Paginate PR and issue lists. Trellis stops at 100 (50 on Bitbucket Cloud); `morluto/rea`
@@ -1526,3 +1526,19 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Linux fallback that edits mimeapps.list when xdg-mime isn't installed
 - Show machine-wide or packaged registrations in the Preferences status on Windows
 - An https redirect page so links can be shared where custom schemes aren't clickable
+
+### Cross-repo dashboard
+
+- Keep the last results on disk so they show at startup before the first refresh
+- Reuse the pull request lists open tabs already loaded instead of asking those repositories again
+- Read checks and votes past the first pull requests on services read one pull request at a time
+- Refresh in the background while the dashboard stays open, and notify about new review requests
+- A keyboard shortcut for opening the dashboard
+- Remember the Mine / Review requested / Assigned choice across sessions
+- Count review requests made to a team the user belongs to
+- Show pull requests assigned to the user under Assigned
+- Add repositories found by scanning a folder, beyond tabs, favorites and recent
+- Treat service repository names that differ only in case as one repository when grouping clones
+- Open issue rows in the in-app issue panel once issues can be viewed in Trellis
+- Apply saved PR and issue filters (labels, milestones) across repositories
+- Check out a pull request's branch from the dashboard

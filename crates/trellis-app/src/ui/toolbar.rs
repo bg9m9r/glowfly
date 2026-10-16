@@ -210,6 +210,8 @@ fn repo_menu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     menu_item(msgs, ui, "Open…", Msg::Repo(RepoMsg::PickRepo));
     menu_item(msgs, ui, "Clone…", Msg::Clone(CloneMsg::Dialog));
     menu_item(msgs, ui, "Init…", Msg::Repo(RepoMsg::InitRepo));
+    ui.separator();
+    menu_item(msgs, ui, "Dashboard", Msg::Dashboard(crate::msg::DashboardMsg::Open));
     if let Some(snap) = &st.snap {
         let fav = crate::state::repo_lists::is_favorite(st, &snap.workdir);
         let label = if fav { "Remove this repository from favorites" } else { "Add this repository to favorites" };

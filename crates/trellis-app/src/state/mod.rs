@@ -11,6 +11,9 @@ pub mod clone_service;
 pub mod commit;
 pub mod conflict;
 pub mod conflict_check;
+pub mod dashboard;
+pub mod dashboard_plan;
+pub mod dashboard_rows;
 pub mod deep_link;
 pub mod diff_nav;
 pub mod files;
@@ -79,7 +82,7 @@ pub mod worktree_manage;
 pub mod worktrees;
 
 pub use commit::CommitDraft;
-pub use forge::{ForgeState, ProjectKeys, Status};
+pub use forge::{ForgeState, ProjectKeys, Status, tracker_target};
 pub use logs::{LOG_LIMIT, LogEntry};
 pub use prefs::{PrefPage, PrefsState, host_text};
 pub use tabs::Tab;
@@ -342,6 +345,8 @@ pub struct AppState {
     /// The first-run welcome and the tour (global, not per tab; nothing saved but the welcome
     /// flag).
     pub onboarding: onboarding::Onboarding,
+    /// The cross-repository dashboard: global, not parked with a tab.
+    pub dashboard: dashboard::Dashboard,
     pub view: ViewState,
 }
 
@@ -416,6 +421,7 @@ impl AppState {
             profile_switch_edits: Vec::new(),
             trust: Default::default(),
             onboarding: Default::default(),
+            dashboard: Default::default(),
             view: ViewState::default(),
         };
         for p in key_problems {

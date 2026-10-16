@@ -111,6 +111,7 @@ impl PaletteCommand {
             C::ReopenClosedTab => "reopen-tab",
             C::CloseTab => "close-tab",
             C::OpenPrefs => "prefs",
+            C::Dashboard => "dashboard",
             C::KeyboardShortcuts => "shortcuts",
             C::ToolbarLabels(_) => "toolbar-labels",
             C::Theme(ThemeChoice::Dark) => "theme-dark",

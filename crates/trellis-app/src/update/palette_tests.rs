@@ -81,6 +81,7 @@ fn entries_without_repo() {
         [
             "Open repository…",
             "New tab",
+            "Open dashboard",
             "Open Preferences",
             "Keyboard shortcuts",
             "Show the welcome",
@@ -145,6 +146,7 @@ fn entries_with_repo() {
     let not_recent = [
         "Open repository…",
         "Open Preferences",
+        "Open dashboard",
         "Open in terminal",
         "Open repository in external editor",
         "Open logs folder",

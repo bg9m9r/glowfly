@@ -37,6 +37,7 @@ mod blame;
 mod clone;
 mod config;
 mod conflict_check;
+mod dashboard;
 mod deep_link;
 mod expect;
 pub(crate) mod files;
@@ -373,6 +374,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Notify(note) => notify::run(note),
         Effect::PullRequest(e) => Some(pull_request::run(e)),
         Effect::DeepLink(e) => Some(deep_link::run(e)),
+        Effect::Dashboard(e) => Some(dashboard::run(e)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

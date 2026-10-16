@@ -142,6 +142,8 @@ pub(super) fn skipped(effect: &Effect) -> bool {
                     | crate::deep_link::DeepLinkEffect::Register
                     | crate::deep_link::DeepLinkEffect::Unregister
             )
+            // Asks hosting services.
+            | Effect::Dashboard(crate::effect::DashboardEffect::Fetch(_))
     )
 }
 

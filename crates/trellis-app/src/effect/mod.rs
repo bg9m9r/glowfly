@@ -14,6 +14,7 @@ use trellis_core::undo::{Action, UndoKind};
 
 mod blame;
 mod clone;
+mod dashboard;
 mod forge;
 mod forge_filters;
 mod init;
@@ -25,6 +26,7 @@ mod submodule;
 
 pub use blame::BlameRequest;
 pub use clone::CloneEffect;
+pub use dashboard::*;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
 pub use init::InitEffect;
@@ -375,6 +377,9 @@ pub enum Effect {
     PullRequest(crate::pull_request::PrEffect),
     /// Building and finding trellis:// links, and the scheme registration (deep_link.rs); unscoped.
     DeepLink(crate::deep_link::DeepLinkEffect),
+    /// The cross-repository dashboard (runner/dashboard.rs); unscoped; reads repositories with
+    /// libgit2 and asks services.
+    Dashboard(DashboardEffect),
     Ui(UiEffect),
 }
 

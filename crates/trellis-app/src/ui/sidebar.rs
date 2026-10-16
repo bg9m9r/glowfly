@@ -205,22 +205,7 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
         if let Some(c) = &pr.checks {
             super::build_status::paint_marker(&ui.painter_at(r.rect), marker.center(), c.state);
         }
-        let mut tooltip = format!("{} → {}\nby {}", pr.source, pr.target, pr.author);
-        for rv in &pr.reviewers {
-            tooltip.push_str(&format!("\n{}: {}{}", rv.name, rv.state, if rv.required { " (required)" } else { "" }));
-        }
-        if let Some(ms) = &pr.merge_status {
-            tooltip.push_str(&format!("\nmerge: {ms}"));
-        }
-        if let Some(c) = &pr.checks {
-            tooltip.push_str(&format!("\n{}", c.summary()));
-        }
-        let d = pr.description.trim();
-        if !d.is_empty() {
-            let d: String = d.chars().take(300).collect();
-            tooltip.push_str(&format!("\n\n{d}"));
-        }
-        let r = r.on_hover_text(tooltip);
+        let r = r.on_hover_text(super::pr_menu_items::pr_tooltip(pr));
         if r.double_clicked() {
             msgs.push(Msg::PullRequest(PullRequestMsg::Open(pr.id)));
         } else if r.clicked()

@@ -15,6 +15,7 @@ use trellis_core::gitcli::args;
 
 mod blame;
 mod branch;
+mod dashboard;
 mod diff;
 mod files;
 mod forge;
@@ -35,6 +36,7 @@ mod work;
 
 pub use blame::BlameMsg;
 pub use branch::{BranchMsg, CloneMsg};
+pub use dashboard::DashboardMsg;
 pub use diff::{ConflictMsg, DiffMsg, HistoryMsg};
 pub use files::{FilesMsg, WorkFileMsg, not_opened, restore_failed};
 pub use forge::{CredentialMsg, ForgeMsg, PublishMsg};
@@ -159,6 +161,8 @@ pub enum Msg {
     /// trellis:// links: copying, opening, their dialogs and the scheme registration
     /// (update/deep_link.rs).
     DeepLink(crate::deep_link::DeepLinkMsg),
+    /// The cross-repository dashboard (update/dashboard.rs).
+    Dashboard(DashboardMsg),
     /// A key from ui/shortcuts/global.rs: stage or unstage the open file or its selected lines, stage
     /// or unstage all, go to the commit message, or open or close the shortcut sheet. Checked
     /// and turned into the usual messages in update/shortcuts.rs.
@@ -268,6 +272,7 @@ impl Msg {
             Msg::Logs(m) => m.on_inactive(),
             Msg::Onboarding(m) => m.on_inactive(),
             Msg::DeepLink(m) => m.on_inactive(),
+            Msg::Dashboard(m) => m.on_inactive(),
             Msg::Tick(_)
             | Msg::Shortcut(_)
             | Msg::Confirm { .. }

@@ -12,6 +12,7 @@ mod clone_service;
 mod commit;
 mod conflict;
 mod conflict_check;
+mod dashboard;
 mod deep_link;
 mod deep_link_open;
 mod diff;
@@ -394,6 +395,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         Msg::Logs(m) => logs::handle(st, m, &mut fx),
         Msg::Onboarding(m) => onboarding::handle(st, m, now, &mut fx),
         Msg::DeepLink(m) => deep_link::handle(st, m, now, &mut fx),
+        Msg::Dashboard(m) => dashboard::handle(st, m, now, &mut fx),
         Msg::Shortcut(a) => shortcuts::handle(st, a, now, &mut fx),
 
         // Cross-cutting messages, handled here (see `Msg`).

@@ -4,12 +4,11 @@
 use super::pr_details;
 use crate::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
-use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, ProjectKeys, Status};
+use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, ProjectKeys, Status, tracker_target};
 use git2::Oid;
 use std::time::Instant;
 use trellis_core::forge::{self, Account, Connection, Target};
 use trellis_core::repo::Snapshot;
-use trellis_core::settings::TrackerChoice;
 
 pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -71,21 +70,11 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
 
 /// Works out the code host (from remotes, preferring origin) and the issue tracker.
 pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
-    let host = snap
-        .remote_urls
-        .iter()
-        .filter_map(|(name, url)| forge::parse_remote(url, &st.settings.connections).map(|t| (name.clone(), t)))
-        .min_by_key(|(name, _)| name != "origin");
-    let (remote, host) = match host {
+    let (remote, host) = match forge::dashboard::code_host(&snap.remote_urls, &st.settings.connections) {
         Some((r, t)) => (r, Some(t)),
         None => (String::new(), None),
     };
-    let tracker = match st.settings.tracker_for(&snap.real_workdir) {
-        TrackerChoice::Auto => host.clone().filter(|t| t.provider.has_issues()),
-        TrackerChoice::None => None,
-        TrackerChoice::Jira { account, project } => Some(Target::jira(&account, &project)),
-        TrackerChoice::Trello { account, board, board_name } => Some(Target::trello(&account, &board, &board_name)),
-    };
+    let tracker = tracker_target(st.settings.tracker_for(&snap.real_workdir), host.as_ref());
     if host.is_none() && tracker.is_none() {
         st.forge = None;
         return;
@@ -270,6 +259,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
         resolve_pr_heads(st);
         super::build_status::seed_from_prs(st, now);
         super::pull_request::prs_changed(st, fx);
+        super::dashboard::prs_arrived(st, now, fx);
     }
     pr_details::send_next(st, fx);
 }
@@ -311,6 +301,7 @@ fn connected(
                 st.snap = Some(snap);
             }
             refresh(st, true, false, now, fx);
+            super::dashboard::account_changed(st, &account, fx);
         }
         Err(e) => {
             if let Some(p) = st.prefs.as_mut() {
@@ -328,6 +319,7 @@ fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
         fx.push(Effect::DeleteToken(account.clone()));
     }
     fx.push(super::prefs::save_settings(st));
+    super::dashboard::account_changed(st, account, fx);
     if let Some(fs) = st.forge.as_mut() {
         fs.auth.remove(&account.key());
         let msg = format!("not connected to {}", account.provider.name());

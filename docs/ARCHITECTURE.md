@@ -41,7 +41,7 @@ binary (package `trellis`).
 | `gitflow.rs`, `gitflow/` | Git Flow with plain git: config, checks, start and finish plans, versions, branch groups by kind. |
 | `rebase/` | Interactive rebase: the plan, the todo file, running `git rebase -i`. |
 | `undo.rs` | Undo and redo of Trellis's own operations. |
-| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira, Trello), each described once in a `ProviderInfo`, mapped to one common model (pull requests with their reviewers and CI checks, issues); CI checks on pull requests and commits (`checks.rs`, `*_checks.rs`), per-PR checks and votes read after the list (`details.rs`), issue key detection (`refs.rs`), repository web pages (`web.rs`), forks (`forks/`), the signed-in user's own repositories (`user_repos/`), SSH public keys on the user's account (`ssh_keys.rs`), pull request conversations, review threads, reviews and merging (`review/`), and PR and issue filters (`filters.rs`, `filters/`): conditions, matching loaded pull requests, issue searches per service. |
+| `forge/` | Hosting services behind the `Forge` trait (GitHub, GitLab, Bitbucket Cloud and Data Center, Azure DevOps, Jira, Trello), each described once in a `ProviderInfo`, mapped to one common model (pull requests with their reviewers and CI checks, issues); CI checks on pull requests and commits (`checks.rs`, `*_checks.rs`), per-PR checks and votes read after the list (`details.rs`), issue key detection (`refs.rs`), repository web pages (`web.rs`), forks (`forks/`), the signed-in user's own repositories (`user_repos/`), SSH public keys on the user's account (`ssh_keys.rs`), pull request conversations, review threads, reviews and merging (`review/`), PR and issue filters (`filters.rs`, `filters/`): conditions, matching loaded pull requests, issue searches per service, and the dashboard's reading of local repositories' remotes with libgit2 and its bounded calls to several services at once (`dashboard.rs`). |
 | `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
 | `graph.rs` | Lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes. |
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view, and the row of a file line (`diff_rows/line_row.rs`); word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
@@ -128,6 +128,10 @@ binary (package `trellis`).
   the next. What was read is cached by head commit and age (`state/pr_details.rs`), so a list
   refresh re-reads only what changed or aged, and a failed chunk stops the pass without touching
   the host's status.
+- **Dashboard**: global state (`state/dashboard.rs`), never parked; Scan then one Fetch effect,
+  credentials resolved outside any repository; opening a PR waits for that tab's list
+  (`pending_pr`). Which repositories and calls a refresh plans is in `state/dashboard_plan.rs`,
+  the rows the view draws in `state/dashboard_rows.rs`.
 - **Toasts** (`state/toasts.rs`) can carry one action button with a stored `Msg`. A click
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
   while the toast's repository is the active tab. `toast_replacing` updates a toast still on

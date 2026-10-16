@@ -6,6 +6,7 @@ use git2::Oid;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 use trellis_core::forge::{self, Account, Auth, Issue, Provider, PullRequest, RefStyle, Target};
+use trellis_core::settings::TrackerChoice;
 
 /// A Jira site's project keys, read once per tracker to tell keys from look-alikes (`UTF-8`).
 #[derive(Clone, PartialEq, Debug, Default)]
@@ -16,6 +17,17 @@ pub enum ProjectKeys {
     /// More projects than a list holds: the built-in word list applies.
     TooMany,
     Known(HashSet<String>),
+}
+
+/// The issue tracker a repository with code host `host` uses under `choice` (Auto: the host's
+/// own issues, when it has them).
+pub fn tracker_target(choice: TrackerChoice, host: Option<&Target>) -> Option<Target> {
+    match choice {
+        TrackerChoice::Auto => host.filter(|t| t.provider.has_issues()).cloned(),
+        TrackerChoice::None => None,
+        TrackerChoice::Jira { account, project } => Some(Target::jira(&account, &project)),
+        TrackerChoice::Trello { account, board, board_name } => Some(Target::trello(&account, &board, &board_name)),
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]

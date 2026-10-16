@@ -12,6 +12,9 @@ use trellis_core::repo::Snapshot;
 use trellis_core::settings::DiffMode;
 
 pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
+    if matches!(msg, TabsMsg::NewTab | TabsMsg::SelectTab(_) | TabsMsg::CycleTab(_) | TabsMsg::ReopenClosedTab) {
+        super::dashboard::leave(st);
+    }
     match msg {
         TabsMsg::NewTab => {
             st.tabs.push(Tab::empty());

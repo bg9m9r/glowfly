@@ -1,6 +1,7 @@
 //! Hosting-service integrations ("forges"): remote detection, credentials, pull/merge requests,
 //! issues, forks, the user's own repositories and repository web pages for GitHub, GitLab,
-//! Bitbucket, Azure DevOps, Jira and Trello, behind one common model.
+//! Bitbucket, Azure DevOps, Jira and Trello, behind one common model, and reading many
+//! repositories' targets and asking their services at once for the dashboard (`dashboard`).
 
 mod azure;
 mod azure_checks;
@@ -8,6 +9,7 @@ mod azure_remote;
 mod bitbucket;
 mod bitbucket_checks;
 mod bitbucket_dc;
+pub mod dashboard;
 pub mod filters;
 mod github;
 mod github_checks;

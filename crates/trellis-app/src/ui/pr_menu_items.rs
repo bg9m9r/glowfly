@@ -1,7 +1,8 @@
 //! Pull request items shared by the branch row menus and the toolbar: create one (into the
 //! branch selected before the menu opened, or from the checked-out branch into a remote one),
 //! and push the branch first when the code host lacks it or some of its commits. A branch that
-//! can't be pushed plainly gets a disabled item saying why; nothing is ever force-pushed.
+//! can't be pushed plainly gets a disabled item saying why; nothing is ever force-pushed. Also
+//! the pull request tooltip the sidebar and the dashboard share.
 
 use super::common::{menu_item, menu_item_if};
 use crate::msg::ForgeMsg;
@@ -10,7 +11,29 @@ use crate::state::push_pr::{self, HostBranch};
 use crate::state::{ForgeState, Selection};
 use eframe::egui;
 use git2::Oid;
+use trellis_core::forge::PullRequest;
 use trellis_core::repo::{BranchInfo, Snapshot};
+
+/// A pull request row's tooltip (the sidebar's and the dashboard's): branches and author, the
+/// reviewers' votes, the merge status, the checks and the start of the description.
+pub(super) fn pr_tooltip(pr: &PullRequest) -> String {
+    let mut tooltip = format!("{} → {}\nby {}", pr.source, pr.target, pr.author);
+    for rv in &pr.reviewers {
+        tooltip.push_str(&format!("\n{}: {}{}", rv.name, rv.state, if rv.required { " (required)" } else { "" }));
+    }
+    if let Some(ms) = &pr.merge_status {
+        tooltip.push_str(&format!("\nmerge: {ms}"));
+    }
+    if let Some(c) = &pr.checks {
+        tooltip.push_str(&format!("\n{}", c.summary()));
+    }
+    let d = pr.description.trim();
+    if !d.is_empty() {
+        let d: String = d.chars().take(300).collect();
+        tooltip.push_str(&format!("\n\n{d}"));
+    }
+    tooltip
+}
 
 fn create(source: &str, target: Option<&str>) -> Msg {
     Msg::Forge(ForgeMsg::CreatePrDialog { source: source.to_owned(), target: target.map(str::to_owned) })

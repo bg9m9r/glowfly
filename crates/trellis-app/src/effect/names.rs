@@ -79,6 +79,7 @@ impl Effect {
             Effect::Logs(_) => "logs",
             Effect::PullRequest(e) => e.name(),
             Effect::DeepLink(e) => e.name(),
+            Effect::Dashboard(e) => e.name(),
             Effect::Ui(_) => "ui",
         }
     }
@@ -146,6 +147,7 @@ impl Effect {
             // Some of their variants wait on the user (a file dialog, a passphrase prompt).
             Effect::Ssh(e) => e.timed(),
             Effect::Patch(p) => p.timed(),
+            Effect::Dashboard(e) => e.timed(),
             // They wait on the user, hand work to the system, or never run on a worker thread.
             Effect::OpenUrl(_)
             | Effect::OpenTerminal(_)
