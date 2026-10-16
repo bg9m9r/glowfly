@@ -10,8 +10,8 @@ pub enum CloneEffect {
     /// Runs the clone `cmd` (with `--sparse`) in `parent`, then sets `folders` (cone mode) in the
     /// new repository `dest`. Reported as `CloneMsg::Finished`.
     Sparse { parent: PathBuf, cmd: Vec<String>, dest: PathBuf, folders: Vec<String> },
-    /// The repositories the user can reach on `account`, signing in from `cwd`. Reported as
-    /// `CloneMsg::ReposLoaded`.
+    /// The repositories the user can reach on `account`, signing in from `cwd` (a folder outside
+    /// any repository). Reported as `CloneMsg::ReposLoaded`.
     ListRepos { account: Account, cwd: PathBuf },
 }
 

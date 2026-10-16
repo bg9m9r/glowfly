@@ -181,3 +181,23 @@ fn the_filter_ignores_letter_case() {
     picker(&mut st).filter = "zzz".into();
     assert!(visible(picker(&mut st)).is_empty());
 }
+
+#[test]
+fn signing_in_never_runs_in_the_active_repository() {
+    // A held (untrusted) repository's own credential helper must not run: the list signs in
+    // from a folder outside any repository, whichever tab is active.
+    let (mut st, dir) = super::trust_held_tests::held_repo("clone-service-held");
+    connect(&mut st, &[github()]);
+    run(&mut st, CloneMsg::Dialog);
+    let fx = run(&mut st, CloneMsg::Source(CloneSource::Service));
+    let cwds: Vec<_> = fx
+        .iter()
+        .filter_map(|e| match e {
+            Effect::Clone(CloneEffect::ListRepos { cwd, .. }) => Some(cwd.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(cwds.len(), 1, "the tab loads");
+    assert!(!cwds[0].starts_with(&dir) && !super::tests::same_place(&cwds[0], &dir), "signed in from the held repository");
+    assert!(git2::Repository::discover(&cwds[0]).is_err(), "{} is inside a repository", cwds[0].display());
+}
