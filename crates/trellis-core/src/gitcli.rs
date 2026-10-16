@@ -31,15 +31,28 @@ pub fn enable_askpass(env: AskpassEnv) -> bool {
 }
 
 /// The environment that points git and ssh at the askpass helper. `SSH_ASKPASS_REQUIRE=force`
-/// makes ssh use it even without a display.
+/// (OpenSSH 8.4 or newer) makes ssh use it even without a display. Older OpenSSH ignores that
+/// and asks the helper only when `DISPLAY` is set and there is no terminal, so on Unix an unset
+/// `DISPLAY` is given a placeholder (see [`display_placeholder`]).
 pub fn askpass_vars(a: &AskpassEnv) -> Vec<(&'static str, OsString)> {
-    vec![
+    let mut vars = vec![
         ("GIT_ASKPASS", a.exe.clone().into_os_string()),
         ("SSH_ASKPASS", a.exe.clone().into_os_string()),
         ("SSH_ASKPASS_REQUIRE", "force".into()),
         (crate::askpass::ENV_ADDR, a.addr.clone().into()),
         (crate::askpass::ENV_TOKEN, a.token.clone().into()),
-    ]
+    ];
+    if let Some(d) = display_placeholder(std::env::var_os("DISPLAY").as_deref(), cfg!(unix)) {
+        vars.push(("DISPLAY", d.into()));
+    }
+    vars
+}
+
+/// The `DISPLAY` to set for ssh children so OpenSSH before 8.4 uses the askpass helper: `:0`
+/// on Unix when `display` is unset or empty, else None (Windows' OpenSSH doesn't look at it).
+/// ssh only checks that it is set; nothing connects to it unless X11 forwarding is configured.
+pub fn display_placeholder(display: Option<&std::ffi::OsStr>, unix: bool) -> Option<&'static str> {
+    (unix && display.is_none_or(|d| d.is_empty())).then_some(":0")
 }
 
 /// Caller environment for a command that must fail rather than prompt (background jobs,
@@ -124,11 +137,15 @@ fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: 
         .env("GIT_EDITOR", "true")
         .env("GIT_SEQUENCE_EDITOR", "true")
         .env("GIT_MERGE_AUTOEDIT", "no")
-        // Untranslated messages, so the text Trellis matches is the same in every locale.
-        .env("LC_ALL", "C")
+        // Untranslated messages, so the text Trellis matches is the same in every locale. Only
+        // the messages: `LC_ALL=C` would also give hooks, gpg and pinentry an ASCII-only
+        // character set. gettext reads `LANGUAGE` first whenever the message locale isn't C,
+        // so this holds even when the user sets `LC_ALL`.
         .env("LANGUAGE", "C")
+        .env("LC_MESSAGES", "C")
         .envs(ASKPASS.get().map(askpass_vars).unwrap_or_default())
         .envs(env.iter().copied());
+    crate::env_path::apply(&mut cmd);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -145,7 +162,6 @@ fn raw(cwd: &Path, args: &[String], input: &str, env: &[(&str, &str)], timeout: 
         let input = input.as_bytes().to_vec();
         std::thread::spawn(move || {
             use std::io::Write;
-    crate::env_path::apply(&mut cmd);
             // A command that exits without reading all of stdin closes the pipe; that's fine.
             let _ = stdin.write_all(&input);
         });
@@ -302,9 +318,33 @@ mod tests {
             let a = args(&["-c", &format!("alias.e=!echo ${k}"), "e"]);
             output(&dir, &a, "", &[("LANG", "de_DE.UTF-8")], None).stdout
         };
-        assert_eq!(env("LC_ALL").trim(), "C");
         assert_eq!(env("LANGUAGE").trim(), "C");
+        assert_eq!(env("LC_MESSAGES").trim(), "C");
         assert_eq!(env("LANG").trim(), "de_DE.UTF-8", "the rest of the environment is kept");
+        // The character set is the user's: hooks and gpg may print non-ASCII text.
+        assert_eq!(env("LC_ALL").trim(), std::env::var("LC_ALL").unwrap_or_default());
+    }
+
+    #[test]
+    fn messages_stay_english_under_a_users_lc_all() {
+        // Where a German locale and git's translations are installed, this would be German
+        // without LANGUAGE=C; elsewhere it checks nothing breaks.
+        let dir = crate::testutil::scratch_repo("gitcli-locale");
+        for (k, v) in [("LC_ALL", "de_DE.UTF-8"), ("LANG", "de_DE.UTF-8")] {
+            let out = output(&dir, &args(&["checkout", "no-such-branch-here"]), "", &[(k, v)], None);
+            assert!(!out.ok);
+            assert!(out.stderr.contains("did not match any"), "{k}: {}", out.stderr);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn old_openssh_gets_a_display_to_use_askpass() {
+        use std::ffi::OsStr;
+        assert_eq!(display_placeholder(None, true), Some(":0"));
+        assert_eq!(display_placeholder(Some(OsStr::new("")), true), Some(":0"));
+        assert_eq!(display_placeholder(Some(OsStr::new(":1")), true), None, "a real display is kept");
+        assert_eq!(display_placeholder(None, false), None, "not on Windows");
     }
 
     #[test]
