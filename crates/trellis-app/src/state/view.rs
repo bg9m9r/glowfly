@@ -76,6 +76,12 @@ pub struct ViewState {
     /// A file opened by next/previous change, still loading, and the change to land on. Set
     /// and cleared only by `update`.
     pub diff_landing: Option<(DiffTarget, diff_nav::Landing)>,
+    /// A file opened from a pull request's code comment thread, still loading, and the line
+    /// (side, number) to land on. Set and cleared only by `update`.
+    pub diff_open_line: Option<(DiffTarget, trellis_core::diff_rows::LineSide, u32)>,
+    /// Scroll the pull request's comment pane to this thread on the next frame (set by
+    /// `update`, taken by the view).
+    pub pr_thread_scroll: Option<String>,
     /// The change row next/previous change last moved to. Steps continue from it while it is
     /// on screen, because a change near the end can't scroll to the top.
     pub diff_cursor: Option<usize>,
@@ -141,6 +147,8 @@ impl Default for ViewState {
             diff_scroll_to_row: None,
             diff_open_hunk: None,
             diff_landing: None,
+            diff_open_line: None,
+            pr_thread_scroll: None,
             diff_cursor: None,
             diff_expanded: Default::default(),
             diff_visible_rows: 0,

@@ -77,7 +77,7 @@ pub(super) fn loaded(st: &mut AppState, f: impl FnOnce(&mut PrDetail)) {
     let head = st.forge.as_ref().unwrap().prs[0].head.clone().unwrap_or_default();
     let mut d = detail(&head);
     f(&mut d);
-    let page = PrPage { detail: d, entries: Vec::new() };
+    let page = PrPage { detail: d, entries: Vec::new(), threads: Vec::new(), threads_note: None };
     let msg = reply_msg(st, PrReply::Loaded(Ok(page)));
     run(st, msg);
 }
@@ -150,7 +150,7 @@ fn untrusted_repository_holds_the_load() {
 #[test]
 fn stale_generation_and_other_workdir_and_closed_view_ignore_loaded() {
     let (mut st, _, dirs) = opened("prc-stale");
-    let page = PrPage { detail: detail("h"), entries: Vec::new() };
+    let page = PrPage { detail: detail("h"), entries: Vec::new(), threads: Vec::new(), threads_note: None };
     let fresh = st.pull_request_page_gen;
     let mut stale = reply_msg(&st, PrReply::Loaded(Ok(page.clone())));
     if let PullRequestMsg::Replied { generation, .. } = &mut stale {
@@ -222,7 +222,7 @@ fn commented_ok_appends_entry_and_clears_text() {
     let msg = reply_msg(&st, PrReply::Commented(Ok(entry.clone())));
     run(&mut st, msg);
     let v = view(&st);
-    assert_eq!((v.busy, v.forms.comment.as_str()), (None, ""));
+    assert_eq!((v.busy.clone(), v.forms.comment.as_str()), (None, ""));
     assert_eq!(v.loaded().unwrap().entries, [entry]);
     assert!(st.toasts.iter().any(|t| t.text == "Comment posted"));
     done(st, dirs);

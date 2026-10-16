@@ -53,7 +53,7 @@ pub(super) fn show(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
     if r.clicked() {
         msgs.push(Msg::PullRequest(PullRequestMsg::SubmitReview));
     }
-    if let Some(e) = error_for(v, PrAction::Review) {
+    if let Some(e) = error_for(v, &PrAction::Review) {
         note(ui, e.to_owned(), color::red());
     }
 }

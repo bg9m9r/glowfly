@@ -1,6 +1,6 @@
 //! The pull request panel's work (`Effect::PullRequest`): the files it changes, from its local
 //! remote-tracking tips, and its calls to the hosting service (the page, a comment, a review,
-//! a merge). The calls sign in the way the pull request list does, in the panel's repository.
+//! a merge, a thread reply or resolve). The calls sign in the way the pull request list does, in the panel's repository.
 
 use crate::effect::ForgeError;
 use crate::msg::Msg;
@@ -36,6 +36,14 @@ fn call(job: CallJob) -> Msg {
         PrCall::Merge { req: merge, remote, source, delete } => {
             let result = auth.and_then(|a| forge::merge(t, &a, id, &merge).map_err(ForgeError::from));
             PrReply::Merged { method: merge.method, remote, source, delete, result }
+        }
+        PrCall::Reply { thread, comment, body } => PrReply::RepliedToThread {
+            thread,
+            result: auth.and_then(|a| forge::reply_to_thread(t, &a, id, comment, &body).map_err(ForgeError::from)),
+        },
+        PrCall::Resolve { thread, resolve } => {
+            let result = auth.and_then(|a| forge::resolve_thread(t, &a, &thread, resolve).map_err(ForgeError::from));
+            PrReply::Resolved { thread, resolve, result }
         }
     };
     Msg::PullRequest(PullRequestMsg::Replied { workdir: req.workdir, target: req.target, id, generation, reply: Box::new(reply) })

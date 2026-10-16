@@ -12,6 +12,7 @@ pub(super) mod rows_cache;
 mod split;
 mod style;
 mod syntax;
+mod thread_marks;
 mod wrap;
 
 use super::file_buttons::CommitFile;
@@ -22,6 +23,7 @@ use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
+use crate::state::pull_request_threads::{self, Marks};
 use eframe::egui::{self, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
 use rows_cache::{DiffRowsCache, Source};
 pub(super) use style::DiffStyle;
@@ -67,6 +69,9 @@ pub(super) struct DiffView<'a> {
     pub style: DiffStyle,
     /// How long lines wrap, `None` when they don't.
     pub wrap: Option<wrap::Wrap>,
+    /// Code comment markers by file line, for a pull request's file whose threads can be
+    /// placed on its lines.
+    pub marks: Option<&'a Marks>,
 }
 
 impl DiffView<'_> {
@@ -173,7 +178,9 @@ fn rows(
     let anchor = cache.refresh_heights(lines, style.row_h, style.tab, wrap);
     let scroll_to = scroll_to.or(anchor.then_some(st.view.diff_top_row));
     let m = cache.row_metrics(style.row_h);
-    let view = DiffView { target, diff, whole, opened, hl, header_hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style, wrap };
+    let marks = st.pull_request.as_ref().filter(|v| v.shows(target)).and_then(|v| pull_request_threads::marks(v, target.path()));
+    let marks = marks.as_ref();
+    let view = DiffView { target, diff, whole, opened, hl, header_hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style, wrap, marks };
     Some(match layout {
         DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, m, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, m, scroll_to, msgs),

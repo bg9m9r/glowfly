@@ -3,7 +3,7 @@
 
 use super::syntax::paint_line;
 use super::wrap::RowMetrics;
-use super::{DiffView, fold, hunk_header, line_click, paint_mark};
+use super::{DiffView, fold, hunk_header, line_click, paint_mark, thread_marks};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
@@ -74,6 +74,9 @@ pub(super) fn show(
                 };
                 paint_line(p, pos2(rect.left() + cols.text, y), &dl.text, spans, marks, mono, fg, st.tab, v.wrap);
                 paint_mark(ui, rect, selected, hovered);
+                if let Some(mark) = v.marks.and_then(|m| thread_marks::find(m, dl, None)) {
+                    thread_marks::paint(ui, rect, ui.clip_rect().right().min(rect.right()), st.row_h, mark, msgs);
+                }
                 if let Some(f) = fold::opened_at(&v.opened, line) {
                     fold::fold_back(ui, rect, v, f, cols.sign, msgs);
                 }

@@ -12,7 +12,7 @@ pub const MAX_BODY: usize = 65_536;
 /// The most characters a merge commit title may have.
 pub const MAX_TITLE: usize = 1_024;
 
-const WAITING: &str = "Waiting for the service…";
+pub(super) const WAITING: &str = "Waiting for the service…";
 
 /// What the user has typed and chosen in the panel's forms.
 #[derive(Clone, Debug, PartialEq)]
@@ -24,6 +24,8 @@ pub struct PrForms {
     pub merge_title: String,
     pub merge_message: String,
     pub delete_branch: bool,
+    /// Reply drafts by code comment thread id, kept across reloads of the page.
+    pub replies: std::collections::HashMap<String, String>,
 }
 
 impl Default for PrForms {
@@ -36,6 +38,7 @@ impl Default for PrForms {
             merge_title: String::new(),
             merge_message: String::new(),
             delete_branch: false,
+            replies: Default::default(),
         }
     }
 }
@@ -45,7 +48,7 @@ fn too_long(s: &str, max: usize) -> bool {
 }
 
 /// The page, or why it can't be acted on yet (not loaded, or another action in flight).
-fn ready(v: &PrView) -> Result<&PrPage, String> {
+pub(super) fn ready(v: &PrView) -> Result<&PrPage, String> {
     let Some(page) = v.loaded() else { return Err(format!("The {} hasn't loaded yet", v.noun)) };
     if v.busy.is_some() {
         return Err(WAITING.to_owned());
@@ -276,9 +279,9 @@ pub fn prefill(forms: &mut PrForms, d: &PrDetail) {
 }
 
 /// Which action a failure belongs to, for its place in the panel.
-pub fn error_for(v: &PrView, action: PrAction) -> Option<&str> {
-    v.action_error.as_ref().filter(|(a, _)| *a == action).map(|(_, e)| e.as_str())
+pub fn error_for<'a>(v: &'a PrView, action: &PrAction) -> Option<&'a str> {
+    v.action_error.as_ref().filter(|(a, _)| a == action).map(|(_, e)| e.as_str())
 }
 
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;

@@ -37,6 +37,7 @@ fn view(pr: PullRequest, tips: Tips) -> PrView {
         busy: None,
         action_error: None,
         forms: Default::default(),
+        threads: Default::default(),
     }
 }
 
@@ -119,11 +120,11 @@ fn a_merged_source_reads_as_deleted() {
     let both = Tips { target: Some(oid(1)), source: Some(oid(2)) };
     let mut v = view(pr(None), Tips { source: None, ..both });
     let mut detail = merged_detail();
-    v.page = Page::Loaded(Box::new(PrPage { detail: detail.clone(), entries: Vec::new() }));
+    v.page = Page::Loaded(Box::new(PrPage { detail: detail.clone(), entries: Vec::new(), threads: Vec::new(), threads_note: None }));
     assert_eq!(out_of_sync(&v), [OutOfSync::SourceDeleted]);
     assert_eq!(OutOfSync::SourceDeleted.text(&v), "origin/feature was deleted after the merge.");
     detail.state = PrState::Open;
-    v.page = Page::Loaded(Box::new(PrPage { detail, entries: Vec::new() }));
+    v.page = Page::Loaded(Box::new(PrPage { detail, entries: Vec::new(), threads: Vec::new(), threads_note: None }));
     assert_eq!(out_of_sync(&v), [OutOfSync::SourceMissing]);
 }
 

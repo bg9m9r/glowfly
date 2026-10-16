@@ -42,7 +42,7 @@ fn entry(author: &str, day: i64, kind: EntryKind, body: &str) -> Entry {
 fn load(st: &mut AppState, d: PrDetail, entries: Vec<Entry>) {
     let v = st.pull_request.as_mut().unwrap();
     crate::state::pull_request_actions::prefill(&mut v.forms, &d);
-    v.page = Page::Loaded(Box::new(PrPage { detail: d, entries }));
+    v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads: Vec::new(), threads_note: None }));
 }
 
 #[test]

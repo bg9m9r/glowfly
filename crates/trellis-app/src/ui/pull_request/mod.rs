@@ -1,13 +1,15 @@
 //! The pull request panel, in place of the graph: a header with the title and links, then two
 //! tabs. Overview has the details, the review and merge forms on the left (`info`, `review`,
 //! `merge`) and the conversation in the middle (`conversation`); Files changed has the changed
-//! files on the left (`files`) and the open file's diff in the middle.
+//! files on the left (`files`) and the open file's diff in the middle, with its code comment
+//! threads (`threads`) in a pane below it.
 
 mod conversation;
 mod files;
 mod info;
 mod merge;
 mod review;
+mod threads;
 
 use super::UiCache;
 use super::theme::color;
@@ -16,6 +18,7 @@ use crate::msg::Msg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use crate::state::pull_request::{Files, PrTab, PrView, Tone};
+use crate::state::pull_request_threads::on_file;
 use eframe::egui::{self, Align, Color32, FontId, Layout, Margin, RichText, Sense, Ui, vec2};
 use trellis_core::text::printable;
 
@@ -53,6 +56,16 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             });
             center.show_inside(ui, |ui| {
                 if shows_diff {
+                    let path = st.diff.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
+                    let commented = st.pull_request.as_ref().and_then(|v| v.loaded()).is_some_and(|p| on_file(p, &path) > 0);
+                    if commented {
+                        egui::TopBottomPanel::bottom("pr-file-threads")
+                            .resizable(true)
+                            .default_height(220.0)
+                            .height_range(80.0..=480.0)
+                            .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(12, 4)))
+                            .show_inside(ui, |ui| threads::file_pane(ui, st, &path, msgs));
+                    }
                     super::diff::show(ui, st, &mut cache.diff_rows, msgs);
                 } else {
                     ui.add_space(12.0);

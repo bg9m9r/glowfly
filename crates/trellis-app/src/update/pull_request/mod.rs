@@ -2,7 +2,7 @@
 //! from the local remote-tracking branches, following refreshes of the refs and of the
 //! service's list, switching tabs, and closing it. Its files' diffs are the shared `st.diff`,
 //! opened through `RepoMsg::OpenDiff`; its page and actions on the service are in
-//! calls.rs.
+//! calls.rs, and its code comment threads in threads.rs.
 
 use crate::effect::Effect;
 use crate::pull_request::{FilesJob, PrEffect, PullRequestMsg};
@@ -19,6 +19,9 @@ mod calls_tests;
 mod merge_tests;
 #[cfg(test)]
 mod tests;
+mod threads;
+#[cfg(test)]
+mod threads_tests;
 
 pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -61,6 +64,13 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
         PullRequestMsg::PostComment => calls::post_comment(st, fx),
         PullRequestMsg::SubmitReview => calls::submit_review(st, fx),
         PullRequestMsg::Merge => calls::merge(st, fx),
+        PullRequestMsg::Reply(id) => threads::reply(st, id, fx),
+        PullRequestMsg::Resolve { thread, resolve } => threads::resolve(st, thread, resolve, fx),
+        PullRequestMsg::ShowResolved(show) => threads::show_resolved(st, show),
+        PullRequestMsg::ShowOutdated(show) => threads::show_outdated(st, show),
+        PullRequestMsg::ToggleThread(id) => threads::toggle(st, id),
+        PullRequestMsg::FocusThread(id) => threads::focus(st, id),
+        PullRequestMsg::GoToThread(id) => threads::go_to_thread(st, id, fx),
         PullRequestMsg::Replied { workdir, target, id, generation, reply } => {
             calls::replied(st, &workdir, &target, id, generation, *reply, now, fx)
         }

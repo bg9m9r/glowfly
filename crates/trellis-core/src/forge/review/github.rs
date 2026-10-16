@@ -1,5 +1,5 @@
 //! Pull request conversations, reviews and merging on GitHub and GitHub Enterprise Server
-//! (REST API v3).
+//! (REST API v3); code comment threads are in github_threads.rs.
 
 use super::super::github::{me, repo_api};
 use super::super::http::put;
@@ -110,7 +110,7 @@ fn pull_api(t: &Target, id: u64) -> String {
     format!("{}/pulls/{id}", repo_api(t))
 }
 
-fn time(s: &str) -> i64 {
+pub(super) fn time(s: &str) -> i64 {
     chrono::DateTime::parse_from_rfc3339(s).map(|d| d.timestamp()).unwrap_or(0)
 }
 
@@ -195,7 +195,8 @@ pub(super) fn pr_page(t: &Target, auth: &Auth, id: u64) -> Result<PrPage> {
     };
     let mut entries: Vec<Entry> = comments.into_iter().map(comment_entry).chain(reviews.into_iter().filter_map(review_entry)).collect();
     entries.sort_by_key(|e| e.time);
-    Ok(PrPage { detail, entries })
+    let (threads, threads_note) = super::github_threads::threads(t, auth, id)?;
+    Ok(PrPage { detail, entries, threads, threads_note })
 }
 
 pub(super) fn post_comment(t: &Target, auth: &Auth, id: u64, body: &str) -> Result<Entry> {

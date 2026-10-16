@@ -112,7 +112,7 @@ pub enum Msg {
     Tools(crate::tools::ToolsMsg),
     /// Predicted merge conflicts of the current branch (update/conflict_check.rs).
     ConflictCheck(crate::conflict_check::ConflictCheckMsg),
-    /// The pull request panel (update/pull_request.rs).
+    /// The pull request panel (update/pull_request/).
     PullRequest(crate::pull_request::PullRequestMsg),
     /// Hosting services: pull requests, issues, connections (update/forge.rs).
     Forge(ForgeMsg),

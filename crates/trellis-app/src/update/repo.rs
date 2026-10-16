@@ -7,6 +7,7 @@ use crate::msg::RepoMsg;
 use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
 use std::time::Instant;
+use trellis_core::diff_rows::row_of_file_line;
 use trellis_core::repo::{DiffTarget, Snapshot};
 use trellis_core::settings::DiffMode;
 
@@ -71,18 +72,14 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 }
             }
         }
-        RepoMsg::OpenDiff(target) => {
-            super::history::close(st);
-            super::blame::close(st);
-            super::pull_request::keep_for(st, &target);
-            open_diff(st, target, fx);
-        }
+        RepoMsg::OpenDiff(target) => open_file_diff(st, target, fx),
         RepoMsg::DiffLoaded { target, reload, generation, result } => {
             if generation != st.diff_gen {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
             // Any accepted result ends a pending step, so a superseding reload can't block it.
             let landing = st.view.diff_landing.take();
+            let line = st.view.diff_open_line.take().filter(|(t, ..)| !reload && *t == target);
             match result {
                 Ok(mut d) => {
                     let landing = landing.filter(|(t, _)| !reload && *t == target).map(|(_, l)| l);
@@ -110,7 +107,12 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                         let hunk = st.view.diff_open_hunk.take();
                         let row = match landing {
                             Some(l) => super::diff::landing_row(&d, &st.settings, l, &st.view.diff_expanded),
-                            None => super::diff::opening_row(&d, &st.settings, hunk, &st.view.diff_expanded),
+                            None => {
+                                let (s, ex) = (&st.settings, &st.view.diff_expanded);
+                                // A file opened from a code comment lands on its line.
+                                line.and_then(|(_, side, n)| row_of_file_line(&d, s.diff_mode, s.diff_layout, ex, side, n))
+                                    .unwrap_or_else(|| super::diff::opening_row(&d, s, hunk, ex))
+                            }
                         };
                         st.view.diff_scroll_to_row = Some(row);
                         st.view.diff_top_row = row;
@@ -222,12 +224,22 @@ fn next_diff_gen(st: &mut AppState) -> u64 {
     st.diff_gen
 }
 
+/// Opens a file's diff from a list (closing file history and blame, and the pull request panel
+/// unless it is one of its files).
+pub(super) fn open_file_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
+    super::history::close(st);
+    super::blame::close(st);
+    super::pull_request::keep_for(st, &target);
+    open_diff(st, target, fx);
+}
+
 /// Opens `target` in the diff viewer (closing a conflict view).
 pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
     super::conflict::close(st);
     // A different file opens: a hunk kept through a view mode switch or a pending step is moot.
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;
+    st.view.diff_open_line = None;
     st.view.diff_cursor = None;
     if let Some(workdir) = st.workdir() {
         let generation = next_diff_gen(st);
@@ -244,6 +256,7 @@ pub(super) fn close_diff(st: &mut AppState) {
     st.view.diff_expanded.clear();
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;
+    st.view.diff_open_line = None;
     st.view.diff_cursor = None;
     next_diff_gen(st);
 }

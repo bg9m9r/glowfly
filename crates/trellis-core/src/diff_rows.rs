@@ -9,6 +9,9 @@ use crate::repo::{DiffLine, FileDiff};
 use crate::settings::DiffLayout;
 use std::ops::Range;
 
+mod line_row;
+pub use line_row::*;
+
 /// A row of the inline (unified) layout.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum DiffRow {

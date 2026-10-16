@@ -94,7 +94,7 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
     if r.clicked() {
         msgs.push(merge_confirm(v, default_branch));
     }
-    if let Some(e) = error_for(v, PrAction::Merge) {
+    if let Some(e) = error_for(v, &PrAction::Merge) {
         note(ui, e.to_owned(), color::red());
     }
 }

@@ -5,12 +5,12 @@
 use super::style::DiffStyle;
 use super::syntax::paint_line;
 use super::wrap::{RowMetrics, Wrap};
-use super::{DiffView, fold, hunk_header, line_click, paint_mark};
+use super::{DiffView, fold, hunk_header, line_click, paint_mark, thread_marks};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
 use std::ops::Range;
-use trellis_core::diff_rows::SplitRow;
+use trellis_core::diff_rows::{LineSide, SplitRow};
 use trellis_core::highlight::Span;
 use trellis_core::repo::DiffLine;
 
@@ -84,6 +84,10 @@ pub(super) fn show(
                     };
                     cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, v.wrap, selected);
                     paint_mark(ui, r, selected, hovered);
+                    let key = if side == Side::Old { LineSide::Old } else { LineSide::New };
+                    if let Some(mark) = v.marks.and_then(|m| thread_marks::find(m, dl, Some(key))) {
+                        thread_marks::paint(ui, r, ui.clip_rect().right().min(r.right()), st.row_h, mark, msgs);
+                    }
                 }
                 ui.painter().vline(left.right(), rect.y_range(), Stroke::new(1.0_f32, color::border()));
                 // An opened run folds back from its first line, at the fold row's mark position.

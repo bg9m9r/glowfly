@@ -1,10 +1,12 @@
-//! The pull request panel (update/pull_request.rs, ui/pull_request/): a copy of the pull
+//! The pull request panel (update/pull_request/, ui/pull_request/): a copy of the pull
 //! request, the remote-tracking tips it is compared from, the files it changes, the service's
 //! page with its conversation, and the texts that describe them. Pure: the files and the page
-//! are loaded by `Effect::PullRequest`; the action forms' rules are in pull_request_actions.rs.
+//! are loaded by `Effect::PullRequest`; the action forms' rules are in pull_request_actions.rs,
+//! and the code comment threads' in pull_request_threads.rs.
 
 use super::ForgeState;
 use super::pull_request_actions::PrForms;
+use super::pull_request_threads::ThreadView;
 use git2::Oid;
 use trellis_core::forge::{PrPage, PrState, PullRequest, reviews_in_app};
 use trellis_core::repo::{BranchChanges, DiffTarget, Snapshot};
@@ -70,11 +72,15 @@ pub enum Page {
 }
 
 /// An action sent to the service; one runs at a time.
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum PrAction {
     Comment,
     Review,
     Merge,
+    /// A reply to the code comment thread with this id.
+    Reply(String),
+    /// Resolving or reopening the code comment thread with this id.
+    Resolve(String),
 }
 
 /// The open pull request panel.
@@ -100,6 +106,8 @@ pub struct PrView {
     /// The last action's failure, shown under its button.
     pub action_error: Option<(PrAction, String)>,
     pub forms: PrForms,
+    /// Which code comment threads are shown and open.
+    pub threads: ThreadView,
 }
 
 impl PrView {
@@ -120,6 +128,7 @@ impl PrView {
             busy: None,
             action_error: None,
             forms: PrForms::default(),
+            threads: ThreadView::default(),
         }
     }
 

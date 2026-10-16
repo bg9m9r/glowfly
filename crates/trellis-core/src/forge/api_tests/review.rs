@@ -1,9 +1,9 @@
 use super::*;
 
-const REPO: &str = r#"{"allow_merge_commit":false,"allow_squash_merge":true,"allow_rebase_merge":true,
+pub(super) const REPO: &str = r#"{"allow_merge_commit":false,"allow_squash_merge":true,"allow_rebase_merge":true,
     "delete_branch_on_merge":true,"permissions":{"push":false}}"#;
 
-fn pull(mergeable: &str, state: &str, head_repo: &str) -> String {
+pub(super) fn pull(mergeable: &str, state: &str, head_repo: &str) -> String {
     format!(
         r#"{{"state":"open","merged":false,"draft":false,"locked":true,"mergeable":{mergeable},"mergeable_state":"{state}",
         "user":{{"login":"ada"}},"head":{{"sha":"h1","repo":{head_repo}}},"base":{{"sha":"b1","repo":{{"full_name":"o/r"}}}}}}"#
@@ -20,13 +20,31 @@ const REVIEWS: &str = r#"[
     {"id":3,"user":{"login":"eve"},"body":"","state":"PENDING","html_url":""},
     {"id":4,"user":{"login":"grace"},"body":"","state":"APPROVED","submitted_at":"2026-01-01T12:00:00Z","html_url":""}]"#;
 
-fn gh() -> Target {
+pub(super) fn gh() -> Target {
     remote("https://github.com/o/r")
 }
 
+/// An answer with no code comment threads.
+pub(super) const NO_THREADS: &str =
+    r#"{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[]}}}}}"#;
+
 fn page_server(api: &'static str, repo: &'static str, pull: String) -> Mock {
+    page_server_with(api, repo, pull, |_| Reply::json(NO_THREADS))
+}
+
+/// The page's REST answers under `api`, and `graphql` for the GraphQL calls (to the endpoint of
+/// either GitHub or an Enterprise Server).
+pub(super) fn page_server_with(
+    api: &'static str,
+    repo: &'static str,
+    pull: String,
+    graphql: impl Fn(&Request) -> Reply + Send + Sync + 'static,
+) -> Mock {
     Mock::start(move |r| {
         let route = r.route();
+        if route == "POST api.github.com/graphql" || route == "POST git.acme.io/api/graphql" {
+            return graphql(r);
+        }
         let Some(path) = route.strip_prefix(&format!("GET {api}")) else { return Reply::not_found() };
         match path {
             "/user" => Reply::json(r#"{"login":"me"}"#),
@@ -49,6 +67,7 @@ fn pr_page_reads_detail_settings_comments_and_reviews() {
         "GET api.github.com/repos/o/r/pulls/7",
         "GET api.github.com/repos/o/r/issues/7/comments?per_page=100",
         "GET api.github.com/repos/o/r/pulls/7/reviews?per_page=100",
+        "POST api.github.com/graphql",
     ] {
         assert!(routes(&m).iter().any(|r| r == route), "{route}: {:?}", routes(&m));
     }
@@ -89,8 +108,10 @@ fn enterprise_uses_the_api_v3_prefix() {
         repo: "r".into(),
     };
     pr_page(&t, &token(Provider::GitHubEnterprise), 7).unwrap();
-    assert_eq!(routes(&m).len(), 5);
-    assert!(routes(&m).iter().all(|r| r.starts_with("GET git.acme.io/api/v3/")), "{:?}", routes(&m));
+    assert_eq!(routes(&m).len(), 6);
+    let v3 = routes(&m).iter().filter(|r| r.starts_with("GET git.acme.io/api/v3/")).count();
+    assert_eq!(v3, 5, "{:?}", routes(&m));
+    assert!(routes(&m).iter().any(|r| r == "POST git.acme.io/api/graphql"), "{:?}", routes(&m));
 }
 
 #[test]

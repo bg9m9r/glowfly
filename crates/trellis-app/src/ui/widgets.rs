@@ -68,6 +68,8 @@ pub enum Icon {
     ExternalDiff,
     /// A small arrow pointing right: one branch merging into another (the pull request panel).
     Into,
+    /// A speech bubble: code comment threads (pull request panel).
+    Comment,
 }
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
@@ -223,7 +225,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         }
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {} // icons.rs
-        Icon::ExternalDiff | Icon::Into => {} // icons.rs
+        Icon::ExternalDiff | Icon::Into | Icon::Comment => {} // icons.rs
     }
 }
 

@@ -12,6 +12,7 @@ mod github;
 mod gitlab;
 mod paging;
 mod review;
+mod review_threads;
 mod user_repos;
 
 fn remote(url: &str) -> Target {

@@ -1,5 +1,5 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench, warning, keyboard, external diff, into), called from `widgets::paint_icon`.
+//! lock, wrench, warning, keyboard, external diff, into, comment), called from `widgets::paint_icon`.
 
 use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
@@ -178,6 +178,14 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             p.line_segment([from, tip], arrow);
             p.line_segment([tip, pos2(tip.x - 3.5, tip.y)], arrow);
             p.line_segment([tip, pos2(tip.x, tip.y + 3.5)], arrow);
+        }
+        Icon::Comment => {
+            // A rounded bubble about 12x9 with a short tail at its bottom left.
+            let body = Rect::from_center_size(pos2(c.x, c.y - 1.0), vec2(12.0, 9.0));
+            p.rect_stroke(body, 2.5, s, egui::StrokeKind::Middle);
+            let (x, y) = (body.left() + 3.0, body.bottom());
+            line(pos2(x, y), pos2(x - 1.0, y + 3.5));
+            line(pos2(x - 1.0, y + 3.5), pos2(x + 3.5, y));
         }
         Icon::Into => {
             line(pos2(c.x - 5.0, c.y), pos2(c.x + 5.0, c.y));

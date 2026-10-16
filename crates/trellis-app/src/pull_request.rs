@@ -1,5 +1,5 @@
 //! Messages and effects of the pull request panel (state/pull_request.rs,
-//! state/pull_request_actions.rs, update/pull_request/mod.rs, update/pull_request/calls.rs,
+//! state/pull_request_actions.rs, state/pull_request_threads.rs, update/pull_request/,
 //! runner/pull_request.rs, ui/pull_request/). Its files open through `RepoMsg::OpenDiff`, its
 //! Fetch button sends `RemoteMsg::Fetch`, and the browser and copy actions are `Msg::OpenUrl`
 //! and `Msg::Copy`.
@@ -8,7 +8,7 @@ use crate::effect::ForgeError;
 use crate::state::pull_request::PrTab;
 use git2::Oid;
 use std::path::PathBuf;
-use trellis_core::forge::{Auth, Entry, MergeMethod, MergeRequest, Merged, PrPage, ReviewEvent, Target};
+use trellis_core::forge::{Auth, Entry, MergeMethod, MergeRequest, Merged, PrPage, ReviewEvent, Target, ThreadComment};
 use trellis_core::repo::BranchChanges;
 
 /// The files pull request `id` changes, from its local tips.
@@ -51,6 +51,17 @@ pub enum PrCall {
         source: String,
         delete: bool,
     },
+    /// Reply to code comment thread `thread`, whose first comment is `comment`.
+    Reply {
+        thread: String,
+        comment: u64,
+        body: String,
+    },
+    /// Resolve (`resolve`) or reopen code comment thread `thread`.
+    Resolve {
+        thread: String,
+        resolve: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -85,6 +96,8 @@ impl PrEffect {
                 PrCall::Comment(_) => "post-pr-comment",
                 PrCall::Review { .. } => "submit-pr-review",
                 PrCall::Merge { .. } => "merge-pr",
+                PrCall::Reply { .. } => "reply-pr-thread",
+                PrCall::Resolve { .. } => "resolve-pr-thread",
             },
         }
     }
@@ -96,7 +109,23 @@ pub enum PrReply {
     Loaded(Result<PrPage, ForgeError>),
     Commented(Result<Entry, ForgeError>),
     Reviewed(ReviewEvent, Result<(), ForgeError>),
-    Merged { method: MergeMethod, remote: String, source: String, delete: bool, result: Result<Merged, ForgeError> },
+    Merged {
+        method: MergeMethod,
+        remote: String,
+        source: String,
+        delete: bool,
+        result: Result<Merged, ForgeError>,
+    },
+    RepliedToThread {
+        thread: String,
+        result: Result<ThreadComment, ForgeError>,
+    },
+    /// The thread's resolved state now.
+    Resolved {
+        thread: String,
+        resolve: bool,
+        result: Result<bool, ForgeError>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -117,12 +146,27 @@ pub enum PullRequestMsg {
     SubmitReview,
     /// Merge as the merge form says (after the confirmation).
     Merge,
+    /// Post code comment thread .0's reply box.
+    Reply(String),
+    /// Resolve (`resolve`) or reopen code comment thread `thread`.
+    Resolve { thread: String, resolve: bool },
+    /// Show or hide resolved threads.
+    ShowResolved(bool),
+    /// Show or hide outdated threads.
+    ShowOutdated(bool),
+    /// A thread card's Show/Hide.
+    ToggleThread(String),
+    /// A diff line's comment marker was clicked: open thread .0 and scroll the pane to it.
+    FocusThread(String),
+    /// Open thread .0's file in Files changed, at its line.
+    GoToThread(String),
     /// A service call's answer, for pull request `id` of `target` in `workdir`.
     Replied { workdir: PathBuf, target: Target, id: u64, generation: u64, reply: Box<PrReply> },
 }
 
 impl PullRequestMsg {
-    /// Nothing is kept for an inactive tab: intents are for the active tab; a dropped
+    /// Nothing is kept for an inactive tab: intents (the thread ones too) are for the active
+    /// tab; a dropped
     /// FilesLoaded is asked for again by `reload_pending` when its tab becomes active; and
     /// Replied comes from an unscoped effect, so it never arrives scoped (its handler matches
     /// the repository itself and logs results for other tabs).
@@ -136,6 +180,13 @@ impl PullRequestMsg {
             | Self::PostComment
             | Self::SubmitReview
             | Self::Merge
+            | Self::Reply(_)
+            | Self::Resolve { .. }
+            | Self::ShowResolved(_)
+            | Self::ShowOutdated(_)
+            | Self::ToggleThread(_)
+            | Self::FocusThread(_)
+            | Self::GoToThread(_)
             | Self::Replied { .. } => None,
         }
     }

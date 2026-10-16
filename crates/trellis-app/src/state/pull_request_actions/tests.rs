@@ -2,7 +2,7 @@ use super::*;
 use crate::state::pull_request::{Files, Page, PrTab, Tips};
 use trellis_core::forge::{PrPage, PullRequest};
 
-fn detail() -> PrDetail {
+pub(in crate::state) fn detail() -> PrDetail {
     PrDetail {
         state: PrState::Open,
         draft: false,
@@ -21,7 +21,7 @@ fn detail() -> PrDetail {
     }
 }
 
-fn view(d: Option<PrDetail>) -> PrView {
+pub(in crate::state) fn view(d: Option<PrDetail>) -> PrView {
     let pr = PullRequest {
         id: 12,
         title: "Search page".into(),
@@ -45,11 +45,14 @@ fn view(d: Option<PrDetail>) -> PrView {
         tips: Tips { target: None, source: None },
         files: Files::Missing,
         tab: PrTab::Overview,
-        page: d.map_or(Page::Loading, |detail| Page::Loaded(Box::new(PrPage { detail, entries: Vec::new() }))),
+        page: d.map_or(Page::Loading, |detail| {
+            Page::Loaded(Box::new(PrPage { detail, entries: Vec::new(), threads: Vec::new(), threads_note: None }))
+        }),
         reloading: false,
         busy: None,
         action_error: None,
         forms: PrForms::default(),
+        threads: Default::default(),
     }
 }
 

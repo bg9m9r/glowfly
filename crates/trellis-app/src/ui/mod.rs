@@ -134,6 +134,8 @@ mod snapshot_tests_pull_request;
 #[cfg(test)]
 mod snapshot_tests_pull_request_review;
 #[cfg(test)]
+mod snapshot_tests_pull_request_threads;
+#[cfg(test)]
 mod snapshot_tests_push_pr;
 #[cfg(test)]
 mod snapshot_tests_rebase;

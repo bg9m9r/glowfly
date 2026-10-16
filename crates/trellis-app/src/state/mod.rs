@@ -38,6 +38,7 @@ pub mod profiles;
 pub mod publish;
 pub mod pull_request;
 pub mod pull_request_actions;
+pub mod pull_request_threads;
 pub mod push_pr;
 pub mod rebase;
 pub mod ref_rows;

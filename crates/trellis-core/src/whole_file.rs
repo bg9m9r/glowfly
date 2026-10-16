@@ -190,4 +190,4 @@ pub fn change_of_hunk(d: &FileDiff, mode: DiffMode, h: usize) -> Option<usize> {
 #[cfg(test)]
 mod fold_tests;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

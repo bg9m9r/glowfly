@@ -1,6 +1,7 @@
 //! A pull request's conversation, reviews and merging on its hosting service: the page the
 //! pull request panel shows (state, mergeability, the repository's merge settings, comments and
-//! submitted reviews), posting a comment, submitting a review and merging. Only GitHub and
+//! submitted reviews, code comment threads), posting a comment, submitting a review, replying
+//! to and resolving threads (`thread.rs`), and merging. Only GitHub and
 //! GitHub Enterprise Server for now; every other service answers `Error::Unsupported` without
 //! sending anything.
 
@@ -8,6 +9,10 @@ use super::{Auth, Provider, Target, links};
 use crate::error::{Error, Result};
 
 mod github;
+pub(super) mod github_threads;
+mod thread;
+
+pub use thread::*;
 
 /// Whether comments, reviews and merging work inside Trellis for this service.
 pub fn reviews_in_app(p: Provider) -> bool {
@@ -119,6 +124,10 @@ pub struct PrPage {
     pub detail: PrDetail,
     /// Oldest first.
     pub entries: Vec<Entry>,
+    /// Code comment threads, ordered by their first comment.
+    pub threads: Vec<ReviewThread>,
+    /// Why some or all threads are missing (a server that can't list them), when they are.
+    pub threads_note: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -170,6 +179,7 @@ pub fn pr_page(t: &Target, auth: &Auth, id: u64) -> Result<PrPage> {
     }
     let mut page = github::pr_page(t, auth, id)?;
     page.entries = page.entries.into_iter().map(|e| checked(t, e)).collect();
+    page.threads = page.threads.into_iter().map(|th| thread::checked_thread(t, th)).collect();
     Ok(page)
 }
 
@@ -220,6 +230,8 @@ mod tests {
                 post_comment(&t, &auth, 1, "hi").unwrap_err(),
                 submit_review(&t, &auth, 1, ReviewEvent::Approve, "", None).unwrap_err(),
                 merge(&t, &auth, 1, &req).unwrap_err(),
+                reply_to_thread(&t, &auth, 1, 2, "hi").unwrap_err(),
+                resolve_thread(&t, &auth, "T_1", true).unwrap_err(),
             ];
             for e in errors {
                 assert!(matches!(&e, Error::Unsupported(m) if m.contains(p.name())), "{p:?}: {e}");

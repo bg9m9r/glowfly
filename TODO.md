@@ -496,10 +496,10 @@ Done except the two items that wait on other features (repo groups, tabs and wor
 
 ## P2: integrations depth
 
-- [ ] **In-app pull request view**
+- [x] **In-app pull request view**
   - [x] Files changed (from the local remote-tracking branches: merge base to source tip, with fetch notes)
   - [x] The conversation (comments) from the service
-  - [ ] Inline code comments: reply, resolve, show outdated
+  - [x] Inline code comments: reply, resolve, show outdated
   - [x] Approve, request changes, finish review
   - [x] Merge with merge, squash or rebase
   - [x] Delete the branch after merge
@@ -1393,3 +1393,15 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Mark a draft ready for review, and enable auto-merge
 - Choose the commit email for a merge
 - Open a single comment or review in the browser
+- Start a new code comment on a diff line (a single comment or one added to a pending review),
+  with suggested changes
+- Code comment threads for GitLab diff discussions, Bitbucket inline comments and Azure DevOps
+  file threads in the panel
+- Comment counts on the Files changed rows
+- Place comments on their lines when the local source branch differs from the head (map the line
+  numbers across the newer commits)
+- Highlight the whole range of a multi-line comment, and markers on folded rows of the whole-file
+  view
+- Remember Show resolved / Show outdated per repository
+- Load threads with more than 100 comments in full (a link opens the rest on the service now)
+- Previous / next code comment thread in the diff

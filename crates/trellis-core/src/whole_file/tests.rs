@@ -12,7 +12,7 @@ pub(super) fn hunk(lines: Vec<DiffLine>) -> Hunk {
     Hunk { header: "@@ -1 +1 @@".into(), lines }
 }
 
-pub(super) fn diff(hunks: Vec<Hunk>) -> FileDiff {
+pub(crate) fn diff(hunks: Vec<Hunk>) -> FileDiff {
     FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
 }
 
@@ -20,7 +20,7 @@ pub(super) const EOFNL: &str = "\\ No newline at end of file";
 
 /// Context, a replaced line, ten context lines, an added line and a last context line, plus
 /// the two normal hunks (3 lines of context) that cover it.
-pub(super) fn two_changes() -> (Vec<Hunk>, Hunk) {
+pub(crate) fn two_changes() -> (Vec<Hunk>, Hunk) {
     let mut whole = vec![ctx(1, 1), l('-', Some(2), None, "old two"), l('+', None, Some(2), "new two")];
     whole.extend((3..=12).map(|n| ctx(n, n)));
     whole.push(l('+', None, Some(13), "added"));
