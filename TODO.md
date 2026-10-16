@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-16 09:15 · **Blame gutter**: Blame view of a file at HEAD or a commit (git blame --porcelain, honouring .mailmap and blame.ignoreRevsFile) with a sticky author, date and commit gutter per run, line numbers and syntax colors, opened from file menus, the file history header and the palette's Blame file… finder; clicking a run selects its commit (`921cdd8`)
 - 2026-10-16 08:38 · **Notifications**: Desktop notifications while Trellis is in the background: finished jobs and behind alerts also go to the OS, opt-in under UI Customization with a confirming notification when turned on (`8d3cd61`)
 - 2026-10-16 08:28 · **SSH key management**: Choose the key git uses for SSH remotes (core.sshCommand, for all repositories or a trusted repository), a Use local SSH agent setting with agent status and Add to agent, and Add to service for GitHub, GitLab and Bitbucket Cloud with a copy-and-open fallback (`1159cdb`)
 - 2026-10-16 08:05 · **Clone and init options**: Sparse clone (chosen folders, optional partial clone) and a Your repositories tab (GitHub, GitLab, Bitbucket Cloud accounts) in the Clone dialog; Init opens a dialog with an initial branch, a .gitignore template, a license and an initial commit (`00790e2`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-15 17:46 · **Search and filter**: Filter the graph to search matches (Filter toggle, Ctrl+Shift+F) with a live match count, and narrow by author with author: terms and an author picker (`b922cb6`)
 - 2026-10-15 17:37 · **SSH key management**: SSH page in Preferences: list the key pairs in ~/.ssh with fingerprints, copy a public key, and generate an Ed25519 key with ssh-keygen, asking before replacing one (`cac1207`)
 - 2026-10-15 16:54 · **Signing beyond config**: Signature badge for the selected commit in the details panel: verified, unverified, unknown key or bad signature, checked with git and cached per commit (`07ab360`)
-- 2026-10-15 16:43 · **Repository management**: Favorite repositories above Recent on the welcome screen and in the repository menu, remove one recent entry or clear the list, and missing folders marked (`59fc992`)
 
 ---
 
