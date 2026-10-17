@@ -135,7 +135,7 @@ fn undo_puts_the_executable_bit_back_unless_git_ignores_it() {
     for file_mode in [true, false] {
         let dir = base(&format!("sv-exec-{file_mode}"));
         git(&dir, &["config", "core.fileMode", if file_mode { "true" } else { "false" }]);
-        let saved = Saved { blob: Repository::open(&dir).unwrap().blob(b"#!/bin/sh\n").unwrap(), executable: true };
+        let saved = Saved { blob: git2::Repository::open(&dir).unwrap().blob(b"#!/bin/sh\n").unwrap(), executable: true };
         write_saved(&dir, "f.txt", Some(saved)).unwrap();
         assert_eq!(read(&dir, "f.txt").unwrap(), b"#!/bin/sh\n");
         assert_eq!(mode(&dir) != 0, file_mode, "core.fileMode={file_mode}");

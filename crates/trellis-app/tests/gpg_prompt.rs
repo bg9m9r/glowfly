@@ -139,7 +139,11 @@ esac
         let askpass = AskpassEnv { exe: EXE.into(), addr: s.addr(), token: s.token().into() };
         let mut vars: Vec<(&str, String)> =
             gitcli::askpass_vars(&askpass).into_iter().map(|(k, v)| (k, v.into_string().unwrap())).collect();
-        vars.extend(trellis_core::gpg_prompt::env::vars(Path::new(EXE), None).into_iter().map(|(k, v)| (k, v.into_string().unwrap())));
+        vars.extend(
+            trellis_core::gpg_prompt::env::vars(Path::new(EXE), None, &trellis_core::git_program::program())
+                .into_iter()
+                .map(|(k, v)| (k, v.into_string().unwrap())),
+        );
         let mut env: Vec<(&str, &str)> = vars.iter().map(|(k, v)| (*k, v.as_str())).collect();
         env.extend([
             ("GIT_AUTHOR_NAME", "Ada Lovelace"),
