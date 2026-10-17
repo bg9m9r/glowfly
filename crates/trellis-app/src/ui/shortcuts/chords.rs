@@ -17,9 +17,11 @@ pub(crate) fn egui_key(k: KeyName) -> Option<Key> {
 }
 
 /// Whether a press follows macOS's modifiers: egui reports Cmd as `mac_cmd`, and Ctrl without
-/// `command` only there (off macOS Ctrl is both `ctrl` and `command`).
+/// `command` only there (off macOS Ctrl is both `ctrl` and `command`). Read from the press, not
+/// the build target, so the platform tests run on every system; a press with neither modifier
+/// maps to the same chord either way.
 pub(crate) fn mac_press(m: Modifiers) -> bool {
-    cfg!(target_os = "macos") || m.mac_cmd || (m.ctrl && !m.command)
+    m.mac_cmd || (m.ctrl && !m.command)
 }
 
 /// The chord for a press of `key` with `m`. On macOS (`mac`) Cmd is Mod and Ctrl is Ctrl; on
