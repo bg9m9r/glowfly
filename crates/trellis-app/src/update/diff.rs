@@ -123,7 +123,8 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             // The gaps between the hunks shown now may sit where others did: read them again.
             st.view.diff_expanded.drop_gap_text();
             fx.push(super::prefs::save_settings(st));
-            // Hunk rows change, so the diff reopens at the top; hunk operations wait for it.
+            // Hunk rows change, so the diff reopens at the top; hunk operations wait for it, and
+            // then count the hunks shown under the new setting.
             super::repo::reopen_diff(st, fx);
         }
         DiffMsg::SetWordWrap(on) => {

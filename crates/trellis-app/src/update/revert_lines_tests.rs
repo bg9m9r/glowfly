@@ -7,7 +7,7 @@ use crate::effect::Effect;
 use crate::msg::{DiffMsg, Msg, RepoMsg, StageMsg};
 use crate::state::history::FileHistoryView;
 use crate::state::lines::LineClick;
-use crate::state::{AppState, WHITESPACE_BLOCKS_REVERT, WHOLE_FILE_BLOCKS_LINE_OPS};
+use crate::state::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
 use git2::Oid;
 use trellis_core::repo::{DiffTarget, HistoryEntry, RevertPart, RevertRequest};
 use trellis_core::settings::DiffMode;
@@ -30,11 +30,28 @@ fn revert_lines_sends_effect() {
     let generation = st.hunk_ops_gen();
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertLines));
     let expected = one_hunk().hunks[0].clone();
-    let want = RevertRequest { target, part: RevertPart::Lines { hunk: 0, expected, lines: vec![1] }, dest: None };
+    let want =
+        RevertRequest { target, part: RevertPart::Lines { hunk: 0, expected, lines: vec![1] }, dest: None, ignore_whitespace: false };
     assert_eq!(requests(&fx), [&want], "{fx:?}");
     assert_eq!(fx.len(), 1);
     assert!(st.view.diff_lines.is_empty(), "the selection is cleared");
     assert_eq!(st.hunk_ops_gen(), generation, "diff_gen is not bumped");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn revert_lines_with_whitespace_hidden_carries_the_flag() {
+    let (mut st, dir) = with_diff("revert-lines-ws", DiffTarget::Unstaged("a.txt".into()), one_hunk());
+    let target = DiffTarget::Commit(head(&st), "a.txt".into());
+    st.diff = Some((target.clone(), one_hunk().into()));
+    st.settings.diff_ignore_whitespace = true;
+    select(&mut st, 1);
+    assert!(!st.view.diff_lines.is_empty(), "lines can be selected with whitespace hidden");
+    let fx = run(&mut st, Msg::Stage(StageMsg::RevertLines));
+    let expected = one_hunk().hunks[0].clone();
+    let want = RevertRequest { target, part: RevertPart::Lines { hunk: 0, expected, lines: vec![1] }, dest: None, ignore_whitespace: true };
+    assert_eq!(requests(&fx), [&want], "{fx:?}");
+    assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -62,11 +79,6 @@ fn revert_lines_refused() {
     let (mut st, dir) = with_diff("revert-lines-refused", DiffTarget::Unstaged("a.txt".into()), one_hunk());
     st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk().into()));
     select(&mut st, 1);
-    st.settings.diff_ignore_whitespace = true;
-    assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty());
-    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == WHITESPACE_BLOCKS_REVERT));
-    st.settings.diff_ignore_whitespace = false;
-
     st.settings.diff_mode = DiffMode::WholeFile;
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == WHOLE_FILE_BLOCKS_LINE_OPS));
@@ -85,13 +97,14 @@ fn revert_file_sends_effect() {
     let (a, b) = (head(&st), Oid::zero());
     for target in [DiffTarget::Commit(a, "a.txt".into()), DiffTarget::Between(b, a, "a.txt".into())] {
         let fx = run(&mut st, Msg::Stage(StageMsg::RevertFile(target.clone())));
-        let want = RevertRequest { target, part: RevertPart::File, dest: None };
+        let want = RevertRequest { target, part: RevertPart::File, dest: None, ignore_whitespace: false };
         assert_eq!(requests(&fx), [&want], "{fx:?}");
     }
     // Whatever diff is open (or none), and with whitespace hidden: it doesn't use the diff.
     st.diff = None;
     st.settings.diff_ignore_whitespace = true;
-    assert_eq!(requests(&run(&mut st, Msg::Stage(StageMsg::RevertFile(DiffTarget::Commit(a, "a.txt".into()))))).len(), 1);
+    let fx = run(&mut st, Msg::Stage(StageMsg::RevertFile(DiffTarget::Commit(a, "a.txt".into()))));
+    assert!(matches!(requests(&fx)[..], [RevertRequest { ignore_whitespace: false, .. }]), "{fx:?}");
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertFile(DiffTarget::Unstaged("a.txt".into())))).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -1,5 +1,5 @@
 //! Headless tests for Revert Hunk on commit and comparison diffs: which diffs it applies to,
-//! refusals (stale, whitespace hidden), the whole-file view, and the result handling.
+//! refusals (stale), whitespace hidden, the whole-file view, and the result handling.
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
@@ -8,7 +8,7 @@ use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::RevertWhat;
 use crate::msg::StageMsg;
-use crate::state::{AppState, WHITESPACE_BLOCKS_HUNK_OPS, WHITESPACE_BLOCKS_REVERT};
+use crate::state::AppState;
 use git2::Oid;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -47,7 +47,7 @@ fn expect_effect(st: &mut AppState, target: &DiffTarget) {
     let fx = revert(st, 0);
     let want = one_hunk().hunks[0].clone();
     assert!(
-        matches!(&fx[..], [Effect::Revert { req: RevertRequest { target: t, part: RevertPart::Hunk { index: 0, expected }, dest: None }, .. }]
+        matches!(&fx[..], [Effect::Revert { req: RevertRequest { target: t, part: RevertPart::Hunk { index: 0, expected }, dest: None, ignore_whitespace: false }, .. }]
             if t == target && *expected == want),
         "{fx:?}"
     );
@@ -83,18 +83,30 @@ fn stale_generation_is_refused() {
 }
 
 #[test]
-fn whitespace_blocks_revert() {
+fn whitespace_hidden_reverts_carry_the_flag_but_files_dont() {
     let (mut st, dir) = with_diff("revert-ws", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    st.diff = Some((DiffTarget::Commit(head(&st), "a.txt".into()), one_hunk().into()));
+    let target = DiffTarget::Commit(head(&st), "a.txt".into());
+    st.diff = Some((target.clone(), one_hunk().into()));
     st.settings.diff_ignore_whitespace = true;
-    assert_eq!(st.hunk_ops_blocked(), Some(WHITESPACE_BLOCKS_REVERT));
-    assert!(revert(&mut st, 0).is_empty());
-    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == WHITESPACE_BLOCKS_REVERT));
-
-    st.diff = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
-    assert_eq!(st.hunk_ops_blocked(), Some(WHITESPACE_BLOCKS_HUNK_OPS));
-    st.diff = None;
-    assert_eq!(st.hunk_ops_blocked(), None);
+    let fx = revert(&mut st, 0);
+    assert!(
+        matches!(&fx[..], [Effect::Revert { req: RevertRequest { part: RevertPart::Hunk { .. }, ignore_whitespace: true, .. }, .. }]),
+        "{fx:?}"
+    );
+    st.view.diff_lines.target = Some(target.clone());
+    st.view.diff_lines.hunk = 0;
+    st.view.diff_lines.lines.insert(1);
+    let fx = run(&mut st, Msg::Stage(StageMsg::RevertLines));
+    assert!(
+        matches!(&fx[..], [Effect::Revert { req: RevertRequest { part: RevertPart::Lines { .. }, ignore_whitespace: true, .. }, .. }]),
+        "{fx:?}"
+    );
+    let fx = run(&mut st, Msg::Stage(StageMsg::RevertFile(target)));
+    assert!(
+        matches!(&fx[..], [Effect::Revert { req: RevertRequest { part: RevertPart::File, ignore_whitespace: false, .. }, .. }]),
+        "{fx:?}"
+    );
+    assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -175,7 +187,7 @@ fn revert_end_to_end() {
 }
 
 fn reverted(path: &str, what: RevertWhat, result: Result<Reverted, String>) -> Msg {
-    Msg::Stage(StageMsg::Reverted { path: path.into(), what, result })
+    Msg::Stage(StageMsg::Reverted { path: path.into(), what, result, undo: None })
 }
 
 #[test]

@@ -46,11 +46,6 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             }
         }
         StageMsg::Hunk { op, path, index, generation } => {
-            // A confirm dialog or a message sent before whitespace was hidden can still arrive.
-            if let Some(why) = st.hunk_ops_blocked() {
-                st.log(false, why);
-                return;
-            }
             // The index counts hunks in the diff the user saw. If that diff has been reloaded,
             // replaced, or a reload is still on its way, the index may name a different hunk.
             if st.hunk_ops_gen() != Some(generation) {
@@ -61,13 +56,15 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             let Some(expected) = st.diff.as_ref().and_then(|(_, d)| d.hunks.get(index)).cloned() else { return };
             // Its hunks are stale from now until the reload that follows the operation lands.
             st.diff_gen += 1;
-            local(st, LocalOp::Hunk { op, path, index, expected }, fx);
+            // Toggling the whitespace filter reloads the diff, so `generation` matched this one.
+            let ignore_whitespace = st.settings.diff_ignore_whitespace;
+            local(st, LocalOp::Hunk { op, path, index, expected, ignore_whitespace }, fx);
         }
         StageMsg::ApplyLines(op) => apply_lines(st, op, fx),
         StageMsg::RevertHunk { index, generation } => super::revert::hunk(st, index, generation, fx),
         StageMsg::RevertLines => super::revert::lines(st, fx),
         StageMsg::RevertFile(target) => super::revert::file(st, target, fx),
-        StageMsg::Reverted { path, what, result } => super::revert::done(st, path, what, result, now, fx),
+        StageMsg::Reverted { path, what, result, undo } => super::revert::done(st, path, what, result, undo, now, fx),
         StageMsg::LocalOpDone(result) => {
             let failed = result.is_err();
             match result {
@@ -185,7 +182,8 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     // Its hunks are stale from now until the reload that follows the operation lands.
     st.diff_gen += 1;
     let lines = sel.lines.into_iter().collect();
-    local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines }, fx);
+    let ignore_whitespace = st.settings.diff_ignore_whitespace;
+    local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines, ignore_whitespace }, fx);
 }
 
 pub(super) fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) {

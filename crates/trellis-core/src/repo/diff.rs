@@ -208,7 +208,8 @@ const WHOLE_FILE_CONTEXT: u32 = 1 << 24;
 /// `load_diff` with options. With whitespace ignored, a modified file whose changes are all
 /// whitespace comes back with `hunks` empty rather than an error: the delta stays (deltas compare
 /// blob ids) and only the patch loses its hunks. Hunk indexes from such a diff don't match
-/// `apply_hunk` or `apply_lines`, which always work on the unfiltered diff.
+/// `apply_hunk` or `apply_lines`, which always work on the unfiltered diff: use `apply_shown`,
+/// or `revert` with `RevertRequest::ignore_whitespace`, which apply only the changes shown.
 ///
 /// With `whole_file`, the file is loaded a second time with unlimited context into
 /// `FileDiff::whole`. That load uses the same whitespace options, so its changed lines are the

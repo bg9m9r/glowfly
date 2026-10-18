@@ -25,6 +25,7 @@ mod refs;
 mod reset;
 mod resolved;
 mod resumed;
+mod reverted;
 mod saved;
 mod stash;
 pub use action::{Action, Changes, Created, Discarded, HeadPos, Staged};
@@ -36,6 +37,7 @@ use record::stash_top;
 pub use record::{Before, after, before, irreversible, redone};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
 pub use resolved::resolve_saving;
+pub use reverted::revert_saving;
 pub use saved::{RestoreFailed, Saved, discard_saving, restore_saving, write as write_saved};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.
@@ -125,6 +127,8 @@ mod resolved_tests;
 mod restore_tests;
 #[cfg(test)]
 mod resumed_tests;
+#[cfg(test)]
+mod reverted_tests;
 #[cfg(test)]
 mod saved_tests;
 #[cfg(test)]

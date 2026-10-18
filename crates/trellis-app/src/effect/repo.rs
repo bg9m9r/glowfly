@@ -20,6 +20,8 @@ pub enum LocalOp {
         index: usize,
         /// The hunk as displayed; the operation is refused if the file's hunk differs now.
         expected: Hunk,
+        /// The hunk was shown with whitespace changes hidden; core applies only the shown changes.
+        ignore_whitespace: bool,
     },
     /// Lines `lines` (sorted) of hunk `hunk`, whose header must still be `header`.
     Lines {
@@ -29,6 +31,8 @@ pub enum LocalOp {
         /// The hunk as displayed; the operation is refused if the file's hunk differs now.
         expected: Hunk,
         lines: Vec<usize>,
+        /// The hunk was shown with whitespace changes hidden; core applies only the shown changes.
+        ignore_whitespace: bool,
     },
     /// Writes a resolved conflict's output and stages it, if the conflict is still `expected`.
     ResolveConflict {

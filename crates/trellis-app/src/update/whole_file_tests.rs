@@ -2,7 +2,7 @@
 //! stepping between change blocks, hunk actions on blocks and line operations being off.
 
 use super::diff_tests::drive_holding_diffs;
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LocalOp};
 use crate::msg::DiffMsg;
@@ -171,7 +171,6 @@ fn line_ops_blocked_in_whole_mode() {
     let (mut st, dir) = with_diff("whole-lines", three_changes(true));
     st.settings.diff_mode = DiffMode::WholeFile;
     assert_eq!(st.line_ops_blocked(), Some(WHOLE_FILE_BLOCKS_LINE_OPS));
-    assert_eq!(st.hunk_ops_blocked(), None, "hunk buttons stay on");
     assert!(run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 1, how: Only })).is_empty());
     assert!(st.view.diff_lines.is_empty());
 
@@ -257,18 +256,23 @@ fn whole_file_stage_block_end_to_end() {
 }
 
 #[test]
-fn whole_file_with_ignore_whitespace_blocks_hunks() {
+fn whole_file_with_ignore_whitespace_stages_the_shown_hunk() {
     let dir = rust_repo("whole-ws");
+    // A re-indent next to the first change, hidden in the diff.
+    let text = std::fs::read_to_string(dir.join("main.rs")).unwrap();
+    std::fs::write(dir.join("main.rs"), text.replace("    let x5 = 5;", "        let x5 = 5;")).unwrap();
     let mut st = state();
     st.settings.diff_mode = DiffMode::WholeFile;
     st.settings.diff_ignore_whitespace = true;
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("main.rs".into()))));
     assert!(st.diff.as_ref().and_then(|(_, d)| d.whole.as_ref()).is_some());
-    let why = st.hunk_ops_blocked().expect("blocked while whitespace is hidden");
     let generation = st.hunk_ops_gen().expect("loaded");
-    assert!(run(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation })).is_empty());
-    assert!(st.log.iter().any(|l| !l.ok && l.text == why));
+    let fx = run(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }));
+    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 0, ignore_whitespace: true, .. }, .. }]), "{fx:?}");
+    finish(&mut st, fx);
+    assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.last().map(|l| &l.text));
+    assert_eq!(staged(&dir), ["-    let a = 1;", "+    let a = 10;"], "the re-indent stays unstaged");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

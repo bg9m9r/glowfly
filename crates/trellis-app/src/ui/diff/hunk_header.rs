@@ -22,8 +22,7 @@ enum HunkButton {
 /// Unstage / Discard Hunk on working-tree diffs (or Stage / Unstage / Discard N lines when the
 /// hunk has selected lines), Revert Hunk (or Revert N lines) on commit and comparison diffs. The buttons are
 /// disabled while a reload is on its way (`hunk_gen` is `None`), since the hunk indexes may no
-/// longer match the file, and while `blocked` (whitespace hidden: the shown hunks aren't the
-/// ones the operations count).
+/// longer match the file. With whitespace changes hidden they apply only the changes shown.
 pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs: &mut Vec<Msg>) {
     ui.painter().rect_filled(rect, 0.0, color::hunk_bg());
     // In the hunk view, the closed gap above this hunk opens from a control before the text.
@@ -64,7 +63,7 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         let r = Rect::from_min_size(pos2(x - w, rect.top() + 1.0), vec2(w, v.style.row_h - 2.0));
         x -= w + 6.0;
         let mut builder = egui::UiBuilder::new().max_rect(r).layout(Layout::centered_and_justified(egui::Direction::TopDown));
-        let reason = v.blocked.or(v.hunk_gen.is_none().then_some("Updating the diff..."));
+        let reason = v.hunk_gen.is_none().then_some("Updating the diff...");
         if reason.is_some() {
             builder = builder.disabled();
         }

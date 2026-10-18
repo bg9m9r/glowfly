@@ -1,8 +1,10 @@
 //! Line-level staging: stage, unstage or discard some of a hunk's changed lines by building a
-//! patch that holds only those lines and applying it to the index or the working tree.
+//! patch that holds only those lines and applying it to the index or the working tree. With
+//! whitespace changes hidden, whole hunks go this way too (`apply_shown`, with `shown_ws`).
 
-use super::diff::{file_patch, head_tree, hunk_of, path_opts, workdir_opts};
-use super::{Hunk, HunkOp};
+use super::diff::{file_patch, hunk_of, target_diff};
+use super::shown_ws::{changed, exact_context, raw_lines, side_lines};
+use super::{DiffTarget, Hunk, HunkOp, LoadDiffOptions};
 use crate::error::{Error, Result};
 use git2::{ApplyLocation, Delta, Diff, Repository};
 use std::collections::BTreeSet;
@@ -14,6 +16,28 @@ use std::path::Path;
 /// the selection is refused as stale with `NotFound`. Stage and Discard act on the unstaged
 /// diff, Unstage on the staged one.
 pub fn apply_lines(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk, lines: &[usize], op: HunkOp) -> Result<()> {
+    apply_in(workdir, path, hunk_index, expected, Some(lines), op, false)
+}
+
+/// `apply_lines` (or, with `lines` `None`, the whole hunk) on a diff shown with whitespace
+/// changes hidden (`LoadDiffOptions::ignore_whitespace`), whose hunk and line indexes it counts.
+/// Only the changes shown are applied: unchanged lines keep the whitespace they have on the
+/// side being patched, so hidden whitespace changes stay as they are. Refused with
+/// `Unsupported` in the rare case that an unchanged line of the hunk differs from the file by
+/// more than whitespace.
+pub fn apply_shown(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk, lines: Option<&[usize]>, op: HunkOp) -> Result<()> {
+    apply_in(workdir, path, hunk_index, expected, lines, op, true)
+}
+
+fn apply_in(
+    workdir: &Path,
+    path: &str,
+    hunk_index: usize,
+    expected: &Hunk,
+    lines: Option<&[usize]>,
+    op: HunkOp,
+    ignore_whitespace: bool,
+) -> Result<()> {
     if op == HunkOp::Discard {
         super::collide::refuse(workdir, path, "discard changes to")?;
     }
@@ -23,15 +47,15 @@ pub fn apply_lines(workdir: &Path, path: &str, hunk_index: usize, expected: &Hun
     }
     // Always the forward diff that `load_diff` shows, so the line indexes match; the patch
     // builder swaps the roles of `+` and `-` when the patch goes the other way.
-    let (diff, location, reverse) = match op {
-        HunkOp::Stage => (repo.diff_index_to_workdir(None, Some(&mut workdir_opts(path)))?, ApplyLocation::Index, false),
-        HunkOp::Discard => (repo.diff_index_to_workdir(None, Some(&mut workdir_opts(path)))?, ApplyLocation::WorkDir, true),
-        HunkOp::Unstage => {
-            let tree = head_tree(&repo);
-            (repo.diff_tree_to_index(tree.as_ref(), None, Some(&mut path_opts(path)))?, ApplyLocation::Index, true)
-        }
+    let shown = if op == HunkOp::Unstage { DiffTarget::Staged(path.into()) } else { DiffTarget::Unstaged(path.into()) };
+    let (location, reverse) = match op {
+        HunkOp::Stage => (ApplyLocation::Index, false),
+        HunkOp::Discard => (ApplyLocation::WorkDir, true),
+        HunkOp::Unstage => (ApplyLocation::Index, true),
     };
-    let stale = || Error::NotFound("the diff changed; select the lines again".into());
+    let diff = target_diff(&repo, &shown, LoadDiffOptions { ignore_whitespace, ..Default::default() }, None)?;
+    let again = if lines.is_some() { "select the lines again" } else { "try again on the updated diff" };
+    let stale = || Error::NotFound(format!("the diff changed; {again}"));
     let patch = file_patch(&diff, path)?.ok_or_else(stale)?;
     if hunk_index >= patch.num_hunks() {
         return Err(stale());
@@ -39,17 +63,22 @@ pub fn apply_lines(workdir: &Path, path: &str, hunk_index: usize, expected: &Hun
     if hunk_of(&patch, hunk_index)? != *expected {
         return Err(stale());
     }
-    let (hunk, count) = patch.hunk(hunk_index)?;
-    let mut content = Vec::with_capacity(count);
-    for l in 0..count {
-        let line = patch.line_in_hunk(hunk_index, l)?;
-        content.push((line.origin(), line.content().to_vec()));
-    }
-    let selected: BTreeSet<usize> =
-        lines.iter().copied().filter(|&i| content.get(i).is_some_and(|(o, _)| matches!(o, '+' | '-'))).collect();
+    let (hunk, _) = patch.hunk(hunk_index)?;
+    let raw = raw_lines(&patch, hunk_index)?;
+    let selected: BTreeSet<usize> = match lines {
+        Some(l) => l.iter().copied().filter(|&i| raw.get(i).is_some_and(|r| matches!(r.origin, '+' | '-'))).collect(),
+        None => changed(&raw),
+    };
     if selected.is_empty() {
         return Err(Error::NotFound("no changed lines selected".into()));
     }
+    let (content, selected) = if ignore_whitespace {
+        let full = target_diff(&repo, &shown, LoadDiffOptions::default(), None)?;
+        let full = file_patch(&full, path)?.ok_or_else(stale)?;
+        exact_context(&raw, &side_lines(&full, reverse)?, reverse, &selected)?
+    } else {
+        (raw.into_iter().map(|r| (r.origin, r.bytes)).collect(), selected)
+    };
     let pre_start = if reverse { hunk.new_start() } else { hunk.old_start() };
 
     // The side being patched is the old side going forward and the new side in reverse.

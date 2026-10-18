@@ -93,7 +93,7 @@ fn diff_whole_ignore_whitespace() {
     let (st, dir) = with_whole("whole-ws", ThemeChoice::Dark, DiffLayout::Inline, false, true);
     let lines = &st.diff.as_ref().unwrap().1.whole.as_ref().unwrap().diff.hunks[0].lines;
     assert!(lines.iter().any(|l| l.origin == ' ' && l.text.contains("self.w  *  self.h")), "the re-spaced line is context");
-    assert!(st.hunk_ops_blocked().is_some());
+    assert!(st.hunk_ops_gen().is_some(), "the block buttons stay on");
     render("diff_whole_ignore_whitespace", st, true);
     remove_fixture(&dir);
 }

@@ -1,7 +1,8 @@
 //! Headless tests for the diff viewer's Ignore whitespace toggle: saving, reloading the open
-//! diff, and refusing hunk and line operations while whitespace changes are hidden.
+//! diff, and dropping a load started before the toggle. Hunk and line operations on a diff
+//! with whitespace hidden are in `whitespace_ops_tests.rs`.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::DiffMsg;
@@ -10,9 +11,9 @@ use crate::msg::RepoMsg;
 use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::lines::LineClick::Only;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
-use trellis_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions};
+use trellis_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, LoadOptions};
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
@@ -38,18 +39,6 @@ fn ws_repo(name: &str) -> PathBuf {
 
 fn hunks(st: &AppState) -> Option<usize> {
     st.diff.as_ref().map(|(_, d)| d.hunks.len())
-}
-
-fn whitespace_refusals(st: &AppState) -> usize {
-    st.log.iter().filter(|l| !l.ok && l.text.contains("Ignore whitespace")).count()
-}
-
-fn has_local_op(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LocalOp { .. }))
-}
-
-fn read(dir: &Path, file: &str) -> String {
-    std::fs::read_to_string(dir.join(file)).unwrap()
 }
 
 #[test]
@@ -111,56 +100,7 @@ fn whitespace_toggle_filters_a_real_repo() {
 }
 
 #[test]
-fn hunk_and_line_ops_are_refused_while_whitespace_is_hidden() {
-    let dir = scratch_repo("ws-refuse");
-    git(&dir, &["config", "core.autocrlf", "false"]);
-    let a = DiffTarget::Unstaged("a.txt".into());
-    let mut st = state();
-    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(a.clone())));
-    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    let g = st.hunk_ops_gen().expect("the reload landed");
-    assert!(st.hunk_ops_blocked().is_some());
-
-    let stage = |generation| Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "a.txt".into(), index: 0, generation });
-    assert!(!has_local_op(&run(&mut st, stage(g))));
-    assert_eq!(whitespace_refusals(&st), 1);
-
-    // Clicks don't select lines; a selection made before the toggle can't be applied either.
-    let (_, d) = st.diff.clone().unwrap();
-    let two = d.hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
-    run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
-    assert!(st.view.diff_lines.is_empty());
-    st.view.diff_lines.click(&a, &d, 0, two, Only);
-    assert!(!has_local_op(&run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)))));
-    assert_eq!(whitespace_refusals(&st), 2);
-
-    // A discard waiting in a confirmation dialog is refused when accepted.
-    let discard = Msg::Stage(StageMsg::Hunk { op: HunkOp::Discard, path: "a.txt".into(), index: 0, generation: g });
-    run(&mut st, Msg::confirm("Discard hunk", "Discard?".into(), "Discard", discard));
-    assert!(!has_local_op(&run(&mut st, Msg::ConfirmAccepted)));
-    assert_eq!(whitespace_refusals(&st), 3);
-    assert_eq!(read(&dir, "a.txt"), "one\ntwo\n", "nothing discarded");
-    assert!(repo::load_diff(&dir, &DiffTarget::Staged("a.txt".into())).is_err(), "nothing staged");
-
-    // Whole-file operations don't use hunk indexes and still work.
-    assert!(has_local_op(&run(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())))));
-
-    // Showing whitespace again re-enables hunk staging on the reloaded diff.
-    let mut st = state();
-    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(a.clone())));
-    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(false)));
-    assert_eq!(st.hunk_ops_blocked(), None);
-    let fresh = st.hunk_ops_gen().expect("enabled again");
-    drive(&mut st, stage(fresh));
-    assert!(repo::load_diff(&dir, &DiffTarget::Staged("a.txt".into())).is_ok(), "the hunk was staged");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn commit_diffs_block_revert_while_whitespace_is_hidden() {
+fn commit_diffs_reload_with_whitespace_hidden_and_keep_revert() {
     let dir = scratch_repo("ws-commit");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
@@ -168,7 +108,11 @@ fn commit_diffs_block_revert_while_whitespace_is_hidden() {
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head, "a.txt".into()))));
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, target: DiffTarget::Commit(..), .. })));
-    assert_eq!(st.hunk_ops_blocked(), Some(crate::state::WHITESPACE_BLOCKS_REVERT));
+    assert_eq!(st.hunk_ops_gen(), None, "Revert Hunk waits for the reload");
+    finish(&mut st, fx);
+    let generation = st.hunk_ops_gen().expect("the reload landed");
+    let fx = run(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation }));
+    assert!(matches!(&fx[..], [Effect::Revert { req, .. }] if req.ignore_whitespace), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -199,15 +143,4 @@ fn a_load_started_before_the_toggle_is_dropped() {
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&a));
     assert!(st.hunk_ops_gen().is_some());
     let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn hunk_ops_are_not_blocked_with_whitespace_shown() {
-    let mut st = state();
-    st.diff = Some((DiffTarget::Staged("f.txt".into()), one_hunk().into()));
-    assert_eq!(st.hunk_ops_blocked(), None);
-    st.settings.diff_ignore_whitespace = true;
-    assert!(st.hunk_ops_blocked().is_some());
-    st.diff = None;
-    assert_eq!(st.hunk_ops_blocked(), None);
 }

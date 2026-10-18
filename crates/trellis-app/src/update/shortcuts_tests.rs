@@ -118,7 +118,7 @@ fn s_and_u_ignore_other_diffs_and_views() {
 }
 
 #[test]
-fn a_hidden_selection_stages_the_whole_file() {
+fn a_hidden_selection_stages_the_whole_file_and_hidden_whitespace_keeps_it() {
     let (mut st, dir) = with_repo("keys-hidden", unstaged());
     select_line(&mut st);
     st.settings.diff_mode = DiffMode::WholeFile;
@@ -126,10 +126,11 @@ fn a_hidden_selection_stages_the_whole_file() {
     assert_eq!(op(&fx), Some(&LocalOp::StageFile("f.txt".into())), "{fx:?}");
     assert!(st.log.is_empty());
 
+    // With whitespace hidden the selection stays usable: S stages the selected lines.
     st.settings.diff_mode = DiffMode::Hunks;
     st.settings.diff_ignore_whitespace = true;
     let fx = key(&mut st, KeyAction::Stage);
-    assert_eq!(op(&fx), Some(&LocalOp::StageFile("f.txt".into())), "{fx:?}");
+    assert!(matches!(op(&fx), Some(LocalOp::Lines { op: HunkOp::Stage, ignore_whitespace: true, .. })), "{fx:?}");
     assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -323,8 +324,9 @@ fn r_reverts_the_current_hunk_or_the_lines() {
 
     st.diff = Some((commit, one_hunk().into()));
     st.settings.diff_ignore_whitespace = true;
-    assert!(key(&mut st, KeyAction::RevertHunk).is_empty());
-    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == crate::state::WHITESPACE_BLOCKS_REVERT));
+    let fx = key(&mut st, KeyAction::RevertHunk);
+    assert!(matches!(revert_part(&fx), Some(RevertPart::Hunk { index: 0, .. })), "with whitespace hidden too: {fx:?}");
+    assert!(st.log.is_empty());
     st.settings.diff_ignore_whitespace = false;
     st.diff_gen += 1;
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty());

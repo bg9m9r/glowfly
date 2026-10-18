@@ -149,7 +149,7 @@ fn apply_lines_emits_local_op() {
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
     let expected = st.diff.as_ref().unwrap().1.hunks[0].clone();
     assert_eq!(expected.header, "@@ -1,4 +1,4 @@");
-    let want = LocalOp::Lines { op: HunkOp::Stage, path: "f.txt".into(), hunk: 0, expected, lines: vec![2, 5] };
+    let want = LocalOp::Lines { op: HunkOp::Stage, path: "f.txt".into(), hunk: 0, expected, lines: vec![2, 5], ignore_whitespace: false };
     assert!(matches!(&fx[..], [Effect::LocalOp { op, .. }] if *op == want), "{fx:?}");
     assert!(st.view.diff_lines.is_empty(), "applying clears the selection");
     assert_eq!(st.hunk_ops_gen(), None, "hunk and line buttons wait for the reload");

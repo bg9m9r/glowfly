@@ -200,7 +200,8 @@ Done except the group colors, which wait on repository groups in the repository 
     - [x] A preference to turn them off (Preferences > Editor)
     - [x] Pair removed and added lines by similarity instead of by position
   - [x] Ignore leading/trailing whitespace (diff header toggle, saved in settings; hunk and line
-    operations are off while it is on, since `apply_hunk` counts the unfiltered hunks)
+    operations then apply only the changes shown, leaving the hidden whitespace changes as they
+    are)
   - [x] Word wrap toggle (header and editor preference); needs rows of varying height
   - [x] Editor preferences page: font size, tab size (tab stops, was a fixed 4 spaces), line
     numbers on/off, syntax highlighting (moved from UI Customization) and word-level highlights
@@ -213,7 +214,7 @@ Done except the group colors, which wait on repository groups in the repository 
     - [x] Syntax colors for whole files over the highlight size limit (see the background
       highlighting item above)
   - [x] Revert a hunk of a commit diff into the working tree (Revert Hunk on commit, compare and
-    File history diffs, Hunks and Whole-file views; off while whitespace is hidden)
+    File history diffs, Hunks and Whole-file views; also with whitespace hidden, and undoable)
     - [x] Revert selected lines (line selection on commit, comparison and File history diffs)
       and whole files (Revert changes to this file in commit, comparison and File history file
       menus), R for the current hunk or the selected lines, the file's current name from File
@@ -680,12 +681,6 @@ ideas that grew out of each item and grouped by that item. They are not tracked 
 checkboxes; they are built after the open items above, roughly in this order. New
 follow-ups go to Ideas, not here.
 
-### Diff viewer upgrade
-
-- Map hunk and line stage/unstage/discard, and Revert Hunk on commit diffs, from the
-  whitespace-filtered diff back to the unfiltered one instead of disabling them
-- Record a hunk revert in Trellis's undo history
-
 ### Line-level staging
 
 - Drag to select a range of lines
@@ -1030,6 +1025,10 @@ here, under the item they grew from.
 - Wrap by display width so wide (CJK, emoji) characters count as two columns
 - A keyboard shortcut and a command palette entry for the wrap toggle
 - Wrap long hunk headers (their function context) instead of clipping them
+- With whitespace hidden, an option to also apply the hidden whitespace changes inside a hunk
+  (stage or revert the region as the full diff has it)
+- Keep a revert's undo entry when the revert fails after changing the file (as Restore does)
+- Name the commit in a revert's undo label ("revert of a hunk of 1a2b3c4 in a.txt")
 
 ### Line-level staging
 

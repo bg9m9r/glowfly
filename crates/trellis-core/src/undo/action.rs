@@ -25,13 +25,30 @@ pub struct Created {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Changes(pub Vec<(String, Option<Oid>)>);
 
-/// Which part of a file's unstaged changes a discard threw away.
+/// Which part of a file's unstaged changes a discard threw away, or which part of a commit or
+/// comparison's change a revert undid in the working tree (recorded the same way).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Discarded {
     File,
     Hunk,
     /// This many selected lines.
     Lines(usize),
+    /// A commit or comparison's change reverted in the working tree: a hunk.
+    RevertedHunk,
+    /// A commit or comparison's change reverted in the working tree: this many selected lines.
+    RevertedLines(usize),
+    /// A commit or comparison's change reverted in the working tree: the whole change to the file.
+    RevertedFile,
+}
+
+impl Discarded {
+    /// How a stale refusal names the earlier version ("the discarded version is kept as ...").
+    pub(super) fn kept_as(self) -> &'static str {
+        match self {
+            Discarded::File | Discarded::Hunk | Discarded::Lines(_) => "discarded",
+            Discarded::RevertedHunk | Discarded::RevertedLines(_) | Discarded::RevertedFile => "overwritten",
+        }
+    }
 }
 
 /// A recorded operation that can be undone (and then redone). `Discard` is one file's unstaged
@@ -185,6 +202,10 @@ impl Action {
                 Discarded::Hunk => format!("discard of a hunk in {path}"),
                 Discarded::Lines(1) => format!("discard of 1 line in {path}"),
                 Discarded::Lines(n) => format!("discard of {n} lines in {path}"),
+                Discarded::RevertedHunk => format!("revert of a hunk in {path}"),
+                Discarded::RevertedLines(1) => format!("revert of 1 line in {path}"),
+                Discarded::RevertedLines(n) => format!("revert of {n} lines in {path}"),
+                Discarded::RevertedFile => format!("revert of the changes to {path}"),
             },
             Action::Restore { path, .. } => format!("restore of {path}"),
             Action::CreateBranch { name, .. } => format!("creation of branch {name}"),

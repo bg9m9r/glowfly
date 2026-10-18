@@ -78,7 +78,7 @@ pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
 pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> Result<Plan> {
     // Only one file's bytes change, so a merge or rebase in progress doesn't matter.
     match action {
-        Action::Discard { path, before, after, .. } => return saved::plan(workdir, path, *before, *after, redo, "discarded"),
+        Action::Discard { path, what, before, after } => return saved::plan(workdir, path, *before, *after, redo, what.kept_as()),
         Action::Restore { path, before, after, .. } => return saved::plan(workdir, path, *before, *after, redo, "overwritten"),
         // A stash store or drop touches no HEAD, index or file, so an operation in progress
         // doesn't matter either.

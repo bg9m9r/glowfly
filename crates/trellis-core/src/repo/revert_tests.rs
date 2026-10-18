@@ -41,7 +41,7 @@ pub(super) fn commit(dir: &Path, files: &[(&str, &str)], msg: &str) -> Oid {
 
 /// Reverts `part` of `target`, in `dest` when set.
 pub(super) fn request(dir: &Path, target: &DiffTarget, part: RevertPart, dest: Option<&str>) -> Result<Reverted> {
-    super::revert(dir, &RevertRequest { target: target.clone(), part, dest: dest.map(str::to_owned) })
+    super::revert(dir, &RevertRequest { target: target.clone(), part, dest: dest.map(str::to_owned), ignore_whitespace: false })
 }
 
 /// Reverts hunk `h` of `target`, which must still be `expected`.

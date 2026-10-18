@@ -209,7 +209,7 @@ fn with_hidden_whitespace(name: &str, file: &str, before: &str, after: &str) -> 
 #[test]
 fn diff_ignore_whitespace() {
     // A re-indent and trailing spaces around one real change: only the real change shows, and
-    // the hunk buttons are greyed out.
+    // the hunk buttons stay on (they apply only the shown change).
     let before = "fn area(w: u32, h: u32) -> u32 {\n    let a = w * h;\n    a\n}\n\n\
                   fn perimeter(w: u32, h: u32) -> u32 {\n    2 * (w + h)\n}\n";
     let after = before.replace("-> u32 {\n    let", "-> u32 {  \n        let").replace("    2 * (w + h)\n", "    2 * w + 2 * h   \n");
@@ -217,7 +217,7 @@ fn diff_ignore_whitespace() {
     let d = &st.diff.as_ref().unwrap().1;
     let changed: Vec<&str> = d.hunks.iter().flat_map(|h| &h.lines).filter(|l| l.origin != ' ').map(|l| l.text.as_str()).collect();
     assert_eq!(changed, ["    2 * (w + h)", "    2 * w + 2 * h   "]);
-    assert!(st.hunk_ops_blocked().is_some());
+    assert!(st.hunk_ops_gen().is_some());
     render("diff_ignore_whitespace", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 

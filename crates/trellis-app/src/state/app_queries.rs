@@ -1,33 +1,23 @@
-//! `AppState`'s queries: whether hunk and line operations are blocked, the working folder, load
-//! options. The activity log's `log` and `log_quiet` are in `logs.rs`.
+//! `AppState`'s queries: whether hunk indexes are current and line operations blocked, the
+//! working folder, load options. The activity log's `log` and `log_quiet` are in `logs.rs`.
 
-use super::{AppState, WHITESPACE_BLOCKS_HUNK_OPS, WHITESPACE_BLOCKS_REVERT, WHOLE_FILE_BLOCKS_LINE_OPS};
+use super::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
 use std::path::{Path, PathBuf};
 use trellis_core::repo::LoadOptions;
 use trellis_core::settings::{BranchVisibility, DiffMode};
 
 impl AppState {
     /// The generation of the diff on screen when its hunk indexes are current, i.e. no reload
-    /// or newer diff is on its way. Hunk operations must carry it.
+    /// or newer diff is on its way. Hunk operations must carry it. Every change to the
+    /// whitespace filter reopens the diff (a new `diff_gen`), so an operation that matches it
+    /// counts hunks of the diff under the current setting.
     pub fn hunk_ops_gen(&self) -> Option<u64> {
         (self.diff.is_some() && self.diff_shown_gen == self.diff_gen).then_some(self.diff_gen)
     }
 
-    /// Why hunk operations on the open diff (stage/unstage/discard on a working-tree diff,
-    /// revert on a commit or comparison diff) are refused, apart from a pending reload: they
-    /// count hunks of the unfiltered diff, so with whitespace hidden the shown hunks don't
-    /// match. Every change to the setting reopens the diff (a new `diff_gen`), so a diff loaded
-    /// under the other setting never has `hunk_ops_gen` set.
-    pub fn hunk_ops_blocked(&self) -> Option<&'static str> {
-        let (target, _) = self.diff.as_ref()?;
-        let why = if target.is_working_tree() { WHITESPACE_BLOCKS_HUNK_OPS } else { WHITESPACE_BLOCKS_REVERT };
-        self.settings.diff_ignore_whitespace.then_some(why)
-    }
-
-    /// Why selecting and applying single lines is refused: whatever blocks hunk operations, or
-    /// the whole-file view.
+    /// Why selecting and applying single lines is refused: the whole-file view.
     pub fn line_ops_blocked(&self) -> Option<&'static str> {
-        self.hunk_ops_blocked().or((self.settings.diff_mode == DiffMode::WholeFile).then_some(WHOLE_FILE_BLOCKS_LINE_OPS))
+        (self.settings.diff_mode == DiffMode::WholeFile).then_some(WHOLE_FILE_BLOCKS_LINE_OPS)
     }
 
     pub fn workdir(&self) -> Option<PathBuf> {

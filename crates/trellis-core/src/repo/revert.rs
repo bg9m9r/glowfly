@@ -1,15 +1,17 @@
 //! Reverting part of a commit or comparison diff (a hunk, some of its lines, or the whole file)
 //! in the working tree only. The inverse patch is applied where the changed lines still are;
 //! when the file was edited since, the revert is merged with those edits instead
-//! (`revert_merge`), and conflicts are written as ordinary conflict markers.
+//! (`revert_merge`), and conflicts are written as ordinary conflict markers. A hunk shown with
+//! whitespace changes hidden reverts only the changes shown (`shown_ws`).
 
 use super::diff::{hunk_of, target_diff};
 use super::lines::{Patched, build_patch, images};
 use super::revert_merge::{Labels, merge_into_workdir, splice};
+use super::shown_ws::{changed, exact_context, raw_lines, side_lines};
 use super::{DiffTarget, Hunk, LoadDiffOptions};
 use crate::error::{Error, Result};
 use git2::{ApplyLocation, Delta, DiffDelta, ErrorCode, FileMode, Patch, Repository};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 
 /// What part of a target's change to a file to revert.
@@ -33,6 +35,9 @@ pub struct RevertRequest {
     /// The file's name in the working tree when it differs from `target.path()` (File history
     /// after a rename).
     pub dest: Option<String>,
+    /// `part`'s hunk and line indexes count the diff with whitespace changes hidden; only the
+    /// shown changes are reverted. Ignored for File.
+    pub ignore_whitespace: bool,
 }
 
 /// How a revert went.
@@ -69,10 +74,12 @@ pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
     }
     super::collide::refuse(workdir, work, "revert")?;
     super::attrs::refuse_converted(&repo, work, "reverting")?;
-    // The same unfiltered diff, renames detected, that the viewer shows, so the hunks match.
-    let diff = target_diff(&repo, target, LoadDiffOptions::default(), None)?;
+    // The same diff, renames detected, that the viewer shows, so the hunks match.
+    let ws = req.ignore_whitespace && !matches!(req.part, RevertPart::File);
+    let diff = target_diff(&repo, target, LoadDiffOptions { ignore_whitespace: ws, ..Default::default() }, None)?;
     let no_changes = || Error::NotFound(format!("no changes in {path}"));
-    let idx = diff.deltas().position(|d| super::rpath::touches(&d, path)).ok_or_else(no_changes)?;
+    let position = |d: &git2::Diff| d.deltas().position(|d| super::rpath::touches(&d, path)).ok_or_else(no_changes);
+    let idx = position(&diff)?;
     let delta = diff.get_delta(idx).ok_or_else(no_changes)?;
     if req.dest.is_some() && delta.status() == Delta::Deleted {
         return Err(Error::Unsupported("a file the commit deleted can't be brought back under another name".into()));
@@ -92,10 +99,18 @@ pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
         return Err(Error::Unsupported("symbolic links can't be reverted".into()));
     }
     let patch = Patch::from_diff(&diff, idx)?;
+    // With whitespace hidden, the exact bytes of the commit's side, for the unchanged lines.
+    let side = if ws {
+        let full = target_diff(&repo, target, LoadDiffOptions::default(), None)?;
+        Patch::from_diff(&full, position(&full)?)?.map(|p| side_lines(&p, true)).transpose()?
+    } else {
+        None
+    };
     let ctx = Ctx { repo: &repo, work, file: &file, labels: Labels::of(target) };
+    let side = side.as_ref();
     match &req.part {
-        RevertPart::Hunk { index, expected } => lines_part(&ctx, &delta, patch, *index, expected, None),
-        RevertPart::Lines { hunk, expected, lines } => lines_part(&ctx, &delta, patch, *hunk, expected, Some(lines)),
+        RevertPart::Hunk { index, expected } => lines_part(&ctx, &delta, patch, *index, expected, None, side),
+        RevertPart::Lines { hunk, expected, lines } => lines_part(&ctx, &delta, patch, *hunk, expected, Some(lines), side),
         RevertPart::File => super::revert_file::file_part(&ctx, &delta, patch),
     }
 }
@@ -139,7 +154,9 @@ pub(super) fn deleted_exists() -> Error {
     Error::Other("the file exists in the working tree, so the version this commit deleted can't be restored over it".into())
 }
 
-/// Reverts hunk `index`: every changed line, or those of `lines`.
+/// Reverts hunk `index`: every changed line, or those of `lines`. With `side` (the commit side's
+/// exact lines, when the hunk was shown with whitespace changes hidden), unchanged lines take
+/// their bytes from it.
 fn lines_part(
     ctx: &Ctx,
     delta: &DiffDelta<'_>,
@@ -147,26 +164,26 @@ fn lines_part(
     index: usize,
     expected: &Hunk,
     lines: Option<&Vec<usize>>,
+    side: Option<&HashMap<u32, Vec<u8>>>,
 ) -> Result<Reverted> {
     let patch = patch.ok_or_else(|| Error::Unsupported("binary files can't be reverted by hunk".into()))?;
     let stale = || Error::NotFound("the diff changed; reopen it and try again".into());
     if index >= patch.num_hunks() || hunk_of(&patch, index)? != *expected {
         return Err(stale());
     }
-    let (hunk, count) = patch.hunk(index)?;
-    let mut content = Vec::with_capacity(count);
-    for l in 0..count {
-        let line = patch.line_in_hunk(index, l)?;
-        content.push((line.origin(), line.content().to_vec()));
-    }
-    let changed = |i: &usize| content.get(*i).is_some_and(|(o, _)| matches!(o, '+' | '-'));
+    let (hunk, _) = patch.hunk(index)?;
+    let shown = raw_lines(&patch, index)?;
     let selected: BTreeSet<usize> = match lines {
-        None => (0..content.len()).filter(changed).collect(),
-        Some(l) => l.iter().copied().filter(changed).collect(),
+        None => changed(&shown),
+        Some(l) => l.iter().copied().filter(|&i| shown.get(i).is_some_and(|r| matches!(r.origin, '+' | '-'))).collect(),
     };
     if selected.is_empty() {
         return Err(Error::NotFound("no changed lines selected".into()));
     }
+    let (content, selected) = match side {
+        Some(side) => exact_context(&shown, side, true, &selected)?,
+        None => (shown.into_iter().map(|r| (r.origin, r.bytes)).collect(), selected),
+    };
     let borrowed: Vec<(char, &[u8])> = content.iter().map(|(o, c)| (*o, c.as_slice())).collect();
 
     if delta.status() == Delta::Deleted {

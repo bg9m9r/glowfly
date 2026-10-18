@@ -72,7 +72,7 @@ fn ignoring_whitespace_still_shows_new_indentation() {
 
 #[test]
 fn apply_hunk_counts_unfiltered_hunks() {
-    // Why hunk staging is off while whitespace is hidden: the indexes differ.
+    // Why a hunk shown with whitespace hidden goes through `apply_shown`: the indexes differ.
     let dir = scratch_repo("ws-apply");
     let base: String = (1..=30).map(|i| format!("line {i}\n")).collect();
     write(&dir, "f.txt", &base);

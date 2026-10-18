@@ -1,6 +1,6 @@
 //! Revert Hunk and Revert lines on a commit diff: the button on the hunk header (Revert N lines
-//! with lines selected), selecting lines with a click, disabled while whitespace is
-//! hidden or a reload is pending, and the message a click sends. Shares the fixture repository
+//! with lines selected), selecting lines with a click, enabled with whitespace hidden, disabled
+//! while a reload is pending, and the message a click sends. Shares the fixture repository
 //! and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
@@ -21,7 +21,7 @@ pub(super) fn with_commit_diff(name: &str, theme: ThemeChoice, layout: DiffLayou
     st.selection = Selection::Commit(oid);
     st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
     let target = DiffTarget::Commit(oid, "app.txt".into());
-    let mut diff = repo::load_diff(&dir, &target).unwrap();
+    let mut diff = repo::load_diff_with(&dir, &target, repo::LoadDiffOptions { ignore_whitespace: ignore_ws, whole_file: false }).unwrap();
     diff.intraline = intraline::intraline(&diff);
     st.diff = Some((target, diff.into()));
     st.settings.diff_layout = layout;
@@ -32,16 +32,16 @@ pub(super) fn with_commit_diff(name: &str, theme: ThemeChoice, layout: DiffLayou
 #[test]
 fn diff_commit_revert() {
     let (st, dir) = with_commit_diff("revert", ThemeChoice::Dark, DiffLayout::Inline, false);
-    assert_eq!(st.hunk_ops_blocked(), None);
     render("diff_commit_revert", st, true);
     remove_fixture(&dir);
 }
 
 #[test]
-fn diff_commit_revert_blocked_light() {
-    let (st, dir) = with_commit_diff("revert-blocked", ThemeChoice::Light, DiffLayout::Split, true);
-    assert!(st.hunk_ops_blocked().is_some());
-    render("diff_commit_revert_blocked_light", st, false);
+fn diff_commit_revert_whitespace_light() {
+    // With whitespace hidden, Revert Hunk stays on: it reverts only the changes shown.
+    let (st, dir) = with_commit_diff("revert-ws", ThemeChoice::Light, DiffLayout::Split, true);
+    assert!(st.hunk_ops_gen().is_some());
+    render("diff_commit_revert_whitespace_light", st, false);
     remove_fixture(&dir);
 }
 
@@ -62,19 +62,23 @@ fn revert_button_sends_msg() {
     assert_eq!(reverts(&h.state().1), [(0, generation)]);
     drop(h);
 
-    // Disabled: whitespace hidden, or a reload on its way.
-    for pending in [false, true] {
-        let (mut st, _) = with_commit_diff("revert-click", ThemeChoice::Dark, DiffLayout::Inline, !pending);
-        if pending {
-            st.diff_gen += 1;
-            assert_eq!(st.hunk_ops_gen(), None);
-        }
-        let mut h = harness(st, true);
-        h.run();
-        h.get_by_label("Revert Hunk").click();
-        h.run();
-        assert!(reverts(&h.state().1).is_empty(), "pending reload: {pending}");
-    }
+    // With whitespace hidden the click sends the revert too; a reload on its way disables it.
+    let (st, _) = with_commit_diff("revert-click", ThemeChoice::Dark, DiffLayout::Inline, true);
+    let generation = st.hunk_ops_gen().expect("buttons enabled");
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Revert Hunk").click();
+    h.run();
+    assert_eq!(reverts(&h.state().1), [(0, generation)], "whitespace hidden");
+    drop(h);
+    let (mut st, _) = with_commit_diff("revert-click", ThemeChoice::Dark, DiffLayout::Inline, false);
+    st.diff_gen += 1;
+    assert_eq!(st.hunk_ops_gen(), None);
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Revert Hunk").click();
+    h.run();
+    assert!(reverts(&h.state().1).is_empty(), "pending reload");
     remove_fixture(&dir);
 }
 

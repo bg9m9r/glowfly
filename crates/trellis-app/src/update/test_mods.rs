@@ -319,6 +319,8 @@ pub(super) mod undo_discard_tests;
 pub(super) mod undo_ops_tests;
 #[path = "undo_refs_tests.rs"]
 pub(super) mod undo_refs_tests;
+#[path = "undo_revert_tests.rs"]
+pub(super) mod undo_revert_tests;
 #[path = "undo_stash_tests.rs"]
 pub(super) mod undo_stash_tests;
 #[path = "undo_tests.rs"]
@@ -333,6 +335,8 @@ pub(super) mod updates_tests;
 pub(super) mod watch_poll_tests;
 #[path = "watch_tests.rs"]
 pub(super) mod watch_tests;
+#[path = "whitespace_ops_tests.rs"]
+pub(super) mod whitespace_ops_tests;
 #[path = "whitespace_tests.rs"]
 pub(super) mod whitespace_tests;
 #[path = "whole_file_tests.rs"]

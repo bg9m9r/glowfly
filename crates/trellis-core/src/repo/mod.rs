@@ -56,6 +56,7 @@ mod revert_file;
 mod revert_merge;
 mod rpath;
 mod shallow;
+mod shown_ws;
 mod snapshot_impl;
 mod status;
 mod status_cli;
@@ -96,7 +97,7 @@ pub use folder_history::{folder_file_today, folder_history};
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
-pub use lines::apply_lines;
+pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, messages_between};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use refs_key::{open_file_stamp, refs_key};
@@ -398,7 +399,11 @@ mod revert_file_tests;
 #[cfg(test)]
 mod revert_tests;
 #[cfg(test)]
+mod revert_ws_tests;
+#[cfg(test)]
 mod shallow_tests;
+#[cfg(test)]
+mod shown_ws_apply_tests;
 #[cfg(test)]
 mod sparse_status_tests;
 #[cfg(test)]

@@ -9,7 +9,8 @@ use trellis_core::repo;
 use trellis_core::undo::{self, Action, Discarded, Plan, Refusal};
 
 /// Runs a local op. Discards and conflict saves save the file's contents first and return the
-/// undo action.
+/// undo action. A hunk or lines shown with whitespace changes hidden go through
+/// `repo::apply_shown`.
 pub(super) fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<Option<Action>> {
     use trellis_core::repo::HunkOp::Discard;
     let saving =
@@ -20,14 +21,26 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Resu
         LocalOp::StageAll => done(repo::stage_all(workdir)),
         LocalOp::UnstagePaths(paths) => done(repo::unstage_paths(workdir, &paths)),
         LocalOp::DiscardFile(path) => saving(&path, Discarded::File, &|| repo::discard_file(workdir, &path)),
-        LocalOp::Hunk { op: Discard, path, index, expected } => {
-            saving(&path, Discarded::Hunk, &|| repo::apply_hunk(workdir, &path, index, &expected, Discard))
+        LocalOp::Hunk { op, path, index, expected, ignore_whitespace } => {
+            let apply = || {
+                if ignore_whitespace {
+                    repo::apply_shown(workdir, &path, index, &expected, None, op)
+                } else {
+                    repo::apply_hunk(workdir, &path, index, &expected, op)
+                }
+            };
+            if op == Discard { saving(&path, Discarded::Hunk, &apply) } else { done(apply()) }
         }
-        LocalOp::Hunk { op, path, index, expected } => done(repo::apply_hunk(workdir, &path, index, &expected, op)),
-        LocalOp::Lines { op: Discard, path, hunk, expected, lines } => {
-            saving(&path, Discarded::Lines(lines.len()), &|| repo::apply_lines(workdir, &path, hunk, &expected, &lines, Discard))
+        LocalOp::Lines { op, path, hunk, expected, lines, ignore_whitespace } => {
+            let apply = || {
+                if ignore_whitespace {
+                    repo::apply_shown(workdir, &path, hunk, &expected, Some(&lines), op)
+                } else {
+                    repo::apply_lines(workdir, &path, hunk, &expected, &lines, op)
+                }
+            };
+            if op == Discard { saving(&path, Discarded::Lines(lines.len()), &apply) } else { done(apply()) }
         }
-        LocalOp::Lines { op, path, hunk, expected, lines } => done(repo::apply_lines(workdir, &path, hunk, &expected, &lines, op)),
         LocalOp::ResolveConflict { path, contents, expected } => {
             undo::resolve_saving(workdir, &path, &expected, || repo::write_resolution(workdir, &path, &contents, &expected))
         }

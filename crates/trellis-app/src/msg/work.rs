@@ -5,6 +5,7 @@ use super::Inactive;
 use crate::effect::{UndoOpts, UndoResult};
 use git2::Oid;
 use trellis_core::repo::{DiffTarget, HunkOp, RevertPart, Reverted};
+use trellis_core::undo::Discarded;
 
 /// Staging, unstaging and discarding files, hunks and lines, reverting a hunk, some lines or a
 /// whole file of a commit or comparison diff, and their results (update/ops.rs; reverts in
@@ -42,11 +43,13 @@ pub enum StageMsg {
     /// A LocalOp finished; a discard or a saved conflict resolution that can be undone carries
     /// its undo action.
     LocalOpDone(Result<Option<trellis_core::undo::Action>, String>),
-    /// A revert finished; `path` is the working-tree file it changed.
+    /// A revert finished; `path` is the working-tree file it changed. A revert that changed it
+    /// carries the undo action that puts the earlier working copy back.
     Reverted {
         path: String,
         what: RevertWhat,
         result: Result<Reverted, String>,
+        undo: Option<trellis_core::undo::Action>,
     },
 }
 
@@ -67,6 +70,15 @@ impl RevertWhat {
             RevertPart::File => Self::File,
         }
     }
+
+    /// How the revert is recorded in the undo history.
+    pub fn saved_as(self) -> Discarded {
+        match self {
+            Self::Hunk => Discarded::RevertedHunk,
+            Self::Lines(n) => Discarded::RevertedLines(n),
+            Self::File => Discarded::RevertedFile,
+        }
+    }
 }
 
 impl StageMsg {
@@ -85,14 +97,22 @@ impl StageMsg {
             | Self::RevertLines
             | Self::RevertFile(..)
             | Self::LocalOpDone(Ok(None))
-            | Self::Reverted { result: Ok(Reverted::Applied | Reverted::Removed | Reverted::Merged), .. } => None,
+            | Self::Reverted { result: Ok(Reverted::Applied | Reverted::Removed | Reverted::Merged), undo: None, .. } => None,
             Self::LocalOpDone(Err(e)) => Some(Inactive::Log(e)),
             // A discard in a tab switched away from: its undo belongs to that tab.
             Self::LocalOpDone(Ok(Some(action))) => Some(Inactive::Undo(action)),
-            Self::Reverted { path, what, result: Ok(r @ Reverted::Conflicts) } => {
-                Some(Inactive::Log(crate::update::revert::done_text(&path, what, r)))
+            // A revert in a tab switched away from: its undo belongs to that tab too.
+            Self::Reverted { result: Ok(Reverted::Applied | Reverted::Removed | Reverted::Merged), undo: Some(a), .. } => {
+                Some(Inactive::Undo(a))
             }
-            Self::Reverted { path, what, result: Err(e) } => Some(Inactive::Log(crate::update::revert::fail_text(&path, what, &e))),
+            Self::Reverted { path, what, result: Ok(r @ Reverted::Conflicts), undo } => {
+                let text = crate::update::revert::done_text(&path, what, r);
+                Some(match undo {
+                    Some(undo) => Inactive::LogAndUndo { text, undo },
+                    None => Inactive::Log(text),
+                })
+            }
+            Self::Reverted { path, what, result: Err(e), .. } => Some(Inactive::Log(crate::update::revert::fail_text(&path, what, &e))),
         }
     }
 }

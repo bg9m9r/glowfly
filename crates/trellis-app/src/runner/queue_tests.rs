@@ -189,7 +189,12 @@ fn every_effect_that_changes_a_repository_queues() {
         Effect::LocalOp { workdir: w.clone(), op: LocalOp::StageAll },
         Effect::Revert {
             workdir: w.clone(),
-            req: RevertRequest { target: DiffTarget::Commit(git2::Oid::zero(), "a".into()), part: RevertPart::File, dest: None },
+            req: RevertRequest {
+                target: DiffTarget::Commit(git2::Oid::zero(), "a".into()),
+                part: RevertPart::File,
+                dest: None,
+                ignore_whitespace: false,
+            },
         },
         Effect::RestoreFile { workdir: w.clone(), oid: git2::Oid::zero(), path: "a".into(), overwrite: false },
         Effect::WorkFile { workdir: w.clone(), op: FileOp::Create("a".into()) },

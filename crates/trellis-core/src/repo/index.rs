@@ -19,7 +19,7 @@ pub(super) fn git(workdir: &Path, a: &[&str]) -> Result<()> {
 
 /// Stages, unstages or discards a single hunk (by index within the displayed diff). The index
 /// counts hunks of the unfiltered diff, so callers must not pass an index taken from a
-/// `load_diff_with` diff that ignores whitespace. `expected` is that hunk as the user saw it:
+/// `load_diff_with` diff that ignores whitespace (`apply_shown` takes those). `expected` is that hunk as the user saw it:
 /// unless git produces exactly the same hunk now (header and every line), the index may name
 /// another hunk, so the operation is refused as stale with `NotFound` and nothing changes.
 pub fn apply_hunk(workdir: &Path, path: &str, hunk_index: usize, expected: &Hunk, op: HunkOp) -> Result<()> {

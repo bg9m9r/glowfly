@@ -68,8 +68,8 @@ fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
 
 /// What R does on the open commit or comparison diff: Revert lines when a selection is visible
 /// on it, else Revert Hunk on the current hunk (`diff_nav::current_hunk`). Nothing on a
-/// working-tree diff or under the conflict or blame view. Refusals (whitespace hidden, a reload
-/// on its way) are logged by the handlers.
+/// working-tree diff or under the conflict or blame view. Refusals (a reload on its way) are
+/// logged by the handlers.
 fn revert_msg(st: &mut AppState) -> Option<Msg> {
     if st.conflict.is_some() || st.blame.is_some() {
         return None;
@@ -83,10 +83,6 @@ fn revert_msg(st: &mut AppState) -> Option<Msg> {
         return Some(Msg::Stage(StageMsg::RevertLines));
     }
     let index = crate::state::diff_nav::current_hunk(st)?;
-    if let Some(why) = st.hunk_ops_blocked() {
-        st.log(false, why);
-        return None;
-    }
     let Some(generation) = st.hunk_ops_gen() else {
         st.log(false, "The diff changed before the revert ran, so nothing was changed. Try again on the updated diff.");
         return None;

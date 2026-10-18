@@ -1,4 +1,5 @@
-//! A safety net for discards that don't go through a stash (one file, hunk or line), for
+//! A safety net for discards that don't go through a stash (one file, hunk or line) and reverts
+//! of part of a commit (`reverted.rs`), for
 //! restoring a file from a commit and for conflict resolutions saved in the conflict view
 //! (`resolved.rs`): the working copy's exact bytes are written to the object database as a blob
 //! before and after, so undo can put the earlier version back and redo can write the later one
@@ -82,7 +83,7 @@ pub struct RestoreFailed {
 /// leaves the operation without a pair. When `op` fails but the file changed anyway (or can no
 /// longer be read), its error names the blob that keeps the earlier contents, and the pair
 /// comes back with it when the file as it is now could be saved.
-fn saving<T>(
+pub(super) fn saving<T>(
     workdir: &Path,
     path: &str,
     strict_after: bool,
@@ -166,6 +167,9 @@ impl Action {
                 Discarded::File => format!("Discarded the changes in {path}"),
                 Discarded::Hunk => format!("Discarded the hunk in {path} again"),
                 Discarded::Lines(_) => format!("Discarded the lines in {path} again"),
+                Discarded::RevertedHunk => format!("Reverted the hunk in {path} again"),
+                Discarded::RevertedLines(_) => format!("Reverted the lines in {path} again"),
+                Discarded::RevertedFile => format!("Reverted the changes to {path} again"),
             },
             Action::Discard { path, .. } => format!("Restored {path}"),
             Action::Restore { path, .. } if redo => format!("Restored {path} again"),

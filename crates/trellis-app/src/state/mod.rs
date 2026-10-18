@@ -128,14 +128,6 @@ use trellis_core::settings::Settings;
 
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
-/// Why hunk and line operations are off while the diff hides whitespace changes.
-pub const WHITESPACE_BLOCKS_HUNK_OPS: &str =
-    "Turn off Ignore whitespace to stage, unstage or discard hunks and lines. The hidden whitespace changes are part of each hunk.";
-
-/// Why Revert Hunk on a commit or comparison diff is refused while whitespace is hidden.
-pub const WHITESPACE_BLOCKS_REVERT: &str =
-    "Turn off Ignore whitespace to revert hunks. The hidden whitespace changes are part of each hunk.";
-
 /// Why selecting and applying single lines is refused in the whole-file view.
 pub const WHOLE_FILE_BLOCKS_LINE_OPS: &str =
     "Line selection isn't available in the whole-file view yet. Switch to Hunks to stage, discard or revert single lines.";

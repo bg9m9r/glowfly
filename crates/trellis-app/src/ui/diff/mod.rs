@@ -71,12 +71,8 @@ pub(super) struct DiffView<'a> {
     pub header_hl: Option<&'a DiffHighlight>,
     /// The diff's generation, or `None` while a reload is on its way (see `hunk_header`).
     pub hunk_gen: Option<u64>,
-    /// The line selection; `None` when lines can't be selected (the whole-file view, or while
-    /// hunk and line operations are blocked).
+    /// The line selection; `None` when lines can't be selected (the whole-file view).
     pub sel: Option<&'a LineSelection>,
-    /// Why hunk and line operations (including Revert Hunk) are off for reasons other than a
-    /// pending reload (e.g. whitespace hidden).
-    pub blocked: Option<&'static str>,
     /// Font, row height and gutters from Preferences > Editor.
     pub style: DiffStyle,
     /// How long lines wrap, `None` when they don't.
@@ -145,8 +141,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs
 
 /// Draws the open diff's rows and records the first visible row and how many rows fit.
 fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
-    let blocked = st.hunk_ops_blocked();
-    if let Some((top, visible)) = rows(ui, st, cache, blocked, scroll_to, msgs) {
+    if let Some((top, visible)) = rows(ui, st, cache, scroll_to, msgs) {
         st.view.diff_top_row = top;
         st.view.diff_visible_rows = visible;
     }
@@ -155,14 +150,7 @@ fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll
 /// Draws the open diff's rows in the current layout and view mode (hunks, or the whole file
 /// when it loaded) and returns the first visible row and how many rows fit. Lines are
 /// selectable in every diff unless line operations are blocked.
-fn rows(
-    ui: &mut Ui,
-    st: &AppState,
-    cache: &mut DiffRowsCache,
-    blocked: Option<&'static str>,
-    scroll_to: Option<usize>,
-    msgs: &mut Vec<Msg>,
-) -> Option<(usize, usize)> {
+fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) -> Option<(usize, usize)> {
     let (target, diff) = st.diff.as_ref()?;
     let whole = whole_file::shown(diff, st.settings.diff_mode);
     // Highlighting always comes with the diff; the setting only decides whether to paint it.
@@ -193,7 +181,7 @@ fn rows(
     let marks = st.pull_request.as_ref().filter(|v| v.shows(target)).and_then(|v| pull_request_threads::marks(v, target.path()));
     let marks = marks.as_ref();
     let hunk_gen = st.hunk_ops_gen();
-    let view = DiffView { target, diff, whole, opened, gaps, gap_lines, hl, header_hl, hunk_gen, sel, blocked, style, wrap, marks };
+    let view = DiffView { target, diff, whole, opened, gaps, gap_lines, hl, header_hl, hunk_gen, sel, style, wrap, marks };
     Some(match layout {
         DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, m, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, m, scroll_to, msgs),

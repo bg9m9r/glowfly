@@ -282,8 +282,11 @@ fn tail(ui: &mut Ui, folds: Option<FoldCounts>, toggles: Toggles, gap: bool, msg
         }
         let what = "Hide changes that only add or remove trailing whitespace or change the amount of existing \
                     whitespace (such as re-indenting)";
-        let tip =
-            if on { format!("{what}. Hunk and line staging is unavailable while whitespace changes are hidden.") } else { what.to_owned() };
+        let tip = if on {
+            format!("{what}. Hunk and line actions then apply only the changes shown and leave the hidden whitespace changes as they are.")
+        } else {
+            what.to_owned()
+        };
         if ui.selectable_label(on, IGNORE_WS).on_hover_text(tip).clicked() {
             msgs.push(Msg::Diff(DiffMsg::SetIgnoreWhitespace(!on)));
         }
