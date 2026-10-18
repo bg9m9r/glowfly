@@ -1,7 +1,9 @@
-//! Per-path settings read from gitattributes.
+//! Per-path settings read from gitattributes: the working tree's and the index's, or a
+//! commit's own `.gitattributes` files for commit and comparison diffs.
 
+use super::DiffTarget;
 use crate::error::{Error, Result};
-use git2::{AttrCheckFlags, AttrValue, Repository};
+use git2::{AttrCheckFlags, AttrValue, Index, IndexEntry, IndexTime, ObjectType, Repository, Tree};
 use std::path::Path;
 
 /// The `linguist-language` value for `path` (repo-relative, '/'-separated), from the working
@@ -11,8 +13,77 @@ pub(crate) fn linguist_language(repo: &Repository, path: &str) -> Option<String>
     string_attr(repo, path, "linguist-language")
 }
 
+/// The `linguist-language` value for `path` in the diff `target`: from the tree of the commit
+/// it shows (`attr_tree`), else as `linguist_language`.
+pub(crate) fn linguist_language_for(repo: &Repository, target: &DiffTarget, path: &str) -> Option<String> {
+    match attr_tree(repo, target) {
+        Some(tree) => linguist_language_in(repo, &tree, path),
+        None => linguist_language(repo, path),
+    }
+}
+
+/// The tree whose `.gitattributes` files apply to `target`: the commit's for a commit diff, the
+/// newer commit's for a comparison. `None` for diffs against the index or the working tree.
+pub(crate) fn attr_tree<'r>(repo: &'r Repository, target: &DiffTarget) -> Option<Tree<'r>> {
+    let oid = match target {
+        DiffTarget::Commit(oid, _) | DiffTarget::Between(_, oid, _) => *oid,
+        _ => return None,
+    };
+    repo.find_object(oid, None).ok()?.peel_to_tree().ok()
+}
+
+/// The `linguist-language` value for `path` from `tree`'s `.gitattributes` files (the root's and
+/// each folder's on the way to `path`), plus `.git/info/attributes`, `core.attributesFile` and
+/// the system file, as `git check-attr --source <tree>` reads them. They are read from an
+/// in-memory index on a separate handle, so nothing reaches `repo` or its attribute cache.
+/// `None` as for `linguist_language`, and on any error.
+pub(crate) fn linguist_language_in(repo: &Repository, tree: &Tree, path: &str) -> Option<String> {
+    let handle = Repository::open(repo.path()).ok()?;
+    let mut index = Index::new().ok()?;
+    let mut dir = String::new();
+    let folders = path.rsplit_once('/').map_or("", |(d, _)| d);
+    for part in std::iter::once("").chain(folders.split('/').filter(|p| !p.is_empty())) {
+        if !part.is_empty() {
+            dir = if dir.is_empty() { part.to_owned() } else { format!("{dir}/{part}") };
+        }
+        let file = if dir.is_empty() { ".gitattributes".to_owned() } else { format!("{dir}/.gitattributes") };
+        let Ok(entry) = tree.get_path(Path::new(&file)) else { continue };
+        if entry.kind() != Some(ObjectType::Blob) {
+            continue;
+        }
+        let size = repo.find_blob(entry.id()).ok()?.size();
+        index.add(&index_entry(file, entry.id(), size)).ok()?;
+    }
+    handle.set_index(&mut index).ok()?;
+    let raw = handle.get_attr_bytes(Path::new(path), "linguist-language", AttrCheckFlags::INDEX_ONLY).ok()?;
+    parse_value(raw)
+}
+
+/// An index entry for a regular file `path` with blob `id`.
+fn index_entry(path: String, id: git2::Oid, size: usize) -> IndexEntry {
+    let zero = IndexTime::new(0, 0);
+    IndexEntry {
+        ctime: zero,
+        mtime: zero,
+        dev: 0,
+        ino: 0,
+        mode: 0o100644,
+        uid: 0,
+        gid: 0,
+        file_size: u32::try_from(size).unwrap_or(u32::MAX),
+        id,
+        flags: 0,
+        flags_extended: 0,
+        path: path.into_bytes(),
+    }
+}
+
 fn string_attr(repo: &Repository, path: &str, name: &str) -> Option<String> {
-    let raw = repo.get_attr_bytes(Path::new(path), name, AttrCheckFlags::FILE_THEN_INDEX).ok()?;
+    parse_value(repo.get_attr_bytes(Path::new(path), name, AttrCheckFlags::FILE_THEN_INDEX).ok()?)
+}
+
+/// A string attribute's value, trimmed; `None` unless it is a non-empty UTF-8 string.
+fn parse_value(raw: Option<&[u8]>) -> Option<String> {
     match AttrValue::from_bytes(raw) {
         AttrValue::String(s) => Some(s.trim()).filter(|s| !s.is_empty()).map(str::to_owned),
         _ => None,
@@ -37,3 +108,7 @@ pub(crate) fn refuse_converted(repo: &Repository, path: &str, what: &str) -> Res
         None => Ok(()),
     }
 }
+
+#[cfg(test)]
+#[path = "attrs_tests.rs"]
+mod tests;

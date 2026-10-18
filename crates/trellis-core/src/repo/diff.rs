@@ -229,8 +229,9 @@ pub struct ViewDiff {
 }
 
 /// `load_diff_with` plus the old file's text, for highlighting the hunks in context
-/// (`highlight::highlight_in_context`), and the path's `linguist-language` gitattribute (from
-/// the working tree, then the index; `None` for binary files). The text is `None` for added,
+/// (`highlight::highlight_in_context`), and the path's `linguist-language` gitattribute (for
+/// commit and comparison diffs from the commit's own `.gitattributes` files, else from the
+/// working tree, then the index; `None` for binary files). The text is `None` for added,
 /// untracked or binary files, a whole-file load (its one hunk is the whole file), an old blob
 /// over `highlight::OLD_TEXT_MAX_BYTES`, or one that doesn't match the hunks.
 pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<ViewDiff> {
@@ -261,7 +262,7 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     }
     // `patch` is still the first load's (the whole-file block's is scoped to it).
     let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
-    let language = if with_old && !out.binary { super::attrs::linguist_language(&repo, path) } else { None };
+    let language = if with_old && !out.binary { super::attrs::linguist_language_for(&repo, target, path) } else { None };
     Ok(ViewDiff { diff: out, old, language })
 }
 
