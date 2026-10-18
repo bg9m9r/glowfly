@@ -11,8 +11,6 @@ pub const SELECT_COMMIT: &str = "Select this commit in the graph";
 /// The banner button that edits the remaining steps of an interactive rebase.
 pub const EDIT_STEPS: &str = "Edit remaining steps…";
 
-/// Why Continue is unavailable while conflicted files remain.
-pub const RESOLVE_FIRST: &str = "Resolve the conflicted files first.";
 pub const STASH_NOTE: &str = "Your uncommitted changes are stashed until the rebase ends.";
 
 /// The line naming the stopped commit: `before`, the short SHA, the summary, then `after`

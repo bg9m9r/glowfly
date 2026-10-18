@@ -78,3 +78,16 @@ fn the_missing_repository_question_is_in_the_chosen_language() {
     assert_eq!(button, Lang::De.tr("repos.remove.button"));
     assert!(!body.contains('{'), "{body}");
 }
+
+#[test]
+fn the_issue_heading_follows_the_tracker_and_the_language() {
+    use crate::state::ForgeState;
+    use trellis_core::forge::{Account, Provider, Target};
+    let gh = Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+    let trello = Account { provider: Provider::Trello, host: "trello.com".into(), org: String::new() };
+    let board = Target::trello(&trello, "5f1a2b3c4d5e6f7a8b9c0d1e", "Website");
+    let issues = ForgeState::new(Some(gh.clone()), "origin".into(), Some(gh.clone()));
+    let cards = ForgeState::new(Some(gh), "origin".into(), Some(board));
+    assert_eq!((issues.issues_header(Lang::En), cards.issues_header(Lang::En)), ("ISSUES", "CARDS"));
+    assert_eq!((cards.issues_header(Lang::De), issues.issues_header(Lang::Es)), ("KARTEN", "INCIDENCIAS"));
+}

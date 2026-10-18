@@ -6,10 +6,11 @@ use super::tests::drive;
 use super::update;
 use crate::effect::{Effect, RebaseEffect};
 use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase_banner::{RESOLVE_FIRST, action_msg};
+use crate::state::rebase_banner::action_msg;
 use crate::state::{AppState, Selection};
 use git2::{Oid, RepositoryState};
 use std::time::Instant;
+use trellis_core::i18n::Lang;
 use trellis_core::rebase::{self, RebaseAction, RebaseBase, Resume};
 use trellis_core::repo::FileEntry;
 
@@ -71,7 +72,13 @@ fn continue_waits_for_conflicts_and_skip_resumes() {
     snap.state = RepositoryState::RebaseInteractive;
     snap.unstaged.push(FileEntry::new("c1.txt", '!'));
     assert!(up(&mut st, Resume::Continue).is_empty());
-    assert_eq!(last_toast(&st), (false, RESOLVE_FIRST));
+    assert_eq!(last_toast(&st), (false, Lang::En.tr("details.banner.resolve_first.tip")));
+
+    // The refusal follows the language setting, like the banner's tooltip.
+    let was = std::mem::replace(&mut st.settings.language, "de".into());
+    assert!(up(&mut st, Resume::Continue).is_empty());
+    assert_eq!(last_toast(&st), (false, Lang::De.tr("details.banner.resolve_first.tip")));
+    st.settings.language = was;
 
     let fx = up(&mut st, Resume::Skip);
     assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::Resume { how: Resume::Skip, .. })]), "{fx:?}");

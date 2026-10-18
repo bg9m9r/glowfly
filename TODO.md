@@ -1876,7 +1876,7 @@ here, under the item they grew from.
 - Translate the in-progress banner titles and stop lines (rebase and patch-series banners, Edit remaining steps…) and the operation names from state_actions
 - Translate the Conflicted Files and Resolved Files lists (ui/conflict_files.rs) and their Mark conflicted confirmations
 - Translate the file row menus (ui/file_menu.rs: history, blame, external tools, LFS, stash and patch items) and the path warnings
-- Translate the signature badge and the commit details' issue heading (its tracker nouns come from trellis-core)
+- Translate the signature badge (ui/signature_badge.rs)
 - Translate the multi-select blocked reasons (cherry-pick, revert, patch) and the single-commit context menu in ui/menus.rs
 - Translate git's missing or too-old banner text built in trellis-core (welcome Git step and window banner)
 - Translate the folder picker titles (Add a project folder, Open a Git repository and the other Preferences pickers)

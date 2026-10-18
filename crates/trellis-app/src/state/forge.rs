@@ -190,6 +190,15 @@ impl ForgeState {
         self.tracker.as_ref().map_or("issue", |t| super::issue_words::noun(t.provider))
     }
 
+    /// The commit details' heading over the issue chips, in this tracker's word.
+    pub fn issues_header(&self, t: trellis_core::i18n::Lang) -> &'static str {
+        match self.tracker.as_ref().map(|t| t.provider) {
+            Some(Provider::AzureDevOps) => t.tr("details.issues.work_item.header"),
+            Some(Provider::Trello) => t.tr("details.issues.card.header"),
+            _ => t.tr("details.issues.issue.header"),
+        }
+    }
+
     fn is_trello(&self) -> bool {
         self.tracker.as_ref().is_some_and(|t| t.provider == Provider::Trello)
     }

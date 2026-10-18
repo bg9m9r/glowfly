@@ -69,7 +69,7 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
         let keys = fs.issue_refs(&d.message);
         if !keys.is_empty() {
             ui.add_space(6.0);
-            ui.label(RichText::new(format!("{}S", fs.issue_noun().to_uppercase())).size(11.0).color(color::weak()));
+            ui.label(RichText::new(fs.issues_header(t)).size(11.0).color(color::weak()));
             for k in keys {
                 issue_chip(ui, fs, &k, msgs);
             }

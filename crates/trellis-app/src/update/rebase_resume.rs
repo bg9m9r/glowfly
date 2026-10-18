@@ -7,7 +7,6 @@ use super::rebase::refuse;
 use crate::effect::{Effect, RebaseEffect};
 use crate::state::AppState;
 use crate::state::rebase::has_conflicts;
-use crate::state::rebase_banner::RESOLVE_FIRST;
 use git2::RepositoryState;
 use std::time::Instant;
 use trellis_core::rebase::{self, RebaseProgress, Resume, StopKind};
@@ -23,7 +22,8 @@ pub(super) fn resume(st: &mut AppState, how: Resume, now: Instant, fx: &mut Vec<
         return;
     }
     if how == Resume::Continue && has_conflicts(snap) {
-        refuse(st, RESOLVE_FIRST.into(), now);
+        let why = st.settings.lang().tr("details.banner.resolve_first.tip").to_owned();
+        refuse(st, why, now);
         return;
     }
     let label = if snap.state == RebaseInteractive { "Interactive rebase" } else { "Rebase" };
