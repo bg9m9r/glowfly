@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-17 23:09 · **Local patches**: Patches of uncommitted changes and single files, Copy patch, and an Apply patch dialog with git apply options and git am for patch series (`ac03f31`)
 - 2026-10-17 22:59 · **Language**: Translated the menu bar, About dialog, toolbar, tab bar, update check and UI Customization page (`78fc616`)
 - 2026-10-17 22:11 · **Merge conflict tool**: Single-line picks with a checkbox per conflict line (taken in tick order), an editable output (only the conflicts' text, kept through picks until Discard edit), Save with markers that writes the file with markers for the conflicts not picked yet and leaves it conflicted, Mark all conflicted on the Resolved Files header, and palette entries for Mark all resolved and Mark conflicted (`ffa60c2`)
 - 2026-10-17 22:03 · **Blame gutter**: Blame before a line's commit (following renames) with Back, skip a commit, ignore-whitespace and move/copy toggles, full commit messages on hover, age colouring of the gutter, find in file and go to line, N / Shift+N between commits, and links to and from file history (`00bdcec`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 16:02 · **Git engine choice**: Preferences > Git chooses which git program Trellis runs (PATH or any git found on this machine, or browsed to), checked off the UI thread before use and applied at startup, with version warnings and the git banner pointing there (`29855da`)
 - 2026-10-16 15:41 · **PR and issue filters**: Built-in and saved filters for the PULL REQUESTS and ISSUES sections, chosen from a filter chip in each section header (`8d97841`)
 - 2026-10-16 15:35 · **Zoom**: Zoom in, out and reset from 50% to 200% with keys, the palette, a toast and a status bar reset, plus show or hide the left, details and toolbar panels from keys, the palette and Preferences > UI Customization, kept per profile (`92464c7`)
-- 2026-10-16 15:12 · **Custom themes**: High Contrast Dark, High Contrast Light and Trellis Sand built in; JSON theme files in the config folder's themes folder (a base theme plus #rrggbb colors or color names, loops detected, problems listed in Preferences and logged), with Open themes folder, Reload and Create from current, and every theme in the palette (`3639791`)
 
 ---
 
