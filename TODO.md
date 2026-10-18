@@ -92,6 +92,111 @@ check. Its hands-on criteria (daily use, merging the release pull request) are i
       start Trellis from them, uninstall cleanly, and update an older build to the new one
       against a local release feed with checksums
 
+The [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md) found these before a first
+release; each finding there names the snapshots and code it was seen in. Its minor findings
+are in Later > UI review polish.
+
+- [ ] **In-progress operations stay visible and safe**: a rebase, merge, cherry-pick, revert,
+      am or bisect in progress shows in a strip under the toolbar (or a status-bar chip) whatever
+      is selected and whether or not the details panel is shown; clicking it opens the WIP view
+  - Abort (rebase, merge, cherry-pick, revert, am), Skip and Reset bisect ask first, naming
+    what is lost ("The 2 files you resolved go back…"), with a danger-styled button set apart
+    from Continue; stash the resolved state first where that makes Undo work
+  - The merge banner gets a primary "Commit merge" (disabled with the reason until every
+    conflict is resolved); the summary is prefilled from `MERGE_MSG` and the commit button says
+    "Commit merge"
+  - The conflict view's header has one primary "Save and mark resolved" with progress ("1 of
+    2 conflicts resolved"); Save with markers, Open in merge tool and Reset picks… go in a ⋯
+    menu, Reset picks asks when picks exist, and the duplicate buttons in the binary view go
+- [ ] **Dialogs keep what was typed**: a click on the backdrop never closes a form dialog;
+      Esc on an edited form asks "Discard your changes?" (or the draft is kept and restored
+      when the dialog reopens); only information and confirm dialogs close on a backdrop click
+      (`ui/modals.rs`)
+- [ ] **No missing glyphs**: the sidebar's ahead/behind arrows (`2□`) are painted as shapes,
+      with a snapshot of a branch that is ahead and behind; a test walks the UI's string
+      literals and label templates and fails on a character the bundled fonts can't draw
+- [ ] **Dialog frame and button styles**: one shared dialog frame (16–20 px padding, title,
+      body, footer with buttons in a fixed order, two standard widths with content-driven
+      limits, long-content dialogs resizable) and three button styles (primary filled with the
+      accent, secondary with a border, danger filled red; disabled is a neutral fill with weak
+      text, never an outline) used by every modal, panel and preference page
+  - Enter runs the primary action and Esc cancels in every dialog; the primary button (the
+    safe one for a danger confirm) has focus when the dialog opens
+  - `Msg::Confirm` gets a danger kind; Delete, Discard, Force delete, closing tabs with unsaved
+    work and the like use it
+  - Losing unpushed commits, stashes or changed files for good (remove a submodule, force
+    remove a worktree) needs an acknowledgement checkbox before the button enables
+  - Cancel and Close come from the translation tables, not literals
+- [ ] **Readable controls in every theme**: text fields get a 1 px border (at least 3:1) and a
+      focus ring; checkboxes and radios are always-visible boxes and circles with the mark
+      inside; the modal backdrop dims about the same in light and dark and dialogs get a
+      border; muted text, chips (the HEAD pill, tag pills, selected toggles) and selection
+      colours reach 4.5:1 for text in light, dark, sand and high contrast
+- [ ] **Truncation with an ellipsis and the full text on hover**: one helper for every
+      single-line label that can be cut (the graph's message and body preview, resized columns,
+      dates, sidebar issue titles with their state chip reserved first, the search placeholder,
+      the update pill, repository names in repo sync); column headers keep a minimum width so
+      headers can't run together ("GRAPHCOMMIT MESSAGE"); actionable notices (fetch this remote,
+      trust for LFS) wrap instead of being cut; translated header buttons move into a ⋯ menu
+      instead of being cut to "Neu…"
+- [ ] **Menus name their object once**: the tag, remote, remote-group and multi-commit menus
+      get the branch menu's header-and-short-verbs treatment; object menus are grouped by intent
+      (branch and tag, integrate, rewrite, copy, delete) with a Copy ▸ submenu; every item that
+      opens a dialog or confirmation ends in "…"; commits are named by summary, not a bare SHA;
+      the reset submenu says what each mode keeps ("Hard: reset files too; changes are stashed
+      and Undo restores them")
+- [ ] **Disabled actions say why**: a disabled primary button has a one-line reason next to it
+      (the rebase panel's pattern) and a disabled menu item a short weak suffix; setup-gated
+      items ("Open in external diff tool" with no tool set) stay enabled and open the setting
+- [ ] **Type scale and text styles**: a five-step scale with an 11 px floor (nothing that
+      carries information smaller: the 0/72 counter, "Esc returns to one commit", hunk buttons,
+      welcome-screen links, LFS Untrack); section headers set by weight; monospace only for
+      SHAs, paths, code and fingerprints (not the compare header or activity log prose);
+      sentence case for every label and button; one section-header style; one link colour
+- [ ] **Toggles look like toggles**: Hunks/Whole file, Inline/Split, Diff/File/Blame, the
+      dashboard tabs and the search mode are segmented controls; Wrap lines and Ignore
+      whitespace are checkboxes or framed chips; the diff header fits on one row with view
+      options in a View ▾ menu and the same slot order for every kind of diff; hunk buttons at
+      body size with Discard set apart
+- [ ] **Full-row selection in file lists**: the commit panel's and file history's file lists
+      select the whole row with the same fill and accent bar as the graph and sidebar
+- [ ] **One style for empty, loading, error and banner states**: an `empty_state(icon, title,
+      hint, action)` widget for empty panes (the dashboard with Open, Clone and Connect; search
+      with no matches with Clear search and a syntax hint; a whitespace-only diff with "Show
+      whitespace changes"), loading and errors (warning icon, plain title, Try again and Copy
+      details, no "not found:" prefixes); a full-width `banner(kind)` with an icon and
+      normal-contrast buttons for operations and the git-too-old notice; error, warning and
+      info message styles for every form, with field errors under the field and none before
+      the user has typed
+- [ ] **Layout that gives tool views room**: the commit panel collapses to a narrow rail while
+      file history, folder history, blame, conflicts, issues or Git Flow are open, and comes
+      back on Close; a hidden sidebar or details panel leaves an edge rail or status-bar link
+      to bring it back, and the View menu shows them with check marks; toasts sit below the
+      toolbar and line up; the toolbar's buttons don't move with the branch name's length or
+      the PR button
+- [ ] **Sidebar create actions**: every section header shows a hover + (and a ⋯ for its menu)
+      like ISSUES; SUBMODULES and WORKTREES are always listed, with "Add submodule…" and "Add
+      worktree…" in their empty state; REMOTE counts remotes, not remote branches
+- [ ] **Preferences structure**: Editor is renamed Diff Viewer; one Terminal page for the
+      built-in and external terminal; Language and date locale together; General split into
+      titled sections; one save model (instant, with a short "Saved"; pages that write repo
+      config get a sticky Save / Revert bar and warn on leaving with unsaved edits); the
+      Integrations page shows each connected account once and hides the token form behind "Add
+      another account"; checkbox rows always have an inline label; rows stay inside the content
+      column
+- [ ] **Complete translations**: the graph column headers, sidebar sections, filter
+      placeholder, WIP row, dates, the commit, branch and tag menus, hunk buttons and every
+      dialog's Cancel come from the tables; "Discard all" and "Stage all" keep "all"; a test
+      renders each panel in German and fails on strings from an English allow-list
+- [ ] **Clearer prompts and safer controls**: the SSH host-key prompt shows host, key type and
+      fingerprint as fields with one sentence of explanation and "Trust and connect" / Cancel
+      (Cancel the default), with the raw text under Details; the sign-in dialog labels Username
+      and "Password or personal access token"; Skip hooks moves to a ⋯ menu by the commit
+      button with a warning tint while on; Kill in the terminal asks while a process runs; repo
+      sync gets Stop and per-row Retry and Open, with the full error on hover; the rebase
+      panel's Reset becomes "Restore original order"; graph search gets a clear × and a
+      fixed-width count
+
 ---
 
 ## Preferences parity (page by page)
@@ -686,6 +791,53 @@ Milestone 2 work (see ROADMAP.md): the follow-ups a daily user would miss, triag
 ideas that grew out of each item and grouped by that item. They are not tracked as
 checkboxes; they are built after the open items above, roughly in this order. New
 follow-ups go to Ideas, not here.
+
+### UI review polish
+
+The minor findings of the [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md); its
+blockers and major findings are Milestone 1 items.
+
+- Scroll areas in dialogs and pages show a scrollbar or fade where they cut a row (About's
+  notices, the conflict check's file list, Preferences, the shortcut sheet, file history's 1 px
+  horizontal bar); the conflict check shows either the whole list or a top N, not both
+- The About dialog folds third-party notices behind "Third-party notices…"
+- The activity log gets a time column, an error icon with Details, proportional text and real
+  session headers
+- "Close (Esc)" text buttons become an × icon with a tooltip
+- Row context menus open below the row so its status text stays visible
+- The welcome wizard: one alignment for the step body, completed steps in the accent colour, and
+  no validation errors before the user types
+- The trust prompt's "{ } Hooks" heading becomes a drawn icon on the text margin, with space
+  before the first message
+- The rebase exec editor uses the standard small Save and Cancel buttons
+- Keyboard preferences: a weak × that strengthens on hover, and a normal Add button
+- Toolbar split buttons: the caret 2–4 px from its button inside one hover background
+- The status bar joins only the parts present (no leading "·") and its counts match the list
+- The commit summary counter sits beside the field and turns amber past 50 and red past 72
+- The "+ branch" ghost on the selected row is a small ghost button, only on the anchor row, on
+  hover or focus, and hidden while a ref menu is open
+- Load more, Fetch full history and the shallow count move to a full-width row at the end of the
+  graph
+- The multi-selection header: "3 commits selected · Esc to clear", the cherry-pick reason inline,
+  and the compare direction shown as "7e24110 → 222c0ad ⇄"
+- The dashboard caps its content width (about 900 px) or tints alternate rows
+- Clone with no connected service shows only the connect prompt and a link back to the URL tab
+- Git Flow's blocked Finish offers "Stash changes and finish"
+- The git-too-old banner links to how to update and says whether Dismiss is for good
+- Deep-link dialogs say why an entry is preselected, and an unknown link kind offers Check for
+  updates
+- The View menu separates its two Diff radio groups
+- One verb per action across menus, the palette and the welcome screen ("New repository…",
+  "Open repository…", "Delete stash")
+- The command palette's empty list shows Recent, then Suggested, then the rest
+- Plain-language errors instead of git internals (safe.directory values; hosting-service errors
+  rewritten as a sentence saying what to do)
+- No toast for routine background successes such as auto-fetch
+- The status bar's update-failed chip gives the reason on hover, with a Details link
+- Submodule status dots have tooltips, and clean rows say "up to date"
+- The tab list button sits after the last tab, and tab groups get a named chip
+- The rebase banner keeps Continue as the primary button with Skip, Abort and Edit steps in a
+  split button, so it fits the panel
 
 ### File history and blame
 

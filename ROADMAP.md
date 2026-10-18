@@ -50,9 +50,14 @@ Exit criteria:
 3. **Installers work**: CI installs the MSI and DEB it built, starts Trellis from them, and
    checks the update path from an older build against the published checksums.
 4. **No known crash or data-loss bug** is open.
-5. **A few days of daily use** on real repositories *(you)*; what turns up goes into TODO.md
+5. **The UI review's blockers and major findings are fixed**: the
+   [2026-10-18 review](docs/reviews/ui-2026-10-18.md)'s items in TODO.md's Milestone 1 section
+   (operations that stay visible and ask before losing work, dialogs that keep typed text,
+   consistent dialogs, buttons and controls, readable text and contrast in every theme,
+   truncation with ellipses, complete translations).
+6. **A few days of daily use** on real repositories *(you)*; what turns up goes into TODO.md
    under this milestone.
-6. **The release pull request is merged** *(you)*.
+7. **The release pull request is merged** *(you)*.
 
 ### Milestone 2: daily-driver polish
 
@@ -79,9 +84,11 @@ As of 2026-10-18. Recompute from git history when a milestone closes.
 - **Pace so far.** The project started on 2026-10-13. In 4½ days it has 434 commits and about
   170,000 lines of Rust, and 71 of 75 top-level items are done. A five-slot campaign lands about
   2.5 to 4 items an hour while it runs.
-- **Milestone 1.** The five items in its TODO.md section, about a day of campaign time. They add
-  new CI jobs, which take a few CI round trips each. With a few days of daily use *(you)*,
-  Milestone 1 is about 3 to 5 days away.
+- **Milestone 1.** Four test and release items, plus 16 from the UI review. Most review items
+  are app-wide (one shared widget, then every screen moved onto it), so each is one or two
+  landings. At the last batch's 1.6 landings an hour that is about 15 to 20 hours of campaign
+  time; the CI items take a few CI round trips each. With a few days of daily use *(you)*,
+  Milestone 1 is about 4 to 6 days away.
 - **Why follow-ups go to Ideas.** Before the triage, Later held 692 bullets. Over the 36 landings
   before it, each landing closed about 1.4 Later bullets and added about 9 (50 closed, 320 added),
   so the queue had no end date. The triage kept 124 for Milestone 2 and moved 567 to Ideas (1 was
@@ -94,5 +101,8 @@ As of 2026-10-18. Recompute from git history when a milestone closes.
 
 ## Status
 
+- 2026-10-18: UI review of every snapshot (visual design and UX): 16 Milestone 1 items from its
+  blockers and major findings, and its minor findings in Later. A batch of 17 landings
+  (whole-app journey tests and Later work). The MSI's install pages built and checked by hand.
 - 2026-10-18: Feature build-out done. Milestone 1 started: its test and release items are at the
   top of TODO.md. Later triaged: 124 bullets kept for Milestone 2, 567 moved to Ideas.
