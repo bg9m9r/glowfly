@@ -306,6 +306,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             st.conflict_checks.clear();
         }
         LoadKind::Refresh => {
+            super::history::head_moved(st, &snap, fx);
             if let Selection::Commit(oid) = st.selection {
                 let still_there = snap.row_of.contains_key(&oid) || snap.stashes.iter().any(|s| s.oid == oid);
                 if !still_there {

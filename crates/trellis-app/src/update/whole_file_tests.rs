@@ -288,6 +288,7 @@ fn file_history_honours_whole_mode() {
         path: "a.txt".into(),
         old_path: None,
         status: 'A',
+        files: Vec::new(),
     };
     let mut view = FileHistoryView::loading("a.txt".into(), None);
     view.append(FileHistory { entries: vec![entry], from_head: true, ..Default::default() });

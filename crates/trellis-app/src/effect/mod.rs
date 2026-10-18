@@ -16,6 +16,7 @@ mod clone;
 mod dashboard;
 mod forge;
 mod forge_filters;
+mod history;
 mod init;
 mod issue;
 mod names;
@@ -32,6 +33,7 @@ pub use clone::CloneEffect;
 pub use dashboard::*;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
+pub use history::FileTextRequest;
 pub use init::InitEffect;
 pub use issue::*;
 pub use notify::{DesktopNote, NoteKind};
@@ -188,14 +190,17 @@ pub enum Effect {
         cwd: PathBuf,
         command: trellis_core::sparse_ops::SparseCommand,
     },
-    /// The commits that changed `path`, examining at most `limit` commits.
+    /// The commits that changed `path` (anything under it with `folder`), examining at most `limit`.
     LoadFileHistory {
         workdir: PathBuf,
         path: String,
         start: HistoryStart,
         limit: usize,
+        folder: bool,
         generation: u64,
     },
+    /// A file as of a commit, with syntax spans, for the history's File view (`FileTextLoaded`).
+    LoadFileText(FileTextRequest),
     /// Blames one file (`git blame`), reported as `BlameMsg::Loaded`.
     LoadBlame(BlameRequest),
     /// Runs git commands in order, stopping at the first failure. `write_file` is written first

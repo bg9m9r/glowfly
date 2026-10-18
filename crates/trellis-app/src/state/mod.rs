@@ -43,6 +43,7 @@ pub mod onboarding;
 pub mod onboarding_tour;
 pub mod palette;
 pub mod palette_commands;
+pub mod palette_files;
 pub mod palette_kinds;
 pub mod palette_onboarding;
 pub mod palette_profiles;

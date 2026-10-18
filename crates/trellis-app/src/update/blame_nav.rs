@@ -5,6 +5,7 @@ use super::reload;
 use crate::effect::Effect;
 use crate::state::AppState;
 use crate::state::blame::{BACK_LIMIT, BlameLanding, BlameStep};
+use crate::state::history::HistoryKind;
 use git2::Oid;
 use std::time::Instant;
 use trellis_core::settings::BlameMoves;
@@ -103,5 +104,5 @@ pub(super) fn open_history(st: &mut AppState, select: Option<Oid>, fx: &mut Vec<
     let Some(view) = st.blame.as_ref() else { return };
     let (path, at) = (view.path.clone(), view.at);
     let blamed = at.or_else(|| view.data.as_ref().map(|d| d.blame.at));
-    super::super::history::open(st, path, at, select.or(blamed), fx);
+    super::super::history::open(st, path, at, select.or(blamed), HistoryKind::File, fx);
 }

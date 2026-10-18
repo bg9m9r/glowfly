@@ -5,7 +5,7 @@
 //! The types are here (the diff ones in `diff_types`, `Snapshot`'s queries in `snapshot_impl`);
 //! the work is split by area: `load` (history, refs, status), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`,
-//! `history` (one file's commits), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files, Mark resolved and Mark
+//! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files, Mark resolved and Mark
 //! conflicted) and `markers` (conflict markers left in working files), `template`
 //! (commit.template), `tool_sides` (versions for external tools), `touching` (commits that
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and
@@ -30,8 +30,11 @@ mod diff;
 mod diff_types;
 mod entry;
 mod exact;
+mod file_at;
+mod folder_history;
 mod graph_cache;
 mod history;
+mod history_forward;
 mod index;
 mod lines;
 mod load;
@@ -80,6 +83,8 @@ pub use diff::{
 use diff::{head_tree, path_opts, workdir_opts};
 pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions};
 pub use entry::{FileEntry, Hazard};
+pub use file_at::{FILE_VIEW_MAX_BYTES, FileAt, file_at};
+pub use folder_history::folder_history;
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
@@ -345,6 +350,12 @@ mod diff_tests;
 mod discard_tests;
 #[cfg(test)]
 mod exact_tests;
+#[cfg(test)]
+mod file_at_tests;
+#[cfg(test)]
+mod folder_history_tests;
+#[cfg(test)]
+mod history_forward_tests;
 #[cfg(test)]
 mod history_tests;
 #[cfg(test)]

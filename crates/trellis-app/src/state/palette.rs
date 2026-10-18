@@ -171,7 +171,10 @@ impl Pick {
     /// What choosing item `index` runs.
     pub fn command(&self, index: usize) -> Option<PaletteCommand> {
         match self.kind {
-            PickKind::FileHistory => Some(PaletteCommand::OpenFileHistory(self.label(index).to_owned())),
+            PickKind::FileHistory => Some(match super::palette_files::folder_of(self.label(index)) {
+                Some(folder) => PaletteCommand::OpenFolderHistory(folder.to_owned()),
+                None => PaletteCommand::OpenFileHistory(self.label(index).to_owned()),
+            }),
             PickKind::Blame => Some(PaletteCommand::OpenBlame(self.label(index).to_owned())),
             PickKind::Stash(action) => self.stashes.get(index).map(|s| PaletteCommand::StashOp { action, oid: s.oid }),
             PickKind::RenameStash => self.stashes.get(index).map(|s| PaletteCommand::RenameStash { oid: s.oid }),

@@ -147,7 +147,7 @@ impl PaletteCommand {
             C::Rebase(RebaseCommand::Resume(Resume::Continue)) => "rebase-continue",
             C::Rebase(RebaseCommand::Resume(Resume::Skip)) => "rebase-skip",
             C::Rebase(RebaseCommand::EditRemaining) => "rebase-edit-steps",
-            C::OpenFileHistory(_) | C::OpenBlame(_) => return None,
+            C::OpenFileHistory(_) | C::OpenFolderHistory(_) | C::OpenBlame(_) => return None,
             C::Worktree(m) if **m == crate::worktree::WorktreeMsg::Prune => "prune-worktrees",
             C::Worktree(_) => return None,
             C::Remote(m) => match m {

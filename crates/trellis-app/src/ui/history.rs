@@ -1,6 +1,8 @@
-//! The file history view: the commits that changed one file on the left (newest first,
-//! following renames), and the selected commit with its diff of the file on the right. Each
-//! commit can restore its version of the file; Open and Show act on the file as it is today.
+//! The file and folder history view: the commits that changed a file (newest first, following
+//! renames) or anything under a folder on the left, and the selected commit on the right with
+//! its diff of the file or, in the File view, the whole file as of it (`history_file.rs`). A
+//! folder entry lists its changed files (`history_folder.rs`), one of which is shown. Each
+//! commit can restore its version of a file; Open and Show act on the file as it is today.
 
 use super::UiCache;
 use super::common::{menu_item, menu_item_if, paint_cut_line, short, status_color};
@@ -11,7 +13,7 @@ use crate::msg::BlameMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::history::FileHistoryView;
+use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
 use crate::state::tool_compare::{OPEN_IN_DIFF_TOOL, diff_blocked};
 use crate::tools::ToolsMsg;
 use eframe::egui::{self, Align, Align2, CursorIcon, FontId, Key, Layout, RichText, Sense, Ui, pos2, vec2};
@@ -37,12 +39,22 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show_inside(ui, |ui| selected(ui, st, cache, msgs));
 }
 
-/// "File history", the path, "as of <sha>" when the walk didn't start at HEAD, and Close.
+/// "File history" or "Folder history", the path ("now <name>" when the file was renamed after
+/// the commit it was opened at), "as of <sha>" when the walk didn't start at HEAD, then the
+/// Diff / File toggle, Blame and Close.
 fn header(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.label(RichText::new("File history").color(color::weak()));
-        ui.label(RichText::new(&view.path).strong().size(15.0).color(color::text()));
+        let (title, path) = match view.kind {
+            HistoryKind::File => ("File history", view.path.clone()),
+            HistoryKind::Folder => ("Folder history", format!("{}/", view.path)),
+        };
+        ui.label(RichText::new(title).color(color::weak()));
+        ui.label(RichText::new(path).strong().size(15.0).color(color::text()));
+        if let (HistoryKind::File, Some(now)) = (view.kind, &view.head_path) {
+            ui.label(RichText::new(format!("now {now}")).color(color::weak()))
+                .on_hover_text("Renamed after this commit; the history starts at HEAD under its current name");
+        }
         if let Some(at) = view.as_of {
             ui.label(RichText::new(format!("as of {}", short(at))).color(color::weak()))
                 .on_hover_text("The history as seen from this commit (it is not part of HEAD's history of this file)");
@@ -51,10 +63,10 @@ fn header(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
             if ui.button("Close  (Esc)").clicked() {
                 msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
             }
-            let entry = view.selected_entry();
-            let blocked = match entry {
+            let shown = view.shown();
+            let blocked = match shown {
                 None => Some("Select a commit first"),
-                Some(e) if e.status == 'D' => Some("This commit deletes the file"),
+                Some((_, _, 'D')) => Some("This commit deletes the file"),
                 Some(_) => None,
             };
             let r = ui.add_enabled(blocked.is_none(), egui::Button::new(file_menu::BLAME));
@@ -63,9 +75,29 @@ fn header(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
                 None => r.on_hover_text("Blame the file as of the selected commit"),
             };
             if r.clicked()
-                && let Some(e) = entry
+                && let Some((oid, path, _)) = shown
             {
-                msgs.push(Msg::Blame(BlameMsg::Open { path: e.path.clone(), at: Some(e.oid) }));
+                msgs.push(Msg::Blame(BlameMsg::Open { path: path.to_owned(), at: Some(oid) }));
+            }
+            pane_toggle(ui, view, msgs);
+        });
+    });
+}
+
+/// The Diff / File segmented toggle (laid out right to left: File, then Diff to its left).
+fn pane_toggle(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
+    ui.add_enabled_ui(view.shown().is_some(), |ui| {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 0.0;
+            let buttons = [
+                (HistoryPane::File, "File", "The whole file as of this commit"),
+                (HistoryPane::Diff, "Diff", "This commit's changes to the file"),
+            ];
+            for (pane, label, tip) in buttons {
+                let r = ui.selectable_label(view.pane == pane, label).on_hover_text(tip).on_disabled_hover_text("Select a commit first");
+                if r.clicked() && view.pane != pane {
+                    msgs.push(Msg::History(HistoryMsg::SetHistoryPane(pane)));
+                }
             }
         });
     });
@@ -91,7 +123,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
                 } else if resp.hovered() {
                     ui.painter().rect_filled(rect, 0.0, color::hover());
                 }
-                row(ui, st, rect, e)
+                row(ui, st, rect, e, view.kind)
             });
             if resp.hovered() {
                 ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
@@ -105,12 +137,21 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             if resp.clicked() {
                 msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(i)));
             }
-            resp.context_menu(|ui| entry_menu(ui, msgs, e, &view.path, in_wd, diff_blocked));
+            resp.context_menu(|ui| match view.kind {
+                HistoryKind::File => entry_menu(ui, msgs, e, view.today_path(), in_wd, diff_blocked),
+                HistoryKind::Folder => commit_items(ui, msgs, e),
+            });
             ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
         }
         ui.add_space(8.0);
         footer(ui, st, view, msgs);
     });
+}
+
+/// View on graph and Copy commit SHA: the whole menu of a folder history row.
+fn commit_items(ui: &mut Ui, msgs: &mut Vec<Msg>, e: &HistoryEntry) {
+    menu_item(msgs, ui, "View on graph", Msg::History(HistoryMsg::ShowInGraph(e.oid)));
+    menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));
 }
 
 /// A history row's menu: View on graph, Copy commit SHA, Blame at this commit (not for the commit
@@ -126,8 +167,7 @@ pub(super) fn entry_menu(
     in_workdir: bool,
     diff_blocked: Option<&str>,
 ) {
-    menu_item(msgs, ui, "View on graph", Msg::History(HistoryMsg::ShowInGraph(e.oid)));
-    menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));
+    commit_items(ui, msgs, e);
     let deleted = (e.status == 'D').then_some("This commit deletes the file");
     menu_item_if(msgs, ui, BLAME_AT, deleted, Msg::Blame(BlameMsg::Open { path: e.path.clone(), at: Some(e.oid) }));
     ui.separator();
@@ -139,9 +179,9 @@ pub(super) fn entry_menu(
     file_menu::open_items(ui, msgs, open_path, (!in_workdir).then_some(file_menu::NOT_IN_WORKDIR), Some(tool));
 }
 
-/// Line 1: short SHA and summary. Line 2: status, author (and the old path of a rename), with
-/// the date on the right. Returns where the date was painted.
-fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry) -> egui::Rect {
+/// Line 1: short SHA and summary. Line 2: status, author (and the old path of a rename, or a
+/// folder entry's file count), with the date on the right. Returns where the date was painted.
+fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: HistoryKind) -> egui::Rect {
     let mono = FontId::monospace(12.0);
     let body = FontId::proportional(13.0);
     let small = FontId::proportional(12.0);
@@ -160,9 +200,14 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry) -> egui::Rect
     let limit = right - date_w - 12.0;
     let author = if e.author.is_empty() { "Unknown" } else { e.author.as_str() };
     x += paint_cut_line(ui, pos2(x, y2), author, small.clone(), color::text(), limit - x);
-    if let Some(old) = &e.old_path {
+    let extra = match kind {
+        HistoryKind::Folder if e.files.len() == 1 => Some("1 file".to_owned()),
+        HistoryKind::Folder => Some(format!("{} files", e.files.len())),
+        HistoryKind::File => e.old_path.as_ref().map(|old| format!("renamed from {old}")),
+    };
+    if let Some(extra) = extra {
         x += 10.0;
-        paint_cut_line(ui, pos2(x, y2), &format!("renamed from {old}"), small, color::weak(), limit - x);
+        paint_cut_line(ui, pos2(x, y2), &extra, small, color::weak(), limit - x);
     }
     date_rect
 }
@@ -176,7 +221,11 @@ fn footer(ui: &mut Ui, st: &AppState, view: &FileHistoryView, msgs: &mut Vec<Msg
             ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
         } else if view.complete() {
             if view.entries.is_empty() {
-                ui.label(RichText::new("No commits change this file").color(color::weak()));
+                let none = match view.kind {
+                    HistoryKind::File => "No commits change this file",
+                    HistoryKind::Folder => "No commits change this folder",
+                };
+                ui.label(RichText::new(none).color(color::weak()));
             } else {
                 ui.label(RichText::new("Reached the first commit").color(color::faint()));
             }
@@ -210,11 +259,13 @@ fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
     msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(next)));
 }
 
-/// The selected commit: summary, author and date, links, file buttons (Restore this version,
-/// Open, Show, Open in external diff tool), then its diff of the file.
+/// The selected commit: summary, author and date, links and (in a file history) file buttons
+/// (Restore this version, Open, Show, Open in external diff tool), or (in a folder history) its
+/// changed files; then its diff of the file, or the whole file in the File view.
 fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.history else { return };
-    let open_path = view.path.clone();
+    let (kind, pane, target) = (view.kind, view.pane, view.target());
+    let open_path = view.today_path().to_owned();
     let in_wd = view.in_workdir(st.snap.as_ref());
     let Some(e) = view.selected_entry().cloned() else {
         if !view.loading && !view.entries.is_empty() {
@@ -240,25 +291,32 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             }
         });
         ui.add_space(4.0);
-        let file = CommitFile { oid: e.oid, path: &e.path, status: e.status, open_path: &open_path, in_workdir: in_wd };
-        let blocked = diff_blocked(&st.settings.external_tools);
-        ui.horizontal_wrapped(|ui| {
-            file_buttons::show(ui, msgs, &file, Labels::Full);
-            let r = ui.add_enabled(blocked.is_none(), egui::Button::new(OPEN_IN_DIFF_TOOL));
-            if r.on_disabled_hover_text(blocked.unwrap_or_default()).clicked() {
-                msgs.push(Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Commit(e.oid, e.path.clone()))));
+        match kind {
+            HistoryKind::File => {
+                let file = CommitFile { oid: e.oid, path: &e.path, status: e.status, open_path: &open_path, in_workdir: in_wd };
+                let blocked = diff_blocked(&st.settings.external_tools);
+                ui.horizontal_wrapped(|ui| {
+                    file_buttons::show(ui, msgs, &file, Labels::Full);
+                    let r = ui.add_enabled(blocked.is_none(), egui::Button::new(OPEN_IN_DIFF_TOOL));
+                    if r.on_disabled_hover_text(blocked.unwrap_or_default()).clicked() {
+                        msgs.push(Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Commit(e.oid, e.path.clone()))));
+                    }
+                });
             }
-        });
+            HistoryKind::Folder => super::history_folder::files(ui, st, &e, msgs),
+        }
     });
     ui.separator();
-    let target = DiffTarget::Commit(e.oid, e.path.clone());
-    if st.diff.as_ref().is_some_and(|(t, _)| *t == target) {
-        super::diff::body(ui, st, &mut cache.diff_rows, msgs);
-    } else {
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.add_space(10.0);
-            ui.label(RichText::new("Loading…").color(color::weak()));
-        });
+    let Some(target) = target else { return };
+    match pane {
+        HistoryPane::File => super::history_file::show(ui, st),
+        HistoryPane::Diff if st.diff.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, &mut cache.diff_rows, msgs),
+        HistoryPane::Diff => {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.add_space(10.0);
+                ui.label(RichText::new("Loading…").color(color::weak()));
+            });
+        }
     }
 }

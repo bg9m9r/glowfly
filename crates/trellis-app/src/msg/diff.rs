@@ -2,8 +2,10 @@
 //! update/highlight.rs, update/conflict.rs, update/history.rs).
 
 use crate::effect::ConflictRead;
+use crate::state::history::{FileTextData, HistoryPane};
 use crate::state::lines::LineClick;
 use git2::Oid;
+use std::sync::Arc;
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
 use trellis_core::settings::{DiffLayout, DiffMode};
@@ -161,16 +163,25 @@ impl ConflictMsg {
     }
 }
 
-/// The history of one file (update/history.rs).
+/// The history of one file or folder (update/history.rs, update/history_view.rs).
 pub enum HistoryMsg {
     /// The commits that changed `path`, from HEAD (`at: None`) or as seen from commit `at`.
     OpenFileHistory {
         path: String,
         at: Option<Oid>,
     },
+    /// The commits that changed anything under the folder `path` (no trailing '/').
+    OpenFolderHistory {
+        path: String,
+        at: Option<Oid>,
+    },
     CloseFileHistory,
     /// Select entry `i` of the open file history and show its diff.
     SelectHistoryEntry(usize),
+    /// Select file `i` of the selected folder entry and show its diff (or text).
+    SelectHistoryFile(usize),
+    /// The header's Diff / File toggle.
+    SetHistoryPane(HistoryPane),
     /// Continue the walk past the commit limit.
     MoreFileHistory,
     /// "View on graph": close the history and select the commit.
@@ -180,6 +191,12 @@ pub enum HistoryMsg {
         generation: u64,
         result: Result<FileHistory, String>,
     },
+    /// The File view's text of `path` as of `oid` (`Effect::LoadFileText`).
+    FileTextLoaded {
+        oid: Oid,
+        path: String,
+        result: Result<Arc<FileTextData>, String>,
+    },
 }
 
 impl HistoryMsg {
@@ -188,11 +205,15 @@ impl HistoryMsg {
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             Self::OpenFileHistory { .. }
+            | Self::OpenFolderHistory { .. }
             | Self::CloseFileHistory
             | Self::SelectHistoryEntry(..)
+            | Self::SelectHistoryFile(..)
+            | Self::SetHistoryPane(..)
             | Self::MoreFileHistory
             | Self::ShowInGraph(..)
-            | Self::FileHistoryLoaded { .. } => None,
+            | Self::FileHistoryLoaded { .. }
+            | Self::FileTextLoaded { .. } => None,
         }
     }
 }

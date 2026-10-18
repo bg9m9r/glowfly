@@ -48,3 +48,8 @@ pub(super) fn touches(delta: &DiffDelta<'_>, path: &str) -> bool {
 pub(super) fn delta_bytes<'a>(delta: &DiffDelta<'a>) -> &'a [u8] {
     delta.new_file().path_bytes().or(delta.old_file().path_bytes()).unwrap_or_default()
 }
+
+/// Whether the path `bytes` is inside the folder `folder` (byte for byte, never case-folded).
+pub(super) fn under(bytes: &[u8], folder: &str) -> bool {
+    bytes.strip_prefix(folder.as_bytes()).is_some_and(|rest| rest.first() == Some(&b'/'))
+}

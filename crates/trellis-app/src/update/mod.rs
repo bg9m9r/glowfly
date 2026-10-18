@@ -29,6 +29,7 @@ mod graph_columns;
 mod graph_filter;
 mod highlight;
 mod history;
+mod history_view;
 mod inactive;
 mod init;
 mod issue;
@@ -187,6 +188,12 @@ mod highlight_header_tests;
 #[cfg(test)]
 mod highlight_tests;
 #[cfg(test)]
+mod history_file_tests;
+#[cfg(test)]
+mod history_folder_tests;
+#[cfg(test)]
+mod history_refresh_tests;
+#[cfg(test)]
 mod history_tests;
 #[cfg(test)]
 mod init_tests;
@@ -220,6 +227,8 @@ mod onboarding_tests;
 mod palette_blame_tests;
 #[cfg(test)]
 mod palette_checkout_tests;
+#[cfg(test)]
+mod palette_folder_tests;
 #[cfg(test)]
 mod palette_issue_tests;
 #[cfg(test)]

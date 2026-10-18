@@ -15,6 +15,7 @@ impl Effect {
             Effect::LoadConflict { .. } => "load-conflict",
             Effect::LoadFileHistory { .. } => "file-history",
             Effect::LoadBlame(_) => "blame",
+            Effect::LoadFileText(_) => "file-text",
             Effect::LocalOp { .. } => "local-op",
             Effect::ReadConflictFiles { .. } => "conflict-files",
             Effect::Revert { .. } => "revert",
@@ -101,6 +102,7 @@ impl Effect {
             | Effect::LoadConflict { .. }
             | Effect::LoadFileHistory { .. }
             | Effect::LoadBlame(_)
+            | Effect::LoadFileText(_)
             | Effect::LocalOp { .. }
             | Effect::ReadConflictFiles { .. }
             | Effect::Revert { .. }

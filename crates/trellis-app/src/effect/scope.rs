@@ -29,6 +29,7 @@ impl Effect {
             Effect::Forge { cwd, .. } => Some(cwd),
             Effect::CheckConflicts(j) => Some(&j.workdir),
             Effect::LoadBlame(r) => Some(&r.workdir),
+            Effect::LoadFileText(r) => Some(&r.workdir),
             Effect::Submodule(e) => e.scope(),
             Effect::Rebase(e) => e.scope(),
             Effect::PullRequest(e) => e.scope(),

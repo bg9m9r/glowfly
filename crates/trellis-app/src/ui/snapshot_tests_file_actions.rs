@@ -109,6 +109,7 @@ fn history_entry(status: char) -> HistoryEntry {
         path: "app.txt".into(),
         old_path: None,
         status,
+        files: Vec::new(),
     }
 }
 

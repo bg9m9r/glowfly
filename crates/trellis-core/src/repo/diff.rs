@@ -29,7 +29,7 @@ pub fn commit_stats_until(workdir: &Path, oids: &[Oid], stop: &dyn Fn() -> bool)
     (out, oids.len())
 }
 
-fn delta_char(d: Delta) -> char {
+pub(super) fn delta_char(d: Delta) -> char {
     match d {
         Delta::Added | Delta::Untracked | Delta::Copied => 'A',
         Delta::Deleted => 'D',

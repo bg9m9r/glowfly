@@ -39,6 +39,8 @@ mod gitflow_panel;
 mod gitflow_section;
 mod graph;
 mod history;
+mod history_file;
+mod history_folder;
 mod icons;
 mod init_dialog;
 mod issue;
@@ -147,6 +149,8 @@ mod snapshot_tests_forge_filters;
 mod snapshot_tests_forks;
 #[cfg(test)]
 mod snapshot_tests_gitflow;
+#[cfg(test)]
+mod snapshot_tests_history;
 #[cfg(test)]
 mod snapshot_tests_init;
 #[cfg(test)]

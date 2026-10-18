@@ -26,6 +26,7 @@ use crate::msg::TabsMsg;
 use crate::msg::TrustMsg;
 use crate::state::conflict_files::{conflicted_paths, mark_conflicted_body, restorable_paths};
 use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
+use crate::state::palette_files::with_folders;
 use crate::state::{AppState, PrefPage, Selection};
 use crate::tag::TagMsg;
 use std::time::Instant;
@@ -93,7 +94,10 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             }
             *selected = 0;
             match result {
-                Ok(paths) => pick.set_items(Items::Ready(paths)),
+                Ok(paths) => {
+                    let rows = if matches!(pick.kind, PickKind::FileHistory) { with_folders(paths) } else { paths };
+                    pick.set_items(Items::Ready(rows));
+                }
                 Err(e) => {
                     pick.set_items(Items::Failed(e.clone()));
                     st.log(false, e);
@@ -286,6 +290,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
         C::CopyLink(t) => Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)),
         C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
+        C::OpenFolderHistory(path) => Msg::History(HistoryMsg::OpenFolderHistory { path, at: None }),
         C::OpenBlame(path) => Msg::Blame(BlameMsg::Open { path, at: None }),
         C::Remote(m) => Msg::Remote(m),
         C::Submodule(m) => Msg::Submodule(m),

@@ -36,6 +36,7 @@ pub(super) use crate::state::files::SHOW_IN_FOLDER;
 pub(super) const OPEN_DEFAULT: &str = "Open with default app";
 pub(super) const FILE_HISTORY: &str = "File history";
 pub(super) const BLAME: &str = "Blame";
+pub(super) const FOLDER_HISTORY: &str = "History of this folder";
 pub(super) const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
 const DELETED_IN_WORKDIR: &str = "Not in your working tree (deleted)";
 const CONFLICTED: &str = "Resolve the conflict first";
@@ -59,10 +60,19 @@ pub(super) enum RowSource {
 }
 
 /// File history of `path` (from commit `at`, or HEAD), then Blame of it there, disabled with the
-/// reason `blame_blocked` when set.
+/// reason `blame_blocked` when set, then the history of its folder (for a path in one).
 pub(super) fn history_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str, at: Option<Oid>, blame_blocked: Option<&str>) {
     menu_item(msgs, ui, FILE_HISTORY, Msg::History(HistoryMsg::OpenFileHistory { path: path.to_owned(), at }));
     menu_item_if(msgs, ui, BLAME, blame_blocked, Msg::Blame(BlameMsg::Open { path: path.to_owned(), at }));
+    if let Some(dir) = parent_folder(path) {
+        menu_item(msgs, ui, FOLDER_HISTORY, Msg::History(HistoryMsg::OpenFolderHistory { path: dir, at }));
+    }
+}
+
+/// The folder holding `path`, without a trailing '/'; None at the repository's top.
+pub(super) fn parent_folder(path: &str) -> Option<String> {
+    let dir = folder_prefill(path);
+    Some(dir.trim_end_matches('/').to_owned()).filter(|d| !d.is_empty())
 }
 
 /// The restore action's label, for a file the commit `deleted` or one it kept.

@@ -4,11 +4,12 @@
 //! file history header's Blame button. Shares the fixture
 //! repository and renderer with `snapshot_tests`.
 
-use super::file_menu::{BLAME, history_items};
+use super::file_menu::{BLAME, FOLDER_HISTORY, history_items};
 use super::snapshot_tests::{git, harness, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
 use super::theme::{apply_theme, color};
 use crate::msg::BlameMsg;
+use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::blame::{BlameData, BlameView};
@@ -133,7 +134,12 @@ const OID: &str = "3f2a9c41d07be5a8c6f19e2d4b7a0c3e5f816d29";
 
 /// A small window drawing the File history and Blame items inside a menu frame.
 fn menu(blocked: Option<&'static str>) -> Harness<'static, Vec<Msg>> {
-    Harness::builder().with_size(egui::vec2(260.0, 110.0)).build_ui_state(
+    menu_for("src/main.rs", blocked)
+}
+
+/// `menu` for the file at `path`.
+fn menu_for(path: &'static str, blocked: Option<&'static str>) -> Harness<'static, Vec<Msg>> {
+    Harness::builder().with_size(egui::vec2(260.0, 136.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());
@@ -142,7 +148,7 @@ fn menu(blocked: Option<&'static str>) -> Harness<'static, Vec<Msg>> {
             egui::Frame::menu(ui.style()).show(ui, |ui| {
                 ui.set_width(220.0);
                 menu_style(ui.style_mut());
-                history_items(ui, msgs, "src/main.rs", Some(Oid::from_str(OID).unwrap()), blocked);
+                history_items(ui, msgs, path, Some(Oid::from_str(OID).unwrap()), blocked);
                 let _ = ui.button("Copy path");
             });
         },
@@ -159,6 +165,22 @@ fn blame_menu_commit_row() {
     h.run();
     let at = Some(Oid::from_str(OID).unwrap());
     assert!(matches!(&h.state()[..], [Msg::Blame(BlameMsg::Open { path, at: a })] if path == "src/main.rs" && *a == at));
+}
+
+#[test]
+fn file_menu_folder_history_opens_the_parent_folder() {
+    let mut h = menu_for("src/main.rs", None);
+    h.run();
+    h.get_by_label(FOLDER_HISTORY).click();
+    h.run();
+    let at = Some(Oid::from_str(OID).unwrap());
+    assert!(
+        matches!(&h.state()[..], [Msg::History(HistoryMsg::OpenFolderHistory { path, at: a })] if path == "src" && *a == at),
+        "the file's folder at the same commit"
+    );
+    let mut h = menu_for("README.md", None);
+    h.run();
+    assert!(h.query_by_label(FOLDER_HISTORY).is_none(), "a file at the top has no folder item");
 }
 
 #[test]

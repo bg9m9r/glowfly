@@ -234,7 +234,9 @@ Done except the group colors, which wait on repository groups in the repository 
   File history: commits that changed a file, newest first, following renames, opened from a
   file's context menu in the commit details or WIP panel; each shows that commit's diff of the
   file and links to the graph. Searches back in batches of the commit limit. Blame opens from
-  the file history header and the file menus (see Blame gutter).
+  the file history header and the file menus (see Blame gutter). Also the history of a folder
+  (palette finder, "History of this folder"), a File view of the whole file as of a commit,
+  renames followed forwards to HEAD, and a re-run when HEAD moves.
   - [x] Open file history or blame for any file from the command palette (a file finder), not
     only from a changed-file list. Both history and blame open from the finder
 - [x] **Interactive rebase**
@@ -705,10 +707,15 @@ follow-ups go to Ideas, not here.
 
 ### File history and blame
 
-- Start from HEAD when the file was renamed after the chosen commit (track renames forwards)
-- Refresh an open file history when HEAD moves (commit, checkout, pull, fetch)
-- Show the whole file at the selected commit (file view) as an alternative to its diff
-- History of a folder
+- Follow a folder's own renames or moves in folder history
+- Rendered preview (Markdown, images) in the file view
+- Remember the Diff/File choice between sessions (a setting)
+- Find in file, go to line and horizontal scroll or word wrap of long lines in the file view
+- Restore, Open and Show buttons for a folder entry's files
+- Previous/Next change keys stepping through a folder entry's files
+- Show the real content of Git LFS files in the file view (it shows the pointer now)
+- Show the version before the deletion in the file view of a commit that deletes the file
+- Open folder history from a folder row once file lists can show a tree
 
 ### Blame gutter
 
@@ -1069,10 +1076,6 @@ here, under the item they grew from.
 - Leave a side out of every conflict from its pane header (the opposite of Take all)
 - Side colours and line numbers in the editable output
 - Palette entry to mark only the open conflict's file resolved
-
-### File history and blame
-
-- Let `diff::show` delegate to `diff::body` once the diff header changes in flight have landed
 
 ### Blame gutter
 

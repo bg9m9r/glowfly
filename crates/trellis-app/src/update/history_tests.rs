@@ -17,11 +17,11 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::repo::{self, DiffTarget, FileDiff, FileHistory, HistoryEntry, HistoryStart, LoadOptions};
 
-fn oid(n: u8) -> Oid {
+pub(super) fn oid(n: u8) -> Oid {
     Oid::from_bytes(&[n; 20]).unwrap()
 }
 
-fn entry(n: u8, path: &str) -> HistoryEntry {
+pub(super) fn entry(n: u8, path: &str) -> HistoryEntry {
     HistoryEntry {
         oid: oid(n),
         summary: format!("commit {n}"),
@@ -31,15 +31,16 @@ fn entry(n: u8, path: &str) -> HistoryEntry {
         path: path.into(),
         old_path: None,
         status: 'M',
+        files: Vec::new(),
     }
 }
 
-fn empty_diff() -> FileDiff {
+pub(super) fn empty_diff() -> FileDiff {
     FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
 }
 
 /// A scratch repository opened in the app.
-fn opened(name: &str) -> (AppState, PathBuf) {
+pub(super) fn opened(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
@@ -47,15 +48,16 @@ fn opened(name: &str) -> (AppState, PathBuf) {
 }
 
 /// An open repository with a loaded history of a.txt: entries 1 (at a.txt) and 2 (at old.txt).
-fn with_view(name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_view(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = opened(name);
     let mut view = FileHistoryView::loading("a.txt".into(), None);
     view.append(FileHistory { entries: vec![entry(1, "a.txt"), entry(2, "old.txt")], from_head: true, ..Default::default() });
+    view.batches = 1;
     st.history = Some(view);
     (st, dir)
 }
 
-fn loaded(st: &AppState, h: FileHistory) -> Msg {
+pub(super) fn loaded(st: &AppState, h: FileHistory) -> Msg {
     Msg::History(HistoryMsg::FileHistoryLoaded { path: "a.txt".into(), generation: st.history_gen, result: Ok(h) })
 }
 
@@ -160,6 +162,7 @@ fn searching_further_appends_without_duplicates() {
         searched_until: Some((oid(4), 9)),
         resume: vec![(oid(5), "older.txt".into())],
         on_disk: true,
+        head_path: None,
     };
     let m = loaded(&st, batch);
     let fx = update(&mut st, m, Instant::now());
@@ -265,14 +268,14 @@ fn tab_switch_parks_file_history() {
 }
 
 /// The target of the selected entry's diff.
-fn selected_target(st: &AppState) -> DiffTarget {
+pub(super) fn selected_target(st: &AppState) -> DiffTarget {
     let v = st.history.as_ref().expect("view open");
     let e = &v.entries[v.selected.expect("an entry selected")];
     DiffTarget::Commit(e.oid, e.path.clone())
 }
 
 /// Runs `effect` and feeds its results back, as `drive` does.
-fn run(st: &mut AppState, effect: Effect) {
+pub(super) fn run(st: &mut AppState, effect: Effect) {
     if let Some(m) = crate::runner::execute(effect) {
         drive(st, m);
     }

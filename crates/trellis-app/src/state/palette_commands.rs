@@ -168,9 +168,10 @@ pub enum PaletteCommand {
     OpenRecent(PathBuf),
     /// Copy a trellis:// link to the repository or a branch.
     CopyLink(crate::deep_link::LinkTarget),
-    /// Enter the file finder; picking a file runs `OpenFileHistory`.
+    /// Enter the file finder; picking a file runs `OpenFileHistory`, a folder `OpenFolderHistory`.
     FileHistory,
     OpenFileHistory(String),
+    OpenFolderHistory(String),
     /// Enter the file finder; picking a file runs `OpenBlame`.
     Blame,
     /// Blame this file at HEAD.
@@ -348,7 +349,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(entry(C::SearchCommits, "Search commits", "find message author sha"));
     }
     if super::palette::can_pick_file(st) {
-        out.push(entry(C::FileHistory, "File history…", "find open file path log"));
+        out.push(entry(C::FileHistory, "File history…", "find open file path log folder directory"));
         out.push(entry(C::Blame, "Blame file…", "find annotate author line who changed history"));
     }
     super::patch::palette_entries(st, snap, out);

@@ -138,6 +138,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::ReadConflictFiles { .. }
         | Effect::LoadFileHistory { .. }
         | Effect::LoadBlame(_)
+        | Effect::LoadFileText(_)
         | Effect::LoadTrackedPaths { .. }
         | Effect::Submodule(
             SubmoduleEffect::Check { .. }

@@ -85,8 +85,14 @@ impl DiffView<'_> {
     }
 }
 
+/// The open diff: its header bar (file, layout and mode, Previous / Next, toggles, file buttons)
+/// and, below it, `body`.
 pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
-    let scroll_to = st.view.diff_scroll_to_row.take();
+    if st.diff.is_none() {
+        // A scroll target for a diff that is gone is dropped, not kept for the next one.
+        st.view.diff_scroll_to_row = None;
+        return;
+    }
     let ignore_ws = st.settings.diff_ignore_whitespace;
     // Where Previous and Next go: a change in this file, another file, or nowhere.
     let nav = [diff_nav::step(st, -1).kind(), diff_nav::step(st, 1).kind()];
@@ -121,21 +127,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs
         let diff_tool = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
         header::header_bar(ui, target, commit_file.as_ref(), rows, nav, toggles, fold_counts, &st.keymap, diff_tool, msgs);
         ui.separator();
-        if diff.binary {
-            ui.label(RichText::new("Binary file not shown.").color(color::weak()));
-            return;
-        }
-        if diff.hunks.is_empty() {
-            let text = if ignore_ws {
-                "Only whitespace changed in this file. Turn off Ignore whitespace to see it."
-            } else {
-                "No textual changes (mode or empty file)."
-            };
-            ui.label(RichText::new(text).color(color::weak()));
-            return;
-        }
     }
-    record_rows(ui, st, rows_cache, scroll_to, msgs);
+    body(ui, st, rows_cache, msgs);
 }
 
 /// Draws the open diff's rows and records the first visible row and how many rows fit.
@@ -311,9 +304,11 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
     ui.painter().with_clip_rect(rect.intersect(ui.clip_rect())).rect_filled(bar, 0.0, c);
 }
 
-/// The diff's rows without the header bar, for views that embed a commit's diff of a file (the
-/// file history). Commit diffs have Revert Hunk buttons and line selection for Revert lines
-/// (both off while whitespace is hidden).
+/// The diff's rows without the header bar: what `show` draws below it, and what views that
+/// embed a commit's diff of a file (the file history) draw. A binary file and a diff without
+/// hunks get a note instead (whitespace-only when Ignore whitespace hides the changes). Commit
+/// diffs have Revert Hunk buttons and line selection for Revert lines (both off while
+/// whitespace is hidden).
 pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
     {
@@ -323,7 +318,12 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCach
             return;
         }
         if diff.hunks.is_empty() {
-            ui.label(RichText::new("No textual changes (mode or empty file).").color(color::weak()));
+            let text = if st.settings.diff_ignore_whitespace {
+                "Only whitespace changed in this file. Turn off Ignore whitespace to see it."
+            } else {
+                "No textual changes (mode or empty file)."
+            };
+            ui.label(RichText::new(text).color(color::weak()));
             return;
         }
     }

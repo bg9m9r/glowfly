@@ -97,7 +97,7 @@ impl PickKind {
     /// The search field's hint.
     pub fn prompt(self) -> &'static str {
         match self {
-            PickKind::FileHistory => "Find a file to show its history",
+            PickKind::FileHistory => "Find a file or folder to show its history",
             PickKind::Blame => "Find a file to blame",
             PickKind::Stash(StashAction::Apply) => "Find a stash to apply",
             PickKind::Stash(StashAction::Pop) => "Find a stash to pop",
@@ -123,7 +123,8 @@ impl PickKind {
     /// Shown when nothing matches the query.
     pub fn none_text(self) -> &'static str {
         match self {
-            PickKind::FileHistory | PickKind::Blame => "No matching files",
+            PickKind::FileHistory => "No matching files or folders",
+            PickKind::Blame => "No matching files",
             PickKind::Stash(_) | PickKind::RenameStash => "No matching stashes",
             PickKind::Profile => "No matching profiles",
             PickKind::GitFlowIssue(_) | PickKind::ViewIssue => "No matching issues",

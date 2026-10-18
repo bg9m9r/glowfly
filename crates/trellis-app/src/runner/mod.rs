@@ -13,7 +13,6 @@ use crate::lfs::LfsMsg;
 use crate::msg::AvatarMsg;
 use crate::msg::ConflictMsg;
 use crate::msg::ForgeMsg;
-use crate::msg::HistoryMsg;
 use crate::msg::JobMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
@@ -49,6 +48,7 @@ mod git_env;
 mod git_ops;
 mod guard;
 mod highlight;
+mod history;
 mod init;
 mod instance;
 mod issues;
@@ -270,11 +270,10 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         })),
         Effect::LoadSparse { workdir, generation } => Some(sparse::load(&workdir, generation)),
         Effect::SparseCheckout { cwd, command } => Some(sparse::run(&cwd, &command)),
-        Effect::LoadFileHistory { workdir, path, start, limit, generation } => {
-            let result =
-                repo::file_history(&workdir, &path, &start, limit).map_err(|e| format!("Could not load the history of {path}: {e}"));
-            Some(Msg::History(HistoryMsg::FileHistoryLoaded { path, generation, result }))
+        Effect::LoadFileHistory { workdir, path, start, limit, folder, generation } => {
+            Some(history::walk(&workdir, path, &start, limit, folder, generation))
         }
+        Effect::LoadFileText(r) => Some(history::file_text(r)),
         Effect::LoadBlame(r) => Some(blame::load(r)),
         Effect::LocalOp { workdir, op } => Some(Msg::Stage(StageMsg::LocalOpDone(git_ops::local_op(&workdir, op).map_err(err)))),
         Effect::ReadConflictFiles { workdir, paths, purpose } => Some(conflict_files::read(&workdir, paths, purpose)),
