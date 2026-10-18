@@ -1,6 +1,7 @@
 //! The app icon in `assets/icon/`: `UPDATE_ICONS=1 cargo test -p trellis --test app_icon`
 //! renders it (`app_icon/draw.rs`) and rewrites the PNGs, `trellis.ico` and `trellis.icns`
-//! (`app_icon/containers.rs`). Without the variable it checks that every checked-in image
+//! (`app_icon/containers.rs`), and the Windows installer's bitmaps in `assets/installer/`
+//! (`app_icon/installer.rs`). Without the variable it checks that every checked-in image
 //! matches the drawing, within 2 per channel (PNG encoders and float edge cases may differ a
 //! little between systems).
 
@@ -8,6 +9,8 @@
 mod containers;
 #[path = "app_icon/draw.rs"]
 mod draw;
+#[path = "app_icon/installer.rs"]
+mod installer;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -100,6 +103,28 @@ fn the_app_icon_matches_its_drawing() {
 }
 
 #[test]
+fn the_installer_art_matches_its_drawing() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/installer");
+    let art = [("banner.bmp", installer::BANNER, installer::banner()), ("dialog.bmp", installer::DIALOG, installer::dialog())];
+    if std::env::var_os("UPDATE_ICONS").is_some() {
+        std::fs::create_dir_all(&dir).unwrap();
+        for (name, (w, h), rgb) in &art {
+            std::fs::write(dir.join(name), containers::write_bmp(*w, *h, rgb)).unwrap();
+        }
+    }
+    for (name, size, rgb) in &art {
+        let bytes = std::fs::read(dir.join(name)).unwrap_or_else(|e| panic!("assets/installer/{name}: {e}"));
+        let (w, h, got) = containers::read_bmp(&bytes);
+        assert_eq!((w, h), *size, "{name}: size");
+        let worst = got.iter().zip(rgb).map(|(a, b)| a.abs_diff(*b)).max().unwrap_or(0);
+        assert!(
+            worst <= TOLERANCE,
+            "{name} differs from the drawing by up to {worst}; run UPDATE_ICONS=1 cargo test -p trellis --test app_icon"
+        );
+    }
+}
+
+#[test]
 fn the_containers_read_back() {
     let a = png(16, &draw::render(16));
     let b = png(20, &draw::render(20));
@@ -107,6 +132,9 @@ fn the_containers_read_back() {
     assert_eq!(ico, vec![(16, a.clone()), (256, b.clone())]);
     let icns = containers::read_icns(&containers::write_icns(&[("icp4", a.clone()), ("ic11", b.clone())]));
     assert_eq!(icns, vec![("icp4".to_owned(), a), ("ic11".to_owned(), b)]);
+    // 3 px wide rows need padding.
+    let rgb: Vec<u8> = (0..3 * 2 * 3).map(|v| v as u8).collect();
+    assert_eq!(containers::read_bmp(&containers::write_bmp(3, 2, &rgb)), (3, 2, rgb));
 }
 
 #[test]

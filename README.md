@@ -15,9 +15,10 @@ Builds for Windows, macOS (Apple silicon and Intel) and Linux are on the
 `PATH`.
 
 - **Windows**: `trellis-vX.Y.Z-x86_64-pc-windows-msvc.msi` installs for your user only (no
-  administrator rights) into `%LOCALAPPDATA%\Programs\Trellis`, with a Start menu shortcut,
-  "Open in Trellis" on folders in Explorer (on Windows 11 under "Show more options") and
-  `trellis://` links. Uninstall it from Settings > Apps.
+  administrator rights) into `%LOCALAPPDATA%\Programs\Trellis`, with a Start menu shortcut.
+  Its Options page adds a desktop shortcut, "Open in Trellis" on folders in Explorer (on
+  Windows 11 under "Show more options") and `trellis://` links, each of which you can turn off.
+  Uninstall it from Settings > Apps.
 - **macOS**: open `trellis-vX.Y.Z-<arch>-apple-darwin.dmg` and drag Trellis to Applications.
 - **Debian and Ubuntu**: `sudo apt install ./trellis-vX.Y.Z-x86_64-unknown-linux-gnu.deb`. It
   adds Trellis to the applications menu, "Open with Trellis" on folders in the file manager, and

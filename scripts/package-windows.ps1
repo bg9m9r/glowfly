@@ -47,8 +47,9 @@ function Sign-File([string]$path) {
 function Write-Sum([string]$path) {
     $hash = (Get-FileHash -Algorithm SHA256 $path).Hash.ToLowerInvariant()
     $file = Split-Path $path -Leaf
-    # The format sha256sum writes, with LF line endings.
-    [IO.File]::WriteAllText("$path.sha256", "$hash  $file`n")
+    # The format sha256sum writes, with LF line endings. .NET resolves a relative path against
+    # the process's directory, not the script's location, so pass a full one.
+    [IO.File]::WriteAllText((Join-Path (Get-Location).Path "$path.sha256"), "$hash  $file`n")
 }
 
 Sign-File "$bin/trellis.exe"
@@ -67,16 +68,40 @@ Write-Sum $zip
 # --- The MSI -----------------------------------------------------------------------------------
 $msi = Join-Path $dist "$name.msi"
 $root = (Get-Location).Path
+
+# WiX's standard pages and its launch-after-install action, kept in .wix/ under the repository.
+$wixVersion = "5.0.2"
+foreach ($ext in "WixToolset.UI.wixext", "WixToolset.Util.wixext") {
+    wix extension add "$ext/$wixVersion"
+    if ($LASTEXITCODE -ne 0) { throw "wix extension add $ext failed" }
+}
+
+# The License page: the licence choice, then the MIT text, as RTF (the page shows nothing else).
+function ConvertTo-Rtf([string]$text) {
+    $escaped = $text -replace '\\', '\\' -replace '\{', '\{' -replace '\}', '\}'
+    # Hard-wrapped lines join into paragraphs; blank lines separate them.
+    $paras = ($escaped -replace "`r", '') -split "`n\s*`n" | ForEach-Object { ($_ -split "`n" | ForEach-Object Trim) -join ' ' }
+    $body = ($paras | Where-Object { $_ }) -join "\par\par`n"
+    "{\rtf1\ansi\deff0{\fonttbl{\f0 Segoe UI;}}\fs18`n$body\par`n}"
+}
+$intro = "Trellis is available under the MIT License or the Apache License, Version 2.0, at your option. " +
+    "Both are installed with it (LICENSE-MIT and LICENSE-APACHE), and THIRD-PARTY-NOTICES.md lists the licenses " +
+    "of the code it includes."
+$rtf = Join-Path $root "$dist\license.rtf"
+[IO.File]::WriteAllText($rtf, (ConvertTo-Rtf "$intro`n`n$(Get-Content -Raw LICENSE-MIT)"))
+
 $defines = @(
     "-d", "Version=$version",
     "-d", "BinDir=$root\$($bin -replace '/', '\')",
     "-d", "SourceDir=$root",
-    "-d", "AssetsDir=$root\assets\icon"
+    "-d", "AssetsDir=$root\assets",
+    "-d", "LicenseRtf=$rtf"
 )
 if (Test-Path CHANGELOG.md) { $defines += @("-d", "HasChangelog=1") }
-wix build -arch x64 @defines -o $msi packaging/windows/trellis.wxs
+$exts = @("-ext", "WixToolset.UI.wixext/$wixVersion", "-ext", "WixToolset.Util.wixext/$wixVersion")
+wix build -arch x64 @exts @defines -o $msi packaging/windows/trellis.wxs packaging/windows/pages.wxs
 if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
-Remove-Item -ErrorAction SilentlyContinue (Join-Path $dist "$name.wixpdb")
+Remove-Item -ErrorAction SilentlyContinue (Join-Path $dist "$name.wixpdb"), $rtf
 Sign-File $msi
 Write-Sum $msi
 

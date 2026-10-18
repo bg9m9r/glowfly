@@ -8,3 +8,6 @@
 /temp/
 /.claude/workflows/
 /.claude/settings.local.json
+
+# WiX extensions scripts/package-windows.ps1 fetches
+/.wix/

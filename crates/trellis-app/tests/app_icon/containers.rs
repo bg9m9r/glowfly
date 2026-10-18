@@ -74,3 +74,48 @@ pub fn read_icns(bytes: &[u8]) -> Vec<(String, Vec<u8>)> {
     }
     chunks
 }
+
+/// A 24-bit Windows bitmap of `rgb` (`width` x `height`, rows top to bottom): the format WiX's
+/// installer dialogs take. BMP rows are stored bottom up, as BGR, padded to 4 bytes.
+pub fn write_bmp(width: u32, height: u32, rgb: &[u8]) -> Vec<u8> {
+    assert_eq!(rgb.len(), (width * height * 3) as usize);
+    let stride = (width * 3).div_ceil(4) * 4;
+    let size = 54 + stride * height;
+    let mut out = Vec::with_capacity(size as usize);
+    out.extend_from_slice(b"BM");
+    for v in [size, 0, 54, 40] {
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+    out.extend_from_slice(&(width as i32).to_le_bytes());
+    out.extend_from_slice(&(height as i32).to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes()); // colour planes
+    out.extend_from_slice(&24u16.to_le_bytes()); // bits per pixel
+    for v in [0, stride * height, 2835, 2835, 0, 0] {
+        // No compression, the pixel data's size, 72 dpi, no palette.
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+    for row in (0..height as usize).rev() {
+        let line = &rgb[row * width as usize * 3..(row + 1) * width as usize * 3];
+        for px in line.chunks(3) {
+            out.extend_from_slice(&[px[2], px[1], px[0]]);
+        }
+        out.resize(out.len() + (stride - width * 3) as usize, 0);
+    }
+    out
+}
+
+/// The (width, height, RGB rows top to bottom) of a bitmap `write_bmp` wrote.
+pub fn read_bmp(bytes: &[u8]) -> (u32, u32, Vec<u8>) {
+    assert_eq!(&bytes[..2], b"BM");
+    let (offset, width, height) = (u32_le(bytes, 10) as usize, u32_le(bytes, 18), u32_le(bytes, 22));
+    assert_eq!(u16_le(bytes, 28), 24, "24 bits per pixel");
+    let stride = ((width * 3).div_ceil(4) * 4) as usize;
+    let mut rgb = Vec::with_capacity((width * height * 3) as usize);
+    for row in (0..height as usize).rev() {
+        let line = &bytes[offset + row * stride..offset + row * stride + width as usize * 3];
+        for px in line.chunks(3) {
+            rgb.extend_from_slice(&[px[2], px[1], px[0]]);
+        }
+    }
+    (width, height, rgb)
+}

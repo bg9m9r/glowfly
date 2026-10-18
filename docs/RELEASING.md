@@ -24,7 +24,7 @@ a new version starts.
 
 | File | What it is |
 | --- | --- |
-| `trellis-vX.Y.Z-x86_64-pc-windows-msvc.msi` | Windows installer (WiX 5, `packaging/windows/trellis.wxs`): a per-user install into `%LOCALAPPDATA%\Programs\Trellis`, no administrator rights; Start menu shortcut; "Open in Trellis" on folders and folder backgrounds; the `trellis://` scheme in `HKEY_CURRENT_USER`; upgrades replace older versions and a downgrade is refused |
+| `trellis-vX.Y.Z-x86_64-pc-windows-msvc.msi` | Windows installer (WiX 5, `packaging/windows/trellis.wxs`, pages in `pages.wxs`, artwork in `assets/installer/` drawn by the app icon test): a per-user install into `%LOCALAPPDATA%\Programs\Trellis`, no administrator rights; Welcome, License, Options, Ready and Finish pages, with "Launch Trellis" at the end; Start menu shortcut; on the Options page, a desktop shortcut, "Open in Trellis" on folders and folder backgrounds, and the `trellis://` scheme in `HKEY_CURRENT_USER`, each remembered for upgrades; upgrades replace older (and same-version) builds and a downgrade is refused. `scripts/package-windows.ps1` fetches the WiX UI and Util extensions into `.wix/` |
 | `trellis-vX.Y.Z-x86_64-pc-windows-msvc.zip` | The Windows program on its own |
 | `trellis-vX.Y.Z-aarch64-apple-darwin.dmg`, `trellis-vX.Y.Z-x86_64-apple-darwin.dmg` | `Trellis.app` (`packaging/macos/Info.plist`, the icns) and a link to `/Applications` |
 | `trellis-vX.Y.Z-<mac target>.tar.gz` | The macOS program on its own |
