@@ -185,6 +185,17 @@ fn search_further_keeps_on_disk_for_the_head_name() {
 }
 
 #[test]
+fn revert_dest_is_the_head_name_after_a_rename_forwards() {
+    let mut view = FileHistoryView::loading("old.txt".into(), Some(oid(5)));
+    view.head_path = Some("a.txt".into());
+    view.entries = vec![entry(1, "a.txt"), entry(5, "old.txt")];
+    assert_eq!(view.revert_dest(&DiffTarget::Commit(oid(5), "old.txt".into())).as_deref(), Some("a.txt"));
+    assert_eq!(view.revert_dest(&DiffTarget::Commit(oid(1), "a.txt".into())), None, "already under its name");
+    view.kind = crate::state::history::HistoryKind::Folder;
+    assert_eq!(view.revert_dest(&DiffTarget::Commit(oid(5), "old.txt".into())), None, "folder files keep their path");
+}
+
+#[test]
 fn rerun_e2e_after_a_commit() {
     let dir = scratch_repo("history-rerun-e2e");
     git(&dir, &["commit", "-q", "-am", "edit a"]);

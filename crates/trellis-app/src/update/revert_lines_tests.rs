@@ -106,6 +106,7 @@ fn entry(oid: Oid, path: &str) -> HistoryEntry {
         path: path.into(),
         old_path: None,
         status: 'M',
+        files: Vec::new(),
     }
 }
 
