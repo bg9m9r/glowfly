@@ -97,6 +97,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "diff_ignore_whitespace",
     // Also a diff header toggle, which stays put when the profile changes.
     "diff_word_wrap",
+    // Header toggles, like the diff's.
+    "blame",
     "push_after_commit",
     "stage_renames",
     "push_new_tags",

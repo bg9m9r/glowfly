@@ -3,7 +3,7 @@
 //! commit can restore its version of the file; Open and Show act on the file as it is today.
 
 use super::UiCache;
-use super::common::{menu_item, paint_cut_line, short, status_color};
+use super::common::{menu_item, menu_item_if, paint_cut_line, short, status_color};
 use super::file_buttons::{self, CommitFile, Labels};
 use super::file_menu;
 use super::theme::color;
@@ -18,7 +18,9 @@ use eframe::egui::{self, Align, Align2, CursorIcon, FontId, Key, Layout, RichTex
 use trellis_core::repo::{DiffTarget, HistoryEntry};
 
 const ROW_H: f32 = 44.0;
-const NOT_ON_GRAPH: &str = "Not visible on the graph: its branch is hidden or it is older than the commit limit";
+/// The row menu's item that blames the file as of the entry's commit.
+pub(super) const BLAME_AT: &str = "Blame at this commit";
+pub(super) const NOT_ON_GRAPH: &str = "Not visible on the graph: its branch is hidden or it is older than the commit limit";
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.history_scroll_to.take();
@@ -105,7 +107,8 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
     });
 }
 
-/// A history row's menu: View on graph, Copy commit SHA, then Restore for the entry's version
+/// A history row's menu: View on graph, Copy commit SHA, Blame at this commit (not for the commit
+/// that deletes the file), then Restore for the entry's version
 /// and Open / Open in external editor / Show for `open_path` (the file as it is named today),
 /// disabled unless `in_workdir`, with Open in external diff tool for the entry's change
 /// (disabled with `diff_blocked`).
@@ -119,6 +122,8 @@ pub(super) fn entry_menu(
 ) {
     menu_item(msgs, ui, "View on graph", Msg::History(HistoryMsg::ShowInGraph(e.oid)));
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(e.oid.to_string()));
+    let deleted = (e.status == 'D').then_some("This commit deletes the file");
+    menu_item_if(msgs, ui, BLAME_AT, deleted, Msg::Blame(BlameMsg::Open { path: e.path.clone(), at: Some(e.oid) }));
     ui.separator();
     file_menu::restore_item(ui, msgs, e.oid, &e.path, e.status);
     let tool = file_menu::diff_item(DiffTarget::Commit(e.oid, e.path.clone()), diff_blocked);

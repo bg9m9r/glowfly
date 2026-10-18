@@ -1,6 +1,7 @@
 //! The blame view: a Rust file whose lines come from three commits by two authors (dark and
 //! light), a blame that failed, the Blame item under File history in file menus, clicking and
-//! hovering a run's gutter, and the file history header's Blame button. Shares the fixture
+//! hovering a run's gutter (with the commit's body), the header's File history button, and the
+//! file history header's Blame button. Shares the fixture
 //! repository and renderer with `snapshot_tests`.
 
 use super::file_menu::{BLAME, history_items};
@@ -19,7 +20,7 @@ use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::highlight::{self, SyntaxHint};
-use trellis_core::repo::{self, LoadOptions};
+use trellis_core::repo::{self, BlameOptions, LoadOptions};
 use trellis_core::settings::ThemeChoice;
 
 const MAIN: &str = "use std::fmt;
@@ -37,8 +38,9 @@ fn main() {
 ";
 
 /// The fixture with src/main.rs (12 lines) added by Ada, lines 4-6 changed by Grace and line 10
-/// by Ada again, blamed at HEAD into the view. Returns the state, the folder and Grace's commit.
-fn with_blame(theme: ThemeChoice, name: &str) -> (AppState, PathBuf, Oid) {
+/// by Ada again, blamed at HEAD into the view. Returns the state, the folder and Grace's commit
+/// (which has a body).
+pub(super) fn with_blame(theme: ThemeChoice, name: &str) -> (AppState, PathBuf, Oid) {
     let (mut st, dir) = with_repo(theme, name);
     std::fs::create_dir_all(dir.join("src")).unwrap();
     let write = |text: &str| std::fs::write(dir.join("src/main.rs"), text).unwrap();
@@ -49,17 +51,18 @@ fn with_blame(theme: ThemeChoice, name: &str) -> (AppState, PathBuf, Oid) {
     let grace = MAIN.replace("struct Point {\n    x: i32,\n    y: i32,", "pub struct Point {\n    pub x: f64,\n    pub y: f64,");
     write(&grace);
     let by = "Grace Hopper <grace@example.com>";
-    git(&dir, &["commit", "-q", "--author", by, "-m", "Make Point public with float fields", "src/main.rs"], "2026-01-12T10:00:00+00:00");
+    let (subject, body) = ("Make Point public with float fields", "Callers outside the module build points now.");
+    git(&dir, &["commit", "-q", "--author", by, "-m", subject, "-m", body, "src/main.rs"], "2026-01-12T10:00:00+00:00");
     let grace_oid = git2::Repository::open(&dir).unwrap().head().unwrap().target().unwrap();
     write(&grace.replace("x: 1, y: 2", "x: 1.0, y: 2.0"));
     git(&dir, &["commit", "-q", "-m", "Use float literals", "src/main.rs"], "2026-01-14T10:00:00+00:00");
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    let blame = repo::blame_file(&dir, "src/main.rs", None).unwrap();
+    let blame = repo::blame_file(&dir, "src/main.rs", None, &BlameOptions::default()).unwrap();
     let spans = highlight::highlight_file(SyntaxHint { path: "src/main.rs", language: None }, &blame.lines);
     assert!(spans.is_some(), "Rust is highlighted");
     let mut view = BlameView::loading("src/main.rs".into(), None);
     view.loading = false;
-    view.data = Some(BlameData { blame, spans });
+    view.data = Some(BlameData::new(blame, spans));
     st.blame = Some(view);
     (st, dir, grace_oid)
 }
@@ -86,6 +89,11 @@ fn blame_view() {
     h.run();
     assert!(h.query_by_label_contains("Click to select this commit on the graph").is_some());
     assert!(h.query_by_label_contains("grace@example.com").is_some());
+    assert!(h.query_by_label_contains("Callers outside the module build points now.").is_some(), "the whole message");
+    assert!(h.query_by_label_contains("right-click for more").is_some());
+    h.get_by_label("File history").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Blame(BlameMsg::OpenHistory { select: None }))));
     h.get_by_label("Close  (Esc)").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Blame(BlameMsg::Close))));
@@ -111,7 +119,7 @@ fn blame_error() {
     git(&dir, &["add", "logo.png"], d);
     git(&dir, &["commit", "-q", "-m", "Add a logo"], d);
     st.snap = Some(repo::load(&dir, &LoadOptions::all(500)).unwrap());
-    let why = repo::blame_file(&dir, "logo.png", None).unwrap_err().to_string();
+    let why = repo::blame_file(&dir, "logo.png", None, &BlameOptions::default()).unwrap_err().to_string();
     assert_eq!(why, "logo.png is a binary file; blame shows text files only");
     st.blame = Some(BlameView::failed("logo.png".into(), None, &why));
     let mut h = harness(st, true);

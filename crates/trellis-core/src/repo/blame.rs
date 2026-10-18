@@ -3,10 +3,13 @@
 //! The file is checked with libgit2 first (it must be a text blob in that commit, small enough
 //! to show), then `git blame --porcelain` does the work, so `.mailmap` and
 //! `blame.ignoreRevsFile` apply as they do on the command line. A listed ignore-revs file that
-//! doesn't exist would make git fail, so such a run drops it and keeps the others.
+//! doesn't exist would make git fail, so such a run drops it and keeps the others. Each run
+//! also records where its lines came from (the commit's path and the parent to blame for what
+//! came before), so the view can step back past a commit.
 
 use crate::error::{Error, Result};
 use crate::gitcli;
+use crate::settings::BlameMoves;
 use git2::{ObjectType, Oid, Repository};
 use std::path::Path;
 use std::time::Duration;
@@ -20,13 +23,30 @@ pub struct BlameCommit {
     /// Author time (Unix seconds).
     pub time: i64,
     pub summary: String,
+    /// The message after the summary paragraph, trailing whitespace trimmed; empty for one-line
+    /// messages.
+    pub body: String,
 }
 
-/// Consecutive lines blamed to one commit. `start` is a 0-based line index.
+/// Where a run's lines came from in its commit.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BlameOrigin {
+    /// Index into `Blame::commits`.
+    pub commit: usize,
+    /// The file's path in that commit.
+    pub path: String,
+    /// The parent and the path there, to blame for what came before; None when the commit added
+    /// the lines with the file (or the parent is outside a shallow clone).
+    pub previous: Option<(Oid, String)>,
+}
+
+/// Consecutive lines blamed to one commit and origin. `start` is a 0-based line index.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BlameRun {
     /// Index into `Blame::commits`.
     pub commit: usize,
+    /// Index into `Blame::origins`.
+    pub origin: usize,
     pub start: usize,
     pub len: usize,
 }
@@ -42,6 +62,10 @@ pub struct Blame {
     pub lines: Vec<String>,
     /// Cover every line in order.
     pub runs: Vec<BlameRun>,
+    /// Each (commit, path) lines came from, in order of first appearance.
+    pub origins: Vec<BlameOrigin>,
+    /// The 0-based number of each line in its origin's version of the file.
+    pub orig_lines: Vec<usize>,
     /// The file's `linguist-language` attribute, for highlighting.
     pub language: Option<String>,
 }
@@ -57,6 +81,41 @@ impl Blame {
     pub fn commit_of_line(&self, line: usize) -> Option<&BlameCommit> {
         self.commits.get(self.runs[self.run_of(line)?].commit)
     }
+
+    /// Where line `line` (0-based) came from.
+    pub fn origin_of_line(&self, line: usize) -> Option<&BlameOrigin> {
+        self.origins.get(self.runs[self.run_of(line)?].origin)
+    }
+
+    /// Per commit, how new it is among the blame's commits: the rank of its author time among
+    /// the distinct times, scaled to 0 (oldest) ..= 1 (newest). 1 when there is only one time,
+    /// and for lines not committed yet.
+    pub fn ages(&self) -> Vec<f32> {
+        let mut times: Vec<i64> = self.commits.iter().filter(|c| !c.oid.is_zero()).map(|c| c.time).collect();
+        times.sort_unstable();
+        times.dedup();
+        let top = times.len().saturating_sub(1);
+        self.commits
+            .iter()
+            .map(|c| {
+                if c.oid.is_zero() || top == 0 {
+                    return 1.0;
+                }
+                let rank = times.partition_point(|t| *t < c.time);
+                rank as f32 / top as f32
+            })
+            .collect()
+    }
+}
+
+/// What a blame run asks git for beyond its defaults.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct BlameOptions {
+    /// Ignore whitespace changes (`-w`).
+    pub ignore_whitespace: bool,
+    pub moves: BlameMoves,
+    /// Commits to look past (`--ignore-rev`), after any configured ignore-revs files.
+    pub ignore_revs: Vec<Oid>,
 }
 
 /// Files larger than this (bytes) aren't blamed.
@@ -69,7 +128,7 @@ fn short(oid: Oid) -> String {
 }
 
 /// Blames `path` (repo-relative, '/'-separated) as of commit `at`, or HEAD.
-pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>) -> Result<Blame> {
+pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>, opts: &BlameOptions) -> Result<Blame> {
     let repo = Repository::open(workdir)?;
     let commit = match at {
         Some(oid) => repo.find_commit(oid)?,
@@ -106,6 +165,11 @@ pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>) -> Result<Blame> 
 
     let mut args: Vec<String> = ["--literal-pathspecs", "blame", "--porcelain", "--no-textconv"].map(String::from).to_vec();
     args.extend(ignore_revs_args(&repo, workdir));
+    if opts.ignore_whitespace {
+        args.push("-w".into());
+    }
+    args.extend(opts.moves.args().iter().map(|a| (*a).to_owned()));
+    args.extend(opts.ignore_revs.iter().map(|oid| format!("--ignore-rev={oid}")));
     args.extend([commit.id().to_string(), "--".into(), path.to_owned()]);
     let (out, stdout) = gitcli::output_bytes(workdir, &args, gitcli::NO_PROMPTS, Some(BLAME_TIMEOUT));
     if out.timed_out {
@@ -115,8 +179,23 @@ pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>) -> Result<Blame> 
         let first = out.stderr.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("no message");
         return Err(Error::Other(format!("git blame failed: {first}")));
     }
-    let (commits, lines, runs) = super::blame_porcelain::parse(&stdout)?;
-    Ok(Blame { path: path.to_owned(), at: commit.id(), commits, lines, runs, language })
+    let parsed = super::blame_porcelain::parse(&stdout)?;
+    let mut commits = parsed.commits;
+    for c in commits.iter_mut().filter(|c| !c.oid.is_zero()) {
+        if let Ok(found) = repo.find_commit(c.oid) {
+            c.body = String::from_utf8_lossy(found.body_bytes().unwrap_or_default()).trim_end().to_owned();
+        }
+    }
+    Ok(Blame {
+        path: path.to_owned(),
+        at: commit.id(),
+        commits,
+        lines: parsed.lines,
+        runs: parsed.runs,
+        origins: parsed.origins,
+        orig_lines: parsed.orig_lines,
+        language,
+    })
 }
 
 /// Options for `git blame` (after the subcommand) that keep a missing `blame.ignoreRevsFile`
@@ -157,3 +236,7 @@ pub(super) fn ignore_revs_args(repo: &Repository, workdir: &Path) -> Vec<String>
 #[cfg(test)]
 #[path = "blame_tests.rs"]
 mod blame_tests;
+
+#[cfg(test)]
+#[path = "blame_step_tests.rs"]
+mod blame_step_tests;

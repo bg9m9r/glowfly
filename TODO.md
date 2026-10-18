@@ -476,9 +476,13 @@ Done except the group colors, which wait on repository groups in the repository 
 
 - [x] **Blame gutter**
   Blame for a file: a gutter with author, date and commit per line (grouped by commit), opened
-  from file history, the file context menu and the palette's file finder; clicking a commit
-  selects it in the graph. Runs `git blame --porcelain` (honouring .mailmap and
-  blame.ignoreRevsFile), with the editor font, tab size and syntax colors.
+  from file history (header and row menu), the file context menu and the palette's file finder;
+  clicking a commit selects it in the graph. Runs `git blame --porcelain` (honouring .mailmap and
+  blame.ignoreRevsFile), with the editor font, tab size and syntax colors. A line's menu blames
+  the version before its commit (following renames, with Back to return) or skips the commit;
+  the header toggles ignore-whitespace (-w) and move/copy detection (-M / -M -C), opens the file
+  history at the blamed commit, finds in the file and goes to a line. Gutter hovers show the full
+  message, an accent strip and tint mark newer commits, and N / Shift+N step between commits.
 - [x] **Add and remove submodules**
   Add submodule… from the SUBMODULES header menu and the palette (the palette is how the first
   one is added, since the section only shows with submodules); Remove submodule… in the row menu.
@@ -732,19 +736,20 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Blame gutter
 
-- Blame the parent of a line's commit (step back past a change), and skip a chosen commit
 - Live re-blame of working-tree edits (uncommitted lines shown as not committed yet)
-- Hover tooltips with the commit's full message (body), not just the summary
 - Re-blame when HEAD moves while a HEAD blame is open (commit, checkout, pull)
 - Horizontal scrolling or word wrap for long lines (they are clipped now)
 - Blame a file the commit deleted (its version just before the deletion)
-- Open the file history from the blame header, and jump between blame and history at one commit
-- Ignore-whitespace (-w) and move/copy detection (-M/-C) toggles in the blame header
 - Show which lines blame.ignoreRevsFile re-attributed (ignored and unblamable marks)
-- Age colouring of the gutter (newer commits stronger)
-- Find in blame, go to line, and copy a line or SHA from a blame row's context menu
-- Keyboard navigation between runs (previous/next commit)
 - Re-highlight an open blame when the syntax highlighting preference changes
+- Unskip a single skipped commit (Show all clears them all)
+- Remember skipped commits per repository across sessions
+- Case-sensitive, whole-word and regex find in blame
+- Blame before a merge commit through a parent other than the one git reports as previous
+- Select a history entry past the first batch when jumping from blame (needs Search further)
+- Show history and blame of one file side by side, or switch between them in one panel
+- Move/copy score thresholds, and -C -C (copies from any commit)
+- A setting to turn age colouring off, or colour by absolute date instead of rank
 
 ### Interactive rebase
 

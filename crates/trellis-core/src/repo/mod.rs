@@ -67,7 +67,7 @@ mod workfile_rename;
 mod workfile_rm;
 mod worktrees;
 
-pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameRun, blame_file};
+pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
 pub use collide::{Collision, Folding, probe};
 pub use common_dir::{CommonDir, repo_name_of};
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};

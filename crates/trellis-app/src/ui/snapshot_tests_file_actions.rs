@@ -6,11 +6,12 @@
 
 use super::file_buttons::{OPEN_SHORT, RESTORE_SHORT};
 use super::file_menu::{NOT_IN_WORKDIR, OPEN_DEFAULT, OPEN_IN_EDITOR, SHOW_IN_FOLDER};
-use super::history::entry_menu;
+use super::history::{BLAME_AT, entry_menu};
 use super::snapshot_tests::{harness, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
 use super::snapshot_tests_revert::with_commit_diff;
 use super::theme::{apply_theme, color};
+use crate::msg::BlameMsg;
 use crate::msg::FilesMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
@@ -113,7 +114,7 @@ fn history_entry(status: char) -> HistoryEntry {
 
 /// A small window drawing a history row's menu body for `e`, as the popup would.
 fn menu_harness(e: HistoryEntry, in_workdir: bool) -> Harness<'static, Vec<Msg>> {
-    Harness::builder().with_size(egui::vec2(260.0, 200.0)).build_ui_state(
+    Harness::builder().with_size(egui::vec2(260.0, 230.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());
@@ -131,6 +132,12 @@ fn menu_harness(e: HistoryEntry, in_workdir: bool) -> Harness<'static, Vec<Msg>>
 fn history_entry_menu() {
     let mut h = menu_harness(history_entry('M'), true);
     h.run();
+    h.check_snapshot("history_entry_menu");
+    let e = history_entry('M');
+    h.get_by_label(BLAME_AT).click();
+    h.run();
+    assert!(matches!(&h.state()[..], [Msg::Blame(BlameMsg::Open { path, at: Some(o) })] if *path == e.path && *o == e.oid));
+    h.state_mut().clear();
     assert!(!h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(OPEN_IN_EDITOR).is_disabled());
     h.get_by_label(OPEN_DEFAULT).click();
@@ -147,6 +154,7 @@ fn history_entry_menu() {
 
     let mut h = menu_harness(history_entry('D'), true);
     h.run();
+    assert!(h.get_by_label(BLAME_AT).is_disabled(), "the commit deletes the file");
     h.get_by_label("Restore the deleted file…").click();
     h.run();
     assert!(

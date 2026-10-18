@@ -74,7 +74,7 @@ pub fn status(workdir: &Path) -> Result<SparseStatus> {
         .lines()
         .map(|l| l.trim_end_matches('\r'))
         .filter(|l| !l.is_empty())
-        .map(|l| if cone { unquote(l) } else { l.to_owned() })
+        .map(|l| if cone { crate::quoted::unquote_c(l) } else { l.to_owned() })
         .collect();
     Ok(s)
 }
@@ -206,41 +206,6 @@ pub fn left_behind(output: &str) -> Vec<String> {
         return Vec::new();
     }
     lines.map_while(|l| l.strip_prefix('\t')).map(|l| l.trim_end().to_owned()).filter(|l| !l.is_empty()).collect()
-}
-
-/// Decodes a C-quoted path from `git sparse-checkout list` (`"q\"z"`, octal bytes); other lines
-/// come back unchanged.
-fn unquote(line: &str) -> String {
-    let Some(inner) = line.strip_prefix('"').and_then(|l| l.strip_suffix('"')) else { return line.to_owned() };
-    let b = inner.as_bytes();
-    let mut out = Vec::with_capacity(b.len());
-    let mut i = 0;
-    while i < b.len() {
-        if b[i] != b'\\' || i + 1 == b.len() {
-            out.push(b[i]);
-            i += 1;
-            continue;
-        }
-        let c = b[i + 1];
-        i += 2;
-        let decoded = match c {
-            b'a' => 0x07,
-            b'b' => 0x08,
-            b't' => b'\t',
-            b'n' => b'\n',
-            b'v' => 0x0b,
-            b'f' => 0x0c,
-            b'r' => b'\r',
-            b'0'..=b'7' if b.get(i..i + 2).is_some_and(|d| d.iter().all(|x| (b'0'..=b'7').contains(x))) => {
-                let v = (c - b'0') as u32 * 64 + (b[i] - b'0') as u32 * 8 + (b[i + 1] - b'0') as u32;
-                i += 2;
-                v as u8
-            }
-            other => other,
-        };
-        out.push(decoded);
-    }
-    String::from_utf8_lossy(&out).into_owned()
 }
 
 #[cfg(test)]

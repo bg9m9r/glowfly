@@ -260,7 +260,14 @@ mod tests {
 
     #[test]
     fn a_panicking_blame_ends_the_views_loading() {
-        let r = crate::effect::BlameRequest { workdir: "C:/r".into(), path: "a.txt".into(), at: None, highlight: true, generation: 4 };
+        let r = crate::effect::BlameRequest {
+            workdir: "C:/r".into(),
+            path: "a.txt".into(),
+            at: None,
+            opts: Default::default(),
+            highlight: true,
+            generation: 4,
+        };
         let effect = Effect::LoadBlame(r);
         let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
         let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };

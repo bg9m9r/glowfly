@@ -42,6 +42,7 @@ pub mod patch_ops;
 pub mod path_query;
 pub mod paths;
 pub mod persist;
+mod quoted;
 pub mod rebase;
 pub mod remote_ops;
 pub mod repo;

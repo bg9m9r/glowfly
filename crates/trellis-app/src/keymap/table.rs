@@ -46,6 +46,7 @@ pub enum When {
     InPalette,
     PaletteStep,
     Dialog,
+    Blame,
 }
 
 impl When {
@@ -61,16 +62,17 @@ impl When {
             When::InPalette => Some("in the command palette"),
             When::PaletteStep => Some("in a palette sub-list"),
             When::Dialog => Some("in a dialog"),
+            When::Blame => Some("in the blame view"),
         }
     }
 
     /// Whether a key could reach bindings of both places at once, so they can't share it.
-    /// The places that need no text field (`NotTyping`, the diff, the lists) overlap one
+    /// The places that need no text field (`NotTyping`, the diff, the lists, blame) overlap one
     /// another; each place with its own text field (the commit message, the search field, the
     /// palette, a dialog) overlaps only itself, and the palette's two lists overlap.
     pub fn overlaps(self, other: When) -> bool {
         use When as W;
-        let browsing = |w: When| matches!(w, W::NotTyping | W::WorkingDiff | W::DiffOrConflict | W::Lists);
+        let browsing = |w: When| matches!(w, W::NotTyping | W::WorkingDiff | W::DiffOrConflict | W::Lists | W::Blame);
         let palette = |w: When| matches!(w, W::InPalette | W::PaletteStep);
         self == other
             || self == W::Anywhere
@@ -121,12 +123,14 @@ pub enum BindingId {
     ToggleLeftPanel,
     ToggleDetailsPanel,
     ToggleToolbar,
+    BlameNextRun,
+    BlamePrevRun,
 }
 
 use BindingId as I;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
-const KEYS: [(BindingId, &str); 39] = [
+const KEYS: [(BindingId, &str); 41] = [
     (I::Stage, "stage"),
     (I::Unstage, "unstage"),
     (I::StageAll, "stage-all"),
@@ -166,14 +170,16 @@ const KEYS: [(BindingId, &str); 39] = [
     (I::ToggleLeftPanel, "toggle-left-panel"),
     (I::ToggleDetailsPanel, "toggle-details-panel"),
     (I::ToggleToolbar, "toggle-toolbar"),
+    (I::BlameNextRun, "blame-next-run"),
+    (I::BlamePrevRun, "blame-prev-run"),
 ];
 
 impl BindingId {
     /// Every id, in declaration order (`id as usize` indexes it).
-    pub const ALL: [BindingId; 39] = {
-        let mut all = [I::Stage; 39];
+    pub const ALL: [BindingId; 41] = {
+        let mut all = [I::Stage; 41];
         let mut n = 0;
-        while n < 39 {
+        while n < 41 {
             all[n] = KEYS[n].0;
             n += 1;
         }
@@ -228,9 +234,11 @@ pub const BINDINGS: &[Binding] = &[
     fixed(I::Commit, G::Staging, "Commit", &[C::cmd(K::Enter)], W::Message),
     fixed(I::StageAllAndCommit, G::Staging, "Stage all files and commit", &[C::cmd_shift(K::Enter)], W::Message),
     fixed(I::SelectRow, G::Navigation, "Select the row above or below", &[C::plain(K::Up), C::plain(K::Down)], W::Lists),
-    b(I::Search, G::Navigation, "Show or hide commit search", &[C::cmd(K::Letter('F'))], W::Anywhere),
+    b(I::Search, G::Navigation, "Show or hide commit search (find in the blame view)", &[C::cmd(K::Letter('F'))], W::Anywhere),
     fixed(I::SearchNext, G::Navigation, "Next search match", &[C::plain(K::Enter)], W::Search),
     b(I::SearchFilter, G::Navigation, "Show only matching commits", &[C::cmd_shift(K::Letter('F'))], W::Anywhere),
+    b(I::BlameNextRun, G::Navigation, "Next commit in blame", &[C::plain(K::Letter('N'))], W::Blame),
+    b(I::BlamePrevRun, G::Navigation, "Previous commit in blame", &[C::shift(K::Letter('N'))], W::Blame),
     b(I::NextChange, G::Diff, "Next change or conflict", &[C::plain(K::F(7)), C::alt(K::Down)], W::DiffOrConflict),
     b(I::PrevChange, G::Diff, "Previous change or conflict", &[C::shift(K::F(7)), C::alt(K::Up)], W::DiffOrConflict),
     fixed(

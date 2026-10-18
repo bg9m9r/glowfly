@@ -6,7 +6,7 @@
 use super::chords::take_press;
 use super::record;
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName};
-use crate::msg::{ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RepoMsg, SearchMsg, TabsMsg};
+use crate::msg::{BlameMsg, ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RepoMsg, SearchMsg, TabsMsg};
 use crate::state::layout::Panel;
 use crate::state::{AppState, Modal, PrefPage};
 use crate::terminal::TerminalMsg;
@@ -40,6 +40,8 @@ struct Live {
     working_diff: bool,
     /// A diff or the conflict view is open (and no blame view over it).
     stepping: bool,
+    /// A loaded blame view is open.
+    blame: bool,
 }
 
 impl Live {
@@ -55,6 +57,7 @@ impl Live {
             typing: ctx.wants_keyboard_input(),
             working_diff: st.diff.as_ref().is_some_and(|(t, _)| t.is_working_tree()),
             stepping: st.blame.is_none() && (st.conflict.is_some() || st.diff.is_some()),
+            blame: st.blame.as_ref().is_some_and(|v| v.data.is_some()),
         }
     }
 }
@@ -78,6 +81,7 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         I::NewTab | I::CloseTab | I::ReopenTab | I::NextTab | I::PrevTab | I::LastTab | I::GoToTab => !l.prefs && !l.palette,
         I::Undo | I::Redo => !covered && !l.sheet && !l.typing,
         I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
+        I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
         I::Refresh => true,
         I::Search | I::SearchFilter => !l.palette && !l.prefs,
         I::Prefs => !l.prefs && !l.palette,
@@ -131,6 +135,10 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         },
         I::NextChange => step(1, st),
         I::PrevChange => step(-1, st),
+        I::BlameNextRun => Msg::Blame(BlameMsg::StepRun(1)),
+        I::BlamePrevRun => Msg::Blame(BlameMsg::StepRun(-1)),
+        // In the blame view it finds in the file.
+        I::Search if st.blame.is_some() => Msg::Blame(BlameMsg::FocusFind),
         // The search bar's visibility is view state.
         I::Search => {
             st.view.show_search = !st.view.show_search;

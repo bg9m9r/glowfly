@@ -178,3 +178,62 @@ fn shortcuts_are_blocked_under_the_welcome() {
     st.prefs = Some(PrefsState::new(PrefPage::General));
     all_quiet(st, "Preferences over the welcome");
 }
+
+/// A state with a loaded blame of one line open.
+fn blamed() -> AppState {
+    use crate::state::blame::{BlameData, BlameView};
+    let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
+    let blame = trellis_core::repo::Blame {
+        path: "a.txt".into(),
+        at: git2::Oid::zero(),
+        commits: Vec::new(),
+        lines: vec!["x".into()],
+        runs: Vec::new(),
+        origins: Vec::new(),
+        orig_lines: vec![0],
+        language: None,
+    };
+    let mut view = BlameView::loading("a.txt".into(), None);
+    view.loading = false;
+    view.data = Some(BlameData::new(blame, None));
+    st.blame = Some(view);
+    st
+}
+
+/// Presses `key` for one frame and returns every message it produced.
+fn press_msgs(h: &mut H, modifiers: Modifiers, key: Key) -> Vec<Msg> {
+    h.state_mut().msgs.clear();
+    let input = h.input_mut();
+    input.modifiers = modifiers;
+    input.events.push(Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers });
+    h.step();
+    h.input_mut().modifiers = Modifiers::NONE;
+    std::mem::take(&mut h.state_mut().msgs)
+}
+
+#[test]
+fn run_keys_and_find_in_the_blame_view() {
+    use crate::msg::BlameMsg;
+    let step = |m: &[Msg]| match m {
+        [Msg::Blame(BlameMsg::StepRun(d))] => Some(*d),
+        _ => None,
+    };
+    let mut h = harness(blamed(), false);
+    assert_eq!(step(&press_msgs(&mut h, Modifiers::NONE, Key::N)), Some(1));
+    assert_eq!(step(&press_msgs(&mut h, Modifiers::SHIFT, Key::N)), Some(-1));
+    let shown = h.state().st.view.show_search;
+    let m = press_msgs(&mut h, Modifiers::COMMAND, Key::F);
+    assert!(matches!(&m[..], [Msg::Blame(BlameMsg::FocusFind)]), "Mod+F finds in the file");
+    assert_eq!(h.state().st.view.show_search, shown, "commit search stays as it was");
+
+    let mut h = harness(blamed(), true);
+    assert!(press_msgs(&mut h, Modifiers::NONE, Key::N).is_empty(), "a focused field keeps N");
+    let mut h = harness(unstaged(), false);
+    assert!(press_msgs(&mut h, Modifiers::NONE, Key::N).is_empty(), "no blame open");
+    let mut st = blamed();
+    st.blame.as_mut().unwrap().data = None;
+    let mut h = harness(st, false);
+    assert!(press_msgs(&mut h, Modifiers::NONE, Key::N).is_empty(), "not loaded yet");
+    let m = press_msgs(&mut h, Modifiers::COMMAND, Key::F);
+    assert!(matches!(&m[..], [Msg::Blame(BlameMsg::FocusFind)]), "{}", m.len());
+}

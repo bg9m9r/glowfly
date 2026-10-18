@@ -93,6 +93,8 @@ mod snapshot_tests_askpass;
 #[cfg(test)]
 mod snapshot_tests_blame;
 #[cfg(test)]
+mod snapshot_tests_blame_menu;
+#[cfg(test)]
 mod snapshot_tests_branch;
 #[cfg(test)]
 mod snapshot_tests_clone;

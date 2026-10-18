@@ -14,7 +14,8 @@ use git2::Oid;
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::rebase::RebaseBase;
-use trellis_core::repo::{self, Blame, DiffTarget, FileDiff, LoadOptions};
+use trellis_core::repo::{self, Blame, BlameOptions, DiffTarget, FileDiff, LoadOptions};
+use trellis_core::settings::{BlameMoves, BlamePrefs};
 
 fn oid(n: u8) -> Oid {
     Oid::from_bytes(&[n; 20]).unwrap()
@@ -36,8 +37,17 @@ fn open(path: &str, at: Option<Oid>) -> Msg {
 }
 
 fn data(path: &str) -> Box<BlameData> {
-    let blame = Blame { path: path.into(), at: oid(1), commits: Vec::new(), lines: vec!["x".into()], runs: Vec::new(), language: None };
-    Box::new(BlameData { blame, spans: None })
+    let blame = Blame {
+        path: path.into(),
+        at: oid(1),
+        commits: Vec::new(),
+        lines: vec!["x".into()],
+        runs: Vec::new(),
+        origins: Vec::new(),
+        orig_lines: vec![0],
+        language: None,
+    };
+    Box::new(BlameData::new(blame, None))
 }
 
 fn loaded(path: &str, generation: u64, result: Result<Box<BlameData>, String>) -> Msg {
@@ -53,11 +63,13 @@ fn opening_blame_requests_a_load() {
     let (mut st, dir) = opened("blame-open");
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
     st.conflict = Some(ConflictView::loading("a.txt".into()));
+    st.settings.blame = BlamePrefs { ignore_whitespace: true, moves: BlameMoves::WithinFile };
     let fx = update(&mut st, open("a.txt", None), Instant::now());
     let hl = st.settings.syntax_highlighting;
+    let want = BlameOptions { ignore_whitespace: true, moves: BlameMoves::WithinFile, ignore_revs: Vec::new() };
     assert!(
-        matches!(&fx[..], [Effect::LoadBlame(BlameRequest { path, at: None, generation: 1, highlight, .. })]
-            if path == "a.txt" && *highlight == hl),
+        matches!(&fx[..], [Effect::LoadBlame(BlameRequest { path, at: None, generation: 1, highlight, opts, .. })]
+            if path == "a.txt" && *highlight == hl && *opts == want),
         "{fx:?}"
     );
     let v = st.blame.as_ref().expect("view open");

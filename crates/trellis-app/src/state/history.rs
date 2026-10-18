@@ -24,6 +24,8 @@ pub struct FileHistoryView {
     /// Something was at `path` in the working tree when the last batch loaded (or the file was
     /// restored since).
     pub on_disk: bool,
+    /// The entry the first batch selects when it lists it (else the first entry).
+    pub select: Option<Oid>,
 }
 
 impl FileHistoryView {
@@ -39,6 +41,7 @@ impl FileHistoryView {
             resume: Vec::new(),
             error: None,
             on_disk: false,
+            select: None,
         }
     }
 

@@ -4,6 +4,7 @@ use crate::forge::{Account, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
+mod blame;
 mod column_widths;
 mod downloads;
 mod editor;
@@ -21,6 +22,7 @@ mod tools;
 mod trust;
 mod updates;
 mod zoom;
+pub use blame::{BlameMoves, BlamePrefs};
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
 pub use downloads::downloads_dir;
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
@@ -246,6 +248,9 @@ pub struct Settings {
     /// Wrap long diff lines to the viewer's width (diff header toggle and Preferences > Editor).
     #[serde(default)]
     pub diff_word_wrap: bool,
+    /// The blame header's whitespace and move toggles.
+    #[serde(default)]
+    pub blame: BlamePrefs,
 
     /// Push the branch after each successful commit (commit box checkbox).
     pub push_after_commit: bool,
@@ -363,6 +368,7 @@ impl Default for Settings {
             diff_line_numbers: true,
             diff_word_highlights: true,
             diff_word_wrap: false,
+            blame: BlamePrefs::default(),
             push_after_commit: false,
             stage_renames: true,
             push_new_tags: false,

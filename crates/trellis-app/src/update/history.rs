@@ -10,18 +10,7 @@ use trellis_core::repo::{DiffTarget, HistoryStart};
 
 pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        HistoryMsg::OpenFileHistory { path, at } => {
-            if st.workdir().is_none() {
-                return;
-            }
-            super::repo::close_diff(st);
-            super::conflict::close(st);
-            super::blame::close(st);
-            super::pull_request::close(st);
-            super::issue::close(st);
-            st.history = Some(FileHistoryView::loading(path, at));
-            request(st, at.map_or(HistoryStart::Head, HistoryStart::At), fx);
-        }
+        HistoryMsg::OpenFileHistory { path, at } => open(st, path, at, None, fx),
         HistoryMsg::FileHistoryLoaded { path, generation, result } => {
             if generation != st.history_gen {
                 return; // superseded: closed, reopened, or parked with its tab
@@ -35,7 +24,9 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
                     }
                     view.append(h);
                     if first && !view.entries.is_empty() {
-                        select(st, 0, fx);
+                        let want = view.select.take();
+                        let i = want.and_then(|oid| view.entries.iter().position(|e| e.oid == oid)).unwrap_or(0);
+                        select(st, i, fx);
                     }
                 }
                 Err(e) => {
@@ -66,6 +57,23 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
             }
         }
     }
+}
+
+/// Opens the history of `path` from `at` (HEAD when None), closing the views it replaces; the
+/// first batch selects `select` when it lists it, else its first entry.
+pub(super) fn open(st: &mut AppState, path: String, at: Option<git2::Oid>, select: Option<git2::Oid>, fx: &mut Vec<Effect>) {
+    if st.workdir().is_none() {
+        return;
+    }
+    super::repo::close_diff(st);
+    super::conflict::close(st);
+    super::blame::close(st);
+    super::pull_request::close(st);
+    super::issue::close(st);
+    let mut view = FileHistoryView::loading(path, at);
+    view.select = select;
+    st.history = Some(view);
+    request(st, at.map_or(HistoryStart::Head, HistoryStart::At), fx);
 }
 
 /// Why commit `oid` can't be selected on the graph.

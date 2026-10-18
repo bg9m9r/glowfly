@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 39] = [
+    const FROZEN: [&str; 41] = [
         "stage",
         "unstage",
         "stage-all",
@@ -60,6 +60,8 @@ fn ids_are_stable() {
         "toggle-left-panel",
         "toggle-details-panel",
         "toggle-toolbar",
+        "blame-next-run",
+        "blame-prev-run",
     ];
     let keys: Vec<&str> = BindingId::ALL.iter().map(|id| id.key()).collect();
     assert_eq!(keys, FROZEN);
@@ -101,6 +103,8 @@ fn rebindable_set() {
         I::ToggleLeftPanel,
         I::ToggleDetailsPanel,
         I::ToggleToolbar,
+        I::BlameNextRun,
+        I::BlamePrevRun,
     ];
     assert_eq!(rebindable, want);
 }
@@ -138,6 +142,8 @@ fn zoom_keys_by_default() {
     assert_eq!(keys.lookup(Chord::cmd_shift(KeyName::Letter('L')), fold), Some(I::ToggleLeftPanel));
     assert_eq!(keys.lookup(Chord::cmd_shift(KeyName::Letter('D')), fold), Some(I::ToggleDetailsPanel));
     assert_eq!(keys.lookup(Chord::cmd_shift(KeyName::Letter('B')), fold), Some(I::ToggleToolbar));
+    assert_eq!(keys.lookup(Chord::plain(KeyName::Letter('N')), fold), Some(I::BlameNextRun));
+    assert_eq!(keys.lookup(Chord::shift(KeyName::Letter('N')), fold), Some(I::BlamePrevRun));
     let view: Vec<BindingId> = BINDINGS.iter().filter(|b| b.group == Group::View).map(|b| b.id).collect();
     assert!(view.contains(&I::ToggleTerminal) && view.contains(&I::ZoomIn), "{view:?}");
 }
