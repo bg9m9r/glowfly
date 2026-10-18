@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 15:42 · **Git LFS: live pattern refresh, a missing git-lfs warning, and LFS status in file lists and diffs**: Edits to LFS patterns refresh status and the Git LFS page without a full reload, a banner warns when git-lfs is missing, and file rows and diffs show LFS badges and pointer size summaries (`0f58bf01`)
 - 2026-10-18 14:07 · **Blame gutter: re-blame when HEAD moves, and wrapping or scrolling long lines**: An open blame at HEAD runs again when HEAD moves (following renames forwards), and long lines can be wrapped with a saved Wrap lines toggle or scrolled sideways under a fixed gutter (`e666d692`)
 - 2026-10-18 13:02 · **Line-level staging: drag to select lines, and index entries removed when every line goes**: Diff lines can be selected by dragging across them, and staging or unstaging lines that remove every line of a file removes its index entry instead of leaving an empty file (`f2d7d557`)
 - 2026-10-18 12:58 · **Command palette (fuzzy finder): tag pushes from graph labels, macOS key labels, tag checkout notice, stash confirmation and list keys**: Checking out a tag from the palette explains the detached HEAD, stash apply asks first, palette lists take keyboard keys, and key labels and toolbar names follow macOS conventions (`786f74c6`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 06:28 · **Whole-app journey tests**: Headless journey tests start the whole app on fixture repositories and drive it by visible labels through clone, staging, commit, push and pull, branching and merging, a conflicted rebase resolved in the conflict view, stash, and undo and redo, checking the screen and the repository on disk at each step (`1263c8e`)
 - 2026-10-18 05:22 · **Create and view issues**: The issue panel and Create dialog for Bitbucket Cloud issues (kind, priority, a turned-off tracker explained), Azure Boards work items (types, tags, assigned to, parent; HTML shown as text) and Trello cards (board, list, labels, members, and a write-token link), worded per tracker, with Bitbucket Data Center pointing to Jira (`cff316b`)
 - 2026-10-18 05:05 · **Language**: Translated the first-run welcome, the welcome screen and its repository lists (also the repository menu and File > Open recent), Find repositories, and the details panel: commit details, the WIP lists and row actions, the in-progress banner buttons, several commits and the working-directory comparison (`fd84abb`)
-- 2026-10-18 03:56 · **Multi-select commits: compare with the working directory, range diffs, keyboard selection, revert several and cherry-pick follow-ups**: Commits can be compared with the working directory, a selected range shows one combined diff, Shift+arrows and Ctrl+A extend the selection, several commits can be reverted at once, and merge commits can be cherry-picked against a chosen mainline (`e6b451e`)
 
 ---
 
