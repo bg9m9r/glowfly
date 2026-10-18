@@ -47,10 +47,7 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     file_stamp(&common.join("shallow")).hash(&mut h);
     // `git am --skip` stopping at the next patch moves no ref.
     file_stamp(&repo.path().join("rebase-apply/next")).hash(&mut h);
-    if let Some(w) = repo.workdir() {
-        // The root .gitattributes' LFS patterns.
-        file_stamp(&w.join(".gitattributes")).hash(&mut h);
-    }
+    // The root .gitattributes' LFS patterns aren't in it: every whole status read brings them.
     // Linked worktrees: added, removed, locked or switched to another branch.
     if let Ok(dir) = std::fs::read_dir(common.join("worktrees")) {
         let mut names: Vec<_> = dir.flatten().map(|e| e.path()).collect();

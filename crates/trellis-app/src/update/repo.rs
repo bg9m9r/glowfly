@@ -72,7 +72,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             }
         }
         RepoMsg::OpenDiff(target) => open_file_diff(st, target, fx),
-        RepoMsg::DiffLoaded { target, reload, generation, result } => {
+        RepoMsg::DiffLoaded { target, reload, generation, result, lfs } => {
             if generation != st.diff_gen {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
@@ -128,6 +128,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     if landing.is_some() {
                         st.view.file_reveal = Some((target.clone(), generation));
                     }
+                    super::lfs::diff_loaded(st, &target, lfs);
                     st.diff = Some((target, std::sync::Arc::new(d)));
                     st.diff_shown_gen = generation;
                     super::highlight::schedule(st, fx);

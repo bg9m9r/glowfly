@@ -292,8 +292,13 @@ fn two_commit_diff_end_to_end() {
     assert_eq!(changed, ["-line 6", "+line 6 edited", "-line 8", "+line 8 edited"], "only the changes after the older commit");
 
     // A result from an older request is ignored.
-    let stale =
-        Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload: false, generation: st.diff_gen - 1, result: Err("old".into()) });
+    let stale = Msg::Repo(RepoMsg::DiffLoaded {
+        target: target.clone(),
+        reload: false,
+        generation: st.diff_gen - 1,
+        result: Err("old".into()),
+        lfs: None,
+    });
     up(&mut st, stale);
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target));
 

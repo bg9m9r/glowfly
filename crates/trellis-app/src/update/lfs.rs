@@ -2,7 +2,9 @@
 //! patterns, and the LFS commands, each run as the active git job. Also whether git-lfs is
 //! installed (checked at startup and by each status read) and the file menu's Track in Git LFS.
 //! A successful auto-fetch in a repository that stores files in LFS is followed by a quiet
-//! download of the checked-out commit's LFS files.
+//! download of the checked-out commit's LFS files. Whole status reads bring the root
+//! .gitattributes' patterns again (`patterns_read`), the main window's banner can be dismissed
+//! per repository, and a diff with an LFS side keeps its note (`diff_loaded`, `ShowPointer`).
 
 use super::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
 use super::ops::{JobSpec, start_job};
@@ -10,10 +12,13 @@ use crate::effect::Effect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
-use crate::state::lfs::{INIT_LABEL, LfsInstall, lfs_remote};
+use crate::state::lfs::{INIT_LABEL, LfsDiffNote, LfsInstall, lfs_remote};
 use crate::state::{AppState, PrefPage};
 use std::time::Instant;
-use trellis_core::lfs::{self, LfsCommand, LfsStatus, TrackTarget};
+use trellis_core::lfs::pointer::LfsChange;
+use trellis_core::lfs::{self, LfsCommand, LfsPattern, LfsStatus, TrackTarget};
+use trellis_core::paths::same_spelling;
+use trellis_core::repo::DiffTarget;
 
 const NOT_INSTALLED: &str = "Git LFS isn't installed.";
 
@@ -50,12 +55,47 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
         LfsMsg::Run { command, .. } => run(st, command, fx),
         LfsMsg::Loaded { generation, result } => loaded(st, generation, result, now, fx),
         LfsMsg::Detect => {
-            st.lfs_install = LfsInstall::Checking;
+            st.lfs.install = LfsInstall::Checking;
             fx.push(Effect::DetectLfs { cwd: st.any_dir() });
         }
-        LfsMsg::Detected(v) => st.lfs_install = LfsInstall::from_version(v),
+        LfsMsg::Detected(v) => st.lfs.install = LfsInstall::from_version(v),
         LfsMsg::TrackPath(t) => track_path(st, t, fx),
+        LfsMsg::DismissBanner(w) => {
+            if !st.lfs.banner_dismissed.iter().any(|d| same_spelling(d, &w)) {
+                st.lfs.banner_dismissed.push(w);
+            }
+        }
+        LfsMsg::ShowPointer(on) => {
+            if let Some(note) = st.lfs.diff.as_mut() {
+                note.show_pointer = on;
+                if !on {
+                    // The summary hides the rows: no line stays selected behind it.
+                    st.view.diff_lines.clear();
+                }
+            }
+        }
     }
+}
+
+/// A whole status read brought the root .gitattributes' LFS patterns (None: a read of some
+/// paths). New ones replace the snapshot's, and an open Git LFS page reads its status again in
+/// place.
+pub(super) fn patterns_read(st: &mut AppState, patterns: Option<Vec<LfsPattern>>, fx: &mut Vec<Effect>) {
+    let (Some(patterns), Some(snap)) = (patterns, st.snap.as_mut()) else { return };
+    if patterns == snap.lfs_patterns {
+        return;
+    }
+    snap.lfs_patterns = patterns;
+    if st.prefs.as_ref().is_some_and(|p| p.page == PrefPage::RepoLfs) {
+        read(st, true, fx);
+    }
+}
+
+/// A diff about to be shown for `target`: keeps its LFS sides, and the pointer text choice when
+/// it is the same diff loaded again.
+pub(super) fn diff_loaded(st: &mut AppState, target: &DiffTarget, lfs: Option<LfsChange>) {
+    let show_pointer = st.lfs.diff.as_ref().is_some_and(|n| n.target == *target && n.show_pointer);
+    st.lfs.diff = lfs.map(|change| LfsDiffNote { target: target.clone(), change, show_pointer });
 }
 
 /// Reads the active repository's status again for the open page, showing "Checking" meanwhile.
@@ -99,7 +139,7 @@ pub(super) fn job_finished(st: &mut AppState, label: &str, ok: bool, quiet: bool
 /// and a failure only reaches the log). git-lfs picks the remote and honours its fetch filters.
 fn fetch_after_auto_fetch(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
-    let uses_lfs = matches!(st.lfs_install, LfsInstall::Installed(_)) && !snap.lfs_patterns.is_empty() && snap.head_oid.is_some();
+    let uses_lfs = matches!(st.lfs.install, LfsInstall::Installed(_)) && !snap.lfs_patterns.is_empty() && snap.head_oid.is_some();
     if !uses_lfs || !st.runs_git_unasked() {
         return;
     }
@@ -146,7 +186,7 @@ fn track(st: &mut AppState, text: &str, fx: &mut Vec<Effect>) {
 /// The file menu's Track in Git LFS, checked again: the menu may have been drawn from an older
 /// state.
 fn track_path(st: &mut AppState, t: TrackTarget, fx: &mut Vec<Effect>) {
-    match &st.lfs_install {
+    match &st.lfs.install {
         LfsInstall::Installed(_) => {}
         LfsInstall::Missing => return st.log(false, NOT_INSTALLED),
         LfsInstall::Unknown | LfsInstall::Checking => return st.log(false, "Still checking whether Git LFS is installed."),
@@ -174,7 +214,7 @@ fn loaded(st: &mut AppState, generation: u64, result: Result<LfsStatus, String>,
         return;
     }
     if let Some(v) = version {
-        st.lfs_install = LfsInstall::from_version(v);
+        st.lfs.install = LfsInstall::from_version(v);
     }
     match result {
         Ok(s) => p.lfs.status = Some(s),

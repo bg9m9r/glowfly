@@ -8,6 +8,8 @@ fn git_internals_are_classified() {
     let c = |p: &str| git_change(Path::new(p), Touch::Modified);
     assert_eq!(c("index"), Change::Status);
     assert_eq!(c("info/exclude"), Change::Status);
+    assert_eq!(c("info/attributes"), Change::Status);
+    assert_eq!(c("info/other"), Change::None);
     for full in ["worktrees/wt/HEAD", "worktrees/wt/locked", "worktrees/wt/gitdir"] {
         assert_eq!(c(full), Change::Full, "{full}");
     }
@@ -88,6 +90,8 @@ fn a_linked_worktree_follows_the_refs_it_shares() {
     for full in ["refs/heads/main", "refs/remotes/origin/x", "packed-refs", "HEAD", "config"] {
         assert_eq!(c(full), Change::Full, "{full}");
     }
+    assert_eq!(c("info/attributes"), Change::Status, "every worktree reads the common attributes");
+    assert_eq!(c("info/other"), Change::None);
     // The common dir's `config.worktree` is the main worktree's own.
     for none in [
         "index",
@@ -197,7 +201,7 @@ fn ignore_and_attribute_files_read_the_whole_status() {
         assert_eq!(paths.classify_path(&wd.join(rel), Touch::Modified, &mut never), (Change::Status, None), "{rel}");
     }
     assert_eq!(paths.classify_path(&wd.join("sub/.gitmodules"), Touch::Modified, &mut never).0, Change::Paths, "only the root's counts");
-    for rel in ["index", "info/exclude"] {
+    for rel in ["index", "info/exclude", "info/attributes"] {
         assert_eq!(paths.classify_path(&wd.join(".git").join(rel), Touch::Modified, &mut never), (Change::Status, None), "{rel}");
     }
     assert_eq!(paths.classify_path(&wd.join(".git/HEAD"), Touch::Modified, &mut never), (Change::Full, None));

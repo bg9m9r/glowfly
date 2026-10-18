@@ -1,5 +1,6 @@
 //! Messages of the Git LFS preferences page (state/lfs.rs, update/lfs.rs, ui/prefs/lfs.rs) and
-//! of the file menu's Track in Git LFS submenu (ui/file_menu.rs).
+//! of the file menu's Track in Git LFS submenu (ui/file_menu.rs), the main window's "git-lfs
+//! missing" banner (ui/lfs_banner.rs) and the diff's LFS summary (ui/diff/lfs_note.rs).
 
 use trellis_core::lfs::{LfsCommand, LfsStatus, TrackTarget};
 
@@ -25,6 +26,10 @@ pub enum LfsMsg {
     Detect,
     /// Track a file row's file, extension or folder (file context menu).
     TrackPath(TrackTarget),
+    /// The main window's "git-lfs missing" banner was dismissed for this workdir (until restart).
+    DismissBanner(std::path::PathBuf),
+    /// The open diff shows its pointer text (true) or the LFS summary (false).
+    ShowPointer(bool),
     // ---- from the runner
     /// git-lfs's version, None when it isn't installed.
     Detected(Option<String>),
@@ -48,6 +53,8 @@ impl LfsMsg {
             | Self::Run { .. }
             | Self::Detect
             | Self::TrackPath(..)
+            | Self::DismissBanner(..)
+            | Self::ShowPointer(..)
             | Self::Detected(..)
             | Self::Loaded { .. } => None,
         }

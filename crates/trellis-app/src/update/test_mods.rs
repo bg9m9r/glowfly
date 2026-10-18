@@ -131,10 +131,14 @@ pub(super) mod language_tests;
 pub(super) mod layout_tests;
 #[path = "lfs_fetch_tests.rs"]
 pub(super) mod lfs_fetch_tests;
+#[path = "lfs_notes_tests.rs"]
+pub(super) mod lfs_notes_tests;
 #[path = "lfs_tests.rs"]
 pub(super) mod lfs_tests;
 #[path = "lfs_track_tests.rs"]
 pub(super) mod lfs_track_tests;
+#[path = "lfs_watch_tests.rs"]
+pub(super) mod lfs_watch_tests;
 #[path = "lines_drag_tests.rs"]
 pub(super) mod lines_drag_tests;
 #[path = "lines_tests.rs"]

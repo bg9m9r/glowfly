@@ -78,6 +78,11 @@ fn index_entry(path: String, id: git2::Oid, size: usize) -> IndexEntry {
     }
 }
 
+/// Whether `path` has `filter=lfs` (the working tree's attributes, then the index's).
+pub(super) fn lfs_filtered(repo: &Repository, path: &str) -> bool {
+    string_attr(repo, path, "filter").as_deref() == Some("lfs")
+}
+
 fn string_attr(repo: &Repository, path: &str, name: &str) -> Option<String> {
     parse_value(repo.get_attr_bytes(Path::new(path), name, AttrCheckFlags::FILE_THEN_INDEX).ok()?)
 }

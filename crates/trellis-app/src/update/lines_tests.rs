@@ -62,7 +62,7 @@ pub(super) fn selected(st: &AppState) -> Option<(usize, Vec<usize>)> {
 
 pub(super) fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
     let generation = st.diff_gen;
-    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result }));
+    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs: None }));
 }
 
 #[test]

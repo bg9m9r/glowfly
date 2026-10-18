@@ -5,7 +5,7 @@ use super::{help, primary_button, row, text_field, warn};
 use crate::lfs::LfsMsg;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
-use crate::state::lfs::LfsPage;
+use crate::state::lfs::{INSTALL_URL, LfsPage};
 use crate::ui::theme::color;
 use eframe::egui::{self, Key, RichText, Ui};
 use trellis_core::lfs::{LfsCommand, LfsPattern, LfsStatus};
@@ -18,8 +18,6 @@ pub struct LfsContext {
     /// The running job's label.
     pub job: Option<String>,
 }
-
-const INSTALL_URL: &str = "https://git-lfs.com";
 
 pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec<Msg>) {
     let Some(repo) = cx.repo_name.as_deref() else {

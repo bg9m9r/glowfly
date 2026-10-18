@@ -30,7 +30,7 @@ fn slow_read(st: &AppState, s: StatusSpeedups) -> Msg {
     let snap = st.snap.as_ref().unwrap();
     let result = Ok(StatusRead::Whole(snap.unstaged.clone(), snap.staged.clone(), snap.state));
     let slow = Some(SlowStatus { took: TOOK, speedups: s });
-    Msg::Load(LoadMsg::StatusLoaded { generation: st.load_gen, result, submodules: None, open_stamp: None, slow })
+    Msg::Load(LoadMsg::StatusLoaded { generation: st.load_gen, result, submodules: None, open_stamp: None, slow, lfs_patterns: None })
 }
 
 /// Hands `slow_read` to `update`: the effects it returns.

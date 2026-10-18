@@ -61,9 +61,16 @@ pub(super) fn load_status(repo: &Repository, git_status: bool) -> Result<(Vec<Fi
         && wants_git(repo)
         && let Some(lists) = super::status_cli::status(workdir)
     {
-        return Ok(mark_twins(repo, lists));
+        return Ok(mark_rows(repo, lists));
     }
-    libgit2_status(repo).map(|lists| mark_twins(repo, lists))
+    libgit2_status(repo).map(|lists| mark_rows(repo, lists))
+}
+
+/// Marks a whole read's rows: twins, then LFS pointers.
+fn mark_rows(repo: &Repository, lists: (Vec<FileEntry>, Vec<FileEntry>)) -> (Vec<FileEntry>, Vec<FileEntry>) {
+    let (mut unstaged, mut staged) = mark_twins(repo, lists);
+    super::lfs_marks::mark_wip(repo, &mut unstaged, &mut staged);
+    (unstaged, staged)
 }
 
 /// Marks the rows whose path shares one file on disk with another index path.

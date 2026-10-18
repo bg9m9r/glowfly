@@ -50,10 +50,14 @@ pub(super) fn load_job(
                 whole,
                 "diff highlighted"
             );
-            v.diff
+            (v.diff, v.lfs)
         })
         .map_err(|e| e.to_string());
-    Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result })
+    let (result, lfs) = match result {
+        Ok((d, lfs)) => (Ok(d), lfs),
+        Err(e) => (Err(e), None),
+    };
+    Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs })
 }
 
 /// Syntax spans and word marks for a loaded diff and its whole file, reusing `previous`'s spans,

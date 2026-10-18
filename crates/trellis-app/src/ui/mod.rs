@@ -53,6 +53,8 @@ mod icons;
 mod init_dialog;
 mod issue;
 mod layout;
+mod lfs_badge;
+mod lfs_banner;
 mod list_row;
 mod mainline_dialog;
 mod menu_bar;
@@ -185,6 +187,8 @@ mod snapshot_tests_language_chrome;
 mod snapshot_tests_language_panels;
 #[cfg(test)]
 mod snapshot_tests_lfs;
+#[cfg(test)]
+mod snapshot_tests_lfs_notes;
 #[cfg(test)]
 mod snapshot_tests_load_more;
 #[cfg(test)]
@@ -361,6 +365,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         git_banner::show(ctx, st, msgs);
         if st.snap.is_some() && !st.dashboard.open {
             sign_in_banner::show(ctx, st, msgs);
+            lfs_banner::show(ctx, st, msgs);
         }
         activity_log::show(ctx, st, msgs);
         if st.snap.is_some() && !st.dashboard.open {

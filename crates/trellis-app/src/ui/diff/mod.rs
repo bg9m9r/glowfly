@@ -15,6 +15,7 @@ pub(in crate::ui) mod fold;
 mod header;
 mod hunk_header;
 mod inline;
+mod lfs_note;
 pub(super) mod rows_cache;
 mod split;
 mod style;
@@ -105,9 +106,11 @@ pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs
     let ignore_ws = st.settings.diff_ignore_whitespace;
     // Where Previous and Next go: a change in this file, another file, or nowhere.
     let nav = [diff_nav::step(st, -1).kind(), diff_nav::step(st, 1).kind()];
+    // An LFS summary shows instead of the rows, so the header has no row toggles (as for a binary file).
+    let lfs_summary = crate::state::lfs_notes::summary(st).is_some();
     {
         let Some((target, diff)) = &st.diff else { return };
-        let has_rows = !diff.binary && !diff.hunks.is_empty();
+        let has_rows = !diff.binary && !diff.hunks.is_empty() && !lfs_summary;
         ui.add_space(6.0);
         let rows = has_rows.then_some((st.settings.diff_layout, st.settings.diff_mode));
         // How many folds of the whole file on screen are open and closed, when it has any.
@@ -131,8 +134,10 @@ pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs
             }),
             _ => None,
         };
-        let toggles =
-            header::Toggles { ignore_ws: (!diff.binary).then_some(ignore_ws), wrap: has_rows.then_some(st.settings.diff_word_wrap) };
+        let toggles = header::Toggles {
+            ignore_ws: (!diff.binary && !lfs_summary).then_some(ignore_ws),
+            wrap: has_rows.then_some(st.settings.diff_word_wrap),
+        };
         let diff_tool = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
         header::header_bar(ui, target, commit_file.as_ref(), rows, nav, toggles, fold_counts, &st.keymap, diff_tool, msgs);
         ui.separator();
@@ -263,12 +268,21 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
 }
 
 /// The diff's rows without the header bar: what `show` draws below it, and what views that
-/// embed a commit's diff of a file (the file history) draw. A binary file and a diff without
-/// hunks get a note instead (whitespace-only when Ignore whitespace hides the changes). Commit
+/// embed a commit's diff of a file (the file history) draw. A Git LFS pointer on either side
+/// shows a summary instead, until "Show pointer text"; a binary file and a diff without hunks
+/// get a note instead (whitespace-only when Ignore whitespace hides the changes). Commit
 /// diffs have Revert Hunk buttons and line selection for Revert lines (both off while
 /// whitespace is hidden).
 pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
+    if let Some(note) = crate::state::lfs_notes::summary(st) {
+        let text = crate::state::lfs_notes::summary_text(&note.change, &st.lfs.install);
+        lfs_note::summary(ui, &text, msgs);
+        return;
+    }
+    if crate::state::lfs_notes::pointer_shown(st) {
+        lfs_note::pointer_bar(ui, msgs);
+    }
     {
         let Some((_, diff)) = &st.diff else { return };
         if diff.binary {

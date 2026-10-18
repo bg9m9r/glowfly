@@ -217,6 +217,7 @@ pub(super) fn wip_file_row(
         };
         let r = ui.selectable_label(selected, &f.path);
         super::path_warnings::mark(ui, f);
+        super::lfs_badge::badge(ui, f);
         if let Some((text, green)) = note {
             ui.label(RichText::new(text).small().color(if green { color::green() } else { color::weak() }));
         }

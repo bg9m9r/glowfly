@@ -724,15 +724,6 @@ follow-ups go to Ideas, not here.
 - Keys for palette commands that have none yet (fetch, pull, push, create branch…), assignable
   on the Keyboard page
 
-### Git LFS
-
-- Refresh the tracked patterns on status-only (watcher) refreshes, so hand edits to
-  .gitattributes show without a full reload
-- Warn in the main window, not only on the page, when a repository tracks files in LFS but
-  git-lfs isn't installed
-- Show LFS pointer files and LFS status in file lists and diffs (for example "stored in LFS"
-  instead of the pointer text)
-
 ### Git Flow
 
 - Continue a Finish that stopped at a merge conflict once the merge is committed
@@ -1389,6 +1380,18 @@ here, under the item they grew from.
 - Detect LFS use from nested .gitattributes files too when deciding whether auto-fetch downloads
   LFS files
 - A per-repository switch to leave LFS downloads out of auto-fetch
+- Warn in the main-window banner when git-lfs is installed but too old for the repository (no
+  filter-process support), next to the not-installed case
+- Check for git-lfs again when the window regains focus, so the missing-git-lfs banner clears
+  after installing it without opening Preferences
+- Count nested .gitattributes files and info/attributes patterns for the missing-git-lfs banner
+  and the auto-fetch LFS download, not only the root file
+- LFS badges in file history rows, stash file lists and the palette's file search
+- Say in the diff's LFS summary whether the object is downloaded locally, and offer to fetch it
+- Preview LFS-stored images or text (the smudged content) in the diff instead of only sizes
+- Mark lockable LFS files, and who holds a lock, in file rows
+- Mark files that match a filter=lfs pattern but were committed as regular files, in file lists
+  and commit details
 - Show a failed background LFS download outside the log (for example a status-bar note with Retry)
 - Say on the Git LFS page that auto-fetch downloads the checked-out commit's LFS files
 - Restore from a commit: compare skip-worktree or assume-unchanged converted (LFS) files by their

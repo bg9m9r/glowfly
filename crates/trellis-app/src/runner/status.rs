@@ -23,12 +23,13 @@ pub(super) fn load(
                 // Only a covered submodule's row can have changed.
                 let submodules = if ps.submodule_touched { repo::submodules_if_any(workdir, submodules).ok().flatten() } else { None };
                 let result = Ok(StatusRead::Paths(ps));
-                return Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow: None });
+                return Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow: None, lfs_patterns: None });
             }
             Ok(None) => {}
             Err(e) => {
                 let result = Err(e.to_string());
-                return Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules: None, open_stamp, slow: None });
+                let lfs_patterns = None;
+                return Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules: None, open_stamp, slow: None, lfs_patterns });
             }
         }
     }
@@ -36,5 +37,6 @@ pub(super) fn load(
     let result = repo::status_at(workdir, git_status).map(|(u, s, state)| StatusRead::Whole(u, s, state)).map_err(|e| e.to_string());
     let slow = repo::slow(started.elapsed(), workdir);
     let submodules = repo::submodules_if_any(workdir, submodules).ok().flatten();
-    Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow })
+    let lfs_patterns = Some(trellis_core::lfs::root_patterns(workdir));
+    Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow, lfs_patterns })
 }

@@ -222,6 +222,8 @@ pub struct Parked {
     pub diff_mode: DiffMode,
     /// The whole-file folds opened in the open diff.
     pub diff_expanded: Expanded,
+    /// The open diff's LFS summary and whether it shows the pointer text instead.
+    pub lfs_diff: Option<super::lfs::LfsDiffNote>,
 }
 
 /// Where the tab at index `i` ends up after moving the tab at `from` to `to`: what

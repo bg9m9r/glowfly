@@ -9,12 +9,15 @@ pub struct FileEntry {
     pub status: char,
     /// Why acting on this row could reach the wrong file; `None` for almost every row.
     pub hazard: Option<Hazard>,
+    /// The row's stored content (index, commit, or the working copy where git has none) is a
+    /// Git LFS pointer (`lfs_marks`).
+    pub lfs: bool,
 }
 
 impl FileEntry {
     /// A row for a path with nothing unusual about it.
     pub fn new(path: impl Into<String>, status: char) -> Self {
-        Self { path: path.into(), status, hazard: None }
+        Self { path: path.into(), status, hazard: None, lfs: false }
     }
 }
 

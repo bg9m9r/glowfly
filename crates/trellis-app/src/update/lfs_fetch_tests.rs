@@ -29,7 +29,7 @@ fn use_lfs(st: &mut AppState, dir: &Path) {
     std::fs::write(dir.join(".gitattributes"), ATTRIBUTES).unwrap();
     drive(st, Msg::Repo(RepoMsg::Refresh));
     assert!(st.snap.as_ref().is_some_and(|s| !s.lfs_patterns.is_empty()), "the reload read the pattern");
-    st.lfs_install = LfsInstall::Installed("3.7.1".into());
+    st.lfs.install = LfsInstall::Installed("3.7.1".into());
 }
 
 /// Ends a pretend job labelled `label` in the active tab, without running anything.
@@ -85,10 +85,10 @@ fn no_lfs_download_unless_the_repository_uses_lfs_and_git_may_run() {
     let fx = end(&mut st, AUTO_FETCH_LFS, true, true);
     assert!(fx.iter().all(|e| !matches!(e, Effect::RunGit { .. })) && st.job.is_none(), "the download's end starts nothing");
     for missing in [LfsInstall::Missing, LfsInstall::Unknown, LfsInstall::Checking] {
-        st.lfs_install = missing;
+        st.lfs.install = missing;
         assert!(!lfs_fetch(&end(&mut st, AUTO_FETCH, true, true)), "git-lfs isn't known to be installed");
     }
-    st.lfs_install = LfsInstall::Installed("3.7.1".into());
+    st.lfs.install = LfsInstall::Installed("3.7.1".into());
 
     let head = st.snap.as_mut().unwrap().head_oid.take();
     assert!(!lfs_fetch(&end(&mut st, AUTO_FETCH, true, true)), "an unborn branch has no files to download");

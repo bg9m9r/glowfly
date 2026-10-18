@@ -184,7 +184,7 @@ fn lfs_behind(name: &str) -> (AppState, PathBuf, PathBuf) {
     let (mut st, work, bare) = with_origin(name);
     std::fs::write(work.join(".gitattributes"), "*.bin filter=lfs diff=lfs merge=lfs -text\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    st.lfs_install = LfsInstall::Installed("3.7.1".into());
+    st.lfs.install = LfsInstall::Installed("3.7.1".into());
     remote_commit(&bare, "main", "r1.txt");
     (st, work, bare)
 }

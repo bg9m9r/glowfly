@@ -17,7 +17,17 @@ fn refresh(st: &mut AppState, keep: impl Fn(&FileEntry) -> bool) -> Vec<Effect> 
     let staged = snap.staged.iter().filter(|f| keep(f)).cloned().collect();
     let status = StatusRead::Whole(unstaged, staged, snap.state);
     let generation = st.load_gen;
-    run(st, Msg::Load(LoadMsg::StatusLoaded { generation, result: Ok(status), submodules: None, open_stamp: None, slow: None }))
+    run(
+        st,
+        Msg::Load(LoadMsg::StatusLoaded {
+            generation,
+            result: Ok(status),
+            submodules: None,
+            open_stamp: None,
+            slow: None,
+            lfs_patterns: None,
+        }),
+    )
 }
 
 #[test]

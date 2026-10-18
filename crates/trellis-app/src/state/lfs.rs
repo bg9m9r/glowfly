@@ -1,13 +1,42 @@
 //! The Git LFS preferences page: the status read in the background, the new-pattern buffer and
 //! what to do once the status arrives; the remote LFS commands use. Also whether git-lfs is
-//! installed, and the Track in Git LFS entries of file rows' context menus.
+//! installed, the session's banner dismissals and the open diff's LFS summary (`LfsSession`;
+//! what they show is in `lfs_notes`), and the Track in Git LFS entries of file rows' context
+//! menus.
 
 use super::{AppState, branches};
+use std::path::PathBuf;
+use trellis_core::lfs::pointer::LfsChange;
 use trellis_core::lfs::{self, LfsPattern, LfsStatus, TrackTarget};
-use trellis_core::repo::{Snapshot, SubmoduleInfo};
+use trellis_core::repo::{DiffTarget, Snapshot, SubmoduleInfo};
 
 /// The job label of `git lfs install --local`; a successful one may offer to pull.
 pub const INIT_LABEL: &str = "Initialize LFS";
+
+/// Where git-lfs's installation help is (the page's link, the banner's Get Git LFS).
+pub const INSTALL_URL: &str = "https://git-lfs.com";
+
+/// Git LFS across the session: global, except `diff`, which is parked with its tab.
+#[derive(Default)]
+pub struct LfsSession {
+    /// Whether git-lfs is installed: checked at startup and whenever Preferences > Git LFS reads
+    /// its status.
+    pub install: LfsInstall,
+    /// Workdirs whose "git-lfs missing" banner was dismissed, until Trellis restarts.
+    pub banner_dismissed: Vec<PathBuf>,
+    /// The LFS sides of the diff last loaded, when either is a pointer.
+    pub diff: Option<LfsDiffNote>,
+}
+
+/// The open diff's LFS sides, shown as a summary instead of the pointer text.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LfsDiffNote {
+    pub target: DiffTarget,
+    pub change: LfsChange,
+    /// "Show pointer text": the normal rows instead of the summary. Kept across reloads of the
+    /// same diff.
+    pub show_pointer: bool,
+}
 
 #[derive(Default)]
 pub struct LfsPage {
@@ -71,7 +100,7 @@ pub struct TrackContext<'a> {
 impl<'a> TrackContext<'a> {
     pub fn of(st: &'a AppState) -> Self {
         Self {
-            install: &st.lfs_install,
+            install: &st.lfs.install,
             patterns: st.snap.as_ref().map_or(&[][..], |s| &s.lfs_patterns),
             submodules: st.snap.as_ref().map_or(&[][..], |s| &s.submodules),
         }

@@ -16,7 +16,7 @@ pub(super) type Status = (Vec<FileEntry>, Vec<FileEntry>, RepositoryState);
 
 pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow } => {
+        LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow, lfs_patterns } => {
             if generation != st.load_gen {
                 return; // superseded by a newer load
             }
@@ -31,6 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 st.snap = Some(snap);
             }
             apply_status(st, result, submodules, open_stamp, now, fx);
+            super::lfs::patterns_read(st, lfs_patterns, fx);
             super::pick::state_changed(st, state_before);
             super::status_tip::check(st, slow.as_ref(), now, fx);
             // A dialog may have been open when the repository loaded.
@@ -40,11 +41,13 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             super::worktree_counts::want(st, fx);
             load_finished(st, fx);
         }
-        LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow } => {
+        LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow, lfs_patterns } => {
             if generation != st.load_gen {
                 return;
             }
             st.refresh.status_busy = false;
+            // Applied even when the status itself is out of date and deferred.
+            super::lfs::patterns_read(st, lfs_patterns, fx);
             let state_before = st.snap.as_ref().map(|s| s.state);
             if let Some(queued) = st.refresh.status_queued.take() {
                 // Already out of date: show it, but leave the diff to the next read.

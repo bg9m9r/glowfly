@@ -109,7 +109,9 @@ pub fn compare(workdir: &Path, from: Oid, to: Oid) -> Result<Comparison> {
 }
 
 fn comparison(repo: &Repository, from: Oid, to: Oid) -> Result<Comparison> {
-    let files = file_entries(&trees_diff(repo, from, to, None)?);
+    let diff = trees_diff(repo, from, to, None)?;
+    let mut files = file_entries(&diff);
+    super::lfs_marks::mark_delta_files(repo, &diff, &mut files, false);
     let absent = absent_paths(repo, &files);
     Ok(Comparison { files, absent })
 }
@@ -118,7 +120,9 @@ fn comparison(repo: &Repository, from: Oid, to: Oid) -> Result<Comparison> {
 /// untracked files as 'A', renames as 'R' under the new path), plus which are missing from it.
 pub fn compare_workdir(workdir: &Path, oid: Oid) -> Result<Comparison> {
     let repo = Repository::open(workdir)?;
-    let files = file_entries(&workdir_diff(&repo, oid, None)?);
+    let diff = workdir_diff(&repo, oid, None)?;
+    let mut files = file_entries(&diff);
+    super::lfs_marks::mark_delta_files(&repo, &diff, &mut files, true);
     let absent = absent_paths(&repo, &files);
     Ok(Comparison { files, absent })
 }
@@ -178,7 +182,9 @@ pub(super) fn workdir_opts(path: &str) -> DiffOptions {
 pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     let repo = Repository::open(workdir)?;
     let c = repo.find_commit(oid)?;
-    let files = file_entries(&commit_diff(&repo, oid, None)?);
+    let diff = commit_diff(&repo, oid, None)?;
+    let mut files = file_entries(&diff);
+    super::lfs_marks::mark_delta_files(&repo, &diff, &mut files, false);
     let absent = absent_paths(&repo, &files);
     Ok(CommitDetail {
         oid,
@@ -227,6 +233,8 @@ pub struct ViewDiff {
     pub old: Option<Arc<OldText>>,
     /// The path's `linguist-language` gitattribute, raw (resolved by `highlight::SyntaxHint`).
     pub language: Option<String>,
+    /// The two sides when either is a Git LFS pointer (`lfs_marks::diff_change`).
+    pub lfs: Option<crate::lfs::pointer::LfsChange>,
 }
 
 /// `load_diff_with` plus the old file's text, for highlighting the hunks in context
@@ -243,10 +251,11 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     let repo = Repository::open(workdir)?;
     let path = target.path();
     let diff = target_diff(&repo, target, opts, None)?;
+    let lfs = with_old.then(|| super::lfs_marks::diff_change(&repo, target, &diff)).flatten();
     let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
-        return Ok(ViewDiff { diff: out, old: None, language: None });
+        return Ok(ViewDiff { diff: out, old: None, language: None, lfs });
     };
     out.binary = patch.delta().flags().is_binary();
     for h in 0..patch.num_hunks() {
@@ -264,7 +273,7 @@ fn load(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, with_old: bo
     // `patch` is still the first load's (the whole-file block's is scoped to it).
     let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
     let language = if with_old && !out.binary { super::attrs::linguist_language_for(&repo, target, path) } else { None };
-    Ok(ViewDiff { diff: out, old, language })
+    Ok(ViewDiff { diff: out, old, language, lfs })
 }
 
 /// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the

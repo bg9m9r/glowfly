@@ -77,7 +77,9 @@ pub fn change_rows_of(d: &FileDiff, s: &Settings, ex: &Expanded) -> Vec<usize> {
 /// Where a step of `dir` (1 next, -1 previous) from the open diff goes.
 pub fn step(st: &AppState, dir: isize) -> Step {
     let Some((target, d)) = st.diff.as_ref().filter(|_| dir != 0) else { return Step::End };
-    if let Some(row) = step_change(&change_rows_of(d, &st.settings, &st.view.diff_expanded), position(&st.view), dir) {
+    // The LFS summary shows instead of the rows: nothing to stop at inside the file.
+    let rows = if super::lfs_notes::summary(st).is_some() { Vec::new() } else { change_rows_of(d, &st.settings, &st.view.diff_expanded) };
+    if let Some(row) = step_change(&rows, position(&st.view), dir) {
         return Step::Row(row);
     }
     match next_file(st, target, dir) {

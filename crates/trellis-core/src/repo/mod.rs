@@ -41,6 +41,7 @@ mod graph_cache;
 mod history;
 mod history_forward;
 mod index;
+mod lfs_marks;
 mod lines;
 mod load;
 mod markers;
@@ -240,7 +241,7 @@ pub struct Snapshot {
     pub commit_template: Option<CommitTemplate>,
     /// The gitflow.* settings (Preferences > Git Flow, palette Start entries).
     pub gitflow: crate::gitflow::GitFlowConfig,
-    /// The LFS patterns of the root .gitattributes (empty without one); refreshed by full loads only.
+    /// The root .gitattributes' LFS patterns (empty without one); refreshed by full loads and whole status reads (`LoadMsg`).
     pub lfs_patterns: Vec<crate::lfs::LfsPattern>,
     pub state: RepositoryState,
     /// Where an in-progress rebase is (step, stopped commit); None otherwise. Read by every full

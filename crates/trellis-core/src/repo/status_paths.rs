@@ -21,7 +21,7 @@ pub struct PathsStatus {
     /// The paths actually read: requested ones NFC-normalized (core.precomposeunicode), widened to a
     /// submodule's or nested repository's root, de-duplicated, with any path below another dropped; sorted.
     pub covered: Vec<String>,
-    /// Unstaged rows under `covered`, sorted by path, twins marked, skip-worktree deletions and
+    /// Unstaged rows under `covered`, sorted by path, twins and LFS pointers marked, skip-worktree deletions and
     /// conflicted paths left out (conflicts change only through the index).
     pub unstaged: Vec<FileEntry>,
     pub state: git2::RepositoryState,
@@ -73,6 +73,7 @@ pub fn status_of_paths(workdir: &Path, paths: &[String], git_status: bool) -> Re
     rows.retain(|r| r.status != '!' && !(1..=3).any(|stage| index.get_path(Path::new(&r.path), stage).is_some()));
     // Marked as a whole read marks them (`status::mark_twins`), from the index scanned above.
     collide::mark(&mut rows, &twins, collide::folding(repo.path()), collide::ignorecase(&repo));
+    super::lfs_marks::mark_unstaged(&repo, &index, &mut rows);
     rows.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(Some(PathsStatus { covered, unstaged: rows, state: repo.state(), submodule_touched }))
 }

@@ -16,8 +16,9 @@ pub enum Change {
     None,
     /// Only some work-tree paths changed: re-read the unstaged rows under them.
     Paths,
-    /// The index, an ignore or attributes file changed, or events were lost: re-read the whole
-    /// status.
+    /// The index, an ignore or attributes file (any `.gitattributes`, or `info/attributes` in the
+    /// git dir or a linked worktree's common dir) changed, or events were lost: re-read the whole
+    /// status, which also re-reads the root `.gitattributes`' LFS patterns.
     Status,
     /// HEAD, refs or a merge/rebase state changed: reload everything.
     Full,
@@ -154,7 +155,7 @@ pub fn git_change(rel: &Path, touch: Touch) -> Change {
         ["HEAD" | "packed-refs" | "shallow" | "MERGE_HEAD" | "CHERRY_PICK_HEAD" | "REVERT_HEAD" | "REBASE_HEAD" | "BISECT_LOG"] => {
             Change::Full
         }
-        ["index"] | ["info", "exclude"] => Change::Status,
+        ["index"] | ["info", "exclude" | "attributes"] => Change::Status,
         // Remotes, upstreams and command-running settings. Another worktree's
         // `worktrees/<name>/config.worktree` falls through to None.
         ["config" | "config.worktree"] => Change::Full,
@@ -176,13 +177,15 @@ fn module_change(parts: &[&str]) -> Change {
 
 /// What a change to `rel`, a path in a linked worktree's common git dir, calls for: the refs
 /// it shares, its config and the main worktree's HEAD (which branch is checked out there) reload
-/// everything; the rest belongs to the main worktree (its index, its rebase, its
+/// everything; `info/attributes` re-reads the status; the rest belongs to the main worktree (its index, its rebase, its
 /// `config.worktree`) or to no one.
 pub fn common_change(rel: &Path) -> Change {
     let parts: Vec<&str> = rel.components().filter_map(|c| c.as_os_str().to_str()).collect();
     match parts.as_slice() {
         [.., last] if last.ends_with(".lock") => Change::None,
         ["refs", ..] | ["packed-refs"] | ["HEAD"] | ["config"] => Change::Full,
+        // Every worktree reads the common dir's attributes.
+        ["info", "attributes"] => Change::Status,
         _ => Change::None,
     }
 }

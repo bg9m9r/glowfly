@@ -114,7 +114,7 @@ fn adopt_requires_same_old_text() {
     assert!(old.is_some());
     runner::decorate_in_context("a.rs", None, &mut fresh, None, old.as_ref());
     assert!(hl(&fresh).is_pending());
-    let msg = Msg::Repo(RepoMsg::DiffLoaded { target: target(), reload: true, generation: st.diff_gen, result: Ok(fresh) });
+    let msg = Msg::Repo(RepoMsg::DiffLoaded { target: target(), reload: true, generation: st.diff_gen, result: Ok(fresh), lfs: None });
     let fx = update(&mut st, msg, Instant::now());
     assert!(hl(shown(&st)).is_pending(), "not adopted");
     assert_ne!(shown(&st).highlight, per_hunk);

@@ -38,6 +38,8 @@ pub enum RepoMsg {
         reload: bool,
         generation: u64,
         result: Result<FileDiff, String>,
+        /// The two sides when either is a Git LFS pointer (`repo::ViewDiff::lfs`); None on an error.
+        lfs: Option<trellis_core::lfs::pointer::LfsChange>,
     },
     StatsLoaded(Vec<(Oid, usize, usize, usize)>),
     /// Stats asked for but not worked out: a newer request came first (the graph scrolled on).
@@ -100,6 +102,8 @@ pub enum LoadMsg {
         open_stamp: Option<u64>,
         /// The status read was slow (`repo::SLOW_STATUS`), and what could speed it up.
         slow: Option<SlowStatus>,
+        /// The root .gitattributes' LFS patterns, read with a whole status; None for a read of some paths.
+        lfs_patterns: Option<Vec<trellis_core::lfs::LfsPattern>>,
     },
     StatusLoaded {
         generation: u64,
@@ -112,6 +116,8 @@ pub enum LoadMsg {
         open_stamp: Option<u64>,
         /// A whole read was slow (`repo::SLOW_STATUS`), and what could speed it up.
         slow: Option<SlowStatus>,
+        /// The root .gitattributes' LFS patterns, read with a whole status; None for a read of some paths.
+        lfs_patterns: Option<Vec<trellis_core::lfs::LfsPattern>>,
     },
     /// Turn on git's untracked cache for the active repository (the slow-status note's button),
     /// whose speed-ups were these when the note was shown.

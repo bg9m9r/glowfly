@@ -125,7 +125,8 @@ impl Recovery {
             Kind::LocalOp => Msg::Stage(StageMsg::LocalOpDone(Err(text))),
             Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(text) }),
             Kind::Status(generation) => {
-                Msg::Load(LoadMsg::StatusLoaded { generation, result: Err(text), submodules: None, open_stamp: None, slow: None })
+                let result = Err(text);
+                Msg::Load(LoadMsg::StatusLoaded { generation, result, submodules: None, open_stamp: None, slow: None, lfs_patterns: None })
             }
             Kind::Ssh(f) => Msg::Ssh(f.message(text)),
             Kind::Fork(f) => f.message(text),

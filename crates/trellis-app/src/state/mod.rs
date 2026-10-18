@@ -37,6 +37,7 @@ pub mod keys_page;
 pub mod known_folders;
 pub mod layout;
 pub mod lfs;
+pub mod lfs_notes;
 pub mod lines;
 pub mod logs;
 pub mod menu_bar;
@@ -336,8 +337,7 @@ pub struct AppState {
     pub blame: Option<blame::BlameView>,
     /// Incremented for every blame request and whenever the view closes (stale `Loaded` results are dropped).
     pub blame_gen: u64,
-    /// The open pull request panel; shown instead of a diff or the graph (below a conflict and
-    /// the file history).
+    /// The open pull request panel; shown instead of a diff or the graph (below a conflict and the file history).
     pub pull_request: Option<pull_request::PrView>,
     /// Incremented for every file-list request and whenever the panel closes.
     pub pull_request_gen: u64,
@@ -389,8 +389,8 @@ pub struct AppState {
     pub sign_in: sign_in::SignInNotices,
     /// Submodule updates after jobs and the offers made on open (global, not per tab).
     pub submodules: submodules::batch::SubmoduleSession,
-    /// Whether git-lfs is installed (global, not per tab): checked at startup and whenever Preferences > Git LFS reads its status.
-    pub lfs_install: lfs::LfsInstall,
+    /// Git LFS: whether git-lfs is installed and banner dismissals (global), the open diff's LFS summary (parked with the tab).
+    pub lfs: lfs::LfsSession,
     /// The git Trellis runs and what it can do (global): checked at startup.
     pub git: git_env::GitState,
     /// The theme files in the themes folder (global): read at startup and on Reload.
@@ -495,7 +495,7 @@ impl AppState {
             askpass: Default::default(),
             sign_in: Default::default(),
             submodules: Default::default(),
-            lfs_install: Default::default(),
+            lfs: Default::default(),
             git: Default::default(),
             themes: Default::default(),
             palette: None,

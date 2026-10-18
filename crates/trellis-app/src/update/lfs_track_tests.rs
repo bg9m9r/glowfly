@@ -60,26 +60,26 @@ fn status(version: Option<&str>) -> LfsStatus {
 fn detect_and_page_refresh() {
     let mut st = state();
     let fx = lfs(&mut st, LfsMsg::Detect);
-    assert_eq!(st.lfs_install, LfsInstall::Checking);
+    assert_eq!(st.lfs.install, LfsInstall::Checking);
     assert!(matches!(&fx[..], [Effect::DetectLfs { .. }]), "{fx:?}");
     lfs(&mut st, LfsMsg::Detected(Some("3.7.1".into())));
-    assert_eq!(st.lfs_install, installed());
+    assert_eq!(st.lfs.install, installed());
     lfs(&mut st, LfsMsg::Detected(None));
-    assert_eq!(st.lfs_install, LfsInstall::Missing);
+    assert_eq!(st.lfs.install, LfsInstall::Missing);
 
     let (mut st, dir) = open("lfs-track-detect");
     update(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)), Instant::now());
     let generation = st.prefs.as_ref().unwrap().lfs.generation;
     lfs(&mut st, LfsMsg::Loaded { generation, result: Ok(status(Some("3.7.1"))) });
-    assert_eq!(st.lfs_install, installed());
+    assert_eq!(st.lfs.install, installed());
     lfs(&mut st, LfsMsg::Reload);
     let generation = st.prefs.as_ref().unwrap().lfs.generation;
     lfs(&mut st, LfsMsg::Loaded { generation, result: Ok(status(None)) });
-    assert_eq!(st.lfs_install, LfsInstall::Missing);
+    assert_eq!(st.lfs.install, LfsInstall::Missing);
     lfs(&mut st, LfsMsg::Loaded { generation: generation - 1, result: Ok(status(Some("3.7.1"))) });
-    assert_eq!(st.lfs_install, LfsInstall::Missing, "a stale read changes nothing");
+    assert_eq!(st.lfs.install, LfsInstall::Missing, "a stale read changes nothing");
     lfs(&mut st, LfsMsg::Loaded { generation, result: Err("boom".into()) });
-    assert_eq!(st.lfs_install, LfsInstall::Missing, "a failed read changes nothing");
+    assert_eq!(st.lfs.install, LfsInstall::Missing, "a failed read changes nothing");
     cleanup(&dir);
 }
 
@@ -137,7 +137,7 @@ fn track_items_reasons() {
 #[test]
 fn track_path_starts_a_job() {
     let (mut st, dir) = open("lfs-track-path");
-    st.lfs_install = installed();
+    st.lfs.install = installed();
     let fx = lfs(&mut st, LfsMsg::TrackPath(TrackTarget::Folder("assets/**".into())));
     assert_eq!(git_cmds(&fx), Some(vec![args(&["lfs", "track", "--", "assets/**"])]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Track assets/** in LFS"));
@@ -147,7 +147,7 @@ fn track_path_starts_a_job() {
     cleanup(&dir);
 
     let (mut st, dir) = open("lfs-track-path-file");
-    st.lfs_install = installed();
+    st.lfs.install = installed();
     let fx = lfs(&mut st, LfsMsg::TrackPath(TrackTarget::File("a b.bin".into())));
     assert_eq!(git_cmds(&fx), Some(vec![args(&["lfs", "track", "--filename", "--", "a b.bin"])]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Track a b.bin in LFS"));
@@ -158,22 +158,22 @@ fn track_path_starts_a_job() {
 fn track_path_refusals() {
     let (mut st, dir) = open("lfs-track-refuse");
     let psd = || LfsMsg::TrackPath(TrackTarget::Extension("*.psd".into()));
-    st.lfs_install = LfsInstall::Missing;
+    st.lfs.install = LfsInstall::Missing;
     assert!(git_cmds(&lfs(&mut st, psd())).is_none());
     assert_eq!(last_log(&st), "Git LFS isn't installed.");
     for install in [LfsInstall::Checking, LfsInstall::Unknown] {
-        st.lfs_install = install;
+        st.lfs.install = install;
         assert!(git_cmds(&lfs(&mut st, psd())).is_none());
         assert_eq!(last_log(&st), "Still checking whether Git LFS is installed.");
     }
-    st.lfs_install = installed();
+    st.lfs.install = installed();
     st.snap.as_mut().unwrap().lfs_patterns = vec![pattern("*.psd")];
     assert!(git_cmds(&lfs(&mut st, psd())).is_none());
     assert_eq!(last_log(&st), "*.psd is already tracked.");
     assert!(st.job.is_none());
 
     let mut empty = state();
-    empty.lfs_install = installed();
+    empty.lfs.install = installed();
     assert!(lfs(&mut empty, psd()).is_empty(), "no repository open");
     cleanup(&dir);
 }
@@ -192,7 +192,7 @@ fn track_path_end_to_end() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::Lfs(LfsMsg::Detect));
-    assert!(matches!(st.lfs_install, LfsInstall::Installed(_)), "{:?}", st.lfs_install);
+    assert!(matches!(st.lfs.install, LfsInstall::Installed(_)), "{:?}", st.lfs.install);
     assert!(track_items("art/a.psd", TrackContext::of(&st))[1].blocked.is_none());
 
     drive(&mut st, Msg::Lfs(LfsMsg::TrackPath(TrackTarget::Extension("*.psd".into()))));

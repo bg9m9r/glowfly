@@ -46,7 +46,8 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
                 let result = repo::status_at(&path, k.git_status).map_err(err);
                 let slow = repo::slow(started.elapsed(), &path);
                 let submodules = repo::submodules_if_any(&path, k.submodules).ok().flatten();
-                return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow }));
+                let lfs_patterns = Some(trellis_core::lfs::root_patterns(&path));
+                return Some(Msg::Load(LoadMsg::RepoUnchanged { generation, result, submodules, open_stamp, slow, lfs_patterns }));
             }
             let result = match repo::load_cached(&path, &opts, graph_cache) {
                 Err(trellis_core::error::Error::NotOwned(root)) => return Some(git_env::not_owned(generation, kind, root)),

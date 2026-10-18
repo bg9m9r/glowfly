@@ -150,6 +150,7 @@ pub(super) fn changed_file_row(
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
         let r = ui.selectable_label(open == Some(&target), &f.path);
         super::path_warnings::mark(ui, f);
+        super::lfs_badge::badge(ui, f);
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::OpenDiff(target)));
         }

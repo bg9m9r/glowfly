@@ -249,6 +249,7 @@ pub(super) fn park(st: &mut AppState) -> Parked {
         diff_layout: st.settings.diff_layout,
         diff_mode: st.settings.diff_mode,
         diff_expanded: std::mem::take(&mut st.view.diff_expanded),
+        lfs_diff: st.lfs.diff.take(),
     }
 }
 
@@ -258,6 +259,7 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.selection = if st.snap.is_some() { p.selection } else { Selection::None };
     st.detail = p.detail;
     st.diff = p.diff;
+    st.lfs.diff = p.lfs_diff;
     // Diff results for this tab were dropped while it was parked: its hunks stay disabled
     // until the refresh that follows the switch reloads the diff.
     st.diff_gen += 1;

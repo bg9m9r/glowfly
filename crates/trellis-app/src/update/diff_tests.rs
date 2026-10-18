@@ -107,12 +107,15 @@ fn opening_a_diff_scrolls_to_top_but_reload_keeps_position() {
     st.view.diff_top_row = 7;
     let target = DiffTarget::Unstaged("g.txt".into());
     let generation = st.diff_gen;
-    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload: false, generation, result: Ok(three_hunks()) }));
+    run(
+        &mut st,
+        Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload: false, generation, result: Ok(three_hunks()), lfs: None }),
+    );
     assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (Some(0), 0));
 
     st.view.diff_scroll_to_row = None;
     st.view.diff_top_row = 7;
-    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: true, generation, result: Ok(three_hunks()) }));
+    run(&mut st, Msg::Repo(RepoMsg::DiffLoaded { target, reload: true, generation, result: Ok(three_hunks()), lfs: None }));
     assert_eq!((st.view.diff_scroll_to_row, st.view.diff_top_row), (None, 7));
 }
 
