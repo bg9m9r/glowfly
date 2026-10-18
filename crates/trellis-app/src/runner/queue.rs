@@ -111,7 +111,7 @@ fn route(rx: mpsc::Receiver<(PathBuf, Job)>, identify: Identify) {
 pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
     match effect {
         Effect::LocalOp { workdir, .. }
-        | Effect::RevertHunk { workdir, .. }
+        | Effect::Revert { workdir, .. }
         | Effect::RestoreFile { workdir, .. }
         | Effect::WorkFile { workdir, .. } => Some(workdir),
         Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
@@ -404,12 +404,14 @@ mod tests {
     #[test]
     fn every_effect_that_changes_a_repository_queues() {
         use crate::effect::{FileOp, LocalOp};
-        use trellis_core::repo::{DiffTarget, Hunk};
+        use trellis_core::repo::{DiffTarget, RevertPart, RevertRequest};
         let w = PathBuf::from("C:/r");
-        let hunk = Hunk { header: String::new(), lines: Vec::new() };
         let changing = [
             Effect::LocalOp { workdir: w.clone(), op: LocalOp::StageAll },
-            Effect::RevertHunk { workdir: w.clone(), target: DiffTarget::Commit(git2::Oid::zero(), "a".into()), index: 0, expected: hunk },
+            Effect::Revert {
+                workdir: w.clone(),
+                req: RevertRequest { target: DiffTarget::Commit(git2::Oid::zero(), "a".into()), part: RevertPart::File, dest: None },
+            },
             Effect::RestoreFile { workdir: w.clone(), oid: git2::Oid::zero(), path: "a".into(), overwrite: false },
             Effect::WorkFile { workdir: w.clone(), op: FileOp::Create("a".into()) },
             Effect::RunGit {

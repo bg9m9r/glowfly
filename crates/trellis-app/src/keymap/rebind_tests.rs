@@ -7,10 +7,11 @@ use super::*;
 use BindingId as I;
 use KeyName as K;
 
-const WHENS: [When; 13] = [
+const WHENS: [When; 14] = [
     When::Anywhere,
     When::NotTyping,
     When::WorkingDiff,
+    When::CommitDiff,
     When::DiffOrConflict,
     When::Message,
     When::Lists,
@@ -34,6 +35,8 @@ fn overlaps_is_symmetric() {
     assert!(When::Anywhere.overlaps(When::Message));
     assert!(!When::NotTyping.overlaps(When::Message));
     assert!(When::WorkingDiff.overlaps(When::DiffOrConflict));
+    assert!(When::CommitDiff.overlaps(When::NotTyping) && When::CommitDiff.overlaps(When::WorkingDiff));
+    assert!(When::CommitDiff.overlaps(When::DiffOrConflict) && !When::CommitDiff.overlaps(When::Message));
     assert!(When::InPalette.overlaps(When::PaletteStep));
     assert!(!When::Search.overlaps(When::Dialog));
     assert!(!When::Lists.overlaps(When::InPalette));

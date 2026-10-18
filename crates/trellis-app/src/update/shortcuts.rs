@@ -1,8 +1,9 @@
-//! The staging, commit-message and sheet keys. `ui/shortcuts/global.rs` matches the keys; this
-//! file decides whether each applies now and sends the message the buttons already use: S/U
-//! stage or unstage the open working-tree file (its selected lines, when a selection is
-//! visible), Ctrl+Shift+S/U stage or unstage everything, Ctrl+Shift+M goes to the commit
-//! message, and Ctrl+/ opens or closes the shortcut sheet (the default keys).
+//! The staging, revert, commit-message and sheet keys. `ui/shortcuts/global.rs` matches the
+//! keys; this file decides whether each applies now and sends the message the buttons already
+//! use: S/U stage or unstage the open working-tree file (its selected lines, when a selection is
+//! visible), R reverts the selected lines or the current hunk of a commit or comparison diff,
+//! Ctrl+Shift+S/U stage or unstage everything, Ctrl+Shift+M goes to the commit message, and
+//! Ctrl+/ opens or closes the shortcut sheet (the default keys).
 
 use crate::effect::Effect;
 use crate::keymap::KeyAction;
@@ -22,6 +23,7 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
     let msg = match action {
         KeyAction::Stage => stage_msg(st, true),
         KeyAction::Unstage => stage_msg(st, false),
+        KeyAction::RevertHunk => revert_msg(st),
         KeyAction::StageAll => st.snap.as_ref().is_some_and(|s| !s.unstaged.is_empty()).then_some(Msg::Stage(StageMsg::StageAll)),
         KeyAction::UnstageAll => st.snap.as_ref().is_some_and(|s| !s.staged.is_empty()).then_some(Msg::Stage(StageMsg::UnstageAll)),
         KeyAction::FocusMessage => {
@@ -62,6 +64,34 @@ fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
         }
         _ => None,
     }
+}
+
+/// What R does on the open commit or comparison diff: Revert lines when a selection is visible
+/// on it, else Revert Hunk on the current hunk (`diff_nav::current_hunk`). Nothing on a
+/// working-tree diff or under the conflict or blame view. Refusals (whitespace hidden, a reload
+/// on its way) are logged by the handlers.
+fn revert_msg(st: &mut AppState) -> Option<Msg> {
+    if st.conflict.is_some() || st.blame.is_some() {
+        return None;
+    }
+    let (target, _) = st.diff.as_ref()?;
+    if target.is_working_tree() {
+        return None;
+    }
+    let sel = &st.view.diff_lines;
+    if !sel.is_empty() && sel.target.as_ref() == Some(target) && st.line_ops_blocked().is_none() {
+        return Some(Msg::Stage(StageMsg::RevertLines));
+    }
+    let index = crate::state::diff_nav::current_hunk(st)?;
+    if let Some(why) = st.hunk_ops_blocked() {
+        st.log(false, why);
+        return None;
+    }
+    let Some(generation) = st.hunk_ops_gen() else {
+        st.log(false, "The diff changed before the revert ran, so nothing was changed. Try again on the updated diff.");
+        return None;
+    };
+    Some(Msg::Stage(StageMsg::RevertHunk { index, generation }))
 }
 
 /// Selects the WIP panel (when a repository is open) and has the commit box focus its summary

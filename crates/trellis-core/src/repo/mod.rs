@@ -44,6 +44,8 @@ mod resolve;
 mod resolve_undo;
 mod restore;
 mod revert;
+mod revert_file;
+mod revert_merge;
 mod rpath;
 mod shallow;
 mod snapshot_impl;
@@ -90,7 +92,7 @@ pub use removal::{Deleted, Removal, Trasher};
 pub use resolve::{Choice, render_output, resolve_with_side, write_partial_resolution, write_resolution};
 pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolved_paths};
 pub use restore::{RestoredFrom, restore_file};
-pub use revert::revert_hunk;
+pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};
 pub use status::{ChangeCounts, status_at};
 pub use status_merge::{covers, merge_unstaged};
 pub use status_paths::{CLI_PATH_BYTES, PathsStatus, status_of_paths};
@@ -367,6 +369,8 @@ mod resolve_undo_tests;
 mod restore_lfs_tests;
 #[cfg(test)]
 mod restore_tests;
+#[cfg(test)]
+mod revert_file_tests;
 #[cfg(test)]
 mod revert_tests;
 #[cfg(test)]

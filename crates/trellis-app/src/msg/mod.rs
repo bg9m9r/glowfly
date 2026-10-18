@@ -62,7 +62,7 @@ pub use stash::StashMsg;
 pub use tabs::{CloseRequest, TabsMsg};
 pub use trust::TrustMsg;
 pub use updates::{CheckedRelease, UpdateMsg};
-pub use work::{CommitMsg, JobMsg, StageMsg};
+pub use work::{CommitMsg, JobMsg, RevertWhat, StageMsg};
 
 pub enum Msg {
     /// Opening the repository, selecting a commit or the working tree, the open diff (update/repo.rs).

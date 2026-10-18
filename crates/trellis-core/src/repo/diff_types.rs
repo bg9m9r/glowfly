@@ -59,7 +59,7 @@ pub struct FileDiff {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LoadDiffOptions {
     /// Hide changes in the amount of whitespace and at line ends (git `-b --ignore-space-at-eol`).
-    /// Hunk indexes then no longer match `apply_hunk`, `apply_lines` or `revert_hunk`.
+    /// Hunk indexes then no longer match `apply_hunk`, `apply_lines` or `revert`.
     pub ignore_whitespace: bool,
     /// Also load the file with unlimited context into FileDiff::whole (the whole-file view).
     /// The normal hunks are loaded as always, so hunk indexes still match apply_hunk.

@@ -114,13 +114,24 @@ fn clicks_across_hunks_and_on_context() {
 }
 
 #[test]
-fn commit_diff_lines_not_selectable() {
-    let mut st = with_diff(DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()));
-    click(&mut st, 0, 1, Only);
-    click(&mut st, 0, 1, Range);
-    click(&mut st, 0, 1, Toggle);
-    assert_eq!(selected(&st), None);
-    // Nor without a diff.
+fn commit_diff_lines_are_selectable() {
+    for target in
+        [DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), DiffTarget::Between(git2::Oid::zero(), git2::Oid::zero(), "f.txt".into())]
+    {
+        let mut st = with_diff(target);
+        click(&mut st, 0, 1, Only);
+        assert_eq!(selected(&st), Some((0, vec![1])));
+        click(&mut st, 0, 4, Range);
+        assert_eq!(selected(&st), Some((0, vec![1, 2, 4])));
+        click(&mut st, 0, 2, Toggle);
+        assert_eq!(selected(&st), Some((0, vec![1, 4])));
+        // A commit diff's selection only feeds Revert lines: Stage, Unstage and Discard don't fit.
+        for op in [HunkOp::Stage, HunkOp::Unstage, HunkOp::Discard] {
+            assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(op))).is_empty());
+        }
+        assert_eq!(selected(&st), Some((0, vec![1, 4])));
+    }
+    // Nothing without a diff.
     let mut st = state();
     click(&mut st, 0, 1, Only);
     assert_eq!(selected(&st), None);

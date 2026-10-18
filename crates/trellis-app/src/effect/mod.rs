@@ -7,7 +7,7 @@ use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::askpass::Reply;
 use trellis_core::forge::{Account, Auth, NewRepo, Target};
-use trellis_core::repo::{DiffTarget, FileDiff, HistoryStart, Hunk, LoadOptions};
+use trellis_core::repo::{DiffTarget, FileDiff, HistoryStart, LoadOptions};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
 
@@ -118,13 +118,11 @@ pub enum Effect {
         paths: Vec<String>,
         purpose: ConflictRead,
     },
-    /// Applies the inverse of hunk `index` of `target` (a commit or comparison diff) to the
-    /// working tree only; refused if git's hunk is no longer `expected`.
-    RevertHunk {
+    /// Reverts part of a commit or comparison diff (a hunk, some of its lines, or the whole
+    /// file) in the working tree only (trellis_core::repo::revert).
+    Revert {
         workdir: PathBuf,
-        target: DiffTarget,
-        index: usize,
-        expected: Hunk,
+        req: trellis_core::repo::RevertRequest,
     },
     /// Writes `path` from commit `oid` (or its parent) into the working tree only.
     /// Without `overwrite`, refuses when the file's current contents would be lost.

@@ -178,3 +178,23 @@ fn esc_cancels_a_tab_drag() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[test]
+fn esc_in_file_history_clears_a_line_selection_first() {
+    use crate::msg::{DiffMsg, HistoryMsg};
+    use crate::state::history::FileHistoryView;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-history-lines");
+    st.history = Some(FileHistoryView::loading("README.md".into(), None));
+    st.view.diff_lines.target = Some(DiffTarget::Commit(git2::Oid::zero(), "README.md".into()));
+    st.view.diff_lines.lines.insert(1);
+    let mut h = app_harness(st);
+    h.run();
+    let msgs = esc(&mut h);
+    assert!(msgs.iter().any(|m| matches!(m, Msg::Diff(DiffMsg::ClearLineSelection))), "Esc drops the selection");
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::History(HistoryMsg::CloseFileHistory))), "and leaves the history open");
+    h.state_mut().0.view.diff_lines.clear();
+    let msgs = esc(&mut h);
+    assert!(msgs.iter().any(|m| matches!(m, Msg::History(HistoryMsg::CloseFileHistory))), "the next Esc closes the history");
+    drop(h);
+    remove_fixture(&dir);
+}

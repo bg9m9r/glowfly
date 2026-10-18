@@ -85,6 +85,19 @@ pub fn step(st: &AppState, dir: isize) -> Step {
     }
 }
 
+/// The hunk the Revert key acts on in the open diff, as a normal hunk index (also in the
+/// whole-file view): the change at or above where stepping continues from (the change last
+/// stepped to while on screen, else the top row), else the first one. `None` without changes.
+pub fn current_hunk(st: &AppState) -> Option<usize> {
+    let (_, d) = st.diff.as_ref()?;
+    let rows = change_rows_of(d, &st.settings, &st.view.diff_expanded);
+    if rows.is_empty() {
+        return None;
+    }
+    let i = rows.partition_point(|&r| r <= position(&st.view)).saturating_sub(1);
+    whole_file::hunk_of_change(d, st.settings.diff_mode, i)
+}
+
 /// The file after (`dir` 1) or before (-1) `from` in the list it came from; nothing wraps.
 pub fn next_file(st: &AppState, from: &DiffTarget, dir: isize) -> Option<DiffTarget> {
     if dir == 0 {

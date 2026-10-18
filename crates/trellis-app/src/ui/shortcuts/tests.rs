@@ -89,6 +89,24 @@ fn staging_keys() {
 }
 
 #[test]
+fn r_reverts_on_a_commit_or_comparison_diff() {
+    let commit = || diff(DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()));
+    let mut h = harness(commit(), false);
+    assert_eq!(press(&mut h, Modifiers::NONE, Key::R), [KeyAction::RevertHunk]);
+    let mut h = harness(diff(DiffTarget::Between(git2::Oid::zero(), git2::Oid::zero(), "f.txt".into())), false);
+    assert_eq!(press(&mut h, Modifiers::NONE, Key::R), [KeyAction::RevertHunk]);
+    let mut h = harness(unstaged(), false);
+    assert_eq!(press(&mut h, Modifiers::NONE, Key::R), [], "not on a working-tree diff");
+    let mut h = harness(commit(), true);
+    assert_eq!(press(&mut h, Modifiers::NONE, Key::R), [], "not while typing");
+    let mut st = commit();
+    st.modal =
+        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
+    let mut h = harness(st, false);
+    assert_eq!(press(&mut h, Modifiers::NONE, Key::R), [], "not under a dialog");
+}
+
+#[test]
 fn nothing_under_dialogs_or_the_palette() {
     let mut st = unstaged();
     st.modal =

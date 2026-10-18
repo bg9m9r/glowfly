@@ -1,5 +1,5 @@
 //! File actions added to file rows' context menus: the file's history and blame, restore a file from a commit (one commit's
-//! rows, or the rows comparing two selected commits), open it in its default program, the
+//! rows, or the rows comparing two selected commits) or revert that change to it, open it in its default program, the
 //! external editor or the external diff tool (or resolve it in the merge tool), show it in the
 //! file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
 //! for files in the working tree, track them in Git LFS, the Stash dialog's entries (the
@@ -47,6 +47,7 @@ pub(super) const STASH_STAGED: &str = "Stash staged changes…";
 pub(super) const STASH_FILE: &str = "Stash this file…";
 pub(super) const PATCH_FILE: &str = "Create patch from this file…";
 pub(super) const PATCH_STAGED: &str = "Create patch from staged changes…";
+pub(super) const REVERT_FILE: &str = "Revert changes to this file";
 
 /// Where a commit file row's change comes from.
 #[derive(Clone, Copy)]
@@ -92,6 +93,24 @@ fn between_restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, older: Oid, newe
     }
     if r.clicked() {
         msgs.push(Msg::Files(FilesMsg::RestoreFile { oid, path: f.path.clone(), deleted: false, confirmed: false, overwrite: false }));
+        ui.close_menu();
+    }
+}
+
+/// Revert changes to this file: undoes `target`'s change (a commit's, or between two commits) to
+/// the file in the working copy; disabled with the reason `blocked`.
+pub(super) fn revert_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, target: DiffTarget, blocked: Option<&str>) {
+    let hover = match target {
+        DiffTarget::Between(..) => "Undo the changes between these commits to the file in your working copy.",
+        _ => "Undo this commit's changes to the file in your working copy. The commit itself is not changed.",
+    };
+    let r = ui.add_enabled(blocked.is_none(), egui::Button::new(REVERT_FILE));
+    let r = match blocked {
+        Some(why) => r.on_disabled_hover_text(why),
+        None => r.on_hover_text(hover),
+    };
+    if r.clicked() {
+        msgs.push(Msg::Stage(StageMsg::RevertFile(target)));
         ui.close_menu();
     }
 }
@@ -155,7 +174,7 @@ fn lfs_submenu(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
 }
 
 /// Extra items for a commit's file row, or a row comparing two commits: separator, restore,
-/// (one commit's row) Create patch from this file… (disabled with `patch_blocked`), open items (disabled unless `in_workdir`; Open in external diff tool disabled with
+/// revert changes to this file (disabled unless `in_workdir`, or the file was deleted), (one commit's row) Create patch from this file… (disabled with `patch_blocked`), open items (disabled unless `in_workdir`; Open in external diff tool disabled with
 /// `diff_blocked`), separator and new file in this folder, then (only `in_workdir`) the Track
 /// in Git LFS submenu with `lfs`.
 #[allow(clippy::too_many_arguments)]
@@ -170,15 +189,18 @@ pub(super) fn commit_file_items(
     patch_blocked: Option<&str>,
 ) {
     ui.separator();
+    let revert_blocked = (!in_workdir && f.status != 'D').then_some(NOT_IN_WORKDIR);
     let target = match src {
         RowSource::Commit(oid) => {
             restore_item(ui, msgs, oid, &f.path, f.status);
+            revert_file_item(ui, msgs, DiffTarget::Commit(oid, f.path.clone()), revert_blocked);
             let m = Msg::Patch(PatchMsg::ExportFiles { oid, paths: vec![f.path.clone()] });
             menu_item_if(msgs, ui, PATCH_FILE, patch_blocked, m);
             DiffTarget::Commit(oid, f.path.clone())
         }
         RowSource::Between { older, newer } => {
             between_restore_item(ui, msgs, older, newer, f);
+            revert_file_item(ui, msgs, DiffTarget::Between(older, newer, f.path.clone()), revert_blocked);
             DiffTarget::Between(older, newer, f.path.clone())
         }
     };

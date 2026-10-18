@@ -117,6 +117,22 @@ pub(crate) fn build_patch(
     selected: &BTreeSet<usize>,
     reverse: bool,
 ) -> Option<Vec<u8>> {
+    let (pre, post) = images(lines, selected, reverse);
+    (pre != post).then(|| emit(path, target, pre_start, &pre, &post))
+}
+
+/// One line of a patch image: its text and its line ending (empty for a last line without one).
+pub(crate) type ImageLine<'a> = (&'a [u8], &'a [u8]);
+
+/// A hunk's region before and after the selected lines are applied, as (text, EOL) lines: `pre`
+/// is the side being patched (the old side going forward, the new side with `reverse`) and
+/// `post` is it with the selection applied. `lines` are the hunk's (origin, raw content) pairs
+/// from the forward diff.
+pub(crate) fn images<'a>(
+    lines: &[(char, &'a [u8])],
+    selected: &BTreeSet<usize>,
+    reverse: bool,
+) -> (Vec<ImageLine<'a>>, Vec<ImageLine<'a>>) {
     let mut kept: Vec<Line> = Vec::with_capacity(lines.len());
     let mut last_eol: &[u8] = b"\n";
     for (index, &(origin, content)) in lines.iter().enumerate() {
@@ -138,7 +154,7 @@ pub(crate) fn build_patch(
             last_eol = eol;
         }
     }
-    let pre: Vec<(&[u8], &[u8])> = kept.iter().filter(|l| l.role != Role::Add).map(|l| (l.text, l.eol)).collect();
+    let pre: Vec<ImageLine> = kept.iter().filter(|l| l.role != Role::Add).map(|l| (l.text, l.eol)).collect();
     let post_lines: Vec<&Line> = kept
         .iter()
         .filter(|l| match l.role {
@@ -149,12 +165,24 @@ pub(crate) fn build_patch(
         .collect();
     // Only the file's real last line may lack a newline; that line keeps its own state.
     let last = post_lines.len().saturating_sub(1);
-    let post: Vec<(&[u8], &[u8])> =
+    let post: Vec<ImageLine> =
         post_lines.iter().enumerate().map(|(i, l)| (l.text, if l.eol.is_empty() && i != last { l.fallback } else { l.eol })).collect();
-    if pre == post {
-        return None;
-    }
+    (pre, post)
+}
 
+/// A patch turning the whole of `old` into `new` (file contents in repository form), or `None`
+/// when they are the same. An empty `old` is patched from line 0.
+pub(crate) fn replace_patch(path: &str, target: Patched, old: &[u8], new: &[u8]) -> Option<Vec<u8>> {
+    let (pre, post) = (whole_image(old), whole_image(new));
+    (pre != post).then(|| emit(path, target, if old.is_empty() { 0 } else { 1 }, &pre, &post))
+}
+
+fn whole_image(content: &[u8]) -> Vec<ImageLine<'_>> {
+    content.split_inclusive(|&c| c == b'\n').map(split_eol).collect()
+}
+
+/// The patch text replacing the `pre` lines at line `pre_start` with the `post` lines.
+fn emit(path: &str, target: Patched, pre_start: u32, pre: &[ImageLine], post: &[ImageLine]) -> Vec<u8> {
     let a = quote_path(&format!("a/{path}"));
     let b = quote_path(&format!("b/{path}"));
     let mut out = format!("diff --git {a} {b}\n").into_bytes();
@@ -165,7 +193,7 @@ pub(crate) fn build_patch(
     let (n, m) = (pre.len() as u32, post.len() as u32);
     let post_start = if n == 0 { pre_start + 1 } else { pre_start };
     out.extend(format!("+++ {b}\n@@ -{pre_start},{n} +{post_start},{m} @@\n").bytes());
-    let mut emit = |sign: u8, (text, eol): (&[u8], &[u8])| {
+    let mut line = |sign: u8, &(text, eol): &ImageLine| {
         out.push(sign);
         out.extend_from_slice(text);
         if eol.is_empty() {
@@ -174,9 +202,9 @@ pub(crate) fn build_patch(
             out.extend_from_slice(eol);
         }
     };
-    pre.into_iter().for_each(|l| emit(b'-', l));
-    post.into_iter().for_each(|l| emit(b'+', l));
-    Some(out)
+    pre.iter().for_each(|l| line(b'-', l));
+    post.iter().for_each(|l| line(b'+', l));
+    out
 }
 
 /// Keeps the file's mode; an unknown one is a regular file.
@@ -285,6 +313,21 @@ mod tests {
         let lines = [(' ', "a\r\n"), ('+', "b\r\n"), ('+', "c\r\n")];
         let p = build(&lines, &[1], false, KEEP, 1).unwrap();
         assert_eq!(p, format!("{HEAD}@@ -1,1 +1,2 @@\n-a\r\n+a\r\n+b\r\n"));
+    }
+
+    fn replace(old: &str, new: &str) -> Option<String> {
+        replace_patch("f.txt", KEEP, old.as_bytes(), new.as_bytes()).map(|b| String::from_utf8(b).unwrap())
+    }
+
+    #[test]
+    fn replace_patch_whole_file() {
+        assert_eq!(replace("a\nb\n", "a\nb\n"), None);
+        assert_eq!(replace("", "a\nb\n").unwrap(), format!("{HEAD}@@ -0,0 +1,2 @@\n+a\n+b\n"));
+        assert_eq!(replace("a\nb\n", "a\n").unwrap(), format!("{HEAD}@@ -1,2 +1,1 @@\n-a\n-b\n+a\n"));
+        let nl = "\\ No newline at end of file\n";
+        assert_eq!(replace("a", "a\n").unwrap(), format!("{HEAD}@@ -1,1 +1,1 @@\n-a\n{nl}+a\n"));
+        assert_eq!(replace("a\n", "b").unwrap(), format!("{HEAD}@@ -1,1 +1,1 @@\n-a\n+b\n{nl}"));
+        assert_eq!(replace("a\r\nb\r\n", "a\r\n").unwrap(), format!("{HEAD}@@ -1,2 +1,1 @@\n-a\r\n-b\r\n+a\r\n"));
     }
 
     #[test]

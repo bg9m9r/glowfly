@@ -54,6 +54,8 @@ pub enum When {
     /// Anywhere while no text field has focus.
     NotTyping,
     WorkingDiff,
+    /// A diff of a commit or comparison (pull requests and File history included).
+    CommitDiff,
     DiffOrConflict,
     Message,
     Lists,
@@ -74,6 +76,7 @@ impl When {
         match self {
             When::Anywhere | When::NotTyping => None,
             When::WorkingDiff => Some("in a diff of uncommitted changes"),
+            When::CommitDiff => Some("in a diff of a commit or comparison"),
             When::DiffOrConflict => Some("in a diff or the conflict view"),
             When::Message => Some("in the commit message"),
             When::Lists => Some("in the graph and file history"),
@@ -95,7 +98,7 @@ impl When {
     /// overlaps only itself, `Anywhere` and `NotTyping`.
     pub fn overlaps(self, other: When) -> bool {
         use When as W;
-        let browsing = |w: When| matches!(w, W::NotTyping | W::WorkingDiff | W::DiffOrConflict | W::Lists | W::Blame | W::Graph);
+        let browsing = |w: When| matches!(w, W::NotTyping | W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Lists | W::Blame | W::Graph);
         let palette = |w: When| matches!(w, W::InPalette | W::PaletteStep);
         let panel = |a: When, b: When| a == W::RebasePanel && b == W::NotTyping;
         self == other
@@ -156,6 +159,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::BlamePrevRun, G::Navigation, "Previous commit in blame", &[C::shift(K::Letter('N'))], W::Blame),
     b(I::NextChange, G::Diff, "Next change or conflict", &[C::plain(K::F(7)), C::alt(K::Down)], W::DiffOrConflict),
     b(I::PrevChange, G::Diff, "Previous change or conflict", &[C::shift(K::F(7)), C::alt(K::Up)], W::DiffOrConflict),
+    b(I::RevertHunk, G::Diff, "Revert the hunk or the selected lines", &[C::plain(K::Letter('R'))], W::CommitDiff),
     fixed(
         I::CloseView,
         G::Diff,

@@ -42,6 +42,8 @@ struct Live {
     /// A text field has the keyboard.
     typing: bool,
     working_diff: bool,
+    /// A commit or comparison diff is open, with no conflict or blame view over it.
+    commit_diff: bool,
     /// A diff or the conflict view is open (and no blame view over it).
     stepping: bool,
     /// A loaded blame view is open.
@@ -64,6 +66,7 @@ impl Live {
             dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
             typing: ctx.wants_keyboard_input(),
             working_diff: st.diff.as_ref().is_some_and(|(t, _)| t.is_working_tree()),
+            commit_diff: st.blame.is_none() && st.conflict.is_none() && st.diff.as_ref().is_some_and(|(t, _)| !t.is_working_tree()),
             stepping: st.blame.is_none() && (st.conflict.is_some() || st.diff.is_some()),
             blame: st.blame.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
@@ -88,6 +91,7 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         I::FocusMessage => !covered && !l.sheet,
         I::StageAll | I::UnstageAll => !covered && !l.sheet && !l.typing,
         I::Stage | I::Unstage => !covered && !l.sheet && !l.typing && l.working_diff,
+        I::RevertHunk => !covered && !l.sheet && !l.typing && l.commit_diff,
         I::ToggleTerminal | I::ToggleLeftPanel | I::ToggleDetailsPanel | I::ToggleToolbar => !covered && !l.sheet,
         // Zoom works over everything (recording a key takes every press before this).
         I::ZoomIn | I::ZoomOut | I::ZoomReset => true,
@@ -146,6 +150,7 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let msg = match id {
         I::Stage => Msg::Shortcut(KeyAction::Stage),
         I::Unstage => Msg::Shortcut(KeyAction::Unstage),
+        I::RevertHunk => Msg::Shortcut(KeyAction::RevertHunk),
         I::StageAll => Msg::Shortcut(KeyAction::StageAll),
         I::UnstageAll => Msg::Shortcut(KeyAction::UnstageAll),
         I::FocusMessage => Msg::Shortcut(KeyAction::FocusMessage),

@@ -57,7 +57,8 @@ is going and [TODO.md](TODO.md) for the backlog.
   apply/pop/drop.
 - **Staging**: stage or unstage single files, whole lists, or individual hunks. You can discard a
   file or hunk. "Discard all" moves changes into a stash so they can be recovered. In a commit's
-  diff, Revert Hunk undoes that hunk in your working tree.
+  diff, Revert Hunk (R) undoes that hunk, or just the selected lines, in your working tree;
+  Revert changes to this file in a commit's file menu undoes the whole file.
 - **Commit**: summary with a 72-char counter, description, and amend. Runs through `git commit`,
   so hooks and GPG signing apply.
 - **Commit context menu**: create branch/tag here, checkout (detached), cherry-pick, revert,

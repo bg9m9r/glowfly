@@ -1,5 +1,6 @@
-//! The diff line selection for line-level staging: `+`/`-` lines of one hunk of a working-tree
-//! diff, picked with click, Shift-click (range) and Ctrl/Cmd-click (toggle).
+//! The diff line selection: `+`/`-` lines of one hunk of a diff (staging on working-tree diffs,
+//! Revert lines on commit and comparison diffs), picked with click, Shift-click (range) and
+//! Ctrl/Cmd-click (toggle).
 
 use std::collections::BTreeSet;
 use trellis_core::repo::{DiffTarget, FileDiff};
@@ -50,13 +51,10 @@ impl LineSelection {
         *self = Self::default();
     }
 
-    /// Applies a click on line `line` of hunk `hunk` in `diff`. Only working-tree diffs can be
-    /// selected; a plain click on any other line clears the selection, Shift or Ctrl on one does
-    /// nothing.
+    /// Applies a click on line `line` of hunk `hunk` in `diff` (any diff: working-tree, commit
+    /// or comparison). Only `+`/`-` lines can be selected; a plain click on any other line
+    /// clears the selection, Shift or Ctrl on one does nothing.
     pub fn click(&mut self, target: &DiffTarget, diff: &FileDiff, hunk: usize, line: usize, how: LineClick) {
-        if !target.is_working_tree() {
-            return;
-        }
         let Some(h) = diff.hunks.get(hunk) else { return };
         let changed = |i: usize| h.lines.get(i).is_some_and(|l| matches!(l.origin, '+' | '-'));
         if !changed(line) {

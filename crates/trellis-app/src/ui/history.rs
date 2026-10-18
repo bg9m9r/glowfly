@@ -114,8 +114,8 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
 }
 
 /// A history row's menu: View on graph, Copy commit SHA, Blame at this commit (not for the commit
-/// that deletes the file), then Restore for the entry's version
-/// and Open / Open in external editor / Show for `open_path` (the file as it is named today),
+/// that deletes the file), then Restore for the entry's version, Revert changes to this file
+/// (the entry's change, disabled unless `in_workdir` or the entry deleted the file) and Open / Open in external editor / Show for `open_path` (the file as it is named today),
 /// disabled unless `in_workdir`, with Open in external diff tool for the entry's change
 /// (disabled with `diff_blocked`).
 pub(super) fn entry_menu(
@@ -132,6 +132,9 @@ pub(super) fn entry_menu(
     menu_item_if(msgs, ui, BLAME_AT, deleted, Msg::Blame(BlameMsg::Open { path: e.path.clone(), at: Some(e.oid) }));
     ui.separator();
     file_menu::restore_item(ui, msgs, e.oid, &e.path, e.status);
+    // update/revert.rs maps an older name to `open_path`, which `in_workdir` is about.
+    let revert_blocked = (!in_workdir && e.status != 'D').then_some(file_menu::NOT_IN_WORKDIR);
+    file_menu::revert_file_item(ui, msgs, DiffTarget::Commit(e.oid, e.path.clone()), revert_blocked);
     let tool = file_menu::diff_item(DiffTarget::Commit(e.oid, e.path.clone()), diff_blocked);
     file_menu::open_items(ui, msgs, open_path, (!in_workdir).then_some(file_menu::NOT_IN_WORKDIR), Some(tool));
 }

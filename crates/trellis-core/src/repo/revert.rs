@@ -1,83 +1,214 @@
-//! Reverting a hunk of a commit or comparison diff: its inverse applied to the working tree only.
+//! Reverting part of a commit or comparison diff (a hunk, some of its lines, or the whole file)
+//! in the working tree only. The inverse patch is applied where the changed lines still are;
+//! when the file was edited since, the revert is merged with those edits instead
+//! (`revert_merge`), and conflicts are written as ordinary conflict markers.
 
-use super::diff::{file_patch, hunk_of, target_diff};
-use super::lines::{Patched, build_patch};
+use super::diff::{hunk_of, target_diff};
+use super::lines::{Patched, build_patch, images};
+use super::revert_merge::{Labels, merge_into_workdir, splice};
 use super::{DiffTarget, Hunk, LoadDiffOptions};
 use crate::error::{Error, Result};
-use git2::{ApplyLocation, Delta, Diff, ErrorCode, FileMode, Repository};
+use git2::{ApplyLocation, Delta, DiffDelta, ErrorCode, FileMode, Patch, Repository};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-/// Applies the inverse of hunk `hunk_index` of `target` (a commit or comparison diff, as
-/// `load_diff` shows it) to the working-tree file; the index and the commits are untouched.
-/// `expected` is the hunk as the user saw it: if git produces a different one now, the revert
-/// is refused as stale with `NotFound`. The hunk's lines are looked for in the working file
-/// near their original position, so lines inserted or removed above it since don't matter;
-/// if they are no longer there exactly, nothing is written.
-pub fn revert_hunk(workdir: &Path, target: &DiffTarget, hunk_index: usize, expected: &Hunk) -> Result<()> {
+/// What part of a target's change to a file to revert.
+#[derive(Clone, Debug, PartialEq)]
+pub enum RevertPart {
+    /// Hunk `index`, which must still be `expected`.
+    Hunk { index: usize, expected: Hunk },
+    /// Some lines of hunk `hunk`: `lines` index into its lines (as `load_diff` returns them),
+    /// and only `+`/`-` lines count.
+    Lines { hunk: usize, expected: Hunk, lines: Vec<usize> },
+    /// The target's whole change to the file (content only: renames and modes stay).
+    File,
+}
+
+/// A revert of part of a commit or comparison diff.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RevertRequest {
+    /// A `Commit` or `Between` target.
+    pub target: DiffTarget,
+    pub part: RevertPart,
+    /// The file's name in the working tree when it differs from `target.path()` (File history
+    /// after a rename).
+    pub dest: Option<String>,
+}
+
+/// How a revert went.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reverted {
+    /// The inverse patch applied as it was.
+    Applied,
+    /// The commit added the file and nothing else is left in it, so the file was removed.
+    Removed,
+    /// Merged cleanly with edits made since.
+    Merged,
+    /// Merged with edits made since, with conflict markers left in the file.
+    Conflicts,
+}
+
+/// The refusal when the working copy already has the change undone.
+pub const ALREADY_REVERTED: &str = "your working copy already has this change undone; nothing was changed";
+
+/// Reverts `req.part` of `req.target` in the working-tree file (`req.dest`, or the target's
+/// path); the index and the commits are untouched. A hunk or lines whose `expected` hunk git no
+/// longer produces is refused as stale with `NotFound`.
+pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
+    let target = &req.target;
     if target.is_working_tree() {
         return Err(Error::Unsupported("only hunks of a commit or comparison diff can be reverted".into()));
     }
     let repo = Repository::open(workdir)?;
     let path = target.path();
-    super::attrs::refuse_converted(&repo, path, "reverting")?;
-    // The same unfiltered diff, renames detected, that the viewer shows, so the index matches.
+    let work = req.dest.as_deref().unwrap_or(path);
+    if let Some(dest) = &req.dest
+        && super::exact::index(&repo)?.get_path(Path::new(dest), 0).is_none()
+    {
+        return Err(Error::NotFound(format!("{dest} is not tracked in the working tree")));
+    }
+    super::collide::refuse(workdir, work, "revert")?;
+    super::attrs::refuse_converted(&repo, work, "reverting")?;
+    // The same unfiltered diff, renames detected, that the viewer shows, so the hunks match.
     let diff = target_diff(&repo, target, LoadDiffOptions::default(), None)?;
-    let patch = file_patch(&diff, path)?.ok_or_else(|| Error::Unsupported("binary files can't be reverted by hunk".into()))?;
+    let no_changes = || Error::NotFound(format!("no changes in {path}"));
+    let idx = diff.deltas().position(|d| super::rpath::touches(&d, path)).ok_or_else(no_changes)?;
+    let delta = diff.get_delta(idx).ok_or_else(no_changes)?;
+    if req.dest.is_some() && delta.status() == Delta::Deleted {
+        return Err(Error::Unsupported("a file the commit deleted can't be brought back under another name".into()));
+    }
+    for m in [delta.old_file().mode(), delta.new_file().mode()] {
+        match m {
+            FileMode::Link => return Err(Error::Unsupported("symbolic links can't be reverted".into())),
+            FileMode::Commit => return Err(Error::Unsupported("submodules can't be reverted".into())),
+            _ => {}
+        }
+    }
+    // libgit2's own spelling of the working tree, so `blob_path` sees the file as inside it and
+    // runs the clean filters.
+    let root = repo.workdir().ok_or_else(|| Error::Unsupported("a bare repository has no working tree".into()))?;
+    let file = root.join(work);
+    if file.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink()) {
+        return Err(Error::Unsupported("symbolic links can't be reverted".into()));
+    }
+    let patch = Patch::from_diff(&diff, idx)?;
+    let ctx = Ctx { repo: &repo, work, file: &file, labels: Labels::of(target) };
+    match &req.part {
+        RevertPart::Hunk { index, expected } => lines_part(&ctx, &delta, patch, *index, expected, None),
+        RevertPart::Lines { hunk, expected, lines } => lines_part(&ctx, &delta, patch, *hunk, expected, Some(lines)),
+        RevertPart::File => super::revert_file::file_part(&ctx, &delta, patch),
+    }
+}
+
+/// What every part of a revert works with.
+pub(super) struct Ctx<'a> {
+    pub repo: &'a Repository,
+    /// The file's repository path in the working tree.
+    pub work: &'a str,
+    /// The working file.
+    pub file: &'a Path,
+    pub labels: Labels,
+}
+
+impl Ctx<'_> {
+    /// The mode the file has now (so a later chmod is not undone), else the delta's new mode.
+    pub fn mode(&self, delta: &DiffDelta<'_>) -> Result<u32> {
+        let indexed = super::exact::index(self.repo)?.get_path(Path::new(self.work), 0).map(|e| e.mode);
+        Ok(indexed.unwrap_or_else(|| raw(delta.new_file().mode())))
+    }
+
+    pub fn exists(&self) -> bool {
+        self.file.symlink_metadata().is_ok()
+    }
+
+    /// Applies a patch built for the working file.
+    pub fn apply(&self, bytes: &[u8]) -> std::result::Result<(), git2::Error> {
+        self.repo.apply(&git2::Diff::from_buffer(bytes)?, ApplyLocation::WorkDir, None)
+    }
+}
+
+pub(super) fn raw(m: FileMode) -> u32 {
+    i32::from(m) as u32
+}
+
+pub(super) fn missing() -> Error {
+    Error::NotFound("the file is not in the working tree (deleted or renamed since)".into())
+}
+
+pub(super) fn deleted_exists() -> Error {
+    Error::Other("the file exists in the working tree, so the version this commit deleted can't be restored over it".into())
+}
+
+/// Reverts hunk `index`: every changed line, or those of `lines`.
+fn lines_part(
+    ctx: &Ctx,
+    delta: &DiffDelta<'_>,
+    patch: Option<Patch<'_>>,
+    index: usize,
+    expected: &Hunk,
+    lines: Option<&Vec<usize>>,
+) -> Result<Reverted> {
+    let patch = patch.ok_or_else(|| Error::Unsupported("binary files can't be reverted by hunk".into()))?;
     let stale = || Error::NotFound("the diff changed; reopen it and try again".into());
-    if hunk_index >= patch.num_hunks() || hunk_of(&patch, hunk_index)? != *expected {
+    if index >= patch.num_hunks() || hunk_of(&patch, index)? != *expected {
         return Err(stale());
     }
-    let (hunk, count) = patch.hunk(hunk_index)?;
+    let (hunk, count) = patch.hunk(index)?;
     let mut content = Vec::with_capacity(count);
     for l in 0..count {
-        let line = patch.line_in_hunk(hunk_index, l)?;
+        let line = patch.line_in_hunk(index, l)?;
         content.push((line.origin(), line.content().to_vec()));
     }
-    let selected: BTreeSet<usize> = (0..content.len()).filter(|&i| matches!(content[i].0, '+' | '-')).collect();
-
-    let delta = patch.delta();
-    if delta.new_file().mode() == FileMode::Link || delta.old_file().mode() == FileMode::Link {
-        return Err(Error::Unsupported("symbolic links can't be reverted by hunk".into()));
+    let changed = |i: &usize| content.get(*i).is_some_and(|(o, _)| matches!(o, '+' | '-'));
+    let selected: BTreeSet<usize> = match lines {
+        None => (0..content.len()).filter(changed).collect(),
+        Some(l) => l.iter().copied().filter(changed).collect(),
+    };
+    if selected.is_empty() {
+        return Err(Error::NotFound("no changed lines selected".into()));
     }
-    let file = workdir.join(path);
-    let exists = file.symlink_metadata().is_ok();
-    let raw = |m: FileMode| i32::from(m) as u32;
-    let target_kind = if delta.status() == Delta::Deleted {
-        if exists {
-            return Err(Error::Other(
-                "the file exists in the working tree, so the version this commit deleted can't be restored over it".into(),
-            ));
-        }
-        Patched::Create(raw(delta.old_file().mode()))
-    } else {
-        if !exists {
-            return Err(Error::NotFound("the file is not in the working tree (deleted or renamed since)".into()));
-        }
-        // The mode the file has now, so a later chmod is not undone.
-        let mode = repo.index()?.get_path(Path::new(path), 0).map(|e| e.mode).unwrap_or_else(|| raw(delta.new_file().mode()));
-        Patched::Existing(mode)
-    };
+    let borrowed: Vec<(char, &[u8])> = content.iter().map(|(o, c)| (*o, c.as_slice())).collect();
 
-    let no_match = || {
-        Error::Other(
-            "the working copy no longer has this hunk's lines as the commit left them (edited since, or already reverted); \
-             nothing was changed"
-                .into(),
-        )
-    };
+    if delta.status() == Delta::Deleted {
+        if ctx.exists() {
+            return Err(deleted_exists());
+        }
+        let target = Patched::Create(raw(delta.old_file().mode()));
+        if let Some(bytes) = build_patch(ctx.work, target, hunk.new_start(), &borrowed, &selected, true) {
+            ctx.apply(&bytes)?;
+        }
+        return Ok(Reverted::Applied);
+    }
+    if !ctx.exists() {
+        return Err(missing());
+    }
+    let mode = ctx.mode(delta)?;
+    let added = delta.status() == Delta::Added;
+
     // libgit2 only matches a hunk at its stated line, so find where the lines are now.
     let pre: Vec<&[u8]> = content.iter().filter(|(o, _)| matches!(o, ' ' | '+')).map(|(_, c)| strip_eol(c.as_slice())).collect();
-    let start =
-        if pre.is_empty() { hunk.new_start() } else { locate(&std::fs::read(&file)?, &pre, hunk.new_start()).ok_or_else(no_match)? };
-
-    let borrowed: Vec<(char, &[u8])> = content.iter().map(|(o, c)| (*o, c.as_slice())).collect();
-    let Some(bytes) = build_patch(path, target_kind, start, &borrowed, &selected, true) else { return Ok(()) };
-    let inverse = Diff::from_buffer(&bytes)?;
-    match repo.apply(&inverse, ApplyLocation::WorkDir, None) {
-        Err(e) if e.code() == ErrorCode::ApplyFail => Err(no_match()),
-        r => Ok(r?),
+    let start = if pre.is_empty() { Some(hunk.new_start()) } else { locate(&std::fs::read(ctx.file)?, &pre, hunk.new_start()) };
+    if let Some(start) = start {
+        let Some(bytes) = build_patch(ctx.work, Patched::Existing(mode), start, &borrowed, &selected, true) else {
+            return Ok(Reverted::Applied);
+        };
+        match ctx.apply(&bytes) {
+            Ok(()) if added && std::fs::metadata(ctx.file).is_ok_and(|m| m.len() == 0) => {
+                crate::persist::remove_file(ctx.file)?;
+                return Ok(Reverted::Removed);
+            }
+            Ok(()) => return Ok(Reverted::Applied),
+            Err(e) if e.code() == ErrorCode::ApplyFail => {}
+            Err(e) => return Err(e.into()),
+        }
     }
+
+    // Edited since: merge the commit's version, reverted, with the working file.
+    let base_id = delta.new_file().id();
+    let base = ctx.repo.find_blob(base_id)?;
+    let (pre, post) = images(&borrowed, &selected, true);
+    let theirs = splice(base.content(), hunk.new_start(), &pre, &post).ok_or_else(stale)?;
+    merge_into_workdir(ctx, mode, base_id, &theirs, added)
 }
 
 fn strip_eol(line: &[u8]) -> &[u8] {

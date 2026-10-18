@@ -3,12 +3,13 @@
 //! two commits, and working-tree rows (a modified file, one whose file is gone, a conflicted
 //! one, and a staged new file present or gone, whose delete also unstages it). New file in this
 //! folder is enabled on every row. Open in external diff tool (Resolve in external merge tool
-//! on a conflicted row) is disabled until a tool is set. Clicks check the messages the items
+//! on a conflicted row) is disabled until a tool is set. Revert changes to this file needs the
+//! file in the working tree, unless the commit deleted it. Clicks check the messages the items
 //! send.
 
 use super::file_menu::{
-    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, OPEN_IN_DIFF_TOOL, OPEN_IN_EDITOR, RENAME, RESOLVE_IN_MERGE_TOOL, RowSource, SHOW_IN_FOLDER,
-    TRACK_IN_LFS, ToolItem, UNSTAGE_DELETE, commit_file_items, diff_item, wip_file_items,
+    DELETE, NEW_FILE_HERE, OPEN_DEFAULT, OPEN_IN_DIFF_TOOL, OPEN_IN_EDITOR, RENAME, RESOLVE_IN_MERGE_TOOL, REVERT_FILE, RowSource,
+    SHOW_IN_FOLDER, TRACK_IN_LFS, ToolItem, UNSTAGE_DELETE, commit_file_items, diff_item, wip_file_items,
 };
 use super::theme::{apply_theme, color};
 use crate::msg::FilesMsg;
@@ -156,6 +157,30 @@ fn file_menu_between_restores_the_right_commit() {
             matches!(&h.state()[..], [Msg::Files(FilesMsg::RestoreFile { oid: o, path, deleted: false, confirmed: false, overwrite: false })] if *o == want && path == "src/app.txt"),
             "{status}"
         );
+    }
+}
+
+#[test]
+fn revert_file_sends_the_row_target() {
+    use crate::msg::StageMsg;
+    let cases = [
+        (Menu::Commit { in_workdir: true }, DiffTarget::Commit(oid(), "src/app.txt".into())),
+        (Menu::Between { in_workdir: true }, DiffTarget::Between(oid(), newer(), "src/app.txt".into())),
+    ];
+    for (menu, want) in cases {
+        let mut h = harness(entry("src/app.txt", 'M'), menu, true);
+        h.run();
+        h.get_by_label(REVERT_FILE).click();
+        h.run();
+        assert!(matches!(&h.state()[..], [Msg::Stage(StageMsg::RevertFile(t))] if *t == want), "{want:?}");
+    }
+    // Not in the working tree: disabled, unless the commit deleted the file (it is brought back).
+    for (status, disabled) in [('M', true), ('A', true), ('D', false)] {
+        for menu in [Menu::Commit { in_workdir: false }, Menu::Between { in_workdir: false }] {
+            let mut h = harness(entry("src/app.txt", status), menu, true);
+            h.run();
+            assert_eq!(h.get_by_label(REVERT_FILE).is_disabled(), disabled, "{status}");
+        }
     }
 }
 

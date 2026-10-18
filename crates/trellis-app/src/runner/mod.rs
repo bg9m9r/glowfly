@@ -64,6 +64,7 @@ mod pull_request;
 mod queue;
 mod rebase;
 mod repos;
+mod revert;
 mod saves;
 mod signatures;
 mod sparse;
@@ -277,10 +278,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::LoadBlame(r) => Some(blame::load(r)),
         Effect::LocalOp { workdir, op } => Some(Msg::Stage(StageMsg::LocalOpDone(git_ops::local_op(&workdir, op).map_err(err)))),
         Effect::ReadConflictFiles { workdir, paths, purpose } => Some(conflict_files::read(&workdir, paths, purpose)),
-        Effect::RevertHunk { workdir, target, index, expected } => {
-            let result = repo::revert_hunk(&workdir, &target, index, &expected).map_err(err);
-            Some(Msg::Stage(StageMsg::HunkReverted { path: target.path().to_owned(), result }))
-        }
+        Effect::Revert { workdir, req } => Some(revert::run(&workdir, req)),
         Effect::RestoreFile { workdir, oid, path, overwrite } => Some(files::restore(&workdir, oid, path, overwrite)),
         Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op)),
         Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),

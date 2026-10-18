@@ -34,4 +34,6 @@ pub enum KeyAction {
     UnstageAll,
     FocusMessage,
     ToggleSheet,
+    /// Revert the selected lines, or the current hunk, of a commit or comparison diff.
+    RevertHunk,
 }

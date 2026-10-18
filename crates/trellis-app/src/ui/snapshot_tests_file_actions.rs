@@ -145,8 +145,17 @@ fn history_entry_menu() {
     assert!(matches!(&h.state()[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "src/app.txt"), "the current path");
     drop(h);
 
+    let mut h = menu_harness(history_entry('M'), true);
+    h.run();
+    h.get_by_label(super::file_menu::REVERT_FILE).click();
+    h.run();
+    let want = DiffTarget::Commit(e.oid, e.path.clone());
+    assert!(matches!(&h.state()[..], [Msg::Stage(crate::msg::StageMsg::RevertFile(t))] if *t == want), "the entry's change");
+    drop(h);
+
     let mut h = menu_harness(history_entry('M'), false);
     h.run();
+    assert!(h.get_by_label(super::file_menu::REVERT_FILE).is_disabled());
     assert!(h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(h.get_by_label(OPEN_IN_EDITOR).is_disabled());
     assert!(h.get_by_label(SHOW_IN_FOLDER).is_disabled());
@@ -155,6 +164,7 @@ fn history_entry_menu() {
     let mut h = menu_harness(history_entry('D'), true);
     h.run();
     assert!(h.get_by_label(BLAME_AT).is_disabled(), "the commit deletes the file");
+    assert!(!h.get_by_label(super::file_menu::REVERT_FILE).is_disabled(), "brings the deleted file back");
     h.get_by_label("Restore the deleted file…").click();
     h.run();
     assert!(

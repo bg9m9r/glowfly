@@ -2,7 +2,7 @@
 //! walk stopped.
 
 use git2::Oid;
-use trellis_core::repo::{FileHistory, HistoryEntry, Snapshot};
+use trellis_core::repo::{DiffTarget, FileHistory, HistoryEntry, Snapshot};
 
 #[derive(Clone, Debug)]
 pub struct FileHistoryView {
@@ -65,6 +65,13 @@ impl FileHistoryView {
         self.searched_until = h.searched_until;
         self.on_disk = h.on_disk;
         self.loading = false;
+    }
+
+    /// The working-tree name to revert `target` in when it is one of these entries under an
+    /// older name: the history's own `path`, which Open and Show already use. `None` otherwise.
+    pub fn revert_dest(&self, target: &DiffTarget) -> Option<String> {
+        let DiffTarget::Commit(oid, p) = target else { return None };
+        (*p != self.path && self.entries.iter().any(|e| e.oid == *oid && e.path == *p)).then(|| self.path.clone())
     }
 
     /// Whether the file is in the working tree under `path`: what status says when it lists the

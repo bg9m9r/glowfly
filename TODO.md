@@ -214,6 +214,11 @@ Done except the group colors, which wait on repository groups in the repository 
       highlighting item above)
   - [x] Revert a hunk of a commit diff into the working tree (Revert Hunk on commit, compare and
     File history diffs, Hunks and Whole-file views; off while whitespace is hidden)
+    - [x] Revert selected lines (line selection on commit, comparison and File history diffs)
+      and whole files (Revert changes to this file in commit, comparison and File history file
+      menus), R for the current hunk or the selected lines, the file's current name from File
+      history after a rename, an added file removed rather than left empty, and a three-way
+      merge with later edits (conflict markers when they overlap) instead of refusing
   - [x] Next/previous change continues to the next/previous changed file at either end
   - [x] Cache the computed diff rows instead of rebuilding them every frame
 - [x] **Line-level staging**
@@ -678,11 +683,7 @@ follow-ups go to Ideas, not here.
   whitespace-filtered diff back to the unfiltered one instead of disabling them
 - Keyboard access to fold rows (open the fold at or after the top row)
 - Fill in the unchanged lines between hunks in the hunk view
-- Remove the file, rather than leaving it empty, when reverting the hunk of a commit that added
-  it
 - Record a hunk revert in Trellis's undo history
-- Revert a whole file of a commit into the working tree (file-list context menu), and a
-  keyboard shortcut for Revert Hunk
 - Scroll the Unstaged/Staged, commit or comparison file list so the file opened by
   next/previous change is in view
 - Keep a next/previous step from being superseded when a status refresh reloads the old file
@@ -1027,13 +1028,13 @@ here, under the item they grew from.
 - Hunks / Whole file and Inline / Split toggles in the File history header, and a command or
   shortcut for the view mode toggle
 - Diff view vs file view toggle (plain file, or a rendered preview for Markdown/images)
-- Revert selected lines of a commit diff (line selection on commit diffs, then the partial
-  patch with only those lines, reversed)
 - Revert single lines in the whole-file view (needs whole-file line selection first)
-- Follow renames when reverting from File history: map a commit's older path to the file's
-  current name instead of refusing with "not in the working tree"
-- Fall back to a three-way merge (conflict markers) when the working file has moved on, instead
-  of refusing a hunk revert
+- Follow renames when reverting from commit and comparison diffs opened outside File history
+  (find the file's current name from HEAD)
+- A Revert changes to this file button in the commit diff header, next to Restore
+- Revert several selected files of a commit at once from the file list
+- Open the conflict view (or highlight the markers) after a revert left conflict markers
+- Revert selected lines across more than one hunk at a time
 - Next/previous change across entries in the File history view (step into the next or previous
   commit's diff of the file)
 - An optional wrap-around from the last changed file back to the first (with a notice)

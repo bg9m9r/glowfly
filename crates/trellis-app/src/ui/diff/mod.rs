@@ -1,6 +1,6 @@
 //! The diff viewer: one column (inline) or old and new side by side (split), showing the hunks
-//! or the whole file, with hunk- and line-level stage, unstage and discard, and Revert Hunk on
-//! commit diffs, and next/previous change navigation. In the whole-file view long unchanged
+//! or the whole file, with hunk- and line-level stage, unstage and discard, Revert Hunk and
+//! Revert lines on commit and comparison diffs, and next/previous change navigation. In the whole-file view long unchanged
 //! runs are folded into "N unchanged lines" rows that open in place when clicked; an opened
 //! run folds back from a control on its first line, and the header can open or close them all.
 //! With wrapping on, long lines continue on the next line and their rows grow to fit.
@@ -59,8 +59,8 @@ pub(super) struct DiffView<'a> {
     pub header_hl: Option<&'a DiffHighlight>,
     /// The diff's generation, or `None` while a reload is on its way (see `hunk_header`).
     pub hunk_gen: Option<u64>,
-    /// The line selection; `None` when lines can't be selected (commit diffs, the whole-file
-    /// view, or while hunk and line operations are blocked).
+    /// The line selection; `None` when lines can't be selected (the whole-file view, or while
+    /// hunk and line operations are blocked).
     pub sel: Option<&'a LineSelection>,
     /// Why hunk and line operations (including Revert Hunk) are off for reasons other than a
     /// pending reload (e.g. whitespace hidden).
@@ -149,7 +149,7 @@ fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll
 
 /// Draws the open diff's rows in the current layout and view mode (hunks, or the whole file
 /// when it loaded) and returns the first visible row and how many rows fit. Lines are
-/// selectable in working-tree diffs unless line operations are blocked.
+/// selectable in every diff unless line operations are blocked.
 fn rows(
     ui: &mut Ui,
     st: &AppState,
@@ -163,7 +163,7 @@ fn rows(
     // Highlighting always comes with the diff; the setting only decides whether to paint it.
     let hl = whole.map_or(diff.highlight.as_ref(), |w| w.diff.highlight.as_ref()).filter(|_| st.settings.syntax_highlighting);
     let header_hl = diff.highlight.as_ref().filter(|_| st.settings.syntax_highlighting);
-    let selectable = target.is_working_tree() && st.line_ops_blocked().is_none();
+    let selectable = st.line_ops_blocked().is_none();
     let sel = selectable.then_some(&st.view.diff_lines);
     let style = DiffStyle::new(&st.settings);
     let expanded = &st.view.diff_expanded;
@@ -191,14 +191,15 @@ fn rows(
 #[derive(Clone, Copy)]
 enum HunkButton {
     Op(HunkOp),
-    /// Apply the hunk's inverse to the working tree (commit and comparison diffs).
+    /// Apply the inverse of the hunk, or of its selected lines, to the working tree (commit and
+    /// comparison diffs).
     Revert,
 }
 
 /// A hunk header row: the `@@` line (its function context in syntax colors), plus its buttons
 /// pinned to the visible right edge so they stay in view when scrolled sideways: Stage /
 /// Unstage / Discard Hunk on working-tree diffs (or Stage / Unstage / Discard N lines when the
-/// hunk has selected lines), Revert Hunk on commit and comparison diffs. The buttons are
+/// hunk has selected lines), Revert Hunk (or Revert N lines) on commit and comparison diffs. The buttons are
 /// disabled while a reload is on its way (`hunk_gen` is `None`), since the hunk indexes may no
 /// longer match the file, and while `blocked` (whitespace hidden: the shown hunks aren't the
 /// ones the operations count).
@@ -218,20 +219,16 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     let small = TextStyle::Small.resolve(ui.style());
     let mut x = ui.clip_rect().right() - 8.0;
     for &b in buttons {
-        let label = match b {
-            HunkButton::Revert => "Revert Hunk".to_owned(),
-            HunkButton::Op(op) => {
-                let verb = match op {
-                    HunkOp::Stage => "Stage",
-                    HunkOp::Unstage => "Unstage",
-                    HunkOp::Discard => "Discard",
-                };
-                match selected {
-                    0 => format!("{verb} Hunk"),
-                    1 => format!("{verb} 1 line"),
-                    n => format!("{verb} {n} lines"),
-                }
-            }
+        let verb = match b {
+            HunkButton::Revert => "Revert",
+            HunkButton::Op(HunkOp::Stage) => "Stage",
+            HunkButton::Op(HunkOp::Unstage) => "Unstage",
+            HunkButton::Op(HunkOp::Discard) => "Discard",
+        };
+        let label = match selected {
+            0 => format!("{verb} Hunk"),
+            1 => format!("{verb} 1 line"),
+            n => format!("{verb} {n} lines"),
         };
         let text_w = ui.fonts(|f| f.layout_no_wrap(label.clone(), small.clone(), color::text()).size().x);
         let w = (text_w + 16.0).max(96.0);
@@ -247,12 +244,13 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
             .inner
             .on_disabled_hover_text(reason.unwrap_or_default());
         if let HunkButton::Revert = b {
-            button = button.on_hover_text(format!("Undo this change in your working copy of {path}. The commit itself is not changed."));
+            let what = if selected > 0 { "the selected changes" } else { "this change" };
+            button = button.on_hover_text(format!("Undo {what} in your working copy of {path}. The commit itself is not changed."));
         }
         let (true, Some(generation)) = (button.clicked(), v.hunk_gen) else { continue };
         let op = match b {
             HunkButton::Revert => {
-                msgs.push(Msg::Stage(StageMsg::RevertHunk { index: h, generation }));
+                msgs.push(Msg::Stage(if selected > 0 { StageMsg::RevertLines } else { StageMsg::RevertHunk { index: h, generation } }));
                 continue;
             }
             HunkButton::Op(op) => op,
@@ -314,8 +312,8 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
 }
 
 /// The diff's rows without the header bar, for views that embed a commit's diff of a file (the
-/// file history). Commit diffs have Revert Hunk buttons (off while whitespace is hidden) and no
-/// line selection.
+/// file history). Commit diffs have Revert Hunk buttons and line selection for Revert lines
+/// (both off while whitespace is hidden).
 pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
     {

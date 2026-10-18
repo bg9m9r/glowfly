@@ -17,7 +17,7 @@ impl Effect {
             Effect::LoadBlame(_) => "blame",
             Effect::LocalOp { .. } => "local-op",
             Effect::ReadConflictFiles { .. } => "conflict-files",
-            Effect::RevertHunk { .. } => "revert-hunk",
+            Effect::Revert { .. } => "revert",
             Effect::RestoreFile { .. } => "restore-file",
             Effect::WorkFile { .. } => "work-file",
             Effect::LoadTrackedPaths { .. } => "tracked-paths",
@@ -103,7 +103,7 @@ impl Effect {
             | Effect::LoadBlame(_)
             | Effect::LocalOp { .. }
             | Effect::ReadConflictFiles { .. }
-            | Effect::RevertHunk { .. }
+            | Effect::Revert { .. }
             | Effect::RestoreFile { .. }
             | Effect::WorkFile { .. }
             | Effect::LoadTrackedPaths { .. }

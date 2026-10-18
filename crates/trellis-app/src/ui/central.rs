@@ -20,7 +20,7 @@ use crate::state::AppState;
 use eframe::egui::{self, Key};
 
 /// Esc closes the innermost thing open: Preferences, the tour, the dashboard, the conflict view, the blame view, the
-/// file history, the diff (a line selection first), the pull request panel, the issue panel, the interactive
+/// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Git Flow panel, then a multi-selection, and
 /// finally the search bar. Dialogs (a credential prompt and the welcome included) and the command
 /// palette handle Esc themselves. In a text field Esc only leaves the field, and in the terminal it goes to the
@@ -48,6 +48,9 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.blame.is_some() {
         msgs.push(Msg::Blame(BlameMsg::Close));
+    } else if st.history.is_some() && !st.view.diff_lines.is_empty() {
+        // In File history too, Esc first drops a line selection of the entry's diff.
+        msgs.push(Msg::Diff(DiffMsg::ClearLineSelection));
     } else if st.history.is_some() {
         msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
     } else if st.diff.is_some() {

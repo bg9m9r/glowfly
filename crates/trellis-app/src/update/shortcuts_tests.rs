@@ -279,3 +279,52 @@ fn s_stages_the_open_file_end_to_end() {
     assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+fn revert_part(fx: &[Effect]) -> Option<&trellis_core::repo::RevertPart> {
+    match fx {
+        [Effect::Revert { req, .. }] => Some(&req.part),
+        _ => None,
+    }
+}
+
+#[test]
+fn r_reverts_the_current_hunk_or_the_lines() {
+    use trellis_core::repo::RevertPart;
+    let (mut st, dir) = with_repo("keys-revert", unstaged());
+    let commit = DiffTarget::Commit(st.snap.as_ref().unwrap().commits[0].oid, "f.txt".into());
+    st.diff = Some((commit.clone(), super::diff_tests::three_hunks().into()));
+    st.view.diff_visible_rows = 40;
+    let rows = crate::state::diff_nav::change_rows_of(&st.diff.as_ref().unwrap().1, &st.settings, &st.view.diff_expanded);
+    st.view.diff_top_row = rows[1];
+    assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 1, .. })));
+    st.view.diff_top_row = 0;
+    assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 0, .. })));
+    st.view.diff_cursor = Some(rows[1]);
+    assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 1, .. })), "the stepped-to change");
+    st.view.diff_cursor = None;
+
+    select_line(&mut st);
+    let fx = key(&mut st, KeyAction::RevertHunk);
+    assert!(matches!(revert_part(&fx), Some(RevertPart::Lines { hunk: 0, lines, .. }) if *lines == [2]), "{fx:?}");
+    assert!(st.log.is_empty());
+
+    st.conflict = Some(ConflictView::loading("f.txt".into()));
+    assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "under the conflict view");
+    st.conflict = None;
+    st.blame = Some(crate::state::blame::BlameView::loading("f.txt".into(), None));
+    assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "under the blame view");
+    st.blame = None;
+    st.diff = Some((unstaged(), one_hunk().into()));
+    assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "on a working-tree diff");
+    assert!(st.log.is_empty());
+
+    st.diff = Some((commit, one_hunk().into()));
+    st.settings.diff_ignore_whitespace = true;
+    assert!(key(&mut st, KeyAction::RevertHunk).is_empty());
+    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == crate::state::WHITESPACE_BLOCKS_REVERT));
+    st.settings.diff_ignore_whitespace = false;
+    st.diff_gen += 1;
+    assert!(key(&mut st, KeyAction::RevertHunk).is_empty());
+    assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("diff changed")), "a pending reload is logged");
+    let _ = std::fs::remove_dir_all(&dir);
+}

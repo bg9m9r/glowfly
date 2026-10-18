@@ -64,6 +64,7 @@ mod repo;
 mod repo_scan;
 mod repo_sync;
 mod repos;
+pub(crate) mod revert;
 mod search;
 mod search_paths;
 mod selection;
@@ -131,6 +132,8 @@ mod conflict_check_tests;
 mod conflict_files_tests;
 #[cfg(test)]
 mod conflict_tests;
+#[cfg(test)]
+mod current_hunk_tests;
 #[cfg(test)]
 mod deep_link_open_tests;
 #[cfg(test)]
@@ -293,6 +296,8 @@ mod remote_tests;
 mod repo_scan_tests;
 #[cfg(test)]
 mod repo_sync_tests;
+#[cfg(test)]
+mod revert_lines_tests;
 #[cfg(test)]
 mod revert_tests;
 #[cfg(test)]

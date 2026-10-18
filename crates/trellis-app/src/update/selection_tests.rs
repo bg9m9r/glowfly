@@ -294,12 +294,10 @@ fn two_commit_diff_end_to_end() {
     up(&mut st, stale);
     assert_eq!(st.diff.as_ref().map(|(t, _)| t), Some(&target));
 
-    // Lines of a diff between commits can't be selected.
+    // Lines of a diff between commits can be selected (for Revert lines).
     let line = diff.hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
-    for how in [LineClick::Only, LineClick::Toggle, LineClick::Range] {
-        up(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }));
-        assert!(st.view.diff_lines.is_empty());
-    }
+    up(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how: LineClick::Only }));
+    assert_eq!(st.view.diff_lines.count_in(&target, 0), 1);
     up(&mut st, Msg::Diff(DiffMsg::ClearLineSelection));
     assert!(st.view.diff_lines.is_empty());
     let _ = std::fs::remove_dir_all(&f.dir);

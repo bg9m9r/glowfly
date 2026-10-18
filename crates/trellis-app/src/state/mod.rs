@@ -129,7 +129,7 @@ pub const WHITESPACE_BLOCKS_REVERT: &str =
 
 /// Why selecting and applying single lines is refused in the whole-file view.
 pub const WHOLE_FILE_BLOCKS_LINE_OPS: &str =
-    "Line staging isn't available in the whole-file view yet. Switch to Hunks to stage single lines.";
+    "Line selection isn't available in the whole-file view yet. Switch to Hunks to stage, discard or revert single lines.";
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub enum Selection {
