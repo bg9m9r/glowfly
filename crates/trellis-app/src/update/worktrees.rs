@@ -8,6 +8,7 @@ use super::ops::{self, JobSpec};
 use super::worktree_manage as manage;
 use super::worktree_move;
 use crate::effect::Effect;
+use crate::state::trust::InheritKind;
 use crate::state::worktrees::{WorktreeForm, find, open_blocked, recheck, request};
 use crate::state::{AppState, Modal};
 use crate::worktree::{NewWorktree, WorktreeMsg};
@@ -122,9 +123,8 @@ fn folder_checked(st: &mut AppState, req: NewWorktree, result: Result<(), String
         then_open: req.open.then(|| (req.folder.clone(), crate::state::trust::Created::Worktree)),
         ..JobSpec::new("Create worktree".into(), vec![cmd])
     };
-    let before = fx.len();
-    ops::start_job(st, spec, fx);
-    if fx.len() > before {
+    if ops::start_job(st, spec, fx) == ops::Started::Now {
+        super::trust_inherit::expect(st, "Create worktree", InheritKind::Worktree, vec![req.folder.clone()]);
         close(st);
     }
 }

@@ -6,7 +6,7 @@ fn keys(s: &TrustScan) -> Vec<(&str, &str)> {
 }
 
 /// Writes an executable hook script `name` into `dir`.
-fn hook(dir: &Path, name: &str) {
+pub(super) fn hook(dir: &Path, name: &str) {
     std::fs::create_dir_all(dir).unwrap();
     let path = dir.join(name);
     std::fs::write(&path, "#!/bin/sh\nexit 0\n").unwrap();

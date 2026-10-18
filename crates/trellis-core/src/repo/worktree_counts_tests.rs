@@ -82,12 +82,12 @@ fn a_trusted_worktree_is_counted_through_git() {
     let wt = linked(&dir, "feat");
     dirty(&wt);
     git(&dir, &["config", "core.untrackedCache", "true"]);
-    let count = count_worktree(&wt, Some(RepoTrust::Trusted), COUNT_TIMEOUT);
+    let count = count_worktree(&wt, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
 
     let plain = crate::paths::temp_dir().join(format!("trellis-wtcount-plain-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
-    let none = count_worktree(&plain, Some(RepoTrust::Trusted), COUNT_TIMEOUT);
+    let none = count_worktree(&plain, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
     assert_eq!((none.read, none.changes), (ChangesRead::Counted, ChangeCounts::default()), "not a repository");
     cleanup(&[&wt, &dir, &plain]);
 }
@@ -100,12 +100,33 @@ fn a_worktree_not_trusted_never_runs_git() {
     let marker = dir.join("ran.txt");
     let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
     git(&dir, &["config", "core.fsmonitor", &hook]);
-    let count = count_worktree(&wt, Some(RepoTrust::NotTrusted), COUNT_TIMEOUT);
+    let count = count_worktree(&wt, Some(&SavedTrust { trust: RepoTrust::NotTrusted, print: None }), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     assert!(!marker.exists(), "no hook ran");
 
     // Trusting it lets git read it, so its hook runs.
-    let count = count_worktree(&wt, Some(RepoTrust::Trusted), COUNT_TIMEOUT);
+    let count = count_worktree(&wt, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
+    assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
+    assert!(marker.exists(), "git read it");
+    cleanup(&[&wt, &dir]);
+}
+
+#[test]
+fn a_trusted_worktree_that_gained_a_hook_since_is_counted_without_git() {
+    let dir = two_files("wtcount-stale");
+    let wt = linked(&dir, "feat");
+    dirty(&wt);
+    let before = crate::trust::scan_at(&wt).unwrap().print();
+    let marker = dir.join("ran.txt");
+    let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
+    git(&dir, &["config", "core.fsmonitor", &hook]);
+    let stale = SavedTrust::trusted(Some(before));
+    let count = count_worktree(&wt, Some(&stale), COUNT_TIMEOUT);
+    assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
+    assert!(!marker.exists(), "the decision doesn't cover the new hook, so git didn't run");
+
+    let now = SavedTrust::trusted(Some(crate::trust::scan_at(&wt).unwrap().print()));
+    let count = count_worktree(&wt, Some(&now), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     assert!(marker.exists(), "git read it");
     cleanup(&[&wt, &dir]);

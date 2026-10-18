@@ -4,7 +4,8 @@
 use super::{
     blame, clone, config, conflict_check, conflict_files, credentials, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks,
     git_env, git_ops, highlight, history, init, issues, journal, keys, line_counts, notify, onboarding, os, patches, path_search, profiles,
-    pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, updates, worktrees,
+    pull_request, rebase, repos, revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, trust, updates,
+    worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
@@ -202,6 +203,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Issue(e) => Some(issues::run(e)),
         Effect::Updates(e) => updates::run(e),
         Effect::Repos(e) => Some(repos::run(e)),
+        Effect::Trust(e) => Some(trust::run(e)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

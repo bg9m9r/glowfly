@@ -30,8 +30,8 @@ fn abs(rel: &str) -> PathBuf {
 fn syncs(fx: &[Effect]) -> Vec<(u64, usize, PathBuf, SyncOp, bool)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::Repos(ReposEffect::Sync { generation, index, path, op, trusted }) => {
-                Some((*generation, *index, path.clone(), *op, *trusted))
+            Effect::Repos(ReposEffect::Sync { generation, index, path, op, trust }) => {
+                Some((*generation, *index, path.clone(), *op, trust.as_ref().is_some_and(|t| t.is_trusted())))
             }
             _ => None,
         })
@@ -238,4 +238,39 @@ fn pulling_listed_repositories_runs_git_in_each() {
     assert_eq!(state_of(&lone), Some(RowState::Done(Outcome::NoRemotes)));
     assert!(work.join("b.txt").exists(), "fast-forwarded");
     assert_eq!(sync.summary(), "Pull of 2 repositories: 1 updated, 1 with nothing to pull.");
+}
+
+#[test]
+fn a_trusted_favorite_that_gained_a_command_since_is_skipped() {
+    let (work, _bare) = behind_origin("sync-stale-print");
+    let before = trellis_core::trust::scan_at(&work).unwrap().print();
+    git(&work, &["config", "core.sshCommand", "ssh-wrapper"]);
+    let mut st = state();
+    st.settings.favorite_repos = vec![trellis_core::paths::encode(&work)];
+    crate::state::trust::record_trusted(&mut st.settings, &work, before);
+    drive(&mut st, Msg::Repos(ReposMsg::StartSync { kind: SyncKind::Pull, scope: SyncScope::Favorites }));
+    let sync = st.repo_sync.as_ref().unwrap();
+    assert_eq!(sync.rows[0].state, RowState::Done(Outcome::Untrusted), "{:?}", sync.rows);
+    assert!(!work.join("b.txt").exists(), "nothing ran");
+}
+
+#[test]
+fn a_favorite_open_in_a_tab_uses_the_decision_where_the_tab_found_it() {
+    let mut st = with_favorites(&["linked"]);
+    // The tab opened the favorite and found it elsewhere on disk (a link).
+    st.tabs[0].path = Some(abs("linked"));
+    st.tabs[0].real = Some(abs("target"));
+    crate::state::trust::record(&mut st.settings, &abs("target"), RepoTrust::NotTrusted);
+    let fx = syncs(&start(&mut st, SyncKind::Fetch, SyncScope::Favorites));
+    assert!(fx.is_empty(), "{fx:?}");
+    assert_eq!(st.repo_sync.as_ref().unwrap().rows[0].state, RowState::Done(Outcome::Untrusted));
+
+    st.repo_sync = None;
+    let print = trellis_core::trust::TrustPrint(["0123456789abcdef".to_string()].into());
+    crate::state::trust::record_trusted(&mut st.settings, &abs("target"), print.clone());
+    let fx: Vec<_> = start(&mut st, SyncKind::Fetch, SyncScope::Favorites)
+        .into_iter()
+        .filter_map(|e| if let Effect::Repos(ReposEffect::Sync { trust, .. }) = e { Some(trust) } else { None })
+        .collect();
+    assert_eq!(fx, [Some(trellis_core::settings::SavedTrust::trusted(Some(print)))]);
 }

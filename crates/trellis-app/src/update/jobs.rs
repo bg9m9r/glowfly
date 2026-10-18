@@ -1,6 +1,7 @@
 //! Starting the single active job: busy check, the trust gate (update/trust.rs), and the
 //! RunningJob plus effect it runs (`begin_tool_job` for the merge tool, which skips the gate).
 
+use super::trust::Gate;
 use crate::effect::Effect;
 use crate::state::auto_stash::{AutoStashJob, Making};
 use crate::state::push_pr::PrStart;
@@ -114,6 +115,8 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     let (label, quiet) = (job.label.clone(), spec.quiet);
     // A fetch in the active repository can pause or resume its remotes' auto-fetch.
     let sign_in_cmds = if spec.cwd.is_none() { spec.cmds.clone() } else { Vec::new() };
+    // `git lfs install` adds settings and hooks the trust decision didn't see (trust_inherit.rs).
+    let lfs_install = spec.cwd.is_none() && spec.cmds.iter().any(|c| c.windows(2).any(|w| w[0] == "lfs" && w[1] == "install"));
     let (cmds, write_file, expect) = (spec.cmds, spec.write_file, spec.expect);
     let effect = move |cwd| Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect };
     let started = launch(st, job, spec.cwd, effect, fx);
@@ -126,6 +129,9 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     }
     if started == Started::Now {
         super::sign_in::job_started(st, quiet, &label, &sign_in_cmds);
+        if lfs_install {
+            super::trust_inherit::expect_lfs_install(st, &label);
+        }
     }
     started
 }
@@ -254,8 +260,10 @@ pub(super) fn finish_made(
     }
 }
 
-/// Makes `job` the active job (in the active tab) and pushes its effect for `cwd`, or the
-/// active tab's repository, unless one is running or git is held there (update/trust.rs).
+/// Makes `job` the active job and pushes its effect for `cwd`, or the active tab's repository,
+/// unless one is running or the trust gate of the repository it runs in holds or refuses it
+/// (update/trust.rs). A job for another repository than the active tab's (not a clone or an
+/// init) belongs to that repository (`RunningJob::workdir`).
 fn launch(
     st: &mut AppState,
     mut job: RunningJob,
@@ -266,10 +274,22 @@ fn launch(
     if busy(st, job.quiet) {
         return Started::No;
     }
+    let explicit = cwd.is_some();
     let Some(cwd) = cwd.or_else(|| st.workdir()) else { return Started::No };
-    job.workdir = st.workdir();
-    if super::trust::waits(st, &job, &cwd) {
-        return super::trust::hold(st, job, effect(cwd));
+    let makes = matches!(job.then_open, Some((_, Created::Clone | Created::Init)));
+    let active = st.snap.as_ref().is_some_and(|s| crate::state::tabs::is_repo_at(s, &cwd));
+    job.workdir = if explicit && !makes && !active { Some(cwd.clone()) } else { st.workdir() };
+    match super::trust::gate(st, &job, &cwd) {
+        Gate::Run => {}
+        Gate::Hold(prompt, elsewhere) => return super::trust::hold(st, job, effect(cwd), *prompt, elsewhere),
+        Gate::Refuse(why) => {
+            if job.quiet {
+                st.log_quiet(false, why);
+            } else {
+                st.log(false, why);
+            }
+            return Started::No;
+        }
     }
     st.job = Some(job);
     fx.push(effect(cwd));

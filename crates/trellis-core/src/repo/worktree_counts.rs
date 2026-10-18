@@ -6,7 +6,7 @@
 use super::status::ChangeCounts;
 use super::status_speed::SlowStatus;
 use super::worktrees::WorktreeInfo;
-use crate::settings::RepoTrust;
+use crate::settings::{RepoTrust, SavedTrust};
 use git2::Repository;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -109,17 +109,17 @@ fn plan(entries: u32, git_ok: bool, wants_git: bool) -> Plan {
 }
 
 /// Counts the worktree at `path`. Git reads it (within `timeout`) only when the worktree's own
-/// saved `decision` trusts it, or when there is none and nothing in it would run a program, as
-/// opening it in a tab would allow; otherwise libgit2 does, up to `NO_GIT_COUNT_INDEX` entries.
-/// One that can't be opened counts as clean.
-pub fn count_worktree(path: &Path, decision: Option<RepoTrust>, timeout: Duration) -> WorktreeCount {
+/// saved `decision` trusts it and its print covers what the worktree runs now, or when there is
+/// none and nothing in it would run a program, as opening it in a tab would allow
+/// (`trust::allows`); otherwise libgit2 does, up to `NO_GIT_COUNT_INDEX` entries. One that
+/// can't be opened counts as clean.
+pub fn count_worktree(path: &Path, decision: Option<&SavedTrust>, timeout: Duration) -> WorktreeCount {
     let done = |read, changes, slow| WorktreeCount { path: path.to_path_buf(), read, changes, slow };
     let Ok(repo) = Repository::open(path) else { return done(ChangesRead::Counted, ChangeCounts::default(), None) };
     let entries = index_entries(&repo.path().join("index")).unwrap_or(0);
     let git_ok = match decision {
-        Some(RepoTrust::Trusted) => true,
-        Some(RepoTrust::NotTrusted) => false,
-        None => crate::trust::scan(&repo).is_empty(),
+        Some(d) if d.trust == RepoTrust::NotTrusted => false,
+        d => crate::trust::allows(d, &crate::trust::scan(&repo)),
     };
     // From the config alone: `status::wants_git` would read the whole index to count it.
     let wants_git = repo.config().map(|c| super::status_speed::speedups_of(&c)).is_ok_and(|s| s.fsmonitor || s.untracked_cache);

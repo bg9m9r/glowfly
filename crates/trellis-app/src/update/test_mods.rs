@@ -381,10 +381,16 @@ pub(super) mod tool_compare_tests;
 pub(super) mod tools_tests;
 #[path = "trello_tests.rs"]
 pub(super) mod trello_tests;
+#[path = "trust_elsewhere_tests.rs"]
+pub(super) mod trust_elsewhere_tests;
 #[path = "trust_held_tab_tests.rs"]
 pub(super) mod trust_held_tab_tests;
 #[path = "trust_held_tests.rs"]
 pub(super) mod trust_held_tests;
+#[path = "trust_inherit_tests.rs"]
+pub(super) mod trust_inherit_tests;
+#[path = "trust_print_tests.rs"]
+pub(super) mod trust_print_tests;
 #[path = "trust_tests.rs"]
 pub(super) mod trust_tests;
 #[path = "undo_continue_tests.rs"]

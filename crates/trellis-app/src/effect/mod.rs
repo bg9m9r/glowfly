@@ -30,6 +30,7 @@ mod repos;
 mod scope;
 mod stash;
 mod submodule;
+mod trust;
 mod ui;
 mod updates;
 
@@ -50,6 +51,7 @@ pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts,
 pub use repos::ReposEffect;
 pub use stash::{PutBackRequest, StashEffect};
 pub use submodule::SubmoduleEffect;
+pub use trust::TrustEffect;
 pub use ui::UiEffect;
 pub use updates::UpdateEffect;
 
@@ -399,5 +401,7 @@ pub enum Effect {
     Updates(UpdateEffect),
     /// Finding repositories in project folders (runner/repos.rs); unscoped, reads folder listings only.
     Repos(ReposEffect),
+    /// Reads repositories just made from a trusted one, to trust them (runner/trust.rs; unscoped).
+    Trust(TrustEffect),
     Ui(UiEffect),
 }

@@ -91,6 +91,7 @@ impl Effect {
             | Effect::Dashboard(_)
             | Effect::Updates(_)
             | Effect::Repos(_)
+            | Effect::Trust(_)
             | Effect::Ui(_) => None,
         }
     }

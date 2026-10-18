@@ -24,7 +24,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     // Each worktree by its own decision, never the tab's: a linked worktree has its own config
     // and submodules, and opening it in a tab would hold git there too.
-    let targets = pending.iter().map(|w| (w.path.clone(), st.decision_for(&w.path))).collect();
+    let targets = pending.iter().map(|w| (w.path.clone(), st.saved_trust_for(&w.path))).collect();
     let request = CountRequest { workdir: snap.workdir.clone(), refs_key: snap.refs_key, targets };
     st.refresh.counting = Some(snap.refs_key);
     fx.push(Effect::CountWorktreeChanges(request));

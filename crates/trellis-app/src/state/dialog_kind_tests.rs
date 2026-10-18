@@ -93,6 +93,7 @@ fn forms_info_and_confirms_are_told_apart() {
         scan: Default::default(),
         refused: false,
         held: None,
+        gained: None,
     };
     let fork = ForkCreate {
         workdir: folder("app"),

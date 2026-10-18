@@ -56,9 +56,9 @@ binary (package `trellis`).
 | `conflict_pick.rs`, `conflict_edit.rs`, `conflict_restore.rs` | What each conflict chunk resolves to (whole sides, single lines in tick order, or text typed by hand) and the file that makes, with conflict markers left for the chunks not picked yet and the clean runs between them as edited (`render`, `render_picks`); the conflict view's output as editable text with each chunk's and clean run's range, and which one an edit of it falls in (`locate_edit`); the picks a saved file holds, read back against the stages (`conflict_restore.rs`). |
 | `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds; parse checkpoints a reload of the same file resumes from (`memo.rs`: content-defined chunks with their start and end states); whole files too (`highlight_file`, for blame). |
 | `repo_scan.rs` | Finding the Git repositories under project folders (the Find repositories dialog): a bounded breadth-first walk that reads only folder listings and `.git` entries, never follows links or junctions, and doesn't descend into a repository it found. |
-| `repo_sync.rs` | Fetching or pulling (fast-forward only) one listed repository that may not be open, never prompting: skipped when it has no remotes or upstream, or when its config or hooks run programs and it isn't trusted; tells "updated" from "up to date" by comparing its references before and after. |
+| `repo_sync.rs` | Fetching or pulling (fast-forward only) one listed repository that may not be open, never prompting: skipped when it has no remotes or upstream, or when its config or hooks run programs its trust decision doesn't cover; tells "updated" from "up to date" by comparing its references before and after. |
 | `watch.rs` | Which file changes in a repository matter, and the work-tree paths a change names (`Change::Paths`, at most `MAX_WATCH_PATHS` per burst). A submodule's HEAD or refs moving (in `<git dir>/modules/…` or a nested `.git` folder) reads the parent's whole status; their index, logs and objects don't count. `config` and `config.worktree` reload in full, as do a linked worktree's shared refs, packed-refs, HEAD and config in the common git dir. |
-| `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |
+| `trust.rs`, `trust/print.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load), and the print of a scan (one short hash per item) a Trusted decision is saved with, so a scan with anything new asks again (`trust::allows`). |
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
 | `commit_query.rs` | Commit search queries: author and path terms, matching rows, the author list. |
 | `path_query.rs` | Path terms of the commit search: folder, file name or glob, matched ignoring case and Unicode form. |
@@ -497,8 +497,11 @@ binary (package `trellis`).
    runner's `queue::repo_of` whether it is scoped to a tab and whether it changes the
    repository (both list every effect), and return it from `update`. An effect that runs git
    as the single active job starts through `start_job` or `begin_job` (`update/jobs.rs`),
-   which checks that no job is running and holds it for the trust prompt while git is held in
-   the repository (`update/trust.rs`), so check their `Started` result rather than `st.job`.
+   which checks that no job is running and gates it on the trust decision of the repository it
+   runs in, the active one or another (`trust::gate` in `update/trust.rs`): it may wait for the
+   trust prompt or be refused, so check their `Started` result rather than `st.job`. A job that
+   makes repositories from a trusted one (a worktree, submodules) says so after it starts
+   (`update/trust_inherit.rs`), and they are trusted when it succeeds.
 4. **Runner.** Execute it in `runner/mod.rs`, or in `runner/<area>.rs` for more than a line.
    The real work (git, files, HTTP) goes in `trellis-core`.
 5. **Result.** The runner sends a result message back. Handle it in the same `update` file.

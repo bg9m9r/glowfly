@@ -154,3 +154,26 @@ fn a_hasconfig_include_s_fsmonitor_hook_never_runs_untrusted() {
     assert!(marker.exists(), "git followed the include and ran the hook");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_trusted_load_runs_nothing_added_since_the_decision() {
+    let dir = scratch_repo("status-stale-print");
+    write(&dir, "a.txt", "a\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    git(&dir, &["config", "core.sshCommand", "ssh -v"]);
+    let first = load(&dir, &LoadOptions::all(100)).unwrap();
+    assert_eq!(first.trust_print, first.trust_scan.print());
+    let marker = dir.join("ran.txt");
+    let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
+    git(&dir, &["config", "core.fsmonitor", &hook]);
+
+    let stale = LoadOptions { trusted: true, trusted_print: Some(first.trust_print), ..LoadOptions::all(100) };
+    let snap = load(&dir, &stale).unwrap();
+    assert!(!marker.exists(), "the decision was made before the hook was set");
+    assert_eq!(snap.trust_print, snap.trust_scan.print());
+    let current = LoadOptions { trusted: true, trusted_print: Some(snap.trust_print), ..LoadOptions::all(100) };
+    load(&dir, &current).unwrap();
+    assert!(marker.exists(), "trusted with the hook in its print, git read the status");
+    let _ = std::fs::remove_dir_all(&dir);
+}

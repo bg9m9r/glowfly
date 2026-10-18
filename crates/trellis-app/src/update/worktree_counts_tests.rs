@@ -226,7 +226,7 @@ fn another_worktree_is_counted_by_its_own_trust_not_the_tab_s() {
         let fx = load_pending(st);
         let asked = counts(&fx);
         assert_eq!(asked.len(), 1, "{fx:?}");
-        assert_eq!(asked[0].targets[0].1, decision, "the worktree's own decision, not the tab's");
+        assert_eq!(asked[0].targets[0].1.as_ref().map(|t| t.trust), decision, "the worktree's own decision, not the tab's");
         let count = fx.into_iter().find(|e| matches!(e, Effect::CountWorktreeChanges(_))).unwrap();
         let done = runner::execute(count).expect("a result");
         update(st, done, Instant::now());

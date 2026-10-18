@@ -257,16 +257,10 @@ pub(super) fn fork_created(
     if let Err(p) = check_url(&url) {
         return st.log(false, p.message(false));
     }
-    let before = fx.len();
-    let spec =
-        JobSpec { cwd: Some(workdir.clone()), ..JobSpec::new(format!("Add remote {name}"), add_cmds(&name, &url, None, created.ready)) };
+    // It runs in the forked repository even if another tab is active now, as that repository's
+    // trust decision allows (update/trust.rs).
+    let spec = JobSpec { cwd: Some(workdir), ..JobSpec::new(format!("Add remote {name}"), add_cmds(&name, &url, None, created.ready)) };
     start_job(st, spec, fx);
-    // The job belongs to the forked repository even if another tab is active now.
-    if fx.len() > before
-        && let Some(job) = st.job.as_mut()
-    {
-        job.workdir = Some(workdir);
-    }
     if !created.ready {
         st.log(true, format!("{service} is still preparing the fork; fetch {name} in a minute."));
     }

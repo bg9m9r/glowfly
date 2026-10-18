@@ -175,9 +175,10 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     tags.reverse();
 
     // Git's own status read can run the repository's fsmonitor hook or filters: only once the
-    // user trusts it, or when nothing in it would run.
+    // user trusts it (and nothing was added since), or when nothing in it would run.
     let trust_scan = crate::trust::scan(&repo);
-    let git_status = opts.trusted || trust_scan.is_empty();
+    let trust_print = trust_scan.print();
+    let git_status = trust_scan.is_empty() || (opts.trusted && opts.trusted_print.as_ref().is_none_or(|p| p.covers(&trust_print)));
     let started = std::time::Instant::now();
     let (unstaged, staged) = super::status::load_status(&repo, git_status)?;
     let slow_status = super::status_speed::slow(started.elapsed(), &workdir);
@@ -267,6 +268,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         submodules,
         worktrees,
         trust_scan,
+        trust_print,
         shallow_roots,
         fetched_at,
         graph: graph::Layout::default(),

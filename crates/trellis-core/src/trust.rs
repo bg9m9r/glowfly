@@ -7,6 +7,9 @@
 use git2::{Config, ConfigLevel, Repository};
 use std::path::{Path, PathBuf};
 
+mod print;
+pub use print::{TrustPrint, allows};
+
 /// A setting from the repository's own config that makes git run a program.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConfigCommand {
@@ -286,7 +289,7 @@ pub(crate) fn is_hook_name(file: &str) -> bool {
 /// `name` as a case-insensitive file system may compare it: HFS+ ignorable code points
 /// dropped, uppercased character by character as NTFS does (so "ı" and "ſ" become "I" and "S"),
 /// then lowercased (so the Kelvin sign is "k"), and `.exe` dropped on Windows.
-fn hook_base(name: &str) -> String {
+pub(crate) fn hook_base(name: &str) -> String {
     let kept: String = name.chars().filter(|c| !crate::names::is_hfs_ignorable(*c)).collect();
     let upper: String = kept.chars().flat_map(char::to_uppercase).collect();
     let key = upper.to_lowercase();

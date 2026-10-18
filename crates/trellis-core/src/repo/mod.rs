@@ -309,6 +309,8 @@ pub struct Snapshot {
     pub worktrees: Vec<WorktreeInfo>,
     /// What in this repository's own config and hooks runs programs; read at every full load.
     pub trust_scan: crate::trust::TrustScan,
+    /// The print of `trust_scan` (`TrustScan::print`).
+    pub trust_print: crate::trust::TrustPrint,
     /// The commits where a shallow clone's history stops (their parents weren't downloaded), from the repository's shallow file; empty for a full clone. Refreshed by full loads only.
     pub shallow_roots: Vec<Oid>,
     /// When this worktree's repository last fetched (FETCH_HEAD's time, Unix seconds), read by
@@ -363,6 +365,9 @@ pub struct LoadOptions {
     /// The user trusts this repository: git may read its status even when the scan finds
     /// commands. Default false.
     pub trusted: bool,
+    /// What the trust decision was made on: with `trusted`, git reads the status only while it
+    /// covers the scan. None: a decision saved before prints were kept.
+    pub trusted_print: Option<crate::trust::TrustPrint>,
     /// Count other worktrees' uncommitted changes and give each changed one a WIP row in the graph.
     pub worktree_wips: bool,
 }

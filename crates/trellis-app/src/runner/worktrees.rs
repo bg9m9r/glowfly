@@ -23,7 +23,7 @@ pub(super) fn count(r: CountRequest) -> Msg {
     let counts = r
         .targets
         .iter()
-        .map(|(path, decision)| trellis_core::repo::count_worktree(path, *decision, trellis_core::repo::COUNT_TIMEOUT))
+        .map(|(path, decision)| trellis_core::repo::count_worktree(path, decision.as_ref(), trellis_core::repo::COUNT_TIMEOUT))
         .collect();
     Msg::Worktree(WorktreeMsg::ChangesCounted { refs_key: r.refs_key, counts })
 }

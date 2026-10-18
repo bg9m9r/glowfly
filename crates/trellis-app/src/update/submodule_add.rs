@@ -4,6 +4,7 @@
 use super::ops::{self, JobSpec, Started};
 use crate::effect::{Effect, SubmoduleEffect};
 use crate::state::submodules::add::{AddForm, Disk, TAB_GONE, job_label};
+use crate::state::trust::InheritKind;
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -61,7 +62,9 @@ pub(super) fn submit(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let cmd = add_cmd(&req.url, &req.path, req.branch.as_deref());
-    if ops::start_job(st, JobSpec::new(job_label(&req.path), vec![cmd]), fx) == Started::Now {
+    let (label, folder) = (job_label(&req.path), super::submodules::folder_of(&form.repo, &req.path));
+    if ops::start_job(st, JobSpec::new(label.clone(), vec![cmd]), fx) == Started::Now {
+        super::trust_inherit::expect(st, &label, InheritKind::Submodule, vec![folder]);
         close(st);
     }
 }

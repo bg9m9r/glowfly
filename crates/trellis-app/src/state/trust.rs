@@ -1,15 +1,17 @@
 //! Repository trust: whether Trellis may let git run the programs a repository's own config and
 //! hooks name without asking (auto-fetch, hosting-service sign-in, git's own status read). The
-//! decisions live in `Settings::repo_trust`; the scan comes with each full load
-//! (`Snapshot::trust_scan`). A git job the user starts while git is held waits here as the
-//! session's held job until they decide. Pure rules only; update/trust.rs asks and records.
+//! decisions live in `Settings::repo_trust`, each Trusted one with the print of the scan it was
+//! made on (`Settings::repo_trust_prints`); the scan comes with each full load
+//! (`Snapshot::trust_scan`), and a scan the print doesn't cover asks again. A git job the user
+//! starts while git is held waits here as the session's held job until they decide. Pure rules
+//! only; update/trust.rs asks and records.
 
 use super::AppState;
 use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
 use std::path::{Path, PathBuf};
 use trellis_core::repo::Snapshot;
-use trellis_core::settings::{RepoTrust, Settings, repo_keys};
-use trellis_core::trust::TrustScan;
+use trellis_core::settings::{RepoTrust, SavedTrust, Settings, repo_keys};
+use trellis_core::trust::{TrustPrint, TrustScan};
 
 /// How a repository Trellis is about to open came to be.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -18,7 +20,8 @@ pub enum Created {
     Clone,
     /// Made by `git init` from Trellis: trusted when it first opens, if git made a new one.
     Init,
-    /// A linked worktree Trellis created: it has its own decision, like any other repository.
+    /// A linked worktree Trellis created: it has its own decision, like any other repository,
+    /// trusted when it was made from a trusted repository (update/trust_inherit.rs).
     Worktree,
 }
 
@@ -33,6 +36,8 @@ pub enum Standing {
     Undecided,
     /// The user said not to trust it.
     NotTrusted,
+    /// Trusted earlier, but its settings or hooks gained something since; held like Undecided.
+    Changed,
 }
 
 /// What this session remembers about trust.
@@ -44,6 +49,34 @@ pub struct TrustSession {
     pub created: Vec<PathBuf>,
     /// The job waiting for the open trust prompt.
     pub held: Option<HeldJob>,
+    /// What the running job makes from a trusted repository, to be trusted once it succeeds.
+    pub inherit: Option<Inherit>,
+    /// The running `git lfs install` job's label and its repository's real path: once it
+    /// succeeds, that repository's next full load adopts its new print (`adopt_next`).
+    pub lfs_install: Option<(String, PathBuf)>,
+    /// A repository (real path) whose next full load adopts its new print without asking.
+    pub adopt_next: Option<PathBuf>,
+}
+
+/// Repositories a running job makes from the trusted repository `from` (update/trust_inherit.rs).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Inherit {
+    /// The job's label.
+    pub label: String,
+    pub kind: InheritKind,
+    /// `Snapshot::real_workdir` of the repository they are made from.
+    pub from: PathBuf,
+    /// The folders that become repositories.
+    pub paths: Vec<PathBuf>,
+}
+
+/// What kind of repository is made from a trusted one.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum InheritKind {
+    /// A linked worktree: trusted only while what it runs is in the source's print.
+    Worktree,
+    /// A submodule checked out for the first time: trusted like a clone Trellis made.
+    Submodule,
 }
 
 /// A job the user started while git was held in its repository: it runs if they trust it
@@ -55,6 +88,9 @@ pub struct HeldJob {
     pub name: String,
     pub job: super::RunningJob,
     pub effect: crate::effect::Effect,
+    /// The job runs in a repository other than the active tab's: it may run whichever tab is
+    /// active.
+    pub elsewhere: bool,
 }
 
 /// The "Trust this repository?" dialog.
@@ -70,17 +106,25 @@ pub struct TrustPrompt {
     pub refused: bool,
     /// The label of the job the user started that waits for this decision.
     pub held: Option<String>,
+    /// For a repository trusted earlier (`Standing::Changed`): what its scan gained since.
+    pub gained: Option<TrustScan>,
 }
 
 /// The prompt for the loaded repository `snap`.
 pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
+    let standing = standing(s, snap);
+    let gained = match (standing, saved_for(s, snap).and_then(|t| t.print)) {
+        (Standing::Changed, Some(print)) => Some(snap.trust_scan.gained_since(&print)),
+        _ => None,
+    };
     TrustPrompt {
         name: snap.name.clone(),
         workdir: snap.workdir.clone(),
         real: snap.real_workdir.clone(),
         scan: snap.trust_scan.clone(),
-        refused: standing(s, snap) == Standing::NotTrusted,
+        refused: standing == Standing::NotTrusted,
         held: None,
+        gained,
     }
 }
 
@@ -91,20 +135,34 @@ pub fn recorded(s: &Settings, path: &Path) -> Option<RepoTrust> {
     repo_keys::get(&s.repo_trust, path).copied()
 }
 
-/// Saves `t` for the repository at `real`, replacing a decision saved under another spelling.
+/// Saves `t` for the repository at `real`, replacing a decision saved under another spelling,
+/// with no print: a Trusted one adopts the print of its next full load.
 pub fn record(s: &mut Settings, real: &Path, t: RepoTrust) {
-    repo_keys::set(&mut s.repo_trust, real, Some(t));
+    s.set_trust(real, Some(SavedTrust { trust: t, print: None }));
+}
+
+/// Saves Trusted for the repository at `real`, made on a scan whose print is `print`.
+pub fn record_trusted(s: &mut Settings, real: &Path, print: TrustPrint) {
+    s.set_trust(real, Some(SavedTrust::trusted(Some(print))));
+}
+
+/// The decision saved for the loaded repository `snap`, under its real path or as opened.
+fn saved_for(s: &Settings, snap: &Snapshot) -> Option<SavedTrust> {
+    s.saved_trust(&snap.real_workdir).or_else(|| s.saved_trust(&snap.workdir))
 }
 
 /// Where the loaded repository `snap` stands.
 pub fn standing(s: &Settings, snap: &Snapshot) -> Standing {
-    let saved = recorded(s, &snap.real_workdir).or_else(|| recorded(s, &snap.workdir));
-    standing_of(saved, snap.trust_scan.is_empty())
+    let saved = saved_for(s, snap);
+    let covered = saved.as_ref().and_then(|t| t.print.as_ref()).is_none_or(|p| p.covers(&snap.trust_print));
+    standing_of(saved.map(|t| t.trust), snap.trust_scan.is_empty(), covered)
 }
 
-/// `standing` from the saved decision and whether the scan found nothing.
-pub fn standing_of(saved: Option<RepoTrust>, clean: bool) -> Standing {
+/// `standing` from the saved decision, whether the scan found nothing, and whether the
+/// decision's print covers the scan (true without a print).
+pub fn standing_of(saved: Option<RepoTrust>, clean: bool, covered: bool) -> Standing {
     match saved {
+        Some(RepoTrust::Trusted) if !covered => Standing::Changed,
         Some(RepoTrust::Trusted) => Standing::Trusted,
         Some(RepoTrust::NotTrusted) => Standing::NotTrusted,
         None if clean => Standing::Clean,
@@ -118,10 +176,10 @@ impl AppState {
         self.snap.as_ref().map(|snap| standing(&self.settings, snap))
     }
 
-    /// Whether git is held in the active repository (Undecided or NotTrusted): the toolbar
-    /// shows the Untrusted chip and the palette offers to review it.
+    /// Whether git is held in the active repository (Undecided, NotTrusted or Changed): the
+    /// toolbar shows the Untrusted chip and the palette offers to review it.
     pub fn held(&self) -> bool {
-        matches!(self.trust_standing(), Some(Standing::Undecided | Standing::NotTrusted))
+        matches!(self.trust_standing(), Some(Standing::Undecided | Standing::NotTrusted | Standing::Changed))
     }
 
     /// Whether Trellis may run git in the active repository without being asked (Trusted or
@@ -131,18 +189,23 @@ impl AppState {
     }
 
     /// Whether the user trusts the repository at `workdir` (as given, or where the active tab
-    /// found it on disk).
+    /// found it on disk). False while the active repository is that one and gained settings or
+    /// hooks since it was trusted (`Standing::Changed`).
     pub fn trusts(&self, workdir: &Path) -> bool {
         let tab_real = self.tabs.get(self.active_tab).filter(|t| t.is(workdir)).and_then(|t| t.real.as_deref());
-        let snap_real = self.snap.as_ref().filter(|s| super::tabs::is_repo_at(s, workdir)).map(|s| s.real_workdir.as_path());
+        let snap = self.snap.as_ref().filter(|s| super::tabs::is_repo_at(s, workdir));
+        if snap.is_some_and(|s| standing(&self.settings, s) == Standing::Changed) {
+            return false;
+        }
+        let snap_real = snap.map(|s| s.real_workdir.as_path());
         [Some(workdir), tab_real, snap_real].into_iter().flatten().any(|p| recorded(&self.settings, p) == Some(RepoTrust::Trusted))
     }
 
-    /// The decision saved for the repository at `workdir` itself, as given or where a tab
-    /// showing it found it on disk. Unlike `trusts`, a NotTrusted record counts too.
-    pub fn decision_for(&self, workdir: &Path) -> Option<RepoTrust> {
+    /// The decision saved for the repository at `workdir` itself, with its print, as given or
+    /// where a tab showing it found it on disk. Unlike `trusts`, a NotTrusted record counts too.
+    pub fn saved_trust_for(&self, workdir: &Path) -> Option<SavedTrust> {
         let reals = self.tabs.iter().filter(|t| t.is(workdir)).filter_map(|t| t.real.as_deref());
-        std::iter::once(workdir).chain(reals).find_map(|p| recorded(&self.settings, p))
+        std::iter::once(workdir).chain(reals).find_map(|p| self.settings.saved_trust(p))
     }
 }
 
@@ -161,6 +224,11 @@ pub fn paused_note(standing: Standing) -> &'static str {
              or let git read its status, and it asks again before running Pull, Push, Commit or any other git command you \
              start. Click to review."
         }
+        Standing::Changed => {
+            "Since you trusted this repository, it gained settings or hooks that make git run programs. Until you review \
+             them, Trellis won't fetch in the background, contact its hosting service or let git read its status, and it \
+             asks before running Pull, Push, Commit or any other git command you start. Click to review."
+        }
         Standing::Trusted | Standing::Clean => "",
     }
 }
@@ -173,6 +241,7 @@ pub(crate) fn palette_entries(st: &AppState, out: &mut Vec<Entry>) {
     let detail = match st.trust_standing() {
         Some(Standing::Undecided) => "undecided",
         Some(Standing::NotTrusted) => "not trusted",
+        Some(Standing::Changed) => "changed",
         _ => return,
     };
     out.push(with_detail(entry(PaletteCommand::ReviewTrust, "Review repository trust…", KEYWORDS), Some(detail.into())));
@@ -232,17 +301,23 @@ mod tests {
 
     #[test]
     fn standing_follows_the_decision_then_the_scan() {
-        assert_eq!(standing_of(Some(RepoTrust::Trusted), false), Standing::Trusted);
-        assert_eq!(standing_of(Some(RepoTrust::NotTrusted), true), Standing::NotTrusted, "no stays no");
-        assert_eq!(standing_of(None, true), Standing::Clean);
-        assert_eq!(standing_of(None, false), Standing::Undecided);
+        assert_eq!(standing_of(Some(RepoTrust::Trusted), false, true), Standing::Trusted);
+        assert_eq!(standing_of(Some(RepoTrust::Trusted), false, false), Standing::Changed, "gained something since");
+        assert_eq!(standing_of(Some(RepoTrust::NotTrusted), true, true), Standing::NotTrusted, "no stays no");
+        assert_eq!(standing_of(Some(RepoTrust::NotTrusted), false, false), Standing::NotTrusted);
+        assert_eq!(standing_of(None, true, true), Standing::Clean);
+        assert_eq!(standing_of(None, false, true), Standing::Undecided);
     }
 
     #[test]
     fn the_paused_note_says_what_is_held() {
         let (undecided, refused) = (paused_note(Standing::Undecided), paused_note(Standing::NotTrusted));
+        let changed = paused_note(Standing::Changed);
         assert_ne!(undecided, refused);
-        for note in [undecided, refused] {
+        let start = |n: &str| n.split_whitespace().take(3).collect::<Vec<_>>().join(" ");
+        assert!(start(changed) != start(undecided) && start(changed) != start(refused), "{changed}");
+        assert!(changed.contains("gained settings or hooks"), "{changed}");
+        for note in [undecided, refused, changed] {
             assert!(note.contains("background"), "{note}");
             assert!(!note.contains("  "), "one space between sentences: {note}");
             assert!(note.contains("Pull, Push, Commit or any other git command you start"), "{note}");

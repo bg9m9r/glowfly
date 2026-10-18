@@ -88,6 +88,7 @@ impl Effect {
             Effect::Issue(e) => e.name(),
             Effect::Updates(e) => e.name(),
             Effect::Repos(e) => e.name(),
+            Effect::Trust(e) => e.name(),
             Effect::Ui(_) => "ui",
         }
     }
@@ -153,6 +154,7 @@ impl Effect {
             | Effect::Remote(_)
             | Effect::Clone(_)
             | Effect::Init(_)
+            | Effect::Trust(_)
             | Effect::PullRequest(_)
             | Effect::DeepLink(_)
             | Effect::Issue(_) => true,

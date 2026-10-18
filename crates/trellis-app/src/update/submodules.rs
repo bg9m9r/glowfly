@@ -4,13 +4,15 @@
 //! `submodule_add.rs`, editing one in `submodule_edit.rs`, removing one in `submodule_remove.rs`,
 //! and updating several at once (also after checkouts and pulls) in `submodule_batch.rs`.
 
-use super::ops::{JobSpec, start_job};
+use super::ops::{JobSpec, Started, start_job};
 use super::{submodule_add as add, submodule_batch as batch, submodule_edit as edit, submodule_remove as remove};
 use crate::effect::{Effect, SubmoduleEffect};
 use crate::msg::Msg;
 use crate::state::submodules::{confirm_update_body, confirm_update_button, job_label, open_blocked, update_args, update_blocked};
+use crate::state::trust::InheritKind;
 use crate::state::{AppState, Modal};
 use crate::submodule::SubmoduleMsg;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::repo::SubmoduleInfo;
 
@@ -23,9 +25,7 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mu
                 return;
             }
             let Some(workdir) = st.workdir() else { return };
-            // One component at a time, so the folder uses the platform's separators.
-            let folder = sm.path.split('/').fold(workdir, |p, c| p.join(c));
-            super::tabs::open(st, folder, fx);
+            super::tabs::open(st, folder_of(&workdir, &sm.path), fx);
         }
         SubmoduleMsg::Update { path, confirmed } => {
             let Some(sm) = find(st, &path) else { return };
@@ -40,7 +40,7 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mu
                 fx.push(Effect::Submodule(SubmoduleEffect::Check { workdir, path }));
                 return;
             }
-            start_job(st, JobSpec::new(job_label(&sm), vec![update_args(&sm.path)]), fx);
+            update(st, &sm, fx);
         }
         SubmoduleMsg::Checked { path, result } => {
             let sm = match result {
@@ -58,7 +58,7 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mu
             }
             if !sm.is_out_of_sync() {
                 // Its folder went away meanwhile: initializing it can't lose anything.
-                start_job(st, JobSpec::new(job_label(&sm), vec![update_args(&sm.path)]), fx);
+                update(st, &sm, fx);
                 return;
             }
             st.modal = Some(Modal::danger(
@@ -82,6 +82,24 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mu
         SubmoduleMsg::EditDialog(path) => edit::dialog(st, path),
         SubmoduleMsg::Edit => edit::submit(st, fx),
     }
+}
+
+/// Initializes or updates `sm` as a job. One that wasn't checked out is trusted once checked
+/// out when the repository is (trust_inherit.rs).
+fn update(st: &mut AppState, sm: &SubmoduleInfo, fx: &mut Vec<Effect>) {
+    let label = job_label(sm);
+    if start_job(st, JobSpec::new(label.clone(), vec![update_args(&sm.path)]), fx) == Started::Now
+        && !sm.is_initialized()
+        && let Some(workdir) = st.workdir()
+    {
+        super::trust_inherit::expect(st, &label, InheritKind::Submodule, vec![folder_of(&workdir, &sm.path)]);
+    }
+}
+
+/// The folder of the submodule at `path` (slashes) in the repository at `workdir`, one
+/// component at a time so it uses the platform's separators.
+pub(super) fn folder_of(workdir: &Path, path: &str) -> PathBuf {
+    path.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c))
 }
 
 /// The submodule at `path` in the active tab's snapshot; logs when it is gone.

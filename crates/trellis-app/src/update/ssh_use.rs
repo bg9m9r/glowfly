@@ -147,12 +147,12 @@ pub(super) fn set_use_agent(st: &mut AppState, on: bool, now: Instant, fx: &mut 
 
 pub(super) fn key_choice_set(st: &mut AppState, repo: bool, result: Result<(), String>, now: Instant, fx: &mut Vec<Effect>) {
     let page = st.prefs.as_mut().map(|p| &mut p.ssh);
-    let (key, name) = match page {
+    let (key, name, real) = match page {
         Some(page) => {
             page.choice_busy = false;
-            (page.choice_key.take(), page.repo.as_ref().map(|r| r.name.clone()))
+            (page.choice_key.take(), page.repo.as_ref().map(|r| r.name.clone()), page.repo.as_ref().map(|r| r.real.clone()))
         }
-        None => (None, None),
+        None => (None, None, None),
     };
     let level = level_label(if repo { Some(name.as_deref().unwrap_or("this repository")) } else { None });
     match result {
@@ -162,6 +162,11 @@ pub(super) fn key_choice_set(st: &mut AppState, repo: bool, result: Result<(), S
                 None => format!("git no longer uses a chosen key ({level})"),
             };
             st.toast(true, text, now);
+            // The trusted repository's own core.sshCommand is the user's choice, made here: its
+            // next load takes it into the trust decision instead of asking again.
+            if repo {
+                st.trust.adopt_next = real;
+            }
             read_choice(st, fx);
         }
         Err(e) => {

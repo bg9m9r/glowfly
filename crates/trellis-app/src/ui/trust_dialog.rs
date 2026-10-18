@@ -1,7 +1,8 @@
 //! The "Trust this repository?" dialog: what in the repository's own config and hooks makes git
 //! run programs, and the Trust / Don't trust choice (update/trust.rs records it). When a git
 //! job the user started waits for the decision, it names that job and offers Trust and run or
-//! Cancel instead.
+//! Cancel instead. For a repository trusted earlier that gained settings or hooks since, it asks
+//! again and lists only what is new.
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
@@ -18,7 +19,8 @@ use trellis_core::trust::TrustScan;
 /// decision). The other buttons send a decision and update closes it. Enter never trusts: the
 /// footer's tone makes Cancel the default (and with no Cancel there is no default).
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
-    let mut d = Dialog::new(cx, "Trust this repository?").begin(ui);
+    let title = if p.gained.is_some() { "Trust this repository again?" } else { "Trust this repository?" };
+    let mut d = Dialog::new(cx, title).begin(ui);
     d.body(ui, |ui| body(ui, p));
     let footer = match p.held {
         Some(_) => Footer::new().cancel().danger(buttons::primary("Trust and run")),
@@ -43,17 +45,20 @@ fn body(ui: &mut Ui, p: &TrustPrompt) {
         ui.label(RichText::new("You chose not to trust it before.").color(color::weak()));
     }
     ui.add_space(8.0);
-    if p.scan.is_empty() {
+    let shown = p.gained.as_ref().unwrap_or(&p.scan);
+    if shown.is_empty() {
         ui.add(egui::Label::new("Nothing in its settings or hooks runs programs right now.").wrap());
     } else {
-        ui.add(
-            egui::Label::new("This repository's own settings or hooks make git run programs. So far Trellis has only read its files.")
-                .wrap(),
-        );
+        let intro = if p.gained.is_some() {
+            "These settings or hooks that make git run programs appeared since you trusted it. So far Trellis has only read its files."
+        } else {
+            "This repository's own settings or hooks make git run programs. So far Trellis has only read its files."
+        };
+        ui.add(egui::Label::new(intro).wrap());
         ui.add_space(8.0);
         egui::ScrollArea::vertical().id_salt("trust-findings").max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
-            findings(ui, &p.scan, &p.workdir);
-            for m in &p.scan.submodules {
+            findings(ui, shown, &p.workdir);
+            for m in &shown.submodules {
                 ui.add_space(4.0);
                 ui.label(RichText::new(format!("In submodule {}", printable(&m.path))).font(type_scale::strong(ui, type_scale::BODY)));
                 ui.indent(("trust-submodule", &m.path), |ui| findings(ui, &m.scan, &p.workdir));

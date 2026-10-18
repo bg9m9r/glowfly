@@ -127,7 +127,7 @@ fn which_effects_queue() {
     assert_eq!(repo_of(&git(&[&["fetch", "--all"]])), None, "auto-fetch doesn't hold up staging");
     assert_eq!(repo_of(&git(&[&["fetch", ".", "a:b"]])), Some(w.as_path()));
     // Fetch or pull across repositories: a pull waits for the repository's other jobs.
-    let sync = |op| Effect::Repos(ReposEffect::Sync { generation: 1, index: 0, path: w.clone(), op, trusted: true });
+    let sync = |op| Effect::Repos(ReposEffect::Sync { generation: 1, index: 0, path: w.clone(), op, trust: None });
     assert_eq!(repo_of(&sync(SyncOp::Pull)), Some(w.as_path()));
     assert_eq!(repo_of(&sync(SyncOp::Fetch { prune: true })), None);
     let op = Effect::LocalOp { workdir: w.clone(), op: crate::effect::LocalOp::StageAll };

@@ -257,6 +257,8 @@ pub(super) fn finish_job(
 ) {
     let Some(mut job) = st.job.take() else { return };
     let stash_retry = super::auto_stash::take_retry(st, &job);
+    // Trust passed on to what the job made opens `then_open` itself, once it is recorded.
+    let took_open = super::trust_inherit::job_ended(st, &job.label, ok, job.then_open.as_ref().map(|(p, _)| p.as_path()), fx);
     super::sign_in::job_finished(st, job.workdir.as_deref(), ok, &output);
     let then_pr = job.then_pr.take();
     // A cancelled or timed-out credential prompt explains a failure better than git's output.
@@ -298,7 +300,9 @@ pub(super) fn finish_job(
         }
         if let Some((p, how)) = job.then_open {
             super::trust::created(st, &p, how, &output);
-            super::tabs::open(st, p, fx);
+            if !took_open {
+                super::tabs::open(st, p, fx);
+            }
             return;
         }
     }

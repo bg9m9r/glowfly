@@ -15,10 +15,10 @@ pub(super) fn account(e: AccountEffect) -> Option<Msg> {
             let result = forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::repo_owners(&account, &a)).map_err(err);
             Some(Msg::Publish(PublishMsg::PublishOwners { account, result }))
         }
-        AccountEffect::CreateRepo { account, cwd, user, repo, branch } => {
+        AccountEffect::CreateRepo { account, cwd, workdir, user, repo, branch } => {
             let result =
                 forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::create_repo(&account, &a, &user, &repo)).map_err(err);
-            Some(Msg::Publish(PublishMsg::Published { workdir: cwd, branch, result }))
+            Some(Msg::Publish(PublishMsg::Published { workdir, branch, result }))
         }
         AccountEffect::Connect { account, user, token, cwd } => Some(connect(account, user, token, &cwd)),
         AccountEffect::TrelloBoards { account, cwd } => Some(trello_boards(account, &cwd)),

@@ -374,6 +374,32 @@ fn trust_decisions_default_empty_and_round_trip() {
 }
 
 #[test]
+fn trust_prints_round_trip_and_follow_the_decision() {
+    use crate::settings::SavedTrust;
+    use crate::trust::TrustPrint;
+    // Files written before prints were kept load with none.
+    let s: Settings = serde_json::from_str(r#"{"repo_trust": {"/w/a": "Trusted"}}"#).unwrap();
+    assert!(s.repo_trust_prints.is_empty());
+    assert_eq!(s.saved_trust(std::path::Path::new("/w/a")), Some(SavedTrust::trusted(None)));
+
+    let mut s = Settings::default();
+    let real = crate::paths::temp_dir().join("trellis-print-key");
+    let print = TrustPrint(["0123456789abcdef".to_string()].into());
+    s.set_trust(&real, Some(SavedTrust::trusted(Some(print.clone()))));
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+    assert_eq!(back.repo_trust_prints, s.repo_trust_prints);
+    assert_eq!(back.saved_trust(&real), Some(SavedTrust::trusted(Some(print))));
+    // Only the hashes are saved.
+    assert!(serde_json::to_string(&s.repo_trust_prints).unwrap().contains(r#"["0123456789abcdef"]"#));
+
+    s.set_trust(&real, Some(SavedTrust { trust: RepoTrust::NotTrusted, print: None }));
+    assert!(s.repo_trust_prints.is_empty(), "Don't trust drops the print");
+    assert_eq!(s.saved_trust(&real).map(|t| t.trust), Some(RepoTrust::NotTrusted));
+    s.set_trust(&real, None);
+    assert!(s.repo_trust.is_empty() && s.saved_trust(&real).is_none());
+}
+
+#[test]
 fn column_widths_old_files() {
     // Files written before columns could be resized keep the old widths.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

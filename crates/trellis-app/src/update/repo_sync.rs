@@ -1,9 +1,10 @@
 //! Fetch or pull across listed repositories: starts at most `MAX_RUNNING` repositories at a
 //! time in the runner, records each result, and starts the next. Git never prompts in these;
 //! a repository the user said not to trust is skipped without running anything, and one with
-//! no decision is skipped by the runner when its config or hooks would run programs. Stop keeps
-//! waiting repositories from starting (git already running can't be cancelled, so those
-//! finish); Retry runs a failed or stopped repository again.
+//! no decision, or a Trusted one that gained settings or hooks since, is skipped by the runner
+//! when its config or hooks would run programs. Stop keeps waiting repositories from starting
+//! (git already running can't be cancelled, so those finish); Retry runs a failed or stopped
+//! repository again.
 
 use crate::effect::{Effect, ReposEffect};
 use crate::state::repo_sync::{MAX_RUNNING, RepoSync, RowState, SyncKind, SyncRow, SyncScope, can_retry, nothing_to_sync, targets};
@@ -26,7 +27,7 @@ pub(super) fn start(st: &mut AppState, kind: SyncKind, scope: SyncScope, now: In
     let rows = paths
         .into_iter()
         .map(|path| {
-            let state = match crate::state::trust::recorded(&st.settings, &path) {
+            let state = match st.saved_trust_for(&path).map(|t| t.trust) {
                 Some(RepoTrust::NotTrusted) => RowState::Done(Outcome::Untrusted),
                 _ => RowState::Waiting,
             };
@@ -44,6 +45,8 @@ pub(super) fn start(st: &mut AppState, kind: SyncKind, scope: SyncScope, now: In
 
 /// Starts waiting repositories until `MAX_RUNNING` run.
 fn launch(st: &mut AppState, fx: &mut Vec<Effect>) {
+    // Each row's own decision with its print, as listed or where a tab found it on disk.
+    let decisions: Vec<_> = st.repo_sync.as_ref().map(|s| s.rows.iter().map(|r| st.saved_trust_for(&r.path)).collect()).unwrap_or_default();
     let Some(sync) = st.repo_sync.as_mut() else { return };
     let op = match sync.kind {
         SyncKind::Fetch => SyncOp::Fetch { prune: st.settings.auto_prune },
@@ -59,9 +62,9 @@ fn launch(st: &mut AppState, fx: &mut Vec<Effect>) {
         }
         row.state = RowState::Running;
         running += 1;
-        let trusted = crate::state::trust::recorded(&st.settings, &row.path) == Some(RepoTrust::Trusted);
+        let trust = decisions.get(index).cloned().flatten();
         let path = row.path.clone();
-        fx.push(Effect::Repos(ReposEffect::Sync { generation: sync.generation, index, path, op, trusted }));
+        fx.push(Effect::Repos(ReposEffect::Sync { generation: sync.generation, index, path, op, trust }));
     }
 }
 

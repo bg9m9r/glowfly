@@ -1,15 +1,17 @@
 //! Repository trust: asking once whether to trust a repository whose own config or hooks make
-//! git run programs, recording the answer, bringing the prompt back on request (the toolbar's
-//! Untrusted chip, the palette), and trusting repositories Trellis cloned or created. What is
-//! held until then is checked where it starts (`AppState::runs_git_unasked`); jobs the user
-//! starts in such a repository wait here for the decision (`waits`/`hold`), run on Trust and
-//! run, and are dropped on Cancel.
+//! git run programs (and again when a trusted one gains more), recording the answer with the
+//! print of what the user saw, bringing the prompt back on request (the toolbar's Untrusted chip,
+//! the palette), and trusting repositories Trellis cloned or created. What is held until then is
+//! checked where it starts (`AppState::runs_git_unasked`); a job the user starts is gated on the
+//! repository it runs in (`gate`): one where git is held waits here for the decision (`hold`),
+//! runs on Trust and run, and is dropped on Cancel. Passing trust on to worktrees and submodules
+//! Trellis makes from a trusted repository is in trust_inherit.rs.
 
 use super::jobs::Started;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::TrustMsg;
 use crate::state::tabs::is_repo_at;
-use crate::state::trust::{Created, HeldJob, Standing, prompt_for, record, standing};
+use crate::state::trust::{Created, HeldJob, Standing, TrustPrompt, prompt_for, record, record_trusted, standing};
 use crate::state::{AppState, Modal, RunningJob};
 use std::path::Path;
 use std::time::Instant;
@@ -20,14 +22,21 @@ pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Ve
     match msg {
         TrustMsg::Decide { real, trusted } => decide(st, &real, trusted, now, fx),
         TrustMsg::Ask { real } => ask(st, &real),
+        TrustMsg::Inherited { kind, from, repos, open } => super::trust_inherit::inherited(st, kind, &from, repos, open, fx),
     }
 }
 
-/// Shows the prompt again for the active repository at `real`, if git is held there (Undecided
-/// or NotTrusted) and no other dialog is open. Closes the palette, which never covers a dialog.
+/// Whether git is held in a repository that stands `s`.
+fn holds(s: Standing) -> bool {
+    matches!(s, Standing::Undecided | Standing::NotTrusted | Standing::Changed)
+}
+
+/// Shows the prompt again for the active repository at `real`, if git is held there (Undecided,
+/// NotTrusted or Changed) and no other dialog is open. Closes the palette, which never covers a
+/// dialog.
 fn ask(st: &mut AppState, real: &Path) {
     let Some(snap) = st.snap.as_ref().filter(|s| same_spelling(&s.real_workdir, real)) else { return };
-    if !matches!(standing(&st.settings, snap), Standing::Undecided | Standing::NotTrusted) || st.modal.is_some() {
+    if !holds(standing(&st.settings, snap)) || st.modal.is_some() {
         return;
     }
     let prompt = prompt_for(&st.settings, snap);
@@ -42,14 +51,35 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     // Only the prompt that names the held job can release it; any other held job is stale.
     let held = st.trust.held.take();
     let named = matches!(&st.modal, Some(Modal::Trust(p)) if p.held.is_some());
-    record(&mut st.settings, real, if trusted { RepoTrust::Trusted } else { RepoTrust::NotTrusted });
+    if trusted {
+        // What the user was shown: the open prompt's scan, else the active repository's.
+        let print = match (&st.modal, &st.snap) {
+            (Some(Modal::Trust(p)), _) if same_spelling(&p.real, real) => Some(p.scan.print()),
+            (_, Some(s)) if same_spelling(&s.real_workdir, real) => Some(s.trust_print.clone()),
+            _ => None,
+        };
+        match print {
+            Some(print) => record_trusted(&mut st.settings, real, print),
+            None => record(&mut st.settings, real, RepoTrust::Trusted),
+        }
+        // A later change in this session asks again.
+        st.trust.asked.retain(|p| !same_spelling(p, real));
+    } else {
+        record(&mut st.settings, real, RepoTrust::NotTrusted);
+    }
     fx.push(super::prefs::save_settings(st));
     if matches!(st.modal, Some(Modal::Trust(_))) {
         st.modal = None;
     }
     let Some(snap) = st.snap.as_ref().filter(|s| same_spelling(&s.real_workdir, real)) else {
-        if let Some(h) = held {
-            forget(st, h, trusted);
+        match held {
+            // A job for another open repository runs there whichever tab is active.
+            Some(h) if trusted && h.elsewhere && same_spelling(&h.real, real) => {
+                st.log(true, format!("{} is trusted.", h.name));
+                release(st, h, real, named, fx);
+            }
+            Some(h) => forget(st, h, trusted),
+            None => {}
         }
         return;
     };
@@ -71,10 +101,12 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
 }
 
 /// Starts the held job `h` exactly as it was requested, now that the repository at `real` is
-/// trusted, if it was held for that repository, it is still the active one, its prompt was the
-/// one decided (`named`) and no other job is running; otherwise drops it.
+/// trusted, if it was held for that repository, its prompt was the one decided (`named`), it is
+/// still the active one (or the job runs elsewhere anyway) and no other job is running;
+/// otherwise drops it.
 fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, fx: &mut Vec<Effect>) {
-    let here = named && same_spelling(&h.real, real) && st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &h.real));
+    let active = st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &h.real));
+    let here = named && same_spelling(&h.real, real) && (h.elsewhere || active);
     if !here || super::jobs::busy(st, false) {
         return forget(st, h, true);
     }
@@ -83,20 +115,48 @@ fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, fx: &mut Vec
     fx.push(h.effect);
 }
 
-/// Whether `job`, about to run in `cwd`, must wait for the trust prompt: git is held in the
-/// active repository and `cwd` is that repository. Clones and `git init`s Trellis trusts when
-/// they open don't wait.
-pub(super) fn waits(st: &AppState, job: &RunningJob, cwd: &Path) -> bool {
-    st.held()
-        && !matches!(job.then_open, Some((_, Created::Clone | Created::Init)))
-        && st.snap.as_ref().is_some_and(|s| crate::state::tabs::is_repo_at(s, cwd))
+/// What the trust gate says about a job.
+pub(super) enum Gate {
+    Run,
+    /// Wait for this prompt; true when the job runs in a repository other than the active one.
+    Hold(Box<TrustPrompt>, bool),
+    /// Not run, for this reason (already worded for the log).
+    Refuse(String),
 }
 
-/// Keeps `job` and its `effect` as the held job and opens the trust prompt naming it, closing
-/// the palette and replacing any other dialog. Pushes no effect. A quiet job is dropped
-/// instead, and so is a second job while a held prompt is open.
-pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect) -> Started {
-    let Some(name) = st.snap.as_ref().map(|s| s.name.clone()) else { return Started::No };
+/// Whether `job`, about to run in `cwd`, may run, by the decision of the repository at `cwd`:
+/// the active one (held while it is Undecided, NotTrusted or Changed), another one open in a
+/// tab (its parked snapshot's standing), or one open nowhere (its saved decision: only Trusted
+/// runs, as nothing says what its settings and hooks run now). Clones and `git init`s Trellis
+/// trusts when they open always run.
+pub(super) fn gate(st: &AppState, job: &RunningJob, cwd: &Path) -> Gate {
+    if matches!(job.then_open, Some((_, Created::Clone | Created::Init))) {
+        return Gate::Run;
+    }
+    if let Some(snap) = st.snap.as_ref().filter(|s| is_repo_at(s, cwd)) {
+        return if st.held() { Gate::Hold(Box::new(prompt_for(&st.settings, snap)), false) } else { Gate::Run };
+    }
+    let parked = st.tabs.iter().find_map(|t| t.parked.as_ref()?.snap.as_ref().filter(|s| t.is(cwd) || is_repo_at(s, cwd)));
+    if let Some(snap) = parked {
+        return if holds(standing(&st.settings, snap)) { Gate::Hold(Box::new(prompt_for(&st.settings, snap)), true) } else { Gate::Run };
+    }
+    let name = cwd.file_name().map_or_else(|| cwd.display().to_string(), |n| n.to_string_lossy().into_owned());
+    match st.saved_trust_for(cwd).map(|t| t.trust) {
+        Some(RepoTrust::Trusted) => Gate::Run,
+        Some(RepoTrust::NotTrusted) => Gate::Refuse(format!("{} wasn't run: you chose not to trust {name}.", job.label)),
+        None => Gate::Refuse(format!(
+            "{} wasn't run: {name} isn't open, so Trellis can't check what its settings and hooks run. Open it and start it again.",
+            job.label
+        )),
+    }
+}
+
+/// Keeps `job` and its `effect` as the held job and opens `prompt` naming it, closing the
+/// palette and replacing any other dialog; `elsewhere`: the job runs in a repository other than
+/// the active one. Pushes no effect. A quiet job is dropped instead, and so is a second job
+/// while a held prompt is open.
+pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect, mut prompt: TrustPrompt, elsewhere: bool) -> Started {
+    let name = prompt.name.clone();
     if job.quiet {
         st.log_quiet(false, format!("{} skipped: {name} isn't trusted.", job.label));
         return Started::No;
@@ -111,8 +171,6 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect) -> Starte
             forget(st, old, false);
         }
     }
-    let Some(snap) = st.snap.as_ref() else { return Started::No };
-    let mut prompt = prompt_for(&st.settings, snap);
     prompt.held = Some(job.label.clone());
     if !st.trust.asked.iter().any(|p| same_spelling(p, &prompt.real)) {
         st.trust.asked.push(prompt.real.clone());
@@ -121,7 +179,7 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect) -> Starte
     let real = prompt.real.clone();
     st.palette = None;
     st.modal = Some(Modal::Trust(prompt));
-    st.trust.held = Some(HeldJob { real, name, job, effect });
+    st.trust.held = Some(HeldJob { real, name, job, effect, elsewhere });
     Started::Held
 }
 
@@ -166,7 +224,8 @@ fn forget(st: &mut AppState, h: HeldJob, trusted: bool) {
 }
 
 /// A job that made the repository at `path` succeeded and Trellis is about to open it: a clone,
-/// or a `git init` whose `output` says it made a new repository, is trusted when it loads.
+/// or a `git init` whose `output` says it made a new repository, is trusted when it loads. (A
+/// worktree made from a trusted repository is trusted by trust_inherit.rs.)
 pub(super) fn created(st: &mut AppState, path: &Path, how: Created, output: &str) {
     let new = match how {
         Created::Clone => true,
@@ -178,24 +237,46 @@ pub(super) fn created(st: &mut AppState, path: &Path, how: Created, output: &str
     }
 }
 
-/// The active tab's snapshot was just replaced by a full load of `kind`.
+/// The active tab's snapshot was just replaced by a full load of `kind`: a repository Trellis
+/// made is trusted on what this load found, a decision saved before prints were kept takes this
+/// load's print, and one a `git lfs install` from Trellis changed adopts it; then it may ask.
 pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
+    let (real, workdir, print) = (snap.real_workdir.clone(), snap.workdir.clone(), snap.trust_print.clone());
     let made = st.trust.created.iter().position(|p| st.names_repo(snap, p));
-    if let Some(i) = made {
+    let changed = standing(&st.settings, snap) == Standing::Changed;
+    let adopt = st.trust.adopt_next.as_ref().is_some_and(|p| same_spelling(p, &real));
+    if adopt {
+        st.trust.adopt_next = None;
+    }
+    let key = [&real, &workdir].into_iter().find(|p| st.settings.saved_trust(p).is_some()).cloned();
+    let legacy = key.as_ref().and_then(|k| st.settings.saved_trust(k)).is_some_and(|t| t.is_trusted() && t.print.is_none());
+    let save = if let Some(i) = made {
         st.trust.created.remove(i);
-        let real = snap.real_workdir.clone();
-        record(&mut st.settings, &real, RepoTrust::Trusted);
+        record_trusted(&mut st.settings, &real, print);
+        true
+    } else if let (true, Some(key)) = (legacy, key) {
+        record_trusted(&mut st.settings, &key, print);
+        true
+    } else if changed && adopt {
+        tracing::debug!("adopting what git lfs install added to {}", real.display());
+        record_trusted(&mut st.settings, &real, print);
+        true
+    } else {
+        false
+    };
+    if save {
         fx.push(super::prefs::save_settings(st));
     }
     maybe_ask(st, kind == LoadKind::Open);
 }
 
-/// Shows the trust prompt for the active repository if it is undecided, no other dialog is
-/// open, and it wasn't asked about this session (a `fresh_open` asks again).
+/// Shows the trust prompt for the active repository if it is undecided (or gained settings or
+/// hooks since it was trusted), no other dialog is open, and it wasn't asked about this session
+/// (a `fresh_open` asks again).
 pub(super) fn maybe_ask(st: &mut AppState, fresh_open: bool) {
     let Some(snap) = &st.snap else { return };
-    if standing(&st.settings, snap) != Standing::Undecided || st.modal.is_some() {
+    if !matches!(standing(&st.settings, snap), Standing::Undecided | Standing::Changed) || st.modal.is_some() {
         return;
     }
     let asked = st.trust.asked.iter().any(|p| same_spelling(p, &snap.real_workdir));

@@ -4,11 +4,12 @@
 //! resets (Preferences > General, overridden per repository from the header menu). That update
 //! leaves out any submodule where it would leave commits behind, and says so in the log.
 
-use super::ops::{JobSpec, start_job};
+use super::ops::{JobSpec, Started, start_job};
 use crate::effect::{Effect, LoadKind, SubmoduleEffect};
 use crate::msg::Msg;
 use crate::state::submodules::batch::{CONFIRM_ALL_BUTTON, confirm_all_body, job_label, nothing_to_do, offer_text, plan, skipped_line};
 use crate::state::toasts::ToastAction;
+use crate::state::trust::InheritKind;
 use crate::state::{AppState, Modal};
 use crate::submodule::{Batch, SubmoduleMsg};
 use std::path::Path;
@@ -71,7 +72,17 @@ fn run(st: &mut AppState, batch: Batch, list: &[SubmoduleInfo], confirmed: bool,
         return;
     }
     let cmds = crate::state::submodules::batch::cmds(batch, &plan);
-    start_job(st, JobSpec::new(job_label(batch).to_owned(), cmds), fx);
+    let label = job_label(batch);
+    // The ones not checked out yet are trusted once they are, when the repository is.
+    let new: Vec<&str> =
+        list.iter().filter(|sm| !sm.is_initialized() && plan.targets.contains(&sm.path)).map(|sm| sm.path.as_str()).collect();
+    if start_job(st, JobSpec::new(label.to_owned(), cmds), fx) == Started::Now
+        && !new.is_empty()
+        && let Some(workdir) = st.workdir()
+    {
+        let folders = new.iter().map(|p| super::submodules::folder_of(&workdir, p)).collect();
+        super::trust_inherit::expect(st, label, InheritKind::Submodule, folders);
+    }
 }
 
 /// Whether the active repository has submodules and keeps them updated after checkouts.

@@ -22,7 +22,7 @@ fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     let workdir = PathBuf::from("C:/work/tools");
     let held = held.map(str::to_owned);
-    st.modal = Some(Modal::Trust(TrustPrompt { name: "tools".into(), real: workdir.clone(), workdir, scan, refused, held }));
+    st.modal = Some(Modal::Trust(TrustPrompt { name: "tools".into(), real: workdir.clone(), workdir, scan, refused, held, gained: None }));
     st
 }
 
@@ -129,6 +129,37 @@ fn trust_prompt_held() {
     h.get_by_label("Cancel").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)), "Cancel closes without a decision");
+}
+
+#[test]
+fn trust_prompt_changed() {
+    // Trusted with core.sshCommand; since then a helper, a hook and a submodule's setting appeared.
+    let gained_sub = TrustScan { config: vec![setting("core.fsmonitor", ".git/fsmon.sh")], ..TrustScan::default() };
+    let gained = TrustScan {
+        config: vec![setting("credential.helper", "!f() { echo password=x; }; f")],
+        hooks: vec!["post-merge".into()],
+        hooks_dir: Some(PathBuf::from("C:/work/tools/.git/hooks")),
+        submodules: vec![SubmoduleScan { path: "deps/lib".into(), scan: gained_sub.clone() }],
+    };
+    let scan = TrustScan {
+        config: vec![setting("core.sshCommand", "ssh -v"), gained.config[0].clone()],
+        hooks: vec!["post-merge".into(), "pre-commit".into()],
+        ..gained.clone()
+    };
+    let mut st = prompt_state(ThemeChoice::Dark, scan, false, None);
+    if let Some(Modal::Trust(p)) = st.modal.as_mut() {
+        p.gained = Some(gained);
+    }
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("trust_prompt_changed");
+    assert!(h.query_by_label("Trust this repository again?").is_some());
+    assert!(h.query_by_label_contains("appeared since you trusted it").is_some());
+    assert!(h.query_by_label("credential.helper = !f() { echo password=x; }; f").is_some());
+    assert!(h.query_by_label("post-merge").is_some());
+    assert!(h.query_by_label("In submodule deps/lib").is_some());
+    assert!(h.query_by_label("core.sshCommand = ssh -v").is_none(), "what was trusted before isn't listed");
+    assert!(h.query_by_label("pre-commit").is_none());
 }
 
 /// Gives the fixture at `dir` a core.sshCommand and loads it again, so its git is held.

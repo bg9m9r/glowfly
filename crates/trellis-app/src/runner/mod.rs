@@ -70,6 +70,7 @@ mod terminal;
 mod terminal_out;
 mod themes;
 mod tools;
+mod trust;
 mod updates;
 mod worktrees;
 

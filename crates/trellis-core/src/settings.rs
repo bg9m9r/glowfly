@@ -51,7 +51,7 @@ pub use submodules::{SubmodulePrefs, SubmoduleUpdates};
 pub use terminal::{CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalPrefs};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
-pub use trust::RepoTrust;
+pub use trust::{RepoTrust, SavedTrust};
 pub use updates::UpdatePrefs;
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
 
@@ -277,6 +277,10 @@ pub struct Settings {
     /// (`Snapshot::real_workdir`, through `repo_keys`); a repository with no entry is undecided.
     #[serde(default)]
     pub repo_trust: HashMap<String, RepoTrust>,
+    /// What each Trusted decision was made on (`trust::TrustPrint`), keyed like `repo_trust`;
+    /// none for decisions saved before prints were kept.
+    #[serde(default)]
+    pub repo_trust_prints: HashMap<String, crate::trust::TrustPrint>,
     /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
     #[serde(default)]
     pub status_tip_shown: HashMap<String, bool>,
@@ -404,6 +408,7 @@ impl Default for Settings {
             repo_colours: HashMap::new(),
             repo_forge_filters: HashMap::new(),
             repo_trust: HashMap::new(),
+            repo_trust_prints: HashMap::new(),
             status_tip_shown: HashMap::new(),
             repo_submodule_updates: HashMap::new(),
             favorite_repos: Vec::new(),

@@ -13,9 +13,11 @@ pub enum AccountEffect {
         cwd: PathBuf,
     },
     /// Creates a repository for `workdir`; the result carries what is needed to push to it.
+    /// `cwd` is only where credentials are looked up.
     CreateRepo {
         account: Account,
         cwd: PathBuf,
+        workdir: PathBuf,
         user: String,
         repo: NewRepo,
         branch: String,

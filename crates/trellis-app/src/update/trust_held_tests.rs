@@ -243,14 +243,21 @@ fn clone_and_init_are_not_held() {
 }
 
 #[test]
-fn a_job_in_another_repository_is_not_held() {
+fn a_job_in_another_repository_follows_that_repository_s_decision() {
     let (mut st, dir) = held_repo("held-other");
     let other = scratch_repo("held-other-clean");
+    let spec = || JobSpec { cwd: Some(other.clone()), ..JobSpec::new("Push".into(), vec![args(&["push"])]) };
+    // Open in no tab and never decided: nothing says what it runs, so it is refused.
     let mut fx = Vec::new();
-    let spec = JobSpec { cwd: Some(other.clone()), ..JobSpec::new("Push".into(), vec![args(&["push"])]) };
-    assert_eq!(start_job(&mut st, spec, &mut fx), Started::Now);
+    assert_eq!(start_job(&mut st, spec(), &mut fx), Started::No);
+    assert!(run_gits(&fx).is_empty() && st.trust.held.is_none());
+    assert!(st.log.last().is_some_and(|l| l.text.contains("isn't open, so Trellis can't check")), "{:?}", st.log.last().map(|l| &l.text));
+    // Trusted: it runs, not held by the active repository's prompt, and belongs to that repository.
+    record(&mut st.settings, &other, RepoTrust::Trusted);
+    assert_eq!(start_job(&mut st, spec(), &mut fx), Started::Now);
     assert_eq!(run_gits(&fx).len(), 1, "{fx:?}");
     assert!(st.trust.held.is_none());
+    assert_eq!(st.job.as_ref().and_then(|j| j.workdir.clone()), Some(other.clone()));
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&other);
 }

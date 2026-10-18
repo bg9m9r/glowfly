@@ -41,7 +41,19 @@ impl AppState {
         // Relevant branches also keeps branches that have open pull requests.
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
         let (f, worktree_wips) = (self.settings.graph_filter_for(&self.repo_key(workdir)), self.settings.worktree_wips);
-        LoadOptions { max_commits: self.commits_wanted(), smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted, worktree_wips }
+        // What the decision was made on: git reads the status only while that covers the scan.
+        let saved = self.saved_trust_for(workdir).or_else(|| self.settings.saved_trust(&self.repo_key(workdir)));
+        let trusted_print = saved.filter(|t| t.is_trusted()).and_then(|t| t.print);
+        LoadOptions {
+            max_commits: self.commits_wanted(),
+            smart,
+            extra_tips,
+            hidden: f.hidden,
+            solo: f.solo,
+            trusted,
+            trusted_print,
+            worktree_wips,
+        }
     }
 
     /// Whether the commit graph is the central view: the same order as `ui/central.rs::show`

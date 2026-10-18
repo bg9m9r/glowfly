@@ -27,8 +27,8 @@ pub(super) fn run(e: ReposEffect) -> Msg {
             let report = ScanFound { found, unreadable: report.unreadable, truncated: report.truncated };
             Msg::Repos(ReposMsg::Scanned { generation, report: Box::new(report) })
         }
-        ReposEffect::Sync { generation, index, path, op, trusted } => {
-            let outcome = trellis_core::repo_sync::sync(&path, op, trusted);
+        ReposEffect::Sync { generation, index, path, op, trust } => {
+            let outcome = trellis_core::repo_sync::sync(&path, op, trust.as_ref());
             Msg::Repos(ReposMsg::Synced { generation, index, outcome })
         }
     }

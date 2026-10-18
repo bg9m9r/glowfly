@@ -3,14 +3,16 @@
 
 use std::path::PathBuf;
 use trellis_core::repo_sync::SyncOp;
+use trellis_core::settings::SavedTrust;
 
 #[derive(Debug)]
 pub enum ReposEffect {
     /// Looks for repositories under `roots` (`trellis_core::repo_scan`); nothing in them runs.
     Scan { generation: u64, roots: Vec<PathBuf> },
     /// Fetches or pulls `path` without prompting (`trellis_core::repo_sync`), row `index` of run
-    /// `generation`. Unless `trusted`, it is skipped when its config or hooks run programs.
-    Sync { generation: u64, index: usize, path: PathBuf, op: SyncOp, trusted: bool },
+    /// `generation`. It is skipped when its config or hooks run programs its saved decision
+    /// `trust` doesn't allow (`trellis_core::trust::allows`).
+    Sync { generation: u64, index: usize, path: PathBuf, op: SyncOp, trust: Option<SavedTrust> },
 }
 
 impl ReposEffect {

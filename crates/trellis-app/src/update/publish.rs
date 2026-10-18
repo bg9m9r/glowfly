@@ -50,7 +50,9 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
             f.creating = true;
             f.error = None;
             let repo = NewRepo { owner: f.owner.clone(), name, description: f.description.trim().to_owned(), private: f.private };
-            fx.push(Effect::Account(AccountEffect::CreateRepo { account, cwd: f.workdir.clone(), user, repo, branch: f.branch.clone() }));
+            let (workdir, branch) = (f.workdir.clone(), f.branch.clone());
+            let cwd = credentials_dir(st, &workdir);
+            fx.push(Effect::Account(AccountEffect::CreateRepo { account, cwd, workdir, user, repo, branch }));
         }
         PublishMsg::Published { workdir, branch, result } => match result {
             Ok(repo) => {
@@ -59,11 +61,9 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                 }
                 st.log(true, format!("Created {} ({}).", repo.full_name, repo.html_url));
                 let cmds = vec![args(&["remote", "add", "origin", &repo.clone_url]), args(&["push", "-u", "origin", &branch])];
-                start_job(st, JobSpec { cwd: Some(workdir.clone()), ..JobSpec::new("Publish to GitHub".into(), cmds) }, fx);
-                // The job belongs to the published repository even if another tab is active now.
-                if let Some(job) = st.job.as_mut() {
-                    job.workdir = Some(workdir);
-                }
+                // It runs in the published repository even if another tab is active now, as
+                // that repository's trust decision allows (update/trust.rs).
+                start_job(st, JobSpec { cwd: Some(workdir), ..JobSpec::new("Publish to GitHub".into(), cmds) }, fx);
             }
             Err(e) => match form(st).filter(|f| same_spelling(&f.workdir, &workdir)) {
                 Some(f) => {
@@ -130,5 +130,15 @@ fn load_owners(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(account) = f.account().cloned() else { return };
     f.loading = true;
     f.error = None;
-    fx.push(Effect::Account(AccountEffect::Owners { account, cwd: f.workdir.clone() }));
+    let workdir = f.workdir.clone();
+    let cwd = credentials_dir(st, &workdir);
+    fx.push(Effect::Account(AccountEffect::Owners { account, cwd }));
+}
+
+/// Where the dialog for the repository at `workdir` looks up credentials: the repository
+/// itself, or a folder outside any repository while git is held there, so its own credential
+/// helper never runs before it is trusted.
+fn credentials_dir(st: &AppState, workdir: &std::path::Path) -> std::path::PathBuf {
+    let active = st.workdir().is_some_and(|w| same_spelling(&w, workdir));
+    if active && st.runs_git_unasked() { workdir.to_path_buf() } else { AppState::outside_dir() }
 }

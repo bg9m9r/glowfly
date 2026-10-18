@@ -157,10 +157,10 @@ fn ask_open(st: &mut AppState, path: String, kind: &'static str) {
             ),
         ),
         standing => {
-            let trust = if standing == Some(Standing::Trusted) {
-                ""
-            } else {
-                " You haven't said whether you trust this repository."
+            let trust = match standing {
+                Some(Standing::Trusted) => "",
+                Some(Standing::Changed) => " This repository gained settings or hooks that run programs since you trusted it.",
+                _ => " You haven't said whether you trust this repository.",
             };
             st.modal = Some(Modal::Confirm {
                 title: "Run this file?".into(),

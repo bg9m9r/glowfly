@@ -154,3 +154,28 @@ fn nothing_to_publish_without_commits() {
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("Make a commit")));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn credentials_come_from_outside_a_held_repository() {
+    use crate::state::trust::record;
+    use trellis_core::settings::RepoTrust;
+    let (mut st, dir) = super::trust_held_tests::held_repo("publish-held");
+    let fx = run(&mut st, Msg::Publish(PublishMsg::PublishDialog));
+    let [Effect::Account(AccountEffect::Owners { cwd, .. })] = &fx[..] else { panic!("{fx:?}") };
+    assert_eq!(*cwd, AppState::outside_dir(), "the repository's own credential helper doesn't run");
+    run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Ok(vec!["ada".into()]) }));
+    form_mut(&mut st).name = "demo".into();
+    let fx = run(&mut st, Msg::Publish(PublishMsg::Publish));
+    let [Effect::Account(AccountEffect::CreateRepo { cwd, workdir, .. })] = &fx[..] else { panic!("{fx:?}") };
+    assert_eq!(*cwd, AppState::outside_dir());
+    assert_eq!(*workdir, form(&st).workdir, "the result still goes to the dialog's repository");
+    st.modal = None;
+
+    // Trusted: the repository's own folder.
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    record(&mut st.settings, &real, RepoTrust::Trusted);
+    let fx = run(&mut st, Msg::Publish(PublishMsg::PublishDialog));
+    let [Effect::Account(AccountEffect::Owners { cwd, .. })] = &fx[..] else { panic!("{fx:?}") };
+    assert_eq!(*cwd, form(&st).workdir);
+    let _ = std::fs::remove_dir_all(&dir);
+}

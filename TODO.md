@@ -1083,13 +1083,9 @@ blockers and major findings are Milestone 1 items.
 
 ### Repository trust
 
-- Trust worktrees Trellis creates from a trusted repository (and optionally submodules of one);
-  ask again when a trusted repository gains new command-running settings or hooks
 - Hold shells the built-in terminal starts in an untrusted repository (prompts that run git)
 - Hold the git CLI reads the LFS and Sparse Checkout Preferences pages make in an untrusted
   repository
-- Hold Publish and other jobs that run in a different untrusted repository than the active one,
-  using that repository's own decision
 
 ### Keyboard shortcuts
 
@@ -1755,6 +1751,22 @@ here, under the item they grew from.
   repository that was clean
 - Offer Don't trust on the prompt that holds a job, alongside Trust and run and Cancel
 - Queue several held jobs instead of refusing a second one while the prompt is open
+- Ask again when a hook's script changes, not only when a new hook or setting appears
+- Pass trust on to a worktree or submodule made by a job that waited for the prompt and ran on
+  Trust and run
+- Trust nested submodules a recursive initialize checks out, not only the listed ones
+- Offer to trust a trusted repository's existing worktrees and checked-out submodules when one is
+  opened in a tab
+- Read a repository that isn't open in any tab and ask about it, rather than refusing a job for it
+- Find a favorite's trust decision when it is listed under another spelling (a link) and isn't
+  open in a tab
+- A preference to stop passing trust to new worktrees and submodules
+- Show the unchanged, already trusted settings and hooks under a fold in the Trust this
+  repository again? prompt
+- Notice a new hook at the next refresh rather than the next full load (the change check reads
+  the config and refs, not the hooks folder)
+- Take a newly checked-out submodule's own settings into its parent's trust decision, so the
+  parent isn't asked again about what the submodule brought
 
 ### Command palette (fuzzy finder)
 

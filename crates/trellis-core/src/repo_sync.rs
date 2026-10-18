@@ -47,9 +47,10 @@ pub fn command(op: SyncOp) -> Vec<String> {
     }
 }
 
-/// Fetches or pulls the repository at `path`. Unless `trusted`, its config and hooks are
-/// scanned first and it is skipped when they would make git run programs.
-pub fn sync(path: &Path, op: SyncOp, trusted: bool) -> Outcome {
+/// Fetches or pulls the repository at `path`, whose saved decision is `trust`. Its config and
+/// hooks are scanned first and it is skipped unless the decision allows what they run
+/// (`trust::allows`: a Trusted one whose print covers them, or none when nothing runs).
+pub fn sync(path: &Path, op: SyncOp, trust: Option<&crate::settings::SavedTrust>) -> Outcome {
     if !path.is_dir() {
         return Outcome::Failed { reason: "The folder can't be found.".into(), detail: String::new() };
     }
@@ -57,7 +58,7 @@ pub fn sync(path: &Path, op: SyncOp, trusted: bool) -> Outcome {
         Ok(r) => r,
         Err(e) => return Outcome::Failed { reason: crate::safe_directory::open_error(path, &e).to_string(), detail: String::new() },
     };
-    if !trusted && !crate::trust::scan(&repo).is_empty() {
+    if !crate::trust::allows(trust, &crate::trust::scan(&repo)) {
         return Outcome::Untrusted;
     }
     if repo.remotes().map(|r| r.is_empty()).unwrap_or(true) {

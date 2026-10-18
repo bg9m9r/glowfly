@@ -123,6 +123,7 @@ mod tool_compare;
 mod tools;
 mod trello;
 mod trust;
+mod trust_inherit;
 mod undo;
 mod updates;
 mod watch;

@@ -128,6 +128,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::Journal(_)
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(_)
+            | Effect::Trust(_)
             | Effect::GitEnv(GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. })
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }

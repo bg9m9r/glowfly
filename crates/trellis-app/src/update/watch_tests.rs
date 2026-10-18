@@ -235,16 +235,23 @@ fn outside_config_that_runs_programs_asks_for_trust() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 
-    // A trusted repository stays trusted.
+    // A trusted repository that gains a setting asks again, about that setting.
     let dir = scratch_repo("watch-trust-config-trusted");
     let mut st = state();
     record(&mut st.settings, &std::fs::canonicalize(&dir).unwrap(), RepoTrust::Trusted);
     record(&mut st.settings, &dir, RepoTrust::Trusted);
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    assert_eq!(st.trust_standing(), Some(Standing::Trusted));
+    // The decision took the first load's print, so the load options changed: load once with them.
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let workdir = st.workdir().unwrap();
     git(&dir, &["config", "core.sshCommand", "ssh -v"]);
     assert!(full_report(&mut st, &workdir));
-    assert_eq!(st.trust_standing(), Some(Standing::Trusted));
-    assert!(!st.held() && !matches!(st.modal, Some(Modal::Trust(_))));
+    assert_eq!(st.trust_standing(), Some(Standing::Changed));
+    assert!(st.held());
+    match &st.modal {
+        Some(Modal::Trust(p)) => assert!(p.gained.as_ref().is_some_and(|g| g.config.iter().any(|c| c.key == "core.sshCommand"))),
+        _ => panic!("the trust prompt is open again"),
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }

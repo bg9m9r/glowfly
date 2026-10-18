@@ -6,7 +6,7 @@
 //! spelling of the same path, and entries earlier versions saved under libgit2's spelling move
 //! to the resolved key when the repository loads.
 
-use super::{GraphFilter, Settings, TrackerChoice};
+use super::{GraphFilter, RepoTrust, SavedTrust, Settings, TrackerChoice};
 use crate::paths;
 use std::collections::HashMap;
 use std::path::Path;
@@ -104,10 +104,24 @@ impl Settings {
         self.submodule_updates_for(real).unwrap_or(self.submodules.keep_updated)
     }
 
+    /// The trust decision saved for the repository at `real`, with the print it was made on.
+    pub fn saved_trust(&self, real: &Path) -> Option<SavedTrust> {
+        let trust = *get(&self.repo_trust, real)?;
+        Some(SavedTrust { trust, print: get(&self.repo_trust_prints, real).cloned() })
+    }
+
+    /// Saves the decision `t` for the repository at `real` (None removes it). Don't trust, or
+    /// no print, removes the saved print.
+    pub fn set_trust(&mut self, real: &Path, t: Option<SavedTrust>) {
+        let print = t.as_ref().filter(|t| t.trust == RepoTrust::Trusted).and_then(|t| t.print.clone());
+        set(&mut self.repo_trust, real, t.map(|t| t.trust));
+        set(&mut self.repo_trust_prints, real, print);
+    }
+
     /// Moves the graph filter, branch colour pins, repository colour, pull request and issue filters, issue tracker,
     /// slow-status note and submodule choice saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
-    /// resolved key `real`. Trust decisions were always saved under the resolved key and are left
-    /// alone. Returns whether anything moved.
+    /// resolved key `real`. Trust decisions and their prints were always saved under the resolved
+    /// key and are left alone. Returns whether anything moved.
     pub fn adopt_repo_keys(&mut self, real: &Path, aliases: &[&Path]) -> bool {
         let filters = adopt(&mut self.graph_filters, real, aliases);
         let forge_filters = adopt(&mut self.repo_forge_filters, real, aliases);
