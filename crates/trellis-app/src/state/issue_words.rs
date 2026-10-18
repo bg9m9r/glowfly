@@ -71,6 +71,16 @@ pub fn kind_row_label(p: Provider) -> &'static str {
     }
 }
 
+/// The priority picker and row (Jira, Bitbucket and Azure Boards issues carry one).
+pub fn priority_label(_p: Provider) -> &'static str {
+    "Priority"
+}
+
+/// The priority picker before one is chosen.
+pub fn priority_hint(_p: Provider) -> &'static str {
+    "Choose a priority"
+}
+
 /// "Fix version" on Jira, "Milestone" on code hosts.
 pub fn milestone_label(p: Provider) -> &'static str {
     if p.is_jira() { "Fix version" } else { "Milestone" }
@@ -134,6 +144,7 @@ mod tests {
             ("Search tags", "Search labels", "Search members", "Search people")
         );
         assert_eq!((add_word(AzureDevOps), add_word(GitLab)), ("tag", "label"));
+        assert_eq!((priority_label(Bitbucket), priority_hint(JiraCloud)), ("Priority", "Choose a priority"));
         assert_eq!(loading_text(Trello), "Loading lists, labels and members…");
         assert_eq!(loading_text(AzureDevOps), "Loading types, tags and people…");
         assert_eq!(loading_text(GitHub), "Loading labels, people and types…");

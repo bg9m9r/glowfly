@@ -3,7 +3,7 @@
 //! details are loaded by `Effect::Issue`.
 
 use super::ForgeState;
-use super::issue_words::{epic_label, kind_row_label, labels_label, people_label};
+use super::issue_words::{epic_label, kind_row_label, labels_label, people_label, priority_label};
 pub use super::issue_words::{milestone_label, state_label};
 use trellis_core::forge::{Issue, IssueDetails, Provider, Target, issues_in_app};
 use trellis_core::repo::{BranchInfo, Snapshot};
@@ -145,7 +145,7 @@ pub fn meta_rows(v: &IssueView, settings: &Settings, offset: i32) -> Vec<(&'stat
     };
     let mut rows = vec![(state_label(p), i.state.clone()), (kind_row_label(p), v.kind())];
     if let Some(priority) = d.and_then(|d| d.priority.as_ref()).filter(|x| !x.is_empty()) {
-        rows.push(("Priority", capitalized(priority)));
+        rows.push((priority_label(p), capitalized(priority)));
     }
     rows.push((people_label(p), if assignees.is_empty() { "Unassigned".to_owned() } else { assignees }));
     if !i.facets.labels.is_empty() {

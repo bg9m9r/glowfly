@@ -43,9 +43,9 @@ pub fn show(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: b
         combo(ui, "issue-type", shown, 200.0, &types, &mut form.kind);
     }
     if let Some(priorities) = form.loaded().map(|o| o.priorities.clone()).filter(|t| !t.is_empty()) {
-        caption(ui, "Priority");
+        caption(ui, words::priority_label(p));
         let chosen = form.priority.as_ref().and_then(|k| priorities.iter().find(|n| &n.key == k));
-        let shown = chosen.map_or_else(|| "Choose a priority".to_owned(), |n| n.title.clone());
+        let shown = chosen.map_or_else(|| words::priority_hint(p).to_owned(), |n| n.title.clone());
         combo(ui, "issue-priority", shown, 200.0, &priorities, &mut form.priority);
     }
     caption(ui, form.title_label());
