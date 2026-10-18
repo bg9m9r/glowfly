@@ -77,11 +77,12 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             repo::LoadDiffOptions { ignore_whitespace, whole_file },
         )),
         Effect::HighlightDiff { target, generation, diff, .. } => highlight::finish_job(target, generation, &diff, cancelled),
-        Effect::LoadConflict { workdir, path, generation } => Some(Msg::Conflict(ConflictMsg::ConflictLoaded {
-            path: path.clone(),
-            generation,
-            result: repo::load_conflict(&workdir, &path).map_err(err),
-        })),
+        Effect::LoadConflict { workdir, path, generation } => {
+            let result = repo::load_conflict(&workdir, &path).map_err(err);
+            // The picks a file saved with markers holds come back with it.
+            let saved = result.as_ref().ok().and_then(|f| repo::saved_picks(&workdir, f));
+            Some(Msg::Conflict(ConflictMsg::ConflictLoaded { path: path.clone(), generation, result, saved }))
+        }
         Effect::LoadSparse { workdir, generation } => Some(sparse::load(&workdir, generation)),
         Effect::SparseCheckout { cwd, command } => Some(sparse::run(&cwd, &command)),
         Effect::LoadFileHistory { workdir, path, start, limit, folder, generation } => {
