@@ -39,7 +39,7 @@ pub(super) fn wrap_for(ui: &Ui, st: &DiffStyle, layout: DiffLayout) -> Option<Wr
 /// Where the rows sit: all `h` high, or (wrapped) at prefix offsets, one per row plus the
 /// total, starting at 0.
 #[derive(Clone, Copy, Debug)]
-pub(super) enum RowMetrics<'a> {
+pub(in crate::ui) enum RowMetrics<'a> {
     Uniform(f32),
     Varied(&'a [f32]),
 }
@@ -98,19 +98,20 @@ impl RowMetrics<'_> {
     }
 }
 
-/// The rows in a scroll area shared by both layouts (one id, so switching layout doesn't leave
-/// a stale second scroll state), drawing only those in view; `add_row` gets each row's index
-/// and height. Scrolls `scroll_to` to the top if set, and returns the first visible row and
-/// how many rows fit in the viewport.
-pub(super) fn scroll(
+/// The rows in a scroll area named `id_salt` (the diff's both layouts share "diff", so switching
+/// layout doesn't leave a stale second scroll state), drawing only those in view; `add_row`
+/// gets each row's index and height. Scrolls `scroll_to` to the top if set, and returns the
+/// first visible row and how many rows fit in the viewport.
+pub(in crate::ui) fn scroll(
     ui: &mut Ui,
+    id_salt: &str,
     rows: usize,
     m: RowMetrics,
     scroll_to: Option<usize>,
     mut add_row: impl FnMut(&mut Ui, usize, f32),
 ) -> (usize, usize) {
     ui.spacing_mut().item_spacing.y = 0.0;
-    let mut area = egui::ScrollArea::both().id_salt("diff").auto_shrink([false, false]);
+    let mut area = egui::ScrollArea::both().id_salt(id_salt).auto_shrink([false, false]);
     if let Some(row) = scroll_to {
         area = area.vertical_scroll_offset(m.top(row.min(rows)));
     }

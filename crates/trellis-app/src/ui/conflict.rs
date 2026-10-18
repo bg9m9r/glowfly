@@ -1,6 +1,8 @@
 //! The conflict view: ours and theirs side by side with picks per conflict chunk (whole sides
-//! or single lines), and below them the output as it will be saved (editable by hand). Binary,
-//! deleted and other special files offer a whole version instead.
+//! or single lines), and below them, in a panel whose height can be dragged, the output as it
+//! will be saved (editable by hand). Long unchanged runs fold in both, and long lines wrap with
+//! the diff viewer's Wrap long lines setting. Binary, deleted and other special files offer a
+//! whole version instead.
 
 use super::conflict_output::output;
 use super::conflict_panes::panes;
@@ -13,11 +15,16 @@ use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use crate::state::tool_compare::{IN_MERGE_TOOL, MERGE_TOOL_BUTTON, merge_blocked, merging};
 use crate::tools::ToolsMsg;
-use eframe::egui::{self, Align, Color32, Layout, RichText, Ui, vec2};
+use eframe::egui::{self, Align, Color32, Frame, Layout, RichText, Ui};
 use trellis_core::repo::{ConflictContent, ConflictFile, Operation, Side, SideLabels};
+
+/// The output panel's least height, and the least room it leaves the panes above it.
+const OUTPUT_MIN: f32 = 90.0;
+const PANES_MIN: f32 = 140.0;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
+    let wrap = st.settings.diff_word_wrap;
     let Some(view) = &st.conflict else { return };
     let tool = merge_blocked(&st.settings.external_tools, view.file.as_ref().map(|f| &f.content), st.job.is_some());
     // Nothing here writes the file while the merge tool has it open; it closes the view on a change.
@@ -32,28 +39,38 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         });
     }
     auto_note(ui, view);
+    restored_note(ui, view);
     let Some(file) = &view.file else {
         ui.label(RichText::new("Loading…").color(color::weak()));
         return;
     };
-    match &file.content {
-        ConflictContent::Text(segs) => {
-            ui.spacing_mut().item_spacing.y = 0.0;
-            let top_h = (ui.available_height() * 0.55).floor();
-            let width = ui.available_width();
-            ui.allocate_ui_with_layout(vec2(width, top_h), Layout::top_down(Align::Min), |ui| {
-                panes(ui, view, file, segs, scroll_to, top_h, msgs);
-            });
-        }
-        _ => {
-            fallback(ui, view, file, tool.as_deref(), in_tool, msgs);
-            return;
-        }
+    if !matches!(file.content, ConflictContent::Text(_)) {
+        fallback(ui, view, file, tool.as_deref(), in_tool, msgs);
+        return;
     }
-    // The output's editor changes its own text buffer.
-    if let Some(view) = st.conflict.as_mut() {
-        output(ui, view, scroll_to, msgs);
-    }
+    ui.spacing_mut().item_spacing.y = 0.0;
+    // The output first, at the bottom (its height kept by egui for the session); the panes take
+    // the rest. Its editor changes its own text buffer.
+    let avail = ui.available_height();
+    egui::TopBottomPanel::bottom("conflict-output")
+        .resizable(true)
+        .default_height((avail * 0.45).floor())
+        .height_range(OUTPUT_MIN..=(avail - PANES_MIN).max(OUTPUT_MIN))
+        .frame(Frame::new().fill(color::bg()))
+        .show_inside(ui, |ui| {
+            if let Some(view) = st.conflict.as_mut() {
+                output(ui, view, scroll_to, wrap, msgs);
+            }
+        });
+    egui::CentralPanel::default().frame(Frame::new()).show_inside(ui, |ui| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        if let Some(view) = &st.conflict
+            && let Some(file) = &view.file
+            && let ConflictContent::Text(segs) = &file.content
+        {
+            panes(ui, view, file, segs, scroll_to, wrap, msgs);
+        }
+    });
 }
 
 fn operation_text(l: &SideLabels) -> String {
@@ -118,7 +135,7 @@ fn header_buttons(ui: &mut Ui, view: &ConflictView, tool: Option<&str>, in_tool:
         msgs.push(Msg::Conflict(ConflictMsg::SaveConflict));
     }
     save_partial_button(ui, view, in_tool, msgs);
-    if ui.button("Reset").on_hover_text("Clear all picks (hand edits stay)").clicked() {
+    if ui.button("Reset").on_hover_text("Clear all picks (typed text stays)").clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictReset));
     }
     ui.add_space(10.0);
@@ -194,6 +211,20 @@ fn auto_note(ui: &mut Ui, view: &ConflictView) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         ui.label(text);
+    });
+}
+
+/// Under the header: how many chunks came back from the file saved with markers, or that its
+/// edits between the conflicts did, when anything did.
+fn restored_note(ui: &mut Ui, view: &ConflictView) {
+    let text = match (view.restored, view.chunk_count()) {
+        (0, _) if view.baseline.1.is_empty() => return,
+        (0, _) => "Edits saved in the file between the conflicts are back.".to_owned(),
+        (k, n) => format!("Picks saved in the file are back for {k} of {n} conflicts."),
+    };
+    ui.horizontal(|ui| {
+        ui.add_space(8.0);
+        ui.label(RichText::new(text).color(color::accent()));
     });
 }
 

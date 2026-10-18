@@ -6,7 +6,8 @@
 //! the work is split by area: `load` (history, refs, status), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`,
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files, Mark resolved and Mark
-//! conflicted) and `markers` (conflict markers left in working files), `template`
+//! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
+//! picks a file saved with markers holds), `template`
 //! (commit.template), `tool_sides` (versions for external tools), `touching` (commits that
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and
 //! `removal` (working-tree files), `tracked`,
@@ -26,6 +27,7 @@ mod blame_porcelain;
 mod collide;
 mod common_dir;
 mod conflict;
+mod conflict_saved;
 mod diff;
 mod diff_types;
 mod entry;
@@ -76,6 +78,7 @@ pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, 
 pub use collide::{Collision, Folding, probe};
 pub use common_dir::{CommonDir, repo_name_of};
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict, marker_size};
+pub use conflict_saved::{RESTORE_MAX, saved_picks};
 pub use diff::{
     BranchChanges, Comparison, ViewDiff, branch_changes, commit_detail, commit_stats, commit_stats_until, compare, compare_files,
     compare_workdir, load_diff, load_diff_for_view, load_diff_with,
@@ -340,6 +343,8 @@ mod common_dir_tests;
 mod compare_tests;
 #[cfg(test)]
 mod compare_workdir_tests;
+#[cfg(test)]
+mod conflict_saved_tests;
 #[cfg(test)]
 mod conflict_tests;
 #[cfg(test)]

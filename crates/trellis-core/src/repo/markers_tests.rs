@@ -1,4 +1,4 @@
-use super::markers::scan_with_limit;
+use super::markers::{read_text, scan_with_limit};
 use super::*;
 use crate::testutil::*;
 
@@ -55,5 +55,24 @@ fn conflict_markers_does_not_follow_links() {
     std::os::unix::fs::symlink("m.txt", dir.join("link.txt")).unwrap();
     let found = conflict_markers(&dir, &["link.txt".to_owned()]);
     assert_eq!(found, [("link.txt".to_owned(), None)]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn read_text_reads_small_regular_text_files() {
+    let dir = scratch_repo("markers-read-text");
+    write(&dir, "a.txt", "some text\n");
+    write(&dir, "bin.dat", "x\0y\n");
+    std::fs::create_dir_all(dir.join("folder")).unwrap();
+    assert_eq!(read_text(&dir, "a.txt", 100).as_deref(), Some(&b"some text\n"[..]));
+    assert_eq!(read_text(&dir, "a.txt", 5), None, "over the limit");
+    assert_eq!(read_text(&dir, "bin.dat", 100), None, "binary");
+    assert_eq!(read_text(&dir, "folder", 100), None);
+    assert_eq!(read_text(&dir, "missing.txt", 100), None);
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink("a.txt", dir.join("link.txt")).unwrap();
+        assert_eq!(read_text(&dir, "link.txt", 100), None, "links are not followed");
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }

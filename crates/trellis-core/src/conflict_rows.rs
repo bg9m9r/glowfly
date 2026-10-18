@@ -1,14 +1,19 @@
 //! Row layout of the conflict view: the ours and theirs panes side by side (aligned, the
-//! shorter side of a chunk padded), and the output as it will be saved (`conflict_pick`). Also the chunks that
-//! can be picked safely without asking (`trivial_pick`).
+//! shorter side of a chunk padded), and the output as it will be saved (`conflict_pick`), long
+//! clean runs folded into one row unless opened (`conflict_folds`). Also the chunks that can be
+//! picked safely without asking (`trivial_pick`).
 
-use crate::conflict_pick::ChunkPick;
+use crate::conflict_folds::{CleanFold, clean_fold};
+use crate::conflict_pick::{ChunkPick, CleanEdits};
 use crate::repo::{Choice, Chunk, ConflictFile, Segment, Side};
+use std::collections::BTreeSet;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PaneRow {
     /// Line `line` of clean segment `seg`, with its number in each side's file.
     Clean { seg: usize, line: usize, ours_no: u32, theirs_no: u32 },
+    /// Clean lines folded into one row.
+    Fold(CleanFold),
     /// The header of a conflict chunk.
     Header(usize),
     /// Row `row` of a chunk: `chunk.ours[row]` / `chunk.theirs[row]` with their line numbers,
@@ -17,19 +22,38 @@ pub enum PaneRow {
     Lines { chunk: usize, row: usize, ours: Option<u32>, theirs: Option<u32> },
 }
 
-/// The pane rows, and the first row (the header) of each chunk.
-pub fn pane_rows(segs: &[Segment]) -> (Vec<PaneRow>, Vec<usize>) {
+/// The line indexes of clean segment `seg` (of `n` lines) to show one by one, around its fold
+/// when it has one that isn't in `opened`: the lines before it, the fold, the lines after it.
+fn clean_parts(
+    segs: &[Segment],
+    seg: usize,
+    n: usize,
+    opened: &BTreeSet<usize>,
+) -> (std::ops::Range<usize>, Option<CleanFold>, std::ops::Range<usize>) {
+    match clean_fold(segs, seg).filter(|_| !opened.contains(&seg)) {
+        Some(f) => (0..f.start, Some(f), f.end..n),
+        None => (0..n, None, n..n),
+    }
+}
+
+/// The pane rows, and the first row (the header) of each chunk. Clean runs fold unless their
+/// segment is in `opened`; the line numbers count the folded lines.
+pub fn pane_rows(segs: &[Segment], opened: &BTreeSet<usize>) -> (Vec<PaneRow>, Vec<usize>) {
     let (mut rows, mut firsts) = (Vec::new(), Vec::new());
     let (mut ours_no, mut theirs_no) = (1u32, 1u32);
     let mut chunk = 0;
     for (seg, s) in segs.iter().enumerate() {
         match s {
             Segment::Clean(lines) => {
-                for line in 0..lines.len() {
-                    rows.push(PaneRow::Clean { seg, line, ours_no, theirs_no });
-                    ours_no += 1;
-                    theirs_no += 1;
-                }
+                let (before, fold, after) = clean_parts(segs, seg, lines.len(), opened);
+                // The folded lines count too, so the numbers after a fold stay right.
+                let (o, t) = (ours_no, theirs_no);
+                let clean = |line: usize| PaneRow::Clean { seg, line, ours_no: o + line as u32, theirs_no: t + line as u32 };
+                rows.extend(before.map(clean));
+                rows.extend(fold.map(PaneRow::Fold));
+                rows.extend(after.map(clean));
+                ours_no += lines.len() as u32;
+                theirs_no += lines.len() as u32;
             }
             Segment::Conflict(c) => {
                 firsts.push(rows.len());
@@ -58,6 +82,13 @@ pub enum OutRow {
         seg: usize,
         line: usize,
     },
+    /// Clean lines folded into one row.
+    Fold(CleanFold),
+    /// Line `line` of the text typed for clean segment `seg` (`CleanEdits`).
+    CleanEdited {
+        seg: usize,
+        line: usize,
+    },
     /// Line `line` of `side` in chunk `chunk`.
     Taken {
         chunk: usize,
@@ -73,15 +104,25 @@ pub enum OutRow {
     Unresolved(usize),
 }
 
-/// The output rows for `picks`, and the first row of each chunk (for a picked chunk with no
-/// lines, the row after it). Typed text shows as typed, markers and all.
-pub fn output_rows(segs: &[Segment], picks: &[ChunkPick]) -> (Vec<OutRow>, Vec<usize>) {
+/// The output rows for `picks` and the edited clean runs `cleans`, and the first row of each
+/// chunk (for a picked chunk with no lines, the row after it). Typed text shows as typed,
+/// markers and all. Clean runs not edited fold unless their segment is in `opened`; edited ones
+/// never fold.
+pub fn output_rows(segs: &[Segment], picks: &[ChunkPick], cleans: &CleanEdits, opened: &BTreeSet<usize>) -> (Vec<OutRow>, Vec<usize>) {
     let (mut rows, mut firsts) = (Vec::new(), Vec::new());
     let mut chunk = 0;
     let none = ChunkPick::default();
     for (seg, s) in segs.iter().enumerate() {
         match s {
-            Segment::Clean(lines) => rows.extend((0..lines.len()).map(|line| OutRow::Clean { seg, line })),
+            Segment::Clean(_) if cleans.contains_key(&seg) => {
+                rows.extend((0..cleans[&seg].len()).map(|line| OutRow::CleanEdited { seg, line }));
+            }
+            Segment::Clean(lines) => {
+                let (before, fold, after) = clean_parts(segs, seg, lines.len(), opened);
+                rows.extend(before.map(|line| OutRow::Clean { seg, line }));
+                rows.extend(fold.map(OutRow::Fold));
+                rows.extend(after.map(|line| OutRow::Clean { seg, line }));
+            }
             Segment::Conflict(c) => {
                 firsts.push(rows.len());
                 match picks.get(chunk).unwrap_or(&none) {
@@ -171,110 +212,5 @@ pub fn trivial_picks(file: &ConflictFile) -> Vec<Option<(Choice, Trivial)>> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn lines(v: &[&str]) -> Vec<String> {
-        v.iter().map(|s| format!("{s}\n")).collect()
-    }
-
-    fn sample() -> Vec<Segment> {
-        vec![
-            Segment::Clean(lines(&["a", "b"])),
-            Segment::Conflict(Chunk { base: lines(&["c"]), ours: lines(&["o1", "o2", "o3"]), theirs: lines(&["t1"]) }),
-            Segment::Clean(lines(&["d"])),
-        ]
-    }
-
-    #[test]
-    fn pane_rows_pad_the_shorter_side() {
-        let (rows, firsts) = pane_rows(&sample());
-        assert_eq!(firsts, [2]);
-        assert_eq!(rows[2], PaneRow::Header(0));
-        assert_eq!(rows[3], PaneRow::Lines { chunk: 0, row: 0, ours: Some(3), theirs: Some(3) });
-        assert_eq!(rows[4], PaneRow::Lines { chunk: 0, row: 1, ours: Some(4), theirs: None });
-        assert_eq!(rows[5], PaneRow::Lines { chunk: 0, row: 2, ours: Some(5), theirs: None });
-        // After the chunk each side continues from its own count.
-        assert_eq!(rows[6], PaneRow::Clean { seg: 2, line: 0, ours_no: 6, theirs_no: 4 });
-        assert_eq!(rows.len(), 7);
-        // A chunk with nothing on either side still gets a row.
-        let empty = [Segment::Conflict(Chunk { base: lines(&["x"]), ours: Vec::new(), theirs: Vec::new() })];
-        let (rows, _) = pane_rows(&empty);
-        assert_eq!(rows, [PaneRow::Header(0), PaneRow::Lines { chunk: 0, row: 0, ours: None, theirs: None }]);
-    }
-
-    #[test]
-    fn output_rows_show_placeholders() {
-        let segs = sample();
-        let (rows, firsts) = output_rows(&segs, &[ChunkPick::default()]);
-        assert_eq!(rows.len(), 4);
-        assert_eq!((rows[2], firsts[0]), (OutRow::Unresolved(0), 2));
-        let (rows, _) = output_rows(&segs, &[Choice::OursThenTheirs.into()]);
-        let taken: Vec<_> = rows
-            .iter()
-            .filter_map(|r| match r {
-                OutRow::Taken { side, line, .. } => Some((*side, *line)),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(taken, [(Side::Ours, 0), (Side::Ours, 1), (Side::Ours, 2), (Side::Theirs, 0)]);
-        assert_eq!(rows.last(), Some(&OutRow::Clean { seg: 2, line: 0 }));
-        // A picked side with no lines leaves no rows; the chunk starts at the next row.
-        let empty = [Segment::Conflict(Chunk { base: Vec::new(), ours: Vec::new(), theirs: lines(&["t"]) }), Segment::Clean(lines(&["z"]))];
-        let (rows, firsts) = output_rows(&empty, &[Choice::Ours.into()]);
-        assert_eq!((rows, firsts), (vec![OutRow::Clean { seg: 1, line: 0 }], vec![0]));
-        // Single lines in tick order; typed text line by line.
-        let lines_pick = ChunkPick::Lines(vec![crate::conflict_pick::LineRef { side: Side::Theirs, line: 0 }]);
-        let (rows, _) = output_rows(&segs, &[lines_pick]);
-        assert_eq!(rows[2], OutRow::Taken { chunk: 0, side: Side::Theirs, line: 0 });
-        let typed = ChunkPick::Edited { lines: lines(&["x", "y"]), before: Box::default() };
-        let (rows, _) = output_rows(&segs, &[typed]);
-        assert_eq!(rows[2..4], [OutRow::Edited { chunk: 0, line: 0 }, OutRow::Edited { chunk: 0, line: 1 }]);
-    }
-
-    #[test]
-    fn scroll_target_clamps_at_zero() {
-        assert_eq!(scroll_target(&[1, 10], 0), 0);
-        assert_eq!(scroll_target(&[1, 10], 1), 7);
-        assert_eq!(scroll_target(&[], 3), 0);
-    }
-
-    fn chunk(base: &[&str], ours: &[&str], theirs: &[&str]) -> Chunk {
-        Chunk { base: lines(base), ours: lines(ours), theirs: lines(theirs) }
-    }
-
-    #[test]
-    fn trivial_pick_table() {
-        use Choice::{Ours, Theirs};
-        use Trivial::{Identical, Unchanged, Whitespace};
-        let crlf = |v: &[&str]| v.iter().map(|s| format!("{s}\r\n")).collect::<Vec<_>>();
-        type Row = (&'static str, Chunk, Option<(Choice, Trivial)>);
-        let table: [Row; 9] = [
-            ("ours is the base", chunk(&["a"], &["a"], &["b"]), Some((Theirs, Unchanged))),
-            ("theirs is the base", chunk(&["a"], &["b"], &["a"]), Some((Ours, Unchanged))),
-            ("the same change", chunk(&["a"], &["b", "c"], &["b", "c"]), Some((Ours, Identical))),
-            ("indentation", chunk(&["a"], &["    b(x)"], &["\tb(x)"]), Some((Ours, Whitespace))),
-            ("trailing spaces", chunk(&["a"], &["b  c"], &["b c  "]), Some((Ours, Whitespace))),
-            ("a blank line added", chunk(&["a"], &["b", "", "c"], &["b", "c"]), Some((Ours, Whitespace))),
-            ("ours only reindents", chunk(&["  a"], &["a"], &["z"]), Some((Theirs, Whitespace))),
-            ("theirs only reindents", chunk(&["  a"], &["z"], &["a "]), Some((Ours, Whitespace))),
-            ("a real conflict", chunk(&["a"], &["b"], &["c"]), None),
-        ];
-        for (what, c, want) in table {
-            assert_eq!(trivial_pick(&c, true), want, "{what}");
-        }
-        // Line endings alone: CR LF against LF.
-        let c = Chunk { base: lines(&["a"]), ours: crlf(&["b"]), theirs: lines(&["b"]) };
-        assert_eq!(trivial_pick(&c, true), Some((Ours, Whitespace)));
-        // Line endings are ignored against the base too.
-        let c = Chunk { base: crlf(&["a"]), ours: lines(&["a"]), theirs: lines(&["b"]) };
-        assert_eq!(trivial_pick(&c, true), Some((Theirs, Unchanged)));
-        // Without a base, an empty side isn't "unchanged": the empty base is made up.
-        let c = chunk(&[], &[], &["t"]);
-        assert_eq!(trivial_pick(&c, false), None);
-        assert_eq!(trivial_pick(&c, true), Some((Theirs, Unchanged)));
-        // Equal sides are still equal without a base.
-        assert_eq!(trivial_pick(&chunk(&[], &["x"], &["x"]), false), Some((Ours, Identical)));
-        assert_eq!(Whitespace.label(), "whitespace only");
-    }
-}
+#[path = "conflict_rows_tests.rs"]
+mod tests;

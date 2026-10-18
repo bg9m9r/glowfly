@@ -162,6 +162,25 @@ fn user_conflict_choices_ask_but_automatic_ones_do_not() {
 }
 
 #[test]
+fn a_clean_edit_alone_asks_but_restored_picks_do_not() {
+    let mut st = fake_tabs(&["a", "b"], 1);
+    let mut c = conflict(vec![ChunkPick::default()], vec![None]);
+    c.cleans.insert(0, vec!["edited\n".into()]);
+    st.conflict = Some(c);
+    send(&mut st, TabsMsg::CloseTab(1));
+    let (_, body) = confirm(&st).expect("a confirmation");
+    assert!(body.contains("- 1 conflict choice in src/lib.rs"), "{body}");
+    st.modal = None;
+    // What the file holds already (brought back when it opened) is nothing to lose.
+    let mut c = conflict(vec![ChunkPick::Sides(Choice::Ours)], vec![None]);
+    c.cleans.insert(0, vec!["edited\n".into()]);
+    c.baseline = (c.picks.clone(), c.cleans.clone());
+    st.conflict = Some(c);
+    send(&mut st, TabsMsg::CloseTab(1));
+    assert!(st.modal.is_none());
+}
+
+#[test]
 fn cancel_keeps_everything() {
     let mut st = fake_tabs(&["a", "b"], 1);
     st.draft.summary = "wip".into();

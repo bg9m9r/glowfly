@@ -46,7 +46,7 @@ pub(super) fn fold_row(ui: &mut Ui, rect: Rect, v: &DiffView, f: Fold, sign_x: f
 /// A small chevron above one below, centred on `c` at scale `k`: tips pointing away from the
 /// centre when `apart` (unfold), towards it otherwise (fold back). Painted, since the bundled
 /// fonts lack such glyphs.
-fn paint_chevrons(p: &Painter, c: Pos2, k: f32, stroke: Stroke, apart: bool) {
+pub(in crate::ui) fn paint_chevrons(p: &Painter, c: Pos2, k: f32, stroke: Stroke, apart: bool) {
     let (tip, arms) = if apart { (4.5, 1.5) } else { (1.5, 4.5) };
     for dir in [-1.0, 1.0] {
         let t = pos2(c.x, c.y + dir * tip * k);

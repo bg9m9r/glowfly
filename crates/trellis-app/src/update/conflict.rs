@@ -19,14 +19,14 @@ mod edit;
 pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) {
     match msg {
         ConflictMsg::OpenConflict(path) => open(st, path, fx),
-        ConflictMsg::ConflictLoaded { path, generation, result } => {
+        ConflictMsg::ConflictLoaded { path, generation, result, saved } => {
             if generation != st.conflict_gen || st.conflict.as_ref().is_none_or(|c| c.path != path) {
                 return; // superseded: closed, reopened or another file opened
             }
             match result {
                 Ok(f) => {
                     if let Some(c) = st.conflict.as_mut() {
-                        c.set_file(f);
+                        c.set_file_saved(f, saved);
                         // The first chunk still to pick (automatic picks come before it).
                         st.view.conflict_scroll_to = Some(c.current);
                     }
@@ -45,6 +45,16 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
         ConflictMsg::ConflictEditOutput(on) => edit::set_edit(st, on),
         ConflictMsg::ConflictOutputEdited => edit::edited(st),
         ConflictMsg::ConflictDiscardEdit(k) => edit::discard_edit(st, k),
+        ConflictMsg::ConflictDiscardCleanEdits => edit::discard_cleans(st),
+        ConflictMsg::ConflictFold { seg, open } => {
+            if let Some(c) = st.conflict.as_mut() {
+                if open {
+                    c.opened.insert(seg);
+                } else {
+                    c.opened.remove(&seg);
+                }
+            }
+        }
         ConflictMsg::ConflictStep(d) => {
             let Some(c) = st.conflict.as_mut() else { return };
             let n = c.picks.len();
@@ -93,7 +103,8 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             let (Some(contents), Some(f)) = (c.partial_output(), c.file.as_ref()) else { return };
             let op = LocalOp::SavePartialResolution { path: c.path.clone(), contents, expected: f.ids.clone() };
             let n = c.unresolved();
-            c.saved_note = Some(format!("Saved {} with {n} conflict{} left (still conflicted)", c.path, if n == 1 { "" } else { "s" }));
+            let note = format!("Saved {} with {n} conflict{} left (still conflicted)", c.path, if n == 1 { "" } else { "s" });
+            c.pending_save = Some((note, c.picks.clone(), c.cleans.clone()));
             c.saving = true;
             super::ops::local(st, op, fx);
         }

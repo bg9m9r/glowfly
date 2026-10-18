@@ -5,7 +5,7 @@
 //! run folds back from a control on its first line, and the header can open or close them all.
 //! With wrapping on, long lines continue on the next line and their rows grow to fit.
 
-mod fold;
+pub(in crate::ui) mod fold;
 mod header;
 mod inline;
 pub(super) mod rows_cache;
@@ -13,7 +13,7 @@ mod split;
 mod style;
 mod syntax;
 mod thread_marks;
-mod wrap;
+pub(in crate::ui) mod wrap;
 
 use super::file_buttons::CommitFile;
 use super::theme::color;

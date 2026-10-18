@@ -1,16 +1,17 @@
 //! Picking in the conflict view: whole sides and single lines per chunk, Take all and Reset,
-//! and editing the output as text (only the conflicts' text; a change anywhere else is undone).
-//! A chunk edited by hand keeps its typed text through every pick until Discard edit.
+//! and editing the output as text (one conflict or one clean run between conflicts at a time; a
+//! change spanning both is undone). A chunk edited by hand keeps its typed text through every
+//! pick until Discard edit; edited clean runs stay until Discard edits outside conflicts.
 
 use crate::state::AppState;
 use crate::state::conflict::{ConflictView, OutputEdit};
 use trellis_core::conflict_edit::{EditResult, edit_text, locate_edit};
 use trellis_core::conflict_pick::{ChunkPick, file_eol};
-use trellis_core::repo::{Choice, ConflictContent, Side};
+use trellis_core::repo::{Choice, ConflictContent, Segment, Side};
 
-/// What the editor says after an edit outside the conflicts was undone.
-pub(crate) const OUTSIDE_NOTE: &str =
-    "Only the conflicts can be edited here: that change touched other lines and was undone. Change the rest in your editor.";
+/// What the editor says after an edit spanning more than one region was undone.
+pub(crate) const SPAN_NOTE: &str =
+    "An edit can change one conflict or the lines between two conflicts, not both at once: that change was undone.";
 
 /// Applies `f` to the pick of chunk `chunk` (unless its text was typed), making it current.
 fn change(st: &mut AppState, chunk: usize, f: impl FnOnce(&ChunkPick, &trellis_core::repo::Chunk) -> ChunkPick) {
@@ -51,12 +52,18 @@ pub(super) fn set_edit(st: &mut AppState, on: bool) {
 
 fn start_edit(c: &ConflictView) -> Option<OutputEdit> {
     let f = c.file.as_ref().filter(|f| matches!(f.content, ConflictContent::Text(_)))?;
-    let rendered = edit_text(f, &c.picks)?;
+    let rendered = edit_text(f, &c.picks, &c.cleans)?;
     Some(OutputEdit { buffer: rendered.text.clone(), rendered })
 }
 
-/// The editor's text changed: a change inside one chunk becomes that chunk's typed text; any
-/// other change is undone with a note.
+/// `l` without its line terminator.
+fn bare(l: &str) -> &str {
+    l.strip_suffix('\n').map_or(l, |l| l.strip_suffix('\r').unwrap_or(l))
+}
+
+/// The editor's text changed: a change inside one chunk becomes that chunk's typed text, one
+/// inside a clean run that run's (dropped once it reads as the file's own lines again); a
+/// change spanning more than one is undone with a note.
 pub(super) fn edited(st: &mut AppState) {
     let Some(c) = st.conflict.as_mut() else { return };
     let (Some(e), Some(ConflictContent::Text(segs))) = (&c.edit, c.file.as_ref().map(|f| &f.content)) else { return };
@@ -73,13 +80,31 @@ pub(super) fn edited(st: &mut AppState) {
             c.edit_note = None;
             c.rebuild_edit();
         }
+        EditResult::Clean { seg, lines } => {
+            let Some(Segment::Clean(own)) = segs.get(seg) else { return };
+            if lines.iter().map(|l| bare(l)).eq(own.iter().map(|l| bare(l))) {
+                c.cleans.remove(&seg);
+            } else {
+                c.cleans.insert(seg, lines);
+            }
+            c.edit_note = None;
+            c.rebuild_edit();
+        }
         EditResult::Outside => {
             if let Some(e) = c.edit.as_mut() {
                 e.buffer = e.rendered.text.clone();
             }
-            c.edit_note = Some(OUTSIDE_NOTE.into());
+            c.edit_note = Some(SPAN_NOTE.into());
         }
     }
+}
+
+/// Drops every edit of the clean runs, bringing back the file's own lines between the
+/// conflicts.
+pub(super) fn discard_cleans(st: &mut AppState) {
+    let Some(c) = st.conflict.as_mut() else { return };
+    c.cleans.clear();
+    c.rebuild_edit();
 }
 
 /// Drops chunk `k`'s typed text, bringing back the pick it had before.

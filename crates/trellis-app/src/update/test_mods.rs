@@ -31,6 +31,8 @@ pub(super) mod compare_wip_tests;
 pub(super) mod conflict_check_tests;
 #[path = "conflict_files_tests.rs"]
 pub(super) mod conflict_files_tests;
+#[path = "conflict_layout_tests.rs"]
+pub(super) mod conflict_layout_tests;
 #[path = "conflict_tests.rs"]
 pub(super) mod conflict_tests;
 #[path = "current_hunk_tests.rs"]

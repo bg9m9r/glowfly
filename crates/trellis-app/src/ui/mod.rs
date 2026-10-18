@@ -17,8 +17,10 @@ mod clone_service;
 mod commit_box;
 pub(crate) mod common;
 mod conflict;
+mod conflict_cells;
 mod conflict_check;
 mod conflict_files;
+mod conflict_fold;
 mod conflict_output;
 mod conflict_panes;
 mod dashboard;
@@ -130,6 +132,8 @@ mod snapshot_tests_compare;
 mod snapshot_tests_conflict_check;
 #[cfg(test)]
 mod snapshot_tests_conflict_files;
+#[cfg(test)]
+mod snapshot_tests_conflict_layout;
 #[cfg(test)]
 mod snapshot_tests_dashboard;
 #[cfg(test)]

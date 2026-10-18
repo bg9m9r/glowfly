@@ -97,16 +97,20 @@ fn edit_inside_a_chunk_makes_it_edited() {
 }
 
 #[test]
-fn edit_outside_the_chunks_is_undone() {
+fn an_edit_across_a_chunk_and_a_clean_line_is_undone() {
     let mut st = with_fake(2);
     send(&mut st, ConflictMsg::ConflictEditOutput(true));
     let picks = view(&st).picks.clone();
-    st.conflict.as_mut().unwrap().edit.as_mut().unwrap().buffer.insert(1, 'X');
+    let e = st.conflict.as_mut().unwrap().edit.as_mut().unwrap();
+    // From inside the top line into the first chunk's markers.
+    let end = e.rendered.chunks[0].start + 3;
+    e.buffer.replace_range(1..end, "X");
     send(&mut st, ConflictMsg::ConflictOutputEdited);
     let c = view(&st);
     let e = c.edit.as_ref().unwrap();
     assert_eq!(e.buffer, e.rendered.text, "the change is undone");
-    assert!(c.edit_note.is_some() && c.picks == picks);
+    assert_eq!(c.edit_note.as_deref(), Some(super::SPAN_NOTE));
+    assert!(c.picks == picks && c.cleans.is_empty());
     type_in_chunk(&mut st, 0, "fine\n");
     assert!(view(&st).edit_note.is_none(), "an accepted edit clears the note");
     st.conflict.as_mut().unwrap().edit_note = Some("x".into());
@@ -190,6 +194,13 @@ fn save_with_markers_writes_and_stays_conflicted() {
     let c = view(&st);
     assert!(!c.saving && c.picks[0] == ChunkPick::Sides(Choice::Ours), "the view stays with its picks");
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Saved f.txt with 1 conflict left (still conflicted)"));
+    assert_eq!(c.user_choices(), 0, "what was saved is nothing to lose");
+    // Opened again, the saved pick comes back from the file; the other chunk is still open.
+    drive(&mut st, Msg::Conflict(ConflictMsg::CloseConflict));
+    drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("f.txt".into())));
+    let c = view(&st);
+    assert_eq!(c.picks, [ChunkPick::Sides(Choice::Ours), ChunkPick::default()]);
+    assert_eq!((c.restored, c.current, c.user_choices()), (1, 1, 0));
     // Picking the rest saves and stages as before.
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs });
     drive(&mut st, Msg::Conflict(ConflictMsg::SaveConflict));
@@ -211,5 +222,61 @@ fn save_with_an_edited_chunk_stages_the_typed_text() {
         other => panic!("expected one resolve, got {other:?}"),
     }
     assert!(send(&mut st, ConflictMsg::SaveConflictKeepMarkers).is_empty(), "nothing is left for markers");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Replaces the text of the clean run `i` (in text order) in the open editor with `text` and
+/// reports the edit.
+fn type_in_clean(st: &mut AppState, i: usize, text: &str) {
+    let e = st.conflict.as_mut().unwrap().edit.as_mut().expect("editing");
+    let r = e.rendered.cleans[i].1.clone();
+    e.buffer.replace_range(r, text);
+    send(st, ConflictMsg::ConflictOutputEdited);
+}
+
+#[test]
+fn typing_between_the_conflicts_edits_that_run() {
+    let mut st = with_fake(2);
+    send(&mut st, ConflictMsg::ConflictEditOutput(true));
+    type_in_clean(&mut st, 1, "middle\nmore\n");
+    let c = view(&st);
+    assert_eq!(c.cleans.get(&2), Some(&vec!["middle\n".to_owned(), "more\n".to_owned()]));
+    assert!(c.edit_note.is_none() && c.picks.iter().all(|p| *p == ChunkPick::default()), "the chunks are untouched");
+    assert!(c.edit.as_ref().unwrap().buffer.contains("theirs 0\n>>>>>>> other\nmiddle\nmore\n<<<<<<<"), "rebuilt");
+    assert!(c.can_save_partial(), "a clean edit alone can be saved with markers");
+    assert_eq!(c.user_choices(), 1, "and would be lost by closing");
+    assert!(c.partial_output().unwrap().contains("middle\nmore\n"));
+    // Reset clears picks only.
+    send(&mut st, ConflictMsg::ConflictTakeAll(Side::Ours));
+    send(&mut st, ConflictMsg::ConflictReset);
+    assert!(view(&st).cleans.contains_key(&2), "typed text stays");
+    send(&mut st, ConflictMsg::ConflictTakeAll(Side::Ours));
+    assert_eq!(view(&st).output().unwrap(), "top\nours 0\nmiddle\nmore\nours 1\nbetween\n");
+    // Typing the run's own lines back drops the edit.
+    type_in_clean(&mut st, 1, "between\n");
+    assert!(view(&st).cleans.is_empty());
+    // Discard edits outside conflicts drops them all and rebuilds the editor.
+    type_in_clean(&mut st, 0, "TOP\n");
+    type_in_clean(&mut st, 2, "");
+    assert_eq!(view(&st).cleans.len(), 2);
+    send(&mut st, ConflictMsg::ConflictDiscardCleanEdits);
+    let c = view(&st);
+    assert!(c.cleans.is_empty());
+    assert_eq!(c.edit.as_ref().unwrap().buffer, "top\nours 0\nbetween\nours 1\nbetween\n");
+}
+
+#[test]
+fn save_writes_the_edited_clean_lines() {
+    let dir = conflicted_repo("conflict-save-clean-edit");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())));
+    send(&mut st, ConflictMsg::ConflictEditOutput(true));
+    type_in_clean(&mut st, 0, "uno\n");
+    send(&mut st, ConflictMsg::ConflictTakeAll(Side::Theirs));
+    match &send(&mut st, ConflictMsg::SaveConflict)[..] {
+        [Effect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. }] => assert_eq!(contents, "uno\ntheirs\n"),
+        other => panic!("expected one resolve, got {other:?}"),
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }

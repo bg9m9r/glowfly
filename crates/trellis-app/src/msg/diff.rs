@@ -6,6 +6,7 @@ use crate::state::history::{FileTextData, HistoryPane};
 use crate::state::lines::LineClick;
 use git2::Oid;
 use std::sync::Arc;
+use trellis_core::conflict_restore::SavedPicks;
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
 use trellis_core::settings::{DiffLayout, DiffMode};
@@ -100,6 +101,13 @@ pub enum ConflictMsg {
     ConflictOutputEdited,
     /// Drop the text typed for chunk `k`, bringing its picks back.
     ConflictDiscardEdit(usize),
+    /// Drop every edit of the clean runs between the conflicts.
+    ConflictDiscardCleanEdits,
+    /// Open (`open`) or fold again the run of unchanged lines of clean segment `seg`.
+    ConflictFold {
+        seg: usize,
+        open: bool,
+    },
     /// Make the next (1) or previous (-1) chunk current.
     ConflictStep(isize),
     /// Make chunk `i` current (a click on it) without scrolling.
@@ -114,10 +122,13 @@ pub enum ConflictMsg {
         path: String,
         side: Side,
     },
+    /// The conflict read from the index, and the picks its working file holds (ignored when
+    /// the read failed).
     ConflictLoaded {
         path: String,
         generation: u64,
         result: Result<ConflictFile, String>,
+        saved: Option<SavedPicks>,
     },
     /// Mark conflicted files resolved: their working files are checked for conflict markers
     /// first, and any left are confirmed before staging.
@@ -146,6 +157,8 @@ impl ConflictMsg {
             | Self::ConflictEditOutput(..)
             | Self::ConflictOutputEdited
             | Self::ConflictDiscardEdit(..)
+            | Self::ConflictDiscardCleanEdits
+            | Self::ConflictFold { .. }
             | Self::SaveConflictKeepMarkers
             | Self::ConflictTakeAll(..)
             | Self::ConflictReset

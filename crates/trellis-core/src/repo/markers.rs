@@ -66,6 +66,13 @@ pub fn conflict_markers(workdir: &Path, paths: &[String]) -> Vec<(String, Option
 
 /// `conflict_markers` for one path, reading files of at most `max` bytes.
 pub(super) fn scan_with_limit(workdir: &Path, path: &str, max: u64) -> Option<usize> {
+    read_text(workdir, path, max).map(|bytes| marker_regions(&bytes))
+}
+
+/// The bytes of the working file `path` (repo-relative, `/`-separated) when it is a regular
+/// text file (links are not followed) of at most `max` bytes; `None` otherwise, or when a NUL
+/// byte near its start makes it binary.
+pub(super) fn read_text(workdir: &Path, path: &str, max: u64) -> Option<Vec<u8>> {
     let full = workdir.join(path);
     let meta = std::fs::symlink_metadata(&full).ok()?;
     if !meta.file_type().is_file() || meta.len() > max {
@@ -76,5 +83,5 @@ pub(super) fn scan_with_limit(workdir: &Path, path: &str, max: u64) -> Option<us
     if bytes.len() as u64 > max || bytes[..bytes.len().min(BINARY_PROBE)].contains(&0) {
         return None;
     }
-    Some(marker_regions(&bytes))
+    Some(bytes)
 }

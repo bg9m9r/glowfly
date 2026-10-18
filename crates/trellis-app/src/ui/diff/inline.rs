@@ -31,7 +31,7 @@ pub(super) fn show(
     // Wrapped lines fit the viewer, so nothing scrolls sideways.
     let width = if v.wrap.is_some() { ui.available_width() } else { ui.available_width().max(cols.text + widest as f32 * char_w + 40.0) };
 
-    super::wrap::scroll(ui, rows.len(), m, scroll_to, |ui, i, h| {
+    super::wrap::scroll(ui, "diff", rows.len(), m, scroll_to, |ui, i, h| {
         // Lines can be clicked (to select, or to clear the selection) unless it's a commit diff.
         let sense = if v.sel.is_some() && matches!(rows[i], DiffRow::Line { .. }) { Sense::click() } else { Sense::hover() };
         let (rect, resp) = ui.allocate_exact_size(vec2(width, h), sense);

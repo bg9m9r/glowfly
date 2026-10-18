@@ -691,7 +691,6 @@ follow-ups go to Ideas, not here.
   next/previous change is in view
 - Keep a next/previous step from being superseded when a status refresh reloads the old file
   while the next one is loading
-- Wrap long lines in the conflict view too (it keeps fixed-height rows)
 
 ### Line-level staging
 
@@ -702,9 +701,6 @@ follow-ups go to Ideas, not here.
 ### Merge conflict tool
 
 - Undo and redo of a saved resolution through the undo history
-- Collapse long unchanged runs in the panes; a resizable split between panes and output
-- Reopening a file saved with markers brings back its picks (load reads only the index stages)
-- Edit lines outside the conflicts in the output pane
 
 ### File history and blame
 
@@ -1090,6 +1086,17 @@ here, under the item they grew from.
 - Leave a side out of every conflict from its pane header (the opposite of Take all)
 - Side colours and line numbers in the editable output
 - Palette entry to mark only the open conflict's file resolved
+- Expand all / fold all unchanged runs in the conflict view at once (header buttons or palette)
+- Mark the clean lines edited in the output in the ours/theirs panes too
+- Bring back picks for a chunk whose typed text still holds conflict markers (the restore falls back to the stages today)
+- Bring back picks when git converts the file (filter, working-tree-encoding or ident attributes)
+- Keep the editor's scroll-to-conflict exact when long lines wrap
+- Save the panes/output split between sessions
+- Cache the conflict view's wrapped row heights for very large files
+- Allow one edit to span a conflict and the clean lines next to it in the output editor
+- A separate wrap setting for the conflict view instead of sharing the diff viewer's
+- A fold-back control in the painted output too (only the panes have one)
+- Text typed into a clean run deleted between two conflicts joins the next conflict; let it bring the run back
 
 ### Blame gutter
 

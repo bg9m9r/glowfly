@@ -1,5 +1,5 @@
 use super::*;
-use crate::conflict_pick::ChunkPick;
+use crate::conflict_pick::{ChunkPick, CleanEdits};
 use crate::repo::{Choice, Chunk, ConflictContent, ConflictIds, Operation, Segment, SideLabels};
 
 fn lines(v: &[&str]) -> Vec<String> {
@@ -26,7 +26,7 @@ fn file() -> ConflictFile {
 
 /// Chunk 0 takes ours; chunk 1 is open (markers).
 fn before() -> EditText {
-    edit_text(&file(), &[ChunkPick::Sides(Choice::Ours), ChunkPick::default()]).unwrap()
+    edit_text(&file(), &[ChunkPick::Sides(Choice::Ours), ChunkPick::default()], &CleanEdits::new()).unwrap()
 }
 
 fn edit(before: &EditText, at: usize, remove: usize, insert: &str) -> String {
@@ -44,7 +44,7 @@ fn the_text_has_markers_for_open_chunks() {
     let b = before();
     assert_eq!(b.text, "top\na1 é\nmid\n<<<<<<< main\nx\n=======\ny\n>>>>>>> other\nend\n");
     assert_eq!(&b.text[b.chunks[0].clone()], "a1 é\n");
-    assert_eq!(edit_text(&file(), &[ChunkPick::default()]), None);
+    assert_eq!(edit_text(&file(), &[ChunkPick::default()], &CleanEdits::new()), None);
 }
 
 #[test]
@@ -62,14 +62,56 @@ fn edits_inside_a_chunk() {
     assert_eq!(locate_edit(&b, &b.text, "\n"), EditResult::Unchanged);
 }
 
+fn clean(seg: usize, v: &[&str]) -> EditResult {
+    EditResult::Clean { seg, lines: lines(v) }
+}
+
 #[test]
-fn edits_outside_the_chunks() {
+fn edits_in_the_clean_runs() {
     let b = before();
-    assert_eq!(locate_edit(&b, &edit(&b, 1, 0, "X"), "\n"), EditResult::Outside, "in the top line");
+    assert_eq!(b.cleans.iter().map(|(s, r)| (*s, &b.text[r.clone()])).collect::<Vec<_>>(), [(0, "top\n"), (2, "mid\n"), (4, "end\n")]);
+    assert_eq!(locate_edit(&b, &edit(&b, 1, 0, "X"), "\n"), clean(0, &["tXop"]), "in the top line");
+    let crlf = locate_edit(&b, &edit(&b, 1, 0, "X\nnew"), "\r\n");
+    assert_eq!(crlf, EditResult::Clean { seg: 0, lines: vec!["tX\r\n".into(), "newop\r\n".into()] }, "the file's line ending");
     // Typed at the start of the clean line after a chunk, without a line break: that line.
-    assert_eq!(locate_edit(&b, &edit(&b, b.chunks[0].end, 0, "X"), "\n"), EditResult::Outside);
+    assert_eq!(locate_edit(&b, &edit(&b, b.chunks[0].end, 0, "X"), "\n"), clean(2, &["Xmid"]));
+    // With a line break it still ends the chunk.
+    assert_eq!(locate_edit(&b, &edit(&b, b.chunks[0].end, 0, "x\n"), "\n"), chunk(0, &["a1 é", "x"]));
+    // A whole run deleted.
+    let (_, mid) = b.cleans[1].clone();
+    assert_eq!(locate_edit(&b, &edit(&b, mid.start, mid.len(), ""), "\n"), EditResult::Clean { seg: 2, lines: Vec::new() });
+    // The last line, at the very end of the text.
+    let end = b.text.len();
+    assert_eq!(locate_edit(&b, &edit(&b, end, 0, "tail"), "\n"), EditResult::Clean { seg: 4, lines: vec!["end\n".into(), "tail".into()] });
+}
+
+#[test]
+fn edits_across_regions_are_outside() {
+    let b = before();
     let (a, z) = (b.chunks[0].start + 1, b.chunks[1].start + 2);
     assert_eq!(locate_edit(&b, &edit(&b, a, z - a, "q"), "\n"), EditResult::Outside, "across two chunks");
+    let end = b.chunks[0].end;
+    assert_eq!(locate_edit(&b, &edit(&b, end - 1, 3, "q"), "\n"), EditResult::Outside, "a chunk's end and the next clean line");
+    assert_eq!(locate_edit(&b, &edit(&b, 2, 4, "q"), "\n"), EditResult::Outside, "a clean line and the next chunk");
+}
+
+#[test]
+fn edited_clean_runs_are_in_the_text() {
+    let mut cleans = CleanEdits::new();
+    cleans.insert(2, lines(&["middle", "more"]));
+    cleans.insert(4, Vec::new());
+    let b = edit_text(&file(), &[ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Theirs)], &cleans).unwrap();
+    assert_eq!(b.text, "top\na1 é\nmiddle\nmore\ny\n");
+    assert_eq!(b.cleans[1], (2, 10..22));
+    assert_eq!(b.cleans[2], (4, 24..24), "a deleted run is empty");
+    // Typing at the very end, after the last chunk, goes to that chunk.
+    assert_eq!(locate_edit(&b, &edit(&b, 24, 0, "new\n"), "\n"), chunk(1, &["y", "new"]));
+    // A deleted run between two chunks: text typed there joins the chunk after it.
+    let mut cleans = CleanEdits::new();
+    cleans.insert(2, Vec::new());
+    let b = edit_text(&file(), &[ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Theirs)], &cleans).unwrap();
+    assert_eq!(b.cleans[1], (2, 10..10));
+    assert_eq!(locate_edit(&b, &edit(&b, 10, 0, "m"), "\n"), chunk(1, &["my"]));
 }
 
 #[test]
@@ -92,7 +134,7 @@ fn repeated_text_is_placed_in_a_chunk_when_it_can_be() {
     {
         c.ours = lines(&["end"]);
     }
-    let b = edit_text(&f, &[ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Ours)]).unwrap();
+    let b = edit_text(&f, &[ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Ours)], &CleanEdits::new()).unwrap();
     assert_eq!(
         b.text,
         "top

@@ -1,9 +1,25 @@
 //! What each conflict chunk resolves to beyond a whole side: single lines ticked in the order
 //! they were ticked, or text typed in the output by hand. Also the file those picks make, with
-//! or without conflict markers for the chunks not picked yet (`render_picks`).
+//! or without conflict markers for the chunks not picked yet, and with the clean runs between
+//! the chunks as typed when they were edited (`render`, `render_picks`).
 
 use crate::repo::{Choice, Chunk, ConflictContent, ConflictFile, Segment, Side, marker_regions, marker_size};
+use std::collections::BTreeMap;
 use std::ops::Range;
+
+/// Clean runs edited in the output, by segment index (the `seg` of `conflict_rows::OutRow`):
+/// the run's new lines, each ending in the file's line ending (a last line without one kept as
+/// it is). An empty list means the whole run was deleted.
+pub type CleanEdits = BTreeMap<usize, Vec<String>>;
+
+/// Where each chunk and each clean run (by segment index) is in a rendered file, in text order.
+/// Together the ranges cover the text: a line break added before a chunk (after a clean run
+/// whose last line has none) belongs to that clean run.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Regions {
+    pub chunks: Vec<Range<usize>>,
+    pub cleans: Vec<(usize, Range<usize>)>,
+}
 
 /// One line of a chunk: line `line` of `side`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -18,7 +34,7 @@ pub enum ChunkPick {
     /// Whole sides; `Choice::Unresolved` means nothing yet.
     Sides(Choice),
     /// Single lines in the order they were ticked. Never empty, and never exactly whole sides
-    /// (`normalize` turns those into `Sides`).
+    /// (`from_refs` turns those into `Sides`).
     Lines(Vec<LineRef>),
     /// Text typed in the output, each line keeping its terminator. `before` is the pick it
     /// replaced (never `Edited`), brought back by Discard edit.
@@ -38,24 +54,24 @@ impl From<Choice> for ChunkPick {
 }
 
 /// Every line of the sides `choice` takes, in output order.
-fn expand(choice: Choice, c: &Chunk) -> Vec<LineRef> {
+pub(crate) fn expand(choice: Choice, c: &Chunk) -> Vec<LineRef> {
     choice.sides().iter().flat_map(|&side| (0..c.side(side).len()).map(move |line| LineRef { side, line })).collect()
 }
 
-/// `v` as the simplest pick that means the same: nothing, whole sides, or single lines.
-fn normalize(v: Vec<LineRef>, c: &Chunk) -> ChunkPick {
-    if v.is_empty() {
-        return ChunkPick::Sides(Choice::Unresolved);
-    }
-    for choice in [Choice::Ours, Choice::Theirs, Choice::OursThenTheirs, Choice::TheirsThenOurs] {
-        if v == expand(choice, c) {
-            return ChunkPick::Sides(choice);
-        }
-    }
-    ChunkPick::Lines(v)
-}
-
 impl ChunkPick {
+    /// `v` as the simplest pick that means the same: nothing, whole sides, or single lines.
+    pub fn from_refs(v: Vec<LineRef>, c: &Chunk) -> ChunkPick {
+        if v.is_empty() {
+            return ChunkPick::Sides(Choice::Unresolved);
+        }
+        for choice in [Choice::Ours, Choice::Theirs, Choice::OursThenTheirs, Choice::TheirsThenOurs] {
+            if v == expand(choice, c) {
+                return ChunkPick::Sides(choice);
+            }
+        }
+        ChunkPick::Lines(v)
+    }
+
     /// Not resolved yet: nothing picked, or typed text that still holds a whole marker region.
     pub fn is_open(&self) -> bool {
         match self {
@@ -115,7 +131,7 @@ impl ChunkPick {
             }
             None => v.push(r),
         }
-        normalize(v, c)
+        ChunkPick::from_refs(v, c)
     }
 
     /// Ticks or unticks a whole side. Whole-side picks follow `Choice::toggle`; with single
@@ -132,7 +148,7 @@ impl ChunkPick {
                 if !all {
                     v.extend((0..c.side(side).len()).map(|line| LineRef { side, line }));
                 }
-                normalize(v, c)
+                ChunkPick::from_refs(v, c)
             }
         }
     }
@@ -172,7 +188,25 @@ pub fn render_picks(
     picks: &[ChunkPick],
     keep_markers: bool,
     lf: bool,
-    mut ranges: Option<&mut Vec<Range<usize>>>,
+    ranges: Option<&mut Vec<Range<usize>>>,
+) -> Option<String> {
+    let mut regions = Regions::default();
+    let out = render(file, picks, &CleanEdits::new(), keep_markers, lf, ranges.is_some().then_some(&mut regions))?;
+    if let Some(r) = ranges {
+        *r = regions.chunks;
+    }
+    Some(out)
+}
+
+/// `render_picks` with the clean runs in `cleans` written as edited, and `regions` getting
+/// where every chunk and clean run is.
+pub fn render(
+    file: &ConflictFile,
+    picks: &[ChunkPick],
+    cleans: &CleanEdits,
+    keep_markers: bool,
+    lf: bool,
+    mut regions: Option<&mut Regions>,
 ) -> Option<String> {
     let ConflictContent::Text(segs) = &file.content else { return None };
     if picks.len() != file.chunk_count() || (!keep_markers && picks.iter().any(ChunkPick::is_open)) {
@@ -195,21 +229,39 @@ pub fn render_picks(
     };
     let n = if keep_markers { marker_size(segs.iter().flat_map(seg_lines).map(String::as_str)) } else { 0 };
     let marker = |c: char, text: &str| format!("{}{text}{eol}", c.to_string().repeat(n));
-    if let Some(r) = ranges.as_deref_mut() {
-        r.clear();
+    if let Some(r) = regions.as_deref_mut() {
+        *r = Regions::default();
     }
     let mut k = 0;
-    for seg in segs {
+    // Whether the last segment written was a clean run.
+    let mut after_clean = false;
+    for (i, seg) in segs.iter().enumerate() {
         let c = match seg {
             Segment::Clean(lines) => {
-                lines.iter().for_each(|l| push(&mut out, l));
+                let start = out.len();
+                match cleans.get(&i) {
+                    Some(edited) => edited.iter().for_each(|l| push(&mut out, l)),
+                    None => lines.iter().for_each(|l| push(&mut out, l)),
+                }
+                if let Some(r) = regions.as_deref_mut() {
+                    r.cleans.push((i, start..out.len()));
+                }
+                after_clean = true;
                 continue;
             }
             Segment::Conflict(c) => c,
         };
-        if ranges.is_some() && !out.is_empty() && !out.ends_with('\n') {
+        if let Some(r) = regions.as_deref_mut()
+            && !out.is_empty()
+            && !out.ends_with('\n')
+        {
             out.push_str(eol);
+            // The line break ends the clean run before the chunk.
+            if let Some((_, last)) = r.cleans.last_mut().filter(|_| after_clean) {
+                last.end = out.len();
+            }
         }
+        after_clean = false;
         let start = out.len();
         match &picks[k] {
             ChunkPick::Sides(Choice::Unresolved) if keep_markers => {
@@ -225,8 +277,8 @@ pub fn render_picks(
             }
             pick => pick.out_lines(c).into_iter().for_each(|l| push(&mut out, l)),
         }
-        if let Some(r) = ranges.as_deref_mut() {
-            r.push(start..out.len());
+        if let Some(r) = regions.as_deref_mut() {
+            r.chunks.push(start..out.len());
         }
         k += 1;
     }
@@ -234,7 +286,7 @@ pub fn render_picks(
 }
 
 /// Every line a segment holds (all three versions of a chunk).
-fn seg_lines(s: &Segment) -> Box<dyn Iterator<Item = &String> + '_> {
+pub(crate) fn seg_lines(s: &Segment) -> Box<dyn Iterator<Item = &String> + '_> {
     match s {
         Segment::Clean(l) => Box::new(l.iter()),
         Segment::Conflict(c) => Box::new(c.ours.iter().chain(&c.base).chain(&c.theirs)),

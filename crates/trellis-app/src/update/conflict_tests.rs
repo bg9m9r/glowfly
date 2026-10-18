@@ -132,7 +132,8 @@ fn stale_conflict_results_are_ignored() {
     let mut st = state();
     st.conflict = Some(ConflictView::loading("f.txt".into()));
     st.conflict_gen = 5;
-    let loaded = |generation, path: &str, result| Msg::Conflict(ConflictMsg::ConflictLoaded { path: path.into(), generation, result });
+    let loaded =
+        |generation, path: &str, result| Msg::Conflict(ConflictMsg::ConflictLoaded { path: path.into(), generation, result, saved: None });
     update(&mut st, loaded(4, "f.txt", Ok(fake_file(1))), Instant::now());
     update(&mut st, loaded(5, "g.txt", Ok(fake_file(1))), Instant::now());
     assert!(st.conflict.as_ref().is_some_and(|c| c.file.is_none()), "still loading");

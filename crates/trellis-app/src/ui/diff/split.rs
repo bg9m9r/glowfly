@@ -46,7 +46,7 @@ pub(super) fn show(
     };
     let half = (width / 2.0).round();
 
-    super::wrap::scroll(ui, rows.len(), m, scroll_to, |ui, i, h| {
+    super::wrap::scroll(ui, "diff", rows.len(), m, scroll_to, |ui, i, h| {
         let (rect, _) = ui.allocate_exact_size(vec2(width, h), Sense::hover());
         match rows[i] {
             // A change block's action row acts on its normal hunk, like that hunk's header.

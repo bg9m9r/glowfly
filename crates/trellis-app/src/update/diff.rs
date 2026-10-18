@@ -107,6 +107,10 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             if st.diff.is_some() {
                 st.view.diff_scroll_to_row = Some(st.view.diff_top_row);
             }
+            // The conflict view's rows change height too: its current chunk comes back in view.
+            if let Some(c) = &st.conflict {
+                st.view.conflict_scroll_to = Some(c.current);
+            }
             fx.push(super::prefs::save_settings(st));
         }
         DiffMsg::SelectDiffLine { hunk, line, how } => {

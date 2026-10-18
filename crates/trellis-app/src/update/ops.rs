@@ -81,7 +81,11 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             if let Some(c) = st.conflict.as_mut() {
                 c.saving = false;
                 c.step_on_resolve &= !failed;
-                saved = c.saved_note.take().filter(|_| !failed);
+                // What Save with markers wrote is now what the file holds.
+                if let Some((note, picks, cleans)) = c.pending_save.take().filter(|_| !failed) {
+                    c.baseline = (picks, cleans);
+                    saved = Some(note);
+                }
             }
             // Save with markers leaves the view open: say it worked.
             if let Some(note) = saved {

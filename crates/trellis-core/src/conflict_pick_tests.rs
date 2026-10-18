@@ -192,3 +192,42 @@ fn ranges_cover_each_chunk() {
     let out = render_picks(&f, &picks, true, true, Some(&mut ranges)).unwrap();
     assert_eq!((ranges[0].clone(), &out[ranges[1].clone()]), (4..4, "x\n"));
 }
+
+#[test]
+fn render_writes_edited_clean_runs() {
+    let f = two_chunks();
+    let mut cleans = CleanEdits::new();
+    cleans.insert(2, lines(&["middle", "more"]));
+    let picks = [ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Theirs)];
+    assert_eq!(render(&f, &picks, &cleans, false, false, None).unwrap(), "top\no0\no1\nmiddle\nmore\ny\nend\n");
+    let open = [ChunkPick::Sides(Choice::Ours), ChunkPick::default()];
+    let out = render(&f, &open, &cleans, true, false, None).unwrap();
+    assert_eq!(out, "top\no0\no1\nmiddle\nmore\n<<<<<<< main\nx\n=======\ny\n>>>>>>> other branch\nend\n");
+    // A deleted run, and CR LF lines written with LF for the editor.
+    cleans.insert(0, Vec::new());
+    cleans.insert(4, vec!["last\r\n".into()]);
+    assert_eq!(render(&f, &picks, &cleans, false, true, None).unwrap(), "o0\no1\nmiddle\nmore\ny\nlast\n");
+    // Without edits it is render_picks.
+    assert_eq!(render(&f, &open, &CleanEdits::new(), true, false, None), render_picks(&f, &open, true, false, None));
+}
+
+#[test]
+fn regions_cover_the_text_in_order() {
+    let f = two_chunks();
+    let picks = [ChunkPick::Sides(Choice::Ours), ChunkPick::default()];
+    let mut regions = Regions::default();
+    let out = render(&f, &picks, &CleanEdits::new(), true, true, Some(&mut regions)).unwrap();
+    let mut all: Vec<std::ops::Range<usize>> = regions.chunks.clone();
+    all.extend(regions.cleans.iter().map(|(_, r)| r.clone()));
+    all.sort_by_key(|r| (r.start, r.end));
+    assert_eq!(all.first().unwrap().start, 0);
+    assert_eq!(all.last().unwrap().end, out.len());
+    assert!(all.windows(2).all(|w| w[0].end == w[1].start), "contiguous: {all:?}");
+    assert_eq!(regions.cleans.iter().map(|(s, r)| (*s, &out[r.clone()])).collect::<Vec<_>>(), [(0, "top\n"), (2, "mid\n"), (4, "end\n")]);
+    assert_eq!(&out[regions.chunks[0].clone()], "o0\no1\n");
+    // A clean line without a final newline before a chunk: the line break added is the run's.
+    let g = file(vec![Segment::Clean(vec!["top".into()]), Segment::Conflict(chunk())]);
+    let out = render(&g, &[ChunkPick::Sides(Choice::Theirs)], &CleanEdits::new(), true, true, Some(&mut regions)).unwrap();
+    assert_eq!(out, "top\nt0\nt1\nt2\n");
+    assert_eq!((regions.cleans[0].clone(), regions.chunks[0].clone()), ((0, 0..4), 4..out.len()));
+}
