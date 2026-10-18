@@ -10,10 +10,10 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 #[path = "palette_checkouts.rs"]
 mod palette_checkouts;
-#[path = "palette_commands_submodules.rs"]
-mod palette_commands_submodules;
 #[path = "palette_commands_repos.rs"]
 mod palette_commands_repos;
+#[path = "palette_commands_submodules.rs"]
+mod palette_commands_submodules;
 pub use palette_commands_repos::RepoListCommand;
 #[path = "palette_commands_worktrees.rs"]
 mod palette_commands_worktrees;
