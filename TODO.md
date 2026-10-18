@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 03:56 · **Multi-select commits: compare with the working directory, range diffs, keyboard selection, revert several and cherry-pick follow-ups**: Commits can be compared with the working directory, a selected range shows one combined diff, Shift+arrows and Ctrl+A extend the selection, several commits can be reverted at once, and merge commits can be cherry-picked against a chosen mainline (`e6b451e`)
 - 2026-10-18 03:32 · **File history and blame: folder history, the whole file at a commit, renames forward and live refresh**: File history works for folders, a File view shows the whole file at a commit, renames are followed forwards as well as back, and the history re-runs when HEAD moves (`86bf468`)
 - 2026-10-18 03:14 · **Diff viewer upgrade: reverting from commit diffs (files, lines, renames, added files, three-way)**: Selected lines and whole files of a commit diff can be reverted in the working tree, following renames, removing files the commit added and merging three-way with later edits (`6c7112d`)
 - 2026-10-18 02:23 · **Interactive rebase: edit a running rebase, exec and break steps, keyboard control and undo**: The interactive rebase panel gains exec and break steps, combined squash messages, keyboard control and editing the remaining steps of a running rebase, and finished rebases can be undone in one step (`54a7422`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 18:09 · **Language**: A Language setting on Preferences > General (system or a chosen language) with bundled English, German and Spanish catalogs and system-language detection, translating the Preferences navigation, General, Editor and External Tools pages, the commit box and the status bar (`920530f`)
 - 2026-10-16 17:57 · **Packaging and updates**: An app icon, MSI, DMG and DEB installers with checksums and optional code signing in the release workflow, a daily update check in Preferences > General with download, verify and install, a status bar chip and toasts, and release notes from the bundled CHANGELOG shown once after an upgrade (`b732d84`)
 - 2026-10-16 17:35 · **Menu bar**: A File / Edit / View / Window / Help menu bar above the tabs (Open recent, Undo/Redo with the action named, copy SHA or message, zoom and panel toggles, theme, the open tabs, logs and help) whose items show their keys and why they are disabled, an About dialog with version info and the bundled third-party notices, and a UI Customization toggle to hide it (`8680fb6`)
-- 2026-10-16 17:28 · **Automatically group worktree tabs together**: Tabs of one repository's worktrees open and stay next to each other (new worktree tabs join their group, drags move whole groups) with a colored strip under each group, behind a Preferences > UI Customization toggle that is on by default (`6090bb4`)
 
 ---
 
