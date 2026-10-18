@@ -158,3 +158,109 @@ fn empty_folder_name_is_rejected() {
     assert!(folder_history(&dir, "a.txt", &HistoryStart::Head, 100).unwrap().entries.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Distinct text for a file, long enough for rename detection to pair it.
+fn text(name: &str) -> String {
+    lines(12).replace("line", name)
+}
+
+#[test]
+fn a_renamed_folder_is_followed_backwards() {
+    let dir = scratch_repo("folder-renamed");
+    let (a, b, c) = (text("a"), text("b"), text("c"));
+    commit(&dir, &[("src/a.rs", &a), ("src/b.rs", &b), ("src/c.rs", &c), ("README", "r\n")], "base");
+    commit(&dir, &[("src/a.rs", &format!("{a}more\n"))], "edit src");
+    git(&dir, &["mv", "src", "lib"]);
+    git(&dir, &["commit", "-q", "-m", "move to lib"]);
+    commit(&dir, &[("lib/b.rs", &format!("{b}more\n"))], "edit lib");
+    let h = folder_history(&dir, "lib", &HistoryStart::Head, 100).unwrap();
+    assert_eq!(summaries(&h), ["edit lib", "move to lib", "edit src", "base"]);
+    assert_eq!(statuses(&h), "MRMA");
+    assert_eq!(h.entries[1].old_path.as_deref(), Some("src"));
+    assert_eq!(files(&h.entries[1]), ["R lib/a.rs", "R lib/b.rs", "R lib/c.rs"]);
+    let paths: Vec<&str> = h.entries.iter().map(|e| e.path.as_str()).collect();
+    assert_eq!(paths, ["lib", "lib", "src", "src"]);
+    assert_eq!(files(&h.entries[2]), ["M src/a.rs"]);
+    assert!(h.entries.iter().filter(|e| e.status != 'R').all(|e| e.old_path.is_none()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_folder_moved_into_a_subfolder_is_followed() {
+    let dir = scratch_repo("folder-into-sub");
+    commit(&dir, &[("pkg/a.rs", &text("a")), ("pkg/b.rs", &text("b"))], "base");
+    std::fs::create_dir_all(dir.join("crates")).unwrap();
+    git(&dir, &["mv", "pkg", "crates/pkg"]);
+    git(&dir, &["commit", "-q", "-m", "into crates"]);
+    let h = folder_history(&dir, "crates/pkg", &HistoryStart::Head, 100).unwrap();
+    assert_eq!(summaries(&h), ["into crates", "base"]);
+    assert_eq!(statuses(&h), "RA");
+    assert_eq!(h.entries[0].old_path.as_deref(), Some("pkg"));
+    assert_eq!(h.entries[1].path, "pkg");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_folder_with_a_minority_of_moved_files_starts_there() {
+    let dir = scratch_repo("folder-minority");
+    commit(&dir, &[("old/x.rs", &text("x")), ("old/y.rs", &text("y"))], "base");
+    commit(&dir, &[("old/x.rs", &format!("{}more\n", text("x")))], "edit old");
+    std::fs::create_dir_all(dir.join("new")).unwrap();
+    git(&dir, &["mv", "old/x.rs", "new/x.rs"]);
+    commit(&dir, &[("new/p.rs", &text("p")), ("new/q.rs", &text("q")), ("new/r.rs", &text("r"))], "make new");
+    let h = folder_history(&dir, "new", &HistoryStart::Head, 100).unwrap();
+    assert_eq!(summaries(&h), ["make new"]);
+    assert_eq!(statuses(&h), "A");
+    assert_eq!(h.entries[0].old_path, None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_merge_that_moved_the_folder_against_one_parent_follows_both() {
+    let dir = scratch_repo("folder-merge-moved");
+    let a = text("a");
+    commit(&dir, &[("src/a.rs", &a), ("src/b.rs", &text("b")), ("src/c.rs", &text("c"))], "base");
+    git(&dir, &["checkout", "-q", "-b", "side"]);
+    commit(&dir, &[("src/a.rs", &format!("{a}side\n"))], "side edit");
+    git(&dir, &["checkout", "-q", "main"]);
+    git(&dir, &["mv", "src", "lib"]);
+    git(&dir, &["commit", "-q", "-m", "move to lib"]);
+    git(&dir, &["merge", "-q", "--no-ff", "side", "-m", "merge side"]);
+    let h = folder_history(&dir, "lib", &HistoryStart::Head, 100).unwrap();
+    assert_eq!(h.entries[0].summary, "merge side");
+    assert_eq!(h.entries[0].status, 'M', "the first parent has the folder");
+    assert_eq!(files(&h.entries[0]), ["M lib/a.rs"]);
+    let mut rest: Vec<&str> = summaries(&h)[1..].to_vec();
+    rest.sort();
+    assert_eq!(rest, ["base", "move to lib", "side edit"], "both parents are followed");
+    let side = h.entries.iter().find(|e| e.summary == "side edit").unwrap();
+    assert_eq!(side.path, "src");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn absent_lists_folder_files_missing_on_disk_by_their_names_today() {
+    let dir = scratch_repo("folder-absent");
+    let x = text("x");
+    commit(&dir, &[("src/a.rs", &text("a")), ("src/b.rs", &text("b")), ("src/x.rs", &x)], "base");
+    commit(&dir, &[("src/x.rs", &format!("{x}more\n"))], "edit x");
+    git(&dir, &["mv", "src", "lib"]);
+    git(&dir, &["commit", "-q", "-m", "move to lib"]);
+    commit(&dir, &[("lib/old.rs", "old\n")], "add old");
+    git(&dir, &["rm", "-q", "lib/old.rs", "lib/x.rs"]);
+    git(&dir, &["commit", "-q", "-m", "remove old and x"]);
+    let h = folder_history(&dir, "lib", &HistoryStart::Head, 100).unwrap();
+    let mut absent: Vec<&str> = h.absent.iter().map(String::as_str).collect();
+    absent.sort();
+    assert_eq!(absent, ["lib/old.rs", "lib/x.rs"]);
+    assert!(file_history(&dir, "lib/a.rs", &HistoryStart::Head, 100).unwrap().absent.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn folder_file_today_moves_only_files_inside_the_folder() {
+    assert_eq!(folder_file_today("src", "lib", "src/a/b.rs"), "lib/a/b.rs");
+    assert_eq!(folder_file_today("lib", "lib", "lib/a.rs"), "lib/a.rs");
+    assert_eq!(folder_file_today("src", "lib", "other/x.rs"), "other/x.rs");
+    assert_eq!(folder_file_today("src", "lib", "srcx/y.rs"), "srcx/y.rs");
+}

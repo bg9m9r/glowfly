@@ -1,7 +1,8 @@
 //! Git LFS: whether git-lfs is installed, whether a repository is set up for it, the patterns
 //! `.gitattributes` stores in LFS, checks for a new pattern and the LFS command lines.
 //!
-//! What a file row can track (the file, its extension or its folder) is in `track`.
+//! What a file row can track (the file, its extension or its folder) is in `track`; pointer
+//! files are read in `pointer`.
 //!
 //! Reading the status never runs a git-lfs command that writes: `git lfs track` without
 //! arguments, for example, quietly installs the hooks. Only `git lfs version` runs; the rest is
@@ -11,6 +12,7 @@ use crate::error::{Error, Result};
 use crate::gitcli::{args, read};
 use std::path::{Path, PathBuf};
 
+pub mod pointer;
 mod track;
 pub use track::{
     TrackTarget, check_target, extension, extension_pattern, folder_pattern, literal_glob, root_patterns, track_filename_args,

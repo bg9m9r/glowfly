@@ -12,6 +12,7 @@ mod editor;
 mod file;
 mod forge_filters;
 mod graph_filter;
+mod history;
 mod language;
 mod paths;
 mod profiles;
@@ -33,6 +34,7 @@ pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
 pub use file::{LoadProblem, settings_file};
 pub use forge_filters::RepoForgeFilters;
 pub use graph_filter::{FilterOp, GraphFilter};
+pub use history::{HistoryPane, HistoryPrefs};
 pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir, runtime_dir, xdg_data_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
@@ -261,6 +263,9 @@ pub struct Settings {
     /// The blame header's whitespace and move toggles.
     #[serde(default)]
     pub blame: BlamePrefs,
+    /// The file history's Diff / File choice (header toggle and Preferences > Editor).
+    #[serde(default)]
+    pub history: HistoryPrefs,
 
     /// Push the branch after each successful commit (commit box checkbox).
     pub push_after_commit: bool,
@@ -393,6 +398,7 @@ impl Default for Settings {
             diff_word_highlights: true,
             diff_word_wrap: false,
             blame: BlamePrefs::default(),
+            history: HistoryPrefs::default(),
             push_after_commit: false,
             stage_renames: true,
             push_new_tags: false,

@@ -1,5 +1,6 @@
 //! Next/previous change across files: where a step goes, and the file list a diff came from.
 
+use super::history::{FileHistoryView, HistoryKind};
 use super::{AppState, Selection, ViewState};
 use trellis_core::diff_rows::step_change;
 use trellis_core::repo::{DiffTarget, FileDiff};
@@ -109,6 +110,13 @@ pub fn next_file(st: &AppState, from: &DiffTarget, dir: isize) -> Option<DiffTar
     files.get(j).cloned()
 }
 
+/// The selected folder entry's files, when `from` is one of that commit's diffs.
+fn history_files(h: &FileHistoryView, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
+    let DiffTarget::Commit(oid, _) = from else { return None };
+    let e = h.selected_entry().filter(|e| h.kind == HistoryKind::Folder && e.oid == *oid)?;
+    Some(e.files.iter().map(|f| DiffTarget::Commit(*oid, f.path.clone())).collect())
+}
+
 /// Whether `t` is in the file list it was opened from (`source_files`).
 pub fn in_list(st: &AppState, t: &DiffTarget) -> bool {
     source_files(st, t).is_some_and(|files| files.contains(t))
@@ -116,11 +124,12 @@ pub fn in_list(st: &AppState, t: &DiffTarget) -> bool {
 
 /// The file list `from` was opened from, in on-screen order, as diff targets: the Unstaged then
 /// the Staged Files list (conflicted entries open the conflict view, so they are left out), the
-/// commit details list, the open pull request's list, or the comparison list. `None` in the
-/// file history, which shows one file, or when the list isn't the one on screen.
+/// commit details list, the open pull request's list, the comparison list, or in a history the
+/// selected folder entry's files. `None` in a file history, which shows one file, or when the
+/// list isn't the one on screen.
 fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
-    if st.history.is_some() {
-        return None;
+    if let Some(h) = &st.history {
+        return history_files(h, from);
     }
     match from {
         DiffTarget::Unstaged(_) | DiffTarget::Staged(_) => {

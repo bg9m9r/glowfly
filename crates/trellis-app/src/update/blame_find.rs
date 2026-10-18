@@ -1,23 +1,19 @@
 //! Moving within one blame: find in the file, go to line, and the next or previous run.
 
 use crate::state::AppState;
-use crate::state::blame_find::search;
+use crate::state::blame_find::typed_line;
 
 /// Searches again for the find field's text and goes to the first match at or after the top
 /// line (else the first).
 pub(super) fn find_changed(st: &mut AppState) {
     let Some(view) = st.blame.as_mut() else { return };
-    let hits = view.data.as_ref().map(|d| search(&d.blame.lines, &view.find.query)).unwrap_or_default();
-    view.find.hits = hits;
-    view.find.current = None;
-    if view.find.hits.is_empty() {
-        return;
+    let line = match &view.data {
+        Some(d) => view.find.refresh(&d.blame.lines, view.top_line),
+        None => view.find.refresh(&[], 0),
+    };
+    if let Some(line) = line {
+        view.land_on(line);
     }
-    let top = view.top_line;
-    let i = view.find.hits.iter().position(|&l| l >= top).unwrap_or(0);
-    view.find.current = Some(i);
-    let line = view.find.hits[i];
-    view.land_on(line);
 }
 
 /// To the next (`d` > 0) or previous match, wrapping round.
@@ -38,12 +34,9 @@ pub(super) fn focus_find(st: &mut AppState) {
 /// ignored.
 pub(super) fn go_to_line(st: &mut AppState) {
     let Some(view) = st.blame.as_mut() else { return };
-    let n = view.line_count();
-    let Ok(typed) = view.goto.trim().parse::<usize>() else { return };
-    if n == 0 {
-        return;
+    if let Some(line) = typed_line(&view.goto, view.line_count()) {
+        view.land_on(line);
     }
-    view.land_on(typed.clamp(1, n) - 1);
 }
 
 /// To the first line of the next (`d` > 0) or previous run, from the cursor (else the top

@@ -26,6 +26,7 @@ pub(super) const NOT_ON_GRAPH: &str = "Not visible on the graph: its branch is h
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.history_scroll_to.take();
+    let file_scroll = st.view.history_file_scroll.take();
     let Some(view) = &st.history else { return };
     ui.add_space(6.0);
     header(ui, view, msgs);
@@ -36,7 +37,9 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         .width_range(260.0..=600.0)
         .frame(egui::Frame::new().fill(color::panel()))
         .show_inside(ui, |ui| list(ui, st, scroll_to, msgs));
-    egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show_inside(ui, |ui| selected(ui, st, cache, msgs));
+    egui::CentralPanel::default()
+        .frame(egui::Frame::new().fill(color::bg()))
+        .show_inside(ui, |ui| selected(ui, st, cache, file_scroll, msgs));
 }
 
 /// "File history" or "Folder history", the path ("now <name>" when the file was renamed after
@@ -201,8 +204,13 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: History
     let author = if e.author.is_empty() { "Unknown" } else { e.author.as_str() };
     x += paint_cut_line(ui, pos2(x, y2), author, small.clone(), color::text(), limit - x);
     let extra = match kind {
-        HistoryKind::Folder if e.files.len() == 1 => Some("1 file".to_owned()),
-        HistoryKind::Folder => Some(format!("{} files", e.files.len())),
+        HistoryKind::Folder => {
+            let n = if e.files.len() == 1 { "1 file".to_owned() } else { format!("{} files", e.files.len()) };
+            Some(match &e.old_path {
+                Some(old) => format!("{n} · moved from {old}/"),
+                None => n,
+            })
+        }
         HistoryKind::File => e.old_path.as_ref().map(|old| format!("renamed from {old}")),
     };
     if let Some(extra) = extra {
@@ -259,14 +267,15 @@ fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
     msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(next)));
 }
 
-/// The selected commit: summary, author and date, links and (in a file history) file buttons
-/// (Restore this version, Open, Show, Open in external diff tool), or (in a folder history) its
-/// changed files; then its diff of the file, or the whole file in the File view.
-fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+/// The selected commit: summary, author and date, links, (in a folder history) its changed
+/// files, and file buttons for the file shown (Restore this version, Open, Show, Open in
+/// external diff tool); then its diff of the file, or the whole file in the File view.
+fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Option<usize>, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.history else { return };
     let (kind, pane, target) = (view.kind, view.pane, view.target());
-    let open_path = view.today_path().to_owned();
-    let in_wd = view.in_workdir(st.snap.as_ref());
+    let open_path = view.shown_today();
+    let in_wd = view.shown_in_workdir(st.snap.as_ref());
+    let shown = view.shown().map(|(oid, path, status)| (oid, path.to_owned(), status));
     let Some(e) = view.selected_entry().cloned() else {
         if !view.loading && !view.entries.is_empty() {
             ui.add_space(10.0);
@@ -291,25 +300,21 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             }
         });
         ui.add_space(4.0);
-        match kind {
-            HistoryKind::File => {
-                let file = CommitFile { oid: e.oid, path: &e.path, status: e.status, open_path: &open_path, in_workdir: in_wd };
-                let blocked = diff_blocked(&st.settings.external_tools);
-                ui.horizontal_wrapped(|ui| {
-                    file_buttons::show(ui, msgs, &file, Labels::Full);
-                    let r = ui.add_enabled(blocked.is_none(), egui::Button::new(OPEN_IN_DIFF_TOOL));
-                    if r.on_disabled_hover_text(blocked.unwrap_or_default()).clicked() {
-                        msgs.push(Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Commit(e.oid, e.path.clone()))));
-                    }
-                });
+        if kind == HistoryKind::Folder {
+            super::history_folder::files(ui, st, &e, file_scroll, msgs);
+        }
+        if let (Some((oid, path, status)), Some(open_path)) = (&shown, &open_path) {
+            if kind == HistoryKind::Folder {
+                ui.add_space(4.0);
             }
-            HistoryKind::Folder => super::history_folder::files(ui, st, &e, msgs),
+            let file = CommitFile { oid: *oid, path, status: *status, open_path, in_workdir: in_wd };
+            file_actions(ui, st, msgs, &file);
         }
     });
     ui.separator();
     let Some(target) = target else { return };
     match pane {
-        HistoryPane::File => super::history_file::show(ui, st),
+        HistoryPane::File => super::history_file::show(ui, st, cache, msgs),
         HistoryPane::Diff if st.diff.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, &mut cache.diff_rows, msgs),
         HistoryPane::Diff => {
             ui.add_space(4.0);
@@ -319,4 +324,16 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             });
         }
     }
+}
+
+/// Restore, Open and Show for `f`, then Open in external diff tool for its change.
+fn file_actions(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>, f: &CommitFile) {
+    let blocked = diff_blocked(&st.settings.external_tools);
+    ui.horizontal_wrapped(|ui| {
+        file_buttons::show(ui, msgs, f, Labels::Full);
+        let r = ui.add_enabled(blocked.is_none(), egui::Button::new(OPEN_IN_DIFF_TOOL));
+        if r.on_disabled_hover_text(blocked.unwrap_or_default()).clicked() {
+            msgs.push(Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Commit(f.oid, f.path.to_owned()))));
+        }
+    });
 }

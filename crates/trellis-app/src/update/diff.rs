@@ -51,7 +51,8 @@ pub(super) fn landing_row(d: &FileDiff, s: &Settings, l: Landing, ex: &Expanded)
 fn open_landing(st: &mut AppState, target: DiffTarget, landing: Landing, fx: &mut Vec<Effect>) {
     super::repo::open_diff(st, target.clone(), fx);
     // After `open_diff`, which clears it.
-    st.view.diff_landing = Some((target, landing));
+    st.view.diff_landing = Some((target.clone(), landing));
+    super::history_view::follow_step(st, &target, fx);
 }
 
 /// A status refresh or a diff-options change arrived while a stepped-to file is still loading:

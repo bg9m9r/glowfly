@@ -210,6 +210,18 @@ pub enum HistoryMsg {
     SelectHistoryFile(usize),
     /// The header's Diff / File toggle.
     SetHistoryPane(HistoryPane),
+    /// The File view's Find field changed: search again and go to the first match below the
+    /// top line.
+    FileFindChanged,
+    /// To the next (1) or previous (-1) match in the File view, wrapping round.
+    FileFindStep(isize),
+    /// Focus the File view's Find field (the Search key in the File pane).
+    FocusFileFind,
+    /// Go to the line typed in the File view's Line field.
+    FileGoToLine,
+    /// Select the next (1) or previous (-1) file of the selected folder entry (Next/Previous
+    /// change in the File pane); nothing wraps.
+    StepHistoryFile(isize),
     /// Continue the walk past the commit limit.
     MoreFileHistory,
     /// "View on graph": close the history and select the commit.
@@ -219,10 +231,12 @@ pub enum HistoryMsg {
         generation: u64,
         result: Result<FileHistory, String>,
     },
-    /// The File view's text of `path` as of `oid` (`Effect::LoadFileText`).
+    /// The File view's text of `path` as of `oid` (with `before`, as of its parent)
+    /// (`Effect::LoadFileText`).
     FileTextLoaded {
         oid: Oid,
         path: String,
+        before: bool,
         result: Result<Arc<FileTextData>, String>,
     },
 }
@@ -238,6 +252,11 @@ impl HistoryMsg {
             | Self::SelectHistoryEntry(..)
             | Self::SelectHistoryFile(..)
             | Self::SetHistoryPane(..)
+            | Self::FileFindChanged
+            | Self::FileFindStep(..)
+            | Self::FocusFileFind
+            | Self::FileGoToLine
+            | Self::StepHistoryFile(..)
             | Self::MoreFileHistory
             | Self::ShowInGraph(..)
             | Self::FileHistoryLoaded { .. }

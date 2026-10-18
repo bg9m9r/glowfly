@@ -88,7 +88,12 @@ impl TrellisApp {
         let (tx, results) = mpsc::channel();
         Self {
             st: AppState::new(settings, recent, Instant::now()),
-            cache: UiCache { avatars: avatars::Avatars::default(), speller: Speller::new(), diff_rows: Default::default() },
+            cache: UiCache {
+                avatars: avatars::Avatars::default(),
+                speller: Speller::new(),
+                diff_rows: Default::default(),
+                history_text: Default::default(),
+            },
             runner: make_runner(tx, ctx.clone()),
             results,
             theme: theme::ThemeCache::default(),

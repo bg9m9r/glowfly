@@ -141,6 +141,7 @@ fn ctrl_backtick_toggles() {
                 avatars: Avatars::default(),
                 speller: Speller::new(),
                 diff_rows: Default::default(),
+                history_text: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },

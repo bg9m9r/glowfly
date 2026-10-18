@@ -66,10 +66,11 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
                     if let Some(d) = st.detail.as_mut() {
                         d.absent.remove(&path);
                     }
-                    if let Some(h) = st.history.as_mut()
-                        && h.path == path
-                    {
-                        h.on_disk = true;
+                    if let Some(h) = st.history.as_mut() {
+                        h.absent.remove(&path);
+                        if h.path == path {
+                            h.on_disk = true;
+                        }
                     }
                     if let Selection::Commits(m) = &mut st.selection
                         && let Some(Ok(c)) = &mut m.changes

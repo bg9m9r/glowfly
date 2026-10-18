@@ -244,6 +244,7 @@ fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
                 avatars: Avatars::default(),
                 speller: Speller::new(),
                 diff_rows: Default::default(),
+                history_text: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },

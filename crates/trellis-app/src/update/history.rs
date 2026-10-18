@@ -3,7 +3,7 @@
 //! moves, and jumping to a commit on the graph. The selected folder file and the File view are
 //! in `history_view.rs`.
 
-use super::history_view;
+use super::{history_find, history_view};
 use crate::effect::Effect;
 use crate::msg::HistoryMsg;
 use crate::state::AppState;
@@ -34,7 +34,12 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
         HistoryMsg::SelectHistoryEntry(i) => select(st, i, fx),
         HistoryMsg::SelectHistoryFile(i) => history_view::select_file(st, i, fx),
         HistoryMsg::SetHistoryPane(pane) => history_view::set_pane(st, pane, fx),
-        HistoryMsg::FileTextLoaded { oid, path, result } => history_view::text_loaded(st, oid, &path, result),
+        HistoryMsg::FileTextLoaded { oid, path, before, result } => history_view::text_loaded(st, oid, &path, before, result),
+        HistoryMsg::FileFindChanged => history_find::find_changed(st),
+        HistoryMsg::FileFindStep(d) => history_find::find_step(st, d),
+        HistoryMsg::FocusFileFind => history_find::focus_find(st),
+        HistoryMsg::FileGoToLine => history_find::go_to_line(st),
+        HistoryMsg::StepHistoryFile(d) => history_view::step_file(st, d, fx),
         HistoryMsg::MoreFileHistory => {
             let Some(view) = st.history.as_mut().filter(|v| !v.loading && !v.resume.is_empty()) else { return };
             view.loading = true;
@@ -112,6 +117,7 @@ pub(super) fn open(st: &mut AppState, path: String, at: Option<Oid>, select: Opt
     super::issue::close(st);
     let mut view = FileHistoryView::loading_kind(path, at, kind);
     view.select = select;
+    view.pane = st.settings.history.pane;
     st.history = Some(view);
     request(st, at.map_or(HistoryStart::Head, HistoryStart::At), st.settings.commit_limit(), fx);
 }

@@ -100,6 +100,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "diff_word_wrap",
     // Header toggles, like the diff's.
     "blame",
+    "history",
     "push_after_commit",
     "stage_renames",
     "push_new_tags",

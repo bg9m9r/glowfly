@@ -7,9 +7,10 @@ use super::chords::take_press;
 use super::record;
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName};
 use crate::msg::{
-    BlameMsg, ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg, SearchMsg, SelectionMsg,
-    TabsMsg,
+    BlameMsg, ConflictMsg, DiffMsg, HistoryMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg, SearchMsg,
+    SelectionMsg, TabsMsg,
 };
+use crate::state::history::HistoryPane;
 use crate::state::layout::Panel;
 use crate::state::{AppState, Modal, PrefPage, Selection};
 use crate::terminal::TerminalMsg;
@@ -154,8 +155,17 @@ fn allowed(id: BindingId, l: &Live) -> bool {
 /// Does what `id` does; `chord` is the key pressed (its digit picks the tab for Go to tab).
 fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
     use BindingId as I;
+    // A history's File pane has no diff on screen: a folder history steps to the entry's next
+    // or previous file instead.
+    let file_pane = |st: &AppState| st.blame.is_none() && st.history.as_ref().is_some_and(|v| v.pane == HistoryPane::File);
     let step = |d: isize, st: &AppState| {
-        if st.conflict.is_some() { Msg::Conflict(ConflictMsg::ConflictStep(d)) } else { Msg::Diff(DiffMsg::JumpToChange(d)) }
+        if st.conflict.is_some() {
+            Msg::Conflict(ConflictMsg::ConflictStep(d))
+        } else if file_pane(st) {
+            Msg::History(HistoryMsg::StepHistoryFile(d))
+        } else {
+            Msg::Diff(DiffMsg::JumpToChange(d))
+        }
     };
     let msg = match id {
         I::Stage => Msg::Shortcut(KeyAction::Stage),
@@ -227,6 +237,8 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::RebaseSkip => Msg::Rebase(RebaseMsg::Resume(Resume::Skip)),
         // In the blame view it finds in the file.
         I::Search if st.blame.is_some() => Msg::Blame(BlameMsg::FocusFind),
+        // In a history's File pane it finds in the file shown.
+        I::Search if file_pane(st) => Msg::History(HistoryMsg::FocusFileFind),
         // The search bar's visibility is view state.
         I::Search => {
             st.view.show_search = !st.view.show_search;

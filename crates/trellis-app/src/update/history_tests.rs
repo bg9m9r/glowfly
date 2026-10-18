@@ -163,6 +163,7 @@ fn searching_further_appends_without_duplicates() {
         resume: vec![(oid(5), "older.txt".into())],
         on_disk: true,
         head_path: None,
+        absent: Default::default(),
     };
     let m = loaded(&st, batch);
     let fx = update(&mut st, m, Instant::now());

@@ -36,6 +36,7 @@ mod diff;
 mod file_buttons;
 mod file_dialogs;
 mod file_menu;
+mod find_bar;
 mod forge_filter_dialog;
 mod forge_filter_menu;
 mod git_banner;
@@ -47,6 +48,7 @@ mod graph;
 mod history;
 mod history_file;
 mod history_folder;
+mod history_text_cache;
 mod icons;
 mod init_dialog;
 mod issue;
@@ -165,6 +167,8 @@ mod snapshot_tests_gitflow;
 mod snapshot_tests_graph_ref_menu;
 #[cfg(test)]
 mod snapshot_tests_history;
+#[cfg(test)]
+mod snapshot_tests_history_file;
 #[cfg(test)]
 mod snapshot_tests_init;
 #[cfg(test)]
@@ -325,6 +329,8 @@ pub struct UiCache {
     pub avatars: avatars::Avatars,
     pub speller: Speller,
     pub diff_rows: diff::rows_cache::DiffRowsCache,
+    /// The file history File view's line widths and wrapped row heights.
+    pub history_text: history_text_cache::HistoryTextCache,
 }
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.

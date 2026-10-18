@@ -4,7 +4,7 @@
 
 use super::{help, row};
 use eframe::egui::{self, Ui};
-use trellis_core::settings::{DIFF_FONT_SIZES, Settings, TAB_SIZES};
+use trellis_core::settings::{DIFF_FONT_SIZES, HistoryPane, Settings, TAB_SIZES};
 
 pub fn editor_page(ui: &mut Ui, s: &mut Settings) {
     let t = s.lang();
@@ -33,6 +33,13 @@ pub fn editor_page(ui: &mut Ui, s: &mut Settings) {
         ui.checkbox(&mut s.diff_word_wrap, "");
         help(ui, t.tr("prefs.editor.wrap.help"));
     });
+    row(ui, t.tr("prefs.editor.history_pane.label"), |ui| {
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut s.history.pane, HistoryPane::Diff, t.tr("prefs.editor.history_pane.diff"));
+            ui.radio_value(&mut s.history.pane, HistoryPane::File, t.tr("prefs.editor.history_pane.file"));
+        });
+        help(ui, t.tr("prefs.editor.history_pane.help"));
+    });
     row(ui, t.tr("prefs.editor.reset.label"), |ui| {
         if ui.button(t.tr("prefs.editor.reset.button")).clicked() {
             reset(s);
@@ -49,6 +56,7 @@ fn reset(s: &mut Settings) {
     s.syntax_highlighting = d.syntax_highlighting;
     s.diff_word_highlights = d.diff_word_highlights;
     s.diff_word_wrap = d.diff_word_wrap;
+    s.history = d.history;
 }
 
 #[cfg(test)]
@@ -64,6 +72,7 @@ mod tests {
             syntax_highlighting: false,
             diff_word_highlights: false,
             diff_word_wrap: true,
+            history: trellis_core::settings::HistoryPrefs { pane: HistoryPane::File },
             auto_fetch_minutes: 9,
             ..Settings::default()
         };
@@ -72,6 +81,7 @@ mod tests {
         assert_eq!((s.diff_font_size, s.tab_size), (d.diff_font_size, d.tab_size));
         assert!(s.diff_line_numbers && s.syntax_highlighting && s.diff_word_highlights);
         assert!(!s.diff_word_wrap);
+        assert_eq!(s.history.pane, HistoryPane::Diff);
         assert_eq!(s.auto_fetch_minutes, 9);
     }
 }

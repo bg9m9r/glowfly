@@ -278,3 +278,36 @@ fn move_tab_keys() {
     let mut h = harness(st, false);
     assert!(press_msgs(&mut h, CMD_SHIFT, Key::PageDown).is_empty(), "not under Preferences");
 }
+
+#[test]
+fn find_and_stepping_in_a_history_s_file_pane() {
+    use crate::msg::{BlameMsg, DiffMsg, HistoryMsg};
+    use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
+    let with_history = |pane: HistoryPane| {
+        let mut st = diff(DiffTarget::Commit(git2::Oid::zero(), "src/a.rs".into()));
+        let mut view = FileHistoryView::loading_kind("src".into(), None, HistoryKind::Folder);
+        view.pane = pane;
+        st.history = Some(view);
+        st
+    };
+    let mut h = harness(with_history(HistoryPane::File), false);
+    let m = press_msgs(&mut h, Modifiers::COMMAND, Key::F);
+    assert!(matches!(&m[..], [Msg::History(HistoryMsg::FocusFileFind)]), "Mod+F finds in the file shown");
+    let m = press_msgs(&mut h, Modifiers::ALT, Key::ArrowDown);
+    assert!(matches!(&m[..], [Msg::History(HistoryMsg::StepHistoryFile(1))]), "Next change steps to the next file");
+    let m = press_msgs(&mut h, Modifiers::ALT, Key::ArrowUp);
+    assert!(matches!(&m[..], [Msg::History(HistoryMsg::StepHistoryFile(-1))]));
+
+    let mut h = harness(with_history(HistoryPane::Diff), false);
+    let shown = h.state().st.view.show_search;
+    assert!(press_msgs(&mut h, Modifiers::COMMAND, Key::F).is_empty(), "the Diff pane keeps the search bar toggle");
+    assert_ne!(h.state().st.view.show_search, shown);
+    let m = press_msgs(&mut h, Modifiers::ALT, Key::ArrowDown);
+    assert!(matches!(&m[..], [Msg::Diff(DiffMsg::JumpToChange(1))]));
+
+    let mut st = blamed();
+    st.history = with_history(HistoryPane::File).history;
+    let mut h = harness(st, false);
+    let m = press_msgs(&mut h, Modifiers::COMMAND, Key::F);
+    assert!(matches!(&m[..], [Msg::Blame(BlameMsg::FocusFind)]), "a blame view over it finds in the blame");
+}

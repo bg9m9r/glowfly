@@ -10,8 +10,8 @@ use eframe::egui::{self, RichText, Ui};
 use trellis_core::repo::HistoryEntry;
 
 /// The caption and the list of `e`'s files, in a scroll area of its own capped at about a third
-/// of the panel's height.
-pub(super) fn files(ui: &mut Ui, st: &AppState, e: &HistoryEntry, msgs: &mut Vec<Msg>) {
+/// of the panel's height; `scroll` brings that file into view.
+pub(super) fn files(ui: &mut Ui, st: &AppState, e: &HistoryEntry, scroll: Option<usize>, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.history else { return };
     let folder = &view.path;
     let caption = match e.files.len() {
@@ -31,6 +31,9 @@ pub(super) fn files(ui: &mut Ui, st: &AppState, e: &HistoryEntry, msgs: &mut Vec
                 ui.label(RichText::new(f.status.to_string()).monospace().color(status_color(f.status)));
                 let shown = f.path.strip_prefix(&prefix).unwrap_or(&f.path);
                 let r = ui.selectable_label(view.file == i, shown);
+                if scroll == Some(i) {
+                    r.scroll_to_me(None);
+                }
                 if r.clicked() {
                     msgs.push(Msg::History(HistoryMsg::SelectHistoryFile(i)));
                 }

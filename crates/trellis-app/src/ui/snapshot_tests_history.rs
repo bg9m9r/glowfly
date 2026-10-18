@@ -45,12 +45,12 @@ pub fn words(line: &str) -> Result<Vec<&str>, String> {
 }
 ";
 
-fn head(dir: &Path) -> Oid {
+pub(super) fn head(dir: &Path) -> Oid {
     git2::Repository::open(dir).unwrap().head().unwrap().target().unwrap()
 }
 
 /// Writes `files` (making folders) and commits them on `date`.
-fn commit(dir: &Path, files: &[(&str, &str)], message: &str, date: &str) -> Oid {
+pub(super) fn commit(dir: &Path, files: &[(&str, &str)], message: &str, date: &str) -> Oid {
     for (f, text) in files {
         let path = dir.join(f);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -65,7 +65,7 @@ fn commit(dir: &Path, files: &[(&str, &str)], message: &str, date: &str) -> Oid 
 
 /// lib.rs in three versions, then moved to src/lib.rs; the history is opened at the second
 /// version, in the File view.
-fn with_file_view(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
+pub(super) fn with_file_view(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     commit(&dir, &[("lib.rs", LIB_1)], "Add word splitting", "2026-01-11T10:00:00+00:00");
     let at = commit(&dir, &[("lib.rs", LIB_2)], "Skip runs of spaces and count words", "2026-01-12T10:00:00+00:00");
@@ -88,8 +88,8 @@ fn with_file_view(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
     let f = repo::file_at(&dir, at, "lib.rs").unwrap();
     let spans = highlight::highlight_file(SyntaxHint { path: "lib.rs", language: None }, &f.lines);
     assert!(spans.is_some(), "Rust is highlighted");
-    let data = Arc::new(FileTextData { lines: f.lines, spans });
-    view.text = Some(FileText { oid: at, path: "lib.rs".into(), state: TextState::Ready(data) });
+    let data = Arc::new(FileTextData { lines: f.lines, spans, lfs: f.lfs });
+    view.text = Some(FileText { oid: at, path: "lib.rs".into(), before: false, state: TextState::Ready(data) });
     st.history = Some(view);
     (st, dir)
 }
@@ -123,7 +123,7 @@ fn file_history_file_binary_light() {
 
 /// Three commits under src/ (and one outside it); the folder history is open on src with the
 /// newest entry's second file selected and its diff loaded.
-fn with_folder(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
+pub(super) fn with_folder(name: &str, theme: ThemeChoice) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let util = "pub fn trim(s: &str) -> &str {\n    s.trim()\n}\n";
     commit(&dir, &[("src/lib.rs", LIB_1), ("src/util.rs", util)], "Add word splitting", "2026-01-11T10:00:00+00:00");

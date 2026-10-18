@@ -33,6 +33,7 @@ mod graph_columns;
 mod graph_filter;
 mod highlight;
 mod history;
+mod history_find;
 mod history_view;
 mod inactive;
 mod init;

@@ -142,6 +142,7 @@ fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harn
                 avatars: Avatars::default(),
                 speller: Speller::new(),
                 diff_rows: Default::default(),
+                history_text: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },

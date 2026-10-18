@@ -1,15 +1,16 @@
 //! Headless tests for folder history: the request, selecting an entry and one of its files,
-//! keeping the selected file through a re-run, and a real folder's history.
+//! stepping through its files, keeping the selected file through a re-run, the file buttons'
+//! working-tree names, and a real folder's history.
 
 use super::history_tests::{entry, oid, opened};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
-use crate::msg::{HistoryMsg, Msg, RepoMsg};
+use crate::msg::{DiffMsg, FilesMsg, HistoryMsg, Msg, RepoMsg};
 use crate::state::AppState;
-use crate::state::history::{FileHistoryView, HistoryKind};
+use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
 use std::time::Instant;
-use trellis_core::repo::{self, DiffTarget, FileEntry, FileHistory, HistoryEntry, HistoryStart, LoadOptions};
+use trellis_core::repo::{self, DiffTarget, FileEntry, FileHistory, HistoryEntry, HistoryStart, LoadOptions, RestoredFrom};
 
 fn send(st: &mut AppState, m: HistoryMsg) -> Vec<Effect> {
     update(st, Msg::History(m), Instant::now())
@@ -128,5 +129,88 @@ fn folder_history_e2e() {
     assert_eq!(files, ["src/x.txt", "src/y.txt"]);
     assert_eq!(v.entries[0].files.len(), 1, "a.txt is outside the folder");
     assert_eq!(st.diff.as_ref().map(|(t, _)| t.clone()), Some(DiffTarget::Commit(v.entries[0].oid, "src/y.txt".into())));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `with_folder_view` with entry 0 selected, its first file's diff on screen (no changes, so a
+/// step goes straight to the neighbouring file).
+fn at_first_file(name: &str) -> (AppState, std::path::PathBuf) {
+    let (mut st, dir) = with_folder_view(name);
+    send(&mut st, HistoryMsg::SelectHistoryEntry(0));
+    st.diff = Some((DiffTarget::Commit(oid(1), "src/a.rs".into()), super::history_tests::empty_diff().into()));
+    (st, dir)
+}
+
+#[test]
+fn next_change_past_a_folder_file_opens_the_next_file() {
+    let (mut st, dir) = at_first_file("folder-step-next");
+    let fx = update(&mut st, Msg::Diff(DiffMsg::JumpToChange(-1)), Instant::now());
+    assert!(fx.is_empty(), "nothing before the first file: {fx:?}");
+    let fx = update(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)), Instant::now());
+    assert_eq!(diff_targets(&fx), [DiffTarget::Commit(oid(1), "src/b.rs".into())]);
+    assert_eq!(st.history.as_ref().unwrap().file, 1);
+    assert_eq!(st.view.history_file_scroll, Some(1));
+    // At the last file nothing follows, and nothing wraps.
+    st.view.diff_landing = None;
+    st.view.history_file_scroll = None;
+    st.diff = Some((DiffTarget::Commit(oid(1), "src/b.rs".into()), super::history_tests::empty_diff().into()));
+    assert!(update(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)), Instant::now()).is_empty());
+    assert_eq!(st.history.as_ref().unwrap().file, 1);
+    assert_eq!(st.view.history_file_scroll, None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn step_history_file_moves_through_the_files_in_the_file_pane() {
+    let (mut st, dir) = at_first_file("folder-step-file");
+    assert!(send(&mut st, HistoryMsg::StepHistoryFile(1)).is_empty(), "only in the File pane");
+    send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File));
+    assert!(send(&mut st, HistoryMsg::StepHistoryFile(-1)).is_empty(), "no wrap backwards");
+    let fx = send(&mut st, HistoryMsg::StepHistoryFile(1));
+    assert_eq!(diff_targets(&fx), [DiffTarget::Commit(oid(1), "src/b.rs".into())]);
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadFileText(r) if r.path == "src/b.rs")), "{fx:?}");
+    assert_eq!((st.history.as_ref().unwrap().file, st.view.history_file_scroll), (1, Some(1)));
+    assert!(send(&mut st, HistoryMsg::StepHistoryFile(1)).is_empty(), "no wrap forwards");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    // A file history has one file: nothing to step to.
+    let (mut st, dir) = super::history_tests::with_view("folder-step-single");
+    send(&mut st, HistoryMsg::SelectHistoryEntry(0));
+    send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File));
+    assert!(send(&mut st, HistoryMsg::StepHistoryFile(1)).is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn folder_file_actions_follow_status_and_the_walk() {
+    let (mut st, dir) = at_first_file("folder-absent");
+    st.history.as_mut().unwrap().absent.insert("src/a.rs".into());
+    let v = st.history.as_ref().unwrap();
+    assert_eq!(v.shown_today().as_deref(), Some("src/a.rs"));
+    assert!(!v.shown_in_workdir(st.snap.as_ref()), "the walk found nothing there");
+    // Restoring it brings it back at once.
+    let restored = FilesMsg::FileRestored { path: "src/a.rs".into(), oid: oid(1), result: Ok(RestoredFrom::Commit), undo: None };
+    update(&mut st, Msg::Files(restored), Instant::now());
+    let v = st.history.as_ref().unwrap();
+    assert!(v.absent.is_empty());
+    assert!(v.shown_in_workdir(st.snap.as_ref()));
+    // Status listing it as deleted wins.
+    let snap = st.snap.as_mut().unwrap();
+    snap.unstaged.push(FileEntry::new("src/a.rs", 'D'));
+    assert!(!st.history.as_ref().unwrap().shown_in_workdir(st.snap.as_ref()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_moved_folder_entry_s_files_go_by_their_names_today() {
+    let (mut st, dir) = opened("folder-today");
+    let mut view = FileHistoryView::loading_kind("lib".into(), None, HistoryKind::Folder);
+    let old = HistoryEntry { files: vec![FileEntry::new("src/x.rs", 'M'), FileEntry::new("docs/y.md", 'D')], ..entry(1, "src") };
+    view.append(FileHistory { entries: vec![old], from_head: true, ..Default::default() });
+    st.history = Some(view);
+    send(&mut st, HistoryMsg::SelectHistoryEntry(0));
+    assert_eq!(st.history.as_ref().unwrap().shown_today().as_deref(), Some("lib/x.rs"));
+    send(&mut st, HistoryMsg::SelectHistoryFile(1));
+    assert_eq!(st.history.as_ref().unwrap().shown_today().as_deref(), Some("docs/y.md"), "moved out of the folder: as it was");
     let _ = std::fs::remove_dir_all(&dir);
 }

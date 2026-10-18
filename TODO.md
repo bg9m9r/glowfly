@@ -694,14 +694,7 @@ follow-ups go to Ideas, not here.
 
 ### File history and blame
 
-- Follow a folder's own renames or moves in folder history
 - Rendered preview (Markdown, images) in the file view
-- Remember the Diff/File choice between sessions (a setting)
-- Find in file, go to line and horizontal scroll or word wrap of long lines in the file view
-- Restore, Open and Show buttons for a folder entry's files
-- Previous/Next change keys stepping through a folder entry's files
-- Show the real content of Git LFS files in the file view (it shows the pointer now)
-- Show the version before the deletion in the file view of a commit that deletes the file
 - Open folder history from a folder row once file lists can show a tree
 
 ### Blame gutter
@@ -1926,3 +1919,15 @@ here, under the item they grew from.
 - On a journey failure, save a rendered screenshot where wgpu is available, to make CI failures easier to read
 - Accessible names for the remaining painted widgets (section headers, graph ref chips, sidebar ahead/behind counts), plus a test that every clickable widget has one
 - Offer stash-and-retry when a checkout is refused because of local changes
+
+### File history and blame
+
+- Follow a folder forwards to its later name when its history is opened at an older commit
+- Detect a folder whose contents were moved from or to the repository root
+- Keep the File view's line in view when moving to another commit of the same file
+- Re-read an LFS pointer's content as soon as the repository becomes trusted, without reselecting
+- A button to fetch a missing Git LFS object for the File view
+- Blame the version before the deletion from a deleting commit's File view
+- Restore, Open and Show items in a folder entry file's context menu
+- Match case, whole word and regex options for find in the File view
+- Select and copy text in the File view

@@ -9,4 +9,8 @@ pub struct FileTextRequest {
     pub workdir: PathBuf,
     pub oid: Oid,
     pub path: String,
+    /// Read the version before `oid` (which deletes the file).
+    pub before: bool,
+    /// Give a Git LFS pointer's content; set only when git may run in the repository unasked.
+    pub smudge: bool,
 }

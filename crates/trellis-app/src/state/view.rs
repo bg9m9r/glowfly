@@ -127,6 +127,9 @@ pub struct ViewState {
     pub conflict_scroll_to: Option<usize>,
     /// Scroll the file history list to this entry on the next frame (set by `update`).
     pub history_scroll_to: Option<usize>,
+    /// Scroll the folder entry's file list to this file on the next frame (set by update after
+    /// a step).
+    pub history_file_scroll: Option<usize>,
     /// Focus the graph search field on the next frame (set by update).
     pub focus_search: bool,
     /// Focus the commit summary field on the next frame (set by update, taken by the commit box).
@@ -173,6 +176,7 @@ impl Default for ViewState {
             diff_lines: lines::LineSelection::default(),
             conflict_scroll_to: None,
             history_scroll_to: None,
+            history_file_scroll: None,
             focus_search: false,
             focus_message: false,
             column_drag: None,

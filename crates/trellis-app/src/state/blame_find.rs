@@ -1,10 +1,10 @@
-//! Find in the blame view: the query, the lines that match, and the current match. Matching
+//! Find in the blame view and the file history's File view: the query, the lines that match, and the current match. Matching
 //! folds ASCII case only, so a match's byte range in the line is the query's in the text
 //! (other characters must match exactly).
 
 use std::ops::Range;
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct BlameFind {
     pub query: String,
     /// The lines with a match, in order (0-based).
@@ -45,7 +45,24 @@ fn find_from(line: &str, query: &str, from: usize) -> Option<usize> {
     (from..=h.len() - q.len()).find(|&i| h[i..i + q.len()].eq_ignore_ascii_case(q))
 }
 
+/// The 0-based line for the 1-based number typed in a Line field, clamped into a file of `n`
+/// lines; None for other text or an empty file.
+pub fn typed_line(typed: &str, n: usize) -> Option<usize> {
+    let typed = typed.trim().parse::<usize>().ok()?;
+    (n > 0).then(|| typed.clamp(1, n) - 1)
+}
+
 impl BlameFind {
+    /// Searches `lines` again for the query and makes the first match at or after `top` (else
+    /// the first) current; returns its line.
+    pub fn refresh(&mut self, lines: &[String], top: usize) -> Option<usize> {
+        self.hits = search(lines, &self.query);
+        self.current = None;
+        let i = self.hits.iter().position(|&l| l >= top).or((!self.hits.is_empty()).then_some(0))?;
+        self.current = Some(i);
+        Some(self.hits[i])
+    }
+
     /// Moves the current match by `d` (wrapping round) and returns its line.
     pub fn step(&mut self, d: isize) -> Option<usize> {
         let n = self.hits.len() as isize;
@@ -100,5 +117,28 @@ mod tests {
         assert_eq!(f.step(-1), Some(2));
         assert!(search(&lines, "").is_empty());
         assert_eq!(BlameFind::default().step(1), None);
+    }
+
+    #[test]
+    fn refresh_picks_the_first_hit_at_or_below_the_top() {
+        let lines: Vec<String> = ["foo", "bar", "foo", "baz", "foo"].map(String::from).to_vec();
+        let mut f = BlameFind { query: "foo".into(), ..Default::default() };
+        assert_eq!(f.refresh(&lines, 1), Some(2));
+        assert_eq!((f.hits.as_slice(), f.current), (&[0, 2, 4][..], Some(1)));
+        assert_eq!(f.refresh(&lines, 4), Some(4));
+        assert_eq!(f.refresh(&lines, 5), Some(0), "past the last hit: the first");
+        f.query = "nope".into();
+        assert_eq!(f.refresh(&lines, 0), None);
+        assert!(f.hits.is_empty() && f.current.is_none());
+    }
+
+    #[test]
+    fn typed_line_clamps_into_the_file() {
+        assert_eq!(typed_line("3", 10), Some(2));
+        assert_eq!(typed_line(" 999 ", 10), Some(9));
+        assert_eq!(typed_line("0", 10), Some(0));
+        assert_eq!(typed_line("abc", 10), None);
+        assert_eq!(typed_line("", 10), None);
+        assert_eq!(typed_line("3", 0), None);
     }
 }

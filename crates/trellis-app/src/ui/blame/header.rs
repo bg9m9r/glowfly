@@ -6,9 +6,9 @@
 use crate::msg::{BlameMsg, Msg};
 use crate::state::blame::BlameView;
 use crate::ui::common::{caret_after, short};
+use crate::ui::find_bar::{FindIntent, plural};
 use crate::ui::theme::color;
-use crate::ui::widgets::{Icon, small_icon};
-use eframe::egui::{self, Align, Key, Layout, RichText, Ui};
+use eframe::egui::{self, Align, Layout, RichText, Ui};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::{BlameMoves, Settings};
 
@@ -16,8 +16,6 @@ pub(in crate::ui) const BACK: &str = "Back";
 pub(in crate::ui) const FILE_HISTORY: &str = "File history";
 pub(in crate::ui) const IGNORE_WHITESPACE: &str = "Ignore whitespace";
 pub(in crate::ui) const SHOW_ALL: &str = "Show all";
-pub(in crate::ui) const FIND_HINT: &str = "Find in file";
-pub(in crate::ui) const LINE_HINT: &str = "Line";
 pub(in crate::ui) const AGE_TIP: &str = "Stronger marks in the gutter are newer commits";
 
 /// The Moves menu's button text and its items, in order.
@@ -34,10 +32,6 @@ const MOVES: [(BlameMoves, &str); 3] = [
     (BlameMoves::WithinFile, "Lines moved within the file"),
     (BlameMoves::AcrossFiles, "Lines moved or copied from other files changed in the same commit"),
 ];
-
-fn plural(n: usize, one: &str, many: &str) -> String {
-    format!("{n} {}", if n == 1 { one } else { many })
-}
 
 /// The least width find and go to line need; narrower, they move to a row of their own.
 const FIND_ROW_MIN: f32 = 340.0;
@@ -159,37 +153,11 @@ fn skipped_chip(ui: &mut Ui, view: &BlameView, snap: Option<&Snapshot>, msgs: &m
 
 /// Right to left: the Line field, the find arrows, the match count and the Find field.
 fn find_and_line(ui: &mut Ui, view: &mut BlameView, msgs: &mut Vec<Msg>) {
-    let line = ui.add(egui::TextEdit::singleline(&mut view.goto).hint_text(LINE_HINT).desired_width(70.0));
-    if line.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-        msgs.push(Msg::Blame(BlameMsg::GoToLine));
-    }
-    let hits = view.find.hits.len();
-    let arrow = if hits > 0 { color::text() } else { color::faint() };
-    if small_icon(ui, Icon::NextChange, "Next match (Enter)", arrow).clicked() && hits > 0 {
-        msgs.push(Msg::Blame(BlameMsg::FindStep(1)));
-    }
-    if small_icon(ui, Icon::PrevChange, "Previous match (Shift+Enter)", arrow).clicked() && hits > 0 {
-        msgs.push(Msg::Blame(BlameMsg::FindStep(-1)));
-    }
-    if !view.find.query.is_empty() {
-        let count = match (hits, view.find.current) {
-            (0, _) => "No matches".to_owned(),
-            (n, Some(k)) => format!("{} of {n}", k + 1),
-            (n, None) => plural(n, "match", "matches"),
-        };
-        ui.label(RichText::new(count).color(color::weak()));
-    }
-    let w = (ui.available_width() - 16.0).clamp(80.0, 180.0);
-    let find = ui.add(egui::TextEdit::singleline(&mut view.find.query).hint_text(FIND_HINT).desired_width(w));
-    if std::mem::take(&mut view.focus_find) {
-        find.request_focus();
-    }
-    if find.changed() {
-        msgs.push(Msg::Blame(BlameMsg::FindChanged));
-    }
-    if find.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-        let back = ui.input(|i| i.modifiers.shift);
-        msgs.push(Msg::Blame(BlameMsg::FindStep(if back { -1 } else { 1 })));
-        find.request_focus();
+    for intent in crate::ui::find_bar::find_and_line(ui, &mut view.find, &mut view.goto, &mut view.focus_find) {
+        msgs.push(Msg::Blame(match intent {
+            FindIntent::Changed => BlameMsg::FindChanged,
+            FindIntent::Step(d) => BlameMsg::FindStep(d),
+            FindIntent::GoToLine => BlameMsg::GoToLine,
+        }));
     }
 }

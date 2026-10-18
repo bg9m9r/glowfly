@@ -105,6 +105,8 @@ pub(super) mod highlight_memo_tests;
 pub(super) mod highlight_tests;
 #[path = "history_file_tests.rs"]
 pub(super) mod history_file_tests;
+#[path = "history_find_tests.rs"]
+pub(super) mod history_find_tests;
 #[path = "history_folder_tests.rs"]
 pub(super) mod history_folder_tests;
 #[path = "history_refresh_tests.rs"]

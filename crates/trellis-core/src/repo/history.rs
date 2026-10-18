@@ -25,7 +25,7 @@ pub struct HistoryEntry {
     pub time: i64,
     /// The file's path in this commit, `/`-separated (the folder, in a folder history).
     pub path: String,
-    /// On a rename: the path in the parent.
+    /// On a rename: the path in the parent (a folder's former name, in a folder history).
     pub old_path: Option<String>,
     /// 'A' added, 'M' modified, 'D' deleted, 'R' renamed.
     pub status: char,
@@ -50,6 +50,10 @@ pub struct FileHistory {
     /// Set when the walk followed renames forwards: the file's name at HEAD, which differs from
     /// the path asked about.
     pub head_path: Option<String>,
+    /// A folder history's files, by their names today (`folder_file_today` against the folder
+    /// asked about), with nothing at them in the working tree (and every name that isn't
+    /// UTF-8); empty in a file history.
+    pub absent: HashSet<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -80,7 +84,7 @@ pub(super) fn present(tree: &Tree<'_>, path: &str, kind: Kind) -> Option<(Oid, i
 }
 
 /// The diff from `parent_tree` to `tree`, with renames detected.
-fn renames<'r>(repo: &'r Repository, parent_tree: &Tree<'_>, tree: &Tree<'_>) -> Result<Diff<'r>> {
+pub(super) fn renames<'r>(repo: &'r Repository, parent_tree: &Tree<'_>, tree: &Tree<'_>) -> Result<Diff<'r>> {
     let mut diff = repo.diff_tree_to_tree(Some(parent_tree), Some(tree), None)?;
     diff.find_similar(Some(DiffFindOptions::new().renames(true)))?;
     Ok(diff)
@@ -224,6 +228,16 @@ pub(super) fn walk(workdir: &Path, path: &str, start: &HistoryStart, limit: usiz
         out.resume = queue.remaining();
     }
     out.on_disk = super::diff::on_disk(&repo, out.head_path.as_deref().unwrap_or(path));
+    if kind == Kind::Folder {
+        for e in &out.entries {
+            for f in &e.files {
+                let today = super::folder_history::folder_file_today(&e.path, path, &f.path);
+                if !out.absent.contains(&today) && (f.hazard.is_some() || !super::diff::on_disk(&repo, &today)) {
+                    out.absent.insert(today);
+                }
+            }
+        }
+    }
     Ok(out)
 }
 

@@ -1,10 +1,11 @@
-//! Headless tests for the history's File view: asking for the selected version's text, ignoring
-//! stale results, asking again after a tab switch, and reading a real old version.
+//! Headless tests for the history's File view: asking for the selected version's text (the one
+//! before a deletion; LFS content only when git may run unasked), ignoring stale results, asking
+//! again after a tab switch, remembering the Diff / File choice, and reading a real old version.
 
 use super::history_tests::{entry, oid, with_view};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
+use crate::effect::{Effect, FileTextRequest};
 use crate::msg::{HistoryMsg, Msg, RepoMsg};
 use crate::state::AppState;
 use crate::state::history::{FileTextData, HistoryPane, TextState};
@@ -14,6 +15,20 @@ use trellis_core::repo::DiffTarget;
 
 fn send(st: &mut AppState, m: HistoryMsg) -> Vec<Effect> {
     update(st, Msg::History(m), Instant::now())
+}
+
+/// The text requests among `fx`.
+fn requests(fx: &[Effect]) -> Vec<&FileTextRequest> {
+    fx.iter()
+        .filter_map(|e| match e {
+            Effect::LoadFileText(r) => Some(r),
+            _ => None,
+        })
+        .collect()
+}
+
+fn saves(fx: &[Effect]) -> usize {
+    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
 }
 
 /// The (oid, path) of each text request among `fx`.
@@ -37,7 +52,7 @@ fn file_pane_requests_the_selected_version() {
     assert!(matches!(v.text.as_ref().map(|t| &t.state), Some(TextState::Loading)));
     assert!(send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File)).is_empty(), "already on its way");
     // Back to the diff: nothing to read.
-    assert!(send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::Diff)).is_empty());
+    assert!(text_requests(&send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::Diff))).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -55,15 +70,63 @@ fn selecting_in_file_pane_requests_text_and_diff() {
 }
 
 #[test]
-fn deleted_entry_requests_no_text() {
+fn deleted_entry_requests_the_version_before() {
     let (mut st, dir) = with_view("history-file-deleted");
     let mut gone = entry(3, "a.txt");
     gone.status = 'D';
     st.history.as_mut().unwrap().entries.insert(0, gone);
     send(&mut st, HistoryMsg::SelectHistoryEntry(0));
     let fx = send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File));
-    assert!(text_requests(&fx).is_empty(), "{fx:?}");
-    assert!(st.history.as_ref().unwrap().text.is_none());
+    let r = requests(&fx);
+    assert_eq!(r.len(), 1, "{fx:?}");
+    assert_eq!((r[0].oid, r[0].path.as_str(), r[0].before), (oid(3), "a.txt", true));
+    assert!(r[0].smudge, "a clean repository lets git run");
+    assert!(st.history.as_ref().unwrap().text.as_ref().is_some_and(|t| t.before));
+    // A result for the commit's own version is not the one waited for.
+    let data = Arc::new(FileTextData { lines: vec!["x".into()], spans: None, lfs: Default::default() });
+    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(3), path: "a.txt".into(), before: false, result: Ok(data.clone()) });
+    assert!(matches!(st.history.as_ref().unwrap().text.as_ref().unwrap().state, TextState::Loading));
+    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(3), path: "a.txt".into(), before: true, result: Ok(data) });
+    assert!(matches!(st.history.as_ref().unwrap().text.as_ref().unwrap().state, TextState::Ready(_)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn smudging_follows_trust() {
+    let (mut st, dir) = with_view("history-file-trust");
+    send(&mut st, HistoryMsg::SelectHistoryEntry(0));
+    let fx = send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File));
+    assert!(requests(&fx).iter().all(|r| r.smudge && !r.before), "{fx:?}");
+    let (mut held, held_dir) = super::trust_held_tests::held_repo("history-file-held");
+    held.history = st.history.take();
+    if let Some(v) = held.history.as_mut() {
+        v.text = None;
+    }
+    let mut fx = Vec::new();
+    super::history_view::want_text(&mut held, &mut fx);
+    let r = requests(&fx);
+    assert_eq!(r.len(), 1);
+    assert!(!r[0].smudge, "an undecided repository shows the pointer");
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_dir_all(&held_dir);
+}
+
+#[test]
+fn the_pane_choice_is_remembered() {
+    let (mut st, dir) = with_view("history-file-remember");
+    send(&mut st, HistoryMsg::SelectHistoryEntry(0));
+    let fx = send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File));
+    assert_eq!(st.settings.history.pane, HistoryPane::File);
+    assert_eq!(saves(&fx), 1);
+    assert_eq!(saves(&send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File))), 0, "unchanged: nothing to save");
+    // A history opened later starts on the File pane, and its first entry asks for text.
+    send(&mut st, HistoryMsg::CloseFileHistory);
+    send(&mut st, HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None });
+    assert_eq!(st.history.as_ref().unwrap().pane, HistoryPane::File);
+    let h = trellis_core::repo::FileHistory { entries: vec![entry(1, "a.txt")], from_head: true, ..Default::default() };
+    let m = super::history_tests::loaded(&st, h);
+    let fx = update(&mut st, m, Instant::now());
+    assert_eq!(text_requests(&fx), [(oid(1), "a.txt".to_owned())]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -72,16 +135,19 @@ fn stale_text_is_ignored() {
     let (mut st, dir) = with_view("history-file-stale");
     send(&mut st, HistoryMsg::SelectHistoryEntry(0));
     send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File));
-    let data = Arc::new(FileTextData { lines: vec!["x".into()], spans: None });
-    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(2), path: "a.txt".into(), result: Ok(data.clone()) });
-    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(1), path: "b.txt".into(), result: Ok(data.clone()) });
+    let data = Arc::new(FileTextData { lines: vec!["x".into()], spans: None, lfs: Default::default() });
+    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(2), path: "a.txt".into(), before: false, result: Ok(data.clone()) });
+    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(1), path: "b.txt".into(), before: false, result: Ok(data.clone()) });
     let text = st.history.as_ref().unwrap().text.as_ref().unwrap();
     assert!(matches!(text.state, TextState::Loading));
-    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), result: Err("Binary file not shown".into()) });
+    send(
+        &mut st,
+        HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), before: false, result: Err("Binary file not shown".into()) },
+    );
     let text = st.history.as_ref().unwrap().text.as_ref().unwrap();
     assert!(matches!(&text.state, TextState::Failed(e) if e == "Binary file not shown"));
     // A late duplicate doesn't replace what arrived.
-    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), result: Ok(data) });
+    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), before: false, result: Ok(data) });
     assert!(matches!(&st.history.as_ref().unwrap().text.as_ref().unwrap().state, TextState::Failed(_)));
     let _ = std::fs::remove_dir_all(&dir);
 }
