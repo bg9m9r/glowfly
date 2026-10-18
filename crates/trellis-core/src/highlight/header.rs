@@ -45,7 +45,7 @@ pub(super) fn parse_headers(
             Some(text) => match Side::new(syntax).line(text, cx, cancelled) {
                 Ok(spans) => spans,
                 Err(Stop::Parse) => Vec::new(),
-                Err(Stop::Cancelled) => return Err(Stop::Cancelled),
+                Err(stop @ (Stop::Cancelled | Stop::Budget)) => return Err(stop),
             },
         };
         out.push(spans);

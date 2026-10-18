@@ -36,9 +36,11 @@ pub(super) fn load_job(
             let paired = d.intraline.pairs().len();
             let pending = d.highlight.as_ref().is_some_and(|h| h.is_pending());
             let ignore_whitespace = opts.ignore_whitespace;
+            let checkpoints = d.highlight.as_ref().map(DiffHighlight::checkpoints);
             tracing::debug!(
                 path = target.path(),
                 syntax,
+                checkpoints,
                 language,
                 pending,
                 context,
@@ -92,7 +94,8 @@ pub(super) fn finish_job(target: DiffTarget, generation: u64, diff: &FileDiff, c
     };
     let hunks = if pending(diff) { Some(highlight::finish(diff, cancelled)?) } else { None };
     let ms = started.elapsed().as_millis() as u64;
-    tracing::debug!(path = target.path(), ms, "diff highlighted in the background");
+    let checkpoints = hunks.as_ref().map(DiffHighlight::checkpoints);
+    tracing::debug!(path = target.path(), ms, checkpoints, "diff highlighted in the background");
     Some(Msg::Diff(DiffMsg::DiffHighlighted { target, generation, hunks, whole }))
 }
 

@@ -1,10 +1,12 @@
 //! What a reload can take over from the diff shown before: the exact spans of unchanged hunks,
-//! provisional spans for lines whose text appeared before, and hunk-header spans by their
-//! function context's text. Plus the cost of what is left to parse.
+//! provisional spans for lines whose text appeared before, hunk-header spans by their function
+//! context's text, and parse checkpoints (`memo`) to resume an in-context parse from. Plus the
+//! cost of what is left to parse.
 
+use super::memo::{Memo, streams, unseen};
 use super::{MAX_LINE_BYTES, Span, context_start};
 use crate::repo::{FileDiff, Hunk};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Lines and bytes to parse. Lines over `MAX_LINE_BYTES` are never parsed, so they don't count.
 pub(super) struct Cost {
@@ -33,6 +35,16 @@ impl Cost {
             self.bytes += l.len();
         }
         self
+    }
+
+    /// The least an in-context parse resuming from `memo` has to parse: the chunks of both
+    /// sides whose text `memo` hasn't seen, each counted once.
+    pub(super) fn unseen_in_context(diff: &FileDiff, gaps: &[&[String]], memo: &Memo) -> Cost {
+        let s = streams(&diff.hunks, gaps);
+        let mut seen = HashSet::new();
+        let (old_lines, old_bytes) = unseen(&s.old.lines, memo, &mut seen);
+        let (new_lines, new_bytes) = unseen(&s.new.lines, memo, &mut seen);
+        Cost { lines: old_lines + new_lines, bytes: old_bytes + new_bytes }
     }
 
     pub(super) fn within(&self, max_lines: usize, max_bytes: usize) -> bool {

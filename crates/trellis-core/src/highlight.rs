@@ -18,7 +18,12 @@
 //! files outside a diff (the blame view's lines) go through `highlight_file` (`file`).
 //!
 //! Two passes. `highlight_in_context` parses small diffs while they load (the inline pass,
-//! within `MAX_LINES` and `MAX_BYTES`). Larger ones come back pending: their hunks carry
+//! within `MAX_LINES` and `MAX_BYTES`). An in-context parse keeps checkpoints (`memo`): each
+//! chunk of the old and new files' lines with the parse states before and after it. A reload of
+//! the same file (a hunk staged, unstaged or discarded, an edit far from the other hunks)
+//! resumes from them, parsing only the chunks it hasn't seen from the same state, so it usually
+//! finishes inline whatever the file's size, with the colours of a fresh parse. Larger ones come
+//! back pending: their hunks carry
 //! provisional spans from the diff shown before (matched by line text, see `reuse`), from a
 //! per-hunk parse, or none, and `finish` parses them later on a worker thread (the background
 //! pass, within `BACKGROUND_MAX_LINES` and `BACKGROUND_MAX_BYTES`). Beyond that a diff stays
@@ -31,8 +36,10 @@
 
 use crate::repo::{DiffLine, FileDiff};
 use header::parse_headers;
+use memo::Memo;
 use parse::{Classifier, Stop, parse_hunk, parse_in_context};
 use reuse::{Cost, Previous};
+use std::fmt;
 use std::sync::Arc;
 use syntaxes::{SYNTAXES, find_syntax};
 use syntect::parsing::SyntaxReference;
@@ -41,6 +48,7 @@ mod context;
 mod file;
 mod header;
 mod linguist;
+mod memo;
 mod parse;
 mod reuse;
 mod syntaxes;
@@ -110,6 +118,36 @@ pub struct DiffHighlight {
     /// `context_start(header)`. Empty when the header has none, it is too long, or it isn't
     /// parsed yet (pending without carried spans).
     pub(crate) headers: Vec<Vec<Span>>,
+    /// The checkpoints of the in-context parse (while pending, those it will start from), for
+    /// the next load of this file.
+    pub(crate) memo: Checkpoints,
+}
+
+/// Parse checkpoints carried by a highlight (see `memo`). A cache only: it never makes two
+/// highlights differ.
+#[derive(Clone, Default)]
+pub(crate) struct Checkpoints(Option<Arc<Memo>>);
+
+impl PartialEq for Checkpoints {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl fmt::Debug for Checkpoints {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Checkpoints({})", self.len())
+    }
+}
+
+impl Checkpoints {
+    fn new(memo: Memo) -> Self {
+        Checkpoints(Some(Arc::new(memo)))
+    }
+
+    fn len(&self) -> usize {
+        self.0.as_ref().map_or(0, |m| m.len())
+    }
 }
 
 impl DiffHighlight {
@@ -139,6 +177,11 @@ impl DiffHighlight {
         self.syntax == other.syntax && self.old_text == other.old_text
     }
 
+    /// The number of parse checkpoints carried (for logging).
+    pub fn checkpoints(&self) -> usize {
+        self.memo.len()
+    }
+
     fn hunk_pending(&self, hunk: usize) -> bool {
         self.pending.get(hunk).copied().unwrap_or(false)
     }
@@ -160,7 +203,9 @@ pub fn highlight_diff<'a>(file: impl Into<SyntaxHint<'a>>, diff: &FileDiff, prev
 /// or with too much context even for the background pass, each hunk is parsed on its own.
 ///
 /// `previous` is the diff shown before a reload. In context, the same hunks with the same old
-/// text keep its finished spans. Per hunk, hunks whose lines are unchanged keep its finished
+/// text keep its finished spans, and otherwise the parse resumes from its checkpoints: when the
+/// chunks it hasn't seen fit the inline limits, the diff is finished inline (unless reaching
+/// them in other states makes the parse go over the limits). Per hunk, hunks whose lines are unchanged keep its finished
 /// spans instead of being parsed again (their spans depend only on their own lines), and only
 /// the other hunks count toward the inline limits. Over those limits nothing is parsed: the
 /// result is pending, with spans carried by line text from `previous`.
@@ -193,18 +238,36 @@ pub fn highlight_in_context<'a>(
     if let Some(h) = unchanged {
         return Some(h.clone());
     }
+    // The checkpoints of the highlight shown before, finished or pending (a pending one carries
+    // those it was built from).
+    let memo_in = previous.and_then(|p| p.highlight.as_ref()).filter(|h| h.syntax == syntax.name).and_then(|h| h.memo.0.clone());
     let n = diff.hunks.len();
-    if context_cost(diff, &gaps).within(MAX_LINES, MAX_BYTES) {
-        let mut cx = Classifier::new();
-        let lines = parse_in_context(syntax, &diff.hunks, &gaps, &mut cx, &|| false).ok()?;
+    let inline = |mut cx: Classifier| {
+        let mut memo_out = Memo::default();
+        let lines = parse_in_context(syntax, &diff.hunks, &gaps, memo_in.as_deref(), &mut memo_out, &mut cx, &|| false)?;
+        cx.unlimited();
         let headers = parse_headers(syntax, &diff.hunks, &mut cx, &|| false).unwrap_or_default();
-        return Some(DiffHighlight { syntax: syntax.name.clone(), lines, pending: vec![false; n], old_text: Some(o.clone()), headers });
+        let (pending, old_text, memo) = (vec![false; n], Some(o.clone()), Checkpoints::new(memo_out));
+        Ok(DiffHighlight { syntax: syntax.name.clone(), lines, pending, old_text, headers, memo })
+    };
+    if context_cost(diff, &gaps).within(MAX_LINES, MAX_BYTES) {
+        return inline(Classifier::new()).ok();
+    }
+    if let Some(m) = memo_in.as_deref()
+        && Cost::unseen_in_context(diff, &gaps, m).within(MAX_LINES, MAX_BYTES)
+    {
+        match inline(Classifier::with_budget(MAX_LINES, MAX_BYTES)) {
+            Ok(hl) => return Some(hl),
+            Err(Stop::Budget) => {}
+            Err(Stop::Parse | Stop::Cancelled) => return None,
+        }
     }
     // Pending: provisional spans from the per-hunk parse (exact reuse, an inline parse when the
     // hunks alone are small enough, or carried by line text), all re-parsed in context later.
     let mut hl = per_hunk(syntax, diff, previous)?;
     hl.pending = vec![true; n];
     hl.old_text = Some(o.clone());
+    hl.memo = Checkpoints(memo_in);
     Some(hl)
 }
 
@@ -235,7 +298,7 @@ fn per_hunk(syntax: &SyntaxReference, diff: &FileDiff, previous: Option<&FileDif
             diff.hunks.iter().zip(exact).map(|(hunk, e)| e.map_or_else(|| (prev.carry(hunk), true), |s| (s.clone(), false))).unzip();
         (lines, pending, diff.hunks.iter().map(|h| prev.header(h)).collect())
     };
-    Some(DiffHighlight { syntax: syntax.name.clone(), lines, pending, old_text: None, headers })
+    Some(DiffHighlight { syntax: syntax.name.clone(), lines, pending, old_text: None, headers, memo: Checkpoints::default() })
 }
 
 /// Finishes a highlight left pending by `highlight_in_context`. With old text, every hunk is
@@ -255,18 +318,20 @@ pub fn finish(diff: &FileDiff, cancelled: &dyn Fn() -> bool) -> Option<DiffHighl
         && let Some(syntax) = SYNTAXES.set.find_syntax_by_name(&hl.syntax)
     {
         let mut cx = Classifier::new();
-        match parse_in_context(syntax, &diff.hunks, &gaps, &mut cx, cancelled) {
+        let mut memo_out = Memo::default();
+        // No budget here, so `Stop::Budget` can't occur; it is treated like a parse error.
+        match parse_in_context(syntax, &diff.hunks, &gaps, hl.memo.0.as_deref(), &mut memo_out, &mut cx, cancelled) {
             Ok(lines) => {
                 let headers = match parse_headers(syntax, &diff.hunks, &mut cx, cancelled) {
                     Ok(headers) => headers,
                     Err(Stop::Cancelled) => return None,
-                    Err(Stop::Parse) => vec![Vec::new(); diff.hunks.len()],
+                    Err(Stop::Parse | Stop::Budget) => vec![Vec::new(); diff.hunks.len()],
                 };
-                let old_text = Some(o.clone());
-                return Some(DiffHighlight { syntax: hl.syntax.clone(), lines, pending: vec![false; n], old_text, headers });
+                let (old_text, memo) = (Some(o.clone()), Checkpoints::new(memo_out));
+                return Some(DiffHighlight { syntax: hl.syntax.clone(), lines, pending: vec![false; n], old_text, headers, memo });
             }
             Err(Stop::Cancelled) => return None,
-            Err(Stop::Parse) => {}
+            Err(Stop::Parse | Stop::Budget) => {}
         }
     }
     let pending_hunks = || diff.hunks.iter().enumerate().filter(|&(i, _)| hl.hunk_pending(i)).map(|(_, h)| h);
@@ -285,15 +350,16 @@ pub fn finish(diff: &FileDiff, cancelled: &dyn Fn() -> bool) -> Option<DiffHighl
         match syntax.map_or(Err(Stop::Parse), |s| parse_hunk(s, hunk, &mut cx, cancelled)) {
             Ok(spans) => lines.push(spans),
             Err(Stop::Cancelled) => return None,
-            Err(Stop::Parse) => lines.push(vec![Vec::new(); hunk.lines.len()]),
+            Err(Stop::Parse | Stop::Budget) => lines.push(vec![Vec::new(); hunk.lines.len()]),
         }
     }
     let headers = match syntax.map(|s| parse_headers(s, &diff.hunks, &mut cx, cancelled)) {
         Some(Ok(headers)) => headers,
         Some(Err(Stop::Cancelled)) => return None,
-        Some(Err(Stop::Parse)) | None => hl.headers.clone(),
+        Some(Err(Stop::Parse | Stop::Budget)) | None => hl.headers.clone(),
     };
-    Some(DiffHighlight { syntax: hl.syntax.clone(), lines, pending: vec![false; n], old_text: None, headers })
+    let memo = Checkpoints::default();
+    Some(DiffHighlight { syntax: hl.syntax.clone(), lines, pending: vec![false; n], old_text: None, headers, memo })
 }
 
 #[cfg(test)]
@@ -306,6 +372,8 @@ mod header_tests;
 mod language_tests;
 #[cfg(test)]
 mod linguist_tests;
+#[cfg(test)]
+mod memo_tests;
 #[cfg(test)]
 mod notice_tests;
 #[cfg(test)]

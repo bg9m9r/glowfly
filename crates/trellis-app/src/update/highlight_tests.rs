@@ -206,9 +206,10 @@ pub(super) fn land(st: &mut AppState, held: Vec<Effect>) -> Vec<Effect> {
 
 #[test]
 fn reload_keeps_colors_without_plain_flash() {
-    // (1) Hunk view: staging one hunk reloads the rest fully colored at once (the previous spans)
-    // while one background pass parses them again in context, as the old text (the index)
-    // changed. The spans come out the same, as nothing before them opens a comment or string.
+    // (1) Hunk view: staging one hunk reloads the rest fully colored at once: the parse resumes
+    // from the previous highlight's checkpoints, so it finishes inline although the old text
+    // (the index) changed. The spans come out the same, as nothing before them opens a comment
+    // or string.
     let dir = big_repo("hl-reload");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
@@ -217,23 +218,14 @@ fn reload_keeps_colors_without_plain_flash() {
     let before = spans_of(shown(&st));
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
     let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "big.rs".into(), index: 0, generation }));
-    let mut fx = land(&mut st, held);
-    assert!(pending(shown(&st).highlight.as_ref()));
+    let fx = land(&mut st, held);
+    assert!(!pending(shown(&st).highlight.as_ref()), "finished inline from the checkpoints");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::HighlightDiff { .. })), "{fx:?}");
+    assert_colored(shown(&st));
     let after = spans_of(shown(&st));
     assert_eq!(after.len(), before.len() - 1);
     for (h, spans) in after.iter().enumerate() {
         assert_eq!(*spans, before[h + 1], "hunk {h} keeps its spans: no plain flash");
-    }
-    let passes = |fx: &[Effect], shown_gen: u64| {
-        fx.iter().filter(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == shown_gen)).count()
-    };
-    assert_eq!(passes(&fx, st.diff_shown_gen), 1, "{fx:?}");
-    let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { .. })).unwrap();
-    let msg = runner::execute(fx.remove(i)).unwrap();
-    up(&mut st, msg);
-    assert_colored(shown(&st));
-    for (h, spans) in spans_of(shown(&st)).iter().enumerate() {
-        assert_eq!(*spans, before[h + 1], "hunk {h} parsed in context");
     }
 
     // (2) Whole-file view: an edit far away leaves line 10 colored as before until the pass ends.

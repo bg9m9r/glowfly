@@ -87,6 +87,8 @@ pub(super) mod graph_filter_tests;
 pub(super) mod highlight_context_tests;
 #[path = "highlight_header_tests.rs"]
 pub(super) mod highlight_header_tests;
+#[path = "highlight_memo_tests.rs"]
+pub(super) mod highlight_memo_tests;
 #[path = "highlight_tests.rs"]
 pub(super) mod highlight_tests;
 #[path = "history_file_tests.rs"]

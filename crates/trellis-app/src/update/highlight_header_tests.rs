@@ -89,19 +89,15 @@ fn reload_carries_header_spans() {
     assert!(before.iter().all(|s| has(s, TokenKind::Keyword)));
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
     let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "big.rs".into(), index: 0, generation }));
-    let mut fx = land(&mut st, held);
+    // The reload resumes from the checkpoints and finishes inline.
+    let fx = land(&mut st, held);
+    assert!(!fx.iter().any(|e| matches!(e, Effect::HighlightDiff { .. })));
     let d = shown(&st);
-    assert!(hl(d).is_pending());
+    assert!(!hl(d).is_pending());
     let after = headers(d);
     assert_eq!(after.len(), before.len() - 1);
     for (h, spans) in after.iter().enumerate() {
         assert_eq!(*spans, before[h + 1], "hunk {h}: no plain flash");
-    }
-    finish_held(&mut st, &mut fx);
-    let d = shown(&st);
-    assert!(!hl(d).is_pending());
-    for (h, spans) in headers(d).iter().enumerate() {
-        assert_eq!(*spans, before[h + 1], "hunk {h} after the background pass");
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
