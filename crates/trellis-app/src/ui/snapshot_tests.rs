@@ -12,7 +12,7 @@ use egui_kittest::Harness;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::gitcli::{args, run_with_input};
-use trellis_core::repo::{self, LoadOptions};
+use trellis_core::repo::{self, ChangeCounts, LoadOptions};
 use trellis_core::settings::{Settings, ThemeChoice};
 use trellis_core::spell::Speller;
 
@@ -145,6 +145,11 @@ fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harn
                 history_text: Default::default(),
                 blame_rows: Default::default(),
             });
+            // Tests inject working-tree files into the lists; count them as a status read would,
+            // so the WIP row's counts match the files shown.
+            if let Some(snap) = st.snap.as_mut() {
+                snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
+            }
             draw(ctx, st, cache, msgs);
         },
         (st, Vec::new()),
