@@ -62,7 +62,13 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
 fn loaded(st: &mut AppState, path: &str, mut h: FileHistory, fx: &mut Vec<Effect>) {
     let Some(view) = st.history.as_mut().filter(|v| v.path == path) else { return };
     if !view.entries.is_empty() && !view.rerun {
+        // A Search further walk checks the disk under `path`; after a rename forwards the
+        // file is at `head_path` today, which only the first batch (or a re-run) checked.
+        let on_disk = view.on_disk;
         view.append(h);
+        if view.head_path.is_some() {
+            view.on_disk = on_disk;
+        }
         view.batches += 1;
         return;
     }

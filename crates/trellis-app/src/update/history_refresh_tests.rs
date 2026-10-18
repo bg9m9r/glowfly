@@ -161,6 +161,30 @@ fn at_view_records_the_head_name() {
 }
 
 #[test]
+fn search_further_keeps_on_disk_for_the_head_name() {
+    let (mut st, dir) = opened("history-at-head-name-more");
+    st.history = Some(FileHistoryView::loading("old.txt".into(), Some(oid(5))));
+    let first = FileHistory {
+        head_path: Some("a.txt".into()),
+        on_disk: true,
+        resume: vec![(oid(4), "old.txt".to_owned())],
+        ..history(vec![entry(1, "a.txt"), entry(5, "old.txt")])
+    };
+    let m = Msg::History(HistoryMsg::FileHistoryLoaded { path: "old.txt".into(), generation: st.history_gen, result: Ok(first) });
+    update(&mut st, m, Instant::now());
+    update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now());
+    // The resumed walk checked the disk for old.txt, which is gone since the rename.
+    let more = FileHistory { on_disk: false, ..history(vec![entry(4, "old.txt")]) };
+    let m = Msg::History(HistoryMsg::FileHistoryLoaded { path: "old.txt".into(), generation: st.history_gen, result: Ok(more) });
+    update(&mut st, m, Instant::now());
+    let v = st.history.as_ref().unwrap();
+    assert_eq!(v.entries.len(), 3);
+    assert_eq!(v.today_path(), "a.txt");
+    assert!(v.on_disk && v.in_workdir(None), "a.txt is still on disk");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn rerun_e2e_after_a_commit() {
     let dir = scratch_repo("history-rerun-e2e");
     git(&dir, &["commit", "-q", "-am", "edit a"]);
