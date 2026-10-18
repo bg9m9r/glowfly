@@ -12,22 +12,11 @@ use crate::state::worktree_manage::{
 };
 use crate::state::worktrees::find;
 use crate::state::{AppState, Modal};
-use crate::worktree::{RemoteOutcome, RemoveRequest};
+use crate::worktree::{RemoteOutcome, RemoveRequest, Removed};
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::repo::{Tracking, WorktreeInfo};
-use trellis_core::undo::Action;
 use trellis_core::worktree_ops::{Refusal, RemoveOutcome, lock_cmd, prune_cmd, unlock_cmd};
-
-/// `WorktreeMsg::Removed`'s fields.
-pub(super) struct Removed {
-    pub request: RemoveRequest,
-    pub outcome: RemoveOutcome,
-    pub output: String,
-    pub branch: Option<Result<(), String>>,
-    pub remote: Option<RemoteOutcome>,
-    pub undo: Option<Action>,
-}
 
 /// The folders open in tabs.
 fn open_tabs(st: &AppState) -> Vec<crate::state::tabs::Place> {

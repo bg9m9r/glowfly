@@ -20,6 +20,11 @@ ignore = [
     { id = "RUSTSEC-2024-0320", reason = "yaml-rust: syntect's syntax loading (two-face, at build time)" },
     { id = "RUSTSEC-2024-0436", reason = "paste: a proc-macro of accesskit_windows (eframe 0.31)" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser: ab_glyph, epaint's font rasterizer (egui 0.31)" },
+    # Merged into zbus 6; zbus 4 (accesskit_unix, eframe 0.31's Linux accessibility) and zbus 5
+    # (rfd, notify-rust), in the versions Trellis uses, still depend on them.
+    { id = "RUSTSEC-2026-0370", reason = "zvariant: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
 ]
 
 [licenses]

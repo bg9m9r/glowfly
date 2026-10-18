@@ -30,9 +30,7 @@ pub(super) fn handle(st: &mut AppState, msg: WorktreeMsg, now: Instant, fx: &mut
         WorktreeMsg::FolderChecked { request, result } => folder_checked(st, request, result, fx),
         WorktreeMsg::RemoveDialog(path) => manage::remove_dialog(st, path),
         WorktreeMsg::Remove => manage::remove(st, fx),
-        WorktreeMsg::Removed { request, outcome, output, branch, remote, undo } => {
-            manage::removed(st, manage::Removed { request, outcome, output, branch, remote, undo }, now, fx)
-        }
+        WorktreeMsg::Removed(r) => manage::removed(st, *r, now, fx),
         WorktreeMsg::LockDialog(path) => manage::lock_dialog(st, path),
         WorktreeMsg::Lock => manage::lock(st, fx),
         WorktreeMsg::Unlock(path) => manage::unlock(st, path, fx),

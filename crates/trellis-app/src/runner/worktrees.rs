@@ -3,7 +3,7 @@
 //! (`Effect::RemoveWorktree`), and moving one (`Effect::MoveWorktree`).
 
 use crate::msg::Msg;
-use crate::worktree::{MoveRequest, NewWorktree, RemoteOutcome, RemoveRequest, WorktreeMsg};
+use crate::worktree::{MoveRequest, NewWorktree, RemoteOutcome, RemoveRequest, Removed, WorktreeMsg};
 use trellis_core::branch_ops::delete_with_remote_cmds;
 use trellis_core::gitcli::{self, args};
 use trellis_core::undo::{self, UndoKind};
@@ -67,7 +67,7 @@ pub(super) fn remove(r: RemoveRequest) -> Msg {
             branch = Some(Err(first_line(&text, "git branch -d failed").to_owned()));
         }
     }
-    Msg::Worktree(WorktreeMsg::Removed { request: r, outcome: rep.outcome, output, branch, remote, undo })
+    Msg::Worktree(WorktreeMsg::Removed(Box::new(Removed { request: r, outcome: rep.outcome, output, branch, remote, undo })))
 }
 
 /// Moves the worktree (`worktree_ops::move_worktree`), as `WorktreeMsg::Moved`.

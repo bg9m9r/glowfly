@@ -9,6 +9,19 @@ use trellis_core::repo::Tracking;
 use trellis_core::undo::Action;
 use trellis_core::worktree_ops::{MoveOutcome, RemoveForce, RemoveOutcome, WorktreeBase};
 
+/// How a remove went, and the branch delete's result when one was asked for and the worktree
+/// was removed (`undo` when it was deleted and can be restored), then the remote branch delete's
+/// result when that was asked for and the local delete worked.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Removed {
+    pub request: RemoveRequest,
+    pub outcome: RemoveOutcome,
+    pub output: String,
+    pub branch: Option<Result<(), String>>,
+    pub remote: Option<RemoteOutcome>,
+    pub undo: Option<Action>,
+}
+
 /// A create request, checked by update and then on disk by the runner.
 #[derive(Clone, Debug, PartialEq)]
 pub struct NewWorktree {
@@ -77,17 +90,8 @@ pub enum WorktreeMsg {
     RemoveDialog(PathBuf),
     /// The Remove dialog's button: reads the form from `st.modal`.
     Remove,
-    /// From the runner: how the remove went, and the branch delete's result when one was asked
-    /// for and the worktree was removed (`undo` when it was deleted and can be restored), then
-    /// the remote branch delete's result when that was asked for and the local delete worked.
-    Removed {
-        request: RemoveRequest,
-        outcome: RemoveOutcome,
-        output: String,
-        branch: Option<Result<(), String>>,
-        remote: Option<RemoteOutcome>,
-        undo: Option<Action>,
-    },
+    /// From the runner: how the remove went (boxed, as it is much larger than the others).
+    Removed(Box<Removed>),
     /// Open the Lock worktree dialog for the worktree at this folder.
     LockDialog(PathBuf),
     /// The Lock dialog's button: reads the form from `st.modal`.

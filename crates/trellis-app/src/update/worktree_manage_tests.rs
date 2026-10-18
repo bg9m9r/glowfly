@@ -11,7 +11,7 @@ use crate::msg::TabsMsg;
 use crate::state::worktree_manage::{LockForm, RemoveForm, needs_force_text, prune_blocked};
 use crate::state::worktrees::find;
 use crate::state::{AppState, Modal, RunningJob};
-use crate::worktree::{RemoveRequest, WorktreeMsg};
+use crate::worktree::{RemoveRequest, Removed, WorktreeMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::repo::WorktreeInfo;
@@ -195,14 +195,14 @@ fn folder_left_and_branch_failed() {
         delete_branch: Some("busy".into()),
         delete_remote: None,
     };
-    let msg = WorktreeMsg::Removed {
+    let msg = WorktreeMsg::Removed(Box::new(Removed {
         request,
         outcome: RemoveOutcome::FolderLeft,
         output: "$ git worktree remove x\nerror: failed to delete".into(),
         branch: Some(Err("not fully merged".into())),
         remote: None,
         undo: None,
-    };
+    }));
     update(&mut st, wt(msg), Instant::now());
     assert!(st.job.is_none());
     let n = st.log.len();
