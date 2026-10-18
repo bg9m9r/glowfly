@@ -16,9 +16,9 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-17 22:59 · **Language**: Translated the menu bar, About dialog, toolbar, tab bar, update check and UI Customization page (`78fc616`)
 - 2026-10-17 22:11 · **Merge conflict tool**: Single-line picks with a checkbox per conflict line (taken in tick order), an editable output (only the conflicts' text, kept through picks until Discard edit), Save with markers that writes the file with markers for the conflicts not picked yet and leaves it conflicted, Mark all conflicted on the Resolved Files header, and palette entries for Mark all resolved and Mark conflicted (`ffa60c2`)
 - 2026-10-17 22:03 · **Blame gutter**: Blame before a line's commit (following renames) with Back, skip a commit, ignore-whitespace and move/copy toggles, full commit messages on hover, age colouring of the gutter, find in file and go to line, N / Shift+N between commits, and links to and from file history (`00bdcec`)
-- 2026-10-17 21:59 · **Language**: translated the menu bar, About, toolbar, tab bar, update check and UI Customization (`4deb451`)
 - 2026-10-16 18:46 · **Interactive rebase: history editing from the graph**: Reword, squash and drop commits from the graph, with autostash of local changes and a step-aware banner while the rebase runs (`ee9778d`)
 - 2026-10-16 18:41 · **Undo / Redo**: Undo and redo for merges, pulls, rebases, cherry-picks, reverts, new branches and tags, stash push, pop and apply, with "Stash changes and undo" for a hard reset or Discard all blocked by local changes and an offer to delete the branch a checkout created (`7b473a3`)
 - 2026-10-16 18:22 · **Merge conflict tool**: Trivial chunks (one side unchanged, both the same, whitespace only) picked automatically with a note and header tags; Conflicted Files (N) with marker counts and Mark all resolved, Resolved Files (N) with Mark conflicted; a warning before marking files with markers left resolved; and stepping to the next conflicted file after resolving one (`b211262`)
@@ -36,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 15:41 · **PR and issue filters**: Built-in and saved filters for the PULL REQUESTS and ISSUES sections, chosen from a filter chip in each section header (`8d97841`)
 - 2026-10-16 15:35 · **Zoom**: Zoom in, out and reset from 50% to 200% with keys, the palette, a toast and a status bar reset, plus show or hide the left, details and toolbar panels from keys, the palette and Preferences > UI Customization, kept per profile (`92464c7`)
 - 2026-10-16 15:12 · **Custom themes**: High Contrast Dark, High Contrast Light and Trellis Sand built in; JSON theme files in the config folder's themes folder (a base theme plus #rrggbb colors or color names, loops detected, problems listed in Preferences and logged), with Open themes folder, Reload and Create from current, and every theme in the palette (`3639791`)
-- 2026-10-16 14:56 · **Limits found while building integrations**: Checks and votes for every pull request on GitLab, Bitbucket Cloud and Data Center and Azure DevOps (a paced background pass past the first 25, cached by head and age), Jira look-alike keys such as `UTF-8` skipped using the site's project keys, the project filter applied to branch names, and paging tests for every issue list (`cc23487`)
 
 ---
 
