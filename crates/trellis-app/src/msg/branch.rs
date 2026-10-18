@@ -4,6 +4,12 @@
 pub enum BranchMsg {
     /// Check out local branch `.0`, unless it is HEAD or checked out in another worktree.
     Checkout(String),
+    /// Check out the local branch tracking remote branch `name` on `remote`, or create one
+    /// tracking it.
+    CheckoutRemote {
+        remote: String,
+        name: String,
+    },
     /// Open the rename dialog for local branch `.0`.
     RenameBranchDialog(String),
     /// `git branch -m old new`.
@@ -42,6 +48,7 @@ impl BranchMsg {
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             Self::Checkout(..)
+            | Self::CheckoutRemote { .. }
             | Self::RenameBranchDialog(..)
             | Self::RenameBranch { .. }
             | Self::SetUpstreamDialog(..)

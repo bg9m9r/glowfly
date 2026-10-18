@@ -4,11 +4,12 @@
 //! or remove it, and under it the remote-tracking branch rows. The header's menu adds a remote.
 
 use super::common::{hint_row, menu_item, menu_item_if};
-use super::menus::{RemoteMenu, remote_branch_menu};
 use super::ref_visibility;
+use super::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use super::theme::color;
 use super::widgets;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
+use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::remote::RemoteMsg;
@@ -86,7 +87,7 @@ pub(in crate::ui) fn section(
             };
             let full = format!("{remote}/{name}");
             if r.double_clicked() {
-                msgs.push(Msg::git("Checkout", &["checkout", "--track", &full]));
+                msgs.push(Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.clone(), name: name.clone() }));
             } else if r.clicked() {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
             }

@@ -1,12 +1,15 @@
-//! Branch operations from the branch menu: checkout (refused for a branch another worktree
-//! has), rename, set and unset the upstream, fast-forward without checkout, push to the upstream
-//! or a chosen remote, and delete together with the remote branch. Each re-checks the branch against the current snapshot (a menu or confirm can
-//! be stale), then runs `branch_ops` commands as the single active git job.
+//! Branch operations from the branch menus: checkout (refused for a branch another worktree
+//! has), checkout from a remote branch (its tracking local branch, or a new one), rename, set
+//! and unset the upstream, fast-forward without checkout, push to the upstream or a chosen
+//! remote, and delete together with the remote branch. Each re-checks the branch against the
+//! current snapshot (a menu or confirm can be stale), then runs `branch_ops` commands as the
+//! single active git job.
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::msg::BranchMsg;
 use crate::state::branches::{self, NO_REMOTES};
+use crate::state::remote_branch;
 use crate::state::worktree_branches;
 use crate::state::{AppState, Modal};
 use trellis_core::branch_ops::{self, check_branch_name, is_valid_branch_name};
@@ -16,6 +19,7 @@ use trellis_core::undo::UndoKind;
 pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
     match msg {
         BranchMsg::Checkout(name) => checkout(st, &name, fx),
+        BranchMsg::CheckoutRemote { remote, name } => checkout_remote(st, &remote, &name, fx),
         BranchMsg::NewBranch { start, name } => st.modal = Some(Modal::NewBranch { start, name, checkout: true }),
         BranchMsg::RenameBranchDialog(name) => {
             if let Some(b) = find(st, &name) {
@@ -72,6 +76,31 @@ fn checkout(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
     }
     // A single command: `start_job` records it for undo as `JobMsg::Git` would.
     start_job(st, JobSpec::new("Checkout".into(), vec![branches::checkout_local(name)]), fx);
+}
+
+/// Checks out the local branch tracking `remote`/`name`, or creates one tracking it, unless the
+/// remote branch is gone, its tracking branch is HEAD or a local branch already has its name.
+fn checkout_remote(st: &mut AppState, remote: &str, name: &str, fx: &mut Vec<Effect>) {
+    let Some(snap) = st.snap.as_ref() else { return };
+    if remote_branch::exists(snap, remote, name).is_none() {
+        st.log(false, format!("{remote}/{name} no longer exists."));
+        return;
+    }
+    if let Some(b) = remote_branch::tracking_local(snap, remote, name) {
+        let (local, head) = (b.name.clone(), b.is_head);
+        if head {
+            st.log(false, format!("{local} is already checked out."));
+        } else {
+            checkout(st, &local, fx);
+        }
+        return;
+    }
+    if let Some(why) = remote_branch::checkout_blocked(snap, remote, name) {
+        st.log(false, why);
+        return;
+    }
+    // A single command: `start_job` records it for undo (`UndoKind::Checkout`).
+    start_job(st, JobSpec::new("Checkout".into(), vec![remote_branch::checkout_cmd(remote, name)]), fx);
 }
 
 fn rename(st: &mut AppState, old: &str, new: &str, fx: &mut Vec<Effect>) {

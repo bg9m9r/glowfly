@@ -74,6 +74,7 @@ pub mod rebase_steps;
 pub mod ref_rows;
 pub mod refresh;
 pub mod release_notes;
+pub mod remote_branch;
 pub mod remotes;
 pub mod repo_lists;
 pub mod repo_scan;

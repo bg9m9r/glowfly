@@ -76,7 +76,7 @@ fn no_request_reason(st: &AppState) -> &'static str {
     }
 }
 
-/// Checks merging local branch `name` into the checked-out branch.
+/// Checks merging local or remote-tracking branch `name` (origin/x) into the checked-out branch.
 fn check_branch(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let (Some(head), Some(ours)) = (snap.head_branch.clone(), snap.head_oid) else {
@@ -87,8 +87,11 @@ fn check_branch(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
         st.log(false, format!("{name} is the checked-out branch."));
         return;
     }
-    let Some(oid) = snap.locals.iter().find(|b| b.name == name).and_then(|b| b.oid) else {
-        st.log(false, format!("There is no local branch {name}."));
+    let local = snap.locals.iter().find(|b| b.name == name).and_then(|b| b.oid);
+    let remote =
+        || snap.remotes.iter().flat_map(|(r, bs)| bs.iter().map(move |(n, o)| (r, n, *o))).find(|(r, n, _)| format!("{r}/{n}") == name);
+    let Some(oid) = local.or_else(|| remote().map(|(_, _, o)| o)) else {
+        st.log(false, format!("There is no branch {name}."));
         return;
     };
     let workdir = snap.workdir.clone();

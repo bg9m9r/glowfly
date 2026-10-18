@@ -223,6 +223,8 @@ pub(super) mod rebase_undo_tests;
 pub(super) mod recent_tests;
 #[path = "refresh_tests.rs"]
 pub(super) mod refresh_tests;
+#[path = "remote_branch_tests.rs"]
+pub(super) mod remote_branch_tests;
 #[path = "remote_fork_tests.rs"]
 pub(super) mod remote_fork_tests;
 #[path = "remote_tests.rs"]

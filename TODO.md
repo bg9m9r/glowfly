@@ -282,7 +282,9 @@ Done except the group colors, which wait on repository groups in the repository 
   From the local branch menu: rename, set and unset the upstream (also to a branch not on the
   remote yet), fast-forward without checkout, delete local + remote in one step when the
   checked-out branch contains it (undo restores the local branch), push any branch to its
-  upstream, push to a chosen remote.
+  upstream, push to a chosen remote. From the remote branch menu (left panel and graph labels):
+  check out its tracking branch or a new one, fast-forward the tracking branch, and interactive
+  rebase, conflict check, compare and set upstream against the checked-out branch.
   - [x] Rename the checked-out branch from the command palette
 - [x] **Hide / solo branches in the graph**
   Hide or show local and remote branches and solo one or more of them from the left panel's
@@ -708,11 +710,6 @@ follow-ups go to Ideas, not here.
 - Say when a cherry-pick or revert changed nothing because the branch already has the changes
 - Compare with working directory from the command palette and the commit details panel
 - A key to go back from a select-all to the focused commit, with a toast naming the count
-
-### Branch operations
-
-- The same operations from the remote branch menu (e.g. fast-forward a local branch from its
-  remote row)
 
 ### File actions
 
@@ -1161,6 +1158,17 @@ here, under the item they grew from.
 - Delete local + remote when the branch isn't merged into HEAD (force), in one step
 - A "Commit 1a2b3c4" submenu in the graph's label menu, so a row with labels reaches the commit
   menu from the chips too
+- Checkout and fast-forward in one step from a remote branch row
+- Create a tracking branch under another name (New branch dialog with a remote start point that
+  sets the upstream)
+- Push the current branch to a chosen remote branch from its row
+- Warn in Delete remote branch's confirmation when a local branch tracks it, and offer to unset
+  that upstream
+- Show the remote branch's name (not a commit) in the interactive rebase dialog started from a
+  remote row
+- Compare with the current branch from the local branch and tag menus too
+- Route the palette's remote checkout through the remote branch checkout message
+- An entry per local branch when several track the same remote branch (only one is offered now)
 
 ### Hide / solo branches in the graph
 

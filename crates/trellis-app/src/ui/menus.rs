@@ -1,8 +1,7 @@
-//! Right-click menus for commits and remote branches (local branches: `branch_menu.rs`; pull
-//! request items: `pr_menu_items.rs`).
+//! Right-click menus for commits and multi-selections (local branches: `branch_menu.rs`; remote
+//! branches: `remote_branch_menu.rs`; pull request items: `pr_menu_items.rs`).
 
 use super::common::{menu_item, menu_item_if, short};
-use super::ref_visibility;
 use super::theme::color;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
@@ -13,15 +12,12 @@ use crate::patch::PatchMsg;
 use crate::state::patch::PATCH_BLOCKED_MERGE;
 use crate::state::rebase_onto::{onto_commit_blocker, onto_labels};
 use crate::state::selection::{MultiSelection, cherry_pick_blocker};
-use crate::state::{ForgeState, Selection};
 use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, RichText};
-use git2::Oid;
 use trellis_core::i18n::Lang;
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{CommitInfo, Snapshot};
-use trellis_core::settings::GraphFilter;
 use trellis_core::worktree_ops::WorktreeBase;
 
 pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
@@ -154,51 +150,4 @@ pub(super) fn copy_shas(m: &MultiSelection) -> Msg {
         "
 ",
     ))
-}
-
-/// What a remote branch's menu is drawn against.
-pub struct RemoteMenu<'a> {
-    /// The checked-out branch's name ("" when detached).
-    pub current: &'a str,
-    pub fs: Option<&'a ForgeState>,
-    pub graph: &'a GraphFilter,
-    pub sel: &'a Selection,
-}
-
-pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid, snap: &Snapshot, c: &RemoteMenu, msgs: &mut Vec<Msg>) {
-    let (current, fs, filter) = (c.current, c.fs, c.graph);
-    let full = format!("{remote}/{name}");
-    menu_item(msgs, ui, format!("Checkout {full}"), Msg::git("Checkout", &["checkout", "--track", &full]));
-    if name != "HEAD" {
-        let base = WorktreeBase::Remote { remote: remote.to_owned(), branch: name.to_owned() };
-        menu_item(msgs, ui, format!("Create worktree from {full}…"), Msg::Worktree(WorktreeMsg::CreateDialog(base)));
-    }
-    if !current.is_empty() {
-        menu_item(msgs, ui, format!("Merge {full} into {current}"), Msg::git("Merge", &["merge", &full]));
-        menu_item(msgs, ui, format!("Rebase {current} onto {full}"), Msg::git("Rebase", &["rebase", &full]));
-    }
-    if let Some(fs) = fs.filter(|f| f.remote == remote && f.host.is_some()) {
-        ui.separator();
-        match fs.pr_for_branch(name) {
-            Some(pr) => menu_item(msgs, ui, format!("Open {} {}", fs.pr_noun(), fs.pr_label(pr.id)), Msg::OpenUrl(pr.url.clone())),
-            None => super::pr_menu_items::remote(ui, name, oid, snap, fs, c.sel, msgs),
-        }
-    }
-    menu_item(msgs, ui, "Copy branch name", Msg::Copy(full.clone()));
-    let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
-    menu_item(msgs, ui, format!("Copy link to branch {full}"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
-    ui.separator();
-    ref_visibility::menu_items(ui, &format!("refs/remotes/{full}"), &full, filter, false, msgs);
-    ui.separator();
-    menu_item(
-        msgs,
-        ui,
-        format!("Delete {full} from remote"),
-        Msg::confirm(
-            "Delete remote branch",
-            format!("Delete branch {name} on {remote}? This affects everyone using the remote."),
-            "Delete",
-            Msg::git("Delete remote branch", &["push", remote, "--delete", name]),
-        ),
-    );
 }

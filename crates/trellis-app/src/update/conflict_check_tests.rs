@@ -286,7 +286,7 @@ fn refused_manual_checks() {
     assert!(check(&mut st, ConflictCheckMsg::CheckBranch("main".into())).is_empty());
     assert_eq!(st.log.last().unwrap().text, "main is the checked-out branch.");
     assert!(check(&mut st, ConflictCheckMsg::CheckBranch("nope".into())).is_empty());
-    assert_eq!(st.log.last().unwrap().text, "There is no local branch nope.");
+    assert_eq!(st.log.last().unwrap().text, "There is no branch nope.");
     git(&dir, &["checkout", "-q", "--detach"]);
     reload(&mut st, &dir);
     assert!(check(&mut st, ConflictCheckMsg::CheckBranch("feature".into())).is_empty());

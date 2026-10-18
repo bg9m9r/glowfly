@@ -5,7 +5,8 @@
 use crate::msg::Msg;
 use crate::state::{ForgeState, Selection};
 use crate::ui::branch_menu::local_branch_menu;
-use crate::ui::menus::{RemoteMenu, commit_menu, multi_commit_menu, remote_branch_menu};
+use crate::ui::menus::{commit_menu, multi_commit_menu};
+use crate::ui::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use crate::ui::tags::tag_menu;
 use eframe::egui::{self, Rect, Response};
 use trellis_core::repo::{CommitInfo, RefKind, RefLabel, Snapshot};

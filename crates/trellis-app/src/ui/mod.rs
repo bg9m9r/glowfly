@@ -69,6 +69,7 @@ mod pull_request;
 mod rebase;
 mod ref_visibility;
 mod release_notes;
+mod remote_branch_menu;
 mod remotes;
 mod repo_finder;
 mod repo_list;
@@ -231,6 +232,8 @@ mod snapshot_tests_rebase_keys;
 mod snapshot_tests_rebase_merges;
 #[cfg(test)]
 mod snapshot_tests_rebase_steps;
+#[cfg(test)]
+mod snapshot_tests_remote_branch;
 #[cfg(test)]
 mod snapshot_tests_remotes;
 #[cfg(test)]

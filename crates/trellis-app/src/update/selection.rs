@@ -1,5 +1,6 @@
 //! Selecting several commits: Ctrl- and Shift-clicks in the graph, select all, the comparison of
-//! a pair or a line of commits (and its direction), and keeping the selection across refreshes.
+//! a pair or a line of commits (and its direction), comparing a remote branch with the current
+//! branch, and keeping the selection across refreshes.
 //! Comparing with the working directory is in `compare_wip.rs`; cherry-pick and revert in
 //! `pick.rs`.
 
@@ -7,6 +8,7 @@ use crate::effect::Effect;
 use crate::msg::SelectionMsg;
 use crate::state::graph_rows::GraphRows;
 use crate::state::pick::PickOp;
+use crate::state::remote_branch;
 use crate::state::selection::{self as sel, MultiSelection};
 use crate::state::{AppState, Selection};
 use trellis_core::repo::{DiffTarget, Snapshot};
@@ -47,6 +49,7 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>)
         },
         SelectionMsg::ToggleWip => super::compare_wip::toggle(st, fx),
         SelectionMsg::CompareWithWorkdir(oid) => super::compare_wip::compare(st, oid, fx),
+        SelectionMsg::CompareWithHead { oid, name } => compare_with_head(st, oid, &name, fx),
         SelectionMsg::WorkdirCompareLoaded { oid, generation, result } => super::compare_wip::loaded(st, oid, generation, result),
         SelectionMsg::CherryPick(oids) => super::pick::run(st, PickOp::CherryPick, oids, None, fx),
         SelectionMsg::Revert(oids) => super::pick::run(st, PickOp::Revert, oids, None, fx),
@@ -65,6 +68,19 @@ fn select_all(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(&newest) = oids.first() else { return };
     let focus = super::search::selected_oid(&st.selection).filter(|o| oids.contains(o));
     let new = MultiSelection::build(oids, focus.unwrap_or(newest), snap);
+    apply(st, new, fx);
+}
+
+/// Selects HEAD's commit and `oid` (the tip of `name`) as a pair, unless the menu's reasons
+/// against it hold now.
+fn compare_with_head(st: &mut AppState, oid: git2::Oid, name: &str, fx: &mut Vec<Effect>) {
+    let Some(snap) = &st.snap else { return };
+    if let Some(why) = remote_branch::compare_blocked(snap, oid, name) {
+        st.log(false, why);
+        return;
+    }
+    let Some(head) = snap.head_oid else { return };
+    let new = MultiSelection::build([head, oid], oid, snap);
     apply(st, new, fx);
 }
 

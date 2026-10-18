@@ -33,6 +33,9 @@ pub enum SelectionMsg {
     ToggleWip,
     /// The commit menu's Compare with working directory.
     CompareWithWorkdir(Oid),
+    /// The remote branch menu's Compare with the current branch: select HEAD's commit and `oid`
+    /// (named `name` in messages) as a pair.
+    CompareWithHead { oid: Oid, name: String },
     /// The files that differ from commit `oid` to the working tree, read for request
     /// `generation`.
     WorkdirCompareLoaded { oid: Oid, generation: u64, result: Result<Comparison, String> },
@@ -56,6 +59,7 @@ impl SelectionMsg {
             | Self::CompareLoaded { .. }
             | Self::ToggleWip
             | Self::CompareWithWorkdir(..)
+            | Self::CompareWithHead { .. }
             | Self::WorkdirCompareLoaded { .. }
             | Self::SwapCompare
             | Self::SelectAll => None,

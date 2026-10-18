@@ -31,7 +31,8 @@ pub enum ConflictCheckMsg {
     /// Check the checked-out branch against its target now and show the result (head branch
     /// menu, the popover's Check again).
     CheckNow,
-    /// Check merging local branch .0 into the checked-out branch (that branch's menu).
+    /// Check merging local or remote-tracking branch .0 into the checked-out branch (that
+    /// branch's menu).
     CheckBranch(String),
     /// A check ended.
     Checked { request: CheckRequest, manual: bool, generation: u64, result: Result<Prediction, String> },
