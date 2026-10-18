@@ -12,7 +12,8 @@ use eframe::egui::{self, CornerRadius, FontId, Sense, Stroke, StrokeKind, pos2, 
 const HEIGHT: f32 = 20.0;
 
 pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    let Some((text, kind)) = st.updates.chip() else { return };
+    let t = st.settings.lang();
+    let Some((text, kind)) = st.updates.chip(t) else { return };
     let accent = match kind {
         ChipKind::Failed => color::red(),
         ChipKind::Available | ChipKind::Downloading | ChipKind::Downloaded => color::blue(),
@@ -38,10 +39,10 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         return;
     }
     let tip = match kind {
-        ChipKind::Available => "Show what's new",
-        ChipKind::Downloaded if st.updates.installer().is_some() => "Install the update",
-        ChipKind::Downloaded => "Show the downloaded file",
-        ChipKind::Failed | ChipKind::Downloading => "Download again",
+        ChipKind::Available => t.tr("updates.chip_tip.available"),
+        ChipKind::Downloaded if st.updates.installer().is_some() => t.tr("updates.chip_tip.install"),
+        ChipKind::Downloaded => t.tr("updates.chip_tip.show_file"),
+        ChipKind::Failed | ChipKind::Downloading => t.tr("updates.chip_tip.retry"),
     };
     if resp.on_hover_text(tip).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
         let m = match st.updates.settled() {

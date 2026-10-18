@@ -218,10 +218,10 @@ fn tooltips_follow_rebinding() {
     record(&mut st, I::Undo, Slot::Replace(0), shift_k);
     let oid = git2::Oid::zero();
     st.undo.record(trellis_core::undo::Action::DeleteBranch { name: "topic".into(), oid, upstream: None });
-    let tip = st.undo.undo_tooltip(&st.keymap);
+    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
     assert!(tip.contains("(Ctrl+Shift+K)"), "{tip}");
     st.keymap.set(I::Undo, Vec::new());
-    assert!(!st.undo.undo_tooltip(&st.keymap).contains('('), "no empty parentheses");
+    assert!(!st.undo.undo_tooltip(st.settings.lang(), &st.keymap).contains('('), "no empty parentheses");
 }
 
 #[test]

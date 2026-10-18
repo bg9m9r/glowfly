@@ -7,11 +7,13 @@ use super::theme::color;
 use crate::msg::Msg;
 use crate::msg::TabsMsg;
 use crate::state::AppState;
+use crate::state::menu_bar::tab_name;
 use crate::state::tab_groups::{self, is_identity, move_order, new_index, shown_at};
 use eframe::egui::{
     self, Align2, Button, Color32, CursorIcon, FontId, Id, PointerButton, Rect, Response, Sense, Stroke, StrokeKind, pos2, vec2,
 };
 use std::ops::Range;
+use trellis_core::i18n::Lang;
 
 const HEIGHT: f32 = 30.0;
 const ROUNDING: egui::CornerRadius = egui::CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 };
@@ -40,6 +42,7 @@ struct Slot {
 }
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     egui::TopBottomPanel::top("tabs")
         .exact_height(HEIGHT)
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(egui::Margin { left: 6, right: 6, top: 0, bottom: 0 }))
@@ -64,11 +67,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                 let shown = tab_groups::shown_groups(&st.tabs, on);
                 let floating = drag(ui, &slots, &blocks, strip_left, pitch, msgs);
                 let gap = pitch - width;
-                // The active tab's name comes from its loaded repository.
-                let name = |i: usize| match (&st.snap, i == st.active_tab) {
-                    (Some(snap), true) => snap.name.as_str(),
-                    _ => st.tabs[i].name.as_str(),
-                };
+                let name = |i: usize| tab_name(st, i);
                 for (i, Slot { rect, r, close }) in slots.into_iter().enumerate() {
                     let active = i == st.active_tab;
                     let p = ui.painter();
@@ -95,7 +94,8 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                             }
                             let r = match (&st.tabs[i].path, group.and(st.tabs[i].group.as_ref())) {
                                 (Some(path), Some(g)) => {
-                                    r.on_hover_text(format!("{}\nRepository: {}", trellis_core::native_path::shown(path), g.name))
+                                    let shown = trellis_core::native_path::shown(path);
+                                    r.on_hover_text(t.trf("tabs.group_tip", &[("path", &shown), ("group", &g.name)]))
                                 }
                                 (Some(path), None) => r.on_hover_text(trellis_core::native_path::shown(path)),
                                 (None, _) => r,
@@ -105,7 +105,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                             } else if r.clicked() {
                                 msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
                             }
-                            r.context_menu(|ui| tab_menu(ui, i, st, msgs));
+                            r.context_menu(|ui| tab_menu(ui, t, i, st, msgs));
                         }
                     }
                 }
@@ -118,7 +118,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     }
                     ui.painter().rect_stroke(f.rect, ROUNDING, Stroke::new(1.0_f32, color::primary()), StrokeKind::Inside);
                 }
-                new_tab_button(ui, &st.keymap, msgs);
+                new_tab_button(ui, t, &st.keymap, msgs);
             });
         });
 }
@@ -209,9 +209,9 @@ fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, active: bool, hovered: b
     }
 }
 
-fn new_tab_button(ui: &mut egui::Ui, keys: &crate::keymap::Keymap, msgs: &mut Vec<Msg>) {
+fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, msgs: &mut Vec<Msg>) {
     let (rect, r) = ui.allocate_exact_size(vec2(HEIGHT, HEIGHT), Sense::click());
-    let r = r.on_hover_text(keys.tip("New tab", crate::keymap::BindingId::NewTab));
+    let r = r.on_hover_text(keys.tip(t.tr("tabs.new_tab.tip"), crate::keymap::BindingId::NewTab));
     let c = rect.center();
     let col = if r.hovered() { color::text() } else { color::weak() };
     let s = Stroke::new(1.6_f32, col);
@@ -223,13 +223,14 @@ fn new_tab_button(ui: &mut egui::Ui, keys: &crate::keymap::Keymap, msgs: &mut Ve
 }
 
 /// The right-click menu of tab `i`. It acts on that tab without selecting it.
-fn tab_menu(ui: &mut egui::Ui, i: usize, st: &AppState, msgs: &mut Vec<Msg>) {
+fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<Msg>) {
     let n = st.tabs.len();
-    item(ui, msgs, true, Button::new("Close tab"), Msg::Tabs(TabsMsg::CloseTab(i)));
-    item(ui, msgs, n > 1, Button::new("Close other tabs"), Msg::Tabs(TabsMsg::CloseOtherTabs(i)));
-    item(ui, msgs, i + 1 < n, Button::new("Close tabs to the right"), Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
+    item(ui, msgs, true, Button::new(t.tr("tabs.menu.close")), Msg::Tabs(TabsMsg::CloseTab(i)));
+    item(ui, msgs, n > 1, Button::new(t.tr("tabs.menu.close_others")), Msg::Tabs(TabsMsg::CloseOtherTabs(i)));
+    item(ui, msgs, i + 1 < n, Button::new(t.tr("tabs.menu.close_right")), Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
     ui.separator();
-    let reopen = Button::new("Reopen closed tab").shortcut_text(st.keymap.hint(crate::keymap::BindingId::ReopenTab).unwrap_or_default());
+    let reopen_key = st.keymap.hint(crate::keymap::BindingId::ReopenTab).unwrap_or_default();
+    let reopen = Button::new(t.tr("tabs.menu.reopen")).shortcut_text(reopen_key);
     let r = item(ui, msgs, !st.closed_tabs.is_empty(), reopen, Msg::Tabs(TabsMsg::ReopenClosedTab));
     if let Some(path) = st.closed_tabs.last() {
         r.on_hover_text(trellis_core::native_path::shown(path));

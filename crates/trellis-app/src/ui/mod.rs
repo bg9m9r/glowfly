@@ -70,6 +70,7 @@ mod tag_dialog;
 mod tags;
 mod terminal;
 pub mod theme;
+mod theme_names;
 mod toolbar;
 mod tour;
 mod trust_chip;
@@ -139,6 +140,8 @@ mod snapshot_tests_init;
 mod snapshot_tests_issue;
 #[cfg(test)]
 mod snapshot_tests_issue_create;
+#[cfg(test)]
+mod snapshot_tests_language_chrome;
 #[cfg(test)]
 mod snapshot_tests_lfs;
 #[cfg(test)]

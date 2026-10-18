@@ -4,6 +4,7 @@
 use super::{AppState, Selection};
 use crate::keymap::{BindingId, Chord, KeyName, Keymap};
 use crate::state::git_env::GitState;
+use trellis_core::i18n::Lang;
 use trellis_core::settings::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS};
 
 /// Help > Trellis website.
@@ -14,11 +15,6 @@ pub const ISSUES: &str = concat!(env!("CARGO_PKG_REPOSITORY"), "/issues");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// The licence line in About.
 pub const LICENSE: &str = env!("CARGO_PKG_LICENSE");
-
-/// Why Edit's copy items are disabled without a commit.
-pub const NO_COMMIT: &str = "Select a commit in the graph first";
-/// Why Copy branch name is disabled.
-pub const NO_BRANCH: &str = "No branch is checked out";
 
 /// The Window menu's key for tab `i` of `len`: Go to tab's key with the tab's digit for the first
 /// eight, the Go to the last tab key for a last tab beyond them, else none.
@@ -31,12 +27,12 @@ pub fn tab_hint(keys: &Keymap, i: usize, len: usize) -> Option<String> {
 }
 
 /// Why Zoom in, Zoom out and Reset zoom are disabled at zoom `level`, in that order.
-pub fn zoom_blocked(level: u16) -> [Option<String>; 3] {
+pub fn zoom_blocked(t: Lang, level: u16) -> [Option<String>; 3] {
     let (min, max) = (ZOOM_STEPS[0], ZOOM_STEPS[ZOOM_STEPS.len() - 1]);
     [
-        (level >= max).then(|| format!("Already at the largest zoom ({max}%)")),
-        (level <= min).then(|| format!("Already at the smallest zoom ({min}%)")),
-        (level == DEFAULT_ZOOM_PERCENT).then(|| format!("Already at {DEFAULT_ZOOM_PERCENT}%")),
+        (level >= max).then(|| t.trf("menu.view.zoom_max", &[("percent", &max)])),
+        (level <= min).then(|| t.trf("menu.view.zoom_min", &[("percent", &min)])),
+        (level == DEFAULT_ZOOM_PERCENT).then(|| t.trf("menu.view.zoom_default", &[("percent", &DEFAULT_ZOOM_PERCENT)])),
     ]
 }
 
@@ -50,10 +46,10 @@ pub enum ShaCopy {
 }
 
 impl ShaCopy {
-    pub fn label(&self) -> String {
+    pub fn label(&self, t: Lang) -> String {
         match self {
-            ShaCopy::One(_) => "Copy commit SHA".to_owned(),
-            ShaCopy::Many(n) => format!("Copy {n} commit SHAs"),
+            ShaCopy::One(_) => t.tr("menu.edit.copy_sha").to_owned(),
+            ShaCopy::Many(n) => t.trn("menu.edit.copy_shas", *n, &[]),
         }
     }
 }
@@ -63,19 +59,20 @@ pub fn copy_sha(st: &AppState) -> Result<ShaCopy, &'static str> {
     match &st.selection {
         Selection::Commit(oid) => Ok(ShaCopy::One(oid.to_string())),
         Selection::Commits(m) => Ok(ShaCopy::Many(m.oids.len())),
-        Selection::None | Selection::Wip => Err(NO_COMMIT),
+        Selection::None | Selection::Wip => Err(st.settings.lang().tr("menu.edit.no_commit")),
     }
 }
 
 /// The selected commit's summary for Copy commit message, or why it is disabled.
 pub fn copy_message(st: &AppState) -> Result<String, &'static str> {
-    let (Selection::Commit(oid), Some(snap)) = (&st.selection, &st.snap) else { return Err(NO_COMMIT) };
-    snap.row_of.get(oid).map(|&row| snap.commits[row].summary.clone()).ok_or(NO_COMMIT)
+    let no_commit = st.settings.lang().tr("menu.edit.no_commit");
+    let (Selection::Commit(oid), Some(snap)) = (&st.selection, &st.snap) else { return Err(no_commit) };
+    snap.row_of.get(oid).map(|&row| snap.commits[row].summary.clone()).ok_or(no_commit)
 }
 
 /// The checked-out branch for Copy branch name, or why it is disabled.
 pub fn copy_branch(st: &AppState) -> Result<String, &'static str> {
-    st.snap.as_ref().and_then(|s| s.head_branch.clone()).ok_or(NO_BRANCH)
+    st.snap.as_ref().and_then(|s| s.head_branch.clone()).ok_or(st.settings.lang().tr("menu.edit.no_branch"))
 }
 
 /// About's git line, "Git 2.47.1", when the startup check found a version.
@@ -138,10 +135,12 @@ fn starts_own_line(line: &str) -> bool {
     mark.len() > body.len() && !body.is_empty() && body.len() <= 3 && body.chars().all(|c| c.is_ascii_alphanumeric())
 }
 
-/// Tab `i`'s name as the tab strip shows it (the active tab's from its loaded repository).
+/// Tab `i`'s name as the tab strip shows it: the active tab's from its loaded repository, an
+/// empty tab's "New tab" in the language (`Tab::name` keeps the English placeholder).
 pub fn tab_name(st: &AppState, i: usize) -> &str {
     match (&st.snap, i == st.active_tab) {
         (Some(snap), true) => snap.name.as_str(),
+        _ if st.tabs[i].path.is_none() => st.settings.lang().tr("tabs.new_tab.name"),
         _ => st.tabs[i].name.as_str(),
     }
 }

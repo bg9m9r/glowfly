@@ -8,7 +8,8 @@ use crate::state::menu_bar::{tab_hint, tab_name};
 use eframe::egui::{self, Button};
 
 pub(super) fn menu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    ui.menu_button("Window", |ui| {
+    let t = st.settings.lang();
+    ui.menu_button(t.tr("menu.window.title"), |ui| {
         ui.set_min_width(240.0);
         let keys = &st.keymap;
         let n = st.tabs.len();
@@ -21,13 +22,14 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             }
         }
         ui.separator();
-        let one = (n < 2).then_some("Only one tab is open");
-        item(ui, keys, "Next tab", Some(I::NextTab), one, Msg::Tabs(TabsMsg::CycleTab(1)), msgs);
-        item(ui, keys, "Previous tab", Some(I::PrevTab), one, Msg::Tabs(TabsMsg::CycleTab(-1)), msgs);
+        let one = (n < 2).then_some(t.tr("menu.window.one_tab"));
+        item(ui, keys, t.tr("menu.window.next_tab"), Some(I::NextTab), one, Msg::Tabs(TabsMsg::CycleTab(1)), msgs);
+        item(ui, keys, t.tr("menu.window.prev_tab"), Some(I::PrevTab), one, Msg::Tabs(TabsMsg::CycleTab(-1)), msgs);
         let active = st.active_tab;
-        let no_others = one.map(|_| "No other tabs");
-        item(ui, keys, "Close other tabs", None, no_others, Msg::Tabs(TabsMsg::CloseOtherTabs(active)), msgs);
-        let none_right = (active + 1 >= n).then_some("No tabs to the right");
-        item(ui, keys, "Close tabs to the right", None, none_right, Msg::Tabs(TabsMsg::CloseTabsToRight(active)), msgs);
+        let no_others = one.map(|_| t.tr("menu.window.no_others"));
+        item(ui, keys, t.tr("menu.window.close_others"), None, no_others, Msg::Tabs(TabsMsg::CloseOtherTabs(active)), msgs);
+        let none_right = (active + 1 >= n).then_some(t.tr("menu.window.none_right"));
+        let close_right = Msg::Tabs(TabsMsg::CloseTabsToRight(active));
+        item(ui, keys, t.tr("menu.window.close_right"), None, none_right, close_right, msgs);
     });
 }

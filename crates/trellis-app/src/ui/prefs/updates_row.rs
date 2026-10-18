@@ -3,7 +3,7 @@
 
 use super::{help, row};
 use crate::msg::{Msg, UpdateMsg};
-use crate::state::updates::{CHECKING, DOWNLOADING, UP_TO_DATE, UpdateStatus, UpdatesState, available_text, download_failed_text};
+use crate::state::updates::{UpdateStatus, UpdatesState, available_text, download_failed_text};
 use crate::ui::theme::color;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::settings::Settings;
@@ -18,57 +18,60 @@ pub struct UpdatesView<'a> {
 pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut Vec<Msg>) {
     let u = view.updates;
     let send = |msgs: &mut Vec<Msg>, m: UpdateMsg| msgs.push(Msg::Updates(m));
-    row(ui, "Updates", |ui| {
-        ui.checkbox(&mut s.updates.check, "Check for updates once a day");
-        ui.label(RichText::new(u.prefs_line(view.last_checked.as_deref())).color(color::text()));
-        if ui.add_enabled(!u.busy(), egui::Button::new("Check now")).clicked() {
+    let t = s.lang();
+    row(ui, t.tr("prefs.general.updates.label"), |ui| {
+        ui.checkbox(&mut s.updates.check, t.tr("prefs.general.updates.check"));
+        ui.label(RichText::new(u.prefs_line(t, view.last_checked.as_deref())).color(color::text()));
+        if ui.add_enabled(!u.busy(), egui::Button::new(t.tr("prefs.general.updates.check_now.button"))).clicked() {
             send(msgs, UpdateMsg::CheckNow);
         }
         match &u.status {
             UpdateStatus::Idle => {}
-            UpdateStatus::Checking { .. } => spinning(ui, CHECKING),
+            UpdateStatus::Checking { .. } => spinning(ui, t.tr("updates.checking")),
             UpdateStatus::UpToDate => {
-                ui.label(RichText::new(UP_TO_DATE).color(color::green()));
+                ui.label(RichText::new(t.tr("updates.up_to_date")).color(color::green()));
             }
             UpdateStatus::CheckFailed(e) => {
-                ui.add(egui::Label::new(RichText::new(format!("Couldn't check: {e}")).color(color::red())).wrap());
-                if ui.button("Try again").clicked() {
+                let text = t.trf("prefs.general.updates.couldnt_check", &[("error", e)]);
+                ui.add(egui::Label::new(RichText::new(text).color(color::red())).wrap());
+                if ui.button(t.tr("updates.try_again.button")).clicked() {
                     send(msgs, UpdateMsg::CheckNow);
                 }
             }
             UpdateStatus::Available(o) => {
-                ui.label(RichText::new(available_text(&o.version)).strong().color(color::blue()));
+                ui.label(RichText::new(available_text(t, &o.version)).strong().color(color::blue()));
                 ui.horizontal(|ui| {
-                    let label = if o.asset.is_some() { "Download" } else { "Open release page" };
+                    let label = if o.asset.is_some() { t.tr("updates.download.button") } else { t.tr("updates.open_release_page.button") };
                     if ui.button(label).clicked() {
                         send(msgs, if o.asset.is_some() { UpdateMsg::Download } else { UpdateMsg::OpenReleasePage });
                     }
-                    if ui.button("Release notes").clicked() {
+                    if ui.button(t.tr("updates.release_notes.button")).clicked() {
                         send(msgs, UpdateMsg::ShowNotes);
                     }
                 });
             }
-            UpdateStatus::Downloading(_) => spinning(ui, DOWNLOADING),
+            UpdateStatus::Downloading(_) => spinning(ui, t.tr("updates.downloading")),
             UpdateStatus::Downloaded { file, installer, .. } => {
                 let shown = trellis_core::native_path::shown(file);
-                ui.add(egui::Label::new(RichText::new(format!("Downloaded to {shown}")).color(color::text())).wrap());
-                let (label, m) = if *installer { ("Install", UpdateMsg::Install) } else { ("Show file", UpdateMsg::ShowFile) };
+                let text = t.trf("prefs.general.updates.downloaded_to", &[("path", &shown)]);
+                ui.add(egui::Label::new(RichText::new(text).color(color::text())).wrap());
+                let (label, m) = if *installer {
+                    (t.tr("updates.install.button"), UpdateMsg::Install)
+                } else {
+                    (t.tr("updates.show_file.button"), UpdateMsg::ShowFile)
+                };
                 if ui.button(label).clicked() {
                     send(msgs, m);
                 }
             }
             UpdateStatus::DownloadFailed { error, .. } => {
-                ui.add(egui::Label::new(RichText::new(download_failed_text(error)).color(color::red())).wrap());
-                if ui.button("Try again").clicked() {
+                ui.add(egui::Label::new(RichText::new(download_failed_text(t, error)).color(color::red())).wrap());
+                if ui.button(t.tr("updates.try_again.button")).clicked() {
                     send(msgs, UpdateMsg::Download);
                 }
             }
         }
-        help(
-            ui,
-            "Trellis asks GitHub's releases API for the newest release of its repository once a day. Nothing about you or your \
-             repositories is sent. Downloads are checked against the release's published SHA-256 checksums.",
-        );
+        help(ui, t.tr("prefs.general.updates.help"));
     });
 }
 

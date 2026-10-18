@@ -39,7 +39,11 @@ fn merge_undo_and_redo_end_to_end() {
     drive(&mut st, Msg::git("Merge", &["merge", "feature"]));
     assert_eq!(head_summary(&st), "on feature");
     assert!(matches!(st.undo.undo.last(), Some(Action::Moved { op: MoveOp::Merge, .. })), "{:?}", st.undo.undo);
-    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Undo merge of feature"), "{}", st.undo.undo_tooltip(&st.keymap));
+    assert!(
+        st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with("Undo merge of feature"),
+        "{}",
+        st.undo.undo_tooltip(st.settings.lang(), &st.keymap)
+    );
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "first");
@@ -87,7 +91,9 @@ fn cherry_pick_from_the_graph_is_undoable() {
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![picks[0]])));
     assert_eq!(head_summary(&st), "f1");
     let Some(Action::Moved { op: MoveOp::CherryPick, .. }) = st.undo.undo.last() else { panic!("{:?}", st.undo.undo) };
-    assert!(st.undo.undo_tooltip(&st.keymap).starts_with(&format!("Undo cherry-pick of {}", &picks[0].to_string()[..7])));
+    assert!(
+        st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with(&format!("Undo cherry-pick of {}", &picks[0].to_string()[..7]))
+    );
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "base");
     cleanup(&[&dir]);

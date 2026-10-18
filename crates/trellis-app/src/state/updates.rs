@@ -6,6 +6,7 @@ use super::release_notes::NotesOpen;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use trellis_core::app_update::{self, Offer, Platform, Version};
+use trellis_core::i18n::Lang;
 
 /// The first automatic check waits this long after startup.
 pub const STARTUP_DELAY: Duration = Duration::from_secs(15);
@@ -83,28 +84,24 @@ pub fn is_installer(file: &std::path::Path) -> bool {
     file.extension().and_then(|x| x.to_str()).is_some_and(|x| ["msi", "dmg", "deb"].iter().any(|k| x.eq_ignore_ascii_case(k)))
 }
 
-pub const UP_TO_DATE: &str = "Trellis is up to date.";
-pub const CHECKING: &str = "Checking…";
-pub const DOWNLOADING: &str = "Downloading…";
-
-pub fn latest_text(current: &Version) -> String {
-    format!("Trellis {current} is the latest version.")
+pub fn latest_text(t: Lang, current: &Version) -> String {
+    t.trf("updates.latest", &[("version", current)])
 }
 
-pub fn available_text(v: &Version) -> String {
-    format!("Trellis {v} is available.")
+pub fn available_text(t: Lang, v: &Version) -> String {
+    t.trf("updates.available", &[("version", v)])
 }
 
-pub fn downloaded_text(v: &Version) -> String {
-    format!("Downloaded Trellis {v}.")
+pub fn downloaded_text(t: Lang, v: &Version) -> String {
+    t.trf("updates.downloaded", &[("version", v)])
 }
 
-pub fn check_failed_text(e: &str) -> String {
-    format!("Couldn't check for updates: {e}")
+pub fn check_failed_text(t: Lang, e: &str) -> String {
+    t.trf("updates.check_failed", &[("error", &e)])
 }
 
-pub fn download_failed_text(e: &str) -> String {
-    format!("The download failed: {e}")
+pub fn download_failed_text(t: Lang, e: &str) -> String {
+    t.trf("updates.download_failed", &[("error", &e)])
 }
 
 impl UpdateStatus {
@@ -141,21 +138,21 @@ impl UpdatesState {
     }
 
     /// The status bar's chip: its text and kind, when there is an update to talk about.
-    pub fn chip(&self) -> Option<(String, ChipKind)> {
+    pub fn chip(&self, t: Lang) -> Option<(String, ChipKind)> {
         Some(match self.settled() {
-            UpdateStatus::Available(o) => (format!("Update available ({})", o.version), ChipKind::Available),
-            UpdateStatus::Downloading(o) => (format!("Downloading Trellis {}…", o.version), ChipKind::Downloading),
-            UpdateStatus::Downloaded { .. } => ("Update downloaded".to_owned(), ChipKind::Downloaded),
-            UpdateStatus::DownloadFailed { .. } => ("Update failed · Try again".to_owned(), ChipKind::Failed),
+            UpdateStatus::Available(o) => (t.trf("updates.chip.available", &[("version", &o.version)]), ChipKind::Available),
+            UpdateStatus::Downloading(o) => (t.trf("updates.chip.downloading", &[("version", &o.version)]), ChipKind::Downloading),
+            UpdateStatus::Downloaded { .. } => (t.tr("updates.chip.downloaded").to_owned(), ChipKind::Downloaded),
+            UpdateStatus::DownloadFailed { .. } => (t.tr("updates.chip.failed").to_owned(), ChipKind::Failed),
             UpdateStatus::Idle | UpdateStatus::Checking { .. } | UpdateStatus::UpToDate | UpdateStatus::CheckFailed(_) => return None,
         })
     }
 
     /// Preferences' "Trellis 0.2.0 · Last checked 2 hours ago" (`last_checked` already formatted).
-    pub fn prefs_line(&self, last_checked: Option<&str>) -> String {
+    pub fn prefs_line(&self, t: Lang, last_checked: Option<&str>) -> String {
         match last_checked {
-            Some(t) => format!("Trellis {} · Last checked {t}", self.current),
-            None => format!("Trellis {} · Never checked", self.current),
+            Some(when) => t.trf("updates.prefs_line.checked", &[("version", &self.current), ("when", &when)]),
+            None => t.trf("updates.prefs_line.never", &[("version", &self.current)]),
         }
     }
 

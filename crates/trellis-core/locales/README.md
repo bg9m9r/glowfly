@@ -65,5 +65,14 @@ Keep terms the same across pages.
 | working tree | Arbeitsverzeichnis | árbol de trabajo |
 | hook | Hook | hook |
 | Preferences | Einstellungen | Preferencias |
+| pull | Pull / pullen | traer |
+| stash | Stash | stash |
+| tab | Tab | pestaña |
+| toolbar | Symbolleiste | barra de herramientas |
+| menu bar | Menüleiste | barra de menús |
+| undo / redo | Rückgängig / Wiederholen | Deshacer / Rehacer |
+| theme | Design | tema |
+| update | Update | actualización |
+| release notes | Versionshinweise | notas de la versión |
 
 German uses the informal "du"; Spanish uses "tú".

@@ -79,7 +79,10 @@ fn find_commits_closes_the_diff_and_focuses_search() {
 #[test]
 fn edit_menu_copy_items_follow_the_selection() {
     use crate::state::Selection;
-    use crate::state::menu_bar::{NO_BRANCH, NO_COMMIT, ShaCopy, copy_branch, copy_message, copy_sha};
+    use crate::state::menu_bar::{ShaCopy, copy_branch, copy_message, copy_sha};
+    use trellis_core::i18n::Lang;
+    const NO_COMMIT: &str = "Select a commit in the graph first";
+    const NO_BRANCH: &str = "No branch is checked out";
     use crate::state::selection::MultiSelection;
     use trellis_core::repo::{self, LoadOptions};
 
@@ -87,6 +90,10 @@ fn edit_menu_copy_items_follow_the_selection() {
     assert_eq!(copy_sha(&st), Err(NO_COMMIT));
     assert_eq!(copy_message(&st), Err(NO_COMMIT));
     assert_eq!(copy_branch(&st), Err(NO_BRANCH), "no repository open");
+    st.settings.language = "es".into();
+    assert_eq!(copy_sha(&st), Err(Lang::Es.tr("menu.edit.no_commit")));
+    assert_ne!(copy_sha(&st), Err(NO_COMMIT));
+    st.settings.language = "system".into();
 
     let dir = scratch_repo("menu-copy");
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
@@ -98,7 +105,7 @@ fn edit_menu_copy_items_follow_the_selection() {
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     st.selection = Selection::Commit(head);
     assert_eq!(copy_sha(&st), Ok(ShaCopy::One(head.to_string())));
-    assert_eq!(copy_sha(&st).unwrap().label(), "Copy commit SHA");
+    assert_eq!(copy_sha(&st).unwrap().label(Lang::En), "Copy commit SHA");
     assert_eq!(copy_message(&st), Ok("first".to_owned()));
 
     let other = git2::Oid::from_str("1234567890123456789012345678901234567890").unwrap();
@@ -110,7 +117,7 @@ fn edit_menu_copy_items_follow_the_selection() {
         export_blocked: None,
     });
     assert_eq!(copy_sha(&st), Ok(ShaCopy::Many(2)));
-    assert_eq!(copy_sha(&st).unwrap().label(), "Copy 2 commit SHAs");
+    assert_eq!(copy_sha(&st).unwrap().label(Lang::En), "Copy 2 commit SHAs");
     assert_eq!(copy_message(&st), Err(NO_COMMIT), "one commit only");
 
     super::super::tests::git(&dir, &["checkout", "-q", "--detach"]);

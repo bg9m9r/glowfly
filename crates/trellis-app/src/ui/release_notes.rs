@@ -5,16 +5,17 @@ use super::theme::color;
 use super::widgets::{self, Icon};
 use crate::msg::{Msg, UpdateMsg};
 use crate::state::release_notes::NotesDialog;
-use eframe::egui::{self, RichText, Sense, Stroke, pos2, vec2};
+use eframe::egui::{self, FontId, RichText, Sense, Stroke, pos2, vec2};
 use trellis_core::changelog::{NoteSection, ReleaseNotes, Span, SpanStyle};
+use trellis_core::i18n::Lang;
 
 const WIDTH: f32 = 600.0;
 
 /// Draws the dialog; true when Close was clicked.
-pub fn show(ui: &mut egui::Ui, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
+pub fn show(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
     ui.set_width(WIDTH);
-    ui.heading("Release notes");
-    ui.label(RichText::new(format!("You're running Trellis {}", d.current)).color(color::weak()));
+    ui.heading(t.tr("release_notes.title"));
+    ui.label(RichText::new(t.trf("release_notes.running", &[("version", &d.current)])).color(color::weak()));
     ui.add_space(10.0);
     if let Some(offer) = &d.offer {
         egui::Frame::new()
@@ -24,7 +25,8 @@ pub fn show(ui: &mut egui::Ui, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
             .inner_margin(egui::Margin::same(12))
             .show(ui, |ui| {
                 ui.set_width(WIDTH - 26.0);
-                ui.label(RichText::new(format!("Trellis {} is available", offer.version)).strong().size(15.0).color(color::text()));
+                let title = t.trf("release_notes.available", &[("version", &offer.version)]);
+                ui.label(RichText::new(title).strong().size(15.0).color(color::text()));
                 if let Some(notes) = &d.offered_notes {
                     ui.add_space(4.0);
                     for s in &notes.sections {
@@ -33,9 +35,9 @@ pub fn show(ui: &mut egui::Ui, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
                 }
                 ui.add_space(8.0);
                 let (label, msg) = if offer.asset.is_some() {
-                    ("Download", UpdateMsg::Download)
+                    (t.tr("updates.download.button"), UpdateMsg::Download)
                 } else {
-                    ("Open release page", UpdateMsg::OpenReleasePage)
+                    (t.tr("updates.open_release_page.button"), UpdateMsg::OpenReleasePage)
                 };
                 if ui.add(widgets_primary(label)).clicked() {
                     msgs.push(Msg::Updates(msg));
@@ -44,9 +46,9 @@ pub fn show(ui: &mut egui::Ui, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
         ui.add_space(10.0);
     }
     if d.releases.is_empty() {
-        ui.label(RichText::new("No release notes are bundled with this build.").color(color::weak()));
+        ui.label(RichText::new(t.tr("release_notes.none")).color(color::weak()));
         ui.add_space(6.0);
-        if ui.button("Open releases page").clicked() {
+        if ui.button(t.tr("release_notes.open_releases.button")).clicked() {
             msgs.push(Msg::Updates(UpdateMsg::OpenReleasePage));
         }
     } else {
@@ -56,15 +58,15 @@ pub fn show(ui: &mut egui::Ui, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
                     ui.add_space(8.0);
                     ui.separator();
                 }
-                release(ui, r, d.is_new(r), msgs);
+                release(ui, t, r, d.is_new(r), msgs);
             }
         });
     }
     ui.add_space(12.0);
     let mut close = false;
     ui.horizontal(|ui| {
-        close = ui.button("Close").clicked();
-        ui.label(RichText::new("Esc to close").color(color::faint()));
+        close = ui.button(t.tr("common.close.button")).clicked();
+        ui.label(RichText::new(t.tr("release_notes.esc_hint")).color(color::faint()));
     });
     close
 }
@@ -77,7 +79,7 @@ fn widgets_primary(label: &str) -> egui::Button<'_> {
 
 /// One release: its version (a link to the comparison, when there is one), date, "New" chip
 /// and sections.
-fn release(ui: &mut egui::Ui, r: &ReleaseNotes, new: bool, msgs: &mut Vec<Msg>) {
+fn release(ui: &mut egui::Ui, t: Lang, r: &ReleaseNotes, new: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         let version = RichText::new(&r.version).strong().size(15.0);
         match &r.url {
@@ -95,8 +97,11 @@ fn release(ui: &mut egui::Ui, r: &ReleaseNotes, new: bool, msgs: &mut Vec<Msg>) 
             ui.label(RichText::new(date).color(color::weak()));
         }
         if new {
-            let (rect, _) = ui.allocate_exact_size(vec2(36.0, 18.0), Sense::hover());
-            widgets::chip(ui.painter(), rect.left(), rect.center().y, "New", color::green().gamma_multiply(0.25), color::green());
+            // As wide as the chip draws its text (`widgets::chip`), at least the English slot.
+            let text = t.tr("release_notes.new_chip");
+            let text_w = ui.painter().layout_no_wrap(text.into(), FontId::proportional(11.5), color::green()).size().x;
+            let (rect, _) = ui.allocate_exact_size(vec2(36.0_f32.max(text_w + 12.0), 18.0), Sense::hover());
+            widgets::chip(ui.painter(), rect.left(), rect.center().y, text, color::green().gamma_multiply(0.25), color::green());
         }
     });
     for s in &r.sections {

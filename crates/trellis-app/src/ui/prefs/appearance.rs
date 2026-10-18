@@ -5,6 +5,7 @@ use crate::msg::{Msg, PrefsMsg};
 use crate::themes::ThemeState;
 use crate::ui::theme::color;
 use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
 
 /// A titled section separator, such as the "Date/Time" heading.
@@ -38,54 +39,59 @@ pub fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str,
 }
 
 pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, now: (i64, i32), msgs: &mut Vec<Msg>) {
-    use trellis_core::settings::{BranchVisibility as BV, ColumnWidths, Corner, DescriptionMode as DM, GraphColumns};
+    use trellis_core::settings::Corner;
+    let t = s.lang();
     super::theme_row::theme_row(ui, s, themes, msgs);
-    row(ui, "Notification Location", |ui| {
+    row(ui, t.tr("prefs.ui.notifications.label"), |ui| {
         combo(
             ui,
             "toasts",
             &mut s.notification_location,
             &[
-                (Corner::BottomLeft, "Bottom Left"),
-                (Corner::BottomRight, "Bottom Right"),
-                (Corner::TopLeft, "Top Left"),
-                (Corner::TopRight, "Top Right"),
+                (Corner::BottomLeft, t.tr("prefs.ui.corner.bottom_left")),
+                (Corner::BottomRight, t.tr("prefs.ui.corner.bottom_right")),
+                (Corner::TopLeft, t.tr("prefs.ui.corner.top_left")),
+                (Corner::TopRight, t.tr("prefs.ui.corner.top_right")),
             ],
         )
     });
-    row(ui, "Behind alerts", |ui| {
+    row(ui, t.tr("prefs.ui.behind_alerts.label"), |ui| {
         ui.checkbox(&mut s.behind_alerts, "");
-        help(ui, "After a background fetch, say when the checked-out branch has fallen behind its upstream, with a button to pull.");
+        help(ui, t.tr("prefs.ui.behind_alerts.help"));
     });
-    row(ui, "Desktop notifications", |ui| {
+    row(ui, t.tr("prefs.ui.desktop_notifications.label"), |ui| {
         // Not bound to the setting: update saves it and sends the confirming notification.
         let mut on = s.desktop_notifications;
-        if ui.checkbox(&mut on, "Show system notifications while Trellis is in the background").changed() {
+        if ui.checkbox(&mut on, t.tr("prefs.ui.desktop_notifications.check")).changed() {
             msgs.push(Msg::Prefs(PrefsMsg::SetDesktopNotifications(on)));
         }
-        help(
-            ui,
-            "Finished jobs and behind alerts also appear as desktop notifications when Trellis's window isn't focused. Background fetches stay quiet. Turning this on sends one notification so you can check that they reach you.",
-        );
+        help(ui, t.tr("prefs.ui.desktop_notifications.help"));
     });
+    date_time_section(ui, t, s, now);
+    interface_section(ui, t, s);
+    super::appearance_graph::graph_section(ui, t, s);
+}
 
-    section(ui, "Date/Time");
+/// Date/Time: the locale and the four patterns, with the tokens they take (which stay literal
+/// in every language).
+fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
+    section(ui, t.tr("prefs.ui.date_time.section"));
     ui.horizontal(|ui| {
-        ui.label(
-            RichText::new("Patterns use moment.js tokens: YYYY, MM, MMMM, DD, D, dddd, HH, h, mm, ss, A. Text in [brackets] is literal.")
-                .size(12.0)
-                .color(color::weak()),
-        );
+        ui.label(RichText::new(t.tr("prefs.ui.date_time.patterns_help")).size(12.0).color(color::weak()));
     });
     ui.add_space(10.0);
-    row(ui, "Date/Time Locale", |ui| {
+    row(ui, t.tr("prefs.ui.date_locale.label"), |ui| {
         let current = trellis_core::dates::LOCALES
             .iter()
             .find(|(k, _)| *k == s.date_locale)
             .map(|(_, l)| *l)
             .unwrap_or(s.date_locale.as_str())
             .to_owned();
-        let shown = if s.date_locale == "system" { format!("System [{}]", sys_locale::get_locale().unwrap_or_default()) } else { current };
+        let shown = if s.date_locale == "system" {
+            t.trf("prefs.ui.date_locale.system", &[("locale", &sys_locale::get_locale().unwrap_or_default())])
+        } else {
+            current
+        };
         egui::ComboBox::from_id_salt("locale").selected_text(shown).width(230.0).show_ui(ui, |ui| {
             for (k, label) in trellis_core::dates::LOCALES {
                 ui.selectable_value(&mut s.date_locale, k.to_owned(), label);
@@ -94,129 +100,69 @@ pub fn ui_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, now: (i64, i3
     });
     let d = Settings::default();
     let loc = s.date_locale.clone();
-    date_pattern(ui, "Date Format", &mut s.date_format, &d.date_format, &loc, now);
-    date_pattern(ui, "Date word Format", &mut s.date_word_format, &d.date_word_format, &loc, now);
-    date_pattern(ui, "Date/Time Format", &mut s.date_time_format, &d.date_time_format, &loc, now);
-    date_pattern(ui, "Date verbose Format", &mut s.date_verbose_format, &d.date_verbose_format, &loc, now);
-    row(ui, "Relative Dates in Graph", |ui| {
-        ui.checkbox(&mut s.relative_dates, "Show \"3 hours ago\" instead of the Date/Time format");
+    date_pattern(ui, t.tr("prefs.ui.date_format.label"), &mut s.date_format, &d.date_format, &loc, now);
+    date_pattern(ui, t.tr("prefs.ui.date_word_format.label"), &mut s.date_word_format, &d.date_word_format, &loc, now);
+    date_pattern(ui, t.tr("prefs.ui.date_time_format.label"), &mut s.date_time_format, &d.date_time_format, &loc, now);
+    date_pattern(ui, t.tr("prefs.ui.date_verbose_format.label"), &mut s.date_verbose_format, &d.date_verbose_format, &loc, now);
+    row(ui, t.tr("prefs.ui.relative_dates.label"), |ui| {
+        ui.checkbox(&mut s.relative_dates, t.tr("prefs.ui.relative_dates.check"));
     });
+}
 
-    section(ui, "Interface");
-    row(ui, "Zoom", |ui| {
+/// Interface: zoom, the panels, toolbar labels, spell checking and the graph's extras.
+fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
+    use trellis_core::settings::BranchVisibility as BV;
+    section(ui, t.tr("prefs.ui.interface.section"));
+    row(ui, t.tr("prefs.ui.zoom.label"), |ui| {
         egui::ComboBox::from_id_salt("zoom").selected_text(format!("{}%", s.zoom_level())).width(230.0).show_ui(ui, |ui| {
             for p in trellis_core::settings::ZOOM_STEPS {
                 ui.selectable_value(&mut s.zoom_percent, p, format!("{p}%"));
             }
         });
     });
-    row(ui, "Show left panel", |ui| {
+    row(ui, t.tr("prefs.ui.left_panel.label"), |ui| {
         ui.checkbox(&mut s.show_left_panel, "");
     });
-    row(ui, "Show commit details panel", |ui| {
+    row(ui, t.tr("prefs.ui.details_panel.label"), |ui| {
         ui.checkbox(&mut s.show_details_panel, "");
     });
-    row(ui, "Show toolbar", |ui| {
+    row(ui, t.tr("prefs.ui.toolbar.label"), |ui| {
         ui.checkbox(&mut s.show_toolbar, "");
-        help(
-            ui,
-            "While the toolbar is hidden, the status bar has a Show toolbar button, and the command palette and keyboard shortcuts keep working.",
-        );
+        help(ui, t.tr("prefs.ui.toolbar.help"));
     });
-    row(ui, "Show menu bar", |ui| {
+    row(ui, t.tr("prefs.ui.menu_bar.label"), |ui| {
         ui.checkbox(&mut s.show_menu_bar, "");
-        help(
-            ui,
-            "While the menu bar is hidden, the command palette and keyboard shortcuts still reach everything, and Show menu bar in the palette brings it back.",
-        );
+        help(ui, t.tr("prefs.ui.menu_bar.help"));
     });
-    row(ui, "Show toolbar icon labels", |ui| {
+    row(ui, t.tr("prefs.ui.toolbar_labels.label"), |ui| {
         ui.checkbox(&mut s.toolbar_labels, "");
     });
-    row(ui, "Enable spell checking", |ui| {
+    row(ui, t.tr("prefs.ui.spellcheck.label"), |ui| {
         ui.checkbox(&mut s.spellcheck, "");
-        help(
-            ui,
-            "Underlines misspellings in the commit summary and description; right-click for suggestions. Uses the Windows spell checker in your system language.",
-        );
+        help(ui, t.tr("prefs.ui.spellcheck.help"));
     });
-    row(ui, "Display author initials instead of avatars", |ui| {
+    row(ui, t.tr("prefs.ui.initials.label"), |ui| {
         ui.checkbox(&mut s.use_initials, "");
-        help(
-            ui,
-            "Avatars come from GitHub for noreply addresses and from Gravatar otherwise (looked up by a hash of the email). They are cached on disk.",
-        );
+        help(ui, t.tr("prefs.ui.initials.help"));
     });
-    row(ui, "Show ghost branch on the current commit", |ui| {
+    row(ui, t.tr("prefs.ui.ghost.label"), |ui| {
         ui.checkbox(&mut s.ghost_refs, "");
-        help(
-            ui,
-            "Shows a faded \"+ branch\" label after the checked-out commit's branches when you hover or select it; click it to branch from the current branch. To branch from another commit, right-click it.",
-        );
+        help(ui, t.tr("prefs.ui.ghost.help"));
     });
-    row(ui, "Highlight associated rows when hovering over a branch", |ui| {
+    row(ui, t.tr("prefs.ui.highlight_rows.label"), |ui| {
         ui.checkbox(&mut s.highlight_ref_rows, "");
     });
-    row(ui, "Show other worktrees' changes in the graph", |ui| {
+    row(ui, t.tr("prefs.ui.worktree_wips.label"), |ui| {
         ui.checkbox(&mut s.worktree_wips, "");
-        help(
-            ui,
-            "Adds a row above a worktree's checked-out commit while it has uncommitted changes, with counts. Click it to open that worktree. Counts are read when the repository loads.",
-        );
+        help(ui, t.tr("prefs.ui.worktree_wips.help"));
     });
-    row(ui, "Group worktree tabs", |ui| {
-        ui.checkbox(&mut s.group_worktree_tabs, "Automatically group worktree tabs together");
-        help(
-            ui,
-            "Tabs for worktrees of the same repository (its main folder and every linked worktree) stay next to each other, with a colored line under them. Drag a tab inside its group to reorder it; drop it outside the group to move the whole group.",
-        );
+    row(ui, t.tr("prefs.ui.group_tabs.label"), |ui| {
+        ui.checkbox(&mut s.group_worktree_tabs, t.tr("prefs.ui.group_tabs.check"));
+        help(ui, t.tr("prefs.ui.group_tabs.help"));
     });
-    row(ui, "Branch visibility in commit graph", |ui| {
-        combo(ui, "visibility", &mut s.branch_visibility, &[(BV::All, "All"), (BV::Smart, "Smart")]);
-        help(ui, "Smart shows the checked-out branch, its upstream, the default branch, and branches with open pull requests.");
-    });
-
-    section(ui, "Commit Graph");
-    let c = &mut s.columns;
-    row(ui, "Show branches and tags in graph", |ui| {
-        ui.checkbox(&mut c.refs, "");
-    });
-    row(ui, "Show commit tree in graph", |ui| {
-        ui.checkbox(&mut c.tree, "");
-    });
-    row(ui, "Show commit sha in graph", |ui| {
-        ui.checkbox(&mut c.sha, "");
-    });
-    row(ui, "Show commit message in graph", |ui| {
-        ui.checkbox(&mut c.message, "");
-    });
-    row(ui, "Show commit description in graph", |ui| {
-        combo(ui, "description", &mut c.description, &[(DM::Always, "Always"), (DM::OnHover, "On hover"), (DM::Never, "Never")])
-    });
-    row(ui, "Show commit changes in graph", |ui| {
-        ui.checkbox(&mut c.changes, "");
-        help(ui, "Lines added and removed per commit, computed in the background.");
-    });
-    row(ui, "Show commit author in graph", |ui| {
-        ui.checkbox(&mut c.author, "");
-    });
-    row(ui, "Show commit date/time in graph", |ui| {
-        ui.checkbox(&mut c.date, "");
-    });
-    row(ui, "Graph Columns Layout", |ui| {
-        ui.horizontal(|ui| {
-            if ui.button("Reset to default layout").clicked() {
-                *c = GraphColumns::default();
-                s.column_widths = ColumnWidths::default();
-            }
-            if ui.button("Reset to compact layout").clicked() {
-                *c = GraphColumns::compact();
-                s.column_widths = ColumnWidths::default();
-            }
-        });
-        help(
-            ui,
-            "Either reset also puts every column back to its standard width. To resize a column, drag the divider beside its title in the graph header; double-click a divider to reset just that column.",
-        );
+    row(ui, t.tr("prefs.ui.branch_visibility.label"), |ui| {
+        let options = [(BV::All, t.tr("prefs.ui.branch_visibility.all")), (BV::Smart, t.tr("prefs.ui.branch_visibility.smart"))];
+        combo(ui, "visibility", &mut s.branch_visibility, &options);
+        help(ui, t.tr("prefs.ui.branch_visibility.help"));
     });
 }

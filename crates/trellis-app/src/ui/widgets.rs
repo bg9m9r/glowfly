@@ -255,7 +255,14 @@ fn arc_arrow(p: &Painter, c: Pos2, start: f32, sweep: f32, s: Stroke) {
 /// the caption when labels are hidden.
 pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, enabled: bool, labels: bool) -> Response {
     let sense = if enabled { Sense::click() } else { Sense::hover() };
-    let width = if labels { 54.0 } else { 38.0 };
+    // A label may overhang the 54 px slot by 2.5 px a side, as English "Commands" does; a longer
+    // one (a translation, say) widens the button to fit it with 2 px to spare a side.
+    let width = if labels {
+        let text_w = ui.painter().layout_no_wrap(label.to_owned(), FontId::proportional(12.0), Color32::PLACEHOLDER).size().x;
+        if text_w > 59.0 { text_w + 4.0 } else { 54.0 }
+    } else {
+        38.0
+    };
     let (rect, resp) = ui.allocate_exact_size(vec2(width, 46.0), sense);
     let p = ui.painter();
     if enabled && resp.hovered() {

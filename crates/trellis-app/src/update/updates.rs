@@ -14,6 +14,7 @@ use crate::state::{AppState, ToastAction};
 use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::app_update;
+use trellis_core::i18n::Lang;
 
 pub(super) fn handle(st: &mut AppState, msg: UpdateMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -75,11 +76,12 @@ fn check(st: &mut AppState, manual: bool, fx: &mut Vec<Effect>) {
     fx.push(Effect::Updates(UpdateEffect::Check { manual }));
 }
 
-fn download_action() -> ToastAction {
-    ToastAction { label: "Download".into(), msg: Box::new(Msg::Updates(UpdateMsg::Download)), workdir: None }
+fn download_action(t: Lang) -> ToastAction {
+    ToastAction { label: t.tr("updates.download.button").into(), msg: Box::new(Msg::Updates(UpdateMsg::Download)), workdir: None }
 }
 
 fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease>, String>, now: Instant, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
     // What the status was before the check: a downloaded file or an offer outlives the answer.
     let prior = match std::mem::take(&mut st.updates.status) {
         UpdateStatus::Checking { previous, .. } => *previous,
@@ -88,9 +90,9 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
     let found = match result {
         Ok(found) => found,
         Err(e) => {
-            st.log_quiet(false, check_failed_text(&e));
+            st.log_quiet(false, check_failed_text(t, &e));
             if manual {
-                st.toast(false, check_failed_text(&e), now);
+                st.toast(false, check_failed_text(t, &e), now);
             } else {
                 st.updates.retry_at = Some(now + RETRY_AFTER);
             }
@@ -109,7 +111,7 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
         _ => None,
     };
     if let Some((version, installer)) = kept {
-        st.log_quiet(true, available_text(&version));
+        st.log_quiet(true, available_text(t, &version));
         if manual {
             downloaded_toast(st, &version, installer, now);
         }
@@ -118,19 +120,19 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
     }
     match offer {
         Some(o) => {
-            let text = available_text(&o.version);
+            let text = available_text(t, &o.version);
             st.log_quiet(true, text.clone());
             // An automatic check toasts a release once, not again each day.
             let known = prior.offer().is_some_and(|p| p.version >= o.version);
             if manual || !known {
-                st.toast_action(true, text, download_action(), now);
+                st.toast_action(true, text, download_action(t), now);
             }
             st.updates.status = UpdateStatus::Available(Box::new(o));
         }
         None => {
-            st.log_quiet(true, latest_text(&st.updates.current));
+            st.log_quiet(true, latest_text(t, &st.updates.current));
             if manual {
-                st.toast(true, latest_text(&st.updates.current), now);
+                st.toast(true, latest_text(t, &st.updates.current), now);
             }
             st.updates.status = if matches!(prior, UpdateStatus::Downloaded { .. }) { prior } else { UpdateStatus::UpToDate };
         }
@@ -139,9 +141,14 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
 
 /// "Downloaded Trellis x.y.z." with Install for an installer, else Show file.
 fn downloaded_toast(st: &mut AppState, version: &app_update::Version, installer: bool, now: Instant) {
-    let (label, msg) = if installer { ("Install", UpdateMsg::Install) } else { ("Show file", UpdateMsg::ShowFile) };
+    let t = st.settings.lang();
+    let (label, msg) = if installer {
+        (t.tr("updates.install.button"), UpdateMsg::Install)
+    } else {
+        (t.tr("updates.show_file.button"), UpdateMsg::ShowFile)
+    };
     let action = ToastAction { label: label.into(), msg: Box::new(Msg::Updates(msg)), workdir: None };
-    st.toast_action(true, downloaded_text(version), action, now);
+    st.toast_action(true, downloaded_text(t, version), action, now);
 }
 
 fn download(st: &mut AppState, fx: &mut Vec<Effect>) {
@@ -167,18 +174,19 @@ fn download(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 fn downloaded(st: &mut AppState, result: Result<PathBuf, String>, now: Instant) {
+    let t = st.settings.lang();
     let UpdateStatus::Downloading(offer) = std::mem::take(&mut st.updates.status) else { return };
     match result {
         Ok(file) => {
             let installer = is_installer(&file);
-            let text = downloaded_text(&offer.version);
+            let text = downloaded_text(t, &offer.version);
             st.log_quiet(true, format!("{text} {}", trellis_core::native_path::shown(&file)));
             downloaded_toast(st, &offer.version, installer, now);
             st.updates.status = UpdateStatus::Downloaded { offer, file, installer };
         }
         Err(error) => {
-            st.log_quiet(false, download_failed_text(&error));
-            st.toast(false, download_failed_text(&error), now);
+            st.log_quiet(false, download_failed_text(t, &error));
+            st.toast(false, download_failed_text(t, &error), now);
             st.updates.status = UpdateStatus::DownloadFailed { offer, error };
         }
     }

@@ -48,7 +48,7 @@ fn new_branch_is_undoable() {
     drive(&mut st, Msg::git("Create branch", &["branch", "x"]));
     assert!(has_branch(&st, "x"));
     assert!(matches!(st.undo.undo.last(), Some(Action::CreateBranch { name, .. }) if name == "x"));
-    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Undo creation of branch x"));
+    assert!(st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with("Undo creation of branch x"));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(!has_branch(&st, "x"));
     drive(&mut st, Msg::Job(JobMsg::Redo));

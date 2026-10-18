@@ -13,6 +13,7 @@ use crate::state::updates::{RETRY_AFTER, STARTUP_DELAY, UpdateStatus};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use trellis_core::app_update::{Arch, Asset, InstallKind, Platform, Release, TargetOs, Version};
+use trellis_core::i18n::Lang;
 
 /// 2026-02-01 12:00 UTC.
 pub(super) const NOW: i64 = 1_769_947_200;
@@ -123,7 +124,24 @@ fn a_newer_release_is_offered() {
     let fx = update(&mut st, Msg::ToastAction(id), t);
     assert!(fx.iter().any(|e| matches!(e, Effect::Updates(UpdateEffect::Download(_)))));
     assert!(matches!(st.updates.status, UpdateStatus::Downloading(_)));
-    assert_eq!(st.updates.chip().map(|c| c.0).as_deref(), Some("Downloading Trellis 0.3.0…"));
+    assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Downloading Trellis 0.3.0…"));
+}
+
+#[test]
+fn update_texts_follow_the_language() {
+    let mut st = app();
+    st.settings.language = "de".into();
+    let t = Instant::now();
+    send(&mut st, U::CheckNow, t);
+    send(&mut st, U::Checked { manual: true, result: found("v0.3.0", InstallKind::Installer) }, t);
+    let want = Lang::De.trf("updates.available", &[("version", &"0.3.0")]);
+    assert_ne!(want, "Trellis 0.3.0 is available.");
+    let toast = st.toasts.last().expect("a toast");
+    assert_eq!(toast.text, want);
+    assert_eq!(toast.action.as_ref().map(|a| a.label.as_str()), Some(Lang::De.tr("updates.download.button")));
+    let chip = Lang::De.trf("updates.chip.available", &[("version", &"0.3.0")]);
+    assert_eq!(st.updates.chip(Lang::De).map(|c| c.0), Some(chip));
+    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(want.as_str()));
 }
 
 #[test]
@@ -182,7 +200,7 @@ fn downloads_and_what_follows() {
     assert_eq!(st.updates.status, UpdateStatus::Downloaded { offer: Box::new(o.as_ref().clone()), file: file.clone(), installer: true });
     let toast = st.toasts.last().unwrap();
     assert_eq!((toast.text.as_str(), toast.action.as_ref().map(|a| a.label.as_str())), ("Downloaded Trellis 0.3.0.", Some("Install")));
-    assert_eq!(st.updates.chip().map(|c| c.0).as_deref(), Some("Update downloaded"));
+    assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
     let fx = send(&mut st, U::Install, t);
     assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Install(p))] if *p == file));
     let fx = send(&mut st, U::ShowFile, t);
@@ -206,7 +224,7 @@ fn a_failed_download_can_be_retried() {
     send(&mut st, U::Download, t);
     send(&mut st, U::Downloaded(Err("The download didn't match its published checksum and was discarded.".into())), t);
     assert!(matches!(&st.updates.status, UpdateStatus::DownloadFailed { .. }));
-    assert_eq!(st.updates.chip().map(|c| c.0).as_deref(), Some("Update failed · Try again"));
+    assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update failed · Try again"));
     assert!(st.toasts.last().unwrap().text.starts_with("The download failed: "));
     let fx = send(&mut st, U::Download, t);
     assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Download(_))]));

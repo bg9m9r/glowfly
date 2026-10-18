@@ -24,10 +24,31 @@ fn tab_hints_come_from_the_go_to_tab_keys() {
 fn zoom_items_stop_at_the_limits() {
     let max = ZOOM_STEPS[ZOOM_STEPS.len() - 1];
     let min = ZOOM_STEPS[0];
-    assert_eq!(zoom_blocked(DEFAULT_ZOOM_PERCENT), [None, None, Some("Already at 100%".to_owned())]);
-    assert_eq!(zoom_blocked(max), [Some("Already at the largest zoom (200%)".to_owned()), None, None]);
-    assert_eq!(zoom_blocked(min), [None, Some("Already at the smallest zoom (50%)".to_owned()), None]);
-    assert_eq!(zoom_blocked(125), [None, None, None]);
+    assert_eq!(zoom_blocked(Lang::En, DEFAULT_ZOOM_PERCENT), [None, None, Some("Already at 100%".to_owned())]);
+    assert_eq!(zoom_blocked(Lang::En, max), [Some("Already at the largest zoom (200%)".to_owned()), None, None]);
+    assert_eq!(zoom_blocked(Lang::En, min), [None, Some("Already at the smallest zoom (50%)".to_owned()), None]);
+    assert_eq!(zoom_blocked(Lang::En, 125), [None, None, None]);
+}
+
+#[test]
+fn zoom_limits_follow_the_language() {
+    let max = ZOOM_STEPS[ZOOM_STEPS.len() - 1];
+    let de = zoom_blocked(Lang::De, max);
+    assert_eq!(de[0], Some(Lang::De.trf("menu.view.zoom_max", &[("percent", &max)])));
+    assert_ne!(de[0], zoom_blocked(Lang::En, max)[0]);
+}
+
+#[test]
+fn a_new_tab_is_named_in_the_language() {
+    let s = trellis_core::settings::Settings { language: "de".into(), ..Default::default() };
+    let mut st = AppState::new(s, Vec::new(), std::time::Instant::now());
+    let dir = trellis_core::paths::temp_dir().join("trellis-tab-name");
+    st.tabs = vec![crate::state::Tab::empty(), crate::state::Tab::unloaded(dir)];
+    st.active_tab = 0;
+    assert_eq!(tab_name(&st, 0), Lang::De.tr("tabs.new_tab.name"));
+    assert_ne!(tab_name(&st, 0), "New tab");
+    assert_eq!(st.tabs[0].name, "New tab", "the stored placeholder stays English");
+    assert_eq!(tab_name(&st, 1), "trellis-tab-name");
 }
 
 #[test]

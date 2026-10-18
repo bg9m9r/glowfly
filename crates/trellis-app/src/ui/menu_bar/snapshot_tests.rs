@@ -206,7 +206,7 @@ fn about_harness(git: GitState) -> Harness<'static, (GitState, Vec<Msg>)> {
             egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |_| {});
             egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
                 ui.set_width(460.0);
-                super::about(ui, git, "1.2.3", msgs);
+                super::about(ui, trellis_core::i18n::Lang::En, git, "1.2.3", msgs);
             });
         },
         (git, Vec::new()),

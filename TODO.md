@@ -551,8 +551,9 @@ Done except the group colors, which wait on repository groups in the repository 
       About dialog with the third-party notices, and a UI Customization toggle to hide it
 - [ ] **Language**: translate the UI (date locale and relative dates already exist)
   - [x] Catalog (English base, Deutsch, Español) with system-language detection, Language on
-    Preferences > General, and translated Preferences navigation, General, Editor and External
-    Tools pages, commit box and status bar
+    Preferences > General, and translated Preferences navigation, General (with its Updates row),
+    Editor, External Tools and UI Customization pages, commit box, status bar and its update chip,
+    menu bar and About dialog, toolbar, tab bar and the release notes dialog
 - [x] **Logs**: keep the activity log across sessions; error and performance logs; extended
       logging (the in-session activity log exists)
 - [x] **Command-line companion**: `trellis <path>` and `trellis .` work (subcommands are under
@@ -1628,4 +1629,5 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Load user-supplied translation files from the settings folder
 - A palette command to switch the language
 - Right-to-left layout for right-to-left languages
-- Translate the update check (General's Updates row, the status bar chip, the release notes dialog) and the menu bar
+- Translate undo action descriptions (Action::describe, e.g. "checkout of main") and the labels of the jobs they name, shown in the Edit menu, toolbar tips, status bar and activity log
+- Translate error texts that come from trellis-core: update check and download errors, theme file problems and the themes folder error

@@ -2,13 +2,11 @@
 //! In memory only, so it ends with the tab or the app. Also the form of the dialog that asks
 //! whether undoing a checkout should delete the branch it created (`Modal::UndoCreated`).
 
+use trellis_core::i18n::Lang;
 use trellis_core::undo::Action;
 
 /// Undo steps kept per tab; older ones are dropped.
 pub const MAX_UNDO: usize = 20;
-
-/// What can be undone, for the reason Undo is unavailable after something else.
-const UNDOABLE: &str = "only checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, creating or deleting a branch or tag, stash, pop, apply, discards and file restores can be undone";
 
 /// The dialog shown before undoing a checkout that created `branch`, which still points where
 /// the checkout made it: switch back to `back_to`, and also delete the branch when `delete`.
@@ -82,48 +80,54 @@ impl UndoHistory {
         }
     }
 
-    pub fn undo_tooltip(&self, keys: &crate::keymap::Keymap) -> String {
+    pub fn undo_tooltip(&self, t: Lang, keys: &crate::keymap::Keymap) -> String {
         match self.undo.last() {
-            Some(a) => keys.tip(&format!("Undo {}", a.describe()), crate::keymap::BindingId::Undo),
-            None => self.undo_reason(),
+            Some(a) => keys.tip(&t.trf("menu.edit.undo_action", &[("action", &a.describe())]), crate::keymap::BindingId::Undo),
+            None => self.undo_reason(t),
         }
     }
 
-    pub fn redo_tooltip(&self, keys: &crate::keymap::Keymap) -> String {
+    pub fn redo_tooltip(&self, t: Lang, keys: &crate::keymap::Keymap) -> String {
         match self.redo.last() {
-            Some(a) => keys.tip(&format!("Redo {}", a.describe()), crate::keymap::BindingId::Redo),
-            None => self.redo_reason(),
+            Some(a) => keys.tip(&t.trf("menu.edit.redo_action", &[("action", &a.describe())]), crate::keymap::BindingId::Redo),
+            None => self.redo_reason(t),
         }
     }
 
     /// Edit > Undo: its label ("Undo checkout of main", or "Undo" with nothing to undo) and why
     /// it is disabled, if it is: a job is running (`idle` false) or there is nothing to undo.
-    pub fn undo_entry(&self, idle: bool) -> (String, Option<String>) {
-        entry("Undo", self.undo.last(), idle, || self.undo_reason())
+    pub fn undo_entry(&self, t: Lang, idle: bool) -> (String, Option<String>) {
+        entry(t, false, self.undo.last(), idle, || self.undo_reason(t))
     }
 
     /// Edit > Redo, like `undo_entry`.
-    pub fn redo_entry(&self, idle: bool) -> (String, Option<String>) {
-        entry("Redo", self.redo.last(), idle, || self.redo_reason())
+    pub fn redo_entry(&self, t: Lang, idle: bool) -> (String, Option<String>) {
+        entry(t, true, self.redo.last(), idle, || self.redo_reason(t))
     }
 
     /// Why there is nothing to undo.
-    fn undo_reason(&self) -> String {
+    fn undo_reason(&self, t: Lang) -> String {
         match &self.blocked {
-            Some(label) => format!("Can't undo {label}: {UNDOABLE}"),
-            None => "Nothing to undo".to_owned(),
+            Some(label) => t.trf("menu.edit.cant_undo", &[("label", label)]),
+            None => t.tr("menu.edit.nothing_to_undo").to_owned(),
         }
     }
 
-    fn redo_reason(&self) -> String {
-        "Nothing to redo".to_owned()
+    fn redo_reason(&self, t: Lang) -> String {
+        t.tr("menu.edit.nothing_to_redo").to_owned()
     }
 }
 
-fn entry(verb: &str, top: Option<&Action>, idle: bool, reason: impl FnOnce() -> String) -> (String, Option<String>) {
-    let label = top.map_or_else(|| verb.to_owned(), |a| format!("{verb} {}", a.describe()));
+/// An Undo (`redo` false) or Redo entry for `top`, in `t`.
+fn entry(t: Lang, redo: bool, top: Option<&Action>, idle: bool, reason: impl FnOnce() -> String) -> (String, Option<String>) {
+    let label = match top {
+        Some(a) if redo => t.trf("menu.edit.redo_action", &[("action", &a.describe())]),
+        Some(a) => t.trf("menu.edit.undo_action", &[("action", &a.describe())]),
+        None if redo => t.tr("menu.edit.redo").to_owned(),
+        None => t.tr("menu.edit.undo").to_owned(),
+    };
     let blocked = if !idle {
-        Some(super::rebase::JOB_RUNNING.to_owned())
+        Some(t.tr("commit.blocked.job_running").to_owned())
     } else if top.is_none() {
         Some(reason())
     } else {
@@ -146,31 +150,43 @@ mod tests {
     #[test]
     fn entries_name_the_action_or_say_why_not() {
         let mut h = UndoHistory::default();
-        assert_eq!(h.undo_entry(true), ("Undo".to_owned(), Some("Nothing to undo".to_owned())));
-        assert_eq!(h.redo_entry(true), ("Redo".to_owned(), Some("Nothing to redo".to_owned())));
+        assert_eq!(h.undo_entry(Lang::En, true), ("Undo".to_owned(), Some("Nothing to undo".to_owned())));
+        assert_eq!(h.redo_entry(Lang::En, true), ("Redo".to_owned(), Some("Nothing to redo".to_owned())));
         h.record(checkout());
-        assert_eq!(h.undo_entry(true), ("Undo checkout of main".to_owned(), None));
-        assert_eq!(h.undo_entry(false), ("Undo checkout of main".to_owned(), Some(JOB_RUNNING.to_owned())));
+        assert_eq!(h.undo_entry(Lang::En, true), ("Undo checkout of main".to_owned(), None));
+        assert_eq!(h.undo_entry(Lang::En, false), ("Undo checkout of main".to_owned(), Some(JOB_RUNNING.to_owned())));
         h.undone(checkout());
-        assert_eq!(h.redo_entry(true), ("Redo checkout of main".to_owned(), None));
-        assert_eq!(h.redo_entry(false).1.as_deref(), Some(JOB_RUNNING));
+        assert_eq!(h.redo_entry(Lang::En, true), ("Redo checkout of main".to_owned(), None));
+        assert_eq!(h.redo_entry(Lang::En, false).1.as_deref(), Some(JOB_RUNNING));
         h.invalidate("Rename branch");
-        let (label, why) = h.undo_entry(true);
+        let (label, why) = h.undo_entry(Lang::En, true);
         assert_eq!(label, "Undo");
         assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Rename branch: only checkout, commit")), "{why:?}");
-        assert_eq!(why.as_deref(), Some(format!("Can't undo Rename branch: {UNDOABLE}").as_str()));
+        assert_eq!(why, Some(Lang::En.trf("menu.edit.cant_undo", &[("label", &"Rename branch")])));
     }
 
     #[test]
     fn tooltips_are_unchanged() {
         let keys = Keymap::default();
         let mut h = UndoHistory::default();
-        assert_eq!(h.undo_tooltip(&keys), "Nothing to undo");
-        assert_eq!(h.redo_tooltip(&keys), "Nothing to redo");
+        assert_eq!(h.undo_tooltip(Lang::En, &keys), "Nothing to undo");
+        assert_eq!(h.redo_tooltip(Lang::En, &keys), "Nothing to redo");
         h.record(checkout());
-        assert_eq!(h.undo_tooltip(&keys), keys.tip("Undo checkout of main", BindingId::Undo));
+        assert_eq!(h.undo_tooltip(Lang::En, &keys), keys.tip("Undo checkout of main", BindingId::Undo));
         h.invalidate("Rename branch");
-        assert_eq!(h.undo_tooltip(&keys), format!("Can't undo Rename branch: {UNDOABLE}"));
-        assert!(UNDOABLE.contains("merge, pull, rebase, cherry-pick, revert") && UNDOABLE.contains("stash, pop, apply"));
+        let tip = h.undo_tooltip(Lang::En, &keys);
+        assert_eq!(tip, Lang::En.trf("menu.edit.cant_undo", &[("label", &"Rename branch")]));
+        assert!(tip.starts_with("Can't undo Rename branch: only checkout, commit"), "{tip}");
+        assert!(tip.contains("merge, pull, rebase, cherry-pick, revert") && tip.contains("stash, pop, apply"));
+    }
+
+    #[test]
+    fn entries_follow_the_language() {
+        let mut h = UndoHistory::default();
+        h.record(checkout());
+        let (label, _) = h.undo_entry(Lang::De, true);
+        assert_eq!(label, Lang::De.trf("menu.edit.undo_action", &[("action", &"checkout of main")]));
+        assert_ne!(label, "Undo checkout of main");
+        assert_eq!(h.undo_entry(Lang::Es, false).1, Some(Lang::Es.tr("commit.blocked.job_running").to_owned()));
     }
 }

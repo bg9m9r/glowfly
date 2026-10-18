@@ -19,7 +19,7 @@ pub(super) fn run(st: &mut AppState, redo: bool, now: Instant, fx: &mut Vec<Effe
     let Some(action) = top else {
         // Say why when the last operation can't be undone; otherwise there is nothing to do.
         if !redo && st.undo.blocked.is_some() {
-            let why = st.undo.undo_tooltip(&st.keymap);
+            let why = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
             st.toast(false, why, now);
         }
         return;

@@ -2,6 +2,7 @@
 //! sub-list (Integrations), and a form with right-aligned labels and help text.
 
 mod appearance;
+mod appearance_graph;
 mod editor;
 mod general;
 mod git;

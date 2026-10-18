@@ -43,6 +43,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let connections = &st.settings.connections;
     let keys = &st.keymap;
     let git = &st.git;
+    let t = st.settings.lang();
     let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
     let first = msgs.len();
@@ -223,12 +224,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             }
             Modal::About => {
-                if super::menu_bar::about(ui, git, crate::state::menu_bar::VERSION, msgs) {
+                if super::menu_bar::about(ui, t, git, crate::state::menu_bar::VERSION, msgs) {
                     close = true;
                 }
             }
             Modal::ReleaseNotes(d) => {
-                if super::release_notes::show(ui, d, msgs) {
+                if super::release_notes::show(ui, t, d, msgs) {
                     close = true;
                 }
             }

@@ -11,6 +11,7 @@ use crate::state::updates::{STARTUP_DELAY, UpdateStatus};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use trellis_core::app_update::InstallKind;
+use trellis_core::i18n::Lang;
 
 /// An app that has downloaded the 0.3.0 installer.
 fn downloaded() -> (AppState, Instant, PathBuf) {
@@ -32,14 +33,14 @@ fn check_now_after_a_download_keeps_the_file() {
     let toasts = st.toasts.len();
     assert_eq!(checks(&send(&mut st, U::CheckNow, t)), [true]);
     // While the check runs, the chip and Install still work.
-    assert_eq!(st.updates.chip().map(|c| c.0).as_deref(), Some("Update downloaded"));
+    assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
     assert!(has_install(&st));
     let fx = send(&mut st, U::Install, t);
     assert!(matches!(fx.as_slice(), [Effect::Updates(UpdateEffect::Install(p))] if *p == file));
 
     send(&mut st, U::Checked { manual: true, result: found("v0.3.0", InstallKind::Installer) }, t);
     assert!(matches!(&st.updates.status, UpdateStatus::Downloaded { file: f, installer: true, .. } if *f == file));
-    assert_eq!(st.updates.chip().map(|c| c.0).as_deref(), Some("Update downloaded"));
+    assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update downloaded"));
     assert!(has_install(&st));
     assert_eq!(st.toasts.len(), toasts + 1);
     let toast = st.toasts.last().unwrap();
@@ -105,7 +106,7 @@ fn an_offer_outlasts_later_checks() {
     send(&mut st, U::Startup, t);
     let t1 = t + STARTUP_DELAY;
     assert_eq!(checks(&tick(&mut st, t1)), [false]);
-    assert_eq!(st.updates.chip().map(|c| c.0).as_deref(), Some("Update available (0.3.0)"), "while checking");
+    assert_eq!(st.updates.chip(Lang::En).map(|c| c.0).as_deref(), Some("Update available (0.3.0)"), "while checking");
     send(&mut st, U::Checked { manual: false, result: Err("offline".into()) }, t1);
     assert!(matches!(&st.updates.status, UpdateStatus::Available(o) if o.version.to_string() == "0.3.0"));
     // The next day's check finds the same release: offered still, without a second toast.

@@ -50,7 +50,7 @@ fn toolbar_stash_undo_and_redo() {
     drive(&mut st, Msg::git("Stash", &["stash", "push", "-u"]));
     assert!(!dirty(&st));
     assert!(matches!(st.undo.undo.last(), Some(Action::StashPush { .. })), "{:?}", st.undo.undo);
-    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Undo stash 'WIP on main"));
+    assert!(st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with("Undo stash 'WIP on main"));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir, "a.txt"), "one\ntwo\n");
     assert!(st.snap.as_ref().unwrap().stashes.is_empty());
@@ -73,7 +73,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == want), "start_job recognises it: {fx:?}");
     super::tests::finish(&mut st, fx);
     assert!(dirty(&st));
-    assert!(st.undo.undo_tooltip(&st.keymap).starts_with("Undo pop of stash 'On main: wip'"));
+    assert!(st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with("Undo pop of stash 'On main: wip'"));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let snap = st.snap.as_ref().unwrap();
@@ -85,7 +85,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid }));
     assert!(st.undo.undo.is_empty());
-    let (_, why) = st.undo.undo_entry(true);
+    let (_, why) = st.undo.undo_entry(st.settings.lang(), true);
     assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Pop stash")), "{why:?}");
     cleanup(&[&dir]);
 }
