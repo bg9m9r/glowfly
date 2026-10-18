@@ -4,7 +4,7 @@
 use super::common::{short, widget_row_height};
 use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
-use super::menus::{cherry_pick_button, copy_shas};
+use super::menus::{cherry_pick_button, copy_shas, patch_button};
 use super::theme::color;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -18,6 +18,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.label(RichText::new(format!("{} commits selected", m.len())).strong().size(15.0).color(color::text()));
     ui.horizontal_wrapped(|ui| {
         cherry_pick_button(ui, m, msgs);
+        patch_button(ui, m, msgs);
         if ui.button("Copy SHAs").clicked() {
             msgs.push(copy_shas(m));
         }
@@ -76,7 +77,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                     for f in &c.files[range] {
                         let target = DiffTarget::Between(older, newer, f.path.clone());
                         let src = RowSource::Between { older, newer };
-                        let actions = Some(RowActions { src, in_workdir: c.in_workdir(&f.path), lfs, diff_blocked });
+                        let actions = Some(RowActions { src, in_workdir: c.in_workdir(&f.path), lfs, diff_blocked, patch_blocked: None });
                         changed_file_row(ui, f, target, open, newer, actions, msgs);
                     }
                 },

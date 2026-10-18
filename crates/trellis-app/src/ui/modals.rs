@@ -15,8 +15,9 @@
 //! `forge_filter_dialog.rs`), the trellis:// link dialogs (drawn by `deep_link_dialog.rs`),
 //! creating an issue (drawn by `issue/create_dialog.rs`), rewording a commit from the graph
 //! (drawn by `rebase/reword_dialog.rs`), the About dialog (drawn by `menu_bar/about.rs`), the
-//! release notes (drawn by `release_notes.rs`) and undoing a checkout that created a branch
-//! (drawn by `undo_dialog.rs`).
+//! release notes (drawn by `release_notes.rs`), undoing a checkout that created a branch
+//! (drawn by `undo_dialog.rs`), applying a patch file (drawn by `patch_apply_dialog.rs`) and
+//! creating a patch from uncommitted changes (drawn by `patch_save_dialog.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -235,6 +236,16 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::UndoCreated(form) => {
                 if super::undo_dialog::created_branch(ui, form, msgs) {
+                    close = true;
+                }
+            }
+            Modal::ApplyPatch(form) => {
+                if super::patch_apply_dialog::show(ui, form, snap, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::SavePatch(form) => {
+                if super::patch_save_dialog::show(ui, form, snap, idle, msgs) {
                     close = true;
                 }
             }

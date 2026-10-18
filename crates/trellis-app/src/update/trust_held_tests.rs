@@ -294,7 +294,8 @@ fn dropping_clears_job_trackers() {
     let (mut st, dir) = held_repo("held-patch");
     let workdir = st.workdir().unwrap();
     let path = dir.join("fix.patch");
-    run(&mut st, Msg::Patch(PatchMsg::ApplyFrom { workdir, path: Some(path) }));
+    let how = crate::patch::ApplyHow::Changes(Default::default());
+    run(&mut st, Msg::Patch(PatchMsg::Apply(crate::patch::ApplyRequest { workdir, path, how, commits: 0 })));
     assert!(st.trust.held.is_some());
     assert!(st.patch_apply.is_some(), "tracked while held");
     run(&mut st, Msg::CloseModal);

@@ -75,9 +75,9 @@ fn harness_with(f: FileEntry, menu: Menu, dark: bool, tools: bool) -> Harness<'s
                 let _ = ui.button(if matches!(menu, Menu::Wip { .. }) { "Stage" } else { "File history" });
                 let _ = ui.button("Copy path");
                 match menu {
-                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], diff),
+                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], diff, None),
                     Menu::Between { in_workdir } => {
-                        commit_file_items(ui, msgs, RowSource::Between { older: oid(), newer: newer() }, &f, in_workdir, &[], diff)
+                        commit_file_items(ui, msgs, RowSource::Between { older: oid(), newer: newer() }, &f, in_workdir, &[], diff, None)
                     }
                     Menu::Wip { missing, unstages } => {
                         let tool = if f.status == '!' {

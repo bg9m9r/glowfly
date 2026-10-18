@@ -122,7 +122,7 @@ fn commit_menu(in_workdir: bool) -> Harness<'static, Vec<Msg>> {
     Harness::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
-            commit_file_items(ui, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs, None);
+            commit_file_items(ui, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs, None, None);
         },
         Vec::new(),
     )

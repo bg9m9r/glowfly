@@ -345,8 +345,12 @@ mod tests {
             None
         );
         // Saving a patch only reads the repository.
-        let export = crate::patch::PatchEffect::Export { workdir: w.clone(), oids: Vec::new(), dest: "C:/x.patch".into() };
+        let what = trellis_core::patch_ops::PatchSource::Commits { oids: Vec::new(), paths: Vec::new() };
+        let export = crate::patch::PatchEffect::Export { workdir: w.clone(), what, dest: w.join("x.patch") };
         assert_eq!(repo_of(&Effect::Patch(export)), None);
+        // Reading a patch file and copying a commit's patch only read too.
+        assert_eq!(repo_of(&Effect::Patch(crate::patch::PatchEffect::Inspect { workdir: w.clone(), path: w.join("x.patch") })), None);
+        assert_eq!(repo_of(&Effect::Patch(crate::patch::PatchEffect::Copy { workdir: w.clone(), oids: Vec::new() })), None);
         assert_eq!(repo_of(&Effect::Tool(crate::tools::ToolEffect::PickProgram(crate::tools::ToolKind::Editor))), None);
         // A conflict check writes only unreferenced objects.
         let request = crate::conflict_check::CheckRequest {

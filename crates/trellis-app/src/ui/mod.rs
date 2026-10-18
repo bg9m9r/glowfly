@@ -3,6 +3,7 @@
 //! effects that need the window.
 
 mod activity_log;
+mod am_banner;
 mod askpass;
 mod avatars;
 mod blame;
@@ -46,6 +47,8 @@ mod menu_bar;
 mod menus;
 mod modals;
 mod palette;
+mod patch_apply_dialog;
+mod patch_save_dialog;
 mod path_warnings;
 mod pr_menu_items;
 mod prefs;
@@ -156,6 +159,8 @@ mod snapshot_tests_palette;
 mod snapshot_tests_palette_recent;
 #[cfg(test)]
 mod snapshot_tests_palette_stash;
+#[cfg(test)]
+mod snapshot_tests_patch;
 #[cfg(test)]
 mod snapshot_tests_path_warnings;
 #[cfg(test)]

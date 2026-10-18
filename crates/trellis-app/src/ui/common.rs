@@ -187,6 +187,9 @@ pub fn capitalize(s: &str) -> String {
     c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }
 
+use crate::state::am_banner::{AM_ABORT, AM_CONTINUE, AM_NAME, AM_SKIP};
+use trellis_core::patch_ops;
+
 pub type StateAction = (&'static str, &'static [&'static str]);
 
 const REBASE_ACTIONS: &[StateAction] =
@@ -203,7 +206,8 @@ pub fn state_actions(state: RepositoryState) -> Option<(&'static str, &'static [
             ("Cherry-pick", &[("Continue", &["cherry-pick", "--continue"]), ("Abort cherry-pick", &["cherry-pick", "--abort"])])
         }
         Revert | RevertSequence => ("Revert", &[("Continue", &["revert", "--continue"]), ("Abort revert", &["revert", "--abort"])]),
-        ApplyMailbox | ApplyMailboxOrRebase => ("Apply mailbox", &[("Abort", &["am", "--abort"])]),
+        ApplyMailbox => (AM_NAME, &[(AM_CONTINUE, patch_ops::AM_CONTINUE), (AM_SKIP, patch_ops::AM_SKIP), (AM_ABORT, patch_ops::AM_ABORT)]),
+        ApplyMailboxOrRebase => ("Apply mailbox", &[("Abort", &["am", "--abort"])]),
         Bisect => ("Bisect", &[("Reset bisect", &["bisect", "reset"])]),
         Clean => return None,
     })

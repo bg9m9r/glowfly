@@ -42,6 +42,8 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     file_stamp(&common.join("config")).hash(&mut h);
     // A shallow clone deepened or completed: `fetch --unshallow` may leave every ref as it was.
     file_stamp(&common.join("shallow")).hash(&mut h);
+    // `git am --skip` stopping at the next patch moves no ref.
+    file_stamp(&repo.path().join("rebase-apply/next")).hash(&mut h);
     if let Some(w) = repo.workdir() {
         // The root .gitattributes' LFS patterns.
         file_stamp(&w.join(".gitattributes")).hash(&mut h);

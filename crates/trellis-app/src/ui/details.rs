@@ -57,9 +57,7 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
         egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
             match (in_progress, &snap.rebase) {
                 (Some((name, _)), Some(p)) => super::rebase::banner::progress(ui, p, name, !conflicted.is_empty()),
-                (Some((name, _)), None) => {
-                    ui.label(RichText::new(format!("{name} in progress")).strong());
-                }
+                (Some((name, _)), None) => super::am_banner::title(ui, snap, name, !conflicted.is_empty()),
                 _ => {}
             }
             if let Some(first) = conflicted.first() {
@@ -74,7 +72,7 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
             let Some((_, actions)) = in_progress else { return };
             ui.horizontal(|ui| {
                 for (label, a) in actions {
-                    let held = !conflicted.is_empty() && *label == "Continue" && snap.rebase.is_some();
+                    let held = !conflicted.is_empty() && *label == "Continue" && (snap.rebase.is_some() || snap.am.is_some());
                     if ui.add_enabled(!held, egui::Button::new(*label)).on_disabled_hover_text(RESOLVE_FIRST).clicked() {
                         msgs.push(action_msg(snap.state, label, a));
                     }
@@ -162,7 +160,9 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     let row_h = widget_row_height(ui);
     egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
         for f in &d.files[range] {
-            let actions = Some(RowActions { src: RowSource::Commit(d.oid), in_workdir: d.in_workdir(&f.path), lfs, diff_blocked });
+            let patch_blocked = (d.parents.len() > 1).then_some(crate::state::patch::PATCH_BLOCKED_MERGE);
+            let actions =
+                Some(RowActions { src: RowSource::Commit(d.oid), in_workdir: d.in_workdir(&f.path), lfs, diff_blocked, patch_blocked });
             changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, actions, msgs);
         }
     });
@@ -177,6 +177,8 @@ pub(super) struct RowActions<'a> {
     pub in_workdir: bool,
     pub lfs: TrackContext<'a>,
     pub diff_blocked: Option<&'a str>,
+    /// Why Create patch from this file… is unavailable (a merge commit).
+    pub patch_blocked: Option<&'a str>,
 }
 
 /// What every working-tree row needs, built once per frame: Track in Git LFS's context and
@@ -213,7 +215,7 @@ pub(super) fn changed_file_row(
             menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
             if let Some(a) = actions {
                 let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
-                file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked);
+                file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked, a.patch_blocked);
             }
         });
     });
@@ -376,6 +378,7 @@ pub(super) fn wip_file_row(
                 }
             }
             file_menu::stash_file_item(ui, msgs, snap, f);
+            file_menu::patch_file_item(ui, msgs, f, staged);
             if f.status != '?' {
                 file_menu::history_items(ui, msgs, &f.path, None, (f.status == 'A').then_some("Not committed yet"));
             }

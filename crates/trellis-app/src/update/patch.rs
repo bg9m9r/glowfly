@@ -1,38 +1,72 @@
-//! Saving commits as a patch file (a dialog, then a write that only reads the repository, so it
-//! is no job) and applying a patch file to the working tree (a dialog, then one `RunGit` job
-//! that checks before it applies).
+//! Patch files: saving commits, one file of a commit or uncommitted changes (a dialog, then a
+//! write that only reads the repository, so it is no job), copying a commit's patch, showing a
+//! saved one, and applying a patch file (`patch_apply.rs`: read it, the Apply patch dialog,
+//! then one `RunGit` job). The Create patch dialog for uncommitted changes is in
+//! `patch_changes.rs`.
 
-use super::ops::{self, JobSpec};
-use crate::effect::Effect;
+#[path = "patch_apply.rs"]
+mod apply;
+#[path = "patch_changes.rs"]
+mod changes;
+
+#[cfg(test)]
+#[path = "patch_apply_tests.rs"]
+mod apply_tests;
+#[cfg(test)]
+#[path = "patch_changes_tests.rs"]
+mod changes_tests;
+#[cfg(test)]
+#[path = "patch_copy_tests.rs"]
+mod copy_tests;
+
+use crate::effect::{Effect, UiEffect};
+use crate::msg::Msg;
 use crate::patch::{PatchEffect, PatchMsg};
 use crate::state::AppState;
-use crate::state::patch::{APPLY_LABEL, PendingApply, default_name, display_name, export_blocker, export_done};
+use crate::state::files::SHOW_IN_FOLDER;
+use crate::state::patch::{default_name, export_blocker, export_done};
+use crate::state::toasts::ToastAction;
 use std::time::Instant;
-use trellis_core::patch_ops;
+use trellis_core::patch_ops::{self, PatchSource, SaveReport};
 
 pub(super) fn handle(st: &mut AppState, m: PatchMsg, now: Instant, fx: &mut Vec<Effect>) {
     match m {
         PatchMsg::Export(oids) => {
-            let Some(snap) = &st.snap else { return };
-            let ordered = crate::state::selection::in_graph_order(oids, snap, true);
-            if ordered.is_empty() {
-                return;
-            }
-            if let Some(why) = export_blocker(snap, &ordered) {
-                st.log(false, why);
-                return;
-            }
-            let Some(name) = default_name(snap, &ordered) else { return };
+            let Some(ordered) = ordered(st, oids) else { return };
+            let Some(name) = st.snap.as_ref().and_then(|s| default_name(s, &ordered)) else { return };
             let Some(workdir) = st.workdir() else { return };
-            fx.push(Effect::Patch(PatchEffect::PickSave { workdir, oids: ordered, name }));
+            fx.push(Effect::Patch(PatchEffect::PickSave {
+                workdir,
+                what: PatchSource::Commits { oids: ordered, paths: Vec::new() },
+                name,
+            }));
         }
+        PatchMsg::ExportFiles { oid, paths } => {
+            let Some(ordered) = ordered(st, vec![oid]) else { return };
+            let Some(c) = st.snap.as_ref().and_then(|s| s.row_of.get(&oid).map(|&r| &s.commits[r])) else { return };
+            let name = patch_ops::files_file_name(&c.summary, &paths);
+            let Some(workdir) = st.workdir() else { return };
+            fx.push(Effect::Patch(PatchEffect::PickSave { workdir, what: PatchSource::Commits { oids: ordered, paths }, name }));
+        }
+        PatchMsg::ChangesDialog { scope, path } => changes::dialog(st, scope, path),
+        PatchMsg::SaveChanges { scope, paths, untracked } => changes::save(st, scope, paths, untracked, now, fx),
         PatchMsg::SaveTo { dest: None, .. } => {}
-        PatchMsg::SaveTo { workdir, oids, dest: Some(dest) } => fx.push(Effect::Patch(PatchEffect::Export { workdir, oids, dest })),
+        PatchMsg::SaveTo { workdir, what, dest: Some(dest) } => fx.push(Effect::Patch(PatchEffect::Export { workdir, what, dest })),
         PatchMsg::Exported { dest, result } => match result {
             Ok(r) => {
-                st.toast(true, export_done(&dest, &r), now);
-                let commits = if r.written == 1 { "1 commit".to_owned() } else { format!("{} commits", r.written) };
-                st.log(true, format!("Created {} from {commits}", dest.display()));
+                let action = ToastAction {
+                    label: SHOW_IN_FOLDER.into(),
+                    msg: Box::new(Msg::Patch(PatchMsg::ShowSaved(dest.clone()))),
+                    workdir: None,
+                };
+                st.toast_action(true, export_done(&dest, &r), action, now);
+                let what = match r {
+                    SaveReport::Commits(r) if r.written == 1 => "1 commit".to_owned(),
+                    SaveReport::Commits(r) => format!("{} commits", r.written),
+                    SaveReport::Changes { files: 1 } => "the changes to 1 file".to_owned(),
+                    SaveReport::Changes { files } => format!("the changes to {files} files"),
+                };
+                st.log(true, format!("Created {} from {what}", dest.display()));
             }
             Err(e) => {
                 let text = format!("Could not create the patch: {e}");
@@ -40,50 +74,45 @@ pub(super) fn handle(st: &mut AppState, m: PatchMsg, now: Instant, fx: &mut Vec<
                 st.log(false, text);
             }
         },
-        PatchMsg::PickToApply => {
+        PatchMsg::ShowSaved(path) => fx.push(Effect::RevealPath(path)),
+        PatchMsg::Copy(oids) => {
+            let Some(oids) = ordered(st, oids) else { return };
             let Some(workdir) = st.workdir() else { return };
-            if ops::busy(st, false) {
-                return;
-            }
-            fx.push(Effect::Patch(PatchEffect::PickOpen { workdir }));
+            fx.push(Effect::Patch(PatchEffect::Copy { workdir, oids }));
         }
-        PatchMsg::ApplyFrom { path: None, .. } => {}
-        PatchMsg::ApplyFrom { workdir, path: Some(path) } => apply(st, &workdir, &path, fx),
+        PatchMsg::Copied(Ok((text, report))) => {
+            // The first part's "From <sha>" line names the commit.
+            let short = text.strip_prefix("From ").and_then(|r| r.get(..7)).unwrap_or("the commit").to_owned();
+            let done = match report.written {
+                1 => format!("Copied the patch of {short} to the clipboard"),
+                n => format!("Copied the patches of {n} commits to the clipboard"),
+            };
+            fx.push(Effect::Ui(UiEffect::CopyText(text)));
+            st.toast(true, done, now);
+        }
+        PatchMsg::Copied(Err(e)) => st.toast(false, e, now),
+        PatchMsg::PickToApply | PatchMsg::ApplyFrom { .. } | PatchMsg::Inspected { .. } | PatchMsg::Apply(_) => {
+            apply::handle(st, m, now, fx)
+        }
     }
 }
 
-/// Applies the patch file at `path` to `workdir`, the repository the dialog was opened for, if
-/// that is still the active tab and no job is running.
-fn apply(st: &mut AppState, workdir: &std::path::Path, path: &std::path::Path, fx: &mut Vec<Effect>) {
-    if !st.workdir().is_some_and(|w| trellis_core::paths::same_spelling(&w, workdir)) {
-        st.log(false, format!("The patch was not applied: {} is no longer the active tab.", display_name(workdir)));
-        return;
-    }
-    // Command lines are Strings; a name that isn't valid Unicode can't be passed on.
-    let Some(text) = path.to_str() else {
-        st.log(false, format!("Trellis can't pass this file name to git: {}.", path.display()));
-        return;
-    };
-    if ops::busy(st, false) {
-        return;
-    }
-    // Also for a job waiting for the trust prompt; dropping it clears this.
-    if ops::start_job(st, JobSpec::new(APPLY_LABEL.into(), patch_ops::apply_cmds(text)), fx) != ops::Started::No {
-        st.patch_apply = Some(PendingApply { label: APPLY_LABEL.into(), name: display_name(path) });
-    }
-}
-
-/// The headline of the job that just ended, when it is the pending Apply patch job. Always
-/// clears the pending apply.
-pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<String> {
-    let pending = st.patch_apply.take()?;
-    if st.job.as_ref().is_none_or(|j| j.label != pending.label) {
+/// `oids` that are graph rows, oldest first, unless there are none or a merge is among them
+/// (said in the log).
+fn ordered(st: &mut AppState, oids: Vec<git2::Oid>) -> Option<Vec<git2::Oid>> {
+    let snap = st.snap.as_ref()?;
+    let ordered = crate::state::selection::in_graph_order(oids, snap, true);
+    if ordered.is_empty() {
         return None;
     }
-    let name = pending.name;
-    if ok {
-        return Some(format!("Applied {name} to the working tree."));
+    if let Some(why) = export_blocker(snap, &ordered) {
+        st.log(false, why);
+        return None;
     }
-    let why = patch_ops::failure_summary(output).unwrap_or_else(|| ops::last_line(output).to_owned());
-    Some(format!("{name} doesn't apply: {}. Nothing was changed.", why.trim_end_matches('.')))
+    Some(ordered)
+}
+
+/// The headline of the job that just ended, when it is a patch job (see `patch_apply.rs`).
+pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<String> {
+    apply::headline(st, ok, output)
 }

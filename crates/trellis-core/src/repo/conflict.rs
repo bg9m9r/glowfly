@@ -310,6 +310,10 @@ fn side_labels(repo: &Repository) -> SideLabels {
             let theirs = oid_in(&git_dir.join("REVERT_HEAD")).map(|o| format!("revert of {}", short(o))).unwrap_or_else(|| "theirs".into());
             SideLabels { operation: Operation::Revert, ours: head_name, theirs }
         }
+        ApplyMailbox => {
+            let theirs = crate::patch_ops::current_subject(git_dir).map(|s| format!("patch: {s}")).unwrap_or_else(|| "patch".into());
+            SideLabels { operation: Operation::Other, ours: head_name, theirs }
+        }
         _ => SideLabels { operation: Operation::Other, ours: head_name, theirs: "stash or patch".into() },
     }
 }

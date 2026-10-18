@@ -1,15 +1,26 @@
-//! Saving commits as a patch file and applying one: why an export is unavailable, the suggested
-//! file name, the result toast, the pending apply job's headline data and the palette entry.
-//! Pure.
+//! Patch files: why an export is unavailable, the suggested file name, the save toast, the
+//! pending apply job's headline data and the palette entries. The Apply patch dialog's form and
+//! texts are in `patch_apply.rs`, the Create patch dialog's (uncommitted changes) in
+//! `patch_changes.rs`. Pure.
 
+#[path = "patch_apply.rs"]
+pub mod apply;
+#[path = "patch_changes.rs"]
+pub mod changes;
+
+use super::AppState;
+use super::Selection;
 use super::palette_commands::{Entry, PaletteCommand, entry};
+use crate::patch::{ApplyHow, PatchMsg};
 use git2::Oid;
 use std::path::Path;
-use trellis_core::patch_ops::{self, ExportReport};
+use trellis_core::patch_ops::{self, SaveReport, WipScope};
 use trellis_core::repo::Snapshot;
 
-/// The job label of applying a patch.
+/// The job label of applying a patch's changes.
 pub const APPLY_LABEL: &str = "Apply patch";
+/// The job label of applying a patch as commits.
+pub const AM_LABEL: &str = "Apply patches";
 /// Why Create patch is unavailable for a selection with a merge commit.
 pub const PATCH_BLOCKED_MERGE: &str = "Merge commits can't be saved as a patch.";
 
@@ -31,8 +42,13 @@ pub fn display_name(path: &Path) -> String {
 }
 
 /// The toast after saving a patch into `dest`.
-pub fn export_done(dest: &Path, r: &ExportReport) -> String {
+pub fn export_done(dest: &Path, r: &SaveReport) -> String {
     let name = display_name(dest);
+    let r = match r {
+        SaveReport::Commits(r) => r,
+        SaveReport::Changes { files: 1 } => return format!("Saved the changes to {name} (1 file)"),
+        SaveReport::Changes { files } => return format!("Saved the changes to {name} ({files} files)"),
+    };
     let mut text = if r.written == 1 { format!("Saved the patch to {name}") } else { format!("Saved {} commits to {name}", r.written) };
     match r.skipped.len() {
         0 => {}
@@ -42,16 +58,49 @@ pub fn export_done(dest: &Path, r: &ExportReport) -> String {
     text
 }
 
-/// The running Apply patch job, for its headline.
+/// The running Apply patch or Apply patches job, for its headline.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PendingApply {
-    /// The job's label ([`APPLY_LABEL`]).
+    /// The job's label ([`APPLY_LABEL`] or [`AM_LABEL`]).
     pub label: String,
     /// The patch's file name.
     pub name: String,
+    pub how: ApplyHow,
+    /// Emailed commits in the file.
+    pub commits: usize,
 }
 
-/// The palette's Apply patch entry, offered whenever a repository is open.
-pub(super) fn palette_entries(out: &mut Vec<Entry>) {
+/// The palette's patch entries: Apply patch… whenever a repository is open, Create patch from
+/// the uncommitted changes while there are any, and Create or Copy a patch of the selected
+/// commit(s) unless a merge is among them.
+pub(super) fn palette_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     out.push(entry(PaletteCommand::ApplyPatch, "Apply patch…", "patch diff apply import mbox file changes working tree"));
+    if snap.is_dirty() {
+        out.push(entry(
+            PaletteCommand::Patch(PatchMsg::ChangesDialog { scope: WipScope::All, path: None }),
+            "Create patch from uncommitted changes…",
+            "patch diff export save uncommitted changes wip working tree",
+        ));
+    }
+    match &st.selection {
+        Selection::Commits(m) if m.export_blocked.is_none() => out.push(entry(
+            PaletteCommand::Patch(PatchMsg::Export(m.oids.clone())),
+            format!("Create patch from {} selected commits…", m.len()),
+            "patch diff export save format-patch selection",
+        )),
+        Selection::Commit(oid) if export_blocker(snap, &[*oid]).is_none() && snap.row_of.contains_key(oid) => {
+            let short = &oid.to_string()[..7];
+            out.push(entry(
+                PaletteCommand::Patch(PatchMsg::Export(vec![*oid])),
+                format!("Create patch from commit {short}…"),
+                "patch diff export save format-patch",
+            ));
+            out.push(entry(
+                PaletteCommand::Patch(PatchMsg::Copy(vec![*oid])),
+                format!("Copy patch of commit {short}"),
+                "patch diff clipboard",
+            ));
+        }
+        _ => {}
+    }
 }

@@ -168,6 +168,8 @@ pub enum PaletteCommand {
     ReviewTrust,
     /// Pick a patch file and apply it to the working tree.
     ApplyPatch,
+    /// A patch action (create or copy a patch).
+    Patch(crate::patch::PatchMsg),
     /// External editor actions (tools.rs).
     Tools(crate::tools::ToolsMsg),
     /// The logs (logs.rs).
@@ -321,7 +323,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(entry(C::FileHistory, "File history…", "find open file path log"));
         out.push(entry(C::Blame, "Blame file…", "find annotate author line who changed history"));
     }
-    super::patch::palette_entries(out);
+    super::patch::palette_entries(st, snap, out);
     palette_setup::setup_entries(out);
     palette_gitflow::gitflow_entries(st, snap, out);
     palette_issues::issue_entries(st, out);

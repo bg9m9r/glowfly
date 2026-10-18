@@ -1,8 +1,17 @@
 //! The New file and Rename file dialogs' form: the typed path, the last error and whether a
-//! request is running; what status says about a path being deleted, and the trash's name.
+//! request is running; what status says about a path being deleted, the trash's name and the
+//! file manager's show-in-folder label.
 
 /// The platform's name for where deleted files go.
 pub const TRASH: &str = if cfg!(windows) { "Recycle Bin" } else { "Trash" };
+/// The show-in-file-manager label for this platform.
+pub const SHOW_IN_FOLDER: &str = if cfg!(windows) {
+    "Show in Explorer"
+} else if cfg!(target_os = "macos") {
+    "Reveal in Finder"
+} else {
+    "Open containing folder"
+};
 
 /// A path field with the outcome of its last submission.
 #[derive(Clone, Debug, Default, PartialEq)]

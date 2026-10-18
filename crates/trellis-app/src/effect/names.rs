@@ -185,10 +185,17 @@ mod tests {
     fn effects_that_wait_on_the_user_are_not_timed() {
         let dir = PathBuf::from("repo");
         let oids = vec![git2::Oid::zero()];
-        let pick_save = PatchEffect::PickSave { workdir: dir.clone(), oids: oids.clone(), name: "a.patch".into() };
+        let what = trellis_core::patch_ops::PatchSource::Commits { oids: oids.clone(), paths: Vec::new() };
+        let pick_save = PatchEffect::PickSave { workdir: dir.clone(), what: what.clone(), name: "a.patch".into() };
         assert!(!Effect::Patch(pick_save).timed());
         assert!(!Effect::Patch(PatchEffect::PickOpen { workdir: dir.clone() }).timed());
-        assert!(Effect::Patch(PatchEffect::Export { workdir: dir.clone(), oids, dest: dir.join("a.patch") }).timed());
+        assert!(Effect::Patch(PatchEffect::Export { workdir: dir.clone(), what, dest: dir.join("a.patch") }).timed());
+        let inspect = PatchEffect::Inspect { workdir: dir.clone(), path: dir.join("a.patch") };
+        assert_eq!(inspect.name(), "inspect-patch");
+        assert!(Effect::Patch(inspect).timed());
+        let copy = PatchEffect::Copy { workdir: dir.clone(), oids };
+        assert_eq!(copy.name(), "copy-patch");
+        assert!(Effect::Patch(copy).timed());
         assert!(!Effect::Ssh(SshEffect::AddToAgent { ssh_add: "ssh-add".into(), key: dir.join("id") }).timed());
         assert!(Effect::Ssh(SshEffect::Agent { generation: 1 }).timed());
         assert!(Effect::Ssh(SshEffect::List { generation: 1 }).timed());

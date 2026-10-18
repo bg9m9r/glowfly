@@ -4,6 +4,7 @@
 
 use super::{AppState, Selection};
 use crate::msg::{BlameMsg, ConflictMsg, FilesMsg, HistoryMsg, Msg, RepoMsg, StageMsg, StashMsg, WorkFileMsg};
+use crate::patch::PatchMsg;
 use crate::tools::ToolsMsg;
 use trellis_core::repo::{Collision, FileEntry, Hazard, HunkOp, Snapshot};
 
@@ -38,6 +39,8 @@ pub fn target(msg: &Msg) -> Option<(&str, bool)> {
         Msg::Tools(ToolsMsg::OpenFile { path, .. }) => (path, false),
         // Stashing a file puts its HEAD version back on disk.
         Msg::Stash(StashMsg::PushDialog { path: Some(p), .. }) => (p, true),
+        Msg::Patch(PatchMsg::ChangesDialog { path: Some(p), .. }) => (p, false),
+        Msg::Patch(PatchMsg::ExportFiles { paths, .. }) => (paths.first()?, false),
         _ => return None,
     })
 }

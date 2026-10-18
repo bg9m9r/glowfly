@@ -461,6 +461,11 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Create patch… from one commit or a multi-selection in the graph menus (one mbox-style
     file, oldest first, binary-safe); Apply patch… from the palette to the working tree, checked
     first so nothing changes when it doesn't apply
+  - [x] Patches of uncommitted changes (all, staged or unstaged, chosen files, untracked files)
+    and of one file of a commit; Copy patch to the clipboard; Show in folder from the save toast;
+    an Apply patch dialog with a preview of the files, git apply options (index, three-way,
+    `.rej` files, reverse) or Apply as commits with git am, and an Applying patches banner
+    (Continue, Skip patch, Abort)
 - [x] **Conflict prediction**
   Local-only version: dry-run merge the branch against its target/upstream (`git merge-tree`)
   and warn about overlapping files before you merge or open a PR.
@@ -1266,18 +1271,22 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Local patches
 
-- Export the WIP (unstaged and/or staged changes) to a `.patch` file
-- Export selected files of a commit or the WIP to a `.patch` file (from the file menu)
-- Apply a patch as commits with `git am` (series, three-way fallback, continue, skip and abort,
-  conflicts in the conflict view)
-- Apply options: to the index as well, three-way fallback, partial apply with `.rej` files,
-  reverse apply
-- Create patch button in the multi-selection details panel, and a palette entry for the
-  selected commits
-- Copy a commit's patch to the clipboard instead of saving a file
-- Show in folder from the toast after saving a patch
-- Drop a `.patch` file on the window to apply it, and preview the files a patch touches before
-  applying
+- Drop a `.patch` file on the window to apply it
+- Say when a patch is already applied (a reverse check after a failed apply) instead of
+  reporting that it doesn't apply
+- Stash uncommitted changes before applying a patch and restore them afterwards
+- Choose several files of a commit for one patch (only one file from the row menu now)
+- Create a patch of one file from the rows comparing two commits
+- Keep a renamed file's rename in a one-file commit patch (include its old path)
+- git am options: keep carriage returns (`--keep-cr`) for CRLF content, Signed-off-by, and the
+  committer date
+- Remember the Apply dialog's last options
+- Undo for Apply as commits
+- Show the patch git am stopped on (`git am --show-current-patch`) from the banner
+- Palette entries for Continue / Skip patch / Abort while applying patches, and Apply patch /
+  Create patch in the menu bar's File menu
+- Include more than 1000 untracked files in a changes patch (one diff through a temporary index)
+- Copy a patch of uncommitted changes to the clipboard
 
 ### Conflict prediction
 

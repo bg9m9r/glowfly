@@ -225,6 +225,9 @@ pub struct Snapshot {
     /// Where an in-progress rebase is (step, stopped commit); None otherwise. Read by every full
     /// load.
     pub rebase: Option<crate::rebase::RebaseProgress>,
+    /// Where an in-progress `git am` stopped (patch, subject, conflicts); None otherwise. Read by
+    /// every full load.
+    pub am: Option<crate::patch_ops::AmProgress>,
     pub commits: Vec<CommitInfo>,
     pub row_of: HashMap<Oid, usize>,
     pub truncated: bool,

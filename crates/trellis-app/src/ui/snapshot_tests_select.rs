@@ -123,6 +123,12 @@ fn graph_multi_menu() {
     let exported = h.state().1.iter().find_map(|m| if let Msg::Patch(PatchMsg::Export(o)) = m { Some(o.clone()) } else { None });
     assert_eq!(exported, Some(vec![search, login]));
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)))), "a right-click does not change the selection");
+    // Or copies it.
+    click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
+    h.state_mut().1.clear();
+    h.get_by_label("Copy patch of 2 commits").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Patch(PatchMsg::Copy(o)) if *o == [search, login])));
 
     // Any other row gets the single-commit menu.
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
@@ -176,6 +182,11 @@ fn graph_commit_menu() {
     h.run();
     let exported = h.state().1.iter().find_map(|m| if let Msg::Patch(PatchMsg::Export(o)) = m { Some(o.clone()) } else { None });
     assert_eq!(exported, Some(vec![fix]));
+    click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
+    h.state_mut().1.clear();
+    h.get_by_label("Copy patch").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Patch(PatchMsg::Copy(o)) if *o == [fix])));
 
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
     h.get_by_label("Copy link to this commit").click();
@@ -186,6 +197,7 @@ fn graph_commit_menu() {
     // A merge commit has no patch of its own.
     click(&mut h, pos2(700.0, row_y(merge_row)), PointerButton::Secondary);
     assert!(h.get_by_label("Create patch…").is_disabled());
+    assert!(h.get_by_label("Copy patch").is_disabled());
     // History edits need a linear run up to HEAD, which is a merge here.
     assert!(h.get_by_label("Squash into parent").is_disabled());
     click(&mut h, pos2(700.0, row_y(root_row)), PointerButton::Secondary);

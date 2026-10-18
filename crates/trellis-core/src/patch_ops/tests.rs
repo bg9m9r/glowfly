@@ -65,12 +65,28 @@ fn file_name_cuts_long_subjects_on_a_char_boundary() {
 #[test]
 fn format_patch_cmd_shape() {
     let oid = Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
-    assert_eq!(format_patch_cmd(oid), ["format-patch", "-1", "--stdout", "--no-color", "0123456789abcdef0123456789abcdef01234567"]);
+    let sha = "0123456789abcdef0123456789abcdef01234567";
+    let head = ["--literal-pathspecs", "format-patch", "-1", "--stdout", "--no-color", "--src-prefix=a/", "--dst-prefix=b/", sha];
+    assert_eq!(format_patch_cmd(oid, &[]), head);
+    let paths = vec!["a b.txt".to_owned(), "-x".to_owned()];
+    let mut with: Vec<&str> = head.to_vec();
+    with.extend(["--", "a b.txt", "-x"]);
+    assert_eq!(format_patch_cmd(oid, &paths), with);
 }
 
 #[test]
 fn apply_cmds_shape() {
-    assert_eq!(apply_cmds("C:/p/x y.patch"), [args(&["apply", "--check", "C:/p/x y.patch"]), args(&["apply", "C:/p/x y.patch"])]);
+    let p = "/p/x y.patch";
+    let o = |index, on_fail, reverse| ApplyOptions { index, on_fail, reverse };
+    assert_eq!(apply_cmds(p, &ApplyOptions::default()), [args(&["apply", "--check", p]), args(&["apply", p])]);
+    assert_eq!(
+        apply_cmds(p, &o(true, OnFail::Refuse, true)),
+        [args(&["apply", "--check", "--index", "-R", p]), args(&["apply", "--index", "-R", p])]
+    );
+    assert_eq!(apply_cmds(p, &o(false, OnFail::ThreeWay, false)), [args(&["apply", "--3way", p])]);
+    assert_eq!(apply_cmds(p, &o(true, OnFail::ThreeWay, true)), [args(&["apply", "--3way", "-R", p])], "--3way implies the index");
+    assert_eq!(apply_cmds(p, &o(false, OnFail::Reject, false)), [args(&["apply", "--reject", p])]);
+    assert_eq!(apply_cmds(p, &o(true, OnFail::Reject, true)), [args(&["apply", "--reject", "--index", "-R", p])]);
 }
 
 #[test]
@@ -145,7 +161,7 @@ fn export_fails_on_bad_destination() {
 
 /// What `git apply --check` (the first of `apply_cmds`) says about `patch` in `dir`.
 fn check(dir: &Path, patch: &Path) -> Vec<ApplyProblem> {
-    let out = gitcli::output(dir, &apply_cmds(&patch.display().to_string())[0], "", &[], None);
+    let out = gitcli::output(dir, &apply_cmds(&patch.display().to_string(), &ApplyOptions::default())[0], "", &[], None);
     assert!(!out.ok, "the check should fail: {out:?}");
     apply_problems(&out.stderr)
 }
@@ -227,4 +243,118 @@ fn apply_problems_parses_job_output() {
     );
     assert_eq!(failure_summary("$ git apply --check p\nwarning: something"), None);
     assert_eq!(failure_summary(""), None);
+}
+
+#[test]
+fn unstaged_problem_from_does_not_match_index() {
+    assert_eq!(apply_problems("error: src/d.txt: does not match index"), [ApplyProblem::Unstaged { file: "src/d.txt".into() }]);
+    assert_eq!(
+        failure_summary("error: d.txt: does not match index").as_deref(),
+        Some("d.txt has unstaged changes; stage them or apply to the working tree only")
+    );
+}
+
+#[test]
+fn reject_and_three_way_output_parsing() {
+    let out = "Checking patch a.txt...\nApplying patch a.txt with 1 reject...\nRejected hunk #2.\nApplying patch b c.txt with 2 rejects...";
+    assert_eq!(rejects(out), [("a.txt".to_owned(), 1), ("b c.txt".to_owned(), 2)]);
+    assert_eq!(rej_name("dir/a.txt"), "dir/a.txt.rej");
+    let out = "Applied patch to 'a.txt' with conflicts.\nApplied patch to 'b.txt' cleanly.\nU a.txt\nU c.txt";
+    assert_eq!(three_way_conflicts(out), ["a.txt", "c.txt"]);
+    assert!(three_way_conflicts("Applied patch to 'b.txt' cleanly.").is_empty());
+}
+
+/// Runs `apply_cmds(patch, o)` in `dir` the way a job does (stopping at the first failure);
+/// returns whether all succeeded and everything they printed.
+fn apply_with(dir: &Path, patch: &Path, o: ApplyOptions) -> (bool, String) {
+    let mut all = String::new();
+    for cmd in apply_cmds(&patch.display().to_string(), &o) {
+        let out = gitcli::output(dir, &cmd, "", &[], None);
+        all.push_str(&out.combined());
+        all.push('\n');
+        if !out.ok {
+            return (false, all);
+        }
+    }
+    (true, all)
+}
+
+/// The status flags of `path` in `dir`.
+fn status(dir: &Path, path: &str) -> git2::Status {
+    git2::Repository::open(dir).unwrap().status_file(Path::new(path)).unwrap()
+}
+
+#[test]
+fn apply_three_way_leaves_conflicts() {
+    let dir = scratch_repo("patch-apply-3way");
+    write(&dir, "a.txt", "one\n");
+    let c1 = commit(&dir, "base");
+    write(&dir, "a.txt", "one\ntwo\n");
+    let p = patch_of(&dir, commit(&dir, "add two"), "3way.patch");
+    git(&dir, &["reset", "-q", "--hard", &c1.to_string()]);
+    write(&dir, "a.txt", "one\nmine\n");
+    git(&dir, &["commit", "-q", "-am", "mine"]);
+
+    let (ok, out) = apply_with(&dir, &p, ApplyOptions { on_fail: OnFail::ThreeWay, ..Default::default() });
+    assert!(!ok, "conflicts make git apply fail: {out}");
+    assert_eq!(three_way_conflicts(&out), ["a.txt"], "{out}");
+    assert!(status(&dir, "a.txt").contains(git2::Status::CONFLICTED));
+    let _ = std::fs::remove_file(p);
+    cleanup(&dir);
+}
+
+#[test]
+fn apply_reject_saves_the_hunk_that_does_not_fit() {
+    let dir = scratch_repo("patch-apply-reject");
+    let lines: Vec<String> = (1..=20).map(|i| format!("line {i}\n")).collect();
+    write(&dir, "a.txt", &lines.concat());
+    let c1 = commit(&dir, "base");
+    let mut edited = lines.clone();
+    edited[1] = "line 2 changed\n".into();
+    edited[18] = "line 19 changed\n".into();
+    write(&dir, "a.txt", &edited.concat());
+    let p = patch_of(&dir, commit(&dir, "two hunks"), "reject.patch");
+    git(&dir, &["reset", "-q", "--hard", &c1.to_string()]);
+    let mut mine = lines.clone();
+    mine[18] = "line 19 mine\n".into();
+    write(&dir, "a.txt", &mine.concat());
+
+    let (ok, out) = apply_with(&dir, &p, ApplyOptions { on_fail: OnFail::Reject, ..Default::default() });
+    assert!(!ok, "{out}");
+    assert_eq!(rejects(&out), [("a.txt".to_owned(), 1)], "{out}");
+    assert!(dir.join(rej_name("a.txt")).exists());
+    let text = std::fs::read_to_string(dir.join("a.txt")).unwrap();
+    assert!(text.contains("line 2 changed") && text.contains("line 19 mine"), "{text}");
+    let _ = std::fs::remove_file(p);
+    cleanup(&dir);
+}
+
+#[test]
+fn apply_reverse_and_index() {
+    let dir = scratch_repo("patch-apply-reverse");
+    write(&dir, "a.txt", "one\n");
+    let c1 = commit(&dir, "base");
+    write(&dir, "a.txt", "one\ntwo\n");
+    let p = patch_of(&dir, commit(&dir, "add two"), "rev.patch");
+
+    // Taking the commit's change back out of the working tree.
+    let (ok, out) = apply_with(&dir, &p, ApplyOptions { reverse: true, ..Default::default() });
+    assert!(ok, "{out}");
+    assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "one\n");
+    assert_eq!(status(&dir, "a.txt"), git2::Status::WT_MODIFIED);
+
+    // Applied to the index as well, the change is staged.
+    git(&dir, &["reset", "-q", "--hard", &c1.to_string()]);
+    let (ok, out) = apply_with(&dir, &p, ApplyOptions { index: true, ..Default::default() });
+    assert!(ok, "{out}");
+    assert_eq!(status(&dir, "a.txt"), git2::Status::INDEX_MODIFIED);
+
+    // With --index, a working copy that differs from the index is refused.
+    git(&dir, &["reset", "-q", "--hard", &c1.to_string()]);
+    write(&dir, "a.txt", "one\n\n");
+    let (ok, out) = apply_with(&dir, &p, ApplyOptions { index: true, ..Default::default() });
+    assert!(!ok);
+    assert!(apply_problems(&out).contains(&ApplyProblem::Unstaged { file: "a.txt".into() }), "{out}");
+    let _ = std::fs::remove_file(p);
+    cleanup(&dir);
 }

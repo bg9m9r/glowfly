@@ -2,9 +2,10 @@
 //! rows, or the rows comparing two selected commits), open it in its default program, the
 //! external editor or the external diff tool (or resolve it in the merge tool), show it in the
 //! file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
-//! for files in the working tree, track them in Git LFS, and the Stash dialog's entries (the
-//! Staged Files header's menu, Stash this file… on working-tree rows). Menu bodies only, each drawing into the open menu's `Ui`, so tests can render them without
-//! opening a popup. `file_buttons` reuses the labels, reasons and restore message for the same
+//! for files in the working tree, track them in Git LFS, the Stash dialog's entries (the
+//! Staged Files header's menu, Stash this file… on working-tree rows) and the Create patch
+//! entries (a commit row's file, a working-tree row, the staged changes). Menu bodies only, each
+//! drawing into the open menu's `Ui`, so tests can render them without opening a popup. `file_buttons` reuses the labels, reasons and restore message for the same
 //! actions as header buttons.
 
 use super::common::{menu_item, menu_item_if, short};
@@ -16,6 +17,7 @@ use crate::msg::Msg;
 use crate::msg::StageMsg;
 use crate::msg::StashMsg;
 use crate::msg::WorkFileMsg;
+use crate::patch::PatchMsg;
 use crate::state::files::folder_prefill;
 pub(super) use crate::state::lfs::TRACK_IN_LFS;
 use crate::state::lfs::TrackItem;
@@ -26,17 +28,11 @@ pub(super) use crate::state::tools::OPEN_IN_EDITOR;
 use crate::tools::ToolsMsg;
 use eframe::egui;
 use git2::Oid;
+use trellis_core::patch_ops::WipScope;
 use trellis_core::repo::{DiffTarget, FileEntry, Snapshot};
 use trellis_core::stash_ops::StashScope;
 
-/// The show-in-file-manager label for this platform.
-pub(super) const SHOW_IN_FOLDER: &str = if cfg!(windows) {
-    "Show in Explorer"
-} else if cfg!(target_os = "macos") {
-    "Reveal in Finder"
-} else {
-    "Open containing folder"
-};
+pub(super) use crate::state::files::SHOW_IN_FOLDER;
 pub(super) const OPEN_DEFAULT: &str = "Open with default app";
 pub(super) const FILE_HISTORY: &str = "File history";
 pub(super) const BLAME: &str = "Blame";
@@ -49,6 +45,8 @@ pub(super) const DELETE: &str = "Delete…";
 pub(super) const UNSTAGE_DELETE: &str = "Unstage and delete…";
 pub(super) const STASH_STAGED: &str = "Stash staged changes…";
 pub(super) const STASH_FILE: &str = "Stash this file…";
+pub(super) const PATCH_FILE: &str = "Create patch from this file…";
+pub(super) const PATCH_STAGED: &str = "Create patch from staged changes…";
 
 /// Where a commit file row's change comes from.
 #[derive(Clone, Copy)]
@@ -157,9 +155,10 @@ fn lfs_submenu(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
 }
 
 /// Extra items for a commit's file row, or a row comparing two commits: separator, restore,
-/// open items (disabled unless `in_workdir`; Open in external diff tool disabled with
+/// (one commit's row) Create patch from this file… (disabled with `patch_blocked`), open items (disabled unless `in_workdir`; Open in external diff tool disabled with
 /// `diff_blocked`), separator and new file in this folder, then (only `in_workdir`) the Track
 /// in Git LFS submenu with `lfs`.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn commit_file_items(
     ui: &mut egui::Ui,
     msgs: &mut Vec<Msg>,
@@ -168,11 +167,14 @@ pub(super) fn commit_file_items(
     in_workdir: bool,
     lfs: &[TrackItem],
     diff_blocked: Option<&str>,
+    patch_blocked: Option<&str>,
 ) {
     ui.separator();
     let target = match src {
         RowSource::Commit(oid) => {
             restore_item(ui, msgs, oid, &f.path, f.status);
+            let m = Msg::Patch(PatchMsg::ExportFiles { oid, paths: vec![f.path.clone()] });
+            menu_item_if(msgs, ui, PATCH_FILE, patch_blocked, m);
             DiffTarget::Commit(oid, f.path.clone())
         }
         RowSource::Between { older, newer } => {
@@ -219,12 +221,26 @@ pub(super) fn wip_file_items(
 }
 
 /// The Staged Files header's menu: open the Stash dialog on the staged changes (disabled while
-/// nothing is staged or a file is conflicted), and unstage everything.
+/// nothing is staged or a file is conflicted), the Create patch dialog on them, and unstage
+/// everything.
 pub(super) fn staged_header_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, snap: &Snapshot) {
     let blocked = crate::state::stashes::push_blocked(snap, StashScope::Staged, &[]);
     menu_item_if(msgs, ui, STASH_STAGED, blocked, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Staged, path: None }));
     let nothing = snap.staged.is_empty().then_some("Nothing is staged");
+    let m = Msg::Patch(PatchMsg::ChangesDialog { scope: WipScope::Staged, path: None });
+    menu_item_if(msgs, ui, PATCH_STAGED, nothing, m);
     menu_item_if(msgs, ui, "Unstage all", nothing, Msg::Stage(StageMsg::UnstageAll));
+}
+
+/// Opens the Create patch dialog on this working-tree row alone (its staged or unstaged
+/// changes); none for a conflicted row, disabled for a row Trellis can't name safely.
+pub(super) fn patch_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, f: &FileEntry, staged: bool) {
+    if f.status == '!' {
+        return;
+    }
+    let scope = if staged { WipScope::Staged } else { WipScope::Unstaged };
+    let m = Msg::Patch(PatchMsg::ChangesDialog { scope, path: Some(f.path.clone()) });
+    menu_item_if(msgs, ui, PATCH_FILE, f.hazard.as_ref().map(|_| "Trellis can't name this path to git safely"), m);
 }
 
 /// Opens the Stash dialog on Selected files with only `f` ticked; disabled while any file is

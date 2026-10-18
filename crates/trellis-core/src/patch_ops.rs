@@ -1,8 +1,22 @@
-//! Patch files: saving commits as one mbox-style patch with git format-patch, the command lines
-//! that check and apply a patch to the working tree, and reading git apply's errors.
+//! Patch files: saving commits (whole, or limited to some paths) as one mbox-style patch with
+//! git format-patch, saving uncommitted changes with git diff (`wip.rs`), reading what a patch
+//! file holds (`inspect.rs`), the command lines that apply one to the working tree with the
+//! chosen options and reading git apply's errors (`apply.rs`), and applying a series as commits
+//! with git am (`am.rs`).
 //!
 //! The commands run through `gitcli`, so the user's git config applies and messages are
-//! untranslated (the error parsing below relies on that).
+//! untranslated (the error parsing relies on that).
+
+mod am;
+mod apply;
+mod inspect;
+mod wip;
+
+pub use am::{AM_ABORT, AM_CONTINUE, AM_SKIP, AmProgress, AmStop, am_cmd, am_stop};
+pub(crate) use am::{current_subject, progress_of};
+pub use apply::{ApplyOptions, ApplyProblem, OnFail, apply_cmds, apply_problems, failure_summary, rej_name, rejects, three_way_conflicts};
+pub use inspect::{MAX_INSPECT, PatchSummary, inspect, summarize};
+pub use wip::{ChangesRequest, EMPTY_TREE, MAX_UNTRACKED, NO_CHANGES, WipScope, diff_cmd, untracked_cmd};
 
 use crate::error::{Error, Result};
 use crate::gitcli::{self, args};
@@ -10,11 +24,19 @@ use git2::Oid;
 use std::path::Path;
 use std::time::Duration;
 
-/// How long `git format-patch` may take for one commit.
+/// How long `git format-patch` (or one `git diff`) may take.
 pub const EXPORT_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Why an export of commits that change nothing fails.
 pub const NOTHING_TO_SAVE: &str = "None of the selected commits changes any file, so there is no patch to save.";
+/// Why copying the patch of commits that change nothing fails.
+pub const NOTHING_TO_COPY: &str = "None of the selected commits changes any file, so there is no patch to copy.";
+/// Why saving one file of a commit fails when the commit leaves that file alone.
+pub const FILE_UNCHANGED: &str = "The commit doesn't change that file, so there is no patch to save.";
+/// The largest patch put on the clipboard.
+pub const MAX_COPY: usize = 4 << 20;
+pub const TOO_LARGE_TO_COPY: &str = "The patch is larger than 4 MB; save it to a file instead.";
+pub const NOT_TEXT: &str = "The patch isn't UTF-8 text; save it to a file instead.";
 
 /// The most characters of a commit subject kept in a suggested file name.
 const MAX_SLUG: usize = 50;
@@ -26,10 +48,34 @@ pub fn file_name(subject: &str, count: usize) -> String {
     if count > 1 { format!("{slug}-and-{}-more.patch", count - 1) } else { format!("{slug}.patch") }
 }
 
+/// The suggested file name for a patch of `paths` of the commit with `subject`:
+/// `<subject>-<file>.patch` for one path (cut to [`MAX_SLUG`] characters), else
+/// `<subject>-<n>-files.patch`.
+pub fn files_file_name(subject: &str, paths: &[String]) -> String {
+    match paths {
+        [one] => format!("{}.patch", cut(&format!("{}-{}", slug(subject), slug(basename(one))))),
+        _ => format!("{}-{}-files.patch", slug(subject), paths.len()),
+    }
+}
+
+/// The suggested file name for a patch of uncommitted changes: `<file>-changes.patch` for one
+/// path, `<branch>-changes.patch` on a branch, else `uncommitted-changes.patch`.
+pub fn changes_file_name(branch: Option<&str>, paths: &[String]) -> String {
+    match (paths, branch) {
+        ([one], _) => format!("{}-changes.patch", slug(basename(one))),
+        (_, Some(b)) => format!("{}-changes.patch", slug(b)),
+        _ => "uncommitted-changes.patch".to_owned(),
+    }
+}
+
+fn basename(path: &str) -> &str {
+    path.rsplit('/').next().unwrap_or(path)
+}
+
 /// `subject` as a file name: letters, digits and '_' kept, every other run of characters one
 /// '-', no '-' or '.' at either end, at most [`MAX_SLUG`] characters. Never empty, and never a
 /// name Windows reserves for a device.
-fn slug(subject: &str) -> String {
+pub(crate) fn slug(subject: &str) -> String {
     let mut out = String::new();
     for c in subject.chars() {
         if c.is_alphanumeric() || c == '_' {
@@ -38,9 +84,7 @@ fn slug(subject: &str) -> String {
             out.push('-');
         }
     }
-    let trim = |s: &str| s.trim_matches(['-', '.']).to_owned();
-    let cut: String = trim(&out).chars().take(MAX_SLUG).collect();
-    let slug = trim(&cut);
+    let slug = cut(&out);
     if slug.is_empty() {
         "commit".to_owned()
     } else if crate::names::win_name_problem(&slug).is_some() {
@@ -51,14 +95,48 @@ fn slug(subject: &str) -> String {
     }
 }
 
-/// The command that prints commit `oid` as a patch on stdout (binary diffs included, which
-/// format-patch does by default). For a commit that changes no file it prints the message
-/// alone, so [`export`] leaves such commits out before running it.
-pub fn format_patch_cmd(oid: Oid) -> Vec<String> {
-    args(&["format-patch", "-1", "--stdout", "--no-color", &oid.to_string()])
+/// `s` without '-' or '.' at either end, cut to [`MAX_SLUG`] characters (on a char boundary).
+fn cut(s: &str) -> String {
+    let trim = |s: &str| s.trim_matches(['-', '.']).to_owned();
+    let cut: String = trim(s).chars().take(MAX_SLUG).collect();
+    trim(&cut)
 }
 
-/// What an export wrote.
+/// The command that prints commit `oid` as a patch on stdout (binary diffs included, which
+/// format-patch does by default), limited to `paths` when there are any. For a commit that
+/// changes no file it prints the message alone, so such commits are left out before running
+/// it. The explicit prefixes keep a `diff.noprefix` from making a patch git apply rejects.
+pub fn format_patch_cmd(oid: Oid, paths: &[String]) -> Vec<String> {
+    let sha = oid.to_string();
+    let mut cmd =
+        args(&["--literal-pathspecs", "format-patch", "-1", "--stdout", "--no-color", "--src-prefix=a/", "--dst-prefix=b/", &sha]);
+    if !paths.is_empty() {
+        cmd.push("--".into());
+        cmd.extend(paths.iter().cloned());
+    }
+    cmd
+}
+
+/// What a patch file is made from.
+#[derive(Clone, Debug, PartialEq)]
+pub enum PatchSource {
+    /// Commits (oldest first); `paths` empty means the whole of each commit.
+    Commits { oids: Vec<Oid>, paths: Vec<String> },
+    /// Uncommitted changes.
+    Changes(ChangesRequest),
+}
+
+/// What a save wrote.
+#[derive(Clone, Debug, PartialEq)]
+pub enum SaveReport {
+    Commits(ExportReport),
+    /// Uncommitted changes to `files` files.
+    Changes {
+        files: usize,
+    },
+}
+
+/// What an export of commits wrote.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExportReport {
     /// Commits in the file.
@@ -67,20 +145,75 @@ pub struct ExportReport {
     pub skipped: Vec<Oid>,
 }
 
-/// Saves `oids` (oldest first) as one patch file at `dest`, written atomically: each commit's
-/// `git format-patch` output in turn, as raw bytes, so any text encoding and binary diffs
-/// survive. Both `git apply` and `git am` read the result. Commits that change nothing (their
-/// tree is their parent's) are left out; when that is all of them, nothing is written.
+/// The bytes of the patch `src` describes, and what they hold.
+pub fn build(workdir: &Path, src: &PatchSource) -> Result<(Vec<u8>, SaveReport)> {
+    match src {
+        PatchSource::Commits { oids, paths } => {
+            let (bytes, report) = commit_parts(workdir, oids, paths)?;
+            if report.written == 0 {
+                return Err(Error::Other(NOTHING_TO_SAVE.to_owned()));
+            }
+            Ok((bytes, SaveReport::Commits(report)))
+        }
+        PatchSource::Changes(req) => {
+            let (bytes, files) = wip::build_changes(workdir, req)?;
+            Ok((bytes, SaveReport::Changes { files }))
+        }
+    }
+}
+
+/// Saves the patch `src` describes at `dest`, written atomically; nothing is written when it
+/// can't be built.
+pub fn save(workdir: &Path, src: &PatchSource, dest: &Path) -> Result<SaveReport> {
+    let (bytes, report) = build(workdir, src)?;
+    crate::persist::atomic_write(dest, &bytes)?;
+    Ok(report)
+}
+
+/// Saves `oids` (oldest first) as one patch file at `dest`, whole commits.
 pub fn export(workdir: &Path, oids: &[Oid], dest: &Path) -> Result<ExportReport> {
+    match save(workdir, &PatchSource::Commits { oids: oids.to_vec(), paths: Vec::new() }, dest)? {
+        SaveReport::Commits(r) => Ok(r),
+        SaveReport::Changes { .. } => unreachable!("a commit export reports commits"),
+    }
+}
+
+/// The patch of `oids` (oldest first) as text for the clipboard, refused when it is larger
+/// than [`MAX_COPY`] or isn't UTF-8.
+pub fn patch_text(workdir: &Path, oids: &[Oid]) -> Result<(String, ExportReport)> {
+    let (bytes, report) = commit_parts(workdir, oids, &[])?;
+    if report.written == 0 {
+        return Err(Error::Other(NOTHING_TO_COPY.to_owned()));
+    }
+    if !fits_clipboard(bytes.len()) {
+        return Err(Error::Other(TOO_LARGE_TO_COPY.to_owned()));
+    }
+    let text = String::from_utf8(bytes).map_err(|_| Error::Other(NOT_TEXT.to_owned()))?;
+    Ok((text, report))
+}
+
+/// Whether a patch of `len` bytes may go on the clipboard.
+fn fits_clipboard(len: usize) -> bool {
+    len <= MAX_COPY
+}
+
+/// Each commit's `git format-patch` output in turn (limited to `paths` when there are any), as
+/// raw bytes, so any text encoding and binary diffs survive. Both `git apply` and `git am` read
+/// the result. Commits that change nothing (their tree is their parent's) are left out; with
+/// `paths`, a commit that leaves them all alone is an error ([`FILE_UNCHANGED`]).
+fn commit_parts(workdir: &Path, oids: &[Oid], paths: &[String]) -> Result<(Vec<u8>, ExportReport)> {
     let repo = git2::Repository::open(workdir)?;
     let mut bytes = Vec::new();
     let mut report = ExportReport::default();
     for &oid in oids {
+        if !paths.is_empty() && !changes_paths(&repo, oid, paths)? {
+            return Err(Error::Other(FILE_UNCHANGED.to_owned()));
+        }
         if changes_nothing(&repo, oid)? {
             report.skipped.push(oid);
             continue;
         }
-        let (out, part) = gitcli::output_bytes(workdir, &format_patch_cmd(oid), gitcli::NO_PROMPTS, Some(EXPORT_TIMEOUT));
+        let (out, part) = gitcli::output_bytes(workdir, &format_patch_cmd(oid, paths), gitcli::NO_PROMPTS, Some(EXPORT_TIMEOUT));
         if !out.ok {
             let short = &oid.to_string()[..7];
             return Err(Error::Other(format!("git format-patch failed for {short}: {}", out.stderr.trim())));
@@ -90,6 +223,10 @@ pub fn export(workdir: &Path, oids: &[Oid], dest: &Path) -> Result<ExportReport>
             report.skipped.push(oid);
             continue;
         }
+        // With paths, git's walk could stop at an older commit that touches them instead.
+        if !paths.is_empty() && (!part.starts_with(format!("From {oid} ").as_bytes()) || !has_diff(&part)) {
+            return Err(Error::Other(FILE_UNCHANGED.to_owned()));
+        }
         // Each part starts its own "From <sha>" line, which must begin a line.
         if bytes.last().is_some_and(|b| *b != b'\n') {
             bytes.push(b'\n');
@@ -97,11 +234,13 @@ pub fn export(workdir: &Path, oids: &[Oid], dest: &Path) -> Result<ExportReport>
         bytes.extend_from_slice(&part);
         report.written += 1;
     }
-    if report.written == 0 {
-        return Err(Error::Other(NOTHING_TO_SAVE.to_owned()));
-    }
-    crate::persist::atomic_write(dest, &bytes)?;
-    Ok(report)
+    Ok((bytes, report))
+}
+
+/// Whether `part` holds a `diff --git` line.
+fn has_diff(part: &[u8]) -> bool {
+    const LINE: &[u8] = b"\ndiff --git ";
+    part.windows(LINE.len()).any(|w| w == LINE)
 }
 
 /// Whether commit `oid` leaves its first parent's tree as it is (a root commit: has no files).
@@ -113,100 +252,24 @@ fn changes_nothing(repo: &git2::Repository, oid: Oid) -> Result<bool> {
     })
 }
 
-/// The commands that apply the patch file at `patch` to the working tree (not the index):
-/// a check first, so nothing is written when any part doesn't apply. `git apply` without
-/// `--reject` is all-or-nothing anyway; the check makes the failure explicit.
-pub fn apply_cmds(patch: &str) -> Vec<Vec<String>> {
-    vec![args(&["apply", "--check", patch]), args(&["apply", patch])]
-}
-
-/// One reason `git apply` refused a patch.
-#[derive(Clone, Debug, PartialEq)]
-pub enum ApplyProblem {
-    /// The file's lines around `line` no longer match a hunk.
-    Hunk { file: String, line: u32 },
-    /// The file doesn't match the patch (git's summary after the hunk problems).
-    Mismatch { file: String },
-    /// The patch changes a file the working tree doesn't have.
-    Missing { file: String },
-    /// The patch creates a file that already exists.
-    Exists { file: String },
-    /// The input holds no diff at all (empty, or not a patch).
-    NoPatch,
-    /// The patch file is malformed at `line`.
-    Corrupt { line: u32 },
-    /// Any other error, as git wrote it.
-    Other(String),
-}
-
-impl ApplyProblem {
-    /// A phrase for a sentence such as "x.patch doesn't apply: <phrase>."
-    pub fn describe(&self) -> String {
-        match self {
-            ApplyProblem::Hunk { file, line } => format!("{file} has changed where the hunk at line {line} goes"),
-            ApplyProblem::Mismatch { file } => format!("{file} doesn't match the patch"),
-            ApplyProblem::Missing { file } => format!("{file} isn't in the working tree"),
-            ApplyProblem::Exists { file } => format!("{file} already exists"),
-            ApplyProblem::NoPatch => "the file holds no changes git can apply".to_owned(),
-            ApplyProblem::Corrupt { line } => format!("the patch is damaged at line {line}"),
-            ApplyProblem::Other(text) => text.clone(),
-        }
+/// Whether commit `oid` changes any of `paths` (taken literally) against its first parent.
+fn changes_paths(repo: &git2::Repository, oid: Oid, paths: &[String]) -> Result<bool> {
+    let commit = repo.find_commit(oid)?;
+    let parent = match commit.parent_ids().next() {
+        Some(p) => Some(repo.find_commit(p)?.tree()?),
+        None => None,
+    };
+    let mut opts = git2::DiffOptions::new();
+    opts.disable_pathspec_match(true);
+    for p in paths {
+        opts.pathspec(p);
     }
-}
-
-/// The problems in `git apply`'s output, in order and without duplicates: only its `error:`
-/// lines are read (command echoes and warnings are skipped). A file's "patch does not apply" is
-/// dropped when a hunk problem already names that file.
-pub fn apply_problems(output: &str) -> Vec<ApplyProblem> {
-    let mut found: Vec<ApplyProblem> = Vec::new();
-    for problem in output.lines().filter_map(|l| l.trim_end().strip_prefix("error: ")).map(parse_problem) {
-        if !found.contains(&problem) {
-            found.push(problem);
-        }
-    }
-    let hunk_files: Vec<String> =
-        found.iter().filter_map(|p| if let ApplyProblem::Hunk { file, .. } = p { Some(file.clone()) } else { None }).collect();
-    found.retain(|p| !matches!(p, ApplyProblem::Mismatch { file } if hunk_files.contains(file)));
-    found
-}
-
-/// One `error:` line's text (after the prefix) as a problem.
-fn parse_problem(text: &str) -> ApplyProblem {
-    let other = || ApplyProblem::Other(text.to_owned());
-    if let Some(rest) = text.strip_prefix("patch failed: ") {
-        return match rest.rsplit_once(':').map(|(f, l)| (f, l.trim().parse::<u32>())) {
-            Some((file, Ok(line))) => ApplyProblem::Hunk { file: file.to_owned(), line },
-            _ => other(),
-        };
-    }
-    if let Some(file) = text.strip_suffix(": patch does not apply") {
-        return ApplyProblem::Mismatch { file: file.to_owned() };
-    }
-    if let Some(file) = text.strip_suffix(": No such file or directory") {
-        return ApplyProblem::Missing { file: file.to_owned() };
-    }
-    if let Some(file) = text.strip_suffix(": already exists in working directory") {
-        return ApplyProblem::Exists { file: file.to_owned() };
-    }
-    if text.starts_with("No valid patches in input") {
-        return ApplyProblem::NoPatch;
-    }
-    if let Some(line) = text.strip_prefix("corrupt patch at line ").and_then(|l| l.trim().parse().ok()) {
-        return ApplyProblem::Corrupt { line };
-    }
-    other()
-}
-
-/// The first problem in `output`, plus how many more there are; None when it has no `error:`
-/// line.
-pub fn failure_summary(output: &str) -> Option<String> {
-    let problems = apply_problems(output);
-    let first = problems.first()?.describe();
-    Some(match problems.len() - 1 {
-        0 => first,
-        more => format!("{first} (and {more} more; see the log)"),
-    })
+    let diff = repo.diff_tree_to_tree(parent.as_ref(), Some(&commit.tree()?), Some(&mut opts))?;
+    Ok(diff.deltas().len() > 0)
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod files_tests;

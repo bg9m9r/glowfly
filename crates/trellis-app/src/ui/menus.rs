@@ -56,6 +56,11 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mu
         msgs.push(Msg::Patch(PatchMsg::Export(vec![oid])));
         ui.close_menu();
     }
+    let copy = ui.add_enabled(c.parents.len() < 2, egui::Button::new("Copy patch")).on_disabled_hover_text(PATCH_BLOCKED_MERGE);
+    if copy.clicked() {
+        msgs.push(Msg::Patch(PatchMsg::Copy(vec![oid])));
+        ui.close_menu();
+    }
     menu_item(msgs, ui, "Copy commit SHA", Msg::Copy(sha.clone()));
     menu_item(msgs, ui, "Copy commit message", Msg::Copy(c.summary.clone()));
     menu_item(msgs, ui, "Copy link to this commit", Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Commit(oid))));
@@ -67,7 +72,15 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, snap: &Snapshot,
     ui.separator();
     let picked = cherry_pick_button(ui, m, msgs);
     let patched = patch_button(ui, m, msgs);
-    if picked || patched {
+    let copy = egui::Button::new(format!("Copy patch of {} commits", m.len()));
+    let mut r = ui.add_enabled(m.export_blocked.is_none(), copy);
+    if let Some(why) = m.export_blocked {
+        r = r.on_disabled_hover_text(why);
+    }
+    if r.clicked() {
+        msgs.push(Msg::Patch(PatchMsg::Copy(m.oids.clone())));
+    }
+    if picked || patched || r.clicked() {
         ui.close_menu();
     }
     super::rebase::edit_menu::multi(ui, m, snap, msgs);

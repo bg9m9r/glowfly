@@ -1,6 +1,7 @@
 //! Application state: plain data, no egui types. Only `update` changes it, except for
 //! transient view state (`ViewState`) and text buffers that views edit in place.
 
+pub mod am_banner;
 mod app_queries;
 pub mod askpass;
 pub mod blame;
@@ -233,6 +234,10 @@ pub enum Modal {
     /// The release notes, with a newer release on top when one is on offer.
     ReleaseNotes(Box<release_notes::NotesDialog>),
     UndoCreated(undo::UndoCreatedForm),
+    /// Apply patch: how to apply a patch file that was read (`ui/patch_apply_dialog.rs`).
+    ApplyPatch(Box<patch::apply::ApplyForm>),
+    /// Create patch from uncommitted changes (`ui/patch_save_dialog.rs`).
+    SavePatch(patch::changes::SaveChangesForm),
 }
 
 /// The most commits "Load more" goes up to.
