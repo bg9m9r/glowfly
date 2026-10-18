@@ -1,4 +1,4 @@
-use super::resolve_undo::path_batches;
+use super::resolve_undo::{parse_ids, path_batches};
 use super::*;
 use crate::gitcli::{args, run};
 use crate::testutil::*;
@@ -194,4 +194,46 @@ fn a_name_that_is_not_utf8_is_listed_with_its_hazard() {
     assert_eq!(found.len(), 1);
     assert_eq!(found[0].entry.hazard, Some(Hazard::NotUtf8(b"n\xffme.txt".to_vec())));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn resolve_undo_ids_match_the_loaded_conflict() {
+    let dir = merging("reuc-ids", &["a.txt", "b.txt"]);
+    assert_eq!(resolve_undo_ids(&dir, "a.txt").unwrap(), None, "nothing resolved yet");
+    let f = load_conflict(&dir, "a.txt").unwrap();
+    let out = render_output(&f, &[Choice::Ours]).unwrap();
+    write_resolution(&dir, "a.txt", &out, &f.ids).unwrap();
+    assert_eq!(resolve_undo_ids(&dir, "a.txt").unwrap(), Some(f.ids));
+    assert_eq!(resolve_undo_ids(&dir, "b.txt").unwrap(), None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn parse_ids_matches_the_path_exactly() {
+    let (o1, o2, o3) = ("1".repeat(40), "2".repeat(40), "3".repeat(40));
+    let id = |s: &str| Some(git2::Oid::from_str(s).unwrap());
+    let rec = |stage: u8, oid: &str, path: &str| format!("100644 {oid} {stage}\t{path}\0");
+    let out = [
+        rec(1, &o1, "a.txt"),
+        rec(2, &o2, "a.txt"),
+        rec(3, &o3, "a.txt"),
+        rec(2, &o3, "a.txt.bak"),
+        rec(3, &o1, "a.txt.bak"),
+        rec(1, &o2, "my file.txt"),
+        rec(2, &o1, "my file.txt"),
+        rec(3, &o3, "my file.txt"),
+        // add/add: no base.
+        rec(2, &o1, "new.txt"),
+        rec(3, &o2, "new.txt"),
+    ]
+    .concat();
+    let out = out.as_bytes();
+    assert_eq!(parse_ids(out, "a.txt"), Some(ConflictIds { ancestor: id(&o1), ours: id(&o2), theirs: id(&o3) }));
+    assert_eq!(parse_ids(out, "a.txt.bak"), Some(ConflictIds { ancestor: None, ours: id(&o3), theirs: id(&o1) }));
+    assert_eq!(parse_ids(out, "my file.txt"), Some(ConflictIds { ancestor: id(&o2), ours: id(&o1), theirs: id(&o3) }));
+    assert_eq!(parse_ids(out, "new.txt"), Some(ConflictIds { ancestor: None, ours: id(&o1), theirs: id(&o2) }));
+    assert_eq!(parse_ids(out, "a.tx"), None);
+    assert_eq!(parse_ids(out, "A.txt"), None, "never folds case");
+    assert_eq!(parse_ids(out, " a.txt"), None);
+    assert_eq!(parse_ids(b"", "a.txt"), None);
 }

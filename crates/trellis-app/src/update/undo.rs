@@ -146,7 +146,14 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
         Some(UndoResult::Refused { redo, stale, offer_stash }) => {
             tracing::debug!(redo, stale, offer_stash, "undo/redo refused");
             if stale {
-                history.clear();
+                // A resolution touches one file and its index entry, so an expired one is
+                // dropped alone: each older entry checks the repository again when planned.
+                let stack = if redo { &mut history.redo } else { &mut history.undo };
+                if matches!(stack.last(), Some(Action::Resolve { .. })) {
+                    stack.pop();
+                } else {
+                    history.clear();
+                }
             }
         }
         Some(UndoResult::Failed { redo }) => tracing::debug!(redo, "undo/redo failed; the entry is kept"),

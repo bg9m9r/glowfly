@@ -86,6 +86,23 @@ fn describe_names_the_action() {
 }
 
 #[test]
+fn a_resolution_is_named_and_reports_what_it_wrote() {
+    let o = Oid::zero();
+    let ids = crate::repo::ConflictIds { ancestor: None, ours: Some(o), theirs: Some(o) };
+    let resolve =
+        |path: &str, staged| Action::Resolve { path: path.into(), ids: ids.clone(), head: None, staged, before: None, after: None };
+    let full = resolve("a.txt", Some(Staged { mode: 0o100644, blob: o }));
+    let markers = resolve("f.txt", None);
+    assert_eq!(full.describe(), "resolution of a.txt");
+    assert_eq!(markers.describe(), "save of f.txt with markers");
+    assert_eq!(full.wrote(false), "Brought back the conflict in a.txt");
+    assert_eq!(full.wrote(true), "Resolved a.txt again");
+    assert_eq!(markers.wrote(false), "Put back the earlier working copy of f.txt");
+    assert_eq!(markers.wrote(true), "Saved f.txt with markers again");
+    assert!(!full.offers_stash(false) && !markers.offers_stash(false));
+}
+
+#[test]
 fn only_hard_reset_and_discard_all_offer_to_stash() {
     let o = Oid::zero();
     let reset = |mode| Action::Reset { mode, branch: None, from: o, to: o, stash: None };

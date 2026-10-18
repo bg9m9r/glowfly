@@ -127,7 +127,7 @@
   "finder.truncated": "Se detuvo tras buscar en {max} carpetas. Añade una carpeta más cercana a tus repositorios.",
   "finder.unreadable": "no se puede leer: {error}",
   "menu.common.no_repo": "Abre primero un repositorio",
-  "menu.edit.cant_undo": "No se puede deshacer {label}: solo se pueden deshacer checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, crear o eliminar una rama o etiqueta, stash, pop, apply, drop, descartes y restauraciones de archivos",
+  "menu.edit.cant_undo": "No se puede deshacer {label}: solo se pueden deshacer checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, crear o eliminar una rama o etiqueta, stash, pop, apply, drop, descartes, restauraciones de archivos y resoluciones de conflictos guardadas",
   "menu.edit.copy_branch": "Copiar nombre de la rama",
   "menu.edit.copy_message": "Copiar mensaje del commit",
   "menu.edit.copy_sha": "Copiar SHA del commit",

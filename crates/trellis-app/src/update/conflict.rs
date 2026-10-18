@@ -2,9 +2,10 @@
 //! stage), saving with markers left (write only) or resolving with a whole side. After Trellis
 //! resolves the open file the view steps to the next conflicted one. Picking sides and lines
 //! and editing the output are in update/conflict_edit.rs; Mark resolved and Mark conflicted in
-//! update/conflict_files.rs.
+//! update/conflict_files.rs. Undoing a saved resolution opens (or reloads) the view on the file
+//! again (`reopen_after_undo`).
 
-use crate::effect::{Effect, LocalOp};
+use crate::effect::{Effect, LocalOp, UndoResult};
 use crate::msg::ConflictMsg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
@@ -12,6 +13,7 @@ use crate::state::conflict_files::next_conflicted;
 use crate::state::tool_compare::merging;
 use std::time::Instant;
 use trellis_core::repo::Choice;
+use trellis_core::undo::Action;
 
 #[path = "conflict_edit.rs"]
 mod edit;
@@ -138,6 +140,35 @@ pub(super) fn open(st: &mut AppState, path: String, fx: &mut Vec<Effect>) {
     super::issue::close(st);
     st.conflict = Some(ConflictView::loading(path));
     request_load(st, fx);
+}
+
+/// The file to show again after an undo job finished (`ok`): an undone resolution or save with
+/// markers opens it (or reloads it when open), a redone save with markers reloads it only when
+/// open (`false`). A redone resolution needs nothing: the next status read closes the view.
+pub(super) fn after_undo(undo: &Option<UndoResult>, ok: bool) -> Option<(String, bool)> {
+    match undo {
+        _ if !ok => None,
+        Some(UndoResult::Done { redo: false, before: Action::Resolve { path, .. }, .. }) => Some((path.clone(), true)),
+        Some(UndoResult::Done { redo: true, before: Action::Resolve { path, staged: None, .. }, .. }) => Some((path.clone(), false)),
+        _ => None,
+    }
+}
+
+/// Shows `path` again after an undo changed it: reloaded when the view is open on it (picks
+/// saved with markers come back), and with `open_closed` opened when the view is closed or holds
+/// nothing unsaved. Unsaved choices in another file are never thrown away; the log says where to
+/// find `path` instead.
+pub(super) fn reopen_after_undo(st: &mut AppState, path: String, open_closed: bool, fx: &mut Vec<Effect>) {
+    match &st.conflict {
+        Some(c) if c.path == path => open(st, path, fx),
+        Some(c) if c.user_choices() > 0 => {
+            if open_closed {
+                st.log(true, format!("{path} is conflicted again: open it from Conflicted Files to resolve it."));
+            }
+        }
+        _ if open_closed => open(st, path, fx),
+        _ => {}
+    }
 }
 
 /// Whether the merge tool has `path` open, said in the log: writing the file now would race

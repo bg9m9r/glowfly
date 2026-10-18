@@ -692,10 +692,6 @@ follow-ups go to Ideas, not here.
 - Remove the index entry, rather than leaving an empty file, when every line of an added or
   deleted file is unstaged or staged line by line
 
-### Merge conflict tool
-
-- Undo and redo of a saved resolution through the undo history
-
 ### File history and blame
 
 - Follow a folder's own renames or moves in folder history
@@ -1087,6 +1083,12 @@ here, under the item they grew from.
 - A separate wrap setting for the conflict view instead of sharing the diff viewer's
 - A fold-back control in the painted output too (only the panes have one)
 - Text typed into a clean run deleted between two conflicts joins the next conflict; let it bring the run back
+- Undo of a whole-version resolve (Take ours/theirs for binary, deleted, link and submodule conflicts)
+- Undo of Mark resolved and Mark conflicted from the WIP panel and palette
+- Drop expired resolution entries from the undo history as soon as the merge or rebase step is committed or aborted, not when they are next tried
+- Reload a parked tab's conflict view when an undo there changed its open file
+- An Undo button on the Resolved / Saved-with-markers toasts
+- Undo of a resolution whose resolve-undo record was removed outside the app (restore the stages from the recorded ids with libgit2)
 
 ### Blame gutter
 

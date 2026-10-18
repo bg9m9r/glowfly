@@ -37,6 +37,8 @@ pub(super) mod conflict_files_tests;
 pub(super) mod conflict_layout_tests;
 #[path = "conflict_tests.rs"]
 pub(super) mod conflict_tests;
+#[path = "conflict_undo_tests.rs"]
+pub(super) mod conflict_undo_tests;
 #[path = "current_hunk_tests.rs"]
 pub(super) mod current_hunk_tests;
 #[path = "deep_link_open_tests.rs"]

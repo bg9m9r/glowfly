@@ -282,7 +282,11 @@ pub(super) fn finish_job(
         (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),
         (a, b) => a.is_none() && b.is_none(),
     };
+    let reopen = super::conflict::after_undo(&undo, ok);
     super::undo::finished(st, &job, ok, undo, here);
+    if here && let Some((p, open_closed)) = reopen {
+        super::conflict::reopen_after_undo(st, p, open_closed, fx);
+    }
     super::submodule_batch::job_finished(st, &job.label, job.workdir.as_deref(), ok, here, fx);
     if job.then_link {
         super::deep_link_open::fetched(st, ok, here, fx);

@@ -1,7 +1,8 @@
-//! A safety net for discards that don't go through a stash (one file, hunk or line) and for
-//! restoring a file from a commit: the working copy's exact bytes are written to the object
-//! database as a blob before and after, so undo can put the earlier version back and redo can
-//! write the later one again.
+//! A safety net for discards that don't go through a stash (one file, hunk or line), for
+//! restoring a file from a commit and for conflict resolutions saved in the conflict view
+//! (`resolved.rs`): the working copy's exact bytes are written to the object database as a blob
+//! before and after, so undo can put the earlier version back and redo can write the later one
+//! again.
 
 use super::{Action, Discarded, Plan, stale};
 use crate::error::{Error, Result};
@@ -55,7 +56,7 @@ pub fn save(workdir: &Path, path: &str) -> Result<Option<Saved>> {
 }
 
 /// What `path` holds now, as `save` would record it, without writing anything.
-fn current(workdir: &Path, path: &str) -> Result<Option<Saved>> {
+pub(super) fn current(workdir: &Path, path: &str) -> Result<Option<Saved>> {
     Ok(match read(workdir, path)? {
         Some((bytes, executable)) => Some(Saved { blob: Oid::hash_object(ObjectType::Blob, &bytes)?, executable }),
         None => None,
@@ -113,7 +114,7 @@ fn saving<T>(
 /// `op` failed after `path` was saved as `before`. Unchanged, the error comes back as it was;
 /// otherwise it says where the earlier contents are kept, with the pair when the file as it is
 /// now could be saved too.
-fn failed_after_saving(workdir: &Path, path: &str, before: Option<Saved>, e: Error) -> (Error, Option<Pair>) {
+pub(super) fn failed_after_saving(workdir: &Path, path: &str, before: Option<Saved>, e: Error) -> (Error, Option<Pair>) {
     let after = save(workdir, path);
     if after.as_ref().is_ok_and(|a| *a == before) {
         return (e, None);
@@ -170,6 +171,7 @@ impl Action {
             Action::Restore { path, .. } if redo => format!("Restored {path} again"),
             Action::Restore { path, before: Some(_), .. } => format!("Put back the earlier working copy of {path}"),
             Action::Restore { path, before: None, .. } => format!("Removed {path} again"),
+            Action::Resolve { path, staged, .. } => super::resolved::wrote(path, staged.is_some(), redo),
             _ => String::new(),
         }
     }

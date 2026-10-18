@@ -9,7 +9,8 @@
 //! Rebases, also interactive ones and graph edits, are recorded around their run instead
 //! (`rebased.rs`): they finish in steps, possibly outside Trellis. A merge, cherry-pick or revert
 //! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as
-//! one move from the HEAD it started at (`resumed.rs`).
+//! one move from the HEAD it started at (`resumed.rs`). `resolved` handles conflict resolutions
+//! saved in the conflict view: the conflict's stages come back from git's resolve-undo record.
 
 use crate::gitcli::args;
 use git2::Oid;
@@ -22,10 +23,11 @@ mod rebased;
 mod record;
 mod refs;
 mod reset;
+mod resolved;
 mod resumed;
 mod saved;
 mod stash;
-pub use action::{Action, Changes, Created, Discarded, HeadPos};
+pub use action::{Action, Changes, Created, Discarded, HeadPos, Staged};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
@@ -33,6 +35,7 @@ pub use rebased::{RebaseStart, rebase_start, rebased, unmoved};
 use record::stash_top;
 pub use record::{Before, after, before, irreversible, redone};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
+pub use resolved::resolve_saving;
 pub use saved::{RestoreFailed, Saved, discard_saving, restore_saving, write as write_saved};
 
 /// The message of the stash that "Discard all" moves uncommitted changes into.
@@ -76,6 +79,13 @@ pub enum Plan {
         content: Option<Saved>,
     },
     Refuse(Refusal),
+    /// Run `cmds` in order, then make the working-tree file `path` hold `content` exactly
+    /// (`None`: delete it).
+    RunThenWrite {
+        cmds: Vec<Vec<String>>,
+        path: String,
+        content: Option<Saved>,
+    },
 }
 
 /// Choices the user made for one undo.
@@ -109,6 +119,8 @@ mod rebased_tests;
 mod refs_tests;
 #[cfg(test)]
 mod reset_tests;
+#[cfg(test)]
+mod resolved_tests;
 #[cfg(test)]
 mod restore_tests;
 #[cfg(test)]

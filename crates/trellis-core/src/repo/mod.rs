@@ -6,7 +6,7 @@
 //! the work is split by area: `load` (history, refs, status), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`
 //! (and `diff_gaps`, the unchanged lines between hunks),
-//! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files, Mark resolved and Mark
+//! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
 //! picks a file saved with markers holds), `template`
 //! (commit.template), `tool_sides` (versions for external tools), `touching` (commits that
@@ -100,8 +100,8 @@ pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use refs_key::{open_file_stamp, refs_key};
 pub use remotes::RemoteInfo;
 pub use removal::{Deleted, Removal, Trasher};
-pub use resolve::{Choice, render_output, resolve_with_side, write_partial_resolution, write_resolution};
-pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolved_paths};
+pub use resolve::{Choice, conflict_ids, render_output, resolve_with_side, write_partial_resolution, write_resolution};
+pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolve_undo_ids, resolved_paths};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};
 pub use status::{ChangeCounts, status_at};

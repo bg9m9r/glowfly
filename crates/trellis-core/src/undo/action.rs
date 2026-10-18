@@ -1,6 +1,7 @@
 //! Recorded operations and how they are named in tooltips and job labels.
 
 use super::{MoveOp, ResetMode, Saved, short};
+use crate::repo::ConflictIds;
 use git2::Oid;
 
 /// Where HEAD points.
@@ -43,6 +44,7 @@ pub enum Discarded {
 /// from `from` to `to`, including a merge, cherry-pick or revert that stopped for conflicts and
 /// was finished later. `StashApply` is a pop or apply onto a clean tree that left `left`.
 /// `StashDrop` is a dropped stash, put back with `stash store` under its list `message`.
+/// `Resolve` is a conflict resolution saved in the conflict view, or a save with markers.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     Checkout {
@@ -119,6 +121,25 @@ pub enum Action {
         stash: Oid,
         message: String,
     },
+    /// A conflict resolution saved in the conflict view. `ids` are the conflict's stages,
+    /// `head` the commit HEAD was at, `before`/`after` the working copy before and after.
+    /// `staged` is the entry Save staged; `None` for Save with markers, which left the file
+    /// conflicted. A stale refusal drops only this entry.
+    Resolve {
+        path: String,
+        ids: ConflictIds,
+        head: Option<Oid>,
+        staged: Option<Staged>,
+        before: Option<Saved>,
+        after: Option<Saved>,
+    },
+}
+
+/// A resolution's index entry: its mode and blob.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Staged {
+    pub mode: u32,
+    pub blob: Oid,
 }
 
 /// The first line of `message`, cut to 50 characters (with "…" when longer).
@@ -174,6 +195,8 @@ impl Action {
                 format!("{} of stash '{}'", if *pop { "pop" } else { "apply" }, cut50(message))
             }
             Action::StashDrop { message, .. } => format!("drop of stash '{}'", cut50(message)),
+            Action::Resolve { path, staged: Some(_), .. } => format!("resolution of {path}"),
+            Action::Resolve { path, staged: None, .. } => format!("save of {path} with markers"),
         }
     }
 

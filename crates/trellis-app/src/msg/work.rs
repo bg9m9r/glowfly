@@ -39,7 +39,8 @@ pub enum StageMsg {
     /// Revert the whole change of a commit (`Commit`) or comparison (`Between`) to one file,
     /// from a file row's menu.
     RevertFile(DiffTarget),
-    /// A LocalOp finished; a discard that can be undone carries its undo action.
+    /// A LocalOp finished; a discard or a saved conflict resolution that can be undone carries
+    /// its undo action.
     LocalOpDone(Result<Option<trellis_core::undo::Action>, String>),
     /// A revert finished; `path` is the working-tree file it changed.
     Reverted {

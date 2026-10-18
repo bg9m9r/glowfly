@@ -8,7 +8,8 @@ use trellis_core::gitcli;
 use trellis_core::repo;
 use trellis_core::undo::{self, Action, Discarded, Plan, Refusal};
 
-/// Runs a local op. Discards save the file's contents first and return the undo action.
+/// Runs a local op. Discards and conflict saves save the file's contents first and return the
+/// undo action.
 pub(super) fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<Option<Action>> {
     use trellis_core::repo::HunkOp::Discard;
     let saving =
@@ -27,9 +28,11 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Resu
             saving(&path, Discarded::Lines(lines.len()), &|| repo::apply_lines(workdir, &path, hunk, &expected, &lines, Discard))
         }
         LocalOp::Lines { op, path, hunk, expected, lines } => done(repo::apply_lines(workdir, &path, hunk, &expected, &lines, op)),
-        LocalOp::ResolveConflict { path, contents, expected } => done(repo::write_resolution(workdir, &path, &contents, &expected)),
+        LocalOp::ResolveConflict { path, contents, expected } => {
+            undo::resolve_saving(workdir, &path, &expected, || repo::write_resolution(workdir, &path, &contents, &expected))
+        }
         LocalOp::SavePartialResolution { path, contents, expected } => {
-            done(repo::write_partial_resolution(workdir, &path, &contents, &expected))
+            undo::resolve_saving(workdir, &path, &expected, || repo::write_partial_resolution(workdir, &path, &contents, &expected))
         }
         LocalOp::ResolveWithSide { path, side, expected } => done(repo::resolve_with_side(workdir, &path, side, &expected)),
         LocalOp::MarkResolved(paths) => done(repo::mark_resolved(workdir, &paths)),
@@ -78,6 +81,22 @@ Your changes were stashed as \"{}\".
             }
             let after = if redo { undo::redone(cwd, action.clone()).unwrap_or_else(|_| action.clone()) } else { action.clone() };
             done(ok, output, UndoResult::Done { redo, before: action, after: Box::new(after) })
+        }
+        Ok(Plan::RunThenWrite { cmds, path, content }) => {
+            let (ok, output) = run_git(cwd, &cmds, None, true);
+            if !ok {
+                return failed(output);
+            }
+            match undo::write_saved(cwd, &path, content) {
+                Ok(()) => {
+                    let output = format!("{output}\n{}", action.wrote(redo));
+                    done(true, output, UndoResult::Done { redo, before: action.clone(), after: Box::new(action) })
+                }
+                Err(e) => {
+                    let kept = content.map(|s| format!(". Its contents are kept as blob {} (git cat-file -p {})", s.blob, s.blob));
+                    failed(format!("{output}\nCould not write {path}: {e}{}", kept.unwrap_or_default()))
+                }
+            }
         }
     }
 }

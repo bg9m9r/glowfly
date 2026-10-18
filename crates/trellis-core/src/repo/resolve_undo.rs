@@ -1,10 +1,11 @@
 //! Conflicts that were resolved during the operation in progress, from git's resolve-undo
-//! record (the index's REUC extension): listing them, marking conflicted files resolved, and
-//! bringing a resolved file's conflict back (`git checkout -m`).
+//! record (the index's REUC extension): listing them, the stage ids of one record, marking
+//! conflicted files resolved, and bringing a resolved file's conflict back (`git checkout -m`).
 
-use super::{CLI_PATH_BYTES, FileEntry, conflict_markers, rpath};
+use super::{CLI_PATH_BYTES, ConflictIds, FileEntry, conflict_markers, rpath};
 use crate::error::{Error, Result};
 use crate::gitcli::{NO_PROMPTS, READ_TIMEOUT, args, output_bytes};
+use git2::Oid;
 use std::path::Path;
 
 /// A path git holds resolve-undo data for: it was conflicted and has been resolved.
@@ -28,13 +29,47 @@ pub struct ConflictSummary {
 /// The paths with resolve-undo data, in git's order (`git ls-files --resolve-undo`). Only reads
 /// the index: no hook or filter runs, so this is safe in a repository that isn't trusted.
 pub fn resolved_paths(workdir: &Path) -> Result<Vec<ResolvedFile>> {
+    Ok(parse(&read_records(workdir)?))
+}
+
+/// The stage blob ids git's resolve-undo record keeps for `path` (matched byte for byte), or
+/// `None` when it has no record. Reads only the index, as `resolved_paths` does.
+pub fn resolve_undo_ids(workdir: &Path, path: &str) -> Result<Option<ConflictIds>> {
+    Ok(parse_ids(&read_records(workdir)?, path))
+}
+
+/// The raw `git ls-files --resolve-undo -z` output.
+fn read_records(workdir: &Path) -> Result<Vec<u8>> {
     let cmd = args(&["-c", "core.fsmonitor=false", "ls-files", "--resolve-undo", "-z"]);
     let (out, stdout) = output_bytes(workdir, &cmd, NO_PROMPTS, Some(READ_TIMEOUT));
     if !out.ok {
         let why = out.stderr.trim();
         return Err(Error::Other(if why.is_empty() { "git ls-files --resolve-undo failed".into() } else { why.to_owned() }));
     }
-    Ok(parse(&stdout))
+    Ok(stdout)
+}
+
+/// The stage ids in the `<mode> SP <oid> SP <stage> TAB <path>` records whose path is exactly
+/// `path`; `None` when there are none.
+pub(super) fn parse_ids(out: &[u8], path: &str) -> Option<ConflictIds> {
+    let mut ids: Option<ConflictIds> = None;
+    for rec in out.split(|&b| b == 0).filter(|r| !r.is_empty()) {
+        let Some(tab) = rec.iter().position(|&b| b == b'\t') else { continue };
+        if &rec[tab + 1..] != path.as_bytes() {
+            continue;
+        }
+        let mut fields = rec[..tab].split(|&b| b == b' ').filter_map(|f| std::str::from_utf8(f).ok());
+        let (Some(_mode), Some(oid), Some(stage)) = (fields.next(), fields.next(), fields.next()) else { continue };
+        let Ok(oid) = Oid::from_str(oid) else { continue };
+        let ids = ids.get_or_insert(ConflictIds { ancestor: None, ours: None, theirs: None });
+        match stage {
+            "1" => ids.ancestor = Some(oid),
+            "2" => ids.ours = Some(oid),
+            "3" => ids.theirs = Some(oid),
+            _ => {}
+        }
+    }
+    ids
 }
 
 /// Parses `<mode> SP <oid> SP <stage> TAB <path>` records, each ending in a NUL. The path is

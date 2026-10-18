@@ -85,6 +85,11 @@ fn checked_index(repo: &Repository, path: &str, expected: &ConflictIds) -> Resul
     }
 }
 
+/// The stage ids of the conflict at `path` in the index, or `None` when it isn't conflicted.
+pub fn conflict_ids(repo: &Repository, path: &str) -> Option<ConflictIds> {
+    repo.index().ok()?.conflict_get(Path::new(path)).ok().map(|c| ids_of(&c))
+}
+
 fn ids_of(c: &IndexConflict) -> ConflictIds {
     ConflictIds { ancestor: c.ancestor.as_ref().map(|e| e.id), ours: c.our.as_ref().map(|e| e.id), theirs: c.their.as_ref().map(|e| e.id) }
 }

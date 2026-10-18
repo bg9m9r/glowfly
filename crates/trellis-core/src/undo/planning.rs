@@ -1,10 +1,10 @@
 //! Planning an undo or redo: checking the repository still matches the recorded action and
 //! choosing the git commands (or file write) that reverse or re-apply it. Branches and tags are
 //! planned in `refs.rs`, merges and the like in `moved.rs`, stashes (also dropped ones) in
-//! `stash.rs`.
+//! `stash.rs`, saved conflict resolutions in `resolved.rs`.
 
 use super::record::{head, ref_exists};
-use super::{Action, HeadPos, Options, Plan, Refusal, discard_command, moved, refs, reset, saved, stash};
+use super::{Action, HeadPos, Options, Plan, Refusal, discard_command, moved, refs, reset, resolved, saved, stash};
 use crate::error::Result;
 use crate::gitcli::args;
 use git2::{Oid, Repository, RepositoryState};
@@ -86,6 +86,8 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
             let repo = Repository::open(workdir)?;
             return stash::plan_drop(workdir, &repo, action, redo);
         }
+        // A saved conflict resolution is expected to have an operation in progress.
+        Action::Resolve { .. } => return resolved::plan(workdir, action, redo),
         _ => {}
     }
     let repo = Repository::open(workdir)?;
@@ -176,6 +178,8 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
                 None => stale("The discarded-changes stash was dropped"),
             }
         }
-        Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } => unreachable!("planned above"),
+        Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } | Action::Resolve { .. } => {
+            unreachable!("planned above")
+        }
     })
 }
