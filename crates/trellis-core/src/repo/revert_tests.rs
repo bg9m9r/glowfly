@@ -203,6 +203,19 @@ fn lines_fall_back_to_merge() {
 }
 
 #[test]
+fn lines_merge_refuses_a_binary_working_file() {
+    let (dir, target) = edited("revert-lines-nul");
+    let hunk = load_diff(&dir, &target).unwrap().hunks[0].clone();
+    let at = hunk.lines.iter().position(|l| l.origin == '+' && l.text == "6b").unwrap();
+    let mine = EDITED.replacen("3\n", "TH\0REE\n", 1);
+    write(&dir, "f.txt", &mine);
+    let r = revert_lines(&dir, &target, 0, &[at]);
+    assert!(matches!(&r, Err(crate::error::Error::Unsupported(e)) if e.contains("binary")), "{r:?}");
+    assert_eq!(text(&dir, "f.txt"), mine, "the working file is untouched");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn dest_follows_a_rename() {
     let dir = scratch_repo("revert-dest");
     commit(&dir, &[("old.txt", &numbered(20, &[]))], "base");

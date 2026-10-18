@@ -51,6 +51,17 @@ pub(super) fn splice(base: &[u8], new_start: u32, pre: &[ImageLine], post: &[Ima
     Some(out)
 }
 
+/// How far into a file a NUL byte makes the merge treat it as binary (as libgit2 does).
+const BINARY_PROBE: usize = 8000;
+/// The largest file libgit2's line merge takes; anything larger counts as binary.
+const MERGE_MAX_BYTES: usize = 1024 * 1024 * 1023;
+
+/// Whether libgit2 would merge `bytes` as a binary file. A binary merge yields no content at
+/// all (not even conflict markers), so such inputs are refused before merging.
+fn merges_as_binary(bytes: &[u8]) -> bool {
+    bytes.len() > MERGE_MAX_BYTES || bytes[..bytes.len().min(BINARY_PROBE)].contains(&0)
+}
+
 /// Merges `theirs` (the blob `base` with the change reversed) into the working file and writes
 /// the result through a whole-file patch, so the file keeps its line endings and `mode`. With
 /// `remove_if_empty` (the commit added the file), a clean empty result removes the file.
@@ -61,6 +72,11 @@ pub(super) fn merge_into_workdir(ctx: &Ctx, mode: u32, base: Oid, theirs: &[u8],
     let ours_blob = repo.find_blob(ours_id)?;
     let ours = ours_blob.content();
     let base_blob = repo.find_blob(base)?;
+    if [base_blob.content(), ours, theirs].into_iter().any(merges_as_binary) {
+        return Err(Error::Unsupported(
+            "the file is binary in the working tree or in the commit, so its changes can't be merged; use Restore instead".into(),
+        ));
+    }
     let theirs_id = repo.blob(theirs)?;
     let zero = IndexTime::new(0, 0);
     let entry = |id: Oid, size: usize| IndexEntry {

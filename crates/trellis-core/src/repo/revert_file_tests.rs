@@ -143,6 +143,31 @@ fn file_revert_binary() {
 }
 
 #[test]
+fn file_revert_refuses_a_binary_working_file() {
+    let dir = scratch_repo("revert-file-nul-work");
+    commit(&dir, &[("data.txt", &numbered(10, &[]))], "base");
+    let c = commit(&dir, &[("data.txt", &numbered(10, &[(4, "four")]))], "edit");
+    let mine = numbered(10, &[(4, "four"), (8, "ei\0ght")]);
+    write(&dir, "data.txt", &mine);
+    let r = revert_file(&dir, &DiffTarget::Commit(c, "data.txt".into()));
+    assert!(matches!(&r, Err(Error::Unsupported(e)) if e.contains("binary")), "{r:?}");
+    assert_eq!(text(&dir, "data.txt"), mine, "the working file is untouched");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn file_revert_refuses_binary_commit_versions_diffed_as_text() {
+    let dir = scratch_repo("revert-file-nul-commit");
+    commit(&dir, &[(".gitattributes", "*.log diff\n"), ("a.log", "x\0\none\n")], "base");
+    let c = commit(&dir, &[("a.log", "x\0\ntwo\n")], "edit");
+    write(&dir, "a.log", "x\0\ntwo\nmine\n");
+    let r = revert_file(&dir, &DiffTarget::Commit(c, "a.log".into()));
+    assert!(matches!(&r, Err(Error::Unsupported(e)) if e.contains("binary")), "{r:?}");
+    assert_eq!(text(&dir, "a.log"), "x\0\ntwo\nmine\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn file_revert_refuses_converted() {
     let dir = scratch_repo("revert-file-lfs");
     commit(&dir, &[(".gitattributes", "*.dat filter=lfs\n"), ("d.dat", "one\n")], "base");
