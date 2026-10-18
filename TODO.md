@@ -20,6 +20,7 @@ The last 20 completed TODO items, newest first: when (local time), which item, a
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 - 2026-10-18 00:09 · **Built-in terminal: scrollback, selection, terminal tabs and In-App Terminal preferences**: Scrollback, mouse selection with copy, a context menu, multiple terminal tabs and an In-App Terminal preferences page for the built-in terminal (`89c7b74`)
+- 2026-10-17 23:54 · **Submodule upkeep**: Keep submodules updated after checkouts, pulls, merges, rebases and resets (Preferences > General, with a per-repository override in the SUBMODULES menu, leaving out submodules that would strand commits), Initialize all and Update all offered on open, Edit submodule… for the URL and branch, missing-folder and new states with resolved relative URLs, live status from submodule HEAD and ref changes, and palette commands (`0dfcd5e`)
 - 2026-10-17 23:09 · **Local patches**: Patches of uncommitted changes and single files, Copy patch, and an Apply patch dialog with git apply options and git am for patch series (`ac03f31`)
 - 2026-10-17 22:59 · **Language**: Translated the menu bar, About dialog, toolbar, tab bar, update check and UI Customization page (`78fc616`)
 - 2026-10-17 22:11 · **Merge conflict tool**: Single-line picks with a checkbox per conflict line (taken in tick order), an editable output (only the conflicts' text, kept through picks until Discard edit), Save with markers that writes the file with markers for the conflicts not picked yet and leaves it conflicted, Mark all conflicted on the Resolved Files header, and palette entries for Mark all resolved and Mark conflicted (`ffa60c2`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 16:22 · **Onboarding**: First-run welcome on a new install (name and email for the global git config, connecting a hosting service, the git check, then open, clone or start a repository) and a five-step tour of the main window that dims around each area, both offered again from the palette (`09c0207`)
 - 2026-10-16 16:06 · **Logs**: The activity log kept across sessions (earlier sessions dimmed under their start time, Clear deletes the file), warnings, errors and panics in a size-rotated error log, effects and git commands of 500 ms or more in a performance log, Activity / Errors / Performance tabs in the panel, and extended logging that adds every git command with its timing to the activity log (`d1dc9b9`)
 - 2026-10-16 16:02 · **Git engine choice**: Preferences > Git chooses which git program Trellis runs (PATH or any git found on this machine, or browsed to), checked off the UI thread before use and applied at startup, with version warnings and the git banner pointing there (`29855da`)
-- 2026-10-16 15:41 · **PR and issue filters**: Built-in and saved filters for the PULL REQUESTS and ISSUES sections, chosen from a filter chip in each section header (`8d97841`)
 
 ---
 
