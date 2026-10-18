@@ -2,8 +2,9 @@
 //! (`Settings::keybindings`) applied, and the hint texts built from them.
 
 use super::chord::{Chord, KeyName};
+use super::ids::BindingId;
 use super::rebind::{self, fold_ctrl, same_keys};
-use super::table::{BINDINGS, Binding, BindingId, GROUPS, Group, binding};
+use super::table::{BINDINGS, Binding, GROUPS, Group, binding};
 use std::collections::BTreeMap;
 
 /// The most keys one action can have (Preferences > Keyboard hides Add at this many).

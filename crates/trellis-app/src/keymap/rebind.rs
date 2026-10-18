@@ -4,7 +4,8 @@
 
 use super::active::{Keymap, answers};
 use super::chord::{Chord, KeyName};
-use super::table::{BINDINGS, Binding, BindingId, When, binding};
+use super::ids::BindingId;
+use super::table::{BINDINGS, Binding, When, binding};
 
 /// Whether Cmd/Ctrl ("Mod") and the real Ctrl are one key here: everywhere but macOS.
 pub fn fold_ctrl() -> bool {
