@@ -3,7 +3,7 @@
 //! exec lines Trellis adds for a reword or a combined message are folded back into the row they
 //! belong to; the lines finishing a reword whose pick is already done are kept as they are.
 
-use super::todo::{MSG_DIR, OwnLine, build, editor_command, listed_oids, own_line, problem_with};
+use super::todo::{MSG_DIR, MessageFile, OwnLine, build, editor_command, listed_oids, own_line, problem_with};
 use super::{CHANGED, NOT_INTERACTIVE, RebaseAction, SequenceEditor, TODO_MOVED, TodoItem, TodoStep, UNSUPPORTED_STEPS, short};
 use crate::error::{Error, Result};
 use crate::gitcli;
@@ -145,13 +145,14 @@ fn fold(lines: Vec<(&str, Parsed)>, msg_dir: &Path) -> Vec<TodoStep> {
     for (b, (_, p)) in lines.iter().enumerate() {
         let Parsed::Own(OwnLine::Base(oid)) = p else { continue };
         let amend = lines.iter().enumerate().skip(b + 1).find_map(|(a, (_, p))| match p {
-            Parsed::Own(OwnLine::Amend { oid: o, combined }) if o == oid => Some((a, *combined)),
+            Parsed::Own(OwnLine::Amend { oid: o, file }) if o == oid => Some((a, *file)),
             _ => None,
         });
-        let Some((a, combined)) = amend else { continue };
-        let name = format!("{}-{oid}.txt", if combined { "combined" } else { "reword" });
-        if let Ok(text) = std::fs::read_to_string(msg_dir.join(name)) {
-            pairs.push((b, a, text.trim_end().to_owned(), combined));
+        let Some((a, file)) = amend else { continue };
+        // A reworded group's squashed message is rebuilt from its typed one, in the reword file.
+        let file = if file == MessageFile::Squashed { MessageFile::Reword } else { file };
+        if let Ok(text) = std::fs::read_to_string(msg_dir.join(file.name(*oid))) {
+            pairs.push((b, a, text.trim_end().to_owned(), file == MessageFile::Combined));
         }
     }
     let mut steps: Vec<TodoStep> = Vec::new();

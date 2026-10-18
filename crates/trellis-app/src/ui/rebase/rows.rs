@@ -1,6 +1,6 @@
 //! The list of the rebase panel: the locked rows of a running rebase above it, one row per step
-//! (commit rows in `commit_row`, exec and break rows in `step_row`), the inline editor under its
-//! row (`editor`), dragging rows (`drag`), the row menu, and the panel's keys (`keys`).
+//! (commit rows in `commit_row`, exec and break rows and the row menu in `step_row`), the inline
+//! editor under its row (`editor`), dragging rows (`drag`), and the panel's keys (`keys`).
 
 use super::UiCache;
 use super::commit_row::{paint_action, paint_row};
@@ -10,7 +10,6 @@ use crate::msg::{Msg, RebaseMsg};
 use crate::state::AppState;
 use crate::state::rebase::RebasePanel;
 use crate::state::rebase_remaining::LOCKED_NOTE;
-use crate::state::rebase_steps::NewStep;
 use crate::state::tabs::index_after_move;
 use crate::ui::theme::color;
 use eframe::egui::{self, Color32, CursorIcon, Rect, Response, RichText, Sense, Ui, pos2, vec2};
@@ -158,7 +157,7 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                         msgs.push(Msg::Rebase(RebaseMsg::RebaseEditMessage(i)));
                     }
                     if enabled {
-                        row_menu(r, i, step, msgs);
+                        step_row::row_menu(r, i, step, msgs);
                     }
                 }
             }
@@ -198,26 +197,4 @@ fn locked(ui: &mut Ui, panel: &RebasePanel, look: &Look) {
         ui.painter().rect_filled(rect, egui::CornerRadius::same(4), color::bg().gamma_multiply(0.55));
     }
     ui.add_space(6.0);
-}
-
-/// The row's right-click menu: add a step after it, and edit or remove an exec or break step.
-fn row_menu(r: &Response, i: usize, step: &TodoStep, msgs: &mut Vec<Msg>) {
-    r.context_menu(|ui| {
-        let mut send = |ui: &mut Ui, m: RebaseMsg| {
-            msgs.push(Msg::Rebase(m));
-            ui.close_menu();
-        };
-        if ui.button("Add exec step after").clicked() {
-            send(ui, RebaseMsg::RebaseAddStep { after: Some(i), step: NewStep::Exec });
-        }
-        if ui.button("Add break step after").clicked() {
-            send(ui, RebaseMsg::RebaseAddStep { after: Some(i), step: NewStep::Break });
-        }
-        if matches!(step, TodoStep::Exec(_)) && ui.button("Edit command…").clicked() {
-            send(ui, RebaseMsg::RebaseEditMessage(i));
-        }
-        if matches!(step, TodoStep::Exec(_) | TodoStep::Break) && ui.button("Remove step").clicked() {
-            send(ui, RebaseMsg::RebaseRemoveStep(i));
-        }
-    });
 }

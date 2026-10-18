@@ -112,7 +112,24 @@ fn trellis_rewords_fold_back() {
     let r = remaining(&dir).unwrap();
     assert_eq!(kinds(&r.steps), ["pick c3", "squash c4"]);
     assert_eq!(r.steps[0].commit().unwrap().combined_message.as_deref(), Some("Three and four"));
+
+    // A reworded head of a squash group folds back as its reword, and the commit gets the
+    // typed message followed by the squash's.
     git(&dir, &["rebase", "--abort"]);
+    let req = request_steps(&dir, RebaseBase::FromCommit(c2), |steps| {
+        at(steps, 0).action = RebaseAction::Edit;
+        at(steps, 1).action = RebaseAction::Reword;
+        at(steps, 1).new_message = Some("Three, reworded".into());
+        at(steps, 2).action = RebaseAction::Squash;
+    });
+    assert!(matches!(start_copy(&dir, &req), Outcome::Stopped { .. }));
+    let r = remaining(&dir).unwrap();
+    assert_eq!(kinds(&r.steps), ["reword c3", "squash c4"]);
+    let head = r.steps[0].commit().unwrap();
+    assert_eq!((head.new_message.as_deref(), head.combined_message.as_deref()), (Some("Three, reworded"), None));
+    assert!(matches!(resume(&dir, Resume::Continue).unwrap(), Outcome::Finished { .. }));
+    assert_eq!(message(&dir, "HEAD"), default_combined(&r.steps, 0));
+    assert_eq!(message(&dir, "HEAD"), "Three, reworded\n\nc4");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -225,7 +242,7 @@ fn locked_lines_are_kept_and_the_reword_lands() {
     let outcome = resume(&dir, Resume::Continue).unwrap();
     assert!(matches!(outcome, Outcome::Finished { .. }), "{outcome:?}");
     assert_eq!(log(&dir), ["New b", "base"]);
-    assert_eq!(message(&dir, "HEAD"), "New b");
+    assert_eq!(message(&dir, "HEAD"), "New b\n\nc", "the squash's message follows the typed one");
     assert!(dir.join("g.txt").exists(), "the squash is in the reworded commit");
     assert_eq!(std::fs::read_to_string(dir.join("after.txt")).unwrap().trim(), "New b", "the exec runs after the amend");
     let _ = std::fs::remove_dir_all(&dir);

@@ -1,12 +1,14 @@
 //! An exec or break row of the rebase panel: a grip, a chip naming the step, the command (or a
-//! note for a break), and Edit command, Remove step, Move up and Move down.
+//! note for a break), and Edit command, Remove step, Move up and Move down. Also every row's
+//! right-click menu, which adds these steps.
 
 use super::commit_row::{line, move_buttons, paint_back, paint_chip};
 use super::rows::{BUTTONS_W, Place, SHA_X, Shade};
 use crate::msg::{Msg, RebaseMsg};
+use crate::state::rebase_steps::NewStep;
 use crate::ui::theme::color;
 use crate::ui::widgets::Icon;
-use eframe::egui::{FontId, Rect, Ui, pos2};
+use eframe::egui::{FontId, Rect, Response, Ui, pos2};
 use trellis_core::rebase::TodoStep;
 
 pub const BREAK_NOTE: &str = "Stop here; Continue goes on";
@@ -39,4 +41,26 @@ pub(super) fn paint_step(ui: &Ui, rect: Rect, step: &TodoStep, shade: Shade) {
 pub(super) fn step_controls(ui: &mut Ui, rect: Rect, at: Place, step: &TodoStep, msgs: &mut Vec<Msg>) {
     let edit = matches!(step, TodoStep::Exec(_)).then(|| (Icon::Pencil, "Edit command", RebaseMsg::RebaseEditMessage(at.i)));
     move_buttons(ui, rect, at, edit, Some(RebaseMsg::RebaseRemoveStep(at.i)), msgs);
+}
+
+/// The row's right-click menu: add a step after it, and edit or remove an exec or break step.
+pub(super) fn row_menu(r: &Response, i: usize, step: &TodoStep, msgs: &mut Vec<Msg>) {
+    r.context_menu(|ui| {
+        let mut send = |ui: &mut Ui, m: RebaseMsg| {
+            msgs.push(Msg::Rebase(m));
+            ui.close_menu();
+        };
+        if ui.button("Add exec step after").clicked() {
+            send(ui, RebaseMsg::RebaseAddStep { after: Some(i), step: NewStep::Exec });
+        }
+        if ui.button("Add break step after").clicked() {
+            send(ui, RebaseMsg::RebaseAddStep { after: Some(i), step: NewStep::Break });
+        }
+        if matches!(step, TodoStep::Exec(_)) && ui.button("Edit command…").clicked() {
+            send(ui, RebaseMsg::RebaseEditMessage(i));
+        }
+        if matches!(step, TodoStep::Exec(_) | TodoStep::Break) && ui.button("Remove step").clicked() {
+            send(ui, RebaseMsg::RebaseRemoveStep(i));
+        }
+    });
 }

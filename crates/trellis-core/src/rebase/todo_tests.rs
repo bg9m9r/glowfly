@@ -111,8 +111,33 @@ fn a_reword_exec_follows_its_whole_group() {
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines[0], base_line(1));
     assert!(lines[4].starts_with("fixup "), "{text}");
-    assert_eq!(lines[5], exec_line(1));
+    assert_eq!(lines[5], squashed_line(1));
     assert!(lines[6].starts_with("pick "));
+}
+
+fn squashed_line(n: u8) -> String {
+    exec_line(n).replace(&format!("/reword-{}.txt", oid(n)), &format!("/squashed-{}.txt", oid(n)))
+}
+
+#[test]
+fn a_reworded_group_head_gets_the_message_its_editor_shows() {
+    use RebaseAction::*;
+    let list = [TodoStep::Commit(reword(1, "Typed\n")), c(2, Squash), c(3, Fixup), c(4, Pick)];
+    let (text, files) = build(&list, Path::new(MSG_DIR), false);
+    assert_eq!(text.lines().nth(4), Some(squashed_line(1).as_str()), "{text}");
+    let dir = Path::new(MSG_DIR);
+    let want = [
+        (dir.join(format!("reword-{}.txt", oid(1))), "Typed\n".to_owned()),
+        (dir.join(format!("squashed-{}.txt", oid(1))), default_combined(&list, 0) + "\n"),
+    ];
+    assert_eq!(files, want);
+    assert_eq!(files[1].1, "Typed\n\ncommit 2\n\nbody 2\n", "the squash's message is kept");
+
+    // With only fixups, the typed message is the whole message.
+    let fixups = [TodoStep::Commit(reword(1, "Typed")), c(2, Fixup)];
+    let (text, files) = build(&fixups, Path::new(MSG_DIR), false);
+    assert_eq!(text.lines().nth(3), Some(exec_line(1).as_str()), "{text}");
+    assert_eq!(files, [(dir.join(format!("reword-{}.txt", oid(1))), default_combined(&fixups, 0) + "\n")]);
 }
 
 #[test]
@@ -303,10 +328,16 @@ fn problems_with_steps() {
 
 #[test]
 fn own_lines_are_recognised() {
-    use super::todo::{OwnLine, own_line};
+    use super::todo::{MessageFile, OwnLine, own_line};
     let mut head = item(1, RebaseAction::Pick);
     head.combined_message = Some("Both".into());
-    let list = [TodoStep::Commit(reword(2, "New")), TodoStep::Commit(head), c(3, RebaseAction::Squash)];
+    let list = [
+        TodoStep::Commit(reword(2, "New")),
+        TodoStep::Commit(head),
+        c(3, RebaseAction::Squash),
+        TodoStep::Commit(reword(4, "Four")),
+        c(5, RebaseAction::Squash),
+    ];
     let (text, _) = build(&list, Path::new(MSG_DIR), false);
     // The lines as a Windows folder (backslashes turned to slashes) and a Unix one quote.
     for (dir, windows) in [("C:\\repo\\.git\\trellis-rebase", true), ("/home/u/repo/.git/trellis-rebase", false)] {
@@ -316,11 +347,15 @@ fn own_lines_are_recognised() {
         let want = [
             Some(OwnLine::Base(oid(2))),
             None,
-            Some(OwnLine::Amend { oid: oid(2), combined: false }),
+            Some(OwnLine::Amend { oid: oid(2), file: MessageFile::Reword }),
             Some(OwnLine::Base(oid(1))),
             None,
             None,
-            Some(OwnLine::Amend { oid: oid(1), combined: true }),
+            Some(OwnLine::Amend { oid: oid(1), file: MessageFile::Combined }),
+            Some(OwnLine::Base(oid(4))),
+            None,
+            None,
+            Some(OwnLine::Amend { oid: oid(4), file: MessageFile::Squashed }),
         ];
         assert_eq!(found, want, "{text}");
     }

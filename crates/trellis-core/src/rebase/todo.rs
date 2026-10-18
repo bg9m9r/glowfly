@@ -109,9 +109,10 @@ pub fn is_unchanged(steps: &[TodoStep], original: &[TodoStep]) -> bool {
 
 /// The todo text (LF line endings) and the message files to write first. A reword becomes a
 /// pick plus an `exec` that amends the message from a file in `msg_dir`; the exec follows the
-/// commit's whole group (the squash and fixup rows right after it), so the typed message
-/// becomes the combined commit's message. A group head's typed combined message is amended the
-/// same way from its own file, and wins over a reword. Another `exec` before the pick records
+/// commit's whole group (the squash and fixup rows right after it). The combined commit gets
+/// [`default_combined`]: the typed message, then each squash's (a file of its own, with the
+/// typed message alone kept in the reword file for reading the list back). A group head's
+/// typed combined message is amended the same way from its own file, and wins over a reword. Another `exec` before the pick records
 /// HEAD, and the amend runs only when HEAD is then a new commit on top of it: a pick that was
 /// skipped (after a conflict, or because it became empty) leaves nothing to reword, and the
 /// amend must not rewrite the commit before it. Exec and break steps are written as they are.
@@ -139,18 +140,24 @@ pub fn build(steps: &[TodoStep], msg_dir: &Path, keep_rewords: bool) -> (String,
             a => a.keyword(),
         };
         let summary = item.summary.replace(['\r', '\n'], " ");
-        let combined = item.combined_message.as_deref().filter(|_| group_end(steps, i).is_some());
-        let amend = match combined {
-            Some(m) => Some((format!("combined-{}.txt", item.oid), m)),
-            None if item.rewords() => Some((format!("reword-{}.txt", item.oid), item.new_message.as_deref().unwrap_or_default())),
+        let end = group_end(steps, i);
+        let squashes = end.is_some_and(|e| steps[i + 1..=e].iter().filter_map(TodoStep::commit).any(|c| c.action == RebaseAction::Squash));
+        let typed = item.new_message.as_deref().unwrap_or_default();
+        let file = |kind: MessageFile, message: &str| (msg_dir.join(kind.name(item.oid)), message.trim_end().to_owned() + "\n");
+        let amend = match item.combined_message.as_deref().filter(|_| end.is_some()) {
+            Some(m) => Some(file(MessageFile::Combined, m)),
+            None if item.rewords() && squashes => {
+                files.push(file(MessageFile::Reword, typed));
+                Some(file(MessageFile::Squashed, &default_combined(steps, i)))
+            }
+            None if item.rewords() => Some(file(MessageFile::Reword, typed)),
             None => None,
         };
-        if let Some((name, message)) = amend {
-            let file = msg_dir.join(name);
+        if let Some((path, message)) = amend {
             let base = shell_quote(&msg_dir.join(format!("reword-{}.base", item.oid)).to_string_lossy());
             text.push_str(&format!("exec git rev-parse HEAD >{base}\n"));
-            pending = Some(guarded_amend(&base, &shell_quote(&file.to_string_lossy())));
-            files.push((file, message.trim_end().to_owned() + "\n"));
+            pending = Some(guarded_amend(&base, &shell_quote(&path.to_string_lossy())));
+            files.push((path, message));
         }
         text.push_str(&format!("{keyword} {} {}\n", item.oid, summary.trim_end()));
         // The group ends where the next row neither combines nor is dropped, or at an exec or
@@ -167,13 +174,41 @@ pub fn build(steps: &[TodoStep], msg_dir: &Path, keep_rewords: bool) -> (String,
     (text, files)
 }
 
+/// The message file an amend line reads, in the message folder.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum MessageFile {
+    /// `reword-<oid>.txt`: the commit's typed message.
+    Reword,
+    /// `squashed-<oid>.txt`: a reworded group head's typed message followed by its squashes'.
+    Squashed,
+    /// `combined-<oid>.txt`: a group's typed combined message.
+    Combined,
+}
+
+impl MessageFile {
+    const ALL: [MessageFile; 3] = [MessageFile::Reword, MessageFile::Squashed, MessageFile::Combined];
+
+    fn prefix(self) -> &'static str {
+        match self {
+            MessageFile::Reword => "reword-",
+            MessageFile::Squashed => "squashed-",
+            MessageFile::Combined => "combined-",
+        }
+    }
+
+    /// The file's name for the commit `oid`.
+    pub(crate) fn name(self, oid: Oid) -> String {
+        format!("{}{oid}.txt", self.prefix())
+    }
+}
+
 /// One of the `exec` lines [`build`] adds around a reworded commit or group.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub(crate) enum OwnLine {
     /// Records HEAD before the commit's pick.
     Base(Oid),
-    /// Amends the message after its group; `combined`: from a combined-message file.
-    Amend { oid: Oid, combined: bool },
+    /// Amends the message after its group from `file`.
+    Amend { oid: Oid, file: MessageFile },
 }
 
 /// Recognises Trellis's own exec lines (with or without the `exec`/`x` keyword) by the message
@@ -191,10 +226,7 @@ pub(crate) fn own_line(line: &str) -> Option<OwnLine> {
         })
     };
     if cmd.starts_with("h=$(git rev-parse") {
-        if let Some(oid) = named("reword-", ".txt") {
-            return Some(OwnLine::Amend { oid, combined: false });
-        }
-        return named("combined-", ".txt").map(|oid| OwnLine::Amend { oid, combined: true });
+        return MessageFile::ALL.into_iter().find_map(|file| named(file.prefix(), ".txt").map(|oid| OwnLine::Amend { oid, file }));
     }
     named("reword-", ".base").filter(|_| cmd.starts_with("git rev-parse HEAD >")).map(OwnLine::Base)
 }
