@@ -13,6 +13,7 @@ use trellis_core::undo::{Action, UndoKind};
 
 mod blame;
 mod clone;
+mod credential;
 mod dashboard;
 mod forge;
 mod forge_filters;
@@ -30,6 +31,7 @@ mod updates;
 
 pub use blame::BlameRequest;
 pub use clone::CloneEffect;
+pub use credential::CredentialEffect;
 pub use dashboard::*;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
@@ -377,6 +379,8 @@ pub enum Effect {
     },
     /// Listing and generating SSH keys (ssh.rs); unscoped, outside any repository.
     Ssh(crate::ssh::SshEffect),
+    /// Saving or dropping an HTTPS sign-in typed in the prompt (runner/credentials.rs); unscoped.
+    Credential(CredentialEffect),
     /// Writing a profile's identity to the global git config (profile.rs); unscoped.
     Profile(crate::profile::ProfileEffect),
     /// The built-in terminal panel's shells; handled by Runner::run, never a worker.

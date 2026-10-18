@@ -20,7 +20,7 @@ fn remote_info_lists_every_remote() {
     let info_names: Vec<&str> = s.remote_info.iter().map(|r| r.name.as_str()).collect();
     assert_eq!(names, info_names);
     let empty = s.remote_info.iter().find(|r| r.name == "empty").unwrap();
-    assert_eq!(*empty, RemoteInfo { name: "empty".into(), urls: vec![path.clone()], push_urls: vec![] });
+    assert_eq!(*empty, RemoteInfo { name: "empty".into(), urls: vec![path.clone()], push_urls: vec![], skip_fetch_all: false });
     assert_eq!(empty.fetch_url(), path);
     assert_eq!(empty.push_url(), None);
     let _ = std::fs::remove_dir_all(&work);
@@ -75,4 +75,17 @@ fn remote_heads_come_from_the_remote_head_ref() {
     assert_eq!(snap(&work).remote_heads, vec![("origin".to_owned(), "main".to_owned())]);
     let _ = std::fs::remove_dir_all(&work);
     let _ = std::fs::remove_dir_all(&bare);
+}
+
+#[test]
+fn remote_info_reads_skip_fetch_all() {
+    let dir = scratch_repo("remotes-skip-fetch-all");
+    git(&dir, &["remote", "add", "origin", "https://h/a.git"]);
+    git(&dir, &["remote", "add", "mirror", "https://h/m.git"]);
+    set_config(&dir, &[("remote.mirror.skipFetchAll", "true")]);
+    let s = snap(&dir);
+    let skip = |name: &str| s.remote_info.iter().find(|r| r.name == name).map(|r| r.skip_fetch_all);
+    assert_eq!(skip("mirror"), Some(true));
+    assert_eq!(skip("origin"), Some(false), "false when unset");
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -31,6 +31,7 @@ binary (package `trellis`).
 | `safe_directory.rs` | Repositories git refuses because another user owns them: the typed error, and listing a folder in `safe.directory` in git's spelling. |
 | `native_path.rs`, `volume.rs` | The spelling of paths that go to the OS or the screen (never libgit2's `C:/x/y/`); whether a folder is on a network or virtual file system. |
 | `askpass/` | Credential prompts: classifying git's and ssh's questions, the helper protocol, the app's listener and the helper's client. |
+| `git_credential.rs`, `auth_failure.rs`, `ssh_version.rs` | Saving and dropping HTTPS sign-ins typed in the prompt with git's credential helper (`git credential approve` / `reject`, setting up the platform's store when git has none); reading git's output for fetches that need a sign-in, rejected credentials and the remote they belong to (pure); OpenSSH's version, and the legacy askpass set-up (a `DISPLAY` placeholder and a new session per git child) before 8.4 on Unix. |
 | `instance/` | One window for links: the running app's loopback listener and its private instance file (address, token, process id in the runtime folder), and a second process handing its `trellis://` link over (letting the window take the foreground on Windows). |
 | `link.rs`, `link/find.rs` | `trellis://` links: the format (building, parsing and every refusal), remote URL identity (`url_key`, `same_url`), the root commit, and checking a folder for the linked repository and its target (libgit2 reads only). |
 | `url_scheme/` | Registering the `trellis` scheme for this user: the registry class key on Windows (`windows.rs`), a desktop entry and `xdg-mime` on XDG desktops (`xdg.rs`), and the pure decisions both read (the Linux package's own `trellis-links.desktop` in `XDG_DATA_DIRS` counts too); macOS waits for Apple event handling in Trellis.app. |
@@ -230,7 +231,16 @@ binary (package `trellis`).
 - **Credential prompts** (`askpass/`): every git child that may prompt gets Trellis as its
   `GIT_ASKPASS` / `SSH_ASKPASS`; the helper process asks the app's loopback listener, which
   reports `CredentialMsg::CredentialPrompt`, and `Effect::AnswerPrompt` hands the dialog's
-  `Reply` back. `gitcli::NO_PROMPTS` (background jobs, reads) turns all of it off.
+  `Reply` back. `gitcli::NO_PROMPTS` (reads) turns all of it off; background jobs use
+  `gitcli::BACKGROUND`, which also keeps Git Credential Manager from opening a window. HTTPS
+  sign-ins typed with "Remember this sign-in" are kept in `CredentialPrompts::typed` until the
+  job ends; `update/askpass_store.rs` then saves them (`CredentialEffect::Remember`) or drops
+  the rejected ones (`Forget`).
+- **Auto-fetch sign-ins** (`state/sign_in.rs`, `update/sign_in.rs`, `ui/sign_in_banner.rs`):
+  `jobs::start_job` notes which remotes a fetch covers (`SignInNotices::fetching`); an
+  auto-fetch that fails for want of a sign-in (`auth_failure::fetch_failures`) pauses those
+  remotes (global, in memory, by workdir and remote), auto-fetch leaves paused remotes out, the
+  banner offers a fetch that can prompt, and any fetch of the remote that works resumes it.
 - **Signing passphrases** (`gpg_prompt/`): gpg-agent's pinentry is fixed when the long-running
   agent starts and is shared by all its clients, so there is no Trellis pinentry; swapping it
   would mean editing gpg-agent.conf and restarting the agent. GnuPG's per-call alternative,

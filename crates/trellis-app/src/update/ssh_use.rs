@@ -188,7 +188,7 @@ pub(super) fn agent_added(st: &mut AppState, key: &Path, result: Result<(), Stri
     if let Some(p) = st.prefs.as_mut() {
         p.ssh.agent_adding = None;
     }
-    let headline = super::askpass::job_finished(st, result.is_ok(), "Add key to SSH agent", fx);
+    let headline = super::askpass::job_finished(st, result.is_ok(), "Add key to SSH agent", None, "", fx);
     let file = key.file_name().map(|f| f.to_string_lossy().into_owned()).unwrap_or_default();
     match result {
         Ok(()) => {

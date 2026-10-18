@@ -70,6 +70,7 @@ impl Effect {
             Effect::Profile(e) => e.name(),
             Effect::Watch(_) => "watch",
             Effect::AnswerPrompt { .. } => "answer-prompt",
+            Effect::Credential(e) => e.name(),
             Effect::Terminal(_) => "terminal",
             Effect::Patch(p) => p.name(),
             Effect::Tool(t) => t.name(),
@@ -175,6 +176,8 @@ impl Effect {
             | Effect::GenerateGpgKey { .. }
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }
+            // A keychain may ask the user to allow saving the sign-in.
+            | Effect::Credential(_)
             | Effect::Terminal(_)
             | Effect::Tool(_)
             | Effect::Notify(_)

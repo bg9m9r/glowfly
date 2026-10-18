@@ -92,11 +92,16 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
     });
     // A branch checkout, pull, merge or reset may be followed by updating the submodules.
     let moves = trellis_core::submodule_ops::moves_work_tree(&spec.cmds) && spec.cwd.is_none();
-    let label = job.label.clone();
+    let (label, quiet) = (job.label.clone(), spec.quiet);
+    // A fetch in the active repository can pause or resume its remotes' auto-fetch.
+    let sign_in_cmds = if spec.cwd.is_none() { spec.cmds.clone() } else { Vec::new() };
     let (cmds, write_file, expect) = (spec.cmds, spec.write_file, spec.expect);
     let started = launch(st, job, spec.cwd, move |cwd| Effect::RunGit { cwd, cmds, write_file, record, prompts, expect }, fx);
     if started != Started::No {
         super::submodule_batch::job_started(st, &label, moves);
+    }
+    if started == Started::Now {
+        super::sign_in::job_started(st, quiet, &label, &sign_in_cmds);
     }
     started
 }

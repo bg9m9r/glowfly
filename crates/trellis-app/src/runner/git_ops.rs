@@ -82,6 +82,12 @@ Your changes were stashed as \"{}\".
     }
 }
 
+/// The caller environment for a job's git commands: none for one that may prompt, else
+/// [`gitcli::BACKGROUND`] (no prompts, and no Git Credential Manager window either).
+pub(super) fn job_env(prompts: bool) -> &'static [(&'static str, &'static str)] {
+    if prompts { &[] } else { gitcli::BACKGROUND }
+}
+
 /// Runs `cmds` in order, stopping at the first failure. Without `prompts`, git fails rather than
 /// open a credential prompt.
 pub(super) fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std::path::PathBuf, String)>, prompts: bool) -> (bool, String) {
@@ -93,7 +99,7 @@ pub(super) fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std:
     let mut output = String::new();
     for c in cmds {
         output.push_str(&format!("$ git {}\n", trellis_core::text::redact_credentials(&c.join(" "))));
-        let (success, text) = gitcli::run_with_input(cwd, c, "", if prompts { &[] } else { gitcli::NO_PROMPTS });
+        let (success, text) = gitcli::run_with_input(cwd, c, "", job_env(prompts));
         if !text.is_empty() {
             output.push_str(&text);
             output.push('\n');
@@ -103,4 +109,14 @@ pub(super) fn run_git(cwd: &Path, cmds: &[Vec<String>], write_file: Option<(std:
         }
     }
     (true, output.trim_end().to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn background_jobs_run_without_prompts_or_credential_manager_windows() {
+        assert_eq!(super::job_env(false), trellis_core::gitcli::BACKGROUND);
+        assert!(super::job_env(false).contains(&("GCM_INTERACTIVE", "never")));
+        assert!(super::job_env(true).is_empty(), "a job that may prompt keeps the askpass helper");
+    }
 }

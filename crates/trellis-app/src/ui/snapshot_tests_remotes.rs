@@ -31,8 +31,9 @@ fn with_remotes(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
             name: "origin".into(),
             urls: vec!["https://example.com/team/app.git".into()],
             push_urls: vec!["https://dev:secret@example.com/team/app-push.git".into()],
+            skip_fetch_all: false,
         },
-        RemoteInfo { name: "backup".into(), urls: vec!["D:/backups/app.git".into()], push_urls: Vec::new() },
+        RemoteInfo { name: "backup".into(), urls: vec!["D:/backups/app.git".into()], push_urls: Vec::new(), skip_fetch_all: false },
     ];
     (st, dir)
 }

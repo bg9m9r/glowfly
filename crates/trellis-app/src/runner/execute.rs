@@ -2,7 +2,7 @@
 //! the work, and the result message it sends back.
 
 use super::{
-    blame, clone, config, conflict_check, conflict_files, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks, git_env,
+    blame, clone, config, conflict_check, conflict_files, credentials, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks, git_env,
     git_ops, highlight, history, init, issues, keys, notify, onboarding, os, patches, path_search, profiles, pull_request, rebase, repos,
     revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, updates, worktrees,
 };
@@ -191,6 +191,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::GenerateGpgKey { program, name, email, passphrase } => Some(keys::generate_gpg(&program, &name, &email, &passphrase)),
         Effect::ExportPublicKey { format, program, key } => Some(keys::export_public(format, &program, &key)),
         Effect::Ssh(e) => Some(ssh::run(e)),
+        Effect::Credential(e) => Some(credentials::run(e)),
         Effect::Profile(e) => Some(profiles::run(e)),
         Effect::Patch(p) => Some(patches::run(p)),
         Effect::Tool(t) => tools::run(t),

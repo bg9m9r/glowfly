@@ -17,6 +17,14 @@ pub enum CredentialMsg {
     AnswerCredentials,
     /// Cancel, No or Esc.
     CancelCredentials,
+    /// Saving an HTTPS sign-in for `host` with git's credential helper ended (runner/credentials.rs).
+    Remembered { host: String, result: Result<trellis_core::git_credential::Remembered, String> },
+    /// Dropping a rejected HTTPS sign-in for `host` from git's credential helper ended.
+    Forgotten { host: String, result: Result<(), String> },
+    /// The sign-in banner's "Fetch <remote>": fetch it in a job that can prompt (update/sign_in.rs).
+    SignInFetch { workdir: PathBuf, remote: String },
+    /// The sign-in banner's "Not now": hide the remote's line; auto-fetch still skips it.
+    DismissSignIn { workdir: PathBuf, remote: String },
 }
 
 impl CredentialMsg {
@@ -24,7 +32,14 @@ impl CredentialMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::CredentialPrompt { .. } | Self::CredentialPromptExpired(..) | Self::AnswerCredentials | Self::CancelCredentials => None,
+            Self::CredentialPrompt { .. }
+            | Self::CredentialPromptExpired(..)
+            | Self::AnswerCredentials
+            | Self::CancelCredentials
+            | Self::Remembered { .. }
+            | Self::Forgotten { .. }
+            | Self::SignInFetch { .. }
+            | Self::DismissSignIn { .. } => None,
         }
     }
 }

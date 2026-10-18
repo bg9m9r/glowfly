@@ -82,6 +82,7 @@ pub mod selection;
 pub mod selection_span;
 pub mod selection_wip;
 pub mod shallow;
+pub mod sign_in;
 pub mod signatures;
 pub mod sparse;
 pub mod ssh;
@@ -385,6 +386,8 @@ pub struct AppState {
     pub watch: watch::WatchState,
     /// Credential prompts from git (global, not per tab).
     pub askpass: askpass::CredentialPrompts,
+    /// Remotes auto-fetch skips until they are signed in to (global, not per tab).
+    pub sign_in: sign_in::SignInNotices,
     /// Submodule updates after jobs and the offers made on open (global, not per tab).
     pub submodules: submodules::batch::SubmoduleSession,
     /// Whether git-lfs is installed (global, not per tab): checked at startup and whenever Preferences > Git LFS reads its status.
@@ -490,6 +493,7 @@ impl AppState {
             last_fetch: now,
             watch,
             askpass: Default::default(),
+            sign_in: Default::default(),
             submodules: Default::default(),
             lfs_install: Default::default(),
             git: Default::default(),

@@ -10,6 +10,7 @@ use crate::state::AppState;
 use crate::state::askpass::PendingPrompt;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::askpass::{PromptKind, host, user_and_host};
+use trellis_core::git_credential::is_http_url;
 
 /// The wording and fields for one kind of prompt.
 struct Layout {
@@ -23,6 +24,8 @@ struct Layout {
     /// The masked field and its hint.
     secret: Option<&'static str>,
     token_hint: bool,
+    /// Offer "Remember this sign-in" (an HTTPS sign-in).
+    remember: bool,
     /// Small help above the footer.
     help: Option<&'static str>,
     /// Show the whole prompt text (a host-key question).
@@ -41,6 +44,7 @@ impl Layout {
             user: None,
             secret: None,
             token_hint: false,
+            remember: false,
             help: None,
             full_text: false,
             primary,
@@ -56,6 +60,7 @@ fn layout(p: &PendingPrompt) -> Layout {
             user: Some("Username"),
             secret: Some("Password or token"),
             token_hint: true,
+            remember: is_http_url(url),
             ..Layout::new(format!("Sign in to {}", host(&p.prompt.kind).unwrap_or_else(|| url.clone())), "Sign in")
         },
         PromptKind::Password { target, user } => {
@@ -64,7 +69,7 @@ fn layout(p: &PendingPrompt) -> Layout {
                 (true, None, Some(h)) => h,
                 _ => target.clone(),
             };
-            Layout { secret: Some("Password"), ..Layout::new(format!("Password for {who}"), "OK") }
+            Layout { secret: Some("Password"), remember: is_http_url(target), ..Layout::new(format!("Password for {who}"), "OK") }
         }
         PromptKind::Passphrase { key } => Layout {
             line: Some(format!("Enter the passphrase for {key}.")),
@@ -187,6 +192,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             let hint = "Most hosting services expect a personal access token here, not your account password.";
             ui.add(egui::Label::new(RichText::new(hint).color(color::weak()).size(12.0)).wrap());
         }
+        if l.remember {
+            ui.add_space(4.0);
+            ui.checkbox(&mut p.remember, "Remember this sign-in");
+        }
         if let Some(help) = l.help {
             ui.add_space(2.0);
             ui.add(egui::Label::new(RichText::new(help).color(color::weak()).size(12.0)).wrap());
@@ -199,8 +208,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             cancel |= ui.button(l.secondary).clicked();
         });
         if !l.full_text {
+            let footer = if l.remember && p.remember {
+                "Trellis saves this sign-in with git's credential helper once git accepts it."
+            } else {
+                "Trellis doesn't save what you type here."
+            };
             ui.add_space(6.0);
-            ui.label(RichText::new("Trellis doesn't save what you type here.").color(color::weak()).size(12.0));
+            ui.label(RichText::new(footer).color(color::weak()).size(12.0));
         }
         if cancel {
             msgs.push(Msg::Credentials(CredentialMsg::CancelCredentials));

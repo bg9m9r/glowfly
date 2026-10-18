@@ -75,6 +75,7 @@ mod repo_menu;
 mod repo_sync;
 mod shortcuts;
 mod sidebar;
+mod sign_in_banner;
 mod signature_badge;
 mod spell_edit;
 mod stash_dialog;
@@ -243,6 +244,8 @@ mod snapshot_tests_select;
 #[cfg(test)]
 mod snapshot_tests_shallow;
 #[cfg(test)]
+mod snapshot_tests_sign_in;
+#[cfg(test)]
 mod snapshot_tests_signature;
 #[cfg(test)]
 mod snapshot_tests_sparse;
@@ -338,6 +341,9 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
             toolbar::show(ctx, st, msgs);
         }
         git_banner::show(ctx, st, msgs);
+        if st.snap.is_some() && !st.dashboard.open {
+            sign_in_banner::show(ctx, st, msgs);
+        }
         activity_log::show(ctx, st, msgs);
         if st.snap.is_some() && !st.dashboard.open {
             if st.settings.show_left_panel {

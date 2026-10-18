@@ -16,7 +16,12 @@ fn make_shallow(st: &mut AppState) {
     let snap = st.snap.as_mut().unwrap();
     snap.shallow_roots = vec![snap.commits.last().unwrap().oid];
     snap.remote_info.retain(|r| r.name != "origin");
-    snap.remote_info.push(RemoteInfo { name: "origin".into(), urls: vec!["https://example.com/app.git".into()], push_urls: vec![] });
+    snap.remote_info.push(RemoteInfo {
+        name: "origin".into(),
+        urls: vec!["https://example.com/app.git".into()],
+        push_urls: vec![],
+        skip_fetch_all: false,
+    });
 }
 
 #[test]

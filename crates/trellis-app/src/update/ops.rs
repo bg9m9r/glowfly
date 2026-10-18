@@ -261,9 +261,10 @@ pub(super) fn finish_job(
     fx: &mut Vec<Effect>,
 ) {
     let Some(mut job) = st.job.take() else { return };
+    super::sign_in::job_finished(st, job.workdir.as_deref(), ok, &output);
     let then_pr = job.then_pr.take();
     // A cancelled or timed-out credential prompt explains a failure better than git's output.
-    let headline = super::askpass::job_finished(st, ok, &job.label, fx).or(headline);
+    let headline = super::askpass::job_finished(st, ok, &job.label, job.workdir.as_deref(), &output, fx).or(headline);
     let status = if ok { "done" } else { "FAILED" };
     let text = format!("{} {status}\n{output}", job.label);
     if job.quiet {
@@ -340,9 +341,7 @@ pub(super) fn auto_fetch(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) 
         return;
     }
     st.last_fetch = now;
-    let mut cmd = args(&["fetch", "--all"]);
-    if st.settings.auto_prune {
-        cmd.push("--prune".into());
-    }
+    // Remotes that need a sign-in are skipped (update/sign_in.rs).
+    let Some((cmd, _)) = super::sign_in::auto_fetch_cmd(st) else { return };
     start_job(st, JobSpec { quiet: true, ..JobSpec::new(super::notify::AUTO_FETCH.into(), vec![cmd]) }, fx);
 }

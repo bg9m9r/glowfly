@@ -86,7 +86,31 @@ fn old_openssh_gets_a_display_to_use_askpass() {
     assert_eq!(display_placeholder(None, true), Some(":0"));
     assert_eq!(display_placeholder(Some(OsStr::new("")), true), Some(":0"));
     assert_eq!(display_placeholder(Some(OsStr::new(":1")), true), None, "a real display is kept");
-    assert_eq!(display_placeholder(None, false), None, "not on Windows");
+    assert_eq!(display_placeholder(None, false), None, "not with OpenSSH 8.4 or newer, or on Windows");
+}
+
+#[test]
+fn only_old_openssh_gets_the_display_placeholder() {
+    use std::ffi::OsStr;
+    let a = AskpassEnv { exe: "trellis".into(), addr: "127.0.0.1:1".into(), token: "ab".into() };
+    let display = |legacy, d: Option<&str>| {
+        let vars = askpass_vars_for(&a, legacy, d.map(OsStr::new));
+        assert_eq!(vars.iter().filter(|(n, _)| *n == "SSH_ASKPASS_REQUIRE").count(), 1);
+        vars.into_iter().find(|(n, _)| *n == "DISPLAY").map(|(_, v)| v.to_string_lossy().into_owned())
+    };
+    assert_eq!(display(true, None).as_deref(), Some(":0"));
+    assert_eq!(display(true, Some("")).as_deref(), Some(":0"));
+    assert_eq!(display(true, Some(":1")), None, "the real display is inherited");
+    assert_eq!(display(false, None), None, "OpenSSH 8.4 or newer needs no display");
+}
+
+#[test]
+fn background_jobs_never_prompt() {
+    for pair in NO_PROMPTS {
+        assert!(BACKGROUND.contains(pair), "{pair:?}");
+    }
+    assert!(BACKGROUND.contains(&("GCM_INTERACTIVE", "never")));
+    assert!(!crate::gpg_prompt::env::allows_prompts(BACKGROUND));
 }
 
 #[test]

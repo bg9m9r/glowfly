@@ -41,12 +41,12 @@ two-face = { version = "0.5.2", default-features = false, features = ["syntect-f
 # Linux: save tokens in the desktop keyring (GNOME Keyring, KWallet) through the Secret Service.
 [target."cfg(target_os = \"linux\")".dependencies]
 keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
-# Whether a repository is on a network or virtual file system (statfs).
-libc = "0.2"
 
 [target."cfg(windows)".dependencies]
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Registry", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
-# macOS: why the Trash refused a file, and whether a volume is on the network (the volume's flags).
-[target."cfg(target_os = \"macos\")".dependencies]
+# Linux: whether a repository is on a network or virtual file system (statfs). macOS: why the
+# Trash refused a file, and whether a volume is on the network (the volume's flags). Both:
+# starting git children in a new session for OpenSSH before 8.4 (setsid, ssh_version.rs).
+[target."cfg(unix)".dependencies]
 libc = "0.2"

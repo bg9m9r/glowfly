@@ -1,5 +1,5 @@
-//! The credential prompt over the main window: sign in, a passphrase retried, a host-key
-//! confirmation, and a signing key's passphrase (first and retried). Shares the fixture repository and renderer with `snapshot_tests`.
+//! The credential prompt over the main window: sign in (with Remember this sign-in), a
+//! passphrase retried, a host-key confirmation, and a signing key's passphrase (first and retried). Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::CredentialMsg;
@@ -38,11 +38,17 @@ fn credential_prompt_sign_in() {
     prompt(&mut st, "Username for 'https://github.com': ", false, true);
     st.askpass.user = "ada".into();
     st.askpass.secret = "hunter2".into();
+    st.askpass.remember = true;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("credential_prompt_sign_in");
     assert!(h.query_by_label_contains("hunter2").is_none(), "the password is masked");
     assert!(h.query_by_label_contains("were not accepted").is_some());
+    assert!(h.query_by_label_contains("saves this sign-in with git's credential helper").is_some());
+    h.get_by_label("Remember this sign-in").click();
+    h.run();
+    assert!(!h.state().0.askpass.remember, "the box is only this sign-in's");
+    assert!(h.query_by_label_contains("doesn't save what you type here").is_some());
     let sign_in = h.get_by_label("Sign in");
     assert!(!sign_in.is_disabled());
     sign_in.click();

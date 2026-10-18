@@ -54,6 +54,10 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     row(ui, t.tr("prefs.general.auto_prune.label"), |ui| {
         ui.checkbox(&mut s.auto_prune, t.tr("prefs.general.auto_prune.check"));
     });
+    row(ui, t.tr("prefs.general.remember_sign_ins.label"), |ui| {
+        ui.checkbox(&mut s.remember_https_credentials, t.tr("prefs.general.remember_sign_ins.check"));
+        help(ui, t.tr("prefs.general.remember_sign_ins.help"));
+    });
     row(ui, t.tr("prefs.general.default_branch.label"), |ui| {
         text_field(ui, &mut s.default_branch, "main");
         help(ui, t.tr("prefs.general.default_branch.help"));

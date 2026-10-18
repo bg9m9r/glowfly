@@ -4,6 +4,7 @@
 
 mod app;
 mod askpass;
+mod askpass_store;
 mod avatars;
 mod blame;
 mod branches;
@@ -75,6 +76,7 @@ mod search_paths;
 mod selection;
 mod shallow;
 mod shortcuts;
+mod sign_in;
 mod signatures;
 mod sparse;
 mod ssh;

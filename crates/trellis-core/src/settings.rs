@@ -318,6 +318,9 @@ pub struct Settings {
     /// Ask for OpenPGP signing passphrases in Trellis rather than GnuPG's own window
     /// (Preferences > Commit Signing).
     pub gpg_prompts_in_app: bool,
+    /// Save HTTPS sign-ins typed in the credential prompt with git's credential helper
+    /// (Preferences > General).
+    pub remember_https_credentials: bool,
     /// Add git commands and their timings to the activity log and write details to the error log (Preferences > General).
     #[serde(default)]
     pub extended_logging: bool,
@@ -408,6 +411,7 @@ impl Default for Settings {
             active_profile: None,
             use_ssh_agent: false,
             gpg_prompts_in_app: true,
+            remember_https_credentials: true,
             extended_logging: false,
             keybindings: BTreeMap::new(),
             git_program: None,

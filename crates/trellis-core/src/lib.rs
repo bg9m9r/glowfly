@@ -3,6 +3,7 @@
 
 pub mod app_update;
 pub mod askpass;
+pub mod auth_failure;
 pub mod avatars;
 pub mod branch_ops;
 pub mod changelog;
@@ -21,6 +22,7 @@ pub mod error;
 pub mod external_tools;
 pub mod forge;
 pub mod fuzzy;
+pub mod git_credential;
 pub mod git_program;
 pub mod git_version;
 pub mod gitcli;
@@ -61,6 +63,7 @@ pub mod signing;
 pub mod sparse_ops;
 pub mod spell;
 pub mod ssh_keys;
+pub mod ssh_version;
 pub mod stash_ops;
 pub mod submodule_ops;
 pub mod tabs;

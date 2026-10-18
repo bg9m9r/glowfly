@@ -9,7 +9,7 @@ fn v(a: &[&str]) -> Vec<String> {
 }
 
 fn info(name: &str, urls: &[&str], push: &[&str]) -> RemoteInfo {
-    RemoteInfo { name: name.into(), urls: v(urls), push_urls: v(push) }
+    RemoteInfo { name: name.into(), urls: v(urls), push_urls: v(push), skip_fetch_all: false }
 }
 
 #[test]

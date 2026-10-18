@@ -3,6 +3,7 @@
 
 use std::collections::{HashSet, VecDeque};
 use trellis_core::askpass::{self, Prompt, PromptKind, Secret};
+use trellis_core::git_credential::HttpsCredential;
 
 /// A prompt waiting in the queue.
 #[derive(Clone, Debug)]
@@ -50,6 +51,12 @@ pub struct CredentialPrompts {
     pub ended: Option<PromptEnd>,
     /// The prompt that ended the job early asked for a signing passphrase.
     pub ended_signing: bool,
+    /// View state: the dialog's "Remember this sign-in" box, set from the setting whenever
+    /// prompts start queueing.
+    pub remember: bool,
+    /// HTTPS sign-ins typed during the current job with Remember on, saved or dropped through
+    /// git's credential helper when it ends (update/askpass_store.rs).
+    pub typed: Vec<HttpsCredential>,
 }
 
 impl CredentialPrompts {

@@ -11,6 +11,8 @@ pub struct RemoteInfo {
     pub urls: Vec<String>,
     /// Every remote.<name>.pushurl value in config order; empty means pushes go to `urls`.
     pub push_urls: Vec<String>,
+    /// `remote.<name>.skipFetchAll`: `git fetch --all` leaves this remote out.
+    pub skip_fetch_all: bool,
 }
 
 impl RemoteInfo {
@@ -53,7 +55,8 @@ pub(crate) fn remote_info(repo: &Repository, names: &[&str]) -> Vec<RemoteInfo> 
                 Some(c) => (values(c, &format!("remote.{name}.url")), values(c, &format!("remote.{name}.pushurl"))),
                 None => (Vec::new(), Vec::new()),
             };
-            RemoteInfo { name: (*name).to_owned(), urls, push_urls }
+            let skip_fetch_all = cfg.as_ref().and_then(|c| c.get_bool(&format!("remote.{name}.skipFetchAll")).ok()).unwrap_or(false);
+            RemoteInfo { name: (*name).to_owned(), urls, push_urls, skip_fetch_all }
         })
         .collect()
 }

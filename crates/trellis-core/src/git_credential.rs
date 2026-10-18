@@ -1,0 +1,224 @@
+//! Saving and dropping HTTPS sign-ins typed in the credential prompt with git's own credential
+//! helpers (`git credential approve` / `reject`), so the next fetch or push needn't ask again.
+//!
+//! When git has no `credential.helper` at all, [`remember`] sets up the platform's credential
+//! store (Git Credential Manager or wincred, the macOS keychain, libsecret) in the global git
+//! config first. A helper set to the empty value means the user turned helpers off; nothing is
+//! saved then. Every git call here runs with [`gitcli::BACKGROUND`], so none of them prompts.
+
+use crate::askpass::{self, Secret};
+use crate::gitcli::{self, GitOutput, args};
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
+/// How long `git credential approve` may take: a keychain may ask the user to allow it.
+const APPROVE_TIMEOUT: Duration = Duration::from_secs(120);
+
+/// Whether `url` is an `http://` or `https://` URL (any case).
+pub fn is_http_url(url: &str) -> bool {
+    let lower = url.get(..8).unwrap_or(url).to_ascii_lowercase();
+    lower.starts_with("http://") || lower.starts_with("https://")
+}
+
+/// A username and password or token typed for an HTTP(S) remote, in the fields git's credential
+/// protocol uses.
+#[derive(Clone, Debug)]
+pub struct HttpsCredential {
+    /// `http` or `https`.
+    pub protocol: String,
+    /// Lowercase, with any port.
+    pub host: String,
+    /// Without its leading `/`; None when git's prompt named no path.
+    pub path: Option<String>,
+    pub username: String,
+    pub password: Secret,
+}
+
+impl HttpsCredential {
+    /// The credential for git's prompt URL (`scheme://[user[:x]@]host[:port][/path]`), or None
+    /// unless it is http(s) with a host, the username isn't empty, and no field holds a newline
+    /// or NUL (which git's credential protocol refuses).
+    pub fn from_prompt(url: &str, username: &str, password: Secret) -> Option<Self> {
+        let (scheme, rest) = url.split_once("://")?;
+        let protocol = scheme.to_ascii_lowercase();
+        if protocol != "http" && protocol != "https" {
+            return None;
+        }
+        let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+        let host = authority.rsplit_once('@').map_or(authority, |(_, h)| h).to_ascii_lowercase();
+        let path = Some(path.to_owned()).filter(|p| !p.is_empty());
+        let bad = |s: &str| s.contains(['\n', '\0']);
+        if host.is_empty() || username.is_empty() || [host.as_str(), username, password.expose()].into_iter().any(bad) {
+            return None;
+        }
+        if path.as_deref().is_some_and(bad) {
+            return None;
+        }
+        Some(HttpsCredential { protocol, host, path, username: username.to_owned(), password })
+    }
+
+    /// `protocol://host[/path]`, for `git config --get-urlmatch` and messages.
+    pub fn url(&self) -> String {
+        let path = self.path.as_deref().map(|p| format!("/{p}")).unwrap_or_default();
+        format!("{}://{}{path}", self.protocol, self.host)
+    }
+
+    /// The credential as git's credential protocol reads it on stdin. The caller wipes the text
+    /// ([`askpass::wipe`]) once it is sent.
+    pub fn request(&self, with_password: bool) -> String {
+        let mut s = format!("protocol={}\nhost={}\n", self.protocol, self.host);
+        if let Some(p) = &self.path {
+            s.push_str(&format!("path={p}\n"));
+        }
+        s.push_str(&format!("username={}\n", self.username));
+        if with_password {
+            s.push_str("password=");
+            s.push_str(self.password.expose());
+            s.push('\n');
+        }
+        s.push('\n');
+        s
+    }
+}
+
+/// What git's `credential.helper` is for a URL.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HelperConfig {
+    /// A helper is configured: git already ran it when the credential worked.
+    Set,
+    /// Set to the empty value: the user turned helpers off.
+    TurnedOff,
+    /// Not set anywhere.
+    None,
+}
+
+/// Reads `git config --get-urlmatch credential.helper`'s result.
+fn helper_config_from(out: &GitOutput) -> HelperConfig {
+    match out.code {
+        Some(0) if out.stdout.trim().is_empty() => HelperConfig::TurnedOff,
+        Some(0) => HelperConfig::Set,
+        _ => HelperConfig::None,
+    }
+}
+
+/// [`gitcli::BACKGROUND`] followed by `env`.
+fn quiet_env<'a>(env: &[(&'a str, &'a str)]) -> Vec<(&'a str, &'a str)> {
+    let mut all = gitcli::BACKGROUND.to_vec();
+    all.extend_from_slice(env);
+    all
+}
+
+/// The credential helper git uses for `url`, run in `cwd` with `env` added.
+pub fn helper_config(cwd: &Path, url: &str, env: &[(&str, &str)]) -> HelperConfig {
+    let out = gitcli::output(
+        cwd,
+        &args(&["config", "--get-urlmatch", "credential.helper", url]),
+        "",
+        &quiet_env(env),
+        Some(gitcli::READ_TIMEOUT),
+    );
+    helper_config_from(&out)
+}
+
+/// The credential stores git ships or recommends on `os` (`std::env::consts::OS`), best first.
+pub fn platform_helpers(os: &str) -> &'static [&'static str] {
+    match os {
+        "windows" => &["manager", "wincred"],
+        "macos" => &["osxkeychain"],
+        "linux" => &["libsecret"],
+        _ => &[],
+    }
+}
+
+/// How to get a credential store on `os`, for the error when none is installed.
+pub fn setup_hint(os: &str) -> &'static str {
+    match os {
+        "windows" => "install Git Credential Manager or set credential.helper",
+        "macos" => "install git-credential-osxkeychain or set credential.helper",
+        "linux" => "install git-credential-libsecret or set credential.helper",
+        _ => "set credential.helper",
+    }
+}
+
+/// The first of this OS's [`platform_helpers`] that is installed: `git-credential-<name>` in
+/// git's exec path (or the `bin` folder next to it, where Git for Windows keeps Git Credential
+/// Manager) or on PATH.
+pub fn installed_helper(cwd: &Path) -> Option<String> {
+    let exec = gitcli::read(cwd, &args(&["--exec-path"]));
+    let exec_dir = PathBuf::from(exec.stdout.trim());
+    let mut dirs = Vec::new();
+    if exec.ok && !exec_dir.as_os_str().is_empty() {
+        dirs.extend(exec_dir.parent().and_then(Path::parent).map(|p| p.join("bin")));
+        dirs.insert(0, exec_dir);
+    }
+    let in_dir = |d: &Path, p: &str| d.join(p).is_file() || (cfg!(windows) && d.join(format!("{p}.exe")).is_file());
+    let found =
+        |program: &str| dirs.iter().any(|d| in_dir(d, program)) || crate::external_tools::find_on_path(Path::new(program)).is_some();
+    platform_helpers(std::env::consts::OS).iter().find(|name| found(&format!("git-credential-{name}"))).map(|n| n.to_string())
+}
+
+/// What [`remember`] did.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Remembered {
+    /// Handed to the helper the user already has.
+    Helper,
+    /// No helper was set, so this one was added to the global git config first.
+    SetUp(String),
+}
+
+/// Saves `c` with git's credential helper, setting up the platform's store when git has none.
+pub fn remember(cwd: &Path, c: &HttpsCredential) -> Result<Remembered, String> {
+    remember_in(cwd, c, &[], installed_helper)
+}
+
+/// [`remember`] with `env` added to every git call and `find` naming the store to set up.
+pub(crate) fn remember_in(
+    cwd: &Path,
+    c: &HttpsCredential,
+    env: &[(&str, &str)],
+    find: impl Fn(&Path) -> Option<String>,
+) -> Result<Remembered, String> {
+    match helper_config(cwd, &c.url(), env) {
+        HelperConfig::Set => send(cwd, c, "approve", env).map(|()| Remembered::Helper),
+        HelperConfig::TurnedOff => Err("credential.helper is turned off for this repository".into()),
+        HelperConfig::None => {
+            let Some(name) = find(cwd) else {
+                return Err(format!("no credential store is set up ({})", setup_hint(std::env::consts::OS)));
+            };
+            let add = args(&["config", "--global", "--add", "credential.helper", &name]);
+            let out = gitcli::output(cwd, &add, "", &quiet_env(env), Some(gitcli::READ_TIMEOUT));
+            if !out.ok {
+                return Err(failure(&out, "could not set credential.helper"));
+            }
+            send(cwd, c, "approve", env).map(|()| Remembered::SetUp(name))
+        }
+    }
+}
+
+/// Tells git's credential helpers that `c` was rejected, so they drop it.
+pub fn forget(cwd: &Path, c: &HttpsCredential) -> Result<(), String> {
+    forget_in(cwd, c, &[])
+}
+
+/// [`forget`] with `env` added to the git call.
+pub(crate) fn forget_in(cwd: &Path, c: &HttpsCredential, env: &[(&str, &str)]) -> Result<(), String> {
+    send(cwd, c, "reject", env)
+}
+
+/// Runs `git credential <action>` with `c` on stdin, wiping the text afterwards.
+fn send(cwd: &Path, c: &HttpsCredential, action: &str, env: &[(&str, &str)]) -> Result<(), String> {
+    let mut input = c.request(true);
+    let out = gitcli::output(cwd, &args(&["credential", action]), &input, &quiet_env(env), Some(APPROVE_TIMEOUT));
+    askpass::wipe(&mut input);
+    if out.ok { Ok(()) } else { Err(failure(&out, &format!("git credential {action} failed"))) }
+}
+
+/// The last line git printed, or `fallback` when it printed nothing.
+fn failure(out: &GitOutput, fallback: &str) -> String {
+    let text = out.combined();
+    text.lines().last().map(str::trim).filter(|l| !l.is_empty()).unwrap_or(fallback).to_owned()
+}
+
+#[cfg(test)]
+#[path = "git_credential_tests.rs"]
+mod tests;

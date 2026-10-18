@@ -23,6 +23,7 @@ mod clone;
 mod config;
 mod conflict_check;
 mod conflict_files;
+mod credentials;
 mod dashboard;
 mod deep_link;
 mod diff_gaps;

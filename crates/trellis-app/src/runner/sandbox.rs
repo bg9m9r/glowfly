@@ -146,6 +146,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::SaveToken { .. }
             | Effect::DeleteToken(_)
             | Effect::ForgetCredentialManager { .. }
+            | Effect::Credential(_)
             | Effect::TrelloBoards { .. }
             | Effect::FetchAvatars(_)
             | Effect::SetGitConfig { global: true, .. }

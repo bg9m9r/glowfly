@@ -71,7 +71,7 @@ fn preferences_general_logging() {
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     st.settings.extended_logging = true;
     st.prefs = Some(PrefsState::new(PrefPage::General));
-    let mut h = super::snapshot_tests::harness_sized(st, true, eframe::egui::vec2(1400.0, 1260.0));
+    let mut h = super::snapshot_tests::harness_sized(st, true, eframe::egui::vec2(1400.0, 1340.0));
     h.run();
     h.check_snapshot("prefs_general_logging");
     h.get_by_label("Add the git commands Trellis runs, with their timings, to the activity log").click();

@@ -273,7 +273,10 @@ Done except the group colors, which wait on repository groups in the repository 
   Trellis is git's and ssh's askpass helper: HTTPS sign-in (username and password or token in
   one dialog), SSH key passphrases, SSH passwords and host-key confirmations open an in-app
   prompt, with retry and rejected-credentials notices, cancel and a 5-minute timeout.
-  Background jobs and hosting-service sign-in never prompt.
+  Background jobs and hosting-service sign-in never prompt. HTTPS sign-ins can be remembered
+  with git's credential helper (setting up the system's store when git has none), OpenSSH
+  before 8.4 asks through Trellis on Linux and macOS, and auto-fetch skips a remote that needs a
+  sign-in, with a banner to sign in.
 - [x] **Branch operations**
   From the local branch menu: rename, set and unset the upstream (also to a branch not on the
   remote yet), fast-forward without checkout, delete local + remote in one step when the
@@ -728,13 +731,6 @@ follow-ups go to Ideas, not here.
   own git dir)
 - Treat `.git/config` changes (remotes added or removed outside Trellis) as a full refresh
 
-### Credential prompts
-
-- Remember entered HTTPS credentials through `git credential approve` / the OS credential
-  store, and reject them when they fail
-- Support OpenSSH older than 8.4 on Linux/macOS (no `SSH_ASKPASS_REQUIRE`; needs `DISPLAY`)
-- Auto-fetch that needs credentials: a "sign in needed" notice instead of failing quietly
-
 ### Branch operations
 
 - The same operations from the remote branch menu (e.g. fast-forward a local branch from its
@@ -1152,6 +1148,20 @@ here, under the item they grew from.
 - A non-blocking notice for SSH security-key touch requests (`SSH_ASKPASS_PROMPT=none`)
 - Hosting-service sign-in without Git Credential Manager through the prompt (Preferences >
   Integrations)
+- Approve the sign-ins for the remotes that worked in a multi-remote fetch that failed overall
+- End an auto-fetch pause after a pull or a dashboard fetch of the remote works, not only fetch
+  jobs
+- Keep paused auto-fetch remotes across restarts
+- A desktop notification when a remote needs a sign-in
+- A status-bar chip listing paused remotes once their banner lines are dismissed
+- Read the OpenSSH version of a repository's `core.sshCommand`, not only `GIT_SSH_COMMAND`,
+  `GIT_SSH` or `ssh` on PATH
+- Start every git child in its own session on Unix, not only with OpenSSH before 8.4
+- Fall back to git's in-memory `cache` helper on Linux when no keyring helper is installed
+- Let the dialog's Remember choice update the default in Preferences > General
+- Remember sign-ins typed for git LFS endpoints and for clones whose remote isn't known yet
+- Log quietly instead of toasting when a sign-in isn't saved because `credential.helper` is
+  turned off on purpose
 
 ### Branch operations
 

@@ -78,6 +78,7 @@ impl Effect {
             | Effect::Profile(_)
             | Effect::Watch(_)
             | Effect::AnswerPrompt { .. }
+            | Effect::Credential(_)
             | Effect::Terminal(_)
             | Effect::Patch(_)
             | Effect::Tool(_)

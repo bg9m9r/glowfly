@@ -65,6 +65,17 @@ fn git_program_defaults_to_path() {
 }
 
 #[test]
+fn remember_https_credentials_default_on() {
+    // Files written before the setting existed remember HTTPS sign-ins.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.remember_https_credentials);
+    assert!(Settings::default().remember_https_credentials);
+    let off = Settings { remember_https_credentials: false, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.remember_https_credentials);
+}
+
+#[test]
 fn gpg_prompts_in_app_default_on() {
     // Files written before the setting existed ask for signing passphrases in Trellis.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

@@ -7,6 +7,8 @@ use super::*;
 
 #[path = "askpass_gpg_tests.rs"]
 pub(super) mod askpass_gpg_tests;
+#[path = "askpass_store_tests.rs"]
+pub(super) mod askpass_store_tests;
 #[path = "askpass_tests.rs"]
 pub(super) mod askpass_tests;
 #[path = "blame_tests.rs"]
@@ -241,6 +243,8 @@ pub(super) mod selection_tests;
 pub(super) mod shallow_tests;
 #[path = "shortcuts_tests.rs"]
 pub(super) mod shortcuts_tests;
+#[path = "sign_in_tests.rs"]
+pub(super) mod sign_in_tests;
 #[path = "signature_tests.rs"]
 pub(super) mod signature_tests;
 #[path = "sparse_tests.rs"]

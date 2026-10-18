@@ -32,7 +32,8 @@ fn with_github(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
         ("backup".into(), Vec::new()),
         ("linus".into(), Vec::new()),
     ];
-    let remote = |name: &str, url: &str| RemoteInfo { name: name.into(), urls: vec![url.into()], push_urls: Vec::new() };
+    let remote =
+        |name: &str, url: &str| RemoteInfo { name: name.into(), urls: vec![url.into()], push_urls: Vec::new(), skip_fetch_all: false };
     snap.remote_info = vec![
         remote("origin", "https://github.com/team/app.git"),
         remote("backup", "D:/backups/app.git"),

@@ -240,6 +240,7 @@ pub fn add_to_agent(ssh_add: &Path, private: &Path) -> Result<(), String> {
     } else {
         cmd.envs(askpass);
     }
+    crate::ssh_version::prepare(&mut cmd);
     match run_with_timeout(cmd, ADD_TIMEOUT) {
         Ok((Some(0), _, _)) => Ok(()),
         Ok((_, _, stderr)) => Err(first_line(&stderr).unwrap_or("ssh-add failed").to_owned()),

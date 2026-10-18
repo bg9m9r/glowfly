@@ -1,12 +1,15 @@
 //! Credential prompts: queueing what git asks, answering from the dialog, and tidying up when
-//! the job that asked ends.
+//! the job that asked ends. Saving typed HTTPS sign-ins is in update/askpass_store.rs, the
+//! sign-in banner for auto-fetch in update/sign_in.rs.
 
 use crate::effect::{Effect, UiEffect};
 use crate::msg::CredentialMsg;
 use crate::state::AppState;
 use crate::state::askpass::{Carry, PendingPrompt, PromptEnd};
+use std::path::Path;
 use std::time::Instant;
 use trellis_core::askpass::{self, Prompt, PromptKind, Reply, Secret};
+use trellis_core::git_credential::HttpsCredential;
 
 pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -34,6 +37,10 @@ pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &m
             st.toast(false, text, now);
             st.log(false, text);
         }
+        CredentialMsg::Remembered { host, result } => super::askpass_store::remembered(st, &host, result, now),
+        CredentialMsg::Forgotten { host, result } => super::askpass_store::forgotten(st, &host, result),
+        CredentialMsg::SignInFetch { workdir, remote } => super::sign_in::fetch(st, &workdir, &remote, fx),
+        CredentialMsg::DismissSignIn { workdir, remote } => st.sign_in.dismiss(&workdir, &remote),
     }
 }
 
@@ -48,7 +55,9 @@ fn asked(st: &mut AppState, id: u64, prompt: Prompt, fx: &mut Vec<Effect>) {
         PromptKind::GpgPassphrase { retry, .. } => Some(*retry),
         _ => None,
     };
+    let remember = st.settings.remember_https_credentials;
     let p = &mut st.askpass;
+    // The kept password was recorded with the username it came with.
     if p.carry_answers(&prompt)
         && let Some(carry) = p.carry.take()
     {
@@ -63,6 +72,7 @@ fn asked(st: &mut AppState, id: u64, prompt: Prompt, fx: &mut Vec<Effect>) {
     p.queue.push_back(PendingPrompt { id, prompt, retry, rejected_before });
     if first {
         p.clear_buffers();
+        p.remember = remember;
         fx.push(Effect::Ui(UiEffect::RequestAttention));
     }
 }
@@ -75,16 +85,24 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(front) = p.queue.pop_front() else { return };
     let host = askpass::host(&front.prompt.kind);
     let answer = match &front.prompt.kind {
-        PromptKind::Username { .. } => {
+        PromptKind::Username { url } => {
             let user = p.user.trim().to_owned();
             if !p.secret.is_empty() {
                 let password = Secret::new(std::mem::take(&mut p.secret));
+                if p.remember {
+                    p.typed.extend(HttpsCredential::from_prompt(url, &user, password.clone()));
+                }
                 p.carry = Some(Carry { host: host.clone().unwrap_or_default(), user: user.clone(), password });
             }
             Secret::new(user)
         }
         PromptKind::Confirm => Secret::new("yes"),
         PromptKind::Other { secret: false } => Secret::new(std::mem::take(&mut p.user)),
+        PromptKind::Password { target, user: Some(u) } if p.remember => {
+            let secret = Secret::new(std::mem::take(&mut p.secret));
+            p.typed.extend(HttpsCredential::from_prompt(target, u, secret.clone()));
+            secret
+        }
         _ => Secret::new(std::mem::take(&mut p.secret)),
     };
     p.answered.push(front.prompt.text);
@@ -94,9 +112,17 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// The running job ended: returns the headline for a job that failed because a prompt was
-/// cancelled or timed out, remembers which hosts' credentials were not accepted, and cancels
-/// and forgets whatever the job left behind.
-pub(super) fn job_finished(st: &mut AppState, ok: bool, label: &str, fx: &mut Vec<Effect>) -> Option<String> {
+/// cancelled or timed out, remembers which hosts' credentials were not accepted, saves or drops
+/// the HTTPS sign-ins typed with Remember on (run in `cwd`, judged by the job's `output`), and
+/// cancels and forgets whatever the job left behind.
+pub(super) fn job_finished(
+    st: &mut AppState,
+    ok: bool,
+    label: &str,
+    cwd: Option<&Path>,
+    output: &str,
+    fx: &mut Vec<Effect>,
+) -> Option<String> {
     let p = &mut st.askpass;
     let headline = match (ok, p.ended, p.ended_signing) {
         (false, Some(PromptEnd::Cancelled), false) => Some(format!("{label} cancelled: no credentials were given")),
@@ -110,6 +136,7 @@ pub(super) fn job_finished(st: &mut AppState, ok: bool, label: &str, fx: &mut Ve
     } else if p.ended.is_none() {
         p.failed_hosts.extend(p.answered_hosts.iter().cloned());
     }
+    super::askpass_store::settle(p, ok, cwd, output, fx);
     let left = std::mem::take(&mut p.queue);
     if !left.is_empty() {
         p.clear_buffers();
