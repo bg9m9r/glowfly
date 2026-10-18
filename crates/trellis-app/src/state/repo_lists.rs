@@ -5,10 +5,8 @@
 use super::AppState;
 use crate::keymap::{FAVORITE_BINDINGS, Keymap};
 use std::path::{Path, PathBuf};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
-
-/// The tip of the "open" tag on a listed repository that a tab shows.
-pub const OPEN_TIP: &str = "Open in a tab. Click to switch to it.";
 
 /// The favorite repositories, in the order the user put them.
 pub fn favorites(s: &Settings) -> Vec<PathBuf> {
@@ -64,21 +62,15 @@ pub fn missing_counts(st: &AppState) -> (usize, usize) {
     (recent, favs)
 }
 
-/// `n` repositories, in words.
-fn repositories(n: usize) -> String {
-    if n == 1 { "1 repository".to_owned() } else { format!("{n} repositories") }
-}
-
 /// The title and body of the question asked before removing the missing entries.
-pub fn remove_missing_confirm(recent: usize, favs: usize) -> (String, String) {
-    let total = repositories(recent + favs);
-    let lists = match (recent, favs) {
-        (0, _) => "the Favorites list".to_owned(),
-        (_, 0) => "the Recent list".to_owned(),
-        (r, f) => format!("the Favorites and Recent lists ({f} in Favorites, {r} in Recent)"),
+pub fn remove_missing_confirm(t: Lang, recent: usize, favs: usize) -> (String, String) {
+    let total = recent + favs;
+    let body = match (recent, favs) {
+        (0, _) => t.trn("repos.remove_missing.body_favorites", total, &[]),
+        (_, 0) => t.trn("repos.remove_missing.body_recent", total, &[]),
+        (r, f) => t.trn("repos.remove_missing.body_both", total, &[("favorites", &f), ("recent", &r)]),
     };
-    let body = format!("Remove {total} that can't be found from {lists}? Nothing on disk is touched.");
-    ("Remove missing repositories".to_owned(), body)
+    (t.tr("repos.remove_missing.title").to_owned(), body)
 }
 
 /// The question asked before the missing entries are removed (welcome screen, repository menu,
@@ -89,46 +81,43 @@ pub fn remove_missing_msg(st: &AppState) -> Option<crate::msg::Msg> {
     if recent + favs == 0 {
         return None;
     }
-    let (title, body) = remove_missing_confirm(recent, favs);
-    Some(Msg::confirm(&title, body, "Remove", Msg::Recent(RecentMsg::RemoveMissing)))
+    let t = st.settings.lang();
+    let (title, body) = remove_missing_confirm(t, recent, favs);
+    Some(Msg::confirm(&title, body, t.tr("repos.remove.button"), Msg::Recent(RecentMsg::RemoveMissing)))
 }
 
 /// The title and body of the question asked when a listed repository that failed to open is
 /// gone.
-pub fn forget_confirm(st: &AppState, p: &Path) -> (String, String) {
-    let lists = match (is_favorite(st, p), st.recent.iter().any(|r| st.same_folder(r, p))) {
-        (true, true) => "your Favorites and Recent lists",
-        (true, false) => "your Favorites",
-        _ => "your Recent list",
-    };
+pub fn forget_confirm(t: Lang, st: &AppState, p: &Path) -> (String, String) {
     let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| trellis_core::native_path::shown(p));
-    let body = format!(
-        "{name} can't be found at {}. It may have been moved or deleted, or be on a drive that isn't connected. Remove it from {lists}?",
-        trellis_core::native_path::shown(p)
-    );
-    ("Repository not found".to_owned(), body)
+    let path = trellis_core::native_path::shown(p);
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("name", &name), ("path", &path)];
+    let body = match (is_favorite(st, p), st.recent.iter().any(|r| st.same_folder(r, p))) {
+        (true, true) => t.trf("repos.forget.body_both", args),
+        (true, false) => t.trf("repos.forget.body_favorites", args),
+        _ => t.trf("repos.forget.body_recent", args),
+    };
+    (t.tr("repos.forget.title").to_owned(), body)
 }
 
 /// The keys part of the note under the Favorites header ("The first nine open with … to …."),
 /// read from `keys` so a rebound key shows; None when the first favorite has no key.
-pub fn favorite_keys_note(keys: &Keymap) -> Option<String> {
+pub fn favorite_keys_note(t: Lang, keys: &Keymap) -> Option<String> {
     let first = keys.hint(FAVORITE_BINDINGS[0])?;
     Some(match keys.hint(FAVORITE_BINDINGS[8]) {
-        Some(last) => format!("The first nine open with {first} to {last}."),
-        None => format!("The first opens with {first}."),
+        Some(last) => t.trf("repos.favorite_keys.range", &[("first", &first), ("last", &last)]),
+        None => t.trf("repos.favorite_keys.single", &[("first", &first)]),
     })
 }
 
 /// The label of the favorite toggle for a row that is (`fav`) or isn't a favorite.
-pub fn favorite_label(fav: bool) -> &'static str {
-    if fav { "Remove from favorites" } else { "Add to favorites" }
+pub fn favorite_label(t: Lang, fav: bool) -> &'static str {
+    if fav { t.tr("repos.favorite.remove") } else { t.tr("repos.favorite.add") }
 }
 
 /// The title and body of the question asked before clearing `n` recent entries.
-pub fn clear_recent_confirm(n: usize) -> (String, String) {
-    let what = if n == 1 { "1 repository".to_owned() } else { format!("{n} repositories") };
-    let body = format!("Remove all {what} from the Recent list? Nothing on disk is touched, and favorites are kept.");
-    ("Clear recent repositories".to_owned(), body)
+pub fn clear_recent_confirm(t: Lang, n: usize) -> (String, String) {
+    (t.tr("repos.clear_recent.title").to_owned(), t.trn("repos.clear_recent.body", n, &[]))
 }
 
 #[cfg(test)]
@@ -187,40 +176,66 @@ mod tests {
 
     #[test]
     fn missing_questions_name_the_lists() {
-        let (title, body) = remove_missing_confirm(2, 1);
+        let (title, body) = remove_missing_confirm(Lang::En, 2, 1);
         assert_eq!(title, "Remove missing repositories");
         assert_eq!(
             body,
             "Remove 3 repositories that can't be found from the Favorites and Recent lists (1 in Favorites, 2 in Recent)? Nothing on disk is touched."
         );
-        assert!(remove_missing_confirm(1, 0).1.starts_with("Remove 1 repository that can't be found from the Recent list?"));
-        assert!(remove_missing_confirm(0, 2).1.contains("from the Favorites list?"));
+        assert!(remove_missing_confirm(Lang::En, 1, 0).1.starts_with("Remove 1 repository that can't be found from the Recent list?"));
+        assert!(remove_missing_confirm(Lang::En, 0, 2).1.contains("from the Favorites list?"));
         let st = state(&["/w/a", "/w/b"], &["/w/b"]);
-        let (title, body) = forget_confirm(&st, Path::new("/w/a"));
+        let (title, body) = forget_confirm(Lang::En, &st, Path::new("/w/a"));
         assert_eq!(title, "Repository not found");
         assert!(body.starts_with("a can't be found at "), "{body}");
         assert!(body.ends_with("Remove it from your Recent list?"), "{body}");
-        assert!(forget_confirm(&st, Path::new("/w/b")).1.ends_with("your Favorites and Recent lists?"));
+        assert!(forget_confirm(Lang::En, &st, Path::new("/w/b")).1.ends_with("your Favorites and Recent lists?"));
     }
 
     #[cfg(not(target_os = "macos"))]
     #[test]
     fn keys_note_follows_the_keymap() {
         let keys = Keymap::default();
-        assert_eq!(favorite_keys_note(&keys).as_deref(), Some("The first nine open with Ctrl+Alt+1 to Ctrl+Alt+9."));
+        assert_eq!(favorite_keys_note(Lang::En, &keys).as_deref(), Some("The first nine open with Ctrl+Alt+1 to Ctrl+Alt+9."));
         let mut keys = keys;
         keys.set(FAVORITE_BINDINGS[8], Vec::new());
-        assert_eq!(favorite_keys_note(&keys).as_deref(), Some("The first opens with Ctrl+Alt+1."));
+        assert_eq!(favorite_keys_note(Lang::En, &keys).as_deref(), Some("The first opens with Ctrl+Alt+1."));
         keys.set(FAVORITE_BINDINGS[0], Vec::new());
-        assert_eq!(favorite_keys_note(&keys), None);
+        assert_eq!(favorite_keys_note(Lang::En, &keys), None);
     }
 
     #[test]
     fn clear_confirmation_counts_repositories() {
-        assert!(clear_recent_confirm(1).1.contains("Remove all 1 repository from"));
-        assert!(clear_recent_confirm(3).1.contains("Remove all 3 repositories from"));
-        assert_eq!(clear_recent_confirm(3).0, "Clear recent repositories");
-        assert_eq!(favorite_label(true), "Remove from favorites");
-        assert_eq!(favorite_label(false), "Add to favorites");
+        assert!(clear_recent_confirm(Lang::En, 1).1.contains("Remove all 1 repository from"));
+        assert!(clear_recent_confirm(Lang::En, 3).1.contains("Remove all 3 repositories from"));
+        assert_eq!(clear_recent_confirm(Lang::En, 3).0, "Clear recent repositories");
+        assert_eq!(favorite_label(Lang::En, true), "Remove from favorites");
+        assert_eq!(favorite_label(Lang::En, false), "Add to favorites");
+    }
+
+    #[test]
+    fn questions_in_other_languages_fill_every_placeholder() {
+        let st = state(&["/w/a", "/w/b"], &["/w/b"]);
+        let keys = Keymap::default();
+        for t in [Lang::De, Lang::Es] {
+            for (r, f) in [(1, 0), (0, 2), (2, 1)] {
+                let (title, body) = remove_missing_confirm(t, r, f);
+                assert_eq!(title, t.tr("repos.remove_missing.title"));
+                assert!(!body.contains('{'), "{body}");
+            }
+            for n in [1, 3] {
+                let (title, body) = clear_recent_confirm(t, n);
+                assert_eq!(title, t.tr("repos.clear_recent.title"));
+                assert!(!body.contains('{') && body.contains(&n.to_string()), "{body}");
+            }
+            for p in ["/w/a", "/w/b"] {
+                let (title, body) = forget_confirm(t, &st, Path::new(p));
+                assert_eq!(title, t.tr("repos.forget.title"));
+                assert!(!body.contains('{'), "{body}");
+            }
+            if let Some(note) = favorite_keys_note(t, &keys) {
+                assert!(!note.contains('{'), "{note}");
+            }
+        }
     }
 }

@@ -10,16 +10,15 @@ use crate::keymap::FAVORITE_BINDINGS;
 use crate::msg::{Msg, RecentMsg, RepoMsg};
 use crate::state::AppState;
 use crate::state::repo_lists::{
-    OPEN_TIP, clear_recent_confirm, favorite_keys_note, favorite_label, favorites, is_favorite, is_missing, is_open, missing_counts,
-    recent_rows, remove_missing_msg, unopened_favorites,
+    clear_recent_confirm, favorite_keys_note, favorite_label, favorites, is_favorite, is_missing, is_open, missing_counts, recent_rows,
+    remove_missing_msg, unopened_favorites,
 };
 use eframe::egui::{self, Align, Color32, Layout, Response, RichText, Sense, Stroke};
 use std::path::Path;
+use trellis_core::i18n::Lang;
 
 /// The width of the welcome screen's repository column, when the window is wide enough.
 const COLUMN_WIDTH: f32 = 560.0;
-const NOT_FOUND_TIP: &str = "This folder can't be found. It may have been moved or deleted, or be on a drive that isn't connected.";
-const EMPTY_FAVORITES: &str = "Star a repository to keep it here.";
 
 /// Where a row is drawn.
 #[derive(Clone, Copy, PartialEq)]
@@ -39,6 +38,7 @@ enum Section {
 /// The welcome screen's Favorites and Recent sections, in a centred column below its buttons.
 /// Nothing is drawn while both lists are empty.
 pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     let favs = favorites(&st.settings);
     let recent = recent_rows(st);
     if favs.is_empty() && recent.is_empty() {
@@ -56,9 +56,9 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.scope_builder(egui::UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)), |ui| {
         egui::ScrollArea::vertical().max_height(ui.available_height()).auto_shrink([false, true]).show(ui, |ui| {
             ui.horizontal(|ui| {
-                header(ui, "Favorites");
+                header(ui, t.tr("repos.favorites.header"));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if !unopened_favorites(st).is_empty() && small_link(ui, "Open all") {
+                    if !unopened_favorites(st).is_empty() && small_link(ui, t.tr("repos.open_all.link")) {
                         msgs.push(Msg::Recent(RecentMsg::OpenAll(favs.clone())));
                     }
                     if remove_on_favorites {
@@ -67,13 +67,13 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 });
             });
             if favs.is_empty() {
-                ui.label(RichText::new(EMPTY_FAVORITES).color(color::weak()));
+                ui.label(RichText::new(t.tr("repos.favorites.empty")).color(color::weak()));
             }
             let draggable = favs.len() >= 2;
             if draggable {
-                let note = match favorite_keys_note(&st.keymap) {
-                    Some(keys) => format!("Drag to reorder. {keys}"),
-                    None => "Drag to reorder.".to_owned(),
+                let note = match favorite_keys_note(t, &st.keymap) {
+                    Some(keys) => t.trf("repos.drag_note_keys", &[("keys", &keys)]),
+                    None => t.tr("repos.drag_note").to_owned(),
                 };
                 ui.label(RichText::new(note).small().color(color::weak()));
             }
@@ -86,9 +86,9 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             if !recent.is_empty() {
                 ui.add_space(12.0);
                 ui.horizontal(|ui| {
-                    header(ui, "Recent");
+                    header(ui, t.tr("repos.recent.header"));
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if small_link(ui, "Clear") {
+                        if small_link(ui, t.tr("repos.clear.link")) {
                             msgs.push(clear_confirm(st));
                         }
                         if missing_recent > 0 {
@@ -120,12 +120,13 @@ pub fn has_entries(st: &AppState) -> bool {
 }
 
 fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separator: bool) {
+    let t = st.settings.lang();
     let favs = favorites(&st.settings);
     if !favs.is_empty() {
         if lead_separator {
             ui.separator();
         }
-        header(ui, "Favorites");
+        header(ui, t.tr("repos.favorites.header"));
         for (index, p) in favs.iter().enumerate() {
             row(ui, st, p, Place::Menu, Section::Favorite { index, count: favs.len() }, false, msgs);
         }
@@ -135,11 +136,11 @@ fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separato
         if lead_separator || !favs.is_empty() {
             ui.separator();
         }
-        header(ui, "Recent");
+        header(ui, t.tr("repos.recent.header"));
         for p in recent {
             row(ui, st, p, Place::Menu, Section::Recent, false, msgs);
         }
-        menu_item(msgs, ui, "Clear recent", clear_confirm(st));
+        menu_item(msgs, ui, t.tr("repos.menu.clear_recent"), clear_confirm(st));
     }
 }
 
@@ -152,21 +153,23 @@ fn small_link(ui: &mut egui::Ui, text: &str) -> bool {
 }
 
 fn remove_missing_link(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
-    if small_link(ui, "Remove missing") {
+    if small_link(ui, st.settings.lang().tr("repos.remove_missing.link")) {
         msgs.extend(remove_missing_msg(st));
     }
 }
 
 /// The question asked before the Recent list is emptied.
 fn clear_confirm(st: &AppState) -> Msg {
-    let (title, body) = clear_recent_confirm(st.recent.len());
-    Msg::confirm(&title, body, "Clear", Msg::Recent(RecentMsg::ClearRecent))
+    let t = st.settings.lang();
+    let (title, body) = clear_recent_confirm(t, st.recent.len());
+    Msg::confirm(&title, body, t.tr("repos.clear_recent.button"), Msg::Recent(RecentMsg::ClearRecent))
 }
 
 /// A weak "open" tag; clicking it switches to the tab showing the repository (`open`).
-fn open_tag(ui: &mut egui::Ui, open: Msg, msgs: &mut Vec<Msg>) -> bool {
-    let tag = egui::Label::new(RichText::new("open").small().color(color::weak())).selectable(false).sense(Sense::click());
-    let clicked = ui.add(tag).on_hover_text(OPEN_TIP).on_hover_cursor(egui::CursorIcon::PointingHand).clicked();
+fn open_tag(ui: &mut egui::Ui, t: Lang, open: Msg, msgs: &mut Vec<Msg>) -> bool {
+    let text = RichText::new(t.tr("repos.open_tag.label")).small().color(color::weak());
+    let tag = egui::Label::new(text).selectable(false).sense(Sense::click());
+    let clicked = ui.add(tag).on_hover_text(t.tr("repos.open_tag.tip")).on_hover_cursor(egui::CursorIcon::PointingHand).clicked();
     if clicked {
         msgs.push(open);
     }
@@ -185,6 +188,7 @@ fn row(
     draggable: bool,
     msgs: &mut Vec<Msg>,
 ) -> Option<(Response, egui::Rect)> {
+    let t = st.settings.lang();
     let fav = is_favorite(st, path);
     let missing = is_missing(st, path);
     let in_tab = is_open(st, path);
@@ -195,32 +199,32 @@ fn row(
     let mut grip = None;
     let r = ui.horizontal(|ui| {
         if draggable {
-            grip = Some(super::repo_list_drag::grip(ui));
+            grip = Some(super::repo_list_drag::grip(ui, t.tr("repos.drag.grip")));
         }
         let (icon, col) = if fav { (Icon::StarFilled, color::amber()) } else { (Icon::Star, color::weak()) };
-        if widgets::small_icon(ui, icon, favorite_label(fav), col).clicked() {
+        if widgets::small_icon(ui, icon, favorite_label(t, fav), col).clicked() {
             msgs.push(favorite());
         }
         if place == Place::Menu {
             let col = if missing { color::faint() } else { color::text() };
             let mut r = ui.add(egui::Button::new(RichText::new(&text).color(col)));
             if missing {
-                r = r.on_hover_text(NOT_FOUND_TIP);
+                r = r.on_hover_text(t.tr("repos.not_found.tip"));
             }
             if r.clicked() {
                 msgs.push(open());
                 ui.close_menu();
             }
-            if in_tab && open_tag(ui, open(), msgs) {
+            if in_tab && open_tag(ui, t, open(), msgs) {
                 ui.close_menu();
             }
-            if section == Section::Recent && widgets::small_icon(ui, Icon::Close, "Remove from recent", color::weak()).clicked() {
+            if section == Section::Recent && widgets::small_icon(ui, Icon::Close, t.tr("repos.remove_recent"), color::weak()).clicked() {
                 msgs.push(remove());
             }
             return;
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if section == Section::Recent && widgets::small_icon(ui, Icon::Close, "Remove from recent", color::weak()).clicked() {
+            if section == Section::Recent && widgets::small_icon(ui, Icon::Close, t.tr("repos.remove_recent"), color::weak()).clicked() {
                 msgs.push(remove());
             }
             if let Section::Favorite { index, .. } = section
@@ -229,17 +233,18 @@ fn row(
                 ui.label(RichText::new(key).small().color(color::weak()));
             }
             if missing {
-                ui.label(RichText::new("not found").small().color(color::weak())).on_hover_text(NOT_FOUND_TIP);
+                ui.label(RichText::new(t.tr("repos.not_found.label")).small().color(color::weak()))
+                    .on_hover_text(t.tr("repos.not_found.tip"));
             }
             if in_tab {
-                open_tag(ui, open(), msgs);
+                open_tag(ui, t, open(), msgs);
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 let r = link(ui, &text, if missing { color::faint() } else { color::accent() });
                 if r.clicked() {
                     msgs.push(open());
                 }
-                r.context_menu(|ui| row_menu(ui, &text, section, fav, [open(), favorite(), remove()], msgs));
+                r.context_menu(|ui| row_menu(ui, t, &text, section, fav, [open(), favorite(), remove()], msgs));
             });
         });
     });
@@ -247,14 +252,18 @@ fn row(
 }
 
 /// The welcome row's context menu; `acts` are its Open, favorite toggle and Remove messages.
-fn row_menu(ui: &mut egui::Ui, text: &str, section: Section, fav: bool, acts: [Msg; 3], msgs: &mut Vec<Msg>) {
+fn row_menu(ui: &mut egui::Ui, t: Lang, text: &str, section: Section, fav: bool, acts: [Msg; 3], msgs: &mut Vec<Msg>) {
     let [open, favorite, remove] = acts;
-    menu_item(msgs, ui, "Open", open);
-    menu_item(msgs, ui, favorite_label(fav), favorite);
+    menu_item(msgs, ui, t.tr("repos.row_menu.open"), open);
+    menu_item(msgs, ui, favorite_label(t, fav), favorite);
     match section {
-        Section::Recent => menu_item(msgs, ui, "Remove from recent", remove),
+        Section::Recent => menu_item(msgs, ui, t.tr("repos.remove_recent"), remove),
         Section::Favorite { index, count } => {
-            for (label, enabled, to) in [("Move up", index > 0, index.saturating_sub(1)), ("Move down", index + 1 < count, index + 1)] {
+            let moves = [
+                (t.tr("repos.row_menu.move_up"), index > 0, index.saturating_sub(1)),
+                (t.tr("repos.row_menu.move_down"), index + 1 < count, index + 1),
+            ];
+            for (label, enabled, to) in moves {
                 if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
                     msgs.push(Msg::Recent(RecentMsg::MoveFavorite { from: index, to }));
                     ui.close_menu();
@@ -262,7 +271,7 @@ fn row_menu(ui: &mut egui::Ui, text: &str, section: Section, fav: bool, acts: [M
             }
         }
     }
-    menu_item(msgs, ui, "Copy path", Msg::Copy(text.to_owned()));
+    menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(text.to_owned()));
 }
 
 /// A link that is cut short with "…" when it doesn't fit (the full text shows on hover).

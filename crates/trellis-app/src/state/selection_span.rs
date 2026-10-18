@@ -4,13 +4,6 @@
 use git2::Oid;
 use trellis_core::repo::Snapshot;
 
-/// Why three or more selected commits have no combined diff: they aren't one line of history.
-pub const SPAN_GAPS: &str = "These commits aren't one unbroken line of history, so they have no combined diff. Select consecutive \
-                             commits, each the parent of the one above it, to see their changes together.";
-
-/// Why a line of commits from the root has no combined diff.
-pub const SPAN_FROM_ROOT: &str = "This range starts at the repository's first commit, so there is no parent to compare from.";
-
 /// The shape of a multi-selection.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Span {

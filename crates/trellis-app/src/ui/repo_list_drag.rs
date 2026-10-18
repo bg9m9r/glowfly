@@ -14,12 +14,11 @@ struct FavDrag {
     from: usize,
 }
 
-const GRIP_LABEL: &str = "Drag to reorder";
-
-/// The grip at the start of a favorite row: Grab cursor on hover, Grabbing while dragged.
-pub(super) fn grip(ui: &mut Ui) -> Response {
+/// The grip at the start of a favorite row (`label` is its accessible name): Grab cursor on
+/// hover, Grabbing while dragged.
+pub(super) fn grip(ui: &mut Ui, label: &str) -> Response {
     let (rect, resp) = ui.allocate_exact_size(vec2(14.0, 18.0), Sense::drag());
-    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, GRIP_LABEL));
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, label));
     let active = resp.hovered() || resp.dragged();
     paint_icon(ui.painter(), rect.center(), Icon::Grip, if active { color::text() } else { color::faint() });
     if resp.dragged() {

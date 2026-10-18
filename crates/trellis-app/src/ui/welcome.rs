@@ -11,6 +11,7 @@ use crate::onboarding::OnboardingMsg;
 use crate::state::AppState;
 use crate::state::onboarding::{Welcome, WelcomeStep};
 use eframe::egui::{self, Align, Id, Layout, RichText, vec2};
+use trellis_core::i18n::Lang;
 
 const WIDTH: f32 = 500.0;
 
@@ -21,21 +22,22 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let prompting = st.askpass.showing();
     let has_repo = st.snap.is_some();
     let (settings, git) = (&st.settings, &st.git);
+    let t = settings.lang();
     let Some(w) = st.onboarding.welcome.as_mut() else { return };
     let resp = egui::Modal::new(Id::new("trellis-welcome")).show(ctx, |ui| {
         ui.set_width(WIDTH);
-        header(ui, w.step, msgs);
+        header(ui, t, w.step, msgs);
         ui.add_space(14.0);
-        ui.label(RichText::new(w.step.title()).size(17.0).strong().color(color::strong()));
+        ui.label(RichText::new(w.step.title(t)).size(17.0).strong().color(color::strong()));
         ui.add_space(6.0);
         match w.step {
             WelcomeStep::Identity => welcome_steps::identity(ui, w, settings, !prompting),
-            WelcomeStep::Connect => welcome_steps::connect(ui, &settings.connections, msgs),
-            WelcomeStep::Git => welcome_steps::git(ui, git, msgs),
-            WelcomeStep::Start => welcome_steps::start(ui, w, has_repo, msgs),
+            WelcomeStep::Connect => welcome_steps::connect(ui, t, &settings.connections, msgs),
+            WelcomeStep::Git => welcome_steps::git(ui, t, git, msgs),
+            WelcomeStep::Start => welcome_steps::start(ui, t, w, has_repo, msgs),
         }
         ui.add_space(16.0);
-        footer(ui, w, settings.connections.is_empty(), msgs);
+        footer(ui, t, w, settings.connections.is_empty(), msgs);
     });
     // Esc or a click outside ends the welcome early, unless a credential prompt is on top.
     if resp.should_close() && !prompting {
@@ -44,11 +46,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 }
 
 /// The title, the close button and a row of progress dots with their captions.
-fn header(ui: &mut egui::Ui, step: WelcomeStep, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut egui::Ui, t: Lang, step: WelcomeStep, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Welcome to Trellis").size(22.0).strong().color(color::text()));
+        ui.label(RichText::new(t.tr("welcome.title")).size(22.0).strong().color(color::text()));
         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-            if widgets::small_icon(ui, Icon::Close, "Close the welcome", color::weak()).clicked() {
+            if widgets::small_icon(ui, Icon::Close, t.tr("welcome.close.tip"), color::weak()).clicked() {
                 msgs.push(Msg::Onboarding(OnboardingMsg::CloseWelcome));
             }
         });
@@ -72,44 +74,44 @@ fn header(ui: &mut egui::Ui, step: WelcomeStep, msgs: &mut Vec<Msg>) {
         };
         p.circle_filled(centre, 5.5, fill);
         let font = egui::FontId::proportional(12.0);
-        p.text(egui::pos2(x, rect.top() + 18.0), egui::Align2::CENTER_TOP, s.caption(), font, text);
+        p.text(egui::pos2(x, rect.top() + 18.0), egui::Align2::CENTER_TOP, s.caption(t), font, text);
     }
 }
 
 /// Back on the left (not on the first step), the step's own buttons on the right.
-fn footer(ui: &mut egui::Ui, w: &Welcome, no_connections: bool, msgs: &mut Vec<Msg>) {
+fn footer(ui: &mut egui::Ui, t: Lang, w: &Welcome, no_connections: bool, msgs: &mut Vec<Msg>) {
     let send = |msgs: &mut Vec<Msg>, m: OnboardingMsg| msgs.push(Msg::Onboarding(m));
     ui.horizontal(|ui| {
         let busy = w.identity.saving;
-        if w.step.prev().is_some() && ui.add_enabled(!busy, egui::Button::new("Back")).clicked() {
+        if w.step.prev().is_some() && ui.add_enabled(!busy, egui::Button::new(t.tr("welcome.back.button"))).clicked() {
             send(msgs, OnboardingMsg::Back);
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| match w.step {
             WelcomeStep::Identity => {
                 let f = &w.identity;
                 let ready = !f.saving && !f.reading;
-                if ui.add_enabled(ready, egui::Button::new("Continue")).clicked() {
+                if ui.add_enabled(ready, egui::Button::new(t.tr("welcome.continue.button"))).clicked() {
                     send(msgs, OnboardingMsg::SaveIdentity);
                 }
                 if f.saving {
                     ui.add(egui::Spinner::new());
                 }
-                if ui.add_enabled(!f.saving, egui::Button::new("Skip for now")).clicked() {
+                if ui.add_enabled(!f.saving, egui::Button::new(t.tr("welcome.skip_for_now.button"))).clicked() {
                     send(msgs, OnboardingMsg::Skip);
                 }
             }
             WelcomeStep::Connect if no_connections => {
-                if ui.button("Skip this step").clicked() {
+                if ui.button(t.tr("welcome.skip_step.button")).clicked() {
                     send(msgs, OnboardingMsg::Skip);
                 }
             }
             WelcomeStep::Connect | WelcomeStep::Git => {
-                if ui.button("Continue").clicked() {
+                if ui.button(t.tr("welcome.continue.button")).clicked() {
                     send(msgs, OnboardingMsg::Next);
                 }
             }
             WelcomeStep::Start => {
-                if ui.button("Done").clicked() {
+                if ui.button(t.tr("welcome.done.button")).clicked() {
                     send(msgs, OnboardingMsg::Finish(None));
                 }
             }

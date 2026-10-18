@@ -269,7 +269,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::FindRepos { filter } => {
                 let (rows, folders) = finder.as_ref().map(|(r, f)| (&r[..], &f[..])).unwrap_or_default();
-                if super::repo_finder::show(ui, filter, rows, repo_scan, folders, !prompting, msgs) {
+                let lists = super::repo_finder::FinderLists { rows, scan: repo_scan, folders };
+                if super::repo_finder::show(ui, t, filter, lists, !prompting, msgs) {
                     close = true;
                 }
             }

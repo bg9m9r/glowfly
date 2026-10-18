@@ -16,6 +16,7 @@ use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, RichText};
 use git2::Oid;
+use trellis_core::i18n::Lang;
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{CommitInfo, Snapshot};
 use trellis_core::worktree_ops::WorktreeBase;
@@ -71,13 +72,13 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mu
 }
 
 /// The menu for a row of a multi-selection: actions on all the selected commits.
-pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    ui.label(RichText::new(format!("{} commits selected", m.len())).color(color::weak()));
+pub fn multi_commit_menu(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    ui.label(RichText::new(t.trn("details.multi.selected", m.len(), &[])).color(color::weak()));
     ui.separator();
-    let picked = cherry_pick_button(ui, m, msgs);
-    let reverted = revert_button(ui, m, msgs);
-    let patched = patch_button(ui, m, msgs);
-    let copy = egui::Button::new(format!("Copy patch of {} commits", m.len()));
+    let picked = cherry_pick_button(ui, t, m, msgs);
+    let reverted = revert_button(ui, t, m, msgs);
+    let patched = patch_button(ui, t, m, msgs);
+    let copy = egui::Button::new(t.trn("details.multi.copy_patch.button", m.len(), &[]));
     let mut r = ui.add_enabled(m.export_blocked.is_none(), copy);
     if let Some(why) = m.export_blocked {
         r = r.on_disabled_hover_text(why);
@@ -89,13 +90,13 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, snap: &Snapshot,
         ui.close_menu();
     }
     super::rebase::edit_menu::multi(ui, m, snap, msgs);
-    menu_item(msgs, ui, "Copy SHAs", copy_shas(m));
+    menu_item(msgs, ui, t.tr("details.multi.copy_shas.button"), copy_shas(m));
 }
 
 /// "Cherry-pick N commits", disabled with the reason on hover when blocked. Returns whether it
 /// was clicked.
-pub(super) fn cherry_pick_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
-    let button = egui::Button::new(format!("Cherry-pick {} commits", m.len()));
+pub(super) fn cherry_pick_button(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
+    let button = egui::Button::new(t.trn("details.multi.cherry_pick.button", m.len(), &[]));
     let mut r = ui.add_enabled(m.pick_blocked.is_none(), button);
     if let Some(why) = m.pick_blocked {
         r = r.on_disabled_hover_text(why);
@@ -109,8 +110,8 @@ pub(super) fn cherry_pick_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &m
 
 /// "Revert N commits", disabled with the reason on hover when a merge is selected. Returns
 /// whether it was clicked.
-pub(super) fn revert_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
-    let button = egui::Button::new(format!("Revert {} commits", m.len()));
+pub(super) fn revert_button(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
+    let button = egui::Button::new(t.trn("details.multi.revert.button", m.len(), &[]));
     let mut r = ui.add_enabled(m.revert_blocked.is_none(), button);
     if let Some(why) = m.revert_blocked {
         r = r.on_disabled_hover_text(why);
@@ -124,8 +125,8 @@ pub(super) fn revert_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Ve
 
 /// "Create patch from N commits…", disabled with the reason on hover when a merge is selected.
 /// Returns whether it was clicked.
-pub(super) fn patch_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
-    let button = egui::Button::new(format!("Create patch from {} commits…", m.len()));
+pub(super) fn patch_button(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
+    let button = egui::Button::new(t.trn("details.multi.patch.button", m.len(), &[]));
     let mut r = ui.add_enabled(m.export_blocked.is_none(), button);
     if let Some(why) = m.export_blocked {
         r = r.on_disabled_hover_text(why);

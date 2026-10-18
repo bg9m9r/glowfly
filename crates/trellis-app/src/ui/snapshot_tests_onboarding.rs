@@ -6,7 +6,7 @@ use super::snapshot_tests::{harness, remove_fixture, settings, with_repo};
 use crate::msg::{LayoutMsg, Msg, PrefsMsg};
 use crate::onboarding::{OnboardingMsg, StartChoice};
 use crate::state::layout::Panel;
-use crate::state::onboarding::{EMAIL_NO_AT, Welcome, WelcomeStep};
+use crate::state::onboarding::{Welcome, WelcomeStep};
 use crate::state::onboarding_tour::TourStep;
 use crate::state::{AppState, PrefPage};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -17,13 +17,13 @@ use trellis_core::git_version::GitInfo;
 use trellis_core::identity::Identity;
 use trellis_core::settings::ThemeChoice;
 
-fn ada() -> Identity {
+pub(super) fn ada() -> Identity {
     Identity { name: "Ada Lovelace".into(), email: "ada@example.com".into(), signing_key: None }
 }
 
 /// No repository open, the welcome on `step` with git's identity read as `git` (None: still
 /// reading).
-fn on(theme: ThemeChoice, step: WelcomeStep, git: Option<Identity>) -> AppState {
+pub(super) fn on(theme: ThemeChoice, step: WelcomeStep, git: Option<Identity>) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     let mut w = Welcome::new();
     w.step = step;
@@ -45,7 +45,7 @@ fn snapshot(name: &str, st: AppState, dark: bool) -> Vec<Msg> {
 fn welcome_identity() {
     snapshot("welcome_identity_seeded", on(ThemeChoice::Dark, WelcomeStep::Identity, Some(ada())), true);
     let mut st = on(ThemeChoice::Dark, WelcomeStep::Identity, Some(Identity::default()));
-    st.onboarding.welcome.as_mut().unwrap().identity.error = Some(EMAIL_NO_AT.into());
+    st.onboarding.welcome.as_mut().unwrap().identity.error = Some(trellis_core::i18n::Lang::En.tr("welcome.identity.email_no_at").into());
     snapshot("welcome_identity_missing", st, true);
     // The spinner keeps repainting: a fixed number of frames instead of running until idle.
     let mut h = harness(on(ThemeChoice::Dark, WelcomeStep::Identity, None), true);

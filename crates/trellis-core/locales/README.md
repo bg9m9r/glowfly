@@ -74,5 +74,16 @@ Keep terms the same across pages.
 | theme | Design | tema |
 | update | Update | actualización |
 | release notes | Versionshinweise | notas de la versión |
+| favorite | Favorit | favorito |
+| recent | Zuletzt verwendet | recientes |
+| project folder | Projektordner | carpeta de proyecto |
+| hosting service | Hosting-Dienst | servicio de alojamiento |
+| staged / unstaged files | Bereitgestellt / Nicht bereitgestellt | preparados / sin preparar |
+| discard | verwerfen | descartar |
+| conflict | Konflikt | conflicto |
+| cherry-pick | Cherry-pick | cherry-pick |
+| revert | Revert | revertir |
+| parent commit | Eltern-Commit | commit padre |
+| working directory | Arbeitsverzeichnis | directorio de trabajo |
 
 German uses the informal "du"; Spanish uses "tú".

@@ -25,7 +25,7 @@ fn found(root: &str, rel: &str) -> FoundRepo {
 }
 
 /// Two project folders with five repositories, api-server open in a tab and web-app a favorite.
-fn finder(theme: ThemeChoice, filter: &str) -> AppState {
+pub(super) fn finder(theme: ThemeChoice, filter: &str) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     st.settings.project_folders = [abs("src"), abs("work")].iter().map(|p| trellis_core::paths::encode(p)).collect();
     st.settings.favorite_repos = vec![trellis_core::paths::encode(&abs("src/web-app"))];

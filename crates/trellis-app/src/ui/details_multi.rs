@@ -12,22 +12,24 @@ use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::state::lfs::TrackContext;
 use crate::state::selection::MultiSelection;
-use crate::state::selection_span::{SPAN_FROM_ROOT, SPAN_GAPS, Span};
+use crate::state::selection_span::Span;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, RichText};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::DiffTarget;
 
 pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (Some(snap), Selection::Commits(m)) = (&st.snap, &st.selection) else { return };
-    ui.label(RichText::new(format!("{} commits selected", m.len())).strong().size(15.0).color(color::text()));
+    let t = st.settings.lang();
+    ui.label(RichText::new(t.trn("details.multi.selected", m.len(), &[])).strong().size(15.0).color(color::text()));
     ui.horizontal_wrapped(|ui| {
-        cherry_pick_button(ui, m, msgs);
-        revert_button(ui, m, msgs);
-        patch_button(ui, m, msgs);
-        if ui.button("Copy SHAs").clicked() {
+        cherry_pick_button(ui, t, m, msgs);
+        revert_button(ui, t, m, msgs);
+        patch_button(ui, t, m, msgs);
+        if ui.button(t.tr("details.multi.copy_shas.button")).clicked() {
             msgs.push(copy_shas(m));
         }
-        ui.label(RichText::new("Esc returns to one commit").small().color(color::weak()));
+        ui.label(RichText::new(t.tr("details.multi.esc_hint")).small().color(color::weak()));
     });
     ui.add_space(6.0);
 
@@ -53,45 +55,46 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 
     let Some((from, to)) = m.compare_ends() else {
         ui.add_space(8.0);
-        let note = if m.span == Span::FromRoot { SPAN_FROM_ROOT } else { SPAN_GAPS };
+        let note = if m.span == Span::FromRoot { t.tr("details.multi.span_from_root") } else { t.tr("details.multi.span_gaps") };
         ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
         return;
     };
     ui.separator();
-    heading(ui, m, from, to, msgs);
-    files(ui, st, m, from, to, msgs);
+    heading(ui, t, m, from, to, msgs);
+    files(ui, t, st, m, from, to, msgs);
 }
 
 /// "Changes from X to Y" (with the count for a line of commits) and Swap direction.
-fn heading(ui: &mut egui::Ui, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
-    let mut text = format!("Changes from {} to {}", short(from), short(to));
-    if let Span::Range { .. } = m.span {
-        text.push_str(&format!(" ({} commits combined)", m.len()));
-    }
+fn heading(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
+    let (f, o) = (short(from), short(to));
+    let text = match m.span {
+        Span::Range { .. } => t.trf("details.multi.changes_combined", &[("from", &f), ("to", &o), ("count", &m.len())]),
+        _ => t.trf("details.multi.changes", &[("from", &f), ("to", &o)]),
+    };
     // The button goes to its own line when the heading leaves no room for it.
     ui.horizontal_wrapped(|ui| {
         ui.label(RichText::new(text).strong().color(color::text()));
-        let tip = format!("Show the changes from {} to {} instead", short(to), short(from));
-        if ui.small_button("Swap direction").on_hover_text(tip).clicked() {
+        let tip = t.trf("details.multi.swap.tip", &[("from", &o), ("to", &f)]);
+        if ui.small_button(t.tr("details.multi.swap.button")).on_hover_text(tip).clicked() {
             msgs.push(Msg::Selection(SelectionMsg::SwapCompare));
         }
     });
 }
 
 /// The files that differ from `from` to `to`, each opening its diff between them.
-fn files(ui: &mut egui::Ui, st: &AppState, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
+fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
     match &m.changes {
         None => {
-            ui.label(RichText::new("Loading…").color(color::weak()));
+            ui.label(RichText::new(t.tr("common.loading")).color(color::weak()));
         }
         Some(Err(e)) => {
             ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
         }
         Some(Ok(c)) if c.files.is_empty() => {
-            ui.label(RichText::new("These commits have the same files.").color(color::weak()));
+            ui.label(RichText::new(t.tr("details.multi.same_files")).color(color::weak()));
         }
         Some(Ok(c)) => {
-            let open = st.diff.as_ref().map(|(t, _)| t);
+            let open = st.diff.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
             let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
             let row_h = widget_row_height(ui);
@@ -103,8 +106,9 @@ fn files(ui: &mut egui::Ui, st: &AppState, m: &MultiSelection, from: git2::Oid, 
                     for f in &c.files[range] {
                         let target = DiffTarget::Between(from, to, f.path.clone());
                         let src = RowSource::Between { from, to };
-                        let actions = Some(RowActions { src, in_workdir: c.in_workdir(&f.path), lfs, diff_blocked, patch_blocked: None });
-                        changed_file_row(ui, f, target, open, m.oids[0], actions, msgs);
+                        let in_workdir = c.in_workdir(&f.path);
+                        let actions = RowActions { src, history_at: m.oids[0], in_workdir, lfs, diff_blocked, patch_blocked: None };
+                        changed_file_row(ui, t, f, target, open, actions, msgs);
                     }
                 },
             );

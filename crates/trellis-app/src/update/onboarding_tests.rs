@@ -8,13 +8,14 @@ use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
 use crate::onboarding::{OnboardingEffect, OnboardingMsg as O, StartChoice};
-use crate::state::onboarding::{EMAIL_BLANK, EMAIL_NO_AT, EMAIL_SPACE, NAME_BLANK, NOT_DURING_SWITCH, SAVED_LOG, TOUR_DONE, WelcomeStep};
+use crate::state::onboarding::{SAVED_LOG, TOUR_DONE, WelcomeStep};
 use crate::state::onboarding_tour::TourStep;
 use crate::state::palette::PaletteCommand as C;
 use crate::state::palette::entries;
 use crate::state::{AppState, Modal, PrefPage};
 use std::path::PathBuf;
 use std::time::Instant;
+use trellis_core::i18n::Lang;
 use trellis_core::identity::Identity;
 use trellis_core::repo::{self, LoadOptions};
 use trellis_core::settings::{Profile, ProfileId};
@@ -114,9 +115,13 @@ fn a_missing_identity_is_written_to_the_global_config() {
 
 #[test]
 fn a_bad_identity_is_refused() {
-    for (name, email, problem) in
-        [("", "a@b", NAME_BLANK), ("Ada", " ", EMAIL_BLANK), ("Ada", "ada", EMAIL_NO_AT), ("Ada", "ada @x", EMAIL_SPACE)]
-    {
+    let cases = [
+        ("", "a@b", Lang::En.tr("welcome.identity.name_blank")),
+        ("Ada", " ", Lang::En.tr("welcome.identity.email_blank")),
+        ("Ada", "ada", Lang::En.tr("welcome.identity.email_no_at")),
+        ("Ada", "ada @x", Lang::En.tr("welcome.identity.email_space")),
+    ];
+    for (name, email, problem) in cases {
         let mut st = welcome(Identity::default());
         let f = &mut st.onboarding.welcome.as_mut().unwrap().identity;
         f.name = name.into();
@@ -181,7 +186,7 @@ fn no_write_during_a_profile_switch() {
     st.profile_switch = Some(ProfileId(2));
     assert!(run(&mut st, O::SaveIdentity).is_empty());
     let f = &st.onboarding.welcome.as_ref().unwrap().identity;
-    assert_eq!((f.error.as_deref(), f.saving), (Some(NOT_DURING_SWITCH), false));
+    assert_eq!((f.error.as_deref(), f.saving), (Some(Lang::En.tr("welcome.identity.not_during_switch")), false));
 }
 
 #[test]

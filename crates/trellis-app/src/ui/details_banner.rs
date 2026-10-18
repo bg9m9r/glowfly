@@ -7,9 +7,10 @@ use super::theme::color;
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::rebase_banner::{RESOLVE_FIRST, action_msg};
+use crate::state::rebase_banner::action_msg;
 use eframe::egui;
 use trellis_core::git_version::Feature;
+use trellis_core::i18n::Lang;
 use trellis_core::pick_ops::{CHERRY_PICK_SKIP, REVERT_SKIP};
 use trellis_core::repo::{FileEntry, Snapshot};
 
@@ -22,6 +23,7 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
         return;
     }
     let skip_blocked = st.git.blocked(Feature::SequencerSkip);
+    let t = st.settings.lang();
     egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
         match (in_progress, &snap.rebase) {
             (Some((name, _)), Some(p)) => super::rebase::banner::progress(ui, p, name, !conflicted.is_empty(), msgs),
@@ -30,9 +32,8 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
         }
         if let Some(first) = conflicted.first() {
             ui.horizontal(|ui| {
-                let n = conflicted.len();
-                ui.label(format!("{n} conflicted file{}", if n == 1 { "" } else { "s" }));
-                if ui.button("View conflicts").clicked() {
+                ui.label(t.trn("details.banner.conflicted", conflicted.len(), &[]));
+                if ui.button(t.tr("details.banner.view_conflicts.button")).clicked() {
                     msgs.push(Msg::Conflict(ConflictMsg::OpenConflict(first.path.clone())));
                 }
             });
@@ -42,8 +43,8 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
             for (label, a) in actions {
                 let held = !conflicted.is_empty() && *label == "Continue" && (snap.rebase.is_some() || snap.am.is_some());
                 let old_git = (*a == CHERRY_PICK_SKIP || *a == REVERT_SKIP).then_some(skip_blocked.as_deref()).flatten();
-                let why = if held { Some(RESOLVE_FIRST) } else { old_git };
-                let r = ui.add_enabled(why.is_none(), egui::Button::new(*label));
+                let why = if held { Some(t.tr("details.banner.resolve_first.tip")) } else { old_git };
+                let r = ui.add_enabled(why.is_none(), egui::Button::new(action_text(t, label)));
                 let r = match why {
                     Some(w) => r.on_disabled_hover_text(w),
                     None => r,
@@ -56,4 +57,20 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
         });
     });
     ui.add_space(6.0);
+}
+
+/// A banner button's text in the language; `label` stays the English id the job is named by.
+fn action_text(t: Lang, label: &'static str) -> &'static str {
+    match label {
+        "Continue" => t.tr("details.banner.action.continue"),
+        "Skip commit" => t.tr("details.banner.action.skip_commit"),
+        "Skip patch" => t.tr("details.banner.action.skip_patch"),
+        "Abort" => t.tr("details.banner.action.abort"),
+        "Abort merge" => t.tr("details.banner.action.abort_merge"),
+        "Abort rebase" => t.tr("details.banner.action.abort_rebase"),
+        "Abort cherry-pick" => t.tr("details.banner.action.abort_cherry_pick"),
+        "Abort revert" => t.tr("details.banner.action.abort_revert"),
+        "Reset bisect" => t.tr("details.banner.action.reset_bisect"),
+        _ => label,
+    }
 }

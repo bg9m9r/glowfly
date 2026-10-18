@@ -3,16 +3,11 @@
 //! `settings.welcome_done` is ever saved.
 
 use super::onboarding_tour::TourStep;
+use trellis_core::i18n::Lang;
 use trellis_core::identity::Identity;
 
 /// The activity log line after the identity step wrote the name and email.
 pub const SAVED_LOG: &str = "Saved your name and email to the global git config";
-pub const NAME_BLANK: &str = "Enter the name to put on your commits.";
-pub const EMAIL_BLANK: &str = "Enter the email address to put on your commits.";
-pub const EMAIL_NO_AT: &str = "An email address has an @ in it.";
-pub const EMAIL_SPACE: &str = "An email address can't contain spaces.";
-/// Why the identity step won't write while a profile switch runs.
-pub const NOT_DURING_SWITCH: &str = "A profile switch is writing your git config. Try again when it ends.";
 /// The toast after the tour's last step.
 pub const TOUR_DONE: &str = "That's the tour. The command palette can run it again.";
 
@@ -55,22 +50,22 @@ impl WelcomeStep {
     }
 
     /// The short caption under its progress dot.
-    pub fn caption(self) -> &'static str {
+    pub fn caption(self, t: Lang) -> &'static str {
         match self {
-            WelcomeStep::Identity => "You",
-            WelcomeStep::Connect => "Services",
-            WelcomeStep::Git => "Git",
-            WelcomeStep::Start => "Start",
+            WelcomeStep::Identity => t.tr("welcome.step.identity.caption"),
+            WelcomeStep::Connect => t.tr("welcome.step.connect.caption"),
+            WelcomeStep::Git => t.tr("welcome.step.git.caption"),
+            WelcomeStep::Start => t.tr("welcome.step.start.caption"),
         }
     }
 
     /// The step's heading.
-    pub fn title(self) -> &'static str {
+    pub fn title(self, t: Lang) -> &'static str {
         match self {
-            WelcomeStep::Identity => "Who are you?",
-            WelcomeStep::Connect => "Connect a hosting service",
-            WelcomeStep::Git => "Checking git",
-            WelcomeStep::Start => "You're ready",
+            WelcomeStep::Identity => t.tr("welcome.step.identity.title"),
+            WelcomeStep::Connect => t.tr("welcome.step.connect.title"),
+            WelcomeStep::Git => t.tr("welcome.step.git.title"),
+            WelcomeStep::Start => t.tr("welcome.step.start.title"),
         }
     }
 }
@@ -135,16 +130,16 @@ impl IdentityForm {
 }
 
 /// The first problem with a name and email for commits, or None when they can be written.
-pub fn identity_problem(name: &str, email: &str) -> Option<&'static str> {
+pub fn identity_problem(t: Lang, name: &str, email: &str) -> Option<&'static str> {
     let email = email.trim();
     if name.trim().is_empty() {
-        Some(NAME_BLANK)
+        Some(t.tr("welcome.identity.name_blank"))
     } else if email.is_empty() {
-        Some(EMAIL_BLANK)
+        Some(t.tr("welcome.identity.email_blank"))
     } else if !email.contains('@') {
-        Some(EMAIL_NO_AT)
+        Some(t.tr("welcome.identity.email_no_at"))
     } else if email.chars().any(char::is_whitespace) {
-        Some(EMAIL_SPACE)
+        Some(t.tr("welcome.identity.email_space"))
     } else {
         None
     }
@@ -160,16 +155,20 @@ mod tests {
         assert_eq!(WelcomeStep::Identity.next(), Some(WelcomeStep::Connect));
         assert_eq!(WelcomeStep::Start.next(), None);
         assert_eq!(WelcomeStep::Start.prev(), Some(WelcomeStep::Git));
-        assert_eq!(WelcomeStep::ALL.map(WelcomeStep::caption), ["You", "Services", "Git", "Start"]);
+        assert_eq!(WelcomeStep::ALL.map(|s| s.caption(Lang::En)), ["You", "Services", "Git", "Start"]);
     }
 
     #[test]
     fn identity_checks() {
-        assert_eq!(identity_problem(" ", "a@b"), Some(NAME_BLANK));
-        assert_eq!(identity_problem("Ada", " "), Some(EMAIL_BLANK));
-        assert_eq!(identity_problem("Ada", "ada"), Some(EMAIL_NO_AT));
-        assert_eq!(identity_problem("Ada", "ada @x"), Some(EMAIL_SPACE));
-        assert_eq!(identity_problem(" Ada ", " ada@example.com "), None);
+        let en = |key| Some(Lang::En.tr(key));
+        assert_eq!(identity_problem(Lang::En, " ", "a@b"), en("welcome.identity.name_blank"));
+        assert_eq!(identity_problem(Lang::En, "Ada", " "), en("welcome.identity.email_blank"));
+        assert_eq!(identity_problem(Lang::En, "Ada", "ada"), en("welcome.identity.email_no_at"));
+        assert_eq!(identity_problem(Lang::En, "Ada", "ada @x"), en("welcome.identity.email_space"));
+        assert_eq!(identity_problem(Lang::En, " Ada ", " ada@example.com "), None);
+        assert_eq!(identity_problem(Lang::En, "Ada", "ada"), Some("An email address has an @ in it."));
+        assert_eq!(identity_problem(Lang::De, "", "a@b"), Some(Lang::De.tr("welcome.identity.name_blank")));
+        assert_ne!(identity_problem(Lang::De, "", "a@b"), en("welcome.identity.name_blank"));
         let mut f = IdentityForm::default();
         f.seed(Identity { name: "Ada".into(), email: "ada@example.com".into(), signing_key: None });
         assert!(!f.needs_write() && f.git_knows());

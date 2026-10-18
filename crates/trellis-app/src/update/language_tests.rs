@@ -1,13 +1,18 @@
-//! Headless tests for the Language setting: text built in update follows it, and choosing a
-//! language on Preferences > General is saved like any other edit made in place.
+//! Headless tests for the Language setting: text built in update follows it (the commit
+//! refusal, the welcome's identity check, the favorite shortcut's toast and the question about a
+//! missing repository), and choosing a language on Preferences > General is saved like any
+//! other edit made in place.
 
-use super::tests::state;
+use super::tests::{drive, state};
 use super::update;
 use crate::effect::Effect;
-use crate::msg::{CommitMsg, Msg, PrefsMsg};
-use crate::state::{PrefPage, PrefsState};
+use crate::msg::{CommitMsg, Msg, PrefsMsg, RecentMsg, RepoMsg};
+use crate::onboarding::OnboardingMsg;
+use crate::state::onboarding::{Welcome, WelcomeStep};
+use crate::state::{Modal, PrefPage, PrefsState};
 use std::time::Instant;
 use trellis_core::i18n::Lang;
+use trellis_core::identity::Identity;
 
 #[test]
 fn the_commit_refusal_toast_is_in_the_chosen_language() {
@@ -35,4 +40,41 @@ fn choosing_a_language_saves_it() {
     assert_eq!(saved.language, "es");
     assert!(serde_json::to_string(&*saved).unwrap().contains(r#""language":"es""#));
     assert_eq!(st.settings.lang(), Lang::Es, "takes effect at once");
+}
+
+#[test]
+fn the_welcome_identity_check_is_in_the_chosen_language() {
+    let mut st = state();
+    st.settings.language = "de".into();
+    let mut w = Welcome::new();
+    w.identity.seed(Identity::default());
+    w.identity.email = "ada@example.com".into();
+    st.onboarding.welcome = Some(w);
+    update(&mut st, Msg::Onboarding(OnboardingMsg::SaveIdentity), Instant::now());
+    let w = st.onboarding.welcome.as_ref().unwrap();
+    assert_eq!(w.step, WelcomeStep::Identity);
+    assert_eq!(w.identity.error.as_deref(), Some(Lang::De.tr("welcome.identity.name_blank")));
+}
+
+#[test]
+fn the_missing_favorite_toast_is_in_the_chosen_language() {
+    let mut st = state();
+    st.settings.language = "es".into();
+    update(&mut st, Msg::Recent(RecentMsg::OpenFavorite(5)), Instant::now());
+    let text = st.toasts.last().map(|t| t.text.clone()).expect("a toast");
+    assert_eq!(text, Lang::Es.trf("repos.no_favorite.toast", &[("number", &6)]));
+    assert!(text.contains('6') && !text.contains('{'), "{text}");
+}
+
+#[test]
+fn the_missing_repository_question_is_in_the_chosen_language() {
+    let path = trellis_core::paths::temp_dir().join(format!("trellis-app-test-lang-forget-{}-gone", std::process::id()));
+    let mut st = state();
+    st.settings.language = "de".into();
+    st.recent = vec![path.clone()];
+    drive(&mut st, Msg::Repo(RepoMsg::Open(path.clone())));
+    let Some(Modal::Confirm { title, body, button, .. }) = &st.modal else { panic!("asks to remove it") };
+    assert_eq!(title, Lang::De.tr("repos.forget.title"));
+    assert_eq!(button, Lang::De.tr("repos.remove.button"));
+    assert!(!body.contains('{'), "{body}");
 }

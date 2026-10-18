@@ -634,7 +634,10 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Catalog (English base, Deutsch, Español) with system-language detection, Language on
     Preferences > General, and translated Preferences navigation, General (with its Updates row),
     Editor, External Tools and UI Customization pages, commit box, status bar and its update chip,
-    menu bar and About dialog, toolbar, tab bar and the release notes dialog
+    menu bar and About dialog, toolbar, tab bar, the release notes dialog, the first-run welcome,
+    the welcome screen and its repository lists (also the toolbar's repository menu and File >
+    Open recent), Find repositories, and the details panel (commit details, the WIP lists, row
+    actions and in-progress banner buttons, several commits and the working-directory comparison)
 - [x] **Logs**: keep the activity log across sessions; error and performance logs; extended
       logging (the in-session activity log exists)
 - [x] **Command-line companion**: `trellis <path>` and `trellis .` work (subcommands are under
@@ -1869,4 +1872,13 @@ here, under the item they grew from.
 - Right-to-left layout for right-to-left languages
 - Translate undo action descriptions (Action::describe, e.g. "checkout of main") and the labels of the jobs they name, shown in the Edit menu, toolbar tips, status bar and activity log
 - Translate error texts that come from trellis-core: update check and download errors, theme file problems and the themes folder error
-- Translate the welcome screen's repository lists and the Find repositories dialog
+- Translate the tour of the main window (ui/tour.rs, state/onboarding_tour.rs) and its closing toast
+- Translate the in-progress banner titles and stop lines (rebase and patch-series banners, Edit remaining steps…) and the operation names from state_actions
+- Translate the Conflicted Files and Resolved Files lists (ui/conflict_files.rs) and their Mark conflicted confirmations
+- Translate the file row menus (ui/file_menu.rs: history, blame, external tools, LFS, stash and patch items) and the path warnings
+- Translate the signature badge and the commit details' issue heading (its tracker nouns come from trellis-core)
+- Translate the multi-select blocked reasons (cherry-pick, revert, patch) and the single-commit context menu in ui/menus.rs
+- Translate git's missing or too-old banner text built in trellis-core (welcome Git step and window banner)
+- Translate the folder picker titles (Add a project folder, Open a Git repository and the other Preferences pickers)
+- Translate the palette's repository commands (e.g. Remove missing repositories from the lists)
+- Translate the pull request panel's file list texts (only its rows' Copy path follows the language)

@@ -42,7 +42,7 @@ fn shown(path: &str) -> String {
     trellis_core::native_path::shown(std::path::Path::new(path))
 }
 
-fn welcome_state(theme: ThemeChoice) -> AppState {
+pub(super) fn welcome_state(theme: ThemeChoice) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     lists(&mut st);
     st

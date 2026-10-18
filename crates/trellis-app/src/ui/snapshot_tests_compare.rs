@@ -21,7 +21,7 @@ fn commit(st: &AppState, summary: &str) -> Oid {
 
 /// The merge on main compared with a working tree that changes app.txt, deletes login.txt and
 /// adds new.txt (README.md is the fixture's own edit).
-fn compared(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn compared(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     std::fs::write(dir.join("app.txt"), "app\nfix\nmore\n").unwrap();
     std::fs::remove_file(dir.join("login.txt")).unwrap();
@@ -53,7 +53,7 @@ fn a_commit_compared_with_the_working_directory() {
 }
 
 /// `summaries` selected, with the comparison's file list loaded (`swapped` runs it the other way).
-fn selected(theme: ThemeChoice, name: &str, summaries: &[&str], swapped: bool) -> (AppState, PathBuf) {
+pub(super) fn selected(theme: ThemeChoice, name: &str, summaries: &[&str], swapped: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let oids: Vec<Oid> = summaries.iter().map(|s| commit(&st, s)).collect();
     let mut sel = MultiSelection::build(oids.iter().copied(), oids[0], st.snap.as_ref().unwrap());

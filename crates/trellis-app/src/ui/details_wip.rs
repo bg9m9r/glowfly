@@ -16,6 +16,7 @@ use crate::state::lfs::{TrackContext, track_items};
 use crate::state::tool_compare::{RESOLVE_IN_MERGE_TOOL, ToolAvail};
 use crate::tools::ToolsMsg;
 use eframe::egui::{self, Align, Layout, RichText, Sense};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry, Snapshot};
 use trellis_core::undo::DISCARD_STASH_MESSAGE;
 
@@ -33,7 +34,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let lists = 2 + usize::from(!conflicted.is_empty()) + usize::from(!resolved.is_empty());
     let list_h = ((ui.available_height() - super::commit_box::RESERVED_HEIGHT) / lists as f32).max(60.0);
     let tools = ToolAvail::of(st);
-    let ctx = RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap };
+    let ctx = RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap, lang: st.settings.lang() };
     let lists = super::conflict_files::Lists { conflicted: &conflicted, resolved: &resolved, height: list_h };
     super::conflict_files::show(ui, st, lists, &open, ctx, msgs);
     file_list(ui, snap, false, &open, list_h, ctx, msgs);
@@ -43,12 +44,14 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
 }
 
 /// What every working-tree row needs, built once per frame: Track in Git LFS's context and
-/// the diff and merge tools' availability, plus the keymap for the header buttons' tips.
+/// the diff and merge tools' availability, the keymap for the header buttons' tips, and the
+/// language the rows are drawn in.
 #[derive(Clone, Copy)]
 pub(super) struct RowContext<'a> {
     pub lfs: TrackContext<'a>,
     pub tools: &'a ToolAvail,
     pub keys: &'a Keymap,
+    pub lang: Lang,
 }
 
 /// What the central panel shows, so its file row is drawn selected.
@@ -58,59 +61,43 @@ pub(super) struct OpenFile<'a> {
 }
 
 /// The Discard all confirmation, naming Undo's current key.
-pub(super) fn discard_all_text(keys: &Keymap) -> String {
-    format!(
-        "All uncommitted changes will be moved into a stash named \"{DISCARD_STASH_MESSAGE}\". Undo{} or applying that stash brings \
-         them back; dropping the stash deletes them permanently.",
-        keys.paren(BindingId::Undo)
-    )
+pub(super) fn discard_all_text(t: Lang, keys: &Keymap) -> String {
+    match keys.hint(BindingId::Undo) {
+        Some(k) => t.trf("details.wip.discard_all.body_key", &[("stash", &DISCARD_STASH_MESSAGE), ("key", &k)]),
+        None => t.trf("details.wip.discard_all.body", &[("stash", &DISCARD_STASH_MESSAGE)]),
+    }
 }
 
 /// The Unstaged or Staged Files list of the working tree. Conflicted files have their own list
 /// (`conflict_files::show`), so Unstaged Files leaves them out.
 fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, ctx: RowContext, msgs: &mut Vec<Msg>) {
-    let (title, all) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
+    // The English titles stay the lists' scroll ids, whatever the language.
+    let (id, all) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
     // Built only while files are conflicted: a working tree can have thousands of changed files.
     let kept: Option<Vec<&FileEntry>> =
         (!staged && all.iter().any(|f| f.status == '!')).then(|| all.iter().filter(|f| f.status != '!').collect());
     let count = kept.as_ref().map_or(all.len(), Vec::len);
-    let keys = ctx.keys;
+    let t = ctx.lang;
+    let title = if staged {
+        t.trf("details.wip.staged.header", &[("count", &count)])
+    } else {
+        t.trf("details.wip.unstaged.header", &[("count", &count)])
+    };
     // The Staged header's background opens its menu; registered before the header's buttons, so
     // they keep their own clicks.
     let sense = if staged { Sense::click() } else { Sense::hover() };
     let header = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
         egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
             ui.horizontal(|ui| {
-                // Not selectable, so a right-click on the title reaches the header's menu.
-                let text = RichText::new(format!("{title} ({count})")).strong().color(color::text());
-                ui.add(egui::Label::new(text).selectable(false));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if staged {
-                        let tip = keys.tip("Unstage every file", BindingId::UnstageAll);
-                        if count > 0 && ui.small_button("Unstage all").on_hover_text(tip).clicked() {
-                            msgs.push(Msg::Stage(StageMsg::UnstageAll));
-                        }
-                        return;
-                    }
-                    if count > 0 {
-                        let tip = keys.tip("Stage every changed file", BindingId::StageAll);
-                        if ui.small_button("Stage all").on_hover_text(tip).clicked() {
-                            msgs.push(Msg::Stage(StageMsg::StageAll));
-                        }
-                        if ui.small_button("Discard all").clicked() {
-                            // Discarding goes through a stash so it can be recovered.
-                            msgs.push(Msg::confirm(
-                                "Discard all changes",
-                                discard_all_text(keys),
-                                "Discard all",
-                                Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]),
-                            ));
-                        }
-                    }
-                    // Drawn last, so it sits leftmost; shown even when nothing has changed.
-                    if ui.small_button("New file…").clicked() {
-                        msgs.push(Msg::WorkFile(WorkFileMsg::NewFileDialog(String::new())));
-                    }
+                    header_buttons(ui, staged, count, ctx, msgs);
+                    // Drawn after the buttons, so a long title is cut short (whole on hover)
+                    // instead of running under them. Not selectable, so a right-click on the
+                    // title reaches the header's menu.
+                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        let text = RichText::new(title).strong().color(color::text());
+                        ui.add(egui::Label::new(text).selectable(false).truncate());
+                    });
                 });
             });
         });
@@ -118,9 +105,9 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
     if staged {
         header.response.context_menu(|ui| file_menu::staged_header_items(ui, msgs, snap));
     }
-    let area = egui::ScrollArea::vertical().id_salt(title).max_height(max_h).auto_shrink([false, true]);
+    let area = egui::ScrollArea::vertical().id_salt(id).max_height(max_h).auto_shrink([false, true]);
     if count == 0 {
-        area.show(ui, |ui| ui.label(RichText::new("None").color(color::faint())));
+        area.show(ui, |ui| ui.label(RichText::new(t.tr("details.wip.none")).color(color::faint())));
         return;
     }
     // Only the rows in view are drawn: a working tree can have thousands of changed files.
@@ -130,6 +117,38 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
             wip_file_row(ui, snap, f, staged, open, ctx, None, msgs);
         }
     });
+}
+
+/// The header's buttons, right to left: Unstage all on Staged Files; Stage all, Discard all
+/// (when there are files) and New file… on Unstaged Files.
+fn header_buttons(ui: &mut egui::Ui, staged: bool, count: usize, ctx: RowContext, msgs: &mut Vec<Msg>) {
+    let (keys, t) = (ctx.keys, ctx.lang);
+    if staged {
+        let tip = keys.tip(t.tr("details.wip.unstage_all.tip"), BindingId::UnstageAll);
+        if count > 0 && ui.small_button(t.tr("details.wip.unstage_all.button")).on_hover_text(tip).clicked() {
+            msgs.push(Msg::Stage(StageMsg::UnstageAll));
+        }
+        return;
+    }
+    if count > 0 {
+        let tip = keys.tip(t.tr("details.wip.stage_all.tip"), BindingId::StageAll);
+        if ui.small_button(t.tr("details.wip.stage_all.button")).on_hover_text(tip).clicked() {
+            msgs.push(Msg::Stage(StageMsg::StageAll));
+        }
+        if ui.small_button(t.tr("details.wip.discard_all.button")).clicked() {
+            // Discarding goes through a stash so it can be recovered.
+            msgs.push(Msg::confirm(
+                t.tr("details.wip.discard_all.title"),
+                discard_all_text(t, keys),
+                t.tr("details.wip.discard_all.button"),
+                Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]),
+            ));
+        }
+    }
+    // Drawn last, so it sits leftmost; shown even when nothing has changed.
+    if ui.small_button(t.tr("details.wip.new_file.button")).clicked() {
+        msgs.push(Msg::WorkFile(WorkFileMsg::NewFileDialog(String::new())));
+    }
 }
 
 /// A row of the Unstaged, Staged or Conflicted Files list: status, Stage / Unstage / Mark
@@ -154,12 +173,13 @@ pub(super) fn wip_file_row(
         (false, true) => Msg::Conflict(ConflictMsg::MarkResolved(vec![f.path.clone()])),
         (false, false) => Msg::Stage(StageMsg::StageFile(f.path.clone())),
     };
+    let t = ctx.lang;
     ui.horizontal(|ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
         let action = match (staged, conflicted) {
-            (true, _) => "Unstage",
-            (false, true) => "Mark resolved",
-            (false, false) => "Stage",
+            (true, _) => t.tr("details.wip.unstage.button"),
+            (false, true) => t.tr("details.wip.mark_resolved.button"),
+            (false, false) => t.tr("details.wip.stage.button"),
         };
         // A name that isn't UTF-8 can't be named to git safely (`update` refuses it too).
         let usable = !matches!(f.hazard, Some(trellis_core::repo::Hazard::NotUtf8(_)));
@@ -186,22 +206,22 @@ pub(super) fn wip_file_row(
         }
         r.context_menu(|ui| {
             if conflicted {
-                menu_item(msgs, ui, "Open conflict", Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
+                menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
             }
             menu_item(msgs, ui, action, toggle());
             // Checking out the index version of a conflicted path means nothing.
             if !staged && !conflicted {
                 if f.status == '?' {
-                    menu_item(msgs, ui, "Discard changes", Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone())));
+                    menu_item(msgs, ui, t.tr("details.wip.discard.item"), Msg::WorkFile(WorkFileMsg::DiscardUntracked(f.path.clone())));
                 } else {
                     menu_item(
                         msgs,
                         ui,
-                        "Discard changes",
+                        t.tr("details.wip.discard.item"),
                         Msg::confirm(
-                            "Discard changes",
-                            format!("Discard changes to {}? You can bring them back with Undo.", f.path),
-                            "Discard",
+                            t.tr("details.wip.discard.title"),
+                            t.trf("details.wip.discard.body", &[("path", &f.path)]),
+                            t.tr("details.wip.discard.button"),
                             Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
                         ),
                     );
@@ -210,9 +230,9 @@ pub(super) fn wip_file_row(
             file_menu::stash_file_item(ui, msgs, snap, f);
             file_menu::patch_file_item(ui, msgs, f, staged);
             if f.status != '?' {
-                file_menu::history_items(ui, msgs, &f.path, None, (f.status == 'A').then_some("Not committed yet"));
+                file_menu::history_items(ui, msgs, &f.path, None, (f.status == 'A').then_some(t.tr("details.wip.not_committed")));
             }
-            menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
+            menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
             let unstages = crate::state::files::unstages_on_delete(snap, &f.path);
             let missing = snap.missing_from_workdir(&f.path);
             let items = if missing { Vec::new() } else { track_items(&f.path, ctx.lfs) };

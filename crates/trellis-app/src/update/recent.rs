@@ -37,7 +37,10 @@ pub(super) fn handle(st: &mut AppState, msg: RecentMsg, now: Instant, fx: &mut V
         }
         RecentMsg::OpenFavorite(n) => match favorites(&st.settings).into_iter().nth(n) {
             Some(p) => super::tabs::open(st, p, fx),
-            None => st.toast(false, format!("There is no favorite repository {}. Star a repository to add it.", n + 1), now),
+            None => {
+                let text = st.settings.lang().trf("repos.no_favorite.toast", &[("number", &(n + 1))]);
+                st.toast(false, text, now)
+            }
         },
         RecentMsg::OpenAll(paths) => super::tabs::open_all(st, paths, fx),
         RecentMsg::RemoveMissing => remove_missing(st, fx),
@@ -117,8 +120,9 @@ fn folders_checked(st: &mut AppState, checks: Vec<FolderCheck>) {
     if let Some(p) = st.missing_offer.take().filter(|p| is_missing(st, p))
         && st.modal.is_none()
     {
-        let (title, body) = forget_confirm(st, &p);
+        let t = st.settings.lang();
+        let (title, body) = forget_confirm(t, st, &p);
         let then = Box::new(Msg::Recent(RecentMsg::Forget(p)));
-        st.modal = Some(Modal::Confirm { title, body, button: "Remove".into(), then });
+        st.modal = Some(Modal::Confirm { title, body, button: t.tr("repos.remove.button").into(), then });
     }
 }

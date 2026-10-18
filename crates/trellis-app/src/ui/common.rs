@@ -223,26 +223,27 @@ pub fn state_actions(state: RepositoryState) -> Option<(&'static str, &'static [
 
 /// Shown when no repository is open.
 pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     ui.vertical_centered(|ui| {
         ui.add_space(ui.available_height() * 0.2);
         ui.label(RichText::new("Trellis").size(40.0).strong().color(color::text()));
-        ui.label(RichText::new("A fast, native Git client").color(color::weak()));
+        ui.label(RichText::new(t.tr("welcome_screen.tagline")).color(color::weak()));
         ui.add_space(20.0);
         if st.loading {
             ui.add(egui::Spinner::new());
             return;
         }
         let size = vec2(260.0, 34.0);
-        if ui.add(egui::Button::new("Open a repository").min_size(size)).clicked() {
+        if ui.add(egui::Button::new(t.tr("common.open_repo.button")).min_size(size)).clicked() {
             msgs.push(Msg::Repo(RepoMsg::PickRepo));
         }
-        if ui.add(egui::Button::new("Clone a repository").min_size(size)).clicked() {
+        if ui.add(egui::Button::new(t.tr("common.clone_repo.button")).min_size(size)).clicked() {
             msgs.push(Msg::Clone(CloneMsg::Dialog));
         }
-        if ui.add(egui::Button::new("Start a new repository").min_size(size)).clicked() {
+        if ui.add(egui::Button::new(t.tr("common.init_repo.button")).min_size(size)).clicked() {
             msgs.push(Msg::Repo(RepoMsg::InitRepo));
         }
-        if ui.add(egui::Button::new("Find repositories in folders").min_size(size)).clicked() {
+        if ui.add(egui::Button::new(t.tr("welcome_screen.find.button")).min_size(size)).clicked() {
             msgs.push(Msg::Repos(crate::msg::ReposMsg::ShowFinder));
         }
         super::repo_list::welcome_sections(ui, st, msgs);

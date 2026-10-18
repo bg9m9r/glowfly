@@ -5,7 +5,7 @@
 use crate::effect::{Effect, LoadKind};
 use crate::onboarding::{OnboardingEffect, OnboardingMsg, StartChoice};
 use crate::state::AppState;
-use crate::state::onboarding::{NOT_DURING_SWITCH, SAVED_LOG, TOUR_DONE, Welcome, WelcomeStep, identity_problem};
+use crate::state::onboarding::{SAVED_LOG, TOUR_DONE, Welcome, WelcomeStep, identity_problem};
 use crate::state::onboarding_tour::TourStep;
 use std::time::Instant;
 use trellis_core::identity::Identity;
@@ -132,6 +132,7 @@ fn close_tour(st: &mut AppState) {
 /// writes them to the global config.
 fn save_identity(st: &mut AppState, fx: &mut Vec<Effect>) {
     let switching = st.profile_switch.is_some();
+    let t = st.settings.lang();
     let Some(w) = st.onboarding.welcome.as_mut().filter(|w| w.step == WelcomeStep::Identity) else { return };
     let f = &mut w.identity;
     if f.saving || f.reading {
@@ -143,12 +144,12 @@ fn save_identity(st: &mut AppState, fx: &mut Vec<Effect>) {
         w.step = WelcomeStep::Connect;
         return;
     }
-    if let Some(problem) = identity_problem(&f.name, &f.email) {
+    if let Some(problem) = identity_problem(t, &f.name, &f.email) {
         f.error = Some(problem.into());
         return;
     }
     if switching {
-        f.error = Some(NOT_DURING_SWITCH.into());
+        f.error = Some(t.tr("welcome.identity.not_during_switch").into());
         return;
     }
     f.saving = true;

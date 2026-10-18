@@ -13,6 +13,7 @@ use crate::state::lfs::{TrackContext, track_items};
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
 use git2::Oid;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry};
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -29,10 +30,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
                 Selection::Commits(_) => super::details_multi::panel(ui, st, msgs),
                 Selection::VsWorkdir(_) => super::details_workdir::panel(ui, st, msgs),
                 Selection::None => {
-                    ui.label(RichText::new("Select a commit to see its details.").color(color::weak()));
+                    let t = st.settings.lang();
+                    ui.label(RichText::new(t.tr("details.none")).color(color::weak()));
                     if st.snap.as_ref().is_some_and(|s| s.is_dirty()) {
                         ui.add_space(8.0);
-                        if ui.button("View uncommitted changes").clicked() {
+                        if ui.button(t.tr("details.view_wip.button")).clicked() {
                             msgs.push(Msg::Repo(RepoMsg::SelectWip));
                         }
                     }
@@ -42,14 +44,15 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
 }
 
 fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
     let Some(d) = &st.detail else {
-        ui.label(RichText::new("Loading…").color(color::weak()));
+        ui.label(RichText::new(t.tr("common.loading")).color(color::weak()));
         return;
     };
-    let open = st.diff.as_ref().map(|(t, _)| t);
+    let open = st.diff.as_ref().map(|(target, _)| target);
     ui.horizontal(|ui| {
-        ui.label(RichText::new(format!("commit {}", short(d.oid))).monospace().color(color::weak()));
-        if ui.small_button("Copy SHA").clicked() {
+        ui.label(RichText::new(t.trf("details.commit.sha", &[("sha", &short(d.oid))])).monospace().color(color::weak()));
+        if ui.small_button(t.tr("common.copy_sha.button")).clicked() {
             msgs.push(Msg::Copy(d.oid.to_string()));
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| super::signature_badge::show(ui, st, d, msgs));
@@ -82,13 +85,13 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
             ui.label(RichText::new(format!("{} <{}>", d.author, d.email)).color(color::text()));
             let mut when = st.settings.format_verbose(d.time, st.view.utc_offset);
             if d.committer != d.author {
-                when.push_str(&format!(" · committed by {}", d.committer));
+                when = t.trf("details.commit.when_committer", &[("when", &when), ("committer", &d.committer)]);
             }
             ui.label(RichText::new(when).color(color::weak()));
         });
     });
     ui.horizontal_wrapped(|ui| {
-        ui.label(RichText::new("parents").color(color::weak()));
+        ui.label(RichText::new(t.tr("details.commit.parents")).color(color::weak()));
         for p in &d.parents {
             if ui.link(RichText::new(short(*p)).monospace()).clicked() {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(*p)));
@@ -97,26 +100,27 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     });
     ui.separator();
     let n = d.files.len();
-    ui.label(RichText::new(format!("{n} changed file{}", if n == 1 { "" } else { "s" })).strong().color(color::text()));
+    ui.label(RichText::new(t.trn("details.commit.changed_files", n, &[])).strong().color(color::text()));
     let lfs = TrackContext::of(st);
     let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
     let row_h = widget_row_height(ui);
     egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
         for f in &d.files[range] {
             let patch_blocked = (d.parents.len() > 1).then_some(crate::state::patch::PATCH_BLOCKED_MERGE);
-            let actions =
-                Some(RowActions { src: RowSource::Commit(d.oid), in_workdir: d.in_workdir(&f.path), lfs, diff_blocked, patch_blocked });
-            changed_file_row(ui, f, DiffTarget::Commit(d.oid, f.path.clone()), open, d.oid, actions, msgs);
+            let src = RowSource::Commit(d.oid);
+            let actions = RowActions { src, history_at: d.oid, in_workdir: d.in_workdir(&f.path), lfs, diff_blocked, patch_blocked };
+            changed_file_row(ui, t, f, DiffTarget::Commit(d.oid, f.path.clone()), open, actions, msgs);
         }
     });
 }
 
 /// The file actions of a commit's (or comparison's) file row: where its change comes from,
-/// whether the path is in the working tree, what Track in Git LFS needs, and why Open in
-/// external diff tool is disabled.
+/// the commit its history and blame are seen from, whether the path is in the working tree,
+/// what Track in Git LFS needs, and why Open in external diff tool is disabled.
 #[derive(Clone, Copy)]
 pub(super) struct RowActions<'a> {
     pub src: RowSource,
+    pub history_at: Oid,
     pub in_workdir: bool,
     pub lfs: TrackContext<'a>,
     pub diff_blocked: Option<&'a str>,
@@ -125,15 +129,15 @@ pub(super) struct RowActions<'a> {
 }
 
 /// A file changed by a commit (or between two): its status and path, which opens `target`.
-/// Its menu opens the file's history as seen from `history_at`. With `actions` it also has the
-/// file actions.
+/// Its menu opens the file's history as seen from `actions.history_at`, and has the file
+/// actions.
 pub(super) fn changed_file_row(
     ui: &mut egui::Ui,
+    t: Lang,
     f: &FileEntry,
     target: DiffTarget,
     open: Option<&DiffTarget>,
-    history_at: Oid,
-    actions: Option<RowActions<'_>>,
+    actions: RowActions<'_>,
     msgs: &mut Vec<Msg>,
 ) {
     ui.horizontal(|ui| {
@@ -146,16 +150,17 @@ pub(super) fn changed_file_row(
         r.context_menu(|ui| {
             // Blame needs the file at `history_at`: a commit compared with the working tree
             // lacks the files added since; another commit lacks the ones it deleted.
-            let missing = match actions.map(|a| a.src) {
-                Some(RowSource::ToWorkdir(o)) => matches!(f.status, 'A' | 'R').then(|| format!("{} doesn't have this file", short(o))),
-                _ => (f.status == 'D').then(|| "This commit deletes the file".to_owned()),
+            let a = actions;
+            let missing = match a.src {
+                RowSource::ToWorkdir(o) => {
+                    matches!(f.status, 'A' | 'R').then(|| t.trf("details.file.not_in_commit", &[("sha", &short(o))]))
+                }
+                _ => (f.status == 'D').then(|| t.tr("details.file.deleted_here").to_owned()),
             };
-            file_menu::history_items(ui, msgs, &f.path, Some(history_at), missing.as_deref());
-            menu_item(msgs, ui, "Copy path", Msg::Copy(f.path.clone()));
-            if let Some(a) = actions {
-                let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
-                file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked, a.patch_blocked);
-            }
+            file_menu::history_items(ui, msgs, &f.path, Some(a.history_at), missing.as_deref());
+            menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
+            let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
+            file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked, a.patch_blocked);
         });
     });
 }
