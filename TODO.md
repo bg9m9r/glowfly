@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 13:02 · **Line-level staging: drag to select lines, and index entries removed when every line goes**: Diff lines can be selected by dragging across them, and staging or unstaging lines that remove every line of a file removes its index entry instead of leaving an empty file (`f2d7d557`)
 - 2026-10-18 12:58 · **Command palette (fuzzy finder): tag pushes from graph labels, macOS key labels, tag checkout notice, stash confirmation and list keys**: Checking out a tag from the palette explains the detached HEAD, stash apply asks first, palette lists take keyboard keys, and key labels and toolbar names follow macOS conventions (`786f74c6`)
 - 2026-10-18 11:38 · **File actions: trash edge cases and undoable delete**: Delete and Unstage and delete can be undone and redone (restoring the file and its staged entry), Linux drives without a usable trash offer the home Trash or a permanent delete, and Recycle Bin settings are read per mount point on Windows (`fb937002`)
 - 2026-10-18 11:05 · **Branch operations**: The remote branch menu now offers the same operations as a local branch, run against its tracking branch or the checked-out branch, with review fixes applied (`a6f66ae9`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 03:56 · **Multi-select commits: compare with the working directory, range diffs, keyboard selection, revert several and cherry-pick follow-ups**: Commits can be compared with the working directory, a selected range shows one combined diff, Shift+arrows and Ctrl+A extend the selection, several commits can be reverted at once, and merge commits can be cherry-picked against a chosen mainline (`e6b451e`)
 - 2026-10-18 03:32 · **File history and blame: folder history, the whole file at a commit, renames forward and live refresh**: File history works for folders, a File view shows the whole file at a commit, renames are followed forwards as well as back, and the history re-runs when HEAD moves (`86bf468`)
 - 2026-10-18 03:14 · **Diff viewer upgrade: reverting from commit diffs (files, lines, renames, added files, three-way)**: Selected lines and whole files of a commit diff can be reverted in the working tree, following renames, removing files the commit added and merging three-way with later edits (`6c7112d`)
-- 2026-10-18 02:23 · **Interactive rebase: edit a running rebase, exec and break steps, keyboard control and undo**: The interactive rebase panel gains exec and break steps, combined squash messages, keyboard control and editing the remaining steps of a running rebase, and finished rebases can be undone in one step (`54a7422`)
 
 ---
 
