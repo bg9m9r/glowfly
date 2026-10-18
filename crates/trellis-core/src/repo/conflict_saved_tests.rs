@@ -50,6 +50,30 @@ fn a_partial_save_comes_back() {
 }
 
 #[test]
+fn git_markers_bring_nothing_back_in_every_conflict_style() {
+    // Ours and theirs share the line before the change, which git's diff3 style keeps inside the
+    // region while the stages hold it clean.
+    for style in ["merge", "diff3", "zdiff3"] {
+        let dir = scratch_repo(&format!("saved-picks-style-{style}"));
+        set_config(&dir, &[("merge.conflictStyle", style)]);
+        write(&dir, "f.txt", "top\nB\nafter\n");
+        git(&dir, &["add", "."]);
+        git(&dir, &["commit", "-q", "-m", "base"]);
+        git(&dir, &["checkout", "-q", "-b", "other"]);
+        write(&dir, "f.txt", "top\nm\nY\nafter\n");
+        git(&dir, &["commit", "-q", "-am", "theirs"]);
+        git(&dir, &["checkout", "-q", "main"]);
+        write(&dir, "f.txt", "top\nm\nX\nafter\n");
+        git(&dir, &["commit", "-q", "-am", "ours"]);
+        let (ok, _) = run(&dir, &args(&["merge", "other"]));
+        assert!(!ok, "merge should conflict");
+        let f = load_conflict(&dir, "f.txt").unwrap();
+        assert_eq!(saved_picks(&dir, &f), None, "{style}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
 fn a_partial_save_comes_back_with_crlf_checkouts() {
     let dir = merging("saved-picks-crlf", &[("core.autocrlf", "true")]);
     let f = save_first_ours(&dir);

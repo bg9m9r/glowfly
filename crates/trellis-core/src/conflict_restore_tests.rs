@@ -100,6 +100,27 @@ fn mismatched_markers_bring_nothing_back() {
     assert_eq!(restore(&two(), &text(other_ours, "y\n")), None);
     assert_eq!(restore(&two(), &text(&format!("{GIT0}{GIT0}"), "y\n")), None, "two regions for one chunk");
     assert_eq!(restore(&two(), &text("<<<<<<< HEAD\no1\n", "y\n")), None, "a marker left in typed text");
+    assert_eq!(restore(&two(), &text("mine\n||||||| base\n", "y\n")), None, "a base marker left in typed text");
+    assert_eq!(restore(&two(), &text(GIT0, "y\n").replace("m2\n", ">>>>>>> b\n")), None, "a marker in an edited clean run");
+}
+
+#[test]
+fn git_diff3_regions_with_shared_lines_bring_nothing_back() {
+    // Ours and theirs both start (or end) with `m`: the stages hold it clean, while git's diff3
+    // style keeps it inside the region on both sides.
+    let f = file(vec![Segment::Clean(lines(&["top", "m"])), chunk(&["B"], &["X"], &["Y"]), Segment::Clean(lines(&["after"]))]);
+    assert_eq!(restore(&f, "top\n<<<<<<< HEAD\nm\nX\n||||||| base\nB\n=======\nm\nY\n>>>>>>> other\nafter\n"), None);
+    let f = file(vec![Segment::Clean(lines(&["top"])), chunk(&["B"], &["X"], &["Y"]), Segment::Clean(lines(&["m", "after"]))]);
+    assert_eq!(restore(&f, "top\n<<<<<<< HEAD\nX\nm\n||||||| base\nB\n=======\nY\nm\n>>>>>>> other\nafter\n"), None);
+    // With a pick saved for another chunk, the region still doesn't match and nothing comes back.
+    let f = file(vec![
+        Segment::Clean(lines(&["top", "m"])),
+        chunk(&["B"], &["X"], &["Y"]),
+        Segment::Clean(lines(&["mid"])),
+        chunk(&["b"], &["x"], &["y"]),
+        Segment::Clean(lines(&["end"])),
+    ]);
+    assert_eq!(restore(&f, "top\n<<<<<<< HEAD\nm\nX\n||||||| base\nB\n=======\nm\nY\n>>>>>>> other\nmid\nx\nend\n"), None);
 }
 
 #[test]

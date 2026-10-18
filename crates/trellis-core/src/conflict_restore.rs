@@ -4,7 +4,8 @@
 //! in `repo::saved_picks`); line endings are ignored when comparing.
 //!
 //! The clean runs are found in the working text first (a line diff of the clean lines against
-//! the file); the lines between them hold the chunks, in order.
+//! the file, with the lines of its marker regions kept out of the match); the lines between them
+//! hold the chunks, in order.
 
 use crate::conflict_edit::split;
 use crate::conflict_pick::{ChunkPick, CleanEdits, LineRef, expand, file_eol};
@@ -35,8 +36,10 @@ fn bare_all(lines: &[String]) -> Vec<&str> {
 
 /// The picks `working` (the working file's text) holds for `file`. `None` when nothing came
 /// back (every chunk still in markers and no clean line changed) or the text can't be matched
-/// with the stages: a clean run missing, or a chunk whose text holds marker lines that aren't
-/// exactly one region with the chunk's own sides.
+/// with the stages: a clean run missing, an edited clean run holding a marker line, or a chunk
+/// whose text holds marker lines that aren't exactly one region with the chunk's own sides (as
+/// git's diff3 style leaves when ours and theirs share lines inside a region: those lines are
+/// clean in the stages).
 pub fn restore(file: &ConflictFile, working: &str) -> Option<SavedPicks> {
     let ConflictContent::Text(segs) = &file.content else { return None };
     let w: Vec<&str> = working.split_inclusive('\n').collect();
@@ -55,6 +58,9 @@ pub fn restore(file: &ConflictFile, working: &str) -> Option<SavedPicks> {
                 fill(file, &std::mem::take(&mut pending), w.get(at..span.start)?, eol, &mut picks)?;
                 let now = &w[span.clone()];
                 if now.iter().map(|l| bare(l)).ne(lines.iter().map(|l| bare(l))) {
+                    if now.iter().any(|l| marker_line(bare(l))) {
+                        return None;
+                    }
                     cleans.insert(seg, split(&now.concat(), eol));
                 }
                 at = span.end;
@@ -69,8 +75,8 @@ pub fn restore(file: &ConflictFile, working: &str) -> Option<SavedPicks> {
 }
 
 /// Where each clean segment's lines are in `w`, in order: from its first matched line to its
-/// last (the file's first segment from the start of `w`, its last to the end). `None` when a
-/// clean run has no line left in `w`.
+/// last (the file's first segment from the start of `w`, its last to the end). Lines inside a
+/// marker region of `w` match no clean line. `None` when a clean run has no line left in `w`.
 fn clean_spans(segs: &[Segment], w: &[&str]) -> Option<Vec<Range<usize>>> {
     let (mut s_text, mut owner) = (String::new(), Vec::new());
     for (i, seg) in segs.iter().enumerate() {
@@ -82,8 +88,13 @@ fn clean_spans(segs: &[Segment], w: &[&str]) -> Option<Vec<Range<usize>>> {
             }
         }
     }
-    let mut w_text = String::with_capacity(w.iter().map(|l| l.len() + 1).sum());
-    for l in w {
+    let masked = in_regions(w);
+    let mut w_text = String::with_capacity(w.iter().map(|l| l.len() + 2).sum());
+    for (l, &m) in w.iter().zip(&masked) {
+        // A NUL starts no clean line of a text conflict, so a masked line matches none.
+        if m {
+            w_text.push('\0');
+        }
         w_text.push_str(bare(l));
         w_text.push('\n');
     }
@@ -100,6 +111,22 @@ fn clean_spans(segs: &[Segment], w: &[&str]) -> Option<Vec<Range<usize>>> {
         spans.push(start..end);
     }
     Some(spans)
+}
+
+/// Which lines of `w` are in one of its marker regions (markers included).
+fn in_regions(w: &[&str]) -> Vec<bool> {
+    let mut masked = vec![false; w.len()];
+    let mut i = 0;
+    while i < w.len() {
+        match region(&w[i..]) {
+            Some((len, _, _)) => {
+                masked[i..i + len].fill(true);
+                i += len;
+            }
+            None => i += 1,
+        }
+    }
+    masked
 }
 
 /// For each of the `n_s` lines of `s`, the line of `w` (of `n_w`) it was matched with by a line
@@ -168,7 +195,7 @@ fn classify(c: &Chunk, text: &[&str], trivial: Option<Choice>, eol: &str) -> Opt
         return Some(ChunkPick::default());
     }
     let joined = text.concat();
-    if text.iter().any(|l| run(bare(l), '<').is_some()) || marker_regions(joined.as_bytes()) > 0 {
+    if text.iter().any(|l| marker_line(bare(l))) || marker_regions(joined.as_bytes()) > 0 {
         return None;
     }
     let t: Vec<&str> = text.iter().map(|l| bare(l)).collect();
@@ -236,6 +263,12 @@ fn region<'a>(lines: &[&'a str]) -> Option<(usize, Vec<&'a str>, Vec<&'a str>)> 
 fn run(line: &str, c: char) -> Option<usize> {
     let n = line.chars().take_while(|&x| x == c).count();
     (n >= 7 && matches!(line[n..].chars().next(), None | Some(' ' | '\t'))).then_some(n)
+}
+
+/// Whether `line` starts, splits off a base section of or ends a marker region (a lone `=`
+/// separator is common text, so it doesn't count).
+fn marker_line(line: &str) -> bool {
+    ['<', '|', '>'].into_iter().any(|c| run(line, c).is_some())
 }
 
 /// Whether `line` is exactly `n` `=`, optionally followed by whitespace.
