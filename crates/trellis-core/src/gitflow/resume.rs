@@ -2,7 +2,7 @@
 //! committed, whether a snapshot shows that commit (or shows the remaining steps can no longer
 //! apply), and the checks before the remaining steps run. Pure: reads only the snapshot.
 
-use super::finish::check_tag;
+use super::finish::{check_tag, checkout_step};
 use super::{Branches, FinishPlan, FinishProblem, GitFlowSettings, StepAction, WorkState, flow_kind};
 use crate::rebase::operation_noun;
 use crate::repo::Snapshot;
@@ -158,12 +158,25 @@ fn reaches(snap: &Snapshot, from: Oid, target: Oid) -> bool {
     false
 }
 
+/// The steps to run: `r`'s, after a checkout of the merge's target when a step needs HEAD there
+/// before any step checks out a branch (the delete left after the merge into development: HEAD
+/// may have moved since the merge was committed).
+fn resume_plan(r: &FinishResume) -> FinishPlan {
+    let mut plan = r.plan.clone();
+    let mut before_checkout = plan.steps.iter().take_while(|s| !matches!(s.action, StepAction::Checkout(_)));
+    if before_checkout.any(|s| !matches!(s.action, StepAction::Tag(_))) {
+        plan.steps.insert(0, checkout_step(&r.into));
+    }
+    plan
+}
+
 /// The checks before the remaining steps run, in this order: still a flow branch, it exists,
 /// the branches the steps use exist, no operation in progress, no tracked changes, nothing the
-/// steps check out or delete is checked out elsewhere, and a tag still to make is free.
+/// steps check out or delete is checked out elsewhere, and a tag still to make is free. Returns
+/// the steps to run (see `resume_plan`).
 pub fn check_resume(r: &FinishResume, s: &GitFlowSettings, b: &Branches, w: &WorkState) -> Result<FinishPlan, FinishProblem> {
     use FinishProblem as P;
-    let plan = &r.plan;
+    let plan = &resume_plan(r);
     if flow_kind(s, &plan.branch) != Some(plan.kind) {
         return Err(P::NotFlowBranch(plan.branch.clone()));
     }

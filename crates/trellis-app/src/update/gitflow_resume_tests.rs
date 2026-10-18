@@ -86,7 +86,8 @@ fn continue_after_commit() {
     assert_eq!((e.label.as_str(), e.detail.as_deref()), ("Continue finishing Git Flow feature login", Some("1 step left")));
 
     let fx = flow(&mut st, GitFlowMsg::ContinueFinish);
-    assert_eq!(git_job(&fx), Some(vec![args(&["branch", "-d", "feature/login"])]));
+    let cmds = vec![args(&["checkout", "develop", "--"]), args(&["branch", "-d", "feature/login"])];
+    assert_eq!(git_job(&fx), Some(cmds), "back on develop first: HEAD may have moved since the commit");
     assert_eq!(job_label(&st).as_deref(), Some("Continue finish feature login"));
     assert!(st.gitflow_resume.is_some(), "kept until the job ends");
     assert!(!entries(&st).iter().any(|e| e.command == C::ContinueGitFlowFinish), "hidden while a job runs");

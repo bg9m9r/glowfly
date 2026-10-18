@@ -274,12 +274,16 @@ pub(super) fn check_tag(tag: &str, tags: &[&str]) -> Result<(), FinishProblem> {
     })
 }
 
+/// `git checkout <name> --`: the name can't be read as a path.
+pub(super) fn checkout_step(name: &str) -> FinishStep {
+    FinishStep { cmd: args(&["checkout", name, "--"]), what: format!("check out {name}"), action: StepAction::Checkout(name.to_owned()) }
+}
+
 /// The commands. Merges name refs/heads/ so a tag or path with the same name can't be picked;
 /// checkouts end with `--` so the name can't be read as a path.
 fn steps(s: &GitFlowSettings, kind: FlowKind, branch: &str, tag: Option<&(String, String)>, keep: bool) -> Vec<FinishStep> {
     let step = |cmd: &[&str], what: String, action: StepAction| FinishStep { cmd: args(cmd), what, action };
     let full = format!("refs/heads/{branch}");
-    let checkout = |name: &str| step(&["checkout", name, "--"], format!("check out {name}"), StepAction::Checkout(name.to_owned()));
     let merge = |into: &str| {
         let action = StepAction::Merge { into: into.to_owned() };
         step(&["merge", "--no-ff", "--no-edit", &full], format!("merge {branch} into {into}"), action)
@@ -287,12 +291,12 @@ fn steps(s: &GitFlowSettings, kind: FlowKind, branch: &str, tag: Option<&(String
     let (p, d) = (s.production.as_str(), s.development.as_str());
     let mut out = Vec::new();
     if let (true, Some((t, m))) = (kind.versioned(), tag) {
-        out.push(checkout(p));
+        out.push(checkout_step(p));
         out.push(merge(p));
         let tag = ["tag", "-a", t, "-m", m, &format!("refs/heads/{p}")];
         out.push(step(&tag, format!("tag {p} as {t}"), StepAction::Tag(t.clone())));
     }
-    out.push(checkout(d));
+    out.push(checkout_step(d));
     out.push(merge(d));
     if !keep {
         out.push(step(&["branch", "-d", branch], format!("delete {branch}"), StepAction::Delete));

@@ -176,6 +176,29 @@ fn resume_stops_again_on_develop() {
 }
 
 #[test]
+fn resume_checks_out_the_target_when_head_moved() {
+    let dir = conflicting_release("gitflow-resume-head-moved", true);
+    let r = run_plan(&dir, &release_plan(&dir)).unwrap();
+    resolve(&dir);
+    let plan = check(&dir, &r).unwrap();
+    assert_eq!(plan.steps[0].what, "tag main as v1.2.0", "the tag names main, so no checkout first");
+    let again = run_plan(&dir, &plan).expect("stopped at the conflict on develop");
+    resolve(&dir);
+    let develop = rev(&dir, "develop");
+    git(&dir, &["checkout", "-q", "release/1.2.0"]);
+    assert_eq!(resume_state(&again, true, &snap(&dir)), ResumeState::Ready);
+    let plan = check(&dir, &again).unwrap();
+    let steps: Vec<&str> = plan.steps.iter().map(|s| s.what.as_str()).collect();
+    assert_eq!(steps, ["check out develop", "delete release/1.2.0"]);
+    assert_eq!(texts(&again), ["delete release/1.2.0"], "the remembered steps are unchanged");
+    assert_eq!(run_plan(&dir, &plan), None, "the delete runs from develop");
+    assert_eq!(rev(&dir, "refs/heads/release/1.2.0"), "");
+    assert_eq!(git_out(&dir, &["symbolic-ref", "--short", "HEAD"]), "develop");
+    assert_eq!(rev(&dir, "develop"), develop);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn aborted_or_changed_resumes_are_gone() {
     let dir = conflicting_release("gitflow-resume-gone", false);
     let r = run_plan(&dir, &release_plan(&dir)).unwrap();
