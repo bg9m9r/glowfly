@@ -76,8 +76,8 @@ mod workfile_disk;
 mod workfile_mv;
 mod workfile_rename;
 mod workfile_rm;
-mod worktree_counts;
 mod workfile_unrm;
+mod worktree_counts;
 mod worktrees;
 
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
@@ -130,8 +130,8 @@ pub use workfile::{
 pub use workfile_mv::rename_file_staged;
 pub use workfile_rename::rename_file;
 pub use workfile_rm::{delete_staged_new_file, unstage_gone_new_file};
-pub use worktree_counts::{COUNT_TIMEOUT, ChangesRead, WorktreeCount, count_worktree};
 pub use workfile_unrm::{StagedNew, index_clear_for, staged_new, staged_new_matches, undelete_file};
+pub use worktree_counts::{COUNT_TIMEOUT, ChangesRead, WorktreeCount, count_worktree};
 pub use worktrees::{WorktreeInfo, worktree_wip_heads, worktrees_at};
 
 #[derive(Clone)]

@@ -91,6 +91,7 @@ pub enum Plan {
         cmds: Vec<Vec<String>>,
         path: String,
         content: Option<Saved>,
+    },
     /// Write the deleted file `path` back as `content` (it must be absent) and put its `staged`
     /// entry back in the index.
     PutBack {
