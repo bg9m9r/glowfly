@@ -153,6 +153,24 @@ pub(super) fn has_structure(steps: &[TodoStep]) -> bool {
     steps.iter().any(TodoStep::is_structure)
 }
 
+/// A kept commit row that a later `reset` would throw away: after it, a reset comes before any
+/// label or kept merge (a commit moved above the first reset, or between a line's closing label
+/// and the next reset). A label names HEAD and a merge builds on it, so either keeps the commits
+/// before it; the commits after the last of them end the branch.
+pub(super) fn loses_commit(steps: &[TodoStep]) -> bool {
+    let mut open = false;
+    for step in steps {
+        match step {
+            TodoStep::Commit(i) if i.action != RebaseAction::Drop => open = true,
+            TodoStep::Label { .. } => open = false,
+            TodoStep::Merge(m) if m.item.action != RebaseAction::Drop => open = false,
+            TodoStep::Reset(_) if open => return true,
+            _ => {}
+        }
+    }
+    false
+}
+
 /// Writes a label, reset or merge step to `text` (with the message file of a reworded merge in
 /// `files`); false for any other step, which is left to the caller. A dropped merge writes
 /// nothing; a reworded one is amended after its merge the way a reworded pick is.

@@ -52,6 +52,9 @@ pub const SOME_SIDE_LINE: &str = "Some selected commits came in through a merge;
 /// A squash whose commits follow one another on the line, but the older one starts another line.
 pub const SPLIT_BY_BRANCH: &str = "Another branch starts between these commits; squash them in the interactive rebase panel instead.";
 pub const COMBINE_AFTER_MERGE: &str = "A squash or fixup must follow the commit it melds into, not a merge, label or reset step.";
+/// A commit row a later `reset` would throw away (see `merges::loses_commit`).
+pub const LOST_TO_RESET: &str =
+    "A commit just before a reset step would be left out of the branch. Move it below the reset, or above the label that ends its line.";
 pub const ROOT_SQUASH: &str = "The first commit has no parent to squash it into.";
 pub const PARENT_MERGE: &str = "Its parent is a merge commit, which can't be squashed into.";
 pub const NOT_CONSECUTIVE: &str = "Select commits that follow one another to squash them.";

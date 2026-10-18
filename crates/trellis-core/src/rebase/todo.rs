@@ -4,7 +4,7 @@
 
 use super::{
     CHANGED, COMBINE_AFTER_MERGE, COMBINE_AFTER_STEP, EMPTY_COMBINED, EMPTY_EXEC, EMPTY_REWORD, EXEC_ONE_LINE, FIRST_COMBINES,
-    RebaseAction, SequenceEditor, TodoItem, TodoStep, merges,
+    LOST_TO_RESET, RebaseAction, SequenceEditor, TodoItem, TodoStep, merges,
 };
 use crate::error::{Error, Result};
 use git2::Oid;
@@ -55,8 +55,9 @@ pub fn problem(steps: &[TodoStep]) -> Option<String> {
 
 /// Why the list can't run as it is: a squash or fixup with no kept commit before it (with
 /// `first_may_combine`, the first may meld into a commit already rebased) or right after an
-/// exec or break step (or a label, reset or merge), an empty typed reword or combined message,
-/// or an exec command that is empty or longer than one line.
+/// exec or break step (or a label, reset or merge), a commit a later reset would throw away, an
+/// empty typed reword or combined message, or an exec command that is empty or longer than one
+/// line.
 pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<String> {
     let dropped = |s: &TodoStep| s.item().is_some_and(|i| i.action == RebaseAction::Drop);
     let mut kept = first_may_combine;
@@ -78,6 +79,9 @@ pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<Strin
         if !dropped(step) {
             before = Some(step);
         }
+    }
+    if merges::loses_commit(steps) {
+        return Some(LOST_TO_RESET.into());
     }
     let commits = || steps.iter().filter_map(TodoStep::item);
     if commits().any(|i| i.action == RebaseAction::Reword && i.new_message.as_ref().is_some_and(|m| m.trim().is_empty())) {

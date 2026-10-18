@@ -76,6 +76,32 @@ fn panel_with_merges() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A commit row moved where git would pick it and a reset would then throw it away (between its
+/// line's closing label and the next reset, or above the first reset) blocks Start.
+#[test]
+fn commit_lost_to_a_reset_blocks_start() {
+    let (mut st, dir, c) = repo("panel-merges-lost");
+    let (side, _) = merge_side(&mut st, &dir, c[0]);
+    drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[1]))));
+    // reset onto, side, label, reset onto, c2, c3, merge
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 1, to: 2 }));
+    assert_eq!(panel(&st).items[2].oid(), Some(side), "the move itself is allowed");
+    let blocker = panel(&st).start_blocker(st.snap.as_ref().unwrap(), false);
+    assert_eq!(blocker.as_deref(), Some(rebase::LOST_TO_RESET));
+    let fx = up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: true, autostash: false }));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Rebase(RebaseEffect::Start { .. }))), "{fx:?}");
+
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseReset));
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 4, to: 0 }));
+    assert_eq!(panel(&st).items[0].oid(), Some(c[1]));
+    let blocker = panel(&st).start_blocker(st.snap.as_ref().unwrap(), false);
+    assert_eq!(blocker.as_deref(), Some(rebase::LOST_TO_RESET), "above the first reset");
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseReset));
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 4, action: RebaseAction::Reword }));
+    assert_ne!(panel(&st).start_blocker(st.snap.as_ref().unwrap(), false).as_deref(), Some(rebase::LOST_TO_RESET));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn open_onto_commit() {
     let (mut st, dir, c) = repo("panel-onto-commit");
