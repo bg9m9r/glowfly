@@ -21,12 +21,41 @@ fn add_cmd_forms() {
     assert_eq!(add_cmd(&dir, &branch, Some("topic")), ["worktree", "add", "-b", "topic", &d, "side"]);
     assert_eq!(add_cmd(&dir, &commit, None), ["worktree", "add", "--detach", &d, &sha]);
     assert_eq!(add_cmd(&dir, &commit, Some("topic")), ["worktree", "add", "-b", "topic", &d, &sha]);
+    let remote = WorktreeBase::Remote { remote: "origin".into(), branch: "feature".into() };
+    let tracked = "refs/remotes/origin/feature";
+    assert_eq!(add_cmd(&dir, &remote, None), ["worktree", "add", "--track", "-b", "feature", &d, tracked]);
+    assert_eq!(add_cmd(&dir, &remote, Some("mine")), ["worktree", "add", "--track", "-b", "mine", &d, tracked]);
+}
+
+#[test]
+fn remote_base_creates_a_tracking_branch() {
+    use crate::testutil::{git, with_origin};
+    let (work, bare) = with_origin("wt-add-remote");
+    git(&work, &["branch", "feature"]);
+    git(&work, &["push", "-q", "origin", "feature"]);
+    git(&work, &["branch", "-D", "feature"]);
+    let folder = work.with_file_name(format!("{}-feature", work.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&folder);
+    let base = WorktreeBase::Remote { remote: "origin".into(), branch: "feature".into() };
+    let (ok, out) = crate::gitcli::run(&work, &add_cmd(&folder, &base, None));
+    assert!(ok, "{out}");
+    let listed = crate::repo::worktrees_at(&work).unwrap();
+    let wt = listed.iter().find(|w| crate::paths::same_folder(&w.path, &folder)).expect("the new worktree");
+    assert_eq!(wt.branch.as_deref(), Some("feature"));
+    let repo = git2::Repository::open(&work).unwrap();
+    let config = repo.config().unwrap().snapshot().unwrap();
+    assert_eq!(config.get_str("branch.feature.remote").unwrap(), "origin");
+    assert_eq!(config.get_str("branch.feature.merge").unwrap(), "refs/heads/feature");
+    for d in [&folder, &bare, &work] {
+        let _ = std::fs::remove_dir_all(d);
+    }
 }
 
 #[test]
 fn base_labels() {
     assert_eq!(WorktreeBase::Branch("feature/x".into()).label(), "feature/x");
     assert_eq!(WorktreeBase::Commit(oid()).label(), "abc1234");
+    assert_eq!(WorktreeBase::Remote { remote: "origin".into(), branch: "feature".into() }.label(), "origin/feature");
 }
 
 #[test]

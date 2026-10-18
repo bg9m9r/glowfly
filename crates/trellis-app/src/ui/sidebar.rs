@@ -83,6 +83,10 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             if let Some((f, pr)) = fs.and_then(|f| Some((f, crate::state::push_pr::open_pr(snap, f, &b.name)?))) {
                 right.push_str(&format!(" {}", f.pr_label(pr.id)));
             }
+            let worktree = crate::state::worktree_branches::elsewhere(snap, &b.name);
+            if worktree.is_some() {
+                right.push_str(" worktree");
+            }
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
             let selected = b.oid.is_some_and(|o| sel == Selection::Commit(o));
             let right = (!right.is_empty()).then_some((right.trim(), color::weak()));
@@ -96,16 +100,18 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 (None, Some(t)) => Some(format!("tracking {} (not on the remote)", t.display())),
                 (None, None) => None,
             };
-            let r = match (tracking, tip) {
-                (Some(t), Some(c)) => r.on_hover_text(format!(
-                    "{t}
-{c}"
-                )),
-                (Some(t), None) | (None, Some(t)) => r.on_hover_text(t),
-                (None, None) => r,
+            let lines: Vec<String> =
+                [tracking, tip, worktree.map(crate::state::worktree_branches::local_tip_line)].into_iter().flatten().collect();
+            let r = if lines.is_empty() {
+                r
+            } else {
+                r.on_hover_text(lines.join(
+                    "
+",
+                ))
             };
             if r.double_clicked() {
-                msgs.push(Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(&b.name)] }));
+                msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
             } else if r.clicked()
                 && let Some(o) = b.oid
             {
@@ -225,13 +231,21 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
             menu_item(msgs, ui, format!("Show {}", f.pr_noun()), Msg::PullRequest(PullRequestMsg::Open(pr.id)));
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));
             super::build_status::pr_menu_item(ui, pr, msgs);
-            let checkout = crate::state::branches::pr_checkout(snap, &f.remote, &pr.source);
-            let (blocked, cmds) = match checkout {
-                Ok(cmd) => (None, vec![cmd]),
-                Err(why) => (Some(why), Vec::new()),
+            // A local source branch is checked out like any other (refused when another worktree
+            // has it); otherwise a new branch tracking the remote one is made.
+            let local = snap.locals.iter().any(|b| b.name == pr.source);
+            let (blocked, m) = match crate::state::branches::pr_checkout(snap, &f.remote, &pr.source) {
+                Ok(_) if local => (
+                    crate::state::worktree_branches::checkout_blocked(snap, &pr.source),
+                    Msg::Branch(BranchMsg::Checkout(pr.source.clone())),
+                ),
+                Ok(cmd) => (None, Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![cmd] })),
+                Err(why) => (Some(why), Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: Vec::new() })),
             };
-            let m = Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds });
             menu_item_if(msgs, ui, format!("Checkout {}", pr.source), blocked.as_deref(), m);
+            let base = crate::state::worktree_branches::pr_base(snap, &f.remote, &pr.source).err();
+            let create = Msg::Worktree(crate::worktree::WorktreeMsg::CreateForPr { id: pr.id, source: pr.source.clone() });
+            menu_item_if(msgs, ui, "Create worktree…", base.as_deref(), create);
             menu_item(msgs, ui, "Copy link", Msg::Copy(pr.url.clone()));
         });
     }

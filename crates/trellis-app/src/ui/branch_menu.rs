@@ -1,4 +1,5 @@
-//! The right-click menu of a local branch: checkout, merge and rebase, checking for conflicts,
+//! The right-click menu of a local branch: checkout (or, for a branch another worktree has, open
+//! that worktree), merge and rebase, checking for conflicts,
 //! fast-forward, push, pull requests (pushing the branch first when the code host lacks it,
 //! into the branch selected before), rename, upstream, hide or solo in the graph, and delete.
 //! Disabled items say why on hover, with the same text `update` logs when it refuses a late
@@ -10,11 +11,12 @@ use super::theme::color;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
 use crate::msg::BranchMsg;
-use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::state::branches::{self, NO_REMOTES};
 use crate::state::conflict_check::NO_TARGET;
+use crate::state::worktree_branches::{checkout_blocked, delete_blocked, elsewhere};
+use crate::state::worktrees::open_blocked;
 use crate::state::{ForgeState, Selection};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
@@ -35,12 +37,12 @@ pub fn local_branch_menu(
     let name = b.name.as_str();
     let current = snap.head_branch.as_deref().unwrap_or_default();
     if !b.is_head {
-        menu_item(
-            msgs,
-            ui,
-            format!("Checkout {name}"),
-            Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(name)] }),
-        );
+        let checkout = Msg::Branch(BranchMsg::Checkout(name.to_owned()));
+        menu_item_if(msgs, ui, format!("Checkout {name}"), checkout_blocked(snap, name).as_deref(), checkout);
+        if let Some(wt) = elsewhere(snap, name) {
+            let open = Msg::Worktree(WorktreeMsg::Open(wt.path.clone()));
+            menu_item_if(msgs, ui, format!("Open worktree {}", wt.folder_name()), open_blocked(wt), open);
+        }
         if !current.is_empty() {
             menu_item(msgs, ui, format!("Merge {name} into {current}"), Msg::git("Merge", &["merge", name]));
             menu_item(msgs, ui, format!("Rebase {current} onto {name}"), Msg::git("Rebase", &["rebase", name]));
@@ -91,7 +93,7 @@ pub fn local_branch_menu(
     ref_visibility::menu_items(ui, &format!("refs/heads/{name}"), name, filter, b.is_head, msgs);
     if !b.is_head {
         ui.separator();
-        delete_items(ui, b, snap.head_branch.as_deref(), msgs);
+        delete_items(ui, b, snap, msgs);
     }
 }
 
@@ -146,19 +148,24 @@ fn push_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec
 }
 
 /// Delete, force delete and, with an upstream on a remote, delete together with it (only when
-/// `head`, the checked-out branch, contains it).
-fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, head: Option<&str>, msgs: &mut Vec<Msg>) {
+/// the checked-out branch contains it). All are disabled for a branch another worktree has.
+fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
-    menu_item(
+    let head = snap.head_branch.as_deref();
+    let in_worktree = delete_blocked(snap, name);
+    let in_worktree = in_worktree.as_deref();
+    menu_item_if(
         msgs,
         ui,
         format!("Delete {name}"),
+        in_worktree,
         Msg::confirm("Delete branch", format!("Delete local branch {name}?"), "Delete", Msg::git("Delete branch", &["branch", "-d", name])),
     );
-    menu_item(
+    menu_item_if(
         msgs,
         ui,
         format!("Force delete {name}"),
+        in_worktree,
         Msg::confirm(
             "Force delete branch",
             format!("Delete {name} even if it has unmerged commits?"),
@@ -167,7 +174,7 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, head: Option<&str>, msgs: &mu
         ),
     );
     if let Some(t) = branches::can_delete_with_remote(b) {
-        let blocked = branches::delete_with_remote_blocked(b, t, head);
+        let blocked = in_worktree.map(str::to_owned).or_else(|| branches::delete_with_remote_blocked(b, t, head));
         menu_item_if(
             msgs,
             ui,

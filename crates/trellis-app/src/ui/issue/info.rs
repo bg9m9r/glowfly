@@ -7,7 +7,7 @@ use super::super::pull_request::{heading, note};
 use super::super::theme::color;
 use super::super::widgets;
 use crate::gitflow::GitFlowMsg;
-use crate::msg::{BranchMsg, JobMsg, Msg};
+use crate::msg::{BranchMsg, Msg};
 use crate::state::AppState;
 use crate::state::gitflow::start_blocked;
 use crate::state::issue::{IssueView, linked_branches, meta_rows, state_label};
@@ -34,8 +34,11 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             }
             for b in linked {
                 ui.horizontal(|ui| {
+                    let elsewhere = crate::state::worktree_branches::checkout_blocked(snap, &b.name);
                     let blocked = if b.is_head {
                         Some("Checked out")
+                    } else if let Some(why) = elsewhere.as_deref() {
+                        Some(why)
                     } else if !idle {
                         Some("Another operation is running")
                     } else {
@@ -47,8 +50,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                         None => r,
                     };
                     if r.clicked() {
-                        let cmds = vec![crate::state::branches::checkout_local(&b.name)];
-                        msgs.push(Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds }));
+                        msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
                     }
                     ui.add(egui::Label::new(RichText::new(printable(&b.name)).color(color::text())).truncate());
                 });

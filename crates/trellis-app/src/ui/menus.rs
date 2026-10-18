@@ -137,6 +137,10 @@ pub fn remote_branch_menu(
     let (current, fs, filter) = (c.current, c.fs, c.graph);
     let full = format!("{remote}/{name}");
     menu_item(msgs, ui, format!("Checkout {full}"), Msg::git("Checkout", &["checkout", "--track", &full]));
+    if name != "HEAD" {
+        let base = WorktreeBase::Remote { remote: remote.to_owned(), branch: name.to_owned() };
+        menu_item(msgs, ui, format!("Create worktree from {full}…"), Msg::Worktree(WorktreeMsg::CreateDialog(base)));
+    }
     if !current.is_empty() {
         menu_item(msgs, ui, format!("Merge {full} into {current}"), Msg::git("Merge", &["merge", &full]));
         menu_item(msgs, ui, format!("Rebase {current} onto {full}"), Msg::git("Rebase", &["rebase", &full]));

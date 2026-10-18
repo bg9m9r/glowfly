@@ -96,6 +96,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     close = true;
                 }
             }
+            Modal::MoveWorktree(form) => {
+                if super::worktree_move_dialog::move_worktree(ui, form, snap, !prompting, idle, msgs) {
+                    close = true;
+                }
+            }
             Modal::AddSubmodule(form) => {
                 if super::submodule_dialogs::add(ui, form, snap, !prompting, idle, msgs) {
                     close = true;

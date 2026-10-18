@@ -90,7 +90,9 @@ pub mod undo;
 pub mod updates;
 mod view;
 pub mod watch;
+pub mod worktree_branches;
 pub mod worktree_manage;
+pub mod worktree_move;
 pub mod worktrees;
 
 pub use commit::CommitDraft;
@@ -177,6 +179,7 @@ pub enum Modal {
     NewWorktree(worktrees::WorktreeForm),
     RemoveWorktree(worktree_manage::RemoveForm),
     LockWorktree(worktree_manage::LockForm),
+    MoveWorktree(worktree_move::MoveForm),
     AddSubmodule(submodules::add::AddForm),
     EditSubmodule(submodules::edit::EditForm),
     RemoveSubmodule(submodules::remove::RemoveForm),

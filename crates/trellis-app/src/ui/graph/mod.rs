@@ -166,13 +166,15 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let gp = painter.with_clip_rect(cols.rect(cols.graph, rect));
                 let node_x = lane_x(cols.graph.0, if filtered { 0 } else { g.col });
                 let mid = rect.center().y;
-                // Another worktree's row: a click opens (or switches to) that worktree's tab.
+                // Another worktree's row: a click opens (or switches to) that worktree's tab; its
+                // menu is the WORKTREES row's.
                 if let Some((w, wt)) = worktree {
                     worktree_wip::draw(&painter, &gp, &cols, rect, w, wt, cols_cfg.tree);
                     let resp = resp.on_hover_text(wip_tooltip(wt));
                     if resp.clicked() && open_blocked(wt).is_none() {
                         msgs.push(Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
                     }
+                    resp.context_menu(|ui| super::worktrees::row_menu(ui, wt, msgs));
                     continue;
                 }
                 if cols_cfg.tree && !filtered {

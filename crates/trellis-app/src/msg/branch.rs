@@ -2,6 +2,8 @@
 
 /// The New branch, rename and upstream dialogs and the branch menus' actions (update/branches.rs).
 pub enum BranchMsg {
+    /// Check out local branch `.0`, unless it is HEAD or checked out in another worktree.
+    Checkout(String),
     /// Open the rename dialog for local branch `.0`.
     RenameBranchDialog(String),
     /// `git branch -m old new`.
@@ -39,7 +41,8 @@ impl BranchMsg {
     /// drops it.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
-            Self::RenameBranchDialog(..)
+            Self::Checkout(..)
+            | Self::RenameBranchDialog(..)
             | Self::RenameBranch { .. }
             | Self::SetUpstreamDialog(..)
             | Self::SetUpstream { .. }

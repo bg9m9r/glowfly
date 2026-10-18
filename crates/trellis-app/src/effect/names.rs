@@ -26,6 +26,7 @@ impl Effect {
             Effect::CheckCloneParent { .. } => "check-clone-parent",
             Effect::DetectLfs { .. } => "lfs-detect",
             Effect::RemoveWorktree(_) => "remove-worktree",
+            Effect::MoveWorktree(_) => "move-worktree",
             Effect::RenameStash { .. } => "rename-stash",
             Effect::LoadLfs { .. } => "lfs-status",
             Effect::LoadSparse { .. } => "sparse-status",
@@ -110,6 +111,7 @@ impl Effect {
             | Effect::CheckCloneParent { .. }
             | Effect::DetectLfs { .. }
             | Effect::RemoveWorktree(_)
+            | Effect::MoveWorktree(_)
             | Effect::RenameStash { .. }
             | Effect::LoadLfs { .. }
             | Effect::LoadSparse { .. }

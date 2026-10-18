@@ -1,10 +1,11 @@
 //! The Remove and Lock worktree dialogs' forms, and the rules and words for removing, locking,
 //! unlocking and pruning worktrees, shared by the views and `update` so a disabled menu item and
-//! a refused request say the same thing. Pure: paths are compared component by component.
+//! a refused request say the same thing. Pure: paths are compared component by component, and
+//! tabs are matched by the identity they were loaded with too (`tabs::Place`).
 
-use super::tabs::Place;
+use super::tabs::{Place, Tab};
 use std::path::{Path, PathBuf};
-use trellis_core::repo::{Snapshot, WorktreeInfo};
+use trellis_core::repo::{Snapshot, Tracking, WorktreeInfo};
 use trellis_core::worktree_ops::{Refusal, RemoveForce};
 
 /// What the Remove worktree dialog is showing.
@@ -18,6 +19,19 @@ pub struct RemoveForm {
     /// Why removing needs force: known up front for a lock, or reported by a first try. Some
     /// puts the dialog in force mode.
     pub refusal: Option<Refusal>,
+    /// The branch's upstream on a remote, offered for deletion with it.
+    pub remote: Option<RemoteDelete>,
+    pub delete_remote: bool,
+    /// Another tab shows the worktree: Remove closes it first.
+    pub close_tabs: bool,
+}
+
+/// The upstream the Remove dialog can delete along with the branch, and why it can't now.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RemoteDelete {
+    pub tracking: Tracking,
+    /// `branches::delete_with_remote_blocked`: the branch isn't merged into HEAD.
+    pub blocked: Option<String>,
 }
 
 impl RemoveForm {
@@ -28,7 +42,25 @@ impl RemoveForm {
             branch: wt.branch.clone(),
             delete_branch: false,
             refusal: wt.locked.clone().map(Refusal::Locked),
+            remote: None,
+            delete_remote: false,
+            close_tabs: false,
         }
+    }
+
+    /// The form with what `snap` and the open tabs (`tabs::open_places`) add: the branch's
+    /// remote upstream, and whether another tab shows the worktree.
+    pub fn with_snap(mut self, snap: &Snapshot, open_tabs: &[Place]) -> Self {
+        self.remote = remote_delete(snap, self.branch.as_deref());
+        let folder = super::worktrees::find(snap, &self.path).and_then(|w| w.folder);
+        self.close_tabs = open_tabs.iter().any(|t| t.is(&self.path, folder));
+        self
+    }
+
+    /// The remote branch deleted as well: offered, not blocked, and ticked with the branch.
+    pub fn remote_ticked(&self) -> Option<&Tracking> {
+        let r = self.remote.as_ref().filter(|r| r.blocked.is_none())?;
+        (self.delete_branch && self.branch.is_some() && self.delete_remote).then_some(&r.tracking)
     }
 
     /// The force the Remove button uses.
@@ -39,12 +71,24 @@ impl RemoveForm {
     /// The Remove button's label.
     pub fn button(&self) -> &'static str {
         let ticked = self.delete_branch && self.branch.is_some();
-        match (self.refusal.is_some(), ticked) {
-            (false, false) => "Remove",
-            (false, true) => "Remove and delete branch",
-            (true, false) => "Force remove",
-            (true, true) => "Force remove and delete branch",
+        match (self.refusal.is_some(), ticked, self.remote_ticked().is_some()) {
+            (false, false, _) => "Remove",
+            (false, true, false) => "Remove and delete branch",
+            (false, true, true) => "Remove and delete local and remote branch",
+            (true, false, _) => "Force remove",
+            (true, true, false) => "Force remove and delete branch",
+            (true, true, true) => "Force remove and delete local and remote branch",
         }
+    }
+
+    /// The amber note when another tab shows the worktree.
+    pub fn close_note(&self) -> Option<&'static str> {
+        self.close_tabs.then_some("It is open in another tab. Remove closes that tab first (and any terminal in it).")
+    }
+
+    /// The red note when the remote branch is deleted too.
+    pub fn remote_note(&self) -> Option<String> {
+        self.remote_ticked().map(|t| format!("{} is deleted on {} for everyone who uses it.", t.merge, t.remote))
     }
 
     /// Why force is needed, in force mode.
@@ -84,13 +128,30 @@ pub fn manage_blocked(wt: &WorktreeInfo) -> Option<&'static str> {
     wt.current.then_some("This worktree is open in this tab.")
 }
 
-/// Why the worktree can't be removed: also when another tab shows it, since its folder would
-/// disappear under that tab.
-/// `open_tabs` are the tabs' places (`tabs::open_places`): a tab opened under another spelling
-/// of the folder (a link, a short 8.3 name, another case) is found by its identity.
-pub fn remove_blocked(wt: &WorktreeInfo, open_tabs: &[Place]) -> Option<&'static str> {
+/// The remote upstream of local branch `branch` that can be deleted with it, and whether HEAD
+/// contains the branch (`branches::can_delete_with_remote`, `delete_with_remote_blocked`).
+pub fn remote_delete(snap: &Snapshot, branch: Option<&str>) -> Option<RemoteDelete> {
+    let b = snap.locals.iter().find(|l| Some(l.name.as_str()) == branch)?;
+    let t = super::branches::can_delete_with_remote(b)?;
+    let blocked = super::branches::delete_with_remote_blocked(b, t, snap.head_branch.as_deref());
+    Some(RemoteDelete { tracking: t.clone(), blocked })
+}
+
+/// Why the worktree can't be removed from this tab. Another tab showing it is no reason:
+/// Remove closes that tab first.
+pub fn remove_blocked(wt: &WorktreeInfo) -> Option<&'static str> {
     manage_blocked(wt)
-        .or_else(|| open_tabs.iter().any(|t| t.is(&wt.path, wt.folder)).then_some("It is open in another tab. Close that tab first."))
+}
+
+/// The indexes of the tabs showing the worktree `wt`, under any spelling: a tab opened under
+/// another name of the folder (a link, a short 8.3 name, another case) is found by its identity.
+pub fn showing_tabs(tabs: &[Tab], wt: &WorktreeInfo) -> Vec<usize> {
+    tabs.iter().enumerate().filter(|(_, t)| t.path.is_some() && t.place().is(&wt.path, wt.folder)).map(|(i, _)| i).collect()
+}
+
+/// The row tooltip's line for a worktree another tab shows (`open_tabs`: `tabs::open_places`).
+pub fn open_elsewhere(wt: &WorktreeInfo, open_tabs: &[Place]) -> Option<&'static str> {
+    (!wt.current && open_tabs.iter().any(|t| t.is(&wt.path, wt.folder))).then_some("Open in another tab.")
 }
 
 /// Why a missing row's Prune would leave it.
@@ -104,8 +165,8 @@ pub fn prune_blocked(snap: &Snapshot) -> Option<&'static str> {
 }
 
 /// Why `update` refuses to remove the worktree.
-pub fn remove_refused(wt: &WorktreeInfo, open_tabs: &[Place]) -> Option<&'static str> {
-    if wt.is_main() { Some("The main worktree can't be removed.") } else { remove_blocked(wt, open_tabs) }
+pub fn remove_refused(wt: &WorktreeInfo) -> Option<&'static str> {
+    if wt.is_main() { Some("The main worktree can't be removed.") } else { remove_blocked(wt) }
 }
 
 /// Why `update` refuses to lock the worktree.
@@ -135,11 +196,23 @@ pub fn gone_text(path: &Path) -> String {
     format!("{} is no longer a worktree of this repository.", trellis_core::native_path::shown(path))
 }
 
-pub fn removed_headline(name: &str, branch: Option<&str>) -> String {
-    match branch {
-        Some(b) => format!("Removed worktree {name} and deleted branch {b}"),
-        None => format!("Removed worktree {name}"),
+/// `remote` is the remote branch deleted too, as `origin/feature`.
+pub fn removed_headline(name: &str, branch: Option<&str>, remote: Option<&str>) -> String {
+    match (branch, remote) {
+        (Some(b), Some(r)) => format!("Removed worktree {name} and deleted branch {b} and {r}"),
+        (Some(b), None) => format!("Removed worktree {name} and deleted branch {b}"),
+        (None, _) => format!("Removed worktree {name}"),
     }
+}
+
+/// The push that deletes `remote` (as `origin/feature`) failed with `error`.
+pub fn remote_failed_text(name: &str, branch: &str, remote: &str, error: &str) -> String {
+    format!("Removed worktree {name} and deleted branch {branch}, but {remote} wasn't deleted: {error}")
+}
+
+/// `remote` was kept because HEAD doesn't contain `branch`.
+pub fn remote_kept_text(name: &str, branch: &str, remote: &str) -> String {
+    format!("Removed worktree {name} and deleted branch {branch}, but {remote} was kept: {branch} isn't merged into HEAD.")
 }
 
 pub fn folder_left_headline(name: &str, path: &Path) -> String {

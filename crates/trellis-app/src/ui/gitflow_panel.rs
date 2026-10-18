@@ -5,7 +5,6 @@
 use super::common::short;
 use super::theme::color;
 use crate::gitflow::GitFlowMsg;
-use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
@@ -173,8 +172,11 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
         if ui.button("Finish…").on_hover_text(format!("Finish {} {}", g.kind.noun(), b.short)).clicked() {
             msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
         }
+        let elsewhere = st.snap.as_ref().and_then(|s| crate::state::worktree_branches::checkout_blocked(s, b.name));
         let why = if b.head {
             Some("It is checked out.")
+        } else if let Some(w) = elsewhere.as_deref() {
+            Some(w)
         } else if st.job.is_some() {
             Some("Wait for the running job to finish.")
         } else {
@@ -186,7 +188,7 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
             None => r,
         };
         if r.clicked() {
-            msgs.push(Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(b.name)] }));
+            msgs.push(Msg::Branch(crate::msg::BranchMsg::Checkout(b.name.to_owned())));
         }
     });
     let resp = resp.on_hover_text(row_tooltip(s, g.kind, b.name));

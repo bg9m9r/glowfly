@@ -120,7 +120,7 @@ fn a_graph_filter_set_through_an_alias_applies_under_the_real_path() {
 }
 
 #[test]
-fn a_worktree_open_by_another_name_is_not_removed() {
+fn a_worktree_open_by_another_name_closes_that_tab_on_remove() {
     let dir = scratch_repo("alias-wt");
     let linked = dir.with_file_name(format!("{}-linked", dir.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&linked);
@@ -133,10 +133,13 @@ fn a_worktree_open_by_another_name_is_not_removed() {
     assert_eq!(st.tabs.len(), 2);
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     drive(&mut st, Msg::Worktree(WorktreeMsg::RemoveDialog(linked.clone())));
-    assert!(st.modal.is_none(), "no Remove dialog");
-    let last = st.log.last().map(|l| l.text.clone()).unwrap_or_default();
-    assert!(last.ends_with("It is open in another tab. Close that tab first."), "{last}");
-    assert!(linked.exists());
+    match &st.modal {
+        Some(crate::state::Modal::RemoveWorktree(f)) => assert!(f.close_tabs, "the tab is found by its identity"),
+        _ => panic!("no Remove dialog: {:?}", st.log.last().map(|l| &l.text)),
+    }
+    drive(&mut st, Msg::Worktree(WorktreeMsg::Remove));
+    assert_eq!(st.tabs.len(), 1, "the tab showing it closed first");
+    assert!(!linked.exists(), "{:?}", st.log.last().map(|l| &l.text));
     let _ = std::fs::remove_dir(&alias).or_else(|_| std::fs::remove_file(&alias));
     let _ = std::fs::remove_dir_all(&linked);
     let _ = std::fs::remove_dir_all(&dir);

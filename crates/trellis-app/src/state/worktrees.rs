@@ -28,12 +28,19 @@ pub struct WorktreeForm {
     /// The request whose disk check is running. Only that check's result may create the
     /// worktree, and only while this dialog is still open.
     pub pending: Option<NewWorktree>,
+    /// The heading in place of the base's (a pull request's worktree).
+    pub title: Option<String>,
 }
 
 impl WorktreeForm {
+    /// The form for `base`; a remote branch's name is prefilled as the new local branch.
     pub fn new(snap: &Snapshot, base: WorktreeBase) -> Self {
+        let branch = match &base {
+            WorktreeBase::Remote { branch, .. } => branch.clone(),
+            _ => String::new(),
+        };
         let mut form =
-            Self { base, folder: String::new(), folder_edited: false, branch: String::new(), open: true, error: None, pending: None };
+            Self { base, folder: String::new(), folder_edited: false, branch, open: true, error: None, pending: None, title: None };
         form.folder = default_folder(snap, &form.slug());
         form
     }
@@ -195,6 +202,9 @@ pub fn folder_warning(snap: &Snapshot, text: &str) -> Option<String> {
 
 /// What makes the base and new branch name unusable.
 pub fn branch_problem(snap: &Snapshot, base: &WorktreeBase, new_branch: &str) -> Option<String> {
+    if let WorktreeBase::Remote { remote, branch } = base {
+        return super::worktree_branches::remote_problem(snap, remote, branch, new_branch);
+    }
     let new_branch = new_branch.trim();
     if let WorktreeBase::Branch(b) = base {
         match snap.locals.iter().find(|l| l.name == *b) {

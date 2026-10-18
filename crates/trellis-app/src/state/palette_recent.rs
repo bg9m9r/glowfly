@@ -138,6 +138,8 @@ impl PaletteCommand {
             C::Patch(crate::patch::PatchMsg::ChangesDialog { path: None, .. }) => "create-patch-uncommitted",
             C::Patch(_) => return None,
             C::OpenFileHistory(_) | C::OpenBlame(_) => return None,
+            C::Worktree(m) if **m == crate::worktree::WorktreeMsg::Prune => "prune-worktrees",
+            C::Worktree(_) => return None,
             C::Remote(m) => match m {
                 RemoteMsg::AddDialog => "add-remote",
                 _ => return None,

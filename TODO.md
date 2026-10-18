@@ -383,6 +383,12 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Show worktree WIP nodes in the graph: a WIP row per worktree with uncommitted changes, at
     its HEAD commit (dashed node, "// WIP · <folder>" with counts, a tooltip, click to open its
     tab; counted with libgit2 on full loads; UI Customization > Show other worktrees' changes)
+  - [x] Branches checked out in another worktree marked `worktree` in LOCAL (tooltip with the
+    folder), with Checkout and Delete refused everywhere and Open worktree in their menu; create a
+    worktree from a remote branch or a pull request (a new tracking branch); palette commands
+    (open, create, remove, lock, unlock, move, prune); Remove also deleting the branch on its
+    remote and closing another tab that shows the worktree; Move (`git worktree move`, tabs and
+    lists follow); the WORKTREES row menu on a worktree's WIP row in the graph
 - [x] **Git LFS**
   Initialize, track patterns (file, extension, folder), fetch/pull/push/prune, view
   `.gitattributes`, and LFS-aware auto-fetch.
@@ -783,8 +789,6 @@ follow-ups go to Ideas, not here.
 
 ### Worktrees
 
-- Mark local branches checked out in another worktree in LOCAL (tooltip with the folder), and
-  disable Checkout / Delete for them with the reason
 - Watch the common git dir (refs, packed-refs) when a linked worktree is the open tab, so ref
   changes made elsewhere reload it
 - Cap or time-limit the status read of very large linked worktrees during loads
@@ -1270,11 +1274,6 @@ here, under the item they grew from.
 
 ### Worktrees
 
-- Create a worktree from a remote branch or a pull request (creating the tracking branch)
-- Palette commands: open a worktree, Create worktree…, Remove / Lock / Prune worktree
-- Remove a worktree and also delete its branch on the remote
-- Offer to close the other tab showing a worktree, instead of only refusing Remove
-- Move a worktree (`git worktree move`)
 - An Open folder button in the "folder couldn't be fully deleted" report, and a retry of the
   folder delete
 - A context-menu entry to show or hide the WORKTREES section
@@ -1283,12 +1282,26 @@ here, under the item they grew from.
 - A Refresh worktree changes item in the WORKTREES header menu that counts again without walking
   the history
 - Watch other worktrees' folders so their WIP rows update live
-- A context menu on a worktree WIP row (open, open folder, copy path, lock, remove), reusing the
-  WORKTREES row menu
 - A WIP row for a worktree whose HEAD is outside the loaded history (hidden or soloed branch,
   truncated history), e.g. pinned at the top
 - Select a worktree WIP row to preview its changed files in the details panel without opening
   its tab
+- Create a worktree from a fork's pull request: add the fork as a remote (asking first) or fetch
+  the pull request's head ref
+- In the Create worktree dialog, offer to use or reset an existing local branch that already
+  tracks the remote branch, instead of only asking for another name
+- Warn when the branch tip a pull request worktree would check out differs from the pull
+  request's head (fetch first)
+- Move a worktree to another spelling of its own folder (case- or Unicode-form-only rename)
+  through a temporary name
+- Force-move a locked worktree (`git worktree move -f -f`) from the Move dialog
+- Carry a moved worktree's per-repository settings (graph filter, forge filters) and trust
+  decision to its new folder
+- Close or move terminal sessions running in a worktree before moving it
+- Treat a branch being rebased or bisected in another worktree as checked out there (LOCAL mark
+  and refusals)
+- Offer to close the other tab before Move as well, or confirm before closing a tab that has an
+  unsent commit message
 
 ### Git LFS
 

@@ -85,6 +85,7 @@ mod welcome_steps;
 pub mod widgets;
 mod worktree_dialog;
 mod worktree_manage_dialog;
+mod worktree_move_dialog;
 mod worktrees;
 
 #[cfg(test)]
@@ -244,7 +245,11 @@ mod snapshot_tests_updates;
 #[cfg(test)]
 mod snapshot_tests_whole;
 #[cfg(test)]
+mod snapshot_tests_worktree_branches;
+#[cfg(test)]
 mod snapshot_tests_worktree_manage;
+#[cfg(test)]
+mod snapshot_tests_worktree_move;
 #[cfg(test)]
 mod snapshot_tests_worktree_wip;
 #[cfg(test)]

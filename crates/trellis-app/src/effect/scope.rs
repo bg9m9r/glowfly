@@ -41,6 +41,7 @@ impl Effect {
             | Effect::CheckCloneParent { .. }
             | Effect::DetectLfs { .. }
             | Effect::RemoveWorktree(_)
+            | Effect::MoveWorktree(_)
             | Effect::RenameStash { .. }
             | Effect::SparseCheckout { .. }
             | Effect::RunGit { .. }

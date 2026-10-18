@@ -9,9 +9,11 @@ use trellis_core::repo::Snapshot;
 /// Recent repositories offered by the palette.
 const MAX_RECENT: usize = 10;
 
-/// A checkout entry for each local branch other than HEAD's.
+/// A checkout entry for each local branch other than HEAD's and those checked out in another
+/// worktree (those are offered as Open worktree instead).
 pub(super) fn checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
-    for b in snap.locals.iter().filter(|b| !b.is_head) {
+    let elsewhere = |name: &str| crate::state::worktree_branches::elsewhere(snap, name).is_some();
+    for b in snap.locals.iter().filter(|b| !b.is_head && !elsewhere(&b.name)) {
         let e = entry(PaletteCommand::Checkout(b.name.clone()), format!("Checkout {}", b.name), "switch branch");
         out.push(with_detail(e, b.upstream.clone()));
     }

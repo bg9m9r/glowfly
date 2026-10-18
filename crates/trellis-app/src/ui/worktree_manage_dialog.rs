@@ -1,5 +1,6 @@
-//! The Remove worktree dialog (what goes, why force is needed, and whether the branch is deleted
-//! too) and the Lock worktree dialog (an optional reason). `update` checks the request again and
+//! The Remove worktree dialog (what goes, why force is needed, whether the branch and its copy on
+//! the remote are deleted too, and that another tab showing it closes) and the Lock worktree
+//! dialog (an optional reason). `update` checks the request again and
 //! closes the dialog once the job starts.
 
 use super::theme::color;
@@ -17,8 +18,12 @@ pub fn remove(ui: &mut egui::Ui, form: &mut RemoveForm, idle: bool, msgs: &mut V
     ui.add_space(6.0);
     ui.label(format!(
         "Deletes the folder {} and everything in it, and drops git's record of the worktree. Commits and branches stay in the repository.",
-        form.path.display()
+        trellis_core::native_path::shown(&form.path)
     ));
+    if let Some(note) = form.close_note() {
+        ui.add_space(6.0);
+        ui.label(RichText::new(note).color(color::amber()));
+    }
     if let Some(note) = form.force_note() {
         let col = if matches!(form.refusal, Some(Refusal::Locked(_))) { color::amber() } else { color::red() };
         ui.add_space(6.0);
@@ -31,6 +36,19 @@ pub fn remove(ui: &mut egui::Ui, form: &mut RemoveForm, idle: bool, msgs: &mut V
             RichText::new("Only if it is merged (git branch -d). If it isn't, the worktree is still removed and you are told.")
                 .color(color::weak()),
         );
+        if form.delete_branch
+            && let Some(r) = form.remote.clone()
+        {
+            ui.add_space(4.0);
+            let label = format!("Also delete {} on {}", r.tracking.merge, r.tracking.remote);
+            let c = ui.add_enabled(r.blocked.is_none(), egui::Checkbox::new(&mut form.delete_remote, label));
+            if let Some(why) = &r.blocked {
+                c.on_disabled_hover_text(why);
+            }
+        }
+        if let Some(note) = form.remote_note() {
+            ui.label(RichText::new(note).color(color::red()));
+        }
     }
     ui.add_space(10.0);
     ui.horizontal(|ui| {

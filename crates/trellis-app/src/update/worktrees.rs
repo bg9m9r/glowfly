@@ -1,10 +1,12 @@
 //! The WORKTREES section and the Create worktree dialog: opening a worktree in a tab, and
-//! creating one. Creating checks the form again, then the folder on disk
-//! (`Effect::CheckWorktreeFolder`), then runs `git worktree add` as a job. Removing, locking,
-//! unlocking and pruning are in `worktree_manage.rs`.
+//! creating one (from a branch, a commit, a remote branch or a pull request's source branch).
+//! Creating checks the form again, then the folder on disk (`Effect::CheckWorktreeFolder`), then
+//! runs `git worktree add` as a job. Removing, locking, unlocking and pruning are in
+//! `worktree_manage.rs`, moving in `worktree_move.rs`.
 
 use super::ops::{self, JobSpec};
 use super::worktree_manage as manage;
+use super::worktree_move;
 use crate::effect::Effect;
 use crate::state::worktrees::{WorktreeForm, find, open_blocked, recheck, request};
 use crate::state::{AppState, Modal};
@@ -23,17 +25,35 @@ pub(super) fn handle(st: &mut AppState, msg: WorktreeMsg, now: Instant, fx: &mut
             let Some(snap) = st.snap.as_ref() else { return };
             st.modal = Some(Modal::NewWorktree(WorktreeForm::new(snap, base)));
         }
+        WorktreeMsg::CreateForPr { id, source } => create_for_pr(st, id, &source),
         WorktreeMsg::Submit => submit(st, fx),
         WorktreeMsg::FolderChecked { request, result } => folder_checked(st, request, result, fx),
         WorktreeMsg::RemoveDialog(path) => manage::remove_dialog(st, path),
         WorktreeMsg::Remove => manage::remove(st, fx),
-        WorktreeMsg::Removed { request, outcome, output, branch, undo } => {
-            manage::removed(st, manage::Removed { request, outcome, output, branch, undo }, now, fx)
+        WorktreeMsg::Removed { request, outcome, output, branch, remote, undo } => {
+            manage::removed(st, manage::Removed { request, outcome, output, branch, remote, undo }, now, fx)
         }
         WorktreeMsg::LockDialog(path) => manage::lock_dialog(st, path),
         WorktreeMsg::Lock => manage::lock(st, fx),
         WorktreeMsg::Unlock(path) => manage::unlock(st, path, fx),
         WorktreeMsg::Prune => manage::prune(st, fx),
+        WorktreeMsg::MoveDialog(path) => worktree_move::move_dialog(st, path),
+        WorktreeMsg::Move => worktree_move::submit(st, fx),
+        WorktreeMsg::Moved { request, outcome, output } => worktree_move::moved(st, request, outcome, output, now, fx),
+    }
+}
+
+/// Opens the Create worktree dialog for a pull request's source branch: the local branch of that
+/// name, else the code host remote's branch (`worktree_branches::pr_base`).
+fn create_for_pr(st: &mut AppState, id: u64, source: &str) {
+    let (Some(snap), Some(f)) = (st.snap.as_ref(), st.forge.as_ref()) else { return };
+    let (noun, label) = (f.pr_noun(), f.pr_label(id));
+    match crate::state::worktree_branches::pr_base(snap, &f.remote, source) {
+        Ok(base) => {
+            let form = WorktreeForm { title: Some(format!("Create worktree for {noun} {label}")), ..WorktreeForm::new(snap, base) };
+            st.modal = Some(Modal::NewWorktree(form));
+        }
+        Err(why) => st.log(false, format!("Can't create a worktree for {noun} {label}: {why}")),
     }
 }
 
@@ -116,10 +136,15 @@ fn close(st: &mut AppState) {
     }
 }
 
-/// Browse… picked `parent`: the folder becomes the slug inside it.
+/// Browse… picked `parent`: the folder becomes the slug inside it (Create), or the worktree's
+/// own folder name inside it (Move).
 pub(super) fn parent_picked(st: &mut AppState, parent: PathBuf) {
-    if let Some(Modal::NewWorktree(form)) = st.modal.as_mut() {
-        form.folder = parent.join(form.slug()).display().to_string();
-        form.folder_edited = true;
+    match st.modal.as_mut() {
+        Some(Modal::NewWorktree(form)) => {
+            form.folder = parent.join(form.slug()).display().to_string();
+            form.folder_edited = true;
+        }
+        Some(Modal::MoveWorktree(form)) => form.parent_picked(&parent),
+        _ => {}
     }
 }

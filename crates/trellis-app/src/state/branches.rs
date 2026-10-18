@@ -136,8 +136,8 @@ pub fn checkout_local(name: &str) -> Vec<String> {
 /// picks it), so one git would read as an option is refused, and so is one this repository
 /// doesn't have (a fork's branch that was never fetched), rather than letting git guess.
 pub fn pr_checkout(snap: &Snapshot, remote: &str, source: &str) -> Result<Vec<String>, String> {
-    if source.is_empty() || source.starts_with('-') {
-        return Err(format!("\"{source}\" isn't a branch name Trellis can check out."));
+    if let Some(why) = pr_source_refused(source) {
+        return Err(why);
     }
     if snap.locals.iter().any(|b| b.name == source) {
         return Ok(checkout_local(source));
@@ -146,5 +146,15 @@ pub fn pr_checkout(snap: &Snapshot, remote: &str, source: &str) -> Result<Vec<St
     if on_remote {
         return Ok(args(&["checkout", "--track", &format!("{remote}/{source}"), "--"]));
     }
-    Err(format!("{source} isn't a local branch or on {remote} (it may be on a fork). Fetch it first."))
+    Err(pr_source_missing(source, remote))
+}
+
+/// Why a pull request's source branch name is never used: git would read it as an option.
+pub(crate) fn pr_source_refused(source: &str) -> Option<String> {
+    (source.is_empty() || source.starts_with('-')).then(|| format!("\"{source}\" isn't a branch name Trellis can check out."))
+}
+
+/// A pull request's source branch that is neither a local branch nor on the code host's remote.
+pub(crate) fn pr_source_missing(source: &str, remote: &str) -> String {
+    format!("{source} isn't a local branch or on {remote} (it may be on a fork). Fetch it first.")
 }

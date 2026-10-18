@@ -1,5 +1,6 @@
 //! The Create worktree dialog: a folder (typed, or a parent picked with Browse…), an optional new
-//! branch and whether to open the worktree in a tab. Problems are checked as the user types with
+//! branch (required for a remote branch, which it then tracks) and whether to open the worktree
+//! in a tab. Problems are checked as the user types with
 //! the pure rules in `state::worktrees`; the folder's contents are checked on disk by the runner
 //! after Create worktree.
 
@@ -22,8 +23,12 @@ pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Sn
         WorktreeBase::Commit(_) => {
             (format!("Create worktree at {}", form.base.label()), "Optional. Leave empty for a detached HEAD".to_owned())
         }
+        WorktreeBase::Remote { .. } => {
+            let full = form.base.label();
+            (format!("Create worktree from {full}"), format!("Name of the new local branch; it tracks {full}"))
+        }
     };
-    ui.heading(heading);
+    ui.heading(form.title.clone().unwrap_or(heading));
     ui.add_space(6.0);
 
     let folder_id = Id::new("trellis-worktree-folder");

@@ -213,6 +213,12 @@ fn remember_closed(st: &mut AppState, path: PathBuf) {
     }
 }
 
+/// Closes the tabs at `idx` (never the active one), as Close tab would.
+pub(super) fn close_tabs(st: &mut AppState, idx: &[usize], fx: &mut Vec<Effect>) {
+    let active = st.active_tab;
+    close_where(st, |j| j == active || !idx.contains(&j), active, fx);
+}
+
 /// Closes every tab for which `keep` is false. `survivor` (the tab the request came from) is
 /// always kept, and becomes active if the active tab closes.
 fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize, fx: &mut Vec<Effect>) {

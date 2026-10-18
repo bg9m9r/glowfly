@@ -1,12 +1,13 @@
-//! Branch operations from the branch menu: rename, set and unset the upstream, fast-forward
-//! without checkout, push to the upstream or a chosen remote, and delete together with the
-//! remote branch. Each re-checks the branch against the current snapshot (a menu or confirm can
+//! Branch operations from the branch menu: checkout (refused for a branch another worktree
+//! has), rename, set and unset the upstream, fast-forward without checkout, push to the upstream
+//! or a chosen remote, and delete together with the remote branch. Each re-checks the branch against the current snapshot (a menu or confirm can
 //! be stale), then runs `branch_ops` commands as the single active git job.
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::msg::BranchMsg;
 use crate::state::branches::{self, NO_REMOTES};
+use crate::state::worktree_branches;
 use crate::state::{AppState, Modal};
 use trellis_core::branch_ops::{self, check_branch_name, is_valid_branch_name};
 use trellis_core::repo::BranchInfo;
@@ -14,6 +15,7 @@ use trellis_core::undo::UndoKind;
 
 pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
     match msg {
+        BranchMsg::Checkout(name) => checkout(st, &name, fx),
         BranchMsg::NewBranch { start, name } => st.modal = Some(Modal::NewBranch { start, name, checkout: true }),
         BranchMsg::RenameBranchDialog(name) => {
             if let Some(b) = find(st, &name) {
@@ -55,6 +57,21 @@ fn find(st: &mut AppState, name: &str) -> Option<BranchInfo> {
         st.log(false, format!("Branch {name} no longer exists."));
     }
     b
+}
+
+/// Checks out local branch `name`, unless it is HEAD or another worktree has it.
+fn checkout(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
+    let Some(b) = find(st, name) else { return };
+    if b.is_head {
+        st.log(false, format!("{name} is already checked out."));
+        return;
+    }
+    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::checkout_blocked(s, name)) {
+        st.log(false, why);
+        return;
+    }
+    // A single command: `start_job` records it for undo as `JobMsg::Git` would.
+    start_job(st, JobSpec::new("Checkout".into(), vec![branches::checkout_local(name)]), fx);
 }
 
 fn rename(st: &mut AppState, old: &str, new: &str, fx: &mut Vec<Effect>) {
@@ -114,6 +131,10 @@ fn delete_with_remote(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
     let Some(b) = find(st, name) else { return };
     if b.is_head {
         st.log(false, format!("{name} is checked out. Check out another branch before deleting it."));
+        return;
+    }
+    if let Some(why) = st.snap.as_ref().and_then(|s| worktree_branches::delete_blocked(s, name)) {
+        st.log(false, why);
         return;
     }
     let Some(t) = branches::can_delete_with_remote(&b) else {

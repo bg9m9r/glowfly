@@ -22,7 +22,7 @@ fn counts(modified: usize, added: usize, deleted: usize) -> ChangeCounts {
 
 /// The shared worktrees fixture with changes in feature-login and hotfix (at commits[2]), old
 /// (locked, at HEAD) and gone (missing, so it gets no row), laid out again.
-fn with_wips(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_wips(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_worktrees(theme, name);
     // Narrower side columns leave the message column room for the labels and counts.
     st.settings.column_widths = st.settings.column_widths.with(Refs, 110.0).with(Author, 100.0).with(Date, 140.0);
@@ -44,7 +44,7 @@ fn worktree_in(st: &AppState, row: usize) -> Option<usize> {
 }
 
 /// The display row of commit `commits[i]`.
-fn commit_row(st: &AppState, i: usize) -> usize {
+pub(super) fn commit_row(st: &AppState, i: usize) -> usize {
     let snap = st.snap.as_ref().unwrap();
     GraphRows::new(snap, &st.search, false).row_of(snap.commits[i].oid).unwrap()
 }

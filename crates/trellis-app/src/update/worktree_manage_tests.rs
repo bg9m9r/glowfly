@@ -193,12 +193,14 @@ fn folder_left_and_branch_failed() {
         name: "busy".into(),
         force: RemoveForce::None,
         delete_branch: Some("busy".into()),
+        delete_remote: None,
     };
     let msg = WorktreeMsg::Removed {
         request,
         outcome: RemoveOutcome::FolderLeft,
         output: "$ git worktree remove x\nerror: failed to delete".into(),
         branch: Some(Err("not fully merged".into())),
+        remote: None,
         undo: None,
     };
     update(&mut st, wt(msg), Instant::now());
@@ -232,18 +234,15 @@ fn refusals() {
         assert!(st.modal.is_none());
         assert!(last_log(&st).1.ends_with("This worktree is open in this tab."), "{}", last_log(&st).1);
     }
+    // Open in another tab: the dialog says Remove closes it.
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     drive(&mut st, wt(WorktreeMsg::RemoveDialog(linked.clone())));
-    assert!(st.modal.is_none());
-    assert!(last_log(&st).1.ends_with("It is open in another tab. Close that tab first."));
+    assert!(remove_form(&mut st).close_tabs, "{:?}", st.log.last().map(|l| &l.text));
     let form = RemoveForm::new(&entry(&st, &linked).unwrap());
-    st.modal = Some(Modal::RemoveWorktree(form.clone()));
-    assert!(update(&mut st, wt(WorktreeMsg::Remove), Instant::now()).is_empty());
-    assert!(last_log(&st).1.ends_with("It is open in another tab. Close that tab first."));
-    assert!(st.modal.is_some(), "the dialog stays");
 
     // Without the other tab, a running job still blocks, and keeps the dialog.
     st.tabs.truncate(1);
+    st.modal = Some(Modal::RemoveWorktree(form.clone()));
     st.job = Some(job(&dir, "Fetch"));
     assert!(update(&mut st, wt(WorktreeMsg::Remove), Instant::now()).is_empty());
     assert_eq!(last_log(&st).1, "Another operation is still running.");

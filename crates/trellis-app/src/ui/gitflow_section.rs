@@ -10,7 +10,7 @@ use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
 use crate::gitflow::GitFlowMsg;
-use crate::msg::JobMsg;
+use crate::msg::BranchMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
@@ -62,13 +62,24 @@ pub(super) fn section(
             let Some(info) = snap.locals.iter().find(|i| i.name == b.name) else { continue };
             let label = if b.head { format!("✔  {}", b.short) } else { b.short.to_owned() };
             let selected = info.oid.is_some_and(|o| *rows.sel == Selection::Commit(o));
-            let r = widgets::list_row(ui, 34.0, &label, None, selected, b.head);
+            let worktree = crate::state::worktree_branches::elsewhere(snap, b.name);
+            let right = worktree.map(|_| ("worktree", color::weak()));
+            let r = widgets::list_row(ui, 34.0, &label, right, selected, b.head);
             if r.hovered() {
                 *hover_next = info.oid;
             }
-            let r = r.on_hover_text(row_tooltip(s, g.kind, b.name));
+            let tip = row_tooltip(s, g.kind, b.name);
+            let tip = match worktree {
+                Some(wt) => format!(
+                    "{tip}
+{}",
+                    crate::state::worktree_branches::local_tip_line(wt)
+                ),
+                None => tip,
+            };
+            let r = r.on_hover_text(tip);
             if r.double_clicked() {
-                msgs.push(Msg::Job(JobMsg::Git { label: "Checkout".into(), cmds: vec![crate::state::branches::checkout_local(b.name)] }));
+                msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.to_owned())));
             } else if r.clicked()
                 && let Some(o) = info.oid
             {

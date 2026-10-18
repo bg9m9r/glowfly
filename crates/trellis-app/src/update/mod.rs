@@ -96,6 +96,7 @@ mod watch;
 mod work_files;
 mod work_files_delete;
 mod worktree_manage;
+mod worktree_move;
 mod worktrees;
 
 #[cfg(test)]
@@ -228,6 +229,8 @@ mod palette_submodule_tests;
 mod palette_tests;
 #[cfg(test)]
 mod palette_theme_tests;
+#[cfg(test)]
+mod palette_worktree_tests;
 #[cfg(test)]
 mod patch_tests;
 #[cfg(test)]
@@ -375,7 +378,15 @@ mod work_files_trash_tests;
 #[cfg(test)]
 mod work_files_unstage_tests;
 #[cfg(test)]
+mod worktree_branch_tests;
+#[cfg(test)]
 mod worktree_manage_tests;
+#[cfg(test)]
+mod worktree_move_tests;
+#[cfg(test)]
+mod worktree_remote_tests;
+#[cfg(test)]
+mod worktree_remove_remote_tests;
 #[cfg(test)]
 mod worktree_tests;
 #[cfg(test)]

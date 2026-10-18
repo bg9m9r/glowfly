@@ -82,6 +82,7 @@ impl Recovery {
             Effect::RunGit { record, .. } => Kind::Job(record.as_ref().map(|_| UndoResult::Recorded(None))),
             Effect::UndoRedo { redo, .. } => Kind::Job(Some(UndoResult::Failed { redo: *redo })),
             Effect::RemoveWorktree(_)
+            | Effect::MoveWorktree(_)
             | Effect::Submodule(SubmoduleEffect::Remove(_))
             | Effect::RenameStash { .. }
             | Effect::SparseCheckout { .. }

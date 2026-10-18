@@ -161,6 +161,9 @@ pub enum Effect {
     /// Runs `git worktree remove` then, if asked, `git branch -d`. Unscoped like RunGit: it ends
     /// the active job.
     RemoveWorktree(crate::worktree::RemoveRequest),
+    /// Runs `git worktree move` once the target is free. Unscoped like RunGit: it ends the
+    /// active job.
+    MoveWorktree(crate::worktree::MoveRequest),
     /// Renames the stash list entry stash@{index} (only if it still is commit `oid`) to
     /// `message`, keeping its position. Unscoped like RunGit: it ends the active job.
     RenameStash {

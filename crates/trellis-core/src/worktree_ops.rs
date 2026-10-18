@@ -1,12 +1,14 @@
 //! Creating a worktree: the `git worktree add` command lines, the default folder's name, and
 //! checks of the folder it goes in. Everything here is pure except `check_folder`; the app runs
 //! the command through `gitcli` so hooks, config and credential prompts apply. Removing,
-//! locking, unlocking and pruning worktrees are in `manage`.
+//! locking, unlocking and pruning worktrees are in `manage`; moving one is in `moving`.
 
 use std::path::{Path, PathBuf};
 
 mod manage;
+mod moving;
 pub use manage::*;
+pub use moving::*;
 
 /// What a new worktree checks out.
 #[derive(Clone, Debug, PartialEq)]
@@ -15,6 +17,9 @@ pub enum WorktreeBase {
     Branch(String),
     /// A commit.
     Commit(git2::Oid),
+    /// A remote-tracking branch (`refs/remotes/<remote>/<branch>`): the new worktree gets a new
+    /// local branch tracking it.
+    Remote { remote: String, branch: String },
 }
 
 impl WorktreeBase {
@@ -23,6 +28,7 @@ impl WorktreeBase {
         match self {
             WorktreeBase::Branch(b) => b.clone(),
             WorktreeBase::Commit(oid) => short(*oid),
+            WorktreeBase::Remote { remote, branch } => format!("{remote}/{branch}"),
         }
     }
 }
@@ -33,19 +39,26 @@ fn short(oid: git2::Oid) -> String {
 
 /// `git worktree add` for `folder`: a branch base without a new branch checks that branch out
 /// (by its short name, so git doesn't detach), a commit base without one gives a detached HEAD,
-/// and `new_branch` creates a branch at the base.
+/// and `new_branch` creates a branch at the base. A remote base always creates a local branch
+/// (`new_branch`, else the remote branch's name) that tracks it.
 pub fn add_cmd(folder: &Path, base: &WorktreeBase, new_branch: Option<&str>) -> Vec<String> {
     let folder = folder.display().to_string();
     let mut cmd = vec!["worktree".to_owned(), "add".to_owned()];
+    if let WorktreeBase::Remote { remote, branch } = base {
+        let name = new_branch.unwrap_or(branch).to_owned();
+        cmd.extend(["--track".to_owned(), "-b".to_owned(), name, folder, format!("refs/remotes/{remote}/{branch}")]);
+        return cmd;
+    }
     match (base, new_branch) {
         (_, Some(new)) => cmd.extend(["-b".to_owned(), new.to_owned()]),
         (WorktreeBase::Commit(_), None) => cmd.push("--detach".to_owned()),
-        (WorktreeBase::Branch(_), None) => {}
+        (WorktreeBase::Branch(_) | WorktreeBase::Remote { .. }, None) => {}
     }
     cmd.push(folder);
     cmd.push(match base {
         WorktreeBase::Branch(b) => b.clone(),
         WorktreeBase::Commit(oid) => oid.to_string(),
+        WorktreeBase::Remote { remote, branch } => format!("refs/remotes/{remote}/{branch}"),
     });
     cmd
 }

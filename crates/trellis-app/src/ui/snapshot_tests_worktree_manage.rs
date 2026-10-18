@@ -121,6 +121,7 @@ fn worktree_menu_manage() {
     assert!(!h.get_by_label("Lock…").is_disabled());
     assert!(h.query_by_label("Unlock").is_none());
     assert!(h.query_by_label("Prune missing worktrees").is_none(), "only on a missing row");
+    assert!(!h.get_by_label("Move…").is_disabled());
     h.get_by_label("Remove…").click();
     h.run();
     let login = p("C:/work/app-worktrees/feature-login");
@@ -164,8 +165,9 @@ fn worktree_menu_manage() {
     assert!(h.get_by_label("Prune missing worktrees").is_disabled());
     escape(&mut h);
     menu_at(&mut h, "feature-login");
-    assert!(h.get_by_label("Remove…").is_disabled());
+    assert!(!h.get_by_label("Remove…").is_disabled(), "Remove closes the other tab first");
     assert!(!h.get_by_label("Lock…").is_disabled());
+    assert!(!h.get_by_label("Move…").is_disabled());
     escape(&mut h);
     drop(h);
     remove_fixture(&dir);

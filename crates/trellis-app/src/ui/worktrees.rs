@@ -1,8 +1,8 @@
 //! The WORKTREES section of the left panel: one row per worktree (the main one first) with what
 //! it has checked out, whether it is locked or missing, and a tooltip. A click jumps to its HEAD
-//! commit, a double-click opens it in a tab, and the row menu opens it, shows its folder, copies
-//! its path, locks or unlocks it, removes it, and prunes missing records (also from the header's
-//! menu).
+//! commit, a double-click opens it in a tab, and the row menu (also on the worktree's WIP row in
+//! the graph) opens it, shows its folder, copies its path, locks or unlocks it, moves it, removes
+//! it, and prunes missing records (also from the header's menu).
 
 use super::common::{menu_item, menu_item_if};
 use super::theme::color;
@@ -10,7 +10,8 @@ use super::widgets;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::Selection;
-use crate::state::worktree_manage::{manage_blocked, prune_blocked, remove_blocked, row_prune_blocked};
+use crate::state::worktree_manage::{manage_blocked, open_elsewhere, prune_blocked, remove_blocked, row_prune_blocked};
+use crate::state::worktree_move::move_refused;
 use crate::state::worktrees::{open_blocked, right_text, tooltip};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
@@ -18,7 +19,7 @@ use git2::Oid;
 use trellis_core::repo::{Snapshot, WorktreeInfo};
 
 /// What the rows are drawn against: the left-panel filter, the selection, and the folders open
-/// in tabs (Remove… is disabled for those).
+/// in tabs (their tooltips say so).
 pub(super) struct Rows<'a> {
     pub shown: &'a dyn Fn(&str) -> bool,
     pub sel: &'a Selection,
@@ -50,7 +51,15 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         if r.hovered() {
             *hover_next = wt.head;
         }
-        let r = r.on_hover_text(tooltip(wt));
+        let tip = match open_elsewhere(wt, open_tabs) {
+            Some(line) => format!(
+                "{}
+{line}",
+                tooltip(wt)
+            ),
+            None => tooltip(wt),
+        };
+        let r = r.on_hover_text(tip);
         if r.double_clicked() {
             if open_blocked(wt).is_none() {
                 msgs.push(Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
@@ -60,11 +69,12 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
         }
-        r.context_menu(|ui| menu(ui, wt, open_tabs, msgs));
+        r.context_menu(|ui| row_menu(ui, wt, msgs));
     }
 }
 
-fn menu(ui: &mut egui::Ui, wt: &WorktreeInfo, open_tabs: &[crate::state::tabs::Place], msgs: &mut Vec<Msg>) {
+/// The menu of a worktree's row, in the WORKTREES section and on its WIP row in the graph.
+pub(super) fn row_menu(ui: &mut egui::Ui, wt: &WorktreeInfo, msgs: &mut Vec<Msg>) {
     menu_item_if(msgs, ui, "Open in new tab", open_blocked(wt), Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));
     let gone = wt.missing.then_some("Its folder is missing.");
     menu_item_if(msgs, ui, "Open folder", gone, Msg::OpenFolder(wt.path.clone()));
@@ -80,7 +90,8 @@ fn menu(ui: &mut egui::Ui, wt: &WorktreeInfo, open_tabs: &[crate::state::tabs::P
     } else {
         menu_item_if(msgs, ui, "Lock…", manage_blocked(wt), Msg::Worktree(WorktreeMsg::LockDialog(path.clone())));
     }
-    menu_item_if(msgs, ui, "Remove…", remove_blocked(wt, open_tabs), Msg::Worktree(WorktreeMsg::RemoveDialog(path)));
+    menu_item_if(msgs, ui, "Move…", move_refused(wt), Msg::Worktree(WorktreeMsg::MoveDialog(path.clone())));
+    menu_item_if(msgs, ui, "Remove…", remove_blocked(wt), Msg::Worktree(WorktreeMsg::RemoveDialog(path)));
     if wt.missing {
         menu_item_if(msgs, ui, "Prune missing worktrees", row_prune_blocked(wt), Msg::Worktree(WorktreeMsg::Prune));
     }

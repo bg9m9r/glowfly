@@ -12,6 +12,8 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 mod palette_checkouts;
 #[path = "palette_commands_submodules.rs"]
 mod palette_commands_submodules;
+#[path = "palette_commands_worktrees.rs"]
+mod palette_commands_worktrees;
 #[path = "palette_conflict.rs"]
 mod palette_conflict;
 #[path = "palette_gitflow.rs"]
@@ -166,6 +168,8 @@ pub enum PaletteCommand {
     Remote(crate::remote::RemoteMsg),
     /// A SUBMODULES action (Add submodule…).
     Submodule(crate::submodule::SubmoduleMsg),
+    /// A WORKTREES action (open, create, remove, lock, unlock, move, prune).
+    Worktree(Box<crate::worktree::WorktreeMsg>),
     /// Show the trust prompt again for the open repository.
     ReviewTrust,
     /// Pick a patch file and apply it to the working tree.
@@ -328,6 +332,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     super::patch::palette_entries(st, snap, out);
     palette_setup::setup_entries(out);
     palette_gitflow::gitflow_entries(st, snap, out);
+    palette_commands_worktrees::worktree_entries(st, snap, out);
     palette_issues::issue_entries(st, out);
     palette_commands_submodules::submodule_entries(st, snap, out);
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));

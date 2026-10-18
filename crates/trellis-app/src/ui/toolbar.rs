@@ -51,11 +51,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         ui.set_min_width(220.0);
                         for b in &snap.locals {
                             let text = if b.is_head { format!("✔ {}", b.name) } else { b.name.clone() };
-                            if ui.add_enabled(!b.is_head, egui::Button::new(text)).clicked() {
-                                msgs.push(Msg::Job(JobMsg::Git {
-                                    label: "Checkout".into(),
-                                    cmds: vec![crate::state::branches::checkout_local(&b.name)],
-                                }));
+                            let elsewhere = crate::state::worktree_branches::checkout_blocked(snap, &b.name);
+                            let mut r = ui.add_enabled(!b.is_head && elsewhere.is_none(), egui::Button::new(text));
+                            if let Some(why) = &elsewhere {
+                                r = r.on_disabled_hover_text(why);
+                            }
+                            if r.clicked() {
+                                msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.clone())));
                                 ui.close_menu();
                             }
                         }
