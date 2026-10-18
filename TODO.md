@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 11:38 · **File actions: trash edge cases and undoable delete**: Delete and Unstage and delete can be undone and redone (restoring the file and its staged entry), Linux drives without a usable trash offer the home Trash or a permanent delete, and Recycle Bin settings are read per mount point on Windows (`fb937002`)
 - 2026-10-18 11:05 · **Branch operations**: The remote branch menu now offers the same operations as a local branch, run against its tracking branch or the checked-out branch, with review fixes applied (`a6f66ae9`)
 - 2026-10-18 10:34 · **Diff viewer upgrade: hunk and line operations with whitespace hidden, and undoable hunk reverts**: With Ignore whitespace on, staging, unstaging, discarding and reverting hunks and lines apply exactly the changes shown and leave the hidden whitespace changes as they are, and reverts from commit and comparison diffs can be undone and redone (`4d79db0f`)
 - 2026-10-18 10:14 · **Branch operations: the remote branch menu**: A remote branch's menu (left panel and graph labels) checks out its tracking branch or creates one, fast-forwards the tracking branch, and offers interactive rebase, conflict check, compare and set upstream against the checked-out branch (`a6f66ae9`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 03:14 · **Diff viewer upgrade: reverting from commit diffs (files, lines, renames, added files, three-way)**: Selected lines and whole files of a commit diff can be reverted in the working tree, following renames, removing files the commit added and merging three-way with later edits (`6c7112d`)
 - 2026-10-18 02:23 · **Interactive rebase: edit a running rebase, exec and break steps, keyboard control and undo**: The interactive rebase panel gains exec and break steps, combined squash messages, keyboard control and editing the remaining steps of a running rebase, and finished rebases can be undone in one step (`54a7422`)
 - 2026-10-18 02:07 · **Tabs (multiple open repos)**: Rename tab (shown in the tab bar, Window menu, tab list and window title, saved with the open tabs and kept when reopened), a tab list with the open and recently closed tabs, Ctrl+Shift+PgUp / PgDn to move the active tab, Esc to cancel a tab drag, and a confirmation before closing tabs that hold a commit draft or unsaved conflict choices (`a65aa9f`)
-- 2026-10-18 02:06 · **Date/Time section: show the Date and Date word formats, and date tooltips**: File history rows and the blame gutter use the Date format, the issue panel and history footer use the Date word format, and graph, history, issue, comment and dashboard dates show the verbose date and age on hover (`81b2406`)
 
 ---
 
@@ -710,7 +710,6 @@ follow-ups go to Ideas, not here.
 - Say when a cherry-pick or revert changed nothing because the branch already has the changes
 - Compare with working directory from the command palette and the commit details panel
 - A key to go back from a select-all to the focused commit, with a toast naming the count
-
 
 ### Repository trust
 
