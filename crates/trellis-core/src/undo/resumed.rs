@@ -37,8 +37,10 @@ fn todo_op(repo: &Repository) -> Option<MoveOp> {
     }
 }
 
-/// The merge, cherry-pick or revert in progress in `workdir`, if there is one.
-pub(super) fn paused(workdir: &Path) -> Result<Option<Paused>> {
+/// The merge, cherry-pick or revert in progress in `workdir`, if there is one. `resume`: the
+/// operation about to run is a Continue or Skip. Only those finish a sequence whose stopped
+/// commit was already committed; a commit in that state is an ordinary commit.
+pub(super) fn paused(workdir: &Path, resume: bool) -> Result<Option<Paused>> {
     let mut repo = Repository::open(workdir)?;
     let Some(head) = repo.head().ok().and_then(|h| h.target()) else { return Ok(None) };
     let named = |repo: &Repository, name: &str| repo.refname_to_id(name).ok().into_iter().collect::<Vec<_>>();
@@ -55,7 +57,7 @@ pub(super) fn paused(workdir: &Path) -> Result<Option<Paused>> {
         RepositoryState::Revert | RepositoryState::RevertSequence => (MoveOp::Revert, named(&repo, "REVERT_HEAD")),
         // A sequence whose stopped commit was committed from the commit box: git removed
         // CHERRY_PICK_HEAD (or REVERT_HEAD), so libgit2 sees nothing in progress.
-        RepositoryState::Clean if sequencer(&repo).join("todo").is_file() => match todo_op(&repo) {
+        RepositoryState::Clean if resume && sequencer(&repo).join("todo").is_file() => match todo_op(&repo) {
             Some(op) => (op, Vec::new()),
             None => return Ok(None),
         },

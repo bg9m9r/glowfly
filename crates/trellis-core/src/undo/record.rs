@@ -109,7 +109,8 @@ pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
             let (target, message) = found.map_or((None, None), |(o, m)| (Some(o), m));
             b.apply = Some(Apply { target, message, clean: is_clean(workdir).ok() });
         }
-        UndoKind::Commit { amend: false } | UndoKind::Resume(_) => b.paused = resumed::paused(workdir)?,
+        UndoKind::Commit { amend: false } => b.paused = resumed::paused(workdir, false)?,
+        UndoKind::Resume(_) => b.paused = resumed::paused(workdir, true)?,
         UndoKind::StashDrop { rev } => b.dropped = apply_target(workdir, rev.as_deref().unwrap_or("stash@{0}")).ok(),
         UndoKind::Commit { amend: true } | UndoKind::Reset(_) | UndoKind::Move { .. } => {}
     }

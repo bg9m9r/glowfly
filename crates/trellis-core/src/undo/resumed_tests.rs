@@ -217,6 +217,34 @@ fn commit_box_commit_mid_sequence_records_nothing() {
 }
 
 #[test]
+fn later_commit_after_a_mid_sequence_commit_is_still_a_commit() {
+    let (dir, _, [q1, _, r, _]) = picks("undo-rs-after-mid-commit");
+    conflicts(&dir, &["cherry-pick", &q1.to_string(), &r.to_string()]);
+    resolve(
+        &dir,
+        "a.txt",
+        "one
+main
+q1
+",
+    );
+    git(&dir, &["commit", "-q", "-m", "q1"]);
+    assert!(dir.join(".git/sequencer/todo").is_file(), "git keeps the rest of the sequence");
+    // An ordinary commit in that state is recorded as a commit, not swallowed by the sequence.
+    let from = head_oid(&dir);
+    write(
+        &dir, "d.txt", "fix
+",
+    );
+    git(&dir, &["add", "d.txt"]);
+    let action = record(&dir, &["commit", "-q", "-m", "fix"]).expect("recorded");
+    assert!(matches!(&action, Action::Commit { from: f, amend: false, message, .. } if *f == from && message == "fix"), "{action:?}");
+    let action = record(&dir, &["commit", "-q", "--allow-empty", "-m", "again"]).expect("recorded");
+    assert!(matches!(&action, Action::Commit { message, .. } if message == "again"), "{action:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn commit_without_operation_in_progress_is_still_a_commit() {
     let dir = scratch_repo("undo-rs-plain-commit");
     let base = commit(&dir, "a.txt", "one\n", "base");
