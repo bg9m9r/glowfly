@@ -259,8 +259,7 @@ mod tests {
             assert_eq!(p.adds_ssh_keys(), adds, "{p:?}");
             let per_pr = matches!(p, GitLab | GitLabSelfManaged | Bitbucket | BitbucketDataCenter | AzureDevOps);
             assert_eq!(p.details_per_pr(), per_pr, "{p:?}");
-            let in_app = matches!(p, GitHub | GitHubEnterprise | GitLab | GitLabSelfManaged | JiraCloud | JiraDataCenter);
-            assert_eq!(p.issues_in_app(), in_app, "{p:?}");
+            assert_eq!(p.issues_in_app(), p != BitbucketDataCenter, "{p:?}");
         }
     }
 }

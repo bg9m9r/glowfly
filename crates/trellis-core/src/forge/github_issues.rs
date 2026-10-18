@@ -106,6 +106,7 @@ pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails
         author: author(full.user),
         created: api_time(&full.created_at),
         assignees: full.assignees.into_iter().map(|a| a.login).collect(),
+        priority: None,
         epic: None,
         comments,
     })

@@ -11,6 +11,7 @@ use crate::msg::{BranchMsg, Msg};
 use crate::state::AppState;
 use crate::state::gitflow::start_blocked;
 use crate::state::issue::{IssueView, linked_branches, meta_rows, state_label};
+use crate::state::issue_words::labels_label;
 use eframe::egui::{self, Align, Color32, FontId, Layout, RichText, Sense, Ui, vec2};
 use trellis_core::forge;
 use trellis_core::gitflow::FlowKind;
@@ -83,7 +84,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 
 /// One row per detail; the state and the labels as chips.
 fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
-    let state_row = state_label(v.provider());
+    let (state_row, labels_row) = (state_label(v.provider()), labels_label(v.provider()));
     for (label, value) in meta_rows(v, &st.settings, st.view.utc_offset) {
         ui.horizontal(|ui| {
             ui.allocate_ui_with_layout(vec2(LABEL_W, 20.0), Layout::left_to_right(Align::Center), |ui| {
@@ -92,7 +93,7 @@ fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
             });
             if label == state_row && !value.is_empty() {
                 chip(ui, &value, state_color(&value));
-            } else if label == "Labels" {
+            } else if label == labels_row {
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing = vec2(4.0, 4.0);
                     for l in &v.issue.facets.labels {

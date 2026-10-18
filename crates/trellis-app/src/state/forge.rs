@@ -187,11 +187,7 @@ impl ForgeState {
     }
 
     pub fn issue_noun(&self) -> &'static str {
-        match self.tracker.as_ref().map(|t| t.provider) {
-            Some(Provider::AzureDevOps) => "work item",
-            Some(Provider::Trello) => "card",
-            _ => "issue",
-        }
+        self.tracker.as_ref().map_or("issue", |t| super::issue_words::noun(t.provider))
     }
 
     fn is_trello(&self) -> bool {

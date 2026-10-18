@@ -1,10 +1,10 @@
 //! Issue details, Create issue options and creating issues on GitHub, GitHub Enterprise Server
-//! and GitLab, and the services that don't have them in Trellis yet (Jira is in
-//! jira_issues.rs).
+//! and GitLab, and Bitbucket Data Center, which has no issue tracker of its own (Jira,
+//! Bitbucket Cloud, Azure DevOps and Trello have their own files).
 
 use super::*;
 
-fn new_issue(title: &str) -> NewIssue {
+pub(super) fn new_issue(title: &str) -> NewIssue {
     NewIssue {
         project: String::new(),
         title: title.into(),
@@ -12,6 +12,7 @@ fn new_issue(title: &str) -> NewIssue {
         labels: Vec::new(),
         assignees: Vec::new(),
         kind: None,
+        priority: None,
         epic: None,
     }
 }
@@ -174,19 +175,19 @@ fn gitlab_details_options_and_create() {
 }
 
 #[test]
-fn other_services_send_nothing() {
+fn bitbucket_data_center_sends_nothing() {
     let m = Mock::start(|_| Reply::json("{}"));
-    for p in [Provider::Bitbucket, Provider::BitbucketDataCenter, Provider::AzureDevOps, Provider::Trello] {
-        let t = Target { provider: p, host: "example.com".into(), owner: "o".into(), project: "p".into(), repo: "r".into() };
-        let auth = token(p);
-        let errors = [
-            issue_details(&t, &auth, "1").unwrap_err(),
-            issue_create_options(&t, &auth, "p").unwrap_err(),
-            create_issue(&t, &auth, &new_issue("Title")).unwrap_err(),
-        ];
-        for e in errors {
-            assert!(matches!(&e, Error::Unsupported(msg) if msg.contains(p.name())), "{p:?}: {e}");
-        }
+    let p = Provider::BitbucketDataCenter;
+    let t = Target { provider: p, host: "example.com".into(), owner: "o".into(), project: "p".into(), repo: "r".into() };
+    let auth = token(p);
+    let errors = [
+        issue_details(&t, &auth, "1").unwrap_err(),
+        issue_create_options(&t, &auth, "p").unwrap_err(),
+        create_issue(&t, &auth, &new_issue("Title")).unwrap_err(),
+    ];
+    for e in errors {
+        let expected = "Bitbucket Data Center has no issue tracker of its own; use Jira for its issues";
+        assert!(matches!(&e, Error::Unsupported(msg) if msg == expected), "{e}");
     }
     assert!(m.requests().is_empty());
 }

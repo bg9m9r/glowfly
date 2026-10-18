@@ -1,14 +1,17 @@
 //! Azure DevOps (Azure Repos + Azure Boards), REST api-version 7.1.
 
 pub use super::azure_remote::{credential_host, parse_host_domain, parse_remote};
+pub(super) use super::azure_work_items::wiql;
+use super::azure_work_items::work_items;
 use super::checks::per_pr;
 use super::details::{PrDetails, checks_of};
 use super::http::get_paged;
-use super::page::{self, MAX_ITEMS, Page};
+use super::issue_details::{CreateOptions, IssueDetails, NewIssue};
+use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
-    Account, Auth, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, PullRequest, RefStyle,
-    Reviewer, Target, TipQuery, azure_checks, enc, get, post,
+    Account, Auth, Checks, Conditions, FilterKind, FilterOptions, Issue, Me, NewPullRequest, PrFacets, PullRequest, RefStyle, Reviewer,
+    Target, TipQuery, azure_checks, azure_issues, enc, get, post,
 };
 use crate::error::{Error, Result};
 use serde::Deserialize;
@@ -18,12 +21,13 @@ use std::collections::HashMap;
 pub(super) static AZURE_DEVOPS: ProviderInfo = ProviderInfo {
     name: "Azure DevOps",
     host_hint: "e.g., dev.azure.com/mycompany",
-    token_help: "Needs the Code (Read & write) and Work Items (Read) scopes, and Build (Read) for build status on branches.",
+    token_help: "Needs the Code (Read & write) and Work Items (Read & write, to create work items) scopes, Project and Team (Read)                  for assignees, and Build (Read) for build status on branches.",
     env_var: Some("AZURE_DEVOPS_EXT_PAT"),
     pr_prefix: "!",
     ref_style: RefStyle::AzureBoards,
     links_issues_by_api: true,
     details_per_pr: true,
+    issues_in_app: true,
     service: &AzureDevOps,
     ..DEFAULTS
 };
@@ -55,11 +59,11 @@ pub(super) struct List<T> {
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-struct Identity {
+pub(super) struct Identity {
     #[serde(default)]
-    display_name: String,
+    pub(super) display_name: String,
     #[serde(default)]
-    id: String,
+    pub(super) id: String,
 }
 
 #[derive(Deserialize)]
@@ -173,78 +177,6 @@ fn convert(t: &Target, p: ApiPr, checks: Option<Checks>) -> PullRequest {
         checks,
         facets,
     }
-}
-
-#[derive(Deserialize)]
-struct Fields {
-    #[serde(rename = "System.Title", default)]
-    title: String,
-    #[serde(rename = "System.State", default)]
-    state: String,
-    #[serde(rename = "System.WorkItemType", default)]
-    kind: String,
-    #[serde(rename = "System.AssignedTo", default)]
-    assigned_to: Option<Identity>,
-    /// "a; b"
-    #[serde(rename = "System.Tags", default)]
-    tags: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct WorkItem {
-    id: u32,
-    fields: Fields,
-}
-
-fn to_issue(t: &Target, w: WorkItem) -> Issue {
-    let key = w.id.to_string();
-    Issue {
-        url: work_item_url(t, &key),
-        key,
-        title: w.fields.title,
-        state: w.fields.state,
-        kind: w.fields.kind,
-        assignee: w.fields.assigned_to.map(|a| a.display_name),
-        facets: IssueFacets { labels: super::filters::azure::tags(w.fields.tags.as_deref()), milestone: None },
-    }
-}
-
-/// Open work items in this project matching the WIQL `where` clause, most recently changed first.
-pub(super) fn wiql(t: &Target, auth: &Auth, where_clause: &str) -> Result<Vec<Issue>> {
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct Wiql {
-        #[serde(default)]
-        work_items: Vec<Ref>,
-    }
-    #[derive(Deserialize)]
-    struct Ref {
-        id: u32,
-    }
-    let query = format!("SELECT [System.Id] FROM WorkItems WHERE {where_clause} ORDER BY [System.ChangedDate] DESC");
-    let result: Wiql =
-        post(auth, &format!("{}/_apis/wit/wiql?$top={MAX_ITEMS}&api-version={V}", project_base(t)), json!({ "query": query }))?;
-    let ids: Vec<String> = result.work_items.iter().map(|w| w.id.to_string()).collect();
-    let mut items = work_items(t, auth, &ids)?;
-    items.sort_by_key(|w| ids.iter().position(|i| *i == w.key));
-    Ok(items)
-}
-
-fn work_items(t: &Target, auth: &Auth, keys: &[String]) -> Result<Vec<Issue>> {
-    let ids: Vec<&String> = keys.iter().filter(|k| k.parse::<u32>().is_ok()).collect();
-    let mut out = Vec::new();
-    // The batch endpoint accepts at most 200 ids per call.
-    for chunk in ids.chunks(200) {
-        let list: Vec<&str> = chunk.iter().map(|s| s.as_str()).collect();
-        let url = format!(
-            "{}/_apis/wit/workitems?ids={}&fields=System.Title,System.State,System.WorkItemType,System.AssignedTo,System.Tags&errorPolicy=omit&api-version={V}",
-            project_base(t),
-            list.join(",")
-        );
-        // With errorPolicy=omit, ids that do not exist come back as null entries.
-        out.extend(get::<List<Option<WorkItem>>>(auth, &url)?.value.into_iter().flatten().map(|w| to_issue(t, w)));
-    }
-    Ok(out)
 }
 
 /// The AzureDevOps [`Forge`](super::Forge).
@@ -368,6 +300,18 @@ impl super::Forge for AzureDevOps {
     fn filter_options(&self, t: &Target, auth: &Auth, kind: FilterKind) -> Result<FilterOptions> {
         super::filters::azure::options(t, auth, kind)
     }
+
+    fn issue_details(&self, t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
+        azure_issues::details(t, auth, key)
+    }
+
+    fn issue_create_options(&self, t: &Target, auth: &Auth, _project: &str) -> Result<CreateOptions> {
+        azure_issues::options(t, auth)
+    }
+
+    fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
+        azure_issues::create(t, auth, new)
+    }
 }
 
 #[cfg(test)]
@@ -390,14 +334,8 @@ mod tests {
         assert_eq!((pr.id, pr.source.as_str(), pr.target.as_str(), pr.draft), (17, "feature/5-login", "main", true));
         assert_eq!(pr.approvals(), 1);
         assert!(pr.head_matches("abc1234ffff"));
-        let items: List<Option<WorkItem>> = serde_json::from_str(
-            r#"{"value":[{"id":5,"fields":{"System.Title":"Login page","System.State":"Active","System.WorkItemType":"User Story","System.AssignedTo":{"displayName":"Ada"}}},null]}"#,
-        )
-        .unwrap();
-        let issue = to_issue(&t, items.value.into_iter().flatten().next().unwrap());
-        assert_eq!((issue.key.as_str(), issue.kind.as_str(), issue.assignee.as_deref()), ("5", "User Story", Some("Ada")));
 
-        // Filter facets: identity ids (not groups), labels and tags.
+        // Filter facets: identity ids (not groups) and labels.
         let p: ApiPr = serde_json::from_str(
             r#"{"pullRequestId":1,"title":"T","sourceRefName":"refs/heads/x","targetRefName":"refs/heads/main","createdBy":{"id":"a-1"},
             "reviewers":[{"id":"g-1","vote":0},{"id":"l-1","vote":10},{"id":"team","vote":0,"isContainer":true}],"labels":[{"name":"ux"}]}"#,
@@ -408,7 +346,5 @@ mod tests {
             (f.author_id.as_str(), f.awaiting_ids, f.reviewer_ids.len(), f.labels),
             ("a-1", vec!["g-1".to_owned()], 2, vec!["ux".to_owned()])
         );
-        let w: WorkItem = serde_json::from_str(r#"{"id":5,"fields":{"System.Title":"L","System.Tags":"ux; needs design;"}}"#).unwrap();
-        assert_eq!(to_issue(&t, w).facets.labels, ["ux", "needs design"]);
     }
 }

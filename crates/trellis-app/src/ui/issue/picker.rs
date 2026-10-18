@@ -23,6 +23,8 @@ pub(super) struct Picker<'a> {
     pub max: usize,
     /// Typed text can be added as a new item.
     pub free: bool,
+    /// What a typed item is added as: "label", "tag".
+    pub add_word: &'a str,
 }
 
 /// Draws the picker over `chosen` (ids) and `query`.
@@ -72,7 +74,8 @@ pub(super) fn multi(ui: &mut Ui, p: &Picker, query: &mut String, chosen: &mut Ve
         let typed = query.trim();
         let exists = p.options.iter().any(|(_, l)| l.eq_ignore_ascii_case(typed)) || chosen.iter().any(|c| c.eq_ignore_ascii_case(typed));
         if p.free && !typed.is_empty() && !exists {
-            let r = ui.add_enabled(!full, egui::Button::new(format!("Add label \u{201c}{}\u{201d}", printable(typed))).frame(false));
+            let r =
+                ui.add_enabled(!full, egui::Button::new(format!("Add {} \u{201c}{}\u{201d}", p.add_word, printable(typed))).frame(false));
             if r.clicked() {
                 picked = Some(typed.to_owned());
             }

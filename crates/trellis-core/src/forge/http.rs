@@ -235,6 +235,12 @@ pub(crate) fn post<T: DeserializeOwned>(auth: &Auth, url: &str, body: serde_json
     json(call(request("POST", auth, url)?, Some(body))?)
 }
 
+/// A JSON Patch (`application/json-patch+json`) POST of `ops`, as Azure DevOps creates work
+/// items with.
+pub(crate) fn post_json_patch<T: DeserializeOwned>(auth: &Auth, url: &str, ops: serde_json::Value) -> Result<T> {
+    json(call(request("POST", auth, url)?.set("Content-Type", "application/json-patch+json"), Some(ops))?)
+}
+
 pub(crate) fn put<T: DeserializeOwned>(auth: &Auth, url: &str, body: serde_json::Value) -> Result<T> {
     json(call(request("PUT", auth, url)?, Some(body))?)
 }

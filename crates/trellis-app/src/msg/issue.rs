@@ -17,7 +17,7 @@ pub enum IssueMsg {
     Reload,
     /// Open the Create issue dialog (the ISSUES header's + and menu, the palette).
     CreateDialog,
-    /// The dialog's project was committed: load its choices.
+    /// The dialog's Jira project or Trello board was chosen: load its choices.
     SetProject(String),
     /// Create the issue the dialog describes.
     Create,

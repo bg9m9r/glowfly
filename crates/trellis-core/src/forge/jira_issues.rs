@@ -98,6 +98,7 @@ pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails
         author: name_of(&fields["reporter"]),
         created: api_time(fields["created"].as_str().unwrap_or_default()),
         assignees: if assignee.is_empty() { Vec::new() } else { vec![assignee] },
+        priority: None,
         epic,
         comments,
     })
@@ -150,7 +151,7 @@ pub(super) fn options(t: &Target, auth: &Auth, project: &str) -> Result<CreateOp
     // A project without the Epic type refuses the query: no epics to offer.
     let epics = search(t, auth, &jql).map(|found| found.into_iter().map(|i| Named { key: i.key, title: i.title }).collect());
     let labels = if cloud(t) { super::filters::jira::cloud_labels(t, auth)? } else { Vec::new() };
-    Ok(CreateOptions { labels, people, types, epics: epics.unwrap_or_default(), labels_free: true, max_assignees: 1 })
+    Ok(CreateOptions { labels, people, types, epics: epics.unwrap_or_default(), labels_free: true, max_assignees: 1, ..Default::default() })
 }
 
 /// The `fields` of a new issue: Cloud takes rich text and account ids and links the epic as

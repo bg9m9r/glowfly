@@ -39,6 +39,15 @@ impl Auth {
         Auth { header, provider: Provider::Trello, source: source.into() }
     }
 
+    /// The Trello API key the credential carries; None for other services.
+    pub(super) fn trello_key(&self) -> Option<String> {
+        if self.provider != Provider::Trello {
+            return None;
+        }
+        let rest = self.header.split("oauth_consumer_key=\"").nth(1)?;
+        rest.split('"').next().filter(|k| !k.is_empty()).map(str::to_owned)
+    }
+
     /// Builds the right header for a token (and optional username) on a given service.
     pub fn from_token(provider: Provider, user: Option<&str>, token: &str, source: &str) -> Auth {
         match (provider, user.filter(|u| !u.is_empty())) {
@@ -267,6 +276,9 @@ mod tests {
         let auth = Auth::from_token(Provider::Trello, Some("k\"e y\r\n"), " t\"ok ", "test");
         assert_eq!(auth.header, r#"OAuth oauth_consumer_key="key", oauth_token="tok""#);
         assert!(!is_public_host(&acct(Provider::Trello, "trello.com")));
+        assert_eq!(auth.trello_key().as_deref(), Some("key"));
+        assert_eq!(Auth::from_token(Provider::Trello, None, "tok", "test").trello_key(), None);
+        assert_eq!(Auth::from_token(Provider::GitHub, Some("key"), "tok", "test").trello_key(), None);
     }
 
     #[test]

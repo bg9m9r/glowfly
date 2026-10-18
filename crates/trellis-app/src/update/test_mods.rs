@@ -99,6 +99,8 @@ pub(super) mod history_tests;
 pub(super) mod init_tests;
 #[path = "issue_create_tests.rs"]
 pub(super) mod issue_create_tests;
+#[path = "issue_services_tests.rs"]
+pub(super) mod issue_services_tests;
 #[path = "issue_tests.rs"]
 pub(super) mod issue_tests;
 #[path = "keys_tests.rs"]

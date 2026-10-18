@@ -78,6 +78,7 @@ pub(super) fn details(t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails
         author: shown(full.author),
         created: api_time(&full.created_at),
         assignees: full.assignees.into_iter().map(|a| shown(Some(a))).collect(),
+        priority: None,
         epic: None,
         comments,
     })
@@ -96,7 +97,7 @@ pub(super) fn options(t: &Target, auth: &Auth) -> Result<CreateOptions> {
         }
     }
     let types = [("issue", "Issue"), ("incident", "Incident")].map(|(key, title)| Named { key: key.into(), title: title.into() });
-    Ok(CreateOptions { labels, people, types: types.to_vec(), epics: Vec::new(), labels_free: true, max_assignees: 1 })
+    Ok(CreateOptions { labels, people, types: types.to_vec(), labels_free: true, max_assignees: 1, ..Default::default() })
 }
 
 fn body(new: &NewIssue) -> Value {

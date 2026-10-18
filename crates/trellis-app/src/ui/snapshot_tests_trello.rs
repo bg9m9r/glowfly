@@ -37,14 +37,17 @@ fn prefs_integrations_trello() {
     h.run();
     h.check_snapshot("prefs_integrations_trello");
     // The row labels ("API Key", "Token") are painted, so the image shows them.
-    for label in ["Get your API key", "Allow a token", "Trello"] {
+    for label in ["Get your API key", "Allow a read-only token", "Allow a token that can create cards", "Trello"] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
     assert!(h.query_by_label("Host Domain").is_none() && h.query_by_label("Connect to Trello").is_none());
-    h.get_by_label("Allow a token").click();
+    h.get_by_label("Allow a read-only token").click();
     h.run();
-    let want = |m: &Msg| matches!(m, Msg::OpenUrl(u) if u.starts_with("https://trello.com/1/authorize?") && u.contains("scope=read"));
+    let want = |m: &Msg| matches!(m, Msg::OpenUrl(u) if u.starts_with("https://trello.com/1/authorize?") && u.contains("scope=read&"));
     assert!(pushed(&h, &want));
+    h.get_by_label("Allow a token that can create cards").click();
+    h.run();
+    assert!(pushed(&h, &|m: &Msg| matches!(m, Msg::OpenUrl(u) if u.contains("scope=read,write&"))));
 }
 
 /// The Issue Tracker page with Trello and the Website board chosen.
@@ -145,7 +148,8 @@ fn trello_link_needs_a_key() {
     st.prefs = Some(prefs);
     let mut h = harness(st, true);
     h.run();
-    h.get_by_label("Allow a token").click();
+    h.get_by_label("Allow a read-only token").click();
+    h.get_by_label("Allow a token that can create cards").click();
     h.run();
     assert!(!pushed(&h, &|m| matches!(m, Msg::OpenUrl(_))), "disabled until the key is whole");
 }

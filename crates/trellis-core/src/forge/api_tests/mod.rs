@@ -6,7 +6,9 @@ use super::*;
 use crate::error::Error;
 
 mod azure;
+mod azure_issues;
 mod bitbucket;
+mod bitbucket_issues;
 mod filters;
 mod forks;
 mod github;
@@ -17,6 +19,7 @@ mod paging;
 mod review;
 mod review_threads;
 mod trello;
+mod trello_issues;
 mod user_repos;
 
 fn remote(url: &str) -> Target {

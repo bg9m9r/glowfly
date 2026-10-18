@@ -607,10 +607,11 @@ Done except the group colors, which wait on repository groups in the repository 
   One action to push a branch and open the create-PR dialog; start a PR from a remote branch.
 - [x] **PR and issue filters**
   Saved filters: mine, needs my review, assigned, mentioned, labels, milestones, sprints.
-- [ ] **Create and view issues**
+- [x] **Create and view issues**
   Create an issue (type, labels, assignees, epic); an issue detail panel with description and
-  comments; "create issue then branch". Done for GitHub, GitHub Enterprise Server, GitLab and Jira;
-  Bitbucket Cloud and Data Center issues, Azure DevOps work items and Trello cards remain.
+  comments; "create issue then branch". Done for GitHub, GitHub Enterprise Server, GitLab, Jira,
+  Bitbucket Cloud issues, Azure DevOps work items and Trello cards; Bitbucket Data Center has no
+  issue tracker of its own and pairs with Jira.
 - [x] **Trello**
   Trello cards as an issue tracker.
 - [x] **Cross-repo dashboard**
@@ -1666,6 +1667,17 @@ here, under the item they grew from.
 - GitHub issue templates in the Create issue dialog
 - Remember the "Create a branch for it afterwards" choice
 - Open the issue panel from issue references in commit details and branch names
+- Bitbucket Cloud components, versions and milestones when creating an issue
+- Bitbucket Cloud issue attachments and the change history (state changes) in the panel
+- Azure DevOps area path, iteration path, priority, severity and other required custom fields when creating a work item
+- Azure DevOps child links and related work items in the panel; choosing a parent from any work item by search
+- Show Azure DevOps inline images from descriptions and comments (signed-in attachment downloads)
+- Trello due dates, checklists, attachments and cover images in the card panel
+- Trello card comments past the first 1000 actions
+- Choose a Trello card's position in its list (top or bottom) when creating
+- Check a Trello token's write access before Create instead of after a refused create
+- Read a Bitbucket issue's Markdown as rendered HTML instead of the raw text
+- Azure DevOps work item priority and Jira priority in the panel's details
 
 ### Limits found while building integrations
 

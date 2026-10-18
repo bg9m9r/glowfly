@@ -3,6 +3,8 @@
 //! details are loaded by `Effect::Issue`.
 
 use super::ForgeState;
+use super::issue_words::{epic_label, kind_row_label, labels_label, people_label};
+pub use super::issue_words::{milestone_label, state_label};
 use trellis_core::forge::{Issue, IssueDetails, Provider, Target, issues_in_app};
 use trellis_core::repo::{BranchInfo, Snapshot};
 use trellis_core::settings::Settings;
@@ -67,20 +69,32 @@ impl IssueView {
         self.target.provider
     }
 
-    /// Closed or done: the icon turns purple.
+    /// Closed, done or set aside: the icon turns purple.
     pub fn closed(&self) -> bool {
         let s = self.issue.state.to_lowercase();
-        s.starts_with("closed") || matches!(s.as_str(), "done" | "resolved")
+        s.starts_with("closed") || matches!(s.as_str(), "done" | "resolved" | "invalid" | "duplicate" | "wontfix" | "removed" | "archived")
     }
 
-    /// The issue's type, else the noun: "Bug", "Issue".
+    /// The issue's type (Bitbucket's kinds capitalized; Trello: the card's board), else the
+    /// noun: "Bug", "Issue".
     pub fn kind(&self) -> String {
-        if self.issue.kind.trim().is_empty() { capitalized(self.noun) } else { self.issue.kind.clone() }
+        let kind = self.issue.kind.trim();
+        if kind.is_empty() {
+            capitalized(self.noun)
+        } else if self.provider() == Provider::Bitbucket {
+            capitalized(kind)
+        } else {
+            self.issue.kind.clone()
+        }
     }
 
-    /// "Bug · opened by ada · March 3, 2026"; only the type until the details load.
+    /// "Bug · opened by ada · March 3, 2026" ("Card on Website · …" on Trello); only the type
+    /// until the details load.
     pub fn kind_line(&self, settings: &Settings, offset: i32) -> String {
-        let mut line = self.kind();
+        let mut line = match self.provider() {
+            Provider::Trello if !self.issue.kind.trim().is_empty() => format!("Card on {}", self.issue.kind.trim()),
+            _ => self.kind(),
+        };
         if let Some(d) = self.loaded() {
             if !d.author.is_empty() {
                 line.push_str(&format!(" · opened by {}", d.author));
@@ -118,18 +132,9 @@ pub fn listed_or_bare(fs: &ForgeState, key: &str) -> Issue {
     })
 }
 
-/// "Status" on Jira, "State" on code hosts.
-pub fn state_label(p: Provider) -> &'static str {
-    if p.is_jira() { "Status" } else { "State" }
-}
-
-/// "Fix version" on Jira, "Milestone" on code hosts.
-pub fn milestone_label(p: Provider) -> &'static str {
-    if p.is_jira() { "Fix version" } else { "Milestone" }
-}
-
-/// The side panel's Details rows, as (label, text). Labels are listed comma-separated (the view
-/// draws them as chips); rows without a value are left out, apart from the assignees.
+/// The side panel's Details rows, as (label, text), in the tracker's words. Labels are listed
+/// comma-separated (the view draws them as chips); rows without a value are left out, apart
+/// from the assignees.
 pub fn meta_rows(v: &IssueView, settings: &Settings, offset: i32) -> Vec<(&'static str, String)> {
     let p = v.provider();
     let i = &v.issue;
@@ -138,19 +143,19 @@ pub fn meta_rows(v: &IssueView, settings: &Settings, offset: i32) -> Vec<(&'stat
         Some(d) => d.assignees.join(", "),
         None => i.assignee.clone().unwrap_or_default(),
     };
-    let mut rows = vec![
-        (state_label(p), i.state.clone()),
-        ("Type", v.kind()),
-        ("Assignees", if assignees.is_empty() { "Unassigned".to_owned() } else { assignees }),
-    ];
+    let mut rows = vec![(state_label(p), i.state.clone()), (kind_row_label(p), v.kind())];
+    if let Some(priority) = d.and_then(|d| d.priority.as_ref()).filter(|x| !x.is_empty()) {
+        rows.push(("Priority", capitalized(priority)));
+    }
+    rows.push((people_label(p), if assignees.is_empty() { "Unassigned".to_owned() } else { assignees }));
     if !i.facets.labels.is_empty() {
-        rows.push(("Labels", i.facets.labels.join(", ")));
+        rows.push((labels_label(p), i.facets.labels.join(", ")));
     }
     if let Some(m) = i.facets.milestone.as_ref().filter(|m| !m.is_empty()) {
         rows.push((milestone_label(p), m.clone()));
     }
-    if let Some(e) = d.and_then(|d| d.epic.clone()).filter(|_| p.is_jira()) {
-        rows.push(("Epic", e));
+    if let Some(e) = d.and_then(|d| d.epic.clone()).filter(|_| p.is_jira() || p == Provider::AzureDevOps) {
+        rows.push((epic_label(p), e));
     }
     if let Some(d) = d {
         if !d.author.is_empty() {
@@ -213,6 +218,7 @@ mod tests {
             author: "grace".into(),
             created: 1_767_348_000,
             assignees: vec!["ada".into(), "linus".into()],
+            priority: None,
             epic: Some("PROJ-1  Accounts".into()),
             comments: Vec::new(),
         }
@@ -270,6 +276,41 @@ mod tests {
         v.issue.assignee = None;
         v.details = Details::Loading;
         assert_eq!(meta_rows(&v, &settings, 0)[2].1, "Unassigned");
+
+        let tracker =
+            |p: Provider, host: &str| ForgeState::new(None, String::new(), Some(Target { provider: p, host: host.into(), ..github() }));
+        let fs = tracker(Provider::Bitbucket, "bitbucket.org");
+        let mut v = IssueView::new(Issue { kind: "bug".into(), ..issue("3", "Crash") }, &fs).unwrap();
+        v.details = Details::Loaded(Box::new(IssueDetails { priority: Some("major".into()), epic: None, ..details(v.issue.clone()) }));
+        let rows = meta_rows(&v, &settings, 0);
+        assert_eq!(labels(rows.clone()), ["State", "Kind", "Priority", "Assignees", "Labels", "Milestone", "Created by", "Created"]);
+        assert_eq!((rows[1].1.as_str(), rows[2].1.as_str()), ("Bug", "Major"));
+
+        let fs = tracker(Provider::AzureDevOps, "dev.azure.com");
+        let mut v = IssueView::new(Issue { kind: "User Story".into(), ..issue("5", "Login") }, &fs).unwrap();
+        v.issue.facets.milestone = None;
+        v.details = Details::Loaded(Box::new(IssueDetails { epic: Some("1  Accounts".into()), ..details(v.issue.clone()) }));
+        let rows = meta_rows(&v, &settings, 0);
+        assert_eq!(labels(rows.clone()), ["State", "Type", "Assigned to", "Tags", "Parent", "Created by", "Created"]);
+        assert_eq!((v.mention.as_str(), rows[4].1.as_str()), ("AB#5", "1  Accounts"));
+
+        let fs = tracker(Provider::Trello, "trello.com");
+        let mut v = IssueView::new(Issue { state: "Doing".into(), kind: "Website".into(), ..issue("AbCd1234", "Fix") }, &fs).unwrap();
+        v.issue.facets.milestone = None;
+        v.details = Details::Loaded(Box::new(details(v.issue.clone())));
+        let rows = meta_rows(&v, &settings, 0);
+        assert_eq!(labels(rows.clone()), ["List", "Board", "Members", "Labels", "Created by", "Created"], "no epic on Trello");
+        assert_eq!(rows[1].1, "Website");
+        assert_eq!(v.kind_line(&settings, 0), "Card on Website · opened by grace · January 2, 2026");
+    }
+
+    #[test]
+    fn closed_states() {
+        let fs = ForgeState::new(Some(github()), "origin".into(), Some(github()));
+        for (state, closed) in [("open", false), ("closed (not planned)", true), ("wontfix", true), ("Archived", true), ("Doing", false)] {
+            let v = IssueView::new(Issue { state: state.into(), ..issue("1", "x") }, &fs).unwrap();
+            assert_eq!(v.closed(), closed, "{state}");
+        }
     }
 
     #[test]
@@ -286,8 +327,14 @@ mod tests {
     #[test]
     fn details_only_where_the_tracker_has_them() {
         let other = |p: Provider| Target { provider: p, host: "example.com".into(), ..github() };
-        for (p, supported) in [(Provider::GitHub, true), (Provider::GitLab, true), (Provider::Bitbucket, false), (Provider::Trello, false)]
-        {
+        for (p, supported) in [
+            (Provider::GitHub, true),
+            (Provider::GitLab, true),
+            (Provider::Bitbucket, true),
+            (Provider::Trello, true),
+            (Provider::AzureDevOps, true),
+            (Provider::BitbucketDataCenter, false),
+        ] {
             let fs = ForgeState::new(None, String::new(), Some(other(p)));
             assert_eq!(initial_details(&fs) == Details::Loading, supported, "{p:?}");
             assert_eq!(initial_details(&fs) == Details::Unsupported, !supported, "{p:?}");

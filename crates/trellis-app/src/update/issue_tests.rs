@@ -74,6 +74,7 @@ fn details(key: &str) -> IssueDetails {
         author: "grace".into(),
         created: 1_767_348_000,
         assignees: vec!["ada".into()],
+        priority: None,
         epic: None,
         comments: Vec::new(),
     }
@@ -149,7 +150,13 @@ fn opening_a_listed_issue_loads_it_and_closes_the_other_views() {
 fn trackers_without_details_held_and_unconnected() {
     let (mut st, dir) = open_repo("issue-unsupported");
     let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(bb);
+    st.forge.as_mut().unwrap().tracker = Some(bb.clone());
+    let fx = run(&mut st, IssueMsg::Open("12".into()));
+    assert_eq!(jobs(&fx).iter().map(|j| &j.req.target).collect::<Vec<_>>(), [&bb], "Bitbucket Cloud issues load");
+    assert_eq!(view(&st).details, Details::Loading);
+    run(&mut st, IssueMsg::Close);
+    let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
+    st.forge.as_mut().unwrap().tracker = Some(dc);
     assert!(jobs(&run(&mut st, IssueMsg::Open("12".into()))).is_empty());
     assert_eq!(view(&st).details, Details::Unsupported);
     assert!(run(&mut st, IssueMsg::Reload).is_empty());

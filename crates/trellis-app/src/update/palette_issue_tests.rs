@@ -9,7 +9,7 @@ use crate::state::forge_filters::IssueList;
 use crate::state::palette::{Mode, Palette, PaletteCommand, PickKind, shown};
 use crate::state::{AppState, Modal, Status};
 use std::time::Instant;
-use trellis_core::forge::{FilterChoice, Issue, Provider, Target};
+use trellis_core::forge::{Connection, FilterChoice, Issue, Provider, Target};
 
 fn send(st: &mut AppState, cmd: PaletteCommand) -> Vec<Effect> {
     update(st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)), Instant::now())
@@ -31,16 +31,23 @@ fn create_issue_opens_the_dialog_or_says_why_not() {
     st.modal = None;
 
     let trello = Target { provider: Provider::Trello, host: "trello.com".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(trello);
-    assert_eq!(entry(&st, "Create card…"), Some(Some("Creating Trello cards in Trellis isn't supported yet".into())));
-    assert!(entry(&st, "View card…").is_none(), "no View for a tracker without details in Trellis");
+    st.forge.as_mut().unwrap().tracker = Some(trello.clone());
+    assert_eq!(entry(&st, "Create card…"), Some(Some("Connect Trello at trello.com in Preferences first".into())));
     st.palette = Some(Palette::default());
     send(&mut st, PaletteCommand::CreateIssue);
     assert!(st.modal.is_none());
     assert!(st.palette.is_some(), "Enter does nothing while blocked");
+    st.settings.connections.push(Connection { account: trello.account(), user: "Ada".into(), method: "access token".into() });
+    assert_eq!(entry(&st, "Create card…"), Some(None), "Trello cards once connected");
+    st.settings.connections.clear();
 
     st.forge.as_mut().unwrap().tracker = None;
     assert!(entry(&st, "Create issue…").is_none(), "no tracker");
+    let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
+    st.forge.as_mut().unwrap().host = Some(dc);
+    let why = "Bitbucket Data Center has no issue tracker of its own; choose Jira under Repo-Specific Preferences > Issue Tracker";
+    assert_eq!(entry(&st, "Create issue…"), Some(Some(why.into())), "Bitbucket Data Center points to Jira");
+    assert!(entry(&st, "View issue…").is_none());
     done(st, dir);
 }
 

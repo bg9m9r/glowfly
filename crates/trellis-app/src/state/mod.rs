@@ -31,6 +31,7 @@ pub mod history;
 pub mod init;
 pub mod issue;
 pub mod issue_form;
+pub mod issue_words;
 pub mod keys_page;
 pub mod known_folders;
 pub mod layout;

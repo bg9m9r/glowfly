@@ -23,7 +23,8 @@ pub struct IssueRequest {
 pub enum IssueCall {
     /// The details of the issue with this key.
     Load(String),
-    /// The Create issue dialog's labels, people, types and epics for this (Jira) project.
+    /// The Create issue dialog's labels, people, types and epics for this Jira project or Trello
+    /// board (Trello, empty: the boards to choose from).
     Options(String),
     Create(Box<NewIssue>),
 }
@@ -83,6 +84,7 @@ mod tests {
             labels: Vec::new(),
             assignees: Vec::new(),
             kind: None,
+            priority: None,
             epic: None,
         };
         let calls = [IssueCall::Load("1".into()), IssueCall::Options(String::new()), IssueCall::Create(Box::new(new))];

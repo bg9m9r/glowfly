@@ -5,10 +5,13 @@
 
 mod azure;
 mod azure_checks;
+mod azure_issues;
 mod azure_remote;
+mod azure_work_items;
 mod bitbucket;
 mod bitbucket_checks;
 mod bitbucket_dc;
+mod bitbucket_issues;
 pub mod dashboard;
 pub mod filters;
 mod github;
@@ -17,11 +20,13 @@ mod github_issues;
 mod gitlab;
 mod gitlab_checks;
 mod gitlab_issues;
+mod html_text;
 mod issue_details;
 mod jira;
 mod jira_adf;
 mod jira_issues;
 mod trello;
+mod trello_issues;
 
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -32,6 +37,7 @@ mod details;
 mod forks;
 mod http;
 mod links;
+mod model;
 mod page;
 mod provider;
 mod publish;
@@ -54,8 +60,12 @@ pub use filters::{Builtin, Conditions, FilterChoice, FilterKind, FilterOptions, 
 pub use forks::{CreatedFork, Fork, ForkList, ForkLookup, Wait, create_fork, find_my_fork, list_forks, remote_name_for, same_repository};
 pub(crate) use http::read_capped;
 use http::{dec, enc, enc_path, get, get_text, post};
-pub use issue_details::{CreateOptions, IssueDetails, NewIssue, Person, create_issue, issue_create_options, issue_details, issues_in_app};
+pub use issue_details::{
+    CreateOptions, IssueDetails, NewIssue, Person, create_issue, issue_create_options, issue_details, issues_in_app, noun, project_problem,
+    title_word, type_problem, type_required,
+};
 pub use links::https_host;
+pub use model::*;
 pub use provider::{Provider, ProviderInfo};
 pub use publish::{CreatedRepo, NewRepo, create_repo, repo_name_for, repo_owners, valid_repo_name};
 pub use refs::{RefStyle, branch_issue, branch_name_for, issue_refs, jira_project, keep_jira_key, mention};
@@ -132,72 +142,6 @@ impl Target {
     pub fn token_url(account: &Account) -> Option<String> {
         account.provider.info().service.token_url(account)
     }
-}
-
-// -------------------------------------------------------------------- common model
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Reviewer {
-    pub name: String,
-    /// approved, changes requested, waiting, rejected, no vote…
-    pub state: String,
-    pub required: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct PullRequest {
-    pub id: u64,
-    pub title: String,
-    pub description: String,
-    pub source: String,
-    pub target: String,
-    pub author: String,
-    pub draft: bool,
-    pub reviewers: Vec<Reviewer>,
-    /// Head commit SHA (Bitbucket Cloud reports only a 12-character prefix).
-    pub head: Option<String>,
-    pub merge_status: Option<String>,
-    /// CI status of the head commit; None when the service reported none. On services asked once
-    /// per pull request, the list carries it for the first `CHECKED_PRS` and `pr_details` fills
-    /// in the rest.
-    pub checks: Option<Checks>,
-    /// Web page; empty when the service sent no usable link.
-    pub url: String,
-    /// What filters match on.
-    pub facets: PrFacets,
-}
-
-impl PullRequest {
-    pub fn approvals(&self) -> usize {
-        self.reviewers.iter().filter(|r| r.state.starts_with("approved")).count()
-    }
-
-    pub fn head_matches(&self, sha: &str) -> bool {
-        self.head.as_deref().is_some_and(|h| h.len() >= 7 && sha.starts_with(h))
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Issue {
-    /// Display key: `123` for numbered trackers, `PROJ-123` for Jira.
-    pub key: String,
-    pub title: String,
-    pub state: String,
-    pub kind: String,
-    pub assignee: Option<String>,
-    pub url: String,
-    pub facets: IssueFacets,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct NewPullRequest {
-    pub source: String,
-    pub target: String,
-    pub title: String,
-    pub description: String,
-    pub draft: bool,
-    /// Issue keys to link.
-    pub issues: Vec<String>,
 }
 
 // -------------------------------------------------------------------- service trait

@@ -211,6 +211,9 @@ pub fn tracker_page(
         if ui.radio(current == TrackerChoice::None, "None").clicked() {
             msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::None)));
         }
+        if host.is_some_and(|h| h.provider == Provider::BitbucketDataCenter) {
+            help(ui, "Bitbucket Data Center keeps no issues of its own. Connect Jira under Integrations and choose it here.");
+        }
         if trackers.is_empty() {
             help(ui, "Connect Jira Cloud, Jira Data Center or Trello under Integrations to use it here.");
         }

@@ -1,5 +1,7 @@
 //! The Create issue dialog: GitHub with labels and an assignee chosen, Jira with its project,
-//! type and epic and a missing summary, and creating then failing with the server's words.
+//! type and epic and a missing summary, an Azure Boards work item with its type, tags and
+//! parent, Trello's board and write-token note, Bitbucket's kind and priority, and creating
+//! then failing with the server's words.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::msg::{IssueMsg, Msg};
@@ -81,6 +83,7 @@ fn create_issue_jira_dark() {
         epics: vec![named("PROJ-1", "Accounts and sign-in"), named("PROJ-2", "Search")],
         labels_free: true,
         max_assignees: 1,
+        ..Default::default()
     });
     form.epic = Some("PROJ-1".into());
     let (st, dir) = with_form(ThemeChoice::Dark, "issue-create-jira", form, |fs| {
@@ -132,6 +135,98 @@ fn loading_choices_and_a_failed_load() {
     h.get_by_label("Try again").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::SetProject(p)) if p.is_empty())));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn create_issue_azure_dark() {
+    let azure = Target {
+        provider: Provider::AzureDevOps,
+        host: "dev.azure.com".into(),
+        owner: "contoso".into(),
+        project: "Fabrikam".into(),
+        repo: "web".into(),
+    };
+    let mut form = IssueForm::new(azure);
+    form.options_loaded(CreateOptions {
+        labels: vec!["ux".into(), "backend".into()],
+        people: vec![person("ada@contoso.com", "Ada Lovelace"), person("grace@contoso.com", "Grace Hopper")],
+        types: ["Bug", "Epic", "Feature", "Task", "User Story"].map(|t| named(t, t)).to_vec(),
+        default_type: Some("User Story".into()),
+        epics: vec![named("1", "Epic · Accounts"), named("2", "Feature · Search")],
+        labels_free: true,
+        max_assignees: 1,
+        ..Default::default()
+    });
+    form.labels = vec!["ux".into(), "sign-in".into()];
+    form.people = vec!["ada@contoso.com".into()];
+    form.epic = Some("1".into());
+    let (st, dir) = with_form(ThemeChoice::Dark, "issue-create-azure", form, |_| {});
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("create_issue_azure_dark");
+    assert_eq!(h.query_all_by_label("Create work item").count(), 2, "the heading and the button");
+    assert!(h.get_by_role_and_label(Role::Button, "Create work item").is_disabled(), "no title yet");
+    for label in ["Type", "Tags", "Assigned to", "Parent"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    if let Some(Modal::CreateIssue(f)) = h.state_mut().0.modal.as_mut() {
+        f.title = "Sign in with a work account".into();
+    }
+    h.run();
+    assert!(!h.get_by_role_and_label(Role::Button, "Create work item").is_disabled());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn trello_asks_for_a_board_and_a_write_token() {
+    let account = Account { provider: Provider::Trello, host: "trello.com".into(), org: String::new() };
+    let mut form = IssueForm::new(Target::trello(&account, "", ""));
+    let url = "https://trello.com/1/authorize?expiration=never&scope=read,write&response_type=token&name=Trellis&key=k";
+    form.options_loaded(CreateOptions {
+        boards: vec![named("5f1a2b3c4d5e6f7a8b9c0d1e", "Website")],
+        write_token_url: Some(url.into()),
+        ..Default::default()
+    });
+    form.title = "Fix login".into();
+    let (st, dir) = with_form(ThemeChoice::Dark, "issue-create-trello", form, |_| {});
+    let mut h = harness(st, true);
+    h.run();
+    for label in ["Board", "Name", "Members", "Creating cards needs a Trello token allowed to read and write."] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_by_label("Labels").is_none(), "no labels before a board");
+    assert!(h.get_by_role_and_label(Role::Button, "Create card").is_disabled());
+    assert!(h.query_by_label("Choose a board.").is_some());
+    h.get_by_label("Allow a write token").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u.contains("scope=read,write"))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn bitbucket_has_kind_and_priority_but_no_labels() {
+    let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
+    let mut form = IssueForm::new(bb);
+    form.options_loaded(CreateOptions {
+        people: vec![person("{a}", "Ada")],
+        types: vec![named("bug", "Bug"), named("task", "Task")],
+        priorities: vec![named("minor", "Minor"), named("major", "Major")],
+        default_type: Some("bug".into()),
+        default_priority: Some("major".into()),
+        max_assignees: 1,
+        ..Default::default()
+    });
+    let (st, dir) = with_form(ThemeChoice::Light, "issue-create-bitbucket", form, |_| {});
+    let mut h = harness(st, true);
+    h.run();
+    for label in ["Kind", "Priority", "Assignees"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_by_label("Labels").is_none());
     drop(h);
     remove_fixture(&dir);
 }

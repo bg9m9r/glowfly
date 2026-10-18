@@ -1,9 +1,11 @@
 //! Trello, as an issue tracker: the open cards assigned to the signed-in member, optionally on
-//! one board, and lookups of cards linked from commits and branch names.
+//! one board, and lookups of cards linked from commits and branch names. Cards in the panel
+//! and the Create dialog are in `trello_issues`.
 
+use super::issue_details::{CreateOptions, IssueDetails, NewIssue};
 use super::page;
 use super::provider::{DEFAULTS, ProviderInfo};
-use super::{Account, Auth, Issue, NewPullRequest, PullRequest, RefStyle, Target, enc, get};
+use super::{Account, Auth, Issue, NewPullRequest, PullRequest, RefStyle, Target, enc, get, trello_issues};
 use crate::error::{Error, Result};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -13,16 +15,18 @@ pub(super) static TRELLO: ProviderInfo = ProviderInfo {
     fixed_host: Some("trello.com"),
     username_label: Some("API Key"),
     host_hint: "",
-    token_help: "Your Trello API key and a token allowed for it (read access is enough).",
+    token_help: "Your Trello API key and a token allowed for it: read access lists cards; creating cards needs a token allowed to \
+                 read and write.",
     ref_style: RefStyle::Trello,
     tracker_only: true,
+    issues_in_app: true,
     service: &Trello,
     ..DEFAULTS
 };
 
-const API: &str = "https://api.trello.com/1";
+pub(super) const API: &str = "https://api.trello.com/1";
 const WEB: &str = "https://trello.com";
-const ME: &str = "members/me?fields=fullName,username";
+pub(super) const ME: &str = "members/me?fields=fullName,username";
 
 /// A card's short id, as in `trello.com/c/<shortLink>`: exactly 8 ASCII letters or digits.
 pub(super) fn is_short_link(s: &str) -> bool {
@@ -30,7 +34,7 @@ pub(super) fn is_short_link(s: &str) -> bool {
 }
 
 /// A board id: 24 hex digits.
-fn is_board_id(s: &str) -> bool {
+pub(super) fn is_board_id(s: &str) -> bool {
     s.len() == 24 && s.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
@@ -38,12 +42,14 @@ pub(super) fn card_url(key: &str) -> String {
     format!("{WEB}/c/{}", enc(key))
 }
 
-/// The page where Trello shows a new read-only token for `key`, for the user to paste; None
-/// until the key looks like one (32 ASCII letters or digits).
-pub fn authorize_url(key: &str) -> Option<String> {
+/// The page where Trello shows a new token for `key`, for the user to paste: read-only, or
+/// (`write`) one that can also create cards. None until the key looks like one (32 ASCII
+/// letters or digits).
+pub fn authorize_url(key: &str, write: bool) -> Option<String> {
     let key = key.trim();
+    let scope = if write { "read,write" } else { "read" };
     (key.len() == 32 && key.bytes().all(|b| b.is_ascii_alphanumeric()))
-        .then(|| format!("{WEB}/1/authorize?expiration=never&scope=read&response_type=token&name=Trellis&key={key}"))
+        .then(|| format!("{WEB}/1/authorize?expiration=never&scope={scope}&response_type=token&name=Trellis&key={key}"))
 }
 
 impl Target {
@@ -68,35 +74,36 @@ pub struct TrelloBoard {
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
-struct Member {
+pub(super) struct Member {
+    pub(super) id: String,
     full_name: String,
     username: String,
 }
 
 impl Member {
-    fn display(&self) -> String {
+    pub(super) fn display(&self) -> String {
         if self.full_name.trim().is_empty() { self.username.clone() } else { self.full_name.clone() }
     }
 }
 
 #[derive(Deserialize, Default)]
 #[serde(default)]
-struct Named {
-    name: String,
+pub(super) struct Named {
+    pub(super) name: String,
 }
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
-struct ApiCard {
-    name: String,
-    short_link: String,
+pub(super) struct ApiCard {
+    pub(super) name: String,
+    pub(super) short_link: String,
     id_board: String,
     id_list: String,
     closed: bool,
     date_last_activity: String,
     list: Option<Named>,
-    board: Option<Named>,
-    members: Vec<Member>,
+    pub(super) board: Option<Named>,
+    pub(super) members: Vec<Member>,
 }
 
 #[derive(Deserialize, Default)]
@@ -109,13 +116,13 @@ struct ApiBoard {
 
 #[derive(Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
-struct ApiList {
-    id: String,
-    name: String,
+pub(super) struct ApiList {
+    pub(super) id: String,
+    pub(super) name: String,
     closed: bool,
 }
 
-fn call<T: DeserializeOwned>(auth: &Auth, url: &str) -> Result<T> {
+pub(super) fn call<T: DeserializeOwned>(auth: &Auth, url: &str) -> Result<T> {
     get(auth, url).map_err(trello_error)
 }
 
@@ -137,7 +144,7 @@ pub(super) fn trello_error(e: Error) -> Error {
 /// A card lookup that failed for that card alone: an unknown or malformed id, or a card on a
 /// board the member can't see (Trello answers 401 "unauthorized card permission requested",
 /// unlike a bad key or token).
-fn unreadable_card(e: &Error) -> bool {
+pub(super) fn unreadable_card(e: &Error) -> bool {
     match e {
         Error::Auth(m) => m.to_ascii_lowercase().contains("permission"),
         Error::Forbidden(_) | Error::Http { status: 400, .. } => true,
@@ -146,7 +153,7 @@ fn unreadable_card(e: &Error) -> bool {
 }
 
 /// A card looked up by its short id; `key` is the spelling asked for, so caches match.
-fn looked_up(key: &str, c: ApiCard) -> Issue {
+pub(super) fn looked_up(key: &str, c: ApiCard) -> Issue {
     let names: Vec<String> = c.members.iter().map(Member::display).filter(|n| !n.is_empty()).collect();
     Issue {
         key: key.to_owned(),
@@ -161,6 +168,11 @@ fn looked_up(key: &str, c: ApiCard) -> Issue {
 
 /// The open boards of `account`, sorted by name, for the Board picker.
 pub fn trello_boards(_account: &Account, auth: &Auth) -> Result<Vec<TrelloBoard>> {
+    open_boards(auth)
+}
+
+/// The member's open boards, sorted by name.
+pub(super) fn open_boards(auth: &Auth) -> Result<Vec<TrelloBoard>> {
     let boards: Vec<ApiBoard> = call(auth, &format!("{API}/members/me/boards?filter=open&fields=name"))?;
     let mut out: Vec<TrelloBoard> =
         boards.into_iter().filter(|b| is_board_id(&b.id)).map(|b| TrelloBoard { id: b.id, name: b.name }).collect();
@@ -246,6 +258,18 @@ impl super::Forge for Trello {
         }
         Ok(out)
     }
+
+    fn issue_details(&self, t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
+        trello_issues::details(t, auth, key)
+    }
+
+    fn issue_create_options(&self, t: &Target, auth: &Auth, project: &str) -> Result<CreateOptions> {
+        trello_issues::options(t, auth, project)
+    }
+
+    fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
+        trello_issues::create(t, auth, new)
+    }
 }
 
 #[cfg(test)]
@@ -275,13 +299,16 @@ mod tests {
     #[test]
     fn authorize_url_needs_a_whole_key() {
         let key = "0123456789abcdef0123456789abcdef";
-        let url = authorize_url(&format!(" {key} ")).unwrap();
-        for part in ["scope=read", "expiration=never", "response_type=token", key] {
+        let url = authorize_url(&format!(" {key} "), false).unwrap();
+        for part in ["scope=read&", "expiration=never", "response_type=token", key] {
             assert!(url.contains(part), "{url}");
         }
         assert!(url.starts_with("https://trello.com/1/authorize?"));
+        let write = authorize_url(key, true).unwrap();
+        assert!(write.contains("scope=read,write&") && write.contains(key), "{write}");
         for bad in [&key[1..], "0123456789abcdef 123456789abcdef", "0123456789abcdef\"123456789abcdef"] {
-            assert_eq!(authorize_url(bad), None, "{bad}");
+            assert_eq!(authorize_url(bad, false), None, "{bad}");
+            assert_eq!(authorize_url(bad, true), None, "{bad}");
         }
     }
 

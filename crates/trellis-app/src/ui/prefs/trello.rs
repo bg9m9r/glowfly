@@ -19,15 +19,18 @@ pub(super) fn key_link(ui: &mut Ui, msgs: &mut Vec<Msg>) {
     }
 }
 
-/// "Allow a token": Trello's page that shows a read-only token for the key typed in.
+/// Trello's pages that show a new token for the key typed in: a read-only one, which lists
+/// cards, and one that can also create cards.
 pub(super) fn token_link(ui: &mut Ui, key: &str, msgs: &mut Vec<Msg>) {
-    let url = forge::trello_authorize_url(key);
-    let r = ui.add_enabled(url.is_some(), egui::Link::new("Allow a token"));
-    let r = r.on_disabled_hover_text("Enter your API key first");
-    if r.clicked()
-        && let Some(url) = url
-    {
-        msgs.push(Msg::OpenUrl(url));
+    for (text, write) in [("Allow a read-only token", false), ("Allow a token that can create cards", true)] {
+        let url = forge::trello_authorize_url(key, write);
+        let r = ui.add_enabled(url.is_some(), egui::Link::new(text));
+        let r = r.on_disabled_hover_text("Enter your API key first");
+        if r.clicked()
+            && let Some(url) = url
+        {
+            msgs.push(Msg::OpenUrl(url));
+        }
     }
 }
 

@@ -1,12 +1,13 @@
 //! The issue panel: a loaded GitHub issue with a linked branch, a Jira issue with its status,
-//! epic and rich text, a failed load, the ISSUES header's + with the open issue's row, and Esc
-//! closing the panel. Shares the fixture repository and renderer with `snapshot_tests`.
+//! epic and rich text, an Azure Boards work item with its tags and parent, a failed load, the
+//! ISSUES header's + with the open issue's row, and Esc closing the panel. Shares the fixture
+//! repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
 use crate::msg::{IssueMsg, Msg};
 use crate::state::issue::{Details, IssueView};
-use crate::state::{AppState, ForgeState, Status};
+use crate::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
@@ -74,6 +75,7 @@ fn crash_details() -> IssueDetails {
         author: "grace".into(),
         created: 1_769_256_000,
         assignees: vec!["ada".into(), "linus".into()],
+        priority: None,
         epic: None,
         comments: vec![
             comment("ada", 1_769_342_400, "I can reproduce this on Windows."),
@@ -136,6 +138,7 @@ fn issue_panel_jira_dark() {
             author: "Grace Hopper".into(),
             created: 1_769_256_000,
             assignees: vec!["Ada Lovelace".into()],
+            priority: None,
             epic: Some("PROJ-1  Accounts and sign-in".into()),
             comments: Vec::new(),
         },
@@ -197,8 +200,8 @@ fn sidebar_issues_with_add() {
 fn create_is_disabled_with_the_reason() {
     let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-sidebar-blocked", github(), crash(), None);
     st.issue = None;
-    let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(bb);
+    let ghe = Target { provider: Provider::GitHubEnterprise, host: "git.acme.io".into(), ..github() };
+    st.forge.as_mut().unwrap().tracker = Some(ghe);
     let mut h = harness(st, false);
     h.run();
     assert!(h.get_by_label("Create issue").is_disabled());
@@ -214,6 +217,68 @@ fn esc_closes_the_issue_panel() {
     h.run();
     let msgs = super::snapshot_tests_esc::esc(&mut h);
     assert!(msgs.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Close))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn issue_panel_azure_light() {
+    let azure = Target {
+        provider: Provider::AzureDevOps,
+        host: "dev.azure.com".into(),
+        owner: "contoso".into(),
+        project: "Fabrikam".into(),
+        repo: "web".into(),
+    };
+    let issue = Issue {
+        key: "5".into(),
+        title: "Sign in with a work account".into(),
+        state: "Active".into(),
+        kind: "User Story".into(),
+        assignee: Some("Ada Lovelace".into()),
+        url: "https://dev.azure.com/contoso/Fabrikam/_workitems/edit/5".into(),
+        facets: IssueFacets { labels: vec!["ux".into(), "needs design".into()], milestone: None },
+    };
+    let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-azure", azure, issue.clone(), None);
+    set_details(
+        &mut st,
+        IssueDetails {
+            issue,
+            body: "People sign in with their work account.\n\nAcceptance:\n- Email and password\n- Single sign-on (https://contoso.example/sso)".into(),
+            author: "Grace Hopper".into(),
+            created: 1_769_256_000,
+            assignees: vec!["Ada Lovelace".into()],
+            priority: None,
+            epic: Some("1  Accounts".into()),
+            comments: vec![
+                comment("Ada Lovelace", 1_769_342_400, "The login page mock-up is attached to the parent."),
+                comment("Grace Hopper", 1_769_860_800, "SSO goes through the tenant's own page."),
+            ],
+        },
+    );
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("issue_panel_azure_light");
+    for label in ["Tags", "Assigned to", "Parent"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_by_label_contains("Accounts").is_some());
+    assert!(h.query_all_by_label_contains("AB#5").count() >= 2, "the panel and its row");
+    assert!(h.query_by_label("Copy AB#5").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn bitbucket_data_center_points_to_jira_in_preferences() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "issue-bbdc-prefs");
+    let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
+    st.forge = Some(ForgeState::new(Some(dc), "origin".into(), None));
+    st.prefs = Some(PrefsState::new(PrefPage::RepoTracker));
+    let mut h = harness(st, false);
+    h.run();
+    let help = "Bitbucket Data Center keeps no issues of its own. Connect Jira under Integrations and choose it here.";
+    assert!(h.query_by_label(help).is_some());
     drop(h);
     remove_fixture(&dir);
 }

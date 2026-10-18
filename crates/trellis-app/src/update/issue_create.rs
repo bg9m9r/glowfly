@@ -8,6 +8,7 @@
 use crate::effect::{Effect, ForgeError, IssueCall, IssueEffect, IssueJob, IssueRequest};
 use crate::msg::{IssueMsg, Msg};
 use crate::state::issue_form::{IssueForm, OptionsState, create_blocked};
+use crate::state::issue_words::noun;
 use crate::state::{AppState, Modal, ToastAction};
 use std::path::Path;
 use std::time::Instant;
@@ -39,7 +40,8 @@ fn request(st: &AppState, form: &IssueForm) -> Result<IssueRequest, String> {
     Ok(req)
 }
 
-/// Asks for the choices of the dialog's project; on Jira only once a project is chosen.
+/// Asks for the choices of the dialog's project; on Jira only once a project is chosen. On
+/// Trello without a board, the boards are asked for.
 fn ask_options(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(Modal::CreateIssue(form)) = &st.modal else { return };
     let req = request(st, form);
@@ -111,7 +113,7 @@ pub(super) fn options_replied(
     }
 }
 
-/// "#12" or "PROJ-12" on `target`.
+/// "#12", "PROJ-12", "AB#12" or "AbCd1234" on `target`.
 fn label_of(target: &Target, key: &str) -> String {
     forge::mention(target.provider.ref_style(), key)
 }
@@ -124,13 +126,14 @@ pub(super) fn created(
     now: Instant,
     fx: &mut Vec<Effect>,
 ) {
+    let noun = noun(target.provider);
     if st.workdir().as_deref() != Some(workdir) {
         let text = match &result {
             Ok(i) => {
                 let folder = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-                format!("Created issue {} in {folder}", label_of(target, &i.key))
+                format!("Created {noun} {} in {folder}", label_of(target, &i.key))
             }
-            Err(e) => format!("Creating the issue failed: {}", e.message),
+            Err(e) => format!("Creating the {noun} failed: {}", e.message),
         };
         st.log_quiet(result.is_ok(), text);
         return;
@@ -141,7 +144,7 @@ pub(super) fn created(
             let text = if target.provider.is_jira() {
                 format!("Created {}: {}", issue.key, issue.title)
             } else {
-                format!("Created issue #{}: {}", issue.key, issue.title)
+                format!("Created {noun} {}: {}", label_of(target, &issue.key), issue.title)
             };
             st.log(true, text.clone());
             let open = Msg::Issue(IssueMsg::Open(issue.key.clone()));
@@ -159,7 +162,7 @@ pub(super) fn created(
             }
         }
         Err(e) => {
-            st.log(false, format!("Creating the issue failed: {}", e.message));
+            st.log(false, format!("Creating the {noun} failed: {}", e.message));
             if e.auth
                 && let Some(fs) = st.forge.as_mut()
             {
@@ -170,7 +173,7 @@ pub(super) fn created(
                     form.busy = false;
                     form.error = Some(e.message);
                 }
-                None => st.toast(false, format!("Couldn't create the issue: {}", e.message), now),
+                None => st.toast(false, format!("Couldn't create the {noun}: {}", e.message), now),
             }
         }
     }

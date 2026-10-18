@@ -101,9 +101,11 @@ fn the_dialog_opens_and_asks_for_its_choices() {
     assert_eq!(form(&st).options, OptionsState::NotAsked);
     st.modal = None;
 
-    // A tracker without creating in Trellis opens nothing.
-    let bb = Target { provider: Provider::Bitbucket, host: "bitbucket.org".into(), ..github() };
-    st.forge.as_mut().unwrap().tracker = Some(bb);
+    // Bitbucket Data Center has no tracker of its own: nothing opens.
+    let dc = Target { provider: Provider::BitbucketDataCenter, host: "bitbucket.acme.io".into(), ..github() };
+    let fs = st.forge.as_mut().unwrap();
+    fs.host = Some(dc);
+    fs.tracker = None;
     assert!(run(&mut st, IssueMsg::CreateDialog).is_empty());
     assert!(st.modal.is_none());
     done(st, dir);

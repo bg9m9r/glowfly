@@ -18,6 +18,7 @@ fn new_issue() -> NewIssue {
         labels: vec!["ui".into()],
         assignees: vec!["acc-1".into()],
         kind: Some("10001".into()),
+        priority: None,
         epic: Some("PROJ-1".into()),
     }
 }

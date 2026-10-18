@@ -2,11 +2,12 @@
 
 use super::checks::per_pr;
 use super::details::{PrDetails, checks_of};
+use super::issue_details::{CreateOptions, IssueDetails, NewIssue};
 use super::page::{self, Page};
 use super::provider::{DEFAULTS, ProviderInfo};
 use super::{
     Account, Auth, Checks, Conditions, FilterKind, FilterOptions, Issue, IssueFacets, Me, NewPullRequest, PrFacets, PullRequest, Reviewer,
-    Target, TipQuery, bitbucket_checks, enc, get, post,
+    Target, TipQuery, bitbucket_checks, bitbucket_issues, enc, get, post,
 };
 use crate::error::Result;
 use serde::Deserialize;
@@ -18,11 +19,12 @@ pub(super) static BITBUCKET: ProviderInfo = ProviderInfo {
     name: "Bitbucket",
     fixed_host: Some("bitbucket.org"),
     username_label: Some("Username"),
-    token_help: "Your Bitbucket username and an app password with Repositories, Pull requests and Issues permissions.",
+    token_help: "Your Bitbucket username and an app password with Repositories, Pull requests and Issues (Read and Write to create                  issues) permissions, and Workspace membership (Read) for assignees.",
     close_keyword: Some("Resolves"),
     lists_forks: true,
     adds_ssh_keys: true,
     details_per_pr: true,
+    issues_in_app: true,
     service: &Bitbucket,
     ..DEFAULTS
 };
@@ -90,8 +92,8 @@ pub(super) struct Href {
 }
 
 #[derive(Deserialize)]
-struct Links {
-    html: Href,
+pub(super) struct Links {
+    pub(super) html: Href,
 }
 
 #[derive(Deserialize)]
@@ -275,6 +277,18 @@ impl super::Forge for Bitbucket {
 
     fn filter_options(&self, t: &Target, auth: &Auth, kind: FilterKind) -> Result<FilterOptions> {
         super::filters::bitbucket::options(t, auth, kind)
+    }
+
+    fn issue_details(&self, t: &Target, auth: &Auth, key: &str) -> Result<IssueDetails> {
+        bitbucket_issues::details(t, auth, key)
+    }
+
+    fn issue_create_options(&self, t: &Target, auth: &Auth, _project: &str) -> Result<CreateOptions> {
+        bitbucket_issues::options(t, auth)
+    }
+
+    fn create_issue(&self, t: &Target, auth: &Auth, new: &NewIssue) -> Result<Issue> {
+        bitbucket_issues::create(t, auth, new)
     }
 }
 

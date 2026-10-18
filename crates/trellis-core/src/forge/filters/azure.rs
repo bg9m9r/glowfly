@@ -60,6 +60,11 @@ pub(crate) fn options(t: &Target, auth: &Auth, kind: FilterKind) -> Result<Filte
     if kind == FilterKind::Prs {
         return Ok(FilterOptions::default());
     }
+    Ok(FilterOptions { labels: tag_names(t, auth)?, ..FilterOptions::default() })
+}
+
+/// The project's work item tags.
+pub(crate) fn tag_names(t: &Target, auth: &Auth) -> Result<Vec<String>> {
     let tags: List<Name> = get(auth, &format!("{}/_apis/wit/tags?api-version=7.1-preview.1", project_base(t)))?;
-    Ok(FilterOptions { labels: tags.value.into_iter().map(|n| n.name).collect(), ..FilterOptions::default() })
+    Ok(tags.value.into_iter().map(|n| n.name).collect())
 }
