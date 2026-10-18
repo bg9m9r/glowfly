@@ -112,3 +112,17 @@ fn sheet_shows_rebound_keys() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[test]
+fn shortcut_sheet_history() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-history");
+    st.modal = Some(Modal::Shortcuts { filter: "editing history".into() });
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("shortcut_sheet_history");
+    for label in ["Editing history", "Reword the selected commit", "Continue the rebase"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    drop(h);
+    remove_fixture(&dir);
+}

@@ -74,6 +74,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()))
         .show(ctx, |ui| {
+            // `AppState::graph_shown` follows this order: keep the two in step.
             if st.dashboard.open {
                 dashboard::show(ui, st, msgs);
             } else if st.snap.is_none() {

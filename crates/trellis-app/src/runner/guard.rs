@@ -31,6 +31,8 @@ enum Kind {
     /// A job that holds `st.job`: it must finish, failed, with this undo outcome.
     Job(Option<UndoResult>),
     Rebase,
+    /// Editing a running rebase's remaining steps: the panel waits for it.
+    EditTodo,
     LocalOp,
     /// A repository load or status read: the UI waits for it before starting another.
     Load(u64, LoadKind),
@@ -98,6 +100,7 @@ impl Recovery {
             | Effect::Tool(ToolEffect::RunMerge(_)) => Kind::Job(None),
             Effect::Clone(CloneEffect::ListRepos { account, .. }) => Kind::Repos(account.clone()),
             Effect::Rebase(RebaseEffect::Start { .. } | RebaseEffect::Resume { .. }) => Kind::Rebase,
+            Effect::Rebase(RebaseEffect::EditTodo { .. }) => Kind::EditTodo,
             Effect::LocalOp { .. } => Kind::LocalOp,
             Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
             Effect::LoadStatus { generation, .. } => Kind::Status(*generation),
@@ -117,7 +120,8 @@ impl Recovery {
         let text = format!("Trellis hit an internal error ({}): {panic}", self.name);
         let msg = match self.kind {
             Kind::Job(undo) => Msg::Job(JobMsg::JobDone { ok: false, output: text, undo }),
-            Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text) }),
+            Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text), undo: None }),
+            Kind::EditTodo => Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(text) }),
             Kind::LocalOp => Msg::Stage(StageMsg::LocalOpDone(Err(text))),
             Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(text) }),
             Kind::Status(generation) => {

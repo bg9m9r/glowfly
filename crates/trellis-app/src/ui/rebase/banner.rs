@@ -1,32 +1,52 @@
 //! The top of the rebase banner on the WIP row: "<name> in progress · step N of M", the
-//! stopped commit (short SHA, summary, and why it stopped), and the autostash note. The
-//! conflicted-files row and the buttons below it are drawn by `details::wip_panel`.
+//! stopped commit (its short SHA a link to it in the graph, the summary, and why it stopped), a
+//! failed command, and the autostash note; plus the "Edit remaining steps…" button. The
+//! conflicted-files row and the other buttons are drawn by `details::wip_panel`.
 
-use crate::state::rebase_banner::{STASH_NOTE, lines};
+use crate::msg::{Msg, RebaseMsg, RepoMsg};
+use crate::state::rebase_banner::{EDIT_STEPS, SELECT_COMMIT, STASH_NOTE, lines};
 use crate::ui::theme::color;
-use eframe::egui::{self, FontId, RichText, TextFormat, text::LayoutJob};
+use eframe::egui::{self, RichText};
+use git2::RepositoryState;
 use trellis_core::rebase::RebaseProgress;
 
-pub fn progress(ui: &mut egui::Ui, p: &RebaseProgress, name: &str, conflicts_left: bool) {
+pub fn progress(ui: &mut egui::Ui, p: &RebaseProgress, name: &str, conflicts_left: bool, msgs: &mut Vec<Msg>) {
     let text = lines(p, name, conflicts_left);
     ui.label(RichText::new(text.title).strong());
     if let Some(stop) = &text.stop {
-        let body = egui::TextStyle::Body.resolve(ui.style());
-        let mono = FontId::monospace(body.size);
-        let plain = |job: &mut LayoutJob, s: &str| {
-            job.append(s, 0.0, TextFormat { font_id: body.clone(), color: color::text(), ..Default::default() })
-        };
-        let mut job = LayoutJob::default();
-        plain(&mut job, stop.before);
-        job.append(&stop.sha, 4.0, TextFormat { font_id: mono, color: color::weak(), ..Default::default() });
-        if !stop.summary.is_empty() {
-            plain(&mut job, " ");
-            plain(&mut job, &stop.summary);
-        }
-        plain(&mut job, stop.after);
-        ui.add(egui::Label::new(job).wrap());
+        // Word by word, so the line wraps between words like plain text.
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(0.0, 2.0);
+            words(ui, &format!("{} ", stop.before));
+            let link = egui::Link::new(RichText::new(&stop.sha).monospace().color(color::weak()));
+            if ui.add(link).on_hover_text(SELECT_COMMIT).clicked() {
+                msgs.push(Msg::Repo(RepoMsg::JumpTo(stop.oid)));
+            }
+            if !stop.summary.is_empty() {
+                words(ui, &format!(" {}", stop.summary));
+            }
+            // `after` brings its own leading space or punctuation.
+            words(ui, stop.after);
+        });
+    }
+    if let Some(command) = &text.command {
+        ui.add(egui::Label::new(RichText::new(command).monospace()).wrap());
     }
     if text.stash_note {
         ui.label(RichText::new(STASH_NOTE).color(color::weak()));
+    }
+}
+
+/// `text` as one label per word (each with the spaces after it).
+fn words(ui: &mut egui::Ui, text: &str) {
+    for word in text.split_inclusive(' ') {
+        ui.add(egui::Label::new(word).wrap_mode(egui::TextWrapMode::Extend));
+    }
+}
+
+/// "Edit remaining steps…", only while an interactive rebase is in progress.
+pub fn edit_steps_button(ui: &mut egui::Ui, state: RepositoryState, msgs: &mut Vec<Msg>) {
+    if state == RepositoryState::RebaseInteractive && ui.button(EDIT_STEPS).clicked() {
+        msgs.push(Msg::Rebase(RebaseMsg::OpenRemaining));
     }
 }

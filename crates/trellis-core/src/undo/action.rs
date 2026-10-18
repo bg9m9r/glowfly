@@ -29,8 +29,8 @@ pub struct Changes(pub Vec<(String, Option<Oid>)>);
 /// the discard left (`None`: absent). `Restore` is one file written from commit `oid`, with
 /// `before` the working copy it replaced and `after` what the restore wrote. A hard reset's
 /// `stash` holds the changes it stashed. A checkout that made a new branch (`-b`, `--track`)
-/// remembers it in `created`. `Moved` is a merge, pull, cherry-pick, revert or rebase that took
-/// HEAD from `from` to `to`. `StashApply` is a pop or apply onto a clean tree that left `left`.
+/// remembers it in `created`. `Moved` is a merge, pull, cherry-pick, revert or rebase (also an
+/// interactive one, or a history edit) that took HEAD from `from` to `to`. `StashApply` is a pop or apply onto a clean tree that left `left`.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     Checkout {
@@ -121,6 +121,8 @@ fn moved(op: MoveOp, detail: Option<&str>) -> String {
         (MoveOp::Pull, _) | (_, None) => op.noun().to_owned(),
         (MoveOp::Merge, Some(d)) => format!("merge of {}", ref_label(d)),
         (MoveOp::Rebase, Some(d)) => format!("rebase onto {}", ref_label(d)),
+        // The detail is the whole phrase ("interactive rebase of main", "reword of 1a2b3c4").
+        (MoveOp::Rewrite, Some(d)) => d.to_owned(),
         (MoveOp::CherryPick | MoveOp::Revert, Some(d)) => format!("{} of {d}", op.noun()),
     }
 }

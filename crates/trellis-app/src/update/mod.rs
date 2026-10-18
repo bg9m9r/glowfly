@@ -52,6 +52,7 @@ mod pull_request;
 mod push_pr;
 mod rebase;
 mod rebase_quick;
+mod rebase_remaining;
 mod rebase_resume;
 mod recent;
 mod refresh;
@@ -223,6 +224,8 @@ mod palette_pick_tests;
 #[cfg(test)]
 mod palette_profile_tests;
 #[cfg(test)]
+mod palette_rebase_tests;
+#[cfg(test)]
 mod palette_recent_tests;
 #[cfg(test)]
 mod palette_repos_tests;
@@ -265,11 +268,17 @@ mod rebase_e2e_tests;
 #[cfg(test)]
 mod rebase_quick_tests;
 #[cfg(test)]
+mod rebase_remaining_tests;
+#[cfg(test)]
 mod rebase_resume_tests;
 #[cfg(test)]
 mod rebase_stash_tests;
 #[cfg(test)]
+mod rebase_steps_tests;
+#[cfg(test)]
 mod rebase_tests;
+#[cfg(test)]
+mod rebase_undo_tests;
 #[cfg(test)]
 mod recent_tests;
 #[cfg(test)]

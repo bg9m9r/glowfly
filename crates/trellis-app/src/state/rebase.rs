@@ -1,9 +1,11 @@
-//! The interactive rebase panel: the list being edited, the plan it came from, and the rules
-//! that decide whether it can start.
+//! The interactive rebase panel: the list being edited, where it came from (a plan for a new
+//! rebase, or the remaining steps of one in progress), and the rules that decide whether it can
+//! start. Step and group helpers are in `rebase_steps`, the remaining-steps texts in
+//! `rebase_remaining`.
 
 use super::tabs::index_after_move;
 use git2::RepositoryState;
-use trellis_core::rebase::{self, RebaseAction, RebaseBase, RebasePlan, TodoItem, Upstream};
+use trellis_core::rebase::{self, RebaseAction, RebaseBase, RebasePlan, Remaining, TodoStep, Upstream};
 use trellis_core::repo::Snapshot;
 
 pub const LOADING: &str = "The commit list is still loading.";
@@ -15,58 +17,128 @@ pub const STASH_LINE: &str = "You have uncommitted changes. Trellis stashes them
 pub const UNCHANGED: &str = "Nothing to change yet.";
 pub const HINT: &str = "Commits are applied from top to bottom.";
 
+/// What the panel edits.
+#[derive(Clone, Debug, PartialEq)]
+pub enum PanelSource {
+    /// A new rebase of the current branch from this base.
+    Start(RebaseBase),
+    /// The remaining steps of the interactive rebase in progress.
+    Remaining,
+}
+
+/// The inline editor that is open, on the row it belongs to.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Editing {
+    /// A commit's new message.
+    Message(usize),
+    /// The message of the commit the group headed by this row combines into.
+    Combined(usize),
+    /// An exec step's command.
+    Command(usize),
+}
+
+impl Editing {
+    pub fn row(self) -> usize {
+        match self {
+            Self::Message(i) | Self::Combined(i) | Self::Command(i) => i,
+        }
+    }
+
+    pub(super) fn with_row(self, i: usize) -> Self {
+        match self {
+            Self::Message(_) => Self::Message(i),
+            Self::Combined(_) => Self::Combined(i),
+            Self::Command(_) => Self::Command(i),
+        }
+    }
+}
+
 pub struct RebasePanel {
-    pub base: RebaseBase,
-    /// Where the list came from (its `items` are not used); `None` while loading.
+    pub source: PanelSource,
+    /// Where a new rebase's list came from (its `items` are not used); `None` while loading.
     pub plan: Option<RebasePlan>,
+    /// The rebase in progress the list came from (its `steps` are in `original` and `items`);
+    /// `None` while loading.
+    pub remaining: Option<Remaining>,
     /// The list as loaded, for Reset.
-    pub original: Vec<TodoItem>,
-    /// The list as edited, oldest first.
-    pub items: Vec<TodoItem>,
+    pub original: Vec<TodoStep>,
+    /// The list as edited, in the order git runs it.
+    pub items: Vec<TodoStep>,
     pub loading: bool,
-    /// The rebase is running; the list can't change until its result arrives.
+    /// The rebase (or the update of the steps) is running; the list can't change until its
+    /// result arrives.
     pub starting: bool,
-    /// HEAD moved since the list was made: Start is refused until Reset reloads it.
+    /// The list no longer matches the repository: Start is refused until Reset reloads it.
     pub stale: bool,
     /// Why the last start failed.
     pub error: Option<String>,
-    /// The row whose message editor is open.
-    pub editing: Option<usize>,
-    /// The message editor's text (edited in place by the view).
+    /// The selected row (keys act on it).
+    pub selected: Option<usize>,
+    /// The open inline editor.
+    pub editing: Option<Editing>,
+    /// The editor's text (edited in place by the view).
     pub draft: String,
 }
 
 impl RebasePanel {
-    pub fn loading(base: RebaseBase) -> Self {
+    fn empty(source: PanelSource) -> Self {
         Self {
-            base,
+            source,
             plan: None,
+            remaining: None,
             original: Vec::new(),
             items: Vec::new(),
             loading: true,
             starting: false,
             stale: false,
             error: None,
+            selected: None,
             editing: None,
             draft: String::new(),
         }
     }
 
-    /// Shows a newly loaded list.
-    pub fn fill(&mut self, mut plan: RebasePlan) {
-        self.original = std::mem::take(&mut plan.items);
+    pub fn loading(base: RebaseBase) -> Self {
+        Self::empty(PanelSource::Start(base))
+    }
+
+    pub fn loading_remaining() -> Self {
+        Self::empty(PanelSource::Remaining)
+    }
+
+    /// The list arrived (a plan or the remaining steps).
+    pub fn loaded(&self) -> bool {
+        self.plan.is_some() || self.remaining.is_some()
+    }
+
+    fn filled(&mut self, steps: Vec<TodoStep>) {
+        self.original = steps;
         self.items = self.original.clone();
-        self.plan = Some(plan);
         self.loading = false;
         self.stale = false;
         self.error = None;
+        self.selected = None;
         self.editing = None;
         self.draft.clear();
     }
 
+    /// Shows a newly loaded list.
+    pub fn fill(&mut self, mut plan: RebasePlan) {
+        let steps = std::mem::take(&mut plan.items).into_iter().map(TodoStep::Commit).collect();
+        self.plan = Some(plan);
+        self.filled(steps);
+    }
+
+    /// Shows the remaining steps of the rebase in progress.
+    pub fn fill_remaining(&mut self, mut remaining: Remaining) {
+        let steps = std::mem::take(&mut remaining.steps);
+        self.remaining = Some(remaining);
+        self.filled(steps);
+    }
+
     /// Back to loading (Reset of a stale list).
     pub fn reload(&mut self) {
-        *self = Self::loading(self.base.clone());
+        *self = Self::empty(self.source.clone());
     }
 
     /// The list can be edited (loaded, not running).
@@ -74,70 +146,144 @@ impl RebasePanel {
         !self.loading && !self.starting
     }
 
-    /// Moves row `from` so it ends up at `to` (removed, then inserted). The open message
-    /// editor follows its row.
+    /// The first row may squash or fix up into a commit the rebase in progress already made.
+    pub fn first_may_combine(&self) -> bool {
+        self.remaining.as_ref().is_some_and(|r| r.first_may_combine)
+    }
+
+    /// Moves row `from` so it ends up at `to` (removed, then inserted). The selection and the
+    /// open editor follow their row.
     pub fn move_item(&mut self, from: usize, to: usize) {
         let n = self.items.len();
         if from >= n || to >= n || from == to {
             return;
         }
+        let before = super::rebase_steps::groups(&self.items);
         let item = self.items.remove(from);
         self.items.insert(to, item);
-        self.editing = self.editing.map(|e| index_after_move(e, from, to));
+        self.selected = self.selected.map(|s| index_after_move(s, from, to));
+        self.editing = self.editing.map(|e| e.with_row(index_after_move(e.row(), from, to)));
+        self.prune_combined(&before);
     }
 
-    /// Sets row `i`'s action. Choosing reword opens its message editor; leaving reword keeps
-    /// the typed message (switching back restores it) and closes the row's editor.
+    /// Sets commit row `i`'s action. Choosing reword opens its message editor (the combined
+    /// one on a group head); leaving reword keeps the typed message (switching back restores
+    /// it) and closes the row's editor.
     pub fn set_action(&mut self, i: usize, action: RebaseAction) {
-        let Some(item) = self.items.get_mut(i) else { return };
+        let before = super::rebase_steps::groups(&self.items);
+        let Some(item) = self.items.get_mut(i).and_then(TodoStep::commit_mut) else { return };
         item.action = action;
+        if action != RebaseAction::Reword && self.editing == Some(Editing::Message(i)) {
+            self.close_editor();
+        }
+        self.prune_combined(&before);
         if action == RebaseAction::Reword {
             self.open_editor(i);
-        } else if self.editing == Some(i) {
-            self.close_editor();
         }
     }
 
-    /// Opens the message editor on row `i`, with the message typed before or the original.
+    /// Opens row `i`'s editor: a group head's combined message (typed before, or git's), a
+    /// commit's message (typed before, or the original), or an exec step's command.
     pub fn open_editor(&mut self, i: usize) {
-        let Some(item) = self.items.get(i) else { return };
-        self.draft = item.new_message.clone().unwrap_or_else(|| item.message.trim_end().to_owned());
-        self.editing = Some(i);
+        let (editing, draft) = match self.items.get(i) {
+            Some(TodoStep::Commit(item)) if self.heads_group(i) => {
+                let draft = item.combined_message.clone().unwrap_or_else(|| rebase::default_combined(&self.items, i));
+                (Editing::Combined(i), draft)
+            }
+            Some(TodoStep::Commit(item)) => {
+                (Editing::Message(i), item.new_message.clone().unwrap_or_else(|| item.message.trim_end().to_owned()))
+            }
+            Some(TodoStep::Exec(cmd)) => (Editing::Command(i), cmd.clone()),
+            Some(TodoStep::Break) | None => return,
+        };
+        self.draft = draft;
+        self.editing = Some(editing);
     }
 
-    /// Update message: stores the draft and makes the row a reword.
+    /// The row after which the open editor is drawn: a combined message's under its group's
+    /// last row.
+    pub fn editor_row(&self) -> Option<usize> {
+        self.editing.map(|e| match e {
+            Editing::Combined(h) => rebase::group_end(&self.items, h).unwrap_or(h),
+            e => e.row(),
+        })
+    }
+
+    /// The editor's save button: a message makes the row a reword; a combined message equal
+    /// to git's is stored as none; a command is stored trimmed (an empty one stays open).
     pub fn save_message(&mut self) {
-        let Some(item) = self.editing.and_then(|i| self.items.get_mut(i)) else { return };
-        item.new_message = Some(self.draft.trim_end().to_owned());
-        item.action = RebaseAction::Reword;
+        let Some(editing) = self.editing else { return };
+        match editing {
+            Editing::Message(i) => {
+                let Some(item) = self.items.get_mut(i).and_then(TodoStep::commit_mut) else { return };
+                item.new_message = Some(self.draft.trim_end().to_owned());
+                item.action = RebaseAction::Reword;
+            }
+            Editing::Combined(h) => {
+                let default = rebase::default_combined(&self.items, h);
+                let typed = self.draft.trim_end().to_owned();
+                let Some(item) = self.items.get_mut(h).and_then(TodoStep::commit_mut) else { return };
+                item.combined_message = (typed.trim() != default.trim()).then_some(typed);
+            }
+            Editing::Command(i) => {
+                let cmd = self.draft.trim().to_owned();
+                if cmd.is_empty() {
+                    return;
+                }
+                if let Some(TodoStep::Exec(c)) = self.items.get_mut(i) {
+                    *c = cmd;
+                }
+            }
+        }
         self.close_editor();
     }
 
+    /// Closes the editor; an exec step whose command is still empty goes away with it.
     pub fn close_editor(&mut self) {
+        if let Some(Editing::Command(i)) = self.editing
+            && matches!(self.items.get(i), Some(TodoStep::Exec(c)) if c.trim().is_empty())
+        {
+            self.editing = None;
+            self.remove_step(i);
+        }
         self.editing = None;
         self.draft.clear();
     }
 
-    /// The original order and actions, without typed messages.
+    /// The original order and actions, without typed messages or added steps.
     pub fn reset(&mut self) {
+        self.editing = None;
         self.items = self.original.clone();
         self.error = None;
+        self.selected = None;
         self.close_editor();
     }
 
+    /// Commits the list drops; for the remaining steps, only those not dropped already.
     pub fn drops(&self) -> usize {
-        self.items.iter().filter(|i| i.action == RebaseAction::Drop).count()
+        let dropped = |s: &&TodoStep| s.commit().is_some_and(|i| i.action == RebaseAction::Drop);
+        let before: Vec<_> = self.original.iter().filter(dropped).filter_map(TodoStep::oid).collect();
+        let new = |s: &&TodoStep| self.remaining.is_none() || s.oid().is_some_and(|o| !before.contains(&o));
+        self.items.iter().filter(dropped).filter(new).count()
     }
 
+    /// The branch being rebased ("HEAD" for a running rebase of a detached HEAD).
     pub fn branch(&self) -> &str {
-        self.plan.as_ref().map_or("", |p| p.branch.as_str())
+        match (&self.plan, &self.remaining) {
+            (Some(p), _) => &p.branch,
+            (None, Some(r)) => r.branch.as_deref().unwrap_or("HEAD"),
+            (None, None) => "",
+        }
     }
 
     /// "Rebasing 4 commits of feature onto main", or "… from the first commit" for a rebase of
-    /// the root.
+    /// the root; for the remaining steps, see `rebase_remaining::subtitle`.
     pub fn subtitle(&self) -> String {
+        if self.source == PanelSource::Remaining {
+            return super::rebase_remaining::subtitle(self);
+        }
         let Some(plan) = &self.plan else { return "Loading commits…".into() };
-        let n = self.items.len();
+        let n = self.items.iter().filter(|s| s.commit().is_some()).count();
         let commits = if n == 1 { "1 commit".to_owned() } else { format!("{n} commits") };
         match plan.upstream {
             Upstream::Root => format!("Rebasing {commits} of {} from the first commit", plan.branch),
@@ -145,14 +291,19 @@ impl RebasePanel {
         }
     }
 
-    /// The list no longer matches the repository: HEAD or its branch moved.
+    /// The list no longer matches the repository: HEAD or its branch moved, or the rebase in
+    /// progress moved on (or ended).
     pub fn is_stale(&self, snap: &Snapshot) -> bool {
+        if let Some(r) = &self.remaining {
+            return self.stale || snap.state != RepositoryState::RebaseInteractive || snap.rebase.as_ref().map(|p| p.step) != Some(r.done);
+        }
         self.stale || self.plan.as_ref().is_some_and(|p| snap.head_oid != Some(p.head) || snap.head_branch.as_deref() != Some(&p.branch))
     }
 
-    /// Why Start is unavailable, if it is (the drop confirmation aside).
+    /// Why Start (or Update steps) is unavailable, if it is (the drop confirmation aside). The
+    /// remaining steps don't mind uncommitted changes or conflicted files.
     pub fn start_blocker(&self, snap: &Snapshot, job_running: bool) -> Option<String> {
-        if self.loading || self.plan.is_none() {
+        if self.loading || !self.loaded() {
             return Some(LOADING.into());
         }
         if self.starting {
@@ -160,6 +311,15 @@ impl RebasePanel {
         }
         if job_running {
             return Some(JOB_RUNNING.into());
+        }
+        if self.remaining.is_some() {
+            if self.is_stale(snap) {
+                return Some(rebase::TODO_MOVED.into());
+            }
+            if let Some(p) = rebase::problem_with(&self.items, self.first_may_combine()) {
+                return Some(p);
+            }
+            return (self.items == self.original).then(|| UNCHANGED.into());
         }
         if self.is_stale(snap) {
             return Some(rebase::STALE.into());
@@ -173,7 +333,7 @@ impl RebasePanel {
         if let Some(p) = rebase::problem(&self.items) {
             return Some(p);
         }
-        let from_commit = matches!(self.base, RebaseBase::FromCommit(_));
+        let from_commit = matches!(self.source, PanelSource::Start(RebaseBase::FromCommit(_)));
         (from_commit && rebase::is_unchanged(&self.items, &self.original)).then(|| UNCHANGED.into())
     }
 }
@@ -197,11 +357,7 @@ pub fn start_question(drops: usize, branch: &str, stash: bool) -> Option<(String
         let commits = if drops == 1 { "1 commit".to_owned() } else { format!("{drops} commits") };
         let mut body = format!("Drop {commits} from {branch}? Their changes will be removed.");
         if stash {
-            body = format!(
-                "{body}
-
-{STASH_LINE}"
-            );
+            body = format!("{body}\n\n{STASH_LINE}");
         }
         return Some(("Drop commits".into(), body));
     }

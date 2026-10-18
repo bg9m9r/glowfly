@@ -1,19 +1,26 @@
-//! The rebase banner on the WIP row: its text (the step, the stopped commit and why, the
-//! autostash note) and what its buttons send.
+//! The rebase banner on the WIP row: its text (the step, the stopped commit and why, a failed
+//! command, the autostash note) and what its buttons send.
 
 use crate::msg::{Msg, RebaseMsg};
+use git2::Oid;
 use git2::RepositoryState;
 use trellis_core::rebase::{RebaseProgress, Resume, StopKind};
+
+/// The tooltip of the stopped commit's SHA, a link to it in the graph.
+pub const SELECT_COMMIT: &str = "Select this commit in the graph";
+/// The banner button that edits the remaining steps of an interactive rebase.
+pub const EDIT_STEPS: &str = "Edit remaining steps…";
 
 /// Why Continue is unavailable while conflicted files remain.
 pub const RESOLVE_FIRST: &str = "Resolve the conflicted files first.";
 pub const STASH_NOTE: &str = "Your uncommitted changes are stashed until the rebase ends.";
 
 /// The line naming the stopped commit: `before`, the short SHA, the summary, then `after`
-/// (which brings its own leading space or punctuation).
+/// (which brings its own leading space or punctuation). The SHA links to `oid`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StopLine {
     pub before: &'static str,
+    pub oid: Oid,
     pub sha: String,
     pub summary: String,
     pub after: &'static str,
@@ -34,6 +41,8 @@ pub struct BannerText {
     pub title: String,
     /// `None` when the stopped commit is unknown (e.g. a rebase-apply).
     pub stop: Option<StopLine>,
+    /// The command that failed, for a stop at an exec step.
+    pub command: Option<String>,
     pub stash_note: bool,
 }
 
@@ -47,11 +56,14 @@ pub fn lines(p: &RebaseProgress, name: &str, conflicts_left: bool) -> BannerText
             StopKind::Conflict => ("Conflicts in", " are resolved; Continue to go on."),
             StopKind::Edit => ("Paused to edit", ". Amend it or add commits, then Continue."),
             StopKind::Exec => ("Rewording", " failed."),
+            StopKind::Command => ("The command after", " failed. Fix the problem, then Continue."),
+            StopKind::Break => ("Paused after", " at a break step. Continue when you're ready."),
             StopKind::Other => ("Stopped at", ""),
         };
-        StopLine { before, sha: oid.to_string()[..7].to_owned(), summary: p.summary.clone(), after }
+        StopLine { before, oid, sha: oid.to_string()[..7].to_owned(), summary: p.summary.clone(), after }
     });
-    BannerText { title, stop, stash_note: p.autostash }
+    let command = p.command.clone().filter(|_| p.stop.kind == StopKind::Command);
+    BannerText { title, stop, command, stash_note: p.autostash }
 }
 
 /// What a banner button sends: a rebase's Continue and Skip run through
@@ -74,7 +86,16 @@ mod tests {
 
     fn progress(kind: StopKind, total: usize) -> RebaseProgress {
         let oid = git2::Oid::from_bytes(&[0x1a; 20]).unwrap();
-        RebaseProgress { step: 2, total, stop: Stop { kind, oid: Some(oid) }, summary: "Fix it".into(), autostash: true, interactive: true }
+        let command = (kind == StopKind::Command).then(|| "cargo test".to_owned());
+        RebaseProgress {
+            step: 2,
+            total,
+            stop: Stop { kind, oid: Some(oid) },
+            summary: "Fix it".into(),
+            autostash: true,
+            interactive: true,
+            command,
+        }
     }
 
     fn stop_text(kind: StopKind, conflicts_left: bool) -> String {
@@ -91,6 +112,12 @@ mod tests {
         assert_eq!(stop_text(StopKind::Edit, false), "Paused to edit 1a1a1a1 Fix it. Amend it or add commits, then Continue.");
         assert_eq!(stop_text(StopKind::Exec, false), "Rewording 1a1a1a1 Fix it failed.");
         assert_eq!(stop_text(StopKind::Other, false), "Stopped at 1a1a1a1 Fix it");
+        assert_eq!(stop_text(StopKind::Command, false), "The command after 1a1a1a1 Fix it failed. Fix the problem, then Continue.");
+        assert_eq!(stop_text(StopKind::Break, false), "Paused after 1a1a1a1 Fix it at a break step. Continue when you're ready.");
+        let b = lines(&progress(StopKind::Command, 4), "Interactive rebase", false);
+        assert_eq!(b.command.as_deref(), Some("cargo test"));
+        assert_eq!(b.stop.unwrap().oid, git2::Oid::from_bytes(&[0x1a; 20]).unwrap(), "the SHA links to the commit");
+        assert_eq!(lines(&progress(StopKind::Break, 4), "Interactive rebase", false).command, None);
 
         let b = lines(&progress(StopKind::Other, 0), "Rebase", false);
         assert_eq!(b.title, "Rebase in progress", "no step without a count");

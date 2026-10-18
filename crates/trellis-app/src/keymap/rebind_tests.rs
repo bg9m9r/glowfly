@@ -7,7 +7,7 @@ use super::*;
 use BindingId as I;
 use KeyName as K;
 
-const WHENS: [When; 11] = [
+const WHENS: [When; 13] = [
     When::Anywhere,
     When::NotTyping,
     When::WorkingDiff,
@@ -19,6 +19,8 @@ const WHENS: [When; 11] = [
     When::PaletteStep,
     When::Dialog,
     When::Blame,
+    When::Graph,
+    When::RebasePanel,
 ];
 
 #[test]
@@ -77,7 +79,9 @@ fn check_same_and_refused() {
         assert_eq!(check(&k, I::CloseTab, c, true), Check::Refused(Refusal::NeedsModifier), "{c:?}");
     }
     assert_eq!(check(&k, I::CloseTab, Chord::cmd(K::Delete), true), Check::Ok);
-    assert_eq!(check(&k, I::Undo, Chord::plain(K::Delete), true), Check::Ok, "NotTyping takes plain Delete");
+    assert_eq!(check(&k, I::Undo, Chord::shift(K::Delete), true), Check::Ok, "NotTyping takes Delete without Ctrl or Alt");
+    let delete = check(&k, I::Undo, Chord::plain(K::Delete), true);
+    assert_eq!(delete, Check::Clash { other: I::RebaseRemoveStep, fixed: true }, "the rebase panel's Delete");
 }
 
 #[test]

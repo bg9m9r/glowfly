@@ -1,12 +1,14 @@
 //! Interactive rebase: the commits a rebase would replay (`plan`), the todo list Trellis
 //! writes for git in place of the one git generates (`todo`), running and resuming it (`run`),
-//! history edits chosen in the graph (`quick`), and where a rebase in progress stands
-//! (`progress`).
+//! history edits chosen in the graph (`quick`), where a rebase in progress stands
+//! (`progress`), and the steps a running rebase has left, edited with `git rebase --edit-todo`
+//! (`remaining`).
 //!
 //! Git is started with `GIT_SEQUENCE_EDITOR` set to a command that replaces git's todo with
 //! the prepared one (Trellis itself in `--write-todo` mode, after checking that both list the
 //! same commits). Rewording is done by `exec git commit --amend -F <file>` lines, so no
-//! interactive editor ever opens.
+//! interactive editor ever opens. The list can also hold `exec` and `break` steps, and a
+//! typed message for the commit a squash group combines into.
 
 use git2::{Oid, RepositoryState};
 use std::path::PathBuf;
@@ -14,6 +16,7 @@ use std::path::PathBuf;
 mod plan;
 mod progress;
 mod quick;
+mod remaining;
 mod run;
 mod todo;
 
@@ -21,8 +24,12 @@ pub use plan::plan;
 pub(crate) use progress::progress_of;
 pub use progress::{RebaseProgress, progress, stopped_at};
 pub use quick::{QuickEdit, QuickPlan, prepare_edit};
+pub use remaining::{EditTodoRequest, Remaining, edit_todo, remaining};
 pub use run::{Resume, resume, start};
-pub use todo::{build, editor_command, install_todo, is_unchanged, listed_oids, problem, shell_quote, shell_quote_for};
+pub use todo::{
+    build, default_combined, editor_command, group_end, install_todo, is_unchanged, listed_oids, problem, problem_with, shell_quote,
+    shell_quote_for,
+};
 
 /// Why Start refuses a list made before HEAD moved.
 pub const STALE: &str = "The branch changed since this list was made. Reset to reload it.";
@@ -44,6 +51,13 @@ pub const NOT_CONSECUTIVE: &str = "Select commits that follow one another to squ
 pub const TOO_FEW_TO_SQUASH: &str = "Select two or more commits to squash them.";
 pub const DROPS_EVERYTHING: &str = "Dropping every commit of the branch isn't supported.";
 pub const NOT_REBASING: &str = "No rebase is in progress.";
+pub const EMPTY_COMBINED: &str = "The combined commit's message can't be empty.";
+pub const EMPTY_EXEC: &str = "Exec steps need a command.";
+pub const EXEC_ONE_LINE: &str = "An exec command must be one line.";
+pub const COMBINE_AFTER_STEP: &str = "Move the exec or break step below the squash or fixup: it must follow the commit it combines with.";
+pub const NOT_INTERACTIVE: &str = "Only an interactive rebase's remaining steps can be edited.";
+pub const UNSUPPORTED_STEPS: &str = "The remaining steps include merge, label, reset or update-ref commands, which this panel can't edit yet. Use git rebase --edit-todo in a terminal.";
+pub const TODO_MOVED: &str = "The rebase moved on since this list was read. Reset to reload it.";
 
 /// What git does with one commit of the todo list.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -87,6 +101,9 @@ pub struct TodoItem {
     pub message: String,
     /// The message typed for a reword; `None` keeps the original.
     pub new_message: Option<String>,
+    /// The message typed for the combined commit when this row heads a squash group; `None`
+    /// keeps the one git makes.
+    pub combined_message: Option<String>,
     pub author: String,
     pub time: i64,
 }
@@ -95,6 +112,34 @@ impl TodoItem {
     /// A reword that actually changes the message.
     pub fn rewords(&self) -> bool {
         self.action == RebaseAction::Reword && self.new_message.as_ref().is_some_and(|m| m.trim() != self.message.trim())
+    }
+}
+
+/// One step of the todo list: a commit, a shell command (`exec`) or a pause (`break`).
+#[derive(Clone, PartialEq, Debug)]
+pub enum TodoStep {
+    Commit(TodoItem),
+    Exec(String),
+    Break,
+}
+
+impl TodoStep {
+    pub fn commit(&self) -> Option<&TodoItem> {
+        match self {
+            Self::Commit(i) => Some(i),
+            _ => None,
+        }
+    }
+
+    pub fn commit_mut(&mut self) -> Option<&mut TodoItem> {
+        match self {
+            Self::Commit(i) => Some(i),
+            _ => None,
+        }
+    }
+
+    pub fn oid(&self) -> Option<Oid> {
+        self.commit().map(|i| i.oid)
     }
 }
 
@@ -130,7 +175,7 @@ pub struct RebasePlan {
 pub struct StartRequest {
     pub head: Oid,
     pub upstream: Upstream,
-    pub items: Vec<TodoItem>,
+    pub items: Vec<TodoStep>,
     /// Stash tracked changes first and put them back when the rebase ends (`--autostash`).
     pub autostash: bool,
 }
@@ -153,8 +198,12 @@ pub enum StopKind {
     Edit,
     /// A pick or squash conflicted.
     Conflict,
-    /// An `exec` line (a reword's amend) failed.
+    /// Trellis's reword amend failed.
     Exec,
+    /// An `exec` step the user added failed.
+    Command,
+    /// Stopped at a `break` step.
+    Break,
     Other,
 }
 
@@ -209,6 +258,8 @@ mod plan_tests;
 mod progress_tests;
 #[cfg(test)]
 mod quick_tests;
+#[cfg(test)]
+mod remaining_tests;
 #[cfg(test)]
 mod run_tests;
 #[cfg(test)]

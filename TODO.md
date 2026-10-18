@@ -243,6 +243,11 @@ Done except the group colors, which wait on repository groups in the repository 
   installs the prepared todo after checking it lists the same commits as git's; rewords are
   `exec git commit --amend -F` lines. Edit steps and conflicts stop in the "Interactive rebase
   in progress" banner with Continue / Skip commit / Abort rebase. The panel is kept per tab.
+  The list also takes exec and break steps, a typed message for the commit a squash group
+  combines into, and keyboard control (arrows, Alt+arrows, action letters, X / B, Enter); "Edit
+  remaining steps…" opens it on a running rebase's todo (`rebase --edit-todo`, also for one
+  started outside Trellis), rebases and graph edits undo in one step back to where the branch
+  was, and Reword / Squash / Drop / Continue / Skip have keys and palette entries.
 - [x] **Multi-select commits**
   Ctrl-click toggles a commit and Shift-click selects a range of graph rows; Esc returns to one
   commit. The details panel lists the selection; with exactly two commits it lists the files that
@@ -663,8 +668,7 @@ follow-ups go to Ideas, not here.
 ### Undo / Redo
 
 - Undo per-file, per-hunk and per-line discard (needs a safety stash or blob backup first)
-- Undo of the interactive rebase dialog's rebase (record before/after around its effect)
-- Undo of a rebase, merge, cherry-pick or revert finished with --continue after conflicts
+- Undo of a merge, cherry-pick or revert finished with --continue after conflicts
 - Undo of stash drop (put the dropped commit back with `stash store`)
 
 ### Diff viewer upgrade
@@ -716,8 +720,6 @@ follow-ups go to Ideas, not here.
 
 - Rebase onto a commit, and branch context menus on the graph's ref labels
 - Rebase ranges that contain merge commits (`--rebase-merges`), also for graph squashes and drops
-- Keyboard control in the panel: select a row, Alt+Up/Down to move it, a letter key per action
-- Undo an interactive rebase or a graph history edit (back to `ORIG_HEAD`) from the undo history
 - Edit the combined message of a graph squash before it runs (the messages are joined now)
 
 ### Multi-select commits
@@ -968,6 +970,8 @@ here, under the item they grew from.
 - Offer "Stash changes and undo" for merge, pull, rebase, cherry-pick, revert and stash undos
   refused for local changes (the runner already supports it)
 - Undo of Create tag and push: also delete the tag from the remote it was pushed to
+- Keep the undo history across `rebase --abort` (HEAD goes back to where the rebase started)
+- Undo a rebase whose branch can't be known (a detached HEAD rebase continued from the banner)
 - Undo of branch rename and of the new branch made by `worktree add -b`
 - Undo of a Git Flow start or finish as one step
 - Roll back the remote-tracking refs a pull fetched when undoing it
@@ -1082,16 +1086,19 @@ here, under the item they grew from.
 
 - Keep `update-ref` steps (`rebase.updateRefs`) so branches stacked inside the range move with
   it
-- Edit the combined message of a squash group in the panel instead of git's concatenation
-- Edit the remaining steps of a rebase already in progress (`rebase --edit-todo`), including one
-  started outside Trellis
-- `exec` and `break` steps in the panel
 - Move commits up/down or reword several commits from a multi-selection in the graph
-- Keyboard shortcuts and command palette entries for Reword, Squash, Drop, Continue and Skip
 - A preference to always stash automatically, without asking, before a rebase
-- Click the stopped commit's SHA in the rebase banner to select it in the graph
 - Spellcheck in the Reword dialog (needs `UiCache` in modals)
 - Date tooltip on the painted author/date of rebase rows
+- Edit the steps that finish a reworded commit while its rebase is stopped (they are shown locked
+  now)
+- Run a command after every commit (`--exec`) from the panel in one click
+- Reschedule a failed exec step instead of skipping it on Continue (`--reschedule-failed-exec`)
+- Show the shortcut keys on the graph menu's Reword / Squash / Drop entries and on the banner's
+  Continue / Skip buttons
+- Select several panel rows and move or change them together
+- Tell a plain merge-backend rebase from an interactive one: recent git marks both interactive,
+  so the banner names both "Interactive rebase" and offers "Edit remaining steps…" for both
 
 ### Multi-select commits
 

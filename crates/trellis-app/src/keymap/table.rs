@@ -8,6 +8,7 @@ pub enum Group {
     Staging,
     Navigation,
     Diff,
+    History,
     Tabs,
     Repositories,
     Palette,
@@ -16,8 +17,18 @@ pub enum Group {
 }
 
 /// The groups in the order the sheet and Preferences > Keyboard show them.
-pub const GROUPS: [Group; 8] =
-    [Group::Staging, Group::Navigation, Group::Diff, Group::Tabs, Group::Repositories, Group::Palette, Group::View, Group::General];
+pub const GROUPS: [Group; 9] =
+    [
+        Group::Staging,
+        Group::Navigation,
+        Group::Diff,
+        Group::History,
+        Group::Tabs,
+        Group::Repositories,
+        Group::Palette,
+        Group::View,
+        Group::General,
+    ];
 
 impl Group {
     pub fn title(self) -> &'static str {
@@ -25,6 +36,7 @@ impl Group {
             Group::Staging => "Staging and committing",
             Group::Navigation => "Navigation",
             Group::Diff => "Diff and conflicts",
+            Group::History => "Editing history",
             Group::Tabs => "Tabs",
             Group::Repositories => "Repositories",
             Group::Palette => "Command palette",
@@ -50,6 +62,10 @@ pub enum When {
     PaletteStep,
     Dialog,
     Blame,
+    /// The commit graph is the central view.
+    Graph,
+    /// The interactive rebase panel is the central view.
+    RebasePanel,
 }
 
 impl When {
@@ -66,20 +82,27 @@ impl When {
             When::PaletteStep => Some("in a palette sub-list"),
             When::Dialog => Some("in a dialog"),
             When::Blame => Some("in the blame view"),
+            When::Graph => Some("in the commit graph"),
+            When::RebasePanel => Some("in the interactive rebase panel"),
         }
     }
 
     /// Whether a key could reach bindings of both places at once, so they can't share it.
-    /// The places that need no text field (`NotTyping`, the diff, the lists, blame) overlap one
-    /// another; each place with its own text field (the commit message, the search field, the
-    /// palette, a dialog) overlaps only itself, and the palette's two lists overlap.
+    /// The places that need no text field (`NotTyping`, the diff, the lists, the graph, blame)
+    /// overlap one another; each place with its own text field (the commit message, the search
+    /// field, the palette, a dialog) overlaps only itself, and the palette's two lists overlap.
+    /// The rebase panel is drawn only when no diff, list, graph or blame view is, so it
+    /// overlaps only itself, `Anywhere` and `NotTyping`.
     pub fn overlaps(self, other: When) -> bool {
         use When as W;
-        let browsing = |w: When| matches!(w, W::NotTyping | W::WorkingDiff | W::DiffOrConflict | W::Lists | W::Blame);
+        let browsing = |w: When| matches!(w, W::NotTyping | W::WorkingDiff | W::DiffOrConflict | W::Lists | W::Blame | W::Graph);
         let palette = |w: When| matches!(w, W::InPalette | W::PaletteStep);
+        let panel = |a: When, b: When| a == W::RebasePanel && b == W::NotTyping;
         self == other
             || self == W::Anywhere
             || other == W::Anywhere
+            || panel(self, other)
+            || panel(other, self)
             || (browsing(self) && browsing(other))
             || (palette(self) && palette(other))
     }
@@ -137,12 +160,29 @@ pub enum BindingId {
     OpenFavorite7,
     OpenFavorite8,
     OpenFavorite9,
+    RewordCommit,
+    SquashCommit,
+    DropCommit,
+    RebaseContinue,
+    RebaseSkip,
+    RebaseStepSelect,
+    RebaseStepMove,
+    RebasePick,
+    RebaseReword,
+    RebaseSquash,
+    RebaseFixup,
+    RebaseDrop,
+    RebaseEdit,
+    RebaseAddExec,
+    RebaseAddBreak,
+    RebaseRemoveStep,
+    RebaseEditStep,
 }
 
 use BindingId as I;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
-const KEYS: [(BindingId, &str); 50] = [
+const KEYS: [(BindingId, &str); 67] = [
     (I::Stage, "stage"),
     (I::Unstage, "unstage"),
     (I::StageAll, "stage-all"),
@@ -193,6 +233,23 @@ const KEYS: [(BindingId, &str); 50] = [
     (I::OpenFavorite7, "open-favorite-7"),
     (I::OpenFavorite8, "open-favorite-8"),
     (I::OpenFavorite9, "open-favorite-9"),
+    (I::RewordCommit, "reword-commit"),
+    (I::SquashCommit, "squash-commit"),
+    (I::DropCommit, "drop-commit"),
+    (I::RebaseContinue, "rebase-continue"),
+    (I::RebaseSkip, "rebase-skip"),
+    (I::RebaseStepSelect, "rebase-step-select"),
+    (I::RebaseStepMove, "rebase-step-move"),
+    (I::RebasePick, "rebase-pick"),
+    (I::RebaseReword, "rebase-reword"),
+    (I::RebaseSquash, "rebase-squash"),
+    (I::RebaseFixup, "rebase-fixup"),
+    (I::RebaseDrop, "rebase-drop"),
+    (I::RebaseEdit, "rebase-edit"),
+    (I::RebaseAddExec, "rebase-add-exec"),
+    (I::RebaseAddBreak, "rebase-add-break"),
+    (I::RebaseRemoveStep, "rebase-remove-step"),
+    (I::RebaseEditStep, "rebase-edit-step"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.
@@ -210,10 +267,10 @@ pub const FAVORITE_BINDINGS: [BindingId; 9] = [
 
 impl BindingId {
     /// Every id, in declaration order (`id as usize` indexes it).
-    pub const ALL: [BindingId; 50] = {
-        let mut all = [I::Stage; 50];
+    pub const ALL: [BindingId; 67] = {
+        let mut all = [I::Stage; 67];
         let mut n = 0;
-        while n < 50 {
+        while n < 67 {
             all[n] = KEYS[n].0;
             n += 1;
         }
@@ -262,8 +319,9 @@ use When as W;
 
 /// Every binding, in display order within its group. Rebindable rows are matched through the
 /// effective keymap (`ui/shortcuts/global.rs`); fixed rows document context keys their views
-/// match themselves (dialogs, the palette, lists, the commit box, Esc in `ui/central.rs`), except
-/// Go to tab 1 to 8, matched with the rebindable rows. Change a fixed key there, change it here.
+/// match themselves (dialogs, the palette, lists, the commit box, Esc in `ui/central.rs`, the
+/// rebase panel's keys in `ui/rebase/keys.rs`), except Go to tab 1 to 8, matched with the
+/// rebindable rows. Change a fixed key there, change it here.
 pub const BINDINGS: &[Binding] = &[
     b(I::Stage, G::Staging, "Stage the file or the selected lines", &[C::plain(K::Letter('S'))], W::WorkingDiff),
     b(I::Unstage, G::Staging, "Unstage the file or the selected lines", &[C::plain(K::Letter('U'))], W::WorkingDiff),
@@ -287,6 +345,35 @@ pub const BINDINGS: &[Binding] = &[
         &[C::plain(K::Escape)],
         W::NotTyping,
     ),
+    b(I::RewordCommit, G::History, "Reword the selected commit", &[C::plain(K::F(2))], W::Graph),
+    b(
+        I::SquashCommit,
+        G::History,
+        "Squash the selected commit into its parent (or the selected commits together)",
+        &[C::alt(K::Letter('S'))],
+        W::Graph,
+    ),
+    b(I::DropCommit, G::History, "Drop the selected commits", &[C::plain(K::Delete), C::cmd(K::Backspace)], W::Graph),
+    b(I::RebaseContinue, G::History, "Continue the rebase", &[C::alt(K::Letter('C'))], W::NotTyping),
+    b(I::RebaseSkip, G::History, "Skip the commit and continue the rebase", &[C::alt(K::Letter('K'))], W::NotTyping),
+    fixed(I::RebaseStepSelect, G::History, "Select the step above or below", &[C::plain(K::Up), C::plain(K::Down)], W::RebasePanel),
+    fixed(I::RebaseStepMove, G::History, "Move the selected step up or down", &[C::alt(K::Up), C::alt(K::Down)], W::RebasePanel),
+    fixed(I::RebasePick, G::History, "Set the selected commit to pick", &[C::plain(K::Letter('P'))], W::RebasePanel),
+    fixed(I::RebaseReword, G::History, "Set the selected commit to reword", &[C::plain(K::Letter('R'))], W::RebasePanel),
+    fixed(I::RebaseSquash, G::History, "Set the selected commit to squash", &[C::plain(K::Letter('S'))], W::RebasePanel),
+    fixed(I::RebaseFixup, G::History, "Set the selected commit to fixup", &[C::plain(K::Letter('F'))], W::RebasePanel),
+    fixed(I::RebaseDrop, G::History, "Set the selected commit to drop", &[C::plain(K::Letter('D'))], W::RebasePanel),
+    fixed(I::RebaseEdit, G::History, "Set the selected commit to edit", &[C::plain(K::Letter('E'))], W::RebasePanel),
+    fixed(I::RebaseAddExec, G::History, "Add an exec step after the selected step", &[C::plain(K::Letter('X'))], W::RebasePanel),
+    fixed(I::RebaseAddBreak, G::History, "Add a break step after the selected step", &[C::plain(K::Letter('B'))], W::RebasePanel),
+    fixed(
+        I::RebaseRemoveStep,
+        G::History,
+        "Remove the selected exec or break step",
+        &[C::plain(K::Delete), C::plain(K::Backspace)],
+        W::RebasePanel,
+    ),
+    fixed(I::RebaseEditStep, G::History, "Edit the selected commit's message or step's command", &[C::plain(K::Enter)], W::RebasePanel),
     b(I::NewTab, G::Tabs, "New tab", &[C::cmd(K::Letter('T'))], W::Anywhere),
     b(I::CloseTab, G::Tabs, "Close tab", &[C::cmd(K::Letter('W'))], W::Anywhere),
     b(I::ReopenTab, G::Tabs, "Reopen closed tab", &[C::cmd_shift(K::Letter('T'))], W::Anywhere),

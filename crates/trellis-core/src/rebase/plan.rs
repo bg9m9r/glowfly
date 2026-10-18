@@ -93,6 +93,7 @@ fn item(repo: &Repository, oid: Oid) -> Result<TodoItem> {
         summary: c.summary().unwrap_or_default().to_owned(),
         message: c.message().unwrap_or_default().to_owned(),
         new_message: None,
+        combined_message: None,
         author: c.author().name().unwrap_or_default().to_owned(),
         time: c.time().seconds(),
     })

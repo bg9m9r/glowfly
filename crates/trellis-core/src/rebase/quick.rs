@@ -5,7 +5,7 @@ use super::plan::{checked_head, merge_refused, plan};
 use super::todo::problem;
 use super::{
     DROPS_EVERYTHING, MERGE_SELECTED, NOT_CONSECUTIVE, NOT_ON_BRANCH, PARENT_MERGE, ROOT_SQUASH, RebaseAction, RebaseBase,
-    SOME_MERGE_SELECTED, SOME_NOT_ON_BRANCH, StartRequest, TOO_FEW_TO_SQUASH, Upstream,
+    SOME_MERGE_SELECTED, SOME_NOT_ON_BRANCH, StartRequest, TOO_FEW_TO_SQUASH, TodoStep, Upstream,
 };
 use crate::error::{Error, Result};
 use git2::{Oid, Repository};
@@ -44,7 +44,7 @@ pub struct QuickPlan {
     /// The list to run; `autostash` is false (the caller decides after asking).
     pub request: StartRequest,
     pub branch: String,
-    /// The rows of `request.items` the edit changes, oldest first.
+    /// The rows of `request.items` the edit changes, oldest first (every row is a commit).
     pub edited: Vec<usize>,
     /// Commits after the last edited row, which are rewritten too.
     pub later: usize,
@@ -113,11 +113,12 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
             }
         }
     }
+    let last = rows[rows.len() - 1];
+    let later = items.len() - 1 - last;
+    let items: Vec<TodoStep> = items.into_iter().map(TodoStep::Commit).collect();
     if let Some(why) = problem(&items) {
         return Err(Error::Unsupported(why));
     }
-    let last = rows[rows.len() - 1];
-    let later = items.len() - 1 - last;
     let request = StartRequest { head: p.head, upstream: p.upstream, items, autostash: false };
     Ok(QuickPlan { edit: edit.clone(), request, branch: p.branch, edited: rows, later })
 }

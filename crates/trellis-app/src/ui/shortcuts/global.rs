@@ -6,12 +6,16 @@
 use super::chords::take_press;
 use super::record;
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName};
-use crate::msg::{BlameMsg, ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RecentMsg, RepoMsg, SearchMsg, TabsMsg};
+use crate::msg::{
+    BlameMsg, ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg, SearchMsg, TabsMsg,
+};
 use crate::state::layout::Panel;
-use crate::state::{AppState, Modal, PrefPage};
+use crate::state::{AppState, Modal, PrefPage, Selection};
 use crate::terminal::TerminalMsg;
 use crate::ui::central;
 use eframe::egui;
+use git2::RepositoryState;
+use trellis_core::rebase::{QuickEdit, Resume};
 
 /// Turns this frame's shortcut presses into messages (or view-state changes, for the search
 /// bar). While Preferences > Keyboard records a key, it gets every key press instead.
@@ -42,6 +46,10 @@ struct Live {
     stepping: bool,
     /// A loaded blame view is open.
     blame: bool,
+    /// The commit graph is the central view.
+    graph: bool,
+    /// A rebase is in progress.
+    rebasing: bool,
 }
 
 impl Live {
@@ -58,6 +66,11 @@ impl Live {
             working_diff: st.diff.as_ref().is_some_and(|(t, _)| t.is_working_tree()),
             stepping: st.blame.is_none() && (st.conflict.is_some() || st.diff.is_some()),
             blame: st.blame.as_ref().is_some_and(|v| v.data.is_some()),
+            graph: st.graph_shown(),
+            rebasing: st.snap.as_ref().is_some_and(|s| {
+                use RepositoryState::*;
+                matches!(s.state, Rebase | RebaseInteractive | RebaseMerge | ApplyMailboxOrRebase)
+            }),
         }
     }
 }
@@ -92,6 +105,8 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         | I::OpenFavorite7
         | I::OpenFavorite8
         | I::OpenFavorite9 => !covered && !l.sheet && !l.typing,
+        I::RewordCommit | I::SquashCommit | I::DropCommit => !covered && !l.sheet && !l.typing && l.graph,
+        I::RebaseContinue | I::RebaseSkip => !covered && !l.sheet && !l.typing && l.rebasing,
         I::Refresh => true,
         I::Search | I::SearchFilter => !l.palette && !l.prefs,
         I::Prefs => !l.prefs && !l.palette,
@@ -104,7 +119,19 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         | I::PaletteBack
         | I::PaletteClose
         | I::SearchNext
-        | I::DialogSubmit => false,
+        | I::DialogSubmit
+        | I::RebaseStepSelect
+        | I::RebaseStepMove
+        | I::RebasePick
+        | I::RebaseReword
+        | I::RebaseSquash
+        | I::RebaseFixup
+        | I::RebaseDrop
+        | I::RebaseEdit
+        | I::RebaseAddExec
+        | I::RebaseAddBreak
+        | I::RebaseRemoveStep
+        | I::RebaseEditStep => false,
     }
 }
 
@@ -159,6 +186,23 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
             Some(n) => Msg::Recent(RecentMsg::OpenFavorite(n)),
             None => return,
         },
+        // The same messages as the graph's menu, so blocked edits explain themselves.
+        I::RewordCommit => match &st.selection {
+            Selection::Commit(o) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Reword(*o))),
+            _ => return,
+        },
+        I::SquashCommit => match &st.selection {
+            Selection::Commit(o) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::SquashIntoParent(*o))),
+            Selection::Commits(m) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Squash(m.oids.clone()))),
+            _ => return,
+        },
+        I::DropCommit => match &st.selection {
+            Selection::Commit(o) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Drop(vec![*o]))),
+            Selection::Commits(m) => Msg::Rebase(RebaseMsg::Edit(QuickEdit::Drop(m.oids.clone()))),
+            _ => return,
+        },
+        I::RebaseContinue => Msg::Rebase(RebaseMsg::Resume(Resume::Continue)),
+        I::RebaseSkip => Msg::Rebase(RebaseMsg::Resume(Resume::Skip)),
         // In the blame view it finds in the file.
         I::Search if st.blame.is_some() => Msg::Blame(BlameMsg::FocusFind),
         // The search bar's visibility is view state.
@@ -179,7 +223,19 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         | I::PaletteBack
         | I::PaletteClose
         | I::SearchNext
-        | I::DialogSubmit => return,
+        | I::DialogSubmit
+        | I::RebaseStepSelect
+        | I::RebaseStepMove
+        | I::RebasePick
+        | I::RebaseReword
+        | I::RebaseSquash
+        | I::RebaseFixup
+        | I::RebaseDrop
+        | I::RebaseEdit
+        | I::RebaseAddExec
+        | I::RebaseAddBreak
+        | I::RebaseRemoveStep
+        | I::RebaseEditStep => return,
     };
     msgs.push(msg);
 }

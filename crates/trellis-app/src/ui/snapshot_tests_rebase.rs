@@ -14,7 +14,7 @@ use eframe::egui::{self, Event, Key, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
-use trellis_core::rebase::{RebaseAction, RebaseBase, RebasePlan, TodoItem, Upstream};
+use trellis_core::rebase::{RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream};
 use trellis_core::settings::ThemeChoice;
 use trellis_core::spell::Speller;
 
@@ -22,7 +22,7 @@ const NEW_MESSAGE: &str = "Add the app skeleton\n\nProject layout, CI and a READ
 
 /// The fixture's commits, oldest first, in a loaded panel with these actions (one per commit,
 /// from the oldest). A clean working tree, so only the list decides whether Start is enabled.
-fn with_panel(theme: ThemeChoice, name: &str, actions: &[RebaseAction]) -> (AppState, PathBuf) {
+pub(super) fn with_panel(theme: ThemeChoice, name: &str, actions: &[RebaseAction]) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_mut().unwrap();
     snap.unstaged.clear();
@@ -37,6 +37,7 @@ fn with_panel(theme: ThemeChoice, name: &str, actions: &[RebaseAction]) -> (AppS
             summary: c.summary.clone(),
             message: if c.body.is_empty() { c.summary.clone() } else { format!("{}\n\n{}", c.summary, c.body) },
             new_message: None,
+            combined_message: None,
             author: c.author.clone(),
             time: c.time,
         })
@@ -50,7 +51,7 @@ fn with_panel(theme: ThemeChoice, name: &str, actions: &[RebaseAction]) -> (AppS
     };
     let mut panel = RebasePanel::loading(RebaseBase::FromCommit(items[0].oid));
     panel.fill(plan);
-    panel.items = items;
+    panel.items = items.into_iter().map(TodoStep::Commit).collect();
     st.rebase = Some(panel);
     (st, dir)
 }
@@ -58,9 +59,9 @@ fn with_panel(theme: ThemeChoice, name: &str, actions: &[RebaseAction]) -> (AppS
 #[test]
 fn rebase_panel() {
     use RebaseAction::*;
-    let (mut st, dir) = with_panel(ThemeChoice::Dark, "rebase-panel", &[Pick, Reword, Squash, Fixup, Drop, Edit]);
+    let (mut st, dir) = with_panel(ThemeChoice::Dark, "rebase-panel", &[Pick, Reword, Edit, Squash, Fixup, Drop]);
     let p = st.rebase.as_mut().unwrap();
-    p.items[1].new_message = Some(NEW_MESSAGE.into());
+    p.items[1].commit_mut().unwrap().new_message = Some(NEW_MESSAGE.into());
     p.open_editor(1);
     assert_eq!(p.draft, NEW_MESSAGE);
     assert_eq!(p.subtitle(), "Rebasing 6 commits of main from the first commit");
@@ -104,7 +105,7 @@ fn rebase_panel_blocked_light() {
 }
 
 /// Like `snapshot_tests::harness`, but also running the shell's Esc handling.
-fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
+pub(super) fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut st = st;
     st.view.now = 1_769_947_200;
     let mut cache: Option<UiCache> = None;
@@ -190,7 +191,10 @@ fn row_drag_moves_and_snapshots() {
         .filter_map(|m| if let Msg::Rebase(RebaseMsg::RebaseMove { from, to }) = m { Some((*from, *to)) } else { None })
         .collect();
     assert_eq!(moves, [(0, 2)]);
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)))), "dragging does not select the commit");
+    assert!(
+        !h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)) | Msg::Rebase(RebaseMsg::RebaseSelect(_)))),
+        "dragging does not select the row"
+    );
     drop(h);
     remove_fixture(&dir);
 }

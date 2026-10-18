@@ -7,7 +7,7 @@ use super::rebase::{launch, refuse};
 use crate::effect::{Effect, RebaseEffect};
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase::{JOB_RUNNING, STASH_LINE, needs_stash, open_blocker};
-use crate::state::rebase_quick::{RewordForm, drop_question, label, squash_question};
+use crate::state::rebase_quick::{RewordForm, drop_question, label, squash_question, undo_detail};
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -59,7 +59,9 @@ pub(super) fn submit_reword(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
     }
     let mut plan = form.plan.clone();
     let i = form.index();
-    plan.request.items[i].new_message = Some(form.draft.trim_end().to_owned());
+    if let Some(item) = plan.request.items.get_mut(i).and_then(|s| s.commit_mut()) {
+        item.new_message = Some(form.draft.trim_end().to_owned());
+    }
     let stash = st.snap.as_ref().is_some_and(needs_stash);
     if run(st, plan, stash, true, now, fx) != Started::No && matches!(st.modal, Some(Modal::RewordCommit(_))) {
         st.modal = None;
@@ -85,7 +87,7 @@ pub(super) fn run(st: &mut AppState, mut plan: QuickPlan, autostash: bool, confi
         return Started::No;
     }
     plan.request.autostash = stash;
-    launch(st, label(&plan.edit), plan.request, fx)
+    launch(st, label(&plan.edit), plan.request, undo_detail(&plan.edit), fx)
 }
 
 fn ask_drop(st: &mut AppState, plan: QuickPlan, stash: bool, now: Instant, fx: &mut Vec<Effect>) {

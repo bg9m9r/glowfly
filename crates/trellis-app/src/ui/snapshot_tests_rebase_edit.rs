@@ -117,7 +117,8 @@ fn rebasing(theme: ThemeChoice, name: &str, kind: StopKind, conflicted: bool) ->
     snap.state = RepositoryState::RebaseInteractive;
     let stop = Stop { kind, oid: Some(skeleton) };
     let autostash = kind == StopKind::Conflict;
-    snap.rebase = Some(RebaseProgress { step: 2, total: 4, stop, summary: "Add app skeleton".into(), autostash, interactive: true });
+    snap.rebase =
+        Some(RebaseProgress { step: 2, total: 4, stop, summary: "Add app skeleton".into(), autostash, interactive: true, command: None });
     if conflicted {
         snap.unstaged.push(FileEntry::new("app.txt", '!'));
     }
@@ -145,6 +146,44 @@ fn rebase_banner_edit_light() {
     h.get_by_label("Continue").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::Resume(Resume::Continue)))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn rebase_banner_command() {
+    let (mut st, dir) = rebasing(ThemeChoice::Dark, "banner-command", StopKind::Command, false);
+    st.snap.as_mut().unwrap().rebase.as_mut().unwrap().command = Some("cargo test --workspace".into());
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("rebase_banner_command");
+    h.get_by_label(crate::state::rebase_banner::EDIT_STEPS).click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::OpenRemaining))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn the_stopped_sha_selects_its_commit() {
+    let (st, dir) = rebasing(ThemeChoice::Dark, "banner-link", StopKind::Edit, false);
+    let skeleton = st.snap.as_ref().unwrap().rebase.as_ref().unwrap().stop.oid.unwrap();
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label(&skeleton.to_string()[..7]).click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Repo(crate::msg::RepoMsg::JumpTo(o)) if *o == skeleton)));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn no_step_editing_for_a_plain_rebase() {
+    let (mut st, dir) = rebasing(ThemeChoice::Dark, "banner-plain", StopKind::Conflict, true);
+    st.snap.as_mut().unwrap().state = RepositoryState::RebaseMerge;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label(crate::state::rebase_banner::EDIT_STEPS).is_none());
     drop(h);
     remove_fixture(&dir);
 }

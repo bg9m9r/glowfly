@@ -116,7 +116,9 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::WorkFile { workdir, .. } => Some(workdir),
         Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
         Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } => Some(cwd),
-        Effect::Rebase(RebaseEffect::Start { cwd, .. } | RebaseEffect::Resume { cwd, .. }) => Some(cwd),
+        Effect::Rebase(RebaseEffect::Start { cwd, .. } | RebaseEffect::Resume { cwd, .. } | RebaseEffect::EditTodo { cwd, .. }) => {
+            Some(cwd)
+        }
         Effect::RemoveWorktree(r) => Some(&r.repo),
         Effect::MoveWorktree(r) => Some(&r.repo),
         Effect::Submodule(SubmoduleEffect::Remove(r)) => Some(&r.repo),
@@ -150,7 +152,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::DetectLfs { .. }
         | Effect::LoadLfs { .. }
         | Effect::LoadSparse { .. }
-        | Effect::Rebase(RebaseEffect::LoadPlan { .. } | RebaseEffect::PrepareEdit { .. })
+        | Effect::Rebase(RebaseEffect::LoadPlan { .. } | RebaseEffect::PrepareEdit { .. } | RebaseEffect::LoadRemaining { .. })
         | Effect::Forge { .. }
         | Effect::RepoOwners { .. }
         | Effect::CreateRepo { .. }
@@ -432,8 +434,18 @@ mod tests {
                     items: vec![],
                     autostash: false,
                 },
+                detail: String::new(),
             }),
             Effect::Rebase(RebaseEffect::Resume { cwd: w.clone(), how: trellis_core::rebase::Resume::Skip }),
+            Effect::Rebase(RebaseEffect::EditTodo {
+                cwd: w.clone(),
+                request: trellis_core::rebase::EditTodoRequest {
+                    steps: vec![],
+                    locked_text: String::new(),
+                    todo: String::new(),
+                    first_may_combine: false,
+                },
+            }),
             Effect::RemoveWorktree(crate::worktree::RemoveRequest {
                 repo: w.clone(),
                 path: "C:/wt".into(),

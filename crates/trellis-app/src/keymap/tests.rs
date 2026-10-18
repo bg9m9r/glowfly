@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 50] = [
+    const FROZEN: [&str; 67] = [
         "stage",
         "unstage",
         "stage-all",
@@ -71,6 +71,23 @@ fn ids_are_stable() {
         "open-favorite-7",
         "open-favorite-8",
         "open-favorite-9",
+        "reword-commit",
+        "squash-commit",
+        "drop-commit",
+        "rebase-continue",
+        "rebase-skip",
+        "rebase-step-select",
+        "rebase-step-move",
+        "rebase-pick",
+        "rebase-reword",
+        "rebase-squash",
+        "rebase-fixup",
+        "rebase-drop",
+        "rebase-edit",
+        "rebase-add-exec",
+        "rebase-add-break",
+        "rebase-remove-step",
+        "rebase-edit-step",
     ];
     let keys: Vec<&str> = BindingId::ALL.iter().map(|id| id.key()).collect();
     assert_eq!(keys, FROZEN);
@@ -123,6 +140,11 @@ fn rebindable_set() {
         I::OpenFavorite7,
         I::OpenFavorite8,
         I::OpenFavorite9,
+        I::RewordCommit,
+        I::SquashCommit,
+        I::DropCommit,
+        I::RebaseContinue,
+        I::RebaseSkip,
     ];
     assert_eq!(rebindable, want);
 }
@@ -332,4 +354,29 @@ fn defaults_text_names_the_default_keys() {
     k.set(I::NextChange, vec![Chord::plain(KeyName::F(8))]);
     assert_eq!(k.defaults_text(I::NextChange), "F7 or Alt+Down", "the defaults, not the current keys");
     assert_eq!(k.keys_text(I::NextChange), "F8");
+}
+
+#[test]
+fn rebase_panel_keys_are_fixed_and_kept_apart() {
+    let keys = Keymap::default();
+    let fold = fold_ctrl();
+    // The panel's keys work while nothing is typed, so a key for NotTyping can't take them.
+    let p = Chord::plain(KeyName::Letter('P'));
+    assert_eq!(check(&keys, I::Undo, p, fold), Check::Clash { other: I::RebasePick, fixed: true });
+    // The panel is never drawn with a diff, a list, the graph or blame, so their keys may match.
+    for other in [When::DiffOrConflict, When::Lists, When::Graph, When::Blame, When::WorkingDiff] {
+        assert!(!When::RebasePanel.overlaps(other) && !other.overlaps(When::RebasePanel), "{other:?}");
+    }
+    assert!(When::RebasePanel.overlaps(When::NotTyping) && When::NotTyping.overlaps(When::RebasePanel));
+    assert!(When::RebasePanel.overlaps(When::Anywhere) && When::RebasePanel.overlaps(When::RebasePanel));
+    assert!(When::Graph.overlaps(When::Lists) && When::Graph.overlaps(When::NotTyping));
+    let history: Vec<BindingId> = BINDINGS.iter().filter(|b| b.group == Group::History).map(|b| b.id).collect();
+    assert_eq!(history.len(), 17, "{history:?}");
+    assert!(BINDINGS.iter().filter(|b| b.when == When::RebasePanel).all(|b| !b.rebindable));
+    assert_eq!(keys.lookup(Chord::plain(KeyName::F(2)), fold), Some(I::RewordCommit));
+    assert_eq!(keys.lookup(Chord::alt(KeyName::Letter('S')), fold), Some(I::SquashCommit));
+    assert_eq!(keys.lookup(Chord::plain(KeyName::Delete), fold), Some(I::DropCommit));
+    assert_eq!(keys.lookup(Chord::cmd(KeyName::Backspace), fold), Some(I::DropCommit));
+    assert_eq!(keys.lookup(Chord::alt(KeyName::Letter('C')), fold), Some(I::RebaseContinue));
+    assert_eq!(keys.lookup(Chord::alt(KeyName::Letter('K')), fold), Some(I::RebaseSkip));
 }

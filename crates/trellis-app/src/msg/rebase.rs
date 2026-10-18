@@ -1,12 +1,16 @@
 //! Messages of the interactive rebase panel, the graph's history edits and the rebase banner
-//! (update/rebase.rs, update/rebase_quick.rs, update/rebase_resume.rs).
+//! (update/rebase.rs, update/rebase_remaining.rs, update/rebase_quick.rs,
+//! update/rebase_resume.rs).
 
+use crate::effect::UndoResult;
+use crate::state::rebase_steps::NewStep;
 use std::path::PathBuf;
-use trellis_core::rebase::{Outcome, QuickEdit, QuickPlan, RebaseAction, RebaseBase, RebasePlan, Resume};
+use trellis_core::rebase::{Outcome, QuickEdit, QuickPlan, RebaseAction, RebaseBase, RebasePlan, Remaining, Resume};
 
 /// The interactive rebase panel: editing the list, starting the rebase, and the results
-/// (update/rebase.rs); history edits from the graph's menus (update/rebase_quick.rs); Continue
-/// and Skip in the rebase banner (update/rebase_resume.rs).
+/// (update/rebase.rs); editing the remaining steps of a running rebase
+/// (update/rebase_remaining.rs); history edits from the graph's menus (update/rebase_quick.rs);
+/// Continue and Skip in the rebase banner (update/rebase_resume.rs).
 pub enum RebaseMsg {
     /// Open the panel with the list for rebasing the current branch from `base`.
     OpenRebase(RebaseBase),
@@ -20,15 +24,29 @@ pub enum RebaseMsg {
         from: usize,
         to: usize,
     },
-    /// Open the message editor on row `i`.
+    /// Select row `i` (a click or the arrow keys); a commit row also shows its commit.
+    RebaseSelect(usize),
+    /// Add an exec or break step after row `after` (its group's last row when it is in a
+    /// squash group), or at the end.
+    RebaseAddStep {
+        after: Option<usize>,
+        step: NewStep,
+    },
+    /// Remove row `i`, an exec or break step.
+    RebaseRemoveStep(usize),
+    /// Open row `i`'s editor: its message, its group's combined message, or its command.
     RebaseEditMessage(usize),
-    /// Update message: keep the editor's text and make the row a reword.
+    /// The open editor's save button: a message makes the row a reword, a combined message or
+    /// a command is stored.
     RebaseSaveMessage,
     RebaseCancelMessage,
+    /// "Use git's message" in the combined-message editor: forget the typed one.
+    RebaseResetCombined,
     /// The original order and actions (or, for a stale list, the list reloaded).
     RebaseReset,
-    /// Start the rebase; drops and uncommitted changes ask first (`confirmed: false`).
-    /// `autostash`: the question mentioned stashing, so tracked changes are stashed first.
+    /// Start the rebase (or update the remaining steps); drops and uncommitted changes ask
+    /// first (`confirmed: false`). `autostash`: the question mentioned stashing, so tracked
+    /// changes are stashed first.
     StartRebase {
         confirmed: bool,
         autostash: bool,
@@ -37,9 +55,21 @@ pub enum RebaseMsg {
         generation: u64,
         result: Result<RebasePlan, String>,
     },
-    /// The rebase job's result, for whichever tab it ran in (like `JobDone`).
+    /// Open the panel on the remaining steps of the interactive rebase in progress.
+    OpenRemaining,
+    RemainingLoaded {
+        generation: u64,
+        result: Result<Remaining, String>,
+    },
+    /// The edit-todo job's result, for whichever tab it ran in (like `JobDone`).
+    RemainingEdited {
+        result: Result<(), String>,
+    },
+    /// The rebase job's result, for whichever tab it ran in (like `JobDone`), with what it
+    /// means for the undo history.
     RebaseFinished {
         result: Result<Outcome, String>,
+        undo: Option<UndoResult>,
     },
     /// A history edit chosen in the graph's menus: prepare its rebase.
     Edit(QuickEdit),
@@ -70,12 +100,19 @@ impl RebaseMsg {
             | Self::CloseRebase
             | Self::RebaseSetAction { .. }
             | Self::RebaseMove { .. }
+            | Self::RebaseSelect(..)
+            | Self::RebaseAddStep { .. }
+            | Self::RebaseRemoveStep(..)
             | Self::RebaseEditMessage(..)
             | Self::RebaseSaveMessage
             | Self::RebaseCancelMessage
+            | Self::RebaseResetCombined
             | Self::RebaseReset
             | Self::StartRebase { .. }
             | Self::RebasePlanLoaded { .. }
+            | Self::OpenRemaining
+            | Self::RemainingLoaded { .. }
+            | Self::RemainingEdited { .. }
             | Self::RebaseFinished { .. }
             | Self::Edit(..)
             | Self::EditPrepared { .. }

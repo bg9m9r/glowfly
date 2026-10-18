@@ -21,7 +21,7 @@ fn refused(dir: &Path, edit: QuickEdit) -> String {
 }
 
 fn rows(p: &QuickPlan) -> Vec<(Oid, RebaseAction)> {
-    p.request.items.iter().map(|i| (i.oid, i.action)).collect()
+    p.request.items.iter().filter_map(TodoStep::commit).map(|i| (i.oid, i.action)).collect()
 }
 
 #[test]
@@ -31,8 +31,8 @@ fn reword_prepares_one_row() {
     assert_eq!(p.request.upstream, Upstream::Commit(c1));
     assert_eq!(rows(&p), [(c2, RebaseAction::Reword), (c3, RebaseAction::Pick), (c4, RebaseAction::Pick)]);
     assert_eq!((p.edited.as_slice(), p.later, p.branch.as_str()), ([0].as_slice(), 2, "main"));
-    assert_eq!(p.request.items[0].summary, "c2");
-    assert!(!p.request.autostash && p.request.items[0].new_message.is_none());
+    assert_eq!(p.request.items[0].commit().unwrap().summary, "c2");
+    assert!(!p.request.autostash && p.request.items[0].commit().unwrap().new_message.is_none());
 
     let p = prepared(&dir, QuickEdit::Reword(c4));
     assert_eq!((rows(&p), p.later), (vec![(c4, RebaseAction::Reword)], 0));
@@ -47,7 +47,7 @@ fn squash_into_parent_runs() {
     let (dir, [_, c2, c3, c4]) = linear("rebase-quick-squash-parent");
     let p = prepared(&dir, QuickEdit::SquashIntoParent(c3));
     assert_eq!(rows(&p), [(c2, RebaseAction::Reword), (c3, RebaseAction::Fixup), (c4, RebaseAction::Pick)]);
-    assert_eq!(p.request.items[0].new_message.as_deref(), Some("c2\n\nThe second commit.\n\nc3"));
+    assert_eq!(p.request.items[0].commit().unwrap().new_message.as_deref(), Some("c2\n\nThe second commit.\n\nc3"));
     assert_eq!((p.edited.as_slice(), p.later), ([0, 1].as_slice(), 1));
     let old_tree = Repository::open(&dir).unwrap().find_commit(c4).unwrap().tree_id();
     let outcome = start_copy(&dir, &p.request);
@@ -70,7 +70,7 @@ fn squash_many_and_not_consecutive() {
     assert_eq!(refused(&dir, QuickEdit::Squash(vec![c2])), TOO_FEW_TO_SQUASH);
     let p = prepared(&dir, QuickEdit::Squash(vec![c4, c2, c3]));
     assert_eq!(rows(&p), [(c2, RebaseAction::Reword), (c3, RebaseAction::Fixup), (c4, RebaseAction::Fixup)]);
-    assert_eq!(p.request.items[0].new_message.as_deref(), Some("c2\n\nc3\n\nc4"));
+    assert_eq!(p.request.items[0].commit().unwrap().new_message.as_deref(), Some("c2\n\nc3\n\nc4"));
     assert_eq!(p.request.upstream, Upstream::Commit(c1));
     assert!(matches!(start_copy(&dir, &p.request), Outcome::Finished { .. }));
     assert_eq!(log(&dir), ["c2", "c1"]);

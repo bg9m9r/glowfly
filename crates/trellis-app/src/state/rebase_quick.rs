@@ -5,7 +5,7 @@
 use super::rebase::STASH_LINE;
 use git2::{Oid, RepositoryState};
 use std::path::PathBuf;
-use trellis_core::rebase::{self, QuickEdit, QuickPlan};
+use trellis_core::rebase::{self, QuickEdit, QuickPlan, TodoStep};
 use trellis_core::repo::{CommitInfo, Snapshot};
 
 pub const REWORD_LABEL: &str = "Reword commit";
@@ -116,6 +116,17 @@ pub fn multi(snap: &Snapshot, oids: &[Oid]) -> EditBlockers {
     EditBlockers { reword: None, squash, drop }
 }
 
+/// What an edit is called in the undo history ("reword of 1a2b3c4", "squash of 3 commits").
+pub fn undo_detail(edit: &QuickEdit) -> String {
+    match edit {
+        QuickEdit::Reword(o) => format!("reword of {}", short(*o)),
+        QuickEdit::SquashIntoParent(o) => format!("squash of {} into its parent", short(*o)),
+        QuickEdit::Squash(v) => format!("squash of {}", commits(v.len())),
+        QuickEdit::Drop(v) if v.len() == 1 => format!("drop of {}", short(v[0])),
+        QuickEdit::Drop(v) => format!("drop of {}", commits(v.len())),
+    }
+}
+
 /// The job label of an edit.
 pub fn label(edit: &QuickEdit) -> &'static str {
     match edit {
@@ -161,12 +172,12 @@ impl RewordForm {
     }
 
     pub fn oid(&self) -> Oid {
-        self.plan.request.items.get(self.index()).map(|i| i.oid).unwrap_or_else(Oid::zero)
+        self.plan.request.items.get(self.index()).and_then(TodoStep::commit).map(|i| i.oid).unwrap_or_else(Oid::zero)
     }
 
     /// The commit's message as it is now.
     pub fn original(&self) -> &str {
-        self.plan.request.items.get(self.index()).map(|i| i.message.as_str()).unwrap_or("")
+        self.plan.request.items.get(self.index()).and_then(TodoStep::commit).map(|i| i.message.as_str()).unwrap_or("")
     }
 
     /// Commits after it, rewritten too.
@@ -201,13 +212,16 @@ impl RewordForm {
 pub fn drop_question(plan: &QuickPlan, stash: bool) -> (String, String, String) {
     let n = plan.edited.len();
     if n == 1 {
-        let item = &plan.request.items[plan.edited[0]];
+        let (sha, summary) = match plan.request.items[plan.edited[0]].commit() {
+            Some(item) => (short(item.oid), item.summary.as_str()),
+            None => (String::new(), ""),
+        };
         let after = match plan.later {
             0 => "and nothing after it changes.".to_owned(),
             1 => "and the commit after it is rewritten.".to_owned(),
             k => format!("and the {k} commits after it are rewritten."),
         };
-        let body = format!("Drop {} \"{}\" from {}? Its changes are removed {after}", short(item.oid), item.summary, plan.branch);
+        let body = format!("Drop {sha} \"{summary}\" from {}? Its changes are removed {after}", plan.branch);
         return ("Drop commit".into(), with_stash(body, stash), "Drop commit".into());
     }
     let body = format!("Drop {} from {}? Their changes are removed and the commits after them are rewritten.", commits(n), plan.branch);

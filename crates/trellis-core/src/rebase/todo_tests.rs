@@ -15,6 +15,7 @@ fn item(n: u8, action: RebaseAction) -> TodoItem {
         summary: format!("commit {n}"),
         message: format!("commit {n}\n\nbody {n}\n"),
         new_message: None,
+        combined_message: None,
         author: "Test".into(),
         time: 1_700_000_000,
     }
@@ -22,6 +23,18 @@ fn item(n: u8, action: RebaseAction) -> TodoItem {
 
 fn reword(n: u8, message: &str) -> TodoItem {
     TodoItem { new_message: Some(message.into()), ..item(n, RebaseAction::Reword) }
+}
+
+fn steps(items: &[TodoItem]) -> Vec<TodoStep> {
+    items.iter().cloned().map(TodoStep::Commit).collect()
+}
+
+fn c(n: u8, action: RebaseAction) -> TodoStep {
+    TodoStep::Commit(item(n, action))
+}
+
+fn exec(cmd: &str) -> TodoStep {
+    TodoStep::Exec(cmd.into())
 }
 
 /// The message folder in this OS's own spelling, and how it appears in the todo for `sh`
@@ -50,7 +63,7 @@ fn exec_line(n: u8) -> String {
 fn build_writes_one_line_per_row_in_order() {
     let mut items: Vec<TodoItem> = RebaseAction::ALL.iter().enumerate().map(|(i, a)| item(i as u8 + 1, *a)).collect();
     items[0].summary = "two\nlines".into();
-    let (text, files) = build(&items, Path::new(MSG_DIR));
+    let (text, files) = build(&steps(&items), Path::new(MSG_DIR), false);
     let expected: Vec<String> = ["pick", "pick", "squash", "fixup", "drop", "edit"]
         .iter()
         .enumerate()
@@ -67,7 +80,7 @@ fn build_writes_one_line_per_row_in_order() {
 #[test]
 fn a_reword_amends_from_a_message_file() {
     let items = [item(1, RebaseAction::Pick), reword(2, "New title\n\nNew body\n\n"), item(3, RebaseAction::Pick)];
-    let (text, files) = build(&items, Path::new(MSG_DIR));
+    let (text, files) = build(&steps(&items), Path::new(MSG_DIR), false);
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines.len(), 5);
     assert_eq!(lines[1], base_line(2), "HEAD is recorded before the reworded pick");
@@ -80,7 +93,7 @@ fn a_reword_amends_from_a_message_file() {
 
     // An unchanged message (ignoring surrounding whitespace) is no reword at all.
     let same = reword(2, "  commit 2\n\nbody 2");
-    let (text, files) = build(&[same], Path::new(MSG_DIR));
+    let (text, files) = build(&steps(&[same]), Path::new(MSG_DIR), false);
     assert_eq!(text, format!("pick {} commit 2\n", oid(2)));
     assert!(files.is_empty());
 }
@@ -94,7 +107,7 @@ fn a_reword_exec_follows_its_whole_group() {
         item(4, RebaseAction::Fixup),
         item(5, RebaseAction::Pick),
     ];
-    let (text, _) = build(&items, Path::new(MSG_DIR));
+    let (text, _) = build(&steps(&items), Path::new(MSG_DIR), false);
     let lines: Vec<&str> = text.lines().collect();
     assert_eq!(lines[0], base_line(1));
     assert!(lines[4].starts_with("fixup "), "{text}");
@@ -105,28 +118,36 @@ fn a_reword_exec_follows_its_whole_group() {
 #[test]
 fn problems_with_the_list() {
     use RebaseAction::*;
-    let list = |actions: &[RebaseAction]| actions.iter().enumerate().map(|(i, a)| item(i as u8, *a)).collect::<Vec<_>>();
+    let list = |actions: &[RebaseAction]| actions.iter().enumerate().map(|(i, a)| c(i as u8, *a)).collect::<Vec<_>>();
     assert_eq!(problem(&list(&[Squash, Pick])).as_deref(), Some(FIRST_COMBINES));
     assert_eq!(problem(&list(&[Fixup])).as_deref(), Some(FIRST_COMBINES));
     assert_eq!(problem(&list(&[Drop, Drop, Squash])).as_deref(), Some(FIRST_COMBINES));
     assert_eq!(problem(&list(&[Drop, Pick, Squash, Fixup])), None);
-    assert_eq!(problem(&[reword(1, "")]).as_deref(), Some(EMPTY_REWORD));
-    assert_eq!(problem(&[reword(1, " \n\t ")]).as_deref(), Some(EMPTY_REWORD));
-    assert_eq!(problem(&[item(1, Reword)]), None, "a reword without a typed message keeps the original");
+    assert_eq!(problem(&steps(&[reword(1, "")])).as_deref(), Some(EMPTY_REWORD));
+    assert_eq!(problem(&steps(&[reword(1, " \n\t ")])).as_deref(), Some(EMPTY_REWORD));
+    assert_eq!(problem(&[c(1, Reword)]), None, "a reword without a typed message keeps the original");
 }
 
 #[test]
 fn unchanged_lists() {
-    let original = vec![item(1, RebaseAction::Pick), item(2, RebaseAction::Pick)];
+    let original = vec![c(1, RebaseAction::Pick), c(2, RebaseAction::Pick)];
     assert!(is_unchanged(&original, &original));
     assert!(!is_unchanged(&[original[1].clone(), original[0].clone()], &original));
     let mut edited = original.clone();
-    edited[1].action = RebaseAction::Reword;
+    edited[1].commit_mut().unwrap().action = RebaseAction::Reword;
     assert!(is_unchanged(&edited, &original), "a reword keeping its message changes nothing");
-    edited[1].new_message = Some("Other".into());
+    edited[1].commit_mut().unwrap().new_message = Some("Other".into());
     assert!(!is_unchanged(&edited, &original));
-    edited[1] = item(2, RebaseAction::Drop);
+    edited[1] = c(2, RebaseAction::Drop);
     assert!(!is_unchanged(&edited, &original));
+    let mut with_step = original.clone();
+    with_step.push(TodoStep::Break);
+    assert!(!is_unchanged(&with_step, &original), "a break step is a change");
+    with_step[2] = exec("true");
+    assert!(!is_unchanged(&with_step, &original), "an exec step is a change");
+    let mut combined = original.clone();
+    combined[0].commit_mut().unwrap().combined_message = Some("Both".into());
+    assert!(!is_unchanged(&combined, &original), "a typed combined message is a change");
 }
 
 #[test]
@@ -175,7 +196,7 @@ fn install_todo_checks_the_commits() {
     let (prepared, git_todo) = (dir.join("todo"), dir.join("git-rebase-todo"));
     let short = |n: u8| oid(n).to_string()[..7].to_owned();
     let git_text = format!("pick {} commit 1\npick {} commit 2\n\n# Rebase onto ...\n", short(1), short(2));
-    let (ours, _) = build(&[item(2, RebaseAction::Pick), item(1, RebaseAction::Drop)], Path::new(MSG_DIR));
+    let (ours, _) = build(&[c(2, RebaseAction::Pick), c(1, RebaseAction::Drop)], Path::new(MSG_DIR), false);
     std::fs::write(&prepared, &ours).unwrap();
 
     std::fs::write(&git_todo, &git_text).unwrap();
@@ -194,4 +215,115 @@ fn install_todo_checks_the_commits() {
     std::fs::write(&git_todo, &other).unwrap();
     assert!(install_todo(&prepared, &git_todo).is_err());
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn exec_and_break_lines_in_order() {
+    use RebaseAction::*;
+    let list = [c(1, Pick), exec("cargo test"), c(2, Pick), TodoStep::Break, c(3, Pick)];
+    let (text, files) = build(&list, Path::new(MSG_DIR), false);
+    let want = format!("pick {} commit 1\nexec cargo test\npick {} commit 2\nbreak\npick {} commit 3\n", oid(1), oid(2), oid(3));
+    assert_eq!(text, want);
+    assert!(files.is_empty());
+}
+
+#[test]
+fn a_reword_amends_before_a_following_exec() {
+    let list = [TodoStep::Commit(reword(1, "New")), exec("make check"), c(2, RebaseAction::Pick)];
+    let (text, _) = build(&list, Path::new(MSG_DIR), false);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines[0], base_line(1));
+    assert!(lines[1].starts_with("pick "));
+    assert_eq!(lines[2], exec_line(1), "the amend comes before the exec step");
+    assert_eq!(lines[3], "exec make check");
+}
+
+#[test]
+fn a_combined_message_amends_after_the_group() {
+    use RebaseAction::*;
+    let mut head = item(1, Pick);
+    head.combined_message = Some("All in one\n\n".into());
+    let list = [TodoStep::Commit(head), c(2, Squash), c(3, Fixup), c(4, Pick)];
+    let (text, files) = build(&list, Path::new(MSG_DIR), false);
+    let lines: Vec<&str> = text.lines().collect();
+    assert_eq!(lines[0], base_line(1));
+    assert!(lines[3].starts_with("fixup "), "{text}");
+    let file = format!("'{QUOTED_DIR}/combined-{}.txt'", oid(1));
+    assert_eq!(lines[4], exec_line(1).replace(&format!("'{QUOTED_DIR}/reword-{}.txt'", oid(1)), &file));
+    assert!(lines[5].starts_with("pick "));
+    assert_eq!(files, [(Path::new(MSG_DIR).join(format!("combined-{}.txt", oid(1))), "All in one\n".to_owned())]);
+
+    // Without a group to head, a combined message is ignored.
+    let mut alone = item(1, Pick);
+    alone.combined_message = Some("Lonely".into());
+    let (text, files) = build(&[TodoStep::Commit(alone)], Path::new(MSG_DIR), false);
+    assert_eq!(text, format!("pick {} commit 1\n", oid(1)));
+    assert!(files.is_empty());
+}
+
+#[test]
+fn keep_rewords_writes_untyped_rewords() {
+    let list = [c(1, RebaseAction::Reword)];
+    assert_eq!(build(&list, Path::new(MSG_DIR), true).0, format!("reword {} commit 1\n", oid(1)));
+    assert_eq!(build(&list, Path::new(MSG_DIR), false).0, format!("pick {} commit 1\n", oid(1)));
+}
+
+#[test]
+fn group_end_and_default_combined() {
+    use RebaseAction::*;
+    let list = [c(1, Pick), c(2, Squash), c(3, Drop), c(4, Fixup), c(5, Squash), TodoStep::Break, c(6, Squash)];
+    assert_eq!(group_end(&list, 0), Some(4), "drops are skipped, a break ends the group");
+    assert_eq!(group_end(&list, 1), None, "a squash heads nothing");
+    assert_eq!(group_end(&[c(1, Pick), c(2, Pick)], 0), None);
+    assert_eq!(group_end(&[c(1, Pick), exec("x"), c(2, Squash)], 0), None, "an exec step ends the group");
+    assert_eq!(default_combined(&list, 0), "commit 1\n\nbody 1\n\ncommit 2\n\nbody 2\n\ncommit 5\n\nbody 5");
+    let mut reworded = list.to_vec();
+    reworded[0] = TodoStep::Commit(reword(1, "Typed\n"));
+    assert!(default_combined(&reworded, 0).starts_with("Typed\n\ncommit 2"), "{}", default_combined(&reworded, 0));
+    assert_eq!(default_combined(&[c(1, Pick)], 0), "commit 1\n\nbody 1");
+}
+
+#[test]
+fn problems_with_steps() {
+    use RebaseAction::*;
+    assert_eq!(problem(&[exec("x"), c(1, Squash)]).as_deref(), Some(FIRST_COMBINES));
+    assert_eq!(problem_with(&[c(1, Squash), c(2, Pick)], true), None, "it melds into the commit already done");
+    assert_eq!(problem_with(&[TodoStep::Break, c(1, Fixup)], true).as_deref(), Some(COMBINE_AFTER_STEP));
+    assert_eq!(problem(&[c(1, Pick), exec("x"), c(2, Squash)]).as_deref(), Some(COMBINE_AFTER_STEP));
+    assert_eq!(problem(&[c(1, Pick), TodoStep::Break, c(3, Drop), c(2, Fixup)]).as_deref(), Some(COMBINE_AFTER_STEP));
+    assert_eq!(problem(&[c(1, Pick), c(2, Squash), exec("x")]), None);
+    let mut head = item(1, Pick);
+    head.combined_message = Some("  \n".into());
+    assert_eq!(problem(&[TodoStep::Commit(head.clone()), c(2, Squash)]).as_deref(), Some(EMPTY_COMBINED));
+    assert_eq!(problem(&[TodoStep::Commit(head)]), None, "no group, so the message isn't used");
+    assert_eq!(problem(&[c(1, Pick), exec("  ")]).as_deref(), Some(EMPTY_EXEC));
+    assert_eq!(problem(&[c(1, Pick), exec("a\nb")]).as_deref(), Some(EXEC_ONE_LINE));
+    assert_eq!(problem(&[c(1, Pick), exec("a\rb")]).as_deref(), Some(EXEC_ONE_LINE));
+}
+
+#[test]
+fn own_lines_are_recognised() {
+    use super::todo::{OwnLine, own_line};
+    let mut head = item(1, RebaseAction::Pick);
+    head.combined_message = Some("Both".into());
+    let list = [TodoStep::Commit(reword(2, "New")), TodoStep::Commit(head), c(3, RebaseAction::Squash)];
+    let (text, _) = build(&list, Path::new(MSG_DIR), false);
+    // The lines as a Windows folder (backslashes turned to slashes) and a Unix one quote.
+    for (dir, windows) in [("C:\\repo\\.git\\trellis-rebase", true), ("/home/u/repo/.git/trellis-rebase", false)] {
+        let quoted = shell_quote_for(dir, windows);
+        let text = text.replace(QUOTED_DIR, quoted.trim_matches('\''));
+        let found: Vec<Option<OwnLine>> = text.lines().map(own_line).collect();
+        let want = [
+            Some(OwnLine::Base(oid(2))),
+            None,
+            Some(OwnLine::Amend { oid: oid(2), combined: false }),
+            Some(OwnLine::Base(oid(1))),
+            None,
+            None,
+            Some(OwnLine::Amend { oid: oid(1), combined: true }),
+        ];
+        assert_eq!(found, want, "{text}");
+    }
+    assert_eq!(own_line("exec make test"), None);
+    assert_eq!(own_line("exec cat trellis-rebase/reword-1234.base"), None);
 }

@@ -32,6 +32,9 @@ pub enum MoveOp {
     CherryPick,
     Revert,
     Rebase,
+    /// An interactive rebase or a history edit (reword, squash, drop); recorded around the
+    /// rebase run (`rebased.rs`), never from a command line.
+    Rewrite,
 }
 
 impl MoveOp {
@@ -42,6 +45,7 @@ impl MoveOp {
             MoveOp::CherryPick => "cherry-pick",
             MoveOp::Revert => "revert",
             MoveOp::Rebase => "rebase",
+            MoveOp::Rewrite => "history edit",
         }
     }
 }

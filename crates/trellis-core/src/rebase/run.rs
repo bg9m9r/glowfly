@@ -3,8 +3,8 @@
 
 use super::plan::{checked_head, range};
 use super::progress::progress;
-use super::todo::{build, editor_command, problem};
-use super::{CHANGED, NOT_REBASING, Outcome, STALE, SequenceEditor, StartRequest, Upstream};
+use super::todo::{MSG_DIR, build, editor_command, problem};
+use super::{CHANGED, NOT_REBASING, Outcome, STALE, SequenceEditor, StartRequest, TodoStep, Upstream};
 use crate::error::{Error, Result};
 use crate::gitcli;
 use git2::{Oid, Repository, RepositoryState};
@@ -21,8 +21,9 @@ pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Res
         return Err(Error::Unsupported(STALE.into()));
     }
     let expected: HashSet<Oid> = range(&repo, head, req.upstream)?.into_iter().collect();
-    let listed: HashSet<Oid> = req.items.iter().map(|i| i.oid).collect();
-    if expected.is_empty() || listed.len() != req.items.len() || listed != expected {
+    let commits: Vec<Oid> = req.items.iter().filter_map(TodoStep::oid).collect();
+    let listed: HashSet<Oid> = commits.iter().copied().collect();
+    if expected.is_empty() || listed.len() != commits.len() || listed != expected {
         return Err(Error::Unsupported(CHANGED.into()));
     }
     if let Some(p) = problem(&req.items) {
@@ -32,12 +33,12 @@ pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Res
     // Message files from an earlier rebase are removed only now: exec lines read them until a
     // stopped rebase finishes.
     let git_dir = repo.path().to_path_buf();
-    let msg_dir = git_dir.join("trellis-rebase");
+    let msg_dir = git_dir.join(MSG_DIR);
     if msg_dir.exists() {
         std::fs::remove_dir_all(&msg_dir)?;
     }
     std::fs::create_dir_all(&msg_dir)?;
-    let (todo, files) = build(&req.items, &msg_dir);
+    let (todo, files) = build(&req.items, &msg_dir, false);
     for (path, text) in files {
         crate::persist::atomic_write(&path, text.as_bytes())?;
     }

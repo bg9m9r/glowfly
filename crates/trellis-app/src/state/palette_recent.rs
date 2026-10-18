@@ -5,6 +5,7 @@
 
 use super::layout::Panel;
 use super::palette_commands::PaletteCommand;
+use super::palette_commands::palette_commands_rebase::RebaseCommand;
 use super::palette_kinds::StashAction;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::LayoutMsg;
@@ -14,6 +15,7 @@ use crate::remote::RemoteMsg;
 use crate::submodule::SubmoduleMsg;
 use crate::tools::ToolsMsg;
 use trellis_core::gitflow::FlowKind;
+use trellis_core::rebase::Resume;
 use trellis_core::settings::ThemeChoice;
 use trellis_core::stash_ops::StashScope;
 
@@ -137,6 +139,10 @@ impl PaletteCommand {
             C::ApplyPatch => "apply-patch",
             C::Patch(crate::patch::PatchMsg::ChangesDialog { path: None, .. }) => "create-patch-uncommitted",
             C::Patch(_) => return None,
+            C::Rebase(RebaseCommand::Edit(_)) => return None,
+            C::Rebase(RebaseCommand::Resume(Resume::Continue)) => "rebase-continue",
+            C::Rebase(RebaseCommand::Resume(Resume::Skip)) => "rebase-skip",
+            C::Rebase(RebaseCommand::EditRemaining) => "rebase-edit-steps",
             C::OpenFileHistory(_) | C::OpenBlame(_) => return None,
             C::Worktree(m) if **m == crate::worktree::WorktreeMsg::Prune => "prune-worktrees",
             C::Worktree(_) => return None,

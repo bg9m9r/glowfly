@@ -17,6 +17,8 @@ mod palette_commands_submodules;
 pub use palette_commands_repos::RepoListCommand;
 #[path = "palette_commands_worktrees.rs"]
 mod palette_commands_worktrees;
+#[path = "palette_commands_rebase.rs"]
+pub mod palette_commands_rebase;
 #[path = "palette_conflict.rs"]
 mod palette_conflict;
 #[path = "palette_gitflow.rs"]
@@ -197,6 +199,8 @@ pub enum PaletteCommand {
     Updates(crate::msg::UpdateMsg),
     /// Favorites and recent repositories (palette_commands_repos.rs).
     RepoList(RepoListCommand),
+    /// History edits and the rebase in progress (palette_commands_rebase.rs).
+    Rebase(palette_commands_rebase::RebaseCommand),
 }
 
 impl PaletteCommand {
@@ -222,6 +226,7 @@ impl PaletteCommand {
             C::Layout(LayoutMsg::ZoomReset) => BindingId::ZoomReset,
             C::Layout(LayoutMsg::SetPanel { panel, .. } | LayoutMsg::TogglePanel(panel)) => return panel.binding(),
             C::RepoList(c) => return c.binding(),
+            C::Rebase(c) => return c.binding(),
             _ => return None,
         })
     }
@@ -305,6 +310,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     palette_pr::pr_entries(st, snap, out);
     palette_stash::stash_entries(snap, out);
     palette_conflict::conflict_entries(st, snap, out);
+    palette_commands_rebase::entries(st, snap, out);
     if !snap.unstaged.is_empty() {
         out.push(entry(C::StageAll, "Stage all files", "add everything"));
     }

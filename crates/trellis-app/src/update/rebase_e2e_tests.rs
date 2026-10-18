@@ -105,3 +105,20 @@ fn a_conflict_stops_and_abort_restores() {
     assert_eq!(head(&dir), b, "back at the original HEAD");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_finished_rebase_is_undone_in_one_step() {
+    let (mut st, dir, c) = with_panel("rebase-e2e-undo", RebaseBase::FromCommit(Oid::zero()));
+    let tip = head(&dir);
+    drive(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 0, to: 2 }));
+    drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
+    assert_eq!(log(&dir)[..3], ["c1", "c3", "c2"]);
+    assert_ne!(head(&dir), tip);
+    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo interactive rebase of main");
+    drive(&mut st, Msg::Job(crate::msg::JobMsg::Undo));
+    assert_eq!(head(&dir), tip, "the branch is back at its old tip");
+    assert_eq!(log(&dir)[..3], ["c3", "c2", "c1"]);
+    assert!(!st.undo.redo.is_empty(), "and can be redone");
+    let _ = c;
+    let _ = std::fs::remove_dir_all(&dir);
+}

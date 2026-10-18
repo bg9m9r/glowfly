@@ -11,7 +11,19 @@ pub(super) fn request(dir: &Path, base: RebaseBase, edit: impl FnOnce(&mut Vec<T
     let p = plan(dir, &base).unwrap();
     let mut items = p.items;
     edit(&mut items);
-    StartRequest { head: p.head, upstream: p.upstream, items, autostash: false }
+    StartRequest { head: p.head, upstream: p.upstream, items: items.into_iter().map(TodoStep::Commit).collect(), autostash: false }
+}
+
+/// Like `request`, editing the list as steps (to add exec and break steps).
+pub(super) fn request_steps(dir: &Path, base: RebaseBase, edit: impl FnOnce(&mut Vec<TodoStep>)) -> StartRequest {
+    let mut req = request(dir, base, |_| {});
+    edit(&mut req.items);
+    req
+}
+
+/// Row `i` of a step list, which must be a commit.
+pub(super) fn at(steps: &mut [TodoStep], i: usize) -> &mut TodoItem {
+    steps[i].commit_mut().expect("a commit row")
 }
 
 pub(super) fn start_copy(dir: &Path, req: &StartRequest) -> Outcome {
@@ -289,5 +301,90 @@ fn refused_todo_with_autostash_restores_changes() {
 ",
         "the edit is back"
     );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn exec_steps_run_in_order() {
+    let (dir, [_, c2, ..]) = linear("rebase-run-exec");
+    let cmd = "git log -1 --format=%s >> exec-log.txt";
+    let req = request_steps(&dir, RebaseBase::FromCommit(c2), |steps| {
+        steps.insert(2, TodoStep::Exec(cmd.into()));
+        steps.insert(1, TodoStep::Exec(cmd.into()));
+    });
+    let outcome = start_copy(&dir, &req);
+    assert!(matches!(outcome, Outcome::Finished { .. }), "{outcome:?}");
+    assert_eq!(std::fs::read_to_string(dir.join("exec-log.txt")).unwrap().lines().collect::<Vec<_>>(), ["c2", "c3"]);
+    assert_eq!(log(&dir), ["c4", "c3", "c2", "c1"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_failing_exec_stops_with_its_command() {
+    let (dir, [_, c2, c3, _]) = linear("rebase-run-exec-fails");
+    let req = request_steps(&dir, RebaseBase::FromCommit(c2), |steps| steps.insert(2, TodoStep::Exec("false".into())));
+    match start_copy(&dir, &req) {
+        Outcome::Stopped { progress, .. } => {
+            assert_eq!(progress.stop, Stop { kind: StopKind::Command, oid: Some(c3) });
+            assert_eq!(progress.command.as_deref(), Some("false"));
+        }
+        other => panic!("expected a stop, got {other:?}"),
+    }
+    assert_eq!(state(&dir), git2::RepositoryState::RebaseInteractive);
+    assert!(matches!(resume(&dir, Resume::Continue).unwrap(), Outcome::Finished { .. }));
+    assert_eq!(log(&dir), ["c4", "c3", "c2", "c1"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_break_step_pauses() {
+    let (dir, [_, c2, ..]) = linear("rebase-run-break");
+    let req = request_steps(&dir, RebaseBase::FromCommit(c2), |steps| steps.insert(1, TodoStep::Break));
+    match start_copy(&dir, &req) {
+        Outcome::Stopped { ok, progress, .. } => {
+            assert!(ok, "a break is no failure");
+            assert_eq!(progress.stop, Stop { kind: StopKind::Break, oid: Some(c2) });
+            assert_eq!(progress.command, None);
+        }
+        other => panic!("expected a stop, got {other:?}"),
+    }
+    assert!(matches!(resume(&dir, Resume::Continue).unwrap(), Outcome::Finished { .. }));
+    assert_eq!(log(&dir), ["c4", "c3", "c2", "c1"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_combined_message_is_the_squashed_commits_message() {
+    let (dir, [_, c2, ..]) = linear("rebase-run-combined");
+    let req = request_steps(&dir, RebaseBase::FromCommit(c2), |steps| {
+        at(steps, 1).action = RebaseAction::Squash;
+        at(steps, 0).combined_message = Some("Two and three\n\nTogether.".into());
+    });
+    assert!(matches!(start_copy(&dir, &req), Outcome::Finished { .. }));
+    assert_eq!(message(&dir, "HEAD~1"), "Two and three\n\nTogether.");
+    assert_eq!(log(&dir), ["c4", "Two and three", "c1"]);
+
+    // A group of fixups only.
+    let base = Repository::open(&dir).unwrap().revparse_single("HEAD~1").unwrap().id();
+    let req = request_steps(&dir, RebaseBase::FromCommit(base), |steps| {
+        at(steps, 1).action = RebaseAction::Fixup;
+        at(steps, 0).combined_message = Some("Everything".into());
+    });
+    assert!(matches!(start_copy(&dir, &req), Outcome::Finished { .. }));
+    assert_eq!(log(&dir), ["Everything", "c1"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_combined_message_wins_over_a_reword() {
+    let (dir, [_, c2, ..]) = linear("rebase-run-combined-reword");
+    let req = request_steps(&dir, RebaseBase::FromCommit(c2), |steps| {
+        at(steps, 0).action = RebaseAction::Reword;
+        at(steps, 0).new_message = Some("Only the head".into());
+        at(steps, 0).combined_message = Some("The whole group".into());
+        at(steps, 1).action = RebaseAction::Squash;
+    });
+    assert!(matches!(start_copy(&dir, &req), Outcome::Finished { .. }));
+    assert_eq!(log(&dir), ["c4", "The whole group", "c1"]);
     let _ = std::fs::remove_dir_all(&dir);
 }

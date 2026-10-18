@@ -56,7 +56,7 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     if in_progress.is_some() || !conflicted.is_empty() {
         egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
             match (in_progress, &snap.rebase) {
-                (Some((name, _)), Some(p)) => super::rebase::banner::progress(ui, p, name, !conflicted.is_empty()),
+                (Some((name, _)), Some(p)) => super::rebase::banner::progress(ui, p, name, !conflicted.is_empty(), msgs),
                 (Some((name, _)), None) => super::am_banner::title(ui, snap, name, !conflicted.is_empty()),
                 _ => {}
             }
@@ -70,13 +70,14 @@ fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
                 });
             }
             let Some((_, actions)) = in_progress else { return };
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 for (label, a) in actions {
                     let held = !conflicted.is_empty() && *label == "Continue" && (snap.rebase.is_some() || snap.am.is_some());
                     if ui.add_enabled(!held, egui::Button::new(*label)).on_disabled_hover_text(RESOLVE_FIRST).clicked() {
                         msgs.push(action_msg(snap.state, label, a));
                     }
                 }
+                super::rebase::banner::edit_steps_button(ui, snap.state, msgs);
             });
         });
         ui.add_space(6.0);

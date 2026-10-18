@@ -78,3 +78,32 @@ fn continue_waits_for_conflicts_and_skip_resumes() {
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Interactive rebase"));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn headlines_for_commands_and_breaks() {
+    use super::rebase_resume::stopped_headline;
+    use trellis_core::rebase::{RebaseProgress, Stop, StopKind};
+    let oid = Oid::from_bytes(&[0x1a; 20]).unwrap();
+    let p = |kind| RebaseProgress {
+        step: 2,
+        total: 4,
+        stop: Stop { kind, oid: Some(oid) },
+        summary: "Fix it".into(),
+        autostash: false,
+        interactive: true,
+        command: Some("false".into()),
+    };
+    let label = "Interactive rebase";
+    assert_eq!(
+        stopped_headline(label, &p(StopKind::Command), false, ""),
+        "Interactive rebase stopped: the command after 1a1a1a1 (step 2 of 4) failed."
+    );
+    assert_eq!(
+        stopped_headline(label, &p(StopKind::Break), true, ""),
+        "Interactive rebase paused at a break step after 1a1a1a1 (step 2 of 4). Use Continue to go on."
+    );
+    assert_eq!(
+        stopped_headline(label, &p(StopKind::Exec), false, ""),
+        "Interactive rebase stopped: rewording 1a1a1a1 (step 2 of 4) failed."
+    );
+}

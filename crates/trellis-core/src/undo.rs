@@ -6,6 +6,8 @@
 //! `kinds` recognises the command lines, `action` names what was recorded, `record` captures the
 //! state around an operation, and `planning` decides how to reverse it, with `refs` (branches and
 //! tags), `moved` (merge, pull, cherry-pick, revert, rebase), `stash`, `reset` and `saved`.
+//! Rebases, also interactive ones and graph edits, are recorded around their run instead
+//! (`rebased.rs`): they finish in steps, possibly outside Trellis.
 
 use crate::gitcli::args;
 use git2::Oid;
@@ -14,6 +16,7 @@ mod action;
 mod kinds;
 mod moved;
 mod planning;
+mod rebased;
 mod record;
 mod refs;
 mod reset;
@@ -23,6 +26,7 @@ pub use action::{Action, Changes, Created, HeadPos};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
+pub use rebased::{RebaseStart, rebase_start, rebased, unmoved};
 use record::stash_top;
 pub use record::{Before, after, before, irreversible, redone};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
@@ -96,6 +100,8 @@ fn short(oid: Oid) -> String {
 mod kinds_tests;
 #[cfg(test)]
 mod moved_tests;
+#[cfg(test)]
+mod rebased_tests;
 #[cfg(test)]
 mod refs_tests;
 #[cfg(test)]

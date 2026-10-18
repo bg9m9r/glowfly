@@ -12,12 +12,12 @@ use crate::msg::RepoMsg;
 use crate::msg::TabsMsg;
 use crate::state::conflict::ConflictView;
 use crate::state::history::FileHistoryView;
-use crate::state::rebase::{CONFLICTED_FILES, RebasePanel, UNCHANGED};
+use crate::state::rebase::{CONFLICTED_FILES, Editing, RebasePanel, UNCHANGED};
 use crate::state::{AppState, Modal, RunningJob};
 use git2::{Oid, RepositoryState};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use trellis_core::rebase::{self, Outcome, RebaseAction, RebaseBase, RebasePlan, TodoItem, Upstream};
+use trellis_core::rebase::{self, Outcome, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream};
 use trellis_core::repo::{DiffTarget, FileDiff, FileEntry};
 
 /// A clean repository on main: "first", then c1..c3 (each adding c<n>.txt), opened.
@@ -55,11 +55,11 @@ fn panel(st: &AppState) -> &RebasePanel {
 }
 
 fn actions(st: &AppState) -> Vec<RebaseAction> {
-    panel(st).items.iter().map(|i| i.action).collect()
+    panel(st).items.iter().filter_map(TodoStep::commit).map(|i| i.action).collect()
 }
 
 fn order(st: &AppState) -> Vec<Oid> {
-    panel(st).items.iter().map(|i| i.oid).collect()
+    panel(st).items.iter().filter_map(TodoStep::oid).collect()
 }
 
 fn last_log(st: &AppState) -> &str {
@@ -77,6 +77,7 @@ fn fake_plan(n: u8) -> RebasePlan {
         summary: format!("commit {k}"),
         message: format!("commit {k}\n\nbody {k}\n"),
         new_message: None,
+        combined_message: None,
         author: "Test".into(),
         time: 1_700_000_000,
     };
@@ -190,10 +191,10 @@ fn editing_the_list() {
 
     // Reword opens the editor with the full message; Update stores the trimmed draft.
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 1, action: Reword }));
-    assert_eq!((panel(&st).editing, panel(&st).draft.as_str()), (Some(1), "commit 2\n\nbody 2"));
+    assert_eq!((panel(&st).editing, panel(&st).draft.as_str()), (Some(Editing::Message(1)), "commit 2\n\nbody 2"));
     st.rebase.as_mut().unwrap().draft = "New title\n\nNew body\n\n".into();
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseSaveMessage));
-    let item = &panel(&st).items[1];
+    let item = panel(&st).items[1].commit().unwrap();
     assert_eq!((item.action, item.new_message.as_deref()), (Reword, Some("New title\n\nNew body")));
     assert_eq!(panel(&st).editing, None);
 
@@ -208,14 +209,14 @@ fn editing_the_list() {
     // The editor follows its row when rows move; double-click opens it on any row.
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseEditMessage(0)));
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 0, to: 1 }));
-    assert_eq!(panel(&st).editing, Some(1));
+    assert_eq!(panel(&st).editing, Some(Editing::Message(1)));
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseEditMessage(7)));
-    assert_eq!(panel(&st).editing, Some(1), "out of range");
+    assert_eq!(panel(&st).editing, Some(Editing::Message(1)), "out of range");
 
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseReset));
     assert_eq!(order(&st), original);
     assert_eq!(actions(&st), [Pick, Pick, Pick]);
-    assert!(panel(&st).items.iter().all(|i| i.new_message.is_none()) && panel(&st).editing.is_none());
+    assert!(panel(&st).items.iter().filter_map(TodoStep::commit).all(|i| i.new_message.is_none()) && panel(&st).editing.is_none());
 }
 
 #[test]
@@ -293,13 +294,13 @@ fn drops_are_confirmed_before_starting() {
         _ => panic!("expected a confirmation"),
     }
     let fx = up(&mut st, Msg::ConfirmAccepted);
-    let [Effect::Rebase(RebaseEffect::Start { cwd, request })] = &fx[..] else { panic!("expected one rebase, got {fx:?}") };
+    let [Effect::Rebase(RebaseEffect::Start { cwd, request, .. })] = &fx[..] else { panic!("expected one rebase, got {fx:?}") };
     assert!(super::tests::same_place(cwd, &dir));
     assert_eq!(request.head, head(&dir));
     assert_eq!(request.upstream, Upstream::Commit(st.snap.as_ref().unwrap().commits[3].oid));
-    let oids: Vec<Oid> = request.items.iter().map(|i| i.oid).collect();
+    let oids: Vec<Oid> = request.items.iter().filter_map(TodoStep::oid).collect();
     assert_eq!(oids, [c[2], c[0], c[1]], "in panel order");
-    assert_eq!(request.items[2].action, RebaseAction::Drop);
+    assert_eq!(request.items[2].commit().unwrap().action, RebaseAction::Drop);
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some(JOB_LABEL));
     assert!(panel(&st).starting);
     // Nothing changes while it runs, and Cancel is ignored.
@@ -314,7 +315,7 @@ fn a_refused_start_keeps_the_panel() {
     let (mut st, dir, _) = with_panel("rebase-finished-err", RebaseBase::FromCommit(Oid::zero()));
     st.job = Some(running_job(&dir));
     st.rebase.as_mut().unwrap().starting = true;
-    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(rebase::CHANGED.into()) }));
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(rebase::CHANGED.into()), undo: None }));
     let p = panel(&st);
     assert!(!p.starting && p.stale);
     assert_eq!(p.error.as_deref(), Some(rebase::CHANGED));
@@ -346,7 +347,10 @@ fn the_panel_is_parked_with_its_tab() {
     let mut other = RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1)));
     other.fill(fake_plan(2));
     st.rebase = Some(other);
-    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result: Ok(Outcome::Finished { output: String::new(), stash_kept: false }) }));
+    up(
+        &mut st,
+        Msg::Rebase(RebaseMsg::RebaseFinished { result: Ok(Outcome::Finished { output: String::new(), stash_kept: false }), undo: None }),
+    );
     assert_eq!(panel(&st).items.len(), 2, "the active tab's panel is untouched");
     let parked = st.tabs[0].parked.as_ref().expect("A is parked");
     assert!(parked.rebase.is_none(), "A's panel closed");

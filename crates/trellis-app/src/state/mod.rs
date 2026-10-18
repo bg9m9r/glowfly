@@ -62,6 +62,8 @@ pub mod push_pr;
 pub mod rebase;
 pub mod rebase_banner;
 pub mod rebase_quick;
+pub mod rebase_remaining;
+pub mod rebase_steps;
 pub mod ref_rows;
 pub mod refresh;
 pub mod release_notes;

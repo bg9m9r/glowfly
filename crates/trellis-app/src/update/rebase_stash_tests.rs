@@ -68,7 +68,7 @@ fn a_kept_stash_is_reported() {
     let (mut st, dir, _) = with_panel("rebase-stash-kept", RebaseBase::FromCommit(Oid::zero()));
     st.job = Some(running_job(&dir));
     let result = Ok(Outcome::Finished { output: String::new(), stash_kept: true });
-    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result }));
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result, undo: None }));
     let toast = st.toasts.last().expect("a toast");
     assert!(!toast.ok);
     assert_eq!(toast.text, "Interactive rebase finished, but your stashed changes didn't apply cleanly. They are kept in the stash list.");

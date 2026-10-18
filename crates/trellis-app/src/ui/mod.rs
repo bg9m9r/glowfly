@@ -198,6 +198,10 @@ mod snapshot_tests_rebase;
 #[cfg(test)]
 mod snapshot_tests_rebase_edit;
 #[cfg(test)]
+mod snapshot_tests_rebase_keys;
+#[cfg(test)]
+mod snapshot_tests_rebase_steps;
+#[cfg(test)]
 mod snapshot_tests_remotes;
 #[cfg(test)]
 mod snapshot_tests_repo_finder;

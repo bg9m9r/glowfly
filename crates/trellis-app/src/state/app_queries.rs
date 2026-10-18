@@ -53,4 +53,19 @@ impl AppState {
         let (f, worktree_wips) = (self.settings.graph_filter_for(&self.repo_key(workdir)), self.settings.worktree_wips);
         LoadOptions { max_commits: self.commits_wanted(), smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted, worktree_wips }
     }
+
+    /// Whether the commit graph is the central view: the same order as `ui/central.rs::show`
+    /// (keep the two in step).
+    pub fn graph_shown(&self) -> bool {
+        !self.dashboard.open
+            && self.snap.is_some()
+            && self.conflict.is_none()
+            && self.blame.is_none()
+            && self.history.is_none()
+            && self.pull_request.is_none()
+            && self.issue.is_none()
+            && self.diff.is_none()
+            && self.rebase.is_none()
+            && !self.gitflow_panel
+    }
 }

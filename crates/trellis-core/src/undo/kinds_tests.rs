@@ -80,3 +80,12 @@ fn classify_recognises_trellis_commands() {
     }
     assert_eq!(discard_command(), args(&["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]));
 }
+
+#[test]
+fn rewrite_is_never_classified() {
+    assert_eq!(MoveOp::Rewrite.noun(), "history edit");
+    for argv in [&["rebase", "-i", "main"][..], &["rebase", "main"], &["rebase", "--continue"], &["rebase", "--edit-todo"]] {
+        let kind = UndoKind::classify(&args(argv));
+        assert!(!matches!(kind, Some(UndoKind::Move { op: MoveOp::Rewrite, .. })), "{argv:?}");
+    }
+}

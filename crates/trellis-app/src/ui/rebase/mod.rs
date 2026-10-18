@@ -1,25 +1,36 @@
 //! The interactive rebase panel, shown in place of the graph: a header with Reset, Cancel and
-//! Start rebase, why Start is unavailable, and the list of commits in the order git applies
-//! them (rows in `rows`). Also the graph menus' history edits (`edit_menu`), the Reword dialog
-//! (`reword_dialog`) and the rebase banner on the WIP row (`banner`).
+//! Start rebase (Update steps, on a running rebase's remaining steps), why it is unavailable,
+//! the list in the order git runs it (`rows`, with `commit_row`, `step_row`, `editor`, `drag`
+//! and `keys`), and buttons that add exec and break steps. Also the graph menus' history edits
+//! (`edit_menu`), the Reword dialog (`reword_dialog`) and the rebase banner on the WIP row
+//! (`banner`).
 
 pub(super) mod banner;
+mod commit_row;
+mod drag;
 pub(super) mod edit_menu;
+mod editor;
+mod keys;
 pub(super) mod reword_dialog;
 mod rows;
+mod step_row;
 
 use super::UiCache;
 use super::theme::color;
+use super::widgets::{Icon, paint_icon};
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::state::AppState;
-use crate::state::rebase::{HINT, RebasePanel, needs_stash};
-use eframe::egui::{self, Align, Color32, Layout, RichText, Stroke, Ui};
+use crate::state::rebase::{HINT, PanelSource, RebasePanel, needs_stash};
+use crate::state::rebase_remaining::{NO_STEPS, REMAINING_HINT, REMAINING_TITLE, UPDATE};
+use crate::state::rebase_steps::NewStep;
+use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, Ui, vec2};
 
 const STASH_HINT: &str = "Uncommitted changes will be stashed first and put back afterwards.";
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(panel) = &st.rebase else { return };
+    let remaining = panel.source == PanelSource::Remaining;
     let blocker = st.snap.as_ref().and_then(|s| panel.start_blocker(s, st.job.is_some()));
     ui.add_space(8.0);
     header(ui, panel, blocker.as_deref(), msgs);
@@ -34,8 +45,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         if let Some(e) = panel.error.as_ref().filter(|e| blocker.as_ref() != Some(*e)) {
             ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
         }
-        ui.label(RichText::new(HINT).size(12.0).color(color::weak()));
-        if st.snap.as_ref().is_some_and(needs_stash) {
+        ui.label(RichText::new(if remaining { REMAINING_HINT } else { HINT }).size(12.0).color(color::weak()));
+        if !remaining && st.snap.as_ref().is_some_and(needs_stash) {
             ui.label(RichText::new(STASH_HINT).size(12.0).color(color::weak()));
         }
     });
@@ -48,20 +59,22 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     rows::list(ui, st, cache, msgs);
 }
 
-/// Title and subtitle on the left; Reset, Cancel and Start rebase on the right.
+/// Title and subtitle on the left; Reset, Cancel and Start rebase (or Update steps) on the right.
 fn header(ui: &mut Ui, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Vec<Msg>) {
+    let (title, primary) =
+        if panel.source == PanelSource::Remaining { (REMAINING_TITLE, UPDATE) } else { ("Interactive rebase", "Start rebase") };
     ui.horizontal(|ui| {
         ui.add_space(14.0);
         ui.vertical(|ui| {
             ui.spacing_mut().item_spacing.y = 2.0;
-            ui.label(RichText::new("Interactive rebase").strong().size(16.0).color(color::text()));
+            ui.label(RichText::new(title).strong().size(16.0).color(color::text()));
             ui.label(RichText::new(panel.subtitle()).color(color::weak()));
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(14.0);
             let enabled = blocker.is_none();
             let (fg, fill) = if enabled { (Color32::WHITE, color::primary()) } else { (color::faint(), color::primary_off()) };
-            let start = egui::Button::new(RichText::new("Start rebase").strong().color(fg))
+            let start = egui::Button::new(RichText::new(primary).strong().color(fg))
                 .fill(fill)
                 .stroke(Stroke::new(1.0_f32, color::primary_border()))
                 .min_size(egui::vec2(0.0, 28.0));
@@ -86,4 +99,43 @@ fn header(ui: &mut Ui, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Ve
             }
         });
     });
+}
+
+/// Under the list: Add exec step and Add break step (after the selected row), and the note
+/// for a running rebase with no steps left.
+fn add_buttons(ui: &mut Ui, panel: &RebasePanel, msgs: &mut Vec<Msg>) {
+    if panel.source == PanelSource::Remaining && panel.items.is_empty() {
+        ui.horizontal(|ui| {
+            ui.add_space(rows::MARGIN + 4.0);
+            ui.label(RichText::new(NO_STEPS).color(color::weak()));
+        });
+    }
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
+        ui.add_space(rows::MARGIN);
+        ui.add_enabled_ui(panel.editable(), |ui| {
+            for (label, step) in [("Add exec step", NewStep::Exec), ("Add break step", NewStep::Break)] {
+                if plus_button(ui, label).clicked() {
+                    msgs.push(Msg::Rebase(RebaseMsg::RebaseAddStep { after: panel.selected, step }));
+                }
+            }
+        });
+    });
+}
+
+/// A button with a painted plus before its text (the fonts lack some glyphs).
+fn plus_button(ui: &mut Ui, label: &str) -> egui::Response {
+    let enabled = ui.is_enabled();
+    let text_color = if enabled { color::text() } else { color::faint() };
+    let galley = ui.painter().layout_no_wrap(label.to_owned(), egui::TextStyle::Button.resolve(ui.style()), text_color);
+    let size = vec2(galley.size().x + 38.0, 28.0);
+    let (rect, r) = ui.allocate_exact_size(size, if enabled { Sense::click() } else { Sense::hover() });
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, label));
+    let p = ui.painter();
+    let fill = if enabled && r.hovered() { color::hover() } else { color::toolbar() };
+    p.rect_filled(rect, egui::CornerRadius::same(4), fill);
+    p.rect_stroke(rect, egui::CornerRadius::same(4), Stroke::new(1.0_f32, color::border()), egui::StrokeKind::Inside);
+    paint_icon(p, egui::pos2(rect.left() + 15.0, rect.center().y), Icon::Plus, if enabled { color::primary() } else { color::faint() });
+    p.galley(egui::pos2(rect.left() + 28.0, rect.center().y - galley.size().y / 2.0), galley, text_color);
+    r
 }

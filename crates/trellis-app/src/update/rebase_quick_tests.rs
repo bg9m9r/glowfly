@@ -108,8 +108,8 @@ fn the_reword_dialog() {
     form(&mut st).draft = "c2, reworded\n\n".into();
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::SubmitReword));
     let request = started(&fx);
-    assert_eq!(request.items[0].action, RebaseAction::Reword);
-    assert_eq!(request.items[0].new_message.as_deref(), Some("c2, reworded"));
+    assert_eq!(request.items[0].commit().unwrap().action, RebaseAction::Reword);
+    assert_eq!(request.items[0].commit().unwrap().new_message.as_deref(), Some("c2, reworded"));
     assert!(!request.autostash);
     assert!(st.modal.is_none(), "the dialog closes once the job started");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some(rebase_quick::REWORD_LABEL));
@@ -136,11 +136,11 @@ fn drops_ask_and_squashes_ask_only_on_a_dirty_tree() {
     assert_eq!((title, button), ("Drop commit", "Drop commit"));
     assert_eq!(body, format!("Drop {} \"c1\" from main? Its changes are removed and the 2 commits after it are rewritten.", short(c[0])));
     let request = started(&up(&mut st, Msg::ConfirmAccepted)).clone();
-    assert_eq!((request.items[0].action, request.autostash), (RebaseAction::Drop, false));
+    assert_eq!((request.items[0].commit().unwrap().action, request.autostash), (RebaseAction::Drop, false));
     st.job = None;
 
     let fx = prepare(&mut st, QuickEdit::SquashIntoParent(c[2]));
-    assert_eq!(started(&fx).items[1].action, RebaseAction::Fixup);
+    assert_eq!(started(&fx).items[1].commit().unwrap().action, RebaseAction::Fixup);
     assert!(st.modal.is_none(), "a squash on a clean tree runs straight away");
     st.job = None;
 

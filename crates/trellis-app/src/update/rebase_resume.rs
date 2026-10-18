@@ -45,6 +45,8 @@ pub(super) fn stopped_headline(label: &str, p: &RebaseProgress, ok: bool, output
         StopKind::Edit => format!("{label} paused at {at}{step} so you can edit it. Use Continue when you're done."),
         StopKind::Conflict => format!("{label} stopped on a conflict at {at}{step}. Resolve it, then Continue, or Abort."),
         StopKind::Exec => format!("{label} stopped: rewording {at}{step} failed."),
+        StopKind::Command => format!("{label} stopped: the command after {at}{step} failed."),
+        StopKind::Break => format!("{label} paused at a break step after {at}{step}. Use Continue to go on."),
         StopKind::Other => format!("{label} stopped at {at}{step}. Continue, Skip commit or Abort."),
     }
 }
