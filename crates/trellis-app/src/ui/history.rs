@@ -83,7 +83,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             if scroll_to == Some(i) {
                 resp.scroll_to_me(Some(Align::Center));
             }
-            if ui.is_rect_visible(rect) {
+            let date_rect = ui.is_rect_visible(rect).then(|| {
                 let selected = view.selected == Some(i);
                 if selected {
                     ui.painter().rect_filled(rect, 0.0, color::selected());
@@ -91,11 +91,17 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
                 } else if resp.hovered() {
                     ui.painter().rect_filled(rect, 0.0, color::hover());
                 }
-                row(ui, st, rect, e);
-            }
+                row(ui, st, rect, e)
+            });
             if resp.hovered() {
                 ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
             }
+            let resp = match (date_rect, ui.ctx().pointer_hover_pos()) {
+                (Some(r), Some(p)) if resp.hovered() && r.contains(p) => {
+                    resp.on_hover_text_at_pointer(st.settings.date_tooltip(e.time, st.view.now, st.view.utc_offset))
+                }
+                _ => resp,
+            };
             if resp.clicked() {
                 msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(i)));
             }
@@ -131,8 +137,8 @@ pub(super) fn entry_menu(
 }
 
 /// Line 1: short SHA and summary. Line 2: status, author (and the old path of a rename), with
-/// the date on the right.
-fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry) {
+/// the date on the right. Returns where the date was painted.
+fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry) -> egui::Rect {
     let mono = FontId::monospace(12.0);
     let body = FontId::proportional(13.0);
     let small = FontId::proportional(12.0);
@@ -143,9 +149,9 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry) {
     let sha_w = paint_cut_line(ui, pos2(left, y1), &short(e.oid), mono.clone(), color::weak(), 80.0);
     paint_cut_line(ui, pos2(left + sha_w + 8.0, y1), &e.summary, body, color::text(), right - left - sha_w - 8.0);
 
-    let date = st.settings.format_time(e.time, st.view.now, st.view.utc_offset);
-    let date_w = ui.fonts(|f| f.layout_no_wrap(date.clone(), small.clone(), color::weak()).size().x);
-    ui.painter().text(pos2(right, y2), Align2::RIGHT_CENTER, date, small.clone(), color::weak());
+    let date = st.settings.format_day(e.time, st.view.now, st.view.utc_offset);
+    let date_rect = ui.painter().text(pos2(right, y2), Align2::RIGHT_CENTER, date, small.clone(), color::weak());
+    let date_w = date_rect.width();
     let status_w = paint_cut_line(ui, pos2(left, y2), &e.status.to_string(), mono, status_color(e.status), 20.0);
     let mut x = left + status_w.max(8.0) + 8.0;
     let limit = right - date_w - 12.0;
@@ -155,6 +161,7 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry) {
         x += 10.0;
         paint_cut_line(ui, pos2(x, y2), &format!("renamed from {old}"), small, color::weak(), limit - x);
     }
+    date_rect
 }
 
 fn footer(ui: &mut Ui, st: &AppState, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
@@ -173,7 +180,7 @@ fn footer(ui: &mut Ui, st: &AppState, view: &FileHistoryView, msgs: &mut Vec<Msg
         } else {
             // Stopped at the commit limit.
             if let Some((oid, time)) = view.searched_until {
-                let date = st.settings.format_time(time, st.view.now, st.view.utc_offset);
+                let date = st.settings.format_date_word(time, st.view.utc_offset);
                 ui.label(RichText::new(format!("Searched back to {date} ({})", short(oid))).color(color::weak()));
             }
             if ui.button("Search further").clicked() {

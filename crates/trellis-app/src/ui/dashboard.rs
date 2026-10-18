@@ -71,7 +71,11 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 (Phase::Idle, Some(at)) => format!("Updated {}", trellis_core::dates::relative(st.view.now - at)),
                 (Phase::Idle, None) => String::new(),
             };
-            ui.label(RichText::new(status).color(color::weak()));
+            let r = ui.label(RichText::new(status).color(color::weak()));
+            if let (Phase::Idle, Some(at)) = (d.phase, d.fetched_at) {
+                // The label is already relative, so the hover is only the full date.
+                r.on_hover_text(st.settings.format_verbose(at, st.view.utc_offset));
+            }
         });
     });
 }

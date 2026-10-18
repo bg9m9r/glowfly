@@ -113,7 +113,7 @@ fn entry(ui: &mut Ui, e: &Entry, settings: &Settings, now: i64, offset: i32) {
         ui.label(RichText::new(printable(&e.author)).strong().color(color::text()));
         let (did, tone) = verdict_text(&e.kind);
         ui.label(RichText::new(did).color(tone_color(tone)));
-        ui.label(RichText::new(settings.format_time(e.time, now, offset)).color(color::weak()));
+        crate::ui::date_tip::time_label(ui, settings, e.time, now, offset);
     });
     let body = description_text(e.body.trim());
     if !body.is_empty() {

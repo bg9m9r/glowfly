@@ -66,24 +66,26 @@ fn set_details(st: &mut AppState, d: IssueDetails) {
     v.details = Details::Loaded(Box::new(d));
 }
 
+/// The GitHub issue's loaded details: opened by grace on January 24, 2026, with two comments.
+fn crash_details() -> IssueDetails {
+    IssueDetails {
+        issue: crash(),
+        body: "Starting the app without ~/.config/demo panics.\n\nSteps:\n1. Remove the folder\n2. Start the app".into(),
+        author: "grace".into(),
+        created: 1_769_256_000,
+        assignees: vec!["ada".into(), "linus".into()],
+        epic: None,
+        comments: vec![
+            comment("ada", 1_769_342_400, "I can reproduce this on Windows."),
+            comment("linus", 1_769_860_800, "Fixed on the 12-crash-on-start branch, needs review."),
+        ],
+    }
+}
+
 #[test]
 fn issue_panel_github_light() {
     let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-gh", github(), crash(), Some("12-crash-on-start"));
-    set_details(
-        &mut st,
-        IssueDetails {
-            issue: crash(),
-            body: "Starting the app without ~/.config/demo panics.\n\nSteps:\n1. Remove the folder\n2. Start the app".into(),
-            author: "grace".into(),
-            created: 1_769_256_000,
-            assignees: vec!["ada".into(), "linus".into()],
-            epic: None,
-            comments: vec![
-                comment("ada", 1_769_342_400, "I can reproduce this on Windows."),
-                comment("linus", 1_769_860_800, "Fixed on the 12-crash-on-start branch, needs review."),
-            ],
-        },
-    );
+    set_details(&mut st, crash_details());
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("issue_panel_github_light");
@@ -95,6 +97,21 @@ fn issue_panel_github_light() {
     h.get_by_label("Close  (Esc)").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Close))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn issue_kind_line_date_tooltip() {
+    let (mut st, dir) = with_issue(ThemeChoice::Light, "issue-gh-tip", github(), crash(), Some("12-crash-on-start"));
+    set_details(&mut st, crash_details());
+    let mut h = harness(st, false);
+    h.run();
+    h.get_by_label_contains("opened by").hover();
+    for _ in 0..4 {
+        h.step();
+    }
+    assert!(h.query_by_label_contains("January 24, 2026 12:00 PM").is_some(), "the kind line's hover has the full date");
     drop(h);
     remove_fixture(&dir);
 }

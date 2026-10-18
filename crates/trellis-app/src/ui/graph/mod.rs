@@ -317,12 +317,14 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 }
 
                 let in_refs = pointer.is_some_and(|p| cols.rect(cols.refs, rect).contains(p));
+                let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.date, rect).contains(p));
                 let resp = match snap.refs.get(&c.oid) {
                     Some(labels) if hovered && in_refs && labels.len() > 1 => resp.on_hover_ui_at_pointer(|ui| {
                         for l in labels {
                             ui.label(&l.name);
                         }
                     }),
+                    _ if hovered && in_date => resp.on_hover_text_at_pointer(settings.date_tooltip(c.time, now, offset)),
                     _ => resp,
                 };
                 if resp.clicked() {

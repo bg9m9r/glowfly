@@ -28,7 +28,7 @@ pub(super) fn text(ui: &Ui, st: &AppState, fonts: &Fonts, c: &BlameCommit, first
     let (left, right) = (first.left() + PAD, first.left() + GUTTER_W - PAD);
     let y = first.center().y;
     let sha = ui.painter().text(pos2(right, y), Align2::RIGHT_CENTER, short(c.oid), fonts.sha.clone(), color::weak());
-    let date = st.settings.format_time(c.time, st.view.now, st.view.utc_offset);
+    let date = st.settings.format_day(c.time, st.view.now, st.view.utc_offset);
     let date = ui.painter().text(pos2(sha.left() - 10.0, y), Align2::RIGHT_CENTER, date, fonts.name.clone(), color::weak());
     let author = if c.author.is_empty() { "Unknown" } else { c.author.as_str() };
     paint_cut_line(ui, pos2(left, y), author, fonts.name.clone(), color::text(), date.left() - 10.0 - left);

@@ -69,7 +69,7 @@ fn comment(ui: &mut Ui, c: &Entry, settings: &Settings, now: i64, offset: i32) {
     ui.horizontal_wrapped(|ui| {
         ui.label(RichText::new(printable(&c.author)).strong().color(color::text()));
         if c.time > 0 {
-            ui.label(RichText::new(settings.format_time(c.time, now, offset)).color(color::weak()));
+            crate::ui::date_tip::time_label(ui, settings, c.time, now, offset);
         }
     });
     let body = description_text(c.body.trim());

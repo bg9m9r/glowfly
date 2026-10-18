@@ -84,7 +84,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 /// One row per detail; the state and the labels as chips.
 fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
     let state_row = state_label(v.provider());
-    for (label, value) in meta_rows(v, &st.settings, st.view.now, st.view.utc_offset) {
+    for (label, value) in meta_rows(v, &st.settings, st.view.utc_offset) {
         ui.horizontal(|ui| {
             ui.allocate_ui_with_layout(vec2(LABEL_W, 20.0), Layout::left_to_right(Align::Center), |ui| {
                 ui.set_min_width(LABEL_W);
@@ -100,7 +100,10 @@ fn details(ui: &mut Ui, v: &IssueView, st: &AppState) {
                     }
                 });
             } else {
-                ui.add(egui::Label::new(RichText::new(printable(&value)).color(color::text())).wrap());
+                let r = ui.add(egui::Label::new(RichText::new(printable(&value)).color(color::text())).wrap());
+                if let Some(c) = v.created().filter(|_| label == "Created") {
+                    r.on_hover_text(st.settings.date_tooltip(c, st.view.now, st.view.utc_offset));
+                }
             }
         });
     }

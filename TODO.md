@@ -132,7 +132,9 @@ Done except the group colors, which wait on repository groups in the repository 
 - [x] **Date/Time section**: date/time locale (system or a chosen locale) and four custom format
       strings with live previews: *Date* (`MM/DD/YYYY`), *Date word* (`MMMM D, YYYY`),
       *Date/Time* (`MM/DD/YYYY @ h:mm A`, the graph's date column) and *Date verbose*
-      (`MMMM D, YYYY h:mm A`, commit details).
+      (`MMMM D, YYYY h:mm A`, commit details). Date shows in file history and blame rows, Date
+      word in the issue panel and the file history footer, and hovering a graph, history or
+      comment date shows its full date and age.
 - [ ] **Default group color / reset all to default**,
       for repo groups in the repository manager. (Workspace color belongs to cloud Workspaces,
       which are out of scope.)
@@ -955,11 +957,6 @@ Polish, edge cases and power-user extras that are not planned work. Nothing here
 until a triage moves it to Later or a milestone. New follow-ups from finished items go
 here, under the item they grew from.
 
-### Date/Time section
-
-- Use the *Date* and *Date word* formats somewhere (they can be edited but nothing shows them
-  yet), and add date tooltips
-
 ### Tabs (multiple open repos)
 
 - Keyboard reordering of tabs, and Escape to cancel a drag in progress
@@ -1094,6 +1091,7 @@ here, under the item they grew from.
 - A preference to always stash automatically, without asking, before a rebase
 - Click the stopped commit's SHA in the rebase banner to select it in the graph
 - Spellcheck in the Reword dialog (needs `UiCache` in modals)
+- Date tooltip on the painted author/date of rebase rows
 
 ### Multi-select commits
 
@@ -1392,6 +1390,7 @@ here, under the item they grew from.
   confirmation)
 - Honour tag.forceSignAnnotated too (git applies it only without -a), and say in the Annotate
   dialog when the tag will be signed
+- Show annotated tags' tagger date on tag rows (needs the tag time in the snapshot)
 
 ### Stash improvements
 
@@ -1411,6 +1410,7 @@ here, under the item they grew from.
 - Right-click menu on the toolbar Stash button with the Stash dialog's choices
 - "Stash…" entry in the STASHES section header menu that opens the Stash dialog
 - Stash the files selected in the WIP lists once working-tree files can be multi-selected
+- Show each stash's date in the sidebar and palette rows (needs the stash commit time in StashInfo)
 
 ### Clone and init options
 
@@ -1797,6 +1797,7 @@ here, under the item they grew from.
 - Open issue rows in the in-app issue panel once issues can be viewed in Trellis
 - Apply saved PR and issue filters (labels, milestones) across repositories
 - Check out a pull request's branch from the dashboard
+- Created/updated dates on pull request and issue rows (the service models don't carry them yet)
 
 ### Automatically group worktree tabs together
 

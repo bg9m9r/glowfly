@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, HashMap};
 
 mod blame;
 mod column_widths;
+mod date_fmt;
 mod downloads;
 mod editor;
 mod file;
@@ -26,6 +27,7 @@ mod updates;
 mod zoom;
 pub use blame::{BlameMoves, BlamePrefs};
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
+pub use date_fmt::{DEFAULT_DATE_FORMAT, DEFAULT_DATE_TIME_FORMAT, DEFAULT_DATE_VERBOSE_FORMAT, DEFAULT_DATE_WORD_FORMAT};
 pub use downloads::downloads_dir;
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
 pub use file::{LoadProblem, settings_file};
@@ -197,7 +199,8 @@ pub struct Settings {
     pub desktop_notifications: bool,
     /// "system" or a locale such as "de_DE".
     pub date_locale: String,
-    /// moment.js-style patterns.
+    /// moment.js-style patterns (see `date_fmt`). Date: file history and blame rows; Date word:
+    /// created-on lines (issue panel, history footer).
     pub date_format: String,
     pub date_word_format: String,
     pub date_time_format: String,
@@ -357,10 +360,10 @@ impl Default for Settings {
             behind_alerts: true,
             desktop_notifications: false,
             date_locale: "system".into(),
-            date_format: "MM/DD/YYYY".into(),
-            date_word_format: "MMMM D, YYYY".into(),
-            date_time_format: "MM/DD/YYYY @ h:mm A".into(),
-            date_verbose_format: "MMMM D, YYYY h:mm A".into(),
+            date_format: DEFAULT_DATE_FORMAT.into(),
+            date_word_format: DEFAULT_DATE_WORD_FORMAT.into(),
+            date_time_format: DEFAULT_DATE_TIME_FORMAT.into(),
+            date_verbose_format: DEFAULT_DATE_VERBOSE_FORMAT.into(),
             relative_dates: false,
             toolbar_labels: true,
             zoom_percent: DEFAULT_ZOOM_PERCENT,
@@ -425,21 +428,10 @@ impl Settings {
     pub fn commit_limit(&self) -> usize {
         self.initial_commits.max(MIN_INITIAL_COMMITS)
     }
-
-    /// Graph and list dates: the Date/Time format, or relative ("3 hours ago") to `now`.
-    pub fn format_time(&self, secs: i64, now: i64, utc_offset: i32) -> String {
-        if self.relative_dates {
-            return crate::dates::relative(now - secs);
-        }
-        crate::dates::format(secs, &self.date_time_format, &self.date_locale, utc_offset)
-    }
-
-    /// Commit details and tooltips: the verbose format.
-    pub fn format_verbose(&self, secs: i64, utc_offset: i32) -> String {
-        crate::dates::format(secs, &self.date_verbose_format, &self.date_locale, utc_offset)
-    }
 }
 
+#[cfg(test)]
+mod date_fmt_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

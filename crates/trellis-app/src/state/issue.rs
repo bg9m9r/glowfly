@@ -58,6 +58,11 @@ impl IssueView {
         }
     }
 
+    /// When the issue was opened, once the details are loaded and the service sent a time.
+    pub fn created(&self) -> Option<i64> {
+        self.loaded().map(|d| d.created).filter(|&c| c > 0)
+    }
+
     pub fn provider(&self) -> Provider {
         self.target.provider
     }
@@ -73,15 +78,15 @@ impl IssueView {
         if self.issue.kind.trim().is_empty() { capitalized(self.noun) } else { self.issue.kind.clone() }
     }
 
-    /// "Bug · opened by ada · 3 days ago"; only the type until the details load.
-    pub fn kind_line(&self, settings: &Settings, now: i64, offset: i32) -> String {
+    /// "Bug · opened by ada · March 3, 2026"; only the type until the details load.
+    pub fn kind_line(&self, settings: &Settings, offset: i32) -> String {
         let mut line = self.kind();
         if let Some(d) = self.loaded() {
             if !d.author.is_empty() {
                 line.push_str(&format!(" · opened by {}", d.author));
             }
             if d.created > 0 {
-                line.push_str(&format!(" · {}", settings.format_time(d.created, now, offset)));
+                line.push_str(&format!(" · {}", settings.format_date_word(d.created, offset)));
             }
         }
         line
@@ -125,7 +130,7 @@ pub fn milestone_label(p: Provider) -> &'static str {
 
 /// The side panel's Details rows, as (label, text). Labels are listed comma-separated (the view
 /// draws them as chips); rows without a value are left out, apart from the assignees.
-pub fn meta_rows(v: &IssueView, settings: &Settings, now: i64, offset: i32) -> Vec<(&'static str, String)> {
+pub fn meta_rows(v: &IssueView, settings: &Settings, offset: i32) -> Vec<(&'static str, String)> {
     let p = v.provider();
     let i = &v.issue;
     let d = v.loaded();
@@ -152,7 +157,7 @@ pub fn meta_rows(v: &IssueView, settings: &Settings, now: i64, offset: i32) -> V
             rows.push(("Created by", d.author.clone()));
         }
         if d.created > 0 {
-            rows.push(("Created", settings.format_time(d.created, now, offset)));
+            rows.push(("Created", settings.format_date_word(d.created, offset)));
         }
     }
     rows
@@ -240,28 +245,31 @@ mod tests {
         let mut v = IssueView::new(issue("12", "Crash"), &fs).unwrap();
         assert_eq!(v.details, Details::Loading);
         let labels = |rows: Vec<(&'static str, String)>| rows.into_iter().map(|(l, _)| l).collect::<Vec<_>>();
-        assert_eq!(labels(meta_rows(&v, &settings, 0, 0)), ["State", "Type", "Assignees", "Labels", "Milestone"]);
-        assert_eq!(v.kind_line(&settings, 0, 0), "Bug");
+        assert_eq!(labels(meta_rows(&v, &settings, 0)), ["State", "Type", "Assignees", "Labels", "Milestone"]);
+        assert_eq!(v.kind_line(&settings, 0), "Bug");
+        assert_eq!(v.created(), None);
         v.details = Details::Loaded(Box::new(details(v.issue.clone())));
-        let rows = meta_rows(&v, &settings, 0, 0);
+        let rows = meta_rows(&v, &settings, 0);
         assert_eq!(
             labels(rows.clone()),
             ["State", "Type", "Assignees", "Labels", "Milestone", "Created by", "Created"],
             "no epic off Jira"
         );
         assert_eq!(rows[2].1, "ada, linus");
-        assert!(v.kind_line(&settings, 0, 0).starts_with("Bug · opened by grace · "));
+        assert_eq!(rows[6].1, "January 2, 2026");
+        assert_eq!(v.kind_line(&settings, 0), "Bug · opened by grace · January 2, 2026");
+        assert_eq!(v.created(), Some(1_767_348_000));
 
         let fs = ForgeState::new(None, String::new(), Some(jira()));
         let mut v = IssueView::new(Issue { key: "PROJ-7".into(), state: "In Progress".into(), ..issue("PROJ-7", "Login") }, &fs).unwrap();
         assert_eq!(v.mention, "PROJ-7");
         v.details = Details::Loaded(Box::new(details(v.issue.clone())));
-        let rows = meta_rows(&v, &settings, 0, 0);
+        let rows = meta_rows(&v, &settings, 0);
         assert_eq!(labels(rows.clone()), ["Status", "Type", "Assignees", "Labels", "Fix version", "Epic", "Created by", "Created"]);
         assert_eq!(rows[5].1, "PROJ-1  Accounts");
         v.issue.assignee = None;
         v.details = Details::Loading;
-        assert_eq!(meta_rows(&v, &settings, 0, 0)[2].1, "Unassigned");
+        assert_eq!(meta_rows(&v, &settings, 0)[2].1, "Unassigned");
     }
 
     #[test]

@@ -162,7 +162,7 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
         ui.add_space(2.0);
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(printable(&c.author)).strong().color(color::text()));
-            ui.label(RichText::new(ctx.settings.format_time(c.time, ctx.now, ctx.offset)).color(color::weak()));
+            crate::ui::date_tip::time_label(ui, ctx.settings, c.time, ctx.now, ctx.offset);
             if c.pending {
                 chip(ui, "Pending", color::weak());
             }

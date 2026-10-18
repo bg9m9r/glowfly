@@ -22,6 +22,7 @@ mod conflict_output;
 mod conflict_panes;
 mod dashboard;
 mod dashboard_rows;
+mod date_tip;
 mod deep_link_dialog;
 mod details;
 mod details_multi;
@@ -120,6 +121,8 @@ mod snapshot_tests_conflict_check;
 mod snapshot_tests_conflict_files;
 #[cfg(test)]
 mod snapshot_tests_dashboard;
+#[cfg(test)]
+mod snapshot_tests_dates;
 #[cfg(test)]
 mod snapshot_tests_deep_link;
 #[cfg(test)]

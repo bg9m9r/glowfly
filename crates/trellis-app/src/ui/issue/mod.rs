@@ -23,8 +23,13 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     header(ui, view, open_label, msgs);
     ui.horizontal(|ui| {
         ui.add_space(32.0);
-        let line = view.kind_line(&st.settings, st.view.now, st.view.utc_offset);
-        ui.add(egui::Label::new(RichText::new(printable(&line)).color(color::weak())).truncate());
+        let line = printable(&view.kind_line(&st.settings, st.view.utc_offset));
+        let r = ui.add(egui::Label::new(RichText::new(&line).color(color::weak())).truncate());
+        if let Some(c) = view.created() {
+            // Keep the full line (the truncated label's own hover) above the date.
+            let tip = st.settings.date_tooltip(c, st.view.now, st.view.utc_offset);
+            r.on_hover_text(format!("{line}\n{tip}"));
+        }
     });
     ui.add_space(2.0);
     ui.separator();
