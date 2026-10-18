@@ -60,12 +60,12 @@ pub(super) fn local(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, fs: &For
             menu_item(msgs, ui, format!("Create {noun} into {t}…"), create(name, Some(t)));
         }
     }
-    let label = format!("Push {name} and create a {noun}…");
+    let label = format!("Push and create a {noun}…");
     match &state {
         Some(HostBranch::Missing | HostBranch::Ahead(_)) => {
             menu_item(msgs, ui, label, push(name, None));
             if let Some(t) = into {
-                menu_item(msgs, ui, format!("Push {name} and create a {noun} into {t}…"), push(name, Some(t)));
+                menu_item(msgs, ui, format!("Push and create a {noun} into {t}…"), push(name, Some(t)));
             }
         }
         Some(HostBranch::Blocked(why)) => menu_item_if(msgs, ui, label, Some(why.as_str()), push(name, None)),
@@ -88,12 +88,12 @@ pub(super) fn remote(ui: &mut egui::Ui, name: &str, oid: Oid, snap: &Snapshot, f
     let h = head.name.as_str();
     match push_pr::host_branch(head, snap, fs) {
         state if push_pr::needs_push(&state) => {
-            menu_item(msgs, ui, format!("Push {h} and create a {noun} into {name}…"), push(h, Some(name)));
+            menu_item(msgs, ui, format!("Push {h} and create a {noun} into this branch…"), push(h, Some(name)));
         }
         Some(HostBranch::Blocked(why)) => {
-            menu_item_if(msgs, ui, format!("Create {noun} from {h} into {name}…"), Some(why.as_str()), create(h, Some(name)));
+            menu_item_if(msgs, ui, format!("Create {noun} from {h} into this branch…"), Some(why.as_str()), create(h, Some(name)));
         }
-        _ => menu_item(msgs, ui, format!("Create {noun} from {h} into {name}…"), create(h, Some(name))),
+        _ => menu_item(msgs, ui, format!("Create {noun} from {h} into this branch…"), create(h, Some(name))),
     }
 }
 

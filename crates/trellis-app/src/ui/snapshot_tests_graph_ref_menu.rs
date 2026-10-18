@@ -27,10 +27,10 @@ fn graph_label_menu_branch() {
     h.run();
     click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), PointerButton::Secondary);
     h.check_snapshot("graph_label_menu_branch");
-    assert!(h.query_by_label("Merge search into main").is_some(), "the branch's own menu");
+    assert!(h.query_by_label("Merge into main").is_some(), "the branch's own menu");
     assert!(h.query_by_label("Create patch…").is_none(), "not the commit menu");
     h.state_mut().1.clear();
-    h.get_by_label("Delete search").click();
+    h.get_by_label("Delete").click();
     h.run();
     let confirm = h.state().1.iter().any(|m| matches!(m, Msg::Confirm { title, .. } if title == "Delete branch"));
     assert!(confirm, "the confirmation is asked for");
@@ -38,7 +38,7 @@ fn graph_label_menu_branch() {
     // Elsewhere on the row, the commit menu.
     click(&mut h, pos2(700.0, row_y(SEARCH_ROW)), PointerButton::Secondary);
     assert!(h.query_by_label("Create patch…").is_some());
-    assert!(h.query_by_label("Delete search").is_none());
+    assert!(h.query_by_label("Merge into main").is_none());
     drop(h);
     remove_fixture(&dir);
 }
@@ -80,9 +80,9 @@ fn graph_label_menu_remote() {
     h.get_by_label("Remote origin/search").hover();
     h.run();
     h.check_snapshot("graph_label_menu_remote");
-    assert!(h.query_by_label("Compare origin/search with main").is_some(), "the remote branch's menu");
+    assert!(h.query_by_label("Compare with main").is_some(), "the remote branch's menu");
     h.state_mut().1.clear();
-    h.get_by_label("Compare origin/search with main").click();
+    h.get_by_label("Compare with main").click();
     h.run();
     let compare = h
         .state()

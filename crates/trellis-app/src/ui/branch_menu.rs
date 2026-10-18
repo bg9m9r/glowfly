@@ -2,10 +2,10 @@
 //! that worktree), merge and rebase, checking for conflicts,
 //! fast-forward, push, pull requests (pushing the branch first when the code host lacks it,
 //! into the branch selected before), rename, upstream, hide or solo in the graph, and delete.
-//! Disabled items say why on hover, with the same text `update` logs when it refuses a late
-//! message.
+//! The branch's name heads the menu once; the items leave it out. Disabled items say why on
+//! hover, with the same text `update` logs when it refuses a late message.
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::theme::color;
 use crate::conflict_check::ConflictCheckMsg;
@@ -36,18 +36,19 @@ pub fn local_branch_menu(
 ) {
     let name = b.name.as_str();
     let current = snap.head_branch.as_deref().unwrap_or_default();
+    menu_header(ui, name);
     if !b.is_head {
         let checkout = Msg::Branch(BranchMsg::Checkout(name.to_owned()));
-        menu_item_if(msgs, ui, format!("Checkout {name}"), checkout_blocked(snap, name).as_deref(), checkout);
+        menu_item_if(msgs, ui, "Checkout", checkout_blocked(snap, name).as_deref(), checkout);
         if let Some(wt) = elsewhere(snap, name) {
             let open = Msg::Worktree(WorktreeMsg::Open(wt.path.clone()));
-            menu_item_if(msgs, ui, format!("Open worktree {}", wt.folder_name()), open_blocked(wt), open);
+            menu_item_if(msgs, ui, "Open worktree", open_blocked(wt), open);
         }
         if !current.is_empty() {
-            menu_item(msgs, ui, format!("Merge {name} into {current}"), Msg::git("Merge", &["merge", name]));
-            menu_item(msgs, ui, format!("Rebase {current} onto {name}"), Msg::git("Rebase", &["rebase", name]));
+            menu_item(msgs, ui, format!("Merge into {current}"), Msg::git("Merge", &["merge", name]));
+            menu_item(msgs, ui, format!("Rebase {current} onto this branch"), Msg::git("Rebase", &["rebase", name]));
             let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch(name.to_owned())));
-            menu_item(msgs, ui, format!("Interactive rebase {current} onto {name}…"), onto);
+            menu_item(msgs, ui, format!("Interactive rebase {current} onto this branch…"), onto);
             let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(name.to_owned()));
             menu_item(msgs, ui, format!("Check for conflicts with {current}"), check);
         }
@@ -76,11 +77,11 @@ pub fn local_branch_menu(
         menu_item(
             msgs,
             ui,
-            format!("Create worktree from {name}…"),
+            "Create worktree from this branch…",
             Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Branch(name.to_owned()))),
         );
     }
-    menu_item(msgs, ui, format!("Rename {name}…"), Msg::Branch(BranchMsg::RenameBranchDialog(name.to_owned())));
+    menu_item(msgs, ui, "Rename…", Msg::Branch(BranchMsg::RenameBranchDialog(name.to_owned())));
     let no_remotes = snap.remotes.is_empty().then_some(NO_REMOTES);
     menu_item_if(msgs, ui, "Set upstream…", no_remotes, Msg::Branch(BranchMsg::SetUpstreamDialog(name.to_owned())));
     if b.tracking.is_some() {
@@ -88,9 +89,9 @@ pub fn local_branch_menu(
     }
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(name.to_owned()));
     let link = Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::LocalBranch(name.to_owned())));
-    menu_item(msgs, ui, format!("Copy link to branch {name}"), link);
+    menu_item(msgs, ui, "Copy link to branch", link);
     ui.separator();
-    ref_visibility::menu_items(ui, &format!("refs/heads/{name}"), name, filter, b.is_head, msgs);
+    ref_visibility::menu_items(ui, &format!("refs/heads/{name}"), filter, b.is_head, msgs);
     if !b.is_head {
         ui.separator();
         delete_items(ui, b, snap, msgs);
@@ -101,26 +102,20 @@ pub fn local_branch_menu(
 fn push_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let ff_label = match branches::upstream_label(b) {
-        Some(up) => format!("Fast-forward {name} to {up}"),
-        None => format!("Fast-forward {name}"),
+        Some(up) => format!("Fast-forward to {up}"),
+        None => "Fast-forward".to_owned(),
     };
     let ff_blocked = branches::fast_forward_blocked(b, snap.state);
     menu_item_if(msgs, ui, ff_label, ff_blocked.as_deref(), Msg::Branch(BranchMsg::FastForwardBranch(name.to_owned())));
 
     let has_remotes = !snap.remotes.is_empty();
     let push_blocked = branches::push_blocked(b, has_remotes);
-    menu_item_if(
-        msgs,
-        ui,
-        format!("Push {name}"),
-        push_blocked.as_deref(),
-        Msg::Branch(BranchMsg::PushBranch { branch: name.to_owned(), remote: None }),
-    );
+    menu_item_if(msgs, ui, "Push", push_blocked.as_deref(), Msg::Branch(BranchMsg::PushBranch { branch: name.to_owned(), remote: None }));
     if !has_remotes {
         return;
     }
     // egui draws the submenu arrow; the label has none of its own.
-    ui.menu_button(format!("Push {name} to"), |ui| {
+    ui.menu_button("Push to", |ui| {
         let tracked = branches::remote_tracking(b).map(|t| t.remote.as_str());
         for (remote, _) in &snap.remotes {
             let is_upstream = tracked == Some(remote.as_str());
@@ -157,14 +152,14 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut V
     menu_item_if(
         msgs,
         ui,
-        format!("Delete {name}"),
+        "Delete",
         in_worktree,
         Msg::confirm("Delete branch", format!("Delete local branch {name}?"), "Delete", Msg::git("Delete branch", &["branch", "-d", name])),
     );
     menu_item_if(
         msgs,
         ui,
-        format!("Force delete {name}"),
+        "Force delete",
         in_worktree,
         Msg::confirm(
             "Force delete branch",
@@ -178,7 +173,7 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut V
         menu_item_if(
             msgs,
             ui,
-            format!("Delete {name} and {}", t.display()),
+            format!("Delete together with {}", t.display()),
             blocked.as_deref(),
             Msg::confirm(
                 "Delete local and remote branch",

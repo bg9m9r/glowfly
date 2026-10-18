@@ -22,8 +22,8 @@ use trellis_core::settings::{FilterOp, GraphFilter, ThemeChoice};
 const ITEMS: [&str; 12] = [
     "Checkout (detached)",
     "Annotate…",
-    "Hide v0.1.0 in graph",
-    "Solo v0.1.0",
+    "Hide in graph",
+    "Solo",
     "Copy link to this tag",
     "Push to origin",
     "Push to backup",
@@ -108,7 +108,7 @@ fn tag_row_menu() {
     assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
 
     open_menu(&mut h);
-    h.get_by_label("Hide v0.1.0 in graph").click();
+    h.get_by_label("Hide in graph").click();
     h.run();
     assert!(filter_pushed(&h, FilterOp::Hide("refs/tags/v0.1.0".into())));
     drop(h);
@@ -211,8 +211,9 @@ fn tags_hidden_solo() {
 
     let at = tag_row(&h, "v0.2.0");
     click(&mut h, at, PointerButton::Secondary);
-    assert_eq!(h.get_all_by_label("Stop soloing v0.2.0").count(), 2, "the row's marker and the menu item");
-    assert!(!h.get_by_label("Hide v0.2.0 in graph").is_disabled());
+    assert_eq!(h.get_all_by_label("Stop soloing v0.2.0").count(), 1, "the row's marker");
+    assert_eq!(h.get_all_by_label("Stop soloing").count(), 2, "the banner's button and the menu item");
+    assert!(!h.get_by_label("Hide in graph").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

@@ -137,9 +137,25 @@ fn solid(lane: Color32, dark_alpha: f32) -> Color32 {
     if color::is_dark() { lane.gamma_multiply(dark_alpha) } else { lane }
 }
 
-/// Draws the first ref label (plus a +N count); returns (label rect, right edge).
-/// The first label as a chip (with the tip's build `marker` inside its right end when known),
-/// then a "+N" chip for the rest.
+/// Where a row's ref chips were drawn.
+pub struct RefChips {
+    /// The first label's chip.
+    pub rect: Rect,
+    /// The right edge of the last chip.
+    pub end: f32,
+    /// The first label's name didn't fit in its chip and was cut off.
+    pub cut: bool,
+}
+
+/// A label chip's width for text `text_w` wide (plus `mark_w` for a build marker) in `room`,
+/// and whether the text had to be cut off to fit.
+pub fn chip_width(text_w: f32, mark_w: f32, room: f32) -> (f32, bool) {
+    let want = text_w + 14.0 + mark_w;
+    (want.min(room), want > room)
+}
+
+/// Draws the first ref label as a chip (with the tip's build `marker` inside its right end when
+/// known), then a "+N" chip for the rest.
 pub fn draw_ref_labels(
     p: &egui::Painter,
     x: f32,
@@ -148,7 +164,7 @@ pub fn draw_ref_labels(
     labels: &[repo::RefLabel],
     lane: Color32,
     marker: Option<CheckState>,
-) -> (Rect, f32) {
+) -> RefChips {
     let first = &labels[0];
     let (fill, fg, text) = match first.kind {
         RefKind::Head => (Color32::from_gray(200), Color32::BLACK, "HEAD".to_owned()),
@@ -162,7 +178,7 @@ pub fn draw_ref_labels(
     let reserve = if extra > 0 { 30.0 } else { 0.0 };
     let g = p.layout_no_wrap(text, FontId::proportional(12.5), fg);
     let mark_w = if marker.is_some() { MARK_W } else { 0.0 };
-    let w = (g.size().x + 14.0 + mark_w).min(max_x - x - reserve);
+    let (w, cut) = chip_width(g.size().x, mark_w, max_x - x - reserve);
     let r = Rect::from_min_size(pos2(x, y - 11.0), vec2(w, 22.0));
     p.rect_filled(r, CornerRadius::same(3), fill);
     p.rect_stroke(r, CornerRadius::same(3), Stroke::new(1.0_f32, lane), egui::StrokeKind::Inside);
@@ -178,11 +194,24 @@ pub fn draw_ref_labels(
         end += 4.0;
         end += widgets::chip(p, end, y, &format!("+{extra}"), color::toolbar(), color::weak());
     }
-    (r, end)
+    RefChips { rect: r, end, cut }
 }
 
 pub fn paint_pencil(p: &egui::Painter, c: egui::Pos2, col: Color32) {
     let s = Stroke::new(2.0_f32, col);
     p.line_segment([pos2(c.x - 4.0, c.y + 4.0), pos2(c.x + 4.0, c.y - 4.0)], s);
     p.line_segment([pos2(c.x - 5.0, c.y + 5.0), pos2(c.x - 3.0, c.y + 5.0)], Stroke::new(1.5_f32, col));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::chip_width;
+
+    #[test]
+    fn chip_width_cuts_only_names_that_dont_fit() {
+        assert_eq!(chip_width(50.0, 0.0, 100.0), (64.0, false), "fits");
+        assert_eq!(chip_width(86.0, 0.0, 100.0), (100.0, false), "fits exactly");
+        assert_eq!(chip_width(200.0, 0.0, 100.0), (100.0, true), "too long");
+        assert_eq!(chip_width(80.0, 16.0, 100.0), (100.0, true), "the build marker takes room too");
+    }
 }

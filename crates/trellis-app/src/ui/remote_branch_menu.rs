@@ -2,10 +2,11 @@
 //! and the remote-branch labels in the graph: checkout (the local branch tracking it, or a new
 //! one), fast-forward of that local branch, a worktree, merge, rebase, conflict check, compare
 //! and set upstream against the checked-out branch, pull requests, a new branch, copy, hide or
-//! solo, and delete on the remote. Disabled items say why on hover, with the same text `update`
-//! logs when it refuses a late message.
+//! solo, and delete on the remote. The branch's name heads the menu once; the items leave it
+//! out. Disabled items say why on hover, with the same text `update` logs when it refuses a late
+//! message.
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
@@ -32,6 +33,7 @@ pub struct RemoteMenu<'a> {
 pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid, snap: &Snapshot, c: &RemoteMenu, msgs: &mut Vec<Msg>) {
     let (current, fs, filter) = (c.current, c.fs, c.graph);
     let full = format!("{remote}/{name}");
+    menu_header(ui, &full);
     local_items(ui, remote, name, snap, msgs);
     if !current.is_empty() {
         current_items(ui, remote, name, oid, snap, current, msgs);
@@ -47,14 +49,14 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
     menu_item(msgs, ui, "Create branch here…", Msg::Branch(BranchMsg::NewBranch { start: Some(oid.to_string()), name: String::new() }));
     menu_item(msgs, ui, "Copy branch name", Msg::Copy(full.clone()));
     let link = LinkTarget::RemoteBranch { remote: remote.to_owned(), name: name.to_owned() };
-    menu_item(msgs, ui, format!("Copy link to branch {full}"), Msg::DeepLink(DeepLinkMsg::Copy(link)));
+    menu_item(msgs, ui, "Copy link to branch", Msg::DeepLink(DeepLinkMsg::Copy(link)));
     ui.separator();
-    ref_visibility::menu_items(ui, &format!("refs/remotes/{full}"), &full, filter, false, msgs);
+    ref_visibility::menu_items(ui, &format!("refs/remotes/{full}"), filter, false, msgs);
     ui.separator();
     menu_item(
         msgs,
         ui,
-        format!("Delete {full} from remote"),
+        format!("Delete from {remote}"),
         Msg::confirm(
             "Delete remote branch",
             format!("Delete branch {name} on {remote}? This affects everyone using the remote."),
@@ -67,7 +69,6 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
 /// The local counterpart: check out the tracking branch (or create one), fast-forward it, and
 /// create a worktree.
 fn local_items(ui: &mut egui::Ui, remote: &str, name: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    let full = format!("{remote}/{name}");
     match remote_branch::tracking_local(snap, remote, name) {
         Some(b) => {
             let local = b.name.as_str();
@@ -77,17 +78,17 @@ fn local_items(ui: &mut egui::Ui, remote: &str, name: &str, snap: &Snapshot, msg
             }
             let blocked = branches::fast_forward_blocked(b, snap.state);
             let ff = Msg::Branch(BranchMsg::FastForwardBranch(local.to_owned()));
-            menu_item_if(msgs, ui, format!("Fast-forward {local} to {full}"), blocked.as_deref(), ff);
+            menu_item_if(msgs, ui, format!("Fast-forward {local} to this branch"), blocked.as_deref(), ff);
         }
         None => {
             let blocked = remote_branch::checkout_blocked(snap, remote, name);
             let checkout = Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.to_owned(), name: name.to_owned() });
-            menu_item_if(msgs, ui, format!("Checkout {full}"), blocked.as_deref(), checkout);
+            menu_item_if(msgs, ui, "Checkout", blocked.as_deref(), checkout);
         }
     }
     if name != "HEAD" {
         let base = WorktreeBase::Remote { remote: remote.to_owned(), branch: name.to_owned() };
-        menu_item(msgs, ui, format!("Create worktree from {full}…"), Msg::Worktree(WorktreeMsg::CreateDialog(base)));
+        menu_item(msgs, ui, "Create worktree from this branch…", Msg::Worktree(WorktreeMsg::CreateDialog(base)));
     }
 }
 
@@ -95,18 +96,18 @@ fn local_items(ui: &mut egui::Ui, remote: &str, name: &str, snap: &Snapshot, msg
 /// and set upstream.
 fn current_items(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid, snap: &Snapshot, current: &str, msgs: &mut Vec<Msg>) {
     let full = format!("{remote}/{name}");
-    menu_item(msgs, ui, format!("Merge {full} into {current}"), Msg::git("Merge", &["merge", &full]));
-    menu_item(msgs, ui, format!("Rebase {current} onto {full}"), Msg::git("Rebase", &["rebase", &full]));
+    menu_item(msgs, ui, format!("Merge into {current}"), Msg::git("Merge", &["merge", &full]));
+    menu_item(msgs, ui, format!("Rebase {current} onto this branch"), Msg::git("Rebase", &["rebase", &full]));
     let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
     let blocked = onto_commit_blocker(snap, oid);
-    menu_item_if(msgs, ui, format!("Interactive rebase {current} onto {full}…"), blocked.as_deref(), onto);
+    menu_item_if(msgs, ui, format!("Interactive rebase {current} onto this branch…"), blocked.as_deref(), onto);
     let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(full.clone()));
     menu_item(msgs, ui, format!("Check for conflicts with {current}"), check);
     let compare = Msg::Selection(SelectionMsg::CompareWithHead { oid, name: full.clone() });
     let blocked = remote_branch::compare_blocked(snap, oid, &full);
-    menu_item_if(msgs, ui, format!("Compare {full} with {current}"), blocked.as_deref(), compare);
+    menu_item_if(msgs, ui, format!("Compare with {current}"), blocked.as_deref(), compare);
     if !remote_branch::is_upstream_of_head(snap, remote, name) {
         let set = BranchMsg::SetUpstream { branch: current.to_owned(), remote: remote.to_owned(), name: name.to_owned() };
-        menu_item(msgs, ui, format!("Set {full} as upstream of {current}"), Msg::Branch(set));
+        menu_item(msgs, ui, format!("Set as upstream of {current}"), Msg::Branch(set));
     }
 }

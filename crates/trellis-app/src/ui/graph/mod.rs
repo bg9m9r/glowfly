@@ -215,6 +215,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // BRANCH / TAG column, connected to the node.
                 let mut ghost_rect = None;
                 let mut labels_hit = None;
+                // The first chip, when its name is cut off: hovering it shows the whole name.
+                let mut cut_chip = None;
                 if cols_cfg.refs {
                     let rp = painter.with_clip_rect(cols.rect(cols.refs, rect));
                     let mut labels_end = cols.refs.0;
@@ -224,7 +226,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                             tips_seen.push(c.oid);
                             mark = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
                         }
-                        let (label_rect, end) = draw_ref_labels(&rp, cols.refs.0 + 6.0, cols.refs.1 - 6.0, mid, labels, lane_col, mark);
+                        let chips = draw_ref_labels(&rp, cols.refs.0 + 6.0, cols.refs.1 - 6.0, mid, labels, lane_col, mark);
+                        let (label_rect, end) = (chips.rect, chips.end);
+                        cut_chip = chips.cut.then_some(label_rect);
                         if cols_cfg.tree {
                             gp.line_segment([pos2(cols.graph.0, mid), pos2(node_x - 10.0, mid)], Stroke::new(1.5_f32, lane_col));
                             rp.line_segment([pos2(end, mid), pos2(cols.refs.1, mid)], Stroke::new(1.5_f32, lane_col));
@@ -328,12 +332,15 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 let in_refs = pointer.is_some_and(|p| cols.rect(cols.refs, rect).contains(p));
                 let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.date, rect).contains(p));
-                let resp = match snap.refs.get(&c.oid) {
+                let resp = match snap.refs.get(&c.oid).map(Vec::as_slice) {
                     Some(labels) if hovered && in_refs && labels.len() > 1 => resp.on_hover_ui_at_pointer(|ui| {
                         for l in labels {
                             ui.label(&l.name);
                         }
                     }),
+                    Some([only]) if hovered && cut_chip.zip(pointer).is_some_and(|(r, p)| r.contains(p)) => {
+                        resp.on_hover_text_at_pointer(&only.name)
+                    }
                     _ if hovered && in_date => resp.on_hover_text_at_pointer(settings.date_tooltip(c.time, now, offset)),
                     _ => resp,
                 };

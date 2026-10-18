@@ -2,7 +2,7 @@
 //! menu: checkout, annotate a lightweight tag, hide or solo it in the graph, push to each remote
 //! or all of them, copy a link to it, delete locally, and delete from each remote or all of them (asked first).
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
 use super::widgets;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
@@ -53,6 +53,7 @@ pub(in crate::ui) fn tag_menu(ui: &mut egui::Ui, name: &str, snap: &Snapshot, gr
     let remotes: Vec<String> = snap.remotes.iter().map(|(r, _)| r.clone()).collect();
     let blocked = (!idle).then_some(JOB_RUNNING);
     let tag = || name.to_owned();
+    menu_header(ui, name);
     menu_item(msgs, ui, "Checkout (detached)", Msg::Tag(TagMsg::Checkout { tag: tag() }));
     // Stays enabled while a job runs, like Delete locally: update checks when the job would start.
     if snap.lightweight_tags.contains(name) && ui.button("Annotate…").on_hover_text(ANNOTATE_HINT).clicked() {
@@ -61,7 +62,7 @@ pub(in crate::ui) fn tag_menu(ui: &mut egui::Ui, name: &str, snap: &Snapshot, gr
     }
     // Never disabled: a tag is never the checked-out branch, and these only change settings.
     ui.separator();
-    ref_visibility::menu_items(ui, &format!("refs/tags/{name}"), name, graph, false, msgs);
+    ref_visibility::menu_items(ui, &format!("refs/tags/{name}"), graph, false, msgs);
     ui.separator();
     menu_item(msgs, ui, "Copy link to this tag", Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Tag(tag()))));
     if !remotes.is_empty() {

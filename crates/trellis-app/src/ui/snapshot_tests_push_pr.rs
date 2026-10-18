@@ -76,9 +76,9 @@ fn branch_menu_push_pr() {
     h.run();
     open_row_menu(&mut h, true);
     h.check_snapshot("branch_menu_push_pr");
-    assert!(h.query_by_label("Push search and create a pull request…").is_some());
+    assert!(h.query_by_label("Push and create a pull request…").is_some());
     assert!(h.query_by_label("Create pull request…").is_none(), "the service would refuse a missing source");
-    h.get_by_label("Push search and create a pull request into main…").click();
+    h.get_by_label("Push and create a pull request into main…").click();
     h.run();
     assert!(sent(&h, |f| matches!(f, ForgeMsg::PushAndStartPr { branch, target: Some(t) } if branch == "search" && t == "main")));
     drop(h);
@@ -92,7 +92,7 @@ fn remote_branch_menu_pr() {
     h.run();
     open_row_menu(&mut h, false);
     h.check_snapshot("remote_branch_menu_pr");
-    assert!(h.query_by_label("Create pull request from main into search…").is_some());
+    assert!(h.query_by_label("Create pull request from main into this branch…").is_some());
     h.get_by_label("Create pull request…").click();
     h.run();
     assert!(sent(&h, |f| matches!(f, ForgeMsg::CreatePrDialog { source, target: None } if source == "search")));

@@ -84,6 +84,19 @@ pub fn paint_cut_line(ui: &egui::Ui, pos: egui::Pos2, text: &str, font: egui::Fo
     w
 }
 
+/// The widest a ref menu's header gets before its name wraps onto more lines.
+const MENU_HEADER_W: f32 = 320.0;
+
+/// A ref menu's title: the ref's name, once, in bold and not clickable (wrapped when it is
+/// long), then a separator. The items below it leave the name out.
+pub fn menu_header(ui: &mut egui::Ui, title: &str) {
+    ui.scope(|ui| {
+        ui.set_max_width(MENU_HEADER_W);
+        ui.add(egui::Label::new(RichText::new(title).strong()).wrap().selectable(false));
+    });
+    ui.separator();
+}
+
 pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, m: Msg) {
     if ui.button(label).clicked() {
         msgs.push(m);

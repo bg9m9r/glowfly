@@ -37,7 +37,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     assert_eq!(disk::branch_oid(&repo, "feature"), Some(feature_tip));
 
     // step 3: back to main from the branch's menu.
-    j.branch_menu("main", "Checkout main");
+    j.branch_menu("main", "Checkout");
     j.toast(true, "Checkout succeeded");
     j.see("main", Region::Toolbar);
     j.see("✔  main", Region::Sidebar);
@@ -51,7 +51,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     assert_eq!(disk::parents(&repo, old_main).len(), 1);
 
     // step 5: merging feature makes a merge commit with both files.
-    j.branch_menu("feature", "Merge feature into main");
+    j.branch_menu("feature", "Merge into main");
     j.toast(true, "Merge succeeded");
     let merge = disk::head_oid(&repo);
     assert_eq!(disk::parents(&repo, merge), [old_main, feature_tip]);
@@ -61,7 +61,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     j.see_contains("Merge branch 'feature'", Region::Central);
 
     // step 6: delete the merged branch through the confirm dialog.
-    j.branch_menu("feature", "Delete feature");
+    j.branch_menu("feature", "Delete");
     j.see("Delete local branch feature?", Region::Anywhere);
     j.click("Delete", Region::Anywhere, Pick::Last);
     j.toast(true, "Delete branch succeeded");
@@ -73,14 +73,14 @@ fn branch_merge_delete_and_checkout_with_changes() {
     new_branch(&mut j, "other");
     write(&repo, "a.txt", "a from other\n");
     j.commit_all("Change a on other");
-    j.branch_menu("main", "Checkout main");
+    j.branch_menu("main", "Checkout");
     j.toast(true, "Checkout succeeded");
     assert_eq!(disk::work_text(&repo, "a.txt").as_deref(), Some("a\n"));
 
     // step 8: a local edit the checkout doesn't touch is carried over.
     write(&repo, "b.txt", "b edited\n");
     j.refresh();
-    j.branch_menu("other", "Checkout other");
+    j.branch_menu("other", "Checkout");
     j.toast(true, "Checkout succeeded");
     j.see("other", Region::Toolbar);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("other"));
@@ -90,7 +90,7 @@ fn branch_merge_delete_and_checkout_with_changes() {
     // step 9: an edit the checkout would overwrite stops it; nothing changes.
     write(&repo, "a.txt", "a edited here\n");
     j.refresh();
-    j.branch_menu("main", "Checkout main");
+    j.branch_menu("main", "Checkout");
     j.toast(false, "Checkout failed");
     j.see("other", Region::Toolbar);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("other"));

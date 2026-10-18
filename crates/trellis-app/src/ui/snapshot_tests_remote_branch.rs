@@ -60,17 +60,17 @@ fn remote_branch_menu_tracked() {
     h.check_snapshot("remote_branch_menu_tracked");
     for label in [
         "Checkout search",
-        "Fast-forward search to origin/search",
-        "Interactive rebase main onto origin/search…",
+        "Fast-forward search to this branch",
+        "Interactive rebase main onto this branch…",
         "Check for conflicts with main",
-        "Compare origin/search with main",
-        "Set origin/search as upstream of main",
+        "Compare with main",
+        "Set as upstream of main",
         "Create branch here…",
     ] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
-    assert!(h.query_by_label("Checkout origin/search").is_none(), "the tracking branch is offered instead");
-    h.get_by_label("Fast-forward search to origin/search").click();
+    assert!(h.query_by_label("Checkout").is_none(), "the tracking branch is offered instead");
+    h.get_by_label("Fast-forward search to this branch").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, BranchMsg::FastForwardBranch(n) if n == "search")));
     drop(h);
@@ -84,17 +84,17 @@ fn remote_branch_menu_untracked() {
     h.run();
     open_remote_row(&mut h, "search");
     h.check_snapshot("remote_branch_menu_untracked");
-    let checkout = h.get_by_label("Checkout origin/search");
+    let checkout = h.get_by_label("Checkout");
     assert!(checkout.is_disabled(), "a local search exists and doesn't track it");
     checkout.click();
     h.run();
     assert!(!sent(&h, |m| matches!(m, BranchMsg::CheckoutRemote { .. })), "a disabled item sends nothing");
-    assert!(h.query_by_label("Fast-forward search to origin/search").is_none());
+    assert!(h.query_by_label("Fast-forward search to this branch").is_none());
 
     h.press_key(egui::Key::Escape);
     h.run();
     open_remote_row(&mut h, "topic");
-    h.get_by_label("Checkout origin/topic").click();
+    h.get_by_label("Checkout").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, BranchMsg::CheckoutRemote { remote, name } if remote == "origin" && name == "topic")));
     drop(h);

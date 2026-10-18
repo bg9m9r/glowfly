@@ -50,19 +50,19 @@ fn worktree_local_menu() {
     h.run();
     row_menu(&mut h, "search", true);
     h.check_snapshot("worktree_local_menu");
-    for item in ["Checkout search", "Delete search", "Force delete search"] {
+    for item in ["Checkout", "Delete", "Force delete"] {
         assert!(h.get_by_label(item).is_disabled(), "{item}");
     }
-    h.get_by_label("Open worktree feature-login").click();
+    h.get_by_label("Open worktree").click();
     h.run();
     let login = p("C:/work/app-worktrees/feature-login");
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Open(x)) if *x == login)));
 
     // A branch no worktree has: Checkout works and there is no Open worktree.
     row_menu(&mut h, "login-page", true);
-    assert!(!h.get_by_label("Checkout login-page").is_disabled());
+    assert!(!h.get_by_label("Checkout").is_disabled());
     assert!(h.query_by_label_contains("Open worktree").is_none());
-    h.get_by_label("Checkout login-page").click();
+    h.get_by_label("Checkout").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Branch(crate::msg::BranchMsg::Checkout(b)) if b == "login-page")));
     drop(h);
@@ -79,7 +79,7 @@ fn worktree_remote_menu() {
     h.run();
     row_menu(&mut h, "search", false);
     h.check_snapshot("worktree_remote_menu");
-    h.get_by_label("Create worktree from origin/search…").click();
+    h.get_by_label("Create worktree from this branch…").click();
     h.run();
     let want = WorktreeBase::Remote { remote: "origin".into(), branch: "search".into() };
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::CreateDialog(b)) if *b == want)));

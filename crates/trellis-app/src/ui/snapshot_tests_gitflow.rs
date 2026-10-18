@@ -167,7 +167,7 @@ fn gitflow_section() {
     let at = center(&h, "1.0.0");
     click(&mut h, at, PointerButton::Secondary);
     assert!(h.query_by_label("Finish release 1.0.0…").is_some());
-    assert!(h.query_by_label("Checkout release/1.0.0").is_some());
+    assert!(h.query_by_label("Checkout").is_some());
     h.get_by_label("Finish release 1.0.0…").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::GitFlow(GitFlowMsg::FinishDialog(b)) if b == "release/1.0.0")));

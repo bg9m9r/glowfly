@@ -19,20 +19,20 @@ fn filter_msg(op: FilterOp) -> Msg {
     Msg::Graph(GraphMsg::GraphFilter(op))
 }
 
-/// "Hide/Show `label` in graph" and "Solo/Stop soloing `label`" for the ref `full`. Hiding is
-/// disabled with the reason on hover for the checked-out branch (`head`).
-pub fn menu_items(ui: &mut egui::Ui, full: &str, label: &str, filter: &GraphFilter, head: bool, msgs: &mut Vec<Msg>) {
+/// "Hide/Show in graph" and "Solo/Stop soloing" for the ref `full`, in a menu headed by its
+/// name. Hiding is disabled with the reason on hover for the checked-out branch (`head`).
+pub fn menu_items(ui: &mut egui::Ui, full: &str, filter: &GraphFilter, head: bool, msgs: &mut Vec<Msg>) {
     let r = full.to_owned();
     if filter.is_hidden(full) {
-        menu_item(msgs, ui, format!("Show {label} in graph"), filter_msg(FilterOp::Show(r.clone())));
+        menu_item(msgs, ui, "Show in graph", filter_msg(FilterOp::Show(r.clone())));
     } else {
         let blocked = head.then_some(HEAD_ALWAYS_SHOWN);
-        menu_item_if(msgs, ui, format!("Hide {label} in graph"), blocked, filter_msg(FilterOp::Hide(r.clone())));
+        menu_item_if(msgs, ui, "Hide in graph", blocked, filter_msg(FilterOp::Hide(r.clone())));
     }
     if filter.is_soloed(full) {
-        menu_item(msgs, ui, format!("Stop soloing {label}"), filter_msg(FilterOp::Unsolo(r)));
+        menu_item(msgs, ui, "Stop soloing", filter_msg(FilterOp::Unsolo(r)));
     } else {
-        menu_item(msgs, ui, format!("Solo {label}"), filter_msg(FilterOp::Solo(r)));
+        menu_item(msgs, ui, "Solo", filter_msg(FilterOp::Solo(r)));
     }
 }
 

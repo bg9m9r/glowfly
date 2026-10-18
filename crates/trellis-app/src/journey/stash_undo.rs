@@ -54,7 +54,7 @@ fn stash_pop_and_undo_redo_commit_and_merge() {
     assert!(disk::is_clean(&repo));
 
     // step 4: merge side, undo the merge, redo it: the same merge commit comes back.
-    j.branch_menu("side", "Merge side into main");
+    j.branch_menu("side", "Merge into main");
     j.toast(true, "Merge succeeded");
     let merge = disk::head_oid(&repo);
     assert_eq!(disk::parents(&repo, merge), [commit, side_tip]);

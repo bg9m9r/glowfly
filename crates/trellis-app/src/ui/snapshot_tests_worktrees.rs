@@ -284,7 +284,7 @@ fn menus_open_the_dialog() {
     h.run();
     let rect = h.get_all_by_label("search").filter_map(|n| n.bounding_box()).min_by(|a, b| a.y0.total_cmp(&b.y0)).unwrap();
     click(&mut h, pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32), PointerButton::Secondary);
-    h.get_by_label("Create worktree from search…").click();
+    h.get_by_label("Create worktree from this branch…").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Branch(b))) if b == "search")));
 

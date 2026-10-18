@@ -90,11 +90,11 @@ fn branch_menu() {
     h.run();
     open_menu(&mut h);
     h.check_snapshot("branch_menu");
-    h.get_by_label("Fast-forward search to origin/search").click();
+    h.get_by_label("Fast-forward to origin/search").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Branch(BranchMsg::FastForwardBranch(b)) if b == "search")));
     open_menu(&mut h);
-    h.get_by_label("Copy link to branch search").click();
+    h.get_by_label("Copy link to branch").click();
     h.run();
     let want = crate::deep_link::LinkTarget::LocalBranch("search".into());
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
@@ -106,9 +106,9 @@ fn branch_menu() {
     let mut h = harness(st, true);
     h.run();
     open_menu(&mut h);
-    assert!(h.get_by_label("Fast-forward search to origin/search").is_disabled());
-    assert!(h.get_by_label("Push search").is_disabled(), "behind its upstream");
-    assert!(h.query_by_label("Delete search and origin/search").is_some_and(|n| !n.is_disabled()));
+    assert!(h.get_by_label("Fast-forward to origin/search").is_disabled());
+    assert!(h.get_by_label("Push").is_disabled(), "behind its upstream");
+    assert!(h.query_by_label("Delete together with origin/search").is_some_and(|n| !n.is_disabled()));
     assert!(h.query_by_label("Unset upstream").is_some());
     drop(h);
 
@@ -119,7 +119,7 @@ fn branch_menu() {
     let mut h = harness(st, true);
     h.run();
     open_menu(&mut h);
-    assert!(h.get_by_label("Delete search and origin/search").is_disabled());
+    assert!(h.get_by_label("Delete together with origin/search").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }
@@ -178,24 +178,25 @@ fn branch_menu_visibility_items() {
     let mut h = harness(st, true);
     h.run();
     row_menu(&mut h, "✔  main", false);
-    assert!(h.get_by_label("Hide main in graph").is_disabled(), "the checked-out branch");
-    assert!(h.query_by_label("Solo main").is_some());
+    assert!(h.get_by_label("Hide in graph").is_disabled(), "the checked-out branch");
+    assert!(h.query_by_label("Solo").is_some());
     drop(h);
 
     let (st, _) = hidden_solo("visibility-menu");
     let mut h = harness(st, true);
     h.run();
     row_menu(&mut h, "search", false);
-    assert_eq!(h.get_all_by_label("Stop soloing search").count(), 2, "the row's marker and the menu item");
-    assert!(h.query_by_label("Hide search in graph").is_some_and(|n| !n.is_disabled()));
+    assert_eq!(h.get_all_by_label("Stop soloing search").count(), 1, "the row's marker");
+    assert_eq!(h.get_all_by_label("Stop soloing").count(), 2, "the banner's button and the menu item");
+    assert!(h.query_by_label("Hide in graph").is_some_and(|n| !n.is_disabled()));
     drop(h);
 
     let (st, _) = hidden_solo("visibility-menu");
     let mut h = harness(st, true);
     h.run();
     row_menu(&mut h, "search", true);
-    assert!(h.query_by_label("Solo origin/search").is_some());
-    h.get_by_label("Hide origin/search in graph").click();
+    assert!(h.query_by_label("Solo").is_some());
+    h.get_by_label("Hide in graph").click();
     h.run();
     assert!(pushed(&h, &FilterOp::Hide("refs/remotes/origin/search".into())));
     drop(h);
