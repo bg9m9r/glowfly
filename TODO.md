@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 03:32 · **File history and blame: folder history, the whole file at a commit, renames forward and live refresh**: File history works for folders, a File view shows the whole file at a commit, renames are followed forwards as well as back, and the history re-runs when HEAD moves (`86bf468`)
 - 2026-10-18 03:14 · **Diff viewer upgrade: reverting from commit diffs (files, lines, renames, added files, three-way)**: Selected lines and whole files of a commit diff can be reverted in the working tree, following renames, removing files the commit added and merging three-way with later edits (`6c7112d`)
 - 2026-10-18 02:23 · **Interactive rebase: edit a running rebase, exec and break steps, keyboard control and undo**: The interactive rebase panel gains exec and break steps, combined squash messages, keyboard control and editing the remaining steps of a running rebase, and finished rebases can be undone in one step (`54a7422`)
 - 2026-10-18 02:07 · **Tabs (multiple open repos)**: Rename tab (shown in the tab bar, Window menu, tab list and window title, saved with the open tabs and kept when reopened), a tab list with the open and recently closed tabs, Ctrl+Shift+PgUp / PgDn to move the active tab, Esc to cancel a tab drag, and a confirmation before closing tabs that hold a commit draft or unsaved conflict choices (`a65aa9f`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 17:57 · **Packaging and updates**: An app icon, MSI, DMG and DEB installers with checksums and optional code signing in the release workflow, a daily update check in Preferences > General with download, verify and install, a status bar chip and toasts, and release notes from the bundled CHANGELOG shown once after an upgrade (`b732d84`)
 - 2026-10-16 17:35 · **Menu bar**: A File / Edit / View / Window / Help menu bar above the tabs (Open recent, Undo/Redo with the action named, copy SHA or message, zoom and panel toggles, theme, the open tabs, logs and help) whose items show their keys and why they are disabled, an About dialog with version info and the bundled third-party notices, and a UI Customization toggle to hide it (`8680fb6`)
 - 2026-10-16 17:28 · **Automatically group worktree tabs together**: Tabs of one repository's worktrees open and stay next to each other (new worktree tabs join their group, drags move whole groups) with a colored strip under each group, behind a Preferences > UI Customization toggle that is on by default (`6090bb4`)
-- 2026-10-16 17:24 · **Create and view issues**: An issue panel with details, linked branches, description and comments, and a Create issue dialog (Jira project and type, labels, assignees, epic, then an optional new branch) for GitHub, GitHub Enterprise Server, GitLab and Jira, opened from ISSUES rows, the section header and the palette (`7f978ce`)
 
 ---
 
