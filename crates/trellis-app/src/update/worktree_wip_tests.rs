@@ -14,7 +14,7 @@ use crate::worktree::WorktreeMsg;
 use git2::Oid;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use trellis_core::repo::{ChangeCounts, WorktreeInfo};
+use trellis_core::repo::{ChangeCounts, ChangesRead, WorktreeInfo};
 
 /// scratch_repo (a.txt modified) with a linked worktree on `side` beside it that has a.txt
 /// modified and b.txt added, opened in `st` on the main worktree.
@@ -134,6 +134,7 @@ fn info(branch: Option<&str>, locked: Option<&str>) -> WorktreeInfo {
         prunable: false,
         folder: None,
         changes: ChangeCounts { modified: 2, added: 0, deleted: 3 },
+        read: ChangesRead::Counted,
     }
 }
 

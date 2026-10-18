@@ -1,9 +1,10 @@
 //! Checking the folder of a worktree about to be created (`Effect::CheckWorktreeFolder`),
 //! removing one, then deleting its branch (and that branch on its remote) when asked
-//! (`Effect::RemoveWorktree`), and moving one (`Effect::MoveWorktree`).
+//! (`Effect::RemoveWorktree`), moving one (`Effect::MoveWorktree`), and counting other
+//! worktrees' changes in the background (`Effect::CountWorktreeChanges`).
 
 use crate::msg::Msg;
-use crate::worktree::{MoveRequest, NewWorktree, RemoteOutcome, RemoveRequest, Removed, WorktreeMsg};
+use crate::worktree::{CountRequest, MoveRequest, NewWorktree, RemoteOutcome, RemoveRequest, Removed, WorktreeMsg};
 use trellis_core::branch_ops::delete_with_remote_cmds;
 use trellis_core::gitcli::{self, args};
 use trellis_core::undo::{self, UndoKind};
@@ -13,6 +14,18 @@ use trellis_core::worktree_ops::{self, RemoveOutcome};
 pub(super) fn check(request: NewWorktree) -> Msg {
     let result = worktree_ops::check_folder(&request.folder).map_err(|p| p.message(&request.folder.display().to_string()));
     Msg::Worktree(WorktreeMsg::FolderChecked { request, result })
+}
+
+/// Counts each target's changes, one after another, as `WorktreeMsg::ChangesCounted`. A panic
+/// here leaves `RefreshState::counting` set until the tab is switched or loaded afresh, so the
+/// tab counts nothing more until then.
+pub(super) fn count(r: CountRequest) -> Msg {
+    let counts = r
+        .targets
+        .iter()
+        .map(|(path, trusted)| trellis_core::repo::count_worktree(path, *trusted, trellis_core::repo::COUNT_TIMEOUT))
+        .collect();
+    Msg::Worktree(WorktreeMsg::ChangesCounted { refs_key: r.refs_key, counts })
 }
 
 /// Runs `cmd` in the request's repository, appending the command line and git's text to

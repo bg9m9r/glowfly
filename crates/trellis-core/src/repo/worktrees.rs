@@ -1,8 +1,9 @@
 //! The repository's worktrees: the main one and the linked ones registered under the common git
-//! dir, read through libgit2 for the left panel, and the other worktrees' uncommitted changes
-//! for their WIP rows in the graph.
+//! dir, read through libgit2 for the left panel. Other worktrees' uncommitted changes, for their
+//! WIP rows in the graph, are counted in `worktree_counts`.
 
 use super::status::ChangeCounts;
+use super::worktree_counts::ChangesRead;
 use crate::error::Result;
 use git2::{Oid, Repository, WorktreeLockStatus};
 use std::path::{Component, Path, PathBuf};
@@ -30,10 +31,13 @@ pub struct WorktreeInfo {
     /// The folder's identity on disk when listed (`paths::FolderId`): what tells whether a tab
     /// shows this worktree under another spelling. None when it is missing.
     pub folder: Option<crate::paths::FolderId>,
-    /// Its uncommitted changes, counted by full loads for worktrees other than the current one.
-    /// Zero for the current one, a missing one, one that can't be read, or when
-    /// `LoadOptions::worktree_wips` is off; `worktrees_at` never counts.
+    /// Its uncommitted changes, counted by full loads (or the background count after one) for
+    /// worktrees other than the current one. Zero unless `read` is Counted, and for one that
+    /// can't be read.
     pub changes: ChangeCounts,
+    /// How `changes` was read: NotCounted for the current or a missing one, with the option off,
+    /// and from `worktrees_at`.
+    pub read: ChangesRead,
 }
 
 impl WorktreeInfo {
@@ -76,6 +80,7 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
             prunable: false,
             folder,
             changes: ChangeCounts::default(),
+            read: ChangesRead::NotCounted,
         });
     }
     let Ok(names) = common.worktrees() else { return out };
@@ -105,23 +110,13 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
                 prunable,
                 folder,
                 changes: ChangeCounts::default(),
+                read: ChangesRead::NotCounted,
             })
         })
         .collect();
     linked.sort_by(|a, b| a.path.cmp(&b.path));
     out.extend(linked);
     out
-}
-
-/// Counts the uncommitted changes of every listed worktree other than the current one and the
-/// missing ones. Read by libgit2 alone (never the git CLI), so no hook, fsmonitor or filter
-/// runs: safe while the repository isn't trusted. One that can't be opened or read counts as
-/// clean.
-pub(super) fn count_changes(list: &mut [WorktreeInfo]) {
-    for wt in list.iter_mut().filter(|w| !w.current && !w.missing) {
-        let lists = Repository::open(&wt.path).ok().and_then(|repo| super::status::libgit2_status(&repo).ok());
-        wt.changes = lists.map(|(unstaged, staged)| ChangeCounts::of(&staged, &unstaged)).unwrap_or_default();
-    }
 }
 
 /// (index in `list`, HEAD commit) of each worktree that gets a WIP row in the graph: not the
@@ -159,4 +154,4 @@ fn read_head(git_dir: &Path, common: &Repository) -> (Option<String>, Option<Oid
 
 #[cfg(test)]
 #[path = "worktree_wip_tests.rs"]
-mod wip_tests;
+pub(super) mod wip_tests;

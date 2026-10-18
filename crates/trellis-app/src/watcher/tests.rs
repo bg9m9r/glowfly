@@ -178,6 +178,11 @@ fn watcher_reports_an_outside_edit() {
     git(&dir, &["checkout", "-q", "-b", "x"]);
     let deadline = Instant::now() + Duration::from_secs(10);
     while !next_change(&rx, &dir, deadline.saturating_duration_since(Instant::now())).expect("a full refresh") {}
+    while next_change(&rx, &dir, Duration::from_secs(1)).is_some() {}
+
+    // A remote added outside Trellis: the config reloads everything.
+    git(&dir, &["remote", "add", "origin", "https://example.com/r.git"]);
+    assert_eq!(next_change(&rx, &dir, Duration::from_secs(10)), Some(true), "the config reloads in full");
     // Let any trailing burst finish before checking that ignored files stay quiet.
     while next_change(&rx, &dir, Duration::from_secs(1)).is_some() {}
 
@@ -239,6 +244,18 @@ fn a_linked_worktree_sees_branches_change_in_the_common_git_dir() {
     // A branch made in the main worktree lands in the shared refs.
     git(&dir, &["branch", "from-main"]);
     assert_eq!(next_change(&rx, &linked, Duration::from_secs(10)), Some(true), "the shared refs reload in full");
+    while next_change(&rx, &linked, Duration::from_secs(1)).is_some() {}
+
+    git(&dir, &["commit", "--allow-empty", "-q", "-m", "moved"]);
+    assert_eq!(next_change(&rx, &linked, Duration::from_secs(10)), Some(true), "a ref moved in the main worktree");
+    while next_change(&rx, &linked, Duration::from_secs(1)).is_some() {}
+
+    git(&dir, &["pack-refs", "--all"]);
+    assert_eq!(next_change(&rx, &linked, Duration::from_secs(10)), Some(true), "packed refs");
+    while next_change(&rx, &linked, Duration::from_secs(1)).is_some() {}
+
+    git(&dir, &["remote", "add", "origin", "https://example.com/r.git"]);
+    assert_eq!(next_change(&rx, &linked, Duration::from_secs(10)), Some(true), "the shared config");
 
     drop(watcher);
     let _ = std::fs::remove_dir_all(&linked);

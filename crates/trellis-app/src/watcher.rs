@@ -73,7 +73,7 @@ pub struct RepoWatcher {
 }
 
 /// Watches the work tree and git dir of `target` and, for a linked worktree, the refs, packed
-/// refs and HEAD it shares through the common git dir. Symbolic links are not followed: one
+/// refs, HEAD and config it shares through the common git dir. Symbolic links are not followed: one
 /// pointing at a home folder would use up Linux's inotify watches, and what it points to isn't
 /// part of the repository.
 fn start<W: Waker + Clone>(target: &WatchTarget, tx: Sender<Msg>, waker: W) -> Result<RepoWatcher, String> {

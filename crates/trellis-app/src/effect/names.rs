@@ -30,6 +30,7 @@ impl Effect {
             Effect::DetectLfs { .. } => "lfs-detect",
             Effect::RemoveWorktree(_) => "remove-worktree",
             Effect::MoveWorktree(_) => "move-worktree",
+            Effect::CountWorktreeChanges(_) => "count-worktree-changes",
             Effect::RenameStash { .. } => "rename-stash",
             Effect::LoadLfs { .. } => "lfs-status",
             Effect::LoadSparse { .. } => "sparse-status",
@@ -98,6 +99,7 @@ impl Effect {
         match self {
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
+            | Effect::CountWorktreeChanges(_)
             | Effect::LoadDetail { .. }
             | Effect::LoadCompare { .. }
             | Effect::LoadWorkdirCompare { .. }

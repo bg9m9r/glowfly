@@ -179,6 +179,8 @@ pub enum Effect {
     /// Runs `git worktree remove` then, if asked, `git branch -d`. Unscoped like RunGit: it ends
     /// the active job.
     RemoveWorktree(crate::worktree::RemoveRequest),
+    /// Other worktrees' changes the load left Pending (`WorktreeMsg::ChangesCounted`).
+    CountWorktreeChanges(crate::worktree::CountRequest),
     /// Runs `git worktree move` once the target is free. Unscoped like RunGit: it ends the
     /// active job.
     MoveWorktree(crate::worktree::MoveRequest),

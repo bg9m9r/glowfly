@@ -84,6 +84,7 @@ impl<W: Waker + Clone> Runner<W> {
         let run = match &effect {
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
+            | Effect::CountWorktreeChanges(_)
             | Effect::LoadDetail { .. }
             | Effect::LoadCompare { .. }
             | Effect::LoadWorkdirCompare { .. }

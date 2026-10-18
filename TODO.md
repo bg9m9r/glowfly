@@ -714,12 +714,6 @@ follow-ups go to Ideas, not here.
 - Compare with working directory from the command palette and the commit details panel
 - A key to go back from a select-all to the focused commit, with a toast naming the count
 
-### Live working-tree updates
-
-- Watch the common git dir's refs for linked worktrees (their refs live outside the worktree's
-  own git dir)
-- Treat `.git/config` changes (remotes added or removed outside Trellis) as a full refresh
-
 ### Branch operations
 
 - The same operations from the remote branch menu (e.g. fast-forward a local branch from its
@@ -774,12 +768,6 @@ follow-ups go to Ideas, not here.
 - Confirm before closing a terminal tab whose shell is running a program
 - Shift+PageUp/PageDown and Shift+Home/End scroll the history from the keyboard
 - Copy on select, and middle-click paste on Linux
-
-### Worktrees
-
-- Watch the common git dir (refs, packed-refs) when a linked worktree is the open tab, so ref
-  changes made elsewhere reload it
-- Cap or time-limit the status read of very large linked worktrees during loads
 
 ### Git LFS
 
@@ -1134,6 +1122,10 @@ here, under the item they grew from.
   suggesting a restart
 - Watch inactive tabs so their state updates in the background
 - Status-bar indicator showing whether live updates are active for the repository
+- Watch config files pulled in by include.path / includeIf (outside the git dir) so their edits
+  reload too
+- Ask about trust again when a trusted repository gains new command-running settings outside
+  Trellis
 
 ### Credential prompts
 
@@ -1350,6 +1342,9 @@ here, under the item they grew from.
   and refusals)
 - Offer to close the other tab before Move as well, or confirm before closing a tab that has an
   unsent commit message
+- A Count now action on a worktree row whose changes were too large to count
+- Count split-index and sparse-index worktrees by their real entry count (a split index's header
+  counts only its own part)
 
 ### Git LFS
 
@@ -1824,6 +1819,9 @@ here, under the item they grew from.
 - A Preferences control to show the slow-status note again or turn it off
 - Report status read timings in the activity log (debug)
 - Refresh `Snapshot.collisions` on status reads so twins can be marked without scanning the index in the worker
+- Read the open tab's own status after its graph for very large working trees, showing the WIP
+  panel as loading meanwhile
+- Word the slow-status note for another worktree's background count by that worktree's name
 
 ### Deep links
 

@@ -103,6 +103,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::DetectLfs { cwd } => Some(Msg::Lfs(LfsMsg::Detected(trellis_core::lfs::installed(&cwd)))),
         Effect::RemoveWorktree(r) => Some(worktrees::remove(r)),
         Effect::MoveWorktree(r) => Some(worktrees::move_(r)),
+        Effect::CountWorktreeChanges(r) => Some(worktrees::count(r)),
         Effect::RenameStash { cwd, index, oid, message } => Some(stashes::rename(&cwd, index, oid, &message)),
         Effect::LoadLfs { workdir, generation } => {
             Some(Msg::Lfs(LfsMsg::Loaded { generation, result: trellis_core::lfs::status(&workdir).map_err(err) }))

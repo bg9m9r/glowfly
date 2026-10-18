@@ -28,6 +28,7 @@ fn git_and_libgit2_read_the_same_status() {
     let ours = libgit2_status(&repo).unwrap();
     let git_read = status(&dir).expect("git ran");
     assert_eq!(git_read, ours);
+    assert_eq!(super::status_cli::status_within(&dir, crate::gitcli::READ_TIMEOUT), Ok(git_read.clone()), "the same read");
     assert!(git_read.1.iter().any(|f| f.path == "renamed.txt" && f.status == 'R'));
     assert!(git_read.0.iter().any(|f| f.path == "deep/er/untracked file.txt" && f.status == '?'));
 

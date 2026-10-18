@@ -349,6 +349,8 @@ pub(super) mod work_files_trash_tests;
 pub(super) mod work_files_unstage_tests;
 #[path = "worktree_branch_tests.rs"]
 pub(super) mod worktree_branch_tests;
+#[path = "worktree_counts_tests.rs"]
+pub(super) mod worktree_counts_tests;
 #[path = "worktree_manage_tests.rs"]
 pub(super) mod worktree_manage_tests;
 #[path = "worktree_move_tests.rs"]

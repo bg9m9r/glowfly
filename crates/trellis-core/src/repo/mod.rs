@@ -13,7 +13,8 @@
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and
 //! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
-//! folder), `worktrees`, `remotes` and `shallow`. Paths: `entry`
+//! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
+//! `shallow`. Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
 //! one path exactly) and `collide` (paths a file system can't keep apart).
 
@@ -74,6 +75,7 @@ mod workfile_disk;
 mod workfile_mv;
 mod workfile_rename;
 mod workfile_rm;
+mod worktree_counts;
 mod worktrees;
 
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
@@ -125,6 +127,7 @@ pub use workfile::{
 pub use workfile_mv::rename_file_staged;
 pub use workfile_rename::rename_file;
 pub use workfile_rm::{delete_staged_new_file, unstage_gone_new_file};
+pub use worktree_counts::{COUNT_TIMEOUT, ChangesRead, WorktreeCount, count_worktree};
 pub use worktrees::{WorktreeInfo, worktree_wip_heads, worktrees_at};
 
 #[derive(Clone)]

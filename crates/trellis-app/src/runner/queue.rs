@@ -130,6 +130,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         // effect has to decide.
         Effect::LoadRepo { .. }
         | Effect::LoadStatus { .. }
+        | Effect::CountWorktreeChanges(_)
         | Effect::LoadDetail { .. }
         | Effect::LoadCompare { .. }
         | Effect::LoadWorkdirCompare { .. }

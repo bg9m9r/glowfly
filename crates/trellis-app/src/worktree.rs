@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 use trellis_core::paths::FolderId;
-use trellis_core::repo::Tracking;
+use trellis_core::repo::{Tracking, WorktreeCount};
 use trellis_core::undo::Action;
 use trellis_core::worktree_ops::{MoveOutcome, RemoveForce, RemoveOutcome, WorktreeBase};
 
@@ -61,6 +61,18 @@ pub enum RemoteOutcome {
     Failed(String),
 }
 
+/// Other worktrees' changes the load of `workdir` left Pending, to count in the background.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CountRequest {
+    /// The workdir of the tab the request came from.
+    pub workdir: PathBuf,
+    /// The snapshot's `refs_key`: a result for another is dropped.
+    pub refs_key: u64,
+    /// Each worktree's folder, and whether git may run there (the tab's repository or the
+    /// worktree is trusted).
+    pub targets: Vec<(PathBuf, bool)>,
+}
+
 /// A move request, checked by update; the runner checks the target on disk and moves it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MoveRequest {
@@ -106,6 +118,9 @@ pub enum WorktreeMsg {
     Move,
     /// From the runner: how the move went.
     Moved { request: MoveRequest, outcome: MoveOutcome, output: String },
+    /// From the runner (scoped): the background count of the worktrees a load of the snapshot
+    /// with `refs_key` left Pending.
+    ChangesCounted { refs_key: u64, counts: Vec<WorktreeCount> },
 }
 
 impl WorktreeMsg {
@@ -128,6 +143,8 @@ impl WorktreeMsg {
             | Self::MoveDialog(..)
             | Self::Move
             | Self::Moved { .. } => None,
+            // The tab counts again when it is loaded.
+            Self::ChangesCounted { .. } => None,
         }
     }
 }

@@ -76,3 +76,24 @@ fn a_same_length_config_rewrite_with_the_same_time_is_seen() {
     assert_eq!(refs_key(&dir).unwrap(), k1, "nothing changed");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn refs_key_follows_the_worktree_config() {
+    let dir = scratch_repo("refs-key-wtconfig");
+    write(&dir, "a.txt", "one\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "first"]);
+    git(&dir, &["config", "extensions.worktreeConfig", "true"]);
+    let k0 = refs_key(&dir).unwrap();
+    git(&dir, &["config", "--worktree", "core.sshCommand", "ssh -v"]);
+    assert_ne!(refs_key(&dir).unwrap(), k0, "the main worktree's config.worktree");
+
+    let linked = dir.with_file_name(format!("{}-linked", dir.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&linked);
+    git(&dir, &["worktree", "add", "-q", "-b", "linked", &linked.display().to_string()]);
+    let k1 = refs_key(&linked).unwrap();
+    git(&linked, &["config", "--worktree", "x.y", "z"]);
+    assert_ne!(refs_key(&linked).unwrap(), k1, "a linked worktree's own config.worktree");
+    let _ = std::fs::remove_dir_all(&linked);
+    let _ = std::fs::remove_dir_all(&dir);
+}

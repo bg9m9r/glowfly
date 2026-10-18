@@ -1,6 +1,6 @@
 //! A cheap fingerprint of everything a full load reads besides the working-tree status: refs,
-//! HEAD, stashes, the repository state, config, linked worktrees and a shallow clone's `shallow`
-//! file. When it hasn't changed since the last load, re-reading the status is enough and the
+//! HEAD, stashes, the repository state, config (the shared one and the worktree's own), linked
+//! worktrees and a shallow clone's `shallow` file. When it hasn't changed since the last load, re-reading the status is enough and the
 //! history needn't be walked again.
 
 use crate::error::Result;
@@ -40,6 +40,9 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     file_stamp(&common.join("logs/refs/stash")).hash(&mut h);
     // Remotes, upstreams, gitflow and the commit template.
     file_stamp(&common.join("config")).hash(&mut h);
+    // The worktree's own config (`extensions.worktreeConfig`) can set remotes and the commands
+    // git runs too. The main worktree's sits in the common dir, a linked one's in its git dir.
+    file_stamp(&repo.path().join("config.worktree")).hash(&mut h);
     // A shallow clone deepened or completed: `fetch --unshallow` may leave every ref as it was.
     file_stamp(&common.join("shallow")).hash(&mut h);
     // `git am --skip` stopping at the next patch moves no ref.

@@ -18,7 +18,7 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
 use git2::Oid;
 use std::path::{Path, PathBuf};
-use trellis_core::repo::{ChangeCounts, WorktreeInfo};
+use trellis_core::repo::{ChangeCounts, ChangesRead, WorktreeInfo};
 use trellis_core::settings::ThemeChoice;
 use trellis_core::worktree_ops::{FolderProblem, WorktreeBase};
 
@@ -44,6 +44,7 @@ fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>
         prunable: false,
         folder: None,
         changes: ChangeCounts::default(),
+        read: ChangesRead::NotCounted,
     }
 }
 
@@ -97,6 +98,21 @@ fn worktrees_section() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("✔  app").is_none() && h.query_by_label("feature-login").is_none());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn worktrees_counting() {
+    // feature-login's changes are still being counted; hotfix was too large to count.
+    let (mut st, dir) = with_worktrees(ThemeChoice::Dark, "worktrees-counting");
+    let list = &mut st.snap.as_mut().unwrap().worktrees;
+    list[1].read = ChangesRead::Pending;
+    list[2].read = ChangesRead::TooLarge;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("feature-login").is_some());
+    h.check_snapshot("worktrees_counting");
     drop(h);
     remove_fixture(&dir);
 }

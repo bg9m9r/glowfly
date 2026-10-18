@@ -37,6 +37,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             super::trust::maybe_ask(st, false);
             super::forge::refresh(st, false, false, now, fx);
             super::push_pr::loaded(st, fx);
+            super::worktree_counts::want(st, fx);
             load_finished(st, fx);
         }
         LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow } => {
@@ -87,7 +88,13 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
     st.load_gen += 1;
     st.loading = true;
     // Status reads of the older generation are dropped, and the load reads the status anyway.
-    st.refresh = RefreshState { open_stamp: st.refresh.open_stamp, extra_commits: st.refresh.extra_commits, ..Default::default() };
+    // A background count of other worktrees keeps running: its result checks the refs it was for.
+    st.refresh = RefreshState {
+        open_stamp: st.refresh.open_stamp,
+        extra_commits: st.refresh.extra_commits,
+        counting: st.refresh.counting,
+        ..Default::default()
+    };
     let opts = st.load_options(&path);
     let known = known.filter(|_| st.snap.as_ref().is_some_and(|s| s.loaded_with == opts));
     fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind, known });
@@ -195,11 +202,16 @@ pub(super) fn status_set(snap: &mut Snapshot, was_dirty: bool, submodules: Optio
         snap.submodules = list;
     }
     // Clean <-> dirty adds or removes the WIP row above HEAD: lay the graph out again, keeping
-    // the other worktrees' rows with the counts of the last full load.
+    // the other worktrees' rows with the counts of the last full load or its background count.
     if was_dirty != snap.is_dirty() {
-        let worktrees = trellis_core::repo::worktree_wip_heads(&snap.worktrees);
-        snap.graph = trellis_core::graph::layout(&snap.commits, snap.head_oid, snap.is_dirty(), &worktrees);
+        lay_out_graph(snap);
     }
+}
+
+/// Lays `snap`'s graph out again from its commits, its own WIP row and the other worktrees'.
+pub(super) fn lay_out_graph(snap: &mut Snapshot) {
+    let worktrees = trellis_core::repo::worktree_wip_heads(&snap.worktrees);
+    snap.graph = trellis_core::graph::layout(&snap.commits, snap.head_oid, snap.is_dirty(), &worktrees);
 }
 
 fn apply_status(

@@ -5,18 +5,25 @@
 use super::{FileEntry, rpath};
 use crate::gitcli::{NO_PROMPTS, READ_TIMEOUT, args, output_bytes};
 use std::path::Path;
+use std::time::Duration;
 
 /// (unstaged, staged) as `status::libgit2_status` reports them, or None when git failed.
 pub(super) fn status(workdir: &Path) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
+    status_within(workdir, READ_TIMEOUT).ok()
+}
+
+/// `status`, given up after `timeout`. Err(true) when git ran out of time, Err(false) when it
+/// failed otherwise.
+pub(super) fn status_within(workdir: &Path, timeout: Duration) -> Result<(Vec<FileEntry>, Vec<FileEntry>), bool> {
     // Without optional locks git doesn't rewrite the index, which the file watcher would report
     // as a change, reading the status again.
     let cmd = args(&["--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=all"]);
     // Paths are git's bytes, which needn't be UTF-8: kept undecoded until `rpath` reads them.
-    let (out, stdout) = output_bytes(workdir, &cmd, NO_PROMPTS, Some(READ_TIMEOUT));
+    let (out, stdout) = output_bytes(workdir, &cmd, NO_PROMPTS, Some(timeout));
     if !out.ok {
-        return None;
+        return Err(out.timed_out);
     }
-    Some(parse(&stdout))
+    Ok(parse(&stdout))
 }
 
 /// `status` of only the work-tree paths `paths` (each taken literally, a folder covering

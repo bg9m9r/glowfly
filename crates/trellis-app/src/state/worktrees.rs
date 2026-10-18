@@ -8,7 +8,7 @@ use git2::Oid;
 use std::path::Path;
 use trellis_core::branch_ops::check_branch_name;
 use trellis_core::paths::{is_within, same_spelling};
-use trellis_core::repo::{ChangeCounts, Snapshot, WorktreeInfo};
+use trellis_core::repo::{ChangeCounts, ChangesRead, Snapshot, WorktreeInfo};
 use trellis_core::worktree_ops::{WorktreeBase, folder_slug, parse_folder};
 
 /// What the Create worktree dialog is editing.
@@ -71,7 +71,8 @@ pub fn section_shown(snap: &Snapshot) -> bool {
     snap.worktrees.iter().any(|w| !w.is_main())
 }
 
-/// The text at the right of a row: what is checked out, then whether it is locked or missing.
+/// The text at the right of a row: what is checked out, then whether it is locked or missing,
+/// and whether its changes are still being counted or were too many to count.
 pub fn right_text(wt: &WorktreeInfo) -> String {
     let mut out = match (&wt.branch, wt.head) {
         (Some(b), _) => b.clone(),
@@ -83,6 +84,11 @@ pub fn right_text(wt: &WorktreeInfo) -> String {
     }
     if wt.missing {
         out.push_str(" · missing");
+    }
+    match wt.read {
+        ChangesRead::Pending => out.push_str(" · counting…"),
+        ChangesRead::TooLarge => out.push_str(" · not counted"),
+        ChangesRead::NotCounted | ChangesRead::Counted => {}
     }
     out
 }
@@ -98,6 +104,13 @@ pub fn tooltip(wt: &WorktreeInfo) -> String {
     lines.extend(lock_line(wt));
     if wt.missing {
         lines.push("The folder is missing. git can prune this record.".to_owned());
+    }
+    match wt.read {
+        ChangesRead::Pending => lines.push("Counting its uncommitted changes…".to_owned()),
+        ChangesRead::TooLarge => {
+            lines.push("Too large to count its uncommitted changes in the background. Open it in a tab to see them.".to_owned())
+        }
+        ChangesRead::NotCounted | ChangesRead::Counted => {}
     }
     if wt.current {
         lines.push("Open in this tab.".to_owned());

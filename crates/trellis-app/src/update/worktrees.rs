@@ -38,6 +38,7 @@ pub(super) fn handle(st: &mut AppState, msg: WorktreeMsg, now: Instant, fx: &mut
         WorktreeMsg::MoveDialog(path) => worktree_move::move_dialog(st, path),
         WorktreeMsg::Move => worktree_move::submit(st, fx),
         WorktreeMsg::Moved { request, outcome, output } => worktree_move::moved(st, request, outcome, output, now, fx),
+        WorktreeMsg::ChangesCounted { refs_key, counts } => super::worktree_counts::counted(st, refs_key, counts, now, fx),
     }
 }
 

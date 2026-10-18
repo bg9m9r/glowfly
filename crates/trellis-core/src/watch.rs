@@ -1,7 +1,9 @@
 //! Which file changes in a repository matter to the app: path classification for a file
 //! watcher, plus a cache of ignored folders read through libgit2. No watching happens here.
 //! Submodules' repositories (in `<git dir>/modules` or a nested `.git` folder) count only when
-//! their HEAD or refs move, which changes the parent's status.
+//! their HEAD or refs move, which changes the parent's status. The config (`config`, and a
+//! worktree's own `config.worktree`) reloads everything: remotes, upstreams and the settings
+//! that decide whether git may run there all come from it.
 
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
@@ -40,7 +42,7 @@ pub struct WatchPaths {
     workdirs: Vec<PathBuf>,
     git_dirs: Vec<PathBuf>,
     /// A linked worktree's common git dir (the main repository's `.git`), whose refs, packed
-    /// refs and HEAD it shares; empty when it is the git dir itself.
+    /// refs, HEAD and config it shares; empty when it is the git dir itself.
     common_dirs: Vec<PathBuf>,
 }
 
@@ -153,6 +155,9 @@ pub fn git_change(rel: &Path, touch: Touch) -> Change {
             Change::Full
         }
         ["index"] | ["info", "exclude"] => Change::Status,
+        // Remotes, upstreams and command-running settings. Another worktree's
+        // `worktrees/<name>/config.worktree` falls through to None.
+        ["config" | "config.worktree"] => Change::Full,
         ["modules", rest @ ..] => module_change(rest),
         _ => Change::None,
     }
@@ -170,13 +175,14 @@ fn module_change(parts: &[&str]) -> Change {
 }
 
 /// What a change to `rel`, a path in a linked worktree's common git dir, calls for: the refs
-/// it shares and the main worktree's HEAD (which branch is checked out there) reload everything;
-/// the rest belongs to the main worktree (its index, its rebase) or to no one.
+/// it shares, its config and the main worktree's HEAD (which branch is checked out there) reload
+/// everything; the rest belongs to the main worktree (its index, its rebase, its
+/// `config.worktree`) or to no one.
 pub fn common_change(rel: &Path) -> Change {
     let parts: Vec<&str> = rel.components().filter_map(|c| c.as_os_str().to_str()).collect();
     match parts.as_slice() {
         [.., last] if last.ends_with(".lock") => Change::None,
-        ["refs", ..] | ["packed-refs"] | ["HEAD"] => Change::Full,
+        ["refs", ..] | ["packed-refs"] | ["HEAD"] | ["config"] => Change::Full,
         _ => Change::None,
     }
 }

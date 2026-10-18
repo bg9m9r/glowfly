@@ -26,6 +26,8 @@ fn git_internals_are_classified() {
         "rebase-merge/done",
         "rebase-apply/next",
         "sequencer/todo",
+        "config",
+        "config.worktree",
     ] {
         assert_eq!(c(full), Change::Full, "{full}");
     }
@@ -39,7 +41,9 @@ fn git_internals_are_classified() {
         "ORIG_HEAD",
         "COMMIT_EDITMSG",
         "TRELLIS_COMMIT_EDITMSG",
-        "config",
+        "config.lock",
+        "config.worktree.lock",
+        "worktrees/wt/config.worktree",
         "hooks/pre-commit",
         "",
     ] {
@@ -81,22 +85,35 @@ fn submodule_repositories_change_the_status() {
 #[test]
 fn a_linked_worktree_follows_the_refs_it_shares() {
     let c = |p: &str| common_change(Path::new(p));
-    for full in ["refs/heads/main", "refs/remotes/origin/x", "packed-refs", "HEAD"] {
+    for full in ["refs/heads/main", "refs/remotes/origin/x", "packed-refs", "HEAD", "config"] {
         assert_eq!(c(full), Change::Full, "{full}");
     }
-    for none in ["index", "refs/heads/main.lock", "objects/ab/cd", "config", "logs/HEAD", "rebase-merge/done", "worktrees/other/index"] {
+    // The common dir's `config.worktree` is the main worktree's own.
+    for none in [
+        "index",
+        "refs/heads/main.lock",
+        "objects/ab/cd",
+        "config.lock",
+        "config.worktree",
+        "logs/HEAD",
+        "rebase-merge/done",
+        "worktrees/other/index",
+    ] {
         assert_eq!(c(none), Change::None, "{none}");
     }
     // Classified through WatchPaths: the linked worktree's own git dir first, then the common one.
-    let common = std::env::temp_dir().join("trellis-watch-common-missing").join(".git");
+    let common = crate::paths::temp_dir().join("trellis-watch-common-missing").join(".git");
     let git_dir = common.join("worktrees").join("wt");
-    let wd = std::env::temp_dir().join("trellis-watch-common-missing-wt");
+    let wd = crate::paths::temp_dir().join("trellis-watch-common-missing-wt");
     let paths = WatchPaths::new(&wd, &git_dir).with_common(&common);
     let mut never = |_: &str| false;
     assert_eq!(paths.classify(&common.join("refs/heads/x"), Touch::Other, &mut never), Change::Full);
     assert_eq!(paths.classify(&common.join("index"), Touch::Modified, &mut never), Change::None);
     assert_eq!(paths.classify(&git_dir.join("index"), Touch::Modified, &mut never), Change::Status);
     assert_eq!(paths.classify(&git_dir.join("HEAD"), Touch::Modified, &mut never), Change::Full);
+    assert_eq!(paths.classify(&common.join("config"), Touch::Modified, &mut never), Change::Full, "the shared config");
+    assert_eq!(paths.classify(&git_dir.join("config.worktree"), Touch::Modified, &mut never), Change::Full, "its own config");
+    assert_eq!(paths.classify(&common.join("config.worktree"), Touch::Modified, &mut never), Change::None, "the main worktree's");
     // The main worktree's own git dir is not a second root.
     let main = WatchPaths::new(&wd, &common).with_common(&common);
     assert!(main.common_dirs.is_empty());

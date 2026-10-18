@@ -336,6 +336,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     super::trust::loaded(st, kind, fx);
     super::submodule_batch::opened(st, kind, now, fx);
     super::conflict_check::want(st, fx);
+    super::worktree_counts::want(st, fx);
     super::gitflow::snapshot_changed(st);
     super::commit::apply_template(st);
     super::watch::sync(st, fx);

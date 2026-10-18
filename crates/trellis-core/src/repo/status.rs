@@ -82,7 +82,7 @@ pub(super) fn mark_twins(
 }
 
 /// Entries past which git's own status is faster than libgit2's.
-const LARGE_INDEX: usize = 50_000;
+pub(super) const LARGE_INDEX: usize = 50_000;
 
 /// Whether git reads the status faster than libgit2 here.
 pub(super) fn wants_git(repo: &Repository) -> bool {

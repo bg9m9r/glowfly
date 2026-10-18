@@ -187,7 +187,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
     let submodules = submodules::list(&repo);
     let mut worktrees = worktrees::list(&repo);
     if opts.worktree_wips {
-        worktrees::count_changes(&mut worktrees);
+        super::worktree_counts::count_in_load(&mut worktrees, &super::worktree_counts::LoadLimits::DEFAULT);
     }
     let shallow_roots = super::shallow::roots(&repo);
 

@@ -110,6 +110,7 @@ mod updates;
 mod watch;
 mod work_files;
 mod work_files_delete;
+mod worktree_counts;
 mod worktree_manage;
 mod worktree_move;
 mod worktrees;

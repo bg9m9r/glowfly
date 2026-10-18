@@ -60,6 +60,9 @@ pub struct RefreshState {
     /// The open file's `repo::open_file_stamp` when its diff was last read again after a status
     /// read.
     pub open_stamp: Option<u64>,
+    /// The `refs_key` a background count of other worktrees' changes runs for; one at a time.
+    /// Kept across loads (`refresh::start`), reset by a tab switch.
+    pub counting: Option<u64>,
 }
 
 /// Whether `snap` stops short of the whole history and may load more of it (below the cap). A
