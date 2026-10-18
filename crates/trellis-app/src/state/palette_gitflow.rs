@@ -1,15 +1,18 @@
 //! The palette's Git Flow entries: Configure, then once the repository is set up Open Git Flow
 //! panel, a Start entry per branch kind, a Start from issue entry per kind (while issues are
-//! assigned) and a Finish entry per open flow branch.
+//! assigned), a Finish entry per open flow branch, and Continue finishing a Finish stopped at a
+//! conflict once its merge is committed.
 
 use super::{Entry, PaletteCommand, entry, with_detail};
 use crate::state::AppState;
 use crate::state::gitflow::issues_ready;
+use crate::state::gitflow_resume::{offered, palette_label, steps_left};
 use trellis_core::gitflow::{Branches, FlowKind, flow_branches, short_name, targets};
 use trellis_core::repo::Snapshot;
 
 /// Configure Git Flow, then (once set up) Open Git Flow panel, Start per kind, Start from issue
-/// per kind and Finish per open flow branch, the checked-out one first.
+/// per kind, Finish per open flow branch (the checked-out one first), and Continue finishing
+/// while a stopped Finish's merge is committed and no job runs.
 pub(super) fn gitflow_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     out.push(entry(
         PaletteCommand::ConfigureGitFlow,
@@ -42,5 +45,10 @@ pub(super) fn gitflow_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entr
         let label = format!("Finish Git Flow {} {}…", kind.noun(), short_name(&s, kind, b));
         let e = entry(PaletteCommand::FinishGitFlow(b.to_owned()), label, "gitflow git-flow finish complete done merge close end");
         out.push(with_detail(e, Some(format!("into {}", targets(&s, kind)))));
+    }
+    if let Some(r) = offered(st).filter(|_| st.job.is_none()) {
+        let keywords = "gitflow git-flow finish continue resume remaining steps merge committed conflict";
+        let e = entry(PaletteCommand::ContinueGitFlowFinish, palette_label(&r.resume), keywords);
+        out.push(with_detail(e, Some(steps_left(r.resume.plan.steps.len()))));
     }
 }

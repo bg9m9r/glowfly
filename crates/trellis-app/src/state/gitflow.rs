@@ -5,7 +5,7 @@
 use super::AppState;
 use std::path::PathBuf;
 use trellis_core::gitflow::{
-    Branches, FinishOptions, FlowKind, GitFlowConfig, GitFlowSettings, StartProblem, default_tag, suggested, targets,
+    Branches, FinishOptions, FinishPlan, FlowKind, GitFlowConfig, GitFlowSettings, StartProblem, StartTips, default_tag, suggested, targets,
 };
 use trellis_core::repo::Snapshot;
 
@@ -83,12 +83,17 @@ impl FinishForm {
     }
 }
 
-/// A running Finish job: its label (to match `st.job`), the plan's step texts and the success
-/// summary, for the headline when it ends.
+/// A running Finish (or Continue finish) job: its label (to match `st.job`), the plan it runs,
+/// the success summary, and the tips when it started, for the headline when it ends and the
+/// steps left after a conflict.
 pub struct FinishJob {
     pub label: String,
-    pub steps: Vec<String>,
+    pub plan: FinishPlan,
     pub done: String,
+    /// None when the flow branch's tip wasn't known (then a conflict leaves nothing to continue).
+    pub tips: Option<StartTips>,
+    /// It runs the steps left after a conflict (Continue finish).
+    pub resuming: bool,
 }
 
 /// "Features", "Releases" or "Hotfixes".

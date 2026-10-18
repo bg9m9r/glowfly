@@ -36,6 +36,8 @@ pub mod forge_filters;
 pub mod forks;
 pub mod git_env;
 pub mod gitflow;
+pub mod gitflow_base;
+pub mod gitflow_resume;
 pub mod graph_rows;
 pub mod history;
 pub mod history_index;
@@ -318,6 +320,7 @@ pub enum Modal {
     },
     GitFlowStart(gitflow::StartForm),
     GitFlowFinish(gitflow::FinishForm),
+    GitFlowDeleteBase(Box<gitflow_base::BaseDelete>),
     Remote(remotes::RemoteForm),
     AddFork(Box<forks::ForkPicker>),
     CreateFork(Box<forks::ForkCreate>),
@@ -517,6 +520,8 @@ pub struct AppState {
     pub terminal: terminal::TerminalPanel,
     /// The running Git Flow Finish job's steps (update/gitflow_finish.rs).
     pub gitflow_finish: Option<gitflow::FinishJob>,
+    /// A Finish stopped at a merge conflict, with its steps still to run (parked with the tab).
+    pub gitflow_resume: Option<gitflow_resume::StoppedFinish>,
     /// The running remote tag push or delete (update/tags.rs), for its headline.
     pub tag_job: Option<tags::RemoteTagJob>,
     pub tag_checkout: Option<tags::TagCheckoutJob>,
@@ -635,6 +640,7 @@ impl AppState {
             palette_recent: Default::default(),
             terminal,
             gitflow_finish: None,
+            gitflow_resume: None,
             tag_job: None,
             tag_checkout: None,
             patch_apply: None,

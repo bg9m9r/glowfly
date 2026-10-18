@@ -308,6 +308,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             super::rebase::close(st);
             super::journal::close(st);
             st.gitflow_panel = false;
+            st.gitflow_resume = None;
             st.draft = CommitDraft::default();
             st.undo = Default::default();
             st.view.scroll_to_row = Some(0);

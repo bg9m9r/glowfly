@@ -268,3 +268,18 @@ fn open_branch_list() {
     assert_eq!(open_branches(&s, FlowKind::Release, &b), ["release/1.2.0"]);
     assert!(open_branches(&s, FlowKind::Hotfix, &b).is_empty());
 }
+
+#[test]
+fn base_roles() {
+    let s = defaults();
+    assert_eq!(s.base_role("main"), Some(FlowBase::Production));
+    assert_eq!(s.base_role("develop"), Some(FlowBase::Development));
+    assert_eq!((FlowBase::Production.noun(), FlowBase::Development.noun()), ("production", "development"));
+    for none in ["Main", "DEVELOP", "feature/x", ""] {
+        assert_eq!(s.base_role(none), None, "{none}");
+    }
+    assert_eq!(initialized().base_role("develop"), Some(FlowBase::Development));
+    assert_eq!(GitFlowConfig::default().base_role("main"), None, "not set up");
+    let half = GitFlowConfig { feature: None, ..initialized() };
+    assert_eq!(half.base_role("main"), None);
+}

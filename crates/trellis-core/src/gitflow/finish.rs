@@ -89,16 +89,30 @@ pub struct FinishOptions {
     pub keep: bool,
 }
 
+/// What a step of the plan does, for continuing a Finish that stopped part way.
+#[derive(Clone, Debug, PartialEq)]
+pub enum StepAction {
+    /// Check out this branch.
+    Checkout(String),
+    /// Merge the flow branch into this branch (checked out by the step before).
+    Merge { into: String },
+    /// Make this tag on production.
+    Tag(String),
+    /// Delete the flow branch.
+    Delete,
+}
+
 /// One git command of the plan.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FinishStep {
     pub cmd: Vec<String>,
     /// "merge feature/x into develop" (lower case).
     pub what: String,
+    pub action: StepAction,
 }
 
 /// What Finish will do.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FinishPlan {
     pub kind: FlowKind,
     pub branch: String,
@@ -119,6 +133,11 @@ impl FinishPlan {
         format!("Finish {} {}", self.kind.noun(), self.short)
     }
 
+    /// "Continue finish feature login": the job that runs the steps left after a conflict.
+    pub fn resume_label(&self) -> String {
+        format!("Continue finish {} {}", self.kind.noun(), self.short)
+    }
+
     /// "Finished release 1.2.0: merged into main and develop, tagged v1.2.0 and deleted
     /// release/1.2.0."
     pub fn summary(&self, s: &GitFlowSettings) -> String {
@@ -133,6 +152,18 @@ impl FinishPlan {
         let text = if done.is_empty() { last } else { format!("{} and {last}", done.join(", ")) };
         format!("Finished {} {}: {text}.", self.kind.noun(), self.short)
     }
+}
+
+/// The 0-based index of the step that stopped a Finish job of `steps` steps. The runner echoes
+/// each command it runs as "$ git …", so the number of echoes is the failed step's number.
+pub fn failed_step(output: &str, steps: usize) -> usize {
+    let echoes = output.lines().filter(|l| l.starts_with("$ git ")).count();
+    echoes.clamp(1, steps.max(1)) - 1
+}
+
+/// Whether the job's output reports a merge conflict.
+pub fn stopped_by_conflict(output: &str) -> bool {
+    output.contains("CONFLICT")
 }
 
 /// Why a branch can't be finished.
@@ -218,13 +249,7 @@ pub fn check_finish(
     }
     let tag = if kind.versioned() {
         let (tag, message) = (o.tag.trim(), o.message.trim());
-        check_tag_name(tag, &b.tags).map_err(|p| match p {
-            TagNameProblem::Empty => P::EmptyTag,
-            TagNameProblem::Invalid(_) => P::InvalidTag(tag.to_owned()),
-            TagNameProblem::Exists(other) => P::TagExists(other),
-            TagNameProblem::Clashes(other) => P::TagClashes(tag.to_owned(), other),
-            p @ (TagNameProblem::FolderCase { .. } | TagNameProblem::Windows(..)) => P::TagUnusable(p.message(tag)),
-        })?;
+        check_tag(tag, &b.tags)?;
         if message.is_empty() {
             return Err(P::EmptyMessage);
         }
@@ -237,24 +262,40 @@ pub fn check_finish(
     Ok(FinishPlan { kind, branch: branch.to_owned(), short, tag: tag.map(|(t, _)| t), keep: o.keep, steps })
 }
 
+/// Whether `tag` can be made next to `tags`, as a FinishProblem.
+pub(super) fn check_tag(tag: &str, tags: &[&str]) -> Result<(), FinishProblem> {
+    use FinishProblem as P;
+    check_tag_name(tag, tags).map_err(|p| match p {
+        TagNameProblem::Empty => P::EmptyTag,
+        TagNameProblem::Invalid(_) => P::InvalidTag(tag.to_owned()),
+        TagNameProblem::Exists(other) => P::TagExists(other),
+        TagNameProblem::Clashes(other) => P::TagClashes(tag.to_owned(), other),
+        p @ (TagNameProblem::FolderCase { .. } | TagNameProblem::Windows(..)) => P::TagUnusable(p.message(tag)),
+    })
+}
+
 /// The commands. Merges name refs/heads/ so a tag or path with the same name can't be picked;
 /// checkouts end with `--` so the name can't be read as a path.
 fn steps(s: &GitFlowSettings, kind: FlowKind, branch: &str, tag: Option<&(String, String)>, keep: bool) -> Vec<FinishStep> {
-    let step = |cmd: &[&str], what: String| FinishStep { cmd: args(cmd), what };
+    let step = |cmd: &[&str], what: String, action: StepAction| FinishStep { cmd: args(cmd), what, action };
     let full = format!("refs/heads/{branch}");
-    let checkout = |name: &str| step(&["checkout", name, "--"], format!("check out {name}"));
-    let merge = |into: &str| step(&["merge", "--no-ff", "--no-edit", &full], format!("merge {branch} into {into}"));
+    let checkout = |name: &str| step(&["checkout", name, "--"], format!("check out {name}"), StepAction::Checkout(name.to_owned()));
+    let merge = |into: &str| {
+        let action = StepAction::Merge { into: into.to_owned() };
+        step(&["merge", "--no-ff", "--no-edit", &full], format!("merge {branch} into {into}"), action)
+    };
     let (p, d) = (s.production.as_str(), s.development.as_str());
     let mut out = Vec::new();
     if let (true, Some((t, m))) = (kind.versioned(), tag) {
         out.push(checkout(p));
         out.push(merge(p));
-        out.push(step(&["tag", "-a", t, "-m", m, &format!("refs/heads/{p}")], format!("tag {p} as {t}")));
+        let tag = ["tag", "-a", t, "-m", m, &format!("refs/heads/{p}")];
+        out.push(step(&tag, format!("tag {p} as {t}"), StepAction::Tag(t.clone())));
     }
     out.push(checkout(d));
     out.push(merge(d));
     if !keep {
-        out.push(step(&["branch", "-d", branch], format!("delete {branch}")));
+        out.push(step(&["branch", "-d", branch], format!("delete {branch}"), StepAction::Delete));
     }
     out
 }

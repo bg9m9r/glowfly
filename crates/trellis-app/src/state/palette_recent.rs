@@ -103,7 +103,7 @@ impl PaletteCommand {
             C::StartGitFlow(FlowKind::Feature) => "gitflow-start-feature",
             C::StartGitFlow(FlowKind::Release) => "gitflow-start-release",
             C::StartGitFlow(FlowKind::Hotfix) => "gitflow-start-hotfix",
-            C::FinishGitFlow(_) => return None,
+            C::FinishGitFlow(_) | C::ContinueGitFlowFinish => return None,
             C::OpenGitFlowPanel => "gitflow-panel",
             C::OpenJournal => "journal",
             C::ChooseGitFlowIssue(FlowKind::Feature) => "gitflow-issue-feature",

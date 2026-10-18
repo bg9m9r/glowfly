@@ -231,6 +231,8 @@ pub struct Parked {
     pub journal: Option<crate::state::journal::JournalView>,
     /// The Range-diff view (a comparison in flight is asked for again on return).
     pub range_diff: Option<crate::state::range_diff::RangeDiffView>,
+    /// A Finish stopped at a merge conflict, with its steps still to run.
+    pub gitflow_resume: Option<crate::state::gitflow_resume::StoppedFinish>,
     pub draft: CommitDraft,
     pub undo: UndoHistory,
     pub forge: Option<ForgeState>,

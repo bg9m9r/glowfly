@@ -121,6 +121,8 @@ pub enum PaletteCommand {
     StartGitFlow(trellis_core::gitflow::FlowKind),
     /// Open the Finish dialog for this flow branch.
     FinishGitFlow(String),
+    /// Run the steps left by a Finish stopped at a conflict, once its merge is committed.
+    ContinueGitFlowFinish,
     /// Show the Git Flow panel.
     OpenGitFlowPanel,
     /// The operation journal (update/journal.rs).

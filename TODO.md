@@ -425,7 +425,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | Terminal | ✔ Terminal page (built-in: shell, font size, cursor style, dim when unfocused, copy on select, middle-click paste (Linux), Open in terminal in the panel; external: program and arguments) | Font family, line height (Ideas > Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
-| *Repo:* Gitflow | ✔ Git Flow page, Start and Finish, Git Flow panel, branch from issue | Finish options (Later > Git Flow) |
+| *Repo:* Gitflow | ✔ Git Flow page, Start and Finish, Git Flow panel, branch from issue | Finish options (Ideas > Git Flow) |
 | *Repo:* Git Hooks | ✔ hooks path | — |
 | *Repo:* Commit | ✘ | Commit template, push after commit, skip hooks per repo |
 | *Repo:* Agents | — | Out of scope |
@@ -1048,11 +1048,6 @@ blockers and major findings are Milestone 1 items.
 ### File history and blame
 
 - Open folder history from a folder row once file lists can show a tree
-
-### Git Flow
-
-- Continue a Finish that stopped at a merge conflict once the merge is committed
-- Confirm before deleting the configured production or development branch
 
 ### Stash improvements
 
@@ -2084,6 +2079,20 @@ here, under the item they grew from.
 - Order release and hotfix rows by version (1.10.0 after 1.9.0)
 - Hide or show the GIT FLOW section from a left-panel context menu
 - Show which issue a flow branch was started from in the Start dialog
+- Remember a stopped Finish across restarts (stored in the repository's git dir), not only for
+  the session's tab
+- Continue a Finish that stopped for a reason other than a conflict (a refused checkout, a
+  branch -d that refused, a tag that failed)
+- Offer Continue finish from the Finish dialog of a branch whose Finish stopped, instead of
+  planning all the steps again
+- Recognise the committed merge when the target's history isn't in the loaded graph (hidden
+  refs, smart branch mode), e.g. with an ancestry check in the runner
+- Warn in the pull request merge's "delete the source branch" option when the source is the
+  production or development branch
+- Ask before renaming the production or development branch, and offer to update the Git Flow
+  config to the new name
+- Offer to pick a new production or development branch in Preferences > Git Flow right after
+  one is deleted
 
 ### Remote management
 

@@ -1,4 +1,5 @@
-//! The Git Flow panel, shown in place of the graph: the production and development branches,
+//! The Git Flow panel, shown in place of the graph: a stopped Finish's remaining steps (with
+//! Continue finish once its merge is committed), the production and development branches,
 //! then the feature, release and hotfix branches by kind with Start and Finish buttons; a set-up
 //! prompt when Git Flow isn't configured.
 
@@ -9,6 +10,7 @@ use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked};
+use crate::state::gitflow_resume::{ready_text, waiting_text};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::type_scale;
 use crate::ui::widgets::buttons;
@@ -41,12 +43,34 @@ pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         egui::Frame::new().inner_margin(margin).show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = 2.0;
+            if st.gitflow_resume.is_some() {
+                resume_row(ui, st, msgs);
+                ui.add_space(8.0);
+            }
             base_row(ui, snap, "Production", &s.production, msgs);
             base_row(ui, snap, "Development", &s.development, msgs);
             for g in &groups {
                 ui.add_space(14.0);
                 group(ui, st, snap, &s, g, msgs);
             }
+        });
+    });
+}
+
+/// A Finish stopped at a conflict: what is left, with Forget, and Continue finish once the merge
+/// is committed.
+fn resume_row(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let Some(r) = st.gitflow_resume.as_ref() else { return };
+    let text = if r.ready { ready_text(&r.resume) } else { waiting_text(&r.resume) };
+    egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.horizontal(|ui| {
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                super::gitflow_resume_banner::buttons(ui, r.ready, st.job.is_none(), msgs);
+                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                    ui.add(egui::Label::new(RichText::new(text).color(color::text())).wrap());
+                });
+            });
         });
     });
 }

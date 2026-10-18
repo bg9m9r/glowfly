@@ -36,6 +36,7 @@ mod git_env;
 mod git_job;
 mod gitflow;
 mod gitflow_finish;
+mod gitflow_resume;
 mod graph_columns;
 mod graph_filter;
 mod highlight;

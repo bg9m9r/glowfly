@@ -132,7 +132,7 @@ fn gitflow_finish_feature_blocked() {
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The initialized fixture with feature/login (checked out), feature/search and release/1.0.0.
-fn with_flow_branches(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_flow_branches(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = initialized(theme, name);
     let d = "2026-01-05T10:00:00+00:00";
     git(&dir, &["branch", "feature/login"], d);

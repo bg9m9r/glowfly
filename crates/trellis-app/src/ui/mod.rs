@@ -64,6 +64,7 @@ mod git_banner;
 mod gitflow_dialog;
 mod gitflow_finish_dialog;
 mod gitflow_panel;
+mod gitflow_resume_banner;
 mod gitflow_section;
 mod graph;
 mod graph_empty;
@@ -263,6 +264,8 @@ mod snapshot_tests_forks;
 mod snapshot_tests_form_messages;
 #[cfg(test)]
 mod snapshot_tests_gitflow;
+#[cfg(test)]
+mod snapshot_tests_gitflow_resume;
 #[cfg(test)]
 mod snapshot_tests_graph_double_click;
 #[cfg(test)]

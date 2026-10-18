@@ -107,10 +107,14 @@ pub(super) mod git_env_tests;
 pub(super) mod git_job_tests;
 #[path = "git_program_tests.rs"]
 pub(super) mod git_program_tests;
+#[path = "gitflow_base_tests.rs"]
+pub(super) mod gitflow_base_tests;
 #[path = "gitflow_finish_tests.rs"]
 pub(super) mod gitflow_finish_tests;
 #[path = "gitflow_panel_tests.rs"]
 pub(super) mod gitflow_panel_tests;
+#[path = "gitflow_resume_tests.rs"]
+pub(super) mod gitflow_resume_tests;
 #[path = "gitflow_tests.rs"]
 pub(super) mod gitflow_tests;
 #[path = "graph_columns_tests.rs"]

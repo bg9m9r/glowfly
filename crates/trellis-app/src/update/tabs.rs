@@ -266,6 +266,7 @@ pub(super) fn park(st: &mut AppState) -> Parked {
         gitflow_panel: std::mem::take(&mut st.gitflow_panel),
         journal: st.journal.take(),
         range_diff: st.range_diff.take(),
+        gitflow_resume: st.gitflow_resume.take(),
         draft: std::mem::take(&mut st.draft),
         undo: std::mem::take(&mut st.undo),
         forge: st.forge.take(),
@@ -287,6 +288,7 @@ pub(super) fn park(st: &mut AppState) -> Parked {
 
 fn unpark(st: &mut AppState, p: Parked) {
     st.snap = p.snap;
+    st.gitflow_resume = p.gitflow_resume;
     super::gitflow::snapshot_changed(st);
     st.selection = if st.snap.is_some() { p.selection } else { Selection::None };
     st.detail = p.detail;

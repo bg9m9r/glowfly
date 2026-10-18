@@ -286,6 +286,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         C::ConfigureTerminal => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Terminal)),
         C::StartGitFlow(k) => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartDialog(k)),
         C::FinishGitFlow(b) => Msg::GitFlow(crate::gitflow::GitFlowMsg::FinishDialog(b)),
+        C::ContinueGitFlowFinish => Msg::GitFlow(crate::gitflow::GitFlowMsg::ContinueFinish),
         C::OpenGitFlowPanel => Msg::GitFlow(crate::gitflow::GitFlowMsg::OpenPanel),
         C::OpenJournal => Msg::Journal(crate::journal::JournalMsg::Open),
         C::StartGitFlowFromIssue { kind, name } => Msg::GitFlow(crate::gitflow::GitFlowMsg::StartFromIssue { kind, name }),

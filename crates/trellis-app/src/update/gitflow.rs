@@ -1,8 +1,9 @@
 //! Git Flow: filling the preferences form from the snapshot, Initialize / Save (one git job that
 //! creates any missing branch and writes the config), starting a feature, release or hotfix
-//! branch (also with an issue's branch name typed), and opening and closing the Git Flow panel
-//! (finishing a branch is in gitflow_finish.rs). Everything is checked again here against the
-//! current snapshot before a job starts.
+//! branch (also with an issue's branch name typed), opening and closing the Git Flow panel, and
+//! the confirmation before deleting the production or development branch (finishing a branch is
+//! in gitflow_finish.rs, continuing one stopped at a conflict in gitflow_resume.rs). Everything
+//! is checked again here against the current snapshot before a job starts.
 
 use super::ops::{JobSpec, Started, busy, start_job};
 use crate::effect::Effect;
@@ -33,6 +34,14 @@ pub(super) fn handle(st: &mut AppState, m: GitFlowMsg, now: Instant, fx: &mut Ve
         GitFlowMsg::Finish { branch, options } => super::gitflow_finish::finish(st, &branch, options, now, fx),
         GitFlowMsg::OpenPanel => open_panel(st),
         GitFlowMsg::ClosePanel => st.gitflow_panel = false,
+        GitFlowMsg::ContinueFinish => super::gitflow_resume::continue_finish(st, now, fx),
+        GitFlowMsg::ForgetFinish => st.gitflow_resume = None,
+        GitFlowMsg::DeleteBase(b) => st.modal = Some(Modal::GitFlowDeleteBase(b)),
+        GitFlowMsg::DeleteBaseConfirmed => {
+            if let Some(Modal::GitFlowDeleteBase(b)) = st.modal.take() {
+                fx.extend(super::update(st, *b.then, now));
+            }
+        }
     }
 }
 
@@ -43,10 +52,11 @@ pub(super) fn fill(st: &mut AppState) {
     }
 }
 
-/// A new snapshot arrived: refill the open page when it belongs to another repository, or when
+/// A new snapshot arrived: follow a stopped Finish (gitflow_resume.rs), and refill the open page when it belongs to another repository, or when
 /// the config changed and the form wasn't edited (an edited form keeps the user's values) or now
 /// matches it (a successful Save).
 pub(super) fn snapshot_changed(st: &mut AppState) {
+    super::gitflow_resume::snapshot_changed(st);
     let (Some(prefs), Some(snap)) = (st.prefs.as_mut(), st.snap.as_ref()) else { return };
     let page = &mut prefs.gitflow;
     if page.workdir.as_ref() != Some(&snap.workdir) {

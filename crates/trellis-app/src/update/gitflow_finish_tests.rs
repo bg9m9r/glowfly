@@ -141,7 +141,9 @@ fn finish_cmds() {
     assert!(st.prefs.is_none());
     let pending = st.gitflow_finish.as_ref().expect("pending finish");
     assert_eq!(pending.label, "Finish feature login");
-    assert_eq!(pending.steps, ["check out develop", "merge feature/login into develop", "delete feature/login"]);
+    let steps: Vec<&str> = pending.plan.steps.iter().map(|s| s.what.as_str()).collect();
+    assert_eq!(steps, ["check out develop", "merge feature/login into develop", "delete feature/login"]);
+    assert!(pending.tips.is_some() && !pending.resuming);
     assert_eq!(pending.done, "Finished feature login: merged into develop and deleted feature/login.");
 
     st.job = None;
@@ -183,11 +185,14 @@ fn finish_conflict_end_to_end() {
     let toast = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
     assert_eq!(
         toast,
-        "Finish feature login stopped: \"merge feature/login into develop\" has conflicts. Resolve them and commit the merge. \
-         Still to do: delete feature/login."
+        "Finish feature login stopped: \"merge feature/login into develop\" has conflicts. Resolve them, commit the merge, \
+         then use Continue finish. Still to do: delete feature/login."
     );
     assert!(st.log.iter().any(|l| !l.ok && l.text == toast), "the headline is logged too");
     assert!(st.gitflow_finish.is_none());
+    let r = st.gitflow_resume.as_ref().expect("the steps left are remembered");
+    let steps: Vec<&str> = r.resume.plan.steps.iter().map(|s| s.what.as_str()).collect();
+    assert_eq!((steps, r.resume.into.as_str(), r.seen_merge, r.ready), (vec!["delete feature/login"], "develop", true, false));
     assert!(exists(&dir, "refs/heads/feature/login"));
     cleanup(&dir);
 }
@@ -207,21 +212,27 @@ fn stopped_headlines() {
     let conflict = "$ git checkout main --\nSwitched to branch 'main'\n$ git merge --no-ff --no-edit refs/heads/release/1.2.0\n\
                     CONFLICT (content): Merge conflict in a.txt\nAutomatic merge failed; fix conflicts and then commit the result.";
     assert_eq!(
-        stopped("Finish release 1.2.0", &steps, conflict),
+        stopped("Finish release 1.2.0", &steps, conflict, false),
         "Finish release 1.2.0 stopped: \"merge release/1.2.0 into main\" has conflicts. Resolve them and commit the merge. \
          Still to do: tag main as v1.2.0, check out develop, merge release/1.2.0 into develop, delete release/1.2.0."
+    );
+    assert_eq!(
+        stopped("Finish release 1.2.0", &steps, conflict, true),
+        "Finish release 1.2.0 stopped: \"merge release/1.2.0 into main\" has conflicts. Resolve them, commit the merge, then \
+         use Continue finish. Still to do: tag main as v1.2.0, check out develop, merge release/1.2.0 into develop, delete \
+         release/1.2.0."
     );
 
     let feature: Vec<String> = ["check out develop", "merge feature/x into develop", "delete feature/x"].map(String::from).to_vec();
     let not_merged = "$ git checkout develop --\n$ git merge --no-ff --no-edit refs/heads/feature/x\nMerge made.\n$ git branch -d feature/x\n\
                       error: the branch 'feature/x' is not fully merged\nhint: If you are sure you want to delete it, run 'git branch -D feature/x'";
     assert_eq!(
-        stopped("Finish feature x", &feature, not_merged),
+        stopped("Finish feature x", &feature, not_merged, false),
         "Finish feature x stopped at \"delete feature/x\": error: the branch 'feature/x' is not fully merged."
     );
 
     assert_eq!(
-        stopped("Finish feature x", &feature, "Could not start git."),
+        stopped("Finish feature x", &feature, "Could not start git.", false),
         "Finish feature x stopped at \"check out develop\": Could not start git. Still to do: merge feature/x into develop, delete feature/x."
     );
 }

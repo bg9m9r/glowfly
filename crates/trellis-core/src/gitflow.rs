@@ -1,6 +1,7 @@
 //! Git Flow config, defaults, checks and command lines for setting up, starting and finishing
-//! (`finish.rs`) feature, release and hotfix branches, implemented natively with plain git, and
-//! the local flow branches grouped by kind (`groups.rs`).
+//! (`finish.rs`) feature, release and hotfix branches, implemented natively with plain git,
+//! continuing a Finish stopped at a merge conflict (`resume.rs`), the roles of the production and
+//! development branches (`base.rs`), and the local flow branches grouped by kind (`groups.rs`).
 //! The settings live in the repository's git config under the `gitflow.*` keys the git-flow
 //! command-line tool also uses, so either can work in the same repository. Only `read_config`
 //! touches a repository; everything else is pure.
@@ -9,22 +10,28 @@ use crate::branch_ops::{NameProblem, check_branch_name};
 use crate::gitcli::args;
 use crate::repo::Snapshot;
 
+mod base;
 mod checks;
 mod finish;
 #[cfg(test)]
 mod finish_tests;
 mod groups;
+mod resume;
+#[cfg(test)]
+mod resume_tests;
 mod start;
 #[cfg(test)]
 mod tests;
 mod version;
 
+pub use base::FlowBase;
 pub use checks::{SettingsProblem, check_settings};
 pub use finish::{
-    FinishOptions, FinishPlan, FinishProblem, FinishStep, WorkState, check_finish, default_tag, default_tag_message, flow_branches,
-    flow_kind, short_name, targets,
+    FinishOptions, FinishPlan, FinishProblem, FinishStep, StepAction, WorkState, check_finish, default_tag, default_tag_message,
+    failed_step, flow_branches, flow_kind, short_name, stopped_by_conflict, targets,
 };
 pub use groups::{FlowBranch, FlowGroup, grouped, total};
+pub use resume::{FinishResume, ResumeGone, ResumeState, StartTips, check_resume, resume_state};
 pub use start::{StartProblem, check_start, open_branches, start_cmd};
 pub use version::suggest_version;
 

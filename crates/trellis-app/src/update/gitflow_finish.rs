@@ -1,17 +1,22 @@
 //! Git Flow Finish: opening the dialog for a feature, release or hotfix branch, running the
 //! planned merges, tag and delete as one git job (it stops at the first failing step), and the
-//! headline when that job ends: the plan's summary, or which step stopped it and what is left.
+//! headline when that job (or a Continue finish job) ends: the plan's summary, or which step
+//! stopped it and what is left, remembered for Continue finish when a merge conflicted
+//! (gitflow_resume.rs).
 
+use super::gitflow_resume::{Change, store};
 use super::ops::{JobSpec, Started, busy, last_line, start_job};
 use crate::effect::Effect;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::gitflow::NOT_SET_UP;
 use crate::state::gitflow::{FinishForm, FinishJob};
+use crate::state::gitflow_resume::StoppedFinish;
 use crate::state::{AppState, Modal};
 use std::time::Instant;
 use trellis_core::gitflow::{
-    Branches, FinishOptions, FinishProblem, WorkState, check_finish, default_tag, default_tag_message, flow_kind, short_name,
+    Branches, FinishOptions, FinishProblem, StartTips, WorkState, check_finish, default_tag, default_tag_message, failed_step, flow_kind,
+    short_name, stopped_by_conflict,
 };
 
 /// Opens the Finish dialog for `branch`, unless Git Flow isn't set up or the branch isn't a
@@ -57,6 +62,7 @@ pub(super) fn finish(st: &mut AppState, branch: &str, options: FinishOptions, no
             return;
         }
     };
+    let tips = StartTips::of(snap, &plan);
     if busy(st, false) {
         return;
     }
@@ -69,31 +75,49 @@ pub(super) fn finish(st: &mut AppState, branch: &str, options: FinishOptions, no
     let label = plan.label();
     // Also for a job waiting for the trust prompt; dropping it clears this.
     if start_job(st, JobSpec::new(label.clone(), plan.cmds()), fx) != Started::No {
-        let steps = plan.steps.iter().map(|x| x.what.clone()).collect();
-        st.gitflow_finish = Some(FinishJob { label, steps, done: plan.summary(&s) });
+        let done = plan.summary(&s);
+        st.gitflow_finish = Some(FinishJob { label, plan, done, tips, resuming: false });
     }
 }
 
-/// The headline of the job that just ended, when it is the pending Finish job. Always clears
-/// the pending job.
+/// The headline of the job that just ended, when it is the pending Finish (or Continue finish)
+/// job. Always clears the pending job. A success clears the remembered steps of that branch; a
+/// conflict with steps after it remembers them for the job's tab; any other failure of a
+/// Continue finish drops them.
 pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<String> {
     let pending = st.gitflow_finish.take()?;
-    if st.job.as_ref().is_none_or(|j| j.label != pending.label) {
-        return None;
+    let workdir = match st.job.as_ref() {
+        Some(j) if j.label == pending.label => j.workdir.clone(),
+        _ => return None,
+    };
+    let FinishJob { label, plan, done, tips, resuming } = pending;
+    if ok {
+        store(st, workdir, Change::ClearFor(plan.branch.clone()));
+        return Some(done);
     }
-    Some(if ok { pending.done } else { stopped(&pending.label, &pending.steps, output) })
+    let failed = failed_step(output, plan.steps.len());
+    let resume = tips.as_ref().filter(|_| stopped_by_conflict(output)).and_then(|t| plan.rest_after_conflict(failed, t));
+    let resumable = resume.is_some();
+    match resume {
+        Some(resume) => store(st, workdir, Change::Set(StoppedFinish { resume, seen_merge: false, ready: false })),
+        None if resuming => store(st, workdir, Change::Clear),
+        None => {}
+    }
+    let steps: Vec<String> = plan.steps.into_iter().map(|x| x.what).collect();
+    Some(stopped(&label, &steps, output, resumable))
 }
 
-/// Which step stopped the job and what is still to do. The runner echoes each command it runs
-/// as "$ git …", so the number of echoes is the failed step's number.
-pub(super) fn stopped(label: &str, steps: &[String], output: &str) -> String {
-    let echoes = output.lines().filter(|l| l.starts_with("$ git ")).count();
-    let ran = echoes.clamp(1, steps.len().max(1));
-    let failed = steps.get(ran - 1).map(String::as_str).unwrap_or("");
-    let rest = steps.get(ran..).unwrap_or_default();
+/// Which step stopped the job and what is still to do (`resumable`: the steps after a conflicted
+/// merge were remembered for Continue finish).
+pub(super) fn stopped(label: &str, steps: &[String], output: &str, resumable: bool) -> String {
+    let i = failed_step(output, steps.len());
+    let failed = steps.get(i).map(String::as_str).unwrap_or("");
+    let rest = steps.get(i + 1..).unwrap_or_default();
     let todo = if rest.is_empty() { String::new() } else { format!(" Still to do: {}.", rest.join(", ")) };
-    if failed.starts_with("merge ") && output.contains("CONFLICT") {
-        format!("{label} stopped: \"{failed}\" has conflicts. Resolve them and commit the merge.{todo}")
+    if failed.starts_with("merge ") && stopped_by_conflict(output) {
+        let then =
+            if resumable { "Resolve them, commit the merge, then use Continue finish." } else { "Resolve them and commit the merge." };
+        format!("{label} stopped: \"{failed}\" has conflicts. {then}{todo}")
     } else {
         // git's own error line, rather than the hints it prints after it.
         let error = output.lines().rfind(|l| l.starts_with("error: ") || l.starts_with("fatal: "));

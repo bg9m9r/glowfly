@@ -26,6 +26,8 @@ pub struct RemoveForm {
     pub close_tabs: bool,
     /// The acknowledgement that force mode deletes changes for good is ticked.
     pub acked: bool,
+    /// The warning shown when the branch is the Git Flow production or development branch.
+    pub flow_base: Option<String>,
 }
 
 /// The upstream the Remove dialog can delete along with the branch, and why it can't now.
@@ -48,13 +50,15 @@ impl RemoveForm {
             delete_remote: false,
             close_tabs: false,
             acked: false,
+            flow_base: None,
         }
     }
 
     /// The form with what `snap` and the open tabs (`tabs::open_places`) add: the branch's
-    /// remote upstream, and whether another tab shows the worktree.
+    /// remote upstream, whether another tab shows the worktree, and the Git Flow warning.
     pub fn with_snap(mut self, snap: &Snapshot, open_tabs: &[Place]) -> Self {
         self.remote = remote_delete(snap, self.branch.as_deref());
+        self.flow_base = super::gitflow_base::worktree_warning(snap, self.branch.as_deref());
         let folder = super::worktrees::find(snap, &self.path).and_then(|w| w.folder);
         self.close_tabs = open_tabs.iter().any(|t| t.is(&self.path, folder));
         self
