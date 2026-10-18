@@ -282,7 +282,7 @@ fn step_run_moves_between_runs() {
 
 #[test]
 fn reblame_in_a_held_repository_shows_held() {
-    let (mut st, dir) = crate::update::trust_held_tests::held_repo("blame-nav-held");
+    let (mut st, dir) = crate::update::test_mods::trust_held_tests::held_repo("blame-nav-held");
     show(&mut st, literal(&["x"], &[(0, 1)], None));
     let fx = send(&mut st, BlameMsg::SkipCommit(oid(3)));
     assert!(requests(&fx).is_empty(), "{fx:?}");
