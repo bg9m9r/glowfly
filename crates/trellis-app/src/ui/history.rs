@@ -31,10 +31,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     ui.add_space(6.0);
     header(ui, view, msgs);
     ui.separator();
-    egui::SidePanel::left("file-history-list")
-        .resizable(true)
-        .default_width(380.0)
-        .width_range(260.0..=600.0)
+    let room = ui.available_width();
+    super::panel_size::inner_side(egui::SidePanel::left("file-history-list"), crate::state::panel_layout::HISTORY_LIST, room)
         .frame(egui::Frame::new().fill(color::panel()))
         .show_inside(ui, |ui| list(ui, st, scroll_to, msgs));
     egui::CentralPanel::default()

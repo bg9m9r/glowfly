@@ -55,6 +55,7 @@ pub mod palette_recent;
 pub mod palette_tabs;
 pub mod palette_tools;
 pub mod palette_updates;
+pub mod panel_layout;
 pub mod patch;
 pub mod path_hazards;
 pub mod pick;

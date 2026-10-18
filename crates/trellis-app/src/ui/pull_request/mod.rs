@@ -30,10 +30,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     header(ui, view, msgs);
     tabs(ui, view, msgs);
     ui.separator();
-    let side = egui::SidePanel::left("pull-request-side")
-        .resizable(true)
-        .default_width(380.0)
-        .width_range(280.0..=600.0)
+    let room = ui.available_width();
+    let side = crate::ui::panel_size::inner_side(egui::SidePanel::left("pull-request-side"), crate::state::panel_layout::PR_SIDE, room)
         .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::symmetric(10, 8)));
     let center = egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg()));
     match tab {
@@ -59,10 +57,9 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                     let path = st.diff.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
                     let commented = st.pull_request.as_ref().and_then(|v| v.loaded()).is_some_and(|p| on_file(p, &path) > 0);
                     if commented {
-                        egui::TopBottomPanel::bottom("pr-file-threads")
-                            .resizable(true)
-                            .default_height(220.0)
-                            .height_range(80.0..=480.0)
+                        let room = ui.available_height();
+                        let threads = egui::TopBottomPanel::bottom("pr-file-threads");
+                        crate::ui::panel_size::inner_bottom(threads, crate::state::panel_layout::PR_THREADS, room)
                             .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(12, 4)))
                             .show_inside(ui, |ui| threads::file_pane(ui, st, &path, msgs));
                     }

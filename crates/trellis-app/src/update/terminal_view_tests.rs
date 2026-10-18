@@ -169,7 +169,7 @@ fn the_panel_state_is_saved_when_it_changes() {
     assert_eq!(st.settings.terminal.panel_height, Some(301.0));
     assert!(run(&mut st, T::PanelHeight(301.0)).is_empty());
     run(&mut st, T::PanelHeight(40.0));
-    assert_eq!(st.settings.terminal.panel_height, Some(90.0));
+    assert_eq!(st.settings.terminal.panel_height, Some(crate::state::panel_layout::TERMINAL.min));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

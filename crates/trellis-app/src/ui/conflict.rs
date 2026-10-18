@@ -13,14 +13,11 @@ use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
+use crate::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
 use crate::state::tool_compare::{IN_MERGE_TOOL, MERGE_TOOL_BUTTON, merge_blocked, merging};
 use crate::tools::ToolsMsg;
 use eframe::egui::{self, Align, Color32, Frame, Layout, RichText, Ui};
 use trellis_core::repo::{ConflictContent, ConflictFile, Operation, Side, SideLabels};
-
-/// The output panel's least height, and the least room it leaves the panes above it.
-const OUTPUT_MIN: f32 = 90.0;
-const PANES_MIN: f32 = 140.0;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
@@ -54,8 +51,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let avail = ui.available_height();
     egui::TopBottomPanel::bottom("conflict-output")
         .resizable(true)
-        .default_height((avail * 0.45).floor())
-        .height_range(OUTPUT_MIN..=(avail - PANES_MIN).max(OUTPUT_MIN))
+        .default_height(CONFLICT_OUTPUT.default_for(avail).floor())
+        .height_range(CONFLICT_OUTPUT.min..=(avail - CONFLICT_PANES_MIN).max(CONFLICT_OUTPUT.min))
         .frame(Frame::new().fill(color::bg()))
         .show_inside(ui, |ui| {
             if let Some(view) = st.conflict.as_mut() {

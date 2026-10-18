@@ -5,7 +5,7 @@ use super::{diff_nav, lines};
 use git2::Oid;
 use std::collections::HashSet;
 use trellis_core::repo::DiffTarget;
-use trellis_core::settings::ResizableColumn;
+use trellis_core::settings::{ResizableColumn, SizedPanel};
 
 /// Each left-panel section's open state; views toggle them directly.
 pub struct Sections {
@@ -136,6 +136,8 @@ pub struct ViewState {
     pub focus_message: bool,
     /// The header divider being dragged (set and cleared by the graph view).
     pub column_drag: Option<ColumnDrag>,
+    /// The drawer whose edge is being dragged (set and cleared by `ui::panel_size::track`).
+    pub panel_drag: Option<SizedPanel>,
     /// The zoom toast's id, so the next zoom step updates it (set only by update).
     pub zoom_toast: Option<u64>,
 }
@@ -180,6 +182,7 @@ impl Default for ViewState {
             focus_search: false,
             focus_message: false,
             column_drag: None,
+            panel_drag: None,
             zoom_toast: None,
         }
     }

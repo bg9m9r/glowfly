@@ -10,6 +10,7 @@ mod paint;
 mod tabs;
 
 use crate::msg::{Msg, PrefsMsg};
+use crate::state::panel_layout::{self, MAIN_MIN_HEIGHT, TERMINAL};
 use crate::state::terminal::{SessionStatus, TermSession};
 use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
@@ -20,8 +21,6 @@ use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
 
 const KILL_TIP: &str = "Stop the shell and everything running in it";
-const MIN_HEIGHT: f32 = 90.0;
-const DEFAULT_HEIGHT: f32 = 220.0;
 
 /// Draws the panel while it is open and a repository is.
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -29,21 +28,21 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         st.terminal.focused = false;
         return;
     }
-    let max = (ctx.screen_rect().height() * 0.7).max(MIN_HEIGHT);
-    let height = st.settings.terminal.panel_height.unwrap_or(DEFAULT_HEIGHT).clamp(MIN_HEIGHT, max);
+    // Sized from the height left under the bars and the logs panel, keeping the main view.
+    let fit = panel_layout::fit_one(ctx.available_rect().height(), MAIN_MIN_HEIGHT, TERMINAL, st.settings.terminal.panel_height);
     let id = egui::Id::new("terminal-panel");
+    crate::ui::panel_size::pin(ctx, id, fit.size, st.terminal.resizing);
     let resp = egui::TopBottomPanel::bottom(id)
         .resizable(true)
-        .default_height(height)
-        .min_height(MIN_HEIGHT)
-        .max_height(max)
+        .default_height(fit.size)
+        .height_range(fit.lo..=fit.hi)
         .frame(egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin::symmetric(6, 4)))
         .show(ctx, |ui| {
             header(ui, st, msgs);
             body(ui, st, msgs);
         });
     // Saved once a drag of the edge ends, not every frame or when the window clamps it.
-    let dragging = ctx.is_being_dragged(id.with("__resize"));
+    let dragging = crate::ui::panel_size::dragging(ctx, id);
     if st.terminal.resizing && !dragging {
         msgs.push(Msg::Terminal(TerminalMsg::PanelHeight(resp.response.rect.height())));
     }

@@ -247,3 +247,20 @@ fn palette_runs_layout_commands() {
     assert_eq!(st.settings.zoom_percent, 110);
     assert_eq!(st.palette_recent.keys(), ["zoom-in", "toolbar"]);
 }
+
+#[test]
+fn a_dragged_drawer_size_is_saved_within_its_limits() {
+    use trellis_core::settings::SizedPanel;
+    let mut st = state();
+    let fx = run(&mut st, LayoutMsg::PanelSize { panel: SizedPanel::Details, size: 431.6 });
+    assert!(saves(&fx));
+    assert_eq!(st.settings.panel_sizes.get(SizedPanel::Details), Some(432.0));
+    // Too small for the content: saved at the minimum, not at what the drag reached.
+    run(&mut st, LayoutMsg::PanelSize { panel: SizedPanel::Details, size: 120.0 });
+    assert_eq!(st.settings.panel_sizes.get(SizedPanel::Details), Some(crate::state::panel_layout::DETAILS.min));
+    let fx = run(&mut st, LayoutMsg::PanelSize { panel: SizedPanel::Details, size: 5.0 });
+    assert!(!saves(&fx), "no change, no save");
+    let fx = run(&mut st, LayoutMsg::PanelSize { panel: SizedPanel::Sidebar, size: f32::NAN });
+    assert!(!saves(&fx));
+    assert_eq!(st.settings.panel_sizes.get(SizedPanel::Sidebar), None);
+}

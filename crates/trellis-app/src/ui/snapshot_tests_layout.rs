@@ -71,3 +71,26 @@ fn layout_prefs_interface() {
     h.run();
     h.check_snapshot("layout_prefs_interface");
 }
+
+/// The reported case: a wide window with a commit selected and the details drawer once
+/// dragged far too narrow. The drawer is drawn at its minimum instead, and with no saved
+/// width at its default for the window.
+#[test]
+fn layout_wide_window_details_drawer() {
+    use trellis_core::repo;
+    use trellis_core::settings::SizedPanel;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "layout-wide");
+    let snap = st.snap.as_ref().unwrap();
+    let oid = snap.commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit").oid;
+    st.selection = crate::state::Selection::Commit(oid);
+    st.detail = Some(repo::commit_detail(&dir, oid).unwrap());
+    let wide = egui::vec2(2000.0, 1070.0);
+    let mut h = harness_sized(st, true, wide);
+    h.run();
+    h.check_snapshot("layout_wide_window_details_default");
+    h.state_mut().0.settings.panel_sizes.set(SizedPanel::Details, 120.0);
+    h.run();
+    h.check_snapshot("layout_wide_window_details_too_small_saved");
+    drop(h);
+    remove_fixture(&dir);
+}

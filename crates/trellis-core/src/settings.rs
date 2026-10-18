@@ -14,6 +14,7 @@ mod forge_filters;
 mod graph_filter;
 mod history;
 mod language;
+mod panel_sizes;
 mod paths;
 mod profiles;
 mod profiles_prefs;
@@ -35,6 +36,7 @@ pub use file::{LoadProblem, settings_file};
 pub use forge_filters::RepoForgeFilters;
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use history::{HistoryPane, HistoryPrefs};
+pub use panel_sizes::{PanelSizes, SizedPanel};
 pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir, runtime_dir, xdg_data_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
@@ -351,6 +353,9 @@ pub struct Settings {
     /// Preferences > In-App Terminal, and the panel's remembered state.
     #[serde(default)]
     pub terminal: TerminalPrefs,
+    /// The sizes the left, details and logs drawers were dragged to (the app clamps them).
+    #[serde(default)]
+    pub panel_sizes: PanelSizes,
 }
 
 impl Default for Settings {
@@ -428,6 +433,7 @@ impl Default for Settings {
             welcome_done: false,
             updates: UpdatePrefs::default(),
             terminal: TerminalPrefs::default(),
+            panel_sizes: PanelSizes::default(),
         }
     }
 }

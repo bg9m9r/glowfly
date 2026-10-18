@@ -4,6 +4,7 @@
 use super::branch_menu::local_branch_menu;
 use super::common::{forge_error_rows, hint_row, menu_item, menu_item_if, state_color};
 use super::forge_filter_menu::{self, AddButton, Picker};
+use super::panel_size;
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
@@ -16,37 +17,38 @@ use crate::msg::StashMsg;
 use crate::pull_request::PullRequestMsg;
 use crate::state::forge_filters::{self, IssueView, PrView};
 use crate::state::palette::StashAction;
+use crate::state::panel_layout::Fit;
 use crate::state::{AppState, ForgeState, Selection, Status};
 use eframe::egui;
 use trellis_core::forge::{self, FilterKind};
 use trellis_core::repo::Snapshot;
-use trellis_core::settings::GraphFilter;
+use trellis_core::settings::{GraphFilter, SizedPanel};
 
 type Shown<'a> = dyn Fn(&str) -> bool + 'a;
 
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    egui::SidePanel::left("refs")
-        .resizable(true)
-        .default_width(260.0)
-        .max_width(440.0)
-        .frame(egui::Frame::new().fill(color::panel()))
-        .show(ctx, |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
-            ui.spacing_mut().item_spacing.y = 0.0;
+/// Draws the panel at `fit`'s width (`panel_size::side_fits`).
+pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg>) {
+    let id = egui::Id::new(panel_size::SIDEBAR_ID);
+    panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Sidebar));
+    let resp = panel_size::side(egui::SidePanel::left(id), fit).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
+        panel_size::fill(ui);
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+        ui.spacing_mut().item_spacing.y = 0.0;
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
             ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                ui.add_space(8.0);
-                ui.add(
-                    egui::TextEdit::singleline(&mut st.view.ref_filter)
-                        .hint_text("Filter (branches, PRs, issues)")
-                        .desired_width(ui.available_width() - 8.0),
-                );
-            });
-            ui.add_space(8.0);
-            let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
-            ref_visibility::banner(ui, &filter, msgs);
-            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));
+            ui.add(
+                egui::TextEdit::singleline(&mut st.view.ref_filter)
+                    .hint_text("Filter (branches, PRs, issues)")
+                    .desired_width(ui.available_width() - 8.0),
+            );
         });
+        ui.add_space(8.0);
+        let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
+        ref_visibility::banner(ui, &filter, msgs);
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));
+    });
+    panel_size::track(ctx, st, SizedPanel::Sidebar, id, resp.response.rect.width(), msgs);
 }
 
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {

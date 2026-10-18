@@ -33,10 +33,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     });
     ui.add_space(2.0);
     ui.separator();
-    egui::SidePanel::left("issue-side")
-        .resizable(true)
-        .default_width(320.0)
-        .width_range(260.0..=520.0)
+    let room = ui.available_width();
+    crate::ui::panel_size::inner_side(egui::SidePanel::left("issue-side"), crate::state::panel_layout::ISSUE_SIDE, room)
         .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::symmetric(10, 8)))
         .show_inside(ui, |ui| {
             egui::ScrollArea::vertical().id_salt("issue-side-scroll").auto_shrink([false, false]).show(ui, |ui| info::show(ui, st, msgs));

@@ -2,6 +2,7 @@
 
 use super::Inactive;
 use crate::state::layout::Panel;
+use trellis_core::settings::SizedPanel;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum LayoutMsg {
@@ -15,13 +16,15 @@ pub enum LayoutMsg {
     TogglePanel(Panel),
     /// Show or hide the panel (palette, status bar).
     SetPanel { panel: Panel, shown: bool },
+    /// A drag of the drawer's edge ended at `size` px (saved within its limits).
+    PanelSize { panel: SizedPanel, size: f32 },
 }
 
 impl LayoutMsg {
     /// UI intents, never results of background work: nothing to keep for an inactive tab.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::ZoomIn | Self::ZoomOut | Self::ZoomReset | Self::TogglePanel(_) | Self::SetPanel { .. } => None,
+            Self::ZoomIn | Self::ZoomOut | Self::ZoomReset | Self::TogglePanel(_) | Self::SetPanel { .. } | Self::PanelSize { .. } => None,
         }
     }
 }

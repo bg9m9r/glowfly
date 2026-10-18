@@ -61,6 +61,7 @@ mod menu_bar;
 mod menus;
 mod modals;
 mod palette;
+mod panel_size;
 mod patch_apply_dialog;
 mod patch_save_dialog;
 mod path_warnings;
@@ -369,11 +370,12 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
         }
         activity_log::show(ctx, st, msgs);
         if st.snap.is_some() && !st.dashboard.open {
-            if st.settings.show_left_panel {
-                sidebar::show(ctx, st, msgs);
+            let (left, right) = panel_size::side_fits(ctx, st);
+            if let Some(fit) = left {
+                sidebar::show(ctx, st, fit, msgs);
             }
-            if st.settings.show_details_panel {
-                details::show(ctx, st, cache, msgs);
+            if let Some(fit) = right {
+                details::show(ctx, st, cache, fit, msgs);
             }
             terminal::show(ctx, st, msgs);
         } else {

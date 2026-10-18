@@ -8,9 +8,6 @@ use crate::state::AppState;
 use crate::state::terminal::{Selection, TermSession};
 use crate::terminal::{ScrollStep, TerminalEffect as E};
 
-/// The panel's smallest height, as the view allows it.
-const MIN_PANEL_HEIGHT: f32 = 90.0;
-
 pub(super) fn scroll(st: &mut AppState, rows: i32) {
     if let Some(s) = active_mut(st) {
         s.screen.scroll_by(rows);
@@ -91,10 +88,7 @@ pub(super) fn paste(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// Saves the height a drag of the panel's edge left it at.
 pub(super) fn panel_height(st: &mut AppState, h: f32, fx: &mut Vec<Effect>) {
-    if !h.is_finite() {
-        return;
-    }
-    let h = h.round().max(MIN_PANEL_HEIGHT);
+    let Some(h) = crate::state::panel_layout::TERMINAL.sanitize(h) else { return };
     if st.settings.terminal.panel_height != Some(h) {
         st.settings.terminal.panel_height = Some(h);
         fx.push(super::prefs::save_settings(st));

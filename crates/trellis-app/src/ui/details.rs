@@ -6,27 +6,31 @@ use super::UiCache;
 use super::common::{issue_chip, lane_color, menu_item, short, status_color, status_label, widget_row_height};
 use super::file_menu::{self, RowSource};
 use super::graph::draw_avatar;
+use super::panel_size;
 use super::theme::color;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::lfs::{TrackContext, track_items};
+use crate::state::panel_layout::Fit;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
 use git2::Oid;
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry};
+use trellis_core::settings::SizedPanel;
 
 // Declared here rather than beside the other views: the file lists that use it are these panels.
 #[path = "file_reveal.rs"]
 pub(super) mod file_reveal;
 
-pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    egui::SidePanel::right("detail")
-        .resizable(true)
-        .default_width(400.0)
-        .max_width(640.0)
+/// Draws the panel at `fit`'s width (`panel_size::side_fits`).
+pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fit, msgs: &mut Vec<Msg>) {
+    let id = egui::Id::new(panel_size::DETAILS_ID);
+    panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Details));
+    let resp = panel_size::side(egui::SidePanel::right(id), fit)
         .frame(egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin::same(10)))
         .show(ctx, |ui| {
+            panel_size::fill(ui);
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
             match st.selection {
                 Selection::Wip => super::details_wip::wip_panel(ui, st, cache, msgs),
@@ -45,6 +49,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
                 }
             }
         });
+    panel_size::track(ctx, st, SizedPanel::Details, id, resp.response.rect.width(), msgs);
 }
 
 fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {

@@ -1,12 +1,15 @@
 //! The logs panel at the bottom: the activity log, with earlier sessions' entries in dimmed
 //! groups, and the ends of the error and performance logs, read by the runner.
 
+use super::panel_size;
 use super::theme::color;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::logs::LogFileView;
+use crate::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
 use eframe::egui::{self, Align, Layout, RichText, TextStyle, Ui};
+use trellis_core::settings::SizedPanel;
 
 /// The first row of a file tab whose start was left out.
 const CUT_NOTE: &str = "Showing the end of the file. Open the logs folder for all of it.";
@@ -15,13 +18,20 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !st.view.show_log {
         return;
     }
-    egui::TopBottomPanel::bottom("activity").resizable(true).default_height(150.0).show(ctx, |ui| {
+    // The terminal is drawn under the same room later: leave it its minimum too.
+    let terminal = st.terminal.open && st.snap.is_some() && !st.dashboard.open;
+    let keep = MAIN_MIN_HEIGHT + if terminal { panel_layout::TERMINAL.min } else { 0.0 };
+    let fit = panel_layout::fit_one(ctx.available_rect().height(), keep, ACTIVITY, st.settings.panel_sizes.get(SizedPanel::Activity));
+    let id = egui::Id::new(panel_size::ACTIVITY_ID);
+    panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Activity));
+    let resp = egui::TopBottomPanel::bottom(id).resizable(true).default_height(fit.size).height_range(fit.lo..=fit.hi).show(ctx, |ui| {
         header(ui, st, msgs);
         match st.logs.tab {
             LogKind::Activity => activity(ui, st),
             kind => file(ui, st.logs.file.as_ref().filter(|v| v.kind == kind)),
         }
     });
+    panel_size::track(ctx, st, SizedPanel::Activity, id, resp.response.rect.height(), msgs);
 }
 
 fn header(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {

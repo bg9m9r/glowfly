@@ -1,10 +1,11 @@
-//! Zooming the window and showing or hiding its panels: both are settings, saved when they
-//! change; the shell applies them on the next frame.
+//! Zooming the window, showing or hiding its panels and the sizes its drawers were dragged to:
+//! all are settings, saved when they change; the shell applies them on the next frame.
 
 use crate::effect::Effect;
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
 use crate::state::layout::{Panel, set_shown, shown, zoom_toast_text};
+use crate::state::panel_layout;
 use crate::state::toasts::ToastAction;
 use std::time::Instant;
 use trellis_core::settings::{DEFAULT_ZOOM_PERCENT, zoom_in_from, zoom_out_from};
@@ -19,6 +20,13 @@ pub(super) fn handle(st: &mut AppState, msg: LayoutMsg, now: Instant, fx: &mut V
             set_and_note(st, p, on, now, fx);
         }
         LayoutMsg::SetPanel { panel, shown } => set_and_note(st, panel, shown, now, fx),
+        LayoutMsg::PanelSize { panel, size } => {
+            if let Some(v) = panel_layout::spec(panel).sanitize(size)
+                && st.settings.panel_sizes.set(panel, v)
+            {
+                fx.push(super::prefs::save_settings(st));
+            }
+        }
     }
 }
 
