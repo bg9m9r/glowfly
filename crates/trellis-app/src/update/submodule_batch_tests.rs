@@ -305,7 +305,7 @@ fn a_rebase_is_followed_by_an_update() {
         autostash: false,
     };
     let mut fx = Vec::new();
-    assert_eq!(super::rebase::launch(&mut st, "Rebase", request, &mut fx), super::ops::Started::Now);
+    assert_eq!(super::rebase::launch(&mut st, "Rebase", request, "rebase of main".into(), &mut fx), super::ops::Started::Now);
     assert_eq!(st.submodules.after_job.as_ref().map(|(_, l)| l.as_str()), Some("Rebase"));
     let mut fx = Vec::new();
     super::ops::finish_job(&mut st, true, String::new(), None, None, Instant::now(), &mut fx);
