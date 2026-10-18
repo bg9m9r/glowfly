@@ -167,6 +167,20 @@ fn esc_collapses_after_closing_the_diff() {
 }
 
 #[test]
+fn graph_commit_menu_reset_submenu() {
+    // The submenu opens beside the menu at its items' full width, one line each.
+    let (st, dir) = with_repo(ThemeChoice::Dark, "commit-menu-reset");
+    let row = st.snap.as_ref().unwrap().row_of[&commit(&st, "Fix build on Windows")] + 1;
+    let mut h = harness(st, true);
+    h.run();
+    click(&mut h, pos2(700.0, row_y(row)), PointerButton::Secondary);
+    h.get_by_label("Reset current branch to this commit").hover();
+    h.run();
+    h.check_snapshot("graph_commit_menu_reset_submenu");
+    remove_fixture(&dir);
+}
+
+#[test]
 fn graph_commit_menu() {
     let (st, dir) = with_repo(ThemeChoice::Dark, "commit-menu");
     let (fix, merge) = (commit(&st, "Fix build on Windows"), commit(&st, "Merge branch 'login-page'"));

@@ -97,8 +97,14 @@ pub fn menu_header(ui: &mut egui::Ui, title: &str) {
     ui.separator();
 }
 
+/// A menu item's button. Its text never wraps: a submenu opens narrow and grows to fit its
+/// widest item, so wrapping text would break every word across lines.
+fn menu_button(label: impl Into<egui::WidgetText>) -> egui::Button<'static> {
+    egui::Button::new(label).wrap_mode(egui::TextWrapMode::Extend)
+}
+
 pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, m: Msg) {
-    if ui.button(label).clicked() {
+    if ui.add(menu_button(label)).clicked() {
         msgs.push(m);
         ui.close_menu();
     }
@@ -106,7 +112,7 @@ pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::
 
 /// A menu item that is disabled, with the reason on hover, while `blocked` is set.
 pub fn menu_item_if(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<&str>, m: Msg) {
-    let mut r = ui.add_enabled(blocked.is_none(), egui::Button::new(label));
+    let mut r = ui.add_enabled(blocked.is_none(), menu_button(label));
     if let Some(why) = blocked {
         r = r.on_disabled_hover_text(why);
     }
