@@ -30,6 +30,15 @@ fn prefs_keyboard() {
 }
 
 #[test]
+fn prefs_keyboard_favorites() {
+    let mut h = harness(page(ThemeChoice::Dark, "favorite"), true);
+    h.run();
+    assert!(h.query_by_label("Repositories").is_some(), "the group");
+    assert!(h.query_by_label("Open favorite repository 9").is_some());
+    h.check_snapshot("prefs_keyboard_favorites");
+}
+
+#[test]
 fn prefs_keyboard_recording() {
     let mut st = page(ThemeChoice::Dark, "tab");
     st.keymap.set(I::NewTab, vec![Chord::cmd_shift(K::Letter('N'))]);

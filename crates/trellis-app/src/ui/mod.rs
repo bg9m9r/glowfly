@@ -58,7 +58,10 @@ mod rebase;
 mod ref_visibility;
 mod release_notes;
 mod remotes;
+mod repo_finder;
 mod repo_list;
+mod repo_list_drag;
+mod repo_menu;
 mod shortcuts;
 mod sidebar;
 mod signature_badge;
@@ -192,6 +195,8 @@ mod snapshot_tests_rebase;
 mod snapshot_tests_rebase_edit;
 #[cfg(test)]
 mod snapshot_tests_remotes;
+#[cfg(test)]
+mod snapshot_tests_repo_finder;
 #[cfg(test)]
 mod snapshot_tests_repo_list;
 #[cfg(test)]

@@ -106,6 +106,7 @@ fn picks_and_checkouts_are_not_recorded() {
         C::OpenBlame("a.txt".into()),
         C::FinishGitFlow("feature/x".into()),
         C::Remote(RemoteMsg::Fetch("origin".into())),
+        C::RepoList(crate::state::palette_commands::RepoListCommand::OpenFavorite { index: 0, path: dir.clone() }),
     ];
     for cmd in unkeyed {
         assert_eq!(cmd.recall_key(), None, "{cmd:?}");

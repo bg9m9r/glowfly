@@ -197,6 +197,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Dashboard(_)
         | Effect::Issue(_)
         | Effect::Updates(_)
+        | Effect::Repos(_)
         | Effect::Ui(_) => None,
     }
 }

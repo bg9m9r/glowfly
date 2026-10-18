@@ -194,3 +194,27 @@ fn staging_keys_still_ask_update() {
     let mut h = harness(with_diff(state()), false);
     assert_eq!(press(&mut h, NONE, Key::S), [format!("{:?}", KeyAction::Stage)]);
 }
+
+#[test]
+fn favorite_digits_only_while_not_typing() {
+    const CMD_ALT: Modifiers = Modifiers { alt: true, ..Modifiers::COMMAND };
+    let favorite = |h: &mut H, key| press(h, CMD_ALT, key).len();
+    let mut h = harness(state(), false);
+    h.state_mut().msgs.clear();
+    let input = h.input_mut();
+    input.modifiers = CMD_ALT;
+    input.events.push(Event::Key { key: Key::Num2, physical_key: None, pressed: true, repeat: false, modifiers: CMD_ALT });
+    h.step();
+    assert!(matches!(&h.state().msgs[..], [Msg::Recent(crate::msg::RecentMsg::OpenFavorite(1))]), "Ctrl+Alt+2 opens favorite 2");
+    h.input_mut().modifiers = NONE;
+    assert_eq!(press(&mut h, CMD, Key::Num2), ["tab 1"], "Ctrl+2 still goes to a tab");
+    // AltGr is Ctrl+Alt on Windows: a focused field keeps the digit for its character.
+    let mut h = harness(state(), true);
+    assert_eq!(favorite(&mut h, Key::Num2), 0);
+    let mut st = state();
+    st.palette = Some(Default::default());
+    assert_eq!(favorite(&mut harness(st, false), Key::Num3), 0, "not under the palette");
+    let mut st = state();
+    st.modal = Some(Modal::FindRepos { filter: String::new() });
+    assert_eq!(favorite(&mut harness(st, false), Key::Num3), 0, "not under a dialog");
+}

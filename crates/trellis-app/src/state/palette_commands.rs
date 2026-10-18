@@ -12,6 +12,9 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 mod palette_checkouts;
 #[path = "palette_commands_submodules.rs"]
 mod palette_commands_submodules;
+#[path = "palette_commands_repos.rs"]
+mod palette_commands_repos;
+pub use palette_commands_repos::RepoListCommand;
 #[path = "palette_commands_worktrees.rs"]
 mod palette_commands_worktrees;
 #[path = "palette_conflict.rs"]
@@ -192,6 +195,8 @@ pub enum PaletteCommand {
     Dashboard,
     /// Release notes and Trellis's own updates (update/updates.rs).
     Updates(crate::msg::UpdateMsg),
+    /// Favorites and recent repositories (palette_commands_repos.rs).
+    RepoList(RepoListCommand),
 }
 
 impl PaletteCommand {
@@ -216,6 +221,7 @@ impl PaletteCommand {
             C::Layout(LayoutMsg::ZoomOut) => BindingId::ZoomOut,
             C::Layout(LayoutMsg::ZoomReset) => BindingId::ZoomReset,
             C::Layout(LayoutMsg::SetPanel { panel, .. } | LayoutMsg::TogglePanel(panel)) => return panel.binding(),
+            C::RepoList(c) => return c.binding(),
             _ => return None,
         })
     }
@@ -261,19 +267,21 @@ pub(super) fn folder_name(path: &Path) -> String {
 }
 
 /// Every command available now, in the order shown for an empty query: repository commands,
-/// app commands, local branch checkouts, recent repositories, then remote branch and tag
-/// checkouts (last, so a repository with many refs doesn't push the rest past the row cap).
+/// app commands, favorite and recent list commands, local branch checkouts, favorite and recent
+/// repositories, then remote branch and tag checkouts (last, so a repository with many refs
+/// doesn't push the rest past the row cap).
 pub fn entries(st: &AppState) -> Vec<Entry> {
-    use palette_checkouts::{checkout_entries, recent_entries, remote_checkout_entries, tag_checkout_entries};
+    use palette_checkouts::{checkout_entries, remote_checkout_entries, tag_checkout_entries};
     let mut out = Vec::new();
     if let Some(snap) = &st.snap {
         repo_entries(st, snap, &mut out);
     }
     app_entries(st, &mut out);
+    palette_commands_repos::list_entries(st, &mut out);
     if let Some(snap) = &st.snap {
         checkout_entries(snap, &mut out);
     }
-    recent_entries(st, &mut out);
+    palette_commands_repos::repo_entries(st, &mut out);
     if let Some(snap) = &st.snap {
         remote_checkout_entries(snap, &mut out);
         tag_checkout_entries(snap, &mut out);

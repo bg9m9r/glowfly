@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 41] = [
+    const FROZEN: [&str; 50] = [
         "stage",
         "unstage",
         "stage-all",
@@ -62,6 +62,15 @@ fn ids_are_stable() {
         "toggle-toolbar",
         "blame-next-run",
         "blame-prev-run",
+        "open-favorite-1",
+        "open-favorite-2",
+        "open-favorite-3",
+        "open-favorite-4",
+        "open-favorite-5",
+        "open-favorite-6",
+        "open-favorite-7",
+        "open-favorite-8",
+        "open-favorite-9",
     ];
     let keys: Vec<&str> = BindingId::ALL.iter().map(|id| id.key()).collect();
     assert_eq!(keys, FROZEN);
@@ -105,8 +114,34 @@ fn rebindable_set() {
         I::ToggleToolbar,
         I::BlameNextRun,
         I::BlamePrevRun,
+        I::OpenFavorite1,
+        I::OpenFavorite2,
+        I::OpenFavorite3,
+        I::OpenFavorite4,
+        I::OpenFavorite5,
+        I::OpenFavorite6,
+        I::OpenFavorite7,
+        I::OpenFavorite8,
+        I::OpenFavorite9,
     ];
     assert_eq!(rebindable, want);
+}
+
+#[test]
+fn favorite_keys_by_default() {
+    let keys = Keymap::default();
+    let fold = fold_ctrl();
+    assert_eq!(keys.lookup(Chord::cmd_alt(KeyName::Digit(3)), fold), Some(I::OpenFavorite3));
+    assert_eq!(keys.lookup(Chord::cmd(KeyName::Digit(3)), fold), Some(I::GoToTab), "Ctrl+3 still goes to a tab");
+    for (n, id) in FAVORITE_BINDINGS.into_iter().enumerate() {
+        assert_eq!(id.favorite_slot(), Some(n));
+        assert_eq!(binding(id).when, When::NotTyping, "AltGr+digit types characters");
+        assert_eq!(binding(id).defaults, [Chord::cmd_alt(KeyName::Digit(n as u8 + 1))]);
+    }
+    assert_eq!(I::GoToTab.favorite_slot(), None);
+    let found = keys.filter("favorite");
+    assert_eq!(found.iter().map(|(g, _)| *g).collect::<Vec<_>>(), [Group::Repositories]);
+    assert_eq!(found[0].1.len(), 9);
 }
 
 #[cfg(not(target_os = "macos"))]

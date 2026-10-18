@@ -67,6 +67,7 @@ pub mod refresh;
 pub mod release_notes;
 pub mod remotes;
 pub mod repo_lists;
+pub mod repo_scan;
 pub mod search;
 pub mod selection;
 pub mod shallow;
@@ -242,6 +243,10 @@ pub enum Modal {
     ApplyPatch(Box<patch::apply::ApplyForm>),
     /// Create patch from uncommitted changes (`ui/patch_save_dialog.rs`).
     SavePatch(patch::changes::SaveChangesForm),
+    /// Find repositories in the project folders (`ui/repo_finder.rs`); `filter` is its field.
+    FindRepos {
+        filter: String,
+    },
 }
 
 /// The most commits "Load more" goes up to.
@@ -257,6 +262,11 @@ pub struct AppState {
     /// Recent or favorite repository folders found missing by the last check
     /// (`RecentMsg::FoldersChecked`).
     pub missing_repos: Vec<PathBuf>,
+    /// A listed folder that failed to open, waiting for the folder check to say whether it is
+    /// gone (then Trellis offers to remove it from the lists; update/recent.rs).
+    pub missing_offer: Option<PathBuf>,
+    /// The Find repositories dialog's scan of the project folders: global, never parked.
+    pub repo_scan: repo_scan::RepoScan,
     /// The identities of listed and loaded folders, as worker threads found them.
     pub known: known_folders::KnownFolders,
     /// Open tabs; the active one's repository data is in the fields below.
@@ -400,6 +410,8 @@ impl AppState {
             saved_settings,
             recent,
             missing_repos: Vec::new(),
+            missing_offer: None,
+            repo_scan: Default::default(),
             known: Default::default(),
             tabs: vec![Tab::empty()],
             active_tab: 0,

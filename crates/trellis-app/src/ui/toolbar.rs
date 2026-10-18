@@ -232,6 +232,7 @@ fn repo_menu(ui: &mut egui::Ui, t: Lang, st: &AppState, msgs: &mut Vec<Msg>) {
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.init"), Msg::Repo(RepoMsg::InitRepo));
     ui.separator();
     menu_item(msgs, ui, t.tr("toolbar.repo_menu.dashboard"), Msg::Dashboard(crate::msg::DashboardMsg::Open));
+    super::repo_menu::actions(ui, t, st, msgs);
     if let Some(snap) = &st.snap {
         let fav = crate::state::repo_lists::is_favorite(st, &snap.workdir);
         let label = if fav { t.tr("toolbar.repo_menu.favorite_remove") } else { t.tr("toolbar.repo_menu.favorite_add") };

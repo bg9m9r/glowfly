@@ -60,6 +60,8 @@ mod release_notes;
 mod remote_forks;
 mod remotes;
 mod repo;
+mod repo_scan;
+mod repos;
 mod search;
 mod search_paths;
 mod selection;
@@ -222,6 +224,8 @@ mod palette_profile_tests;
 #[cfg(test)]
 mod palette_recent_tests;
 #[cfg(test)]
+mod palette_repos_tests;
+#[cfg(test)]
 mod palette_stash_tests;
 #[cfg(test)]
 mod palette_submodule_tests;
@@ -273,6 +277,8 @@ mod refresh_tests;
 mod remote_fork_tests;
 #[cfg(test)]
 mod remote_tests;
+#[cfg(test)]
+mod repo_scan_tests;
 #[cfg(test)]
 mod revert_tests;
 #[cfg(test)]
@@ -409,7 +415,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     match msg {
         // Each area's messages go to its handler, which matches them exhaustively.
         Msg::Repo(m) => repo::handle(st, m, now, &mut fx),
-        Msg::Recent(m) => recent::handle(st, m, &mut fx),
+        Msg::Recent(m) => recent::handle(st, m, now, &mut fx),
+        Msg::Repos(m) => repos::handle(st, m, &mut fx),
         Msg::Load(m) => refresh::handle(st, m, now, &mut fx),
         Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
         Msg::Selection(m) => selection::handle(st, m, &mut fx),

@@ -31,6 +31,7 @@ mod prefs;
 mod rebase;
 mod recent;
 mod repo;
+mod repos;
 mod sparse;
 mod stash;
 mod tabs;
@@ -55,6 +56,7 @@ pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
 pub use recent::{FolderCheck, RecentMsg};
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
+pub use repos::{ReposMsg, ScanFound};
 pub use sparse::SparseMsg;
 pub use stash::StashMsg;
 pub use tabs::TabsMsg;
@@ -67,6 +69,8 @@ pub enum Msg {
     Repo(RepoMsg),
     /// The recent and favorite repository lists (update/recent.rs).
     Recent(RecentMsg),
+    /// Finding repositories in project folders (update/repos.rs).
+    Repos(ReposMsg),
     /// Refresh results and loading more history (update/refresh.rs).
     Load(LoadMsg),
     /// The file watcher's reports (update/watch.rs).
@@ -236,6 +240,7 @@ impl Msg {
         match self {
             Msg::Repo(m) => m.on_inactive(),
             Msg::Recent(m) => m.on_inactive(),
+            Msg::Repos(m) => m.on_inactive(),
             Msg::Load(m) => m.on_inactive(),
             Msg::Watch(m) => m.on_inactive(),
             Msg::Selection(m) => m.on_inactive(),

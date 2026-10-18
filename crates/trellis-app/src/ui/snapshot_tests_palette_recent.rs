@@ -51,3 +51,24 @@ fn toolbar_palette_tooltip_light() {
     h.check_snapshot("toolbar_palette_tooltip_light");
     remove_fixture(&dir);
 }
+
+#[test]
+fn palette_favorites() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-favorites");
+    // Labels only, absolute on every OS.
+    let abs = |rel: &str| if cfg!(windows) { format!("C:/work/{rel}") } else { format!("/work/{rel}") };
+    st.settings.favorite_repos = vec![abs("web-app"), abs("docs")];
+    st.recent = vec![abs("api-server").into(), abs("web-app").into()];
+    st.palette = Some(Palette { query: "open".into(), ..Default::default() });
+    let wanted = ["Open web-app", "Open docs", "Open api-server"];
+    let opens: Vec<String> = shown(&st, "").into_iter().map(|s| s.entry.label).filter(|l| wanted.contains(&l.as_str())).collect();
+    assert_eq!(opens, ["Open web-app", "Open docs", "Open api-server"], "favorites first");
+    let list = shown(&st, "open");
+    let web = list.iter().find(|s| s.entry.label == "Open web-app").unwrap();
+    assert_eq!(web.entry.shortcut(&st.keymap), st.keymap.hint(BindingId::OpenFavorite1), "the first favorite's key");
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("palette_favorites");
+    drop(h);
+    remove_fixture(&dir);
+}

@@ -111,6 +111,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "status_tip_shown",
     "repo_submodule_updates",
     "favorite_repos",
+    "project_folders",
     "external_tools",
     "profiles",
     "active_profile",

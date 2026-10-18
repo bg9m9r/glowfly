@@ -16,6 +16,8 @@ pub enum FolderPurpose {
     WorktreeParent,
     /// The Repository not found dialog's Locate on disk….
     LocateLinkedRepo,
+    /// The Find repositories dialog's Add folder….
+    ProjectFolder,
 }
 
 /// What a file picker was opened for.

@@ -235,6 +235,16 @@ fn favorite_repos_default_empty_and_round_trip() {
     assert_eq!(back.favorite_repos, ["C:/work/web-app", "C:/work/api"]);
 }
 
+#[test]
+fn project_folders_default_empty_and_round_trip() {
+    assert!(Settings::default().project_folders.is_empty());
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(s.project_folders.is_empty(), "files written before project folders existed load with none");
+    let dirs = Settings { project_folders: vec!["/home/me/src".into(), "/home/me/work".into()], ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&dirs).unwrap()).unwrap();
+    assert_eq!(back.project_folders, ["/home/me/src", "/home/me/work"]);
+}
+
 pub(super) fn json(s: &Settings) -> serde_json::Value {
     serde_json::to_value(s).unwrap()
 }

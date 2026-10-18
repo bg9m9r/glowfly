@@ -9,13 +9,15 @@ pub enum Group {
     Navigation,
     Diff,
     Tabs,
+    Repositories,
     Palette,
     View,
     General,
 }
 
 /// The groups in the order the sheet and Preferences > Keyboard show them.
-pub const GROUPS: [Group; 7] = [Group::Staging, Group::Navigation, Group::Diff, Group::Tabs, Group::Palette, Group::View, Group::General];
+pub const GROUPS: [Group; 8] =
+    [Group::Staging, Group::Navigation, Group::Diff, Group::Tabs, Group::Repositories, Group::Palette, Group::View, Group::General];
 
 impl Group {
     pub fn title(self) -> &'static str {
@@ -24,6 +26,7 @@ impl Group {
             Group::Navigation => "Navigation",
             Group::Diff => "Diff and conflicts",
             Group::Tabs => "Tabs",
+            Group::Repositories => "Repositories",
             Group::Palette => "Command palette",
             Group::View => "View",
             Group::General => "General",
@@ -125,12 +128,21 @@ pub enum BindingId {
     ToggleToolbar,
     BlameNextRun,
     BlamePrevRun,
+    OpenFavorite1,
+    OpenFavorite2,
+    OpenFavorite3,
+    OpenFavorite4,
+    OpenFavorite5,
+    OpenFavorite6,
+    OpenFavorite7,
+    OpenFavorite8,
+    OpenFavorite9,
 }
 
 use BindingId as I;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
-const KEYS: [(BindingId, &str); 41] = [
+const KEYS: [(BindingId, &str); 50] = [
     (I::Stage, "stage"),
     (I::Unstage, "unstage"),
     (I::StageAll, "stage-all"),
@@ -172,14 +184,36 @@ const KEYS: [(BindingId, &str); 41] = [
     (I::ToggleToolbar, "toggle-toolbar"),
     (I::BlameNextRun, "blame-next-run"),
     (I::BlamePrevRun, "blame-prev-run"),
+    (I::OpenFavorite1, "open-favorite-1"),
+    (I::OpenFavorite2, "open-favorite-2"),
+    (I::OpenFavorite3, "open-favorite-3"),
+    (I::OpenFavorite4, "open-favorite-4"),
+    (I::OpenFavorite5, "open-favorite-5"),
+    (I::OpenFavorite6, "open-favorite-6"),
+    (I::OpenFavorite7, "open-favorite-7"),
+    (I::OpenFavorite8, "open-favorite-8"),
+    (I::OpenFavorite9, "open-favorite-9"),
+];
+
+/// Open favorite repository 1 to 9, in favorite order.
+pub const FAVORITE_BINDINGS: [BindingId; 9] = [
+    I::OpenFavorite1,
+    I::OpenFavorite2,
+    I::OpenFavorite3,
+    I::OpenFavorite4,
+    I::OpenFavorite5,
+    I::OpenFavorite6,
+    I::OpenFavorite7,
+    I::OpenFavorite8,
+    I::OpenFavorite9,
 ];
 
 impl BindingId {
     /// Every id, in declaration order (`id as usize` indexes it).
-    pub const ALL: [BindingId; 41] = {
-        let mut all = [I::Stage; 41];
+    pub const ALL: [BindingId; 50] = {
+        let mut all = [I::Stage; 50];
         let mut n = 0;
-        while n < 41 {
+        while n < 50 {
             all[n] = KEYS[n].0;
             n += 1;
         }
@@ -193,6 +227,11 @@ impl BindingId {
 
     pub fn from_key(key: &str) -> Option<Self> {
         KEYS.iter().find(|(_, k)| *k == key).map(|(id, _)| *id)
+    }
+
+    /// Which favorite (0 for the first) an Open favorite repository binding opens.
+    pub fn favorite_slot(self) -> Option<usize> {
+        FAVORITE_BINDINGS.iter().position(|&id| id == self)
     }
 }
 
@@ -255,6 +294,15 @@ pub const BINDINGS: &[Binding] = &[
     b(I::PrevTab, G::Tabs, "Previous tab", &[C::ctrl_shift(K::Tab)], W::Anywhere),
     fixed(I::GoToTab, G::Tabs, "Go to tab 1 to 8", &[C::cmd(K::DigitRange(1, 8))], W::Anywhere),
     b(I::LastTab, G::Tabs, "Go to the last tab", &[C::cmd(K::Digit(9))], W::Anywhere),
+    b(I::OpenFavorite1, G::Repositories, "Open favorite repository 1", &[C::cmd_alt(K::Digit(1))], W::NotTyping),
+    b(I::OpenFavorite2, G::Repositories, "Open favorite repository 2", &[C::cmd_alt(K::Digit(2))], W::NotTyping),
+    b(I::OpenFavorite3, G::Repositories, "Open favorite repository 3", &[C::cmd_alt(K::Digit(3))], W::NotTyping),
+    b(I::OpenFavorite4, G::Repositories, "Open favorite repository 4", &[C::cmd_alt(K::Digit(4))], W::NotTyping),
+    b(I::OpenFavorite5, G::Repositories, "Open favorite repository 5", &[C::cmd_alt(K::Digit(5))], W::NotTyping),
+    b(I::OpenFavorite6, G::Repositories, "Open favorite repository 6", &[C::cmd_alt(K::Digit(6))], W::NotTyping),
+    b(I::OpenFavorite7, G::Repositories, "Open favorite repository 7", &[C::cmd_alt(K::Digit(7))], W::NotTyping),
+    b(I::OpenFavorite8, G::Repositories, "Open favorite repository 8", &[C::cmd_alt(K::Digit(8))], W::NotTyping),
+    b(I::OpenFavorite9, G::Repositories, "Open favorite repository 9", &[C::cmd_alt(K::Digit(9))], W::NotTyping),
     b(I::Palette, G::Palette, "Open or close the command palette", &[C::cmd(K::Letter('P')), C::cmd_shift(K::Letter('P'))], W::Anywhere),
     fixed(I::PaletteMove, G::Palette, "Move the selection", &[C::plain(K::Up), C::plain(K::Down)], W::InPalette),
     fixed(I::PaletteRun, G::Palette, "Run the selected command", &[C::plain(K::Enter)], W::InPalette),

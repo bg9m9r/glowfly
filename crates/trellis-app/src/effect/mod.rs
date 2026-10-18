@@ -22,6 +22,7 @@ mod names;
 mod notify;
 mod rebase;
 mod repo;
+mod repos;
 mod scope;
 mod submodule;
 mod updates;
@@ -36,6 +37,7 @@ pub use issue::*;
 pub use notify::{DesktopNote, NoteKind};
 pub use rebase::RebaseEffect;
 pub use repo::{ConflictRead, KnownRepo, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
+pub use repos::ReposEffect;
 pub use submodule::SubmoduleEffect;
 pub use updates::UpdateEffect;
 
@@ -393,6 +395,8 @@ pub enum Effect {
     Issue(IssueEffect),
     /// Update checks, downloads and opening a downloaded installer (runner/updates.rs); unscoped.
     Updates(UpdateEffect),
+    /// Finding repositories in project folders (runner/repos.rs); unscoped, reads folder listings only.
+    Repos(ReposEffect),
     Ui(UiEffect),
 }
 

@@ -40,7 +40,11 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 Err(e) => {
                     st.log(false, e);
                     if kind == LoadKind::Open {
+                        let path = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
                         super::tabs::open_failed(st, fx);
+                        if let Some(path) = path {
+                            super::recent::open_failed(st, path, fx);
+                        }
                     }
                     super::push_pr::load_failed(st, fx);
                 }

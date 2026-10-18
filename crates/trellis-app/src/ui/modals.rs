@@ -16,8 +16,9 @@
 //! creating an issue (drawn by `issue/create_dialog.rs`), rewording a commit from the graph
 //! (drawn by `rebase/reword_dialog.rs`), the About dialog (drawn by `menu_bar/about.rs`), the
 //! release notes (drawn by `release_notes.rs`), undoing a checkout that created a branch
-//! (drawn by `undo_dialog.rs`), applying a patch file (drawn by `patch_apply_dialog.rs`) and
-//! creating a patch from uncommitted changes (drawn by `patch_save_dialog.rs`).
+//! (drawn by `undo_dialog.rs`), applying a patch file (drawn by `patch_apply_dialog.rs`),
+//! creating a patch from uncommitted changes (drawn by `patch_save_dialog.rs`) and finding
+//! repositories in project folders (drawn by `repo_finder.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -35,6 +36,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let prompting = st.askpass.showing();
     let today = trellis_core::clone_ops::local_date(st.view.now, st.view.utc_offset);
     let sparse_blocked = st.git.blocked(trellis_core::git_version::Feature::SparseCheckout);
+    // Worked out before the dialog borrows the state: which results are open or favorites.
+    let finder = matches!(st.modal, Some(Modal::FindRepos { .. }))
+        .then(|| (crate::state::repo_scan::finder_rows(st), crate::state::repo_scan::project_folders(&st.settings)));
+    let repo_scan = &st.repo_scan;
     let Some(modal) = st.modal.as_mut() else { return };
     let snap = st.snap.as_ref();
     let fs = st.forge.as_ref();
@@ -256,6 +261,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
             Modal::SavePatch(form) => {
                 if super::patch_save_dialog::show(ui, form, snap, idle, msgs) {
+                    close = true;
+                }
+            }
+            Modal::FindRepos { filter } => {
+                let (rows, folders) = finder.as_ref().map(|(r, f)| (&r[..], &f[..])).unwrap_or_default();
+                if super::repo_finder::show(ui, filter, rows, repo_scan, folders, !prompting, msgs) {
                     close = true;
                 }
             }

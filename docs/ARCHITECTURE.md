@@ -47,6 +47,7 @@ binary (package `trellis`).
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view (with the conflict chunks safe to pick without asking: `trivial_pick`), and the row of a file line (`diff_rows/line_row.rs`); word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
 | `conflict_pick.rs`, `conflict_edit.rs` | What each conflict chunk resolves to (whole sides, single lines in tick order, or text typed by hand) and the file that makes, with conflict markers left for the chunks not picked yet (`render_picks`); the conflict view's output as editable text with each chunk's range, and which chunk an edit of it falls in (`locate_edit`). |
 | `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds; whole files too (`highlight_file`, for blame). |
+| `repo_scan.rs` | Finding the Git repositories under project folders (the Find repositories dialog): a bounded breadth-first walk that reads only folder listings and `.git` entries, never follows links or junctions, and doesn't descend into a repository it found. |
 | `watch.rs` | Which file changes in a repository matter, and the work-tree paths a change names (`Change::Paths`, at most `MAX_WATCH_PATHS` per burst). A submodule's HEAD or refs moving (in `<git dir>/modules/…` or a nested `.git` folder) reads the parent's whole status; their index, logs and objects don't count. |
 | `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |
 | `fuzzy.rs`, `matching.rs` | Matching for the command palette, filters and search. |
@@ -151,6 +152,10 @@ binary (package `trellis`).
   credentials resolved outside any repository; opening a PR waits for that tab's list
   (`pending_pr`). Which repositories and calls a refresh plans is in `state/dashboard_plan.rs`,
   the rows the view draws in `state/dashboard_rows.rs`.
+- **Find repositories**: global state (`state/repo_scan.rs`, `st.repo_scan`), never parked; the
+  project folders are a setting, each scan is one `Effect::Repos` (runner/repos.rs) whose
+  results carry each repository's `FolderId`, learned into `KnownFolders` so the "open" tags
+  match a tab that shows the same folder under another spelling.
 - **Toasts** (`state/toasts.rs`) can carry one action button with a stored `Msg`. A click
   sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only
   while the toast's repository is the active tab. `toast_replacing` updates a toast still on

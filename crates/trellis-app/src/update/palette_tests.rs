@@ -105,7 +105,8 @@ fn entries_without_repo() {
             "View error log",
             "View performance log",
             "Open logs folder",
-            "Turn on extended logging"
+            "Turn on extended logging",
+            "Find repositories in folders…"
         ]
     );
     let list = shown(&st, "");
@@ -163,10 +164,10 @@ fn entries_with_repo() {
 fn move_wraps_and_resets() {
     let mut st = state();
     open_palette(&mut st);
-    assert_eq!(shown(&st, "").len(), 27);
+    assert_eq!(shown(&st, "").len(), 28);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
-    assert_eq!(p.selected, 26);
+    assert_eq!(p.selected, 27);
     assert!(p.scroll_to_selected);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);

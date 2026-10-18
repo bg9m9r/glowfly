@@ -48,6 +48,7 @@ mod quoted;
 pub mod rebase;
 pub mod remote_ops;
 pub mod repo;
+pub mod repo_scan;
 pub mod safe_directory;
 pub mod settings;
 pub mod shallow_ops;

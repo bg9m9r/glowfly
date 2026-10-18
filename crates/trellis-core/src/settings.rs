@@ -295,6 +295,10 @@ pub struct Settings {
     /// the order they were added.
     #[serde(default)]
     pub favorite_repos: Vec<String>,
+    /// Folders the Find repositories dialog looks for repositories in (`paths::encode`d), in
+    /// the order they were added.
+    #[serde(default)]
+    pub project_folders: Vec<String>,
     /// Preferences > External Tools.
     #[serde(default)]
     pub external_tools: ExternalTools,
@@ -395,6 +399,7 @@ impl Default for Settings {
             status_tip_shown: HashMap::new(),
             repo_submodule_updates: HashMap::new(),
             favorite_repos: Vec::new(),
+            project_folders: Vec::new(),
             external_tools: ExternalTools::default(),
             profiles: Vec::new(),
             active_profile: None,

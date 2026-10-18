@@ -1,7 +1,9 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
-use crate::effect::{CloneEffect, Effect, ForgeError, InitEffect, LoadKind, RebaseEffect, SubmoduleEffect, UndoResult, UpdateEffect};
+use crate::effect::{
+    CloneEffect, Effect, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, SubmoduleEffect, UndoResult, UpdateEffect,
+};
 use crate::msg::BlameMsg;
 use crate::msg::CloneMsg;
 use crate::msg::JobMsg;
@@ -48,6 +50,8 @@ enum Kind {
     /// An update check (`Some(manual)`) or download (None): the status shows a spinner until
     /// its result arrives.
     Update(Option<bool>),
+    /// A scan of the project folders: the Find repositories dialog shows a spinner until it ends.
+    RepoScan(u64, Vec<PathBuf>),
     Log,
 }
 
@@ -99,6 +103,7 @@ impl Recovery {
             Effect::LoadBlame(r) => Kind::Blame { path: r.path.clone(), generation: r.generation },
             Effect::Updates(UpdateEffect::Check { manual }) => Kind::Update(Some(*manual)),
             Effect::Updates(UpdateEffect::Download(_)) => Kind::Update(None),
+            Effect::Repos(ReposEffect::Scan { generation, roots }) => Kind::RepoScan(*generation, roots.clone()),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -123,6 +128,11 @@ impl Recovery {
             Kind::Blame { path, generation } => Msg::Blame(BlameMsg::Loaded { path, generation, result: Err(text) }),
             Kind::Update(Some(manual)) => Msg::Updates(UpdateMsg::Checked { manual, result: Err(text) }),
             Kind::Update(None) => Msg::Updates(UpdateMsg::Downloaded(Err(text))),
+            Kind::RepoScan(generation, roots) => {
+                let unreadable = roots.into_iter().map(|r| (r, text.clone())).collect();
+                let report = Box::new(crate::msg::ScanFound { unreadable, ..Default::default() });
+                Msg::Repos(crate::msg::ReposMsg::Scanned { generation, report })
+            }
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {

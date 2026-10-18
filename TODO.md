@@ -469,6 +469,12 @@ Done except the group colors, which wait on repository groups in the repository 
 - [x] **Repository management**
   Favorites section above Recent on the welcome screen and in the repository menu; remove one
   recent entry or clear the list; missing folders marked.
+  - [x] Find repositories in project folders (a dialog that scans the folders you keep
+    repositories in, with a filter); Ctrl+Alt+1 to 9 open the first nine favorites (rebindable,
+    shown in the sheet, the palette and the welcome rows); drag or Move up/down to reorder
+    favorites; "open" tags and Open all favorites; Remove missing entries, and an offer to forget a
+    listed repository whose folder is gone; palette commands to favorite the open repository and
+    favorites listed first
 - [x] **Graph columns and loading**
   Column toggles, compact layout and row highlighting are done (UI Customization). Missing:
   - [x] Resize columns: drag the header dividers (BRANCH/TAG, SHA, changes, author, date), double-click to reset, saved in settings
@@ -1440,19 +1446,14 @@ here, under the item they grew from.
 
 ### Repository management
 
-- Scan project folders for repositories (choose one or more parent folders, list the Git
-  repositories found under them, filter by name)
-- Keyboard shortcuts to open favorites (e.g. the first nine), listed in the shortcut sheet and
-  the palette
-- Reorder favorites by dragging
 - Fetch or pull across many repositories (all favorites or all listed), with per-repository
   results and a "nothing to fetch" case
-- Mark repositories already open in a tab in the recent and favorite lists, and open all of
-  them in new tabs at once
-- Remove all missing entries in one go, and offer to remove an entry when opening it fails
-  because its folder is gone
-- Palette commands to favorite or unfavorite the active repository, with favorites listed first
-  among the palette's repositories
+- Open all for the Recent list and for the Find repositories results
+- Remember scan results between sessions, and notice new repositories in project folders
+  without looking again
+- Scan options in Preferences: how deep to look and which folder names to skip
+- List bare repositories found by the scan
+- Drag to reorder favorites in the repository menu and File > Open recent
 
 ### Graph columns and loading
 
@@ -1838,3 +1839,4 @@ here, under the item they grew from.
 - Right-to-left layout for right-to-left languages
 - Translate undo action descriptions (Action::describe, e.g. "checkout of main") and the labels of the jobs they name, shown in the Edit menu, toolbar tips, status bar and activity log
 - Translate error texts that come from trellis-core: update check and download errors, theme file problems and the themes folder error
+- Translate the welcome screen's repository lists and the Find repositories dialog

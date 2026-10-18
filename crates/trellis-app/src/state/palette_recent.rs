@@ -179,6 +179,7 @@ impl PaletteCommand {
             C::Updates(UpdateMsg::ShowNotes) => "release-notes",
             C::Updates(UpdateMsg::CheckNow) => "check-updates",
             C::Updates(_) => return None,
+            C::RepoList(c) => return c.recall_key(),
         })
     }
 }

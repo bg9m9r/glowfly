@@ -1,12 +1,18 @@
 //! Favorite and recent repository rows, shared by the welcome screen, the toolbar's repository
-//! menu and File > Open recent.
+//! menu and File > Open recent: star, path, "open" and "not found" tags, the favorites' keys,
+//! and on the welcome screen the header links (Open all, Remove missing, Clear) and dragging
+//! favorites into another order (`repo_list_drag.rs`).
 
 use super::common::menu_item;
 use super::theme::color;
 use super::widgets::{self, Icon};
+use crate::keymap::FAVORITE_BINDINGS;
 use crate::msg::{Msg, RecentMsg, RepoMsg};
 use crate::state::AppState;
-use crate::state::repo_lists::{clear_recent_confirm, favorite_label, favorites, is_favorite, is_missing, recent_rows};
+use crate::state::repo_lists::{
+    OPEN_TIP, clear_recent_confirm, favorite_keys_note, favorite_label, favorites, is_favorite, is_missing, is_open, missing_counts,
+    recent_rows, remove_missing_msg, unopened_favorites,
+};
 use eframe::egui::{self, Align, Color32, Layout, Response, RichText, Sense, Stroke};
 use std::path::Path;
 
@@ -22,10 +28,11 @@ enum Place {
     Menu,
 }
 
-/// Which list a row belongs to; only Recent rows can be removed.
+/// Which list a row belongs to: a favorite (its index and how many there are) or a recent
+/// entry. Only Recent rows can be removed; only favorites move.
 #[derive(Clone, Copy, PartialEq)]
 enum Section {
-    Favorite,
+    Favorite { index: usize, count: usize },
     Recent,
 }
 
@@ -43,27 +50,54 @@ pub fn welcome_sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let full = ui.max_rect();
     let rect =
         egui::Rect::from_min_max(egui::pos2(full.center().x - width / 2.0, top), egui::pos2(full.center().x + width / 2.0, full.bottom()));
+    let (missing_recent, missing_favs) = missing_counts(st);
+    // "Remove missing" goes on the Recent header, or on Favorites when only favorites are gone.
+    let remove_on_favorites = missing_recent == 0 && missing_favs > 0;
     ui.scope_builder(egui::UiBuilder::new().max_rect(rect).layout(Layout::top_down(Align::Min)), |ui| {
         egui::ScrollArea::vertical().max_height(ui.available_height()).auto_shrink([false, true]).show(ui, |ui| {
-            header(ui, "Favorites");
+            ui.horizontal(|ui| {
+                header(ui, "Favorites");
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    if !unopened_favorites(st).is_empty() && small_link(ui, "Open all") {
+                        msgs.push(Msg::Recent(RecentMsg::OpenAll(favs.clone())));
+                    }
+                    if remove_on_favorites {
+                        remove_missing_link(ui, st, msgs);
+                    }
+                });
+            });
             if favs.is_empty() {
                 ui.label(RichText::new(EMPTY_FAVORITES).color(color::weak()));
             }
-            for p in &favs {
-                row(ui, st, p, Place::Welcome, Section::Favorite, msgs);
+            let draggable = favs.len() >= 2;
+            if draggable {
+                let note = match favorite_keys_note(&st.keymap) {
+                    Some(keys) => format!("Drag to reorder. {keys}"),
+                    None => "Drag to reorder.".to_owned(),
+                };
+                ui.label(RichText::new(note).small().color(color::weak()));
             }
+            let mut rows = Vec::new();
+            for (index, p) in favs.iter().enumerate() {
+                let section = Section::Favorite { index, count: favs.len() };
+                rows.extend(row(ui, st, p, Place::Welcome, section, draggable, msgs));
+            }
+            super::repo_list_drag::track(ui, &rows, msgs);
             if !recent.is_empty() {
                 ui.add_space(12.0);
                 ui.horizontal(|ui| {
                     header(ui, "Recent");
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if ui.add(egui::Link::new(RichText::new("Clear").small())).clicked() {
+                        if small_link(ui, "Clear") {
                             msgs.push(clear_confirm(st));
+                        }
+                        if missing_recent > 0 {
+                            remove_missing_link(ui, st, msgs);
                         }
                     });
                 });
                 for p in recent {
-                    row(ui, st, p, Place::Welcome, Section::Recent, msgs);
+                    row(ui, st, p, Place::Welcome, Section::Recent, false, msgs);
                 }
             }
         });
@@ -92,8 +126,8 @@ fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separato
             ui.separator();
         }
         header(ui, "Favorites");
-        for p in &favs {
-            row(ui, st, p, Place::Menu, Section::Favorite, msgs);
+        for (index, p) in favs.iter().enumerate() {
+            row(ui, st, p, Place::Menu, Section::Favorite { index, count: favs.len() }, false, msgs);
         }
     }
     let recent = recent_rows(st);
@@ -103,7 +137,7 @@ fn sections(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>, lead_separato
         }
         header(ui, "Recent");
         for p in recent {
-            row(ui, st, p, Place::Menu, Section::Recent, msgs);
+            row(ui, st, p, Place::Menu, Section::Recent, false, msgs);
         }
         menu_item(msgs, ui, "Clear recent", clear_confirm(st));
     }
@@ -113,21 +147,56 @@ fn header(ui: &mut egui::Ui, title: &str) {
     ui.label(RichText::new(title).color(color::weak()));
 }
 
+fn small_link(ui: &mut egui::Ui, text: &str) -> bool {
+    ui.add(egui::Link::new(RichText::new(text).small())).clicked()
+}
+
+fn remove_missing_link(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    if small_link(ui, "Remove missing") {
+        msgs.extend(remove_missing_msg(st));
+    }
+}
+
 /// The question asked before the Recent list is emptied.
 fn clear_confirm(st: &AppState) -> Msg {
     let (title, body) = clear_recent_confirm(st.recent.len());
     Msg::confirm(&title, body, "Clear", Msg::Recent(RecentMsg::ClearRecent))
 }
 
-/// One repository: star toggle, the path (opens it), a "not found" note and, for Recent rows, ×.
-fn row(ui: &mut egui::Ui, st: &AppState, path: &Path, place: Place, section: Section, msgs: &mut Vec<Msg>) {
+/// A weak "open" tag; clicking it switches to the tab showing the repository (`open`).
+fn open_tag(ui: &mut egui::Ui, open: Msg, msgs: &mut Vec<Msg>) -> bool {
+    let tag = egui::Label::new(RichText::new("open").small().color(color::weak())).selectable(false).sense(Sense::click());
+    let clicked = ui.add(tag).on_hover_text(OPEN_TIP).on_hover_cursor(egui::CursorIcon::PointingHand).clicked();
+    if clicked {
+        msgs.push(open);
+    }
+    clicked
+}
+
+/// One repository: a grip (welcome favorites, when `draggable`), star toggle, the path (opens
+/// it), "not found" and "open" tags, a favorite's key and, for Recent rows, ×. Returns the
+/// grip's response and the row's rect when it has a grip.
+fn row(
+    ui: &mut egui::Ui,
+    st: &AppState,
+    path: &Path,
+    place: Place,
+    section: Section,
+    draggable: bool,
+    msgs: &mut Vec<Msg>,
+) -> Option<(Response, egui::Rect)> {
     let fav = is_favorite(st, path);
     let missing = is_missing(st, path);
+    let in_tab = is_open(st, path);
     let text = trellis_core::native_path::shown(path);
     let open = || Msg::Repo(RepoMsg::Open(path.to_path_buf()));
     let favorite = || Msg::Recent(RecentMsg::SetFavorite { path: path.to_path_buf(), favorite: !fav });
     let remove = || Msg::Recent(RecentMsg::Remove(path.to_path_buf()));
-    ui.horizontal(|ui| {
+    let mut grip = None;
+    let r = ui.horizontal(|ui| {
+        if draggable {
+            grip = Some(super::repo_list_drag::grip(ui));
+        }
         let (icon, col) = if fav { (Icon::StarFilled, color::amber()) } else { (Icon::Star, color::weak()) };
         if widgets::small_icon(ui, icon, favorite_label(fav), col).clicked() {
             msgs.push(favorite());
@@ -142,6 +211,9 @@ fn row(ui: &mut egui::Ui, st: &AppState, path: &Path, place: Place, section: Sec
                 msgs.push(open());
                 ui.close_menu();
             }
+            if in_tab && open_tag(ui, open(), msgs) {
+                ui.close_menu();
+            }
             if section == Section::Recent && widgets::small_icon(ui, Icon::Close, "Remove from recent", color::weak()).clicked() {
                 msgs.push(remove());
             }
@@ -151,25 +223,46 @@ fn row(ui: &mut egui::Ui, st: &AppState, path: &Path, place: Place, section: Sec
             if section == Section::Recent && widgets::small_icon(ui, Icon::Close, "Remove from recent", color::weak()).clicked() {
                 msgs.push(remove());
             }
+            if let Section::Favorite { index, .. } = section
+                && let Some(key) = FAVORITE_BINDINGS.get(index).and_then(|&id| st.keymap.hint(id))
+            {
+                ui.label(RichText::new(key).small().color(color::weak()));
+            }
             if missing {
                 ui.label(RichText::new("not found").small().color(color::weak())).on_hover_text(NOT_FOUND_TIP);
+            }
+            if in_tab {
+                open_tag(ui, open(), msgs);
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 let r = link(ui, &text, if missing { color::faint() } else { color::accent() });
                 if r.clicked() {
                     msgs.push(open());
                 }
-                r.context_menu(|ui| {
-                    menu_item(msgs, ui, "Open", open());
-                    menu_item(msgs, ui, favorite_label(fav), favorite());
-                    if section == Section::Recent {
-                        menu_item(msgs, ui, "Remove from recent", remove());
-                    }
-                    menu_item(msgs, ui, "Copy path", Msg::Copy(text.clone()));
-                });
+                r.context_menu(|ui| row_menu(ui, &text, section, fav, [open(), favorite(), remove()], msgs));
             });
         });
     });
+    grip.map(|g| (g, r.response.rect))
+}
+
+/// The welcome row's context menu; `acts` are its Open, favorite toggle and Remove messages.
+fn row_menu(ui: &mut egui::Ui, text: &str, section: Section, fav: bool, acts: [Msg; 3], msgs: &mut Vec<Msg>) {
+    let [open, favorite, remove] = acts;
+    menu_item(msgs, ui, "Open", open);
+    menu_item(msgs, ui, favorite_label(fav), favorite);
+    match section {
+        Section::Recent => menu_item(msgs, ui, "Remove from recent", remove),
+        Section::Favorite { index, count } => {
+            for (label, enabled, to) in [("Move up", index > 0, index.saturating_sub(1)), ("Move down", index + 1 < count, index + 1)] {
+                if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
+                    msgs.push(Msg::Recent(RecentMsg::MoveFavorite { from: index, to }));
+                    ui.close_menu();
+                }
+            }
+        }
+    }
+    menu_item(msgs, ui, "Copy path", Msg::Copy(text.to_owned()));
 }
 
 /// A link that is cut short with "…" when it doesn't fit (the full text shows on hover).

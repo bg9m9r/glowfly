@@ -40,6 +40,19 @@ fn shortcut_sheet_filtered_light() {
 }
 
 #[test]
+fn shortcut_sheet_favorites() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-favorites");
+    st.modal = Some(Modal::Shortcuts { filter: "favorite".into() });
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("shortcut_sheet_favorites");
+    assert!(h.query_by_label("Repositories").is_some());
+    assert!(h.query_by_label("Open favorite repository 1").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn shortcut_sheet_empty_and_close() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-empty");
     st.modal = Some(Modal::Shortcuts { filter: "zzz".into() });

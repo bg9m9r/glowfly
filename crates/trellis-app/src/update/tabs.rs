@@ -84,6 +84,32 @@ pub(super) fn open(st: &mut AppState, path: PathBuf, fx: &mut Vec<Effect>) {
     super::repo::load(st, path, LoadKind::Open, fx);
 }
 
+/// Open all favorites: adds an unloaded tab for each of `paths` not shown by a tab and not
+/// missing, in order (a worktree next to its group when that is known), and switches to the
+/// first new one; the others load when selected. With nothing new, switches to the tab of the
+/// first.
+pub(super) fn open_all(st: &mut AppState, paths: Vec<PathBuf>, fx: &mut Vec<Effect>) {
+    super::dashboard::leave(st);
+    let mut first: Option<usize> = None;
+    for p in &paths {
+        if st.tab_showing(p).is_some() || crate::state::repo_lists::is_missing(st, p) {
+            continue;
+        }
+        let at = super::tab_groups::slot_for(st, p);
+        super::tab_groups::insert_tab(st, at, Tab::unloaded(p.clone()));
+        first = Some(first.map_or(at, |f| if f >= at { f + 1 } else { f }));
+    }
+    match first {
+        // Switching saves the session.
+        Some(i) => switch(st, i, fx),
+        None => {
+            if let Some(i) = paths.first().and_then(|p| st.tab_showing(p)) {
+                switch(st, i, fx);
+            }
+        }
+    }
+}
+
 /// Opening the active tab's repository failed: go back to the tab it was opened from, or leave
 /// an empty tab.
 pub(super) fn open_failed(st: &mut AppState, fx: &mut Vec<Effect>) {

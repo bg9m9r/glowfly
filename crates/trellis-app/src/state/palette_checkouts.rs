@@ -1,13 +1,8 @@
-//! The palette's checkout and recent-repository entries: local, remote and tag checkouts, and
-//! the recent repositories other than the active one.
+//! The palette's checkout entries: local, remote and tag checkouts.
 
-use super::{Entry, PaletteCommand, entry, folder_name, with_detail};
-use crate::state::AppState;
+use super::{Entry, PaletteCommand, entry, with_detail};
 use std::collections::HashSet;
 use trellis_core::repo::Snapshot;
-
-/// Recent repositories offered by the palette.
-const MAX_RECENT: usize = 10;
 
 /// A checkout entry for each local branch other than HEAD's and those checked out in another
 /// worktree (those are offered as Open worktree instead).
@@ -56,19 +51,5 @@ pub(super) fn tag_checkout_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
         }
         let e = entry(PaletteCommand::CheckoutTag(name.clone()), format!("Checkout tag {name}"), TAG_KEYWORDS);
         out.push(with_detail(e, Some(format!("detached at {}", &oid.to_string()[..7]))));
-    }
-}
-
-/// Recent repositories other than the active one.
-pub(super) fn recent_entries(st: &AppState, out: &mut Vec<Entry>) {
-    let active = st.workdir();
-    for path in st.recent.iter().take(MAX_RECENT) {
-        let is_active =
-            active.as_deref().is_some_and(|w| st.same_folder(w, path)) || st.snap.as_ref().is_some_and(|s| st.names_repo(s, path));
-        if is_active || crate::state::repo_lists::is_missing(st, path) {
-            continue;
-        }
-        let e = entry(PaletteCommand::OpenRecent(path.clone()), format!("Open {}", folder_name(path)), "recent repository");
-        out.push(with_detail(e, Some(trellis_core::native_path::shown(path))));
     }
 }

@@ -4,8 +4,8 @@ use super::tests::{drive, same_place, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::{Msg, RecentMsg, RepoMsg};
-use crate::state::AppState;
 use crate::state::repo_lists::is_missing;
+use crate::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -135,4 +135,126 @@ fn opening_a_repository_clears_its_missing_mark() {
     assert!(!is_missing(&st, &dir), "{:?}", st.missing_repos);
     assert!(same_place(&st.recent[0], &dir), "{:?}", st.recent);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn move_favorite_reorders_and_saves_once() {
+    let mut st = state();
+    st.settings.favorite_repos = vec!["/w/a".into(), "/w/b".into(), "/w/c".into()];
+    let fx = run(&mut st, RecentMsg::MoveFavorite { from: 2, to: 0 });
+    assert_eq!(st.settings.favorite_repos, ["/w/c", "/w/a", "/w/b"]);
+    assert_eq!(saved_favorites(&fx), [vec!["/w/c".to_owned(), "/w/a".into(), "/w/b".into()]]);
+    let fx = run(&mut st, RecentMsg::MoveFavorite { from: 0, to: 1 });
+    assert_eq!(st.settings.favorite_repos, ["/w/a", "/w/c", "/w/b"]);
+    assert_eq!(fx.len(), 1, "{fx:?}");
+    assert!(run(&mut st, RecentMsg::MoveFavorite { from: 1, to: 1 }).is_empty(), "no move");
+    assert!(run(&mut st, RecentMsg::MoveFavorite { from: 3, to: 0 }).is_empty(), "out of range");
+    assert!(run(&mut st, RecentMsg::MoveFavorite { from: 0, to: 3 }).is_empty(), "out of range");
+    assert_eq!(st.settings.favorite_repos, ["/w/a", "/w/c", "/w/b"]);
+}
+
+#[test]
+fn open_favorite_opens_it_or_says_there_is_none() {
+    let dir = scratch_repo("recent-open-favorite");
+    let mut st = state();
+    st.settings.favorite_repos = vec![trellis_core::paths::encode(&dir), "/w/other".into()];
+    drive(&mut st, Msg::Recent(RecentMsg::OpenFavorite(0)));
+    assert!(st.snap.as_ref().is_some_and(|s| same_place(&s.workdir, &dir)), "the first favorite is open");
+    let fx = run(&mut st, RecentMsg::OpenFavorite(5));
+    assert!(fx.is_empty(), "{fx:?}");
+    let toast = st.toasts.last().expect("a toast");
+    assert_eq!(toast.text, "There is no favorite repository 6. Star a repository to add it.");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn open_all_adds_tabs_for_unopened_present_favorites() {
+    let mut st = state();
+    st.settings.favorite_repos = vec!["/w/a".into(), "/w/b".into(), "/w/c".into()];
+    st.tabs = vec![crate::state::Tab::unloaded(PathBuf::from("/w/a"))];
+    st.missing_repos = vec![PathBuf::from("/w/b")];
+    let fx = run(&mut st, RecentMsg::OpenAll(paths(&["/w/a", "/w/b", "/w/c"])));
+    let tabs: Vec<Option<PathBuf>> = st.tabs.iter().map(|t| t.path.clone()).collect();
+    assert_eq!(tabs, [Some(PathBuf::from("/w/a")), Some(PathBuf::from("/w/c"))], "one new tab: /w/a is open, /w/b missing");
+    assert_eq!(st.active_tab, 1);
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveTabs { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if path == &PathBuf::from("/w/c"))), "{fx:?}");
+}
+
+#[test]
+fn open_all_with_everything_open_switches_to_the_first() {
+    let mut st = state();
+    st.settings.favorite_repos = vec!["/w/a".into()];
+    st.tabs = vec![crate::state::Tab::empty(), crate::state::Tab::unloaded(PathBuf::from("/w/a"))];
+    run(&mut st, RecentMsg::OpenAll(paths(&["/w/a"])));
+    assert_eq!(st.tabs.len(), 2);
+    assert_eq!(st.active_tab, 1);
+}
+
+#[test]
+fn remove_missing_cleans_both_lists() {
+    let mut st = state();
+    assert!(run(&mut st, RecentMsg::RemoveMissing).is_empty(), "nothing missing");
+    st.recent = paths(&["/w/a", "/w/b", "/w/c"]);
+    st.settings.favorite_repos = vec!["/w/c/".into(), "/w/d".into()];
+    st.missing_repos = paths(&["/w/b", "/w/c"]);
+    let fx = run(&mut st, RecentMsg::RemoveMissing);
+    assert_eq!(st.recent, paths(&["/w/a"]));
+    assert_eq!(st.settings.favorite_repos, ["/w/d"]);
+    assert!(st.missing_repos.is_empty());
+    assert!(fx.iter().any(|e| matches!(e, Effect::SaveRecent(l) if *l == paths(&["/w/a"]))), "{fx:?}");
+    assert_eq!(saved_favorites(&fx), [vec!["/w/d".to_owned()]]);
+    // Only the list that changed is saved.
+    st.recent = paths(&["/w/e"]);
+    st.missing_repos = paths(&["/w/e"]);
+    let fx = run(&mut st, RecentMsg::RemoveMissing);
+    assert!(matches!(&fx[..], [Effect::SaveRecent(l)] if l.is_empty()), "{fx:?}");
+}
+
+#[test]
+fn forget_drops_a_folder_from_both_lists() {
+    let mut st = state();
+    st.recent = paths(&["/w/a", "/w/b"]);
+    st.settings.favorite_repos = vec!["/w/a".into()];
+    let fx = run(&mut st, RecentMsg::Forget(PathBuf::from("/w/./a/")));
+    assert_eq!(st.recent, paths(&["/w/b"]));
+    assert!(st.settings.favorite_repos.is_empty());
+    assert_eq!(fx.len(), 2, "both lists saved: {fx:?}");
+}
+
+/// A folder under the temporary folder that doesn't exist.
+fn gone(name: &str) -> PathBuf {
+    trellis_core::paths::temp_dir().join(format!("trellis-app-test-{name}-{}-gone", std::process::id()))
+}
+
+#[test]
+fn a_listed_folder_that_is_gone_offers_to_forget_it() {
+    let path = gone("forget-offer");
+    let mut st = state();
+    st.recent = vec![path.clone()];
+    drive(&mut st, Msg::Repo(RepoMsg::Open(path.clone())));
+    let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("asks to remove it") };
+    assert_eq!(title, "Repository not found");
+    assert!(body.ends_with("Remove it from your Recent list?"), "{body}");
+    assert_eq!(button, "Remove");
+    assert!(matches!(&**then, Msg::Recent(RecentMsg::Forget(p)) if *p == path));
+    drive(&mut st, Msg::ConfirmAccepted);
+    assert!(st.recent.is_empty());
+}
+
+#[test]
+fn other_failed_opens_ask_nothing() {
+    // Not listed.
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(gone("forget-unlisted"))));
+    assert!(st.modal.is_none());
+    // Listed, and there, but not a repository: some other load error.
+    let plain = gone("forget-plain");
+    std::fs::create_dir_all(&plain).unwrap();
+    let mut st = state();
+    st.recent = vec![plain.clone()];
+    drive(&mut st, Msg::Repo(RepoMsg::Open(plain.clone())));
+    assert!(st.modal.is_none());
+    assert!(st.missing_offer.is_none());
+    let _ = std::fs::remove_dir_all(&plain);
 }

@@ -63,6 +63,7 @@ mod profiles;
 mod pull_request;
 mod queue;
 mod rebase;
+mod repos;
 mod saves;
 mod signatures;
 mod sparse;
@@ -393,6 +394,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Dashboard(e) => Some(dashboard::run(e)),
         Effect::Issue(e) => Some(issues::run(e)),
         Effect::Updates(e) => updates::run(e),
+        Effect::Repos(e) => Some(repos::run(e)),
         Effect::Ui(_) => {
             tracing::warn!("UI effect reached the runner; it should be handled by the UI shell");
             None

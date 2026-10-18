@@ -88,6 +88,7 @@ impl Effect {
             | Effect::Logs(_)
             | Effect::Dashboard(_)
             | Effect::Updates(_)
+            | Effect::Repos(_)
             | Effect::Ui(_) => None,
         }
     }

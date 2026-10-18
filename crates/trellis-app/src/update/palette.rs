@@ -293,6 +293,10 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Onboarding(m) => Msg::Onboarding(m),
         C::Dashboard => Msg::Dashboard(crate::msg::DashboardMsg::Open),
         C::Updates(m) => Msg::Updates(m),
+        C::RepoList(c) => {
+            let Some(m) = c.msg(st) else { return };
+            m
+        }
         C::ApplyPatch => Msg::Patch(crate::patch::PatchMsg::PickToApply),
         C::Patch(m) => Msg::Patch(m),
         C::SwitchProfile(id) => Msg::Profile(crate::profile::ProfileMsg::Switch(id)),

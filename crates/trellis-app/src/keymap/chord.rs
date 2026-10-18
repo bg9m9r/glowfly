@@ -164,6 +164,10 @@ impl Chord {
     pub const fn cmd_shift(key: KeyName) -> Self {
         Self { mods: Mods { command: true, shift: true, ..NONE }, key }
     }
+    /// Ctrl+Alt (Cmd+Option on macOS).
+    pub const fn cmd_alt(key: KeyName) -> Self {
+        Self { mods: Mods { command: true, alt: true, ..NONE }, key }
+    }
     pub const fn ctrl(key: KeyName) -> Self {
         Self { mods: Mods { ctrl: true, ..NONE }, key }
     }

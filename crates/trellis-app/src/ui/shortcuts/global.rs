@@ -6,7 +6,7 @@
 use super::chords::take_press;
 use super::record;
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName};
-use crate::msg::{BlameMsg, ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RepoMsg, SearchMsg, TabsMsg};
+use crate::msg::{BlameMsg, ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RecentMsg, RepoMsg, SearchMsg, TabsMsg};
 use crate::state::layout::Panel;
 use crate::state::{AppState, Modal, PrefPage};
 use crate::terminal::TerminalMsg;
@@ -82,6 +82,16 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         I::Undo | I::Redo => !covered && !l.sheet && !l.typing,
         I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
         I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
+        // Not while typing: AltGr is Ctrl+Alt on Windows, and AltGr+digit types characters.
+        I::OpenFavorite1
+        | I::OpenFavorite2
+        | I::OpenFavorite3
+        | I::OpenFavorite4
+        | I::OpenFavorite5
+        | I::OpenFavorite6
+        | I::OpenFavorite7
+        | I::OpenFavorite8
+        | I::OpenFavorite9 => !covered && !l.sheet && !l.typing,
         I::Refresh => true,
         I::Search | I::SearchFilter => !l.palette && !l.prefs,
         I::Prefs => !l.prefs && !l.palette,
@@ -137,6 +147,18 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::PrevChange => step(-1, st),
         I::BlameNextRun => Msg::Blame(BlameMsg::StepRun(1)),
         I::BlamePrevRun => Msg::Blame(BlameMsg::StepRun(-1)),
+        I::OpenFavorite1
+        | I::OpenFavorite2
+        | I::OpenFavorite3
+        | I::OpenFavorite4
+        | I::OpenFavorite5
+        | I::OpenFavorite6
+        | I::OpenFavorite7
+        | I::OpenFavorite8
+        | I::OpenFavorite9 => match id.favorite_slot() {
+            Some(n) => Msg::Recent(RecentMsg::OpenFavorite(n)),
+            None => return,
+        },
         // In the blame view it finds in the file.
         I::Search if st.blame.is_some() => Msg::Blame(BlameMsg::FocusFind),
         // The search bar's visibility is view state.

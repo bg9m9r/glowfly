@@ -16,6 +16,17 @@ pub enum RecentMsg {
     CheckFolders,
     /// Result of `Effect::CheckRepoFolders`: what was found at each folder checked.
     FoldersChecked(Vec<FolderCheck>),
+    /// Move favorite `from` so it ends up at index `to` (dragging, Move up and Move down).
+    MoveFavorite { from: usize, to: usize },
+    /// Open the favorite at this index (0 for the first; Open favorite repository 1 to 9).
+    OpenFavorite(usize),
+    /// Add an unloaded tab for each of these folders not shown by a tab and not missing, then
+    /// switch to the first new one (Open all favorites).
+    OpenAll(Vec<PathBuf>),
+    /// Drop the entries the last check found missing from both lists (after the confirmation).
+    RemoveMissing,
+    /// Drop this folder from the Recent list and the favorites (a listed folder that is gone).
+    Forget(PathBuf),
 }
 
 /// What `Effect::CheckRepoFolders` found at one listed folder.
@@ -33,7 +44,16 @@ impl RecentMsg {
     /// as none of these is ever sent scoped.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::Remove(_) | Self::ClearRecent | Self::SetFavorite { .. } | Self::CheckFolders | Self::FoldersChecked(_) => None,
+            Self::Remove(_)
+            | Self::ClearRecent
+            | Self::SetFavorite { .. }
+            | Self::CheckFolders
+            | Self::FoldersChecked(_)
+            | Self::MoveFavorite { .. }
+            | Self::OpenFavorite(_)
+            | Self::OpenAll(_)
+            | Self::RemoveMissing
+            | Self::Forget(_) => None,
         }
     }
 }

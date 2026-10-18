@@ -189,6 +189,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
                 FolderPurpose::HooksPath => "Hooks folder",
                 FolderPurpose::WorktreeParent => "Create the worktree in…",
                 FolderPurpose::LocateLinkedRepo => "Locate the linked repository",
+                FolderPurpose::ProjectFolder => crate::state::repo_scan::PICK_TITLE,
             };
             fx.push(Effect::PickFolder { title: title.into(), purpose });
         }
@@ -196,6 +197,7 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
             FolderPurpose::OpenRepo => super::tabs::open(st, path, fx),
             FolderPurpose::WorktreeParent => super::worktrees::parent_picked(st, path),
             FolderPurpose::LocateLinkedRepo => super::deep_link::located(st, path, fx),
+            FolderPurpose::ProjectFolder => super::repo_scan::folder_picked(st, path, fx),
             FolderPurpose::InitRepo => {
                 if let Some(Modal::Init(form)) = st.modal.as_mut() {
                     form.folder = trellis_core::native_path::shown(&path);

@@ -234,6 +234,9 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         if ui.add(egui::Button::new("Start a new repository").min_size(size)).clicked() {
             msgs.push(Msg::Repo(RepoMsg::InitRepo));
         }
+        if ui.add(egui::Button::new("Find repositories in folders").min_size(size)).clicked() {
+            msgs.push(Msg::Repos(crate::msg::ReposMsg::ShowFinder));
+        }
         super::repo_list::welcome_sections(ui, st, msgs);
     });
 }

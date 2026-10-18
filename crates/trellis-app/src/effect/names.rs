@@ -84,6 +84,7 @@ impl Effect {
             Effect::Dashboard(e) => e.name(),
             Effect::Issue(e) => e.name(),
             Effect::Updates(e) => e.name(),
+            Effect::Repos(e) => e.name(),
             Effect::Ui(_) => "ui",
         }
     }
@@ -156,6 +157,7 @@ impl Effect {
             Effect::Patch(p) => p.timed(),
             Effect::Dashboard(e) => e.timed(),
             Effect::Updates(e) => e.timed(),
+            Effect::Repos(e) => e.timed(),
             // They wait on the user, hand work to the system, or never run on a worker thread.
             Effect::OpenUrl(_)
             | Effect::OpenTerminal(_)
