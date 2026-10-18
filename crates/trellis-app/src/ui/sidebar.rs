@@ -61,6 +61,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let sel = st.selection.clone();
     let fs = st.forge.as_ref();
     let idle = st.job.is_none();
+    let sub_cx = crate::state::submodules::section_cx(st);
     let sections = &mut st.view.sections;
     let hover_next = &mut st.view.hover_tip_next;
     let tips_seen = &mut st.view.tips_seen;
@@ -184,7 +185,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         super::worktrees::section(ui, snap, &mut sections.worktrees, rows, hover_next, msgs);
     }
     if !snap.submodules.is_empty() {
-        super::submodules::section(ui, snap, &mut sections.submodules, &shown, msgs);
+        super::submodules::section(ui, snap, &sub_cx, &mut sections.submodules, &shown, msgs);
     }
     ui.add_space(12.0);
 }

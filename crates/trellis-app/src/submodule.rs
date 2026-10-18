@@ -1,6 +1,6 @@
-//! Messages of the SUBMODULES section and the Add submodule and Remove submodule dialogs
-//! (state/submodules.rs, state/submodules/add.rs, state/submodules/remove.rs,
-//! update/submodules.rs, update/submodule_add.rs, update/submodule_remove.rs, ui/submodules.rs,
+//! Messages of the SUBMODULES section, its batch updates and the Add, Edit and Remove submodule
+//! dialogs (state/submodules.rs, state/submodules/{add,batch,edit,remove}.rs,
+//! update/submodules.rs, update/submodule_{add,batch,edit,remove}.rs, ui/submodules.rs,
 //! ui/submodule_dialogs.rs).
 
 use std::path::PathBuf;
@@ -17,6 +17,18 @@ pub struct RemoveRequest {
     pub path: String,
     /// The .gitmodules name, which names the stored module.
     pub name: String,
+}
+
+/// Which batch of submodules to update.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Batch {
+    /// Initialize every one not checked out (the header menu, the palette, the offer on open).
+    InitAll,
+    /// Initialize or update every one not at its recorded commit (the header menu, the palette).
+    UpdateAll,
+    /// Like `UpdateAll`, after a checkout, pull, merge, rebase or reset, leaving out any that
+    /// would leave commits behind.
+    Auto,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -44,12 +56,23 @@ pub enum SubmoduleMsg {
     Remove,
     /// From the runner: how the removal went. It ends the active job.
     Removed { request: RemoveRequest, report: RemoveReport },
+    /// Start a batch update. Unconfirmed reads the submodules again first (and Update all may
+    /// ask); confirmed runs from the snapshot.
+    Batch { batch: Batch, confirmed: bool },
+    /// From the runner: the submodules read again for `batch`.
+    CheckedAll { batch: Batch, result: Result<Vec<SubmoduleInfo>, String> },
+    /// The header menu's choice about updating after checkouts and pulls in this repository.
+    SetUpdates(trellis_core::settings::SubmoduleUpdates),
+    /// Open the Edit submodule dialog for the submodule at this path.
+    EditDialog(String),
+    /// The Edit dialog's Save: reads the form from `st.modal`.
+    Edit,
 }
 
 impl SubmoduleMsg {
     /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
-    /// drops it. Only `Checked` and `RemoveChecked` come back scoped, and both only lead to a
-    /// question for the tab that asked.
+    /// drops it. Only `Checked`, `RemoveChecked` and `CheckedAll` come back scoped, and each only
+    /// leads to a question or a job for the tab that asked.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             Self::Open(..)
@@ -62,7 +85,12 @@ impl SubmoduleMsg {
             | Self::RemoveDialog(..)
             | Self::RemoveChecked { .. }
             | Self::Remove
-            | Self::Removed { .. } => None,
+            | Self::Removed { .. }
+            | Self::Batch { .. }
+            | Self::CheckedAll { .. }
+            | Self::SetUpdates(..)
+            | Self::EditDialog(..)
+            | Self::Edit => None,
         }
     }
 }

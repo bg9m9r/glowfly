@@ -6,7 +6,7 @@ use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::submodule::SubmoduleMsg;
+use crate::submodule::{Batch, SubmoduleMsg};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
@@ -14,7 +14,7 @@ use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::repo::{SubmoduleInfo, SubmoduleState};
-use trellis_core::settings::ThemeChoice;
+use trellis_core::settings::{SubmoduleUpdates, ThemeChoice};
 
 fn oid(c: char) -> Oid {
     Oid::from_str(&c.to_string().repeat(40)).unwrap()
@@ -22,7 +22,7 @@ fn oid(c: char) -> Oid {
 
 fn info(path: &str, state: SubmoduleState, url: Option<&str>) -> SubmoduleInfo {
     let checked_out = match state {
-        SubmoduleState::Uninitialized => None,
+        SubmoduleState::Uninitialized | SubmoduleState::Missing => None,
         SubmoduleState::OutOfSync | SubmoduleState::DirtyOutOfSync => Some(oid('b')),
         _ => Some(oid('a')),
     };
@@ -34,6 +34,9 @@ fn info(path: &str, state: SubmoduleState, url: Option<&str>) -> SubmoduleInfo {
         checked_out,
         state,
         left_behind: Vec::new(),
+        clone_url: None,
+        branch: None,
+        added: false,
     }
 }
 
@@ -46,6 +49,8 @@ fn with_submodules(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
         info("tools/gen", SubmoduleState::Uninitialized, None),
         info("vendor/json", SubmoduleState::Dirty, Some("../json.git")),
         info("vendor/zlib", SubmoduleState::DirtyOutOfSync, Some("../zlib.git")),
+        info("vendor/gone", SubmoduleState::Missing, Some("../gone.git")),
+        SubmoduleInfo { added: true, ..info("tools/new", SubmoduleState::Uninitialized, Some("../new.git")) },
     ];
     (st, dir)
 }
@@ -174,9 +179,47 @@ fn submodule_header_menu() {
     let row = pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32);
     click(&mut h, pos2(row.x, row.y - 27.0), PointerButton::Secondary);
     h.check_snapshot("submodule_header_menu");
+    assert!(!h.get_by_label("Initialize all submodules").is_disabled());
+    assert!(!h.get_by_label("Update all submodules").is_disabled());
+    h.get_by_label("Update after checkout and pull").hover();
+    h.run();
+    h.check_snapshot("submodule_header_menu_updates");
+    h.get_by_label("Always in this repository").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::SetUpdates(SubmoduleUpdates::Always)))));
+    drop(h);
+
+    let (st, _) = with_submodules(ThemeChoice::Dark, "submodule-header-menu");
+    let mut h = harness(st, true);
+    h.run();
+    click(&mut h, pos2(row.x, row.y - 27.0), PointerButton::Secondary);
+    h.get_by_label("Initialize all submodules").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::Batch { batch: Batch::InitAll, confirmed: false }))));
+    click(&mut h, pos2(row.x, row.y - 27.0), PointerButton::Secondary);
     h.get_by_label("Add submodule…").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::AddDialog))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn submodule_edit_menu_item() {
+    let (st, dir) = with_submodules(ThemeChoice::Dark, "submodule-edit-item");
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h, "libs/core");
+    h.get_by_label("Edit submodule…").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::EditDialog(p)) if p == "libs/core")));
+    open_menu(&mut h, "tools/gen");
+    assert!(h.get_by_label("Edit submodule…").is_disabled(), "no .gitmodules entry");
+    h.press_key(eframe::egui::Key::Escape);
+    h.run();
+    open_menu(&mut h, "vendor/gone");
+    assert!(!h.get_by_label("Restore folder").is_disabled());
+    assert!(h.get_by_label("Open in new tab").is_disabled());
     drop(h);
     remove_fixture(&dir);
 }

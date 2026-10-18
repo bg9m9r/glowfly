@@ -1,10 +1,11 @@
 //! The SUBMODULES section: opening a submodule in a tab, and initializing or updating one as a
 //! git job. Updating one that is checked out at another commit reads it again first, then asks,
 //! naming any commits on no branch or tag that the update would leave behind. Adding one is in
-//! `submodule_add.rs`, removing one in `submodule_remove.rs`.
+//! `submodule_add.rs`, editing one in `submodule_edit.rs`, removing one in `submodule_remove.rs`,
+//! and updating several at once (also after checkouts and pulls) in `submodule_batch.rs`.
 
 use super::ops::{JobSpec, start_job};
-use super::{submodule_add as add, submodule_remove as remove};
+use super::{submodule_add as add, submodule_batch as batch, submodule_edit as edit, submodule_remove as remove};
 use crate::effect::{Effect, SubmoduleEffect};
 use crate::msg::Msg;
 use crate::state::submodules::{confirm_update_body, confirm_update_button, job_label, open_blocked, update_args, update_blocked};
@@ -75,6 +76,11 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mu
         SubmoduleMsg::RemoveChecked { path, result } => remove::checked(st, path, result),
         SubmoduleMsg::Remove => remove::confirm(st, fx),
         SubmoduleMsg::Removed { request, report } => remove::removed(st, request, report, now, fx),
+        SubmoduleMsg::Batch { batch: b, confirmed } => batch::batch(st, b, confirmed, fx),
+        SubmoduleMsg::CheckedAll { batch: b, result } => batch::checked_all(st, b, result, fx),
+        SubmoduleMsg::SetUpdates(choice) => batch::set_updates(st, choice, fx),
+        SubmoduleMsg::EditDialog(path) => edit::dialog(st, path),
+        SubmoduleMsg::Edit => edit::submit(st, fx),
     }
 }
 

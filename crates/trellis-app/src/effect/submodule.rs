@@ -1,7 +1,7 @@
-//! Effects of the SUBMODULES section: reading a submodule again before an update or a removal is
-//! confirmed, checking the Add dialog's folder on disk, and removing a submodule.
+//! Effects of the SUBMODULES section: reading a submodule (or all of them, before a batch update)
+//! again before an update or a removal is confirmed, checking the Add dialog's folder on disk, and removing a submodule.
 
-use crate::submodule::RemoveRequest;
+use crate::submodule::{Batch, RemoveRequest};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -16,6 +16,8 @@ pub enum SubmoduleEffect {
     /// Reads what removing the submodule at `path` would delete. Reported as
     /// `SubmoduleMsg::RemoveChecked`.
     CheckRemove { workdir: PathBuf, path: String },
+    /// Reads every submodule again before a batch update. Reported as `SubmoduleMsg::CheckedAll`.
+    CheckAll { workdir: PathBuf, batch: Batch },
     /// Deinitializes the submodule, removes it with `git rm` and deletes its stored module. It
     /// ends the active job (`SubmoduleMsg::Removed`).
     Remove(RemoveRequest),
@@ -27,6 +29,7 @@ impl SubmoduleEffect {
             SubmoduleEffect::Check { .. } => "check-submodule",
             SubmoduleEffect::CheckAddPath { .. } => "check-submodule-path",
             SubmoduleEffect::CheckRemove { .. } => "check-submodule-remove",
+            SubmoduleEffect::CheckAll { .. } => "check-submodules",
             SubmoduleEffect::Remove(_) => "remove-submodule",
         }
     }
@@ -35,7 +38,9 @@ impl SubmoduleEffect {
     /// removal ends the active job whichever tab is active, so both are unscoped.
     pub fn scope(&self) -> Option<&PathBuf> {
         match self {
-            SubmoduleEffect::Check { workdir, .. } | SubmoduleEffect::CheckRemove { workdir, .. } => Some(workdir),
+            SubmoduleEffect::Check { workdir, .. }
+            | SubmoduleEffect::CheckRemove { workdir, .. }
+            | SubmoduleEffect::CheckAll { workdir, .. } => Some(workdir),
             SubmoduleEffect::CheckAddPath { .. } | SubmoduleEffect::Remove(_) => None,
         }
     }

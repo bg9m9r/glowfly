@@ -15,6 +15,8 @@ pub type Version = (u32, u32, u32);
 pub enum Feature {
     /// `git restore`: discarding changes to a file, restoring a file from a commit.
     Restore,
+    /// `git submodule set-url` (2.25) and `set-branch` (2.22): editing a submodule.
+    SubmoduleEdit,
     /// `git push --force-if-includes`: force pushing only over commits seen locally.
     ForceIfIncludes,
     /// `git sparse-checkout set --cone/--no-cone --no-sparse-index --stdin`.
@@ -24,12 +26,14 @@ pub enum Feature {
 }
 
 impl Feature {
-    pub const ALL: [Feature; 4] = [Feature::Restore, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree];
+    pub const ALL: [Feature; 5] =
+        [Feature::Restore, Feature::SubmoduleEdit, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree];
 
     /// The oldest git (major, minor) that has it.
     pub fn min(self) -> (u32, u32) {
         match self {
             Feature::Restore => (2, 23),
+            Feature::SubmoduleEdit => (2, 25),
             Feature::ForceIfIncludes => (2, 30),
             // `set` learned `--cone`/`--no-cone` and the sparse-index options in 2.35.
             Feature::SparseCheckout => (2, 35),
@@ -41,6 +45,7 @@ impl Feature {
     pub fn label(self) -> &'static str {
         match self {
             Feature::Restore => "discarding changes to a file",
+            Feature::SubmoduleEdit => "editing a submodule's URL and branch",
             Feature::ForceIfIncludes => "force pushing only over commits you have seen",
             Feature::SparseCheckout => "sparse checkout",
             Feature::MergeTree => "predicting merge conflicts",
@@ -145,7 +150,12 @@ mod tests {
     #[test]
     fn features_follow_the_version() {
         assert_eq!(missing_for(Some((2, 22, 9))), Feature::ALL.to_vec());
-        assert_eq!(missing_for(Some((2, 23, 0))), [Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]);
+        assert_eq!(
+            missing_for(Some((2, 23, 0))),
+            [Feature::SubmoduleEdit, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]
+        );
+        assert!(missing_for(Some((2, 24, 9))).contains(&Feature::SubmoduleEdit));
+        assert_eq!(missing_for(Some((2, 25, 0))), [Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree]);
         assert_eq!(missing_for(Some((2, 34, 1))), [Feature::SparseCheckout, Feature::MergeTree]);
         assert_eq!(missing_for(Some((2, 37, 7))), [Feature::MergeTree]);
         assert!(missing_for(Some((2, 38, 0))).is_empty());
@@ -160,7 +170,9 @@ mod tests {
         let old = GitInfo { path: Some("/usr/bin/git".into()), version: Some((2, 34, 1)), chosen: false };
         let b = old.banner().unwrap();
         assert!(b.contains("2.34.1") && b.contains("2.38 or newer") && b.contains("sparse checkout, predicting merge conflicts"), "{b}");
-        assert!(!old.has(Feature::MergeTree) && old.has(Feature::Restore));
+        assert!(!old.has(Feature::MergeTree) && old.has(Feature::Restore) && old.has(Feature::SubmoduleEdit));
+        let older = GitInfo { version: Some((2, 24, 1)), ..old.clone() }.banner().unwrap();
+        assert!(older.contains("these are off: editing a submodule's URL and branch, force pushing"), "{older}");
         assert_eq!(GitInfo { path: None, version: Some((2, 45, 0)), chosen: false }.banner(), None);
         let none = GitInfo::default().banner().unwrap();
         assert!(none.contains("couldn't find git") && none.contains("Preferences > Git"), "{none}");

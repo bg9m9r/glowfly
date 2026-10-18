@@ -134,7 +134,12 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::LoadFileHistory { .. }
         | Effect::LoadBlame(_)
         | Effect::LoadTrackedPaths { .. }
-        | Effect::Submodule(SubmoduleEffect::Check { .. } | SubmoduleEffect::CheckAddPath { .. } | SubmoduleEffect::CheckRemove { .. })
+        | Effect::Submodule(
+            SubmoduleEffect::Check { .. }
+            | SubmoduleEffect::CheckAddPath { .. }
+            | SubmoduleEffect::CheckRemove { .. }
+            | SubmoduleEffect::CheckAll { .. },
+        )
         | Effect::CheckWorktreeFolder(_)
         | Effect::CheckCloneParent { .. }
         | Effect::CheckRepoFolders(_)

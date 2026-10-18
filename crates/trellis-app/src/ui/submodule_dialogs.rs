@@ -1,11 +1,13 @@
-//! The Add submodule dialog (a URL, the folder it goes in, an optional branch) and the Remove
-//! submodule confirmation (what it deletes and what would be lost). The Add dialog's text checks
+//! The Add submodule dialog (a URL, the folder it goes in, an optional branch), the Edit
+//! submodule dialog (its URL and branch) and the Remove submodule confirmation (what it deletes
+//! and what would be lost). The Add dialog's text checks
 //! are the pure rules in `state::submodules::add`; the folder's disk check is the runner's, asked
 //! for by `update` after each edit and only read here.
 
 use super::theme::color;
 use crate::msg::Msg;
 use crate::state::submodules::add::{AddForm, Disk, relative_url_hint};
+use crate::state::submodules::edit::EditForm;
 use crate::state::submodules::remove::RemoveForm;
 use crate::submodule::SubmoduleMsg;
 use eframe::egui::{self, Id, Key, RichText};
@@ -120,6 +122,69 @@ pub fn add(ui: &mut egui::Ui, form: &mut AddForm, snap: Option<&Snapshot>, focus
     if edited {
         msgs.push(Msg::Submodule(SubmoduleMsg::AddEdited));
     }
+    close
+}
+
+const BRANCH_HINT: &str = "The branch an update with --remote follows. Empty means the remote's default branch; \".\" \
+                           follows this repository's current branch name.";
+const EDIT_NOTE: &str = "The change is written to .gitmodules (commit it to share it), and to this repository's config \
+                         and the submodule's origin when it is checked out.";
+
+/// The Edit dialog; returns true when Cancel closes it (`update` closes it once the job starts).
+/// The URL field has the keyboard focus unless the branch field has it, or `focus` is false. Save
+/// is disabled while nothing changed, a field is invalid or a job runs (`idle` false).
+pub fn edit(ui: &mut egui::Ui, form: &mut EditForm, focus: bool, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+    let mut close = false;
+    let (url_id, branch_id) = (Id::new("trellis-submodule-edit-url"), Id::new("trellis-submodule-edit-branch"));
+    let mut enter = false;
+    let pressed = |ui: &egui::Ui, r: &egui::Response| r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    ui.heading(format!("Edit submodule {}", form.path));
+    if form.name != form.path {
+        ui.label(RichText::new(format!("Named {} in .gitmodules", form.name)).color(color::weak()));
+    }
+    ui.add_space(6.0);
+
+    ui.label(RichText::new("Repository URL").color(color::weak()));
+    let r = ui.add(egui::TextEdit::singleline(&mut form.url).id(url_id).desired_width(f32::INFINITY));
+    enter |= pressed(ui, &r);
+    if focus && !ui.memory(|m| m.has_focus(branch_id)) {
+        r.request_focus();
+    }
+    let url_bad = form.url_problem();
+    if let Some(p) = url_bad {
+        ui.label(RichText::new(p).color(color::red()));
+    } else if let Some(h) = relative_url_hint(&form.url) {
+        ui.label(RichText::new(h).color(color::weak()));
+    }
+
+    ui.add_space(6.0);
+    ui.label(RichText::new("Branch").color(color::weak()));
+    let r = ui.add(
+        egui::TextEdit::singleline(&mut form.branch)
+            .id(branch_id)
+            .hint_text("Empty for the remote's default branch")
+            .desired_width(f32::INFINITY),
+    );
+    enter |= pressed(ui, &r);
+    let branch_bad = form.branch_problem();
+    if let Some(p) = branch_bad {
+        ui.label(RichText::new(p).color(color::red()));
+    } else {
+        ui.label(RichText::new(BRANCH_HINT).color(color::weak()));
+    }
+
+    ui.add_space(6.0);
+    ui.label(RichText::new(EDIT_NOTE).color(color::weak()));
+    ui.add_space(8.0);
+    let valid = form.changed() && url_bad.is_none() && branch_bad.is_none() && idle;
+    ui.horizontal(|ui| {
+        if ui.add_enabled(valid, egui::Button::new("Save")).clicked() || (enter && valid) {
+            msgs.push(Msg::Submodule(SubmoduleMsg::Edit));
+        }
+        if ui.button("Cancel").clicked() {
+            close = true;
+        }
+    });
     close
 }
 

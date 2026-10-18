@@ -90,8 +90,15 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         ([c], None) => UndoKind::classify(c),
         _ => None,
     });
+    // A branch checkout, pull, merge or reset may be followed by updating the submodules.
+    let moves = trellis_core::submodule_ops::moves_work_tree(&spec.cmds) && spec.cwd.is_none();
+    let label = job.label.clone();
     let (cmds, write_file, expect) = (spec.cmds, spec.write_file, spec.expect);
-    launch(st, job, spec.cwd, move |cwd| Effect::RunGit { cwd, cmds, write_file, record, prompts, expect }, fx)
+    let started = launch(st, job, spec.cwd, move |cwd| Effect::RunGit { cwd, cmds, write_file, record, prompts, expect }, fx);
+    if started != Started::No {
+        super::submodule_batch::job_started(st, &label, moves);
+    }
+    started
 }
 
 /// Makes a job labelled `label` the active one in the active tab's repository, running the

@@ -83,8 +83,9 @@ second one next to it.
 5. **Patches touch one path.** Filter by delta (`ApplyOptions::delta_callback`, with
    `rpath::touches`), and apply index patches with `exact::apply_to_index`.
 6. **Give the git CLI literal paths.** Use `--literal-pathspecs` and `--` before paths.
-   `submodule update` ignores the flag, so give it `:(literal)<path>`
-   (`state/submodules.rs`).
+   `submodule update` and `submodule sync` ignore the flag, so give them `:(literal)<path>`
+   (`state/submodules.rs`, `submodule_ops/update.rs`); `submodule set-url` and `set-branch`
+   take a plain path after `--`.
 7. **Parse only `-z` output, as bytes,** and strip the documented prefix exactly
    (`strip_prefix(b"? ")` in `repo/status_cli.rs`). Never trim a field: ` a.txt` is a real name.
 8. **Ask the file system whether it folds names.** `repo::collide::probe` creates a

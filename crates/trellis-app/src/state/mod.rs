@@ -178,6 +178,7 @@ pub enum Modal {
     RemoveWorktree(worktree_manage::RemoveForm),
     LockWorktree(worktree_manage::LockForm),
     AddSubmodule(submodules::add::AddForm),
+    EditSubmodule(submodules::edit::EditForm),
     RemoveSubmodule(submodules::remove::RemoveForm),
     Confirm {
         title: String,
@@ -342,6 +343,8 @@ pub struct AppState {
     pub watch: watch::WatchState,
     /// Credential prompts from git (global, not per tab).
     pub askpass: askpass::CredentialPrompts,
+    /// Submodule updates after jobs and the offers made on open (global, not per tab).
+    pub submodules: submodules::batch::SubmoduleSession,
     /// Whether git-lfs is installed (global, not per tab): checked at startup and whenever Preferences > Git LFS reads its status.
     pub lfs_install: lfs::LfsInstall,
     /// The git Trellis runs and what it can do (global): checked at startup.
@@ -442,6 +445,7 @@ impl AppState {
             last_fetch: now,
             watch,
             askpass: Default::default(),
+            submodules: Default::default(),
             lfs_install: Default::default(),
             git: Default::default(),
             themes: Default::default(),

@@ -8,7 +8,7 @@
 //! live values are `Settings.connections` and the `Settings` fields themselves. A switch saves
 //! the live values into the outgoing profile and loads the incoming one's.
 
-use super::{BranchVisibility, ColumnWidths, Corner, GraphColumns, ProfileId, Settings, ThemeChoice};
+use super::{BranchVisibility, ColumnWidths, Corner, GraphColumns, ProfileId, Settings, SubmodulePrefs, ThemeChoice};
 use crate::forge::Account;
 use serde::{Deserialize, Serialize};
 
@@ -47,6 +47,7 @@ profile_prefs! {
     reopen_last_repo: bool,
     watch_files: bool,
     conflict_check: bool,
+    submodules: SubmodulePrefs,
     delete_to_trash: bool,
     // UI Customization
     theme: ThemeChoice,
@@ -108,6 +109,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "repo_forge_filters",
     "repo_trust",
     "status_tip_shown",
+    "repo_submodule_updates",
     "favorite_repos",
     "external_tools",
     "profiles",

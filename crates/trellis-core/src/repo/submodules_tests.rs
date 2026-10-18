@@ -1,6 +1,7 @@
 //! Submodule status against real repositories: in sync, dirty, out of sync, both, never
-//! initialized, deinitialized, folder deleted, a gitlink without .gitmodules, a staged pointer
-//! change and a .gitmodules that can't be parsed.
+//! initialized, deinitialized, folder deleted, added and not committed, a gitlink without
+//! .gitmodules, a staged pointer change, a .gitmodules that can't be parsed, and the branch and
+//! clone URL.
 
 use super::*;
 use crate::testutil::*;
@@ -159,9 +160,82 @@ fn uninitialized_submodule() {
 
     std::fs::remove_dir_all(&sub).unwrap();
     let sm = only(&parent);
-    assert_eq!(sm.state, SubmoduleState::Uninitialized, "folder deleted");
+    assert_eq!(sm.state, SubmoduleState::Missing, "folder deleted");
     assert_eq!(sm.checked_out, None);
+    assert!(!sm.is_initialized());
     cleanup(&parent);
+}
+
+#[test]
+fn added_submodule_is_marked() {
+    let lib = scratch_repo("sm-added-lib");
+    write(
+        &lib, "lib.txt", "lib
+",
+    );
+    git(&lib, &["add", "."]);
+    git(&lib, &["commit", "-q", "-m", "lib"]);
+    let parent = scratch_repo("sm-added");
+    write(
+        &parent, "a.txt", "one
+",
+    );
+    git(&parent, &["add", "."]);
+    git(&parent, &["commit", "-q", "-m", "first"]);
+    let url = format!("../{}", lib.file_name().unwrap().to_string_lossy());
+    git(&parent, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &url, "libs/lib"]);
+    let sm = only(&parent);
+    assert!(sm.added, "staged, not committed");
+    assert_eq!(sm.state, SubmoduleState::InSync);
+    git(&parent, &["commit", "-q", "-m", "add lib"]);
+    assert!(!only(&parent).added);
+
+    // Added by hand and never cloned: a gitlink, a .gitmodules entry and an empty folder.
+    let mut text = std::fs::read_to_string(parent.join(".gitmodules")).unwrap();
+    text.push_str(&format!(
+        "[submodule \"libs/new\"]
+	path = libs/new
+	url = {url}
+"
+    ));
+    write(&parent, ".gitmodules", &text);
+    git(&parent, &["add", ".gitmodules"]);
+    let cacheinfo = format!("160000,{},libs/new", head(&lib));
+    git(&parent, &["update-index", "--add", "--cacheinfo", &cacheinfo]);
+    std::fs::create_dir_all(parent.join("libs").join("new")).unwrap();
+    let list = subs(&parent);
+    let new = list.iter().find(|m| m.path == "libs/new").expect("the new gitlink");
+    assert!(new.added && new.state == SubmoduleState::Uninitialized, "{new:?}");
+    assert!(list.iter().any(|m| m.path == "libs/lib" && !m.added));
+    let _ = std::fs::remove_dir_all(&lib);
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+#[test]
+fn branch_and_clone_url() {
+    let (parent, _sub) = with_submodule("sm-branch-url");
+    let lib = lib_dir(&parent);
+    let sm = only(&parent);
+    assert_eq!(sm.branch, None);
+    let config = || Repository::open(&parent).unwrap().config().unwrap().snapshot().unwrap().get_string("submodule.libs/lib.url").ok();
+    let configured = config().expect("an initialized submodule has its URL in the config");
+    assert_eq!(sm.clone_url.as_deref(), Some(configured.as_str()));
+
+    git(&parent, &["config", "-f", ".gitmodules", "submodule.libs/lib.branch", "dev"]);
+    assert_eq!(only(&parent).branch.as_deref(), Some("dev"));
+
+    git(&parent, &["submodule", "deinit", "-q", "-f", "libs/lib"]);
+    let _ = unset_url(&parent);
+    assert_eq!(config(), None);
+    git(&parent, &["remote", "add", "origin", "https://example.com/o/parent.git"]);
+    let name = lib.file_name().unwrap().to_string_lossy().into_owned();
+    assert_eq!(only(&parent).clone_url, Some(format!("https://example.com/o/{name}")));
+    cleanup(&parent);
+}
+
+/// `git config --unset submodule.libs/lib.url`, which fails harmlessly when deinit dropped it.
+fn unset_url(dir: &Path) -> bool {
+    crate::gitcli::run(dir, &crate::gitcli::args(&["config", "--unset", "submodule.libs/lib.url"])).0
 }
 
 #[test]

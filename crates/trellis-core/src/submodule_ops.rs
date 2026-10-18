@@ -3,7 +3,8 @@
 //! `git submodule deinit` and `git rm`, and where git keeps a submodule's own repository
 //! (`<git dir>/modules/<name>`; a linked worktree has its own store under
 //! `.git/worktrees/<id>/modules`). The disk and index checks of a new submodule's folder
-//! are in `repo/submodule_add.rs`; removing one is in `remove.rs`.
+//! are in `repo/submodule_add.rs`; removing one is in `remove.rs`; batch updates, editing one's
+//! URL and branch and which commands move the work tree in `update.rs`; relative URLs in `url.rs`.
 
 use crate::names::{WinNameProblem, blocks_here, is_git_dir_name, win_name_problem};
 use crate::paths;
@@ -11,7 +12,11 @@ use crate::remote_ops::{UrlProblem, check_url};
 use std::path::{Component, Path, PathBuf};
 
 mod remove;
+mod update;
+mod url;
 pub use remove::*;
+pub use update::*;
+pub use url::*;
 
 /// Why a folder can't take a new submodule. `message` words it for the dialog.
 #[derive(Clone, Debug, PartialEq)]

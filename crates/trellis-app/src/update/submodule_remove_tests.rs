@@ -130,6 +130,9 @@ fn remove_in_an_untrusted_repository_asks_first() {
         checked_out: Some(id),
         state: SubmoduleState::InSync,
         left_behind: Vec::new(),
+        clone_url: None,
+        branch: None,
+        added: false,
     };
     st.snap.as_mut().unwrap().submodules.push(info);
     confirming(&mut st);

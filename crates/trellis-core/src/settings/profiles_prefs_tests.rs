@@ -247,3 +247,16 @@ fn swap_carries_the_menu_bar() {
     s.swap_profile_setup(A);
     assert!(!s.show_menu_bar, "back from the outgoing profile");
 }
+
+#[test]
+fn swap_carries_keeping_submodules_updated() {
+    let mut s = two();
+    s.submodules.keep_updated = true;
+    s.repo_submodule_updates.insert("/w/r".into(), false);
+    s.swap_profile_setup(B);
+    assert!(!s.submodules.keep_updated, "B's saved preference");
+    assert_eq!(s.repo_submodule_updates.get("/w/r"), Some(&false), "the per-repository choice stays");
+    s.active_profile = Some(B);
+    s.swap_profile_setup(A);
+    assert!(s.submodules.keep_updated, "A's, saved on the way out");
+}

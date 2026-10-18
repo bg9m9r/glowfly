@@ -1,13 +1,20 @@
 //! The SUBMODULES section's text and rules, shared by the view and `update`: the status word,
-//! the tooltip, why open, update and copy are blocked, the update confirmation (with the commits
-//! it would leave behind) and the update command. The Add submodule dialog's rules are in
-//! `add.rs`, the Remove submodule confirmation's in `remove.rs`.
+//! the tooltip, why open, update, copy and edit are blocked, the update confirmation (with the
+//! commits it would leave behind) and the update command. The Add submodule dialog's rules are in
+//! `add.rs`, the Edit dialog's in `edit.rs`, the Remove submodule confirmation's in `remove.rs`,
+//! and batch updates (Initialize all, Update all, updating after checkouts) in `batch.rs`.
 
+use super::AppState;
 use git2::Oid;
+use trellis_core::git_version::Feature;
 use trellis_core::gitcli::args;
 use trellis_core::repo::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleState};
+use trellis_core::settings::SubmoduleUpdates;
+use trellis_core::submodule_ops::is_relative_url;
 
 pub mod add;
+pub mod batch;
+pub mod edit;
 pub mod remove;
 
 /// How many commits a confirmation names.
@@ -18,14 +25,21 @@ pub(crate) fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-/// The word at the right of a row; None when in sync.
-pub fn state_word(s: SubmoduleState) -> Option<&'static str> {
-    match s {
+/// The word at the right of a row; None when in sync (and committed). An added submodule's
+/// starts with "new".
+pub fn row_word(sm: &SubmoduleInfo) -> Option<String> {
+    let word = match sm.state {
         SubmoduleState::InSync => None,
         SubmoduleState::OutOfSync => Some("out of sync"),
         SubmoduleState::Dirty => Some("changes"),
         SubmoduleState::DirtyOutOfSync => Some("changes · out of sync"),
         SubmoduleState::Uninitialized => Some("not initialized"),
+        SubmoduleState::Missing => Some("folder missing"),
+    };
+    match (sm.added, word) {
+        (true, Some(w)) => Some(format!("new · {w}")),
+        (true, None) => Some("new".to_owned()),
+        (false, w) => w.map(str::to_owned),
     }
 }
 
@@ -33,7 +47,15 @@ pub fn state_word(s: SubmoduleState) -> Option<&'static str> {
 pub fn tooltip(sm: &SubmoduleInfo) -> String {
     let recorded = short(sm.recorded);
     let checked = sm.checked_out.map(short);
-    let mut out = match sm.state {
+    let mut out = String::new();
+    if sm.added {
+        out.push_str(&if sm.is_initialized() {
+            format!("Added and checked out, but not committed yet; commit .gitmodules and {} to record it.\n", sm.path)
+        } else {
+            "Added but not committed yet, and not checked out; Initialize clones it.\n".to_owned()
+        });
+    }
+    out.push_str(&match sm.state {
         SubmoduleState::InSync => "Checked out at the commit this repository records.".to_owned(),
         SubmoduleState::OutOfSync | SubmoduleState::DirtyOutOfSync => {
             let now = checked.clone().unwrap_or_default();
@@ -52,15 +74,29 @@ pub fn tooltip(sm: &SubmoduleInfo) -> String {
             s
         }
         SubmoduleState::Dirty => "Uncommitted changes or untracked files inside; open it to commit or discard them.".to_owned(),
-        SubmoduleState::Uninitialized => format!("Not checked out yet; Initialize clones it and checks out {recorded}."),
-    };
+        SubmoduleState::Uninitialized => {
+            format!("An empty folder: never initialized, or deinitialized. Initialize clones it and checks out {recorded}.")
+        }
+        SubmoduleState::Missing => format!(
+            "The folder is gone, but this repository still records the submodule. Restore checks it out again at {recorded}; \
+             Remove submodule… drops it."
+        ),
+    });
     out.push('\n');
     if sm.name != sm.path {
         out.push_str(&format!("\nName: {}", sm.name));
     }
     match &sm.url {
-        Some(u) => out.push_str(&format!("\nURL: {u}")),
+        Some(u) => {
+            out.push_str(&format!("\nURL: {u}"));
+            if let Some(c) = sm.clone_url.as_deref().filter(|c| is_relative_url(u) && c != u) {
+                out.push_str(&format!("\nResolves to: {c}"));
+            }
+        }
         None => out.push_str("\nURL: none in .gitmodules"),
+    }
+    if let Some(b) = &sm.branch {
+        out.push_str(&format!("\nBranch: {b}"));
     }
     out.push_str(&format!("\nRecorded commit: {recorded}"));
     out.push_str(&format!("\nChecked-out commit: {}", checked.as_deref().unwrap_or("none")));
@@ -70,7 +106,11 @@ pub fn tooltip(sm: &SubmoduleInfo) -> String {
 /// Why the submodule can't be opened in a tab: its folder holds no repository yet, so opening
 /// it would find the parent instead.
 pub fn open_blocked(sm: &SubmoduleInfo) -> Option<&'static str> {
-    (!sm.is_initialized()).then_some("Not checked out yet. Initialize it first.")
+    match sm.state {
+        SubmoduleState::Missing => Some("Its folder is missing. Restore it first."),
+        SubmoduleState::Uninitialized => Some("Not checked out yet. Initialize it first."),
+        _ => None,
+    }
 }
 
 /// Why Initialize / Update to recorded commit is unavailable.
@@ -88,14 +128,51 @@ pub fn copy_url_blocked(sm: &SubmoduleInfo) -> Option<&'static str> {
     sm.url.is_none().then_some(".gitmodules has no URL for it.")
 }
 
+/// What Copy URL copies: the URL git clones from (a relative one resolved), else .gitmodules'.
+pub fn copy_url_text(sm: &SubmoduleInfo) -> String {
+    sm.clone_url.clone().or_else(|| sm.url.clone()).unwrap_or_default()
+}
+
+/// Why Edit submodule… is unavailable; `git_blocked` is why this git can't (too old).
+pub fn edit_blocked(sm: &SubmoduleInfo, git_blocked: Option<&str>) -> Option<String> {
+    if sm.url.is_none() { Some(".gitmodules has no entry for it.".to_owned()) } else { git_blocked.map(str::to_owned) }
+}
+
 /// The menu item that runs `update_args`.
 pub fn update_label(sm: &SubmoduleInfo) -> &'static str {
-    if sm.is_initialized() { "Update to recorded commit" } else { "Initialize" }
+    match sm.state {
+        SubmoduleState::Missing => "Restore folder",
+        SubmoduleState::Uninitialized => "Initialize",
+        _ => "Update to recorded commit",
+    }
 }
 
 /// The job's label, in the toast and the activity log.
 pub fn job_label(sm: &SubmoduleInfo) -> String {
-    if sm.is_initialized() { format!("Update submodule {}", sm.path) } else { format!("Initialize submodule {}", sm.path) }
+    let verb = match sm.state {
+        SubmoduleState::Missing => "Restore",
+        SubmoduleState::Uninitialized => "Initialize",
+        _ => "Update",
+    };
+    format!("{verb} submodule {}", sm.path)
+}
+
+/// What the SUBMODULES section shows beyond the snapshot: this repository's choice about
+/// updating after checkouts and pulls, the global setting it may follow, and why this git can't
+/// edit a submodule.
+pub struct SectionCx {
+    pub updates: SubmoduleUpdates,
+    pub global: bool,
+    pub edit_git: Option<String>,
+}
+
+pub fn section_cx(st: &AppState) -> SectionCx {
+    let own = st.snap.as_ref().and_then(|s| st.settings.submodule_updates_for(&s.real_workdir));
+    SectionCx {
+        updates: SubmoduleUpdates::from_override(own),
+        global: st.settings.submodules.keep_updated,
+        edit_git: st.git.blocked(Feature::SubmoduleEdit),
+    }
 }
 
 /// "1 commit", "3 commits", or "50 or more commits" when the list was cut off.
@@ -171,96 +248,4 @@ pub fn update_args(path: &str) -> Vec<String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn info(state: SubmoduleState, name: &str, url: Option<&str>) -> SubmoduleInfo {
-        let checked_out = match state {
-            SubmoduleState::Uninitialized => None,
-            SubmoduleState::OutOfSync | SubmoduleState::DirtyOutOfSync => Some(Oid::from_str(&"b".repeat(40)).unwrap()),
-            _ => Some(Oid::from_str(&"a".repeat(40)).unwrap()),
-        };
-        SubmoduleInfo {
-            name: name.into(),
-            path: "libs/core".into(),
-            url: url.map(str::to_owned),
-            recorded: Oid::from_str(&"a".repeat(40)).unwrap(),
-            checked_out,
-            state,
-            left_behind: Vec::new(),
-        }
-    }
-
-    #[test]
-    fn state_words() {
-        assert_eq!(state_word(SubmoduleState::InSync), None);
-        assert_eq!(state_word(SubmoduleState::OutOfSync), Some("out of sync"));
-        assert_eq!(state_word(SubmoduleState::Dirty), Some("changes"));
-        assert_eq!(state_word(SubmoduleState::DirtyOutOfSync), Some("changes · out of sync"));
-        assert_eq!(state_word(SubmoduleState::Uninitialized), Some("not initialized"));
-    }
-
-    #[test]
-    fn tooltip_lines() {
-        let t = tooltip(&info(SubmoduleState::OutOfSync, "libs/core", Some("../core.git")));
-        assert!(t.starts_with("Checked out at bbbbbbb while this repository records aaaaaaa."), "{t}");
-        assert!(t.contains("\nURL: ../core.git") && t.contains("\nRecorded commit: aaaaaaa"), "{t}");
-        assert!(t.contains("\nChecked-out commit: bbbbbbb") && !t.contains("Name:"), "{t}");
-
-        let t = tooltip(&info(SubmoduleState::Uninitialized, "core", None));
-        assert!(t.contains("\nName: core") && t.contains("\nURL: none in .gitmodules"), "{t}");
-        assert!(t.contains("\nChecked-out commit: none") && t.contains("checks out aaaaaaa"), "{t}");
-    }
-
-    #[test]
-    fn labels_and_rules() {
-        let un = info(SubmoduleState::Uninitialized, "libs/core", Some("u"));
-        let ok = info(SubmoduleState::InSync, "libs/core", Some("u"));
-        let dirty = info(SubmoduleState::Dirty, "libs/core", Some("u"));
-        let out = info(SubmoduleState::DirtyOutOfSync, "libs/core", Some("u"));
-        assert_eq!((update_label(&un), job_label(&un)), ("Initialize", "Initialize submodule libs/core".to_owned()));
-        assert_eq!((update_label(&ok), job_label(&ok)), ("Update to recorded commit", "Update submodule libs/core".to_owned()));
-        assert!(open_blocked(&un).is_some() && open_blocked(&dirty).is_none());
-        assert_eq!(update_blocked(&un), None);
-        assert_eq!(update_blocked(&out), None);
-        assert_eq!(update_blocked(&ok), Some("Already checked out at the recorded commit."));
-        assert_eq!(update_blocked(&dirty), Some("Already checked out at the recorded commit."));
-        assert!(update_blocked(&info(SubmoduleState::Uninitialized, "x", None)).unwrap().contains(".gitmodules"));
-        assert!(copy_url_blocked(&ok).is_none() && copy_url_blocked(&info(SubmoduleState::InSync, "x", None)).is_some());
-        let body = confirm_update_body(&out);
-        assert!(body.contains("bbbbbbb") && body.contains("aaaaaaa") && body.contains("Branches inside"), "{body}");
-        assert_eq!(confirm_update_button(&out), "Update");
-        assert_eq!(update_args("libs/core"), ["submodule", "update", "--init", "--checkout", "--", ":(literal)libs/core"]);
-    }
-
-    fn with_left_behind(n: usize) -> SubmoduleInfo {
-        let mut sm = info(SubmoduleState::OutOfSync, "libs/core", Some("u"));
-        sm.left_behind = (0..n).map(|i| (Oid::from_str(&format!("{:x}", i + 1).repeat(40)[..40]).unwrap(), format!("work {i}"))).collect();
-        sm
-    }
-
-    #[test]
-    fn left_behind_commits_are_named() {
-        let one = with_left_behind(1);
-        let body = confirm_update_body(&one);
-        assert!(body.contains("No branch or tag inside it contains that commit") && !body.contains("Branches inside"), "{body}");
-        assert!(body.contains("\n    1111111 work 0") && body.contains("To keep it, cancel"), "{body}");
-        assert!(body.contains("create a branch at bbbbbbb"), "{body}");
-        assert_eq!(confirm_update_button(&one), "Update and leave 1 commit behind");
-        let t = tooltip(&one);
-        assert!(t.contains("\n1 commit here is on no branch or tag; updating would leave it behind."), "{t}");
-
-        let seven = with_left_behind(7);
-        let body = confirm_update_body(&seven);
-        assert!(body.contains("these commits") && body.contains("\n    5555555 work 4") && !body.contains("work 5"), "{body}");
-        assert!(body.contains("\n    and 2 more\n"), "{body}");
-        assert_eq!(confirm_update_button(&seven), "Update and leave 7 commits behind");
-
-        let many = with_left_behind(LEFT_BEHIND_MAX);
-        let body = confirm_update_body(&many);
-        assert!(body.contains("\n    and at least 45 more\n"), "{body}");
-        assert_eq!(confirm_update_button(&many), "Update and leave 50 or more commits behind");
-        let t = tooltip(&many);
-        assert!(t.contains("\n50 or more commits here are on no branch or tag; updating would leave them behind."), "{t}");
-    }
-}
+mod tests;

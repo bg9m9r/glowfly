@@ -65,7 +65,7 @@ pub(super) fn last_log(st: &AppState) -> (bool, String) {
     st.log.last().map(|l| (l.ok, l.text.clone())).expect("a log entry")
 }
 
-fn deinit(st: &mut AppState, parent: &Path) {
+pub(super) fn deinit(st: &mut AppState, parent: &Path) {
     git(parent, &["submodule", "deinit", "-q", "-f", PATH]);
     drive(st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(sub(st).state, SubmoduleState::Uninitialized);
@@ -194,7 +194,7 @@ fn status_reload_refreshes_submodules() {
 
 /// The commit `git submodule update` leaves: HEAD detached at the recorded commit, then a commit
 /// made there. Returns its id.
-fn commit_detached(parent: &Path, text: &str) -> Oid {
+pub(super) fn commit_detached(parent: &Path, text: &str) -> Oid {
     let dir = parent.join(PATH);
     git(&dir, &["checkout", "-q", "--detach"]);
     std::fs::write(dir.join("a.txt"), text).unwrap();

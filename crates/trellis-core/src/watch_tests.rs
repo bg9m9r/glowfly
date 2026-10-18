@@ -48,6 +48,37 @@ fn git_internals_are_classified() {
 }
 
 #[test]
+fn submodule_repositories_change_the_status() {
+    let c = |p: &str| git_change(Path::new(p), Touch::Modified);
+    for status in ["modules/libs/lib/HEAD", "modules/x/refs/heads/main", "modules/x/packed-refs", "modules/a/modules/b/HEAD"] {
+        assert_eq!(c(status), Change::Status, "{status}");
+    }
+    for none in [
+        "modules/x/logs/HEAD",
+        "modules/x/logs/refs/heads/main",
+        "modules/x/index",
+        "modules/x/objects/ab/cd",
+        "modules/x/HEAD.lock",
+        "modules/x/FETCH_HEAD",
+        "modules/x/config",
+        "worktrees/w/modules/x/HEAD",
+    ] {
+        assert_eq!(c(none), Change::None, "{none}");
+    }
+
+    let wd = crate::paths::temp_dir().join("trellis-watch-nested-git-missing").join("wd");
+    let paths = WatchPaths::new(&wd, &wd.join(".git"));
+    let x = wd.join("vendor").join("x").join(".git");
+    let mut never = |_: &str| false;
+    assert_eq!(paths.classify_path(&x.join("HEAD"), Touch::Modified, &mut never), (Change::Status, None));
+    assert_eq!(paths.classify_path(&x.join("refs").join("heads").join("m"), Touch::Modified, &mut never), (Change::Status, None));
+    assert_eq!(paths.classify_path(&x.join("packed-refs"), Touch::Modified, &mut never), (Change::Status, None));
+    for none in [x.join("index"), x.join("objects").join("ab").join("cd"), x.join("logs").join("HEAD"), x.join("HEAD.lock"), x.clone()] {
+        assert_eq!(paths.classify_path(&none, Touch::Modified, &mut never), (Change::None, None), "{}", none.display());
+    }
+}
+
+#[test]
 fn a_linked_worktree_follows_the_refs_it_shares() {
     let c = |p: &str| common_change(Path::new(p));
     for full in ["refs/heads/main", "refs/remotes/origin/x", "packed-refs", "HEAD"] {
@@ -122,7 +153,7 @@ fn worktree_paths_are_classified() {
     };
     assert_eq!(paths.classify_path(&wd.join("src").join("a.rs"), Touch::Modified, &mut ignored), (Change::Paths, Some("src/a.rs".into())));
     assert_eq!(paths.classify(&wd, Touch::Modified, &mut ignored), Change::None);
-    assert_eq!(paths.classify(&wd.join("vendor/sub/.git/HEAD"), Touch::Modified, &mut ignored), Change::None);
+    assert_eq!(paths.classify(&wd.join("vendor/sub/.git/index"), Touch::Modified, &mut ignored), Change::None);
     assert_eq!(paths.classify(&wd.join(".git").join("index"), Touch::Modified, &mut ignored), Change::Status, "the git rule wins");
     assert_eq!(paths.classify(&wd.join("target").join("debug").join("x.o"), Touch::Modified, &mut ignored), Change::None);
     let outside = crate::paths::temp_dir().join("trellis-watch-elsewhere").join("a.rs");

@@ -154,7 +154,11 @@ fn start(st: &mut AppState, confirmed: bool, autostash: bool, now: Instant, fx: 
 
 /// Runs `request` as the active job labelled `label`.
 pub(super) fn launch(st: &mut AppState, label: &str, request: StartRequest, fx: &mut Vec<Effect>) -> Started {
-    super::ops::begin_job(st, label, false, move |cwd| Effect::Rebase(RebaseEffect::Start { cwd, request }), fx)
+    let started = super::ops::begin_job(st, label, false, move |cwd| Effect::Rebase(RebaseEffect::Start { cwd, request }), fx);
+    if started != Started::No {
+        super::submodule_batch::job_started(st, label, true);
+    }
+    started
 }
 
 /// A rebase job ended (the panel's, a graph edit's, or the banner's Continue / Skip). Its tab's

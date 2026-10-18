@@ -101,6 +101,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     close = true;
                 }
             }
+            Modal::EditSubmodule(form) => {
+                if super::submodule_dialogs::edit(ui, form, !prompting, idle, msgs) {
+                    close = true;
+                }
+            }
             Modal::RemoveSubmodule(form) => {
                 if super::submodule_dialogs::remove(ui, form, idle, msgs) {
                     close = true;

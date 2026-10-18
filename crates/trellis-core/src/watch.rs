@@ -1,5 +1,7 @@
 //! Which file changes in a repository matter to the app: path classification for a file
 //! watcher, plus a cache of ignored folders read through libgit2. No watching happens here.
+//! Submodules' repositories (in `<git dir>/modules` or a nested `.git` folder) count only when
+//! their HEAD or refs move, which changes the parent's status.
 
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
@@ -90,7 +92,8 @@ impl WatchPaths {
 
     /// `classify`, plus the work-tree path ('/'-separated, relative) when only it changed
     /// (`Change::Paths`). An ignore, attributes or `.gitmodules` file, or a name that isn't
-    /// UTF-8, calls for the whole status.
+    /// UTF-8, calls for the whole status, as does HEAD or a ref moving in a nested `.git` folder
+    /// (a submodule that keeps its own repository); the rest of such a folder is ignored.
     pub fn classify_path(&self, path: &Path, touch: Touch, ignored: &mut impl FnMut(&str) -> bool) -> (Change, Option<String>) {
         // The git dir usually sits inside the workdir, so it is checked first.
         if let Some(rel) = self.git_dirs.iter().find_map(|g| path.strip_prefix(g).ok()) {
@@ -103,8 +106,18 @@ impl WatchPaths {
             return (Change::None, None);
         };
         let parts: Vec<String> = rel.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect();
-        // The root itself, and anything inside a nested repository or submodule.
-        if parts.is_empty() || parts.iter().any(|p| p == ".git") || ignored(&parts.join("/")) {
+        // The git folder of a nested repository or a submodule that keeps its own: a commit,
+        // checkout or ref change there changes what the parent's status says about it.
+        if let Some(i) = parts.iter().position(|p| p == ".git") {
+            let inner: Vec<&str> = parts[i + 1..].iter().map(String::as_str).collect();
+            return match inner.as_slice() {
+                [.., last] if last.ends_with(".lock") => (Change::None, None),
+                ["HEAD"] | ["packed-refs"] | ["refs", ..] => (Change::Status, None),
+                _ => (Change::None, None),
+            };
+        }
+        // The root itself, and ignored paths.
+        if parts.is_empty() || ignored(&parts.join("/")) {
             return (Change::None, None);
         }
         let whole = rel.components().any(|c| c.as_os_str().to_str().is_none())
@@ -140,8 +153,20 @@ pub fn git_change(rel: &Path, touch: Touch) -> Change {
             Change::Full
         }
         ["index"] | ["info", "exclude"] => Change::Status,
+        ["modules", rest @ ..] => module_change(rest),
         _ => Change::None,
     }
+}
+
+/// What a change to `parts`, a path under `<git dir>/modules` (where git keeps submodules'
+/// repositories, nested ones under `<name>/modules`), calls for: a moved HEAD or ref changes the
+/// parent's status. Their index is left out on purpose: reading the parent's status runs
+/// `git status` inside, which rewrites it, and that would reload again and again.
+fn module_change(parts: &[&str]) -> Change {
+    let after_logs = |i: usize| i > 0 && parts[i - 1] == "logs";
+    let head = parts.len() >= 2 && parts[parts.len() - 1] == "HEAD" && !after_logs(parts.len() - 1);
+    let refs = parts.iter().enumerate().any(|(i, p)| *p == "refs" && !after_logs(i) && i + 1 < parts.len());
+    if head || refs || parts.last() == Some(&"packed-refs") { Change::Status } else { Change::None }
 }
 
 /// What a change to `rel`, a path in a linked worktree's common git dir, calls for: the refs

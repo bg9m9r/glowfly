@@ -16,8 +16,10 @@ pub enum SubmoduleState {
     Dirty,
     /// Both of the above: another commit, and changes inside.
     DirtyOutOfSync,
-    /// No repository in its folder (never cloned, deinitialized, or the folder was deleted).
+    /// An empty folder: never initialized, or deinitialized.
     Uninitialized,
+    /// The folder is gone but the index still has the gitlink.
+    Missing,
 }
 
 /// One submodule gitlink in the parent's index.
@@ -29,6 +31,14 @@ pub struct SubmoduleInfo {
     pub path: String,
     /// As written in .gitmodules, so it may be relative; None when there is no entry.
     pub url: Option<String>,
+    /// The URL git clones it from: this repository's `submodule.<name>.url` when set (an
+    /// initialized submodule), else `url` resolved against the default remote's URL or the
+    /// working tree (`submodule_ops::resolve_url`). None when `url` is.
+    pub clone_url: Option<String>,
+    /// .gitmodules' `submodule.<name>.branch`.
+    pub branch: Option<String>,
+    /// In the index but not in HEAD: added (staged) and not committed yet.
+    pub added: bool,
     /// The gitlink in the parent's index.
     pub recorded: Oid,
     /// The submodule's HEAD; None when uninitialized.
@@ -46,7 +56,7 @@ pub const LEFT_BEHIND_MAX: usize = 50;
 
 impl SubmoduleInfo {
     pub fn is_initialized(&self) -> bool {
-        self.state != SubmoduleState::Uninitialized
+        !matches!(self.state, SubmoduleState::Uninitialized | SubmoduleState::Missing)
     }
 
     pub fn is_out_of_sync(&self) -> bool {
@@ -65,6 +75,9 @@ pub(super) fn list(repo: &Repository) -> Vec<SubmoduleInfo> {
     let Ok(subs) = repo.submodules() else { return Vec::new() };
     // A snapshot: only a snapshot hands out values as bytes.
     let gitmodules = repo.workdir().and_then(|w| git2::Config::open(&w.join(".gitmodules")).and_then(|mut c| c.snapshot()).ok());
+    let config = repo.config().and_then(|mut c| c.snapshot()).ok();
+    let base = url_base(repo, config.as_ref());
+    let workdir = repo.workdir().map(Path::to_path_buf);
     let mut out: Vec<SubmoduleInfo> = subs
         .iter()
         .filter_map(|sm| {
@@ -76,9 +89,17 @@ pub(super) fn list(repo: &Repository) -> Vec<SubmoduleInfo> {
             let name = sm.name().map(str::to_owned).unwrap_or_else(|| path.clone());
             let checked_out = sm.workdir_id();
             let flags = repo.submodule_status(&name, SubmoduleIgnore::None).unwrap_or(SubmoduleStatus::empty());
-            let state = classify(flags, recorded, checked_out);
+            // One component at a time, so the folder uses the platform's separators.
+            let folder_exists =
+                workdir.as_ref().is_some_and(|w| path.split('/').fold(w.clone(), |p, c| p.join(c)).symlink_metadata().is_ok());
+            let state = classify(flags, recorded, checked_out, folder_exists);
             let left_behind = left_behind(sm, recorded, checked_out);
-            Some(SubmoduleInfo { name, path, url: sm.url().map(str::to_owned), recorded, checked_out, state, left_behind })
+            let url = sm.url().map(str::to_owned);
+            let configured = config.as_ref().and_then(|c| c.get_string(&format!("submodule.{name}.url")).ok());
+            let clone_url = url.as_ref().map(|u| configured.unwrap_or_else(|| crate::submodule_ops::resolve_url(u, &base)));
+            let branch = sm.branch().map(str::to_owned);
+            let added = sm.head_id().is_none();
+            Some(SubmoduleInfo { name, path, url, clone_url, branch, added, recorded, checked_out, state, left_behind })
         })
         .collect();
     out.sort_by(|a, b| a.path.cmp(&b.path));
@@ -112,10 +133,27 @@ pub fn submodules_if_any(workdir: &Path, known: bool) -> Result<Option<Vec<Submo
     submodules_at(workdir).map(Some)
 }
 
+/// What relative submodule URLs resolve against, as git does: the URL of the current branch's
+/// remote (else `origin`), or the working tree's path ('/'-separated) when there is no such
+/// remote.
+fn url_base(repo: &Repository, config: Option<&git2::Config>) -> String {
+    let branch = repo.head().ok().filter(|h| h.is_branch()).and_then(|h| h.shorthand().map(str::to_owned));
+    let get = |key: String| config.and_then(|c| c.get_string(&key).ok());
+    let remote = branch.and_then(|b| get(format!("branch.{b}.remote"))).unwrap_or_else(|| "origin".to_owned());
+    get(format!("remote.{remote}.url")).unwrap_or_else(|| {
+        let dir = repo.workdir().unwrap_or_else(|| repo.path());
+        let text = dir.to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/");
+        text.trim_end_matches('/').to_owned()
+    })
+}
+
 /// Compares ids rather than trusting WD_MODIFIED, so a failed status call still tells in sync
-/// from out of sync.
-fn classify(flags: SubmoduleStatus, recorded: Oid, checked_out: Option<Oid>) -> SubmoduleState {
-    if checked_out.is_none() || flags.intersects(SubmoduleStatus::WD_UNINITIALIZED | SubmoduleStatus::WD_DELETED) {
+/// from out of sync. `folder_exists`: something is at the submodule's path in the working tree.
+fn classify(flags: SubmoduleStatus, recorded: Oid, checked_out: Option<Oid>, folder_exists: bool) -> SubmoduleState {
+    if !folder_exists || flags.contains(SubmoduleStatus::WD_DELETED) {
+        return SubmoduleState::Missing;
+    }
+    if checked_out.is_none() || flags.contains(SubmoduleStatus::WD_UNINITIALIZED) {
         return SubmoduleState::Uninitialized;
     }
     let dirty = flags.intersects(SubmoduleStatus::WD_INDEX_MODIFIED | SubmoduleStatus::WD_WD_MODIFIED | SubmoduleStatus::WD_UNTRACKED);

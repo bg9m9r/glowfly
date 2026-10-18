@@ -1,5 +1,5 @@
 //! Settings saved per repository (graph filters, pull request and issue filters, the issue
-//! tracker, trust decisions) are keyed by the repository's resolved working directory
+//! tracker, trust decisions, whether submodules are kept updated) are keyed by the repository's resolved working directory
 //! (`Snapshot::real_workdir`), saved losslessly (`paths::encode`). One set of helpers reads and
 //! writes every such map, so a repository opened by another spelling (a link, a short 8.3 name,
 //! libgit2's `C:/x/` form) finds its settings, a new entry replaces one saved under another
@@ -87,15 +87,33 @@ impl Settings {
         set(&mut self.status_tip_shown, real, Some(true));
     }
 
-    /// Moves the graph filter, pull request and issue filters, issue tracker and slow-status note
-    /// saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
+    /// The repository's own choice about updating submodules after checkouts and pulls (None
+    /// follows Preferences > General).
+    pub fn submodule_updates_for(&self, real: &Path) -> Option<bool> {
+        get(&self.repo_submodule_updates, real).copied()
+    }
+
+    /// Saves the repository's choice; None removes it, so the global setting applies again.
+    pub fn set_submodule_updates(&mut self, real: &Path, v: Option<bool>) {
+        set(&mut self.repo_submodule_updates, real, v);
+    }
+
+    /// Whether submodules are updated after checkouts and pulls in the repository at `real`: its
+    /// own choice, else Preferences > General.
+    pub fn keeps_submodules_updated(&self, real: &Path) -> bool {
+        self.submodule_updates_for(real).unwrap_or(self.submodules.keep_updated)
+    }
+
+    /// Moves the graph filter, pull request and issue filters, issue tracker, slow-status note and
+    /// submodule choice saved under `aliases` (libgit2's spelling, the path it was opened by) to the repository's
     /// resolved key `real`. Trust decisions were always saved under the resolved key and are left
     /// alone. Returns whether anything moved.
     pub fn adopt_repo_keys(&mut self, real: &Path, aliases: &[&Path]) -> bool {
         let filters = adopt(&mut self.graph_filters, real, aliases);
         let forge_filters = adopt(&mut self.repo_forge_filters, real, aliases);
         let tips = adopt(&mut self.status_tip_shown, real, aliases);
-        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips
+        let subs = adopt(&mut self.repo_submodule_updates, real, aliases);
+        adopt(&mut self.repo_trackers, real, aliases) | filters | forge_filters | tips | subs
     }
 }
 
@@ -166,6 +184,27 @@ mod tests {
         assert!(s.status_tip_shown_for(&a) && !s.status_tip_shown_for(&b));
         s.mark_status_tip_shown(&PathBuf::from("/w/a/"));
         assert_eq!(s.status_tip_shown.len(), 1, "one entry whatever the spelling");
+    }
+
+    #[test]
+    fn submodule_updates_per_repository() {
+        let mut s = Settings::default();
+        s.set_submodule_updates(Path::new("/w/repo"), Some(true));
+        assert_eq!(s.submodule_updates_for(Path::new("/w/./repo/")), Some(true));
+        assert!(s.keeps_submodules_updated(Path::new("/w/repo")), "the override");
+        assert!(!s.keeps_submodules_updated(Path::new("/w/other")), "the global value");
+        s.submodules.keep_updated = true;
+        s.set_submodule_updates(Path::new("/w/repo"), Some(false));
+        assert!(!s.keeps_submodules_updated(Path::new("/w/repo")) && s.keeps_submodules_updated(Path::new("/w/other")));
+        s.set_submodule_updates(Path::new("/w/repo/"), None);
+        assert!(s.repo_submodule_updates.is_empty());
+        assert!(s.keeps_submodules_updated(Path::new("/w/repo")));
+
+        s.repo_submodule_updates.insert("/link/repo".into(), false);
+        let real = PathBuf::from("/real/repo");
+        assert!(s.adopt_repo_keys(&real, &[Path::new("/link/repo")]));
+        assert_eq!(s.submodule_updates_for(&real), Some(false));
+        assert_eq!(s.repo_submodule_updates.keys().collect::<Vec<_>>(), [&key(&real)]);
     }
 
     #[test]

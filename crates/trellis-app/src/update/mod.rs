@@ -74,6 +74,8 @@ mod stash;
 mod stash_push;
 mod status_tip;
 mod submodule_add;
+mod submodule_batch;
+mod submodule_edit;
 mod submodule_remove;
 mod submodules;
 mod tab_groups;
@@ -221,6 +223,8 @@ mod palette_recent_tests;
 #[cfg(test)]
 mod palette_stash_tests;
 #[cfg(test)]
+mod palette_submodule_tests;
+#[cfg(test)]
 mod palette_tests;
 #[cfg(test)]
 mod palette_theme_tests;
@@ -298,6 +302,10 @@ mod stash_rename_tests;
 mod stash_tests;
 #[cfg(test)]
 mod submodule_add_tests;
+#[cfg(test)]
+mod submodule_batch_tests;
+#[cfg(test)]
+mod submodule_edit_tests;
 #[cfg(test)]
 mod submodule_remove_tests;
 #[cfg(test)]

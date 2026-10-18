@@ -2,6 +2,7 @@
 //! (`RebaseMsg::RebaseFinished`) says where the rebase stopped next, and the headlines for
 //! stopped rebases.
 
+use super::ops::Started;
 use super::rebase::refuse;
 use crate::effect::{Effect, RebaseEffect};
 use crate::state::AppState;
@@ -26,7 +27,9 @@ pub(super) fn resume(st: &mut AppState, how: Resume, now: Instant, fx: &mut Vec<
         return;
     }
     let label = if snap.state == RebaseInteractive { "Interactive rebase" } else { "Rebase" };
-    super::ops::begin_job(st, label, false, move |cwd| Effect::Rebase(RebaseEffect::Resume { cwd, how }), fx);
+    if super::ops::begin_job(st, label, false, move |cwd| Effect::Rebase(RebaseEffect::Resume { cwd, how }), fx) != Started::No {
+        super::submodule_batch::job_started(st, label, true);
+    }
 }
 
 /// The headline for a rebase that stopped, with the step when the count is known. `ok` is

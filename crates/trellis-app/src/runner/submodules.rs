@@ -1,5 +1,5 @@
-//! The SUBMODULES section's effects (`Effect::Submodule`): reading one submodule again before
-//! its update or removal is confirmed, checking the Add dialog's folder, and removing one.
+//! The SUBMODULES section's effects (`Effect::Submodule`): reading one submodule (or all, for a
+//! batch update) again before its update or removal is confirmed, checking the Add dialog's folder, and removing one.
 
 use crate::effect::SubmoduleEffect;
 use crate::msg::Msg;
@@ -18,6 +18,9 @@ pub(super) fn run(e: SubmoduleEffect) -> Msg {
             }
             let result = repo::check_submodule_path(&repo, &path).map_err(|p| p.message(&path));
             SubmoduleMsg::AddPathChecked { repo, path, result }
+        }
+        SubmoduleEffect::CheckAll { workdir, batch } => {
+            SubmoduleMsg::CheckedAll { batch, result: repo::submodules_at(&workdir).map_err(|e| e.to_string()) }
         }
         SubmoduleEffect::CheckRemove { workdir, path } => {
             let result = submodule_ops::removal_facts(&workdir, &path).map(|o| o.map(Box::new)).map_err(|e| e.to_string());

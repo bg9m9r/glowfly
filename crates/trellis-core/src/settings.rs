@@ -16,6 +16,7 @@ mod paths;
 mod profiles;
 mod profiles_prefs;
 pub mod repo_keys;
+mod submodules;
 mod terminal;
 pub mod themes;
 mod themes_io;
@@ -33,6 +34,7 @@ pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir, runtime_dir, xdg_data_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
+pub use submodules::{SubmodulePrefs, SubmoduleUpdates};
 pub use terminal::{CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalPrefs};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
@@ -180,6 +182,9 @@ pub struct Settings {
     /// Dry-run merge the current branch against its upstream or default branch after loads and
     /// fetches (Preferences > General).
     pub conflict_check: bool,
+    /// Update submodules after checkouts and pulls (Preferences > General).
+    #[serde(default)]
+    pub submodules: SubmodulePrefs,
     /// "system" or a code from i18n::Lang (Preferences > General).
     pub language: String,
 
@@ -283,6 +288,9 @@ pub struct Settings {
     /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
     #[serde(default)]
     pub status_tip_shown: HashMap<String, bool>,
+    /// Per-repository override of `submodules.keep_updated`, keyed by `repo_keys`; no entry follows it.
+    #[serde(default)]
+    pub repo_submodule_updates: HashMap<String, bool>,
     /// Favorite repositories (welcome screen and repository menu), as working-directory paths in
     /// the order they were added.
     #[serde(default)]
@@ -338,6 +346,7 @@ impl Default for Settings {
             reopen_last_repo: true,
             watch_files: true,
             conflict_check: true,
+            submodules: SubmodulePrefs::default(),
             language: crate::i18n::SYSTEM.into(),
             theme: ThemeChoice::Dark,
             notification_location: Corner::BottomLeft,
@@ -384,6 +393,7 @@ impl Default for Settings {
             repo_forge_filters: HashMap::new(),
             repo_trust: HashMap::new(),
             status_tip_shown: HashMap::new(),
+            repo_submodule_updates: HashMap::new(),
             favorite_repos: Vec::new(),
             external_tools: ExternalTools::default(),
             profiles: Vec::new(),

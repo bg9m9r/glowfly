@@ -100,7 +100,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 
 | Page | Trellis | Gap |
 |---|---|---|
-| General | ✔ General | Missing: delete `.orig` files after merge, keep submodules updated, show all commits, path to `sh.exe`, extended logging, conflict detection |
+| General | ✔ General | Missing: delete `.orig` files after merge, show all commits, path to `sh.exe`, extended logging, conflict detection |
 | Profiles | ✔ Profile (identity, connected accounts and app preferences per profile, switching) | Follow-ups in Later > Profiles |
 | SSH | ✔ SSH page (key pairs, generate a key, the key git uses, local agent, add a key to a hosting service) | Follow-ups in Later > SSH key management |
 | Integrations | ✔ 10 services | PR/issue depth (P2) |
@@ -532,6 +532,11 @@ Done except the group colors, which wait on repository groups in the repository 
     for a path that already exists or is already in the index
   - [x] Remove a submodule (deinit, `git rm`, clean its `.git/modules` entry) behind a
     destructive confirmation
+- [x] **Submodule upkeep**
+  Keep submodules updated after checkouts, pulls, merges, rebases and resets (Preferences >
+  General, with a per-repository override in the SUBMODULES menu); Initialize all and Update all,
+  offered on open; Edit submodule… for the URL and branch; missing-folder and new states; resolved
+  relative URLs; live status from submodule HEAD and ref changes; palette commands.
 - [x] **External diff and merge tools**
   - [x] External diff tool: program and arguments ({local}, {remote}, {path}) in Preferences >
     External Tools, opened from file rows and the diff header
@@ -775,15 +780,6 @@ follow-ups go to Ideas, not here.
 - Confirm before closing a terminal tab whose shell is running a program
 - Shift+PageUp/PageDown and Shift+Home/End scroll the history from the keyboard
 - Copy on select, and middle-click paste on Linux
-
-### Submodules
-
-- "Keep submodules up to date": a General preference with a per-repository override (use global
-  / on / off) that runs `git submodule update --init --recursive` after checkout, pull, merge,
-  rebase and reset
-- Initialize / update all submodules from the section header's menu, and offer to initialize
-  them when a repository with uninitialized submodules is opened or cloned
-- Refresh submodule status on status-only reloads and watcher events, not just full loads
 
 ### Worktrees
 
@@ -1102,8 +1098,6 @@ here, under the item they grew from.
   suggesting a restart
 - Watch inactive tabs so their state updates in the background
 - Status-bar indicator showing whether live updates are active for the repository
-- Reflect submodule HEAD changes live in the parent's status (paths under a nested `.git` are
-  ignored for now)
 
 ### Credential prompts
 
@@ -1246,18 +1240,13 @@ here, under the item they grew from.
 
 ### Submodules
 
-- Set a submodule's URL (`git submodule set-url`, then `git submodule sync`) and edit its branch
 - Nested (recursive) submodules shown as a tree under their parent
-- Tell apart a deleted submodule folder, a newly added one (staged, not committed) and a
-  never-initialized one in the marker and tooltip
-- Resolve a relative .gitmodules URL against the parent's remote for Copy URL and the tooltip
 - Commit the current checkout as the new recorded commit (stage the gitlink) from the row menu,
   and discard a submodule's uncommitted changes
 - Show a gitlink change in the WIP and commit diffs as the commit range it moves over, and
   explain that a submodule's own changes are committed inside it
 - Fetch and pull inside a submodule; recurse-submodules options for fetch, pull and push; a
   clear message when checkout or reset fails because of submodule changes
-- Palette commands for opening, initializing, updating and removing submodules
 - Add recursively, cloning the new submodule's own submodules too
 - Shallow add (`--depth`) and a single-branch clone for large submodules
 - Choose a submodule name other than its path (`--name`), which also gets past a leftover stored
@@ -1269,6 +1258,15 @@ here, under the item they grew from.
 - Send a removed submodule's stored module to the OS trash instead of deleting it
 - Undo for adding or removing a submodule
 - A context-menu entry to show or hide the SUBMODULES section
+- Also update submodules after undo/redo, cherry-pick, revert and stash pop
+- A "Clone submodules too" (`--recurse-submodules`) checkbox in the Clone dialog, defaulting to
+  the keep-updated setting
+- Remember "don't offer to initialize submodules" per repository instead of once per session
+- A live "resolves to" preview of a relative URL in the Edit submodule dialog
+- Rename or move a submodule (name and path) from the Edit submodule dialog
+- Update nested submodules that are out of sync inside an in-sync parent submodule on Update all
+- Per-submodule progress and a cancel button for long recursive updates
+- Translate the SUBMODULES section, its menus and dialogs
 
 ### Worktrees
 

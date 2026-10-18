@@ -10,6 +10,8 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 #[path = "palette_checkouts.rs"]
 mod palette_checkouts;
+#[path = "palette_commands_submodules.rs"]
+mod palette_commands_submodules;
 #[path = "palette_conflict.rs"]
 mod palette_conflict;
 #[path = "palette_gitflow.rs"]
@@ -327,9 +329,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     palette_setup::setup_entries(out);
     palette_gitflow::gitflow_entries(st, snap, out);
     palette_issues::issue_entries(st, out);
-    // Here even without submodules: the SUBMODULES section (and its menu) only shows with some.
-    let add = C::Submodule(crate::submodule::SubmoduleMsg::AddDialog);
-    out.push(entry(add, "Add submodule…", "submodule add nested repository dependency vendor library"));
+    palette_commands_submodules::submodule_entries(st, snap, out);
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));
     let toggle = if st.terminal.open { "Hide terminal panel" } else { "Show terminal panel" };

@@ -78,6 +78,10 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         ui.checkbox(&mut s.conflict_check, t.tr("prefs.general.conflict_check.check"));
         help(ui, t.tr("prefs.general.conflict_check.help"));
     });
+    row(ui, t.tr("prefs.general.submodules.label"), |ui| {
+        ui.checkbox(&mut s.submodules.keep_updated, t.tr("prefs.general.submodules.check"));
+        help(ui, t.tr("prefs.general.submodules.help"));
+    });
     row(ui, t.tr("prefs.general.delete_to_trash.label"), |ui| {
         let check = if cfg!(windows) {
             t.tr("prefs.general.delete_to_trash.check_windows")
