@@ -29,7 +29,7 @@ fn toolbar_palette_button() {
     assert!(st.settings.toolbar_labels);
     let mut h = harness(st, true);
     h.run();
-    h.get_by_label("Command palette").click();
+    h.get_by_label("Search and run commands").click();
     h.run();
     let toggles = h.state().1.iter().filter(|m| matches!(m, Msg::Palette(PaletteMsg::TogglePalette))).count();
     assert_eq!(toggles, 1);
@@ -42,7 +42,7 @@ fn toolbar_palette_tooltip_light() {
     st.settings.toolbar_labels = false;
     let mut h = harness(st, false);
     h.run();
-    h.get_by_label("Command palette").hover();
+    h.get_by_label("Search and run commands").hover();
     for _ in 0..4 {
         h.run();
     }
