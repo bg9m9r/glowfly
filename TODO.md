@@ -155,17 +155,18 @@ are in Later > UI review polish.
       for accent, primary and focus, lifted panels, and amber kept for "in progress"; the light
       theme tuned on its own rather than inverted. An opt-in compact density in Preferences at
       most, never the default
-- [ ] **Icons-only toolbar with rich tooltips**: toolbar buttons show icons only (labels stay
-      available through "Show toolbar icon labels", now off by default) and every button gets a
-      card tooltip: the name, its shortcut as keycaps, one sentence on what it does in this
-      repository now, and a status line when there is state ("2 commits to push", "4 files
-      changed", "Last fetched 2 minutes ago"). Push, Pull and Pop use a preview card instead:
-      the commits a push sends or a pull brings in, or the stash Pop applies
-  - One shared tooltip widget (raised, rounded, soft shadow, a pointer at its target) used
-    across the app, not only the toolbar
+- [ ] **Restyled toolbar and rich tooltips**: the toolbar keeps a label under each icon
+      (outline icons, even spacing, a rounded hover fill) and every button gets a rich tooltip:
+      a header with the action's title and a weak line under it (the shortcut as keycaps, or
+      the state: "main is 2 ahead, 0 behind", "4 files changed", "Last fetched 2 minutes ago"),
+      then an inset section with what it will touch: the commits a push sends or a pull brings
+      in, the stash Pop applies, the commit Undo reverts. Buttons with nothing to preview show
+      the header and one sentence on what they do
+  - One shared tooltip widget, used across the app, not only the toolbar: raised, rounded
+    corners, soft shadow, no pointer or caret
   - Shows after 400 ms, then switches instantly while moving along the bar; 120 ms fade and a
-    4 px rise, none with reduced motion; stays on screen at the window edge with the pointer
-    still on its button; keyboard focus shows it too
+    4 px rise, none with reduced motion; stays on screen at the window edge; keyboard focus
+    shows it too
   - Disabled buttons keep their tooltip and say why ("No stashes to pop")
 - [ ] **Line counts in red and green**: `+N −M` for each changed file (with a small bar sized to
       the change), each commit row and the commit details header, and the WIP row ("3 modified,
