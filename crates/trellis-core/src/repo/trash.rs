@@ -1,6 +1,8 @@
-//! The system trash (the Recycle Bin on Windows, the Trash elsewhere), and why it refused a
-//! file. Only [`TrashProblem::NoTrash`] means a permanent delete is the way out; a file in use or
-//! a permission problem is worth fixing and retrying instead.
+//! The system trash (the Recycle Bin on Windows, the Trash elsewhere), the home Trash for a
+//! Linux drive without a usable trash folder (`home.rs`, checked in `xdg.rs`), and why the trash
+//! refused a file. Only [`TrashProblem::NoTrash`] means a permanent delete is the way out
+//! ([`TrashProblem::HomeTrashOnly`] offers the home Trash too); a file in use or a permission
+//! problem is worth fixing and retrying instead.
 
 use std::path::Path;
 
@@ -16,6 +18,9 @@ pub enum TrashProblem {
     AccessDenied,
     /// Anything else. Retrying may help; nothing says the trash is missing.
     Other,
+    /// Linux and the BSDs: the file's drive has no trash folder Trellis can use; the Trash in
+    /// the home folder can take a copy (`home_trash`), which the user is asked about first.
+    HomeTrashOnly,
 }
 
 /// A refusal from the trash; the file is still where it was.
@@ -50,7 +55,9 @@ pub fn os_trash(full: &Path) -> Result<(), TrashRefusal> {
         // Without a Recycle Bin on the volume, or with it turned off, the shell would destroy the
         // file without asking, as no UI is shown: refuse first.
         let no_trash = |why: &str| TrashRefusal::new(TrashProblem::NoTrash, why);
-        let root = volume_root_of(full).ok_or_else(|| no_trash("this path has no Recycle Bin"))?;
+        // A volume mounted in a folder has its own bin settings: ask for the real mount point.
+        let root =
+            win::volume_mount_point(full).or_else(|| volume_root_of(full)).ok_or_else(|| no_trash("this path has no Recycle Bin"))?;
         win::has_recycle_bin(&root).map_err(|why| no_trash(&why))?;
         let size = std::fs::symlink_metadata(full).map(|m| if m.is_file() { m.len() } else { 0 }).unwrap_or(0);
         if let Some(why) = bin_refuses(&win::bin_settings(&root), size) {
@@ -68,6 +75,8 @@ pub fn os_trash(full: &Path) -> Result<(), TrashRefusal> {
     }
     #[cfg(not(any(windows, target_os = "macos")))]
     {
+        // Ask before the crate would copy the file into the home trash without saying so.
+        xdg::check_volume(full)?;
         trash::delete(full).map_err(|e| {
             let problem = match &e {
                 trash::Error::FileSystem { source, .. } => problem_of_io(source.kind()),
@@ -76,6 +85,30 @@ pub fn os_trash(full: &Path) -> Result<(), TrashRefusal> {
             };
             TrashRefusal::new(problem.unwrap_or(TrashProblem::Other), detail_of(&e))
         })
+    }
+}
+
+/// Moves `full` into the Trash in the home folder (freedesktop), copying it there when it is on
+/// another drive, after the drive's own trash couldn't be used and the user agreed. Has the
+/// `Trasher` signature. A refusal leaves the file and the trash as they were.
+pub fn home_trash(full: &Path) -> Result<(), TrashRefusal> {
+    // As in `os_trash`: tests use stand-ins unless asked for by hand.
+    if cfg!(test) && std::env::var_os("TRELLIS_REAL_TRASH").is_none() {
+        return Err(TrashRefusal::new(TrashProblem::Other, "tests never use the real trash"));
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        let dir = home::home_trash_dir(|k| std::env::var_os(k))
+            .ok_or_else(|| TrashRefusal::new(TrashProblem::NoTrash, "neither XDG_DATA_HOME nor HOME is set, so there is no Trash"))?;
+        let date = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+        home::move_into(full, &dir, &date, |a, b| std::fs::rename(a, b))
+            .map(|_| ())
+            .map_err(|e| TrashRefusal::new(problem_of_io(e.kind()).unwrap_or(TrashProblem::Other), e.to_string()))
+    }
+    #[cfg(any(windows, target_os = "macos"))]
+    {
+        let _ = full;
+        Err(TrashRefusal::new(TrashProblem::NoTrash, "this system has no home trash"))
     }
 }
 
@@ -188,9 +221,16 @@ pub(super) fn volume_root_of(full: &Path) -> Option<std::ffi::OsString> {
 #[cfg(windows)]
 mod win;
 
+mod home;
+
+#[cfg(not(any(windows, target_os = "macos")))]
+mod xdg;
+
 #[cfg(target_os = "macos")]
 mod mac;
 
+#[cfg(test)]
+mod home_tests;
 #[cfg(test)]
 mod tests;
 

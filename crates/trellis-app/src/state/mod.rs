@@ -269,6 +269,9 @@ pub enum Modal {
     RenameTab(tabs::RenameTabForm),
     /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
     Mainline(pick::MainlineForm),
+    /// The trash on a file's drive can't be used: move it to the home Trash or delete it
+    /// permanently (`ui/trash_offer_dialog.rs`).
+    TrashOffer(files::TrashOffer),
 }
 
 /// The most commits "Load more" goes up to.

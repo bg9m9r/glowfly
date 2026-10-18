@@ -144,7 +144,7 @@ fn discard_toasts() {
         ),
     ];
     for (mode, how, want) in cases {
-        run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", mode), result: Ok(WorkFileOk::Deleted(how)) }));
+        run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", mode), result: Ok(WorkFileOk::deleted(how)) }));
         assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()), "{mode:?} {how:?}");
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -154,7 +154,7 @@ fn discard_toasts() {
 fn discard_failure_logs_and_closes_diff() {
     let (mut st, dir) = loaded("wfd-fail");
     st.diff = Some((DiffTarget::Unstaged("u.txt".into()), empty_diff().into()));
-    let ok = Ok(WorkFileOk::Deleted(Deleted::Trashed));
+    let ok = Ok(WorkFileOk::deleted(Deleted::Trashed));
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: ok }));
     assert!(st.diff.is_none());
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
@@ -181,7 +181,7 @@ fn discard_inactive_tab() {
 
     let msg = Msg::WorkFile(WorkFileMsg::WorkFileDone {
         op: discard("u.txt", DeleteMode::Trash),
-        result: Ok(WorkFileOk::Deleted(Deleted::Trashed)),
+        result: Ok(WorkFileOk::deleted(Deleted::Trashed)),
     });
     assert!(run(&mut st, Msg::Scoped { workdir: elsewhere(), msg: Box::new(msg) }).is_empty());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(format!("Moved u.txt to the {TRASH}.").as_str()));

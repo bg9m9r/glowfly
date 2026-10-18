@@ -1,7 +1,7 @@
 //! Recorded operations and how they are named in tooltips and job labels.
 
-use super::{MoveOp, ResetMode, Saved, short};
-use crate::repo::ConflictIds;
+use super::{DeleteVia, MoveOp, ResetMode, Saved, short};
+use crate::repo::{ConflictIds, StagedNew};
 use git2::Oid;
 
 /// Where HEAD points.
@@ -62,6 +62,8 @@ impl Discarded {
 /// was finished later. `StashApply` is a pop or apply onto a clean tree that left `left`.
 /// `StashDrop` is a dropped stash, put back with `stash store` under its list `message`.
 /// `Resolve` is a conflict resolution saved in the conflict view, or a save with markers.
+/// `DeleteFile` is a working-tree file deleted (Delete…, or Unstage and delete… with its
+/// `staged` entry), `before` its bytes then and `via` how it went.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     Checkout {
@@ -150,6 +152,12 @@ pub enum Action {
         before: Option<Saved>,
         after: Option<Saved>,
     },
+    DeleteFile {
+        path: String,
+        before: Saved,
+        via: DeleteVia,
+        staged: Option<StagedNew>,
+    },
 }
 
 /// A resolution's index entry: its mode and blob.
@@ -218,6 +226,7 @@ impl Action {
             Action::StashDrop { message, .. } => format!("drop of stash '{}'", cut50(message)),
             Action::Resolve { path, staged: Some(_), .. } => format!("resolution of {path}"),
             Action::Resolve { path, staged: None, .. } => format!("save of {path} with markers"),
+            Action::DeleteFile { path, .. } => format!("delete of {path}"),
         }
     }
 

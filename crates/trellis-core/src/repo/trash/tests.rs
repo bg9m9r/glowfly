@@ -119,3 +119,16 @@ fn a_file_another_program_holds_is_in_use() {
     drop(held);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[cfg(windows)]
+#[test]
+fn the_mount_point_of_a_path_is_its_volume_root() {
+    let dir = crate::paths::temp_dir();
+    let point = win::volume_mount_point(&dir.join("some-file.txt")).expect("the temp folder is on a volume");
+    let text = point.to_string_lossy().to_lowercase();
+    assert!(text.ends_with('\\'), "{text}");
+    assert!(dir.to_string_lossy().to_lowercase().starts_with(&text), "{text} is a prefix of {}", dir.display());
+    let drive = std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into());
+    let on_root = std::path::PathBuf::from(format!(r"{drive}\some-file.txt"));
+    assert_eq!(win::volume_mount_point(&on_root), volume_root_of(&on_root));
+}

@@ -351,6 +351,8 @@ pub(super) mod work_files_stage_tests;
 pub(super) mod work_files_tests;
 #[path = "work_files_trash_tests.rs"]
 pub(super) mod work_files_trash_tests;
+#[path = "work_files_undo_tests.rs"]
+pub(super) mod work_files_undo_tests;
 #[path = "work_files_unstage_tests.rs"]
 pub(super) mod work_files_unstage_tests;
 #[path = "worktree_branch_tests.rs"]

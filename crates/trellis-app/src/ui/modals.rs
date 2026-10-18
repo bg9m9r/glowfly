@@ -19,8 +19,9 @@
 //! (drawn by `undo_dialog.rs`), applying a patch file (drawn by `patch_apply_dialog.rs`),
 //! creating a patch from uncommitted changes (drawn by `patch_save_dialog.rs`), finding
 //! repositories in project folders (drawn by `repo_finder.rs`), fetching or pulling across
-//! repositories (drawn by `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`) and
-//! choosing a merge's mainline parent (drawn by `mainline_dialog.rs`).
+//! repositories (drawn by `repo_sync.rs`), renaming a tab (drawn by `tab_dialog.rs`),
+//! choosing a merge's mainline parent (drawn by `mainline_dialog.rs`) and the home Trash offer
+//! (drawn by `trash_offer_dialog.rs`).
 
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::theme::color;
@@ -285,6 +286,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             }
             Modal::Mainline(form) => close = super::mainline_dialog::show(ui, form, idle, msgs),
+            Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, o, msgs),
         }
     });
     if close || (!prompting && resp.should_close()) {

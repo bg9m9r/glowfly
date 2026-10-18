@@ -30,12 +30,13 @@ pub(super) fn restore(workdir: &Path, oid: Oid, path: String, overwrite: bool) -
     Msg::Files(FilesMsg::FileRestored { path, oid, result, undo })
 }
 
-/// Moves a deleted file to the system trash. The app's test build uses a stand-in folder
-/// instead, so tests never touch the real Recycle Bin / Trash.
+/// Moves a deleted file to the system trash, or to the home Trash when its drive's can't be
+/// used. The app's test build uses a stand-in folder for both instead, so tests never touch the
+/// real Recycle Bin / Trash.
 #[cfg(not(test))]
-const TRASHER: repo::Trasher = repo::os_trash;
+pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: repo::os_trash, home: repo::home_trash };
 #[cfg(test)]
-const TRASHER: repo::Trasher = test_trash;
+pub(super) const TRASHERS: undo::Trashers = undo::Trashers { system: test_trash, home: test_trash };
 
 /// The stand-in trash of the app's test build: a folder in the temp dir, one per process.
 #[cfg(test)]
@@ -57,8 +58,9 @@ fn test_trash(full: &Path) -> Result<(), repo::TrashRefusal> {
 
 fn removal(mode: DeleteMode) -> repo::Removal {
     match mode {
-        DeleteMode::Trash => repo::Removal::Trash(TRASHER),
+        DeleteMode::Trash => repo::Removal::Trash(TRASHERS.system),
         DeleteMode::Permanent | DeleteMode::PermanentNoTrash => repo::Removal::Permanent,
+        DeleteMode::HomeTrash => repo::Removal::Trash(TRASHERS.home),
     }
 }
 
@@ -73,10 +75,13 @@ pub(super) fn work_file(workdir: &Path, op: FileOp) -> Msg {
         FileOp::Create(p) => repo::create_file(workdir, p).map(WorkFileOk::written),
         FileOp::Rename { from, to, stage: true } => repo::rename_file_staged(workdir, from, to).map(WorkFileOk::written),
         FileOp::Rename { from, to, stage: false } => repo::rename_file(workdir, from, to).map(WorkFileOk::written),
-        FileOp::Delete { path, mode } => repo::delete_file(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
-        FileOp::UnstageDelete { path, mode } => repo::delete_staged_new_file(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
+        // Both keep the file's bytes (and staged entry) first, so they can be undone.
+        FileOp::Delete { path, mode } => undo::delete_saving(workdir, path, mode.via(), TRASHERS).map(WorkFileOk::from_saving),
+        FileOp::UnstageDelete { path, mode } => {
+            undo::delete_staged_saving(workdir, path, mode.via(), TRASHERS).map(WorkFileOk::from_saving)
+        }
         FileOp::UnstageGone(p) => repo::unstage_gone_new_file(workdir, p).map(|()| WorkFileOk::Unstaged),
-        FileOp::Discard { path, mode } => repo::discard_untracked(workdir, path, removal(*mode)).map(WorkFileOk::Deleted),
+        FileOp::Discard { path, mode } => repo::discard_untracked(workdir, path, removal(*mode)).map(WorkFileOk::deleted),
     };
     match r {
         Err(Error::TrashRefused(refusal)) => Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal }),

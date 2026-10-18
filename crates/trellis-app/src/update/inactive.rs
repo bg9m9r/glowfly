@@ -22,7 +22,13 @@ pub(super) fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant
             st.log(false, text);
             record_parked(st, workdir, undo);
         }
-        Some(Inactive::WorkFile { op, result }) => super::work_files::inactive_result(st, op, result, now),
+        Some(Inactive::WorkFile { op, result }) => {
+            // A delete that can be undone goes into that tab's history.
+            if let Ok(crate::effect::WorkFileOk::Deleted { undo: Some(a), .. }) = &result {
+                record_parked(st, workdir, (**a).clone());
+            }
+            super::work_files::inactive_result(st, op, result, now);
+        }
         None => tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display()),
     }
 }

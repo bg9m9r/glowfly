@@ -161,7 +161,7 @@ fn delete_asks_first() {
     );
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "a.txt".into(), confirmed: false }));
-    assert!(confirm(&st).1.contains("changes to a.txt are lost"), "{}", confirm(&st).1);
+    assert!(confirm(&st).1.contains("a.txt is deleted with your uncommitted changes; Undo"), "{}", confirm(&st).1);
     run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "s.txt".into(), confirmed: false }));
     assert!(confirm(&st).1.contains("brings it back as it is now"), "{}", confirm(&st).1);
 
@@ -195,12 +195,12 @@ fn delete_staged_new_file_asks_to_unstage() {
     assert_eq!(work_ops(&fx), [op]);
     assert_eq!(fx[0].scope(), Some(&dir));
 
-    // Further edits to the new file aren't staged: they go too.
+    // Further edits to the new file aren't staged: they go too, and Undo brings them back.
     st.snap.as_mut().unwrap().unstaged = vec![entry("s.txt", 'M')];
     run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "s.txt".into(), confirmed: false }));
     let (title, body, ..) = confirm(&st);
     assert_eq!(title, "Delete new file");
-    assert!(body.contains("unstaged edits"), "{body}");
+    assert!(body.ends_with("brings back both.") && !body.contains("lost"), "{body}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -209,7 +209,7 @@ fn unstage_delete_results() {
     let (mut st, dir) = loaded("wf-unstage-delete-done");
     let op = || FileOp::UnstageDelete { path: "s.txt".into(), mode: DeleteMode::Permanent };
     st.diff = Some((DiffTarget::Staged("s.txt".into()), empty_diff().into()));
-    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Deleted(Deleted::Permanently)) }));
+    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::deleted(Deleted::Permanently)) }));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Deleted s.txt and removed it from the staging area."));
     assert!(st.diff.is_none(), "the staged diff of the deleted file is closed");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
@@ -275,7 +275,7 @@ pub(super) fn empty_diff() -> FileDiff {
 fn rename_or_delete_closes_the_old_paths_diff() {
     let (mut st, dir) = loaded("wf-close-diff");
     for (op, ok) in [
-        (FileOp::Delete { path: "a.txt".into(), mode: DeleteMode::Trash }, WorkFileOk::Deleted(Deleted::Trashed)),
+        (FileOp::Delete { path: "a.txt".into(), mode: DeleteMode::Trash }, WorkFileOk::deleted(Deleted::Trashed)),
         (
             FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: false },
             WorkFileOk::Written { ignored: false, warnings: vec![] },
@@ -306,7 +306,7 @@ fn result_for_inactive_tab() {
     assert_eq!(last_log(&st), "Could not create x.txt: in the way");
 
     for (result, want) in [
-        (Ok(WorkFileOk::Deleted(Deleted::Permanently)), "Deleted s.txt and removed it from the staging area."),
+        (Ok(WorkFileOk::deleted(Deleted::Permanently)), "Deleted s.txt and removed it from the staging area."),
         (Err("in the way".to_owned()), "Could not delete s.txt: in the way"),
     ] {
         let ok = result.is_ok();
@@ -336,7 +336,8 @@ fn end_to_end_create_delete_rename() {
 
     drive(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "notes/todo.txt".into(), confirmed: true }));
     assert!(!dir.join("notes").exists());
-    assert!(st.toasts.last().is_some_and(|t| t.text == "Deleted notes/todo.txt."));
+    let want = format!("Deleted notes/todo.txt. Undo ({}) puts it back.", super::tests::keys("Ctrl+Z"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()));
 
     drive(&mut st, Msg::WorkFile(WorkFileMsg::RenameFile { from: "a.txt".into(), to: "b.txt".into(), stage: false }));
     let unstaged = &st.snap.as_ref().unwrap().unstaged;
@@ -366,6 +367,7 @@ fn end_to_end_unstage_and_delete() {
     assert!(!dir.join("new.txt").exists());
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.staged.iter().chain(&snap.unstaged).all(|f| f.path != "new.txt"), "{:?} {:?}", snap.staged, snap.unstaged);
-    assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == "Deleted new.txt and removed it from the staging area."));
+    let want = format!("Deleted new.txt and removed it from the staging area. Undo ({}) puts it back.", super::tests::keys("Ctrl+Z"));
+    assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == want), "{:?}", st.toasts.last().map(|t| &t.text));
     let _ = std::fs::remove_dir_all(&dir);
 }

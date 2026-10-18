@@ -711,14 +711,6 @@ follow-ups go to Ideas, not here.
 - Compare with working directory from the command palette and the commit details panel
 - A key to go back from a select-all to the focused commit, with a toast naming the count
 
-### File actions
-
-- Respect a drive's "remove files immediately" Recycle Bin setting on Windows
-- On Linux, offer the home trash when a mount has no usable trash folder, instead of asking to
-  delete permanently
-- Make Delete undoable with Ctrl+Z (restore the working copy from the Recycle Bin / Trash, or
-  keep a copy as Discard does)
-- Keep the staged version recoverable so Unstage and delete can be undone
 
 ### Repository trust
 
@@ -1207,6 +1199,19 @@ here, under the item they grew from.
 - Explain when a restored or opened path is outside a sparse checkout
 - Restore, Open and Show buttons in the diff header for two-commit comparisons (restoring the
   newer commit's version, as the comparison rows do)
+- Make discarding an untracked file undoable the same way Delete is
+- Make Unstage deleted file (a staged new file already gone from disk) undoable by keeping its
+  staged blob
+- Take the file back out of the Recycle Bin / Trash on undo instead of leaving its copy there
+- Keep an undo entry when a delete fails after the file went (the trash reported an error, or
+  Unstage and delete couldn't change the index)
+- Keep a copy for undo of files over 64 MB (outside the object database, or by restoring from
+  the trash)
+- Read Recycle Bin settings for redirected known folders and subst drives, which have no volume
+  GUID
+- Find the mount's trash folder on unix systems without /proc/self/mounts or /etc/mtab (the
+  BSDs) instead of leaving the choice to the trash crate
+- Show progress for, and allow cancelling, the copy into the home Trash for large files
 - Open and Show for the file history's current file in its top header, independent of the
   selected commit
 - Re-check whether the file history's file is on disk after status refreshes and file watcher

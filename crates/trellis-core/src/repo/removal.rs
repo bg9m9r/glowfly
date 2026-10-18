@@ -36,7 +36,7 @@ pub enum Deleted {
 }
 
 /// The platform's name for the trash, for messages.
-const TRASH_NAME: &str = if cfg!(windows) { "Recycle Bin" } else { "Trash" };
+pub(crate) const TRASH_NAME: &str = if cfg!(windows) { "Recycle Bin" } else { "Trash" };
 
 /// Deletes the working copy at `rel` (whose metadata is `m`) the way `removal` asks.
 ///

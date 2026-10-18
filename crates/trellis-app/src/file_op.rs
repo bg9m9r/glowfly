@@ -2,6 +2,7 @@
 
 use trellis_core::repo::Deleted;
 use trellis_core::settings::Settings;
+use trellis_core::undo::{self, Action, DeletedSaving};
 
 /// How Delete…, Unstage and delete… and Discard of an untracked file remove the working copy.
 /// Chosen when the confirmation opens and carried in it, so changing the preference meanwhile
@@ -14,11 +15,23 @@ pub enum DeleteMode {
     Permanent,
     /// Permanent after the trash refused the file and the user agreed.
     PermanentNoTrash,
+    /// To the home Trash, copied from another drive, after the drive's own trash couldn't be
+    /// used and the user agreed (Linux).
+    HomeTrash,
 }
 
 impl DeleteMode {
     pub fn for_settings(s: &Settings) -> Self {
         if s.delete_to_trash { DeleteMode::Trash } else { DeleteMode::Permanent }
+    }
+
+    /// How the delete goes, as its undo entry records it for redo.
+    pub fn via(self) -> undo::DeleteVia {
+        match self {
+            DeleteMode::Trash => undo::DeleteVia::Trash,
+            DeleteMode::HomeTrash => undo::DeleteVia::HomeTrash,
+            DeleteMode::Permanent | DeleteMode::PermanentNoTrash => undo::DeleteVia::Permanent,
+        }
     }
 }
 
@@ -75,6 +88,17 @@ impl FileOp {
             op => op,
         }
     }
+
+    /// The same delete, moving the file into the home Trash because its drive's trash couldn't
+    /// be used; other operations are returned unchanged.
+    pub fn home_trash(self) -> Self {
+        match self {
+            FileOp::Delete { path, .. } => FileOp::Delete { path, mode: DeleteMode::HomeTrash },
+            FileOp::UnstageDelete { path, .. } => FileOp::UnstageDelete { path, mode: DeleteMode::HomeTrash },
+            FileOp::Discard { path, .. } => FileOp::Discard { path, mode: DeleteMode::HomeTrash },
+            op => op,
+        }
+    }
 }
 
 /// What a successful `FileOp` did.
@@ -83,8 +107,10 @@ pub enum WorkFileOk {
     /// Created or renamed; whether git ignores the new path, and warnings about the new name
     /// (it won't check out on Windows, or it is one name with a tracked path there and on macOS).
     Written { ignored: bool, warnings: Vec<String> },
-    /// Deleted or discarded (UnstageDelete also unstaged); how the working copy went.
-    Deleted(Deleted),
+    /// Deleted or discarded (UnstageDelete also unstaged): how the working copy went, the action
+    /// that undoes it (Delete and UnstageDelete of a file whose copy was kept), and whether it
+    /// was too large to keep a copy of.
+    Deleted { how: Deleted, undo: Option<Box<Action>>, too_large: bool },
     /// UnstageGone: only the index changed.
     Unstaged,
 }
@@ -92,5 +118,14 @@ pub enum WorkFileOk {
 impl WorkFileOk {
     pub fn written(w: trellis_core::repo::Written) -> Self {
         WorkFileOk::Written { ignored: w.ignored, warnings: w.warnings }
+    }
+
+    /// Deleted without an undo entry.
+    pub fn deleted(how: Deleted) -> Self {
+        WorkFileOk::Deleted { how, undo: None, too_large: false }
+    }
+
+    pub fn from_saving(s: DeletedSaving) -> Self {
+        WorkFileOk::Deleted { how: s.how, undo: s.undo.map(Box::new), too_large: s.too_large }
     }
 }

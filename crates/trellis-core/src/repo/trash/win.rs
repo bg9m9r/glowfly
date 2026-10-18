@@ -3,7 +3,7 @@
 
 use super::{BinSettings, TrashProblem, TrashRefusal, problem_of_hresult, problem_of_win32};
 use crate::native_path::wide;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use windows::core::PCWSTR;
 
@@ -13,6 +13,29 @@ pub(super) fn has_recycle_bin(root: &OsStr) -> Result<(), String> {
     let mut info = SHQUERYRBINFO { cbSize: std::mem::size_of::<SHQUERYRBINFO>() as u32, ..Default::default() };
     // SAFETY: `root` is NUL-terminated and `info` is a properly sized struct; both outlive the call.
     unsafe { SHQueryRecycleBinW(PCWSTR(root.as_ptr()), &mut info) }.map_err(|_| "this drive has no Recycle Bin".to_owned())
+}
+
+/// The mount point of the volume `full` is on, ending in '\': `C:\`, a folder a volume is
+/// mounted in (`C:\mnt\data\`) or a share (`\\server\share\`). None when Windows can't say.
+pub(super) fn volume_mount_point(full: &Path) -> Option<OsString> {
+    use windows::Win32::Storage::FileSystem::GetVolumePathNameW;
+    let path = wide(full.as_os_str());
+    let mut out = [0u16; 1024];
+    // SAFETY: `path` is NUL-terminated and `out` is a writable buffer of the length passed.
+    unsafe { GetVolumePathNameW(PCWSTR(path.as_ptr()), &mut out) }.ok()?;
+    let len = out.iter().position(|&c| c == 0).unwrap_or(out.len());
+    let point = String::from_utf16(&out[..len]).ok()?;
+    // A verbatim path gives a verbatim mount point; the shell and the registry want the plain
+    // form. Anything else verbatim (a volume GUID path) is left to `volume_root_of`.
+    let point = match point.strip_prefix(r"\\?\") {
+        Some(rest) => match rest.strip_prefix(r"UNC\") {
+            Some(share) => format!(r"\\{share}"),
+            None if rest.as_bytes().get(1) == Some(&b':') => rest.to_owned(),
+            None => return None,
+        },
+        None => point,
+    };
+    point.ends_with('\\').then(|| OsString::from(point))
 }
 
 /// The volume's GUID (`{…}`) for a drive root such as `C:\`; None for network shares and

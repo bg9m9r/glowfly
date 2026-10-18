@@ -5,7 +5,8 @@
 //!
 //! `kinds` recognises the command lines, `action` names what was recorded, `record` captures the
 //! state around an operation, and `planning` decides how to reverse it, with `refs` (branches and
-//! tags), `moved` (merge, pull, cherry-pick, revert, rebase), `stash`, `reset` and `saved`.
+//! tags), `moved` (merge, pull, cherry-pick, revert, rebase), `stash`, `reset`, `saved` and
+//! `deleted` (Delete and Unstage and delete).
 //! Rebases, also interactive ones and graph edits, are recorded around their run instead
 //! (`rebased.rs`): they finish in steps, possibly outside Trellis. A merge, cherry-pick or revert
 //! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as
@@ -13,9 +14,11 @@
 //! saved in the conflict view: the conflict's stages come back from git's resolve-undo record.
 
 use crate::gitcli::args;
+use crate::repo::StagedNew;
 use git2::Oid;
 
 mod action;
+mod deleted;
 mod kinds;
 mod moved;
 mod planning;
@@ -29,6 +32,7 @@ mod reverted;
 mod saved;
 mod stash;
 pub use action::{Action, Changes, Created, Discarded, HeadPos, Staged};
+pub use deleted::{DeleteVia, DeletedSaving, MAX_KEPT_BYTES, Trashers, delete_again, delete_saving, delete_staged_saving, put_back};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
@@ -87,6 +91,18 @@ pub enum Plan {
         cmds: Vec<Vec<String>>,
         path: String,
         content: Option<Saved>,
+    /// Write the deleted file `path` back as `content` (it must be absent) and put its `staged`
+    /// entry back in the index.
+    PutBack {
+        path: String,
+        content: Saved,
+        staged: Option<StagedNew>,
+    },
+    /// Delete `path` again via `via`, unstaging it too when it was `staged` as new.
+    DeleteAgain {
+        path: String,
+        via: DeleteVia,
+        staged: bool,
     },
 }
 
@@ -111,6 +127,8 @@ fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
+#[cfg(test)]
+mod deleted_tests;
 #[cfg(test)]
 mod kinds_tests;
 #[cfg(test)]

@@ -46,6 +46,31 @@ fn trash_in_use_retry() {
     remove_fixture(&dir);
 }
 
+/// The trash on the file's drive can't be used (Linux): the home Trash or a permanent delete.
+#[test]
+fn trash_home_offer() {
+    let (mut st, dir) = with_repo(ThemeChoice::Light, "trash-home-offer");
+    let refusal = TrashRefusal::new(TrashProblem::HomeTrashOnly, "/mnt/usb has no trash folder you can use");
+    let op = FileOp::Delete { path: "notes/scratch.txt".into(), mode: DeleteMode::Trash };
+    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { op, refusal }), std::time::Instant::now());
+    assert!(matches!(&st.modal, Some(Modal::TrashOffer(_))));
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("trash_home_offer");
+    let sent = |msgs: &[Msg], want: DeleteMode| {
+        msgs.iter().any(|m| matches!(m, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Delete { mode, .. })) if *mode == want))
+    };
+    h.get_by_label("Move to home Trash").click();
+    h.run();
+    assert!(sent(&h.state().1, DeleteMode::HomeTrash), "moves it to the home Trash");
+    assert!(!sent(&h.state().1, DeleteMode::PermanentNoTrash));
+    h.get_by_label("Delete permanently").click();
+    h.run();
+    assert!(sent(&h.state().1, DeleteMode::PermanentNoTrash), "or deletes it for good");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 /// The banner while git is older than every feature needs; Choose git… opens Preferences > Git
 /// and Dismiss closes it.
 #[test]

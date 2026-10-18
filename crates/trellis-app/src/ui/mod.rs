@@ -96,6 +96,7 @@ pub mod theme;
 mod theme_names;
 mod toolbar;
 mod tour;
+mod trash_offer_dialog;
 mod trust_chip;
 mod trust_dialog;
 mod undo_dialog;

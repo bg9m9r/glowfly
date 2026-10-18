@@ -5,10 +5,10 @@
 //! before and after, so undo can put the earlier version back and redo can write the later one
 //! again.
 
-use super::{Action, Discarded, Plan, stale};
+use super::{Action, DeleteVia, Discarded, Plan, stale};
 use crate::error::{Error, Result};
 use crate::persist::WriteOptions;
-use crate::repo::RestoredFrom;
+use crate::repo::{RestoredFrom, TRASH_NAME};
 use git2::{ObjectType, Oid, Repository};
 use std::path::{Path, PathBuf};
 
@@ -176,6 +176,20 @@ impl Action {
             Action::Restore { path, before: Some(_), .. } => format!("Put back the earlier working copy of {path}"),
             Action::Restore { path, before: None, .. } => format!("Removed {path} again"),
             Action::Resolve { path, staged, .. } => super::resolved::wrote(path, staged.is_some(), redo),
+            Action::DeleteFile { path, via, .. } if redo => match via {
+                DeleteVia::Trash => format!("Moved {path} to the {TRASH_NAME} again"),
+                DeleteVia::HomeTrash => format!("Moved {path} to the Trash in your home folder again"),
+                DeleteVia::Permanent => format!("Deleted {path} again"),
+            },
+            Action::DeleteFile { path, via, staged, .. } => {
+                let again = if staged.is_some() { " and staged it again" } else { "" };
+                let copy = match via {
+                    DeleteVia::Trash => format!(" (its copy in the {TRASH_NAME} stays there)"),
+                    DeleteVia::HomeTrash => " (its copy in your home Trash stays there)".to_owned(),
+                    DeleteVia::Permanent => String::new(),
+                };
+                format!("Put back {path}{again}{copy}")
+            }
             _ => String::new(),
         }
     }

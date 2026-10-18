@@ -3,7 +3,7 @@
 //! when the trash refuses a file, the toasts, and end to end with the test build's stand-in
 //! trash (never the real one).
 
-use super::tests::{drive, scratch_repo, state};
+use super::tests::{drive, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, entry, last_log, loaded, run, work_ops};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::msg::Msg;
@@ -65,7 +65,13 @@ fn permanent_preference_keeps_old_texts() {
     snap.unstaged = vec![entry("u.txt", '?')];
     snap.staged = Vec::new();
     let (body, button, op) = ask(&mut st, "u.txt");
-    assert_eq!(body, "u.txt isn't tracked by git, so deleting it can't be undone.");
+    assert_eq!(
+        body,
+        format!(
+            "u.txt isn't tracked by git. Trellis keeps a copy so Undo ({}) can bring it back while this tab is open (files up to 64 MB).",
+            keys("Ctrl+Z")
+        )
+    );
     assert_eq!(button, "Delete");
     assert_eq!(op, delete("u.txt", DeleteMode::Permanent));
     let (body, ..) = ask(&mut st, "c.txt");
@@ -82,7 +88,13 @@ fn unstage_confirm_trash() {
     snap.staged = vec![entry("n.txt", 'A'), entry("r.txt", 'R')];
 
     let (body, button, op) = ask(&mut st, "n.txt");
-    assert_eq!(body, format!("n.txt is a new file in the staging area. It goes to the {TRASH} and leaves the staging area."));
+    assert_eq!(
+        body,
+        format!(
+            "n.txt is a new file in the staging area. It goes to the {TRASH} and leaves the staging area; Undo ({}) stages it again.",
+            keys("Ctrl+Z")
+        )
+    );
     assert_eq!(button, "Unstage and delete");
     assert_eq!(confirm(&st).0, "Delete new file");
     assert_eq!(op, unstage_delete("n.txt", DeleteMode::Trash));
@@ -91,13 +103,17 @@ fn unstage_confirm_trash() {
     assert!(body.starts_with(&format!("r.txt is staged as a rename. It goes to the {TRASH} and the rename is unstaged:")), "{body}");
     assert!(body.contains("the file it was renamed from stays deleted"), "{body}");
     assert!(!body.contains("can't be brought back"), "{body}");
+    assert!(body.ends_with(&format!(" Undo ({}) brings back the file and the staged rename.", keys("Ctrl+Z"))), "{body}");
     assert_eq!(confirm(&st).0, "Delete renamed file");
     assert_eq!(op, unstage_delete("r.txt", DeleteMode::Trash));
 
     st.snap.as_mut().unwrap().unstaged = vec![entry("n.txt", 'M')];
     let (body, ..) = ask(&mut st, "n.txt");
     assert!(
-        body.ends_with(&format!(" The copy in the {TRASH} has your unstaged edits; the staged version can't be brought back.")),
+        body.ends_with(&format!(
+            " The copy in the {TRASH} has your unstaged edits; Undo ({}) brings back the staged version too.",
+            keys("Ctrl+Z")
+        )),
         "{body}"
     );
 
@@ -155,7 +171,8 @@ fn trash_refused_offers_permanent() {
     assert_eq!(
         body,
         format!(
-            "a.txt couldn't be moved to the {TRASH}: this drive has no Recycle Bin.\n\nDelete it permanently instead? This can't be undone."
+            "a.txt couldn't be moved to the {TRASH}: this drive has no Recycle Bin.\n\nDelete it permanently instead? It won't be in the {TRASH}, but Undo ({}) can still bring it back while this tab is open.",
+            keys("Ctrl+Z")
         )
     );
     assert!(matches!(then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) if *op == delete("a.txt", DeleteMode::PermanentNoTrash)));
@@ -170,7 +187,7 @@ fn trash_refused_offers_permanent() {
         }),
     );
     let (_, body, _, then) = confirm(&st);
-    assert!(body.ends_with("This can't be undone. It also leaves the staging area."), "{body}");
+    assert!(body.ends_with("while this tab is open. It also leaves the staging area."), "{body}");
     assert!(
         matches!(then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) if *op == unstage_delete("n.txt", DeleteMode::PermanentNoTrash))
     );
@@ -221,7 +238,7 @@ fn delete_toasts() {
         ),
     ];
     for (op, how, want) in cases {
-        run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op.clone(), result: Ok(WorkFileOk::Deleted(how)) }));
+        run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op.clone(), result: Ok(WorkFileOk::deleted(how)) }));
         assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()), "{op:?} {how:?}");
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -306,7 +323,8 @@ fn end_to_end_trash() {
         .flatten()
         .any(|e| e.file_name().to_string_lossy().ends_with("-a.txt") && std::fs::read_to_string(e.path()).is_ok_and(|t| t == contents));
     assert!(landed, "a.txt is in the stand-in bin {}", bin.display());
-    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(format!("Moved a.txt to the {TRASH}.").as_str()));
+    let want = format!("Moved a.txt to the {TRASH}. Undo ({}) puts it back.", keys("Ctrl+Z"));
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()));
     assert!(st.snap.as_ref().unwrap().unstaged.contains(&entry("a.txt", 'D')));
     let _ = std::fs::remove_dir_all(&dir);
 }

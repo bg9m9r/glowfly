@@ -158,13 +158,25 @@ second one next to it.
 ### Deleting and trash
 
 1. **Trash through `repo::trash::os_trash`, which returns a typed `TrashRefusal`** whose
-   `problem` is a `TrashProblem`: `NoTrash`, `InUse`, `AccessDenied` or `Other`.
-2. **Offer a permanent delete only for `NoTrash`.** In-use, access-denied and other failures get
-   Retry: a file held by a scanner is not a reason to destroy it.
+   `problem` is a `TrashProblem`: `NoTrash`, `InUse`, `AccessDenied`, `Other` or
+   `HomeTrashOnly`.
+2. **Offer a permanent delete only for `NoTrash`** (and next to the home Trash for
+   `HomeTrashOnly`). In-use, access-denied and other failures get Retry: a file held by a scanner
+   is not a reason to destroy it.
 3. **On Windows, read the bin's settings before moving** (`NukeOnDelete`, `MaxCapacity`,
    `NoRecycleFiles`; `repo/trash/win.rs`, decided by the pure `bin_refuses`). With no UI shown,
-   the shell deletes for good without saying so.
+   the shell deletes for good without saying so. Read them for the volume's mount point
+   (`GetVolumePathNameW`), not the drive letter: a volume mounted in a folder has its own.
 4. **Remove links without following them,** and re-check parent folders before trashing.
+5. **On Linux, check the mount's trash folders before calling the `trash` crate**
+   (`repo/trash/xdg.rs`, decided by the pure `volume_trash_usable` in `home.rs`, which picks a
+   folder as the crate does). When they can't be used, refuse with `HomeTrashOnly` and ask
+   (Move to home Trash, Delete permanently) instead of letting the crate copy the file into the
+   home Trash without a word. `repo::home_trash` does the move the user agreed to.
+6. **A delete keeps what undo needs first:** the working copy's bytes as a blob (files up to
+   64 MB, `undo::MAX_KEPT_BYTES`; not links) and, for Unstage and delete, the staged entry
+   (`undo/deleted.rs`). Undo writes the file back with create-new semantics, so it never
+   overwrites a file (or a case twin) that appeared at the path.
 
 ### Opening files and starting programs
 
@@ -337,6 +349,7 @@ making the decision a pure function and testing it for every OS on every machine
   the OS, a `windows: bool`, error codes or volume facts as parameters
   (`check_new_path_for`, `check_branch_name_for`, `shell_quote_for`, `config_dir_for`,
   `opens_as_program` with `opens::Os`, `volume::linux_remote_kind`, `trash::bin_refuses`,
+  `trash::volume_trash_usable`, `home::move_into` with an injected rename,
   `git_version::missing_for`, `poll_every`) and test every OS's rows on every runner. The
   wrapper that passes `cfg!(windows)` or `Os::current()` stays one line.
 - **Fixtures that no file system has to allow.** Build trees with names that aren't UTF-8,
@@ -373,8 +386,9 @@ Gaps that are accepted for now:
   settings can't be read there.
 - **Replacing a file doesn't keep its owner, ACLs, xattrs or hard links;** only permissions and
   the read-only attribute carry over.
-- **Linux trash across devices is slow:** the `trash` crate copies the file synchronously, which
-  takes a while for large files on network mounts.
+- **Linux trash across devices is slow, but only when the user picks Move to home Trash:** the
+  file is copied synchronously into the home Trash, which takes a while for large files on
+  network mounts.
 - **Windows file watching can drop events** without an error (`notify` sends no rescan on
   overflow); the 30 s poll covers it.
 - **Desktop notifications don't carry Trellis's name yet:** on Windows they are attributed to

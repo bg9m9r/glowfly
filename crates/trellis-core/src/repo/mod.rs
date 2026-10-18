@@ -10,7 +10,7 @@
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
 //! picks a file saved with markers holds), `template`
 //! (commit.template), `tool_sides` (versions for external tools), `touching` (commits that
-//! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `noclobber` and
+//! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `workfile_unrm` (putting a deleted file back for undo), `noclobber` and
 //! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
@@ -77,6 +77,7 @@ mod workfile_mv;
 mod workfile_rename;
 mod workfile_rm;
 mod worktree_counts;
+mod workfile_unrm;
 mod worktrees;
 
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
@@ -102,6 +103,7 @@ pub use load::{load, load_cached, messages_between};
 pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use refs_key::{open_file_stamp, refs_key};
 pub use remotes::RemoteInfo;
+pub(crate) use removal::TRASH_NAME;
 pub use removal::{Deleted, Removal, Trasher};
 pub use resolve::{Choice, conflict_ids, render_output, resolve_with_side, write_partial_resolution, write_resolution};
 pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolve_undo_ids, resolved_paths};
@@ -120,7 +122,7 @@ pub use template::{CommitTemplate, commit_template};
 pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_bytes, diff_sides, is_conflicted, merge_sides};
 pub use touching::{Touching, commits_touching};
 pub use tracked::tracked_paths;
-pub use trash::{TrashProblem, TrashRefusal, os_trash};
+pub use trash::{TrashProblem, TrashRefusal, home_trash, os_trash};
 pub(crate) use workfile::contained;
 pub use workfile::{
     PathProblem, Written, check_new_path, check_new_path_for, create_file, delete_file, new_path_warning, new_path_warning_for,
@@ -129,6 +131,7 @@ pub use workfile_mv::rename_file_staged;
 pub use workfile_rename::rename_file;
 pub use workfile_rm::{delete_staged_new_file, unstage_gone_new_file};
 pub use worktree_counts::{COUNT_TIMEOUT, ChangesRead, WorktreeCount, count_worktree};
+pub use workfile_unrm::{StagedNew, index_clear_for, staged_new, staged_new_matches, undelete_file};
 pub use worktrees::{WorktreeInfo, worktree_wip_heads, worktrees_at};
 
 #[derive(Clone)]
@@ -434,5 +437,7 @@ mod workfile_rm_gone_tests;
 mod workfile_rm_tests;
 #[cfg(test)]
 mod workfile_tests;
+#[cfg(test)]
+mod workfile_unrm_tests;
 #[cfg(test)]
 mod worktrees_tests;

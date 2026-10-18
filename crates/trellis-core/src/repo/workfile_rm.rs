@@ -62,7 +62,7 @@ pub fn unstage_gone_new_file(workdir: &Path, path: &str) -> Result<()> {
 /// Checks that `path` is staged as new (a stage-0 entry that HEAD's tree lacks) and returns the
 /// source of the staged rename it is the new path of, if any. Run before anything changes:
 /// removing the new path's entry dissolves the rename.
-fn check_staged_new(repo: &Repository, path: &str) -> Result<Option<Vec<u8>>> {
+pub(super) fn check_staged_new(repo: &Repository, path: &str) -> Result<Option<Vec<u8>>> {
     if super::exact::index(repo)?.get_path(Path::new(path), 0).is_none() {
         return Err(Error::Other(format!("{path} isn't staged")));
     }
@@ -76,7 +76,7 @@ fn check_staged_new(repo: &Repository, path: &str) -> Result<Option<Vec<u8>>> {
 /// The old path (git's bytes, which needn't be UTF-8) of the staged rename whose new path is
 /// `path`, as status pairs it (HEAD against the index). Explicit options, because the default
 /// reads `diff.renames` from config.
-fn rename_source(repo: &Repository, path: &str) -> Result<Option<Vec<u8>>> {
+pub(super) fn rename_source(repo: &Repository, path: &str) -> Result<Option<Vec<u8>>> {
     let Some(tree) = head_tree(repo) else { return Ok(None) };
     let index = repo.index()?;
     let mut diff = repo.diff_tree_to_index(Some(&tree), Some(&index), None)?;

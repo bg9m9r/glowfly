@@ -1,9 +1,12 @@
-//! Local git operations run by the runner: staging and discarding ops, undo and redo, and
+//! Local git operations run by the runner: staging and discarding ops, undo and redo (also of a
+//! deleted file, put back or deleted again), and
 //! running a list of git commands.
 
 use crate::effect::{LocalOp, UndoOpts, UndoResult};
 use crate::msg::{JobMsg, Msg};
+use crate::state::files::TRASH;
 use std::path::Path;
+use trellis_core::error::Error;
 use trellis_core::gitcli;
 use trellis_core::repo;
 use trellis_core::undo::{self, Action, Discarded, Plan, Refusal};
@@ -111,6 +114,15 @@ Your changes were stashed as \"{}\".
                 }
             }
         }
+        Ok(Plan::PutBack { path, content, staged }) => match undo::put_back(cwd, &path, content, staged.as_ref()) {
+            Ok(()) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Err(e) => failed(format!("Could not put back {path}: {e}")),
+        },
+        Ok(Plan::DeleteAgain { path, via, staged }) => match undo::delete_again(cwd, &path, via, staged, super::files::TRASHERS) {
+            Ok(_) => done(true, action.wrote(redo), UndoResult::Done { redo, before: action.clone(), after: Box::new(action) }),
+            Err(Error::TrashRefused(r)) => failed(format!("The {TRASH} couldn't take {path}: {}", r.detail)),
+            Err(e) => failed(format!("Could not delete {path}: {e}")),
+        },
     }
 }
 

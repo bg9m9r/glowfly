@@ -4,13 +4,13 @@
 //! `stash.rs`, saved conflict resolutions in `resolved.rs`.
 
 use super::record::{head, ref_exists};
-use super::{Action, HeadPos, Options, Plan, Refusal, discard_command, moved, refs, reset, resolved, saved, stash};
+use super::{Action, HeadPos, Options, Plan, Refusal, deleted, discard_command, moved, refs, reset, resolved, saved, stash};
 use crate::error::Result;
 use crate::gitcli::args;
 use git2::{Oid, Repository, RepositoryState};
 use std::path::Path;
 
-fn busy_name(state: RepositoryState) -> Option<&'static str> {
+pub(super) fn busy_name(state: RepositoryState) -> Option<&'static str> {
     use RepositoryState::*;
     Some(match state {
         Clean => return None,
@@ -80,6 +80,8 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
     match action {
         Action::Discard { path, what, before, after } => return saved::plan(workdir, path, *before, *after, redo, what.kept_as()),
         Action::Restore { path, before, after, .. } => return saved::plan(workdir, path, *before, *after, redo, "overwritten"),
+        // A staged entry is checked against an operation in progress there.
+        Action::DeleteFile { .. } => return deleted::plan(workdir, action, redo),
         // A stash store or drop touches no HEAD, index or file, so an operation in progress
         // doesn't matter either.
         Action::StashDrop { .. } => {
@@ -181,5 +183,6 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } | Action::Resolve { .. } => {
             unreachable!("planned above")
         }
+        Action::DeleteFile { .. } => unreachable!("planned above"),
     })
 }

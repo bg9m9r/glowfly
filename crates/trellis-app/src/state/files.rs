@@ -1,6 +1,6 @@
 //! The New file and Rename file dialogs' form: the typed path, the last error and whether a
-//! request is running; what status says about a path being deleted, the trash's name and the
-//! file manager's show-in-folder label.
+//! request is running; what status says about a path being deleted, the trash's name, the
+//! file manager's show-in-folder label, and the offer of the home Trash (`TrashOffer`).
 
 /// The platform's name for where deleted files go.
 pub const TRASH: &str = if cfg!(windows) { "Recycle Bin" } else { "Trash" };
@@ -12,6 +12,15 @@ pub const SHOW_IN_FOLDER: &str = if cfg!(windows) {
 } else {
     "Open containing folder"
 };
+
+/// The trash on `path`'s drive can't be used (Linux): `body` asks whether to move it to the home
+/// Trash (`op` in `DeleteMode::HomeTrash`) or delete it permanently instead.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TrashOffer {
+    pub op: crate::effect::FileOp,
+    pub path: String,
+    pub body: String,
+}
 
 /// A path field with the outcome of its last submission.
 #[derive(Clone, Debug, Default, PartialEq)]

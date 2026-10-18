@@ -3,8 +3,9 @@
 //! discard a confirmation agreed to (the confirmations themselves are in `work_files_delete`), and
 //! the results (a toast, the dialog's inline error, or a log line).
 
-use super::work_files_delete::{ask_delete, ask_discard, deleted_text, trash_refused};
+use super::work_files_delete::{UndoNote, ask_delete, ask_discard, deleted_text, trash_refused};
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use crate::keymap::BindingId;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
 use crate::state::{AppState, Modal};
@@ -71,7 +72,8 @@ pub(super) fn inactive_result(st: &mut AppState, op: FileOp, result: Result<Work
         st.modal = None;
     }
     match result {
-        Ok(ok) => st.toast(true, success_text(&op, ok), now),
+        // The key hint would name the active tab's Undo, which isn't this one's.
+        Ok(ok) => st.toast(true, success_text(&op, &ok, None), now),
         Err(e) => st.log(false, failure(&op, &e)),
     }
 }
@@ -85,20 +87,27 @@ fn form_for<'a>(modal: &'a mut Option<Modal>, op: &FileOp) -> Option<&'a mut Pat
     }
 }
 
-fn success_text(op: &FileOp, ok: WorkFileOk) -> String {
-    let deleted = if let WorkFileOk::Deleted(d) = ok { d } else { trellis_core::repo::Deleted::Permanently };
+/// The toast for `op`'s success. `hint` is the Undo key (" (Ctrl+Z)") when the result is for the
+/// active tab, which a delete that can be undone mentions.
+fn success_text(op: &FileOp, ok: &WorkFileOk, hint: Option<&str>) -> String {
+    let (deleted, note) = match ok {
+        WorkFileOk::Deleted { how, too_large: true, .. } => (*how, UndoNote::TooLarge),
+        WorkFileOk::Deleted { how, undo: Some(_), .. } => (*how, hint.map_or(UndoNote::Undo(""), UndoNote::Undo)),
+        WorkFileOk::Deleted { how, .. } => (*how, UndoNote::None),
+        _ => (trellis_core::repo::Deleted::Permanently, UndoNote::None),
+    };
     let (ignored, warnings) = match ok {
-        WorkFileOk::Written { ignored, warnings } => (ignored, warnings),
-        _ => (false, Vec::new()),
+        WorkFileOk::Written { ignored, warnings } => (*ignored, warnings.as_slice()),
+        _ => (false, &[][..]),
     };
     let mut text = match op {
         FileOp::Create(p) => format!("Created {p}."),
         FileOp::Rename { from, to, stage: true } => format!("Renamed {from} to {to} and staged the rename."),
         FileOp::Rename { from, to, stage: false } => format!("Renamed {from} to {to}."),
-        FileOp::Delete { path, mode } => return deleted_text(path, *mode, deleted, false),
-        FileOp::UnstageDelete { path, mode } => return deleted_text(path, *mode, deleted, true),
+        FileOp::Delete { path, mode } => return deleted_text(path, *mode, deleted, false, note),
+        FileOp::UnstageDelete { path, mode } => return deleted_text(path, *mode, deleted, true, note),
         FileOp::UnstageGone(p) => return format!("Removed {p} from the staging area."),
-        FileOp::Discard { path, mode } => return deleted_text(path, *mode, deleted, false),
+        FileOp::Discard { path, mode } => return deleted_text(path, *mode, deleted, false, note),
     };
     // A staged rename's new path stays tracked, so it is never "ignored".
     if ignored && !matches!(op, FileOp::Rename { stage: true, .. }) {
@@ -106,7 +115,7 @@ fn success_text(op: &FileOp, ok: WorkFileOk) -> String {
     }
     for w in warnings {
         text.push(' ');
-        text.push_str(&w);
+        text.push_str(w);
     }
     text
 }
@@ -125,7 +134,11 @@ fn succeeded(st: &mut AppState, op: &FileOp, ok: WorkFileOk, now: Instant) {
     if form_for(&mut st.modal, op).is_some() {
         st.modal = None;
     }
-    st.toast(true, success_text(op, ok), now);
+    let hint = st.keymap.paren(BindingId::Undo);
+    st.toast(true, success_text(op, &ok, Some(&hint)), now);
+    if let WorkFileOk::Deleted { undo: Some(a), .. } = ok {
+        st.undo.record(*a);
+    }
     // The old path's working-tree diff is gone; don't leave it on screen.
     let old = match op {
         FileOp::Rename { from, .. }
