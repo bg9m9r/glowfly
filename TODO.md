@@ -148,10 +148,34 @@ are in Later > UI review polish.
 - [ ] **Disabled actions say why**: a disabled primary button has a one-line reason next to it
       (the rebase panel's pattern) and a disabled menu item a short weak suffix; setup-gated
       items ("Open in external diff tool" with no tool set) stay enabled and open the setting
-- [ ] **Type scale and text styles**: a five-step scale with an 11 px floor (nothing that
-      carries information smaller: the 0/72 counter, "Esc returns to one commit", hunk buttons,
-      welcome-screen links, LFS Untrack); section headers set by weight; monospace only for
-      SHAs, paths, code and fingerprints (not the compare header or activity log prose);
+- [ ] **Comfortable look**: the UI aims for comfortable and pleasing over dense. List rows
+      (graph, sidebar, file lists) about 36 px; 16–20 px padding in panels and dialogs on an 8 px
+      spacing grid; Noto Sans for the interface and JetBrains Mono for code, SHAs and paths
+      (bundled, OFL, with egui's fonts as fallback); a refreshed palette with one teal accent
+      for accent, primary and focus, lifted panels, and amber kept for "in progress"; the light
+      theme tuned on its own rather than inverted. An opt-in compact density in Preferences at
+      most, never the default
+- [ ] **Icons-only toolbar with rich tooltips**: toolbar buttons show icons only (labels stay
+      available through "Show toolbar icon labels", now off by default) and every button gets a
+      card tooltip: the name, its shortcut as keycaps, one sentence on what it does in this
+      repository now, and a status line when there is state ("2 commits to push", "4 files
+      changed", "Last fetched 2 minutes ago"). Push, Pull and Pop use a preview card instead:
+      the commits a push sends or a pull brings in, or the stash Pop applies
+  - One shared tooltip widget (raised, rounded, soft shadow, a pointer at its target) used
+    across the app, not only the toolbar
+  - Shows after 400 ms, then switches instantly while moving along the bar; 120 ms fade and a
+    4 px rise, none with reduced motion; stays on screen at the window edge with the pointer
+    still on its button; keyboard focus shows it too
+  - Disabled buttons keep their tooltip and say why ("No stashes to pop")
+- [ ] **Line counts in red and green**: `+N −M` for each changed file (with a small bar sized to
+      the change), each commit row and the commit details header, and the WIP row ("3 modified,
+      1 added, 1 deleted · +48 −17"); added green, removed red, modified amber, matching the
+      status letters; computed off the UI thread and cached per commit
+- [ ] **Type scale and text styles**: a five-step scale with 14 px body text and an 11 px
+      floor (nothing that carries information smaller: the 0/72 counter, "Esc returns to one
+      commit", hunk buttons, welcome-screen links, LFS Untrack); section headers set by
+      weight; monospace only for SHAs, paths, code and fingerprints (not the compare header or
+      activity log prose);
       sentence case for every label and button; one section-header style; one link colour
 - [ ] **Toggles look like toggles**: Hunks/Whole file, Inline/Split, Diff/File/Blame, the
       dashboard tabs and the search mode are segmented controls; Wrap lines and Ignore
