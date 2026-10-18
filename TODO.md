@@ -16,6 +16,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-17 22:03 · **Blame gutter**: Blame before a line's commit (following renames) with Back, skip a commit, ignore-whitespace and move/copy toggles, full commit messages on hover, age colouring of the gutter, find in file and go to line, N / Shift+N between commits, and links to and from file history (`00bdcec`)
 - 2026-10-16 18:46 · **Interactive rebase: history editing from the graph**: Reword, squash and drop commits from the graph, with autostash of local changes and a step-aware banner while the rebase runs (`ee9778d`)
 - 2026-10-16 18:41 · **Undo / Redo**: Undo and redo for merges, pulls, rebases, cherry-picks, reverts, new branches and tags, stash push, pop and apply, with "Stash changes and undo" for a hard reset or Discard all blocked by local changes and an offer to delete the branch a checkout created (`7b473a3`)
 - 2026-10-16 18:22 · **Merge conflict tool**: Trivial chunks (one side unchanged, both the same, whitespace only) picked automatically with a note and header tags; Conflicted Files (N) with marker counts and Mark all resolved, Resolved Files (N) with Mark conflicted; a warning before marking files with markers left resolved; and stepping to the next conflicted file after resolving one (`b211262`)
@@ -35,7 +36,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-16 15:12 · **Custom themes**: High Contrast Dark, High Contrast Light and Trellis Sand built in; JSON theme files in the config folder's themes folder (a base theme plus #rrggbb colors or color names, loops detected, problems listed in Preferences and logged), with Open themes folder, Reload and Create from current, and every theme in the palette (`3639791`)
 - 2026-10-16 14:56 · **Limits found while building integrations**: Checks and votes for every pull request on GitLab, Bitbucket Cloud and Data Center and Azure DevOps (a paced background pass past the first 25, cached by head and age), Jira look-alike keys such as `UTF-8` skipped using the site's project keys, the project filter applied to branch names, and paging tests for every issue list (`cc23487`)
 - 2026-10-16 14:48 · **Trello**: Trello cards as an issue tracker: connect with an API key and a read-only token, choose Trello and optionally a board under Issue Tracker, assigned open cards in ISSUES (View card in Trello, Copy card link, branch and Git Flow from a card), card links and card-id branch names as chips, and PRs that link the card (`5d48e6a`)
-- 2026-10-16 14:40 · **In-app pull request view**: Inline code comment threads for GitHub: threads in the conversation and in a pane under each file's diff, with line markers, Reply, Resolve / Unresolve, outdated and resolved threads hidden behind Show toggles, and going from a thread to its line in Files changed (`7782b79`)
 
 ---
 
