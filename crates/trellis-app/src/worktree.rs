@@ -68,9 +68,9 @@ pub struct CountRequest {
     pub workdir: PathBuf,
     /// The snapshot's `refs_key`: a result for another is dropped.
     pub refs_key: u64,
-    /// Each worktree's folder, and whether git may run there (the tab's repository or the
-    /// worktree is trusted).
-    pub targets: Vec<(PathBuf, bool)>,
+    /// Each worktree's folder, and the trust decision saved for that worktree itself (not the
+    /// tab's): git runs there only as opening it in a tab would allow.
+    pub targets: Vec<(PathBuf, Option<trellis_core::settings::RepoTrust>)>,
 }
 
 /// A move request, checked by update; the runner checks the target on disk and moves it.

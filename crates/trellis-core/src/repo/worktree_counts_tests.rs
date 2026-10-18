@@ -70,7 +70,7 @@ fn an_untrusted_worktree_is_counted_without_running_its_hooks() {
     let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
     git(&dir, &["config", "core.fsmonitor", &hook]);
 
-    let count = count_worktree(&wt, false, COUNT_TIMEOUT);
+    let count = count_worktree(&wt, None, COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes, &count.path), (ChangesRead::Counted, DIRTY, &wt));
     assert!(!marker.exists(), "no hook ran");
     cleanup(&[&wt, &dir]);
@@ -82,12 +82,31 @@ fn a_trusted_worktree_is_counted_through_git() {
     let wt = linked(&dir, "feat");
     dirty(&wt);
     git(&dir, &["config", "core.untrackedCache", "true"]);
-    let count = count_worktree(&wt, true, COUNT_TIMEOUT);
+    let count = count_worktree(&wt, Some(RepoTrust::Trusted), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
 
     let plain = crate::paths::temp_dir().join(format!("trellis-wtcount-plain-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
-    let none = count_worktree(&plain, true, COUNT_TIMEOUT);
+    let none = count_worktree(&plain, Some(RepoTrust::Trusted), COUNT_TIMEOUT);
     assert_eq!((none.read, none.changes), (ChangesRead::Counted, ChangeCounts::default()), "not a repository");
     cleanup(&[&wt, &dir, &plain]);
+}
+
+#[test]
+fn a_worktree_not_trusted_never_runs_git() {
+    let dir = two_files("wtcount-refused");
+    let wt = linked(&dir, "feat");
+    dirty(&wt);
+    let marker = dir.join("ran.txt");
+    let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
+    git(&dir, &["config", "core.fsmonitor", &hook]);
+    let count = count_worktree(&wt, Some(RepoTrust::NotTrusted), COUNT_TIMEOUT);
+    assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
+    assert!(!marker.exists(), "no hook ran");
+
+    // Trusting it lets git read it, so its hook runs.
+    let count = count_worktree(&wt, Some(RepoTrust::Trusted), COUNT_TIMEOUT);
+    assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
+    assert!(marker.exists(), "git read it");
+    cleanup(&[&wt, &dir]);
 }

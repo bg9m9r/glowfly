@@ -1,8 +1,8 @@
 //! Headless tests for other worktrees counted after the load: a worktree the load left Pending
 //! shows as being counted, one background count fills it in and lays the graph out again, only
 //! one count runs at a time (also through unchanged refreshes), a count for other refs is
-//! dropped, a too-large worktree isn't retried, the option off counts nothing, and a slow count
-//! offers the untracked cache.
+//! dropped, a too-large worktree isn't retried, the option off counts nothing, a slow count
+//! offers the untracked cache, and git reads a worktree only by that worktree's own trust.
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
@@ -192,5 +192,53 @@ fn a_slow_background_count_offers_the_untracked_cache() {
     assert_eq!(toast.action.as_ref().map(|a| a.label.as_str()), Some("Turn on"), "{}", toast.text);
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     assert!(st.settings.status_tip_shown_for(&real), "once per repository");
+    cleanup(&[&linked, &dir]);
+}
+
+/// A shell script that touches `marker` when run, as a fsmonitor hook git would start.
+fn marker_hook(script: &Path, marker: &Path) -> String {
+    let slashes = |p: &Path| p.display().to_string().replace('\\', "/");
+    std::fs::write(script, format!("#!/bin/sh\ntouch \"{}\"\nexit 1\n", slashes(marker))).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(script, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    slashes(script)
+}
+
+#[test]
+fn another_worktree_is_counted_by_its_own_trust_not_the_tab_s() {
+    use crate::state::trust::record;
+    use trellis_core::settings::RepoTrust;
+    let (mut st, dir, linked) = opened("wtcount-own-trust");
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    record(&mut st.settings, &real, RepoTrust::Trusted);
+    // Only the linked worktree's own config names a program for git to run.
+    let marker = dir.join("ran.txt");
+    let hook = marker_hook(&dir.join(".git").join("fsmon.sh"), &marker);
+    git(&linked, &["config", "extensions.worktreeConfig", "true"]);
+    git(&linked, &["config", "--worktree", "core.fsmonitor", &hook]);
+    let path = linked_info(&st).path.clone();
+    let mut count_with = |st: &mut AppState, decision: Option<RepoTrust>| {
+        trellis_core::settings::repo_keys::set(&mut st.settings.repo_trust, &path, decision);
+        st.refresh.counting = None;
+        let fx = load_pending(st);
+        let asked = counts(&fx);
+        assert_eq!(asked.len(), 1, "{fx:?}");
+        assert_eq!(asked[0].targets[0].1, decision, "the worktree's own decision, not the tab's");
+        let count = fx.into_iter().find(|e| matches!(e, Effect::CountWorktreeChanges(_))).unwrap();
+        let done = runner::execute(count).expect("a result");
+        update(st, done, Instant::now());
+        let wt = linked_info(st);
+        assert_eq!((wt.read, wt.changes), (ChangesRead::Counted, SIDE));
+    };
+
+    count_with(&mut st, Some(RepoTrust::NotTrusted));
+    assert!(!marker.exists(), "the tab is trusted, but the worktree isn't: its hook never runs");
+    count_with(&mut st, None);
+    assert!(!marker.exists(), "never reviewed, and its config runs a program: git doesn't read it");
+    count_with(&mut st, Some(RepoTrust::Trusted));
+    assert!(marker.exists(), "trusted itself: git reads it");
     cleanup(&[&linked, &dir]);
 }

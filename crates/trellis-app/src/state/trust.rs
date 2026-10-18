@@ -137,6 +137,13 @@ impl AppState {
         let snap_real = self.snap.as_ref().filter(|s| super::tabs::is_repo_at(s, workdir)).map(|s| s.real_workdir.as_path());
         [Some(workdir), tab_real, snap_real].into_iter().flatten().any(|p| recorded(&self.settings, p) == Some(RepoTrust::Trusted))
     }
+
+    /// The decision saved for the repository at `workdir` itself, as given or where a tab
+    /// showing it found it on disk. Unlike `trusts`, a NotTrusted record counts too.
+    pub fn decision_for(&self, workdir: &Path) -> Option<RepoTrust> {
+        let reals = self.tabs.iter().filter(|t| t.is(workdir)).filter_map(|t| t.real.as_deref());
+        std::iter::once(workdir).chain(reals).find_map(|p| recorded(&self.settings, p))
+    }
 }
 
 /// What the Untrusted chip's tooltip says is paused, and why. Only what Trellis really holds:
