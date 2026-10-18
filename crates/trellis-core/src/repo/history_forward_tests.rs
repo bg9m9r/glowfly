@@ -140,3 +140,55 @@ fn moved_start_off_the_line_is_plain_head() {
     assert_eq!(moved, file_history(&dir, "a.txt", &HistoryStart::Head, 100).unwrap());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn name_at_head_keeps_a_path_still_at_head() {
+    let dir = scratch_repo("name-at-head-same");
+    let c1 = commit(&dir, "a.txt", &lines(5), "add a");
+    assert_eq!(name_at_head(&dir, "a.txt", c1).unwrap().as_deref(), Some("a.txt"), "since == HEAD");
+    commit(&dir, "a.txt", &lines(6), "edit a");
+    assert_eq!(name_at_head(&dir, "a.txt", c1).unwrap().as_deref(), Some("a.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn name_at_head_follows_a_rename_since() {
+    let dir = scratch_repo("name-at-head-rename");
+    let since = commit(&dir, "a.txt", &lines(10), "add a");
+    rename(&dir, "a.txt", "b.txt", &lines(10).replace("line 2\n", "two\n"), "a to b");
+    assert_eq!(name_at_head(&dir, "a.txt", since).unwrap().as_deref(), Some("b.txt"));
+    rename(&dir, "b.txt", "c.txt", &lines(10).replace("line 2\n", "two\n"), "b to c");
+    commit(&dir, "c.txt", &lines(10).replace("line 2\n", "two\n").replace("line 7\n", "seven\n"), "edit c");
+    assert_eq!(name_at_head(&dir, "a.txt", since).unwrap().as_deref(), Some("c.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn name_at_head_is_none_for_a_deleted_file() {
+    let dir = scratch_repo("name-at-head-deleted");
+    commit(&dir, "keep.txt", "keep\n", "add keep");
+    let since = commit(&dir, "a.txt", &lines(5), "add a");
+    git(&dir, &["rm", "-q", "a.txt"]);
+    git(&dir, &["commit", "-q", "-m", "remove a"]);
+    assert_eq!(name_at_head(&dir, "a.txt", since).unwrap(), None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn name_at_head_is_none_when_head_is_not_below() {
+    let dir = scratch_repo("name-at-head-off");
+    commit(&dir, "base.txt", "base\n", "base");
+    git(&dir, &["branch", "before"]);
+    let since = commit(&dir, "a.txt", &lines(5), "add a");
+    rename(&dir, "a.txt", "b.txt", &lines(5), "a to b");
+    git(&dir, &["checkout", "-q", "before"]);
+    assert_eq!(name_at_head(&dir, "a.txt", since).unwrap(), None, "a branch from before the file");
+    // A commit that no longer exists is not below HEAD: no name and no error.
+    let gone = Oid::from_bytes(&[7; 20]).unwrap();
+    assert_eq!(name_at_head(&dir, "a.txt", gone).unwrap(), None);
+    git(&dir, &["checkout", "-q", "--orphan", "fresh"]);
+    git(&dir, &["rm", "-rq", "--cached", "."]);
+    commit(&dir, "other.txt", "other\n", "orphan");
+    assert_eq!(name_at_head(&dir, "a.txt", since).unwrap(), None, "an unrelated history");
+    let _ = std::fs::remove_dir_all(&dir);
+}

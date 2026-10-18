@@ -88,7 +88,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             } else if st.conflict.is_some() {
                 conflict::show(ui, st, msgs);
             } else if st.blame.is_some() {
-                blame::show(ui, st, msgs);
+                blame::show(ui, st, cache, msgs);
             } else if st.history.is_some() {
                 history::show(ui, st, cache, msgs);
             } else if st.pull_request.is_some() {

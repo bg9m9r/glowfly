@@ -63,7 +63,7 @@ fn opening_blame_requests_a_load() {
     let (mut st, dir) = opened("blame-open");
     st.diff = Some((DiffTarget::Unstaged("a.txt".into()), empty_diff().into()));
     st.conflict = Some(ConflictView::loading("a.txt".into()));
-    st.settings.blame = BlamePrefs { ignore_whitespace: true, moves: BlameMoves::WithinFile };
+    st.settings.blame = BlamePrefs { ignore_whitespace: true, moves: BlameMoves::WithinFile, wrap_lines: false };
     let fx = update(&mut st, open("a.txt", None), Instant::now());
     let hl = st.settings.syntax_highlighting;
     let want = BlameOptions { ignore_whitespace: true, moves: BlameMoves::WithinFile, ignore_revs: Vec::new() };

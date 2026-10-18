@@ -259,6 +259,7 @@ fn keys_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
                 speller: Speller::new(),
                 diff_rows: Default::default(),
                 history_text: Default::default(),
+                blame_rows: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },

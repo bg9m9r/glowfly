@@ -118,6 +118,7 @@ pub(super) fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec
                 speller: Speller::new(),
                 diff_rows: Default::default(),
                 history_text: Default::default(),
+                blame_rows: Default::default(),
             });
             draw(ctx, st, cache, msgs);
             super::escape_key(ctx, st, msgs);

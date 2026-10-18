@@ -122,6 +122,8 @@ mod snapshot_tests_blame;
 #[cfg(test)]
 mod snapshot_tests_blame_menu;
 #[cfg(test)]
+mod snapshot_tests_blame_wrap;
+#[cfg(test)]
 mod snapshot_tests_branch;
 #[cfg(test)]
 mod snapshot_tests_clone;
@@ -339,6 +341,8 @@ pub struct UiCache {
     pub diff_rows: diff::rows_cache::DiffRowsCache,
     /// The file history File view's line widths and wrapped row heights.
     pub history_text: history_text_cache::HistoryTextCache,
+    /// The blame view's line widths and wrapped row heights.
+    pub blame_rows: blame::rows::BlameRowsCache,
 }
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.

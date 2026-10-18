@@ -33,6 +33,8 @@ pub enum BlameMsg {
     ClearSkipped,
     SetIgnoreWhitespace(bool),
     SetMoves(BlameMoves),
+    /// The header's Wrap lines toggle (saved in settings).
+    SetWrapLines(bool),
     /// Close blame and open the file's history from the blamed commit, selecting `select` (else
     /// the blamed commit).
     OpenHistory {
@@ -53,7 +55,8 @@ pub enum BlameMsg {
 impl BlameMsg {
     /// What this result still needs when its tab is no longer active (`Msg::Scoped`): nothing.
     /// The view state is parked with its tab, and a load in flight is asked for again when its
-    /// tab returns.
+    /// tab returns. A HEAD move while the tab was parked is picked up by the refresh that runs
+    /// when the tab returns.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
             Self::Open { .. }
@@ -66,6 +69,7 @@ impl BlameMsg {
             | Self::ClearSkipped
             | Self::SetIgnoreWhitespace(..)
             | Self::SetMoves(..)
+            | Self::SetWrapLines(..)
             | Self::OpenHistory { .. }
             | Self::FindChanged
             | Self::FindStep(..)

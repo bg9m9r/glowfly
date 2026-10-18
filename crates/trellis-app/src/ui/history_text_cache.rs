@@ -1,10 +1,9 @@
 //! What the file history's File view measures once per text rather than every frame: the
 //! widest line (for the sideways scroll) and, with wrapping on, where each row starts.
 
-use super::diff::wrap::Wrap;
+use super::diff::wrap::{self, Wrap};
 use crate::state::history::FileTextData;
 use std::sync::Arc;
-use trellis_core::{tabs, wrap};
 
 #[derive(Default)]
 pub struct HistoryTextCache {
@@ -29,17 +28,11 @@ impl HistoryTextCache {
             return;
         }
         if !same || self.tab != tab {
-            self.widest = data.lines.iter().map(|l| tabs::columns(l, tab)).max().unwrap_or(0);
+            self.widest = wrap::widest(&data.lines, tab);
         }
-        self.offsets.clear();
-        if let Some(w) = wrap {
-            self.offsets.reserve(data.lines.len() + 1);
-            let mut y = 0.0;
-            self.offsets.push(y);
-            for line in &data.lines {
-                y += row_h + wrap::line_count(line, tab, w.cols).saturating_sub(1) as f32 * w.line_h;
-                self.offsets.push(y);
-            }
+        match wrap {
+            Some(w) => wrap::row_offsets(&data.lines, tab, row_h, w, &mut self.offsets),
+            None => self.offsets.clear(),
         }
         self.data = Some(data.clone());
         self.tab = tab;

@@ -15,4 +15,7 @@ pub struct BlameRequest {
     /// Highlight the lines too (Preferences > Editor syntax highlighting).
     pub highlight: bool,
     pub generation: u64,
+    /// For a HEAD blame re-run after HEAD moved: the HEAD it was last shown at; when `path` is
+    /// gone from HEAD, blame the name renames since then lead to.
+    pub follow: Option<Oid>,
 }

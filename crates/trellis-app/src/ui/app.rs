@@ -93,6 +93,7 @@ impl TrellisApp {
                 speller: Speller::new(),
                 diff_rows: Default::default(),
                 history_text: Default::default(),
+                blame_rows: Default::default(),
             },
             runner: make_runner(tx, ctx.clone()),
             results,

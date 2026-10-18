@@ -30,6 +30,8 @@ pub struct BlamePrefs {
     /// Ignore whitespace changes (`-w`).
     pub ignore_whitespace: bool,
     pub moves: BlameMoves,
+    /// Wrap long lines in the blame view (the header's Wrap lines toggle).
+    pub wrap_lines: bool,
 }
 
 #[cfg(test)]
@@ -43,15 +45,21 @@ mod tests {
         assert_eq!(s.blame, BlamePrefs::default());
         assert_eq!(s.blame.moves, BlameMoves::Off);
         assert!(!s.blame.ignore_whitespace);
+        assert!(!s.blame.wrap_lines);
     }
 
     #[test]
     fn blame_prefs_round_trip() {
-        let on = Settings { blame: BlamePrefs { ignore_whitespace: true, moves: BlameMoves::AcrossFiles }, ..Settings::default() };
+        let on = Settings {
+            blame: BlamePrefs { ignore_whitespace: true, moves: BlameMoves::AcrossFiles, wrap_lines: true },
+            ..Settings::default()
+        };
         let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
         assert_eq!(back.blame, on.blame);
         let partial: BlamePrefs = serde_json::from_str(r#"{"moves": "WithinFile"}"#).unwrap();
-        assert_eq!(partial, BlamePrefs { ignore_whitespace: false, moves: BlameMoves::WithinFile });
+        assert_eq!(partial, BlamePrefs { moves: BlameMoves::WithinFile, ..BlamePrefs::default() });
+        let wrap: BlamePrefs = serde_json::from_str(r#"{"wrap_lines": true}"#).unwrap();
+        assert_eq!(wrap, BlamePrefs { wrap_lines: true, ..BlamePrefs::default() });
     }
 
     #[test]

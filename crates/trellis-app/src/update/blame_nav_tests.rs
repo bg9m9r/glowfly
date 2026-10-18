@@ -175,6 +175,20 @@ fn toggles_save_and_reblame() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[test]
+fn set_wrap_lines_saves_and_keeps_the_top_line() {
+    let (mut st, dir) = shown("blame-nav-wrap", literal(&ten_lines(), &[(0, 10)], None));
+    st.blame.as_mut().unwrap().top_line = 6;
+    let fx = send(&mut st, BlameMsg::SetWrapLines(true));
+    assert!(st.settings.blame.wrap_lines);
+    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.blame.wrap_lines), "no reload: {fx:?}");
+    let v = view(&st);
+    assert_eq!(v.scroll_to, Some(BlameLanding { line: 6, center: false }));
+    assert!(!v.loading && v.data.is_some());
+    assert!(send(&mut st, BlameMsg::SetWrapLines(true)).is_empty(), "unchanged");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 fn commit_file(dir: &Path, text: &str, message: &str) -> Oid {
     std::fs::write(dir.join("a.txt"), text).unwrap();
     git(dir, &["commit", "-q", "-am", message]);

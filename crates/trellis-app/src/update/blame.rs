@@ -1,5 +1,6 @@
-//! The blame view: opening it on a file (at HEAD or a commit), its result, selecting a line's
-//! commit on the graph, and closing it. Stepping back, skipping commits, the header toggles and
+//! The blame view: opening it on a file (at HEAD or a commit), its result, re-running a HEAD
+//! blame when a refresh finds HEAD moved, selecting a line's commit on the graph, and closing
+//! it. Stepping back, skipping commits, the header toggles and
 //! the jump to file history are in `blame_nav.rs`; find, go to line and the run keys in
 //! `blame_find.rs`.
 
@@ -8,10 +9,13 @@ use crate::msg::{BlameMsg, Msg, TrustMsg};
 use crate::state::AppState;
 use crate::state::blame::{BlameLanding, BlameView};
 use std::time::Instant;
-use trellis_core::repo::BlameOptions;
+use trellis_core::repo::{BlameOptions, Snapshot};
 
 #[path = "blame_find.rs"]
 mod find;
+#[cfg(test)]
+#[path = "blame_head_tests.rs"]
+mod head_tests;
 #[path = "blame_nav.rs"]
 mod nav;
 #[cfg(test)]
@@ -57,6 +61,7 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
         BlameMsg::ClearSkipped => nav::clear_skipped(st, now, fx),
         BlameMsg::SetIgnoreWhitespace(on) => nav::set_ignore_whitespace(st, on, now, fx),
         BlameMsg::SetMoves(m) => nav::set_moves(st, m, now, fx),
+        BlameMsg::SetWrapLines(on) => nav::set_wrap_lines(st, on, fx),
         BlameMsg::OpenHistory { select } => nav::open_history(st, select, fx),
         BlameMsg::FindChanged => find::find_changed(st),
         BlameMsg::FindStep(d) => find::find_step(st, d),
@@ -73,9 +78,15 @@ fn loaded(st: &mut AppState, path: String, generation: u64, result: Result<Box<c
     let Some(view) = st.blame.as_mut().filter(|v| v.path == path) else { return };
     view.loading = false;
     let land = view.land.take();
+    view.follow = None;
     match result {
         Ok(d) => {
             let n = d.blame.lines.len();
+            view.data_gen = generation;
+            if view.at.is_none() && d.blame.path != view.path {
+                view.path = d.blame.path.clone(); // followed through a rename since HEAD moved
+            }
+            view.cursor = view.cursor.filter(|&c| c < n);
             if !view.find.query.is_empty() {
                 view.find.hits = crate::state::blame_find::search(&d.blame.lines, &view.find.query);
                 view.find.current = None;
@@ -90,6 +101,7 @@ fn loaded(st: &mut AppState, path: String, generation: u64, result: Result<Box<c
             }
         }
         Err(e) => {
+            view.data = None; // the error replaces a blame a re-run kept on screen
             view.error = Some(e.clone());
             st.log(false, e);
         }
@@ -109,6 +121,26 @@ pub(super) fn reload(st: &mut AppState, land: BlameLanding, now: Instant, fx: &m
         return;
     }
     view.loading = true;
+    request(st, fx);
+}
+
+/// A refresh brought snapshot `new`: when HEAD moved (a commit, checkout, pull, reset, ...) a
+/// blame at HEAD runs again, following the file through renames since the HEAD it was shown
+/// at. The old blame stays on screen until the result replaces it, keeping the top line. A
+/// blame at a fixed commit and a held repository are left alone. Called before `st.snap` is
+/// replaced.
+pub(super) fn head_moved(st: &mut AppState, new: &Snapshot, fx: &mut Vec<Effect>) {
+    let Some(old) = st.snap.as_ref().map(|s| s.head_oid).filter(|h| *h != new.head_oid) else { return };
+    if !st.runs_git_unasked() {
+        return;
+    }
+    let Some(view) = st.blame.as_mut().filter(|v| v.at.is_none()) else { return };
+    view.follow = view.follow.or(old); // the earliest HEAD while re-runs stack up
+    if view.land.is_none() {
+        view.land = Some(BlameLanding { line: view.top_line, center: false });
+    }
+    view.loading = true;
+    view.error = None;
     request(st, fx);
 }
 
@@ -140,6 +172,7 @@ fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
             opts,
             highlight: st.settings.syntax_highlighting,
             generation: st.blame_gen,
+            follow: view.follow,
         }));
     }
 }

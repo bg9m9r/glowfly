@@ -1,6 +1,6 @@
 //! The open blame view: the file and commit asked for, the blame once it has loaded, the steps
-//! back, the commits skipped, and where the view is (its top line, the cursor line, find and
-//! go to line).
+//! back, the commits skipped, where the view is (its top line, the cursor line, find and go to
+//! line), and the HEAD a re-run after HEAD moved follows the file from.
 
 use super::blame_find::BlameFind;
 use git2::Oid;
@@ -81,6 +81,11 @@ pub struct BlameView {
     pub goto: String,
     /// Put the keyboard in the find field on the next frame (taken by the view).
     pub focus_find: bool,
+    /// The HEAD a HEAD blame was last shown at, set while a re-run after HEAD moved is pending.
+    /// If the path is gone from HEAD, the request follows renames since that commit.
+    pub follow: Option<Oid>,
+    /// The generation `data` was loaded with. It keys the UI's row-measure cache.
+    pub data_gen: u64,
 }
 
 impl BlameView {
@@ -100,12 +105,19 @@ impl BlameView {
             find: BlameFind::default(),
             goto: String::new(),
             focus_find: false,
+            follow: None,
+            data_gen: 0,
         }
     }
 
     /// A view that shows `why` instead of a blame.
     pub fn failed(path: String, at: Option<Oid>, why: &str) -> Self {
         Self { loading: false, error: Some(why.to_owned()), ..Self::loading(path, at) }
+    }
+
+    /// A re-run keeps the old blame on screen while it loads.
+    pub fn updating(&self) -> bool {
+        self.loading && self.data.is_some()
     }
 
     /// The loaded blame's line count (0 while loading).

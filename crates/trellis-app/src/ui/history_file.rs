@@ -5,7 +5,7 @@
 //! comes from `FileHistoryView::text` (read by the runner); this only draws it.
 
 use super::UiCache;
-use super::diff::wrap::{self, RowMetrics, Wrap};
+use super::diff::wrap::{self, MIN_COLS, RowMetrics, Wrap};
 use super::diff::{DiffStyle, paint_line};
 use super::find_bar::{self, FindIntent, plural};
 use super::theme::color;
@@ -18,12 +18,11 @@ use std::sync::Arc;
 use trellis_core::repo::LfsState;
 
 pub(in crate::ui) const WRAP_LINES: &str = "Wrap lines";
+pub(in crate::ui) const WRAP_TIP: &str = "Continue long lines on the next line";
 pub(in crate::ui) const DELETED_NOTE: &str = "Deleted by this commit; this is its last version";
 pub(in crate::ui) const LFS_UNTRUSTED: &str = "Git LFS pointer. Trust this repository to see the file's content.";
 /// The least width the toolbar needs to keep find and go to line on its one row.
 const ONE_ROW: f32 = 560.0;
-/// The narrowest a wrapped line gets, in columns.
-const MIN_COLS: usize = 8;
 
 pub(super) fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.history else { return };
@@ -92,7 +91,7 @@ fn toolbar(ui: &mut Ui, st: &mut AppState, n: usize, notes: &[(String, Color32)]
         if one_row {
             find(ui, msgs);
         }
-        let r = ui.selectable_label(wrap, WRAP_LINES).on_hover_text("Continue long lines on the next line");
+        let r = ui.selectable_label(wrap, WRAP_LINES).on_hover_text(WRAP_TIP);
         if r.clicked() {
             msgs.push(Msg::Diff(DiffMsg::SetWordWrap(!wrap)));
         }

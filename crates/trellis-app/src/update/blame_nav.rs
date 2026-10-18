@@ -1,5 +1,5 @@
-//! Moving between blames: Blame before this commit and Back, skipping commits, the whitespace
-//! and move toggles, and the jump to the file's history.
+//! Moving between blames: Blame before this commit and Back, skipping commits, the whitespace,
+//! move and wrap toggles, and the jump to the file's history.
 
 use super::reload;
 use crate::effect::Effect;
@@ -24,6 +24,7 @@ fn reload_in_place(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 pub(super) fn back(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let Some(view) = st.blame.as_mut() else { return };
     let Some(step) = view.back.pop() else { return };
+    view.follow = None;
     view.path = step.path;
     view.at = step.at;
     view.skipped = step.skipped;
@@ -53,6 +54,7 @@ pub(super) fn parent(st: &mut AppState, line: usize, now: Instant, fx: &mut Vec<
     if view.back.len() > BACK_LIMIT {
         view.back.remove(0);
     }
+    view.follow = None;
     view.path = prev_path;
     view.at = Some(prev);
     view.cursor = None;
@@ -90,6 +92,19 @@ pub(super) fn set_moves(st: &mut AppState, moves: BlameMoves, now: Instant, fx: 
     }
     st.settings.blame.moves = moves;
     saved(st, now, fx);
+}
+
+/// Wrap lines: saved, and the top line stays at the top (rows only change height, so there is
+/// nothing to blame again).
+pub(super) fn set_wrap_lines(st: &mut AppState, on: bool, fx: &mut Vec<Effect>) {
+    if st.settings.blame.wrap_lines == on {
+        return;
+    }
+    st.settings.blame.wrap_lines = on;
+    fx.push(super::super::prefs::save_settings(st));
+    if let Some(view) = st.blame.as_mut() {
+        view.scroll_to = Some(BlameLanding { line: view.top_line, center: false });
+    }
 }
 
 /// After a toggle: saves the settings and blames the open view again.

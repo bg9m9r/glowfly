@@ -290,6 +290,7 @@ mod tests {
             opts: Default::default(),
             highlight: true,
             generation: 4,
+            follow: None,
         };
         let effect = Effect::LoadBlame(r);
         let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();

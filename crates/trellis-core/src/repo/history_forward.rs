@@ -1,11 +1,13 @@
 //! Following a file forwards: the name a file in one commit has in a later commit, through
 //! the renames between them (the file history opened at an older commit starts at HEAD under
-//! that name).
+//! that name), and the name a file at an earlier HEAD has at HEAD now (`name_at_head`: a blame
+//! at HEAD re-run after HEAD moved).
 
-use super::history::{Kind, present, renamed_to};
+use super::history::{Kind, head, present, renamed_to};
 use crate::error::Result;
 use git2::{Oid, Repository, Sort};
 use std::collections::HashMap;
+use std::path::Path;
 
 /// How many commits between the two the search reads before giving up.
 const FORWARD_MAX: usize = 20_000;
@@ -48,4 +50,21 @@ pub(super) fn name_at(repo: &Repository, from: Oid, head: Oid, path: &str) -> Re
         }
     }
     Ok(names.remove(&head))
+}
+
+/// The name `path`, a file in commit `since` (an earlier HEAD), has at HEAD now: `path` itself
+/// while HEAD holds it, else the name renames since `since` lead to when HEAD descends from it.
+/// `None` when the file is gone (deleted, or HEAD moved somewhere without it), when `since`
+/// no longer exists, or on an unborn HEAD.
+pub fn name_at_head(workdir: &Path, path: &str, since: Oid) -> Result<Option<String>> {
+    let repo = Repository::open(workdir)?;
+    let Some(head) = head(&repo)? else { return Ok(None) };
+    if present(&head.tree()?, path, Kind::File).is_some() {
+        return Ok(Some(path.to_owned()));
+    }
+    let below = head.id() == since || repo.graph_descendant_of(head.id(), since).unwrap_or(false);
+    if !below {
+        return Ok(None);
+    }
+    name_at(&repo, since, head.id(), path)
 }

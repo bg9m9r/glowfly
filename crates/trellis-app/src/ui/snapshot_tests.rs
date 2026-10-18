@@ -143,6 +143,7 @@ fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harn
                 speller: Speller::new(),
                 diff_rows: Default::default(),
                 history_text: Default::default(),
+                blame_rows: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },

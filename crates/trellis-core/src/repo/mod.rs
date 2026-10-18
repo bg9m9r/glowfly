@@ -97,6 +97,7 @@ pub use file_at::{FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, LfsState, file_at,
 pub use folder_history::{folder_file_today, folder_history};
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
+pub use history_forward::name_at_head;
 pub use index::{apply_hunk, discard_file, discard_untracked, stage_all, stage_file, unstage_paths};
 pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, messages_between};

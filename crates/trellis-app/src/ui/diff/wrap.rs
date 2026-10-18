@@ -4,9 +4,10 @@
 use super::style::DiffStyle;
 use eframe::egui::{self, Rect, Ui, UiBuilder};
 use trellis_core::settings::DiffLayout;
+use trellis_core::{tabs, wrap};
 
 /// The narrowest a wrapped line gets, in columns; anything past it is clipped by the painter.
-const MIN_COLS: usize = 8;
+pub(in crate::ui) const MIN_COLS: usize = 8;
 /// Room kept free after the text column so wrapped text clears the scrollbar and the edge.
 const PAD: f32 = 8.0;
 
@@ -34,6 +35,24 @@ pub(super) fn wrap_for(ui: &Ui, st: &DiffStyle, layout: DiffLayout) -> Option<Wr
     };
     let cols = if char_w > 0.0 { (text_w / char_w).floor().max(0.0) as usize } else { 0 };
     Some(Wrap { cols: cols.max(MIN_COLS), line_h })
+}
+
+/// The widest of `lines`, in columns with tabs expanded to `tab`.
+pub(in crate::ui) fn widest(lines: &[String], tab: usize) -> usize {
+    lines.iter().map(|l| tabs::columns(l, tab)).max().unwrap_or(0)
+}
+
+/// Writes into `out` where each of `lines` starts when wrapped by `w`, then the total (n + 1
+/// offsets from 0): each row is `row_h` plus `w.line_h` for every visual line past the first.
+pub(in crate::ui) fn row_offsets(lines: &[String], tab: usize, row_h: f32, w: Wrap, out: &mut Vec<f32>) {
+    out.clear();
+    out.reserve(lines.len() + 1);
+    let mut y = 0.0;
+    out.push(y);
+    for line in lines {
+        y += row_h + wrap::line_count(line, tab, w.cols).saturating_sub(1) as f32 * w.line_h;
+        out.push(y);
+    }
 }
 
 /// Where the rows sit: all `h` high, or (wrapped) at prefix offsets, one per row plus the

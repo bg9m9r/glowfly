@@ -1,12 +1,14 @@
-//! The blame header. Row 1: "Blame", the path, the commit it is shown at, its size, and Close.
-//! Row 2: Back, File history, the whitespace and move toggles, the skipped commits, and at the
-//! right go to line and find in the file. Before a blame has loaded, row 2 has Back and File
+//! The blame header. Row 1: "Blame", the path, the commit it is shown at, its size, "Updating…"
+//! while it is blamed again after HEAD moved, and Close. Row 2: Back, File history, the
+//! whitespace, move and Wrap lines toggles, the skipped commits, and at the right go to line
+//! and find in the file. Before a blame has loaded, row 2 has Back and File
 //! history only.
 
 use crate::msg::{BlameMsg, Msg};
 use crate::state::blame::BlameView;
 use crate::ui::common::{caret_after, short};
 use crate::ui::find_bar::{FindIntent, plural};
+use crate::ui::history_file::{WRAP_LINES, WRAP_TIP};
 use crate::ui::theme::color;
 use eframe::egui::{self, Align, Layout, RichText, Ui};
 use trellis_core::repo::Snapshot;
@@ -17,6 +19,7 @@ pub(in crate::ui) const FILE_HISTORY: &str = "File history";
 pub(in crate::ui) const IGNORE_WHITESPACE: &str = "Ignore whitespace";
 pub(in crate::ui) const SHOW_ALL: &str = "Show all";
 pub(in crate::ui) const AGE_TIP: &str = "Stronger marks in the gutter are newer commits";
+const UPDATING: &str = "Updating…";
 
 /// The Moves menu's button text and its items, in order.
 fn moves_text(m: BlameMoves) -> &'static str {
@@ -100,6 +103,9 @@ fn first_row(ui: &mut Ui, view: &BlameView, msgs: &mut Vec<Msg>) {
             let size = format!("{} · {}", plural(lines, "line", "lines"), plural(commits, "commit", "commits"));
             ui.label(RichText::new(size).color(color::weak())).on_hover_text(AGE_TIP);
         }
+        if view.updating() {
+            ui.label(RichText::new(UPDATING).color(color::weak())).on_hover_text("Blaming again: HEAD moved");
+        }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.button("Close  (Esc)").clicked() {
                 msgs.push(Msg::Blame(BlameMsg::Close));
@@ -108,7 +114,7 @@ fn first_row(ui: &mut Ui, view: &BlameView, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// Ignore whitespace and the Moves menu (saved in settings).
+/// Ignore whitespace, the Moves menu and Wrap lines (saved in settings).
 fn toggles(ui: &mut Ui, settings: &Settings, msgs: &mut Vec<Msg>) {
     let ws = settings.blame.ignore_whitespace;
     let r = ui.selectable_label(ws, IGNORE_WHITESPACE).on_hover_text("Blame past changes that only add or remove whitespace");
@@ -127,6 +133,11 @@ fn toggles(ui: &mut Ui, settings: &Settings, msgs: &mut Vec<Msg>) {
         }
     });
     caret_after(ui, &r.response);
+    ui.add_space(12.0); // clear of the caret
+    let wrap = settings.blame.wrap_lines;
+    if ui.selectable_label(wrap, WRAP_LINES).on_hover_text(WRAP_TIP).clicked() {
+        msgs.push(Msg::Blame(BlameMsg::SetWrapLines(!wrap)));
+    }
     ui.add_space(12.0);
 }
 

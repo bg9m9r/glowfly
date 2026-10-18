@@ -692,11 +692,6 @@ follow-ups go to Ideas, not here.
 - Rendered preview (Markdown, images) in the file view
 - Open folder history from a folder row once file lists can show a tree
 
-### Blame gutter
-
-- Re-blame when HEAD moves while a HEAD blame is open (commit, checkout, pull)
-- Horizontal scrolling or word wrap for long lines (they are clipped now)
-
 ### Multi-select commits
 
 - Swap direction for the commit-to-working-tree comparison (working tree to commit)
@@ -1055,6 +1050,15 @@ here, under the item they grew from.
 - Show history and blame of one file side by side, or switch between them in one panel
 - Move/copy score thresholds, and -C -C (copies from any commit)
 - A setting to turn age colouring off, or colour by absolute date instead of rank
+- Keep the cursor on the same source line across a re-blame after HEAD moved, mapping lines
+  through the change
+- Say when a re-blame followed a rename (a note naming the old and new path)
+- Back steps recorded at HEAD keep the file's old name after a re-blame followed a rename
+- A keyboard shortcut and a View menu item for Wrap lines that act on the open blame view
+- Keep the sideways scroll position across Back, Blame before this commit and a re-blame that
+  followed a rename
+- Let a narrow window shrink the blame gutter, or fold the summary into a hover, when wrapping
+  leaves few columns
 
 ### Interactive rebase
 

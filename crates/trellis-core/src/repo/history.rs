@@ -155,7 +155,7 @@ pub fn file_history(workdir: &Path, path: &str, start: &HistoryStart, limit: usi
 }
 
 /// HEAD's commit; `None` on an unborn branch.
-fn head(repo: &Repository) -> Result<Option<Commit<'_>>> {
+pub(super) fn head(repo: &Repository) -> Result<Option<Commit<'_>>> {
     match repo.head() {
         Ok(h) => Ok(Some(h.peel_to_commit()?)),
         Err(e) if matches!(e.code(), git2::ErrorCode::UnbornBranch | git2::ErrorCode::NotFound) => Ok(None),
