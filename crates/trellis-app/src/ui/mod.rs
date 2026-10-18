@@ -1,7 +1,8 @@
-//! The egui layer. Views draw `AppState` and push `Msg`s; the shell feeds those messages and
-//! background results through `update`, runs the resulting effects, and handles the few
-//! effects that need the window.
+//! The egui layer. Views draw `AppState` and push `Msg`s; the shell (`app.rs`) feeds those
+//! messages and background results through `update`, runs the resulting effects, and handles
+//! the few effects that need the window.
 
+mod access;
 mod activity_log;
 mod am_banner;
 mod askpass;
@@ -293,133 +294,26 @@ mod tabs_dialog_tests;
 mod tabs_list_tests;
 #[cfg(test)]
 mod tabs_tests;
+#[cfg(test)]
+mod toolbar_names_tests;
 
-use crate::effect::{Effect, UiEffect};
-use crate::msg::AvatarMsg;
 use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RecentMsg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::runner::Runner;
 use crate::state::AppState;
-use crate::update::update;
 #[cfg(test)]
 use central::escape_key;
 use eframe::egui;
-use std::sync::mpsc::{self, Receiver};
-use std::time::{Duration, Instant};
-use trellis_core::settings::Settings;
 use trellis_core::spell::Speller;
+
+mod app;
+#[cfg(test)]
+pub(crate) use app::TestStart;
+pub use app::TrellisApp;
 
 /// Resources owned by the UI thread (textures, the spell checker's COM object).
 pub struct UiCache {
     pub avatars: avatars::Avatars,
     pub speller: Speller,
     pub diff_rows: diff::rows_cache::DiffRowsCache,
-}
-
-pub struct TrellisApp {
-    st: AppState,
-    cache: UiCache,
-    runner: Runner<egui::Context>,
-    results: Receiver<Msg>,
-    /// The palette for the chosen theme, set at the start of every frame.
-    theme: theme::ThemeCache,
-}
-
-impl TrellisApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<crate::StartArg>, logs: crate::logging::LogSetup) -> Self {
-        let (tx, results) = mpsc::channel();
-        let (settings, problem) = Settings::load();
-        // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
-        trellis_core::git_program::set(trellis_core::git_program::from_setting(settings.git_program.as_deref()).as_deref());
-        let recent = crate::platform::load_recent();
-        // Restore the last session's tabs (or, before tabs were saved, the last repository).
-        let (mut paths, labels, active) =
-            if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), Vec::new(), 0) };
-        if paths.is_empty() && settings.reopen_last_repo {
-            // Not checked here (a network share may not answer): a folder that is gone fails to
-            // load like any other.
-            paths.extend(recent.first().cloned());
-        }
-        let mut app = Self {
-            st: AppState::new(settings, recent, Instant::now()),
-            cache: UiCache { avatars: avatars::Avatars::default(), speller: Speller::new(), diff_rows: Default::default() },
-            runner: Runner::new(tx, cc.egui_ctx.clone()),
-            results,
-            theme: theme::ThemeCache::default(),
-        };
-        // Read now, not through the runner, so the first frame already has the theme's colors;
-        // the folder sits next to the settings file just read.
-        let themes = trellis_core::settings::themes::load_all();
-        crate::themes::trace_problems(&themes);
-        app.dispatch(&cc.egui_ctx, Msg::Theme(crate::themes::ThemeMsg::Loaded(themes)));
-        layout::start(&cc.egui_ctx, &app.st);
-        // git and ssh ask for missing credentials through a dialog from now on.
-        app.runner.start_askpass();
-        // The log files, and earlier sessions' activity.
-        app.runner.attach_logs(logs);
-        app.dispatch(&cc.egui_ctx, Msg::Logs(crate::logs::LogsMsg::Start));
-        // Links opened while this window runs come here instead of a new window.
-        app.runner.start_instance();
-        app.dispatch(&cc.egui_ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
-        app.dispatch(&cc.egui_ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect));
-        app.dispatch(&cc.egui_ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup));
-        app.dispatch(&cc.egui_ctx, Msg::Updates(crate::msg::UpdateMsg::Startup));
-        app.dispatch(&cc.egui_ctx, Msg::Recent(RecentMsg::CheckFolders));
-        if let Some(problem) = problem {
-            tracing::warn!("settings: {}", problem.message());
-            app.dispatch(&cc.egui_ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem.message())));
-        }
-        if !paths.is_empty() {
-            app.dispatch(&cc.egui_ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, labels, active }));
-        }
-        match start {
-            Some(crate::StartArg::Path(path)) => app.dispatch(&cc.egui_ctx, Msg::Repo(RepoMsg::Open(path))),
-            Some(crate::StartArg::Link(text)) => {
-                app.dispatch(&cc.egui_ctx, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Open(text)));
-            }
-            None => {}
-        }
-        app
-    }
-
-    fn dispatch(&mut self, ctx: &egui::Context, msg: Msg) {
-        for effect in update(&mut self.st, msg, Instant::now()) {
-            match effect {
-                Effect::Ui(UiEffect::CopyText(text)) => ctx.copy_text(text),
-                Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
-                Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
-                Effect::Ui(UiEffect::CloseWindow) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
-                Effect::Ui(UiEffect::RequestPaste) => ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste),
-                Effect::Ui(UiEffect::FocusWindow) => {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
-                    request_attention(ctx);
-                }
-                other => self.runner.run(other),
-            }
-        }
-    }
-
-    /// Keyboard shortcuts and window events, turned into messages or view-state changes.
-    fn input(&mut self, ctx: &egui::Context, msgs: &mut Vec<Msg>) {
-        let focused = self.st.view.focused;
-        if focused && !self.st.view.was_focused {
-            msgs.push(Msg::Repo(RepoMsg::WindowFocused));
-        }
-        self.st.view.was_focused = focused;
-        shortcuts::input(ctx, &mut self.st, msgs);
-    }
-}
-
-/// Flashes the taskbar entry while the window isn't focused.
-fn request_attention(ctx: &egui::Context) {
-    if !ctx.input(|i| i.focused) {
-        ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational));
-    }
 }
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
@@ -459,49 +353,4 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     askpass::show(ctx, st, msgs);
     status::toasts(ctx, st, msgs);
     st.view.was_typing = shortcuts::text_field_focused(ctx);
-}
-
-impl eframe::App for TrellisApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.theme.apply(ctx, &self.st.settings, &self.st.themes);
-        layout::apply_zoom(ctx, &self.st);
-        self.st.view.focused = ctx.input(|i| i.focused);
-        while let Ok(msg) = self.results.try_recv() {
-            self.dispatch(ctx, msg);
-        }
-        for (email, img) in self.st.view.avatars_loaded.drain(..) {
-            self.cache.avatars.insert(ctx, email, img);
-        }
-        self.st.view.hover_tip = self.st.view.hover_tip_next.take();
-        self.st.view.now = chrono::Local::now().timestamp();
-        self.st.view.utc_offset = trellis_core::dates::local_offset();
-
-        let now = Instant::now();
-        let mut msgs = vec![Msg::Tick(now)];
-        self.input(ctx, &mut msgs);
-        draw(ctx, &mut self.st, &mut self.cache, &mut msgs);
-        build_status::after_draw(&mut self.st, ctx, now, &mut msgs);
-        let wanted = self.cache.avatars.take_wanted();
-        if !wanted.is_empty() {
-            msgs.push(Msg::Avatars(AvatarMsg::WantAvatars(wanted)));
-        }
-        // Only Preferences edits settings in place; persist any change (also on the frame it closes).
-        if self.st.prefs.is_some() {
-            msgs.push(Msg::Prefs(PrefsMsg::SettingsEdited));
-        }
-
-        for msg in msgs {
-            self.dispatch(ctx, msg);
-        }
-        // Keep polling while work is in flight or toasts are fading.
-        if self.st.job.is_some() || self.st.loading || !self.st.toasts.is_empty() {
-            ctx.request_repaint_after(Duration::from_millis(150));
-        } else if self.st.settings.auto_fetch_minutes > 0 {
-            ctx.request_repaint_after(Duration::from_secs(5));
-        }
-        // The status is re-read on a timer where the watcher can be silent (see `poll_every`).
-        if let Some(every) = self.st.watch.poll_interval() {
-            ctx.request_repaint_after(every);
-        }
-    }
 }

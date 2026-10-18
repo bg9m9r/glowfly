@@ -12,6 +12,8 @@ mod effect;
 mod file_op;
 mod git_env;
 mod gitflow;
+#[cfg(test)]
+mod journey;
 mod keymap;
 mod lfs;
 mod logging;

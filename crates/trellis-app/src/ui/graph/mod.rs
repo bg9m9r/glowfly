@@ -144,6 +144,12 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     },
                     None => continue,
                 };
+                // The row's accessible name: its summary, or the text of its WIP box.
+                match (commit, worktree) {
+                    (Some(c), _) => super::access::name_button(&resp, true, &c.summary),
+                    (None, Some((_, wt))) => super::access::name_button(&resp, true, &crate::state::worktrees::wip_label(wt)),
+                    (None, None) => super::access::name_button(&resp, true, "// WIP"),
+                }
                 // Another worktree's row is never selected.
                 let selected = match (selection, commit) {
                     _ if worktree.is_some() => false,

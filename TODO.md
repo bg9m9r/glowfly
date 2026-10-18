@@ -70,14 +70,14 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 What [Milestone 1](ROADMAP.md#milestone-1-first-release-in-progress) needs that tests and CI can
 check. Its hands-on criteria (daily use, merging the release pull request) are in ROADMAP.md.
 
-- [ ] **Whole-app journey tests**: headless tests that start the whole app (state, update,
+- [x] **Whole-app journey tests**: headless tests that start the whole app (state, update,
       views and the real effect runner with git) on a fixture repository and drive it through
       the UI by visible labels, checking the screen and the repository on disk at each step;
       run on Windows, macOS and Linux CI
-  - Clone from a local bare remote, stage a hunk and a file, commit, push, pull
-  - Create a branch, merge it, delete it; checkout with local changes
-  - Rebase onto a diverged branch, hit a conflict, resolve it in the merge tool, continue
-  - Stash and pop; undo and redo a commit and a merge
+  - [x] Clone from a local bare remote, stage a hunk and a file, commit, push, pull
+  - [x] Create a branch, merge it, delete it; checkout with local changes
+  - [x] Rebase onto a diverged branch, hit a conflict, resolve it in the merge tool, continue
+  - [x] Stash and pop; undo and redo a commit and a merge
 - [ ] **Real-input smoke tests (Linux)**: a CI job that runs the release build under Xvfb and
       sends real X11 mouse and keyboard events with xdotool
   - The first click after the window gains focus, typing in the commit box, a keyboard
@@ -1882,3 +1882,16 @@ here, under the item they grew from.
 - Translate the folder picker titles (Add a project folder, Open a Git repository and the other Preferences pickers)
 - Translate the palette's repository commands (e.g. Remove missing repositories from the lists)
 - Translate the pull request panel's file list texts (only its rows' Copy path follows the language)
+
+### Whole-app journey tests
+
+- Journey through an external merge tool, using a scripted fake tool that works on every OS
+- Credential-prompt journey: the askpass server answering a password-protected local remote
+- Journeys with the file watcher on, so outside edits show up without Refresh
+- Interactive rebase journey, with the built executable as the sequence editor
+- Multi-tab journeys: switching tabs while a job runs and checking each result reaches its tab
+- Keyboard-driven journeys that press each OS's own shortcut keys
+- Hosting-service journeys against a local fake API (pull requests, issues, build status)
+- On a journey failure, save a rendered screenshot where wgpu is available, to make CI failures easier to read
+- Accessible names for the remaining painted widgets (section headers, graph ref chips, sidebar ahead/behind counts), plus a test that every clickable widget has one
+- Offer stash-and-retry when a checkout is refused because of local changes

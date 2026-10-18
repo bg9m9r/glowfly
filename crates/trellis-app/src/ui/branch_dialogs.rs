@@ -52,6 +52,7 @@ pub fn new_branch(
     ui.heading(heading);
     ui.add_space(6.0);
     let r = ui.add(egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
+    super::access::name_field(&r, "Branch name");
     if focus {
         r.request_focus();
     }

@@ -116,7 +116,8 @@ fn palette_more() {
         p.selected = 0;
     }
     h.run();
-    assert!(h.query_by_label("Refresh").is_some());
+    // The toolbar's Refresh button, then the palette's row.
+    assert_eq!(h.query_all_by_label("Refresh").count(), 2);
     h.press_key(Key::Enter);
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Refresh)))));

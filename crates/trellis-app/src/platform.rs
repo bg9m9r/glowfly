@@ -21,7 +21,7 @@ pub fn load_recent() -> Vec<PathBuf> {
 
 /// The recent list in recent.txt: one path per line (`paths::encode`, which leaves plain paths
 /// as earlier versions wrote them).
-fn parse_recent(text: &str) -> Vec<PathBuf> {
+pub(crate) fn parse_recent(text: &str) -> Vec<PathBuf> {
     text.lines().map(|l| l.strip_suffix('\r').unwrap_or(l)).filter(|l| !l.is_empty()).map(trellis_core::paths::decode).collect()
 }
 
@@ -45,7 +45,12 @@ pub fn check_folders(paths: &[PathBuf]) -> Vec<crate::msg::FolderCheck> {
 /// Saves the recent-repositories list, newest first.
 pub fn save_recent(list: &[PathBuf]) -> std::io::Result<()> {
     let Some(f) = recent_file() else { return Ok(()) };
-    trellis_core::persist::atomic_write(&f, format_recent(list).as_bytes())
+    save_recent_to(&f, list)
+}
+
+/// Writes the recent-repositories list to `file`.
+pub fn save_recent_to(file: &Path, list: &[PathBuf]) -> std::io::Result<()> {
+    trellis_core::persist::atomic_write(file, format_recent(list).as_bytes())
 }
 
 fn tabs_file() -> Option<PathBuf> {
@@ -66,7 +71,7 @@ pub fn load_tabs() -> SavedTabs {
 /// tabs.txt: the active index on the first line, then one repository per line
 /// (`paths::encode`, which escapes every control character), followed by a tab character and
 /// the tab's label when it has one. Files from earlier versions have no labels.
-fn parse_tabs(text: &str) -> SavedTabs {
+pub(crate) fn parse_tabs(text: &str) -> SavedTabs {
     let mut lines = text.lines().map(|l| l.strip_suffix('\r').unwrap_or(l));
     let active: usize = lines.next().and_then(|l| l.trim().parse().ok()).unwrap_or(0);
     let (paths, labels): (Vec<PathBuf>, Vec<Option<String>>) = lines
@@ -98,7 +103,12 @@ fn format_tabs(paths: &[PathBuf], labels: &[Option<String>], active: usize) -> S
 
 pub fn save_tabs(paths: &[PathBuf], labels: &[Option<String>], active: usize) -> std::io::Result<()> {
     let Some(f) = tabs_file() else { return Ok(()) };
-    trellis_core::persist::atomic_write(&f, format_tabs(paths, labels, active).as_bytes())
+    save_tabs_to(&f, paths, labels, active)
+}
+
+/// Writes the open tabs to `file`.
+pub fn save_tabs_to(file: &Path, paths: &[PathBuf], labels: &[Option<String>], active: usize) -> std::io::Result<()> {
+    trellis_core::persist::atomic_write(file, format_tabs(paths, labels, active).as_bytes())
 }
 
 /// The file manager and the folder to give it for showing `dir`, in this system's spelling
@@ -175,6 +185,20 @@ mod tests {
         assert_eq!(labels, [Some("Frontend".to_owned()), None, None]);
         // Fewer labels than paths: the rest have none.
         assert_eq!(parse_tabs(&format_tabs(&paths, &[], 0)).1, [None, None]);
+    }
+
+    #[test]
+    fn saves_to_a_named_file_round_trip() {
+        let dir = trellis_core::paths::temp_dir().join(format!("trellis-platform-saves-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let paths = vec![dir.join("web"), dir.join("api")];
+        save_recent_to(&dir.join("recent.txt"), &paths).unwrap();
+        assert_eq!(parse_recent(&std::fs::read_to_string(dir.join("recent.txt")).unwrap()), paths);
+        let labels = vec![None, Some("API".to_owned())];
+        save_tabs_to(&dir.join("tabs.txt"), &paths, &labels, 1).unwrap();
+        assert_eq!(parse_tabs(&std::fs::read_to_string(dir.join("tabs.txt")).unwrap()), (paths, labels, 1));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

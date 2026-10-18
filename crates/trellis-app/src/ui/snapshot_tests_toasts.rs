@@ -24,7 +24,8 @@ fn toast_behind_alert() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("toast_behind_alert");
-    h.get_by_label("Pull").click();
+    // The toast's button, drawn after the toolbar's Pull.
+    h.get_all_by_label("Pull").last().unwrap().click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ToastAction(i) if *i == id)), "Pull sends the toast's action");
     remove_fixture(&dir);

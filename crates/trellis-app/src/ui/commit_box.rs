@@ -56,6 +56,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
 
     let spell = st.settings.spellcheck;
     let s = spell_text_edit(ui, &mut st.draft.summary, t.tr("commit.summary_hint"), 1, &mut cache.speller, spell);
+    super::access::name_field(&s, t.tr("commit.summary_hint"));
     if std::mem::take(&mut st.view.focus_message) {
         s.request_focus();
     }
@@ -63,6 +64,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     let c = if len > 72 { color::red() } else { color::faint() };
     ui.label(RichText::new(format!("{len}/72")).small().color(c));
     let d = spell_text_edit(ui, &mut st.draft.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
+    super::access::name_field(&d, t.tr("commit.description_hint"));
     if let Some(template) = &st.draft.template {
         let note = t.trf("commit.template_note", &[("char", &template.comment_char)]);
         ui.label(RichText::new(note).small().color(color::faint()));

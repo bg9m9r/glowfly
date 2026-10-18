@@ -81,12 +81,13 @@ binary (package `trellis`).
 | `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs`, `logs.rs`, `onboarding.rs`, `deep_link.rs` | Per-area message and effect types of areas with their own data types (one `Msg` variant each). |
 | `state/` | `AppState`: plain data, one file per area. Pure rules (why an action is blocked, form checks, labels) live next to their data (the Clone dialog in `clone.rs` and `clone_service.rs`, the Init dialog in `init.rs`, the words of the issue panel and Create dialog per tracker in `issue_words.rs`). |
 | `update/` | `update(state, msg, now) -> Vec<Effect>`: one file per area, plus headless tests (`*_tests.rs`, declared in `update/test_mods.rs`). |
-| `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`), one file per kind of work; `logs.rs` is the one ordered worker for the log files. |
+| `runner/` | Runs effects on worker threads and reports back with `Msg`s (`mod.rs`; `execute.rs` maps each effect to its work), one file per kind of work; `logs.rs` is the one ordered worker for the log files. `sandbox.rs` (tests only) keeps the journeys' runner inside the test: saves go to the test's folder, effects that reach the network, the OS shell, the desktop, file pickers, the credential store or the global git config are dropped by name, and it counts the effects in flight. |
+| `journey/` | Tests only: whole-app journeys. The real app (`TrellisApp::for_test`) in an egui_kittest harness on fixture repositories, driven by clicking and typing on widgets found by accessible name (`find.rs`: a region of the window and a pick among equal names), waiting until the app is idle after each step (`harness.rs`), and checking the screen and the repository on disk (`fixture.rs`). In the crate because the package has no library target `tests/` could reach. |
 | `watcher.rs` | The file watcher for the active tab's repository, owned by the runner. |
 | `platform.rs` | OS integration: recent repositories and which listed folders are missing, open tabs, terminals, the file manager, and the window icon (`platform/icon.rs`). |
 | `msg/updates.rs`, `effect/updates.rs`, `runner/updates.rs`, `state/updates.rs`, `state/release_notes.rs`, `update/updates.rs`, `update/release_notes.rs` | Trellis's own updates (`UpdateMsg`, `UpdateEffect`): the check's and download's status, opening the release notes, and the runner's check, download and install. Drawn by `ui/release_notes.rs` (the dialog), `ui/update_notice.rs` (the status bar chip) and `ui/prefs/updates_row.rs` (Preferences > General > Updates). |
 | `keymap/` | The binding table (`table.rs`), chords and their text and file forms (`chord.rs`), the effective keymap with the user's overrides (`active.rs`) and the rebinding rules (`rebind.rs`); shared by matching (`ui/shortcuts/global.rs`), the sheet, the palette, tooltips and Preferences > Keyboard. |
-| `ui/` | egui views, one file or folder per region (the Clone dialog in `clone_dialog.rs` and `clone_service.rs`, the Init dialog in `init_dialog.rs`, the blame view in `blame/`: its header, gutter and line menu), the first-run welcome (`welcome.rs`, `welcome_steps.rs`) and the tour of the main window (`tour.rs`), the themes' names in the language for View > Theme and Preferences' Theme row (`theme_names.rs`), date labels with their full date on hover (`date_tip.rs`), plus snapshot tests (`snapshot_tests*.rs`). `ui/mod.rs` is the shell: it owns the runner and dispatches messages; `central.rs` holds the central-area routing (which view fills it: the pull request panel and the issue panel (`issue/`) share one place) and the Esc chain. |
+| `ui/` | egui views, one file or folder per region (the Clone dialog in `clone_dialog.rs` and `clone_service.rs`, the Init dialog in `init_dialog.rs`, the blame view in `blame/`: its header, gutter and line menu), the first-run welcome (`welcome.rs`, `welcome_steps.rs`) and the tour of the main window (`tour.rs`), the themes' names in the language for View > Theme and Preferences' Theme row (`theme_names.rs`), date labels with their full date on hover (`date_tip.rs`), plus snapshot tests (`snapshot_tests*.rs`). `ui/app.rs` is the shell: it owns the runner and dispatches messages (`ui/app_testing.rs` builds it for the journeys, without eframe and with a sandboxed runner); `ui/access.rs` gives painted buttons and hint-only text fields their accessible names; `central.rs` holds the central-area routing (which view fills it: the pull request panel and the issue panel (`issue/`) share one place) and the Esc chain. |
 
 ### Tests outside `src/`
 
@@ -279,8 +280,9 @@ binary (package `trellis`).
 2. `ui/`, `update/` and `state/` do no I/O. `tests/layering.rs` denies whole families (the file
    system, processes, network, threads, environment, clock, libgit2 access) and the core
    functions that do I/O, and names the file and line of each use. The few justified exceptions
-   (the shell's startup in `ui/mod.rs`) are listed in its `ALLOWED` table with a reason.
-3. New behavior gets an `update` test; new git or API logic gets a `trellis-core` test.
+   (the shell's startup in `ui/app.rs`) are listed in its `ALLOWED` table with a reason.
+3. New behavior gets an `update` test; new git or API logic gets a `trellis-core` test. A flow that
+   crosses views, the runner and git gets a journey step (`src/journey/`).
 4. New views get an `egui_kittest` snapshot when practical. Views read time from
    `st.view.now` / `st.view.utc_offset` (never the system clock) so images are reproducible.
 5. No global mutable state; pass values in. The one exception is the active palette
@@ -334,7 +336,9 @@ binary (package `trellis`).
 6. **View.** Draw it in `ui/<region>.rs`: read state, push `Msg`s.
 7. **Tests.** Write an `update` test (`update/<area>_tests.rs`). Add a core test on a fixture
    repository (see `scratch_repo`) for new git logic, and an `egui_kittest` snapshot for a new
-   view.
+   view. A flow that crosses views, the runner and git gets a journey step (`src/journey/`):
+   give a painted widget or a hint-only field an accessible name (`ui/access.rs`) so the
+   journey can find it.
 8. **Settings.** For a new preference, add a field with a default in `settings.rs`
    (`#[serde(default)]`) and a control on the matching Preferences page (`ui/prefs/`).
 

@@ -60,7 +60,9 @@ fn stash_menu() {
     h.run();
     open_menu(&mut h, "On main: login form tweaks");
     for item in ["Apply", "Pop", "Rename…", "Delete"] {
-        assert!(h.query_by_label(item).is_some(), "{item}");
+        // The toolbar has a Pop button too.
+        let want = if item == "Pop" { 2 } else { 1 };
+        assert_eq!(h.query_all_by_label(item).count(), want, "{item}");
     }
     h.check_snapshot("stash_menu");
     h.get_by_label("Rename…").click();

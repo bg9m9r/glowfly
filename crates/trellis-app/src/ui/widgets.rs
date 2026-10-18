@@ -281,6 +281,7 @@ pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, enabled: bool, labels: 
     } else {
         paint_icon(p, rect.center(), icon, col);
     }
+    super::access::name_button(&resp, enabled, label);
     let resp = if labels { resp } else { resp.on_hover_text(label) };
     if enabled { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
 }

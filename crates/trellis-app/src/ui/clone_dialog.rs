@@ -132,12 +132,13 @@ pub fn show(
     ui.add_space(4.0);
     match form.source {
         CloneSource::Url => {
-            ui.add(
+            let url = ui.add(
                 egui::TextEdit::singleline(&mut form.url)
                     .id(Id::new("trellis-clone-url"))
                     .hint_text("https://github.com/owner/repo.git")
                     .desired_width(f32::INFINITY),
             );
+            super::access::name_field(&url, "Repository URL");
             // Each line is checked right after its field is drawn, so it follows this frame's
             // typing. The folder check doesn't affect the URL's line.
             problem(ui, form.problems(today, true).url.as_ref());
@@ -152,6 +153,7 @@ pub fn show(
                 .hint_text("Clone into folder")
                 .desired_width(340.0),
         );
+        super::access::name_field(&edit, "Clone into folder");
         if edit.changed() {
             msgs.push(Msg::Clone(CloneMsg::ParentEdited));
         }

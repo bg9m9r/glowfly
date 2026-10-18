@@ -1,0 +1,210 @@
+//! The shell: owns the state, the UI-thread caches and the runner, feeds the views' messages and
+//! the runner's results through `update`, runs the resulting effects, and handles the few
+//! effects that need the window.
+
+use super::{UiCache, avatars, build_status, layout, shortcuts, theme};
+use crate::effect::{Effect, UiEffect};
+use crate::msg::AvatarMsg;
+use crate::msg::Msg;
+use crate::msg::PrefsMsg;
+use crate::msg::RecentMsg;
+use crate::msg::RepoMsg;
+use crate::msg::TabsMsg;
+use crate::runner::Runner;
+use crate::state::AppState;
+use crate::update::update;
+use eframe::egui;
+use std::path::PathBuf;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::time::{Duration, Instant};
+use trellis_core::settings::Settings;
+use trellis_core::spell::Speller;
+
+#[cfg(test)]
+#[path = "app_testing.rs"]
+mod testing;
+#[cfg(test)]
+pub(crate) use testing::TestStart;
+
+pub struct TrellisApp {
+    st: AppState,
+    cache: UiCache,
+    runner: Runner<egui::Context>,
+    results: Receiver<Msg>,
+    /// The palette for the chosen theme, set at the start of every frame.
+    theme: theme::ThemeCache,
+    /// Results taken from the runner's channel so far (the journeys wait for this to stop
+    /// changing).
+    #[cfg(test)]
+    drained: u64,
+}
+
+impl TrellisApp {
+    pub fn new(cc: &eframe::CreationContext<'_>, start: Option<crate::StartArg>, logs: crate::logging::LogSetup) -> Self {
+        let ctx = &cc.egui_ctx;
+        let (settings, problem) = Settings::load();
+        // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
+        trellis_core::git_program::set(trellis_core::git_program::from_setting(settings.git_program.as_deref()).as_deref());
+        let recent = crate::platform::load_recent();
+        // Restore the last session's tabs (or, before tabs were saved, the last repository).
+        let (mut paths, labels, active) =
+            if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), Vec::new(), 0) };
+        if paths.is_empty() && settings.reopen_last_repo {
+            // Not checked here (a network share may not answer): a folder that is gone fails to
+            // load like any other.
+            paths.extend(recent.first().cloned());
+        }
+        let mut app = Self::assemble(ctx, settings, recent, Runner::new);
+        // Read now, not through the runner, so the first frame already has the theme's colors;
+        // the folder sits next to the settings file just read.
+        let themes = trellis_core::settings::themes::load_all();
+        crate::themes::trace_problems(&themes);
+        app.dispatch(ctx, Msg::Theme(crate::themes::ThemeMsg::Loaded(themes)));
+        // git and ssh ask for missing credentials through a dialog from now on.
+        app.runner.start_askpass();
+        // The log files, and earlier sessions' activity.
+        app.runner.attach_logs(logs);
+        app.dispatch(ctx, Msg::Logs(crate::logs::LogsMsg::Start));
+        // Links opened while this window runs come here instead of a new window.
+        app.runner.start_instance();
+        app.start_local(ctx);
+        app.dispatch(ctx, Msg::Updates(crate::msg::UpdateMsg::Startup));
+        if let Some(problem) = problem {
+            tracing::warn!("settings: {}", problem.message());
+            app.dispatch(ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem.message())));
+        }
+        if !paths.is_empty() {
+            app.dispatch(ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, labels, active }));
+        }
+        match start {
+            Some(crate::StartArg::Path(path)) => app.dispatch(ctx, Msg::Repo(RepoMsg::Open(path))),
+            Some(crate::StartArg::Link(text)) => {
+                app.dispatch(ctx, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Open(text)));
+            }
+            None => {}
+        }
+        app
+    }
+
+    /// The app around `settings` and `recent`, with the runner `make_runner` builds from the
+    /// results channel and the waker. Nothing is dispatched yet.
+    fn assemble(
+        ctx: &egui::Context,
+        settings: Settings,
+        recent: Vec<PathBuf>,
+        make_runner: impl FnOnce(Sender<Msg>, egui::Context) -> Runner<egui::Context>,
+    ) -> Self {
+        let (tx, results) = mpsc::channel();
+        let app = Self {
+            st: AppState::new(settings, recent, Instant::now()),
+            cache: UiCache { avatars: avatars::Avatars::default(), speller: Speller::new(), diff_rows: Default::default() },
+            runner: make_runner(tx, ctx.clone()),
+            results,
+            theme: theme::ThemeCache::default(),
+            #[cfg(test)]
+            drained: 0,
+        };
+        layout::start(ctx, &app.st);
+        app
+    }
+
+    /// The startup messages that only read local state: Git LFS and the git environment, the
+    /// welcome's first step, and which recent folders are still there.
+    fn start_local(&mut self, ctx: &egui::Context) {
+        self.dispatch(ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
+        self.dispatch(ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect));
+        self.dispatch(ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup));
+        self.dispatch(ctx, Msg::Recent(RecentMsg::CheckFolders));
+    }
+
+    fn dispatch(&mut self, ctx: &egui::Context, msg: Msg) {
+        for effect in update(&mut self.st, msg, Instant::now()) {
+            match effect {
+                Effect::Ui(UiEffect::CopyText(text)) => ctx.copy_text(text),
+                Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
+                Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
+                Effect::Ui(UiEffect::CloseWindow) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                Effect::Ui(UiEffect::RequestPaste) => ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste),
+                Effect::Ui(UiEffect::FocusWindow) => {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                    request_attention(ctx);
+                }
+                other => self.runner.run(other),
+            }
+        }
+    }
+
+    /// Keyboard shortcuts and window events, turned into messages or view-state changes.
+    fn input(&mut self, ctx: &egui::Context, msgs: &mut Vec<Msg>) {
+        let focused = self.st.view.focused;
+        if focused && !self.st.view.was_focused {
+            msgs.push(Msg::Repo(RepoMsg::WindowFocused));
+        }
+        self.st.view.was_focused = focused;
+        shortcuts::input(ctx, &mut self.st, msgs);
+    }
+
+    /// One frame: the runner's results, then the window drawn from the state and the
+    /// messages it pushed.
+    pub(crate) fn frame(&mut self, ctx: &egui::Context) {
+        self.theme.apply(ctx, &self.st.settings, &self.st.themes);
+        layout::apply_zoom(ctx, &self.st);
+        self.st.view.focused = ctx.input(|i| i.focused);
+        while let Ok(msg) = self.results.try_recv() {
+            #[cfg(test)]
+            {
+                self.drained += 1;
+            }
+            self.dispatch(ctx, msg);
+        }
+        for (email, img) in self.st.view.avatars_loaded.drain(..) {
+            self.cache.avatars.insert(ctx, email, img);
+        }
+        self.st.view.hover_tip = self.st.view.hover_tip_next.take();
+        self.st.view.now = chrono::Local::now().timestamp();
+        self.st.view.utc_offset = trellis_core::dates::local_offset();
+
+        let now = Instant::now();
+        let mut msgs = vec![Msg::Tick(now)];
+        self.input(ctx, &mut msgs);
+        super::draw(ctx, &mut self.st, &mut self.cache, &mut msgs);
+        build_status::after_draw(&mut self.st, ctx, now, &mut msgs);
+        let wanted = self.cache.avatars.take_wanted();
+        if !wanted.is_empty() {
+            msgs.push(Msg::Avatars(AvatarMsg::WantAvatars(wanted)));
+        }
+        // Only Preferences edits settings in place; persist any change (also on the frame it closes).
+        if self.st.prefs.is_some() {
+            msgs.push(Msg::Prefs(PrefsMsg::SettingsEdited));
+        }
+
+        for msg in msgs {
+            self.dispatch(ctx, msg);
+        }
+        // Keep polling while work is in flight or toasts are fading.
+        if self.st.job.is_some() || self.st.loading || !self.st.toasts.is_empty() {
+            ctx.request_repaint_after(Duration::from_millis(150));
+        } else if self.st.settings.auto_fetch_minutes > 0 {
+            ctx.request_repaint_after(Duration::from_secs(5));
+        }
+        // The status is re-read on a timer where the watcher can be silent (see `poll_every`).
+        if let Some(every) = self.st.watch.poll_interval() {
+            ctx.request_repaint_after(every);
+        }
+    }
+}
+
+impl eframe::App for TrellisApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.frame(ctx);
+    }
+}
+
+/// Flashes the taskbar entry while the window isn't focused.
+fn request_attention(ctx: &egui::Context) {
+    if !ctx.input(|i| i.focused) {
+        ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational));
+    }
+}
