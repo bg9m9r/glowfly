@@ -17,7 +17,7 @@ use eframe::egui;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
-use trellis_core::settings::Settings;
+use trellis_core::settings::{Settings, ThemeCatalog};
 use trellis_core::spell::Speller;
 
 #[cfg(test)]
@@ -59,16 +59,7 @@ impl TrellisApp {
         // the folder sits next to the settings file just read.
         let themes = trellis_core::settings::themes::load_all();
         crate::themes::trace_problems(&themes);
-        app.dispatch(ctx, Msg::Theme(crate::themes::ThemeMsg::Loaded(themes)));
-        // git and ssh ask for missing credentials through a dialog from now on.
-        app.runner.start_askpass();
-        // The log files, and earlier sessions' activity.
-        app.runner.attach_logs(logs);
-        app.dispatch(ctx, Msg::Logs(crate::logs::LogsMsg::Start));
-        // Links opened while this window runs come here instead of a new window.
-        app.runner.start_instance();
-        app.start_local(ctx);
-        app.dispatch(ctx, Msg::Updates(crate::msg::UpdateMsg::Startup));
+        app.start(ctx, themes, Some(logs));
         if let Some(problem) = problem {
             tracing::warn!("settings: {}", problem.message());
             app.dispatch(ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem.message())));
@@ -95,7 +86,7 @@ impl TrellisApp {
         make_runner: impl FnOnce(Sender<Msg>, egui::Context) -> Runner<egui::Context>,
     ) -> Self {
         let (tx, results) = mpsc::channel();
-        let app = Self {
+        Self {
             st: AppState::new(settings, recent, Instant::now()),
             cache: UiCache { avatars: avatars::Avatars::default(), speller: Speller::new(), diff_rows: Default::default() },
             runner: make_runner(tx, ctx.clone()),
@@ -103,18 +94,41 @@ impl TrellisApp {
             theme: theme::ThemeCache::default(),
             #[cfg(test)]
             drained: 0,
-        };
-        layout::start(ctx, &app.st);
-        app
+        }
     }
 
-    /// The startup messages that only read local state: Git LFS and the git environment, the
-    /// welcome's first step, and which recent folders are still there.
-    fn start_local(&mut self, ctx: &egui::Context) {
-        self.dispatch(ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect));
-        self.dispatch(ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect));
-        self.dispatch(ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup));
-        self.dispatch(ctx, Msg::Recent(RecentMsg::CheckFolders));
+    /// Runs the `STARTUP` steps in order. With `logs` (the real app) every step runs; without
+    /// (a test app) the steps that reach outside the process are skipped.
+    fn start(&mut self, ctx: &egui::Context, themes: ThemeCatalog, logs: Option<crate::logging::LogSetup>) {
+        let outside = logs.is_some();
+        let mut logs = logs;
+        let mut themes = Some(themes);
+        for step in steps(outside) {
+            match step {
+                Step::Theme => {
+                    if let Some(themes) = themes.take() {
+                        self.dispatch(ctx, Msg::Theme(crate::themes::ThemeMsg::Loaded(themes)));
+                    }
+                }
+                Step::Layout => layout::start(ctx, &self.st),
+                // git and ssh ask for missing credentials through a dialog from now on.
+                Step::Askpass => self.runner.start_askpass(),
+                // The log files, and earlier sessions' activity.
+                Step::Logs => {
+                    if let Some(logs) = logs.take() {
+                        self.runner.attach_logs(logs);
+                        self.dispatch(ctx, Msg::Logs(crate::logs::LogsMsg::Start));
+                    }
+                }
+                // Links opened while this window runs come here instead of a new window.
+                Step::Instance => self.runner.start_instance(),
+                Step::Lfs => self.dispatch(ctx, Msg::Lfs(crate::lfs::LfsMsg::Detect)),
+                Step::GitEnv => self.dispatch(ctx, Msg::GitEnv(crate::git_env::GitEnvMsg::Detect)),
+                Step::Onboarding => self.dispatch(ctx, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup)),
+                Step::Updates => self.dispatch(ctx, Msg::Updates(crate::msg::UpdateMsg::Startup)),
+                Step::RecentFolders => self.dispatch(ctx, Msg::Recent(RecentMsg::CheckFolders)),
+            }
+        }
     }
 
     fn dispatch(&mut self, ctx: &egui::Context, msg: Msg) {
@@ -202,9 +216,67 @@ impl eframe::App for TrellisApp {
     }
 }
 
+/// One step of starting the app, after the state and the runner exist.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Step {
+    /// The themes read from disk, so the first frame has their colors.
+    Theme,
+    /// The zoom keys handed to the keymap, and the saved zoom.
+    Layout,
+    Askpass,
+    Logs,
+    Instance,
+    Lfs,
+    GitEnv,
+    /// The welcome's first step.
+    Onboarding,
+    Updates,
+    /// Which recent folders are still there.
+    RecentFolders,
+}
+
+/// Startup, in order; a test app runs the same order minus the `outside` steps.
+const STARTUP: [Step; 10] = [
+    Step::Theme,
+    Step::Layout,
+    Step::Askpass,
+    Step::Logs,
+    Step::Instance,
+    Step::Lfs,
+    Step::GitEnv,
+    Step::Onboarding,
+    Step::Updates,
+    Step::RecentFolders,
+];
+
+impl Step {
+    /// Whether the step starts a server or a worker, or leads to a network call.
+    fn outside(self) -> bool {
+        matches!(self, Step::Askpass | Step::Logs | Step::Instance | Step::Updates)
+    }
+}
+
+/// The startup steps to run: all of them, or (`outside` false) only those inside the process.
+fn steps(outside: bool) -> impl Iterator<Item = Step> {
+    STARTUP.into_iter().filter(move |s| outside || !s.outside())
+}
+
 /// Flashes the taskbar entry while the window isn't focused.
 fn request_attention(ctx: &egui::Context) {
     if !ctx.input(|i| i.focused) {
         ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn startup_keeps_the_app_order_and_a_test_app_skips_only_outside_steps() {
+        use Step::*;
+        let app = [Theme, Layout, Askpass, Logs, Instance, Lfs, GitEnv, Onboarding, Updates, RecentFolders];
+        assert_eq!(steps(true).collect::<Vec<_>>(), app);
+        assert_eq!(steps(false).collect::<Vec<_>>(), [Theme, Layout, Lfs, GitEnv, Onboarding, RecentFolders]);
     }
 }

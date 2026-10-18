@@ -6,9 +6,10 @@
 //! tell when the app is idle.
 
 use super::{Runner, Waker};
-use crate::effect::Effect;
+use crate::effect::{CloneEffect, Effect};
 use crate::git_env::GitEnvEffect;
 use crate::msg::Msg;
+use crate::patch::PatchEffect;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
@@ -118,9 +119,9 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::SetGitConfig { global: false, .. }
             | Effect::CheckRepoFolders(_)
             | Effect::ReadTabGroups(_)
-            | Effect::Patch(_)
+            | Effect::Patch(PatchEffect::Export { .. } | PatchEffect::Inspect { .. } | PatchEffect::Copy { .. })
             | Effect::CheckConflicts(_)
-            | Effect::Clone(_)
+            | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(_)
             | Effect::GitEnv(GitEnvEffect::Detect { .. } | GitEnvEffect::Discover { .. })
             | Effect::Watch(_)
@@ -154,6 +155,8 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::RevealPath(_)
             | Effect::PickFolder { .. }
             | Effect::PickFile { .. }
+            | Effect::Patch(PatchEffect::PickSave { .. } | PatchEffect::PickOpen { .. })
+            | Effect::Clone(CloneEffect::ListRepos { .. })
             | Effect::ListSigningKeys { .. }
             | Effect::GenerateGpgKey { .. }
             | Effect::ExportPublicKey { .. }
@@ -227,6 +230,28 @@ mod tests {
         let note = DesktopNote { kind: NoteKind::Job, title: "t".into(), body: "b".into() };
         assert!(runner.admit(Effect::Notify(note)).is_none());
         assert_eq!(runner.dropped(), ["open-url", "desktop-note"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn patch_pickers_and_the_service_repo_list_are_dropped() {
+        let dir = folder("split");
+        let (tx, _rx) = mpsc::channel();
+        let runner = Runner::sandboxed(tx, NoWake, dir.clone());
+        let what = trellis_core::patch_ops::PatchSource::Commits { oids: Vec::new(), paths: Vec::new() };
+        let pick_save = PatchEffect::PickSave { workdir: dir.clone(), what: what.clone(), name: "a.patch".into() };
+        assert!(runner.admit(Effect::Patch(pick_save)).is_none());
+        assert!(runner.admit(Effect::Patch(PatchEffect::PickOpen { workdir: dir.clone() })).is_none());
+        let export = PatchEffect::Export { workdir: dir.clone(), what, dest: dir.join("a.patch") };
+        assert!(runner.admit(Effect::Patch(export)).is_some());
+        let inspect = PatchEffect::Inspect { workdir: dir.clone(), path: dir.join("a.patch") };
+        assert!(runner.admit(Effect::Patch(inspect)).is_some());
+        let account =
+            trellis_core::forge::Account { provider: trellis_core::forge::Provider::GitHub, host: "github.com".into(), org: String::new() };
+        assert!(runner.admit(Effect::Clone(CloneEffect::ListRepos { account, cwd: dir.clone() })).is_none());
+        let sparse = CloneEffect::Sparse { parent: dir.clone(), cmd: Vec::new(), dest: dir.join("c"), folders: Vec::new() };
+        assert!(runner.admit(Effect::Clone(sparse)).is_some());
+        assert_eq!(runner.dropped(), ["pick-patch-save", "pick-patch", "list-my-repos"]);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

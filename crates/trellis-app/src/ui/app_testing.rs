@@ -6,7 +6,6 @@ use super::TrellisApp;
 use crate::msg::{Msg, RepoMsg};
 use crate::runner::Runner;
 use crate::state::AppState;
-use crate::themes::ThemeMsg;
 use eframe::egui;
 use std::path::PathBuf;
 use trellis_core::settings::{RepoTrust, Settings, ThemeCatalog};
@@ -46,8 +45,7 @@ impl TrellisApp {
             crate::state::trust::record(&mut settings, path, RepoTrust::Trusted);
         }
         let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| Runner::sandboxed(tx, waker, files));
-        app.dispatch(ctx, Msg::Theme(ThemeMsg::Loaded(ThemeCatalog::default())));
-        app.start_local(ctx);
+        app.start(ctx, ThemeCatalog::default(), None);
         if let Some(path) = open {
             app.dispatch(ctx, Msg::Repo(RepoMsg::Open(path)));
         }

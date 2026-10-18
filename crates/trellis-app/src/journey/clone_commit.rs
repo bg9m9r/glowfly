@@ -41,6 +41,8 @@ fn clone_stage_commit_push_pull() {
     j.refresh();
     j.select_wip();
     j.see("Unstaged Files (2)", Region::Details);
+    assert_eq!(disk::index_text(&clone, "notes.txt"), Some(notes()), "nothing staged yet");
+    assert_eq!(disk::index_text(&clone, "todo.txt"), None);
 
     // step 3: stage only the first hunk of notes.txt.
     j.click("notes.txt", Region::Details, Pick::Only);

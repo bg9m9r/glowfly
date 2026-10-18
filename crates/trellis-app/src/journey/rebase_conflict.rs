@@ -21,36 +21,45 @@ fn rebase_conflict_resolved_in_merge_view() {
     let mut j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
     j.see("✔  topic", Region::Sidebar);
 
-    // step 1: the rebase stops on f.txt.
+    // step 1: the rebase stops on f.txt, with the conflict markers in the working file.
     j.branch_menu("main", "Rebase topic onto main");
     j.toast(false, "Rebase failed");
+    let rebasing = |repo: &std::path::Path| {
+        matches!(disk::state(repo), RepositoryState::Rebase | RepositoryState::RebaseMerge | RepositoryState::RebaseInteractive)
+    };
+    assert!(rebasing(&repo));
+    assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
+    assert!(disk::work_text(&repo, "f.txt").unwrap().contains("<<<<<<<"));
 
-    // step 2: the working tree's banner names the conflict and holds Continue back.
+    // step 2: the working tree's banner names the conflict and holds Continue back; viewing it
+    // changes nothing on disk.
     j.click("View uncommitted changes", Region::Details, Pick::Only);
     j.see("1 conflicted file", Region::Details);
     j.see("View conflicts", Region::Details);
     j.disabled("Continue", Region::Details);
     j.see("Abort rebase", Region::Details);
-    assert!(matches!(disk::state(&repo), RepositoryState::Rebase | RepositoryState::RebaseMerge | RepositoryState::RebaseInteractive));
+    assert!(rebasing(&repo));
     assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
 
-    // step 3: the conflict view; theirs (the commit being replayed) wins, then Save.
+    // step 3: the conflict view; theirs (the commit being replayed) wins, and only Save writes
+    // it: the file is then resolved and staged, so Continue is offered.
     j.click("View conflicts", Region::Details, Pick::Only);
     j.see("Ours", Region::Central);
     j.see("Theirs", Region::Central);
     j.disabled("Save", Region::Central);
     j.click("Take all", Region::Central, Pick::Rightmost);
     j.enabled("Save", Region::Central);
+    assert_eq!(disk::conflicted_paths(&repo), ["f.txt"]);
+    assert!(disk::work_text(&repo, "f.txt").unwrap().contains("<<<<<<<"));
     j.click("Save", Region::Central, Pick::Only);
-
-    // step 4: the file is resolved and staged, so Continue is offered.
     assert_eq!(disk::work_text(&repo, "f.txt").as_deref(), Some("topic\n"));
     assert!(disk::conflicted_paths(&repo).is_empty());
     assert_eq!(disk::index_text(&repo, "f.txt").as_deref(), Some("topic\n"));
+    assert!(rebasing(&repo));
     j.absent("1 conflicted file", Region::Details);
     j.enabled("Continue", Region::Details);
 
-    // step 5: continuing finishes the rebase: topic's commit now sits on main's tip.
+    // step 4: continuing finishes the rebase: topic's commit now sits on main's tip.
     j.click("Continue", Region::Details, Pick::Only);
     assert_eq!(disk::state(&repo), RepositoryState::Clean);
     assert_eq!(disk::head_branch(&repo).as_deref(), Some("topic"));
