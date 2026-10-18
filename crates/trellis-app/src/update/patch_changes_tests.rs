@@ -2,7 +2,7 @@
 //! each scope and its refusals, the trust prompt in an untrusted repository, and an end-to-end
 //! save whose toast shows the file in the file manager.
 
-use super::super::patch_tests::{beside, cleanup, last_log, last_toast, run, three_commits};
+use super::super::test_mods::patch_tests::{beside, cleanup, last_log, last_toast, run, three_commits};
 use super::super::tests::{drive, git};
 use super::super::update;
 use crate::effect::Effect;

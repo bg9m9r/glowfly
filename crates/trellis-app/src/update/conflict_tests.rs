@@ -20,7 +20,7 @@ use trellis_core::repo::{
 
 /// A repository in the middle of a merge where a.txt conflicts in one chunk ("ours" against
 /// "theirs" on its second line).
-pub(super) fn conflicted_repo(name: &str) -> PathBuf {
+pub(crate) fn conflicted_repo(name: &str) -> PathBuf {
     let dir = scratch_repo(name);
     git(&dir, &["config", "core.autocrlf", "false"]);
     git(&dir, &["checkout", "-q", "-b", "other"]);
@@ -35,7 +35,7 @@ pub(super) fn conflicted_repo(name: &str) -> PathBuf {
 }
 
 /// A repository in the middle of a merge where a.txt and b.txt each conflict in one chunk.
-pub(super) fn two_conflicts(name: &str) -> PathBuf {
+pub(crate) fn two_conflicts(name: &str) -> PathBuf {
     let dir = scratch_repo(name);
     std::fs::write(dir.join("b.txt"), "one\n").unwrap();
     git(&dir, &["add", "."]);
@@ -82,7 +82,7 @@ pub(super) fn fake_file(n: usize) -> ConflictFile {
     }
 }
 
-pub(super) fn with_fake(n: usize) -> AppState {
+pub(crate) fn with_fake(n: usize) -> AppState {
     let mut st = state();
     let mut view = ConflictView::loading("f.txt".into());
     view.set_file(fake_file(n));

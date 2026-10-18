@@ -1,7 +1,7 @@
 //! Headless tests for one file of a commit saved as a patch, a commit's patch copied to the
 //! clipboard, and the palette's patch entries.
 
-use super::super::patch_tests::{cleanup, commit, last_log, last_toast, run, three_commits};
+use super::super::test_mods::patch_tests::{cleanup, commit, last_log, last_toast, run, three_commits};
 use super::super::tests::{drive, finish_keeping, git};
 use super::super::update;
 use crate::effect::{Effect, UiEffect};

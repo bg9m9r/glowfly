@@ -2,7 +2,7 @@
 //! each choice starts and their refusals, and end-to-end applies (three-way conflicts, .rej
 //! files, a series as commits, and the Applying patches banner's buttons) on real repositories.
 
-use super::super::patch_tests::{beside, cleanup, commit, last_log, last_toast, run, three_commits};
+use super::super::test_mods::patch_tests::{beside, cleanup, commit, last_log, last_toast, run, three_commits};
 use super::super::tests::{drive, git};
 use super::super::update;
 use crate::effect::Effect;

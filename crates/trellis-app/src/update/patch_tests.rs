@@ -15,13 +15,13 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use trellis_core::patch_ops::PatchSource;
 
-pub(super) fn run(st: &mut AppState, m: PatchMsg) -> Vec<Effect> {
+pub(crate) fn run(st: &mut AppState, m: PatchMsg) -> Vec<Effect> {
     update(st, Msg::Patch(m), Instant::now())
 }
 
 /// `scratch_repo` with its change committed as "Add the second line" and a third commit
 /// "Third: more (lines)", open in a fresh state.
-pub(super) fn three_commits(name: &str) -> (AppState, PathBuf) {
+pub(crate) fn three_commits(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     // Files are compared byte for byte; keep a global autocrlf from rewriting line ends.
     git(&dir, &["config", "core.autocrlf", "false"]);
@@ -36,27 +36,27 @@ pub(super) fn three_commits(name: &str) -> (AppState, PathBuf) {
 }
 
 /// The commit with this summary.
-pub(super) fn commit(st: &AppState, summary: &str) -> Oid {
+pub(crate) fn commit(st: &AppState, summary: &str) -> Oid {
     st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == summary).unwrap().oid
 }
 
 /// A file next to the fixture `dir`, outside its working tree.
-pub(super) fn beside(dir: &Path, name: &str) -> PathBuf {
+pub(crate) fn beside(dir: &Path, name: &str) -> PathBuf {
     let folder = dir.with_file_name(format!("{}-files", dir.file_name().unwrap().to_string_lossy()));
     std::fs::create_dir_all(&folder).unwrap();
     folder.join(name)
 }
 
-pub(super) fn cleanup(dir: &Path) {
+pub(crate) fn cleanup(dir: &Path) {
     let _ = std::fs::remove_dir_all(beside(dir, "x").parent().unwrap());
     let _ = std::fs::remove_dir_all(dir);
 }
 
-pub(super) fn last_log(st: &AppState) -> String {
+pub(crate) fn last_log(st: &AppState) -> String {
     st.log.last().map(|l| l.text.clone()).unwrap_or_default()
 }
 
-pub(super) fn last_toast(st: &AppState) -> (bool, String) {
+pub(crate) fn last_toast(st: &AppState) -> (bool, String) {
     st.toasts.last().map(|t| (t.ok, t.text.clone())).unwrap_or_default()
 }
 

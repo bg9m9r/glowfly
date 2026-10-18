@@ -1,8 +1,8 @@
 //! Headless tests for the palette's conflict entries: when they are listed, what running each
 //! does, and how they are remembered.
 
-use super::super::conflict_files_tests::both_resolved;
-use super::super::conflict_tests::two_conflicts;
+use super::super::test_mods::conflict_files_tests::both_resolved;
+use super::super::test_mods::conflict_tests::two_conflicts;
 use super::super::tests::{drive, scratch_repo, state};
 use super::super::update;
 use crate::effect::{ConflictRead, Effect};

@@ -195,7 +195,7 @@ fn the_lists_are_parked_with_the_tab_and_read_again_on_return() {
 }
 
 /// `two_conflicts` with both files resolved with `git add`, the lists read.
-pub(super) fn both_resolved(name: &str) -> (AppState, PathBuf) {
+pub(crate) fn both_resolved(name: &str) -> (AppState, PathBuf) {
     let dir = two_conflicts(name);
     for f in ["a.txt", "b.txt"] {
         git(&dir, &["add", f]);

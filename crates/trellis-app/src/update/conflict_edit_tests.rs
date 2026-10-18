@@ -3,7 +3,7 @@
 use crate::effect::{Effect, LocalOp};
 use crate::msg::{ConflictMsg, Msg, RepoMsg};
 use crate::state::AppState;
-use crate::update::conflict_tests::{conflicted_repo, with_fake};
+use crate::update::test_mods::conflict_tests::{conflicted_repo, with_fake};
 use crate::update::tests::{drive, git, scratch_repo, state};
 use crate::update::update;
 use std::path::PathBuf;
