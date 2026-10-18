@@ -1,10 +1,12 @@
 //! Shell sessions on a pseudo-terminal: a running session with its output and exit reported
 //! through callbacks on their own threads (terminal/shell.rs picks the shell).
 
+use super::ShellProbe;
 use crate::error::{Error, Result};
 use portable_pty::{ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_system};
 use std::io::{Read, Write};
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 /// A program and its arguments.
 #[derive(Clone, Debug, PartialEq)]
@@ -16,9 +18,12 @@ pub struct ShellCommand {
 /// A running shell. Dropping it closes the terminal. On Windows the output reader only ends
 /// once this is dropped, so the owner drops it after the exit callback has run.
 pub struct PtySession {
-    master: Box<dyn MasterPty + Send>,
+    /// Shared only weakly with probes, so dropping the session still closes the terminal.
+    master: Arc<Mutex<Box<dyn MasterPty + Send>>>,
     writer: Box<dyn Write + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
+    /// The shell's process id, when the system gives one.
+    pid: Option<u32>,
 }
 
 impl PtySession {
@@ -29,7 +34,17 @@ impl PtySession {
     }
 
     pub fn resize(&self, rows: u16, cols: u16) -> Result<()> {
-        self.master.resize(size(rows, cols)).map_err(other)
+        let master = self.master.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        master.resize(size(rows, cols)).map_err(other)
+    }
+
+    /// A handle that reads, from any thread, whether the shell is running a program.
+    pub fn probe(&self) -> ShellProbe {
+        ShellProbe {
+            pid: self.pid,
+            #[cfg(unix)]
+            master: Arc::downgrade(&self.master),
+        }
     }
 
     /// A handle that stops the shell from any thread, so a stop never waits for a write that
@@ -83,6 +98,7 @@ pub fn spawn(
     // The pseudoconsole only reports the end of output once nothing else holds the slave.
     drop(pair.slave);
     let killer = child.clone_killer();
+    let pid = child.process_id();
     let mut reader = pair.master.try_clone_reader().map_err(other)?;
     let writer = pair.master.take_writer().map_err(other)?;
     std::thread::Builder::new().name("trellis-pty-read".into()).spawn(move || {
@@ -97,7 +113,7 @@ pub fn spawn(
     std::thread::Builder::new().name("trellis-pty-wait".into()).spawn(move || {
         on_exit(child.wait().ok().map(|s| s.exit_code()));
     })?;
-    Ok(PtySession { master: pair.master, writer, killer })
+    Ok(PtySession { master: Arc::new(Mutex::new(pair.master)), writer, killer, pid })
 }
 
 #[cfg(test)]

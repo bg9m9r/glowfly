@@ -1,13 +1,16 @@
 //! Terminal tabs: several shells per repository, numbered "Terminal N" with the lowest free
-//! number. New tab, switching, closing (the neighbour takes over; the last one hides the
-//! panel), Restart in place, and Kill all after a confirmation.
+//! number. New tab, switching, closing (asking first while the shell runs a program; the
+//! neighbour takes over; the last one hides the panel), Restart in place, and Kill all after a
+//! confirmation.
 
 use super::terminal::{active_index, remember_open, spawn, sync};
 use crate::effect::Effect;
 use crate::msg::Msg;
+use crate::state::terminal::SessionStatus;
 use crate::state::{AppState, Modal};
 use crate::terminal::{TerminalEffect as E, TerminalMsg};
 use std::path::PathBuf;
+use trellis_core::terminal::ShellActivity;
 
 fn workdir(st: &AppState) -> Option<PathBuf> {
     st.snap.as_ref().map(|s| s.workdir.clone())
@@ -39,9 +42,46 @@ pub(super) fn select_tab(st: &mut AppState, id: u64) {
     }
 }
 
+/// Closes session `id`'s tab, first asking the runner whether its shell is running a program
+/// when it runs at all (the answer comes back to `activity`).
+pub(super) fn close_tab(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
+    let Some(i) = st.terminal.index_of(id) else { return };
+    if st.terminal.sessions[i].status == SessionStatus::Running {
+        fx.push(Effect::Terminal(E::CheckActivity(id)));
+    } else {
+        close_now(st, id, fx);
+    }
+}
+
+/// What session `id`'s shell was doing when its tab was asked to close: a running program
+/// asks before closing (unless another dialog is open, when the click is dropped); anything
+/// else closes it.
+pub(super) fn activity(st: &mut AppState, id: u64, activity: ShellActivity, fx: &mut Vec<Effect>) {
+    let Some(i) = st.terminal.index_of(id) else { return };
+    let s = &st.terminal.sessions[i];
+    let (running, n) = (s.status == SessionStatus::Running, s.number);
+    let ShellActivity::Running { program } = activity else { return close_now(st, id, fx) };
+    if !running {
+        return close_now(st, id, fx);
+    }
+    if st.modal.is_some() {
+        return;
+    }
+    let body = match program {
+        Some(p) => format!("Terminal {n} is running {p}. Close it and stop {p}?"),
+        None => format!("Terminal {n} is running a program. Close it and stop it?"),
+    };
+    st.modal = Some(Modal::Confirm {
+        title: "Close terminal".into(),
+        body,
+        button: "Close".into(),
+        then: Box::new(Msg::Terminal(TerminalMsg::CloseTabNow(id))),
+    });
+}
+
 /// Stops session `id`'s shell if it runs and removes its tab; the tab to its right becomes
 /// active, else the one to its left. Closing the last one hides the panel.
-pub(super) fn close_tab(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
+pub(super) fn close_now(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
     let Some(i) = st.terminal.index_of(id) else { return };
     let old = st.terminal.sessions.remove(i);
     let was_active = st.terminal.active.get(&old.workdir) == Some(&id);

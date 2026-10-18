@@ -42,16 +42,23 @@ fn matched(keys: &Keymap, chord: Chord, fold: bool) -> Option<BindingId> {
     })
 }
 
+/// Whether a press with `m` is one the focused terminal would send to the shell: no Shift, no
+/// Alt and no macOS Cmd (the terminal drops Cmd presses).
+pub(crate) fn reaches_shell(m: Modifiers) -> bool {
+    !m.shift && !m.alt && !m.mac_cmd
+}
+
 /// Takes the first key press (repeats too) whose binding `allowed` lets through out of `i`'s
-/// events, returning the binding and the pressed chord. Presses of other keys, and of bindings
-/// that don't apply now, stay for the views.
-pub(crate) fn take_press(i: &mut InputState, keys: &Keymap, allowed: impl Fn(BindingId) -> bool) -> Option<(BindingId, Chord)> {
+/// events, returning the binding and the pressed chord. `allowed` also gets whether the press
+/// would reach a focused terminal's shell (`reaches_shell`). Presses of other keys, and of
+/// bindings that don't apply now, stay for the views.
+pub(crate) fn take_press(i: &mut InputState, keys: &Keymap, allowed: impl Fn(BindingId, bool) -> bool) -> Option<(BindingId, Chord)> {
     let (n, id, chord) = i.events.iter().enumerate().find_map(|(n, e)| {
         let Event::Key { key, pressed: true, modifiers, .. } = e else { return None };
         let mac = mac_press(*modifiers);
         let chord = chord_from_press(*key, *modifiers, mac)?;
         let id = matched(keys, chord, !mac)?;
-        allowed(id).then_some((n, id, chord))
+        allowed(id, reaches_shell(*modifiers)).then_some((n, id, chord))
     })?;
     i.events.remove(n);
     Some((id, chord))

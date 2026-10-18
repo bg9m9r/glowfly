@@ -1,5 +1,6 @@
-//! The mouse on the terminal grid: the wheel scrolls the history, and dragging the left button
-//! selects text in reading order.
+//! The mouse on the terminal grid: the wheel scrolls the history, dragging the left button
+//! selects text in reading order (copied when the drag ends, with Copy on select), and on Linux
+//! a middle click pastes.
 
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -49,8 +50,12 @@ pub(super) fn wheel_rows(events: &[Event], rh: f32, rows: u16, rem: &mut f32) ->
     whole as i32
 }
 
-/// The wheel and drag selection on the grid `resp` of session `index`.
+/// The wheel, drag selection and middle click on the grid `resp` of session `index`.
 pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, index: usize, g: &Geometry, msgs: &mut Vec<Msg>) {
+    let copy_on_select = st.settings.terminal.copy_on_select;
+    if st.settings.terminal.middle_click_pastes() && resp.clicked_by(PointerButton::Middle) {
+        msgs.push(Msg::Terminal(TerminalMsg::Paste));
+    }
     let session = &mut st.terminal.sessions[index];
     if resp.hovered() {
         let rows = ui.input(|i| wheel_rows(&i.events, g.rh, g.rows, &mut st.terminal.wheel_rem));
@@ -77,6 +82,9 @@ pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, in
         if let (Some(sel), Some(head)) = (session.selection.as_mut(), head) {
             sel.head = head;
         }
+    }
+    if copy_on_select && resp.drag_stopped_by(PointerButton::Primary) && session.selection.is_some_and(|s| s.range(screen).is_some()) {
+        msgs.push(Msg::Terminal(TerminalMsg::CopySelection { keep: true }));
     }
     if resp.clicked() {
         session.selection = None;

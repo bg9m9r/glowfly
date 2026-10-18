@@ -49,7 +49,8 @@ impl Group {
 /// Where a binding works.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum When {
-    /// Anywhere in the main window, even while typing.
+    /// Anywhere in the main window, even while typing. A focused terminal keeps the tab,
+    /// palette, search and refresh keys pressed without Shift, Alt or Cmd for its shell.
     Anywhere,
     /// Anywhere while no text field has focus.
     NotTyping,

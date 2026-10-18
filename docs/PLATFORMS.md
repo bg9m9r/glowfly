@@ -219,6 +219,13 @@ second one next to it.
     Bash, found next to the git on PATH (`<Git>\bin\bash.exe` from `<Git>\cmd`, `<Git>\bin` or
     `<Git>\mingw64\bin`), else `bash.exe` on PATH. A chosen shell that can't be found is reported
     in the panel, never replaced by another.
+11. **Whether a terminal's shell is running a program comes only from
+    `terminal::ShellProbe::activity`, off the UI thread.** On Windows it reads the shell's child
+    processes from a ToolHelp snapshot: console hosts (`conhost.exe`, `OpenConsole.exe`) are
+    ignored, and a single child with the shell's own executable name is a launcher (Git Bash's
+    `bash.exe` starting the real one) that is followed, up to four levels. On Unix it compares
+    the PTY's foreground process group with the shell's pid; Linux names the program from
+    `/proc/<pid>/comm`. Anything that can't be read is Unknown, which never prompts.
 
 ### Environment and git
 
@@ -417,6 +424,10 @@ Gaps that are accepted for now:
   a default whose file is gone.
 - **Keychain-backed pinentries (pinentry-mac and the like) are bypassed** while "Ask for the
   key's passphrase in Trellis" is on, since loopback skips the pinentry.
+- **Detecting a terminal's running program is approximate:** macOS gives no program name, so
+  the close confirmation asks about "a program"; background jobs (`cmd &`) don't count; a custom
+  shell that is itself a launcher with a differently named child (`wsl.exe`) can look busy; and
+  on Windows the orphans of a process whose pid was reused for the shell could count.
 
 Unverified, needs a real machine:
 

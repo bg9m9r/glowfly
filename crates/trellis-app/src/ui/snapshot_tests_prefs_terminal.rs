@@ -1,12 +1,14 @@
 //! Preferences > In-App Terminal snapshots: the page with its defaults, and with a custom shell
 //! whose arguments have an unmatched quote; its navigation entry and the shell choices this
-//! system offers.
+//! system offers; the page as Linux draws it, with Middle-click paste.
 
-use super::prefs::terminal::choice_label;
+use super::prefs::terminal::{choice_label, page_for};
 use super::snapshot_tests::{harness_sized, settings};
+use super::theme::{self, color};
 use crate::state::{AppState, PrefPage, PrefsState};
 use crate::ui::snapshot_check::CheckSnapshot;
-use eframe::egui::accesskit::Role;
+use eframe::egui::{self, accesskit::Role};
+use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use std::time::Instant;
 use trellis_core::i18n::Lang;
@@ -27,6 +29,8 @@ fn prefs_terminal_dark() {
     h.check_snapshot("prefs_terminal");
     assert!(h.query_all_by_label("In-App Terminal").next().is_some(), "the nav entry and title");
     assert!(h.query_by_label_contains("Separated by spaces").is_none(), "arguments only for a custom program");
+    assert!(h.query_by_label_contains("Selecting text with the mouse").is_some());
+    assert_eq!(h.query_by_label_contains("A middle click on the terminal").is_some(), cfg!(target_os = "linux"), "only where it acts");
     // The menu lists exactly this system's choices.
     h.get_by_role(Role::ComboBox).click();
     h.run();
@@ -47,4 +51,23 @@ fn prefs_terminal_custom_dark() {
     h.check_snapshot("prefs_terminal_custom");
     assert!(h.query_by_label_contains("Separated by spaces").is_some());
     assert!(h.query_by_label_contains("unmatched quote").is_some());
+}
+
+#[test]
+fn prefs_terminal_linux() {
+    let mut s = settings(ThemeChoice::Dark);
+    s.terminal = TerminalPrefs::default();
+    let mut h = Harness::builder().with_size(egui::vec2(900.0, 640.0)).build_state(
+        |ctx, s: &mut trellis_core::settings::Settings| {
+            color::set_palette(&theme::DARK);
+            theme::apply_style(ctx, &theme::DARK);
+            ctx.set_theme(theme::egui_theme(&theme::DARK));
+            egui::CentralPanel::default().show(ctx, |ui| page_for(ui, s, true));
+        },
+        s,
+    );
+    h.run();
+    h.check_snapshot("prefs_terminal_linux");
+    assert!(h.query_by_label_contains("Selecting text with the mouse").is_some());
+    assert!(h.query_by_label_contains("A middle click on the terminal").is_some());
 }

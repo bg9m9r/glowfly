@@ -93,7 +93,7 @@ fn closing_a_tab_stops_it_and_activates_a_neighbour() {
     let three = spawned(run(&mut st, T::NewTab));
     run(&mut st, T::Started { id: two, program: "pwsh".into() });
     run(&mut st, T::SelectTab(two));
-    let fx = terminal(run(&mut st, T::CloseTab(two)));
+    let fx = terminal(run(&mut st, T::CloseTabNow(two)));
     assert!(matches!(&fx[..], [E::Kill(k), E::Close(c)] if *k == two && *c == two), "{fx:?}");
     assert_eq!(active(&st), Some(three), "the right neighbour");
     run(&mut st, T::Exited { id: three, code: Some(0) });

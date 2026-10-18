@@ -1,5 +1,5 @@
-//! Headless tests for what the terminal grid asks of its active tab (scrolling, copying,
-//! selecting all, clearing, pasting) and for the panel's remembered state and shell choice.
+//! Headless tests for what the terminal grid asks of its active tab (scrolling by rows and by
+//! keyboard steps, copying, selecting all, clearing, pasting) and for the panel's remembered state and shell choice.
 
 use super::terminal_tests::{open_with_panel, run, terminal};
 use super::tests::scratch_repo;
@@ -7,7 +7,7 @@ use crate::effect::{Effect, UiEffect};
 use crate::msg::{Msg, RepoMsg};
 use crate::state::AppState;
 use crate::state::terminal::Selection;
-use crate::terminal::{TerminalEffect as E, TerminalMsg as T};
+use crate::terminal::{ScrollStep, TerminalEffect as E, TerminalMsg as T};
 use std::time::Instant;
 use trellis_core::settings::{Settings, ShellChoice, ShellSetting};
 use trellis_core::terminal::{TermInput, TermPoint};
@@ -56,6 +56,44 @@ fn scroll_and_typing_snap_back() {
     run(&mut st, T::Input(vec![TermInput::Text("x".into())]));
     let s = &st.terminal.sessions[0];
     assert_eq!((s.screen.view(), s.selection), (0, None));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn keyboard_steps_page_through_the_history() {
+    let (mut st, dir, id) = with_history("term-view-page");
+    let view = |st: &AppState| st.terminal.sessions[0].screen.view();
+    run(&mut st, T::ScrollPage(ScrollStep::PageUp));
+    assert_eq!(view(&st), 24, "one screen of rows");
+    run(&mut st, T::ScrollPage(ScrollStep::PageUp));
+    assert_eq!(view(&st), 36, "clamped at the start of the history");
+    run(&mut st, T::ScrollPage(ScrollStep::PageDown));
+    assert_eq!(view(&st), 12);
+    run(&mut st, T::ScrollPage(ScrollStep::PageDown));
+    assert_eq!(view(&st), 0, "clamped at the live screen");
+    run(&mut st, T::ScrollPage(ScrollStep::Top));
+    assert_eq!(view(&st), st.terminal.sessions[0].screen.history_len());
+    run(&mut st, T::ScrollPage(ScrollStep::Bottom));
+    assert_eq!(view(&st), 0);
+
+    // The alternate screen has no history to move through.
+    run(&mut st, T::Output { id, bytes: b"\x1b[?1049hless".to_vec(), ack: Default::default() });
+    for step in [ScrollStep::PageUp, ScrollStep::Top, ScrollStep::PageDown, ScrollStep::Bottom] {
+        run(&mut st, T::ScrollPage(step));
+        assert_eq!(view(&st), 0, "{step:?}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn select_all_copies_with_copy_on_select() {
+    let (mut st, dir, _) = with_history("term-view-select-copy");
+    assert_eq!(copied(&run(&mut st, T::SelectAll)), None, "off by default");
+    st.settings.terminal.copy_on_select = true;
+    let fx = run(&mut st, T::SelectAll);
+    let all: Vec<String> = (1..=60).map(|i| i.to_string()).collect();
+    assert_eq!(copied(&fx), Some(all.join("\n").as_str()));
+    assert!(st.terminal.sessions[0].selection.is_some(), "it stays selected");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

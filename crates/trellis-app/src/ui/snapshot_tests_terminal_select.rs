@@ -1,6 +1,6 @@
 //! The terminal grid's history, selection and menu: scrolled back with a selection and the
-//! thumb, the wheel, dragging to select, copying with the keyboard, the right-click menu, and
-//! the Bar and Underline cursors with dimming.
+//! thumb, the wheel, dragging to select (and Copy on select), copying with the keyboard,
+//! middle-click paste, the right-click menu, and the Bar and Underline cursors with dimming.
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_select::click;
@@ -72,26 +72,31 @@ fn terminal_scrolled_dark() {
     remove_fixture(&dir);
 }
 
+/// Drags the left button from cell (2, 1) to cell (4, 7).
+fn drag(h: &mut H) {
+    let (from, to) = (cell(h, 2, 1), cell(h, 4, 7));
+    let press = |h: &mut H, pos: Pos2, pressed: bool| {
+        h.input_mut().events.push(Event::PointerMoved(pos));
+        h.input_mut().events.push(Event::PointerButton { pos, button: PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
+        h.step();
+    };
+    press(h, from, true);
+    for i in 1..=4 {
+        let at = from + (to - from) * (i as f32 / 4.0);
+        h.input_mut().events.push(Event::PointerMoved(at));
+        h.step();
+    }
+    press(h, to, false);
+    h.run();
+}
+
 #[test]
 fn dragging_selects_text() {
     let (mut st, dir) = with_history(ThemeChoice::Dark, "terminal-drag");
     st.terminal.sessions[0].selection = None;
     let mut h = harness(st, true);
     h.run();
-    let (from, to) = (cell(&h, 2, 1), cell(&h, 4, 7));
-    let press = |h: &mut H, pos: Pos2, pressed: bool| {
-        h.input_mut().events.push(Event::PointerMoved(pos));
-        h.input_mut().events.push(Event::PointerButton { pos, button: PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
-        h.step();
-    };
-    press(&mut h, from, true);
-    for i in 1..=4 {
-        let at = from + (to - from) * (i as f32 / 4.0);
-        h.input_mut().events.push(Event::PointerMoved(at));
-        h.step();
-    }
-    press(&mut h, to, false);
-    h.run();
+    drag(&mut h);
     let s = &h.state().0.terminal.sessions[0];
     let sel = s.selection.expect("dragging selected text");
     let top = s.screen.top_line();
@@ -100,6 +105,45 @@ fn dragging_selects_text() {
     assert!(sel.range(&s.screen).is_some());
     drop(h);
     remove_fixture(&dir);
+}
+
+#[test]
+fn copy_on_select_copies_when_the_drag_ends() {
+    for on in [true, false] {
+        let (mut st, dir) = with_history(ThemeChoice::Dark, &format!("terminal-copy-select-{on}"));
+        st.terminal.sessions[0].selection = None;
+        st.settings.terminal.copy_on_select = on;
+        let mut h = harness(st, true);
+        h.run();
+        h.state_mut().1.clear();
+        drag(&mut h);
+        assert_eq!(pushed(&h, |t| matches!(t, TerminalMsg::CopySelection { keep: true })), on, "copy on select {on}");
+        assert!(h.state().0.terminal.sessions[0].selection.is_some(), "the selection stays");
+        // With it on, the copy key no longer copies: the text was copied when it was selected.
+        h.state_mut().1.clear();
+        h.input_mut().events.push(Event::Copy);
+        h.run();
+        assert_eq!(pushed(&h, |t| matches!(t, TerminalMsg::CopySelection { keep: false })), !on, "copy on select {on}");
+        drop(h);
+        remove_fixture(&dir);
+    }
+}
+
+#[test]
+fn middle_click_pastes_on_linux() {
+    for on in [true, false] {
+        let (mut st, dir) = with_history(ThemeChoice::Dark, &format!("terminal-middle-{on}"));
+        st.settings.terminal.middle_click_paste = on;
+        let mut h = harness(st, true);
+        h.run();
+        h.state_mut().1.clear();
+        let at = cell(&h, 6, 12);
+        click(&mut h, at, PointerButton::Middle);
+        let want = on && cfg!(target_os = "linux");
+        assert_eq!(pushed(&h, |t| matches!(t, TerminalMsg::Paste)), want, "middle-click paste {on}");
+        drop(h);
+        remove_fixture(&dir);
+    }
 }
 
 #[test]

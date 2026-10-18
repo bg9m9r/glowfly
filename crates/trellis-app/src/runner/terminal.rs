@@ -2,6 +2,8 @@
 //! the writes and resizes update asks for, in order, so a full PTY input pipe can never block
 //! the UI thread. Requests sent while the shell is still starting wait in its channel. Kills
 //! bypass that queue: a write stuck on a shell that isn't reading must not hold up a stop.
+//! Whether a shell is running a program is read on a thread of its own, since a process
+//! snapshot takes milliseconds.
 
 use super::{Runner, Waker};
 use crate::msg::Msg;
@@ -11,7 +13,7 @@ use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
 use trellis_core::settings::ShellSetting;
-use trellis_core::terminal::{pty, shell};
+use trellis_core::terminal::{ShellActivity, ShellProbe, pty, shell};
 
 /// A request for a session's thread.
 pub(super) enum Control {
@@ -63,10 +65,25 @@ impl KillState {
     }
 }
 
-/// A running session: its request channel and its kill switch.
+/// Reads a session's shell activity once the shell has started.
+#[derive(Default)]
+struct ProbeSlot(Mutex<Option<ShellProbe>>);
+
+impl ProbeSlot {
+    fn set(&self, p: ShellProbe) {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(p);
+    }
+
+    fn get(&self) -> Option<ShellProbe> {
+        self.0.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+}
+
+/// A running session: its request channel, its kill switch and its activity probe.
 struct Handle {
     ctl: Sender<Control>,
     kill: Arc<KillSwitch>,
+    probe: Arc<ProbeSlot>,
 }
 
 /// The running sessions by id. Dropping it (the app quitting) stops every shell.
@@ -103,6 +120,13 @@ impl Drop for Terminals {
     }
 }
 
+impl Terminals {
+    /// Session `id`'s probe, once its shell has started.
+    fn probe(&self, id: u64) -> Option<ShellProbe> {
+        self.map().get(&id).and_then(|h| h.probe.get())
+    }
+}
+
 /// Sends a session's results to update and wakes the UI.
 #[derive(Clone)]
 struct Reporter<W> {
@@ -124,12 +148,13 @@ impl<W: Waker + Clone> Runner<W> {
             TerminalEffect::Spawn { id, cwd, rows, cols, shell } => {
                 let (ctl, rx) = mpsc::channel();
                 let kill = Arc::new(KillSwitch::default());
-                self.terminals.map().insert(id, Handle { ctl: ctl.clone(), kill: kill.clone() });
+                let probe = Arc::new(ProbeSlot::default());
+                self.terminals.map().insert(id, Handle { ctl: ctl.clone(), kill: kill.clone(), probe: probe.clone() });
                 let report = Reporter { tx: self.tx.clone(), waker: self.waker.clone() };
                 let failed = report.clone();
                 let spawned = std::thread::Builder::new()
                     .name("trellis-terminal".into())
-                    .spawn(move || session(id, &cwd, (rows, cols), &shell, Channels { rx, ctl, kill }, report));
+                    .spawn(move || session(id, &cwd, (rows, cols), &shell, Channels { rx, ctl, kill, probe }, report));
                 if let Err(e) = spawned {
                     self.terminals.map().remove(&id);
                     failed.send(TerminalMsg::SpawnFailed { id, error: format!("could not start a thread: {e}") });
@@ -142,22 +167,42 @@ impl<W: Waker + Clone> Runner<W> {
             TerminalEffect::Close(id) => {
                 self.terminals.map().remove(&id);
             }
+            TerminalEffect::CheckActivity(id) => {
+                let report = Reporter { tx: self.tx.clone(), waker: self.waker.clone() };
+                check_activity(id, self.terminals.probe(id), report);
+            }
         }
     }
 }
 
-/// A session thread's ends of its channel, and its kill switch.
+/// Reports what session `id`'s shell is doing, reading `probe` on its own thread so the UI
+/// thread never waits for it. No probe (the session is gone or still starting) is Unknown.
+fn check_activity<W: Waker + Clone>(id: u64, probe: Option<ShellProbe>, report: Reporter<W>) {
+    let Some(probe) = probe else {
+        return report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown });
+    };
+    let thread_report = report.clone();
+    let spawned = std::thread::Builder::new()
+        .name("trellis-terminal-probe".into())
+        .spawn(move || thread_report.send(TerminalMsg::Activity { id, activity: probe.activity() }));
+    if spawned.is_err() {
+        report.send(TerminalMsg::Activity { id, activity: ShellActivity::Unknown });
+    }
+}
+
+/// A session thread's ends of its channel, its kill switch and its probe slot.
 struct Channels {
     rx: Receiver<Control>,
     ctl: Sender<Control>,
     kill: Arc<KillSwitch>,
+    probe: Arc<ProbeSlot>,
 }
 
 /// Runs session `id`: starts the shell `choice` names, reports it, then carries out requests
 /// until the shell has ended. Returning drops the PTY, which ends its output reader. A chosen
 /// shell that can't be found is reported, never replaced by another.
 fn session<W: Waker + Clone>(id: u64, cwd: &Path, (rows, cols): (u16, u16), choice: &ShellSetting, ch: Channels, report: Reporter<W>) {
-    let Channels { rx, ctl, kill } = ch;
+    let Channels { rx, ctl, kill, probe } = ch;
     let shell = match shell::resolve(choice) {
         Ok(s) => s,
         Err(error) => return report.send(TerminalMsg::SpawnFailed { id, error }),
@@ -173,6 +218,7 @@ fn session<W: Waker + Clone>(id: u64, cwd: &Path, (rows, cols): (u16, u16), choi
     };
     let mut killer = pty.killer();
     kill.arm(Box::new(move || killer.kill()));
+    probe.set(pty.probe());
     report.send(TerminalMsg::Started { id, program: short_name(&shell.program) });
     for c in rx {
         let result = match c {
@@ -193,9 +239,12 @@ fn short_name(program: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{Control, Handle, KillSwitch, Terminals, short_name};
+    use super::{Control, Handle, KillSwitch, ProbeSlot, Reporter, Terminals, check_activity, short_name};
+    use crate::msg::Msg;
+    use crate::terminal::TerminalMsg;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, mpsc};
+    use trellis_core::terminal::{ShellActivity, ShellProbe};
 
     #[test]
     fn short_names() {
@@ -229,7 +278,7 @@ mod tests {
         let kill = Arc::new(KillSwitch::default());
         let n = counted(&kill);
         let terminals = Terminals::default();
-        terminals.map().insert(7, Handle { ctl, kill });
+        terminals.map().insert(7, Handle { ctl, kill, probe: Arc::default() });
         terminals.send(7, Control::Write(b"stuck".to_vec()));
         terminals.kill(7);
         assert_eq!(n.load(Ordering::SeqCst), 1, "the shell is stopped at once");
@@ -244,8 +293,35 @@ mod tests {
         let terminals = Terminals::default();
         let kill = Arc::new(KillSwitch::default());
         let n = counted(&kill);
-        terminals.map().insert(1, Handle { ctl: mpsc::channel().0, kill });
+        terminals.map().insert(1, Handle { ctl: mpsc::channel().0, kill, probe: Arc::default() });
         drop(terminals);
         assert_eq!(n.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn a_probe_is_there_once_set() {
+        let slot = ProbeSlot::default();
+        assert!(slot.get().is_none());
+        slot.set(ShellProbe::default());
+        assert_eq!(slot.get().map(|p| p.activity()), Some(ShellActivity::Unknown), "a probe of no process");
+        let terminals = Terminals::default();
+        terminals.map().insert(3, Handle { ctl: mpsc::channel().0, kill: Arc::default(), probe: Arc::default() });
+        assert!(terminals.probe(3).is_none(), "not started yet");
+        assert!(terminals.probe(4).is_none(), "no such session");
+    }
+
+    #[test]
+    fn checking_a_session_without_a_probe_reports_unknown() {
+        let (tx, rx) = mpsc::channel();
+        #[derive(Clone)]
+        struct NoWake;
+        impl super::Waker for NoWake {
+            fn wake(&self) {}
+        }
+        check_activity(9, None, Reporter { tx, waker: NoWake });
+        match rx.try_recv() {
+            Ok(Msg::Terminal(TerminalMsg::Activity { id: 9, activity })) => assert_eq!(activity, ShellActivity::Unknown),
+            _ => panic!("expected an Activity report"),
+        }
     }
 }

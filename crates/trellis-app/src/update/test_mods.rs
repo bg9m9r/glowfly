@@ -301,6 +301,8 @@ pub(super) mod tag_checkout_tests;
 pub(super) mod tag_remote_tests;
 #[path = "tag_tests.rs"]
 pub(super) mod tag_tests;
+#[path = "terminal_close_tests.rs"]
+pub(super) mod terminal_close_tests;
 #[path = "terminal_tabs_tests.rs"]
 pub(super) mod terminal_tabs_tests;
 #[path = "terminal_tests.rs"]

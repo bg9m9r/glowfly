@@ -65,11 +65,13 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
         TerminalMsg::NewTab => tabs::new_tab(st, fx),
         TerminalMsg::SelectTab(id) => tabs::select_tab(st, id),
         TerminalMsg::CloseTab(id) => tabs::close_tab(st, id, fx),
+        TerminalMsg::CloseTabNow(id) => tabs::close_now(st, id, fx),
         TerminalMsg::AskKillAll => tabs::ask_kill_all(st),
         TerminalMsg::KillAll => tabs::kill_all(st, fx),
         TerminalMsg::Scroll(rows) => view::scroll(st, rows),
+        TerminalMsg::ScrollPage(step) => view::scroll_page(st, step),
         TerminalMsg::CopySelection { keep } => view::copy(st, keep, fx),
-        TerminalMsg::SelectAll => view::select_all(st),
+        TerminalMsg::SelectAll => view::select_all(st, fx),
         TerminalMsg::Clear => view::clear(st, fx),
         TerminalMsg::Paste => view::paste(st, fx),
         TerminalMsg::PanelHeight(h) => view::panel_height(st, h, fx),
@@ -107,6 +109,7 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
             fx.push(Effect::Terminal(E::Close(id)));
             st.log(false, format!("Could not start the terminal: {error}"));
         }
+        TerminalMsg::Activity { id, activity } => tabs::activity(st, id, activity, fx),
     }
 }
 

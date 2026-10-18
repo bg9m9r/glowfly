@@ -1,22 +1,24 @@
 //! The built-in terminal panel: a running shell's screen (from canned output, no real shell),
-//! an ended session, the starting and failed states, keyboard forwarding and Ctrl+`. Shares
-//! the fixture repository and renderer with `snapshot_tests`.
+//! an ended session, the starting and failed states, keyboard forwarding, the keys a focused
+//! terminal keeps from the app's shortcuts, and Ctrl+`. Shares the fixture repository and
+//! renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, theme::color};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
+use crate::msg::TabsMsg;
 use crate::state::AppState;
 use crate::state::terminal::{SessionStatus, TermSession};
-use crate::terminal::TerminalMsg;
+use crate::terminal::{ScrollStep, TerminalMsg};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use trellis_core::settings::ThemeChoice;
 use trellis_core::spell::Speller;
-use trellis_core::terminal::{TermInput, TermKey, TermScreen};
+use trellis_core::terminal::{KeyMods, TermInput, TermKey, TermScreen};
 
 /// A short session: a prompt, `git status` with a green and a red line, bold, 256-colour and
 /// inverse text, and a prompt waiting with the cursor after it.
@@ -129,9 +131,8 @@ fn focused_terminal_forwards_keys() {
     remove_fixture(&dir);
 }
 
-#[test]
-fn ctrl_backtick_toggles() {
-    let (st, dir) = with_session(ThemeChoice::Dark, "terminal-shortcut", SessionStatus::Running);
+/// The whole window with the app's shortcuts handled first, as the app runs them.
+fn with_shortcuts(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut cache: Option<UiCache> = None;
     let mut h = Harness::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
@@ -148,6 +149,54 @@ fn ctrl_backtick_toggles() {
         (st, Vec::new()),
     );
     h.run();
+    h
+}
+
+/// The terminal input the views pushed.
+fn inputs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<TermInput> {
+    h.state()
+        .1
+        .iter()
+        .filter_map(|m| match m {
+            Msg::Terminal(TerminalMsg::Input(v)) => Some(v.clone()),
+            _ => None,
+        })
+        .flatten()
+        .collect()
+}
+
+#[test]
+fn focused_terminal_keeps_tab_keys() {
+    let (st, dir) = with_session(ThemeChoice::Dark, "terminal-kept-keys", SessionStatus::Running);
+    let mut h = with_shortcuts(st);
+    assert!(h.state().0.terminal.focused);
+    h.state_mut().1.clear();
+    // Ctrl as Windows and Linux report it.
+    let ctrl = Modifiers { ctrl: true, command: true, ..Modifiers::NONE };
+    for (modifiers, key) in [(ctrl, Key::W), (ctrl, Key::T), (Modifiers::NONE, Key::F5)] {
+        h.input_mut().modifiers = modifiers;
+        h.input_mut().events.push(Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers });
+        h.step();
+        h.input_mut().modifiers = Modifiers::NONE;
+    }
+    h.run();
+    let ctrl_key = |c| TermInput::Key { key: TermKey::Char(c), mods: KeyMods { ctrl: true, ..Default::default() } };
+    assert_eq!(inputs(&h), [ctrl_key('w'), ctrl_key('t'), TermInput::Key { key: TermKey::F(5), mods: KeyMods::default() }]);
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::CloseTab(_) | TabsMsg::NewTab) | Msg::Repo(RepoMsg::Refresh))));
+
+    h.state_mut().1.clear();
+    h.press_key_modifiers(Modifiers::SHIFT, Key::PageUp);
+    h.run();
+    assert!(pushed(&h, |t| matches!(t, TerminalMsg::ScrollPage(ScrollStep::PageUp))));
+    assert!(inputs(&h).is_empty(), "nothing for the shell");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn ctrl_backtick_toggles() {
+    let (st, dir) = with_session(ThemeChoice::Dark, "terminal-shortcut", SessionStatus::Running);
+    let mut h = with_shortcuts(st);
     h.press_key_modifiers(Modifiers::CTRL, Key::Backtick);
     h.run();
     assert!(pushed(&h, |t| matches!(t, TerminalMsg::Toggle)));

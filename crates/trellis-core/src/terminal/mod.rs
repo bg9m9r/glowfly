@@ -1,7 +1,9 @@
 //! Terminal emulation for the built-in terminal panel: the screen model (screen) and its history
 //! (history), key and paste encoding (keys), PTY sessions (pty), which shell to start (shell),
-//! the queries the terminal answers (queries) and redrawing a screen on a fresh parser (replay).
+//! the queries the terminal answers (queries), redrawing a screen on a fresh parser (replay) and
+//! whether the shell is running a program (activity).
 
+mod activity;
 mod history;
 mod keys;
 pub mod pty;
@@ -10,6 +12,7 @@ mod replay;
 mod screen;
 pub mod shell;
 
+pub use activity::{ShellActivity, ShellProbe};
 pub use keys::{KeyMods, Modes, TermInput, TermKey, encode};
 pub use screen::{HISTORY_ROWS, TermScreen};
 

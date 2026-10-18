@@ -1,7 +1,9 @@
 //! The app's shortcuts, matched through the effective keymap: each frame's key presses are
 //! turned into chords, looked up, and handled when what is open lets the binding through
-//! (Preferences, the palette, a dialog, a credential prompt, a focused text field). Presses no
-//! binding takes are left for the views; Esc goes on to the Esc chain in `ui/central.rs`.
+//! (Preferences, the palette, a dialog, a credential prompt, a focused text field). A focused
+//! terminal keeps the unshifted keys of the tab, palette, search and refresh actions for its
+//! shell (`terminal_keeps`). Presses no binding takes are left for the views; Esc goes on to
+//! the Esc chain in `ui/central.rs`.
 
 use super::chords::take_press;
 use super::record;
@@ -26,7 +28,7 @@ pub(crate) fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>)
         return;
     }
     let live = Live::now(ctx, st);
-    while let Some((id, chord)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id| allowed(id, &live))) {
+    while let Some((id, chord)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
         fire(id, chord, st, msgs);
     }
     central::escape_key(ctx, st, msgs);
@@ -86,11 +88,22 @@ impl Live {
     }
 }
 
-/// Whether `id` applies with what is open. Nothing reaches the main window's actions under
-/// Preferences, a credential prompt, the palette or a dialog, except where noted; text fields
-/// keep plain keys and their own undo.
-fn allowed(id: BindingId, l: &Live) -> bool {
+/// The actions whose keys a focused terminal keeps for its shell when pressed without Shift,
+/// Alt or Cmd (Ctrl+W, Ctrl+P, F5…); their shifted keys still act.
+fn terminal_keeps(id: BindingId) -> bool {
     use BindingId as I;
+    matches!(id, I::NewTab | I::CloseTab | I::NextTab | I::GoToTab | I::LastTab | I::Palette | I::Search | I::Refresh)
+}
+
+/// Whether `id` applies with what is open; `shell` says whether the press would reach a focused
+/// terminal's shell. Nothing reaches the main window's actions under Preferences, a credential
+/// prompt, the palette or a dialog, except where noted; text fields keep plain keys and their
+/// own undo.
+fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
+    use BindingId as I;
+    if l.terminal && shell && terminal_keeps(id) {
+        return false;
+    }
     let covered = l.prefs || l.askpass || l.palette || l.dialog;
     match id {
         I::Palette => !l.prefs && !l.dialog && !l.sheet && !l.askpass,

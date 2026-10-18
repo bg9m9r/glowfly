@@ -1,6 +1,6 @@
 //! The terminal's screen grid: painting the active tab's cells, selection and cursor, reporting
 //! the grid size, the mouse (mouse.rs), the right-click menu, and forwarding the keyboard while
-//! it has focus.
+//! it has focus (Shift with Page Up/Down, Home and End scroll the main screen's history).
 
 use super::colors::span_colors;
 use super::mouse::{self, Geometry};
@@ -50,9 +50,19 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
         // Tab, arrows and Esc belong to the shell, not to egui's focus navigation.
         let filter = EventFilter { tab: true, horizontal_arrows: true, vertical_arrows: true, escape: true };
         ui.memory_mut(|m| m.set_focus_lock_filter(id, filter));
-        let got = input::collect(&ui.input(|i| i.events.clone()), &mut st.terminal.clip_pending, selected.is_some());
+        let opts = input::Opts {
+            // With Copy on select the text was copied when it was selected, so the copy key
+            // goes to the shell.
+            has_selection: selected.is_some() && !st.settings.terminal.copy_on_select,
+            history_keys: !session.screen.alternate(),
+            alt_is_meta: !cfg!(target_os = "macos"),
+        };
+        let got = input::collect(&ui.input(|i| i.events.clone()), &mut st.terminal.clip_pending, opts);
         if got.copy {
             msgs.push(Msg::Terminal(TerminalMsg::CopySelection { keep: false }));
+        }
+        for step in got.scroll {
+            msgs.push(Msg::Terminal(TerminalMsg::ScrollPage(step)));
         }
         if !got.inputs.is_empty() {
             msgs.push(Msg::Terminal(TerminalMsg::Input(got.inputs)));

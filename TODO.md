@@ -110,7 +110,7 @@ The pages a full-featured Git client offers, and where Trellis stands:
 | UI Customization | ✔ UI Customization | Repo group colors (wait on repository groups) |
 | Commit Signing | ✔ Commit Signing | Signature badges on graph rows and tags (P1 follow-ups) |
 | Editor | ◐ Editor (font size, tab size, line numbers, syntax and word highlights, word wrap) | Font family, EOL character |
-| In-App Terminal | ✔ In-App Terminal page (shell, font size, cursor style, dim when unfocused, Open in terminal in the panel) | Font family, line height (Later > Built-in terminal) |
+| In-App Terminal | ✔ In-App Terminal page (shell, font size, cursor style, dim when unfocused, copy on select, middle-click paste (Linux), Open in terminal in the panel) | Font family, line height (Ideas > Built-in terminal) |
 | Experimental | ✘ | Git executable selection and version (P3) |
 | *Repo:* Encoding | ✘ | Per-repo file encoding for diffs |
 | *Repo:* Gitflow | ✔ Git Flow page, Start and Finish, Git Flow panel, branch from issue | Finish options (Later > Git Flow) |
@@ -729,15 +729,6 @@ follow-ups go to Ideas, not here.
 - Keys for palette commands that have none yet (fetch, pull, push, create branch…), assignable
   on the Keyboard page
 
-### Built-in terminal
-
-- Let the focused terminal keep the keys the global shortcuts take today (Ctrl+W, Ctrl+T,
-  Ctrl+Tab, Ctrl+1–9, Ctrl+P, Ctrl+F, F5; Ctrl+F and F5 also reach the shell), and send
-  Alt+letter as an ESC prefix; coordinate with the keyboard shortcuts in ui/mod.rs
-- Confirm before closing a terminal tab whose shell is running a program
-- Shift+PageUp/PageDown and Shift+Home/End scroll the history from the keyboard
-- Copy on select, and middle-click paste on Linux
-
 ### Git LFS
 
 - Refresh the tracked patterns on status-only (watcher) refreshes, so hand edits to
@@ -1273,7 +1264,6 @@ here, under the item they grew from.
 - Export and import a keymap file, or keymap presets
 - Warn when a key is taken by the OS on the current system (Cmd+Tab, Cmd+Q, Cmd+H on macOS;
   Alt+F4 on Windows), including a Mod+Tab synced from another OS
-- Let a focused terminal keep keys that are bound to global shortcuts
 - Record keys the table can't name yet (F13–F24, curly brackets, media keys)
 - Rebind the fixed context keys (Commit's Ctrl+Enter, list arrows, palette keys) with their own
   per-context conflict rules
@@ -1296,6 +1286,18 @@ here, under the item they grew from.
 - Find in the terminal's history
 - Clear for cmd in step with Windows' pseudoconsole (today it only clears locally)
 - A palette entry for New terminal tab
+- On Linux, a selection also sets the PRIMARY selection and middle-click pastes PRIMARY instead
+  of the clipboard (X11 and Wayland)
+- An Option-as-Meta setting on macOS, so Option+letter sends the ESC prefix there too
+- Alt+digit and Alt+punctuation (Alt+., Alt+_) as ESC-prefixed input
+- Confirm before closing a repository tab or quitting while one of its terminals runs a
+  program, and before Kill
+- Show the running program's name in the close confirmation on macOS
+- Note in the shortcut sheet and Preferences > Keyboard which keys the focused terminal keeps
+- An option to send Shift+Home/End to the shell (PSReadLine selects with them) instead of
+  scrolling the history
+- Count background jobs and a custom launcher shell's (wsl.exe) children correctly when
+  detecting a running program
 
 ### Submodules
 

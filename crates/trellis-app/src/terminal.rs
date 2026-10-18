@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 use trellis_core::settings::ShellSetting;
-use trellis_core::terminal::TermInput;
+use trellis_core::terminal::{ShellActivity, TermInput};
 
 /// Carried by an `Output` message: dropping it tells the session's output thread that the
 /// message was handled (runner/terminal_out.rs). The default does nothing.
@@ -22,6 +22,19 @@ impl Drop for Ack {
             f();
         }
     }
+}
+
+/// A keyboard step through the active tab's history (Shift with Page Up/Down, Home, End).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScrollStep {
+    /// One screen back.
+    PageUp,
+    /// One screen forward.
+    PageDown,
+    /// The start of the history.
+    Top,
+    /// The live screen.
+    Bottom,
 }
 
 pub enum TerminalMsg {
@@ -43,14 +56,19 @@ pub enum TerminalMsg {
     NewTab,
     /// Make session `id` the active tab.
     SelectTab(u64),
-    /// Stop session `id`'s shell if it runs and remove its tab.
+    /// Stop session `id`'s shell if it runs and remove its tab; asks first when the shell is
+    /// running a program.
     CloseTab(u64),
+    /// Close session `id`'s tab without asking (the close confirmation's button).
+    CloseTabNow(u64),
     /// Ask before stopping every shell of the active repository.
     AskKillAll,
     /// Stop every shell of the active repository.
     KillAll,
     /// Scroll the active tab's view this many rows back into its history (forward when negative).
     Scroll(i32),
+    /// Scroll the active tab's history a screen, or to its start or end, from the keyboard.
+    ScrollPage(ScrollStep),
     /// Copy the active tab's selection; `keep` leaves it selected.
     CopySelection {
         keep: bool,
@@ -83,6 +101,11 @@ pub enum TerminalMsg {
         id: u64,
         error: String,
     },
+    /// What session `id`'s shell was doing when its tab was asked to close.
+    Activity {
+        id: u64,
+        activity: ShellActivity,
+    },
 }
 
 impl TerminalMsg {
@@ -99,9 +122,11 @@ impl TerminalMsg {
             | Self::NewTab
             | Self::SelectTab(..)
             | Self::CloseTab(..)
+            | Self::CloseTabNow(..)
             | Self::AskKillAll
             | Self::KillAll
             | Self::Scroll(..)
+            | Self::ScrollPage(..)
             | Self::CopySelection { .. }
             | Self::SelectAll
             | Self::Clear
@@ -110,7 +135,8 @@ impl TerminalMsg {
             | Self::Started { .. }
             | Self::Output { .. }
             | Self::Exited { .. }
-            | Self::SpawnFailed { .. } => None,
+            | Self::SpawnFailed { .. }
+            | Self::Activity { .. } => None,
         }
     }
 }
@@ -139,6 +165,9 @@ pub enum TerminalEffect {
     Kill(u64),
     /// Forget session `id` (it ended or its tab closed); its thread ends once the shell has.
     Close(u64),
+    /// Find out, off the UI thread, whether session `id`'s shell is running a program; reported
+    /// as `TerminalMsg::Activity`.
+    CheckActivity(u64),
 }
 
 impl std::fmt::Debug for TerminalEffect {
@@ -151,6 +180,7 @@ impl std::fmt::Debug for TerminalEffect {
             Self::Resize { id, rows, cols } => write!(f, "Resize {{ id: {id}, rows: {rows}, cols: {cols} }}"),
             Self::Kill(id) => write!(f, "Kill({id})"),
             Self::Close(id) => write!(f, "Close({id})"),
+            Self::CheckActivity(id) => write!(f, "CheckActivity({id})"),
         }
     }
 }

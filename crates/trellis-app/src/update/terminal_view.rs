@@ -1,11 +1,12 @@
-//! What the terminal grid asks of its active tab: scrolling the history, copying and selecting
-//! all, clearing, pasting from the clipboard, and remembering the panel's height.
+//! What the terminal grid asks of its active tab: scrolling the history (by rows, or a screen
+//! at a time from the keyboard), copying and selecting all (which copies too with Copy on
+//! select), clearing, pasting from the clipboard, and remembering the panel's height.
 
 use super::terminal::active_mut;
 use crate::effect::{Effect, UiEffect};
 use crate::state::AppState;
-use crate::state::terminal::Selection;
-use crate::terminal::TerminalEffect as E;
+use crate::state::terminal::{Selection, TermSession};
+use crate::terminal::{ScrollStep, TerminalEffect as E};
 
 /// The panel's smallest height, as the view allows it.
 const MIN_PANEL_HEIGHT: f32 = 90.0;
@@ -16,14 +17,33 @@ pub(super) fn scroll(st: &mut AppState, rows: i32) {
     }
 }
 
+/// A screen of rows back or forward, or to the start or end of the history. The alternate
+/// screen has no history, so nothing moves there.
+pub(super) fn scroll_page(st: &mut AppState, step: ScrollStep) {
+    let Some(s) = active_mut(st) else { return };
+    if s.screen.alternate() {
+        return;
+    }
+    let rows = i32::from(s.screen.size().0);
+    match step {
+        ScrollStep::PageUp => s.screen.scroll_by(rows),
+        ScrollStep::PageDown => s.screen.scroll_by(-rows),
+        ScrollStep::Top => s.screen.scroll_by(i32::try_from(s.screen.history_len()).unwrap_or(i32::MAX)),
+        ScrollStep::Bottom => s.screen.scroll_to_bottom(),
+    }
+}
+
+/// The text of `s`'s selection, when it has any.
+fn copy_text(s: &mut TermSession) -> Option<String> {
+    let (start, end) = s.selection.and_then(|sel| sel.range(&s.screen))?;
+    Some(s.screen.text_between(start, end)).filter(|t| !t.is_empty())
+}
+
 /// Copies the active tab's selection; `keep` leaves it selected.
 pub(super) fn copy(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     let Some(s) = active_mut(st) else { return };
-    if let Some((start, end)) = s.selection.and_then(|sel| sel.range(&s.screen)) {
-        let text = s.screen.text_between(start, end);
-        if !text.is_empty() {
-            fx.push(Effect::Ui(UiEffect::CopyText(text)));
-        }
+    if let Some(text) = copy_text(s) {
+        fx.push(Effect::Ui(UiEffect::CopyText(text)));
     }
     if !keep {
         s.selection = None;
@@ -31,10 +51,15 @@ pub(super) fn copy(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     st.terminal.focus_requested = true;
 }
 
-pub(super) fn select_all(st: &mut AppState) {
+/// Selects the whole history and screen; with Copy on select it is copied too.
+pub(super) fn select_all(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let copy_on_select = st.settings.terminal.copy_on_select;
     let Some(s) = active_mut(st) else { return };
     let (anchor, head) = s.screen.select_all();
     s.selection = Some(Selection { anchor, head, epoch: s.screen.epoch() });
+    if copy_on_select && let Some(text) = copy_text(s) {
+        fx.push(Effect::Ui(UiEffect::CopyText(text)));
+    }
     st.terminal.focus_requested = true;
 }
 

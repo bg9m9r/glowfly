@@ -1,5 +1,6 @@
-//! Preferences > In-App Terminal (the shell, text size, cursor and dimming, and whether Open
-//! in terminal uses the panel), and the panel's remembered state.
+//! Preferences > In-App Terminal (the shell, text size, cursor and dimming, copy on select,
+//! middle-click paste, and whether Open in terminal uses the panel), and the panel's remembered
+//! state.
 
 use serde::{Deserialize, Serialize};
 use std::ops::RangeInclusive;
@@ -65,6 +66,11 @@ pub struct TerminalPrefs {
     pub cursor: CursorStyle,
     /// Dim the screen while it doesn't have the keyboard.
     pub dim_unfocused: bool,
+    /// Releasing a mouse selection copies it, and the copy key then goes to the shell.
+    pub copy_on_select: bool,
+    /// A middle click on the screen pastes the clipboard; read through `middle_click_pastes()`,
+    /// since it acts only on Linux.
+    pub middle_click_paste: bool,
     /// Open in terminal (palette, toolbar right-click) uses the panel.
     pub open_in_panel: bool,
     /// Window state, not on the page: whether the panel was open, and its height in points.
@@ -79,6 +85,8 @@ impl Default for TerminalPrefs {
             font_size: DEFAULT_TERMINAL_FONT_SIZE,
             cursor: CursorStyle::Block,
             dim_unfocused: false,
+            copy_on_select: false,
+            middle_click_paste: true,
             open_in_panel: false,
             panel_open: false,
             panel_height: None,
@@ -94,6 +102,16 @@ impl TerminalPrefs {
             return DEFAULT_TERMINAL_FONT_SIZE;
         }
         self.font_size.clamp(*TERMINAL_FONT_SIZES.start(), *TERMINAL_FONT_SIZES.end())
+    }
+
+    /// Whether a middle click pastes on a system where `linux` says whether it is Linux.
+    pub fn middle_click_pastes_for(&self, linux: bool) -> bool {
+        linux && self.middle_click_paste
+    }
+
+    /// Whether a middle click pastes on this system.
+    pub fn middle_click_pastes(&self) -> bool {
+        self.middle_click_pastes_for(cfg!(target_os = "linux"))
     }
 
     /// Everything on the Preferences page back to its default; the panel's state stays.
@@ -113,6 +131,22 @@ mod tests {
         assert_eq!(s.terminal, TerminalPrefs::default());
         assert_eq!(s.terminal.font_size, 12.5);
         assert_eq!(s.terminal.shell.choice, ShellChoice::Auto);
+        assert!(!s.terminal.copy_on_select);
+        assert!(s.terminal.middle_click_paste);
+        let p: TerminalPrefs = serde_json::from_str(r#"{"font_size":14.0,"dim_unfocused":true}"#).unwrap();
+        assert!(!p.copy_on_select);
+        assert!(p.middle_click_paste);
+    }
+
+    #[test]
+    fn middle_click_pastes_only_on_linux() {
+        let on = TerminalPrefs::default();
+        let off = TerminalPrefs { middle_click_paste: false, ..Default::default() };
+        assert!(on.middle_click_pastes_for(true));
+        assert!(!off.middle_click_pastes_for(true));
+        assert!(!on.middle_click_pastes_for(false));
+        assert!(!off.middle_click_pastes_for(false));
+        assert_eq!(on.middle_click_pastes(), cfg!(target_os = "linux"));
     }
 
     #[test]
@@ -122,6 +156,8 @@ mod tests {
             font_size: 15.0,
             cursor: CursorStyle::Underline,
             dim_unfocused: true,
+            copy_on_select: true,
+            middle_click_paste: false,
             open_in_panel: true,
             panel_open: true,
             panel_height: Some(301.0),
@@ -150,6 +186,8 @@ mod tests {
         let mut t = TerminalPrefs {
             font_size: 20.0,
             dim_unfocused: true,
+            copy_on_select: true,
+            middle_click_paste: false,
             open_in_panel: true,
             panel_open: true,
             panel_height: Some(250.0),

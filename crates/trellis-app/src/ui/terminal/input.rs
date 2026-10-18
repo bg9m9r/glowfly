@@ -1,7 +1,8 @@
-//! egui's keyboard events turned into terminal input.
+//! egui's keyboard events turned into terminal input, and the keys that scroll the history.
 
 use crate::state::terminal::Clip;
-use eframe::egui::{Event, ImeEvent, Key};
+use crate::terminal::ScrollStep;
+use eframe::egui::{Event, ImeEvent, Key, Modifiers};
 use trellis_core::terminal::{KeyMods, TermInput, TermKey};
 
 /// What the keyboard did in one frame.
@@ -11,6 +12,19 @@ pub(super) struct Collected {
     pub inputs: Vec<TermInput>,
     /// Copy the selection (and send nothing for that key).
     pub copy: bool,
+    /// History scrolling from the keyboard (sent nothing).
+    pub scroll: Vec<ScrollStep>,
+}
+
+/// How this frame's keys are read.
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct Opts {
+    /// The copy command copies the selection instead of reaching the shell.
+    pub has_selection: bool,
+    /// Shift with Page Up/Down, Home and End scrolls the history (the main screen).
+    pub history_keys: bool,
+    /// Alt+letter sends ESC and the letter (not on macOS, where Option composes characters).
+    pub alt_is_meta: bool,
 }
 
 /// The terminal input in this frame's `events`. `pending` carries copy and cut commands over
@@ -20,13 +34,20 @@ pub(super) struct Collected {
 /// Windows Ctrl+Insert and Shift+Delete do the same. The key's release tells them apart: C or
 /// X sends ^C or ^X, Insert or Delete sends that key. Any other input first sends what is
 /// waiting as ^C or ^X. (On macOS those are Cmd, and Ctrl+C arrives as a key.) While text is
-/// selected, a copy command (Ctrl+C, Ctrl+Insert, Cmd+C) copies it instead, on every system.
-pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, has_selection: bool) -> Collected {
+/// selected (`opts.has_selection`), a copy command (Ctrl+C, Ctrl+Insert, Cmd+C) copies it
+/// instead, on every system.
+///
+/// Alt+letter (`opts.alt_is_meta`) is sent as ESC and the letter, and the letter's own text in
+/// the same frame is dropped so it isn't typed twice.
+pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, opts: Opts) -> Collected {
     let mut out = Vec::new();
     let mut copy = false;
+    let mut scroll = Vec::new();
+    // The letter of the last Alt+letter sent, until the next text.
+    let mut meta_sent: Option<char> = None;
     for e in events {
         match e {
-            Event::Copy if has_selection => copy = true,
+            Event::Copy if opts.has_selection => copy = true,
             Event::Copy | Event::Cut if !cfg!(target_os = "macos") => {
                 let clip = if matches!(e, Event::Copy) { Clip::Copy } else { Clip::Cut };
                 match pending {
@@ -51,6 +72,27 @@ pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, has_s
                 *pending = None;
                 out.extend(sent.into_iter().flat_map(|i| std::iter::repeat_n(i, n as usize)));
             }
+            Event::Text(t) | Event::Ime(ImeEvent::Commit(t)) if meta_sent.take().is_some_and(|c| same_letter(t, c)) => {}
+            Event::Key { key, pressed: true, modifiers, .. } => {
+                let step = opts.history_keys.then(|| history_step(*key, *modifiers)).flatten();
+                let meta = opts.alt_is_meta.then(|| meta_letter(*key, *modifiers)).flatten();
+                let sent = match (step, meta) {
+                    (Some(step), _) => {
+                        scroll.push(step);
+                        None
+                    }
+                    (None, Some(c)) => {
+                        meta_sent = Some(c);
+                        let shown = if modifiers.shift { c.to_ascii_uppercase() } else { c };
+                        Some(TermInput::Key { key: TermKey::Char(shown), mods: KeyMods { alt: true, shift: modifiers.shift, ctrl: false } })
+                    }
+                    (None, None) => map(e),
+                };
+                if step.is_some() || sent.is_some() {
+                    flush(pending, &mut out);
+                }
+                out.extend(sent);
+            }
             _ => {
                 if let Some(i) = map(e) {
                     flush(pending, &mut out);
@@ -59,7 +101,45 @@ pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, has_s
             }
         }
     }
-    Collected { inputs: out, copy }
+    Collected { inputs: out, copy, scroll }
+}
+
+/// The history step of Shift (alone) with Page Up/Down, Home or End.
+fn history_step(key: Key, m: Modifiers) -> Option<ScrollStep> {
+    if !m.shift || m.ctrl || m.alt || m.mac_cmd {
+        return None;
+    }
+    match key {
+        Key::PageUp => Some(ScrollStep::PageUp),
+        Key::PageDown => Some(ScrollStep::PageDown),
+        Key::Home => Some(ScrollStep::Top),
+        Key::End => Some(ScrollStep::Bottom),
+        _ => None,
+    }
+}
+
+/// The lowercase letter of an Alt+letter press (with or without Shift). Ctrl+Alt is AltGr on
+/// Windows, which types its character instead.
+fn meta_letter(key: Key, m: Modifiers) -> Option<char> {
+    if !m.alt || m.ctrl || m.mac_cmd {
+        return None;
+    }
+    letter(key)
+}
+
+/// The lowercase letter of a letter key.
+fn letter(key: Key) -> Option<char> {
+    let mut chars = key.name().chars();
+    match (chars.next(), chars.next()) {
+        (Some(c @ 'A'..='Z'), None) => Some(c.to_ascii_lowercase()),
+        _ => None,
+    }
+}
+
+/// Whether `text` is just the letter `c`, in either case.
+fn same_letter(text: &str, c: char) -> bool {
+    let mut chars = text.chars();
+    matches!((chars.next(), chars.next()), (Some(t), None) if t.eq_ignore_ascii_case(&c))
 }
 
 /// Sends the waiting copy or cut commands as ^C or ^X.
@@ -128,112 +208,28 @@ fn term_key(key: Key, mods: KeyMods) -> Option<TermKey> {
     Some(k)
 }
 
-/// The character of a key that has a control code with Ctrl.
+/// The character of a key that has a control code with Ctrl. The digits follow xterm: Ctrl+2
+/// is NUL, Ctrl+3 to Ctrl+7 are ESC and 0x1c to 0x1f, Ctrl+8 is DEL, and Ctrl+1 and Ctrl+9 send
+/// the digit (Ctrl+0 is the app's zoom reset).
 fn control_char(key: Key) -> Option<char> {
     match key {
         Key::Space => Some(' '),
         Key::OpenBracket => Some('['),
         Key::Backslash => Some('\\'),
         Key::CloseBracket => Some(']'),
-        _ => {
-            let name = key.name();
-            let mut chars = name.chars();
-            match (chars.next(), chars.next()) {
-                (Some(c @ 'A'..='Z'), None) => Some(c.to_ascii_lowercase()),
-                _ => None,
-            }
-        }
+        Key::Num1 => Some('1'),
+        Key::Num2 => Some('@'),
+        Key::Num3 => Some('['),
+        Key::Num4 => Some('\\'),
+        Key::Num5 => Some(']'),
+        Key::Num6 => Some('^'),
+        Key::Num7 => Some('_'),
+        Key::Num8 => Some('?'),
+        Key::Num9 => Some('9'),
+        _ => letter(key),
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use eframe::egui::Modifiers;
-
-    fn key(key: Key, pressed: bool, modifiers: Modifiers) -> Event {
-        Event::Key { key, physical_key: None, pressed, repeat: false, modifiers }
-    }
-
-    fn input(key: TermKey, ctrl: bool, alt: bool, shift: bool) -> TermInput {
-        TermInput::Key { key, mods: KeyMods { ctrl, alt, shift } }
-    }
-
-    #[test]
-    fn maps_egui_events() {
-        let none = Modifiers::NONE;
-        let one = |e: Event| collect(&[e], &mut None, false).inputs;
-        assert_eq!(one(Event::Text("a".into())), [TermInput::Text("a".into())]);
-        assert_eq!(one(key(Key::Enter, true, none)), [input(TermKey::Enter, false, false, false)]);
-        assert!(one(key(Key::Enter, false, none)).is_empty());
-        assert_eq!(one(key(Key::C, true, Modifiers::CTRL)), [input(TermKey::Char('c'), true, false, false)]);
-        assert!(one(key(Key::Q, true, Modifiers::CTRL | Modifiers::ALT)).is_empty(), "AltGr types text");
-        assert_eq!(one(Event::Paste("x".into())), [TermInput::Paste("x".into())]);
-        assert_eq!(one(key(Key::ArrowUp, true, Modifiers::SHIFT)), [input(TermKey::Up, false, false, true)]);
-        assert!(one(key(Key::A, true, none)).is_empty(), "plain letters come as text");
-        assert_eq!(one(key(Key::OpenBracket, true, Modifiers::CTRL)), [input(TermKey::Char('['), true, false, false)]);
-    }
-
-    #[test]
-    fn real_ctrl_on_every_platform_and_never_cmd() {
-        let one = |e: Event| collect(&[e], &mut None, false).inputs;
-        let ctrl_c = [input(TermKey::Char('c'), true, false, false)];
-        // Windows and Linux report Ctrl as both `ctrl` and `command`; macOS only as `ctrl`.
-        assert_eq!(one(key(Key::C, true, Modifiers::CTRL | Modifiers::COMMAND)), ctrl_c);
-        assert_eq!(one(key(Key::C, true, Modifiers::CTRL)), ctrl_c);
-        // macOS Cmd (`mac_cmd` and `command`) sends nothing to the shell.
-        let cmd = Modifiers::MAC_CMD | Modifiers::COMMAND;
-        assert!(one(key(Key::C, true, cmd)).is_empty());
-        assert!(one(key(Key::ArrowLeft, true, cmd)).is_empty(), "not a plain Left");
-        assert!(one(key(Key::Enter, true, cmd | Modifiers::SHIFT)).is_empty());
-    }
-
-    /// Feeds `frames` of events in turn, as the panel does, and returns all the input.
-    fn frames(frames: &[&[Event]]) -> Vec<TermInput> {
-        let mut pending = None;
-        frames.iter().flat_map(|f| collect(f, &mut pending, false).inputs).collect()
-    }
-
-    #[test]
-    fn copy_with_a_selection_copies_instead_of_interrupting() {
-        let mut pending = None;
-        let got = collect(&[Event::Copy], &mut pending, true);
-        assert_eq!(got, Collected { inputs: Vec::new(), copy: true });
-        assert_eq!(pending, None, "no ^C waits for the key's release");
-        let up = key(Key::C, false, Modifiers::CTRL);
-        assert_eq!(collect(&[up], &mut pending, false), Collected::default(), "the release sends nothing either");
-        // Ctrl+Insert on Windows arrives the same way.
-        let got = collect(&[Event::Copy, key(Key::Insert, false, Modifiers::CTRL)], &mut None, true);
-        assert_eq!(got, Collected { inputs: Vec::new(), copy: true });
-        // Without a selection, nothing changes: ^C waits for its key (not on macOS, where Cmd+C copies).
-        let got = collect(&[Event::Copy], &mut pending, false);
-        assert!(!got.copy && got.inputs.is_empty());
-        assert_eq!(pending.is_some(), !cfg!(target_os = "macos"));
-    }
-
-    #[test]
-    fn copy_and_cut_wait_for_their_key() {
-        if cfg!(target_os = "macos") {
-            return;
-        }
-        let up = |k, m| key(k, false, m);
-        let (ctrl, shift) = (Modifiers::CTRL, Modifiers::SHIFT);
-        let ctrl_c = input(TermKey::Char('c'), true, false, false);
-        assert_eq!(frames(&[&[Event::Copy], &[up(Key::C, ctrl)]]), std::slice::from_ref(&ctrl_c));
-        assert_eq!(frames(&[&[Event::Copy, up(Key::C, ctrl)]]), std::slice::from_ref(&ctrl_c), "in one frame");
-        assert_eq!(frames(&[&[Event::Copy], &[Event::Copy], &[up(Key::C, ctrl)]]), [ctrl_c.clone(), ctrl_c.clone()], "held");
-        assert_eq!(frames(&[&[Event::Cut], &[up(Key::X, ctrl)]]), [input(TermKey::Char('x'), true, false, false)]);
-
-        // Ctrl+Insert and Shift+Delete don't interrupt the shell.
-        assert_eq!(frames(&[&[Event::Copy], &[up(Key::Insert, ctrl)]]), [input(TermKey::Insert, true, false, false)]);
-        assert_eq!(frames(&[&[Event::Cut], &[up(Key::Delete, shift)]]), [input(TermKey::Delete, false, false, true)]);
-        assert!(frames(&[&[Event::Copy], &[up(Key::Copy, Modifiers::NONE)]]).is_empty(), "a Copy key");
-
-        // Typing on before the release sends the ^C first, in order.
-        let typed = frames(&[&[Event::Copy], &[Event::Text("a".into())], &[up(Key::C, ctrl)]]);
-        assert_eq!(typed, [ctrl_c.clone(), TermInput::Text("a".into())]);
-        // An unrelated release keeps it waiting.
-        assert_eq!(frames(&[&[Event::Copy], &[up(Key::A, ctrl)]]), []);
-        assert_eq!(frames(&[&[Event::Copy, up(Key::A, ctrl)], &[up(Key::C, ctrl)]]), [ctrl_c]);
-    }
-}
+#[path = "input_tests.rs"]
+mod tests;

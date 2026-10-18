@@ -1,5 +1,6 @@
 //! Preferences > In-App Terminal: the shell new terminals start, the text size, the cursor,
-//! dimming without the keyboard, and whether Open in terminal uses the panel. Edits apply at
+//! dimming without the keyboard, copy on select, middle-click paste (shown only on Linux, where
+//! it acts), and whether Open in terminal uses the panel. Edits apply at
 //! once (the view edits the settings in place and the shell saves them); a new shell choice
 //! applies to terminals started afterwards.
 
@@ -10,6 +11,11 @@ use trellis_core::i18n::Lang;
 use trellis_core::settings::{CursorStyle, Settings, ShellChoice, TERMINAL_FONT_SIZES};
 
 pub fn terminal_page(ui: &mut Ui, s: &mut Settings) {
+    page_for(ui, s, cfg!(target_os = "linux"));
+}
+
+/// The page as drawn on Linux (`linux`, with the middle-click row) or elsewhere.
+pub(crate) fn page_for(ui: &mut Ui, s: &mut Settings, linux: bool) {
     let t = s.lang();
     let windows = cfg!(windows);
     let p = &mut s.terminal;
@@ -52,6 +58,16 @@ pub fn terminal_page(ui: &mut Ui, s: &mut Settings) {
         ui.checkbox(&mut p.dim_unfocused, "");
         help(ui, t.tr("prefs.terminal.dim.help"));
     });
+    row(ui, t.tr("prefs.terminal.copy_on_select.label"), |ui| {
+        ui.checkbox(&mut p.copy_on_select, "");
+        help(ui, t.tr("prefs.terminal.copy_on_select.help"));
+    });
+    if linux {
+        row(ui, t.tr("prefs.terminal.middle_click.label"), |ui| {
+            ui.checkbox(&mut p.middle_click_paste, "");
+            help(ui, t.tr("prefs.terminal.middle_click.help"));
+        });
+    }
     row(ui, t.tr("prefs.terminal.open_in_panel.label"), |ui| {
         ui.checkbox(&mut p.open_in_panel, t.tr("prefs.terminal.open_in_panel.check"));
         help(ui, t.tr("prefs.terminal.open_in_panel.help"));

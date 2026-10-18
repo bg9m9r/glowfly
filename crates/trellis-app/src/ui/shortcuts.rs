@@ -27,6 +27,8 @@ mod select_tests;
 #[cfg(test)]
 mod snapshot_tests;
 #[cfg(test)]
+mod terminal_tests;
+#[cfg(test)]
 mod tests;
 
 pub(super) use caps::Caps;
