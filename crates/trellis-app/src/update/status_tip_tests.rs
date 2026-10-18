@@ -97,7 +97,7 @@ fn the_note_mentions_only_what_is_off() {
 
 #[test]
 fn a_held_repository_gets_no_note() {
-    let (mut st, dir) = crate::update::trust_held_tests::held_repo("tip-held");
+    let (mut st, dir) = crate::update::test_mods::trust_held_tests::held_repo("tip-held");
     let n = st.toasts.len();
     let fx = read_slowly(&mut st, speedups(false, false));
     assert_eq!(st.toasts.len(), n);

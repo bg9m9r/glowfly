@@ -19,7 +19,7 @@ use trellis_core::undo::{Action, UndoKind};
 
 /// A repository opened in `st` with a bare `origin` next to it; `main` and `feature` are pushed
 /// with their upstreams set. Returns (state, working repository, bare repository).
-pub(super) fn with_origin(name: &str) -> (AppState, PathBuf, PathBuf) {
+pub(crate) fn with_origin(name: &str) -> (AppState, PathBuf, PathBuf) {
     let work = scratch_repo(name);
     let bare = work.with_file_name(format!("{}-origin.git", work.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&bare);
@@ -35,7 +35,7 @@ pub(super) fn with_origin(name: &str) -> (AppState, PathBuf, PathBuf) {
 }
 
 /// Commits a file on `branch` in `bare` through a temporary clone.
-pub(super) fn remote_commit(bare: &Path, branch: &str, file: &str) {
+pub(crate) fn remote_commit(bare: &Path, branch: &str, file: &str) {
     let tmp = bare.with_file_name(format!("{}-clone", bare.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&tmp);
     git(tmp.parent().unwrap(), &["clone", "-q", "-b", branch, &bare.display().to_string(), &tmp.display().to_string()]);

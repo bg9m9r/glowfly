@@ -17,7 +17,7 @@ use trellis_core::init_ops::InitPlan;
 use trellis_core::settings::RepoTrust;
 
 /// `untrusted_repo` opened, with the first-open prompt dismissed.
-pub(super) fn held_repo(name: &str) -> (AppState, PathBuf) {
+pub(crate) fn held_repo(name: &str) -> (AppState, PathBuf) {
     let dir = untrusted_repo(name);
     let mut st = state();
     open(&mut st, &dir);
