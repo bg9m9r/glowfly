@@ -89,6 +89,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::LoadWorkdirCompare { .. }
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
+            | Effect::LoadDiffGaps { .. }
             | Effect::LoadConflict { .. }
             | Effect::LocalOp { .. }
             | Effect::ReadConflictFiles { .. }

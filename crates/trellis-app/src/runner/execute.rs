@@ -2,9 +2,9 @@
 //! the work, and the result message it sends back.
 
 use super::{
-    blame, clone, config, conflict_check, conflict_files, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks, git_env, git_ops,
-    highlight, history, init, issues, keys, notify, onboarding, os, patches, path_search, profiles, pull_request, rebase, repos, revert,
-    saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, updates, worktrees,
+    blame, clone, config, conflict_check, conflict_files, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks, git_env,
+    git_ops, highlight, history, init, issues, keys, notify, onboarding, os, patches, path_search, profiles, pull_request, rebase, repos,
+    revert, saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, updates, worktrees,
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
