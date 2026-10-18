@@ -1,6 +1,7 @@
-//! The Reword dialog (`Modal::RewordCommit`): a new message for a commit chosen in the graph.
-//! It says which commits the rebase rewrites and, on a dirty tree, that the changes are stashed
-//! first; Ctrl/Cmd+Enter submits. `update` checks the form again before running anything.
+//! The Reword dialog (`Modal::RewordCommit`): a new message for a commit chosen in the graph,
+//! or, as the Squash dialog, the message of the commit a squash makes (pre-filled with the
+//! joined messages). It says which commits the rebase rewrites and, on a dirty tree, that the
+//! changes are stashed first; Ctrl/Cmd+Enter submits. `update` checks the form again before running anything.
 
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase::needs_stash;
@@ -15,12 +16,13 @@ use trellis_core::repo::Snapshot;
 /// `update` starts the rebase.
 pub fn show(ui: &mut egui::Ui, form: &mut RewordForm, snap: Option<&Snapshot>, focus: bool, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let mut close = false;
-    ui.heading("Reword commit");
+    ui.heading(form.title());
     ui.label(RichText::new(form.subtitle()).color(color::weak()));
     ui.add_space(6.0);
     // Read before the field sees the key, so the Enter doesn't become a new line.
     let submit = ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter));
-    let r = ui.add(egui::TextEdit::multiline(&mut form.draft).hint_text("Commit message").desired_rows(6).desired_width(f32::INFINITY));
+    let hint = form.hint();
+    let r = ui.add(egui::TextEdit::multiline(&mut form.draft).hint_text(hint).desired_rows(6).desired_width(f32::INFINITY));
     if focus && std::mem::take(&mut form.focus) {
         r.request_focus();
     }
@@ -37,7 +39,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut RewordForm, snap: Option<&Snapshot>, f
     ui.horizontal(|ui| {
         let enabled = blocked.is_none();
         let (fg, fill) = if enabled { (Color32::WHITE, color::primary()) } else { (color::faint(), color::primary_off()) };
-        let text = if stash { "Stash and reword" } else { "Reword" };
+        let text = form.button(stash);
         let button =
             egui::Button::new(RichText::new(text).strong().color(fg)).fill(fill).stroke(Stroke::new(1.0_f32, color::primary_border()));
         let mut r = ui.add_enabled(enabled, button);

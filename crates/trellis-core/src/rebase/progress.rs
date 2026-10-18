@@ -42,8 +42,8 @@ pub(crate) fn progress_of(repo: &Repository) -> Option<RebaseProgress> {
         RepositoryState::RebaseInteractive | RepositoryState::RebaseMerge => {
             let dir = repo.path().join("rebase-merge");
             let done = read(&dir.join("done"));
-            let step = listed_oids(&done).len();
-            let total = step + listed_oids(&read(&dir.join("git-rebase-todo"))).len();
+            let step = counted(&done);
+            let total = step + counted(&read(&dir.join("git-rebase-todo")));
             let (stop, command) = stop_of(repo, &done);
             RebaseProgress {
                 step,
@@ -78,6 +78,12 @@ pub(crate) fn progress_of(repo: &Repository) -> Option<RebaseProgress> {
     Some(p)
 }
 
+/// The commits a todo text lists: its pick-like lines and its `merge` lines.
+fn counted(text: &str) -> usize {
+    let merges = text.lines().filter(|l| matches!(l.split_whitespace().next(), Some("merge" | "m"))).count();
+    listed_oids(text).len() + merges
+}
+
 fn conflicted(repo: &Repository) -> bool {
     repo.index().map(|i| i.has_conflicts()).unwrap_or(false)
 }
@@ -97,8 +103,8 @@ fn stop_of(repo: &Repository, done: &str) -> (Stop, Option<String>) {
         let found = lines.iter().rev().skip(1).map(|l| words(l)).find(|(c, _)| kinds.contains(&c.as_str()));
         resolve(found.and_then(|(_, s)| s).as_deref())
     };
-    const PICKS: [&str; 6] = ["pick", "p", "edit", "e", "reword", "r"];
-    const COMMITS: [&str; 10] = ["pick", "p", "edit", "e", "reword", "r", "squash", "s", "fixup", "f"];
+    const PICKS: [&str; 8] = ["pick", "p", "edit", "e", "reword", "r", "merge", "m"];
+    const COMMITS: [&str; 12] = ["pick", "p", "edit", "e", "reword", "r", "squash", "s", "fixup", "f", "merge", "m"];
     let Some(&last) = lines.last() else { return (Stop { kind: StopKind::Other, oid: None }, None) };
     let (cmd, sha) = words(last);
     let stop = |kind, oid| (Stop { kind, oid }, None);
@@ -110,7 +116,8 @@ fn stop_of(repo: &Repository, done: &str) -> (Stop, Option<String>) {
         }
         "break" | "b" => stop(StopKind::Break, last_commit(&COMMITS)),
         "edit" | "e" => stop(StopKind::Edit, resolve(sha.as_deref())),
-        "pick" | "p" | "reword" | "r" | "squash" | "s" | "fixup" | "f" => {
+        // A merge redone with `merge -C <oid> …`: the oid is the first word that isn't a flag.
+        "pick" | "p" | "reword" | "r" | "squash" | "s" | "fixup" | "f" | "merge" | "m" => {
             let kind = if conflicted(repo) { StopKind::Conflict } else { StopKind::Other };
             stop(kind, resolve(sha.as_deref()))
         }

@@ -4,6 +4,7 @@
 mod header;
 mod more;
 mod paint;
+mod ref_menu;
 mod resize;
 mod search_bar;
 mod select;
@@ -13,7 +14,6 @@ pub use paint::draw_avatar;
 
 use super::UiCache;
 use super::common::lane_color;
-use super::menus::{commit_menu, multi_commit_menu};
 use super::theme::color;
 use super::widgets;
 use crate::msg::BranchMsg;
@@ -21,10 +21,10 @@ use crate::msg::GraphMsg;
 use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::state::AppState;
 use crate::state::build_status::MAX_SEEN;
 use crate::state::graph_rows::{DisplayRow, GraphRows};
 use crate::state::worktrees::{open_blocked, wip_tooltip};
-use crate::state::{AppState, Selection};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, RichText, Sense, Stroke, pos2, vec2};
 use git2::Oid;
@@ -102,6 +102,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         }
         let selection = &st.selection;
         let settings = &st.settings;
+        let idle = st.job.is_none();
+        let forge = st.forge.as_ref();
         let now = st.view.now;
         let offset = st.view.utc_offset;
         let avatars = &mut cache.avatars;
@@ -212,6 +214,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 // BRANCH / TAG column, connected to the node.
                 let mut ghost_rect = None;
+                let mut labels_hit = None;
                 if cols_cfg.refs {
                     let rp = painter.with_clip_rect(cols.rect(cols.refs, rect));
                     let mut labels_end = cols.refs.0;
@@ -230,6 +233,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                             hover_tip_next = Some(c.oid);
                         }
                         labels_end = end;
+                        labels_hit = Some(Rect::from_min_max(label_rect.min, pos2(end, label_rect.max.y)));
                     }
                     // A faded "+ branch" after the checked-out commit's labels: click it to branch
                     // from the current branch (other commits: right-click > Create branch here).
@@ -342,10 +346,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         select::row_click(c.oid, mods)
                     });
                 }
-                resp.context_menu(|ui| match selection {
-                    Selection::Commits(m) if m.contains(c.oid) => multi_commit_menu(ui, settings.lang(), m, snap, msgs),
-                    _ => commit_menu(ui, c, snap, msgs),
-                });
+                let menu = ref_menu::RowMenu { commit: c, labels_hit, snap, selection, settings, forge, idle };
+                ref_menu::context_menu(ui, &resp, menu, msgs);
             }
             last
         });

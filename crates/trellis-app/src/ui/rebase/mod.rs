@@ -11,6 +11,7 @@ mod drag;
 pub(super) mod edit_menu;
 mod editor;
 mod keys;
+mod merge_row;
 pub(super) mod reword_dialog;
 mod rows;
 mod step_row;

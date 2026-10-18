@@ -9,7 +9,7 @@ use std::path::Path;
 
 pub(super) fn request(dir: &Path, base: RebaseBase, edit: impl FnOnce(&mut Vec<TodoItem>)) -> StartRequest {
     let p = plan(dir, &base).unwrap();
-    let mut items = p.items;
+    let mut items: Vec<TodoItem> = p.steps.into_iter().filter_map(|s| s.commit().cloned()).collect();
     edit(&mut items);
     StartRequest { head: p.head, upstream: p.upstream, items: items.into_iter().map(TodoStep::Commit).collect(), autostash: false }
 }

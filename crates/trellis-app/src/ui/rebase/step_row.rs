@@ -2,7 +2,7 @@
 //! note for a break), and Edit command, Remove step, Move up and Move down. Also every row's
 //! right-click menu, which adds these steps.
 
-use super::commit_row::{line, move_buttons, paint_back, paint_chip};
+use super::commit_row::{Buttons, line, move_buttons, paint_back, paint_chip};
 use super::rows::{BUTTONS_W, Place, SHA_X, Shade};
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase_steps::NewStep;
@@ -16,7 +16,7 @@ pub const NO_COMMAND: &str = "(no command yet)";
 
 /// The row's background, chip and text.
 pub(super) fn paint_step(ui: &Ui, rect: Rect, step: &TodoStep, shade: Shade) {
-    paint_back(ui, rect, shade);
+    paint_back(ui, rect, shade, true);
     let cy = rect.center().y;
     let x = rect.left() + SHA_X;
     let max_w = rect.right() - BUTTONS_W - 16.0 - x;
@@ -33,14 +33,14 @@ pub(super) fn paint_step(ui: &Ui, rect: Rect, step: &TodoStep, shade: Shade) {
             paint_chip(ui, rect, "break", color::amber());
             line(ui, pos2(x, cy), BREAK_NOTE, FontId::proportional(13.0), color::weak(), max_w);
         }
-        TodoStep::Commit(_) => {}
+        _ => {}
     }
 }
 
 /// Edit command (exec steps), Remove step, Move up and Move down.
 pub(super) fn step_controls(ui: &mut Ui, rect: Rect, at: Place, step: &TodoStep, msgs: &mut Vec<Msg>) {
     let edit = matches!(step, TodoStep::Exec(_)).then(|| (Icon::Pencil, "Edit command", RebaseMsg::RebaseEditMessage(at.i)));
-    move_buttons(ui, rect, at, edit, Some(RebaseMsg::RebaseRemoveStep(at.i)), msgs);
+    move_buttons(ui, rect, at, Buttons { edit, remove: Some(RebaseMsg::RebaseRemoveStep(at.i)), moves: true }, msgs);
 }
 
 /// The row's right-click menu: add a step after it, and edit or remove an exec or break step.

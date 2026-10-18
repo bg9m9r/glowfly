@@ -12,7 +12,8 @@ use trellis_core::rebase::{Outcome, QuickEdit, QuickPlan, RebaseAction, RebaseBa
 /// (update/rebase_remaining.rs); history edits from the graph's menus (update/rebase_quick.rs);
 /// Continue and Skip in the rebase banner (update/rebase_resume.rs).
 pub enum RebaseMsg {
-    /// Open the panel with the list for rebasing the current branch from `base`.
+    /// Open the panel with the list for rebasing the current branch from `base` (from a commit,
+    /// or onto a branch or a commit).
     OpenRebase(RebaseBase),
     CloseRebase,
     RebaseSetAction {
@@ -78,7 +79,7 @@ pub enum RebaseMsg {
         workdir: PathBuf,
         result: Result<QuickPlan, String>,
     },
-    /// The Reword dialog's primary button; the form is read from `st.modal`.
+    /// The Reword or Squash dialog's primary button; the form is read from `st.modal`.
     SubmitReword,
     /// Run a prepared edit. `confirmed`: the user was asked; `autostash`: that question
     /// mentioned stashing the uncommitted changes.

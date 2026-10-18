@@ -55,7 +55,7 @@ fn action(key: Key, m: Modifiers, panel: &RebasePanel) -> Option<RebaseMsg> {
     if !m.is_none() {
         return None;
     }
-    let commit = sel.filter(|&s| panel.items[s].commit().is_some());
+    let commit = sel.filter(|&s| panel.items[s].item().is_some());
     let set = |action: RebaseAction| commit.map(|index| RebaseMsg::RebaseSetAction { index, action });
     match key {
         Key::ArrowUp | Key::ArrowDown => {

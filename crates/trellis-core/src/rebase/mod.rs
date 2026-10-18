@@ -2,7 +2,9 @@
 //! writes for git in place of the one git generates (`todo`), running and resuming it (`run`),
 //! history edits chosen in the graph (`quick`), where a rebase in progress stands
 //! (`progress`), and the steps a running rebase has left, edited with `git rebase --edit-todo`
-//! (`remaining`).
+//! (`remaining`). A range that holds merge commits gets a todo that recreates them (`merges`):
+//! each line of history starts with a `reset`, merges are redone with `merge -C`, and `label`
+//! steps name the commits later lines start from or merge.
 //!
 //! Git is started with `GIT_SEQUENCE_EDITOR` set to a command that replaces git's todo with
 //! the prepared one (Trellis itself in `--write-todo` mode, after checking that both list the
@@ -13,6 +15,7 @@
 use git2::{Oid, RepositoryState};
 use std::path::PathBuf;
 
+mod merges;
 mod plan;
 mod progress;
 mod quick;
@@ -43,8 +46,12 @@ pub const NOT_ON_BRANCH: &str = "This commit isn't on the current branch.";
 pub const SOME_NOT_ON_BRANCH: &str = "Some selected commits aren't on the current branch.";
 pub const MERGE_SELECTED: &str = "Merge commits can't be edited this way.";
 pub const SOME_MERGE_SELECTED: &str = "The selection includes a merge commit.";
-/// A merge between the edited commit and HEAD.
-pub const MERGE_AFTER: &str = "A merge commit comes after this one on the branch; rebasing merges isn't supported yet.";
+/// A commit reachable from HEAD only through a merge's later parents.
+pub const SIDE_LINE: &str = "This commit came in through a merge; edit it in the interactive rebase panel instead.";
+pub const SOME_SIDE_LINE: &str = "Some selected commits came in through a merge; edit them in the interactive rebase panel instead.";
+/// A squash whose commits follow one another on the line, but the older one starts another line.
+pub const SPLIT_BY_BRANCH: &str = "Another branch starts between these commits; squash them in the interactive rebase panel instead.";
+pub const COMBINE_AFTER_MERGE: &str = "A squash or fixup must follow the commit it melds into, not a merge, label or reset step.";
 pub const ROOT_SQUASH: &str = "The first commit has no parent to squash it into.";
 pub const PARENT_MERGE: &str = "Its parent is a merge commit, which can't be squashed into.";
 pub const NOT_CONSECUTIVE: &str = "Select commits that follow one another to squash them.";
@@ -59,6 +66,11 @@ pub const NOT_INTERACTIVE: &str = "Only an interactive rebase's remaining steps 
 pub const UNSUPPORTED_STEPS: &str = "The remaining steps include merge, label, reset or update-ref commands, which this panel can't edit yet. Use git rebase --edit-todo in a terminal.";
 pub const TODO_MOVED: &str = "The rebase moved on since this list was read. Reset to reload it.";
 
+/// Why a rebase onto `oid` would do nothing: `branch` already contains it.
+pub fn contains_commit(branch: &str, oid: Oid) -> String {
+    format!("{branch} already contains {}.", short(oid))
+}
+
 /// What git does with one commit of the todo list.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RebaseAction {
@@ -72,6 +84,8 @@ pub enum RebaseAction {
 
 impl RebaseAction {
     pub const ALL: [Self; 6] = [Self::Pick, Self::Reword, Self::Squash, Self::Fixup, Self::Drop, Self::Edit];
+    /// What a merge step can do.
+    pub const MERGE_ACTIONS: [Self; 3] = [Self::Pick, Self::Reword, Self::Drop];
 
     /// The todo-list command.
     pub fn keyword(self) -> &'static str {
@@ -115,15 +129,54 @@ impl TodoItem {
     }
 }
 
-/// One step of the todo list: a commit, a shell command (`exec`) or a pause (`break`).
+/// Where a line of history of a merge-preserving todo starts (`reset`).
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum ResetTo {
+    /// The new base.
+    Onto,
+    /// A commit rewritten earlier, by its label.
+    Label(String),
+    /// A commit outside the range, kept where it is.
+    Commit(Oid),
+    /// A new first commit (`reset [new root]`).
+    NewRoot,
+}
+
+/// A later parent of a recreated merge.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum MergeParent {
+    /// A commit of the range, rewritten earlier, by its label.
+    Label(String),
+    /// A commit outside the range, kept as it is.
+    Commit(Oid),
+}
+
+/// A merge commit redone with `merge -C`: the merge (`item.action` is Pick, Reword or Drop)
+/// and its parents after the first, which is wherever the line stands.
+#[derive(Clone, PartialEq, Debug)]
+pub struct MergeStep {
+    pub item: TodoItem,
+    pub parents: Vec<MergeParent>,
+}
+
+/// One step of the todo list: a commit, a shell command (`exec`), a pause (`break`), or, in a
+/// list that recreates merges, a label, a reset or a merge.
 #[derive(Clone, PartialEq, Debug)]
 pub enum TodoStep {
     Commit(TodoItem),
     Exec(String),
     Break,
+    /// Names HEAD (the rewritten `at`) for a later reset or merge.
+    Label {
+        name: String,
+        at: Oid,
+    },
+    Reset(ResetTo),
+    Merge(MergeStep),
 }
 
 impl TodoStep {
+    /// A commit row (never a merge, so a merge never heads a squash group).
     pub fn commit(&self) -> Option<&TodoItem> {
         match self {
             Self::Commit(i) => Some(i),
@@ -138,8 +191,37 @@ impl TodoStep {
         }
     }
 
+    pub fn merge(&self) -> Option<&MergeStep> {
+        match self {
+            Self::Merge(m) => Some(m),
+            _ => None,
+        }
+    }
+
+    /// The commit of a commit or merge row.
+    pub fn item(&self) -> Option<&TodoItem> {
+        match self {
+            Self::Commit(i) | Self::Merge(MergeStep { item: i, .. }) => Some(i),
+            _ => None,
+        }
+    }
+
+    pub fn item_mut(&mut self) -> Option<&mut TodoItem> {
+        match self {
+            Self::Commit(i) | Self::Merge(MergeStep { item: i, .. }) => Some(i),
+            _ => None,
+        }
+    }
+
+    /// The commit id of a commit or merge row.
     pub fn oid(&self) -> Option<Oid> {
-        self.commit().map(|i| i.oid)
+        self.item().map(|i| i.oid)
+    }
+
+    /// A label, reset or merge step: part of the shape of a merge-preserving list, fixed in
+    /// place.
+    pub fn is_structure(&self) -> bool {
+        matches!(self, Self::Label { .. } | Self::Reset(_) | Self::Merge(_))
     }
 }
 
@@ -150,6 +232,8 @@ pub enum RebaseBase {
     FromCommit(Oid),
     /// The current branch's commits that aren't on this local branch, onto its tip.
     OntoBranch(String),
+    /// The current branch's commits that aren't reachable from this commit, onto it.
+    OntoCommit(Oid),
 }
 
 /// What `git rebase -i` is given: a commit, or `--root`.
@@ -159,7 +243,7 @@ pub enum Upstream {
     Root,
 }
 
-/// The commits to rebase, oldest first, and where they go.
+/// The steps to run, oldest first, and where they go.
 #[derive(Clone, Debug)]
 pub struct RebasePlan {
     pub head: Oid,
@@ -167,7 +251,8 @@ pub struct RebasePlan {
     pub upstream: Upstream,
     /// "main", "1a2b3c4 Initial commit", or empty for `Root`.
     pub onto_label: String,
-    pub items: Vec<TodoItem>,
+    /// All picks; label, reset and merge steps too when the range holds merges.
+    pub steps: Vec<TodoStep>,
 }
 
 /// The list to run, with the HEAD it was made for.
@@ -252,6 +337,10 @@ pub(crate) fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
+#[cfg(test)]
+mod merges_tests;
+#[cfg(test)]
+mod merges_todo_tests;
 #[cfg(test)]
 mod plan_tests;
 #[cfg(test)]

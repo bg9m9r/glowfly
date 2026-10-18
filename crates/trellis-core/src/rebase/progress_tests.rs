@@ -138,3 +138,39 @@ fn exec_stops_tell_trellis_amends_from_commands() {
     assert!(matches!(resumed(&dir, Resume::Continue), Outcome::Finished { .. }));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_conflicted_merge_stops_at_the_merge() {
+    let dir = scratch_repo("rebase-progress-merge-conflict");
+    git(&dir, &["config", "rerere.enabled", "false"]);
+    commit(&dir, "f.txt", "base\n", "base");
+    git(&dir, &["checkout", "-q", "-b", "side"]);
+    commit(&dir, "f.txt", "side\n", "on side");
+    git(&dir, &["checkout", "-q", "main"]);
+    let mine = commit(&dir, "f.txt", "main\n", "on main");
+    let (ok, _) = crate::gitcli::run(&dir, &crate::gitcli::args(&["merge", "-q", "side", "-m", "Merge side"]));
+    assert!(!ok, "the merge conflicts");
+    write(&dir, "f.txt", "resolved\n");
+    git(&dir, &["commit", "-q", "-am", "Merge side"]);
+    let merge = head(&dir);
+    // Rewording the commit before the merge makes git redo the merge, which conflicts again.
+    let req = request_steps_of(&dir, mine);
+    let (ok, p) = stopped(start_copy(&dir, &req));
+    assert!(!ok);
+    assert_eq!((p.stop.kind, p.stop.oid), (StopKind::Conflict, Some(merge)));
+    assert_eq!((p.step, p.total), (3, 3), "the merge line counts as a step");
+    assert_eq!(p.summary, "Merge side");
+    git(&dir, &["rebase", "--abort"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The list from `from` with that commit reworded.
+fn request_steps_of(dir: &Path, from: Oid) -> StartRequest {
+    let p = plan(dir, &RebaseBase::FromCommit(from)).unwrap();
+    let mut steps = p.steps;
+    let row = steps.iter().position(|s| s.oid() == Some(from)).unwrap();
+    let item = steps[row].commit_mut().unwrap();
+    item.action = RebaseAction::Reword;
+    item.new_message = Some("on main, reworded".into());
+    StartRequest { head: p.head, upstream: p.upstream, items: steps, autostash: false }
+}

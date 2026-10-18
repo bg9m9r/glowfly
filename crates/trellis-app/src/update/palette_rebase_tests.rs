@@ -74,3 +74,41 @@ fn entries_while_rebasing() {
     assert!(find(&entries(&st), "Edit remaining rebase steps…").is_none(), "only an interactive rebase");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn rebase_onto_the_selected_commit() {
+    use super::selection_tests::{commit_on, git};
+    use crate::msg::{JobMsg, RepoMsg};
+    use trellis_core::rebase::RebaseBase;
+    let (mut st, dir, c) = repo("palette-rebase-onto");
+    git(&dir, &["checkout", "-q", "-b", "other", &c[0].to_string()]);
+    std::fs::write(dir.join("o.txt"), "o\n").unwrap();
+    let other = commit_on(&dir, "other", 9);
+    git(&dir, &["checkout", "-q", "main"]);
+    super::tests::drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    st.selection = Selection::Commit(other);
+    let sha = &other.to_string()[..7];
+    let all = entries(&st);
+    assert_eq!(find(&all, &format!("Rebase main onto {sha}")), Some(&None));
+    assert_eq!(find(&all, &format!("Interactive rebase main onto {sha}…")), Some(&None));
+
+    let plain = RebaseCommand::Onto { oid: other, interactive: false }.msg();
+    let Msg::Job(JobMsg::Git { label, cmds }) = plain else { panic!("expected a git job") };
+    assert_eq!((label.as_str(), cmds), ("Rebase", vec![trellis_core::gitcli::args(&["rebase", &other.to_string()])]));
+    let msg = Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Rebase(RebaseCommand::Onto { oid: other, interactive: true })));
+    let fx = update(&mut st, msg, Instant::now());
+    let planned = matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadPlan { base: RebaseBase::OntoCommit(o), .. })] if *o == other);
+    assert!(planned, "{fx:?}");
+
+    // Not for HEAD, an ancestor, or a detached HEAD.
+    st.rebase = None;
+    for oid in [c[2], c[0]] {
+        st.selection = Selection::Commit(oid);
+        let sha = &oid.to_string()[..7];
+        assert!(find(&entries(&st), &format!("Rebase main onto {sha}")).is_none());
+    }
+    st.selection = Selection::Commit(other);
+    st.snap.as_mut().unwrap().head_branch = None;
+    assert!(!entries(&st).iter().any(|(l, _)| l.contains(" onto ")));
+    let _ = std::fs::remove_dir_all(&dir);
+}

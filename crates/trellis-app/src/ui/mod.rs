@@ -161,6 +161,8 @@ mod snapshot_tests_forks;
 #[cfg(test)]
 mod snapshot_tests_gitflow;
 #[cfg(test)]
+mod snapshot_tests_graph_ref_menu;
+#[cfg(test)]
 mod snapshot_tests_history;
 #[cfg(test)]
 mod snapshot_tests_init;
@@ -220,6 +222,8 @@ mod snapshot_tests_rebase;
 mod snapshot_tests_rebase_edit;
 #[cfg(test)]
 mod snapshot_tests_rebase_keys;
+#[cfg(test)]
+mod snapshot_tests_rebase_merges;
 #[cfg(test)]
 mod snapshot_tests_rebase_steps;
 #[cfg(test)]

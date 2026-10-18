@@ -1,13 +1,14 @@
 //! The palette's history entries: reword, squash into parent and drop the selected commit (when
-//! that edit can run), and Continue, Skip and Edit remaining steps while a rebase is in progress.
+//! that edit can run), rebase the current branch onto it (plainly or interactively), and
+//! Continue, Skip and Edit remaining steps while a rebase is in progress.
 
 use super::{Entry, PaletteCommand as C, entry};
 use crate::keymap::BindingId;
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase::has_conflicts;
 use crate::state::{AppState, Selection};
-use git2::RepositoryState;
-use trellis_core::rebase::{QuickEdit, Resume};
+use git2::{Oid, RepositoryState};
+use trellis_core::rebase::{QuickEdit, RebaseBase, Resume};
 use trellis_core::repo::Snapshot;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -18,15 +19,20 @@ pub enum RebaseCommand {
     Resume(Resume),
     /// Open the panel on the remaining steps of the interactive rebase in progress.
     EditRemaining,
+    /// Rebase the current branch onto the commit: `git rebase <oid>`, or the panel.
+    Onto { oid: Oid, interactive: bool },
 }
 
 impl RebaseCommand {
     pub fn msg(&self) -> Msg {
-        Msg::Rebase(match self {
+        let m = match self {
             Self::Edit(e) => RebaseMsg::Edit(e.clone()),
             Self::Resume(how) => RebaseMsg::Resume(*how),
             Self::EditRemaining => RebaseMsg::OpenRemaining,
-        })
+            Self::Onto { oid, interactive: true } => RebaseMsg::OpenRebase(RebaseBase::OntoCommit(*oid)),
+            Self::Onto { oid, interactive: false } => return Msg::git("Rebase", &["rebase", &oid.to_string()]),
+        };
+        Msg::Rebase(m)
     }
 
     /// The shortcut that does the same.
@@ -37,7 +43,7 @@ impl RebaseCommand {
             Self::Edit(QuickEdit::Drop(_)) => BindingId::DropCommit,
             Self::Resume(Resume::Continue) => BindingId::RebaseContinue,
             Self::Resume(Resume::Skip) => BindingId::RebaseSkip,
-            Self::EditRemaining => return None,
+            Self::EditRemaining | Self::Onto { .. } => return None,
         })
     }
 }
@@ -58,6 +64,12 @@ pub(super) fn entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         if b.drop.is_none() {
             let c = cmd(RebaseCommand::Edit(QuickEdit::Drop(vec![oid])));
             out.push(entry(c, format!("Drop commit {sha}…"), "rebase history remove delete discard"));
+        }
+        if let (Some(current), None) = (&snap.head_branch, super::super::rebase_onto::onto_commit_blocker(snap, oid)) {
+            let (plain, interactive) = super::super::rebase_onto::onto_labels(current, oid);
+            out.push(entry(cmd(RebaseCommand::Onto { oid, interactive: false }), plain, "rebase onto base move commit"));
+            let c = cmd(RebaseCommand::Onto { oid, interactive: true });
+            out.push(entry(c, interactive, "rebase interactive onto base todo commit"));
         }
     }
     use RepositoryState::*;

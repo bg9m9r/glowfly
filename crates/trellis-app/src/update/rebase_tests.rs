@@ -86,7 +86,7 @@ fn fake_plan(n: u8) -> RebasePlan {
         branch: "main".into(),
         upstream: Upstream::Root,
         onto_label: String::new(),
-        items: (1..=n).map(item).collect(),
+        steps: (1..=n).map(|k| TodoStep::Commit(item(k))).collect(),
     }
 }
 

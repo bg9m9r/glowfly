@@ -43,12 +43,44 @@ fn the_helper_installs_the_prepared_todo() {
     let dir = repo("reverse");
     let base = git(&dir, &["rev-parse", "HEAD~1"]);
     let plan = rebase::plan(&dir, &RebaseBase::FromCommit(Oid::from_str(base.trim()).unwrap())).unwrap();
-    let mut items: Vec<TodoStep> = plan.items.into_iter().map(TodoStep::Commit).collect();
+    let mut items: Vec<TodoStep> = plan.steps;
     items.reverse();
     let req = StartRequest { head: plan.head, upstream: plan.upstream, items, autostash: false };
     let outcome = rebase::start(&dir, &req, &helper()).unwrap();
     assert!(matches!(outcome, Outcome::Finished { .. }), "{outcome:?}");
     assert_eq!(git(&dir, &["log", "--format=%s"]).lines().collect::<Vec<_>>(), ["two", "three", "one"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_helper_installs_a_merge_todo() {
+    // main: one, two, three; side from two: s; merged after three, then four.
+    let dir = repo("merge");
+    let two = git(&dir, &["rev-parse", "HEAD~1"]);
+    git(&dir, &["checkout", "-q", "-b", "side", two.trim()]);
+    std::fs::write(dir.join("s.txt"), "s").unwrap();
+    git(&dir, &["add", "-A"]);
+    git(&dir, &["commit", "-q", "-m", "s"]);
+    git(&dir, &["checkout", "-q", "main"]);
+    git(&dir, &["merge", "-q", "--no-ff", "side", "-m", "Merge side"]);
+    std::fs::write(dir.join("four.txt"), "four").unwrap();
+    git(&dir, &["add", "-A"]);
+    git(&dir, &["commit", "-q", "-m", "four"]);
+    let plan = rebase::plan(&dir, &RebaseBase::FromCommit(Oid::from_str(two.trim()).unwrap())).unwrap();
+    let mut items = plan.steps;
+    assert!(items.iter().any(|s| s.merge().is_some()), "the list recreates the merge");
+    // Rewording "two" makes git redo everything after it, the merge included.
+    let row = items.iter().position(|s| s.commit().is_some_and(|c| c.summary == "two")).unwrap();
+    let two = items[row].commit_mut().unwrap();
+    two.action = RebaseAction::Reword;
+    two.new_message = Some("two, reworded".into());
+    let req = StartRequest { head: plan.head, upstream: plan.upstream, items, autostash: false };
+    let outcome = rebase::start(&dir, &req, &helper()).unwrap();
+    assert!(matches!(outcome, Outcome::Finished { .. }), "{outcome:?}");
+    let first_parent: Vec<String> = git(&dir, &["log", "--first-parent", "--format=%s"]).lines().map(str::to_owned).collect();
+    assert_eq!(first_parent, ["four", "Merge side", "three", "two, reworded", "one"]);
+    let parents = git(&dir, &["log", "-1", "--format=%P", "HEAD~1"]);
+    assert_eq!(parents.split_whitespace().count(), 2, "the merge is kept");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -72,7 +104,7 @@ fn the_helper_refuses_a_foreign_commit() {
         rebase::shell_quote(&exe.to_string_lossy()),
         rebase::shell_quote(&prepared.to_string_lossy()),
     );
-    let items = tip.items.into_iter().map(TodoStep::Commit).collect();
+    let items = tip.steps;
     let req = StartRequest { head: tip.head, upstream: tip.upstream, items, autostash: false };
     let e = rebase::start(&dir, &req, &SequenceEditor::Shell(script)).unwrap_err();
     assert_eq!(e.to_string(), rebase::CHANGED);
@@ -87,7 +119,7 @@ fn the_helper_refuses_a_foreign_commit() {
 fn stopped_at_first(dir: &Path) -> rebase::Remaining {
     let first = git(dir, &["rev-list", "--max-parents=0", "HEAD"]);
     let plan = rebase::plan(dir, &RebaseBase::FromCommit(Oid::from_str(first.trim()).unwrap())).unwrap();
-    let mut items: Vec<TodoStep> = plan.items.into_iter().map(TodoStep::Commit).collect();
+    let mut items: Vec<TodoStep> = plan.steps;
     items[0].commit_mut().unwrap().action = RebaseAction::Edit;
     let req = StartRequest { head: plan.head, upstream: plan.upstream, items, autostash: false };
     let outcome = rebase::start(dir, &req, &helper()).unwrap();

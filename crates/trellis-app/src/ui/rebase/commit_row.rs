@@ -25,20 +25,22 @@ fn action_text(a: RebaseAction) -> RichText {
     RichText::new(a.keyword()).color(action_color(a))
 }
 
-/// The row's background, with the floating row's outline.
-pub(super) fn paint_back(ui: &Ui, rect: Rect, shade: Shade) {
+/// The row's background, with the floating row's outline, and the grip of a row that moves.
+pub(super) fn paint_back(ui: &Ui, rect: Rect, shade: Shade, grip: bool) {
     let p = ui.painter();
     p.rect_filled(rect, CornerRadius::same(4), fill(shade));
     if shade == Shade::Floating {
         p.rect_stroke(rect, CornerRadius::same(4), Stroke::new(1.0_f32, color::primary()), StrokeKind::Inside);
     }
-    paint_icon(p, pos2(rect.left() + GRIP_X, rect.center().y), Icon::Grip, color::faint());
+    if grip {
+        paint_icon(p, pos2(rect.left() + GRIP_X, rect.center().y), Icon::Grip, color::faint());
+    }
 }
 
-/// Everything but the controls: background, grip, squash connector, SHA, summary, author and
-/// date.
-pub(super) fn paint_row(ui: &Ui, rect: Rect, item: &TodoItem, look: &Look, shade: Shade) {
-    paint_back(ui, rect, shade);
+/// Everything but the controls: background, grip (`grip`: the row moves), squash connector,
+/// SHA, summary, author and date.
+pub(super) fn paint_row(ui: &Ui, rect: Rect, item: &TodoItem, look: &Look, shade: Shade, grip: bool) {
+    paint_back(ui, rect, shade, grip);
     let p = ui.painter();
     let dropped = item.action == RebaseAction::Drop;
     let mut x = rect.left() + SHA_X;
@@ -108,9 +110,18 @@ pub(super) fn line(ui: &Ui, pos: egui::Pos2, text: &str, font: FontId, c: Color3
     w
 }
 
+/// The row's controls: what it is, which actions its combo box offers, and whether it is fixed
+/// in place (no move buttons).
+pub(super) struct RowKind<'a> {
+    pub head: bool,
+    pub actions: &'a [RebaseAction],
+    pub fixed: bool,
+}
+
 /// The action combo box, Edit message (the combined one on a group head) and the move buttons
 /// of the row at `at`.
-pub(super) fn controls(ui: &mut Ui, rect: Rect, at: Place, item: &TodoItem, head: bool, msgs: &mut Vec<Msg>) {
+pub(super) fn controls(ui: &mut Ui, rect: Rect, at: Place, item: &TodoItem, kind: RowKind, msgs: &mut Vec<Msg>) {
+    let RowKind { head, actions, fixed } = kind;
     let Place { i, enabled, .. } = at;
     let combo_rect = Rect::from_min_size(pos2(rect.left() + COMBO_X, rect.top()), vec2(COMBO_W, ROW_H));
     let mut child = ui.new_child(UiBuilder::new().max_rect(combo_rect).layout(Layout::left_to_right(Align::Center)));
@@ -121,7 +132,7 @@ pub(super) fn controls(ui: &mut Ui, rect: Rect, at: Place, item: &TodoItem, head
     egui::ComboBox::from_id_salt(("rebase-action", item.oid)).width(COMBO_W - 8.0).selected_text(action_text(action)).show_ui(
         &mut child,
         |ui| {
-            for a in RebaseAction::ALL {
+            for &a in actions {
                 ui.selectable_value(&mut action, a, action_text(a));
             }
         },
@@ -130,20 +141,23 @@ pub(super) fn controls(ui: &mut Ui, rect: Rect, at: Place, item: &TodoItem, head
         msgs.push(Msg::Rebase(RebaseMsg::RebaseSetAction { index: i, action }));
     }
     let tip = if head { "Edit combined message" } else { "Edit message" };
-    move_buttons(ui, rect, at, Some((Icon::Pencil, tip, RebaseMsg::RebaseEditMessage(i))), None, msgs);
+    let edit = Some((Icon::Pencil, tip, RebaseMsg::RebaseEditMessage(i)));
+    move_buttons(ui, rect, at, Buttons { edit, remove: None, moves: !fixed }, msgs);
+}
+
+/// The buttons at the right of a row: an optional edit and remove button, and whether Move up
+/// and Move down are shown.
+pub(super) struct Buttons<'a> {
+    pub edit: Option<(Icon, &'a str, RebaseMsg)>,
+    pub remove: Option<RebaseMsg>,
+    pub moves: bool,
 }
 
 /// The buttons at the right of the row at `at`: an optional edit and remove button, then Move
 /// up and Move down.
-pub(super) fn move_buttons(
-    ui: &mut Ui,
-    rect: Rect,
-    at: Place,
-    edit: Option<(Icon, &str, RebaseMsg)>,
-    remove: Option<RebaseMsg>,
-    msgs: &mut Vec<Msg>,
-) {
+pub(super) fn move_buttons(ui: &mut Ui, rect: Rect, at: Place, b: Buttons, msgs: &mut Vec<Msg>) {
     let Place { i, n, enabled } = at;
+    let Buttons { edit, remove, moves } = b;
     let buttons = Rect::from_min_max(pos2(rect.right() - BUTTONS_W, rect.top()), pos2(rect.right() - 4.0, rect.bottom()));
     let mut child = ui.new_child(UiBuilder::new().max_rect(buttons).layout(Layout::right_to_left(Align::Center)));
     child.spacing_mut().item_spacing.x = 3.0;
@@ -151,13 +165,15 @@ pub(super) fn move_buttons(
         child.disable();
     }
     // Right to left: Move down, Move up, then Remove and Edit.
-    let down = child.add_enabled_ui(i + 1 < n, |ui| icon_button(ui, Icon::NextChange, "Move down")).inner;
-    if down.clicked() {
-        msgs.push(Msg::Rebase(RebaseMsg::RebaseMove { from: i, to: i + 1 }));
-    }
-    let up = child.add_enabled_ui(i > 0, |ui| icon_button(ui, Icon::PrevChange, "Move up")).inner;
-    if up.clicked() {
-        msgs.push(Msg::Rebase(RebaseMsg::RebaseMove { from: i, to: i - 1 }));
+    if moves {
+        let down = child.add_enabled_ui(i + 1 < n, |ui| icon_button(ui, Icon::NextChange, "Move down")).inner;
+        if down.clicked() {
+            msgs.push(Msg::Rebase(RebaseMsg::RebaseMove { from: i, to: i + 1 }));
+        }
+        let up = child.add_enabled_ui(i > 0, |ui| icon_button(ui, Icon::PrevChange, "Move up")).inner;
+        if up.clicked() {
+            msgs.push(Msg::Rebase(RebaseMsg::RebaseMove { from: i, to: i - 1 }));
+        }
     }
     if let Some(msg) = remove
         && icon_button(&mut child, Icon::Close, "Remove step").clicked()

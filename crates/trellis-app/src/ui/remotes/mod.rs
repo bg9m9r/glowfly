@@ -4,7 +4,7 @@
 //! or remove it, and under it the remote-tracking branch rows. The header's menu adds a remote.
 
 use super::common::{hint_row, menu_item, menu_item_if};
-use super::menus::remote_branch_menu;
+use super::menus::{RemoteMenu, remote_branch_menu};
 use super::ref_visibility;
 use super::theme::color;
 use super::widgets;
@@ -91,7 +91,8 @@ pub(in crate::ui) fn section(
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
             }
             ref_visibility::row_marker(ui, &r, 20.0, &format!("refs/remotes/{full}"), &full, c.graph, msgs);
-            r.context_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &c, msgs));
+            let m = RemoteMenu { current: c.current, fs: c.fs, graph: c.graph, sel: c.sel };
+            r.context_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &m, msgs));
         }
     }
 }

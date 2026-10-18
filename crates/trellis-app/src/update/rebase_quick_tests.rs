@@ -15,24 +15,24 @@ use std::path::Path;
 use std::time::Instant;
 use trellis_core::rebase::{self, QuickEdit, RebaseAction, StartRequest};
 
-fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn short(o: Oid) -> String {
+pub(super) fn short(o: Oid) -> String {
     o.to_string()[..7].to_owned()
 }
 
-fn log(dir: &Path) -> Vec<String> {
+pub(super) fn log(dir: &Path) -> Vec<String> {
     git(dir, &["log", "--format=%s"]).lines().map(str::to_owned).collect()
 }
 
-fn last_toast(st: &AppState) -> (bool, &str) {
+pub(super) fn last_toast(st: &AppState) -> (bool, &str) {
     st.toasts.last().map(|t| (t.ok, t.text.as_str())).unwrap_or((false, ""))
 }
 
 /// `edit` chosen in the menu, its preparation run, and what `update` makes of the result.
-fn prepare(st: &mut AppState, edit: QuickEdit) -> Vec<Effect> {
+pub(super) fn prepare(st: &mut AppState, edit: QuickEdit) -> Vec<Effect> {
     let fx = up(st, Msg::Rebase(RebaseMsg::Edit(edit)));
     let [e @ Effect::Rebase(RebaseEffect::PrepareEdit { .. })] = &fx[..] else { panic!("expected a preparation, got {fx:?}") };
     assert!(e.scope().is_some(), "the result comes back for this tab only");
@@ -40,21 +40,21 @@ fn prepare(st: &mut AppState, edit: QuickEdit) -> Vec<Effect> {
     up(st, msg)
 }
 
-fn started(fx: &[Effect]) -> &StartRequest {
+pub(super) fn started(fx: &[Effect]) -> &StartRequest {
     match fx {
         [Effect::Rebase(RebaseEffect::Start { request, .. })] => request,
         other => panic!("expected a rebase, got {other:?}"),
     }
 }
 
-fn confirm(st: &AppState) -> (&str, &str, &str) {
+pub(super) fn confirm(st: &AppState) -> (&str, &str, &str) {
     match &st.modal {
         Some(Modal::Confirm { title, body, button, .. }) => (title, body, button),
         _ => panic!("expected a confirmation"),
     }
 }
 
-fn form(st: &mut AppState) -> &mut rebase_quick::RewordForm {
+pub(super) fn form(st: &mut AppState) -> &mut rebase_quick::RewordForm {
     match st.modal.as_mut() {
         Some(Modal::RewordCommit(f)) => f,
         _ => panic!("expected the Reword dialog"),
@@ -62,7 +62,7 @@ fn form(st: &mut AppState) -> &mut rebase_quick::RewordForm {
 }
 
 /// `a.txt` edited, and the snapshot refreshed so it shows.
-fn make_dirty(st: &mut AppState, dir: &Path) {
+pub(super) fn make_dirty(st: &mut AppState, dir: &Path) {
     std::fs::write(dir.join("a.txt"), "one\nedited\n").unwrap();
     drive(st, Msg::Repo(RepoMsg::Refresh));
 }
@@ -139,18 +139,14 @@ fn drops_ask_and_squashes_ask_only_on_a_dirty_tree() {
     assert_eq!((request.items[0].commit().unwrap().action, request.autostash), (RebaseAction::Drop, false));
     st.job = None;
 
-    let fx = prepare(&mut st, QuickEdit::SquashIntoParent(c[2]));
+    assert!(prepare(&mut st, QuickEdit::SquashIntoParent(c[2])).is_empty());
+    assert!(form(&mut st).squashes(), "a squash opens its message dialog");
+    let fx = up(&mut st, Msg::Rebase(RebaseMsg::SubmitReword));
     assert_eq!(started(&fx).items[1].commit().unwrap().action, RebaseAction::Fixup);
-    assert!(st.modal.is_none(), "a squash on a clean tree runs straight away");
+    assert!(st.modal.is_none());
     st.job = None;
 
     make_dirty(&mut st, &dir);
-    assert!(prepare(&mut st, QuickEdit::Squash(vec![c[2], c[1]])).is_empty());
-    let (title, body, button) = confirm(&st);
-    assert_eq!((title, button), ("Stash changes and squash", "Squash"));
-    assert_eq!(body, format!("Squash 2 commits into one?\n\n{STASH_LINE}"));
-    assert!(started(&up(&mut st, Msg::ConfirmAccepted)).autostash);
-    st.job = None;
 
     prepare(&mut st, QuickEdit::Drop(vec![c[2], c[0]]));
     let (title, body, button) = confirm(&st);
@@ -181,6 +177,7 @@ fn edits_end_to_end() {
 
     let tip = head(&dir);
     drive(&mut st, Msg::Rebase(RebaseMsg::Edit(QuickEdit::SquashIntoParent(tip))));
+    drive(&mut st, Msg::Rebase(RebaseMsg::SubmitReword));
     assert_eq!(last_toast(&st), (true, "Squash commits succeeded"));
     assert_eq!(log(&dir), ["c2, reworded", "c1", "first"]);
     assert_eq!(git(&dir, &["log", "-1", "--format=%B"]).trim_end(), "c2, reworded\n\nc3");
@@ -239,9 +236,14 @@ fn menu_blockers() {
     let after = commit_on(&dir, "after", 12);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let snap = st.snap.as_ref().unwrap();
-    assert_eq!(rebase_quick::single(snap, side).reword.as_deref(), Some(rebase::MERGE_AFTER));
-    assert_eq!(rebase_quick::single(snap, c[1]).drop.as_deref(), Some(rebase::MERGE_AFTER));
+    assert_eq!(rebase_quick::single(snap, side).reword.as_deref(), Some(rebase::SIDE_LINE));
+    assert_eq!(rebase_quick::multi(snap, &[side, c[2]]).drop.as_deref(), Some(rebase::SOME_SIDE_LINE));
+    assert_eq!(rebase_quick::single(snap, c[1]).drop, None, "a merge later on the line is kept");
     assert_eq!(rebase_quick::single(snap, merge).reword.as_deref(), Some(rebase::MERGE_SELECTED));
+    // The side line starts at c1, so c2 can't be squashed into it, nor c1 and c2 together.
+    assert_eq!(rebase_quick::single(snap, c[1]).squash.as_deref(), Some(rebase::SPLIT_BY_BRANCH));
+    assert_eq!(rebase_quick::multi(snap, &[c[1], c[0]]).squash.as_deref(), Some(rebase::SPLIT_BY_BRANCH));
+    assert_eq!(rebase_quick::multi(snap, &[c[2], c[1]]).squash, None);
     assert_eq!(rebase_quick::single(snap, other).reword.as_deref(), Some(rebase::NOT_ON_BRANCH));
     assert_eq!(rebase_quick::single(snap, after).squash.as_deref(), Some(rebase::PARENT_MERGE));
     assert_eq!(rebase_quick::single(snap, after).reword, None);

@@ -65,6 +65,8 @@ pub mod pull_request_threads;
 pub mod push_pr;
 pub mod rebase;
 pub mod rebase_banner;
+pub mod rebase_merges;
+pub mod rebase_onto;
 pub mod rebase_quick;
 pub mod rebase_remaining;
 pub mod rebase_steps;
@@ -250,7 +252,8 @@ pub enum Modal {
     /// An invalid link, a linked repository not found, or several copies to choose from.
     DeepLink(deep_link::LinkDialog),
     CreateIssue(Box<issue_form::IssueForm>),
-    /// Reword a commit chosen in the graph (`ui/rebase/reword_dialog.rs`).
+    /// Reword a commit chosen in the graph, or type the message of commits it squashes
+    /// (`ui/rebase/reword_dialog.rs`).
     RewordCommit(Box<rebase_quick::RewordForm>),
     /// Help > About Trellis: version, links and third-party notices.
     About,

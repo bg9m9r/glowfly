@@ -47,7 +47,7 @@ pub(super) fn with_panel(theme: ThemeChoice, name: &str, actions: &[RebaseAction
         branch: "main".into(),
         upstream: Upstream::Root,
         onto_label: String::new(),
-        items: items.clone(),
+        steps: items.iter().cloned().map(TodoStep::Commit).collect(),
     };
     let mut panel = RebasePanel::loading(RebaseBase::FromCommit(items[0].oid));
     panel.fill(plan);

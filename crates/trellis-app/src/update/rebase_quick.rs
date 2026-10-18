@@ -1,5 +1,6 @@
 //! History edits from the graph's menus: preparing the rebase (`Effect::Rebase(PrepareEdit)`),
-//! asking first (the Reword dialog, the drop confirmation, stashing uncommitted changes), and
+//! asking first (the Reword and Squash dialog, the drop confirmation, stashing uncommitted
+//! changes), and
 //! running it as a rebase job whose result ends in `rebase::finished`.
 
 use super::ops::Started;
@@ -7,7 +8,7 @@ use super::rebase::{launch, refuse};
 use crate::effect::{Effect, RebaseEffect};
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase::{JOB_RUNNING, STASH_LINE, needs_stash, open_blocker};
-use crate::state::rebase_quick::{RewordForm, drop_question, label, squash_question, undo_detail};
+use crate::state::rebase_quick::{RewordForm, drop_question, label, undo_detail};
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -30,8 +31,8 @@ pub(super) fn edit(st: &mut AppState, edit: QuickEdit, now: Instant, fx: &mut Ve
     }
 }
 
-/// The prepared edit: a reword opens its dialog, a drop asks, a squash runs (asking first on a
-/// dirty tree). Ignored for another tab, or when a dialog opened meanwhile.
+/// The prepared edit: a reword or a squash opens its message dialog, a drop asks. Ignored for
+/// another tab, or when a dialog opened meanwhile.
 pub(super) fn prepared(st: &mut AppState, workdir: PathBuf, result: Result<QuickPlan, String>, now: Instant, fx: &mut Vec<Effect>) {
     if !st.workdir().is_some_and(|w| same_spelling(&w, &workdir)) || st.modal.is_some() {
         return;
@@ -42,16 +43,16 @@ pub(super) fn prepared(st: &mut AppState, workdir: PathBuf, result: Result<Quick
     };
     let stash = st.snap.as_ref().is_some_and(needs_stash);
     match plan.edit {
-        QuickEdit::Reword(_) => st.modal = Some(Modal::RewordCommit(Box::new(RewordForm::new(workdir, plan)))),
-        QuickEdit::Drop(_) => ask_drop(st, plan, stash, now, fx),
-        QuickEdit::SquashIntoParent(_) | QuickEdit::Squash(_) => {
-            run(st, plan, false, false, now, fx);
+        QuickEdit::Reword(_) | QuickEdit::SquashIntoParent(_) | QuickEdit::Squash(_) => {
+            st.modal = Some(Modal::RewordCommit(Box::new(RewordForm::new(workdir, plan))))
         }
+        QuickEdit::Drop(_) => ask_drop(st, plan, stash, now, fx),
     }
 }
 
-/// The Reword dialog's primary button: runs the typed message. The dialog was the question
-/// (it says when the changes are stashed), and it closes once the job started.
+/// The Reword or Squash dialog's primary button: runs the typed message (a squash's combined
+/// one, on its group head). The dialog was the question (it says when the changes are stashed),
+/// and it closes once the job started.
 pub(super) fn submit_reword(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let Some(Modal::RewordCommit(form)) = &st.modal else { return };
     if form.blocker(true).is_some() || !st.workdir().is_some_and(|w| same_spelling(&w, &form.workdir)) {
@@ -77,12 +78,13 @@ pub(super) fn run(st: &mut AppState, mut plan: QuickPlan, autostash: bool, confi
         if is_drop {
             ask_drop(st, plan, stash, now, fx);
         } else {
-            let (title, body, button) = match plan.edit {
-                QuickEdit::Reword(_) => ("Stash changes and reword".to_owned(), STASH_LINE.to_owned(), "Reword".to_owned()),
-                _ => squash_question(&plan),
+            // Only when the tree became dirty after the dialog was shown.
+            let (title, button) = match plan.edit {
+                QuickEdit::Reword(_) => ("Stash changes and reword", "Reword"),
+                _ => ("Stash changes and squash", "Squash"),
             };
             let then = Msg::Rebase(RebaseMsg::RunEdit { plan: Box::new(plan), autostash: true, confirmed: true });
-            fx.extend(super::update(st, Msg::confirm(&title, body, &button, then), now));
+            fx.extend(super::update(st, Msg::confirm(title, STASH_LINE.to_owned(), button, then), now));
         }
         return Started::No;
     }

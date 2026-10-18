@@ -29,7 +29,7 @@ fn c(n: u8, action: RebaseAction) -> TodoStep {
 /// A loaded panel holding `steps`.
 fn panel(steps: Vec<TodoStep>) -> RebasePanel {
     let mut p = RebasePanel::loading(RebaseBase::FromCommit(oid(1)));
-    let plan = RebasePlan { head: oid(9), branch: "main".into(), upstream: Upstream::Root, onto_label: String::new(), items: Vec::new() };
+    let plan = RebasePlan { head: oid(9), branch: "main".into(), upstream: Upstream::Root, onto_label: String::new(), steps: Vec::new() };
     p.fill(plan);
     p.original = steps.clone();
     p.items = steps;
@@ -43,6 +43,7 @@ fn kinds(p: &RebasePanel) -> Vec<String> {
             TodoStep::Commit(i) => format!("{} {}", i.action.keyword(), i.summary),
             TodoStep::Exec(cmd) => format!("exec {cmd}"),
             TodoStep::Break => "break".into(),
+            other => format!("{other:?}"),
         })
         .collect()
 }

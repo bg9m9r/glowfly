@@ -710,12 +710,6 @@ follow-ups go to Ideas, not here.
 - Re-blame when HEAD moves while a HEAD blame is open (commit, checkout, pull)
 - Horizontal scrolling or word wrap for long lines (they are clipped now)
 
-### Interactive rebase
-
-- Rebase onto a commit, and branch context menus on the graph's ref labels
-- Rebase ranges that contain merge commits (`--rebase-merges`), also for graph squashes and drops
-- Edit the combined message of a graph squash before it runs (the messages are joined now)
-
 ### Multi-select commits
 
 - Swap direction for the commit-to-working-tree comparison (working tree to commit)
@@ -743,8 +737,8 @@ follow-ups go to Ideas, not here.
 
 ### Branch operations
 
-- The same operations from the graph's BRANCH/TAG labels and the remote branch menu (e.g.
-  fast-forward a local branch from its remote row)
+- The same operations from the remote branch menu (e.g. fast-forward a local branch from its
+  remote row)
 
 ### File actions
 
@@ -1130,6 +1124,18 @@ here, under the item they grew from.
 - Select several panel rows and move or change them together
 - Tell a plain merge-backend rebase from an interactive one: recent git marks both interactive,
   so the banner names both "Interactive rebase" and offers "Edit remaining steps…" for both
+- Edit the remaining steps of a running rebase that recreates merges (label, reset and merge
+  steps in `rebase --edit-todo`)
+- Reword or drop a merge commit from the graph's menu and keys (only the panel does it now)
+- Squash, drop or reword commits that came in through a merge (side lines) from the graph
+- Squash across a branch point from the graph (moving the later commit before the side line's
+  start)
+- Option to move merged side lines onto the new base too (`--rebase-cousins`)
+- Readable label names taken from merge messages, and editing a merge's parents or moving whole
+  lines in the panel
+- Turn a merge row into an edit stop (a break after the merge) and squash or fix up into a merge
+- A "Use the joined messages" reset and spellcheck in the squash dialog
+- Rebase onto a commit by dragging a branch label onto it in the graph
 
 ### Live working-tree updates
 
@@ -1157,6 +1163,8 @@ here, under the item they grew from.
 - A shortcut for renaming the checked-out branch, and renaming any branch through a two-step
   palette entry
 - Delete local + remote when the branch isn't merged into HEAD (force), in one step
+- A "Commit 1a2b3c4" submenu in the graph's label menu, so a row with labels reaches the commit
+  menu from the chips too
 
 ### Hide / solo branches in the graph
 

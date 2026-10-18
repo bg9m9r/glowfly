@@ -18,7 +18,7 @@ fn three(name: &str) -> (PathBuf, [Oid; 3]) {
 
 fn run_rebase(dir: &Path, from: Oid, edit: impl FnOnce(&mut Vec<TodoStep>)) -> Outcome {
     let p = rebase::plan(dir, &RebaseBase::FromCommit(from)).unwrap();
-    let mut items: Vec<TodoStep> = p.items.into_iter().map(TodoStep::Commit).collect();
+    let mut items: Vec<TodoStep> = p.steps;
     edit(&mut items);
     let req = StartRequest { head: p.head, upstream: p.upstream, items, autostash: false };
     rebase::start(dir, &req, &SequenceEditor::Copy).unwrap()

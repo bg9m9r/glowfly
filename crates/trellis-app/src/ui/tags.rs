@@ -44,11 +44,12 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         }
         let full = format!("refs/tags/{name}");
         ref_visibility::row_marker(ui, &r, 13.0, &full, name, graph, msgs);
-        r.context_menu(|ui| menu(ui, name, snap, graph, idle, msgs));
+        r.context_menu(|ui| tag_menu(ui, name, snap, graph, idle, msgs));
     }
 }
 
-fn menu(ui: &mut egui::Ui, name: &str, snap: &Snapshot, graph: &GraphFilter, idle: bool, msgs: &mut Vec<Msg>) {
+/// A tag's menu (also on its label in the graph).
+pub(in crate::ui) fn tag_menu(ui: &mut egui::Ui, name: &str, snap: &Snapshot, graph: &GraphFilter, idle: bool, msgs: &mut Vec<Msg>) {
     let remotes: Vec<String> = snap.remotes.iter().map(|(r, _)| r.clone()).collect();
     let blocked = (!idle).then_some(JOB_RUNNING);
     let tag = || name.to_owned();

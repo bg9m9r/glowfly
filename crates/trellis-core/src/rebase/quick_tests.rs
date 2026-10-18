@@ -92,11 +92,11 @@ fn refusals() {
     assert_eq!(refused(&dir, QuickEdit::Reword(side)), NOT_ON_BRANCH);
     assert_eq!(refused(&dir, QuickEdit::Drop(vec![side, c2])), SOME_NOT_ON_BRANCH);
 
-    // A merge on the branch after c2, and the merge itself.
+    // A merge on the branch after c2: the side commit came in through it; the merge itself.
     git(&dir, &["merge", "-q", "--no-ff", "-m", "merge side", "side"]);
     let merge = head(&dir);
-    let text = refused(&dir, QuickEdit::Reword(c2));
-    assert!(text.contains("merge commit") && text.contains(&merge.to_string()[..7]), "{text}");
+    assert_eq!(refused(&dir, QuickEdit::Reword(side)), SIDE_LINE);
+    assert_eq!(refused(&dir, QuickEdit::Drop(vec![side, c2])), SOME_SIDE_LINE);
     assert_eq!(refused(&dir, QuickEdit::Reword(merge)), MERGE_SELECTED);
     assert_eq!(refused(&dir, QuickEdit::Drop(vec![merge, c2])), SOME_MERGE_SELECTED);
     commit(&dir, "after.txt", "after\n", "after");
@@ -128,5 +128,52 @@ fn drop_many_runs() {
     assert!(matches!(start_copy(&dir, &p.request), Outcome::Finished { .. }));
     assert_eq!(log(&dir), ["c3", "c1"]);
     assert!(!dir.join("2.txt").exists() && !dir.join("4.txt").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn parent_count(dir: &Path, rev: &str) -> usize {
+    Repository::open(dir).unwrap().revparse_single(rev).unwrap().peel_to_commit().unwrap().parent_count()
+}
+
+#[test]
+fn edits_across_a_merge() {
+    use super::merges_tests::merged;
+    let (dir, f) = merged("rebase-quick-across-merge");
+    // c2 starts the side line, so it and c3 can't be squashed from the graph.
+    assert_eq!(refused(&dir, QuickEdit::Squash(vec![f.c3, f.c2])), SPLIT_BY_BRANCH);
+    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(f.c3)), SPLIT_BY_BRANCH);
+    assert_eq!(refused(&dir, QuickEdit::Drop(vec![f.s1, f.c2])), SOME_SIDE_LINE);
+    assert_eq!(refused(&dir, QuickEdit::Reword(f.s2)), SIDE_LINE);
+    assert_eq!(refused(&dir, QuickEdit::Reword(f.m)), MERGE_SELECTED);
+    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(f.c4)), PARENT_MERGE);
+
+    // A drop before the merge keeps the merge.
+    let p = prepared(&dir, QuickEdit::Drop(vec![f.c3]));
+    assert_eq!((p.request.upstream, p.later), (Upstream::Commit(f.c2), 2), "the merge and c4 are rewritten");
+    assert!(p.request.items.iter().any(|s| s.merge().is_some()), "the list recreates the merge");
+    assert!(matches!(start_copy(&dir, &p.request), Outcome::Finished { .. }));
+    assert_eq!(parent_count(&dir, "HEAD~1"), 2);
+    assert!(!dir.join("3.txt").exists() && dir.join("s2.txt").exists());
+    assert!(!log(&dir).contains(&"c3".to_owned()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_squash_before_a_merge_runs() {
+    let dir = scratch_repo("rebase-quick-squash-merge");
+    commit(&dir, "1.txt", "1\n", "c1");
+    git(&dir, &["checkout", "-q", "-b", "side"]);
+    commit(&dir, "s.txt", "s\n", "s1");
+    git(&dir, &["checkout", "-q", "main"]);
+    let c2 = commit(&dir, "2.txt", "2\n", "c2");
+    let c3 = commit(&dir, "3.txt", "3\n", "c3");
+    git(&dir, &["merge", "-q", "--no-ff", "-m", "merge side", "side"]);
+    commit(&dir, "4.txt", "4\n", "c4");
+    let p = prepared(&dir, QuickEdit::Squash(vec![c3, c2]));
+    assert_eq!(p.later, 2, "only commit and merge steps count");
+    assert!(matches!(start_copy(&dir, &p.request), Outcome::Finished { .. }));
+    assert_eq!(parent_count(&dir, "HEAD~1"), 2);
+    assert_eq!(message(&dir, "HEAD~2"), "c2\n\nc3");
+    assert_eq!(message(&dir, "HEAD~1"), "merge side");
     let _ = std::fs::remove_dir_all(&dir);
 }

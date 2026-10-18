@@ -35,6 +35,7 @@ fn kinds(steps: &[TodoStep]) -> Vec<String> {
             TodoStep::Commit(i) => format!("{} {}", i.action.keyword(), i.summary),
             TodoStep::Exec(c) => format!("exec {c}"),
             TodoStep::Break => "break".into(),
+            other => format!("{other:?}"),
         })
         .collect()
 }

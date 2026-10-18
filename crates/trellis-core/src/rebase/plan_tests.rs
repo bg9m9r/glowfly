@@ -37,7 +37,11 @@ fn refused(r: crate::error::Result<RebasePlan>) -> String {
 }
 
 fn oids(p: &RebasePlan) -> Vec<Oid> {
-    p.items.iter().map(|i| i.oid).collect()
+    p.steps.iter().filter_map(TodoStep::oid).collect()
+}
+
+fn items(p: &RebasePlan) -> Vec<&TodoItem> {
+    p.steps.iter().filter_map(TodoStep::commit).collect()
 }
 
 #[test]
@@ -47,9 +51,10 @@ fn from_a_commit() {
     assert_eq!(oids(&p), [c2, c3, c4], "oldest first, the clicked commit included");
     assert_eq!((p.head, p.branch.as_str(), p.upstream), (c4, "main", Upstream::Commit(c1)));
     assert_eq!(p.onto_label, format!("{} c1", &c1.to_string()[..7]));
-    assert!(p.items.iter().all(|i| i.action == RebaseAction::Pick && i.author == "Test" && i.new_message.is_none()));
-    assert_eq!(p.items[0].summary, "c2");
-    assert_eq!(p.items[0].message, "c2\n\nThe second commit.\n");
+    assert!(items(&p).iter().all(|i| i.action == RebaseAction::Pick && i.author == "Test" && i.new_message.is_none()));
+    assert_eq!(p.steps.len(), 3, "a range without merges has commit steps only");
+    assert_eq!(items(&p)[0].summary, "c2");
+    assert_eq!(items(&p)[0].message, "c2\n\nThe second commit.\n");
 
     let p = plan(&dir, &RebaseBase::FromCommit(c1)).unwrap();
     assert_eq!(oids(&p), [c1, c2, c3, c4]);
@@ -88,13 +93,17 @@ fn refusals() {
     git(&dir, &["branch", "same", "main"]);
     assert_eq!(refused(plan(&dir, &RebaseBase::OntoBranch("same".into()))), "main has no commits that aren't already on same");
 
-    // A merge in the range, and a merge as the clicked commit.
+    // A merge in the range is planned, with the steps that recreate it.
     git(&dir, &["merge", "-q", "--no-ff", "side", "-m", "merge side"]);
     let merge = head(&dir);
     commit(&dir, "5.txt", "5\n", "c5");
-    let text = refused(plan(&dir, &RebaseBase::FromCommit(c4)));
-    assert_eq!(text, format!("The range includes the merge commit {}; rebasing merges isn't supported yet", &merge.to_string()[..7]));
-    assert!(refused(plan(&dir, &RebaseBase::FromCommit(merge))).contains("merge commit"));
+    let p = plan(&dir, &RebaseBase::FromCommit(c4)).unwrap();
+    assert!(p.steps.iter().any(|s| s.merge().is_some_and(|m| m.item.oid == merge)), "{:?}", p.steps);
+    assert!(p.steps.iter().any(|s| matches!(s, TodoStep::Reset(_))));
+    // The merge itself as the clicked commit: it and its side line.
+    let p = plan(&dir, &RebaseBase::FromCommit(merge)).unwrap();
+    assert_eq!(p.upstream, Upstream::Commit(c4), "the upstream is the merge's first parent");
+    assert_eq!(oids(&p), [side, merge, head(&dir)]);
 
     // Detached HEAD.
     git(&dir, &["checkout", "-q", &c4.to_string()]);
@@ -109,5 +118,25 @@ fn refusals() {
     let text = refused(plan(&dir, &RebaseBase::FromCommit(c1)));
     assert_eq!(text, "Finish or abort the rebase in progress before starting an interactive rebase.");
     git(&dir, &["rebase", "--abort"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn onto_a_commit() {
+    let (dir, [c1, c2, ..]) = linear("rebase-plan-onto-commit");
+    git(&dir, &["checkout", "-q", "-b", "other", &c1.to_string()]);
+    let o = commit(&dir, "o.txt", "o\n", "on other");
+    git(&dir, &["checkout", "-q", "main"]);
+    let p = plan(&dir, &RebaseBase::OntoCommit(o)).unwrap();
+    assert_eq!(p.upstream, Upstream::Commit(o));
+    assert_eq!(p.onto_label, format!("{} on other", &o.to_string()[..7]));
+    assert_eq!(oids(&p).len(), 3, "c2..c4, the commits other lacks");
+    assert_eq!(oids(&p)[0], c2);
+
+    let missing = Oid::from_bytes(&[7; 20]).unwrap();
+    assert!(plan(&dir, &RebaseBase::OntoCommit(missing)).unwrap_err().is_not_found());
+    let tip = head(&dir);
+    let text = refused(plan(&dir, &RebaseBase::OntoCommit(tip)));
+    assert_eq!(text, format!("main has no commits that aren't already on {} c4", &tip.to_string()[..7]));
     let _ = std::fs::remove_dir_all(&dir);
 }

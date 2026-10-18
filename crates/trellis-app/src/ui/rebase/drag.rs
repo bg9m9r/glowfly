@@ -26,7 +26,7 @@ pub(super) struct Floating {
 pub(super) fn drag(ui: &Ui, slots: &[Slot], list_top: f32, pitch: f32, msgs: &mut Vec<Msg>) -> Option<Floating> {
     let drag_id = Id::new("rebase-drag");
     let n = slots.len();
-    if let Some((i, s)) = slots.iter().enumerate().find(|(_, s)| s.r.drag_started_by(PointerButton::Primary))
+    if let Some((i, s)) = slots.iter().enumerate().find(|(_, s)| s.movable && s.r.drag_started_by(PointerButton::Primary))
         && let Some(origin) = ui.input(|i| i.pointer.press_origin())
     {
         ui.data_mut(|d| d.insert_temp(drag_id, RowDrag { from: i, grab: origin.y - s.rect.top() }));

@@ -173,10 +173,23 @@ fn graph_commit_menu() {
     let row_of = |o: Oid| st.snap.as_ref().unwrap().row_of[&o] + 1;
     let (fix_row, merge_row) = (row_of(fix), row_of(merge));
     let root_row = row_of(commit(&st, "Initial commit"));
+    let search = commit(&st, "Search results page");
+    let search_row = row_of(search);
+    let sha = |o: Oid| o.to_string()[..7].to_owned();
     let mut h = harness(st, true);
     h.run();
-    click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
+    // A commit main doesn't contain: main can be rebased onto it, plainly or interactively.
+    click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.check_snapshot("graph_commit_menu");
+    assert!(!h.get_by_label(&format!("Rebase main onto {}", sha(search))).is_disabled());
+    h.state_mut().1.clear();
+    h.get_by_label(&format!("Interactive rebase main onto {}…", sha(search))).click();
+    h.run();
+    let want = trellis_core::rebase::RebaseBase::OntoCommit(search);
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(crate::msg::RebaseMsg::OpenRebase(b)) if *b == want)));
+
+    click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
+    assert!(h.get_by_label(&format!("Rebase main onto {}", sha(fix))).is_disabled(), "main already contains it");
     h.state_mut().1.clear();
     h.get_by_label("Create patch…").click();
     h.run();

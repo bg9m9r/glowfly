@@ -1,5 +1,6 @@
-//! History edits from the graph: the multi-selection menu's squash and drop, the Reword dialog,
-//! and the rebase banner on the WIP row. Shares the fixture repository with `snapshot_tests`.
+//! History edits from the graph: the multi-selection menu's squash and drop, the Reword and
+//! Squash dialogs, and the rebase banner on the WIP row. Shares the fixture repository with
+//! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
@@ -104,6 +105,39 @@ fn reword_dialog_dirty_light() {
     h.run();
     h.check_snapshot("reword_dialog_dirty_light");
     assert!(h.query_by_label("Stash and reword").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The Squash dialog for the two newest of the three new commits.
+fn squash(theme: ThemeChoice, name: &str, clean: bool) -> (AppState, PathBuf) {
+    let (mut st, dir, [c3, c2, _]) = with_linear(theme, name, clean);
+    let plan = rebase::prepare_edit(&dir, &QuickEdit::Squash(vec![c3, c2])).unwrap();
+    st.modal = Some(Modal::RewordCommit(Box::new(RewordForm::new(dir.clone(), plan))));
+    (st, dir)
+}
+
+#[test]
+fn squash_dialog() {
+    let (st, dir) = squash(ThemeChoice::Dark, "squash-dialog", true);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("squash_dialog");
+    assert!(!h.get_by_label("Squash").is_disabled(), "the joined messages may be kept as they are");
+    h.get_by_label("Squash").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::SubmitReword))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn squash_dialog_dirty_light() {
+    let (st, dir) = squash(ThemeChoice::Light, "squash-dirty", false);
+    let mut h = harness(st, false);
+    h.run();
+    h.check_snapshot("squash_dialog_dirty_light");
+    assert!(h.query_by_label("Stash and squash").is_some());
     drop(h);
     remove_fixture(&dir);
 }

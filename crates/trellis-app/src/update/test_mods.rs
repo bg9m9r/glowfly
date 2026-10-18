@@ -195,6 +195,10 @@ pub(super) mod push_pr_state_tests;
 pub(super) mod push_pr_tests;
 #[path = "rebase_e2e_tests.rs"]
 pub(super) mod rebase_e2e_tests;
+#[path = "rebase_merges_tests.rs"]
+pub(super) mod rebase_merges_tests;
+#[path = "rebase_quick_squash_tests.rs"]
+pub(super) mod rebase_quick_squash_tests;
 #[path = "rebase_quick_tests.rs"]
 pub(super) mod rebase_quick_tests;
 #[path = "rebase_remaining_tests.rs"]

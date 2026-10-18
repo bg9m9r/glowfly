@@ -67,7 +67,8 @@ fn graph_edits_name_themselves_for_undo() {
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::Edit(QuickEdit::SquashIntoParent(c[2]))));
     let [Effect::Rebase(RebaseEffect::PrepareEdit { workdir, edit })] = &fx[..] else { panic!("{fx:?}") };
     let result = trellis_core::rebase::prepare_edit(workdir, edit).map_err(|e| e.to_string());
-    let fx = up(&mut st, Msg::Rebase(RebaseMsg::EditPrepared { workdir: workdir.clone(), result }));
+    up(&mut st, Msg::Rebase(RebaseMsg::EditPrepared { workdir: workdir.clone(), result }));
+    let fx = up(&mut st, Msg::Rebase(RebaseMsg::SubmitReword));
     let [Effect::Rebase(RebaseEffect::Start { detail, .. })] = &fx[..] else { panic!("{fx:?}") };
     assert_eq!(detail, &format!("squash of {} into its parent", &c[2].to_string()[..7]));
 

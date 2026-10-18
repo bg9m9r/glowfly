@@ -1,14 +1,15 @@
 //! The commits an interactive rebase would replay, read with libgit2.
 
-use super::{DETACHED, RebaseAction, RebaseBase, RebasePlan, TodoItem, Upstream, in_progress_text, short};
+use super::{DETACHED, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream, in_progress_text, merges, short};
 use crate::error::{Error, Result};
 use git2::{Oid, Repository, Sort};
 use std::path::Path;
 
-/// The list for rebasing the current branch from `base`, oldest first, all picks. Refused
+/// The list for rebasing the current branch from `base`, oldest first, all picks; a range that
+/// holds merges gets the label, reset and merge steps that recreate them. Refused
 /// (`Error::Unsupported`, with a message for the user) while an operation is in progress, on a
-/// detached HEAD, for a commit that isn't on the current branch, when the range holds a merge,
-/// and when there is nothing to rebase. A missing branch is `Error::NotFound`.
+/// detached HEAD, for a commit that isn't on the current branch, and when there is nothing to
+/// rebase. A missing branch or commit is `Error::NotFound`.
 pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
     let repo = Repository::open(workdir)?;
     let (head, branch) = checked_head(&repo)?;
@@ -18,9 +19,6 @@ pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
                 return Err(Error::Unsupported(format!("{} is not on the current branch", short(*c))));
             }
             let commit = repo.find_commit(*c)?;
-            if commit.parent_count() > 1 {
-                return Err(merge_refused(*c));
-            }
             match commit.parent_ids().next() {
                 Some(p) => {
                     let summary = repo.find_commit(p)?.summary().unwrap_or_default().to_owned();
@@ -37,13 +35,26 @@ pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
                 .id();
             (Upstream::Commit(tip), name.clone())
         }
+        RebaseBase::OntoCommit(o) => {
+            let commit = repo.find_commit(*o).map_err(|_| Error::NotFound(format!("commit {}", short(*o))))?;
+            let label = format!("{} {}", short(*o), commit.summary().unwrap_or_default()).trim_end().to_owned();
+            (Upstream::Commit(*o), label)
+        }
     };
     let oids = range(&repo, head, upstream)?;
     if oids.is_empty() {
         return Err(Error::Unsupported(format!("{branch} has no commits that aren't already on {onto_label}")));
     }
-    let items = oids.into_iter().map(|o| item(&repo, o)).collect::<Result<Vec<_>>>()?;
-    Ok(RebasePlan { head, branch, upstream, onto_label, items })
+    let mut has_merge = false;
+    for o in &oids {
+        has_merge |= repo.find_commit(*o)?.parent_count() > 1;
+    }
+    let steps = if has_merge {
+        merges::script(&repo, head, upstream, &oids)?
+    } else {
+        oids.into_iter().map(|o| item(&repo, o).map(TodoStep::Commit)).collect::<Result<Vec<_>>>()?
+    };
+    Ok(RebasePlan { head, branch, upstream, onto_label, steps })
 }
 
 /// HEAD's commit and branch, refusing while an operation is in progress or on a detached or
@@ -61,8 +72,8 @@ pub(super) fn checked_head(repo: &Repository) -> Result<(Oid, String)> {
     Ok((oid, branch))
 }
 
-/// The commits from `upstream` (exclusive) to `head`, oldest first: the set git would list.
-/// Refused when one of them is a merge.
+/// The commits from `upstream` (exclusive) to `head`, merges included, oldest first: the set
+/// git would rebase.
 pub(super) fn range(repo: &Repository, head: Oid, upstream: Upstream) -> Result<Vec<Oid>> {
     let mut walk = repo.revwalk()?;
     walk.push(head)?;
@@ -72,20 +83,13 @@ pub(super) fn range(repo: &Repository, head: Oid, upstream: Upstream) -> Result<
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::REVERSE)?;
     let mut out = Vec::new();
     for oid in walk {
-        let oid = oid?;
-        if repo.find_commit(oid)?.parent_count() > 1 {
-            return Err(merge_refused(oid));
-        }
-        out.push(oid);
+        out.push(oid?);
     }
     Ok(out)
 }
 
-pub(super) fn merge_refused(oid: Oid) -> Error {
-    Error::Unsupported(format!("The range includes the merge commit {}; rebasing merges isn't supported yet", short(oid)))
-}
-
-fn item(repo: &Repository, oid: Oid) -> Result<TodoItem> {
+/// A pick of the commit `oid`.
+pub(super) fn item(repo: &Repository, oid: Oid) -> Result<TodoItem> {
     let c = repo.find_commit(oid)?;
     Ok(TodoItem {
         oid,

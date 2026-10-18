@@ -11,7 +11,9 @@ use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
 use crate::state::patch::PATCH_BLOCKED_MERGE;
+use crate::state::rebase_onto::{onto_commit_blocker, onto_labels};
 use crate::state::selection::{MultiSelection, cherry_pick_blocker};
+use crate::state::{ForgeState, Selection};
 use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, RichText};
@@ -19,6 +21,7 @@ use git2::Oid;
 use trellis_core::i18n::Lang;
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{CommitInfo, Snapshot};
+use trellis_core::settings::GraphFilter;
 use trellis_core::worktree_ops::WorktreeBase;
 
 pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
@@ -54,6 +57,13 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mu
         );
     });
     menu_item(msgs, ui, "Interactive rebase from here…", Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid))));
+    if let Some(current) = snap.head_branch.as_deref() {
+        let blocked = onto_commit_blocker(snap, oid);
+        let (plain, interactive) = onto_labels(current, oid);
+        menu_item_if(msgs, ui, plain, blocked.as_deref(), Msg::git("Rebase", &["rebase", &sha]));
+        let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
+        menu_item_if(msgs, ui, interactive, blocked.as_deref(), onto);
+    }
     super::rebase::edit_menu::single(ui, oid, snap, msgs);
     ui.separator();
     let patch = ui.add_enabled(c.parents.len() < 2, egui::Button::new("Create patch…")).on_disabled_hover_text(PATCH_BLOCKED_MERGE);
@@ -146,15 +156,16 @@ pub(super) fn copy_shas(m: &MultiSelection) -> Msg {
     ))
 }
 
-pub fn remote_branch_menu(
-    ui: &mut egui::Ui,
-    remote: &str,
-    name: &str,
-    oid: Oid,
-    snap: &Snapshot,
-    c: &super::remotes::Ctx,
-    msgs: &mut Vec<Msg>,
-) {
+/// What a remote branch's menu is drawn against.
+pub struct RemoteMenu<'a> {
+    /// The checked-out branch's name ("" when detached).
+    pub current: &'a str,
+    pub fs: Option<&'a ForgeState>,
+    pub graph: &'a GraphFilter,
+    pub sel: &'a Selection,
+}
+
+pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid, snap: &Snapshot, c: &RemoteMenu, msgs: &mut Vec<Msg>) {
     let (current, fs, filter) = (c.current, c.fs, c.graph);
     let full = format!("{remote}/{name}");
     menu_item(msgs, ui, format!("Checkout {full}"), Msg::git("Checkout", &["checkout", "--track", &full]));

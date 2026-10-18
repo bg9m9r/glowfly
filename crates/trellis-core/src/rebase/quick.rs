@@ -1,11 +1,11 @@
 //! History edits chosen in the graph (reword, squash, drop), turned into a ready
 //! [`StartRequest`] for the same `git rebase -i` run the panel uses.
 
-use super::plan::{checked_head, merge_refused, plan};
+use super::plan::{checked_head, plan};
 use super::todo::problem;
 use super::{
-    DROPS_EVERYTHING, MERGE_SELECTED, NOT_CONSECUTIVE, NOT_ON_BRANCH, PARENT_MERGE, ROOT_SQUASH, RebaseAction, RebaseBase,
-    SOME_MERGE_SELECTED, SOME_NOT_ON_BRANCH, StartRequest, TOO_FEW_TO_SQUASH, TodoStep, Upstream,
+    DROPS_EVERYTHING, MERGE_SELECTED, NOT_CONSECUTIVE, NOT_ON_BRANCH, PARENT_MERGE, ROOT_SQUASH, RebaseAction, RebaseBase, SIDE_LINE,
+    SOME_MERGE_SELECTED, SOME_NOT_ON_BRANCH, SOME_SIDE_LINE, SPLIT_BY_BRANCH, StartRequest, TOO_FEW_TO_SQUASH, Upstream,
 };
 use crate::error::{Error, Result};
 use git2::{Oid, Repository};
@@ -44,17 +44,19 @@ pub struct QuickPlan {
     /// The list to run; `autostash` is false (the caller decides after asking).
     pub request: StartRequest,
     pub branch: String,
-    /// The rows of `request.items` the edit changes, oldest first (every row is a commit).
+    /// The rows of `request.items` the edit changes, oldest first (every one is a commit row).
     pub edited: Vec<usize>,
-    /// Commits after the last edited row, which are rewritten too.
+    /// Commits (and merges) after the last edited row, which are rewritten too.
     pub later: usize,
 }
 
-/// The rebase that makes `edit` on the current branch. Refused (`Error::Unsupported`, with a
-/// message for the user) while an operation is in progress, on a detached HEAD, for commits
-/// that aren't on the branch's first-parent line, for merges (chosen, or between the commits
-/// and HEAD), for a squash of the first commit or into a merge, for a squash of commits that
-/// don't follow one another, and for dropping every commit of the branch.
+/// The rebase that makes `edit` on the current branch. Merges after the commits are kept (the
+/// list recreates them). Refused (`Error::Unsupported`, with a message for the user) while an
+/// operation is in progress, on a detached HEAD, for commits that aren't on the branch's
+/// first-parent line (`SIDE_LINE` for those that came in through a merge), for merges chosen,
+/// for a squash of the first commit or into a merge, for a squash of commits that don't follow
+/// one another or that another line starts between, and for dropping every commit of the
+/// branch.
 pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
     let repo = Repository::open(workdir)?;
     let (head, _) = checked_head(&repo)?;
@@ -63,7 +65,8 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
     if matches!(edit, QuickEdit::Squash(_)) && !many {
         return Err(refused(TOO_FEW_TO_SQUASH));
     }
-    let oldest = oldest_on_branch(&repo, head, &targets, many)?;
+    let (oldest, mut line) = oldest_on_branch(&repo, head, &targets, many)?;
+    let mut chosen = targets.clone();
     let base = match edit {
         QuickEdit::SquashIntoParent(o) => {
             let commit = repo.find_commit(*o)?;
@@ -71,17 +74,15 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
             if repo.find_commit(parent)?.parent_count() > 1 {
                 return Err(refused(PARENT_MERGE));
             }
+            chosen.push(parent);
+            line.push(parent);
             parent
         }
         _ => oldest,
     };
     let p = plan(workdir, &RebaseBase::FromCommit(base))?;
-    let mut items = p.items;
-    let row_of = |o: Oid| items.iter().position(|i| i.oid == o);
-    let mut rows: Vec<usize> = targets.iter().filter_map(|o| row_of(*o)).collect();
-    if let QuickEdit::SquashIntoParent(_) = edit {
-        rows.extend(row_of(base));
-    }
+    let mut steps = p.steps;
+    let mut rows: Vec<usize> = chosen.iter().filter_map(|o| steps.iter().position(|s| s.oid() == Some(*o))).collect();
     rows.sort_unstable();
     rows.dedup();
     if rows.is_empty() {
@@ -89,59 +90,84 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
     }
     match edit {
         QuickEdit::Reword(_) => {
-            items[rows[0]].action = RebaseAction::Reword;
-            items[rows[0]].new_message = None;
+            if let Some(i) = steps[rows[0]].commit_mut() {
+                i.action = RebaseAction::Reword;
+                i.new_message = None;
+            }
         }
         QuickEdit::SquashIntoParent(_) | QuickEdit::Squash(_) => {
             if rows.windows(2).any(|w| w[1] != w[0] + 1) {
-                return Err(refused(NOT_CONSECUTIVE));
+                return Err(refused(if consecutive_on(&line, &chosen) { SPLIT_BY_BRANCH } else { NOT_CONSECUTIVE }));
             }
-            let joined = rows.iter().map(|&r| items[r].message.trim()).collect::<Vec<_>>().join("\n\n");
-            let first = rows[0];
-            items[first].action = RebaseAction::Reword;
-            items[first].new_message = Some(joined);
+            let joined =
+                rows.iter().filter_map(|&r| steps[r].commit()).map(|i| i.message.trim().to_owned()).collect::<Vec<_>>().join("\n\n");
+            if let Some(i) = steps[rows[0]].commit_mut() {
+                i.action = RebaseAction::Reword;
+                i.new_message = Some(joined);
+            }
             for &r in &rows[1..] {
-                items[r].action = RebaseAction::Fixup;
+                if let Some(i) = steps[r].commit_mut() {
+                    i.action = RebaseAction::Fixup;
+                }
             }
         }
         QuickEdit::Drop(_) => {
             for &r in &rows {
-                items[r].action = RebaseAction::Drop;
+                if let Some(i) = steps[r].commit_mut() {
+                    i.action = RebaseAction::Drop;
+                }
             }
-            if p.upstream == Upstream::Root && rows.len() == items.len() {
+            let commits = steps.iter().filter(|s| s.oid().is_some()).count();
+            if p.upstream == Upstream::Root && rows.len() == commits {
                 return Err(refused(DROPS_EVERYTHING));
             }
         }
     }
     let last = rows[rows.len() - 1];
-    let later = items.len() - 1 - last;
-    let items: Vec<TodoStep> = items.into_iter().map(TodoStep::Commit).collect();
-    if let Some(why) = problem(&items) {
+    let later = steps[last + 1..].iter().filter(|s| s.oid().is_some()).count();
+    if let Some(why) = problem(&steps) {
         return Err(Error::Unsupported(why));
     }
-    let request = StartRequest { head: p.head, upstream: p.upstream, items, autostash: false };
+    let request = StartRequest { head: p.head, upstream: p.upstream, items: steps, autostash: false };
     Ok(QuickPlan { edit: edit.clone(), request, branch: p.branch, edited: rows, later })
 }
 
-/// Walks HEAD's first-parent line until every target is found and returns the oldest one.
-/// Refused for a merge on the way (chosen or not) and for targets the line never reaches.
-fn oldest_on_branch(repo: &Repository, head: Oid, targets: &[Oid], many: bool) -> Result<Oid> {
+/// Whether `oids` are consecutive commits of `line` (HEAD's first-parent line, newest first).
+fn consecutive_on(line: &[Oid], oids: &[Oid]) -> bool {
+    let mut at: Vec<usize> = oids.iter().filter_map(|o| line.iter().position(|l| l == o)).collect();
+    at.sort_unstable();
+    at.dedup();
+    at.len() == oids.iter().collect::<HashSet<_>>().len() && at.windows(2).all(|w| w[1] == w[0] + 1)
+}
+
+/// Walks HEAD's first-parent line (through merges that weren't chosen) until every target is
+/// found; returns the oldest target and the line from HEAD down to it, newest first. Refused
+/// for a chosen merge, and for targets the line never reaches: `SIDE_LINE` when HEAD reaches
+/// them through a merge, else `NOT_ON_BRANCH`.
+fn oldest_on_branch(repo: &Repository, head: Oid, targets: &[Oid], many: bool) -> Result<(Oid, Vec<Oid>)> {
     let mut left: HashSet<Oid> = targets.iter().copied().collect();
+    let mut line = Vec::new();
     let mut at = head;
     loop {
         let commit = repo.find_commit(at)?;
-        let chosen = left.remove(&at);
-        if commit.parent_count() > 1 {
-            return Err(if chosen { refused(if many { SOME_MERGE_SELECTED } else { MERGE_SELECTED }) } else { merge_refused(at) });
+        line.push(at);
+        if left.remove(&at) && commit.parent_count() > 1 {
+            return Err(refused(if many { SOME_MERGE_SELECTED } else { MERGE_SELECTED }));
         }
         if left.is_empty() {
-            return Ok(at);
+            return Ok((at, line));
         }
         match commit.parent_ids().next() {
             Some(p) => at = p,
-            None => return Err(refused(if many { SOME_NOT_ON_BRANCH } else { NOT_ON_BRANCH })),
+            None => break,
         }
     }
+    for t in &left {
+        if repo.graph_descendant_of(head, *t)? {
+            return Err(refused(if many { SOME_SIDE_LINE } else { SIDE_LINE }));
+        }
+    }
+    Err(refused(if many { SOME_NOT_ON_BRANCH } else { NOT_ON_BRANCH }))
 }
 
 fn refused(text: &str) -> Error {

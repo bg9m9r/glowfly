@@ -3,8 +3,8 @@
 //! list git generated.
 
 use super::{
-    CHANGED, COMBINE_AFTER_STEP, EMPTY_COMBINED, EMPTY_EXEC, EMPTY_REWORD, EXEC_ONE_LINE, FIRST_COMBINES, RebaseAction, SequenceEditor,
-    TodoItem, TodoStep,
+    CHANGED, COMBINE_AFTER_MERGE, COMBINE_AFTER_STEP, EMPTY_COMBINED, EMPTY_EXEC, EMPTY_REWORD, EXEC_ONE_LINE, FIRST_COMBINES,
+    RebaseAction, SequenceEditor, TodoItem, TodoStep, merges,
 };
 use crate::error::{Error, Result};
 use git2::Oid;
@@ -19,8 +19,8 @@ fn heads(step: &TodoStep) -> Option<&TodoItem> {
 }
 
 /// For the kept commit at `head`, the index of the last squash or fixup of its group: the
-/// commit rows right after it that are dropped or meld into it, up to an exec or break step.
-/// `None` when nothing melds into it.
+/// commit rows right after it that are dropped or meld into it, up to any other step (exec,
+/// break, label, reset or merge). `None` when nothing melds into it.
 pub fn group_end(steps: &[TodoStep], head: usize) -> Option<usize> {
     heads(steps.get(head)?)?;
     let mut end = None;
@@ -55,28 +55,31 @@ pub fn problem(steps: &[TodoStep]) -> Option<String> {
 
 /// Why the list can't run as it is: a squash or fixup with no kept commit before it (with
 /// `first_may_combine`, the first may meld into a commit already rebased) or right after an
-/// exec or break step, an empty typed reword or combined message, or an exec command that is
-/// empty or longer than one line.
+/// exec or break step (or a label, reset or merge), an empty typed reword or combined message,
+/// or an exec command that is empty or longer than one line.
 pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<String> {
+    let dropped = |s: &TodoStep| s.item().is_some_and(|i| i.action == RebaseAction::Drop);
     let mut kept = first_may_combine;
     for step in steps {
-        match step.commit().map(|i| i.action) {
-            None | Some(RebaseAction::Drop) => {}
-            Some(a) if a.combines() && !kept => return Some(FIRST_COMBINES.into()),
-            Some(_) => kept = true,
+        match step {
+            TodoStep::Commit(i) if i.action.combines() && !kept => return Some(FIRST_COMBINES.into()),
+            TodoStep::Commit(_) | TodoStep::Merge(_) if !dropped(step) => kept = true,
+            _ => {}
         }
     }
     let mut before: Option<&TodoStep> = None;
     for step in steps {
         let combines = step.commit().is_some_and(|i| i.action.combines());
-        if combines && matches!(before, Some(TodoStep::Exec(_) | TodoStep::Break)) {
-            return Some(COMBINE_AFTER_STEP.into());
+        match before {
+            Some(TodoStep::Exec(_) | TodoStep::Break) if combines => return Some(COMBINE_AFTER_STEP.into()),
+            Some(b) if combines && b.is_structure() => return Some(COMBINE_AFTER_MERGE.into()),
+            _ => {}
         }
-        if step.commit().is_none_or(|i| i.action != RebaseAction::Drop) {
+        if !dropped(step) {
             before = Some(step);
         }
     }
-    let commits = || steps.iter().filter_map(TodoStep::commit);
+    let commits = || steps.iter().filter_map(TodoStep::item);
     if commits().any(|i| i.action == RebaseAction::Reword && i.new_message.as_ref().is_some_and(|m| m.trim().is_empty())) {
         return Some(EMPTY_REWORD.into());
     }
@@ -93,18 +96,18 @@ pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<Strin
     execs().any(|c| c.contains(['\n', '\r'])).then(|| EXEC_ONE_LINE.into())
 }
 
-/// Whether running `steps` would replay `original` as it is: the same commits in the same
-/// order, nothing but picks (or rewords that keep their message), no exec or break step and no
-/// typed combined message.
+/// Whether running `steps` would replay `original` as it is: the same steps in the same order,
+/// nothing but picks (or rewords that keep their message), no exec or break step and no typed
+/// combined message.
 pub fn is_unchanged(steps: &[TodoStep], original: &[TodoStep]) -> bool {
-    let commits: Vec<&TodoItem> = steps.iter().filter_map(TodoStep::commit).collect();
-    let before: Vec<&TodoItem> = original.iter().filter_map(TodoStep::commit).collect();
-    commits.len() == steps.len()
-        && commits.len() == before.len()
-        && commits.iter().zip(&before).all(|(a, b)| a.oid == b.oid)
-        && commits
-            .iter()
-            .all(|i| i.combined_message.is_none() && (i.action == RebaseAction::Pick || (i.action == RebaseAction::Reword && !i.rewords())))
+    let picked = |i: &TodoItem| i.action == RebaseAction::Pick || (i.action == RebaseAction::Reword && !i.rewords());
+    steps.len() == original.len()
+        && steps.iter().zip(original).all(|pair| match pair {
+            (TodoStep::Commit(a), TodoStep::Commit(b)) => a.oid == b.oid && picked(a) && a.combined_message.is_none(),
+            (TodoStep::Merge(a), TodoStep::Merge(b)) => a.item.oid == b.item.oid && picked(&a.item),
+            (a @ (TodoStep::Label { .. } | TodoStep::Reset(_)), b) => a == b,
+            _ => false,
+        })
 }
 
 /// The todo text (LF line endings) and the message files to write first. A reword becomes a
@@ -117,12 +120,19 @@ pub fn is_unchanged(steps: &[TodoStep], original: &[TodoStep]) -> bool {
 /// skipped (after a conflict, or because it became empty) leaves nothing to reword, and the
 /// amend must not rewrite the commit before it. Exec and break steps are written as they are.
 /// With `keep_rewords`, a reword without a typed message stays a `reword` (as in a running
-/// rebase's own list); otherwise it is a plain pick.
+/// rebase's own list); otherwise it is a plain pick. A list with label, reset or merge steps
+/// starts with `label onto`, which names the new base (see `merges`).
 pub fn build(steps: &[TodoStep], msg_dir: &Path, keep_rewords: bool) -> (String, Vec<(PathBuf, String)>) {
     let mut text = String::new();
     let mut files = Vec::new();
     let mut pending: Option<String> = None;
+    if merges::has_structure(steps) {
+        text.push_str("label onto\n");
+    }
     for (i, step) in steps.iter().enumerate() {
+        if merges::write(step, msg_dir, &mut text, &mut files) {
+            continue;
+        }
         let item = match step {
             TodoStep::Commit(item) => item,
             TodoStep::Exec(cmd) => {
@@ -133,6 +143,7 @@ pub fn build(steps: &[TodoStep], msg_dir: &Path, keep_rewords: bool) -> (String,
                 text.push_str("break\n");
                 continue;
             }
+            _ => continue,
         };
         let keyword = match item.action {
             RebaseAction::Reword if keep_rewords && item.new_message.is_none() => "reword",
@@ -154,8 +165,7 @@ pub fn build(steps: &[TodoStep], msg_dir: &Path, keep_rewords: bool) -> (String,
             None => None,
         };
         if let Some((path, message)) = amend {
-            let base = shell_quote(&msg_dir.join(format!("reword-{}.base", item.oid)).to_string_lossy());
-            text.push_str(&format!("exec git rev-parse HEAD >{base}\n"));
+            let base = record_base(msg_dir, item.oid, &mut text);
             pending = Some(guarded_amend(&base, &shell_quote(&path.to_string_lossy())));
             files.push((path, message));
         }
@@ -231,11 +241,19 @@ pub(crate) fn own_line(line: &str) -> Option<OwnLine> {
     named("reword-", ".base").filter(|_| cmd.starts_with("git rev-parse HEAD >")).map(OwnLine::Base)
 }
 
+/// Writes the `exec` line that records HEAD before the commit `oid` is replayed; returns the
+/// record's path, shell-quoted.
+pub(super) fn record_base(msg_dir: &Path, oid: Oid, text: &mut String) -> String {
+    let base = shell_quote(&msg_dir.join(format!("reword-{oid}.base")).to_string_lossy());
+    text.push_str(&format!("exec git rev-parse HEAD >{base}\n"));
+    base
+}
+
 /// The `exec` line that amends HEAD's message from `file`, but only when HEAD is a new commit
 /// whose parent is the commit recorded in `base`, or a new root commit (rewording the first
 /// commit of a `--root` rebase, which starts from a parentless placeholder). Both arguments
 /// are already shell-quoted.
-fn guarded_amend(base: &str, file: &str) -> String {
+pub(super) fn guarded_amend(base: &str, file: &str) -> String {
     format!(
         r#"exec h=$(git rev-parse -q --verify HEAD); p=$(git rev-parse -q --verify HEAD^); b=$(cat {base}); if [ "$h" != "$b" ] && {{ [ "$p" = "$b" ] || [ -z "$p" ]; }}; then git commit --amend --allow-empty --no-verify --cleanup=whitespace -F {file}; fi"#
     ) + "\n"

@@ -4,14 +4,15 @@
 use super::plan::{checked_head, range};
 use super::progress::progress;
 use super::todo::{MSG_DIR, build, editor_command, problem};
-use super::{CHANGED, NOT_REBASING, Outcome, STALE, SequenceEditor, StartRequest, TodoStep, Upstream};
+use super::{CHANGED, NOT_REBASING, Outcome, STALE, SequenceEditor, StartRequest, TodoStep, Upstream, merges};
 use crate::error::{Error, Result};
 use crate::gitcli;
 use git2::{Oid, Repository, RepositoryState};
 use std::collections::HashSet;
 use std::path::Path;
 
-/// Runs `git rebase -i` with `req.items` as the todo list. `Err` means nothing was changed:
+/// Runs `git rebase -i` (with `--rebase-merges` for a list that recreates merges) with
+/// `req.items` as the todo list. `Err` means nothing was changed:
 /// HEAD moved since the list was made, the commits no longer match, the list has a problem, or
 /// the sequence editor refused the todo.
 pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Result<Outcome> {
@@ -52,6 +53,10 @@ pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Res
     // Our list replaces git's, so git must list the same commits: keep the ones it would
     // otherwise drop up front as already applied upstream.
     let mut args = gitcli::args(&["rebase", "-i"]);
+    // A list that recreates merges: git's own list then has the same picks (and merges).
+    if merges::has_structure(&req.items) {
+        args.push("--rebase-merges".into());
+    }
     if req.autostash {
         args.push("--autostash".into());
     }
