@@ -13,6 +13,7 @@ impl Effect {
             Effect::LoadWorkdirCompare { .. } => "load-workdir-compare",
             Effect::LoadDiff { .. } => "load-diff",
             Effect::HighlightDiff { .. } => "highlight",
+            Effect::LoadDiffGaps { .. } => "load-diff-gaps",
             Effect::LoadConflict { .. } => "load-conflict",
             Effect::LoadFileHistory { .. } => "file-history",
             Effect::LoadBlame(_) => "blame",
@@ -101,6 +102,7 @@ impl Effect {
             | Effect::LoadWorkdirCompare { .. }
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
+            | Effect::LoadDiffGaps { .. }
             | Effect::LoadConflict { .. }
             | Effect::LoadFileHistory { .. }
             | Effect::LoadBlame(_)

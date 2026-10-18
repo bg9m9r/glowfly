@@ -4,7 +4,8 @@
 //!
 //! The types are here (the diff ones in `diff_types`, `Snapshot`'s queries in `snapshot_impl`);
 //! the work is split by area: `load` (history, refs, status), `status_paths` and `status_merge`
-//! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`,
+//! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up), `diff`
+//! (and `diff_gaps`, the unchanged lines between hunks),
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
 //! picks a file saved with markers holds), `template`
@@ -29,6 +30,7 @@ mod common_dir;
 mod conflict;
 mod conflict_saved;
 mod diff;
+mod diff_gaps;
 mod diff_types;
 mod entry;
 mod exact;
@@ -84,6 +86,7 @@ pub use diff::{
     compare_workdir, load_diff, load_diff_for_view, load_diff_with,
 };
 use diff::{head_tree, path_opts, workdir_opts};
+pub use diff_gaps::load_gap_text;
 pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions};
 pub use entry::{FileEntry, Hazard};
 pub use file_at::{FILE_VIEW_MAX_BYTES, FileAt, file_at};

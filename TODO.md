@@ -679,18 +679,9 @@ follow-ups go to Ideas, not here.
 
 ### Diff viewer upgrade
 
-- Keep parse states per hunk across reloads (or checkpoint states by line), so staging one hunk
-  of a large file doesn't re-parse the whole prefix in the background
-- For commit diffs, read `.gitattributes` from the commit instead of the working tree
 - Map hunk and line stage/unstage/discard, and Revert Hunk on commit diffs, from the
   whitespace-filtered diff back to the unfiltered one instead of disabling them
-- Keyboard access to fold rows (open the fold at or after the top row)
-- Fill in the unchanged lines between hunks in the hunk view
 - Record a hunk revert in Trellis's undo history
-- Scroll the Unstaged/Staged, commit or comparison file list so the file opened by
-  next/previous change is in view
-- Keep a next/previous step from being superseded when a status refresh reloads the old file
-  while the next one is loading
 
 ### Line-level staging
 
@@ -1015,6 +1006,15 @@ here, under the item they grew from.
   that don't start at the end of a line
 - Color Kotlin annotations (`@Suppress(...)`), which the bundled grammar leaves unscoped
 - Color Dockerfile `RUN` commands as shell (the hidden "Dockerfile (with bash)" grammar)
+- Hunk view: show the lines above the first hunk and below the last hunk too
+- Hunk view: Expand all / Collapse all for the gaps between hunks in the diff header
+- Fill in gaps with whitespace hidden, taking the new side's lines
+- Colour filled-in gap lines from the in-context parse (new side's states) instead of the old
+  file on its own
+- Code comment marks on filled-in gap lines of pull request diffs
+- Read gitattributes from the commit for blame at a commit and the file history's File view,
+  and from the index for staged diffs
+- Show a loading state on a gap control while its lines are read
 - Trim the bundled syntax set to the languages Trellis wants, if the extra ~0.6 MB of binary
   size matters
 - A per-file language picker (e.g. in the diff header), remembered per path

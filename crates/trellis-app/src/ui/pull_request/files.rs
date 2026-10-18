@@ -2,6 +2,7 @@
 //! missing or behind (with a Fetch button), and the list, whose rows open their diff.
 
 use super::super::common::widget_row_height;
+use super::super::details::file_reveal::reveal;
 use super::super::details::{RowActions, changed_file_row};
 use super::super::file_menu::RowSource;
 use super::super::theme::color;
@@ -11,6 +12,7 @@ use crate::state::AppState;
 use crate::state::lfs::TrackContext;
 use crate::state::pull_request::{Files, PrView, empty_text, fetch_blocked, files_heading, out_of_sync, unrelated_text};
 use eframe::egui::{self, RichText, Ui};
+use trellis_core::repo::DiffTarget;
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) {
     let heading = match &v.files {
@@ -41,20 +43,18 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
             let open = st.diff.as_ref().map(|(t, _)| t);
             let lfs = TrackContext::of(st);
             let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
-            egui::ScrollArea::vertical().id_salt("pr-files").auto_shrink([false, false]).show_rows(
-                ui,
-                widget_row_height(ui),
-                files.len(),
-                |ui, range| {
-                    for f in &files[range] {
-                        let Some(target) = v.diff_target(&f.path) else { continue };
-                        let src = RowSource::Between { from: base, to: tip };
-                        let in_workdir = c.comparison.in_workdir(&f.path);
-                        let actions = RowActions { src, history_at: tip, in_workdir, lfs, diff_blocked, patch_blocked: None };
-                        changed_file_row(ui, st.settings.lang(), f, target, open, actions, msgs);
-                    }
-                },
-            );
+            let row_h = widget_row_height(ui);
+            egui::ScrollArea::vertical().id_salt("pr-files").auto_shrink([false, false]).show_rows(ui, row_h, files.len(), |ui, range| {
+                let index = |t: &DiffTarget| files.iter().position(|f| v.diff_target(&f.path).as_ref() == Some(t));
+                reveal(ui, "pr-files", st.view.file_reveal.as_ref(), index, &range, row_h);
+                for f in &files[range] {
+                    let Some(target) = v.diff_target(&f.path) else { continue };
+                    let src = RowSource::Between { from: base, to: tip };
+                    let in_workdir = c.comparison.in_workdir(&f.path);
+                    let actions = RowActions { src, history_at: tip, in_workdir, lfs, diff_blocked, patch_blocked: None };
+                    changed_file_row(ui, st.settings.lang(), f, target, open, actions, msgs);
+                }
+            });
         }
     }
 }

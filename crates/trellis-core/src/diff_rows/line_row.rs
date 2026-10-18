@@ -1,7 +1,7 @@
 //! Where a line of the old or new file sits in a FileDiff and in its rows, so a comment made on
 //! a file line (a pull request's review thread) can be marked on, and scrolled to, its row.
 
-use super::{DiffRow, SplitRow, header_rows, split_rows};
+use super::{DiffRow, SplitRow, header_rows_filled, split_rows_filled};
 use crate::repo::{DiffLine, FileDiff};
 use crate::settings::{DiffLayout, DiffMode};
 use crate::whole_file::{self, Expanded};
@@ -41,8 +41,9 @@ fn split_row(rows: &[SplitRow], hunk: usize, side: LineSide, line: usize) -> Opt
 }
 
 /// The row that shows line `n` of the `side` file in the view `mode` and `layout` draw, with
-/// the whole-file folds in `ex` open: in the whole-file view, the line's own row or the fold
-/// row hiding it. `None` when the view doesn't show the line (outside the hunks).
+/// the whole-file folds in `ex` open (and in the hunk view, the gaps between hunks it opened
+/// filled in): in the whole-file view, the line's own row or the fold row hiding it. `None` when
+/// the view doesn't show the line (outside the hunks).
 pub fn row_of_file_line(d: &FileDiff, mode: DiffMode, layout: DiffLayout, ex: &Expanded, side: LineSide, n: u32) -> Option<usize> {
     if let Some(w) = whole_file::shown(d, mode) {
         let (_, line) = line_index(&w.diff, side, n)?;
@@ -57,9 +58,9 @@ pub fn row_of_file_line(d: &FileDiff, mode: DiffMode, layout: DiffLayout, ex: &E
     }
     let (h, line) = line_index(d, side, n)?;
     match layout {
-        DiffLayout::Inline => Some(header_rows(d, DiffLayout::Inline)[h] + 1 + line),
+        DiffLayout::Inline => Some(header_rows_filled(d, DiffLayout::Inline, ex)[h] + 1 + line),
         // A context line has the same index on both sides, so it is found by either.
-        DiffLayout::Split => split_row(&split_rows(d), h, side, line),
+        DiffLayout::Split => split_row(&split_rows_filled(d, ex), h, side, line),
     }
 }
 

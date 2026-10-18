@@ -218,3 +218,29 @@ fn opened_lists_open_folds_in_order() {
     assert!(opened(&w, &Expanded::default()).is_empty());
     assert_eq!(opened(&w, &Expanded::all(&w)), all);
 }
+
+#[test]
+fn expanded_compares_keys_and_the_text_by_address() {
+    use crate::diff_rows::GapText;
+    use std::sync::Arc;
+    let mut a = Expanded::default();
+    a.insert(4);
+    let mut b = a.clone();
+    assert_eq!(a, b);
+    let text = Arc::new(GapText::default());
+    a.set_gap_text(text.clone());
+    assert_ne!(a, b, "one has text");
+    b.set_gap_text(Arc::new(GapText::default()));
+    assert_ne!(a, b, "equal text at another address");
+    b.set_gap_text(text);
+    assert_eq!(a, b);
+    b.insert(9);
+    assert_ne!(a, b);
+
+    let w = whole_file();
+    let all = Expanded::all(&w).with_gap_text_of(&a);
+    assert!(all.gap_text().is_some(), "the text is kept");
+    let mut cleared = all;
+    cleared.clear();
+    assert!(cleared.is_empty() && cleared.gap_text().is_none());
+}

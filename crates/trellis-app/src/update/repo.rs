@@ -76,7 +76,9 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             if generation != st.diff_gen {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
-            // Any accepted result ends a pending step, so a superseding reload can't block it.
+            // Any accepted result ends a pending step. A refresh while it loads asks for the step's
+            // destination again (`diff::renew_step`) rather than reloading the old file, so a
+            // superseding reload can't block it.
             let landing = st.view.diff_landing.take();
             let line = st.view.diff_open_line.take().filter(|(t, ..)| !reload && *t == target);
             match result {
@@ -122,9 +124,14 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     if reload {
                         super::highlight::keep_finished(st.diff.as_ref(), &target, &mut d);
                     }
+                    // A step landed: its file list shows the file once.
+                    if landing.is_some() {
+                        st.view.file_reveal = Some((target.clone(), generation));
+                    }
                     st.diff = Some((target, std::sync::Arc::new(d)));
                     st.diff_shown_gen = generation;
                     super::highlight::schedule(st, fx);
+                    super::diff_gaps::diff_shown(st, fx);
                 }
                 // A reload that finds no changes left simply closes the diff.
                 Err(_) if reload => {
@@ -170,7 +177,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
 }
 
 pub(super) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if open_missing_history_diff(st, fx) {
+    if open_missing_history_diff(st, fx) || super::diff::renew_step(st, fx) {
         return;
     }
     reload_shown_diff(st, fx);
@@ -180,7 +187,7 @@ pub(super) fn reload_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// block in the whole-file view; no line selection), e.g. after the diff options changed.
 /// Does nothing when no diff is open.
 pub(super) fn reopen_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
-    if open_missing_history_diff(st, fx) {
+    if open_missing_history_diff(st, fx) || super::diff::renew_step(st, fx) {
         return;
     }
     request_diff(st, fx, false);
@@ -239,6 +246,7 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
     // A different file opens: a hunk kept through a view mode switch or a pending step is moot.
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;
+    st.view.file_reveal = None;
     st.view.diff_open_line = None;
     st.view.diff_cursor = None;
     if let Some(workdir) = st.workdir() {
@@ -256,6 +264,7 @@ pub(super) fn close_diff(st: &mut AppState) {
     st.view.diff_expanded.clear();
     st.view.diff_open_hunk = None;
     st.view.diff_landing = None;
+    st.view.file_reveal = None;
     st.view.diff_open_line = None;
     st.view.diff_cursor = None;
     next_diff_gen(st);

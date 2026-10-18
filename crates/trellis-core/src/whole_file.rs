@@ -13,7 +13,7 @@ mod folds;
 pub use anchor::{line_at_row, row_of_line};
 pub use folds::{Expanded, FOLD_CONTEXT, Fold, MIN_FOLD, collapsed, folds, opened};
 
-use crate::diff_rows::{self, DiffRow, SplitRow, header_rows};
+use crate::diff_rows::{self, DiffRow, SplitRow, header_rows_filled};
 use crate::repo::{DiffLine, FileDiff, Hunk};
 use crate::settings::{DiffLayout, DiffMode};
 use std::collections::HashMap;
@@ -162,12 +162,12 @@ pub fn shown(d: &FileDiff, mode: DiffMode) -> Option<&WholeFile> {
 
 /// The rows that next/previous change steps between: each block's action row in the whole-file
 /// view, else each hunk header. Entry i is hunk i in the hunk view and `blocks[i].hunk` in the
-/// whole-file view. The whole-file rows are counted with the folds not in `ex` closed; the hunk
-/// view ignores `ex`.
+/// whole-file view. The whole-file rows are counted with the folds not in `ex` closed, the hunk
+/// view's with the gaps between hunks that `ex` opened (and has the text of) filled in.
 pub fn change_rows(d: &FileDiff, mode: DiffMode, layout: DiffLayout, ex: &Expanded) -> Vec<usize> {
     match shown(d, mode) {
         Some(w) => block_rows(w, layout, ex),
-        None => header_rows(d, layout),
+        None => header_rows_filled(d, layout, ex),
     }
 }
 

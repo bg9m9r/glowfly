@@ -16,6 +16,10 @@ use git2::Oid;
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry};
 
+// Declared here rather than beside the other views: the file lists that use it are these panels.
+#[path = "file_reveal.rs"]
+pub(super) mod file_reveal;
+
 pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     egui::SidePanel::right("detail")
         .resizable(true)
@@ -105,6 +109,8 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
     let row_h = widget_row_height(ui);
     egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
+        let index = |t: &DiffTarget| d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()));
+        file_reveal::reveal(ui, "commit-files", st.view.file_reveal.as_ref(), index, &range, row_h);
         for f in &d.files[range] {
             let patch_blocked = (d.parents.len() > 1).then_some(crate::state::patch::PATCH_BLOCKED_MERGE);
             let src = RowSource::Commit(d.oid);

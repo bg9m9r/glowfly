@@ -110,6 +110,14 @@ pub enum Effect {
         generation: u64,
         diff: std::sync::Arc<FileDiff>,
     },
+    /// Reads the unchanged lines between `diff`'s hunks for the hunk view, for the diff shown at
+    /// `generation` (AppState::diff_shown_gen).
+    LoadDiffGaps {
+        workdir: PathBuf,
+        target: DiffTarget,
+        generation: u64,
+        diff: std::sync::Arc<FileDiff>,
+    },
     LoadConflict {
         workdir: PathBuf,
         path: String,

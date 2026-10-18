@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 72] = [
+    const FROZEN: [&str; 74] = [
         "stage",
         "unstage",
         "stage-all",
@@ -93,6 +93,8 @@ fn ids_are_stable() {
         "revert-hunk",
         "extend-selection",
         "select-all-commits",
+        "open-fold",
+        "close-fold",
     ];
     let keys: Vec<&str> = BindingId::ALL.iter().map(|id| id.key()).collect();
     assert_eq!(keys, FROZEN);
@@ -154,6 +156,8 @@ fn rebindable_set() {
         I::RebaseSkip,
         I::RevertHunk,
         I::SelectAllCommits,
+        I::OpenFold,
+        I::CloseFold,
     ];
     assert_eq!(rebindable, want);
 }
@@ -182,6 +186,8 @@ fn chord_text() {
     assert_eq!(keys.hint(I::StageAll), Some("Ctrl+Shift+S"));
     assert_eq!(keys.hint(I::Stage), Some("S"));
     assert_eq!(keys.hint(I::RevertHunk), Some("R"));
+    assert_eq!(keys.keys_text(I::OpenFold), "E");
+    assert_eq!(keys.keys_text(I::CloseFold), "Shift+E");
     assert_eq!(keys.hint(I::PrevChange), Some("Shift+F7"));
     assert_eq!(keys.hint(I::Sheet), Some("Ctrl+/"));
     assert_eq!(keys.hint(I::Prefs), Some("Ctrl+,"));

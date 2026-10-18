@@ -9,7 +9,9 @@ use crate::repo::{DiffLine, FileDiff};
 use crate::settings::DiffLayout;
 use std::ops::Range;
 
+mod gaps;
 mod line_row;
+pub use gaps::*;
 pub use line_row::*;
 
 /// A row of the inline (unified) layout.
@@ -23,6 +25,8 @@ pub enum DiffRow {
     Block(usize),
     /// An "N unchanged lines" row standing for the fold's lines (whole-file view only).
     Fold(crate::whole_file::Fold),
+    /// Line `line` of the unchanged run before hunk `hunk`, filled in (hunk view only).
+    GapLine { hunk: usize, line: usize },
 }
 
 /// A row of the side-by-side layout.
@@ -37,6 +41,9 @@ pub enum SplitRow {
     Block(usize),
     /// An "N unchanged lines" row standing for the fold's lines (whole-file view only).
     Fold(crate::whole_file::Fold),
+    /// Line `line` of the unchanged run before hunk `hunk`, filled in (hunk view only), on both
+    /// sides.
+    GapLine { hunk: usize, line: usize },
 }
 
 /// One header row per hunk, then one row per line.

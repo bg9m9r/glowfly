@@ -134,6 +134,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::LoadCompare { .. }
         | Effect::LoadWorkdirCompare { .. }
         | Effect::LoadDiff { .. }
+        | Effect::LoadDiffGaps { .. }
         | Effect::HighlightDiff { .. }
         | Effect::LoadConflict { .. }
         | Effect::ReadConflictFiles { .. }

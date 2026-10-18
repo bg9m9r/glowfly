@@ -76,6 +76,10 @@ pub struct ViewState {
     /// A file opened by next/previous change, still loading, and the change to land on. Set
     /// and cleared only by `update`.
     pub diff_landing: Option<(DiffTarget, diff_nav::Landing)>,
+    /// The file a next/previous change step landed on and the `diff_shown_gen` it landed at:
+    /// the file list it came from scrolls its row into view once. Set and cleared only by
+    /// `update`.
+    pub file_reveal: Option<(DiffTarget, u64)>,
     /// A file opened from a pull request's code comment thread, still loading, and the line
     /// (side, number) to land on. Set and cleared only by `update`.
     pub diff_open_line: Option<(DiffTarget, trellis_core::diff_rows::LineSide, u32)>,
@@ -85,9 +89,9 @@ pub struct ViewState {
     /// The change row next/previous change last moved to. Steps continue from it while it is
     /// on screen, because a change near the end can't scroll to the top.
     pub diff_cursor: Option<usize>,
-    /// The folds opened in the whole-file view of the open diff, by key. Changed only by
-    /// `update`; cleared when a different target's diff arrives or the diff closes; parked with
-    /// its tab.
+    /// The unchanged runs opened in the open diff (whole-file folds and the hunk view's gaps), by
+    /// key, with the gaps' text. Changed only by `update`; cleared when a different target's diff
+    /// arrives or the diff closes; parked with its tab.
     pub diff_expanded: trellis_core::whole_file::Expanded,
     /// How many diff rows fit in the viewport, recorded by the view.
     pub diff_visible_rows: usize,
@@ -149,6 +153,7 @@ impl Default for ViewState {
             diff_scroll_to_row: None,
             diff_open_hunk: None,
             diff_landing: None,
+            file_reveal: None,
             diff_open_line: None,
             pr_thread_scroll: None,
             diff_cursor: None,

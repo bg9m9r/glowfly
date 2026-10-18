@@ -37,9 +37,10 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
     let ctx = RowContext { lfs: TrackContext::of(st), tools: &tools, keys: &st.keymap, lang: st.settings.lang() };
     let lists = super::conflict_files::Lists { conflicted: &conflicted, resolved: &resolved, height: list_h };
     super::conflict_files::show(ui, st, lists, &open, ctx, msgs);
-    file_list(ui, snap, false, &open, list_h, ctx, msgs);
+    let reveal = st.view.file_reveal.as_ref();
+    file_list(ui, snap, false, (&open, reveal), list_h, ctx, msgs);
     ui.add_space(8.0);
-    file_list(ui, snap, true, &open, list_h, ctx, msgs);
+    file_list(ui, snap, true, (&open, reveal), list_h, ctx, msgs);
     super::commit_box::show(ui, st, cache, msgs);
 }
 
@@ -68,9 +69,21 @@ pub(super) fn discard_all_text(t: Lang, keys: &Keymap) -> String {
     }
 }
 
+/// The file a step landed on, for its list to scroll to (`ViewState::file_reveal`).
+type Reveal<'a> = Option<&'a (DiffTarget, u64)>;
+
 /// The Unstaged or Staged Files list of the working tree. Conflicted files have their own list
-/// (`conflict_files::show`), so Unstaged Files leaves them out.
-fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, max_h: f32, ctx: RowContext, msgs: &mut Vec<Msg>) {
+/// (`conflict_files::show`), so Unstaged Files leaves them out. It scrolls to the file a step
+/// landed on.
+fn file_list(
+    ui: &mut egui::Ui,
+    snap: &Snapshot,
+    staged: bool,
+    (open, want): (&OpenFile, Reveal),
+    max_h: f32,
+    ctx: RowContext,
+    msgs: &mut Vec<Msg>,
+) {
     // The English titles stay the lists' scroll ids, whatever the language.
     let (id, all) = if staged { ("Staged Files", &snap.staged) } else { ("Unstaged Files", &snap.unstaged) };
     // Built only while files are conflicted: a working tree can have thousands of changed files.
@@ -111,7 +124,17 @@ fn file_list(ui: &mut egui::Ui, snap: &Snapshot, staged: bool, open: &OpenFile, 
         return;
     }
     // Only the rows in view are drawn: a working tree can have thousands of changed files.
-    area.show_rows(ui, widget_row_height(ui), count, |ui, range| {
+    let row_h = widget_row_height(ui);
+    area.show_rows(ui, row_h, count, |ui, range| {
+        let index = |t: &DiffTarget| {
+            let path = match t {
+                DiffTarget::Staged(p) if staged => p,
+                DiffTarget::Unstaged(p) if !staged => p,
+                _ => return None,
+            };
+            (0..count).find(|&i| kept.as_ref().map_or(&all[i], |k| k[i]).path == *path)
+        };
+        super::details::file_reveal::reveal(ui, id, want, index, &range, row_h);
         for i in range {
             let f = kept.as_ref().map_or(&all[i], |k| k[i]);
             wip_file_row(ui, snap, f, staged, open, ctx, None, msgs);

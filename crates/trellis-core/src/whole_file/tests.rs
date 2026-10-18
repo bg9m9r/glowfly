@@ -1,4 +1,5 @@
 use super::*;
+use crate::diff_rows::header_rows;
 
 pub(super) fn l(origin: char, old: Option<u32>, new: Option<u32>, text: &str) -> DiffLine {
     DiffLine { origin, old, new, text: text.into() }

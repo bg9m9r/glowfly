@@ -3,6 +3,7 @@
 //! file actions; otherwise why there is no combined diff.
 
 use super::common::{short, widget_row_height};
+use super::details::file_reveal::reveal;
 use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
 use super::menus::{cherry_pick_button, copy_shas, patch_button, revert_button};
@@ -103,6 +104,8 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
                 row_h,
                 c.files.len(),
                 |ui, range| {
+                    let index = |t: &DiffTarget| c.files.iter().position(|f| *t == DiffTarget::Between(from, to, f.path.clone()));
+                    reveal(ui, "multi-files", st.view.file_reveal.as_ref(), index, &range, row_h);
                     for f in &c.files[range] {
                         let target = DiffTarget::Between(from, to, f.path.clone());
                         let src = RowSource::Between { from, to };

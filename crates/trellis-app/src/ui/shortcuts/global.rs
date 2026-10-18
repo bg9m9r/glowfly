@@ -47,6 +47,8 @@ struct Live {
     commit_diff: bool,
     /// A diff or the conflict view is open (and no blame view over it).
     stepping: bool,
+    /// A diff is open, with no conflict or blame view over it.
+    diff: bool,
     /// A loaded blame view is open.
     blame: bool,
     /// The commit graph is the central view.
@@ -71,6 +73,7 @@ impl Live {
             working_diff: st.diff.as_ref().is_some_and(|(t, _)| t.is_working_tree()),
             commit_diff: st.blame.is_none() && st.conflict.is_none() && st.diff.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
             stepping: st.blame.is_none() && (st.conflict.is_some() || st.diff.is_some()),
+            diff: st.blame.is_none() && st.conflict.is_none() && st.diff.is_some(),
             blame: st.blame.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
             terminal: st.terminal.focused,
@@ -104,6 +107,7 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         }
         I::Undo | I::Redo => !covered && !l.sheet && !l.typing,
         I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
+        I::OpenFold | I::CloseFold => !covered && !l.sheet && !l.typing && l.diff,
         I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
         I::SelectAllCommits => !covered && !l.sheet && !l.typing && l.graph && !l.terminal,
         // Not while typing: AltGr is Ctrl+Alt on Windows, and AltGr+digit types characters.
@@ -185,6 +189,8 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
             KeyName::Digit(d) => Msg::Tabs(TabsMsg::SelectTab(usize::from(d).saturating_sub(1))),
             _ => return,
         },
+        I::OpenFold => Msg::Diff(DiffMsg::OpenFoldAtTop),
+        I::CloseFold => Msg::Diff(DiffMsg::CloseFoldAtTop),
         I::NextChange => step(1, st),
         I::PrevChange => step(-1, st),
         I::BlameNextRun => Msg::Blame(BlameMsg::StepRun(1)),

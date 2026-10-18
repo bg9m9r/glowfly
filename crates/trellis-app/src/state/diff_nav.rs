@@ -109,6 +109,11 @@ pub fn next_file(st: &AppState, from: &DiffTarget, dir: isize) -> Option<DiffTar
     files.get(j).cloned()
 }
 
+/// Whether `t` is in the file list it was opened from (`source_files`).
+pub fn in_list(st: &AppState, t: &DiffTarget) -> bool {
+    source_files(st, t).is_some_and(|files| files.contains(t))
+}
+
 /// The file list `from` was opened from, in on-screen order, as diff targets: the Unstaged then
 /// the Staged Files list (conflicted entries open the conflict view, so they are left out), the
 /// commit details list, the open pull request's list, or the comparison list. `None` in the

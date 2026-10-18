@@ -7,6 +7,7 @@ use crate::state::lines::LineClick;
 use git2::Oid;
 use std::sync::Arc;
 use trellis_core::conflict_restore::SavedPicks;
+use trellis_core::diff_rows::GapText;
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
 use trellis_core::settings::{DiffLayout, DiffMode};
@@ -28,12 +29,16 @@ pub enum DiffMsg {
     /// Scroll the diff to the next (1) or previous (-1) change; at either end, open the next or
     /// previous changed file of the list the diff came from (on its first or last change).
     JumpToChange(isize),
-    /// A click on a whole-file "N unchanged lines" row: show the lines of the fold with this key
-    /// in place.
+    /// A click on a whole-file "N unchanged lines" row, or on a hunk header's gap control in the
+    /// hunk view: show the unchanged lines of the run with this key in place.
     ExpandUnchanged(u32),
-    /// A click on the fold-back control on the first line of an opened whole-file run: fold
-    /// the run with this key back into one row.
+    /// A click on the fold-back control on the first line of an opened run (a whole-file fold or
+    /// a gap between hunks): fold the run with this key back.
     CollapseUnchanged(u32),
+    /// The keyboard's Show unchanged lines: open the first closed run at or below the top row.
+    OpenFoldAtTop,
+    /// The keyboard's Fold back unchanged lines: close the opened run at the top.
+    CloseFoldAtTop,
     /// The diff header's Expand all: open every fold of the whole file on screen.
     ExpandAllUnchanged,
     /// The diff header's Collapse all: close every opened fold.
@@ -54,6 +59,13 @@ pub enum DiffMsg {
         hunks: Option<DiffHighlight>,
         whole: Option<DiffHighlight>,
     },
+    /// The unchanged lines between the hunks of the diff shown at `generation`, read
+    /// (`Effect::LoadDiffGaps`).
+    GapsLoaded {
+        target: DiffTarget,
+        generation: u64,
+        result: Result<Arc<GapText>, String>,
+    },
 }
 
 impl DiffMsg {
@@ -68,6 +80,9 @@ impl DiffMsg {
             | Self::JumpToChange(..)
             | Self::ExpandUnchanged(..)
             | Self::CollapseUnchanged(..)
+            | Self::OpenFoldAtTop
+            | Self::CloseFoldAtTop
+            | Self::GapsLoaded { .. }
             | Self::ExpandAllUnchanged
             | Self::CollapseAllUnchanged
             | Self::SelectDiffLine { .. }

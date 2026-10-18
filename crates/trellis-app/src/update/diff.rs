@@ -1,10 +1,11 @@
-//! Diff viewer layout, view mode (hunks or the whole file), navigation and whole-file folds.
+//! Diff viewer layout, view mode (hunks or the whole file), navigation and whole-file folds (the
+//! hunk view's gaps between hunks are in `diff_gaps`, the fold keys in `fold_keys`).
 
 use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::state::AppState;
 use crate::state::diff_nav::{self, Landing, Step};
-use trellis_core::diff_rows::{header_rows, hunk_at};
+use trellis_core::diff_rows::{header_rows_filled, hunk_at};
 use trellis_core::repo::{DiffTarget, FileDiff};
 use trellis_core::settings::{DiffLayout, DiffMode, Settings};
 use trellis_core::whole_file::{Expanded, WholeFile, change_of_hunk, change_rows, folds, hunk_of_change, line_at_row, row_of_line, shown};
@@ -53,6 +54,31 @@ fn open_landing(st: &mut AppState, target: DiffTarget, landing: Landing, fx: &mu
     st.view.diff_landing = Some((target, landing));
 }
 
+/// A status refresh or a diff-options change arrived while a stepped-to file is still loading:
+/// works the step's destination out again from the refreshed list (the shown file's neighbour in
+/// the step's direction, or the pending file when the shown one left the list) and requests it
+/// with the landing kept. Returns whether it did; otherwise the step is dropped and the caller
+/// reloads the shown file as usual.
+pub(super) fn renew_step(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
+    let Some((pending, landing)) = st.view.diff_landing.clone() else { return false };
+    let shown = st.diff.as_ref().map(|(t, _)| t.clone());
+    let next = match shown {
+        Some(s) if diff_nav::in_list(st, &s) => diff_nav::next_file(st, &s, landing.dir()),
+        _ if diff_nav::in_list(st, &pending) => Some(pending),
+        _ => None,
+    };
+    match next {
+        Some(t) => {
+            open_landing(st, t, landing, fx);
+            true
+        }
+        None => {
+            st.view.diff_landing = None;
+            false
+        }
+    }
+}
+
 /// A file reached by stepping that has nothing to land on (binary, empty, or only whitespace
 /// while it is hidden) is passed over when another file follows in the same direction: that one
 /// opens instead. Returns whether it did.
@@ -93,6 +119,8 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             }
             st.settings.diff_ignore_whitespace = on;
             st.view.diff_lines.clear();
+            // The gaps between the hunks shown now may sit where others did: read them again.
+            st.view.diff_expanded.drop_gap_text();
             fx.push(super::prefs::save_settings(st));
             // Hunk rows change, so the diff reopens at the top; hunk operations wait for it.
             super::repo::reopen_diff(st, fx);
@@ -137,11 +165,17 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
                 Step::End => {}
             }
         }
+        // A fold of the whole-file view, or in the hunk view the gap between hunks.
+        DiffMsg::ExpandUnchanged(key) if !whole_shown(st) => super::diff_gaps::open(st, key, fx),
+        DiffMsg::CollapseUnchanged(key) if !whole_shown(st) => super::diff_gaps::close(st, key),
         DiffMsg::ExpandUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.insert(key)),
         DiffMsg::CollapseUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.remove(key)),
+        DiffMsg::OpenFoldAtTop => super::fold_keys::open_at_top(st, fx),
+        DiffMsg::CloseFoldAtTop => super::fold_keys::close_at_top(st),
+        DiffMsg::GapsLoaded { target, generation, result } => super::diff_gaps::loaded(st, target, generation, result),
         DiffMsg::ExpandAllUnchanged => refold(st, |ex, w| {
-            // Replacing the set also drops keys of folds that are gone.
-            let all = Expanded::all(w);
+            // Replacing the set also drops keys of folds that are gone (the gaps' text stays).
+            let all = Expanded::all(w).with_gap_text_of(ex);
             if *ex == all {
                 return false;
             }
@@ -180,10 +214,12 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
             // The normal hunks are already loaded, and still current for hunk operations.
             let Some((_, d)) = st.diff.as_mut() else { return };
             std::sync::Arc::make_mut(d).whole = None;
-            let row = h.and_then(|h| header_rows(d, layout).get(h).copied()).unwrap_or(0);
+            let row = h.and_then(|h| header_rows_filled(d, layout, &st.view.diff_expanded).get(h).copied()).unwrap_or(0);
             st.view.diff_scroll_to_row = Some(row);
             st.view.diff_top_row = row;
             st.view.diff_cursor = None;
+            // Folds opened in the whole file are open gaps here: their text is read.
+            super::diff_gaps::diff_shown(st, fx);
         }
     }
 }
@@ -195,7 +231,7 @@ fn set_mode(st: &mut AppState, mode: DiffMode, fx: &mut Vec<Effect>) {
 /// above it. Ignored outside the whole-file view, and when `change` changes nothing (a key
 /// that isn't a fold of the file on screen, from a click that raced a reload, or a fold
 /// already in the asked-for state).
-fn refold(st: &mut AppState, change: impl FnOnce(&mut Expanded, &WholeFile) -> bool) {
+pub(super) fn refold(st: &mut AppState, change: impl FnOnce(&mut Expanded, &WholeFile) -> bool) {
     let (mode, layout) = (st.settings.diff_mode, st.settings.diff_layout);
     let Some((_, d)) = &st.diff else { return };
     let Some(w) = shown(d, mode) else { return };
@@ -213,6 +249,11 @@ fn refold(st: &mut AppState, change: impl FnOnce(&mut Expanded, &WholeFile) -> b
             st.view.diff_scroll_to_row = Some(row);
         }
     }
+}
+
+/// Whether the whole-file view is on screen.
+fn whole_shown(st: &AppState) -> bool {
+    st.diff.as_ref().is_some_and(|(_, d)| shown(d, st.settings.diff_mode).is_some())
 }
 
 /// Whether `key` names a fold of `w`.

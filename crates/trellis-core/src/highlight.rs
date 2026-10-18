@@ -44,8 +44,9 @@ use std::sync::Arc;
 use syntaxes::{SYNTAXES, find_syntax};
 use syntect::parsing::SyntaxReference;
 
-mod context;
+pub(crate) mod context;
 mod file;
+mod gaps;
 mod header;
 mod linguist;
 mod memo;
@@ -55,6 +56,7 @@ mod syntaxes;
 
 pub use context::OldText;
 pub use file::highlight_file;
+pub use gaps::gap_spans;
 pub use header::context_start;
 pub use linguist::SyntaxHint;
 pub use syntaxes::syntax_name;
@@ -365,7 +367,7 @@ pub fn finish(diff: &FileDiff, cancelled: &dyn Fn() -> bool) -> Option<DiffHighl
 #[cfg(test)]
 mod background_tests;
 #[cfg(test)]
-mod context_tests;
+pub(crate) mod context_tests;
 #[cfg(test)]
 mod header_tests;
 #[cfg(test)]

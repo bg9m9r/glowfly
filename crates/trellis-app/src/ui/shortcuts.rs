@@ -11,6 +11,8 @@ mod record;
 mod sheet;
 
 #[cfg(test)]
+mod fold_key_tests;
+#[cfg(test)]
 mod history_tests;
 #[cfg(test)]
 mod layout_tests;

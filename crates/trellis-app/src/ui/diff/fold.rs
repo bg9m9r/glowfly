@@ -1,12 +1,14 @@
-//! The whole-file view's folds: the "N unchanged lines" row of a folded run of unchanged lines,
-//! which opens in place when clicked, and the fold-back control on the first line of an opened
-//! run, which folds it into that row again.
+//! The unchanged runs' controls: the whole-file view's "N unchanged lines" row of a folded run,
+//! which opens in place when clicked, the hunk view's unfold control on a hunk header, which fills
+//! in the unchanged lines above it, and the fold-back control on the first line of an opened run
+//! (in either view), which folds it again.
 
 use super::DiffView;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, CornerRadius, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
+use trellis_core::diff_rows::GapSpan;
 use trellis_core::whole_file::Fold;
 
 /// The row's text for a fold of `n` lines.
@@ -61,16 +63,47 @@ pub(super) fn opened_at(opened: &[Fold], line: usize) -> Option<Fold> {
     opened.binary_search_by_key(&line, |f| f.start).ok().map(|i| opened[i])
 }
 
-/// The fold-back control on the first line of opened fold `f`, in the sign column (at `sign_x`
-/// from the left of `row`, where the fold row paints its unfold mark): chevrons pointing
-/// together, highlighted on hover. A click folds the run into one row again.
+/// The text of the hunk view's control that shows the `n` unchanged lines above a hunk.
+fn gap_label(n: usize) -> String {
+    if n == 1 { "Show the 1 unchanged line above".to_owned() } else { format!("Show the {n} unchanged lines above") }
+}
+
+/// The hunk view's unfold control at the left edge of the header row `rect` of the hunk after
+/// gap `g`: chevrons pointing apart, highlighted on hover. A click fills in the gap's lines.
+pub(super) fn gap_control(ui: &mut Ui, rect: Rect, v: &DiffView, g: GapSpan, msgs: &mut Vec<Msg>) {
+    let k = v.style.k;
+    let r = Rect::from_center_size(pos2(rect.left() + 8.0 + 7.0 * k, rect.center().y), vec2(14.0 * k, v.style.row_h - 2.0));
+    let resp = ui.interact(r, ui.id().with(("diff-gap", g.key)), Sense::click());
+    let text = gap_label(g.len);
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &text));
+    let p = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
+    let hovered = resp.hovered();
+    if hovered {
+        p.rect_filled(r, CornerRadius::same(3), color::hover());
+        ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+    }
+    let ink = if hovered { color::text() } else { color::weak() };
+    paint_chevrons(&p, r.center(), k, Stroke::new(1.4_f32, ink), true);
+    if resp.on_hover_text(text).clicked() {
+        msgs.push(Msg::Diff(DiffMsg::ExpandUnchanged(g.key)));
+    }
+}
+
+/// The fold-back control on the first line of opened fold `f`: `fold_back_key` for it.
 pub(super) fn fold_back(ui: &mut Ui, row: Rect, v: &DiffView, f: Fold, sign_x: f32, msgs: &mut Vec<Msg>) {
+    fold_back_key(ui, row, v, f.key, f.len(), sign_x, msgs);
+}
+
+/// The fold-back control on the first line of the opened run `key` of `len` lines, in the sign
+/// column (at `sign_x` from the left of `row`, where the fold row paints its unfold mark):
+/// chevrons pointing together, highlighted on hover. A click folds the run again.
+pub(super) fn fold_back_key(ui: &mut Ui, row: Rect, v: &DiffView, key: u32, len: usize, sign_x: f32, msgs: &mut Vec<Msg>) {
     let k = v.style.k;
     // On the row's first visual line, when its line wraps.
     let y = row.top() + v.style.row_h / 2.0;
     let r = Rect::from_center_size(pos2(row.left() + sign_x + 4.0 * k, y), vec2(14.0 * k, v.style.row_h - 2.0));
-    let resp = ui.interact(r, ui.id().with(("diff-fold-back", f.key)), Sense::click());
-    let text = format!("Fold {} unchanged lines", f.len());
+    let resp = ui.interact(r, ui.id().with(("diff-fold-back", key)), Sense::click());
+    let text = format!("Fold {len} unchanged lines");
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, &text));
     let p = ui.painter().with_clip_rect(r.intersect(ui.clip_rect()));
     let hovered = resp.hovered();
@@ -80,9 +113,9 @@ pub(super) fn fold_back(ui: &mut Ui, row: Rect, v: &DiffView, f: Fold, sign_x: f
     }
     let ink = if hovered { color::text() } else { color::faint() };
     paint_chevrons(&p, r.center(), k, Stroke::new(1.4_f32, ink), false);
-    let tip = format!("Fold these {} unchanged lines back into one row", f.len());
+    let tip = format!("Fold these {len} unchanged lines back into one row");
     if resp.on_hover_text(tip).clicked() {
-        msgs.push(Msg::Diff(DiffMsg::CollapseUnchanged(f.key)));
+        msgs.push(Msg::Diff(DiffMsg::CollapseUnchanged(key)));
     }
 }
 
@@ -94,6 +127,8 @@ mod tests {
     fn label_counts_lines() {
         assert_eq!(super::label(1), "1 unchanged line");
         assert_eq!(super::label(11), "11 unchanged lines");
+        assert_eq!(super::gap_label(1), "Show the 1 unchanged line above");
+        assert_eq!(super::gap_label(7), "Show the 7 unchanged lines above");
     }
 
     #[test]

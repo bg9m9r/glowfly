@@ -2,7 +2,9 @@
 //! as one "N unchanged lines" row until the user opens them.
 
 use super::WholeFile;
+use crate::diff_rows::GapText;
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 /// The unchanged lines kept next to each change, as many as git's default context, so a block
 /// shows what its normal hunk shows.
@@ -33,36 +35,84 @@ impl Fold {
     }
 }
 
-/// The folds the user opened, by key.
-#[derive(Clone, Default, PartialEq, Eq, Debug)]
-pub struct Expanded(BTreeSet<u32>);
+/// The unchanged runs the user opened, whole-file folds and hunk-view gaps alike, by key, and the
+/// gaps' text once read.
+#[derive(Clone, Default, Debug)]
+pub struct Expanded {
+    keys: BTreeSet<u32>,
+    text: Option<Arc<GapText>>,
+}
+
+/// Equal keys, and the same text by address: the rows cache compares this every frame, so the
+/// text's content is never compared.
+impl PartialEq for Expanded {
+    fn eq(&self, other: &Self) -> bool {
+        let same_text = match (&self.text, &other.text) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        };
+        same_text && self.keys == other.keys
+    }
+}
+
+impl Eq for Expanded {}
 
 impl Expanded {
     /// Opens the fold `key`; false when it was already open.
     pub fn insert(&mut self, key: u32) -> bool {
-        self.0.insert(key)
+        self.keys.insert(key)
     }
 
     /// Closes the fold `key`; false when it was not open.
     pub fn remove(&mut self, key: u32) -> bool {
-        self.0.remove(&key)
+        self.keys.remove(&key)
     }
 
     pub fn contains(&self, key: u32) -> bool {
-        self.0.contains(&key)
+        self.keys.contains(&key)
     }
 
+    /// Closes everything and drops the gaps' text.
     pub fn clear(&mut self) {
-        self.0.clear();
+        self.keys.clear();
+        self.text = None;
     }
 
+    /// No run is open (the text may still be kept).
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.keys.is_empty()
+    }
+
+    /// The keys of the open runs, in order.
+    pub fn keys(&self) -> impl Iterator<Item = u32> + '_ {
+        self.keys.iter().copied()
     }
 
     /// Every fold of `w` opened.
     pub fn all(w: &WholeFile) -> Expanded {
-        Expanded(folds(w).iter().map(|f| f.key).collect())
+        Expanded { keys: folds(w).iter().map(|f| f.key).collect(), text: None }
+    }
+
+    /// Keeps `text` as the gaps' text.
+    pub fn set_gap_text(&mut self, text: Arc<GapText>) {
+        self.text = Some(text);
+    }
+
+    /// Drops the gaps' text, keeping which runs are open.
+    pub fn drop_gap_text(&mut self) {
+        self.text = None;
+    }
+
+    /// The gaps' text, once read.
+    pub fn gap_text(&self) -> Option<&GapText> {
+        self.text.as_deref()
+    }
+
+    /// `self` with `other`'s gap text.
+    pub fn with_gap_text_of(mut self, other: &Expanded) -> Self {
+        self.text = other.text.clone();
+        self
     }
 }
 

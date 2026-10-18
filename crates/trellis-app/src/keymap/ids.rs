@@ -74,12 +74,14 @@ pub enum BindingId {
     RevertHunk,
     ExtendSelection,
     SelectAllCommits,
+    OpenFold,
+    CloseFold,
 }
 
 use BindingId as I;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
-const KEYS: [(BindingId, &str); 72] = [
+const KEYS: [(BindingId, &str); 74] = [
     (I::Stage, "stage"),
     (I::Unstage, "unstage"),
     (I::StageAll, "stage-all"),
@@ -152,6 +154,8 @@ const KEYS: [(BindingId, &str); 72] = [
     (I::RevertHunk, "revert-hunk"),
     (I::ExtendSelection, "extend-selection"),
     (I::SelectAllCommits, "select-all-commits"),
+    (I::OpenFold, "open-fold"),
+    (I::CloseFold, "close-fold"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.
@@ -169,10 +173,10 @@ pub const FAVORITE_BINDINGS: [BindingId; 9] = [
 
 impl BindingId {
     /// Every id, in declaration order (`id as usize` indexes it).
-    pub const ALL: [BindingId; 72] = {
-        let mut all = [I::Stage; 72];
+    pub const ALL: [BindingId; 74] = {
+        let mut all = [I::Stage; 74];
         let mut n = 0;
-        while n < 72 {
+        while n < 74 {
             all[n] = KEYS[n].0;
             n += 1;
         }

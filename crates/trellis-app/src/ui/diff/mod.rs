@@ -1,12 +1,18 @@
 //! The diff viewer: one column (inline) or old and new side by side (split), showing the hunks
 //! or the whole file, with hunk- and line-level stage, unstage and discard, Revert Hunk and
-//! Revert lines on commit and comparison diffs, and next/previous change navigation. In the whole-file view long unchanged
-//! runs are folded into "N unchanged lines" rows that open in place when clicked; an opened
-//! run folds back from a control on its first line, and the header can open or close them all.
-//! With wrapping on, long lines continue on the next line and their rows grow to fit.
+//! Revert lines on commit and comparison diffs, and next/previous change navigation. In the
+//! whole-file view long unchanged runs are folded into "N unchanged lines" rows that open in
+//! place when clicked; an opened run folds back from a control on its first line, and the header
+//! can open or close them all. In the hunk view each hunk header after the first has a control
+//! that fills in the unchanged lines between it and the previous hunk (the same runs as the
+//! whole-file view's folds, open in both views), folded back from their first line. The fold
+//! keys (E and Shift+E by default) open the first closed run at or below the top and fold back
+//! the opened one at the top. With wrapping on, long lines continue on the next line and their
+//! rows grow to fit.
 
 pub(in crate::ui) mod fold;
 mod header;
+mod hunk_header;
 mod inline;
 pub(super) mod rows_cache;
 mod split;
@@ -19,17 +25,18 @@ use super::file_buttons::CommitFile;
 use super::theme::color;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
-use crate::msg::StageMsg;
 use crate::state::AppState;
 use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
 use crate::state::pull_request_threads::{self, Marks};
-use eframe::egui::{self, CursorIcon, FontId, Layout, Rect, Response, RichText, TextStyle, Ui, pos2, vec2};
+use eframe::egui::{CursorIcon, FontId, Rect, Response, RichText, Ui, vec2};
+use hunk_header::hunk_header;
 use rows_cache::{DiffRowsCache, Source};
 pub(super) use style::DiffStyle;
 pub(super) use syntax::paint_line;
-use trellis_core::highlight::{self, DiffHighlight};
-use trellis_core::repo::{DiffTarget, FileDiff, HunkOp};
+use trellis_core::diff_rows::{GapLines, GapSpan};
+use trellis_core::highlight::DiffHighlight;
+use trellis_core::repo::{DiffTarget, FileDiff};
 use trellis_core::settings::DiffLayout;
 use trellis_core::whole_file::{self, Fold, WholeFile, folds};
 
@@ -51,6 +58,11 @@ pub(super) struct DiffView<'a> {
     /// The opened folds of the whole-file view, in order; their first lines get the fold-back
     /// control.
     pub opened: Vec<Fold>,
+    /// The hunk view's closed gaps between hunks, in order; their hunk headers get the unfold
+    /// control.
+    pub gaps: Vec<GapSpan>,
+    /// The hunk view's opened gaps with their text, in order (`DiffRow::GapLine` rows).
+    pub gap_lines: Vec<(GapSpan, &'a GapLines)>,
     /// Syntax spans of the diff the lines come from (`lines()`), `None` to paint plain.
     pub hl: Option<&'a DiffHighlight>,
     /// Syntax spans for the hunk headers' function context: the normal hunks' highlight, also
@@ -163,109 +175,29 @@ fn rows(
     let opened = whole.map(|w| whole_file::opened(w, expanded)).unwrap_or_default();
     let layout = st.settings.diff_layout;
     let generation = (st.diff_gen, st.diff_shown_gen);
-    cache.refresh(Source { diff, whole, generation, layout, expanded, tab: style.tab });
+    // The gaps between hunks fill in only in the hunk view, and never with whitespace hidden.
+    let fill = whole.is_none() && !st.settings.diff_ignore_whitespace;
+    cache.refresh(Source { diff, whole, generation, layout, expanded, gaps: fill, tab: style.tab });
+    let gap_lines: Vec<(GapSpan, &GapLines)> = match expanded.gap_text() {
+        Some(text) => cache.gaps.iter().filter(|g| expanded.contains(g.key)).filter_map(|g| Some((*g, text.lines_for(g)?))).collect(),
+        None => Vec::new(),
+    };
+    let gaps = cache.gaps.iter().filter(|g| !gap_lines.iter().any(|(o, _)| o.key == g.key)).copied().collect();
     let wrap = wrap::wrap_for(ui, &style, layout);
     let lines: &FileDiff = whole.map_or(diff, |w| &w.diff);
     // The same rows at new heights (a resize, or a font, number or tab change while wrapped)
     // keep the row at the top in place.
-    let anchor = cache.refresh_heights(lines, style.row_h, style.tab, wrap);
+    let anchor = cache.refresh_heights(lines, &gap_lines, style.row_h, style.tab, wrap);
     let scroll_to = scroll_to.or(anchor.then_some(st.view.diff_top_row));
     let m = cache.row_metrics(style.row_h);
     let marks = st.pull_request.as_ref().filter(|v| v.shows(target)).and_then(|v| pull_request_threads::marks(v, target.path()));
     let marks = marks.as_ref();
-    let view = DiffView { target, diff, whole, opened, hl, header_hl, hunk_gen: st.hunk_ops_gen(), sel, blocked, style, wrap, marks };
+    let hunk_gen = st.hunk_ops_gen();
+    let view = DiffView { target, diff, whole, opened, gaps, gap_lines, hl, header_hl, hunk_gen, sel, blocked, style, wrap, marks };
     Some(match layout {
         DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, m, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, m, scroll_to, msgs),
     })
-}
-
-/// A hunk's action button.
-#[derive(Clone, Copy)]
-enum HunkButton {
-    Op(HunkOp),
-    /// Apply the inverse of the hunk, or of its selected lines, to the working tree (commit and
-    /// comparison diffs).
-    Revert,
-}
-
-/// A hunk header row: the `@@` line (its function context in syntax colors), plus its buttons
-/// pinned to the visible right edge so they stay in view when scrolled sideways: Stage /
-/// Unstage / Discard Hunk on working-tree diffs (or Stage / Unstage / Discard N lines when the
-/// hunk has selected lines), Revert Hunk (or Revert N lines) on commit and comparison diffs. The buttons are
-/// disabled while a reload is on its way (`hunk_gen` is `None`), since the hunk indexes may no
-/// longer match the file, and while `blocked` (whitespace hidden: the shown hunks aren't the
-/// ones the operations count).
-pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs: &mut Vec<Msg>) {
-    let p = ui.painter();
-    p.rect_filled(rect, 0.0, color::hunk_bg());
-    let raw = &v.diff.hunks[h].header;
-    let ctx = v.header_hl.map(|hl| hl.header(h)).filter(|s| !s.is_empty()).and_then(|s| highlight::context_start(raw).map(|at| (at, s)));
-    syntax::paint_header(p, pos2(rect.left() + 8.0, rect.center().y), raw, ctx, &v.style.font, v.style.tab);
-    let path = v.target.path();
-    let selected = v.sel.map_or(0, |s| s.count_in(v.target, h));
-    let buttons: &[HunkButton] = match v.target {
-        DiffTarget::Unstaged(_) => &[HunkButton::Op(HunkOp::Discard), HunkButton::Op(HunkOp::Stage)],
-        DiffTarget::Staged(_) => &[HunkButton::Op(HunkOp::Unstage)],
-        DiffTarget::Commit(..) | DiffTarget::Between(..) => &[HunkButton::Revert],
-        // Comparing a commit with the working tree: nothing to stage or revert per hunk.
-        DiffTarget::ToWorkdir(..) => &[],
-    };
-    let small = TextStyle::Small.resolve(ui.style());
-    let mut x = ui.clip_rect().right() - 8.0;
-    for &b in buttons {
-        let verb = match b {
-            HunkButton::Revert => "Revert",
-            HunkButton::Op(HunkOp::Stage) => "Stage",
-            HunkButton::Op(HunkOp::Unstage) => "Unstage",
-            HunkButton::Op(HunkOp::Discard) => "Discard",
-        };
-        let label = match selected {
-            0 => format!("{verb} Hunk"),
-            1 => format!("{verb} 1 line"),
-            n => format!("{verb} {n} lines"),
-        };
-        let text_w = ui.fonts(|f| f.layout_no_wrap(label.clone(), small.clone(), color::text()).size().x);
-        let w = (text_w + 16.0).max(96.0);
-        let r = Rect::from_min_size(pos2(x - w, rect.top() + 1.0), vec2(w, v.style.row_h - 2.0));
-        x -= w + 6.0;
-        let mut builder = egui::UiBuilder::new().max_rect(r).layout(Layout::centered_and_justified(egui::Direction::TopDown));
-        let reason = v.blocked.or(v.hunk_gen.is_none().then_some("Updating the diff..."));
-        if reason.is_some() {
-            builder = builder.disabled();
-        }
-        let mut button = ui
-            .allocate_new_ui(builder, |ui| ui.add(egui::Button::new(RichText::new(label).small())))
-            .inner
-            .on_disabled_hover_text(reason.unwrap_or_default());
-        if let HunkButton::Revert = b {
-            let what = if selected > 0 { "the selected changes" } else { "this change" };
-            button = button.on_hover_text(format!("Undo {what} in your working copy of {path}. The commit itself is not changed."));
-        }
-        let (true, Some(generation)) = (button.clicked(), v.hunk_gen) else { continue };
-        let op = match b {
-            HunkButton::Revert => {
-                msgs.push(Msg::Stage(if selected > 0 { StageMsg::RevertLines } else { StageMsg::RevertHunk { index: h, generation } }));
-                continue;
-            }
-            HunkButton::Op(op) => op,
-        };
-        let m = if selected > 0 {
-            Msg::Stage(StageMsg::ApplyLines(op))
-        } else {
-            Msg::Stage(StageMsg::Hunk { op, path: path.to_owned(), index: h, generation })
-        };
-        msgs.push(match (op, selected) {
-            (HunkOp::Discard, 0) => {
-                Msg::confirm("Discard hunk", format!("Discard this change in {path}? You can bring it back with Undo."), "Discard", m)
-            }
-            (HunkOp::Discard, n) => {
-                let what = if n == 1 { "the selected line".to_owned() } else { format!("the {n} selected lines") };
-                Msg::confirm("Discard lines", format!("Discard {what} in {path}? You can bring them back with Undo."), "Discard", m)
-            }
-            _ => m,
-        });
-    }
 }
 
 /// Click handling for a diff line (a row in inline, a cell in split): `+`/`-` lines are

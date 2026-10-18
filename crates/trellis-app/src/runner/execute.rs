@@ -2,7 +2,7 @@
 //! the work, and the result message it sends back.
 
 use super::{
-    blame, clone, config, conflict_check, conflict_files, dashboard, deep_link, expect, files, forge_calls, forks, git_env, git_ops,
+    blame, clone, config, conflict_check, conflict_files, dashboard, deep_link, diff_gaps, expect, files, forge_calls, forks, git_env, git_ops,
     highlight, history, init, issues, keys, notify, onboarding, os, patches, path_search, profiles, pull_request, rebase, repos, revert,
     saves, signatures, sparse, ssh, stashes, status, submodules, themes, tools, updates, worktrees,
 };
@@ -77,6 +77,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
             repo::LoadDiffOptions { ignore_whitespace, whole_file },
         )),
         Effect::HighlightDiff { target, generation, diff, .. } => highlight::finish_job(target, generation, &diff, cancelled),
+        Effect::LoadDiffGaps { workdir, target, generation, diff } => Some(diff_gaps::load_job(workdir, target, generation, diff)),
         Effect::LoadConflict { workdir, path, generation } => {
             let result = repo::load_conflict(&workdir, &path).map_err(err);
             // The picks a file saved with markers holds come back with it.

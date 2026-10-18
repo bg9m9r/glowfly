@@ -3,6 +3,7 @@
 //! each opening that diff.
 
 use super::common::{short, widget_row_height};
+use super::details::file_reveal::reveal;
 use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
 use super::theme::color;
@@ -43,11 +44,14 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let open = st.diff.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
             let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
+            let row_h = widget_row_height(ui);
             egui::ScrollArea::vertical().id_salt("workdir-files").auto_shrink([false, false]).show_rows(
                 ui,
-                widget_row_height(ui),
+                row_h,
                 c.files.len(),
                 |ui, range| {
+                    let index = |t: &DiffTarget| c.files.iter().position(|f| *t == DiffTarget::ToWorkdir(oid, f.path.clone()));
+                    reveal(ui, "workdir-files", st.view.file_reveal.as_ref(), index, &range, row_h);
                     for f in &c.files[range] {
                         let target = DiffTarget::ToWorkdir(oid, f.path.clone());
                         let src = RowSource::ToWorkdir(oid);

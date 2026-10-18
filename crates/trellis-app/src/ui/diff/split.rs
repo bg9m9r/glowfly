@@ -56,6 +56,22 @@ pub(super) fn show(
                 let cols = st.split_cols();
                 fold::fold_row(ui, rect, v, f, cols.sign, cols.text, msgs)
             }
+            // An opened gap's line: the same text on both sides, like a context line.
+            SplitRow::GapLine { hunk, line } => {
+                let Some((g, text)) = v.gap_lines.iter().find(|(g, _)| g.hunk == hunk) else { return };
+                let Some(raw) = text.lines.get(line) else { return };
+                let n = line as u32;
+                let dl = DiffLine { origin: ' ', old: Some(g.old_start + n), new: Some(g.new_start + n), text: raw.clone() };
+                let spans: &[Span] = if v.hl.is_some() { text.spans.get(line).map_or(&[], Vec::as_slice) } else { &[] };
+                let left = Rect::from_min_max(rect.min, pos2(rect.left() + half, rect.bottom()));
+                let right = Rect::from_min_max(pos2(left.right(), rect.top()), rect.max);
+                cell(ui, left, Some((&dl, spans, &[])), Side::Old, st, v.wrap, false);
+                cell(ui, right, Some((&dl, spans, &[])), Side::New, st, v.wrap, false);
+                ui.painter().vline(left.right(), rect.y_range(), Stroke::new(1.0_f32, color::border()));
+                if line == 0 {
+                    fold::fold_back_key(ui, left, v, g.key, g.len, st.split_cols().sign, msgs);
+                }
+            }
             SplitRow::Pair { hunk, old, new } => {
                 let lines = &diff.hunks[hunk].lines;
                 let left = Rect::from_min_max(rect.min, pos2(rect.left() + half, rect.bottom()));

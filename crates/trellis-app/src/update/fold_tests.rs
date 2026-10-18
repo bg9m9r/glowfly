@@ -97,9 +97,10 @@ fn expand_unchanged_ignores_stale_clicks() {
     assert_eq!(st.view.diff_expanded, once, "already open");
 
     st.view.diff_expanded.clear();
+    // The hunk view opens only the gaps between its hunks (diff_gaps_tests.rs).
     st.settings.diff_mode = DiffMode::Hunks;
-    assert!(run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(key))).is_empty());
-    assert!(st.view.diff_expanded.is_empty(), "the hunk view has no folds");
+    assert!(run(&mut st, Msg::Diff(DiffMsg::ExpandUnchanged(999))).is_empty());
+    assert!(st.view.diff_expanded.is_empty(), "not a gap of this file");
 
     st.settings.diff_mode = DiffMode::WholeFile;
     st.diff = None;
@@ -264,8 +265,8 @@ fn collapse_unchanged_ignores_stale_clicks() {
         assert_eq!(st.view.diff_expanded, open, "{why}");
     }
     st.settings.diff_mode = DiffMode::Hunks;
-    assert!(run(&mut st, Msg::Diff(DiffMsg::CollapseUnchanged(first.key))).is_empty());
-    assert_eq!(st.view.diff_expanded, open, "the hunk view has no folds");
+    assert!(run(&mut st, Msg::Diff(DiffMsg::CollapseUnchanged(999))).is_empty());
+    assert_eq!(st.view.diff_expanded, open, "not a gap of this file");
     st.settings.diff_mode = DiffMode::WholeFile;
     st.diff = None;
     assert!(run(&mut st, Msg::Diff(DiffMsg::CollapseUnchanged(first.key))).is_empty());

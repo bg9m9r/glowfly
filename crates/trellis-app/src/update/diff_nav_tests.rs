@@ -8,7 +8,6 @@ use super::update;
 use crate::effect::Effect;
 use crate::msg::DiffMsg;
 use crate::msg::HistoryMsg;
-use crate::msg::LoadMsg;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
@@ -24,11 +23,11 @@ use trellis_core::repo::{DiffTarget, FileDiff, FileEntry};
 use trellis_core::settings::{DiffLayout, DiffMode};
 use trellis_core::whole_file::change_rows;
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn unstaged(p: &str) -> DiffTarget {
+pub(super) fn unstaged(p: &str) -> DiffTarget {
     DiffTarget::Unstaged(p.into())
 }
 
@@ -40,7 +39,7 @@ fn lines(changed: &[usize]) -> String {
 /// a.txt, c.txt and d.txt (20 lines) and b.bin committed; then a.txt edited at lines 2 and 18
 /// (two hunks), c.txt at line 5, b.bin rewritten, and d.txt edited at line 10 and staged.
 /// Opened with the WIP selected: unstaged a.txt, b.bin, c.txt; staged d.txt.
-fn nav_repo(name: &str) -> (AppState, PathBuf) {
+pub(super) fn nav_repo(name: &str) -> (AppState, PathBuf) {
     let dir = trellis_core::paths::temp_dir().join(format!("trellis-app-test-nav-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -71,16 +70,16 @@ fn nav_repo(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn shown(st: &AppState) -> Option<&DiffTarget> {
+pub(super) fn shown(st: &AppState) -> Option<&DiffTarget> {
     st.diff.as_ref().map(|(t, _)| t)
 }
 
-fn diff(st: &AppState) -> &FileDiff {
+pub(super) fn diff(st: &AppState) -> &FileDiff {
     &st.diff.as_ref().expect("a diff is open").1
 }
 
 /// Runs every effect in `fx` and the messages they lead to, as the app would.
-fn finish(st: &mut AppState, fx: Vec<Effect>) {
+pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx {
         if let Some(m) = runner::execute(e) {
             drive(st, m);
@@ -89,7 +88,7 @@ fn finish(st: &mut AppState, fx: Vec<Effect>) {
 }
 
 /// The one diff load in `fx`: its target and reload flag.
-fn one_load(fx: &[Effect]) -> (&DiffTarget, bool) {
+pub(super) fn one_load(fx: &[Effect]) -> (&DiffTarget, bool) {
     match fx {
         [Effect::LoadDiff { target, reload, .. }] => (target, *reload),
         other => panic!("expected one diff load, got {other:?}"),
@@ -104,7 +103,7 @@ fn step_in_file(st: &mut AppState, dir: isize, row: usize) {
 }
 
 /// Opens `target` (a two-hunk a.txt) and steps to its last change; returns its header rows.
-fn at_end_of(st: &mut AppState, target: DiffTarget) -> Vec<usize> {
+pub(super) fn at_end_of(st: &mut AppState, target: DiffTarget) -> Vec<usize> {
     drive(st, Msg::Repo(RepoMsg::OpenDiff(target)));
     let headers = header_rows(diff(st), st.settings.diff_layout);
     assert_eq!(headers.len(), 2);
@@ -250,7 +249,7 @@ fn presses_while_loading_are_ignored() {
 }
 
 /// a.txt open on its last change, with a step to b.bin pending; returns the held load.
-fn pending_step(st: &mut AppState) -> Effect {
+pub(super) fn pending_step(st: &mut AppState) -> Effect {
     at_end_of(st, unstaged("a.txt"));
     let fx = run(st, Msg::Diff(DiffMsg::JumpToChange(1)));
     assert!(st.view.diff_landing.is_some());
@@ -279,26 +278,6 @@ fn landing_dropped_by_other_open_and_close() {
     let oid = commit(&st, 0);
     run(&mut st, Msg::Repo(RepoMsg::SelectCommit(oid)));
     assert_eq!(st.view.diff_landing, None);
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn accepted_reload_clears_landing() {
-    let (mut st, dir) = nav_repo("reload");
-    let stale = pending_step(&mut st);
-    let snap = st.snap.as_ref().unwrap();
-    let status = crate::effect::StatusRead::Whole(snap.unstaged.clone(), snap.staged.clone(), snap.state);
-    let generation = st.load_gen;
-    let msg = LoadMsg::StatusLoaded { generation, result: Ok(status), submodules: None, open_stamp: None, slow: None };
-    let fx = run(&mut st, Msg::Load(msg));
-    assert_eq!(one_load(&fx), (&unstaged("a.txt"), true), "a status refresh reloads the old file");
-    finish(&mut st, fx);
-    assert_eq!(st.view.diff_landing, None);
-    assert_eq!(shown(&st), Some(&unstaged("a.txt")));
-    run(&mut st, runner::execute(stale).unwrap());
-    assert_eq!(shown(&st), Some(&unstaged("a.txt")), "the superseded step doesn't land");
-    // Stepping works again.
-    assert_eq!(one_load(&run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)))).0, &unstaged("b.bin"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

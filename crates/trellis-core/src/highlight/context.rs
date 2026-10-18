@@ -46,6 +46,11 @@ impl OldText {
         Some(OldText { lines: (0..keep).filter_map(line).collect() })
     }
 
+    /// The lines kept (old lines 1.. up to the last hunk).
+    pub(crate) fn lines(&self) -> &[String] {
+        &self.lines
+    }
+
     /// Line 1, for detecting a script by its shebang when no hunk starts at line 1.
     pub(super) fn first(&self) -> Option<&str> {
         self.lines.first().map(String::as_str)
@@ -53,7 +58,7 @@ impl OldText {
 
     /// Per hunk, the old lines between the previous hunk (or the top of the file) and it. `None`
     /// when the hunks don't fit this text.
-    pub(super) fn gaps<'a>(&'a self, hunks: &[Hunk]) -> Option<Vec<&'a [String]>> {
+    pub(crate) fn gaps<'a>(&'a self, hunks: &[Hunk]) -> Option<Vec<&'a [String]>> {
         let starts = starts(hunks)?;
         if starts.last().copied().unwrap_or(0) != self.lines.len() {
             return None;
@@ -69,35 +74,54 @@ impl OldText {
 }
 
 /// Lines of `hunk` on the old side (context and removed lines).
-fn old_count(hunk: &Hunk) -> usize {
+pub(crate) fn old_count(hunk: &Hunk) -> usize {
     hunk.lines.iter().filter(|l| matches!(l.origin, ' ' | '-')).count()
+}
+
+/// Lines of `hunk` on the new side (context and added lines).
+pub(crate) fn new_count(hunk: &Hunk) -> usize {
+    hunk.lines.iter().filter(|l| matches!(l.origin, ' ' | '+')).count()
 }
 
 /// Old lines before each hunk. From the first line with an old number `n` (`n - 1`), or, with
 /// none, the header's `-a,b` (`b` omitted means 1): `a` when `b` is 0 (the hunk inserts after
 /// line `a`), else `a - 1`. `None` when a header doesn't parse or the hunks overlap or go back.
-fn starts(hunks: &[Hunk]) -> Option<Vec<usize>> {
+pub(crate) fn starts(hunks: &[Hunk]) -> Option<Vec<usize>> {
+    side_starts(hunks, false)
+}
+
+/// New lines before each hunk, as `starts` counts old ones (from new numbers and `+c,d`).
+pub(crate) fn new_starts(hunks: &[Hunk]) -> Option<Vec<usize>> {
+    side_starts(hunks, true)
+}
+
+fn side_starts(hunks: &[Hunk], new: bool) -> Option<Vec<usize>> {
     let mut starts = Vec::with_capacity(hunks.len());
     let mut end = 0;
     for hunk in hunks {
-        let numbered = hunk.lines.iter().find(|l| matches!(l.origin, ' ' | '-')).and_then(|l| l.old);
+        let numbered = if new {
+            hunk.lines.iter().find(|l| matches!(l.origin, ' ' | '+')).and_then(|l| l.new)
+        } else {
+            hunk.lines.iter().find(|l| matches!(l.origin, ' ' | '-')).and_then(|l| l.old)
+        };
         let start = match numbered {
             Some(n) => (n as usize).checked_sub(1)?,
-            None => header_start(&hunk.header)?,
+            None => header_start(&hunk.header, new)?,
         };
         if start < end {
             return None;
         }
         starts.push(start);
-        end = start + old_count(hunk);
+        end = start + if new { new_count(hunk) } else { old_count(hunk) };
     }
     Some(starts)
 }
 
-/// The old lines before a hunk from its `@@ -a,b +c,d @@` header.
-fn header_start(header: &str) -> Option<usize> {
-    let old = header.strip_prefix("@@ -")?.split(' ').next()?;
-    let (a, b) = old.split_once(',').unwrap_or((old, "1"));
+/// The old (or `new`) lines before a hunk from its `@@ -a,b +c,d @@` header.
+pub(crate) fn header_start(header: &str, new: bool) -> Option<usize> {
+    let mut ranges = header.strip_prefix("@@ ")?.split(' ');
+    let range = if new { ranges.nth(1)?.strip_prefix('+')? } else { ranges.next()?.strip_prefix('-')? };
+    let (a, b) = range.split_once(',').unwrap_or((range, "1"));
     let (a, b): (usize, usize) = (a.parse().ok()?, b.parse().ok()?);
     Some(if b == 0 { a } else { a.checked_sub(1)? })
 }

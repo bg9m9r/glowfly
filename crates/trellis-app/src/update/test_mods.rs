@@ -43,10 +43,16 @@ pub(super) mod deep_link_open_tests;
 pub(super) mod deep_link_tests;
 #[path = "desktop_notify_tests.rs"]
 pub(super) mod desktop_notify_tests;
+#[path = "diff_gaps_tests.rs"]
+pub(super) mod diff_gaps_tests;
+#[path = "diff_nav_refresh_tests.rs"]
+pub(super) mod diff_nav_refresh_tests;
 #[path = "diff_nav_tests.rs"]
 pub(super) mod diff_nav_tests;
 #[path = "diff_pairs_tests.rs"]
 pub(super) mod diff_pairs_tests;
+#[path = "diff_reveal_tests.rs"]
+pub(super) mod diff_reveal_tests;
 #[path = "diff_tests.rs"]
 pub(super) mod diff_tests;
 #[path = "editor_tests.rs"]
@@ -57,6 +63,8 @@ pub(super) mod files_open_tests;
 pub(super) mod files_tests;
 #[path = "files_undo_tests.rs"]
 pub(super) mod files_undo_tests;
+#[path = "fold_key_tests.rs"]
+pub(super) mod fold_key_tests;
 #[path = "fold_tests.rs"]
 pub(super) mod fold_tests;
 #[path = "force_push_tests.rs"]

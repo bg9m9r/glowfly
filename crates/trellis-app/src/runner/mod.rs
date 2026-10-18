@@ -25,6 +25,7 @@ mod conflict_check;
 mod conflict_files;
 mod dashboard;
 mod deep_link;
+mod diff_gaps;
 mod execute;
 mod expect;
 pub(crate) mod files;

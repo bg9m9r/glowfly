@@ -1,5 +1,6 @@
 //! The inline layout: one column of hunks (or of the whole file), each line with its old and
-//! new number (unless line numbers are off).
+//! new number (unless line numbers are off), and the unchanged lines between hunks once filled
+//! in.
 
 use super::syntax::paint_line;
 use super::wrap::RowMetrics;
@@ -39,6 +40,22 @@ pub(super) fn show(
             // A change block's action row acts on its normal hunk, like that hunk's header.
             DiffRow::Header(h) | DiffRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
             DiffRow::Fold(f) => fold::fold_row(ui, rect, v, f, cols.sign, cols.text, msgs),
+            // An opened gap's line: drawn like a context line, never selectable or marked.
+            DiffRow::GapLine { hunk, line } => {
+                let Some((g, text)) = v.gap_lines.iter().find(|(g, _)| g.hunk == hunk) else { return };
+                let Some(raw) = text.lines.get(line) else { return };
+                let p = ui.painter();
+                let y = rect.top() + st.row_h / 2.0;
+                let numbers = [(cols.old, g.old_start), (cols.new, g.new_start)];
+                for (x, n) in numbers.into_iter().filter_map(|(x, n)| Some((x?, n + line as u32))) {
+                    p.text(pos2(rect.left() + x, y), Align2::RIGHT_CENTER, n.to_string(), mono.clone(), color::faint());
+                }
+                let spans: &[Span] = if v.hl.is_some() { text.spans.get(line).map_or(&[], Vec::as_slice) } else { &[] };
+                paint_line(p, pos2(rect.left() + cols.text, y), raw, spans, None, mono, color::text(), st.tab, v.wrap);
+                if line == 0 {
+                    fold::fold_back_key(ui, rect, v, g.key, g.len, cols.sign, msgs);
+                }
+            }
             DiffRow::Line { hunk, line } => {
                 let dl = &diff.hunks[hunk].lines[line];
                 let selected = v.is_selected(hunk, line);
