@@ -2,11 +2,12 @@
 
 The items behind [ROADMAP.md](ROADMAP.md), which holds the goal, the milestones and their status.
 What Trellis does today and what is planned next, roughly in priority order: the current
-milestone's section first. Each item is a
-target to design, not a finished spec. A top-level item is the unit of work: it is ticked when
-its core behaviour works and every sub-item is done or moved to [Later](#later). A substantial
-new feature becomes its own top-level item; smaller ideas, polish and follow-ups go to Later as
-plain bullets, and are built once the open items are done.
+milestone's section first. Each item is a target to design, not a finished spec. A top-level
+item is the unit of work: it is ticked when its core behaviour works and every sub-item is done
+or moved to [Ideas](#ideas). A substantial new feature becomes its own top-level item; smaller
+ideas, polish and follow-ups go to Ideas as plain bullets. [Later](#later) holds only triaged
+Milestone 2 work, built once the open items are done; nothing in Ideas is built until a triage
+moves it.
 
 Want to help? Pick an unticked item, open an issue to discuss the approach, then see
 [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -629,8 +630,322 @@ These need a vendor account or cloud service rather than git:
 
 ## Later
 
-Ideas and polish beyond each item's core, grouped by the item they grew from. They are not
-tracked as checkboxes; they are built after the open items above, roughly in this order.
+Milestone 2 work (see ROADMAP.md): the follow-ups a daily user would miss, triaged from the
+ideas that grew out of each item and grouped by that item. They are not tracked as
+checkboxes; they are built after the open items above, roughly in this order. New
+follow-ups go to Ideas, not here.
+
+### Tabs (multiple open repos)
+
+- Ask before closing tabs that hold a commit draft or conflict picks
+
+### Undo / Redo
+
+- Undo per-file, per-hunk and per-line discard (needs a safety stash or blob backup first)
+- Undo of the interactive rebase dialog's rebase (record before/after around its effect)
+- Undo of a rebase, merge, cherry-pick or revert finished with --continue after conflicts
+- Undo of stash drop (put the dropped commit back with `stash store`)
+
+### Diff viewer upgrade
+
+- Keep parse states per hunk across reloads (or checkpoint states by line), so staging one hunk
+  of a large file doesn't re-parse the whole prefix in the background
+- For commit diffs, read `.gitattributes` from the commit instead of the working tree
+- Map hunk and line stage/unstage/discard, and Revert Hunk on commit diffs, from the
+  whitespace-filtered diff back to the unfiltered one instead of disabling them
+- Keyboard access to fold rows (open the fold at or after the top row)
+- Fill in the unchanged lines between hunks in the hunk view
+- Remove the file, rather than leaving it empty, when reverting the hunk of a commit that added
+  it
+- Record a hunk revert in Trellis's undo history
+- Revert a whole file of a commit into the working tree (file-list context menu), and a
+  keyboard shortcut for Revert Hunk
+- Scroll the Unstaged/Staged, commit or comparison file list so the file opened by
+  next/previous change is in view
+- Keep a next/previous step from being superseded when a status refresh reloads the old file
+  while the next one is loading
+- Wrap long lines in the conflict view too (it keeps fixed-height rows)
+
+### Line-level staging
+
+- Drag to select a range of lines
+- Remove the index entry, rather than leaving an empty file, when every line of an added or
+  deleted file is unstaged or staged line by line
+
+### Merge conflict tool
+
+- Undo and redo of a saved resolution through the undo history
+- Collapse long unchanged runs in the panes; a resizable split between panes and output
+- Reopening a file saved with markers brings back its picks (load reads only the index stages)
+- Edit lines outside the conflicts in the output pane
+
+### File history and blame
+
+- Start from HEAD when the file was renamed after the chosen commit (track renames forwards)
+- Refresh an open file history when HEAD moves (commit, checkout, pull, fetch)
+- Show the whole file at the selected commit (file view) as an alternative to its diff
+- History of a folder
+
+### Blame gutter
+
+- Re-blame when HEAD moves while a HEAD blame is open (commit, checkout, pull)
+- Horizontal scrolling or word wrap for long lines (they are clipped now)
+
+### Interactive rebase
+
+- Rebase onto a commit, and branch context menus on the graph's ref labels
+- Rebase ranges that contain merge commits (`--rebase-merges`), also for graph squashes and drops
+- Keyboard control in the panel: select a row, Alt+Up/Down to move it, a letter key per action
+- Undo an interactive rebase or a graph history edit (back to `ORIG_HEAD`) from the undo history
+- Edit the combined message of a graph squash before it runs (the messages are joined now)
+
+### Multi-select commits
+
+- Compare a selected commit with the working directory (including Ctrl-clicking the WIP row
+  into a selection)
+- Extend the selection from the keyboard: Shift+Up/Down and Ctrl+A
+- Revert several commits; move or reword several (interactive rebase)
+- When a multi-commit cherry-pick stops on a conflict, select the WIP row, and add Skip commit
+  (`cherry-pick --skip`) to the cherry-pick banner
+
+### Live working-tree updates
+
+- Watch the common git dir's refs for linked worktrees (their refs live outside the worktree's
+  own git dir)
+- Treat `.git/config` changes (remotes added or removed outside Trellis) as a full refresh
+
+### Credential prompts
+
+- Remember entered HTTPS credentials through `git credential approve` / the OS credential
+  store, and reject them when they fail
+- Support OpenSSH older than 8.4 on Linux/macOS (no `SSH_ASKPASS_REQUIRE`; needs `DISPLAY`)
+- Auto-fetch that needs credentials: a "sign in needed" notice instead of failing quietly
+
+### Branch operations
+
+- The same operations from the graph's BRANCH/TAG labels and the remote branch menu (e.g.
+  fast-forward a local branch from its remote row)
+
+### File actions
+
+- Respect a drive's "remove files immediately" Recycle Bin setting on Windows
+- On Linux, offer the home trash when a mount has no usable trash folder, instead of asking to
+  delete permanently
+- Make Delete undoable with Ctrl+Z (restore the working copy from the Recycle Bin / Trash, or
+  keep a copy as Discard does)
+- Keep the staged version recoverable so Unstage and delete can be undone
+
+### Repository trust
+
+- Trust worktrees Trellis creates from a trusted repository (and optionally submodules of one);
+  ask again when a trusted repository gains new command-running settings or hooks
+- Hold shells the built-in terminal starts in an untrusted repository (prompts that run git)
+- Hold the git CLI reads the LFS and Sparse Checkout Preferences pages make in an untrusted
+  repository
+- Hold Publish and other jobs that run in a different untrusted repository than the active one,
+  using that repository's own decision
+
+### Command palette (fuzzy finder)
+
+- Push an existing tag to a remote from the sidebar TAGS menu and the graph's tag labels
+- Cmd-style labels on macOS for the shortcut hints and tooltips
+- Name the tag in the log after a tag checkout, and warn once that commits made while detached
+  can be lost
+- Accessible labels for every toolbar button, once tests no longer look up palette rows by bare
+  labels such as Refresh or Push
+- Confirm before applying or popping a stash on top of uncommitted changes, in the palette and
+  the sidebar alike
+- PageUp/PageDown/Home/End in the list, and the selection following the mouse
+
+### Keyboard shortcuts
+
+- S in the WIP file lists (keyboard focus in the lists, Up/Down between files), and moving on
+  to the next unstaged file after S stages the open one
+
+### Rebind keyboard shortcuts
+
+- Keys for palette commands that have none yet (fetch, pull, push, create branch…), assignable
+  on the Keyboard page
+
+### Built-in terminal
+
+- Let the focused terminal keep the keys the global shortcuts take today (Ctrl+W, Ctrl+T,
+  Ctrl+Tab, Ctrl+1–9, Ctrl+P, Ctrl+F, F5; Ctrl+F and F5 also reach the shell), and send
+  Alt+letter as an ESC prefix; coordinate with the keyboard shortcuts in ui/mod.rs
+- Confirm before closing a terminal tab whose shell is running a program
+- Shift+PageUp/PageDown and Shift+Home/End scroll the history from the keyboard
+- Copy on select, and middle-click paste on Linux
+
+### Submodules
+
+- "Keep submodules up to date": a General preference with a per-repository override (use global
+  / on / off) that runs `git submodule update --init --recursive` after checkout, pull, merge,
+  rebase and reset
+- Initialize / update all submodules from the section header's menu, and offer to initialize
+  them when a repository with uninitialized submodules is opened or cloned
+- Refresh submodule status on status-only reloads and watcher events, not just full loads
+
+### Worktrees
+
+- Mark local branches checked out in another worktree in LOCAL (tooltip with the folder), and
+  disable Checkout / Delete for them with the reason
+- Watch the common git dir (refs, packed-refs) when a linked worktree is the open tab, so ref
+  changes made elsewhere reload it
+- Cap or time-limit the status read of very large linked worktrees during loads
+
+### Git LFS
+
+- Refresh the tracked patterns on status-only (watcher) refreshes, so hand edits to
+  .gitattributes show without a full reload
+- Warn in the main window, not only on the page, when a repository tracks files in LFS but
+  git-lfs isn't installed
+- Show LFS pointer files and LFS status in file lists and diffs (for example "stored in LFS"
+  instead of the pointer text)
+
+### Git Flow
+
+- Continue a Finish that stopped at a merge conflict once the merge is committed
+- Confirm before deleting the configured production or development branch
+
+### Stash improvements
+
+- Keep the index when stashing (`--keep-index`) as a Stash dialog option
+- When a staged rename's new path is chosen, stash its old path too, so the rename moves as a whole
+
+### Clone and init options
+
+- Confirm before unshallowing a very large repository, and cancel a running fetch
+- Fetch missing file contents on demand in a partial clone (the diff views read through
+  libgit2, which can't fetch them)
+
+### Graph columns and loading
+
+- Retry a failed load-more by itself after a delay, or show the failure in the loading row
+  instead of only in the log
+- Keep loading further back while a filtering search finds too few matches (search the whole
+  history without scrolling)
+
+### Search and filter
+
+- Background indexing for large repos
+
+### SSH key management
+
+- Keys outside ~/.ssh (IdentityFile entries in ~/.ssh/config, agent-only keys)
+- On Windows, offer to point git at Windows' OpenSSH (core.sshCommand or GIT_SSH) so it reads keys from the agent service
+
+### Profiles
+
+- Automatic per-repository or per-folder profiles (includeIf / local identity applied on open)
+
+### External diff and merge tools
+
+- Use the tools named in git config (diff.tool / merge.tool, difftool.<name>.cmd) when Trellis
+  has none set
+
+### Notifications
+
+- Keep a toast up while the pointer is over it, and a close button on toasts
+- Click a desktop notification to bring Trellis to the front and switch to that repository's tab
+- Show desktop notifications under Trellis's own name and icon: register an app id on Windows
+  (now attributed to PowerShell) and set the bundle id on macOS once Trellis ships as an app bundle
+
+### GPG passphrase prompts
+
+- Passphrase prompts for SSH-format signing keys (ssh-keygen -Y sign)
+- Resolve MSYS-style gpg.program paths such as /usr/bin/gpg on Windows
+
+### CI / build status
+
+- Per-check detail (names, durations, required or optional, cancelled, skipped and action
+  required told apart, and a "no build status" empty state) in the in-app pull request view
+
+### PR and issue filters
+
+- Team and group review requests counting as Needs my review (GitHub teams, Azure groups)
+
+### Create and view issues
+
+- Post a comment and reply from the issue panel
+
+### Limits found while building integrations
+
+- Live-test GitLab, Bitbucket Cloud and Data Center, Azure DevOps and Jira against real accounts, including the Azure DevOps sign-in through Git Credential Manager (Microsoft Entra Bearer token)
+
+### "Push and start a PR"
+
+- Pull requests across forks: a source on a fork remote, or pushing to your own fork and opening the pull request against the upstream repository
+
+### In-app pull request view
+
+- GitLab merge request notes, approve / unapprove and merge (merge, squash, fast-forward) in the
+  panel
+- Bitbucket Cloud and Data Center comments, approve / request changes and merge strategies in the
+  panel
+- Fork pull requests: fetch the head ref (e.g. refs/pull/N/head) when the source branch isn't on
+  the remote
+- Use the head SHA directly when that commit is already here but the remote-tracking branch is
+  missing or behind
+- A Commits tab: the commits between the merge base and the source tip
+- The pull request's CI / build status in the panel, with a link to the build page
+- Render comment and description Markdown (links, code, lists) instead of plain text
+- Ctrl+Enter to post a comment or submit a review
+- Start a new code comment on a diff line (a single comment or one added to a pending review),
+  with suggested changes
+- Place comments on their lines when the local source branch differs from the head (map the line
+  numbers across the newer commits)
+
+### Zoom
+
+- Toggle full screen (a key such as F11 and a palette entry)
+- A mouse way to bring back a hidden side panel (a thin edge rail or a collapse/expand button)
+- Remember the left and details panel widths across restarts
+
+### Git engine choice
+
+- Offer to fall back to the PATH git when the saved one disappears, instead of only explaining it in the banner
+
+### Logs
+
+- Copy one log entry or the whole log to the clipboard, and export all logs as one archive for a bug report
+
+### Performance
+
+- Edits to tracked files that match an ignore pattern are dropped by the watcher; check the index before dropping
+- Read the staged list incrementally on index changes (compare the old and new index) instead of a whole status read
+- Turn on git's built-in fsmonitor from Trellis (suggest watchman on Linux), checking that the daemon runs
+- Make the Windows 30 s safety poll cheaper for huge trees (read only folders changed since the last read)
+
+### Deep links
+
+- macOS: receive links and folders as Apple events (GURL and odoc) and declare the scheme and the folder document type in Trellis.app's Info.plist, so links, Finder's Open With and dropping a folder on the Dock icon open them
+
+### Cross-repo dashboard
+
+- Count review requests made to a team the user belongs to
+- Show pull requests assigned to the user under Assigned
+
+### Menu bar
+
+- Alt-letter mnemonics and keyboard navigation of the menus (Alt+F, arrow keys between menus)
+- The native macOS application menu (the global menu bar with the standard app menu) instead of the in-window bar
+- Ask before quitting (from the menu or the window's close button) while a git operation is still running
+- A Quit key in the keymap (Cmd+Q on macOS, Ctrl+Q elsewhere)
+
+### Packaging and updates
+
+- Install and restart: quit Trellis and run the downloaded installer, or swap the portable program in place
+- More formats and targets: .rpm, AppImage or Flatpak, a Homebrew cask, a winget manifest, Linux aarch64 and Windows ARM64 builds
+
+### Language
+
+- Honour gettext's rule that LANGUAGE is ignored when the locale is C on Linux
+
+## Ideas
+
+Polish, edge cases and power-user extras that are not planned work. Nothing here is built
+until a triage moves it to Later or a milestone. New follow-ups from finished items go
+here, under the item they grew from.
 
 ### Date/Time section
 
@@ -641,18 +956,13 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - Keyboard reordering of tabs, and Escape to cancel a drag in progress
 - Rename a tab; a tab list with recently closed tabs to reopen any of them
-- Ask before closing tabs that hold a commit draft or conflict picks
 
 ### Undo / Redo
 
-- Undo per-file, per-hunk and per-line discard (needs a safety stash or blob backup first)
 - Undo across restarts by rebuilding actions from the HEAD, branch and stash reflogs
 - Offer "Stash changes and undo" for merge, pull, rebase, cherry-pick, revert and stash undos
   refused for local changes (the runner already supports it)
 - Undo of Create tag and push: also delete the tag from the remote it was pushed to
-- Undo of the interactive rebase dialog's rebase (record before/after around its effect)
-- Undo of a rebase, merge, cherry-pick or revert finished with --continue after conflicts
-- Undo of stash drop (put the dropped commit back with `stash store`)
 - Undo of branch rename and of the new branch made by `worktree add -b`
 - Undo of a Git Flow start or finish as one step
 - Roll back the remote-tracking refs a pull fetched when undoing it
@@ -663,8 +973,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - Whole-file view: derive the hunk spans from the whole-file highlight (or load the old text
   too), so switching back to Hunks without a reload keeps in-context colors
-- Keep parse states per hunk across reloads (or checkpoint states by line), so staging one hunk
-  of a large file doesn't re-parse the whole prefix in the background
 - Count the lines before a hunk twice when an earlier hunk leaves the two sides in different
   states (the highlight cost now assumes they are parsed once)
 - With whitespace ignored, take the new side's unchanged lines from the new file instead of the
@@ -677,7 +985,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Trim the bundled syntax set to the languages Trellis wants, if the extra ~0.6 MB of binary
   size matters
 - A per-file language picker (e.g. in the diff header), remembered per path
-- For commit diffs, read `.gitattributes` from the commit instead of the working tree
 - Take the hunk-header function context from `.gitattributes` diff drivers (`diff=<lang>`,
   `xfuncname`) rather than only libgit2's default (lines starting with a letter, `_` or `$`)
 - Parse the hunk-header context in the file's context (the state at the function line in the
@@ -687,8 +994,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - User-selectable syntax color themes beyond the dark and light palettes
 - Pair moved lines across change runs and hunks for word highlights
 - Pair the conflict view's side-by-side rows by similarity too
-- Map hunk and line stage/unstage/discard, and Revert Hunk on commit diffs, from the
-  whitespace-filtered diff back to the unfiltered one instead of disabling them
 - Also ignore whitespace inserted where there was none (indenting from column 0, which git's
   `-b` still shows): ignore-all-whitespace or a leading/trailing line filter
 - An ignore-whitespace choice on the Editor preferences page, and a command or shortcut for the
@@ -704,8 +1009,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Keep folds open when a reload shifts their lines (follow them through the edit)
 - Editor preferences for the context kept around changes and the minimum fold size, or turning
   folding off
-- Keyboard access to fold rows (open the fold at or after the top row)
-- Fill in the unchanged lines between hunks in the hunk view
 - Hunks / Whole file and Inline / Split toggles in the File history header, and a command or
   shortcut for the view mode toggle
 - Diff view vs file view toggle (plain file, or a rendered preview for Markdown/images)
@@ -714,24 +1017,14 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Revert single lines in the whole-file view (needs whole-file line selection first)
 - Follow renames when reverting from File history: map a commit's older path to the file's
   current name instead of refusing with "not in the working tree"
-- Remove the file, rather than leaving it empty, when reverting the hunk of a commit that added
-  it
 - Fall back to a three-way merge (conflict markers) when the working file has moved on, instead
   of refusing a hunk revert
-- Record a hunk revert in Trellis's undo history
-- Revert a whole file of a commit into the working tree (file-list context menu), and a
-  keyboard shortcut for Revert Hunk
-- Scroll the Unstaged/Staged, commit or comparison file list so the file opened by
-  next/previous change is in view
 - Next/previous change across entries in the File history view (step into the next or previous
   commit's diff of the file)
 - An optional wrap-around from the last changed file back to the first (with a notice)
-- Keep a next/previous step from being superseded when a status refresh reloads the old file
-  while the next one is loading
 - Show which file of how many (e.g. 3 of 12) in the diff header
 - Cache the change rows behind the Previous/Next buttons too (their state rebuilds the change
   rows twice per frame)
-- Wrap long lines in the conflict view too (it keeps fixed-height rows)
 - Keep a wrapped line's indentation on its continuation lines
 - A marker in the gutter on continuation lines of a wrapped row
 - Wrap by display width so wide (CJK, emoji) characters count as two columns
@@ -741,16 +1034,11 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Line-level staging
 
 - Per-line hover buttons (stage / unstage / discard this line)
-- Drag to select a range of lines
 - Selections spanning several hunks
 - Keep the line selection across tab switches
-- Remove the index entry, rather than leaving an empty file, when every line of an added or
-  deleted file is unstaged or staged line by line
 
 ### Merge conflict tool
 
-- Undo and redo of a saved resolution through the undo history
-- Collapse long unchanged runs in the panes; a resizable split between panes and output
 - Syntax highlighting in the conflict panes
 - Mark several selected files resolved or conflicted at once (needs multi-select in the WIP
   file lists)
@@ -760,27 +1048,19 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Mark conflicted for a submodule resolved in Trellis (no resolve-undo record is written for
   gitlinks)
 - Mark conflicted for modify/delete conflicts (git can't recreate a conflict missing one side)
-- Reopening a file saved with markers brings back its picks (load reads only the index stages)
 - Show the pick order next to ticked lines
 - Shift-click to take or leave a range of lines
 - Leave a side out of every conflict from its pane header (the opposite of Take all)
 - Side colours and line numbers in the editable output
-- Edit lines outside the conflicts in the output pane
 - Palette entry to mark only the open conflict's file resolved
 
 ### File history and blame
 
-- Start from HEAD when the file was renamed after the chosen commit (track renames forwards)
-- Refresh an open file history when HEAD moves (commit, checkout, pull, fetch)
-- Show the whole file at the selected commit (file view) as an alternative to its diff
-- History of a folder
 - Let `diff::show` delegate to `diff::body` once the diff header changes in flight have landed
 
 ### Blame gutter
 
 - Live re-blame of working-tree edits (uncommitted lines shown as not committed yet)
-- Re-blame when HEAD moves while a HEAD blame is open (commit, checkout, pull)
-- Horizontal scrolling or word wrap for long lines (they are clipped now)
 - Blame a file the commit deleted (its version just before the deletion)
 - Show which lines blame.ignoreRevsFile re-attributed (ignored and unblamable marks)
 - Re-highlight an open blame when the syntax highlighting preference changes
@@ -795,18 +1075,13 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Interactive rebase
 
-- Rebase onto a commit, and branch context menus on the graph's ref labels
-- Rebase ranges that contain merge commits (`--rebase-merges`), also for graph squashes and drops
 - Keep `update-ref` steps (`rebase.updateRefs`) so branches stacked inside the range move with
   it
 - Edit the combined message of a squash group in the panel instead of git's concatenation
-- Keyboard control in the panel: select a row, Alt+Up/Down to move it, a letter key per action
 - Edit the remaining steps of a rebase already in progress (`rebase --edit-todo`), including one
   started outside Trellis
-- Undo an interactive rebase or a graph history edit (back to `ORIG_HEAD`) from the undo history
 - `exec` and `break` steps in the panel
 - Move commits up/down or reword several commits from a multi-selection in the graph
-- Edit the combined message of a graph squash before it runs (the messages are joined now)
 - Keyboard shortcuts and command palette entries for Reword, Squash, Drop, Continue and Skip
 - A preference to always stash automatically, without asking, before a rebase
 - Click the stopped commit's SHA in the rebase banner to select it in the graph
@@ -814,15 +1089,9 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Multi-select commits
 
-- Compare a selected commit with the working directory (including Ctrl-clicking the WIP row
-  into a selection)
 - Combined diff of a contiguous range of three or more commits (the oldest's parent to the
   newest), explaining when the selection isn't contiguous
-- Extend the selection from the keyboard: Shift+Up/Down and Ctrl+A
 - Swap the compare direction (newer to older) in the two-commit view
-- Revert several commits; move or reword several (interactive rebase)
-- When a multi-commit cherry-pick stops on a conflict, select the WIP row, and add Skip commit
-  (`cherry-pick --skip`) to the cherry-pick banner
 - Cherry-pick merge commits (choose the mainline parent with `-m`)
 - Undo and redo for cherry-picks (one commit or several)
 - Highlight the sidebar branches whose tips are in a multi-selection
@@ -831,24 +1100,17 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - Notice a watcher that started but receives no events (a probe after starting) and warn once,
   suggesting a restart
-- Watch the common git dir's refs for linked worktrees (their refs live outside the worktree's
-  own git dir)
 - Watch inactive tabs so their state updates in the background
-- Treat `.git/config` changes (remotes added or removed outside Trellis) as a full refresh
 - Status-bar indicator showing whether live updates are active for the repository
 - Reflect submodule HEAD changes live in the parent's status (paths under a nested `.git` are
   ignored for now)
 
 ### Credential prompts
 
-- Remember entered HTTPS credentials through `git credential approve` / the OS credential
-  store, and reject them when they fail
 - Caps Lock warning on password fields (egui doesn't expose Caps Lock state yet)
 - Choose between a password, personal access token or app password per hosting service, with a
   link to create a token
 - A non-blocking notice for SSH security-key touch requests (`SSH_ASKPASS_PROMPT=none`)
-- Support OpenSSH older than 8.4 on Linux/macOS (no `SSH_ASKPASS_REQUIRE`; needs `DISPLAY`)
-- Auto-fetch that needs credentials: a "sign in needed" notice instead of failing quietly
 - Hosting-service sign-in without Git Credential Manager through the prompt (Preferences >
   Integrations)
 
@@ -859,8 +1121,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Rename the remote branch too when renaming (push the new name, delete the old one, move the
   upstream)
 - Choose a local branch as the upstream in the Set upstream dialog
-- The same operations from the graph's BRANCH/TAG labels and the remote branch menu (e.g.
-  fast-forward a local branch from its remote row)
 - A shortcut for renaming the checked-out branch, and renaming any branch through a two-step
   palette entry
 - Delete local + remote when the branch isn't merged into HEAD (force), in one step
@@ -886,15 +1146,9 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - New file in this folder… on folder rows (folder rows wait for a tree view in file lists)
 - Delete several selected files at once (needs multi-select in file lists)
 - A button in the trash toast that opens the Recycle Bin / Trash or restores the file
-- Respect a drive's "remove files immediately" Recycle Bin setting on Windows
-- On Linux, offer the home trash when a mount has no usable trash folder, instead of asking to
-  delete permanently
 - Send several selected files to the Recycle Bin / Trash at once (needs multi-select in file
   lists)
-- Make Delete undoable with Ctrl+Z (restore the working copy from the Recycle Bin / Trash, or
-  keep a copy as Discard does)
 - Name a staged rename's source path in its Unstage and delete confirmation and toast
-- Keep the staged version recoverable so Unstage and delete can be undone
 - Open the newly created file in the editor or default app after creating it
 - Create a file from a template, or with initial contents
 - Rename or delete folders and submodules
@@ -921,39 +1175,26 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - A Preferences list to review and revoke trust decisions (they are already remembered per
   repository)
-- Trust worktrees Trellis creates from a trusted repository (and optionally submodules of one);
-  ask again when a trusted repository gains new command-running settings or hooks
-- Hold shells the built-in terminal starts in an untrusted repository (prompts that run git)
 - Bring back the dialog a held job came from (New tag, Remote, worktree…) after Cancel, with its
   fields intact
 - Don't count hooks Trellis installed itself (git lfs install) as a reason to ask about a
   repository that was clean
-- Hold the git CLI reads the LFS and Sparse Checkout Preferences pages make in an untrusted
-  repository
-- Hold Publish and other jobs that run in a different untrusted repository than the active one,
-  using that repository's own decision
 - Offer Don't trust on the prompt that holds a job, alongside Trust and run and Cancel
 - Queue several held jobs instead of refusing a second one while the prompt is open
 
 ### Command palette (fuzzy finder)
 
-- Push an existing tag to a remote from the sidebar TAGS menu and the graph's tag labels
 - Remember the last remote picked for tag pushes per repository
 - Warn (without blocking) when a new tag name matches a branch name
 - Replace (force-move) an existing tag from the New tag dialog
 - Catch existing tags that point at non-commit objects before running git
 - A Preferences control for pushing new tags by default
-- Cmd-style labels on macOS for the shortcut hints and tooltips
 - Two-step entries for branches, themes and repositories (done for files and stashes)
 - Check out a remote branch whose name is taken locally under a new local name
 - Offer to fast-forward the checked-out branch when it is behind the picked remote branch
-- Name the tag in the log after a tag checkout, and warn once that commits made while detached
-  can be lost
 - Group ref entries by remote, or move them into a two-step checkout sub-list
 - Virtualised command rows so the 200-row cap can be lifted
 - Show the Commands button when no repository is open (the palette already works there)
-- Accessible labels for every toolbar button, once tests no longer look up palette rows by bare
-  labels such as Refresh or Push
 - Remember recently run commands across restarts (a short key list in settings)
 - A dim "recently used" marker or divider for the recent block in the list
 - Remember recent commands per repository instead of per session
@@ -962,27 +1203,19 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - An entry to clear the recent-commands list
 - Commands: syntax highlighting on/off (re-highlighting the open diff when flipped), show the
   working directory changes (select the WIP row), diff mode (whole file / hunks) toggle
-- Confirm before applying or popping a stash on top of uncommitted changes, in the palette and
-  the sidebar alike
 - Share one stash-action message builder between the sidebar and the palette
 - Refresh an open stash sub-list's rows when the stash stack changes while it is shown
   (choosing a stash already finds it again by its commit)
 - Apply or pop with `--index` to restore the staged state
 - Create, delete and edit files from the palette
-- PageUp/PageDown/Home/End in the list, and the selection following the mouse
 
 ### Keyboard shortcuts
 
 - Topological next/previous (the next or previous commit on the selected commit's own branch
   line) and first/last row in the graph
-- A visible way to the shortcut sheet (a toolbar, status bar or Help entry naming Ctrl+/)
-- S in the WIP file lists (keyboard focus in the lists, Up/Down between files), and moving on
-  to the next unstaged file after S stages the open one
 
 ### Rebind keyboard shortcuts
 
-- Keys for palette commands that have none yet (fetch, pull, push, create branch…), assignable
-  on the Keyboard page
 - Multi-step key sequences (press one chord, then another)
 - Export and import a keymap file, or keymap presets
 - Warn when a key is taken by the OS on the current system (Cmd+Tab, Cmd+Q, Cmd+H on macOS;
@@ -995,18 +1228,12 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Built-in terminal
 
-- Let the focused terminal keep the keys the global shortcuts take today (Ctrl+W, Ctrl+T,
-  Ctrl+Tab, Ctrl+1–9, Ctrl+P, Ctrl+F, F5; Ctrl+F and F5 also reach the shell), and send
-  Alt+letter as an ESC prefix; coordinate with the keyboard shortcuts in ui/mod.rs
 - Mouse reporting (xterm mouse modes) and the window or tab title from the shell (OSC 0/2)
 - Tab strip overflow: scroll-left/right buttons and a list of all tabs when they don't fit
 - Keys for new terminal tab, close tab and next/previous tab while the terminal has focus
-- Confirm before closing a terminal tab whose shell is running a program
 - Rename a terminal tab
 - Double-click selects a word and triple-click a line; dragging past the top or bottom edge
   scrolls the history
-- Shift+PageUp/PageDown and Shift+Home/End scroll the history from the keyboard
-- Copy on select, and middle-click paste on Linux
 - Mouse wheel in full-screen programs (alternate screen) sends arrow keys
 - A preference for the history length (fixed at 5,000 rows)
 - Keep the history when the screen is rebuilt after a parser error
@@ -1020,12 +1247,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Submodules
 
 - Set a submodule's URL (`git submodule set-url`, then `git submodule sync`) and edit its branch
-- "Keep submodules up to date": a General preference with a per-repository override (use global
-  / on / off) that runs `git submodule update --init --recursive` after checkout, pull, merge,
-  rebase and reset
-- Initialize / update all submodules from the section header's menu, and offer to initialize
-  them when a repository with uninitialized submodules is opened or cloned
-- Refresh submodule status on status-only reloads and watcher events, not just full loads
 - Nested (recursive) submodules shown as a tree under their parent
 - Tell apart a deleted submodule folder, a newly added one (staged, not committed) and a
   never-initialized one in the marker and tooltip
@@ -1051,11 +1272,7 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Worktrees
 
-- Mark local branches checked out in another worktree in LOCAL (tooltip with the folder), and
-  disable Checkout / Delete for them with the reason
 - Create a worktree from a remote branch or a pull request (creating the tracking branch)
-- Watch the common git dir (refs, packed-refs) when a linked worktree is the open tab, so ref
-  changes made elsewhere reload it
 - Palette commands: open a worktree, Create worktree…, Remove / Lock / Prune worktree
 - Remove a worktree and also delete its branch on the remote
 - Offer to close the other tab showing a worktree, instead of only refusing Remove
@@ -1074,30 +1291,23 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
   truncated history), e.g. pinned at the top
 - Select a worktree WIP row to preview its changed files in the details panel without opening
   its tab
-- Cap or time-limit the status read of very large linked worktrees during loads
 
 ### Git LFS
 
 - Offer Track in Git LFS from file history rows, the diff header's file buttons and the palette
 - Disable "Only this file" when a broader pattern already covers the file (attribute lookup in
   the background)
-- Refresh the tracked patterns on status-only (watcher) refreshes, so hand edits to
-  .gitattributes show without a full reload
 - Warn when a folder pattern would also catch a nested .gitattributes in that folder
 - Untrack lines that `--filename` wrote with backslash-escaped glob characters (`git lfs
   untrack` leaves them): remove them directly
 - Offer to convert files already committed (`git lfs migrate`) after tracking their pattern
 - When initializing fails because a non-LFS hook already exists, offer to merge or overwrite it
   (`git lfs update --manual` / `--force`)
-- Warn in the main window, not only on the page, when a repository tracks files in LFS but
-  git-lfs isn't installed
 - Initialize with LFS when creating or cloning a repository
 - File locking: lockable patterns (`track --lockable`), locking and unlocking files, and showing
   who holds locks
 - Read patterns from nested `.gitattributes` files and `.git/info/attributes`, and show which
   file each pattern comes from
-- Show LFS pointer files and LFS status in file lists and diffs (for example "stored in LFS"
-  instead of the pointer text)
 - Check for a minimum git and git-lfs version and say clearly when either is too old
 - After auto-fetch, also download the LFS files of the checked-out branch's upstream, so a later
   pull doesn't wait on them
@@ -1114,12 +1324,10 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Git Flow
 
 - Finish options: rebase on develop first, squash, and push after finishing
-- Continue a Finish that stopped at a merge conflict once the merge is committed
 - Finish options: skip the tag, sign it with a chosen key, delete the remote branch,
   force-delete
 - Branch-menu and graph-menu entries for flow branches (finish this feature, start a hotfix
   from here)
-- Confirm before deleting the configured production or development branch
 - Bugfix and support branch types on the page (their default prefixes are already written)
 - Fetch before Start, and publish or track flow branches on the remote
 - Read the newer per-branch config layout (gitflow.branch.<name>.type / parent) and
@@ -1177,11 +1385,9 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Share one stash-action message builder between the sidebar and the palette, Rename… included
 - Undo a stash rename (record the old message so Ctrl+Z restores it)
 - Rank recently picked stashes first in the rename sub-list
-- Keep the index when stashing (`--keep-index`) as a Stash dialog option
 - Stash ignored files too (`--all`) from the Stash dialog
 - Stash chosen hunks or lines of a file, not only whole files
 - Filter field above the Stash dialog's file checklist for large working trees
-- When a staged rename's new path is chosen, stash its old path too, so the rename moves as a whole
 - Check the installed git version before offering "Only staged changes", instead of explaining after git refuses
 - Right-click menu on the toolbar Stash button with the Stash dialog's choices
 - "Stash…" entry in the STASHES section header menu that opens the Stash dialog
@@ -1196,7 +1402,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Widen a single-branch shallow clone to fetch every branch
 - Mark the shallow boundary commits in the graph
 - Unshallow shallow submodules when an update or reset needs missing commits
-- Confirm before unshallowing a very large repository, and cancel a running fetch
 - List your repositories on Azure DevOps and Bitbucket Data Center in the Clone dialog
 - List repositories for a service that isn't connected yet, signing in through Git Credential
   Manager from the Clone dialog
@@ -1205,8 +1410,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Mark archived repositories and forks in the repository list, and double-click a row to clone
 - Sparse clone in patterns (non-cone) mode, and picking folders from the remote's tree before
   cloning
-- Fetch missing file contents on demand in a partial clone (the diff views read through
-  libgit2, which can't fetch them)
 - Merge a .gitignore template into an existing .gitignore instead of keeping the old one
 - More .gitignore templates and licenses (AGPL, LGPL, EPL, ISC, CC0), and a README on init
 - A custom initial commit message in the Init dialog
@@ -1242,10 +1445,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Graph columns and loading
 
-- Retry a failed load-more by itself after a delay, or show the failure in the loading row
-  instead of only in the log
-- Keep loading further back while a filtering search finds too few matches (search the whole
-  history without scrolling)
 - Hide or disable the header's Load more link while a load for more is already running
 - A per-repository commit limit, or remembering the extra loaded commits across tab switches
   and restarts
@@ -1253,7 +1452,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Search and filter
 
-- Background indexing for large repos
 - Path picker beside the author picker (tracked files and folders) that writes a path: term
 - Follow renames for path: terms (match a file's earlier names, like file history does)
 - Search paths across all merge parents, not only the first
@@ -1281,9 +1479,7 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Show in folder and delete a key locally from its row
 - Flag encrypted private keys and keys whose file permissions are too open for ssh on their row
 - Palette entry for the SSH page (palette_commands.rs needs splitting first)
-- Keys outside ~/.ssh (IdentityFile entries in ~/.ssh/config, agent-only keys)
 - Start the Windows OpenSSH Authentication Agent service (needs an administrator) or an ssh-agent on Unix from the SSH page
-- On Windows, offer to point git at Windows' OpenSSH (core.sshCommand or GIT_SSH) so it reads keys from the agent service
 - Per-repository key choice in a repository with no trust decision (trust it and choose the key in one step)
 - Remove a key from the agent (ssh-add -d), and add with a lifetime (-t) or confirmation (-c)
 - Add keys to Bitbucket Data Center and Azure DevOps through their APIs
@@ -1298,7 +1494,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Per-profile signing format and program (gpg.format, gpg.program, commit.gpgsign) and SSH key
   (core.sshCommand)
 - Profile icon or avatar picker, and a profile switcher in the toolbar or status bar
-- Automatic per-repository or per-folder profiles (includeIf / local identity applied on open)
 - Import and export of profiles, and sharing them between machines
 - A keyboard shortcut for Switch profile
 - Separate stored sign-ins per profile for the same service account (e.g. two GitHub users on github.com)
@@ -1362,8 +1557,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### External diff and merge tools
 
 - Presets for well-known diff and merge tools (fill program and arguments in one click)
-- Use the tools named in git config (diff.tool / merge.tool, difftool.<name>.cmd) when Trellis
-  has none set
 - Keyboard shortcut to open the selected file in the diff tool (or the merge tool for a
   conflicted file)
 - Show/hide arguments toggle on the External Tools page
@@ -1382,13 +1575,9 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Behind alerts for other local branches with upstreams and for inactive tabs, batched into one
   alert when several have new commits
 - Pull request activity alerts (new pull requests, review requests, finished checks)
-- Keep a toast up while the pointer is over it, and a close button on toasts
 - Choose which events go to the desktop (job successes, job failures, behind alerts) instead of
   one switch
-- Click a desktop notification to bring Trellis to the front and switch to that repository's tab
 - A Pull button on the desktop behind alert, like the toast's
-- Show desktop notifications under Trellis's own name and icon: register an app id on Windows
-  (now attributed to PowerShell) and set the bundle id on macOS once Trellis ships as an app bundle
 - Desktop notifications for results outside git jobs (interactive rebase, pull request creation
   and other hosting-service calls)
 - Turn desktop notifications off automatically, or offer to, when the OS refuses the confirming
@@ -1397,19 +1586,15 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### GPG passphrase prompts
 
 - Passphrase prompts for X.509 (gpgsm) signing through gpg.x509.program
-- Passphrase prompts for SSH-format signing keys (ssh-keygen -Y sign)
 - A git banner reason saying git older than 2.31 keeps GnuPG's own passphrase window
 - Use Trellis's prompt when Trellis was started with GIT_CONFIG_COUNT set (append at the next
   index)
-- Resolve MSYS-style gpg.program paths such as /usr/bin/gpg on Windows
 - Wording for smartcard PIN and touch requests (loopback with a card is unverified)
 - Show the key's expiry date in the passphrase dialog
 - Signing passphrase prompts for git commands typed in the terminal panel
 
 ### CI / build status
 
-- Per-check detail (names, durations, required or optional, cancelled, skipped and action
-  required told apart, and a "no build status" empty state) in the in-app pull request view
 - Name the permission build status needs in the GitHub token help, once it is confirmed which
   fine-grained permissions expose check runs and commit statuses
 - Open the build page from the LOCAL and REMOTE branch menus and from graph ref labels
@@ -1430,7 +1615,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - A typed filter query (author:, label:, base:, draft:, review:) with a syntax reference, as an
   alternative to the form
 - Conditions on other people: author, assignee or reviewer by name, involves, reviewed by
-- Team and group review requests counting as Needs my review (GitHub teams, Azure groups)
 - Pull request conditions on CI status, review outcome and created or updated dates
 - Issue filters for closed or all states, and a choice of sort order
 - Saved filters shared by every repository, and importing and exporting filters
@@ -1442,7 +1626,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Create and view issues
 
-- Post a comment and reply from the issue panel
 - Change an issue's state (Jira: its status, through a transition), assignees and labels from the panel
 - Threaded replies with show and collapse (GitLab discussions, Jira comment threads)
 - Render descriptions and comments as Markdown (links, code blocks, emphasis, images) rather than plain text
@@ -1459,7 +1642,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 - Make the branch-name issue heuristic configurable (`2024-cleanup` is currently read as issue
   2024)
-- Live-test GitLab, Bitbucket Cloud and Data Center, Azure DevOps and Jira against real accounts, including the Azure DevOps sign-in through Git Credential Manager (Microsoft Entra Bearer token)
 - Pace per-PR detail lookups by each service's rate-limit headers instead of a fixed max age
 - Read per-PR details a few at a time in parallel once the test mock supports calls from other threads
 - Let users add their own words to the list of Jira non-project prefixes
@@ -1483,7 +1665,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### "Push and start a PR"
 
-- Pull requests across forks: a source on a fork remote, or pushing to your own fork and opening the pull request against the upstream repository
 - On a LOCAL row, create a pull request from the checked-out branch into that branch (the REMOTE row has it)
 - Choose source and target by selecting two branch rows
 - Remember the last target used per branch and preselect it next time
@@ -1493,37 +1674,21 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### In-app pull request view
 
-- GitLab merge request notes, approve / unapprove and merge (merge, squash, fast-forward) in the
-  panel
-- Bitbucket Cloud and Data Center comments, approve / request changes and merge strategies in the
-  panel
 - Azure DevOps threads, votes (approve / wait for author / reject) and completion with a merge
   type in the panel
-- Fork pull requests: fetch the head ref (e.g. refs/pull/N/head) when the source branch isn't on
-  the remote
-- Use the head SHA directly when that commit is already here but the remote-tracking branch is
-  missing or behind
 - A note when the local target branch differs from the service's base (the base SHA is loaded now)
 - Show the pull request from the graph's PR chip, a local branch's menu and the command palette
-- A Commits tab: the commits between the merge base and the source tip
 - Fetch more history from the no-common-commit note in a shallow clone
-- The pull request's CI / build status in the panel, with a link to the build page
-- Render comment and description Markdown (links, code, lists) instead of plain text
 - Delete the local branch too after a merge
 - Remember the last merge method per repository
-- Ctrl+Enter to post a comment or submit a review
 - Edit or delete your own comments, and reactions
 - Re-request a review, and a participants list
 - Mark a draft ready for review, and enable auto-merge
 - Choose the commit email for a merge
 - Open a single comment or review in the browser
-- Start a new code comment on a diff line (a single comment or one added to a pending review),
-  with suggested changes
 - Code comment threads for GitLab diff discussions, Bitbucket inline comments and Azure DevOps
   file threads in the panel
 - Comment counts on the Files changed rows
-- Place comments on their lines when the local source branch differs from the head (map the line
-  numbers across the newer commits)
 - Highlight the whole range of a multi-line comment, and markers on folded rows of the whole-file
   view
 - Remember Show resolved / Show outdated per repository
@@ -1546,9 +1711,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Zoom
 
-- Toggle full screen (a key such as F11 and a palette entry)
-- A mouse way to bring back a hidden side panel (a thin edge rail or a collapse/expand button)
-- Remember the left and details panel widths across restarts
 - Fine-grained zoom: Ctrl+mouse wheel, a slider in the status bar, custom percentages
 - Offer to show a hidden details panel when the WIP row or a commit is selected
 - Keep the trust chip and conflict-prediction indicator visible while the toolbar is hidden
@@ -1563,13 +1725,11 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Type or paste a git path in a text field as well as Browse…
 - Choose a git per repository (e.g. a WSL git for repositories under `\\wsl$`)
 - Re-check the chosen git's version automatically when it is upgraded while Trellis runs (Look again covers it by hand)
-- Offer to fall back to the PATH git when the saved one disappears, instead of only explaining it in the banner
 - Run every command of a multi-command job with the git it started with, even when another git is chosen meanwhile
 
 ### Logs
 
 - Search and filter inside the activity panel and the error and performance tabs
-- Copy one log entry or the whole log to the clipboard, and export all logs as one archive for a bug report
 - Show hook runs (pre-commit, pre-push) as their own titled entries in the activity log
 - Show each entry's time in the current session (on hover or in a column)
 - Settings for the slow-operation threshold and the log size limits
@@ -1592,10 +1752,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Performance
 
-- Edits to tracked files that match an ignore pattern are dropped by the watcher; check the index before dropping
-- Read the staged list incrementally on index changes (compare the old and new index) instead of a whole status read
-- Turn on git's built-in fsmonitor from Trellis (suggest watchman on Linux), checking that the daemon runs
-- Make the Windows 30 s safety poll cheaper for huge trees (read only folders changed since the last read)
 - Re-read only the submodules a path read touched instead of the whole submodule list
 - A Preferences control to show the slow-status note again or turn it off
 - Report status read timings in the activity log (debug)
@@ -1603,7 +1759,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Deep links
 
-- macOS: receive links and folders as Apple events (GURL and odoc) and declare the scheme and the folder document type in Trellis.app's Info.plist, so links, Finder's Open With and dropping a folder on the Dock icon open them
 - Offer to add the link's remote when the repository matched by root commit has no remote with that URL
 - Copy link to a commit or tag on a chosen remote
 - Forward `trellis <path>` to the running window too, not only links
@@ -1622,8 +1777,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Refresh in the background while the dashboard stays open, and notify about new review requests
 - A keyboard shortcut for opening the dashboard
 - Remember the Mine / Review requested / Assigned choice across sessions
-- Count review requests made to a team the user belongs to
-- Show pull requests assigned to the user under Assigned
 - Add repositories found by scanning a folder, beyond tabs, favorites and recent
 - Treat service repository names that differ only in case as one repository when grouping clones
 - Open issue rows in the in-app issue panel once issues can be viewed in Trellis
@@ -1645,10 +1798,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 ### Menu bar
 
 - A key to show or hide the menu bar, and Alt showing it for one use while it is hidden
-- Alt-letter mnemonics and keyboard navigation of the menus (Alt+F, arrow keys between menus)
-- The native macOS application menu (the global menu bar with the standard app menu) instead of the in-window bar
-- Ask before quitting (from the menu or the window's close button) while a git operation is still running
-- A Quit key in the keymap (Cmd+Q on macOS, Ctrl+Q elsewhere)
 - About Trellis and Quit as command palette entries
 - A Show menu bar button in the status bar while the menu bar is hidden
 - Repository and Branch menus (fetch, pull, push, stash, new branch and tag)
@@ -1657,13 +1806,11 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 
 ### Packaging and updates
 
-- Install and restart: quit Trellis and run the downloaded installer, or swap the portable program in place
 - A download progress bar (bytes and percent) with Cancel, streaming the file to disk instead of holding it in memory
 - Skip this version: don't offer a release again until a newer one is out
 - "Open in Trellis" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
 - "Open in Trellis" on drives as well as folders
 - Register an AppUserModelID on the Start menu shortcut and the process, so notifications carry Trellis's name
-- More formats and targets: .rpm, AppImage or Flatpak, a Homebrew cask, a winget manifest, Linux aarch64 and Windows ARM64 builds
 - Sign SHA256SUMS (minisign or GPG) and check that signature in the app before trusting the checksums
 - Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
 - A CI dry run that builds the installers on pull requests touching packaging/ or the release workflow
@@ -1675,7 +1822,6 @@ tracked as checkboxes; they are built after the open items above, roughly in thi
 - Key names in shortcut hints follow the language (e.g. "Strg" on German keyboards)
 - Plural rules beyond one/other (needed if a language with other forms is added)
 - Wrap or shrink right-aligned Preferences labels that are too long in a translation
-- Honour gettext's rule that LANGUAGE is ignored when the locale is C on Linux
 - Load user-supplied translation files from the settings folder
 - A palette command to switch the language
 - Right-to-left layout for right-to-left languages

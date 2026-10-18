@@ -58,6 +58,8 @@ Make every change in a git worktree, never in the main checkout (`C:/projects/tr
   local time, and drop the oldest line past 20. Format:
   `- YYYY-MM-DD HH:MM · **<top-level TODO item>**: <what was done> (<short commit sha>)`, with
   the sha in backticks.
+- Follow-ups, polish and edge cases found while building go to `TODO.md`'s Ideas section under
+  the item they grew from, never to Later (Later holds only triaged milestone work).
 - Keep files under ~400 lines; split by responsibility rather than growing a file.
 - Tests: core logic uses fixture repos (see the `scratch_repo` helper); behavior uses headless
   `update` tests; views use `egui_kittest` snapshots.
