@@ -1,18 +1,23 @@
-//! The built-in terminal panel: one shell session per repository, global (not parked with a
-//! tab) so a hidden tab's shell keeps running.
+//! The built-in terminal panel: shell sessions (terminal tabs) per repository, global (not
+//! parked with a tab) so a hidden tab's shells keep running.
 
 use super::AppState;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use trellis_core::terminal::TermScreen;
+use trellis_core::settings::TerminalPrefs;
+use trellis_core::terminal::{TermPoint, TermScreen};
 
 /// The grid a session starts with before the panel has reported its size: (rows, cols).
 pub const DEFAULT_SIZE: (u16, u16) = (24, 80);
 
 #[derive(Default)]
 pub struct TerminalPanel {
-    /// Whether the panel is shown (not saved across restarts).
+    /// Whether the panel is shown; saved as `TerminalPrefs::panel_open`.
     pub open: bool,
+    /// Every repository's sessions, each repository's in tab order.
     pub sessions: Vec<TermSession>,
+    /// The active session per repository working directory.
+    pub active: HashMap<PathBuf, u64>,
     /// The id the next session gets.
     pub next_id: u64,
     /// The grid size (rows, cols) the panel last reported.
@@ -23,6 +28,10 @@ pub struct TerminalPanel {
     pub focus_requested: bool,
     /// Copy or cut commands waiting for their key's release, with how many arrived; view state.
     pub clip_pending: Option<(Clip, u32)>,
+    /// Wheel movement short of a whole row, carried to the next frame; view state.
+    pub wheel_rem: f32,
+    /// Whether the panel's edge was being dragged last frame; view state.
+    pub resizing: bool,
 }
 
 /// egui's copy and cut commands. On Windows they come from Ctrl+Insert and Shift+Delete as
@@ -45,12 +54,39 @@ pub enum SessionStatus {
 
 pub struct TermSession {
     pub id: u64,
+    /// "Terminal N" in the tab strip: the lowest number free in its repository.
+    pub number: u32,
     /// The repository the shell was started in; compared with `PathBuf` equality only.
     pub workdir: PathBuf,
     /// The shell's short name (pwsh, bash), once it runs.
     pub program: String,
     pub screen: TermScreen,
     pub status: SessionStatus,
+    /// Text selected with the mouse; written by the view, cleared by update.
+    pub selection: Option<Selection>,
+}
+
+/// A stream selection between two cell boundaries, in the screen's line numbers of `epoch`.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct Selection {
+    /// Where the drag started.
+    pub anchor: TermPoint,
+    /// Where the pointer is.
+    pub head: TermPoint,
+    pub epoch: u64,
+}
+
+impl Selection {
+    /// The selected range in reading order, or None when it is empty or its lines can no
+    /// longer be followed. Rows that dropped off the front of the history are left out.
+    pub fn range(&self, screen: &TermScreen) -> Option<(TermPoint, TermPoint)> {
+        if self.epoch != screen.epoch() {
+            return None;
+        }
+        let (start, end) = trellis_core::terminal::ordered(self.anchor, self.head);
+        let start = start.max(TermPoint { line: screen.first_line(), col: 0 });
+        (start < end).then_some((start, end))
+    }
 }
 
 impl TermSession {
@@ -61,9 +97,31 @@ impl TermSession {
 }
 
 impl TerminalPanel {
-    /// The session started in `workdir`, alive or not.
+    /// The panel as the last run left it.
+    pub fn restored(p: &TerminalPrefs) -> Self {
+        Self { open: p.panel_open, ..Default::default() }
+    }
+
+    /// The active session of `workdir`, alive or not.
     pub fn for_workdir(&self, workdir: &Path) -> Option<&TermSession> {
-        self.sessions.iter().find(|s| s.workdir == workdir)
+        let id = self.active_id(workdir)?;
+        self.sessions.iter().find(|s| s.id == id)
+    }
+
+    /// `workdir`'s sessions in tab order.
+    pub fn sessions_for<'a>(&'a self, workdir: &'a Path) -> impl Iterator<Item = &'a TermSession> + 'a {
+        self.sessions.iter().filter(move |s| s.workdir == workdir)
+    }
+
+    /// The active session of `workdir`: the one recorded if it still exists, else its first.
+    pub fn active_id(&self, workdir: &Path) -> Option<u64> {
+        let recorded = self.active.get(workdir).filter(|id| self.sessions.iter().any(|s| s.id == **id && s.workdir == workdir));
+        recorded.copied().or_else(|| self.sessions_for(workdir).next().map(|s| s.id))
+    }
+
+    /// The lowest tab number none of `workdir`'s sessions uses.
+    pub fn next_number(&self, workdir: &Path) -> u32 {
+        (1..).find(|n| !self.sessions_for(workdir).any(|s| s.number == *n)).unwrap_or(1)
     }
 
     pub fn index_of(&self, id: u64) -> Option<usize> {
@@ -71,7 +129,7 @@ impl TerminalPanel {
     }
 }
 
-/// The active tab's session, if it has one.
+/// The active repository's active session, if it has one.
 pub fn active(st: &AppState) -> Option<&TermSession> {
     st.terminal.for_workdir(&st.snap.as_ref()?.workdir)
 }

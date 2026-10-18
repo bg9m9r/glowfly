@@ -2,6 +2,7 @@
 //! runner/terminal.rs, ui/terminal/).
 
 use std::path::PathBuf;
+use trellis_core::settings::ShellSetting;
 use trellis_core::terminal::TermInput;
 
 /// Carried by an `Output` message: dropping it tells the session's output thread that the
@@ -27,17 +28,40 @@ pub enum TerminalMsg {
     /// Show or hide the panel (toolbar button, palette, Ctrl+`).
     Toggle,
     Hide,
-    /// Stop the active repository's shell.
+    /// Stop the active tab's shell.
     Kill,
-    /// Start a new shell for the active repository after the last one ended.
+    /// Start a new shell in the active tab's place after its shell ended.
     Restart,
-    /// Keyboard input for the active repository's shell.
+    /// Keyboard input for the active tab's shell.
     Input(Vec<TermInput>),
     /// The grid the panel has room for, in cells.
     Resize {
         rows: u16,
         cols: u16,
     },
+    /// Start another terminal tab in the active repository (showing the panel if it is hidden).
+    NewTab,
+    /// Make session `id` the active tab.
+    SelectTab(u64),
+    /// Stop session `id`'s shell if it runs and remove its tab.
+    CloseTab(u64),
+    /// Ask before stopping every shell of the active repository.
+    AskKillAll,
+    /// Stop every shell of the active repository.
+    KillAll,
+    /// Scroll the active tab's view this many rows back into its history (forward when negative).
+    Scroll(i32),
+    /// Copy the active tab's selection; `keep` leaves it selected.
+    CopySelection {
+        keep: bool,
+    },
+    SelectAll,
+    /// Clear the active tab's history and screen.
+    Clear,
+    /// Paste the clipboard into the active tab's shell.
+    Paste,
+    /// A drag of the panel's edge ended at this height, in points.
+    PanelHeight(f32),
     // ---- from the runner
     /// Session `id`'s shell is running; `program` is its short name (pwsh, bash).
     Started {
@@ -72,6 +96,17 @@ impl TerminalMsg {
             | Self::Restart
             | Self::Input(..)
             | Self::Resize { .. }
+            | Self::NewTab
+            | Self::SelectTab(..)
+            | Self::CloseTab(..)
+            | Self::AskKillAll
+            | Self::KillAll
+            | Self::Scroll(..)
+            | Self::CopySelection { .. }
+            | Self::SelectAll
+            | Self::Clear
+            | Self::Paste
+            | Self::PanelHeight(..)
             | Self::Started { .. }
             | Self::Output { .. }
             | Self::Exited { .. }
@@ -89,6 +124,8 @@ pub enum TerminalEffect {
         cwd: PathBuf,
         rows: u16,
         cols: u16,
+        /// The shell Preferences chose, resolved by the runner.
+        shell: ShellSetting,
     },
     Write {
         id: u64,
@@ -107,7 +144,9 @@ pub enum TerminalEffect {
 impl std::fmt::Debug for TerminalEffect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Spawn { id, cwd, rows, cols } => write!(f, "Spawn {{ id: {id}, cwd: {cwd:?}, rows: {rows}, cols: {cols} }}"),
+            Self::Spawn { id, cwd, rows, cols, shell } => {
+                write!(f, "Spawn {{ id: {id}, cwd: {cwd:?}, rows: {rows}, cols: {cols}, shell: {:?} }}", shell.choice)
+            }
             Self::Write { id, bytes } => write!(f, "Write {{ id: {id}, bytes: <{} bytes> }}", bytes.len()),
             Self::Resize { id, rows, cols } => write!(f, "Resize {{ id: {id}, rows: {rows}, cols: {cols} }}"),
             Self::Kill(id) => write!(f, "Kill({id})"),

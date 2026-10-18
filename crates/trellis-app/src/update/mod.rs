@@ -81,6 +81,8 @@ mod tabs;
 mod tag_annotate;
 mod tags;
 mod terminal;
+mod terminal_tabs;
+mod terminal_view;
 mod themes;
 mod tool_compare;
 mod tools;
@@ -311,7 +313,11 @@ mod tag_remote_tests;
 #[cfg(test)]
 mod tag_tests;
 #[cfg(test)]
+mod terminal_tabs_tests;
+#[cfg(test)]
 mod terminal_tests;
+#[cfg(test)]
+mod terminal_view_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

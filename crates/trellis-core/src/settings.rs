@@ -16,6 +16,7 @@ mod paths;
 mod profiles;
 mod profiles_prefs;
 pub mod repo_keys;
+mod terminal;
 pub mod themes;
 mod themes_io;
 mod tools;
@@ -32,6 +33,7 @@ pub use graph_filter::{FilterOp, GraphFilter};
 pub use paths::{cache_dir, config_dir, home_dir, log_dir, migrate_old_config_dir, runtime_dir, xdg_data_dir};
 pub use profiles::{DEFAULT_PROFILE_NAME, Profile, ProfileId, ProfileProblem};
 pub use profiles_prefs::{ProfilePrefs, SetupSwap};
+pub use terminal::{CursorStyle, DEFAULT_TERMINAL_FONT_SIZE, ShellChoice, ShellSetting, TERMINAL_FONT_SIZES, TerminalPrefs};
 pub use themes::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use trust::RepoTrust;
@@ -320,6 +322,9 @@ pub struct Settings {
     /// The daily update check and the release notes last shown (Preferences > General > Updates).
     #[serde(default)]
     pub updates: UpdatePrefs,
+    /// Preferences > In-App Terminal, and the panel's remembered state.
+    #[serde(default)]
+    pub terminal: TerminalPrefs,
 }
 
 impl Default for Settings {
@@ -390,6 +395,7 @@ impl Default for Settings {
             git_program: None,
             welcome_done: false,
             updates: UpdatePrefs::default(),
+            terminal: TerminalPrefs::default(),
         }
     }
 }

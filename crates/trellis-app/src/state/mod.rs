@@ -386,6 +386,7 @@ impl AppState {
     pub fn new(settings: Settings, recent: Vec<PathBuf>, now: Instant) -> Self {
         let saved_settings = serde_json::to_string(&settings).unwrap_or_default();
         let watch = watch::WatchState { enabled: settings.watch_files, ..Default::default() };
+        let terminal = terminal::TerminalPanel::restored(&settings.terminal);
         let (keymap, key_problems) = crate::keymap::Keymap::from_overrides(&settings.keybindings);
         let mut st = Self {
             settings,
@@ -447,7 +448,7 @@ impl AppState {
             palette: None,
             palette_gen: 0,
             palette_recent: Default::default(),
-            terminal: Default::default(),
+            terminal,
             gitflow_finish: None,
             tag_job: None,
             patch_apply: None,

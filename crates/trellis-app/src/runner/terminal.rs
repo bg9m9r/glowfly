@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, MutexGuard};
-use trellis_core::terminal::pty;
+use trellis_core::settings::ShellSetting;
+use trellis_core::terminal::{pty, shell};
 
 /// A request for a session's thread.
 pub(super) enum Control {
@@ -120,7 +121,7 @@ impl<W: Waker> Reporter<W> {
 impl<W: Waker + Clone> Runner<W> {
     pub(super) fn terminal(&self, e: TerminalEffect) {
         match e {
-            TerminalEffect::Spawn { id, cwd, rows, cols } => {
+            TerminalEffect::Spawn { id, cwd, rows, cols, shell } => {
                 let (ctl, rx) = mpsc::channel();
                 let kill = Arc::new(KillSwitch::default());
                 self.terminals.map().insert(id, Handle { ctl: ctl.clone(), kill: kill.clone() });
@@ -128,7 +129,7 @@ impl<W: Waker + Clone> Runner<W> {
                 let failed = report.clone();
                 let spawned = std::thread::Builder::new()
                     .name("trellis-terminal".into())
-                    .spawn(move || session(id, &cwd, (rows, cols), Channels { rx, ctl, kill }, report));
+                    .spawn(move || session(id, &cwd, (rows, cols), &shell, Channels { rx, ctl, kill }, report));
                 if let Err(e) = spawned {
                     self.terminals.map().remove(&id);
                     failed.send(TerminalMsg::SpawnFailed { id, error: format!("could not start a thread: {e}") });
@@ -152,11 +153,15 @@ struct Channels {
     kill: Arc<KillSwitch>,
 }
 
-/// Runs session `id`: starts the shell, reports it, then carries out requests until the shell
-/// has ended. Returning drops the PTY, which ends its output reader.
-fn session<W: Waker + Clone>(id: u64, cwd: &Path, (rows, cols): (u16, u16), ch: Channels, report: Reporter<W>) {
+/// Runs session `id`: starts the shell `choice` names, reports it, then carries out requests
+/// until the shell has ended. Returning drops the PTY, which ends its output reader. A chosen
+/// shell that can't be found is reported, never replaced by another.
+fn session<W: Waker + Clone>(id: u64, cwd: &Path, (rows, cols): (u16, u16), choice: &ShellSetting, ch: Channels, report: Reporter<W>) {
     let Channels { rx, ctl, kill } = ch;
-    let shell = pty::default_shell();
+    let shell = match shell::resolve(choice) {
+        Ok(s) => s,
+        Err(error) => return report.send(TerminalMsg::SpawnFailed { id, error }),
+    };
     let (out, exit) = (report.clone(), report.clone());
     let spawned = pty::spawn(cwd, rows, cols, &shell, super::terminal_out::forward(id, move |m| out.send(m)), move |code| {
         exit.send(TerminalMsg::Exited { id, code });

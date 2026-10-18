@@ -1,6 +1,8 @@
-//! The built-in terminal panel: showing and hiding it, one shell per repository (started the
-//! first time the panel shows that repository), keyboard input, resizing, and the shells'
-//! output and exit. Workdirs are compared as plain paths: no filesystem access here.
+//! The built-in terminal panel: showing and hiding it (remembered in the settings), a first
+//! shell per repository (started the first time the panel shows that repository), keyboard
+//! input, resizing, and the shells' output and exit. Terminal tabs are in terminal_tabs.rs, and
+//! scrolling, the selection and the grid's menu in terminal_view.rs. Workdirs are compared as
+//! plain paths: no filesystem access here.
 
 use crate::effect::Effect;
 use crate::state::AppState;
@@ -10,6 +12,7 @@ use std::path::{Path, PathBuf};
 use trellis_core::terminal::{TermScreen, encode};
 
 pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
+    use super::{terminal_tabs as tabs, terminal_view as view};
     match m {
         TerminalMsg::Toggle => {
             if st.snap.is_none() {
@@ -23,29 +26,26 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
                 st.terminal.focus_requested = true;
                 sync(st, fx);
             }
+            remember_open(st, fx);
         }
-        TerminalMsg::Hide => st.terminal.open = false,
+        TerminalMsg::Hide => {
+            st.terminal.open = false;
+            remember_open(st, fx);
+        }
         TerminalMsg::Kill => {
             if let Some(s) = active_mut(st).filter(|s| s.alive()) {
                 fx.push(Effect::Terminal(E::Kill(s.id)));
             }
         }
-        TerminalMsg::Restart => {
-            let Some(i) = active_index(st) else { return };
-            if st.terminal.sessions[i].alive() {
-                return;
-            }
-            let old = st.terminal.sessions.remove(i);
-            fx.push(Effect::Terminal(E::Close(old.id)));
-            spawn(st, old.workdir, fx);
-            st.terminal.focus_requested = true;
-        }
+        TerminalMsg::Restart => tabs::restart(st, fx),
         TerminalMsg::Input(inputs) => {
             // Input after the shell has ended goes nowhere.
             let Some(s) = active_mut(st).filter(|s| s.alive()) else { return };
             let modes = s.screen.modes();
             let bytes: Vec<u8> = inputs.iter().flat_map(|i| encode(i, modes)).collect();
             if !bytes.is_empty() {
+                s.screen.scroll_to_bottom();
+                s.selection = None;
                 fx.push(Effect::Terminal(E::Write { id: s.id, bytes }));
             }
         }
@@ -57,10 +57,22 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
             }
             // An ended session's last screen follows the panel too, without a PTY to resize.
             s.screen.resize(rows, cols);
+            s.selection = None;
             if s.alive() {
                 fx.push(Effect::Terminal(E::Resize { id: s.id, rows, cols }));
             }
         }
+        TerminalMsg::NewTab => tabs::new_tab(st, fx),
+        TerminalMsg::SelectTab(id) => tabs::select_tab(st, id),
+        TerminalMsg::CloseTab(id) => tabs::close_tab(st, id, fx),
+        TerminalMsg::AskKillAll => tabs::ask_kill_all(st),
+        TerminalMsg::KillAll => tabs::kill_all(st, fx),
+        TerminalMsg::Scroll(rows) => view::scroll(st, rows),
+        TerminalMsg::CopySelection { keep } => view::copy(st, keep, fx),
+        TerminalMsg::SelectAll => view::select_all(st),
+        TerminalMsg::Clear => view::clear(st, fx),
+        TerminalMsg::Paste => view::paste(st, fx),
+        TerminalMsg::PanelHeight(h) => view::panel_height(st, h, fx),
         TerminalMsg::Started { id, program } => {
             if let Some(s) = session_mut(st, id) {
                 s.program = program;
@@ -98,6 +110,14 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, fx: &mut Vec<Effect>) {
     }
 }
 
+/// Saves whether the panel is open, when that changed.
+pub(super) fn remember_open(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if st.settings.terminal.panel_open != st.terminal.open {
+        st.settings.terminal.panel_open = st.terminal.open;
+        fx.push(super::prefs::save_settings(st));
+    }
+}
+
 /// Starts a shell for the active repository if the panel is open and it has none yet. A shell
 /// that ended (or failed to start) counts: it is restarted only when the user asks.
 pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
@@ -105,21 +125,22 @@ pub(super) fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let Some(workdir) = st.snap.as_ref().map(|s| s.workdir.clone()) else { return };
-    if st.terminal.for_workdir(&workdir).is_none() {
-        spawn(st, workdir, fx);
+    if st.terminal.sessions_for(&workdir).next().is_none() {
+        spawn(st, workdir, 1, None, fx);
     }
 }
 
 /// The tab for `path` is closing, along with the tabs at `closing` (indices into `st.tabs`,
-/// it among them): stop its shell and forget the session, unless a tab that stays open shows
-/// the same working directory and so still uses it.
+/// it among them): stop its shells and forget their sessions, unless a tab that stays open
+/// shows the same working directory and so still uses them.
 pub(super) fn tab_closed(st: &mut AppState, path: &Path, closing: &[usize], fx: &mut Vec<Effect>) {
     let shared = st.tabs.iter().enumerate().any(|(j, t)| !closing.contains(&j) && t.path.as_deref() == Some(path));
     if shared {
         return;
     }
-    let ids: Vec<u64> = st.terminal.sessions.iter().filter(|s| s.workdir == path).map(|s| s.id).collect();
+    let ids: Vec<u64> = st.terminal.sessions_for(path).map(|s| s.id).collect();
     st.terminal.sessions.retain(|s| s.workdir != path);
+    st.terminal.active.remove(path);
     for id in ids {
         // Kill reaches the session's thread before Close drops the runner's handle on it.
         fx.push(Effect::Terminal(E::Kill(id)));
@@ -127,26 +148,38 @@ pub(super) fn tab_closed(st: &mut AppState, path: &Path, closing: &[usize], fx: 
     }
 }
 
-fn spawn(st: &mut AppState, workdir: PathBuf, fx: &mut Vec<Effect>) {
+/// Starts a shell numbered `number` in `workdir`, at `index` in the sessions (else at the end),
+/// and makes it the repository's active tab. Returns its id.
+pub(super) fn spawn(st: &mut AppState, workdir: PathBuf, number: u32, index: Option<usize>, fx: &mut Vec<Effect>) -> u64 {
     let id = st.terminal.next_id;
     st.terminal.next_id += 1;
     let (rows, cols) = st.terminal.grid.unwrap_or(DEFAULT_SIZE);
-    st.terminal.sessions.push(TermSession {
+    let session = TermSession {
         id,
+        number,
         workdir: workdir.clone(),
         program: String::new(),
         screen: TermScreen::new(rows, cols),
         status: SessionStatus::Starting,
-    });
-    fx.push(Effect::Terminal(E::Spawn { id, cwd: workdir, rows, cols }));
+        selection: None,
+    };
+    match index {
+        Some(i) if i <= st.terminal.sessions.len() => st.terminal.sessions.insert(i, session),
+        _ => st.terminal.sessions.push(session),
+    }
+    st.terminal.active.insert(workdir.clone(), id);
+    let shell = st.settings.terminal.shell.clone();
+    fx.push(Effect::Terminal(E::Spawn { id, cwd: workdir, rows, cols, shell }));
+    id
 }
 
-fn active_index(st: &AppState) -> Option<usize> {
-    let workdir = &st.snap.as_ref()?.workdir;
-    st.terminal.sessions.iter().position(|s| &s.workdir == workdir)
+/// The active repository's active session, as an index into the sessions.
+pub(super) fn active_index(st: &AppState) -> Option<usize> {
+    let id = st.terminal.active_id(&st.snap.as_ref()?.workdir)?;
+    st.terminal.index_of(id)
 }
 
-fn active_mut(st: &mut AppState) -> Option<&mut TermSession> {
+pub(super) fn active_mut(st: &mut AppState) -> Option<&mut TermSession> {
     let i = active_index(st)?;
     st.terminal.sessions.get_mut(i)
 }

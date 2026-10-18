@@ -4,17 +4,29 @@ use crate::state::terminal::Clip;
 use eframe::egui::{Event, ImeEvent, Key};
 use trellis_core::terminal::{KeyMods, TermInput, TermKey};
 
+/// What the keyboard did in one frame.
+#[derive(Debug, Default, PartialEq)]
+pub(super) struct Collected {
+    /// Input for the shell.
+    pub inputs: Vec<TermInput>,
+    /// Copy the selection (and send nothing for that key).
+    pub copy: bool,
+}
+
 /// The terminal input in this frame's `events`. `pending` carries copy and cut commands over
 /// to the frame where their key is released.
 ///
 /// Windows and Linux report Ctrl+C and Ctrl+X as egui's copy and cut, without the key, and on
 /// Windows Ctrl+Insert and Shift+Delete do the same. The key's release tells them apart: C or
 /// X sends ^C or ^X, Insert or Delete sends that key. Any other input first sends what is
-/// waiting as ^C or ^X. (On macOS those are Cmd, and Ctrl+C arrives as a key.)
-pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>) -> Vec<TermInput> {
+/// waiting as ^C or ^X. (On macOS those are Cmd, and Ctrl+C arrives as a key.) While text is
+/// selected, a copy command (Ctrl+C, Ctrl+Insert, Cmd+C) copies it instead, on every system.
+pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>, has_selection: bool) -> Collected {
     let mut out = Vec::new();
+    let mut copy = false;
     for e in events {
         match e {
+            Event::Copy if has_selection => copy = true,
             Event::Copy | Event::Cut if !cfg!(target_os = "macos") => {
                 let clip = if matches!(e, Event::Copy) { Clip::Copy } else { Clip::Cut };
                 match pending {
@@ -47,7 +59,7 @@ pub(super) fn collect(events: &[Event], pending: &mut Option<(Clip, u32)>) -> Ve
             }
         }
     }
-    out
+    Collected { inputs: out, copy }
 }
 
 /// Sends the waiting copy or cut commands as ^C or ^X.
@@ -150,7 +162,7 @@ mod tests {
     #[test]
     fn maps_egui_events() {
         let none = Modifiers::NONE;
-        let one = |e: Event| collect(&[e], &mut None);
+        let one = |e: Event| collect(&[e], &mut None, false).inputs;
         assert_eq!(one(Event::Text("a".into())), [TermInput::Text("a".into())]);
         assert_eq!(one(key(Key::Enter, true, none)), [input(TermKey::Enter, false, false, false)]);
         assert!(one(key(Key::Enter, false, none)).is_empty());
@@ -164,7 +176,7 @@ mod tests {
 
     #[test]
     fn real_ctrl_on_every_platform_and_never_cmd() {
-        let one = |e: Event| collect(&[e], &mut None);
+        let one = |e: Event| collect(&[e], &mut None, false).inputs;
         let ctrl_c = [input(TermKey::Char('c'), true, false, false)];
         // Windows and Linux report Ctrl as both `ctrl` and `command`; macOS only as `ctrl`.
         assert_eq!(one(key(Key::C, true, Modifiers::CTRL | Modifiers::COMMAND)), ctrl_c);
@@ -179,7 +191,24 @@ mod tests {
     /// Feeds `frames` of events in turn, as the panel does, and returns all the input.
     fn frames(frames: &[&[Event]]) -> Vec<TermInput> {
         let mut pending = None;
-        frames.iter().flat_map(|f| collect(f, &mut pending)).collect()
+        frames.iter().flat_map(|f| collect(f, &mut pending, false).inputs).collect()
+    }
+
+    #[test]
+    fn copy_with_a_selection_copies_instead_of_interrupting() {
+        let mut pending = None;
+        let got = collect(&[Event::Copy], &mut pending, true);
+        assert_eq!(got, Collected { inputs: Vec::new(), copy: true });
+        assert_eq!(pending, None, "no ^C waits for the key's release");
+        let up = key(Key::C, false, Modifiers::CTRL);
+        assert_eq!(collect(&[up], &mut pending, false), Collected::default(), "the release sends nothing either");
+        // Ctrl+Insert on Windows arrives the same way.
+        let got = collect(&[Event::Copy, key(Key::Insert, false, Modifiers::CTRL)], &mut None, true);
+        assert_eq!(got, Collected { inputs: Vec::new(), copy: true });
+        // Without a selection, nothing changes: ^C waits for its key (not on macOS, where Cmd+C copies).
+        let got = collect(&[Event::Copy], &mut pending, false);
+        assert!(!got.copy && got.inputs.is_empty());
+        assert_eq!(pending.is_some(), !cfg!(target_os = "macos"));
     }
 
     #[test]

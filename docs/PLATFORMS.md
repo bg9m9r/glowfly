@@ -199,6 +199,13 @@ second one next to it.
    Windows, Notification Center on macOS, freedesktop notifications over D-Bus (zbus, no
    libdbus) on Linux. A missing notification server is an error the confirmation reports;
    never call it from update or views (`tests/layering.rs`).
+10. **The built-in terminal's shell comes from `terminal::shell::resolve`, on the runner thread
+    only.** Automatic is PowerShell 7, else Windows PowerShell, else `COMSPEC` on Windows, and
+    `$SHELL`, else `/bin/sh`, elsewhere. Windows PowerShell and Command Prompt are offered only on
+    Windows; loaded from a settings file elsewhere they act as Automatic. Bash on Windows is Git
+    Bash, found next to the git on PATH (`<Git>\bin\bash.exe` from `<Git>\cmd`, `<Git>\bin` or
+    `<Git>\mingw64\bin`), else `bash.exe` on PATH. A chosen shell that can't be found is reported
+    in the panel, never replaced by another.
 
 ### Environment and git
 

@@ -404,4 +404,6 @@ pub enum UiEffect {
     FocusWindow,
     /// File > Quit: close the main window.
     CloseWindow,
+    /// Read the clipboard into an Event::Paste for the focused widget on the next frame.
+    RequestPaste,
 }

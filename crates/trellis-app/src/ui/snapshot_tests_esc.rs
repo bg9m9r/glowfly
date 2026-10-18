@@ -63,7 +63,15 @@ fn esc_closes_preferences_opened_while_the_terminal_had_focus() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-terminal-prefs");
     let workdir = st.snap.as_ref().unwrap().workdir.clone();
     let screen = TermScreen::new(24, 80);
-    st.terminal.sessions.push(TermSession { id: 1, workdir, program: "pwsh".into(), screen, status: SessionStatus::Running });
+    st.terminal.sessions.push(TermSession {
+        id: 1,
+        number: 1,
+        selection: None,
+        workdir,
+        program: "pwsh".into(),
+        screen,
+        status: SessionStatus::Running,
+    });
     st.terminal.next_id = 2;
     st.terminal.open = true;
     st.terminal.focus_requested = true;

@@ -63,9 +63,14 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
     }
 }
 
-/// Open in terminal: the custom terminal when one is set, else the usual one is detected.
-/// A custom terminal that fails is reported, never replaced: the user chose it.
+/// Open in terminal: a new tab in the terminal panel when Preferences > In-App Terminal says
+/// so; else the custom terminal when one is set, else the usual one is detected. A custom
+/// terminal that fails is reported, never replaced: the user chose it.
 pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    if st.settings.terminal.open_in_panel && st.snap.is_some() {
+        super::terminal_tabs::new_tab(st, fx);
+        return;
+    }
     let Some(w) = st.workdir() else { return };
     match terminal(&st.settings.external_tools, &w) {
         None => fx.push(Effect::OpenTerminal(w)),

@@ -174,6 +174,8 @@ mod snapshot_tests_prefs_keyboard;
 #[cfg(test)]
 mod snapshot_tests_prefs_notify;
 #[cfg(test)]
+mod snapshot_tests_prefs_terminal;
+#[cfg(test)]
 mod snapshot_tests_profiles;
 #[cfg(test)]
 mod snapshot_tests_pull_request;
@@ -221,6 +223,10 @@ mod snapshot_tests_tag_annotate;
 mod snapshot_tests_tag_menu;
 #[cfg(test)]
 mod snapshot_tests_terminal;
+#[cfg(test)]
+mod snapshot_tests_terminal_select;
+#[cfg(test)]
+mod snapshot_tests_terminal_tabs;
 #[cfg(test)]
 mod snapshot_tests_themes;
 #[cfg(test)]
@@ -345,6 +351,7 @@ impl TrellisApp {
                 Effect::Ui(UiEffect::SetTitle(title)) => ctx.send_viewport_cmd(egui::ViewportCommand::Title(title)),
                 Effect::Ui(UiEffect::RequestAttention) => request_attention(ctx),
                 Effect::Ui(UiEffect::CloseWindow) => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                Effect::Ui(UiEffect::RequestPaste) => ctx.send_viewport_cmd(egui::ViewportCommand::RequestPaste),
                 Effect::Ui(UiEffect::FocusWindow) => {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
                     ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));

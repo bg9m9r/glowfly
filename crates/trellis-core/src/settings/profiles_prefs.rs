@@ -126,6 +126,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "updates",
     // The person at the machine reads one language whichever profile commits.
     "language",
+    // Like the external tools: the machine's shell, and the panel's window state.
+    "terminal",
 ];
 
 /// What a profile switch changed in the settings in use.

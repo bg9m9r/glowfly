@@ -1,15 +1,29 @@
-//! Terminal emulation for the built-in terminal panel: the screen model (screen), key and paste
-//! encoding (keys), PTY sessions (pty), the queries the terminal answers (queries) and redrawing
-//! a screen on a fresh parser (replay).
+//! Terminal emulation for the built-in terminal panel: the screen model (screen) and its history
+//! (history), key and paste encoding (keys), PTY sessions (pty), which shell to start (shell),
+//! the queries the terminal answers (queries) and redrawing a screen on a fresh parser (replay).
 
+mod history;
 mod keys;
 pub mod pty;
 mod queries;
 mod replay;
 mod screen;
+pub mod shell;
 
 pub use keys::{KeyMods, Modes, TermInput, TermKey, encode};
-pub use screen::TermScreen;
+pub use screen::{HISTORY_ROWS, TermScreen};
+
+/// A cell boundary on an absolute line (see `TermScreen`): `col` 0 is before the first cell.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+pub struct TermPoint {
+    pub line: u64,
+    pub col: u16,
+}
+
+/// `a` and `b` in reading order.
+pub fn ordered(a: TermPoint, b: TermPoint) -> (TermPoint, TermPoint) {
+    if a <= b { (a, b) } else { (b, a) }
+}
 
 /// A cell colour as the program set it. Indexes 0–15 are themed by the UI.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
@@ -79,6 +93,11 @@ pub fn xterm_rgb(idx: u8) -> Option<(u8, u8, u8)> {
         }
     }
 }
+
+#[cfg(test)]
+mod history_tests;
+#[cfg(test)]
+mod screen_tests;
 
 #[cfg(test)]
 mod tests {

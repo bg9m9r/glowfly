@@ -144,6 +144,25 @@ fn open_in_terminal_uses_the_custom_terminal_when_set() {
 }
 
 #[test]
+fn open_in_terminal_can_use_the_panel() {
+    let (mut st, dir) = open("tools-terminal-panel", "");
+    st.settings.terminal.open_in_panel = true;
+    st.settings.external_tools.terminal = "wt".into();
+    let spawns = |fx: &[Effect]| fx.iter().filter(|e| matches!(e, Effect::Terminal(crate::terminal::TerminalEffect::Spawn { .. }))).count();
+    let external = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::OpenTerminal(_) | Effect::Tool(_)));
+    let fx = update(&mut st, Msg::OpenTerminal, Instant::now());
+    assert_eq!(spawns(&fx), 1, "{fx:?}");
+    assert!(!external(&fx));
+    assert!(st.terminal.open);
+    // The palette's Open in terminal does the same: a second tab.
+    let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::OpenTerminal)), Instant::now());
+    assert_eq!(spawns(&fx), 1, "{fx:?}");
+    assert!(!external(&fx));
+    assert_eq!(st.terminal.sessions.len(), 2);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn browsing_picks_and_saves_a_program() {
     let mut st = state();
     assert!(matches!(&run(&mut st, ToolsMsg::Browse(ToolKind::Editor))[..], [Effect::Tool(ToolEffect::PickProgram(ToolKind::Editor))]));

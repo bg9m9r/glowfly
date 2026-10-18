@@ -20,10 +20,14 @@ fn conflict_steps_name_the_current_key() {
 fn terminal_button_names_the_current_key() {
     let mut keys = Keymap::default();
     keys.set(I::ToggleTerminal, f8());
-    assert!(super::toolbar::terminal_tip(trellis_core::i18n::Lang::En, &keys, false).starts_with("Show the terminal panel (F8)\n"));
+    let en = trellis_core::i18n::Lang::En;
+    assert!(super::toolbar::terminal_tip(en, &keys, false, false).starts_with("Show the terminal panel (F8)\n"));
     keys.set(I::ToggleTerminal, Vec::new());
-    let tip = super::toolbar::terminal_tip(trellis_core::i18n::Lang::En, &keys, true);
+    let tip = super::toolbar::terminal_tip(en, &keys, true, false);
     assert!(tip.starts_with("Hide the terminal panel\n") && !tip.contains('('), "{tip}");
+    assert!(tip.ends_with("\nRight-click to open an external terminal"), "{tip}");
+    let tip = super::toolbar::terminal_tip(en, &keys, false, true);
+    assert!(tip.ends_with("\nRight-click for a new terminal tab"), "{tip}");
 }
 
 #[test]

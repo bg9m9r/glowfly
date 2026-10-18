@@ -154,7 +154,8 @@ const IO_FUNCTIONS: &[(&str, &[&str])] = &[
     ("program", &["user_program"]),
     ("real", &["passthrough"]),
     ("server", &["start", "start_with"]),
-    ("pty", &["spawn", "default_shell"]),
+    ("pty", &["spawn"]),
+    ("shell", &["resolve"]),
     ("lfs", &["status", "installed", "hook_state"]),
     ("gitflow", &["read_config"]),
     ("worktree_ops", &["check_folder", "remove", "dirty_count"]),
@@ -386,7 +387,7 @@ fn the_check_catches_io() {
     assert_eq!(n("let s = std::net::TcpStream::connect(a);"), 2);
     assert_eq!(n("use trellis_core::askpass::{PromptKind, host};"), 0);
     assert_eq!(n("let s = pty::spawn(&d, 24, 80, &sh, o, e);"), 1);
-    assert_eq!(n("let sh = pty::default_shell();"), 1);
+    assert_eq!(n("let sh = shell::resolve(&choice);"), 1);
     assert_eq!(n("persist::append(&p, b\"line\n\")"), 1);
     assert_eq!(n("use trellis_core::persist::{open_append, WriteOptions};"), 1);
     assert_eq!(n("use trellis_core::terminal::{TermScreen, encode};"), 0);

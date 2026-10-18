@@ -32,21 +32,21 @@ Changes not staged for commit:\r\n\
 PS C:\\work\\demo> ";
 
 /// The fixture repository with the panel open on a session in `status` that has shown OUTPUT.
-fn with_session(theme: ThemeChoice, name: &str, status: SessionStatus) -> (AppState, std::path::PathBuf) {
+pub(super) fn with_session(theme: ThemeChoice, name: &str, status: SessionStatus) -> (AppState, std::path::PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let mut screen = TermScreen::new(24, 80);
     if status != SessionStatus::Starting {
         screen.feed(OUTPUT.as_bytes());
     }
     let workdir = st.snap.as_ref().unwrap().workdir.clone();
-    st.terminal.sessions.push(TermSession { id: 1, workdir, program: "pwsh".into(), screen, status });
+    st.terminal.sessions.push(TermSession { id: 1, number: 1, selection: None, workdir, program: "pwsh".into(), screen, status });
     st.terminal.next_id = 2;
     st.terminal.open = true;
     st.terminal.focus_requested = true;
     (st, dir)
 }
 
-fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: fn(&TerminalMsg) -> bool) -> bool {
+pub(super) fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: fn(&TerminalMsg) -> bool) -> bool {
     h.state().1.iter().any(|m| matches!(m, Msg::Terminal(t) if want(t)))
 }
 

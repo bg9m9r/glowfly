@@ -1,13 +1,15 @@
-//! The terminal's screen grid: painting the active session's cells and cursor, reporting the
-//! grid size, and forwarding the keyboard while it has focus.
+//! The terminal's screen grid: painting the active tab's cells, selection and cursor, reporting
+//! the grid size, the mouse (mouse.rs), the right-click menu, and forwarding the keyboard while
+//! it has focus.
 
 use super::colors::span_colors;
-use super::input;
+use super::mouse::{self, Geometry};
+use super::{input, paint};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::terminal::TerminalMsg;
 use crate::ui::theme::color;
-use eframe::egui::{self, Align2, EventFilter, FontId, Id, Rect, Sense, Stroke, StrokeKind, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{self, Align2, EventFilter, FontId, Id, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use trellis_core::terminal::TermSpan;
 
 /// Space between the grid and the panel's edges.
@@ -17,12 +19,12 @@ const MIN_COLS: u16 = 10;
 
 /// Draws session `index` in the rest of `ui`.
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mut Vec<Msg>) {
-    let font = FontId::monospace(st.settings.diff_font_px());
+    let font = FontId::monospace(st.settings.terminal.font_px());
     let cw = ui.fonts(|f| f.glyph_width(&font, 'M'));
     let rh = ui.fonts(|f| f.row_height(&font)).round();
     let id = Id::new("trellis-terminal-grid");
     let (rect, _) = ui.allocate_exact_size(ui.available_size(), Sense::hover());
-    let resp = ui.interact(rect, id, Sense::click());
+    let resp = ui.interact(rect, id, Sense::click_and_drag());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Terminal screen"));
 
     if st.terminal.focus_requested || resp.clicked() {
@@ -32,41 +34,57 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
     if resp.clicked_elsewhere() {
         resp.surrender_focus();
     }
+    let origin = rect.min + vec2(PAD, PAD);
+    let (rows_now, cols_now) = st.terminal.sessions[index].screen.size();
+    let g = Geometry { origin, cw, rh, rows: rows_now, cols: cols_now };
+    mouse::handle(ui, &resp, st, index, &g, msgs);
     let focused = resp.has_focus();
     st.terminal.focused = focused;
     if !focused {
         // Its key's release now goes elsewhere.
         st.terminal.clip_pending = None;
     }
+    let session = &st.terminal.sessions[index];
+    let selected = session.selection.and_then(|s| s.range(&session.screen));
     if focused {
         // Tab, arrows and Esc belong to the shell, not to egui's focus navigation.
         let filter = EventFilter { tab: true, horizontal_arrows: true, vertical_arrows: true, escape: true };
         ui.memory_mut(|m| m.set_focus_lock_filter(id, filter));
-        let inputs = input::collect(&ui.input(|i| i.events.clone()), &mut st.terminal.clip_pending);
-        if !inputs.is_empty() {
-            msgs.push(Msg::Terminal(TerminalMsg::Input(inputs)));
+        let got = input::collect(&ui.input(|i| i.events.clone()), &mut st.terminal.clip_pending, selected.is_some());
+        if got.copy {
+            msgs.push(Msg::Terminal(TerminalMsg::CopySelection { keep: false }));
+        }
+        if !got.inputs.is_empty() {
+            msgs.push(Msg::Terminal(TerminalMsg::Input(got.inputs)));
         }
     }
+    let session = &st.terminal.sessions[index];
+    resp.context_menu(|ui| super::context_menu(ui, session, selected.is_some(), msgs));
 
     let rows = (((rect.height() - 2.0 * PAD) / rh).floor().max(0.0) as u16).max(MIN_ROWS);
     let cols = (((rect.width() - 2.0 * PAD) / cw).floor().max(0.0) as u16).max(MIN_COLS);
-    let session = &st.terminal.sessions[index];
     if session.screen.size() != (rows, cols) || st.terminal.grid != Some((rows, cols)) {
         msgs.push(Msg::Terminal(TerminalMsg::Resize { rows, cols }));
     }
 
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, 0.0, color::input());
-    let origin = rect.min + vec2(PAD, PAD);
     let cell = |r: u16, c: u16| origin + vec2(f32::from(c) * cw, f32::from(r) * rh);
-    for (r, row) in session.screen.rows().iter().enumerate() {
-        let r = r as u16;
+    let screen_rows = session.screen.rows();
+    for (r, row) in screen_rows.iter().enumerate() {
         for span in &row.spans {
-            let at = cell(r, span.col);
-            let (fg, bg) = span_colors(&span.style);
-            if let Some(bg) = bg {
-                painter.rect_filled(Rect::from_min_size(at, vec2(f32::from(span.width) * cw, rh)), 0.0, bg);
+            if let (_, Some(bg)) = span_colors(&span.style) {
+                painter.rect_filled(Rect::from_min_size(cell(r as u16, span.col), vec2(f32::from(span.width) * cw, rh)), 0.0, bg);
             }
+        }
+    }
+    if let Some(range) = selected {
+        paint::selection(&painter, range, session.screen.top_line(), (rows_now, cols_now), (cw, rh), cell);
+    }
+    for (r, row) in screen_rows.iter().enumerate() {
+        for span in &row.spans {
+            let at = cell(r as u16, span.col);
+            let (fg, _) = span_colors(&span.style);
             paint_text(&painter, at, span, cw, &font, fg);
             if span.style.underline {
                 let y = at.y + rh - 1.5;
@@ -75,13 +93,12 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
         }
     }
     if let Some((r, c)) = session.screen.cursor().filter(|_| session.alive()) {
-        let block = Rect::from_min_size(cell(r, c), vec2(cw, rh));
-        if focused {
-            painter.rect_filled(block, 0.0, color::accent().gamma_multiply(0.6));
-        } else {
-            painter.rect_stroke(block, 0.0, Stroke::new(1.0_f32, color::accent()), StrokeKind::Inside);
-        }
+        paint::cursor(&painter, Rect::from_min_size(cell(r, c), vec2(cw, rh)), st.settings.terminal.cursor, focused);
     }
+    if st.settings.terminal.dim_unfocused && !focused {
+        paint::dim(&painter, rect);
+    }
+    paint::thumb(&painter, rect, session.screen.view(), session.screen.history_len(), rows_now);
 }
 
 /// Paints `span` from `at`, each cell at its own column (an ASCII run in one piece), so a

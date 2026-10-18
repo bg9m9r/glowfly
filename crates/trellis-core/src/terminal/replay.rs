@@ -5,10 +5,11 @@ use std::fmt::Write;
 use super::{CellStyle, TermColor, TermRow};
 
 /// Output that redraws `rows` (the screen's contents, as `TermScreen::rows` reads them) on a fresh
-/// parser of the same size and restores `screen`'s input modes, pen and cursor. A glyph that
-/// doesn't fit in the screen's width is left out. The scroll region, saved cursor and the
-/// screen a full-screen program hides are not kept; a shell redraws those after a resize.
-pub(super) fn replay(screen: &vt100::Screen, rows: &[TermRow]) -> Vec<u8> {
+/// parser of the same size from its top row, restores `screen`'s input modes, pen and cursor
+/// visibility, and puts the cursor at `cursor` (row, col). A glyph that doesn't fit in the
+/// screen's width is left out. The scroll region, saved cursor and the screen a full-screen
+/// program hides are not kept; a shell redraws those after a resize.
+pub(super) fn replay_at(screen: &vt100::Screen, rows: &[TermRow], cursor: (u16, u16)) -> Vec<u8> {
     let (_, cols) = screen.size();
     let mut out = String::new();
     if screen.alternate_screen() {
@@ -21,7 +22,7 @@ pub(super) fn replay(screen: &vt100::Screen, rows: &[TermRow]) -> Vec<u8> {
             out.push_str(&sp.text);
         }
     }
-    let (r, c) = screen.cursor_position();
+    let (r, c) = cursor;
     let _ = write!(out, "\x1b[{};{}H", r + 1, c.min(cols.saturating_sub(1)) + 1);
     if screen.hide_cursor() {
         out.push_str("\x1b[?25l");

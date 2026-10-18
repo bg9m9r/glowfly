@@ -18,6 +18,8 @@ pub enum PrefPage {
     Keyboard,
     /// External editor and terminal programs.
     Tools,
+    /// The built-in terminal: shell, font size, cursor, dimming, Open in terminal.
+    Terminal,
     Signing,
     /// SSH key pairs in ~/.ssh and generating one.
     Ssh,
@@ -49,6 +51,7 @@ impl PrefPage {
             PrefPage::Editor => t.tr("prefs.nav.editor"),
             PrefPage::Keyboard => t.tr("prefs.nav.keyboard"),
             PrefPage::Tools => t.tr("prefs.nav.tools"),
+            PrefPage::Terminal => t.tr("prefs.nav.terminal"),
             PrefPage::Signing => t.tr("prefs.nav.signing"),
             PrefPage::Ssh => t.tr("prefs.nav.ssh"),
             PrefPage::RepoIdentity => t.tr("prefs.nav.identity"),

@@ -22,6 +22,7 @@ mod ssh;
 mod ssh_generate;
 mod ssh_git;
 mod ssh_service;
+pub(super) mod terminal;
 mod theme_row;
 mod tools;
 mod trello;
@@ -160,6 +161,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::Editor => editor::editor_page(ui, settings),
                     PrefPage::Keyboard => keyboard::keyboard_page(ui, &mut prefs.keys, keymap, msgs),
                     PrefPage::Tools => tools::tools_page(ui, settings, msgs),
+                    PrefPage::Terminal => terminal::terminal_page(ui, settings),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
                     PrefPage::RepoSparse => sparse::sparse_page(ui, &mut prefs.sparse, &sparse_cx, msgs),
@@ -214,6 +216,7 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, st: &mut Ap
         go(ui, PrefPage::Editor, Icon::Code);
         go(ui, PrefPage::Keyboard, Icon::Keyboard);
         go(ui, PrefPage::Tools, Icon::Tools);
+        go(ui, PrefPage::Terminal, Icon::Terminal);
         go(ui, PrefPage::Signing, Icon::Key);
         // Not `go`: the page reads ~/.ssh when it opens.
         if widgets::nav_row(ui, Some(Icon::Lock), PrefPage::Ssh.nav_label(t), page == PrefPage::Ssh, 15.0).clicked() {

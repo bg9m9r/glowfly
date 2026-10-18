@@ -15,12 +15,12 @@ use std::path::PathBuf;
 use std::time::Instant;
 use trellis_core::terminal::{KeyMods, TermColor, TermInput, TermKey};
 
-fn run(st: &mut AppState, m: T) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, m: T) -> Vec<Effect> {
     update(st, Msg::Terminal(m), Instant::now())
 }
 
 /// Only the terminal effects of `fx`.
-fn terminal(fx: Vec<Effect>) -> Vec<E> {
+pub(super) fn terminal(fx: Vec<Effect>) -> Vec<E> {
     fx.into_iter()
         .filter_map(|e| match e {
             Effect::Terminal(t) => Some(t),
@@ -29,12 +29,12 @@ fn terminal(fx: Vec<Effect>) -> Vec<E> {
         .collect()
 }
 
-fn workdir(st: &AppState) -> PathBuf {
+pub(super) fn workdir(st: &AppState) -> PathBuf {
     st.snap.as_ref().unwrap().workdir.clone()
 }
 
 /// A repository open with the panel shown; returns the session id.
-fn open_with_panel(name: &str) -> (AppState, PathBuf, u64) {
+pub(super) fn open_with_panel(name: &str) -> (AppState, PathBuf, u64) {
     let dir = scratch_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
@@ -52,20 +52,20 @@ fn toggle_opens_the_panel_and_spawns_one_shell_per_repo() {
     let dir = scratch_repo("term-toggle");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let fx = run(&mut st, T::Toggle);
+    let fx = terminal(run(&mut st, T::Toggle));
     assert!(st.terminal.open && st.terminal.focus_requested);
     assert_eq!(st.terminal.sessions.len(), 1);
     let s = &st.terminal.sessions[0];
     assert_eq!((s.workdir.clone(), s.status.clone()), (workdir(&st), SessionStatus::Starting));
     match &fx[..] {
-        [Effect::Terminal(E::Spawn { cwd, rows: 24, cols: 80, .. })] => assert_eq!(*cwd, workdir(&st)),
+        [E::Spawn { cwd, rows: 24, cols: 80, .. }] => assert_eq!(*cwd, workdir(&st)),
         other => panic!("{other:?}"),
     }
 
-    assert!(run(&mut st, T::Toggle).is_empty(), "hiding stops nothing");
+    assert!(terminal(run(&mut st, T::Toggle)).is_empty(), "hiding stops nothing");
     assert!(!st.terminal.open);
     assert_eq!(st.terminal.sessions.len(), 1);
-    assert!(run(&mut st, T::Toggle).is_empty(), "the shell is still there");
+    assert!(terminal(run(&mut st, T::Toggle)).is_empty(), "the shell is still there");
     assert!(st.terminal.open);
     assert_eq!(st.terminal.sessions.len(), 1);
     let _ = std::fs::remove_dir_all(&dir);

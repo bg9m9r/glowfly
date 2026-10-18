@@ -144,7 +144,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.add_space(6.0);
                 ui.separator();
                 ui.add_space(6.0);
-                terminal_button(ui, t, st.terminal.open, labels, &terminal_tip(t, &st.keymap, st.terminal.open), msgs);
+                let tip = terminal_tip(t, &st.keymap, st.terminal.open, st.settings.terminal.open_in_panel);
+                terminal_button(ui, t, st.terminal.open, labels, &tip, super::terminal::right_click_item(t, &st.settings), msgs);
                 if tool(ui, Icon::Folder, t.tr("toolbar.folder.button"), true).clicked() {
                     msgs.push(Msg::OpenFolder(snap.workdir.clone()));
                 }
@@ -179,15 +180,23 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 }
 
 /// The terminal button's tooltip, with the current key of Show or hide the terminal.
-pub(super) fn terminal_tip(t: Lang, keys: &Keymap, open: bool) -> String {
+pub(super) fn terminal_tip(t: Lang, keys: &Keymap, open: bool, in_panel: bool) -> String {
     let key = keys.paren(BindingId::ToggleTerminal);
-    if open { t.trf("toolbar.terminal.hide_tip", &[("key", &key)]) } else { t.trf("toolbar.terminal.show_tip", &[("key", &key)]) }
+    let key = [("key", &key as &dyn std::fmt::Display)];
+    match (open, in_panel) {
+        (true, false) => t.trf("toolbar.terminal.hide_tip", &key),
+        (false, false) => t.trf("toolbar.terminal.show_tip", &key),
+        (true, true) => t.trf("toolbar.terminal.hide_tab_tip", &key),
+        (false, true) => t.trf("toolbar.terminal.show_tab_tip", &key),
+    }
 }
 
-/// Shows or hides the terminal panel; right-click opens an external terminal instead. A bar
-/// under the button marks the panel as open.
-fn terminal_button(ui: &mut egui::Ui, t: Lang, open: bool, labels: bool, tip: &str, msgs: &mut Vec<Msg>) {
-    let resp = widgets::tool_button(ui, Icon::Terminal, t.tr("toolbar.terminal.button"), true, labels).on_hover_text(tip);
+/// Shows or hides the terminal panel; right-click offers `item` (Open in terminal: an external
+/// one, or a new tab in the panel). A bar under the button marks the panel as open.
+fn terminal_button(ui: &mut egui::Ui, t: Lang, open: bool, labels: bool, tip: &str, item: &str, msgs: &mut Vec<Msg>) {
+    let name = t.tr("toolbar.terminal.button");
+    let resp = widgets::tool_button(ui, Icon::Terminal, name, true, labels).on_hover_text(tip);
+    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
     if open {
         let r = resp.rect;
         let bar = egui::Rect::from_min_max(egui::pos2(r.left() + 6.0, r.bottom() - 2.0), egui::pos2(r.right() - 6.0, r.bottom()));
@@ -196,7 +205,7 @@ fn terminal_button(ui: &mut egui::Ui, t: Lang, open: bool, labels: bool, tip: &s
     if resp.clicked() {
         msgs.push(Msg::Terminal(TerminalMsg::Toggle));
     }
-    resp.context_menu(|ui| menu_item(msgs, ui, t.tr("toolbar.terminal.external"), Msg::OpenTerminal));
+    resp.context_menu(|ui| menu_item(msgs, ui, item, Msg::OpenTerminal));
 }
 
 /// The small ▾ button next to a tool button, opening a menu below it. The painted caret gets

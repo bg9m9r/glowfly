@@ -1,5 +1,5 @@
-//! Shell sessions on a pseudo-terminal: which shell to start, and a running session with its
-//! output and exit reported through callbacks on their own threads.
+//! Shell sessions on a pseudo-terminal: a running session with its output and exit reported
+//! through callbacks on their own threads (terminal/shell.rs picks the shell).
 
 use crate::error::{Error, Result};
 use portable_pty::{ChildKiller, CommandBuilder, MasterPty, PtySize, native_pty_system};
@@ -11,34 +11,6 @@ use std::path::Path;
 pub struct ShellCommand {
     pub program: String,
     pub args: Vec<String>,
-}
-
-/// The shell to start. Windows: PowerShell 7 (pwsh) if it is on PATH, else Windows PowerShell,
-/// else COMSPEC (cmd.exe). Elsewhere: $SHELL, else /bin/sh.
-pub fn choose_shell(windows: bool, env: impl Fn(&str) -> Option<String>, on_path: impl Fn(&str) -> bool) -> ShellCommand {
-    let nologo = |program: &str| ShellCommand { program: program.into(), args: vec!["-NoLogo".into()] };
-    if windows {
-        if on_path("pwsh.exe") {
-            nologo("pwsh.exe")
-        } else if on_path("powershell.exe") {
-            nologo("powershell.exe")
-        } else {
-            let program = env("COMSPEC").filter(|s| !s.is_empty()).unwrap_or_else(|| "cmd.exe".into());
-            ShellCommand { program, args: Vec::new() }
-        }
-    } else {
-        let program = env("SHELL").filter(|s| !s.is_empty()).unwrap_or_else(|| "/bin/sh".into());
-        ShellCommand { program, args: Vec::new() }
-    }
-}
-
-/// `choose_shell` for this system, from the environment and PATH.
-pub fn default_shell() -> ShellCommand {
-    let on_path = |name: &str| {
-        crate::env_path::path()
-            .is_some_and(|path| std::env::split_paths(&path).any(|dir| crate::external_tools::locate_here(&dir.join(name)).is_some()))
-    };
-    choose_shell(cfg!(windows), |k| std::env::var(k).ok(), on_path)
 }
 
 /// A running shell. Dropping it closes the terminal. On Windows the output reader only ends
@@ -133,27 +105,6 @@ mod tests {
     use super::*;
     use std::sync::mpsc;
     use std::time::{Duration, Instant};
-
-    #[test]
-    fn chooses_a_shell() {
-        let env =
-            |vars: &'static [(&'static str, &'static str)]| move |k: &str| vars.iter().find(|(n, _)| *n == k).map(|(_, v)| v.to_string());
-        let path = |names: &'static [&'static str]| move |n: &str| names.contains(&n);
-        let nologo = vec!["-NoLogo".to_owned()];
-
-        let s = choose_shell(true, env(&[]), path(&["pwsh.exe", "powershell.exe"]));
-        assert_eq!((s.program.as_str(), &s.args), ("pwsh.exe", &nologo));
-        let s = choose_shell(true, env(&[]), path(&["powershell.exe"]));
-        assert_eq!((s.program.as_str(), &s.args), ("powershell.exe", &nologo));
-        let s = choose_shell(true, env(&[("COMSPEC", r"C:\Windows\system32\cmd.exe")]), path(&[]));
-        assert_eq!(s, ShellCommand { program: r"C:\Windows\system32\cmd.exe".into(), args: vec![] });
-        assert_eq!(choose_shell(true, env(&[]), path(&[])).program, "cmd.exe");
-
-        let s = choose_shell(false, env(&[("SHELL", "/bin/zsh")]), path(&["pwsh.exe"]));
-        assert_eq!(s, ShellCommand { program: "/bin/zsh".into(), args: vec![] });
-        assert_eq!(choose_shell(false, env(&[]), path(&[])).program, "/bin/sh");
-        assert_eq!(choose_shell(false, env(&[("SHELL", "")]), path(&[])).program, "/bin/sh");
-    }
 
     #[test]
     fn spawns_a_command_and_reports_output_and_exit() {

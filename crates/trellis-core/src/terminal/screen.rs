@@ -6,16 +6,47 @@ use super::keys::Modes;
 use super::{CellStyle, TermColor, TermRow, TermSpan};
 use super::{queries, replay};
 
-/// The visible screen of one terminal session (no scrollback yet).
+/// The rows of history a session keeps above its main screen.
+pub const HISTORY_ROWS: usize = 5_000;
+
+/// One terminal session's screen and the history that scrolled off its top (terminal/history.rs
+/// reads and scrolls it). Lines are numbered from the first row ever pushed into the history:
+/// screen row `r` is line `pushed + r`, and the history row `d` rows above the screen is line
+/// `pushed - d`. Numbers can be trusted only while `epoch` stays the same.
 pub struct TermScreen {
-    parser: vt100::Parser,
+    pub(super) parser: vt100::Parser,
     /// The start of a query split across two chunks of output, held back until the rest comes.
     pending: Vec<u8>,
+    /// How many history rows the parser keeps.
+    pub(super) history_cap: usize,
+    /// How far the view is scrolled back into the history, in rows. Outside of these methods
+    /// the parser's scrollback offset always equals it.
+    pub(super) view: usize,
+    /// The main screen's history length, as last read (it can't be read on the alternate screen).
+    pub(super) history_len: usize,
+    /// Rows ever pushed into the history.
+    pub(super) pushed: u64,
+    /// Bumped whenever line numbers stop following the same text (clear, resize, rebuild,
+    /// switching screens, or more output at once than the history can count).
+    pub(super) epoch: u64,
 }
 
 impl TermScreen {
     pub fn new(rows: u16, cols: u16) -> Self {
-        Self { parser: vt100::Parser::new(rows.max(1), cols.max(1), 0), pending: Vec::new() }
+        Self::with_history(rows, cols, HISTORY_ROWS)
+    }
+
+    /// A screen keeping `history` rows of history.
+    pub fn with_history(rows: u16, cols: u16, history: usize) -> Self {
+        Self {
+            parser: vt100::Parser::new(rows.max(1), cols.max(1), history),
+            pending: Vec::new(),
+            history_cap: history,
+            view: 0,
+            history_len: 0,
+            pushed: 0,
+            epoch: 0,
+        }
     }
 
     /// Parses output from the program and returns what the terminal answers to the queries in
@@ -51,25 +82,96 @@ impl TermScreen {
     /// Hands output to the parser. vt100 panics on some states it gets itself into (see
     /// `resize`); rather than take the app down, the screen starts over from what it showed and
     /// the rest of this output is lost. Programs redraw after a resize anyway.
+    ///
+    /// vt100 moves a non-zero scrollback offset up by one for each row pushed into the history
+    /// (so the same rows stay in view), which counts them. At the bottom the offset is 1 for
+    /// the duration, so the count works there too.
     fn process(&mut self, bytes: &[u8]) {
+        if bytes.is_empty() {
+            return;
+        }
+        let alt = self.parser.screen().alternate_screen();
+        let probe = if !alt && self.history_len > 0 { self.view.max(1) } else { 0 };
+        self.parser.screen_mut().set_scrollback(probe);
         let parser = &mut self.parser;
         if std::panic::catch_unwind(AssertUnwindSafe(|| parser.process(bytes))).is_err() {
             self.rebuild();
+            return;
         }
+        if self.parser.screen().alternate_screen() != alt {
+            // History isn't readable on the alternate screen: keep the main screen's length.
+            self.epoch += 1;
+            self.view = 0;
+            self.parser.screen_mut().set_scrollback(0);
+            if alt {
+                self.history_len = self.read_history_len();
+                self.pushed = self.pushed.max(self.history_len as u64);
+                self.parser.screen_mut().set_scrollback(0);
+            }
+            return;
+        }
+        if alt {
+            return;
+        }
+        let after = self.parser.screen().scrollback();
+        let len = self.read_history_len();
+        let counted = if probe > 0 { after.checked_sub(probe) } else { len.checked_sub(self.history_len) };
+        let pushed_now = match counted {
+            // A reset cleared the history.
+            None => {
+                self.epoch += 1;
+                self.view = 0;
+                0
+            }
+            Some(n) => {
+                // The offset or length stopped at the cap: more may have been pushed.
+                let saturated = len == self.history_cap && (probe == 0 || after == len);
+                if saturated && n > 0 {
+                    self.epoch += 1;
+                }
+                n
+            }
+        };
+        self.pushed = (self.pushed + pushed_now as u64).max(len as u64);
+        self.view = if self.view > 0 { (self.view + pushed_now).min(len) } else { 0 };
+        self.parser.screen_mut().set_scrollback(self.view);
+        self.history_len = len;
     }
 
-    /// Replaces the parser with a fresh one showing the same screen.
-    fn rebuild(&mut self) {
+    /// The current grid's history length. Leaves the offset at the top of the history.
+    fn read_history_len(&mut self) -> usize {
+        self.parser.screen_mut().set_scrollback(usize::MAX);
+        self.parser.screen().scrollback()
+    }
+
+    /// Replaces the parser with a fresh one showing the same screen. The history is lost.
+    pub(super) fn rebuild(&mut self) {
+        let cursor = self.parser.screen().cursor_position();
+        self.rebuild_with(|rows| rows, cursor);
+    }
+
+    /// Replaces the parser with a fresh one of the same size and modes showing `pick` of the
+    /// screen's rows from the top, with the cursor at `cursor`. The history is lost.
+    pub(super) fn rebuild_with(&mut self, pick: impl FnOnce(&[TermRow]) -> &[TermRow], cursor: (u16, u16)) {
+        self.view = 0;
+        self.parser.screen_mut().set_scrollback(0);
         let (rows, cols) = self.size();
-        let replay = replay::replay(self.parser.screen(), &self.rows());
-        let mut parser = vt100::Parser::new(rows, cols, 0);
+        let all = self.rows();
+        let replay = replay::replay_at(self.parser.screen(), pick(&all), cursor);
+        let mut parser = vt100::Parser::new(rows, cols, self.history_cap);
         parser.process(&replay);
         self.parser = parser;
+        self.history_len = 0;
+        self.epoch += 1;
     }
 
+    /// Resizes the screen; the view goes back to the bottom.
     pub fn resize(&mut self, rows: u16, cols: u16) {
+        self.view = 0;
+        self.parser.screen_mut().set_scrollback(0);
+        self.epoch += 1;
         let narrower = cols.max(1) < self.size().1;
-        self.parser.set_size(rows.max(1), cols.max(1));
+        self.parser.screen_mut().set_size(rows.max(1), cols.max(1));
         // A wide glyph whose second half the new width cut off stays in vt100's grid, and the
         // next write over it panics. Redraw without it.
         if narrower && self.cut_wide_glyph() {
@@ -88,7 +190,7 @@ impl TermScreen {
         self.parser.screen().size()
     }
 
-    /// Every screen row as spans of equally styled cells. A wide glyph is a span of its own,
+    /// Every row in view (history rows while scrolled back) as spans of equally styled cells. A wide glyph is a span of its own,
     /// so a fallback font's glyph can't push the rest of the row out of the grid.
     pub fn rows(&self) -> Vec<TermRow> {
         let screen = self.parser.screen();
@@ -96,14 +198,16 @@ impl TermScreen {
         (0..rows).map(|r| row(screen, r, cols)).collect()
     }
 
-    /// Where the cursor is as (row, col), or None while the program hides it.
+    /// Where the cursor is in view as (row, col), or None while the program hides it or the
+    /// view is scrolled back past it.
     pub fn cursor(&self) -> Option<(u16, u16)> {
         let screen = self.parser.screen();
         if screen.hide_cursor() {
             return None;
         }
         let (r, c) = screen.cursor_position();
-        let (_, cols) = screen.size();
+        let (rows, cols) = screen.size();
+        let r = u16::try_from(usize::from(r) + self.view).ok().filter(|r| *r < rows)?;
         Some((r, c.min(cols.saturating_sub(1))))
     }
 
@@ -113,7 +217,7 @@ impl TermScreen {
         Modes { application_cursor: screen.application_cursor(), bracketed_paste: screen.bracketed_paste() }
     }
 
-    /// The screen's text, rows joined with newlines, trailing blanks trimmed (for tests).
+    /// The text in view, rows joined with newlines, trailing blanks trimmed (for tests).
     pub fn text(&self) -> String {
         let lines: Vec<String> = self
             .rows()
@@ -158,7 +262,7 @@ fn row(screen: &vt100::Screen, r: u16, cols: u16) -> TermRow {
             inverse: cell.inverse(),
         };
         let contents = cell.contents();
-        let text = if contents.is_empty() { " ".to_owned() } else { contents };
+        let text = if contents.is_empty() { " ".to_owned() } else { contents.to_owned() };
         let wide = cell.is_wide();
         // A cell can hold a character and its combining marks: it gets a span of its own, so
         // every other span has one char per column.
@@ -188,134 +292,4 @@ fn row(screen: &vt100::Screen, r: u16, cols: u16) -> TermRow {
         spans.pop();
     }
     TermRow { spans }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn screen(bytes: &str) -> TermScreen {
-        let mut s = TermScreen::new(24, 80);
-        s.feed(bytes.as_bytes());
-        s
-    }
-
-    #[test]
-    fn rows_group_cells_into_styled_spans() {
-        let s = screen("ab\x1b[1;31mcd\x1b[0m  ");
-        let rows = s.rows();
-        let spans = &rows[0].spans;
-        assert_eq!(spans.len(), 2, "{spans:?}");
-        assert_eq!((spans[0].col, spans[0].text.as_str(), spans[0].style), (0, "ab", CellStyle::default()));
-        assert_eq!((spans[1].col, spans[1].text.as_str()), (2, "cd"));
-        assert_eq!(spans[1].style, CellStyle { fg: TermColor::Indexed(1), bold: true, ..Default::default() });
-        assert!(rows[1].spans.is_empty());
-    }
-
-    #[test]
-    fn indexed_and_truecolor_attributes() {
-        let s = screen("\x1b[38;5;208mX\x1b[48;2;1;2;3mY\x1b[7mZ");
-        let rows = s.rows();
-        let spans = &rows[0].spans;
-        assert_eq!(spans.len(), 3, "{spans:?}");
-        assert_eq!(spans[0].style.fg, TermColor::Indexed(208));
-        assert_eq!(spans[1].style.bg, TermColor::Rgb(1, 2, 3));
-        assert_eq!(spans[2].text, "Z");
-        assert!(spans[2].style.inverse);
-    }
-
-    #[test]
-    fn wide_characters_get_their_own_two_column_span() {
-        let s = screen("a漢b");
-        let rows = s.rows();
-        let got: Vec<(u16, &str, u16)> = rows[0].spans.iter().map(|sp| (sp.col, sp.text.as_str(), sp.width)).collect();
-        assert_eq!(got, vec![(0, "a", 1), (1, "漢", 2), (3, "b", 1)]);
-    }
-
-    #[test]
-    fn combining_marks_stay_in_their_cell() {
-        let s = screen("e\u{301}x\u{e9}\u{2500}a\u{308}\u{301}b");
-        let rows = s.rows();
-        let got: Vec<(u16, &str, u16, bool)> = rows[0].spans.iter().map(|sp| (sp.col, sp.text.as_str(), sp.width, sp.one_cell)).collect();
-        let want = vec![(0, "e\u{301}", 1, true), (1, "x\u{e9}\u{2500}", 3, false), (4, "a\u{308}\u{301}", 1, true), (5, "b", 1, false)];
-        assert_eq!(got, want);
-        let cells: Vec<Vec<(u16, &str)>> = rows[0].spans.iter().map(TermSpan::cells).collect();
-        assert_eq!(cells[0], [(0, "e\u{301}")]);
-        assert_eq!(cells[1], [(0, "x"), (1, "\u{e9}"), (2, "\u{2500}")], "one char per column");
-        assert_eq!(cells[3], [(0, "b")]);
-        let wide = screen("\u{6f22}\u{301}");
-        assert_eq!(wide.rows()[0].spans[0].cells(), [(0, "\u{6f22}\u{301}")], "a wide glyph with its mark");
-    }
-
-    #[test]
-    fn cursor_position_and_hidden_cursor() {
-        let mut s = screen("hi");
-        assert_eq!(s.cursor(), Some((0, 2)));
-        s.feed(b"\x1b[?25l");
-        assert_eq!(s.cursor(), None);
-        let m = s.modes();
-        assert!(!m.application_cursor && !m.bracketed_paste);
-        s.feed(b"\x1b[?1h\x1b[?2004h");
-        let m = s.modes();
-        assert!(m.application_cursor && m.bracketed_paste);
-    }
-
-    #[test]
-    fn answers_queries_even_when_split() {
-        let mut s = TermScreen::new(24, 80);
-        assert!(s.feed(b"hi\x1b[").is_empty());
-        assert_eq!(s.feed(b"6n"), b"\x1b[1;3R");
-        assert_eq!(s.feed(b"\x1b[5n\x1b[c"), b"\x1b[0n\x1b[?62;22c");
-        assert_eq!(s.text(), "hi");
-    }
-
-    #[test]
-    fn resize_changes_size_and_keeps_text() {
-        let mut s = screen("hello");
-        s.resize(10, 20);
-        assert_eq!(s.size(), (10, 20));
-        assert!(s.text().starts_with("hello"), "{:?}", s.text());
-        s.resize(0, 0);
-        assert_eq!(s.size(), (1, 1));
-    }
-
-    #[test]
-    fn narrowing_through_a_wide_glyph_drops_it_instead_of_panicking() {
-        // The glyph sits in the last two columns, and the narrower screen keeps only one of them.
-        for (before, cols) in [(77, 78), (78, 79)] {
-            let mut s = screen(&format!("{}漢", "a".repeat(before)));
-            s.resize(24, cols);
-            assert_eq!(s.size(), (24, cols));
-            s.feed(b"xy");
-            s.feed(b"\x1b[1;1Hz");
-            let first = s.text().lines().next().unwrap_or_default().to_owned();
-            assert!(first.starts_with(&format!("z{}", "a".repeat(before - 1))), "cols {cols}: {first:?}");
-            assert!(!first.contains('漢') && first.chars().count() <= usize::from(cols), "{first:?}");
-        }
-    }
-
-    #[test]
-    fn narrowing_keeps_styles_modes_and_the_cursor() {
-        let mut s = screen(&format!("\x1b[?2004h\x1b[31mred\x1b[0m\r\n{}漢\x1b[2;3H", "b".repeat(77)));
-        s.resize(24, 78);
-        let rows = s.rows();
-        assert_eq!(rows[0].spans[0].text, "red");
-        assert_eq!(rows[0].spans[0].style.fg, TermColor::Indexed(1));
-        assert_eq!(rows[1].spans.iter().map(|sp| sp.text.as_str()).collect::<String>(), "b".repeat(77));
-        assert_eq!(s.cursor(), Some((1, 2)));
-        assert!(s.modes().bracketed_paste);
-        s.feed(b"\x1b[2;78Hz");
-        assert_eq!(s.text().lines().nth(1), Some(format!("{}z", "b".repeat(77)).as_str()));
-    }
-
-    #[test]
-    fn a_parser_panic_resets_the_screen_instead_of_crashing() {
-        // A glyph cut by narrowing the main screen while a full-screen program shows the other.
-        let mut s = screen(&format!("{}漢\x1b[?1049h", "a".repeat(77)));
-        s.resize(24, 78);
-        s.feed(b"\x1b[?1049l\x1b[1;78Hxy");
-        assert_eq!(s.size(), (24, 78));
-        s.feed(b"\x1b[1;1Hok");
-        assert!(s.text().starts_with("ok"), "{:?}", s.text());
-    }
 }
