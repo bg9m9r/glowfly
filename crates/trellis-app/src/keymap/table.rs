@@ -98,7 +98,8 @@ impl When {
     /// overlaps only itself, `Anywhere` and `NotTyping`.
     pub fn overlaps(self, other: When) -> bool {
         use When as W;
-        let browsing = |w: When| matches!(w, W::NotTyping | W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Lists | W::Blame | W::Graph);
+        let browsing =
+            |w: When| matches!(w, W::NotTyping | W::WorkingDiff | W::CommitDiff | W::DiffOrConflict | W::Lists | W::Blame | W::Graph);
         let palette = |w: When| matches!(w, W::InPalette | W::PaletteStep);
         let panel = |a: When, b: When| a == W::RebasePanel && b == W::NotTyping;
         self == other
