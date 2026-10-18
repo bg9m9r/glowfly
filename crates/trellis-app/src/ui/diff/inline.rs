@@ -4,7 +4,7 @@
 
 use super::syntax::paint_line;
 use super::wrap::RowMetrics;
-use super::{DiffView, fold, hunk_header, line_click, paint_mark, thread_marks};
+use super::{DiffView, drag_over, fold, hunk_header, line_click, line_sense, paint_mark, thread_marks};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
@@ -33,15 +33,20 @@ pub(super) fn show(
     let width = if v.wrap.is_some() { ui.available_width() } else { ui.available_width().max(cols.text + widest as f32 * char_w + 40.0) };
 
     super::wrap::scroll(ui, "diff", rows.len(), m, scroll_to, |ui, i, h| {
-        // Lines can be clicked (to select, or to clear the selection) unless it's a commit diff.
-        let sense = if v.sel.is_some() && matches!(rows[i], DiffRow::Line { .. }) { Sense::click() } else { Sense::hover() };
-        let (rect, resp) = ui.allocate_exact_size(vec2(width, h), sense);
+        // Lines sense clicks and drags by their own stable ids (auto ids shift as rows scroll).
+        let (rect, _) = ui.allocate_exact_size(vec2(width, h), Sense::hover());
         match rows[i] {
+            // During a line drag the header counts as the line before the hunk's first.
+            DiffRow::Header(h) => {
+                drag_over(ui, v, rect, h, 0, msgs);
+                hunk_header(ui, rect, v, h, msgs)
+            }
             // A change block's action row acts on its normal hunk, like that hunk's header.
-            DiffRow::Header(h) | DiffRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
+            DiffRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
             DiffRow::Fold(f) => fold::fold_row(ui, rect, v, f, cols.sign, cols.text, msgs),
             // An opened gap's line: drawn like a context line, never selectable or marked.
             DiffRow::GapLine { hunk, line } => {
+                drag_over(ui, v, rect, hunk, 0, msgs);
                 let Some((g, text)) = v.gap_lines.iter().find(|(g, _)| g.hunk == hunk) else { return };
                 let Some(raw) = text.lines.get(line) else { return };
                 let p = ui.painter();
@@ -59,7 +64,11 @@ pub(super) fn show(
             DiffRow::Line { hunk, line } => {
                 let dl = &diff.hunks[hunk].lines[line];
                 let selected = v.is_selected(hunk, line);
-                let hovered = v.sel.is_some() && line_click(ui, &resp, hunk, line, dl.origin, msgs);
+                let hovered = v.sel.is_some() && {
+                    let resp = ui.interact(rect, ui.id().with(("diff-line", hunk, line)), line_sense(dl.origin));
+                    drag_over(ui, v, rect, hunk, line, msgs);
+                    line_click(ui, &resp, hunk, line, dl.origin, msgs)
+                };
                 let (bg, fg, sign) = match dl.origin {
                     '+' if selected => (color::diff_add_sel(), color::text(), '+'),
                     '-' if selected => (color::diff_del_sel(), color::text(), '-'),

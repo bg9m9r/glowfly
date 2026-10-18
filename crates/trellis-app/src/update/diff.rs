@@ -143,15 +143,11 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             }
             fx.push(super::prefs::save_settings(st));
         }
-        DiffMsg::SelectDiffLine { hunk, line, how } => {
-            if st.line_ops_blocked().is_some() {
-                return;
-            }
-            if let Some((target, d)) = &st.diff {
-                st.view.diff_lines.click(target, d, hunk, line, how);
-            }
-        }
-        DiffMsg::ClearLineSelection => st.view.diff_lines.clear(),
+        DiffMsg::SelectDiffLine { .. }
+        | DiffMsg::StartLineDrag { .. }
+        | DiffMsg::DragDiffLine { .. }
+        | DiffMsg::EndLineDrag
+        | DiffMsg::ClearLineSelection => lines(st, msg),
         DiffMsg::JumpToChange(step) => {
             if st.view.diff_landing.is_some() {
                 return; // a stepped-to file is loading: key repeat waits for it
@@ -191,6 +187,22 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
             ex.clear();
             true
         }),
+    }
+}
+
+/// Line selection: clicks, and press-and-drag across lines. Clicks and drags are ignored while
+/// line operations are blocked.
+fn lines(st: &mut AppState, msg: DiffMsg) {
+    let blocked = st.line_ops_blocked().is_some();
+    let sel = &mut st.view.diff_lines;
+    match (msg, &st.diff) {
+        (DiffMsg::ClearLineSelection, _) => sel.clear(),
+        (DiffMsg::EndLineDrag, _) => sel.end_drag(),
+        _ if blocked => {}
+        (DiffMsg::SelectDiffLine { hunk, line, how }, Some((target, d))) => sel.click(target, d, hunk, line, how),
+        (DiffMsg::StartLineDrag { hunk, line, how }, Some((target, d))) => sel.start_drag(target, d, hunk, line, how),
+        (DiffMsg::DragDiffLine { hunk, line }, Some((target, d))) => sel.drag_to(target, d, hunk, line),
+        _ => {}
     }
 }
 

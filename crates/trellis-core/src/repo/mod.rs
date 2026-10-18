@@ -378,6 +378,8 @@ mod history_tests;
 #[cfg(test)]
 mod lines_tests;
 #[cfg(test)]
+mod lines_whole_tests;
+#[cfg(test)]
 mod load_filter_tests;
 #[cfg(test)]
 mod markers_tests;

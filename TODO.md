@@ -224,7 +224,8 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Cache the computed diff rows instead of rebuilding them every frame
 - [x] **Line-level staging**
   Select lines in a hunk to stage, unstage or discard (click, Shift-click for a range,
-  Ctrl/Cmd-click to toggle; Esc clears). Working-tree diffs only, one hunk at a time.
+  Ctrl/Cmd-click to toggle, drag across lines; Esc clears). Working-tree diffs only, one hunk
+  at a time.
   - [x] Keyboard shortcuts: S/U stage or unstage the selected lines (see P1 Keyboard
     shortcuts); reverting lines of a commit diff is under the diff viewer
 - [x] **Merge conflict tool**
@@ -686,12 +687,6 @@ ideas that grew out of each item and grouped by that item. They are not tracked 
 checkboxes; they are built after the open items above, roughly in this order. New
 follow-ups go to Ideas, not here.
 
-### Line-level staging
-
-- Drag to select a range of lines
-- Remove the index entry, rather than leaving an empty file, when every line of an added or
-  deleted file is unstaged or staged line by line
-
 ### File history and blame
 
 - Rendered preview (Markdown, images) in the file view
@@ -1014,6 +1009,12 @@ here, under the item they grew from.
 - Per-line hover buttons (stage / unstage / discard this line)
 - Selections spanning several hunks
 - Keep the line selection across tab switches
+- Auto-scroll the diff while a line drag is held past the viewport's top or bottom edge
+- Drag selection in the whole-file view, once line operations work there
+- Discarding every line of an untracked file deletes it instead of leaving an empty file
+- After unstaging every line of a new file, follow the diff to its untracked view instead of
+  closing it
+- Ctrl/Cmd-drag over already selected lines removes them (toggle the range) rather than adding
 
 ### Merge conflict tool
 

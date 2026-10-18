@@ -7,6 +7,8 @@ use super::snapshot_tests::{git, render, with_repo};
 // Declared here to keep them beside the diff snapshots they extend.
 #[path = "snapshot_tests_gaps.rs"]
 mod snapshot_tests_gaps;
+#[path = "snapshot_tests_lines_drag.rs"]
+mod snapshot_tests_lines_drag;
 #[path = "snapshot_tests_reveal.rs"]
 mod snapshot_tests_reveal;
 use crate::msg::DiffMsg;

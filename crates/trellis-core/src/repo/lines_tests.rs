@@ -10,22 +10,22 @@ const TEN: &str = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n";
 /// `5` replaced by `five`, and `6a`, `6b` inserted after `6`: one hunk.
 const EDITED: &str = "1\n2\n3\n4\nfive\n6\n6a\n6b\n7\n8\n9\n10\n";
 
-fn index_bytes(dir: &Path, path: &str) -> Option<Vec<u8>> {
+pub(super) fn index_bytes(dir: &Path, path: &str) -> Option<Vec<u8>> {
     let repo = Repository::open(dir).unwrap();
     let entry = repo.index().unwrap().get_path(Path::new(path), 0)?;
     Some(repo.find_blob(entry.id).unwrap().content().to_vec())
 }
 
-fn index_text(dir: &Path, path: &str) -> String {
+pub(super) fn index_text(dir: &Path, path: &str) -> String {
     String::from_utf8(index_bytes(dir, path).expect("in the index")).unwrap()
 }
 
-fn read(dir: &Path, path: &str) -> Vec<u8> {
+pub(super) fn read(dir: &Path, path: &str) -> Vec<u8> {
     std::fs::read(dir.join(path)).unwrap()
 }
 
 /// Hunk 0 as displayed and the indexes of its lines with these (origin, text) pairs.
-fn pick(dir: &Path, target: &DiffTarget, want: &[(char, &str)]) -> (Hunk, Vec<usize>) {
+pub(super) fn pick(dir: &Path, target: &DiffTarget, want: &[(char, &str)]) -> (Hunk, Vec<usize>) {
     let d = load_diff(dir, target).unwrap();
     let h = &d.hunks[0];
     let idx = want
@@ -35,7 +35,7 @@ fn pick(dir: &Path, target: &DiffTarget, want: &[(char, &str)]) -> (Hunk, Vec<us
     (h.clone(), idx)
 }
 
-fn apply(dir: &Path, path: &str, op: HunkOp, want: &[(char, &str)]) {
+pub(super) fn apply(dir: &Path, path: &str, op: HunkOp, want: &[(char, &str)]) {
     let target = match op {
         HunkOp::Unstage => DiffTarget::Staged(path.into()),
         _ => DiffTarget::Unstaged(path.into()),

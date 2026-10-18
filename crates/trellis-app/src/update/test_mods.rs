@@ -135,6 +135,8 @@ pub(super) mod lfs_fetch_tests;
 pub(super) mod lfs_tests;
 #[path = "lfs_track_tests.rs"]
 pub(super) mod lfs_track_tests;
+#[path = "lines_drag_tests.rs"]
+pub(super) mod lines_drag_tests;
 #[path = "lines_tests.rs"]
 pub(super) mod lines_tests;
 #[path = "load_more_tests.rs"]

@@ -49,6 +49,22 @@ pub enum DiffMsg {
         line: usize,
         how: LineClick,
     },
+    /// A press on changed line `line` of hunk `hunk` became a drag (`how` from the modifiers
+    /// held).
+    StartLineDrag {
+        hunk: usize,
+        line: usize,
+        how: LineClick,
+    },
+    /// During a line drag, the pointer is over line `line` of hunk `hunk` (0 for a hunk header
+    /// or the gap rows above it). The selection runs from the drag's start to there, within the
+    /// drag's hunk.
+    DragDiffLine {
+        hunk: usize,
+        line: usize,
+    },
+    /// The button was released, so the selection stays and the drag ends.
+    EndLineDrag,
     ClearLineSelection,
     /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
     /// at `generation`, each only where it was pending. Applied only while that diff is still on
@@ -86,6 +102,9 @@ impl DiffMsg {
             | Self::ExpandAllUnchanged
             | Self::CollapseAllUnchanged
             | Self::SelectDiffLine { .. }
+            | Self::StartLineDrag { .. }
+            | Self::DragDiffLine { .. }
+            | Self::EndLineDrag
             | Self::ClearLineSelection
             | Self::DiffHighlighted { .. } => None,
         }

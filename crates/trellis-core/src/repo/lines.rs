@@ -1,6 +1,8 @@
 //! Line-level staging: stage, unstage or discard some of a hunk's changed lines by building a
 //! patch that holds only those lines and applying it to the index or the working tree. With
 //! whitespace changes hidden, whole hunks go this way too (`apply_shown`, with `shown_ws`).
+//! Unstaging every line of an added file, or staging every line of a deleted one, removes the
+//! path's index entry (untracked again, or a staged deletion) instead of leaving an empty file.
 
 use super::diff::{file_patch, hunk_of, target_diff};
 use super::shown_ws::{changed, exact_context, raw_lines, side_lines};
@@ -90,6 +92,12 @@ fn apply_in(
         _ => Patched::Existing(mode(reverse)),
     };
     let borrowed: Vec<(char, &[u8])> = content.iter().map(|(o, c)| (*o, c.as_slice())).collect();
+    // Every line of an added file unstaged, or of a deleted file staged: the path leaves the
+    // index (untracked again, or a staged deletion) rather than staying as an empty file.
+    let whole = matches!((op, delta.status()), (HunkOp::Unstage, Delta::Added) | (HunkOp::Stage, Delta::Deleted));
+    if whole && patch.num_hunks() == 1 && images(&borrowed, &selected, reverse).1.is_empty() {
+        return super::exact::remove_path(&repo, path);
+    }
     let Some(bytes) = build_patch(path, target, pre_start, &borrowed, &selected, reverse) else { return Ok(()) };
     let partial = Diff::from_buffer(&bytes)?;
     match location {

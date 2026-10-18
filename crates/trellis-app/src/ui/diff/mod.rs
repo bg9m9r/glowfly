@@ -8,7 +8,8 @@
 //! whole-file view's folds, open in both views), folded back from their first line. The fold
 //! keys (E and Shift+E by default) open the first closed run at or below the top and fold back
 //! the opened one at the top. With wrapping on, long lines continue on the next line and their
-//! rows grow to fit.
+//! rows grow to fit. Changed lines are selected by click, Shift-click and Ctrl/Cmd-click, or by
+//! pressing on one and dragging across the lines of its hunk.
 
 pub(in crate::ui) mod fold;
 mod header;
@@ -29,7 +30,7 @@ use crate::state::AppState;
 use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
 use crate::state::pull_request_threads::{self, Marks};
-use eframe::egui::{CursorIcon, FontId, Rect, Response, RichText, Ui, vec2};
+use eframe::egui::{CursorIcon, FontId, Rect, Response, RichText, Sense, Ui, vec2};
 use hunk_header::hunk_header;
 use rows_cache::{DiffRowsCache, Source};
 pub(super) use style::DiffStyle;
@@ -158,6 +159,14 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     let header_hl = diff.highlight.as_ref().filter(|_| st.settings.syntax_highlighting);
     let selectable = st.line_ops_blocked().is_none();
     let sel = selectable.then_some(&st.view.diff_lines);
+    // The release can happen over a row that is no longer drawn, so the drag ends here.
+    if sel.and_then(LineSelection::dragging).is_some() {
+        if ui.input(|i| i.pointer.primary_down()) {
+            ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
+        } else {
+            msgs.push(Msg::Diff(DiffMsg::EndLineDrag));
+        }
+    }
     let style = DiffStyle::new(&st.settings);
     let expanded = &st.view.diff_expanded;
     let opened = whole.map(|w| whole_file::opened(w, expanded)).unwrap_or_default();
@@ -188,24 +197,34 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     })
 }
 
+/// What the modifiers held make of a click or a drag on a line: Shift for a range, Ctrl/Cmd to
+/// toggle (or, for a drag, to add).
+fn how(ui: &Ui) -> LineClick {
+    let m = ui.input(|i| i.modifiers);
+    if m.shift {
+        LineClick::Range
+    } else if m.command {
+        LineClick::Toggle
+    } else {
+        LineClick::Only
+    }
+}
+
 /// Click handling for a diff line (a row in inline, a cell in split): `+`/`-` lines are
 /// selected (Shift for a range, Ctrl/Cmd to toggle); a plain click elsewhere clears the
-/// selection. Returns whether the line is selectable and hovered.
+/// selection. A press on a `+`/`-` line that moves becomes a drag (`StartLineDrag`). Returns
+/// whether the line is selectable and hovered.
 pub(super) fn line_click(ui: &Ui, resp: &Response, hunk: usize, line: usize, origin: char, msgs: &mut Vec<Msg>) -> bool {
     let changed = matches!(origin, '+' | '-');
     let hovered = changed && resp.hovered();
     if hovered {
         ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
     }
+    if changed && resp.drag_started() {
+        msgs.push(Msg::Diff(DiffMsg::StartLineDrag { hunk, line, how: how(ui) }));
+    }
     if resp.clicked() {
-        let m = ui.input(|i| i.modifiers);
-        let how = if m.shift {
-            LineClick::Range
-        } else if m.command {
-            LineClick::Toggle
-        } else {
-            LineClick::Only
-        };
+        let how = how(ui);
         if changed {
             msgs.push(Msg::Diff(DiffMsg::SelectDiffLine { hunk, line, how }));
         } else if how == LineClick::Only {
@@ -213,6 +232,23 @@ pub(super) fn line_click(ui: &Ui, resp: &Response, hunk: usize, line: usize, ori
         }
     }
     hovered
+}
+
+/// How a selectable line senses the pointer: changed lines can also be dragged across; other
+/// lines leave a drag to the scroll area.
+pub(super) fn line_sense(origin: char) -> Sense {
+    if matches!(origin, '+' | '-') { Sense::click_and_drag() } else { Sense::click() }
+}
+
+/// During a line drag, reports the row at `rect` (line `line` of hunk `hunk`; 0 for a hunk
+/// header or gap row) when the pointer is over it and it isn't the row last reported.
+/// `rect_contains_pointer` respects the clip rect and works while the drag's origin holds the
+/// pointer, unlike `hovered`.
+pub(super) fn drag_over(ui: &Ui, v: &DiffView, rect: Rect, hunk: usize, line: usize, msgs: &mut Vec<Msg>) {
+    let Some(d) = v.sel.and_then(LineSelection::dragging) else { return };
+    if d.over != (hunk, line) && ui.rect_contains_pointer(rect) {
+        msgs.push(Msg::Diff(DiffMsg::DragDiffLine { hunk, line }));
+    }
 }
 
 /// The bar on a line's left edge: the accent when selected, faint when hovered.

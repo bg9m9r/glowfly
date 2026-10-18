@@ -70,6 +70,14 @@ pub(super) fn reset_path(repo: &Repository, index: &mut Index, head: Option<&Tre
     Ok(())
 }
 
+/// Removes `path`'s entries from the index, matched exactly (no globs, no case folding).
+pub(super) fn remove_path(repo: &Repository, path: &str) -> Result<()> {
+    let mut idx = index(repo)?;
+    reset_path(repo, &mut idx, None, path)?;
+    idx.write()?;
+    Ok(())
+}
+
 /// Applies `diff`'s changes to `path` to the index (`opts` skips the deltas of any other path), reading the old
 /// contents from `path`'s own stage-0 entry. `repo.apply` to the index looks the path up in the
 /// repository's index, which folds case with `core.ignorecase`, so it could patch a case twin's

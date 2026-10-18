@@ -17,7 +17,7 @@ use std::time::Instant;
 use trellis_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions};
 
 /// Two hunks; hunk 0 mixes context with changes: ` a`, `-b`, `+B`, ` c`, `+d`, `-e`.
-fn two_hunks() -> FileDiff {
+pub(super) fn two_hunks() -> FileDiff {
     let line = |origin: char, text: &str| DiffLine { origin, old: Some(1), new: Some(1), text: text.into() };
     let hunks = vec![
         Hunk {
@@ -29,11 +29,11 @@ fn two_hunks() -> FileDiff {
     FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
 }
 
-fn unstaged() -> DiffTarget {
+pub(super) fn unstaged() -> DiffTarget {
     DiffTarget::Unstaged("f.txt".into())
 }
 
-fn with_diff(target: DiffTarget) -> AppState {
+pub(super) fn with_diff(target: DiffTarget) -> AppState {
     let mut st = state();
     st.diff = Some((target, two_hunks().into()));
     st
@@ -47,20 +47,20 @@ fn with_repo(name: &str, target: DiffTarget) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn click(st: &mut AppState, hunk: usize, line: usize, how: LineClick) {
+pub(super) fn click(st: &mut AppState, hunk: usize, line: usize, how: LineClick) {
     assert!(run(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk, line, how })).is_empty());
 }
 
-fn selected(st: &AppState) -> Option<(usize, Vec<usize>)> {
+pub(super) fn selected(st: &AppState) -> Option<(usize, Vec<usize>)> {
     let s = &st.view.diff_lines;
     (!s.is_empty()).then(|| (s.hunk, s.lines.iter().copied().collect()))
 }
 
-fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
+pub(super) fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
     let generation = st.diff_gen;
     run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result }));
 }

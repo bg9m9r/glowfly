@@ -5,7 +5,7 @@
 use super::style::DiffStyle;
 use super::syntax::paint_line;
 use super::wrap::{RowMetrics, Wrap};
-use super::{DiffView, fold, hunk_header, line_click, paint_mark, thread_marks};
+use super::{DiffView, drag_over, fold, hunk_header, line_click, line_sense, paint_mark, thread_marks};
 use crate::msg::Msg;
 use crate::ui::theme::color;
 use eframe::egui::{Align2, Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
@@ -49,8 +49,13 @@ pub(super) fn show(
     super::wrap::scroll(ui, "diff", rows.len(), m, scroll_to, |ui, i, h| {
         let (rect, _) = ui.allocate_exact_size(vec2(width, h), Sense::hover());
         match rows[i] {
+            // During a line drag the header counts as the line before the hunk's first.
+            SplitRow::Header(h) => {
+                drag_over(ui, v, rect, h, 0, msgs);
+                hunk_header(ui, rect, v, h, msgs)
+            }
             // A change block's action row acts on its normal hunk, like that hunk's header.
-            SplitRow::Header(h) | SplitRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
+            SplitRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
             // Spans both columns, with no divider, like an action row.
             SplitRow::Fold(f) => {
                 let cols = st.split_cols();
@@ -58,6 +63,7 @@ pub(super) fn show(
             }
             // An opened gap's line: the same text on both sides, like a context line.
             SplitRow::GapLine { hunk, line } => {
+                drag_over(ui, v, rect, hunk, 0, msgs);
                 let Some((g, text)) = v.gap_lines.iter().find(|(g, _)| g.hunk == hunk) else { return };
                 let Some(raw) = text.lines.get(line) else { return };
                 let n = line as u32;
@@ -76,6 +82,9 @@ pub(super) fn show(
                 let lines = &diff.hunks[hunk].lines;
                 let left = Rect::from_min_max(rect.min, pos2(rect.left() + half, rect.bottom()));
                 let right = Rect::from_min_max(pos2(left.right(), rect.top()), rect.max);
+                if let Some(idx) = dragged_side(ui, left, right, old, new) {
+                    drag_over(ui, v, rect, hunk, idx, msgs);
+                }
                 let spans = |i: usize| -> &[Span] {
                     match (lines[i].origin, v.hl) {
                         ('<' | '>' | '=', _) | (_, None) => &[],
@@ -95,7 +104,7 @@ pub(super) fn show(
                     };
                     let selected = origin != ' ' && v.is_selected(hunk, idx);
                     let hovered = v.sel.is_some() && {
-                        let resp = ui.interact(r, ui.id().with(("diff-cell", hunk, idx, side)), Sense::click());
+                        let resp = ui.interact(r, ui.id().with(("diff-cell", hunk, idx, side)), line_sense(origin));
                         line_click(ui, &resp, hunk, idx, origin, msgs)
                     };
                     cell(ui, r, Some((dl, spans(idx), diff.intraline.line(hunk, idx))), side, st, v.wrap, selected);
@@ -116,6 +125,16 @@ pub(super) fn show(
             }
         }
     })
+}
+
+/// The line a drag over a pair row counts: the side under the pointer, or the other side's
+/// line over an empty cell.
+fn dragged_side(ui: &Ui, left: Rect, right: Rect, old: Option<usize>, new: Option<usize>) -> Option<usize> {
+    match (old, new) {
+        (Some(o), _) if ui.rect_contains_pointer(left) => Some(o),
+        (_, Some(n)) if ui.rect_contains_pointer(right) => Some(n),
+        _ => old.or(new),
+    }
 }
 
 /// One side of a row: background, line number, sign and text, clipped to the column so long
