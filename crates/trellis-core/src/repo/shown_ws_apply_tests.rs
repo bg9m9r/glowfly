@@ -118,6 +118,47 @@ fn shown_lines_stage() {
 }
 
 #[test]
+fn shown_lines_discard() {
+    let dir = changed("ws-discard-line", OLD, NEW);
+    let hunk = shown(&dir, &unstaged());
+    let close = hunk.lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
+    apply_shown(&dir, "f.txt", 0, &hunk, Some(&[close]), HunkOp::Discard).unwrap();
+    assert_eq!(
+        read(&dir, "f.txt"),
+        "a
+if {
+        x
+        y
+b
+",
+        "only the brace goes; the re-indent stays"
+    );
+    assert_eq!(index_text(&dir, "f.txt"), OLD);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn shown_lines_unstage() {
+    let dir = changed("ws-unstage-line", OLD, NEW);
+    git(&dir, &["add", "f.txt"]);
+    let hunk = shown(&dir, &staged());
+    let close = hunk.lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
+    apply_shown(&dir, "f.txt", 0, &hunk, Some(&[close]), HunkOp::Unstage).unwrap();
+    assert_eq!(
+        index_text(&dir, "f.txt"),
+        "a
+if {
+        x
+        y
+b
+",
+        "the rest stays staged"
+    );
+    assert_eq!(read(&dir, "f.txt"), NEW, "the working tree is untouched");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn eof_newline_stays_hidden() {
     let dir = changed("ws-eof-stage", "a\nb", "A\nb\n");
     whole(&dir, &unstaged(), HunkOp::Stage).unwrap();

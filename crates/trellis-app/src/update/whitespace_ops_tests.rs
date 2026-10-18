@@ -88,6 +88,61 @@ fn lines_can_be_selected_and_staged() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Selects the shown `}` line of the open diff.
+fn select_close(st: &mut AppState) -> usize {
+    let close = st.diff.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
+    assert!(run(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: close, how: Only })).is_empty());
+    assert!(!st.view.diff_lines.is_empty());
+    close
+}
+
+#[test]
+fn discard_lines_removes_only_the_shown_line_and_undoes_exactly() {
+    let (mut st, dir, _) = reindented("ws-ops-discard-lines", false);
+    let close = select_close(&mut st);
+    let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Discard)));
+    assert!(
+        matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, lines, ignore_whitespace: true, .. }, .. }] if *lines == [close]),
+        "{fx:?}"
+    );
+    finish(&mut st, fx);
+    assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.last().map(|l| &l.text));
+    assert_eq!(
+        read(&dir),
+        "a
+if {
+        x
+        y
+b
+",
+        "the re-indent stays"
+    );
+    assert!(
+        matches!(st.undo.undo.last(), Some(Action::Discard { what: Discarded::Lines(1), path, .. }) if path == "f.txt"),
+        "{:?}",
+        st.undo.undo
+    );
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(read(&dir), NEW, "the working copy is back byte for byte");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unstage_lines_on_a_staged_diff() {
+    let (mut st, dir, _) = reindented("ws-ops-unstage-lines", true);
+    let close = select_close(&mut st);
+    let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Unstage)));
+    assert!(
+        matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Unstage, lines, ignore_whitespace: true, .. }, .. }] if *lines == [close]),
+        "{fx:?}"
+    );
+    finish(&mut st, fx);
+    assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.last().map(|l| &l.text));
+    assert_eq!(changes(&dir, &DiffTarget::Unstaged("f.txt".into())), ["+}"], "only the brace is unstaged");
+    assert_eq!(read(&dir), NEW);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn discard_hunk_keeps_the_reindent_and_undoes_exactly() {
     let (mut st, dir, _) = reindented("ws-ops-discard", false);
