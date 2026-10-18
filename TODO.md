@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 12:58 · **Command palette (fuzzy finder): tag pushes from graph labels, macOS key labels, tag checkout notice, stash confirmation and list keys**: Checking out a tag from the palette explains the detached HEAD, stash apply asks first, palette lists take keyboard keys, and key labels and toolbar names follow macOS conventions (`786f74c6`)
 - 2026-10-18 11:38 · **File actions: trash edge cases and undoable delete**: Delete and Unstage and delete can be undone and redone (restoring the file and its staged entry), Linux drives without a usable trash offer the home Trash or a permanent delete, and Recycle Bin settings are read per mount point on Windows (`fb937002`)
 - 2026-10-18 11:05 · **Branch operations**: The remote branch menu now offers the same operations as a local branch, run against its tracking branch or the checked-out branch, with review fixes applied (`a6f66ae9`)
 - 2026-10-18 10:34 · **Diff viewer upgrade: hunk and line operations with whitespace hidden, and undoable hunk reverts**: With Ignore whitespace on, staging, unstaging, discarding and reverting hunks and lines apply exactly the changes shown and leave the hidden whitespace changes as they are, and reverts from commit and comparison diffs can be undone and redone (`4d79db0f`)
