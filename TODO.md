@@ -1,6 +1,8 @@
-# Trellis roadmap
+# Trellis backlog
 
-What Trellis does today and what is planned next, roughly in priority order. Each item is a
+The items behind [ROADMAP.md](ROADMAP.md), which holds the goal, the milestones and their status.
+What Trellis does today and what is planned next, roughly in priority order: the current
+milestone's section first. Each item is a
 target to design, not a finished spec. A top-level item is the unit of work: it is ticked when
 its core behaviour works and every sub-item is done or moved to [Later](#later). A substantial
 new feature becomes its own top-level item; smaller ideas, polish and follow-ups go to Later as
@@ -59,6 +61,35 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
   Bitbucket Data Center, Azure DevOps, Jira Cloud, Jira Data Center, and Trello. Each supports listing
   and creating pull requests where applicable, listing issues and mentions, creating a branch
   from an issue, and connecting through Git Credential Manager or a token.
+
+---
+
+## Milestone 1: first release
+
+What [Milestone 1](ROADMAP.md#milestone-1-first-release-in-progress) needs that tests and CI can
+check. Its hands-on criteria (daily use, merging the release pull request) are in ROADMAP.md.
+
+- [ ] **Whole-app journey tests**: headless tests that start the whole app (state, update,
+      views and the real effect runner with git) on a fixture repository and drive it through
+      the UI by visible labels, checking the screen and the repository on disk at each step;
+      run on Windows, macOS and Linux CI
+  - Clone from a local bare remote, stage a hunk and a file, commit, push, pull
+  - Create a branch, merge it, delete it; checkout with local changes
+  - Rebase onto a diverged branch, hit a conflict, resolve it in the merge tool, continue
+  - Stash and pop; undo and redo a commit and a merge
+- [ ] **Real-input smoke tests (Linux)**: a CI job that runs the release build under Xvfb and
+      sends real X11 mouse and keyboard events with xdotool
+  - The first click after the window gains focus, typing in the commit box, a keyboard
+    shortcut, a context menu, a drag, a resize, and a 150% scale factor
+  - Fails with a screenshot of the window
+- [ ] **Real-input smoke tests (Windows)**: the same checks on the Windows CI runner's desktop,
+      through real input events or UI Automation over the AccessKit tree
+- [ ] **Input reliability**: the first click after the window gains focus was dropped while
+      testing with synthetic input; fix it if the real-input tests reproduce it, else close it
+      with their result
+- [ ] **Installer and update checks in CI**: install the MSI and DEB the release workflow built,
+      start Trellis from them, uninstall cleanly, and update an older build to the new one
+      against a local release feed with checksums
 
 ---
 
@@ -581,8 +612,6 @@ Done except the group colors, which wait on repository groups in the repository 
 - [x] **Performance**: incremental status for very large working trees: the watcher's changed
       paths re-read only their unstaged rows, and a slow full read offers git's untracked cache
       once per repository (loading already runs off the UI thread)
-- [ ] **Input reliability**: the first click after the window gains focus was dropped while
-      testing with synthetic input; check with real input
 - [x] **Onboarding**: first-run welcome and tutorial
 
 ## Out of scope

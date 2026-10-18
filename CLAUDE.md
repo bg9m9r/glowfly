@@ -1,7 +1,8 @@
 # Trellis: notes for AI assistants
 
 Native Git client in Rust (egui + libgit2). Read `docs/ARCHITECTURE.md`
-before structural changes. `TODO.md` is the feature backlog.
+before structural changes. `ROADMAP.md` is the source of truth for the goal, milestones and
+status; `TODO.md` is the backlog of items, the current milestone first.
 
 ## Commands
 

@@ -44,7 +44,8 @@ recent stable Rust toolchain and Git on your `PATH` (on Debian or Ubuntu, also r
 cargo run --release -- C:\path\to\repo
 ```
 
-With no path it reopens the last repository. See [TODO.md](TODO.md) for the roadmap.
+With no path it reopens the last repository. See [ROADMAP.md](ROADMAP.md) for where the project
+is going and [TODO.md](TODO.md) for the backlog.
 
 ## What it does
 
