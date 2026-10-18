@@ -220,7 +220,7 @@ fn another_worktree_is_counted_by_its_own_trust_not_the_tab_s() {
     git(&linked, &["config", "extensions.worktreeConfig", "true"]);
     git(&linked, &["config", "--worktree", "core.fsmonitor", &hook]);
     let path = linked_info(&st).path.clone();
-    let mut count_with = |st: &mut AppState, decision: Option<RepoTrust>| {
+    let count_with = |st: &mut AppState, decision: Option<RepoTrust>| {
         trellis_core::settings::repo_keys::set(&mut st.settings.repo_trust, &path, decision);
         st.refresh.counting = None;
         let fx = load_pending(st);
