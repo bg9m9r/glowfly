@@ -168,3 +168,27 @@ fn unborn_branch() {
     assert!(text.contains("new file mode") && text.contains("+two"), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn untracked_nested_repository_is_skipped() {
+    let dir = fixture("wip-nested");
+    let inner = dir.join("vendor").join("inner");
+    std::fs::create_dir_all(&inner).unwrap();
+    git(&inner, &["init", "-q"]);
+    write(&inner, "lib.txt", "inner\n");
+    write(&dir, "a.txt", "one\nchanged\n");
+    write(&dir, "u.txt", "u\n");
+    // Status lists the nested repository as one directory row; with or without the slash it
+    // is left out and the rest is saved.
+    for nested in ["vendor/inner/", "vendor/inner"] {
+        let r = req(WipScope::All, &[], &[nested, "u.txt"]);
+        let (bytes, report) = build(&dir, &PatchSource::Changes(r)).unwrap();
+        assert_eq!(report, SaveReport::Changes { files: 2 });
+        let text = String::from_utf8(bytes).unwrap();
+        assert!(text.contains("b/a.txt") && text.contains("b/u.txt") && !text.contains("inner"), "{text}");
+    }
+    // Only the nested repository picked: nothing to save.
+    let r = ChangesRequest { picked: true, ..req(WipScope::All, &[], &["vendor/inner/"]) };
+    assert_eq!(build(&dir, &PatchSource::Changes(r)).unwrap_err().to_string(), NO_CHANGES);
+    let _ = std::fs::remove_dir_all(&dir);
+}

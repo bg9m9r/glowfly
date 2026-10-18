@@ -106,6 +106,13 @@ pub(super) fn chunks(paths: &[String], budget: usize) -> Vec<&[String]> {
     out
 }
 
+/// Whether the untracked row `path` is a directory: status lists a nested repository as one
+/// row ending in "/". A patch can't create one, and `git diff --no-index` fails on it, so it
+/// is left out.
+fn is_directory(workdir: &Path, path: &str) -> bool {
+    path.ends_with('/') || std::fs::symlink_metadata(workdir.join(path)).is_ok_and(|m| m.is_dir())
+}
+
 /// The patch `req` asks for, and how many files it changes.
 pub(crate) fn build_changes(workdir: &Path, req: &ChangesRequest) -> Result<(Vec<u8>, usize)> {
     if req.untracked.len() > MAX_UNTRACKED {
@@ -124,7 +131,7 @@ pub(crate) fn build_changes(workdir: &Path, req: &ChangesRequest) -> Result<(Vec
         }
         parts.push(bytes);
     }
-    for path in &req.untracked {
+    for path in req.untracked.iter().filter(|p| !is_directory(workdir, p)) {
         let (out, bytes) = gitcli::output_bytes(workdir, &untracked_cmd(path), gitcli::NO_PROMPTS, Some(EXPORT_TIMEOUT));
         // Exit code 1 means "they differ", which a new file always does.
         let failed = out.stderr.lines().any(|l| l.starts_with("error:") || l.starts_with("fatal:"));
