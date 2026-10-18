@@ -1,6 +1,6 @@
 //! The WIP panel's Conflicted Files and Resolved Files lists, above Unstaged Files while an
 //! operation is in progress: conflicted files with their marker counts and Mark all resolved,
-//! and resolved files with Mark conflicted.
+//! and resolved files with Mark conflicted (one or all).
 
 use super::common::{menu_item, widget_row_height};
 use super::details::{OpenFile, RowContext, wip_file_row};
@@ -9,6 +9,7 @@ use super::theme::color;
 use super::widgets::{Icon, paint_icon};
 use crate::msg::{ConflictMsg, Msg, RepoMsg};
 use crate::state::AppState;
+use crate::state::conflict_files::{mark_conflicted_body, restorable_paths};
 use crate::state::path_hazards::hazard_of;
 use crate::state::tool_compare::{IN_MERGE_TOOL, merging};
 use eframe::egui::{self, Align, Layout, RichText, Sense, vec2};
@@ -63,7 +64,15 @@ fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, 
 
 fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, open: &OpenFile, msgs: &mut Vec<Msg>) {
     let rows = lists.resolved;
-    header(ui, "Resolved Files", rows.len(), |_| {});
+    header(ui, "Resolved Files", rows.len(), |ui| {
+        let all = restorable_paths(st);
+        let why = rows.iter().find_map(|r| blocked(st, r)).unwrap_or_else(|| "Nothing here can be marked conflicted".into());
+        let b = ui.add_enabled(!all.is_empty(), egui::Button::new("Mark all conflicted").small());
+        if b.on_hover_text("Bring the conflicts of every resolved file back").on_disabled_hover_text(why).clicked() {
+            let then = Msg::Conflict(ConflictMsg::MarkConflicted(all.clone()));
+            msgs.push(Msg::confirm("Mark conflicted", mark_conflicted_body(&all), "Mark conflicted", then));
+        }
+    });
     let area = egui::ScrollArea::vertical().id_salt("Resolved Files").max_height(lists.height).auto_shrink([false, true]);
     area.show_rows(ui, widget_row_height(ui), rows.len(), |ui, range| {
         for r in &rows[range] {
@@ -90,10 +99,7 @@ fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedF
     let path = &r.entry.path;
     let why = blocked(st, r);
     let confirm = || {
-        let body = format!(
-            "Mark {path} conflicted again? git rewrites the file with conflict markers from both sides. The staged resolution and \
-             any edits to the file are lost."
-        );
+        let body = mark_conflicted_body(std::slice::from_ref(path));
         Msg::confirm("Mark conflicted", body, "Mark conflicted", Msg::Conflict(ConflictMsg::MarkConflicted(vec![path.clone()])))
     };
     ui.horizontal(|ui| {

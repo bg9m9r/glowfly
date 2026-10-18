@@ -237,6 +237,7 @@ fn the_conflict_view_writes_nothing_while_the_merge_tool_has_the_file() {
     let now = Instant::now();
     for m in [
         Msg::Conflict(ConflictMsg::SaveConflict),
+        Msg::Conflict(ConflictMsg::SaveConflictKeepMarkers),
         Msg::Conflict(ConflictMsg::ResolveWithSide { path: "a.txt".into(), side: Side::Theirs }),
         Msg::Stage(StageMsg::StageFile("a.txt".into())),
     ] {

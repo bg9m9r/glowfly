@@ -45,6 +45,7 @@ binary (package `trellis`).
 | `terminal/` | The built-in terminal: screen model, key encoding, PTY sessions. |
 | `graph.rs` | Lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes. |
 | `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`, `intraline.rs`, `line_pairs.rs`, `tabs.rs`, `wrap.rs` | Row layout of diffs, the whole-file view and the conflict view (with the conflict chunks safe to pick without asking: `trivial_pick`), and the row of a file line (`diff_rows/line_row.rs`); word-level changes; which removed line sits beside which added line; tab stops; where wrapped lines break. |
+| `conflict_pick.rs`, `conflict_edit.rs` | What each conflict chunk resolves to (whole sides, single lines in tick order, or text typed by hand) and the file that makes, with conflict markers left for the chunks not picked yet (`render_picks`); the conflict view's output as editable text with each chunk's range, and which chunk an edit of it falls in (`locate_edit`). |
 | `highlight.rs`, `highlight/` | Syntax highlighting of diff lines (syntect), as token kinds; whole files too (`highlight_file`, for blame). |
 | `watch.rs` | Which file changes in a repository matter, and the work-tree paths a change names (`Change::Paths`, at most `MAX_WATCH_PATHS` per burst). |
 | `trust.rs` | Repository trust: config keys and hooks, the repository's own and its checked-out submodules', that make git run programs (read with libgit2 only, at every full load). |

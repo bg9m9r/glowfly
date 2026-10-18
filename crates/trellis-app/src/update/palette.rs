@@ -9,6 +9,7 @@
 use crate::effect::Effect;
 use crate::msg::BlameMsg;
 use crate::msg::BranchMsg;
+use crate::msg::ConflictMsg;
 use crate::msg::DiffMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::HistoryMsg;
@@ -23,6 +24,7 @@ use crate::msg::StageMsg;
 use crate::msg::StashMsg;
 use crate::msg::TabsMsg;
 use crate::msg::TrustMsg;
+use crate::state::conflict_files::{conflicted_paths, mark_conflicted_body, restorable_paths};
 use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
 use crate::state::{AppState, PrefPage, Selection};
 use crate::tag::TagMsg;
@@ -225,6 +227,19 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::StashDialog(scope) => Msg::Stash(StashMsg::PushDialog { scope, path: None }),
         C::StageAll => Msg::Stage(StageMsg::StageAll),
         C::UnstageAll => Msg::Stage(StageMsg::UnstageAll),
+        // The handlers check the paths again.
+        C::MarkAllResolved => {
+            let Some(snap) = &st.snap else { return };
+            Msg::Conflict(ConflictMsg::MarkResolved(conflicted_paths(snap)))
+        }
+        C::MarkAllConflicted => {
+            let paths = restorable_paths(st);
+            if paths.is_empty() {
+                return;
+            }
+            mark_conflicted(paths)
+        }
+        C::MarkConflicted(path) => mark_conflicted(vec![path]),
         C::Undo => Msg::Job(JobMsg::Undo),
         C::Redo => Msg::Job(JobMsg::Redo),
         C::CreateBranch => Msg::Branch(BranchMsg::NewBranch { start: selected_commit(st).map(|o| o.to_string()), name: String::new() }),
@@ -295,6 +310,12 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         | C::FetchMoreCommits => return,
     };
     fx.extend(super::update(st, msg, now));
+}
+
+/// The Resolved Files list's question before Mark conflicted.
+fn mark_conflicted(paths: Vec<String>) -> Msg {
+    let body = mark_conflicted_body(&paths);
+    Msg::confirm("Mark conflicted", body, "Mark conflicted", Msg::Conflict(ConflictMsg::MarkConflicted(paths)))
 }
 
 /// The same messages the sidebar's STASHES menu sends.

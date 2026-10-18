@@ -193,3 +193,41 @@ fn the_lists_are_parked_with_the_tab_and_read_again_on_return() {
         let _ = std::fs::remove_dir_all(d);
     }
 }
+
+/// `two_conflicts` with both files resolved with `git add`, the lists read.
+pub(super) fn both_resolved(name: &str) -> (AppState, PathBuf) {
+    let dir = two_conflicts(name);
+    for f in ["a.txt", "b.txt"] {
+        git(&dir, &["add", f]);
+    }
+    let st = opened(&dir);
+    assert_eq!(st.conflict_files.resolved.len(), 2);
+    (st, dir)
+}
+
+#[test]
+fn mark_all_conflicted_sends_every_restorable_path() {
+    use crate::state::conflict_files::restorable_paths;
+    let (mut st, dir) = both_resolved("cf-mark-all-conflicted");
+    let all = restorable_paths(&st);
+    assert_eq!(all, owned(&["a.txt", "b.txt"]));
+    let fx = send(&mut st, ConflictMsg::MarkConflicted(all));
+    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::MarkConflicted(p), .. }] if *p == owned(&["a.txt", "b.txt"])), "{fx:?}");
+    // A record without both sides, and a file the merge tool has open, are left out.
+    st.conflict_files.resolved[0].both_sides = false;
+    st.job = Some(crate::state::RunningJob {
+        label: crate::state::tool_compare::merge_label("b.txt"),
+        workdir: st.workdir(),
+        quiet: false,
+        clear_commit: false,
+        then_open: None,
+        then_push: false,
+        then_pr: None,
+        then_link: false,
+        keeps_undo: true,
+    });
+    assert!(restorable_paths(&st).is_empty());
+    st.job = None;
+    assert_eq!(restorable_paths(&st), owned(&["b.txt"]));
+    let _ = std::fs::remove_dir_all(&dir);
+}

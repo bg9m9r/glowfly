@@ -84,14 +84,29 @@ pub enum ConflictMsg {
         chunk: usize,
         side: Side,
     },
+    /// Tick or untick line `line` of `side` in chunk `chunk`: a ticked line goes last.
+    ConflictToggleLine {
+        chunk: usize,
+        side: Side,
+        line: usize,
+    },
     ConflictTakeAll(Side),
     ConflictReset,
+    /// Show (true) or hide the output as editable text.
+    ConflictEditOutput(bool),
+    /// The view changed the output editor's text.
+    ConflictOutputEdited,
+    /// Drop the text typed for chunk `k`, bringing its picks back.
+    ConflictDiscardEdit(usize),
     /// Make the next (1) or previous (-1) chunk current.
     ConflictStep(isize),
     /// Make chunk `i` current (a click on it) without scrolling.
     ConflictSelect(usize),
     /// Write the output to the file and stage it.
     SaveConflict,
+    /// Write the output to the file with markers for the chunks not resolved yet, leaving it
+    /// conflicted.
+    SaveConflictKeepMarkers,
     /// Binary or deleted files: resolve with one side's whole version.
     ResolveWithSide {
         path: String,
@@ -125,6 +140,11 @@ impl ConflictMsg {
             Self::OpenConflict(..)
             | Self::CloseConflict
             | Self::ConflictToggle { .. }
+            | Self::ConflictToggleLine { .. }
+            | Self::ConflictEditOutput(..)
+            | Self::ConflictOutputEdited
+            | Self::ConflictDiscardEdit(..)
+            | Self::SaveConflictKeepMarkers
             | Self::ConflictTakeAll(..)
             | Self::ConflictReset
             | Self::ConflictStep(..)

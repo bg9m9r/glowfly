@@ -1,5 +1,6 @@
 //! Resolving a conflict: the side(s) picked per chunk, the file they produce, and writing and
-//! staging it (which clears the conflict).
+//! staging it (which clears the conflict), or writing it with markers left and not staging it
+//! (`write_partial_resolution`).
 //!
 //! A resolution is always built in repository form, from the stages' own bytes, staged as a
 //! blob, and then written to the working tree by git (`checkout-index`). So line endings,
@@ -11,7 +12,8 @@
 //! so a file resolved here can be marked conflicted again (`resolve_undo::mark_conflicted`).
 //! Submodules are the exception: their resolution is staged without one.
 
-use super::conflict::{ConflictContent, ConflictFile, ConflictIds, Segment, Side};
+use super::conflict::{ConflictFile, ConflictIds, Side};
+use crate::conflict_pick::{ChunkPick, render_picks};
 use crate::error::{Error, Result};
 use git2::build::CheckoutBuilder;
 use git2::{IndexConflict, IndexEntry, IndexTime, Repository};
@@ -67,34 +69,11 @@ impl Choice {
 
 /// The file as it will be staged, or `None` until every chunk has a choice. It is in
 /// repository form: each line keeps the ending it has in the stage it came from, so a file that
-/// mixes LF and CR LF lines keeps them as they are.
+/// mixes LF and CR LF lines keeps them as they are. (`conflict_pick::render_picks` with whole
+/// sides.)
 pub fn render_output(file: &ConflictFile, choices: &[Choice]) -> Option<String> {
-    let ConflictContent::Text(segs) = &file.content else { return None };
-    if choices.len() != file.chunk_count() || choices.contains(&Choice::Unresolved) {
-        return None;
-    }
-    let mut out = String::new();
-    let mut push = |line: &str| {
-        // A side without a final newline followed by more text still needs a line break: the
-        // one the text so far uses.
-        if !out.is_empty() && !out.ends_with('\n') {
-            out.push_str(if out.contains("\r\n") { "\r\n" } else { "\n" });
-        }
-        out.push_str(line);
-    };
-    let mut k = 0;
-    for seg in segs {
-        match seg {
-            Segment::Clean(lines) => lines.iter().for_each(|l| push(l)),
-            Segment::Conflict(c) => {
-                for &side in choices[k].sides() {
-                    c.side(side).iter().for_each(|l| push(l));
-                }
-                k += 1;
-            }
-        }
-    }
-    Some(out)
+    let picks: Vec<ChunkPick> = choices.iter().map(|&c| c.into()).collect();
+    render_picks(file, &picks, false, false, None)
 }
 
 /// Opens the index and checks the conflict at `path` still has the stages it was loaded with.
@@ -124,6 +103,23 @@ pub fn write_resolution(workdir: &Path, path: &str, contents: &str, expected: &C
     stage_recording(&mut index, entry, contents.as_bytes())?;
     index.write()?;
     check_out(workdir, path, index, repo)
+}
+
+/// Writes `contents` (in repository form, conflict markers and all) to the working file of
+/// `path` as a checkout would (`git cat-file --filters`: line endings, encoding and filter
+/// drivers), keeping its permissions. The index isn't touched, so the file stays conflicted.
+/// Refused if the conflict changed since `expected` was read.
+pub fn write_partial_resolution(workdir: &Path, path: &str, contents: &str, expected: &ConflictIds) -> Result<()> {
+    let id = {
+        let repo = Repository::open(workdir)?;
+        checked_index(&repo, path, expected)?;
+        // A loose blob nothing refers to; gc removes it. The repository is closed before git
+        // runs (Windows locks files that are held open).
+        repo.blob(contents.as_bytes())?
+    };
+    let bytes = super::tool_sides::blob_bytes(workdir, id, path, true)?;
+    let opts = crate::persist::WriteOptions { refuse_links: true, ..Default::default() };
+    Ok(crate::persist::write_file(&workdir.join(path), &bytes, opts)?)
 }
 
 const TYPE_MASK: u32 = 0o170000;

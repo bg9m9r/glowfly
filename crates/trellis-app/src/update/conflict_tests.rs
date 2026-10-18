@@ -11,6 +11,7 @@ use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use trellis_core::conflict_pick::ChunkPick;
 use trellis_core::conflict_rows::Trivial;
 use trellis_core::gitcli::{args, run};
 use trellis_core::repo::{
@@ -64,7 +65,7 @@ fn opened(name: &str) -> (AppState, PathBuf) {
 }
 
 /// A file with `n` one-line chunks between clean lines (no repository behind it).
-fn fake_file(n: usize) -> ConflictFile {
+pub(super) fn fake_file(n: usize) -> ConflictFile {
     let line = |s: &str| vec![format!("{s}\n")];
     let mut segs = vec![Segment::Clean(line("top"))];
     for i in 0..n {
@@ -77,10 +78,11 @@ fn fake_file(n: usize) -> ConflictFile {
         labels: SideLabels { operation: Operation::Merge, ours: "main".into(), theirs: "other".into() },
         content: ConflictContent::Text(segs),
         no_ancestor: false,
+        base_markers: false,
     }
 }
 
-fn with_fake(n: usize) -> AppState {
+pub(super) fn with_fake(n: usize) -> AppState {
     let mut st = state();
     let mut view = ConflictView::loading("f.txt".into());
     view.set_file(fake_file(n));
@@ -98,7 +100,7 @@ fn opening_a_conflicted_file_loads_the_chunks() {
     let c = st.conflict.as_ref().expect("view open");
     let f = c.file.as_ref().expect("loaded");
     assert_eq!(f.chunk_count(), 1);
-    assert_eq!(c.choices, [Choice::Unresolved]);
+    assert_eq!(c.picks, [ChunkPick::default()]);
     assert_eq!(f.labels.theirs, "other");
     assert!(st.diff.is_none());
     assert_eq!(st.view.conflict_scroll_to, Some(0));
@@ -146,12 +148,12 @@ fn toggling_taking_all_resetting_and_stepping() {
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 1, side: Side::Theirs }));
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 1, side: Side::Ours }));
     let c = st.conflict.as_ref().unwrap();
-    assert_eq!((c.choices[1], c.current), (Choice::TheirsThenOurs, 1));
+    assert_eq!((&c.picks[1], c.current), (&Choice::TheirsThenOurs.into(), 1));
     assert_eq!(st.view.conflict_scroll_to, None, "picking doesn't scroll");
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictTakeAll(Side::Ours)));
-    assert_eq!(st.conflict.as_ref().unwrap().choices, [Choice::Ours; 3]);
+    assert_eq!(st.conflict.as_ref().unwrap().picks, vec![ChunkPick::Sides(Choice::Ours); 3]);
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictReset));
-    assert_eq!(st.conflict.as_ref().unwrap().choices, [Choice::Unresolved; 3]);
+    assert_eq!(st.conflict.as_ref().unwrap().picks, vec![ChunkPick::default(); 3]);
 
     st.conflict.as_mut().unwrap().current = 0;
     send(&mut st, Msg::Conflict(ConflictMsg::ConflictStep(1)));
@@ -297,8 +299,8 @@ fn trivial_chunks_are_picked_when_the_file_loads() {
     }
     let mut view = ConflictView::loading("f.txt".into());
     view.set_file(f);
-    assert_eq!((view.choices[0], view.auto[0]), (Choice::Theirs, Some(Trivial::Unchanged)));
-    assert_eq!((view.choices[1], view.auto[1]), (Choice::Unresolved, None));
+    assert_eq!((&view.picks[0], view.auto[0]), (&Choice::Theirs.into(), Some(Trivial::Unchanged)));
+    assert_eq!((&view.picks[1], view.auto[1]), (&ChunkPick::default(), None));
     assert_eq!((view.current, view.auto_count()), (1, 1), "on the first chunk still to pick");
     assert!(view.output().is_none(), "nothing is saved until every chunk is picked");
 
@@ -306,11 +308,11 @@ fn trivial_chunks_are_picked_when_the_file_loads() {
     st.conflict = Some(view);
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours }), Instant::now());
     let c = st.conflict.as_ref().unwrap();
-    assert_eq!((c.choices[0], c.auto[0]), (Choice::TheirsThenOurs, None), "a change clears the tag");
+    assert_eq!((&c.picks[0], c.auto[0]), (&Choice::TheirsThenOurs.into(), None), "a change clears the tag");
     st.conflict.as_mut().unwrap().auto[1] = Some(Trivial::Whitespace);
     update(&mut st, Msg::Conflict(ConflictMsg::ConflictReset), Instant::now());
     let c = st.conflict.as_ref().unwrap();
-    assert_eq!((c.choices.clone(), c.auto.clone()), (vec![Choice::Unresolved; 2], vec![None; 2]), "Reset clears every pick");
+    assert_eq!((c.picks.clone(), c.auto.clone()), (vec![ChunkPick::default(); 2], vec![None; 2]), "Reset clears every pick");
 
     // Every chunk picked automatically: Save is ready, and the view starts on the first.
     let mut f = fake_file(2);

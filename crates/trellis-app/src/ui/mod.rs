@@ -17,6 +17,7 @@ pub(crate) mod common;
 mod conflict;
 mod conflict_check;
 mod conflict_files;
+mod conflict_output;
 mod conflict_panes;
 mod dashboard;
 mod dashboard_rows;

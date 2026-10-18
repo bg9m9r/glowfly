@@ -86,6 +86,9 @@ pub struct ConflictFile {
     pub content: ConflictContent,
     /// Both sides added the file (no common ancestor).
     pub no_ancestor: bool,
+    /// `merge.conflictStyle` is diff3 or zdiff3: markers written for chunks not picked yet
+    /// include the base.
+    pub base_markers: bool,
 }
 
 impl ConflictFile {
@@ -126,7 +129,9 @@ pub fn load_conflict(workdir: &Path, path: &str) -> Result<ConflictFile> {
         (_, None) => ConflictContent::DeletedBy(Side::Theirs),
         (Some(ours), Some(theirs)) => merged(&repo, conflict.ancestor.as_ref(), ours, theirs)?,
     };
-    Ok(ConflictFile { path: path.to_owned(), ids, labels: side_labels(&repo), content, no_ancestor })
+    let style = repo.config().and_then(|c| c.get_string("merge.conflictStyle")).unwrap_or_default();
+    let base_markers = matches!(style.as_str(), "diff3" | "zdiff3");
+    Ok(ConflictFile { path: path.to_owned(), ids, labels: side_labels(&repo), content, no_ancestor, base_markers })
 }
 
 /// Merges both sides with markers and splits the result into segments.
@@ -198,7 +203,7 @@ fn merged(repo: &Repository, ancestor: Option<&IndexEntry>, ours: &IndexEntry, t
 
 /// A marker size no line of `texts` can be mistaken for: one more than the longest run of
 /// `<`, `|`, `=` or `>` that starts a line, and at least 7.
-pub(super) fn marker_size<'a>(texts: impl Iterator<Item = &'a str>) -> usize {
+pub fn marker_size<'a>(texts: impl Iterator<Item = &'a str>) -> usize {
     let mut longest = 0;
     for line in texts.flat_map(str::lines) {
         if let Some(c) = line.chars().next().filter(|c| matches!(c, '<' | '|' | '=' | '>')) {

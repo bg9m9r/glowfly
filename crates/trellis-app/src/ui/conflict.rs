@@ -1,8 +1,9 @@
-//! The conflict view: ours and theirs side by side with a pick per conflict chunk, and below
-//! them the output as it will be saved. Binary, deleted and other special files offer a whole
-//! version instead.
+//! The conflict view: ours and theirs side by side with picks per conflict chunk (whole sides
+//! or single lines), and below them the output as it will be saved (editable by hand). Binary,
+//! deleted and other special files offer a whole version instead.
 
-use super::conflict_panes::{output, panes};
+use super::conflict_output::output;
+use super::conflict_panes::panes;
 use super::theme::color;
 use super::widgets::{Icon, icon_button};
 use crate::keymap::{BindingId, Keymap};
@@ -43,9 +44,15 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.allocate_ui_with_layout(vec2(width, top_h), Layout::top_down(Align::Min), |ui| {
                 panes(ui, view, file, segs, scroll_to, top_h, msgs);
             });
-            output(ui, view, segs, scroll_to, msgs);
         }
-        _ => fallback(ui, view, file, tool.as_deref(), in_tool, msgs),
+        _ => {
+            fallback(ui, view, file, tool.as_deref(), in_tool, msgs);
+            return;
+        }
+    }
+    // The output's editor changes its own text buffer.
+    if let Some(view) = st.conflict.as_mut() {
+        output(ui, view, scroll_to, msgs);
     }
 }
 
@@ -60,22 +67,22 @@ fn operation_text(l: &SideLabels) -> String {
     }
 }
 
-/// Path and operation on the left; on the right (from the edge inwards) Close, Mark resolved,
-/// Open in merge tool (disabled with the reason `tool` when set), Save, Reset and the conflict
-/// counter with previous/next. Mark resolved and Save are disabled while `in_tool`.
+/// The path and operation on one row; under it, at the right (from the edge inwards) Close,
+/// Mark resolved, Open in merge tool (disabled with the reason `tool` when set), Save, Save
+/// with markers, Reset and the conflict counter with previous/next. Mark resolved and both
+/// saves are disabled while `in_tool`.
 fn header_bar(ui: &mut Ui, view: &ConflictView, tool: Option<&str>, in_tool: bool, keys: &Keymap, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            header_buttons(ui, view, tool, in_tool, keys, msgs);
-            // The path and operation get what the buttons leave, cut short rather than run under.
-            ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                ui.add(egui::Label::new(RichText::new(&view.path).strong().size(15.0).color(color::text())).truncate());
-                if let Some(f) = &view.file {
-                    ui.add(egui::Label::new(RichText::new(operation_text(&f.labels)).color(color::weak())).truncate());
-                }
-            });
-        });
+        // Cut short rather than run past the panel.
+        ui.add(egui::Label::new(RichText::new(&view.path).strong().size(15.0).color(color::text())).truncate());
+        if let Some(f) = &view.file {
+            ui.add(egui::Label::new(RichText::new(operation_text(&f.labels)).color(color::weak())).truncate());
+        }
+    });
+    ui.horizontal(|ui| {
+        ui.add_space(8.0);
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| header_buttons(ui, view, tool, in_tool, keys, msgs));
     });
 }
 
@@ -105,12 +112,13 @@ fn header_buttons(ui: &mut Ui, view: &ConflictView, tool: Option<&str>, in_tool:
     } else if view.saving {
         "Saving…".to_owned()
     } else {
-        format!("Pick a side for every conflict first ({} left)", view.unresolved())
+        format!("Pick every conflict first ({} left), or use Save with markers", view.unresolved())
     };
     if ui.add_enabled(can, save).on_hover_text("Write the output to the file and mark it resolved").on_disabled_hover_text(why).clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::SaveConflict));
     }
-    if ui.button("Reset").on_hover_text("Clear all picks").clicked() {
+    save_partial_button(ui, view, in_tool, msgs);
+    if ui.button("Reset").on_hover_text("Clear all picks (hand edits stay)").clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictReset));
     }
     ui.add_space(10.0);
@@ -131,6 +139,27 @@ fn header_buttons(ui: &mut Ui, view: &ConflictView, tool: Option<&str>, in_tool:
     let prev = ui.add_enabled_ui(view.current > 0, |ui| icon_button(ui, Icon::PrevChange, &tip)).inner;
     if prev.clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::ConflictStep(-1)));
+    }
+}
+
+/// Save with markers: writes the output with conflict markers for the conflicts not picked
+/// yet, leaving the file conflicted. Needs something picked or edited and something left.
+fn save_partial_button(ui: &mut Ui, view: &ConflictView, in_tool: bool, msgs: &mut Vec<Msg>) {
+    let why = if in_tool {
+        Some(IN_MERGE_TOOL)
+    } else if view.saving {
+        Some("Saving…")
+    } else if view.unresolved() == 0 {
+        Some("Every conflict is picked: use Save")
+    } else if !view.can_save_partial() {
+        Some("Pick or edit a conflict first")
+    } else {
+        None
+    };
+    let tip = "Write the output to the file with conflict markers for the conflicts not picked yet; the file stays conflicted";
+    let r = ui.add_enabled(why.is_none(), egui::Button::new("Save with markers"));
+    if r.on_hover_text(tip).on_disabled_hover_text(why.unwrap_or_default()).clicked() {
+        msgs.push(Msg::Conflict(ConflictMsg::SaveConflictKeepMarkers));
     }
 }
 

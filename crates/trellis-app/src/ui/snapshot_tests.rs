@@ -326,7 +326,7 @@ fn conflict_view() {
     let (mut st, dir) = with_conflict("conflict", "settings.txt", settings);
     let view = st.conflict.as_mut().unwrap();
     assert_eq!(view.chunk_count(), 2);
-    view.choices[0] = trellis_core::repo::Choice::Ours;
+    view.picks[0] = trellis_core::repo::Choice::Ours.into();
     render("conflict_view", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }

@@ -10,6 +10,8 @@ use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 #[path = "palette_checkouts.rs"]
 mod palette_checkouts;
+#[path = "palette_conflict.rs"]
+mod palette_conflict;
 #[path = "palette_gitflow.rs"]
 mod palette_gitflow;
 #[path = "palette_issues.rs"]
@@ -77,6 +79,12 @@ pub enum PaletteCommand {
     StashDialog(trellis_core::stash_ops::StashScope),
     StageAll,
     UnstageAll,
+    /// Mark every conflicted file resolved (after the markers check, as the list's button).
+    MarkAllResolved,
+    /// Mark every resolved file that can be restored conflicted again (asks first).
+    MarkAllConflicted,
+    /// Mark this resolved file conflicted again (asks first).
+    MarkConflicted(String),
     Undo,
     Redo,
     CreateBranch,
@@ -280,6 +288,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     }
     palette_pr::pr_entries(st, snap, out);
     palette_stash::stash_entries(snap, out);
+    palette_conflict::conflict_entries(st, snap, out);
     if !snap.unstaged.is_empty() {
         out.push(entry(C::StageAll, "Stage all files", "add everything"));
     }

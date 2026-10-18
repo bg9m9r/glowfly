@@ -36,6 +36,13 @@ pub enum LocalOp {
         contents: String,
         expected: ConflictIds,
     },
+    /// Writes the working file only (conflict markers left for chunks not picked yet), if the
+    /// conflict is still `expected`; the file stays conflicted.
+    SavePartialResolution {
+        path: String,
+        contents: String,
+        expected: ConflictIds,
+    },
     /// Resolves a conflict with one side's whole version (or its deletion).
     ResolveWithSide {
         path: String,

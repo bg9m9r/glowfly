@@ -204,7 +204,7 @@ fn conflict_view_survives_tab_switch() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert!(st.conflict.is_none(), "the other tab has no conflict open");
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
-    assert_eq!(st.conflict.as_ref().map(|c| c.choices.clone()), Some(vec![Choice::Theirs]), "picks survive the switch");
+    assert_eq!(st.conflict.as_ref().map(|c| c.picks.clone()), Some(vec![Choice::Theirs.into()]), "picks survive the switch");
 
     // A load still in flight when the tab is parked is requested again on return.
     update(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())), Instant::now());

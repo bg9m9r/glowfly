@@ -1,5 +1,6 @@
 //! The Conflicted Files and Resolved Files lists: reading their marker counts and resolved
 //! files, Mark resolved (checking the working files for markers first) and Mark conflicted.
+//! The palette's entries for them run the same messages (update/palette.rs).
 
 use crate::effect::{ConflictRead, Effect, LocalOp};
 use crate::msg::{ConflictMsg, Msg};
@@ -69,7 +70,7 @@ pub(super) fn confirmed(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effe
 }
 
 /// Mark conflicted (confirmed in the view): only resolved files whose record has both sides,
-/// with a name git can be given safely, and not open in the merge tool.
+/// with a name git can be given safely, and not open in the merge tool (said in the log).
 pub(super) fn mark_conflicted(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effect>) {
     let restorable = |st: &AppState, p: &String| {
         st.conflict_files.resolved.iter().any(|r| r.both_sides && r.entry.hazard.is_none() && r.entry.path == *p)
@@ -120,3 +121,7 @@ pub(super) fn read_done(
         },
     }
 }
+
+#[cfg(test)]
+#[path = "palette_conflict_tests.rs"]
+mod palette_tests;

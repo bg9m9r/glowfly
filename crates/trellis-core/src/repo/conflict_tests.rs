@@ -263,3 +263,81 @@ fn a_whitespace_only_chunk_is_picked_automatically() {
     assert_eq!(trivial_picks(&f), [Some((Choice::Ours, Trivial::Whitespace)), None]);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// The partial output of `f` with the first chunk taking ours and the rest left open.
+fn first_ours(f: &ConflictFile) -> String {
+    use crate::conflict_pick::{ChunkPick, render_picks};
+    let mut picks = vec![ChunkPick::default(); f.chunk_count()];
+    picks[0] = ChunkPick::Sides(Choice::Ours);
+    render_picks(f, &picks, true, false, None).unwrap()
+}
+
+#[test]
+fn write_partial_keeps_the_conflict() {
+    let dir = two_chunk_conflict("conflict-partial");
+    let f = load_conflict(&dir, "f.txt").unwrap();
+    write_partial_resolution(&dir, "f.txt", &first_ours(&f), &f.ids).unwrap();
+    let text = read(&dir, "f.txt");
+    assert!(text.contains("line 2 ours\n") && !text.contains("line 2 theirs"));
+    assert!(text.contains("<<<<<<< main\nline 10 ours\n=======\nline 10 theirs\n>>>>>>> other\n"));
+    assert_eq!(conflict_markers(&dir, &["f.txt".to_owned()]), [("f.txt".to_owned(), Some(1))]);
+    assert!(Repository::open(&dir).unwrap().index().unwrap().has_conflicts(), "the index is untouched");
+    let (unstaged, _, _) = status_at(&dir, false).unwrap();
+    assert!(unstaged.iter().any(|e| e.path == "f.txt" && e.status == '!'));
+    assert_eq!(load_conflict(&dir, "f.txt").unwrap().ids, f.ids, "the same conflict opens again");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn write_partial_refuses_a_changed_conflict() {
+    let dir = two_chunk_conflict("conflict-partial-stale");
+    let f = load_conflict(&dir, "f.txt").unwrap();
+    stage_file(&dir, "f.txt").unwrap();
+    let before = std::fs::read(dir.join("f.txt")).unwrap();
+    let err = write_partial_resolution(&dir, "f.txt", &first_ours(&f), &f.ids).unwrap_err();
+    assert!(err.to_string().contains("changed since it was opened"), "{err}");
+    assert_eq!(std::fs::read(dir.join("f.txt")).unwrap(), before);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn write_partial_runs_checkout_filters() {
+    let dir = scratch_repo("conflict-partial-eol");
+    write(&dir, ".gitattributes", "*.txt text eol=crlf\n");
+    let base = base_lines();
+    write(&dir, "f.txt", &base);
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    git(&dir, &["checkout", "-q", "-b", "other"]);
+    write(&dir, "f.txt", &base.replace("line 2\n", "line 2 theirs\n").replace("line 10\n", "line 10 theirs\n"));
+    git(&dir, &["commit", "-q", "-am", "theirs"]);
+    git(&dir, &["checkout", "-q", "main"]);
+    write(&dir, "f.txt", &base.replace("line 2\n", "line 2 ours\n").replace("line 10\n", "line 10 ours\n"));
+    git(&dir, &["commit", "-q", "-am", "ours"]);
+    assert!(!run(&dir, &args(&["merge", "other"])).0, "merge should conflict");
+    let f = load_conflict(&dir, "f.txt").unwrap();
+    let contents = first_ours(&f);
+    assert!(!contents.contains('\r'), "repository form is LF");
+    write_partial_resolution(&dir, "f.txt", &contents, &f.ids).unwrap();
+    let bytes = std::fs::read(dir.join("f.txt")).unwrap();
+    let text = String::from_utf8(bytes).unwrap();
+    assert!(text.contains("\r\n<<<<<<< main\r\n") && text.contains("\r\n>>>>>>> other\r\n"));
+    assert_eq!(text.matches('\n').count(), text.matches("\r\n").count(), "every line ends in CR LF");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn diff3_style_adds_the_base() {
+    let dir = two_chunk_conflict("conflict-diff3");
+    set_config(&dir, &[("merge.conflictStyle", "merge")]);
+    let f = load_conflict(&dir, "f.txt").unwrap();
+    assert!(!f.base_markers);
+    assert!(!first_ours(&f).contains("|||||||"));
+    set_config(&dir, &[("merge.conflictStyle", "diff3")]);
+    let f = load_conflict(&dir, "f.txt").unwrap();
+    assert!(f.base_markers);
+    assert!(first_ours(&f).contains("line 10 ours\n||||||| base\nline 10\n=======\n"));
+    set_config(&dir, &[("merge.conflictStyle", "zdiff3")]);
+    assert!(load_conflict(&dir, "f.txt").unwrap().base_markers);
+    let _ = std::fs::remove_dir_all(&dir);
+}

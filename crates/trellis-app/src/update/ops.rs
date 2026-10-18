@@ -82,9 +82,15 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             }
             // A save that failed can be tried again; one that worked moves the view on once the
             // status shows the file resolved.
+            let mut saved = None;
             if let Some(c) = st.conflict.as_mut() {
                 c.saving = false;
                 c.step_on_resolve &= !failed;
+                saved = c.saved_note.take().filter(|_| !failed);
+            }
+            // Save with markers leaves the view open: say it worked.
+            if let Some(note) = saved {
+                st.toast(true, note, now);
             }
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);

@@ -1,7 +1,8 @@
 //! Row layout of the conflict view: the ours and theirs panes side by side (aligned, the
-//! shorter side of a chunk padded), and the output as it will be saved. Also the chunks that
+//! shorter side of a chunk padded), and the output as it will be saved (`conflict_pick`). Also the chunks that
 //! can be picked safely without asking (`trivial_pick`).
 
+use crate::conflict_pick::ChunkPick;
 use crate::repo::{Choice, Chunk, ConflictFile, Segment, Side};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -63,26 +64,30 @@ pub enum OutRow {
         side: Side,
         line: usize,
     },
+    /// Line `line` of the text typed for chunk `chunk`.
+    Edited {
+        chunk: usize,
+        line: usize,
+    },
     /// A placeholder for a chunk with no pick yet.
     Unresolved(usize),
 }
 
-/// The output rows for `choices`, and the first row of each chunk (for a picked chunk with no
-/// lines, the row after it).
-pub fn output_rows(segs: &[Segment], choices: &[Choice]) -> (Vec<OutRow>, Vec<usize>) {
+/// The output rows for `picks`, and the first row of each chunk (for a picked chunk with no
+/// lines, the row after it). Typed text shows as typed, markers and all.
+pub fn output_rows(segs: &[Segment], picks: &[ChunkPick]) -> (Vec<OutRow>, Vec<usize>) {
     let (mut rows, mut firsts) = (Vec::new(), Vec::new());
     let mut chunk = 0;
+    let none = ChunkPick::default();
     for (seg, s) in segs.iter().enumerate() {
         match s {
             Segment::Clean(lines) => rows.extend((0..lines.len()).map(|line| OutRow::Clean { seg, line })),
             Segment::Conflict(c) => {
                 firsts.push(rows.len());
-                let choice = choices.get(chunk).copied().unwrap_or_default();
-                if choice == Choice::Unresolved {
-                    rows.push(OutRow::Unresolved(chunk));
-                }
-                for &side in choice.sides() {
-                    rows.extend((0..c.side(side).len()).map(|line| OutRow::Taken { chunk, side, line }));
+                match picks.get(chunk).unwrap_or(&none) {
+                    ChunkPick::Edited { lines, .. } => rows.extend((0..lines.len()).map(|line| OutRow::Edited { chunk, line })),
+                    p if p.is_open() => rows.push(OutRow::Unresolved(chunk)),
+                    p => rows.extend(p.refs(c).into_iter().map(|r| OutRow::Taken { chunk, side: r.side, line: r.line })),
                 }
                 chunk += 1;
             }
@@ -201,10 +206,10 @@ mod tests {
     #[test]
     fn output_rows_show_placeholders() {
         let segs = sample();
-        let (rows, firsts) = output_rows(&segs, &[Choice::Unresolved]);
+        let (rows, firsts) = output_rows(&segs, &[ChunkPick::default()]);
         assert_eq!(rows.len(), 4);
         assert_eq!((rows[2], firsts[0]), (OutRow::Unresolved(0), 2));
-        let (rows, _) = output_rows(&segs, &[Choice::OursThenTheirs]);
+        let (rows, _) = output_rows(&segs, &[Choice::OursThenTheirs.into()]);
         let taken: Vec<_> = rows
             .iter()
             .filter_map(|r| match r {
@@ -216,8 +221,15 @@ mod tests {
         assert_eq!(rows.last(), Some(&OutRow::Clean { seg: 2, line: 0 }));
         // A picked side with no lines leaves no rows; the chunk starts at the next row.
         let empty = [Segment::Conflict(Chunk { base: Vec::new(), ours: Vec::new(), theirs: lines(&["t"]) }), Segment::Clean(lines(&["z"]))];
-        let (rows, firsts) = output_rows(&empty, &[Choice::Ours]);
+        let (rows, firsts) = output_rows(&empty, &[Choice::Ours.into()]);
         assert_eq!((rows, firsts), (vec![OutRow::Clean { seg: 1, line: 0 }], vec![0]));
+        // Single lines in tick order; typed text line by line.
+        let lines_pick = ChunkPick::Lines(vec![crate::conflict_pick::LineRef { side: Side::Theirs, line: 0 }]);
+        let (rows, _) = output_rows(&segs, &[lines_pick]);
+        assert_eq!(rows[2], OutRow::Taken { chunk: 0, side: Side::Theirs, line: 0 });
+        let typed = ChunkPick::Edited { lines: lines(&["x", "y"]), before: Box::default() };
+        let (rows, _) = output_rows(&segs, &[typed]);
+        assert_eq!(rows[2..4], [OutRow::Edited { chunk: 0, line: 0 }, OutRow::Edited { chunk: 0, line: 1 }]);
     }
 
     #[test]

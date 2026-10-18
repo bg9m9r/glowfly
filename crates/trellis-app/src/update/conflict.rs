@@ -1,7 +1,8 @@
-//! The conflict view: opening a conflicted file, picking sides per chunk, stepping between
-//! chunks, and saving (write and stage) or resolving with a whole side. After Trellis resolves
-//! the open file the view steps to the next conflicted one. Mark resolved and Mark conflicted
-//! are in update/conflict_files.rs.
+//! The conflict view: opening a conflicted file, stepping between chunks, saving (write and
+//! stage), saving with markers left (write only) or resolving with a whole side. After Trellis
+//! resolves the open file the view steps to the next conflicted one. Picking sides and lines
+//! and editing the output are in update/conflict_edit.rs; Mark resolved and Mark conflicted in
+//! update/conflict_files.rs.
 
 use crate::effect::{Effect, LocalOp};
 use crate::msg::ConflictMsg;
@@ -11,6 +12,9 @@ use crate::state::conflict_files::next_conflicted;
 use crate::state::tool_compare::merging;
 use std::time::Instant;
 use trellis_core::repo::Choice;
+
+#[path = "conflict_edit.rs"]
+mod edit;
 
 pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) {
     match msg {
@@ -34,20 +38,16 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             }
         }
         ConflictMsg::CloseConflict => close(st),
-        ConflictMsg::ConflictToggle { chunk, side } => {
-            if let Some(c) = st.conflict.as_mut()
-                && chunk < c.choices.len()
-            {
-                c.choices[chunk] = c.choices[chunk].toggle(side);
-                c.auto[chunk] = None;
-                c.current = chunk;
-            }
-        }
-        ConflictMsg::ConflictTakeAll(side) => set_all(st, Choice::only(side)),
-        ConflictMsg::ConflictReset => set_all(st, Choice::Unresolved),
+        ConflictMsg::ConflictToggle { chunk, side } => edit::toggle_side(st, chunk, side),
+        ConflictMsg::ConflictToggleLine { chunk, side, line } => edit::toggle_line(st, chunk, side, line),
+        ConflictMsg::ConflictTakeAll(side) => edit::set_all(st, Choice::only(side)),
+        ConflictMsg::ConflictReset => edit::set_all(st, Choice::Unresolved),
+        ConflictMsg::ConflictEditOutput(on) => edit::set_edit(st, on),
+        ConflictMsg::ConflictOutputEdited => edit::edited(st),
+        ConflictMsg::ConflictDiscardEdit(k) => edit::discard_edit(st, k),
         ConflictMsg::ConflictStep(d) => {
             let Some(c) = st.conflict.as_mut() else { return };
-            let n = c.choices.len();
+            let n = c.picks.len();
             if n == 0 {
                 return;
             }
@@ -59,7 +59,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
         }
         ConflictMsg::ConflictSelect(i) => {
             if let Some(c) = st.conflict.as_mut()
-                && i < c.choices.len()
+                && i < c.picks.len()
             {
                 c.current = i;
             }
@@ -78,6 +78,23 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             let op = LocalOp::ResolveConflict { path: c.path.clone(), contents, expected: f.ids.clone() };
             c.saving = true;
             c.step_on_resolve = true;
+            super::ops::local(st, op, fx);
+        }
+        ConflictMsg::SaveConflictKeepMarkers => {
+            let path = st.conflict.as_ref().map(|c| c.path.clone()).unwrap_or_default();
+            if in_tool(st, &path) {
+                return;
+            }
+            let Some(c) = st.conflict.as_mut() else { return };
+            // The button is disabled until something is resolved and something isn't.
+            if !c.can_save_partial() {
+                return;
+            }
+            let (Some(contents), Some(f)) = (c.partial_output(), c.file.as_ref()) else { return };
+            let op = LocalOp::SavePartialResolution { path: c.path.clone(), contents, expected: f.ids.clone() };
+            let n = c.unresolved();
+            c.saved_note = Some(format!("Saved {} with {n} conflict{} left (still conflicted)", c.path, if n == 1 { "" } else { "s" }));
+            c.saving = true;
             super::ops::local(st, op, fx);
         }
         ConflictMsg::ResolveWithSide { path, side } => {
@@ -120,14 +137,6 @@ pub(super) fn in_tool(st: &mut AppState, path: &str) -> bool {
         st.log(false, format!("{path} is open in the merge tool: save and close it there first."));
     }
     busy
-}
-
-/// Take all and Reset: every chunk gets `choice`, and no pick is automatic any more.
-fn set_all(st: &mut AppState, choice: Choice) {
-    if let Some(c) = st.conflict.as_mut() {
-        c.choices.iter_mut().for_each(|x| *x = choice);
-        c.auto.iter_mut().for_each(|a| *a = None);
-    }
 }
 
 /// Requests the open conflict's file; older results are ignored from now on.

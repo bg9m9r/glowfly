@@ -70,7 +70,7 @@ mod worktrees;
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
 pub use collide::{Collision, Folding, probe};
 pub use common_dir::{CommonDir, repo_name_of};
-pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict};
+pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict, marker_size};
 pub use diff::{
     BranchChanges, Comparison, ViewDiff, branch_changes, commit_detail, commit_stats, commit_stats_until, compare, compare_files,
     load_diff, load_diff_for_view, load_diff_with,
@@ -87,7 +87,7 @@ pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use refs_key::{open_file_stamp, refs_key};
 pub use remotes::RemoteInfo;
 pub use removal::{Deleted, Removal, Trasher};
-pub use resolve::{Choice, render_output, resolve_with_side, write_resolution};
+pub use resolve::{Choice, render_output, resolve_with_side, write_partial_resolution, write_resolution};
 pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolved_paths};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::revert_hunk;

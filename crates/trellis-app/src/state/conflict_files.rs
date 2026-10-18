@@ -1,7 +1,11 @@
 //! The WIP panel's Conflicted Files and Resolved Files lists: the conflict markers left in each
 //! conflicted file, the files resolved so far (git's resolve-undo record), and the rules for
-//! stepping to the next conflicted file and for the "markers left" warning.
+//! stepping to the next conflicted file, for which resolved files can be marked conflicted
+//! again, and for the "markers left" and Mark conflicted confirmations.
 
+use super::AppState;
+use super::path_hazards::hazard_of;
+use super::tool_compare::merging;
 use git2::RepositoryState;
 use std::collections::HashMap;
 use trellis_core::repo::{Hazard, ResolvedFile, Snapshot};
@@ -51,6 +55,35 @@ pub fn next_conflicted(snap: &Snapshot, after: &str) -> Option<String> {
     paths.iter().find(|p| p.as_str() > after).or(paths.first()).filter(|p| p.as_str() != after).cloned()
 }
 
+/// The Resolved Files rows git can bring the conflict back for: both sides recorded, a name
+/// that can be given to git safely, and not open in the merge tool.
+pub fn restorable_paths(st: &AppState) -> Vec<String> {
+    let Some(snap) = &st.snap else { return Vec::new() };
+    st.conflict_files
+        .resolved_rows(snap)
+        .into_iter()
+        .filter(|r| r.both_sides && r.entry.hazard.is_none())
+        .map(|r| &r.entry.path)
+        .filter(|p| hazard_of(st, p).is_none() && !merging(st, p))
+        .cloned()
+        .collect()
+}
+
+/// The question before marking `paths` conflicted again.
+pub fn mark_conflicted_body(paths: &[String]) -> String {
+    match paths {
+        [path] => format!(
+            "Mark {path} conflicted again? git rewrites the file with conflict markers from both sides. The staged resolution and \
+             any edits to the file are lost."
+        ),
+        _ => format!(
+            "Mark {} files conflicted again? git rewrites each with conflict markers from both sides. Their staged resolutions \
+             and any edits to them are lost.",
+            paths.len()
+        ),
+    }
+}
+
 /// How many files the "markers left" warning names before "and N more".
 const NAMED: usize = 5;
 
@@ -90,6 +123,17 @@ mod tests {
             markers_warning(&many),
             "7 files still have conflict markers: f1.txt (1), f2.txt (2), f3.txt (3), f4.txt (4), f5.txt (5), and 2 more. \
              Marking them resolved stages the markers as they are."
+        );
+    }
+
+    #[test]
+    fn mark_conflicted_asks_about_one_or_several() {
+        assert!(mark_conflicted_body(&["a.txt".into()]).starts_with("Mark a.txt conflicted again? git rewrites the file"));
+        let three: Vec<String> = ["a", "b", "c"].map(String::from).into();
+        assert_eq!(
+            mark_conflicted_body(&three),
+            "Mark 3 files conflicted again? git rewrites each with conflict markers from both sides. Their staged resolutions and \
+             any edits to them are lost."
         );
     }
 
