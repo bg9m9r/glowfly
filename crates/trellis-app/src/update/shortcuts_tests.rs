@@ -316,6 +316,9 @@ fn r_reverts_the_current_hunk_or_the_lines() {
     st.blame = None;
     st.diff = Some((unstaged(), one_hunk().into()));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "on a working-tree diff");
+    let oid = st.snap.as_ref().unwrap().commits[0].oid;
+    st.diff = Some((DiffTarget::ToWorkdir(oid, "f.txt".into()), one_hunk().into()));
+    assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "on a commit compared with the working tree");
     assert!(st.log.is_empty());
 
     st.diff = Some((commit, one_hunk().into()));

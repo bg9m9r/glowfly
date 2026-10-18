@@ -208,6 +208,8 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         DiffTarget::Unstaged(_) => &[HunkButton::Op(HunkOp::Discard), HunkButton::Op(HunkOp::Stage)],
         DiffTarget::Staged(_) => &[HunkButton::Op(HunkOp::Unstage)],
         DiffTarget::Commit(..) | DiffTarget::Between(..) => &[HunkButton::Revert],
+        // Comparing a commit with the working tree: nothing to stage or revert per hunk.
+        DiffTarget::ToWorkdir(..) => &[],
     };
     let small = TextStyle::Small.resolve(ui.style());
     let mut x = ui.clip_rect().right() - 8.0;

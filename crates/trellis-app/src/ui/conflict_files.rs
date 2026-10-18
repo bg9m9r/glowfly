@@ -3,7 +3,7 @@
 //! and resolved files with Mark conflicted (one or all).
 
 use super::common::{menu_item, widget_row_height};
-use super::details::{OpenFile, RowContext, wip_file_row};
+use super::details_wip::{OpenFile, RowContext, wip_file_row};
 use super::file_menu;
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};

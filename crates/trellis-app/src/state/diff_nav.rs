@@ -133,12 +133,19 @@ fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
                 return Some(t);
             }
             match &st.selection {
-                Selection::Commits(m) if m.pair() == Some((*a, *b)) => match &m.changes {
+                Selection::Commits(m) if m.compare_ends() == Some((*a, *b)) => match &m.changes {
                     Some(Ok(c)) => Some(c.files.iter().map(|f| DiffTarget::Between(*a, *b, f.path.clone())).collect()),
                     _ => None,
                 },
                 _ => None,
             }
         }
+        DiffTarget::ToWorkdir(o, _) => match &st.selection {
+            Selection::VsWorkdir(w) if w.oid == *o => match &w.changes {
+                Some(Ok(c)) => Some(c.files.iter().map(|f| DiffTarget::ToWorkdir(*o, f.path.clone())).collect()),
+                _ => None,
+            },
+            _ => None,
+        },
     }
 }

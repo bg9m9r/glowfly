@@ -23,7 +23,8 @@ impl Labels {
         match target {
             DiffTarget::Commit(oid, _) => Labels { base: short(oid), theirs: format!("revert of {}", short(oid)) },
             DiffTarget::Between(from, to, _) => Labels { base: short(to), theirs: format!("revert of {}..{}", short(from), short(to)) },
-            DiffTarget::Unstaged(_) | DiffTarget::Staged(_) => Labels { base: "base".into(), theirs: "revert".into() },
+            // Never reverted (`revert` refuses them); labelled only to keep the match total.
+            DiffTarget::Unstaged(_) | DiffTarget::Staged(_) | DiffTarget::ToWorkdir(..) => Labels { base: "base".into(), theirs: "revert".into() },
         }
     }
 }

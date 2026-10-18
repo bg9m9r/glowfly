@@ -7,7 +7,8 @@ use super::chords::take_press;
 use super::record;
 use crate::keymap::{BindingId, Chord, KeyAction, KeyName};
 use crate::msg::{
-    BlameMsg, ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg, SearchMsg, TabsMsg,
+    BlameMsg, ConflictMsg, DiffMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg, SearchMsg, SelectionMsg,
+    TabsMsg,
 };
 use crate::state::layout::Panel;
 use crate::state::{AppState, Modal, PrefPage, Selection};
@@ -50,6 +51,8 @@ struct Live {
     blame: bool,
     /// The commit graph is the central view.
     graph: bool,
+    /// The terminal has the keyboard.
+    terminal: bool,
     /// A rebase is in progress.
     rebasing: bool,
 }
@@ -66,10 +69,11 @@ impl Live {
             dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
             typing: ctx.wants_keyboard_input(),
             working_diff: st.diff.as_ref().is_some_and(|(t, _)| t.is_working_tree()),
-            commit_diff: st.blame.is_none() && st.conflict.is_none() && st.diff.as_ref().is_some_and(|(t, _)| !t.is_working_tree()),
+            commit_diff: st.blame.is_none() && st.conflict.is_none() && st.diff.as_ref().is_some_and(|(t, _)| t.reverts_hunks()),
             stepping: st.blame.is_none() && (st.conflict.is_some() || st.diff.is_some()),
             blame: st.blame.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
+            terminal: st.terminal.focused,
             rebasing: st.snap.as_ref().is_some_and(|s| {
                 use RepositoryState::*;
                 matches!(s.state, Rebase | RebaseInteractive | RebaseMerge | ApplyMailboxOrRebase)
@@ -101,6 +105,7 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         I::Undo | I::Redo => !covered && !l.sheet && !l.typing,
         I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
         I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
+        I::SelectAllCommits => !covered && !l.sheet && !l.typing && l.graph && !l.terminal,
         // Not while typing: AltGr is Ctrl+Alt on Windows, and AltGr+digit types characters.
         I::OpenFavorite1
         | I::OpenFavorite2
@@ -119,6 +124,7 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         I::Commit
         | I::StageAllAndCommit
         | I::SelectRow
+        | I::ExtendSelection
         | I::CloseView
         | I::PaletteMove
         | I::PaletteRun
@@ -183,6 +189,7 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::PrevChange => step(-1, st),
         I::BlameNextRun => Msg::Blame(BlameMsg::StepRun(1)),
         I::BlamePrevRun => Msg::Blame(BlameMsg::StepRun(-1)),
+        I::SelectAllCommits => Msg::Selection(SelectionMsg::SelectAll),
         I::OpenFavorite1
         | I::OpenFavorite2
         | I::OpenFavorite3
@@ -226,6 +233,7 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::Commit
         | I::StageAllAndCommit
         | I::SelectRow
+        | I::ExtendSelection
         | I::CloseView
         | I::PaletteMove
         | I::PaletteRun

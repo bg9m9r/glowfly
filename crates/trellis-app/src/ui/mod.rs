@@ -25,7 +25,10 @@ mod dashboard_rows;
 mod date_tip;
 mod deep_link_dialog;
 mod details;
+mod details_banner;
 mod details_multi;
+mod details_wip;
+mod details_workdir;
 mod diff;
 mod file_buttons;
 mod file_dialogs;
@@ -46,6 +49,7 @@ mod init_dialog;
 mod issue;
 mod layout;
 mod list_row;
+mod mainline_dialog;
 mod menu_bar;
 mod menus;
 mod modals;
@@ -120,6 +124,8 @@ mod snapshot_tests_columns;
 #[cfg(test)]
 mod snapshot_tests_commit;
 #[cfg(test)]
+mod snapshot_tests_compare;
+#[cfg(test)]
 mod snapshot_tests_conflict_check;
 #[cfg(test)]
 mod snapshot_tests_conflict_files;
@@ -177,6 +183,8 @@ mod snapshot_tests_palette_stash;
 mod snapshot_tests_patch;
 #[cfg(test)]
 mod snapshot_tests_path_warnings;
+#[cfg(test)]
+mod snapshot_tests_pick;
 #[cfg(test)]
 mod snapshot_tests_platform_dialogs;
 #[cfg(test)]

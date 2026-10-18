@@ -98,6 +98,21 @@ fn check_clashes() {
 }
 
 #[test]
+fn selecting_commits_keys() {
+    let k = keys();
+    // Mod+A stays select all: only Select every commit may have it.
+    assert_eq!(check(&k, I::SelectAllCommits, Chord::cmd(K::Letter('A')), true), Check::Same);
+    assert_eq!(check(&k, I::Refresh, Chord::cmd(K::Letter('A')), true), Check::Refused(Refusal::ClipboardKey));
+    assert_eq!(check(&k, I::Stage, Chord::cmd(K::Letter('A')), true), Check::Refused(Refusal::ClipboardKey));
+    // Lists overlap the diff and the rest of the browsing places.
+    assert_eq!(check(&k, I::SelectAllCommits, Chord::cmd(K::Letter('Z')), true), Check::Clash { other: I::Undo, fixed: false });
+    // Shift+arrows are kept for moving around, so nothing else can take them.
+    assert_eq!(check(&k, I::NextChange, Chord::shift(K::Down), true), Check::Refused(Refusal::Reserved));
+    // Alt+arrows aren't: they clash as usual (in the lists, with Next change).
+    assert_eq!(check(&k, I::SelectAllCommits, Chord::alt(K::Down), true), Check::Clash { other: I::NextChange, fixed: false });
+}
+
+#[test]
 fn swap() {
     let k = keys();
     assert_eq!(swap_chord(&k, I::Refresh, Slot::Replace(0), I::NewTab, true), Some(Chord::plain(K::F(5))));

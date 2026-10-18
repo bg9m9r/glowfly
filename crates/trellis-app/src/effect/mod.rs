@@ -77,11 +77,17 @@ pub enum Effect {
         workdir: PathBuf,
         oid: Oid,
     },
-    /// The files that differ between two commits (older `from`, newer `to`).
+    /// The files that differ from commit `from` to commit `to`.
     LoadCompare {
         workdir: PathBuf,
         from: Oid,
         to: Oid,
+    },
+    /// The files that differ from commit `oid` to the working tree.
+    LoadWorkdirCompare {
+        workdir: PathBuf,
+        oid: Oid,
+        generation: u64,
     },
     LoadDiff {
         workdir: PathBuf,

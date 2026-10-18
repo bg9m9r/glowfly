@@ -21,6 +21,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 return; // superseded by a newer load
             }
             st.loading = false;
+            let state_before = st.snap.as_ref().map(|s| s.state);
             super::notify::unchanged(st);
             // A file list dropped in flight (a tab switch) is asked for again.
             if matches!(st.selection, Selection::Commits(_))
@@ -30,6 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 st.snap = Some(snap);
             }
             apply_status(st, result, submodules, open_stamp, now, fx);
+            super::pick::state_changed(st, state_before);
             super::status_tip::check(st, slow.as_ref(), now, fx);
             // A dialog may have been open when the repository loaded.
             super::trust::maybe_ask(st, false);
@@ -42,6 +44,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                 return;
             }
             st.refresh.status_busy = false;
+            let state_before = st.snap.as_ref().map(|s| s.state);
             if let Some(queued) = st.refresh.status_queued.take() {
                 // Already out of date: show it, but leave the diff to the next read.
                 match super::refresh_paths::show_deferred(st, result, submodules, queued) {
@@ -55,6 +58,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
                     Err(e) => apply_status(st, Err(e), submodules, open_stamp, now, fx),
                 }
             }
+            super::pick::state_changed(st, state_before);
             super::status_tip::check(st, slow.as_ref(), now, fx);
         }
         LoadMsg::SpeedUpStatus(speedups) => super::status_tip::speed_up(st, speedups, fx),
@@ -150,21 +154,21 @@ pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules, open: open_file(st), git_status, paths: None });
 }
 
-/// The file whose working-tree or index diff is open.
+/// The file whose working-tree, index or commit-to-working-tree diff is open.
 pub(super) fn open_file(st: &AppState) -> Option<String> {
-    st.diff.as_ref().filter(|(t, _)| t.is_working_tree()).map(|(t, _)| t.path().to_owned())
+    st.diff.as_ref().filter(|(t, _)| t.follows_workdir()).map(|(t, _)| t.path().to_owned())
 }
 
 /// Whether the diff on screen must be read again after a status read that found the open file
-/// at `stamp`. A commit or comparison diff never changes; a working-tree or index diff only when
-/// its file or the index did. Always when a request is outstanding (a hunk operation waits for
+/// at `stamp`. A commit or comparison diff never changes; a diff with the working tree or index
+/// on one side only when its file or the index did. Always when a request is outstanding (a hunk operation waits for
 /// the reload) or the file history's entry is missing.
 pub(super) fn diff_changed(st: &mut AppState, stamp: Option<u64>) -> bool {
     let last = std::mem::replace(&mut st.refresh.open_stamp, stamp);
     if must_reload(st) {
         return true;
     }
-    st.diff.as_ref().is_some_and(|(target, _)| target.is_working_tree()) && (stamp.is_none() || stamp != last)
+    st.diff.as_ref().is_some_and(|(target, _)| target.follows_workdir()) && (stamp.is_none() || stamp != last)
 }
 
 /// Whether the diff must be read again whatever its file's stamp: no diff is open, a request is
@@ -214,6 +218,7 @@ fn apply_status(
                 super::repo::reload_diff(st, fx);
             }
             super::conflict::status_changed(st, now, fx);
+            super::compare_wip::status_read(st, fx);
         }
         Err(e) => {
             st.log(false, e);

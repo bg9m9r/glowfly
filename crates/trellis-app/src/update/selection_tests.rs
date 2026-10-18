@@ -137,12 +137,15 @@ fn ctrl_click_builds_and_shrinks_a_selection() {
 #[test]
 fn toggle_edge_cases() {
     let (mut st, f) = fixture("multi-toggle-edges");
-    for start in [Selection::Wip, Selection::None] {
-        st.selection = start;
-        let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
-        assert_eq!(st.selection, Selection::Commit(f.c(3)));
-        assert!(loads_detail(&fx, f.c(3)));
-    }
+    st.selection = Selection::None;
+    let fx = up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
+    assert_eq!(st.selection, Selection::Commit(f.c(3)));
+    assert!(loads_detail(&fx, f.c(3)));
+    // From the WIP row, the commit is compared with the working directory.
+    st.selection = Selection::Wip;
+    up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
+    assert!(matches!(&st.selection, Selection::VsWorkdir(w) if w.oid == f.c(3)), "{:?}", st.selection);
+    up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(3))));
     // Toggling the only selected commit keeps it.
     assert!(up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3)))).is_empty());
     assert_eq!(st.selection, Selection::Commit(f.c(3)));

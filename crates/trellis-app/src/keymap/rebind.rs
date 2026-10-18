@@ -38,7 +38,7 @@ pub enum Slot {
 pub enum Refusal {
     /// Esc, and the plain typing and moving keys (Enter, Tab, the arrows…).
     Reserved,
-    /// Mod+C, Mod+X, Mod+V and Mod+A.
+    /// Mod+C, Mod+X, Mod+V and Mod+A (except Mod+A for selecting every commit).
     ClipboardKey,
     /// A plain key for an action that also works while typing.
     NeedsModifier,
@@ -72,7 +72,9 @@ pub fn refusal(id: BindingId, c: Chord) -> Option<Refusal> {
         return Some(Refusal::Reserved);
     }
     let primary = c.mods.command || (fold_ctrl() && c.mods.ctrl);
-    if primary && !c.mods.shift && !c.mods.alt && matches!(c.key, K::Letter('C' | 'X' | 'V' | 'A')) {
+    // Selecting every commit is select all, in the graph, where no text field has the keys.
+    let select_all = id == BindingId::SelectAllCommits && c.key == K::Letter('A');
+    if primary && !c.mods.shift && !c.mods.alt && matches!(c.key, K::Letter('C' | 'X' | 'V' | 'A')) && !select_all {
         return Some(Refusal::ClipboardKey);
     }
     // Delete edits text in every field and the terminal; F-keys and Insert don't.

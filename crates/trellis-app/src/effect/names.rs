@@ -10,6 +10,7 @@ impl Effect {
             Effect::LoadStatus { .. } => "load-status",
             Effect::LoadDetail { .. } => "load-detail",
             Effect::LoadCompare { .. } => "load-compare",
+            Effect::LoadWorkdirCompare { .. } => "load-workdir-compare",
             Effect::LoadDiff { .. } => "load-diff",
             Effect::HighlightDiff { .. } => "highlight",
             Effect::LoadConflict { .. } => "load-conflict",
@@ -97,6 +98,7 @@ impl Effect {
             | Effect::LoadStatus { .. }
             | Effect::LoadDetail { .. }
             | Effect::LoadCompare { .. }
+            | Effect::LoadWorkdirCompare { .. }
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
             | Effect::LoadConflict { .. }

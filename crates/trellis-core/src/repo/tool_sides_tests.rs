@@ -103,6 +103,24 @@ fn commits_compare_with_their_first_parent_and_follow_renames() {
 }
 
 #[test]
+fn a_commit_compared_with_the_working_tree_opens_the_working_file() {
+    let (dir, first) = one_commit("tool-sides-workdir");
+    let committed = staged_id(&dir, "a.txt");
+    write(
+        &dir, "a.txt", "two
+",
+    );
+    let s = diff_sides(&dir, &DiffTarget::ToWorkdir(first, "a.txt".into())).unwrap();
+    assert_eq!((s.old, s.new), (blob(committed, "a.txt"), SideSource::Working("a.txt".into())));
+    assert_eq!((s.old_label, s.new_label), (crate::rebase::short(first), "working tree".to_owned()));
+
+    std::fs::remove_file(dir.join("a.txt")).unwrap();
+    let s = diff_sides(&dir, &DiffTarget::ToWorkdir(first, "a.txt".into())).unwrap();
+    assert_eq!((s.new, s.new_label.as_str()), (SideSource::Empty, "empty"), "deleted from the working tree");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_submodule_entry_cant_be_compared() {
     let (parent, _sub) = with_submodule("tool-sides-submodule");
     let e = diff_sides(&parent, &DiffTarget::Commit(head(&parent), "libs/lib".into())).unwrap_err();

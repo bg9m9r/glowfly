@@ -10,18 +10,36 @@ pub enum DiffTarget {
     /// `path` as it differs from commit `.0` (older) to commit `.1` (newer), tree to tree with
     /// renames detected.
     Between(Oid, Oid, String),
+    /// `path` as it differs from commit `.0` to the working tree (staged and unstaged changes
+    /// and untracked files; renames detected).
+    ToWorkdir(Oid, String),
 }
 
 impl DiffTarget {
     pub fn path(&self) -> &str {
         match self {
-            DiffTarget::Commit(_, p) | DiffTarget::Unstaged(p) | DiffTarget::Staged(p) | DiffTarget::Between(_, _, p) => p,
+            DiffTarget::Commit(_, p)
+            | DiffTarget::Unstaged(p)
+            | DiffTarget::Staged(p)
+            | DiffTarget::Between(_, _, p)
+            | DiffTarget::ToWorkdir(_, p) => p,
         }
     }
 
     /// A diff of the working tree or index. Only these targets support hunk and line operations.
     pub fn is_working_tree(&self) -> bool {
         matches!(self, DiffTarget::Unstaged(_) | DiffTarget::Staged(_))
+    }
+
+    /// A diff with the working tree on one side, so it is re-read when the working tree's
+    /// status is (the working-tree diffs and a commit compared with the working tree).
+    pub fn follows_workdir(&self) -> bool {
+        self.is_working_tree() || matches!(self, DiffTarget::ToWorkdir(..))
+    }
+
+    /// A diff between stored versions, whose hunks can be reverted in the working tree.
+    pub fn reverts_hunks(&self) -> bool {
+        matches!(self, DiffTarget::Commit(..) | DiffTarget::Between(..))
     }
 }
 

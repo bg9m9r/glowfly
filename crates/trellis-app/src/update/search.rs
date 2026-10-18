@@ -101,9 +101,10 @@ fn next(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// The selected commit (the focus of a multi-selection).
-fn selected_oid(sel: &Selection) -> Option<Oid> {
+pub(super) fn selected_oid(sel: &Selection) -> Option<Oid> {
     match sel {
         Selection::Commit(o) => Some(*o),
+        Selection::VsWorkdir(w) => Some(w.oid),
         Selection::Commits(m) => Some(m.focus()),
         Selection::Wip | Selection::None => None,
     }

@@ -16,7 +16,7 @@ const DIFF_CHANGED: &str = "The diff changed before the revert ran, so nothing w
 
 /// Reverts hunk `index` of the open commit or comparison diff shown at `generation`.
 pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Vec<Effect>) {
-    if st.diff.as_ref().is_none_or(|(target, _)| target.is_working_tree()) {
+    if st.diff.as_ref().is_none_or(|(target, _)| !target.reverts_hunks()) {
         return;
     }
     if let Some(why) = st.hunk_ops_blocked() {
@@ -39,7 +39,7 @@ pub(super) fn hunk(st: &mut AppState, index: usize, generation: u64, fx: &mut Ve
 pub(super) fn lines(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some((target, _)) = &st.diff else { return };
     let sel = &st.view.diff_lines;
-    if target.is_working_tree() || sel.is_empty() || sel.target.as_ref() != Some(target) {
+    if !target.reverts_hunks() || sel.is_empty() || sel.target.as_ref() != Some(target) {
         return;
     }
     if let Some(why) = st.line_ops_blocked() {
@@ -62,7 +62,7 @@ pub(super) fn lines(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Reverts the whole change of `target` (a commit or comparison) to its file. It doesn't depend
 /// on the open diff, so there is nothing to check here but the target.
 pub(super) fn file(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) {
-    if target.is_working_tree() {
+    if !target.reverts_hunks() {
         return;
     }
     push(st, target, RevertPart::File, fx);

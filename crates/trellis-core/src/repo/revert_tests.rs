@@ -341,10 +341,12 @@ fn keeps_crlf_and_missing_final_newline() {
 
 #[test]
 fn working_tree_targets_are_unsupported() {
-    let (dir, _) = edited("revert-worktree");
+    let (dir, commit) = edited("revert-worktree");
+    let DiffTarget::Commit(c, _) = commit else { unreachable!() };
     write(&dir, "f.txt", TEN);
     let hunk = load_diff(&dir, &DiffTarget::Unstaged("f.txt".into())).unwrap().hunks[0].clone();
-    for target in [DiffTarget::Unstaged("f.txt".into()), DiffTarget::Staged("f.txt".into())] {
+    let targets = [DiffTarget::Unstaged("f.txt".into()), DiffTarget::Staged("f.txt".into()), DiffTarget::ToWorkdir(c, "f.txt".into())];
+    for target in targets {
         let r = revert_hunk(&dir, &target, 0, &hunk);
         assert!(matches!(r, Err(crate::error::Error::Unsupported(_))), "{target:?}: {:?}", r.err());
     }

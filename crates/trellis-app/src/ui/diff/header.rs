@@ -81,6 +81,7 @@ pub(super) fn header_bar(
         DiffTarget::Unstaged(_) => "unstaged".into(),
         DiffTarget::Staged(_) => "staged".into(),
         DiffTarget::Between(a, b, _) => format!("{}..{}", short(*a), short(*b)),
+        DiffTarget::ToWorkdir(o, _) => format!("{}..working tree", short(*o)),
     };
     // In a narrow bar (a panel beside the diff) the arrows and toggles move down too, rather
     // than run over the path.
@@ -136,7 +137,7 @@ pub(super) fn header_bar(
                         file_buttons::show(ui, msgs, f, Labels::Compact);
                     }
                 }
-                DiffTarget::Between(..) => {}
+                DiffTarget::Between(..) | DiffTarget::ToWorkdir(..) => {}
             }
             if middle_down {
                 return;

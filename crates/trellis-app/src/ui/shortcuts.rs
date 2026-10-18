@@ -21,6 +21,8 @@ mod rebound_tests;
 #[cfg(test)]
 mod record_tests;
 #[cfg(test)]
+mod select_tests;
+#[cfg(test)]
 mod snapshot_tests;
 #[cfg(test)]
 mod tests;

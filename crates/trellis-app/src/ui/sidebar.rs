@@ -58,7 +58,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let filter = st.view.ref_filter.to_lowercase();
     let shown = |name: &str| trellis_core::matching::contains_lower(name, &filter);
     let current = snap.head_branch.clone().unwrap_or_default();
-    let sel = st.selection.clone();
+    let sel = &st.selection;
     let fs = st.forge.as_ref();
     let idle = st.job.is_none();
     let sub_cx = crate::state::submodules::section_cx(st);
@@ -88,7 +88,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 right.push_str(" worktree");
             }
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
-            let selected = b.oid.is_some_and(|o| sel == Selection::Commit(o));
+            let selected = b.oid.is_some_and(|o| sel.includes(o));
             let right = (!right.is_empty()).then_some((right.trim(), color::weak()));
             let (r, marker) = widgets::list_row_slot(ui, 26.0, &label, right, slot, selected, b.is_head);
             if r.hovered() {
@@ -118,13 +118,12 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
             ref_visibility::row_marker(ui, &r, 13.0, &format!("refs/heads/{}", b.name), &b.name, graph, msgs);
-            r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, graph, &sel, msgs));
+            r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, graph, sel, msgs));
         }
     }
 
     let connections = &st.settings.connections;
-    let ctx =
-        super::remotes::Ctx { shown: &shown, sel: &sel, current: &current, fs, graph, idle, filtering: !filter.is_empty(), connections };
+    let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering: !filter.is_empty(), connections };
     super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, tips_seen, msgs);
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {
@@ -133,7 +132,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
         forge_filter_menu::header(ui, title, view.rows.len(), &mut sections.prs, picker, None, msgs);
         if sections.prs {
-            pull_requests(ui, snap, f, &view, &sel, &shown, msgs);
+            pull_requests(ui, snap, f, &view, sel, &shown, msgs);
         }
     }
     if let Some(f) = fs.filter(|f| f.tracker.is_some()) {
@@ -150,11 +149,11 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         }
     }
     if let Some(s) = snap.gitflow.settings() {
-        let rows = super::gitflow_section::Rows { shown: &shown, sel: &sel, fs, graph, filtering: !filter.is_empty() };
+        let rows = super::gitflow_section::Rows { shown: &shown, sel, fs, graph, filtering: !filter.is_empty() };
         super::gitflow_section::section(ui, snap, &s, &mut sections.gitflow, rows, hover_next, msgs);
     }
 
-    let rows = super::tags::Rows { shown: &shown, sel: &sel, idle, graph };
+    let rows = super::tags::Rows { shown: &shown, sel, idle, graph };
     super::tags::section(ui, snap, &mut sections.tags, rows, msgs);
 
     widgets::section_header(ui, "STASHES", Some(snap.stashes.len()), &mut sections.stashes);
@@ -163,7 +162,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let r = widgets::list_row(ui, 26.0, &s.message, None, sel == Selection::Commit(s.oid), false);
+            let r = widgets::list_row(ui, 26.0, &s.message, None, *sel == Selection::Commit(s.oid), false);
             let stash = |action| Msg::Job(JobMsg::Stash { action, index: s.index, oid: s.oid });
             if r.clicked() {
                 msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
@@ -187,7 +186,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         }
     }
     if crate::state::worktrees::section_shown(snap) {
-        let rows = super::worktrees::Rows { shown: &shown, sel: &sel, open_tabs: &open_tabs };
+        let rows = super::worktrees::Rows { shown: &shown, sel, open_tabs: &open_tabs };
         super::worktrees::section(ui, snap, &mut sections.worktrees, rows, hover_next, msgs);
     }
     if !snap.submodules.is_empty() {

@@ -191,8 +191,13 @@ fn comparison_restore_clears_absent() {
     st.selection = Selection::Commits(MultiSelection {
         oids: vec![oid, other],
         anchor: oid,
+        cursor: oid,
+        members: [oid, other].into(),
+        span: crate::state::selection_span::Span::Pair { older: other, newer: oid },
+        swapped: false,
         changes: Some(Ok(changes)),
         pick_blocked: None,
+        revert_blocked: None,
         export_blocked: None,
     });
 

@@ -76,7 +76,7 @@ pub(in crate::ui) fn section(
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let (r, marker) = widgets::list_row_slot(ui, 34.0, name, None, slot, *c.sel == Selection::Commit(*oid), false);
+            let (r, marker) = widgets::list_row_slot(ui, 34.0, name, None, slot, c.sel.includes(*oid), false);
             if r.hovered() {
                 *hover_next = Some(*oid);
             }

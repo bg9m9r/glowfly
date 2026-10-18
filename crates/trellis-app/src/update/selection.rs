@@ -1,13 +1,14 @@
-//! Selecting several commits: Ctrl- and Shift-clicks in the graph, the two-commit comparison,
-//! keeping the selection across refreshes, and cherry-picking the selected commits.
+//! Selecting several commits: Ctrl- and Shift-clicks in the graph, select all, the comparison of
+//! a pair or a line of commits (and its direction), and keeping the selection across refreshes.
+//! Comparing with the working directory is in `compare_wip.rs`; cherry-pick and revert in
+//! `pick.rs`.
 
 use crate::effect::Effect;
 use crate::msg::SelectionMsg;
 use crate::state::graph_rows::GraphRows;
-use crate::state::selection as sel;
+use crate::state::pick::PickOp;
+use crate::state::selection::{self as sel, MultiSelection};
 use crate::state::{AppState, Selection};
-use git2::Oid;
-use trellis_core::gitcli::args;
 use trellis_core::repo::{DiffTarget, Snapshot};
 
 pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>) {
@@ -22,15 +23,21 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>)
             let new = sel::ranged(&st.selection, oid, snap, shown);
             apply(st, new, fx);
         }
-        SelectionMsg::CollapseSelection => {
-            if let Selection::Commits(m) = &st.selection {
+        SelectionMsg::SelectAll => select_all(st, fx),
+        SelectionMsg::CollapseSelection => match &st.selection {
+            Selection::Commits(m) => {
                 let focus = m.focus();
                 super::repo::select_commit(st, focus, false, fx);
             }
-        }
-        SelectionMsg::CherryPick(oids) => cherry_pick(st, oids, fx),
+            Selection::VsWorkdir(w) => {
+                let oid = w.oid;
+                super::repo::select_commit(st, oid, false, fx);
+            }
+            Selection::None | Selection::Wip | Selection::Commit(_) => {}
+        },
+        SelectionMsg::SwapCompare => swap(st, fx),
         SelectionMsg::CompareLoaded { from, to, result } => match &mut st.selection {
-            Selection::Commits(m) if m.pair() == Some((from, to)) => {
+            Selection::Commits(m) if m.compare_ends() == Some((from, to)) => {
                 m.changes = Some(result.clone());
                 if let Err(e) = result {
                     st.log(false, e);
@@ -38,17 +45,53 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>)
             }
             _ => tracing::debug!("dropped a stale comparison of {from} and {to}"),
         },
+        SelectionMsg::ToggleWip => super::compare_wip::toggle(st, fx),
+        SelectionMsg::CompareWithWorkdir(oid) => super::compare_wip::compare(st, oid, fx),
+        SelectionMsg::WorkdirCompareLoaded { oid, generation, result } => super::compare_wip::loaded(st, oid, generation, result),
+        SelectionMsg::CherryPick(oids) => super::pick::run(st, PickOp::CherryPick, oids, None, fx),
+        SelectionMsg::Revert(oids) => super::pick::run(st, PickOp::Revert, oids, None, fx),
+        SelectionMsg::PickMerge { op, oid, mainline } => super::pick::run(st, op, vec![oid], Some(mainline), fx),
     }
 }
 
+/// Selects every commit row the graph shows (only the matches while the search filters), with
+/// the commit in focus as the anchor (else the newest).
+fn select_all(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Some(snap) = &st.snap else { return };
+    let oids: Vec<_> = match GraphRows::new(snap, &st.search, st.view.show_search).shown() {
+        Some(rows) => rows.iter().filter_map(|&i| snap.commits.get(i)).map(|c| c.oid).collect(),
+        None => snap.commits.iter().map(|c| c.oid).collect(),
+    };
+    let Some(&newest) = oids.first() else { return };
+    let focus = super::search::selected_oid(&st.selection).filter(|o| oids.contains(o));
+    let new = MultiSelection::build(oids, focus.unwrap_or(newest), snap);
+    apply(st, new, fx);
+}
+
+/// Swap direction: the selection's comparison runs the other way. The list is read again, and a
+/// diff of the old direction closes.
+fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Selection::Commits(m) = &mut st.selection else { return };
+    let Some(old) = m.compare_ends() else { return };
+    m.swapped = !m.swapped;
+    m.changes = None;
+    if let Some((DiffTarget::Between(a, b, _), _)) = &st.diff
+        && (*a, *b) == old
+    {
+        super::repo::close_diff(st);
+    }
+    request_compare(st, fx);
+}
+
 /// Makes `new` the selection, closing whatever showed the old one.
-fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
+pub(super) fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
     if new == st.selection {
         return;
     }
     match new {
         Selection::Commit(o) => super::repo::select_commit(st, o, false, fx),
-        Selection::Commits(_) => {
+        Selection::Commits(_) | Selection::VsWorkdir(_) => {
+            let vs_workdir = matches!(new, Selection::VsWorkdir(_));
             st.selection = new;
             st.detail = None;
             super::repo::close_diff(st);
@@ -57,9 +100,17 @@ fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
             super::blame::close(st);
             super::pull_request::close(st);
             super::issue::close(st);
-            request_compare(st, fx);
+            if vs_workdir {
+                super::compare_wip::request(st, fx);
+            } else {
+                request_compare(st, fx);
+            }
         }
-        Selection::None | Selection::Wip => {
+        Selection::Wip => {
+            super::repo::close_diff(st);
+            super::repo::select_wip(st, fx);
+        }
+        Selection::None => {
             st.selection = new;
             st.detail = None;
             super::repo::close_diff(st);
@@ -67,10 +118,10 @@ fn apply(st: &mut AppState, new: Selection, fx: &mut Vec<Effect>) {
     }
 }
 
-/// With two commits selected and their file list not received yet, asks for it.
+/// With a comparison to show and its file list not received yet, asks for it.
 fn request_compare(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Selection::Commits(m) = &st.selection else { return };
-    if let (Some((from, to)), None, Some(workdir)) = (m.pair(), &m.changes, st.workdir()) {
+    if let (Some((from, to)), None, Some(workdir)) = (m.compare_ends(), &m.changes, st.workdir()) {
         fx.push(Effect::LoadCompare { workdir, from, to });
     }
 }
@@ -79,14 +130,14 @@ fn request_compare(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// selection, and the cherry-pick check is redone (HEAD may have moved).
 pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>) {
     let Selection::Commits(m) = &st.selection else { return };
-    let old_pair = m.pair();
+    let old_ends = m.compare_ends();
     let new = sel::refreshed(m, snap);
-    let new_pair = match &new {
-        Selection::Commits(n) => n.pair(),
+    let new_ends = match &new {
+        Selection::Commits(n) => n.compare_ends(),
         _ => None,
     };
-    if new_pair != old_pair
-        && let (Some((from, to)), Some((DiffTarget::Between(a, b, _), _))) = (old_pair, &st.diff)
+    if new_ends != old_ends
+        && let (Some((from, to)), Some((DiffTarget::Between(a, b, _), _))) = (old_ends, &st.diff)
         && (*a, *b) == (from, to)
     {
         super::repo::close_diff(st);
@@ -96,7 +147,7 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
             st.selection = new;
             // A list dropped in flight (a tab switch) is asked for again here.
             if let Selection::Commits(m) = &st.selection
-                && let Some((from, to)) = m.pair()
+                && let Some((from, to)) = m.compare_ends()
                 && m.changes.is_none()
             {
                 fx.push(Effect::LoadCompare { workdir: snap.workdir.clone(), from, to });
@@ -107,27 +158,9 @@ pub(super) fn refreshed(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Effect>
             st.detail = None;
             fx.push(Effect::LoadDetail { workdir: snap.workdir.clone(), oid: o });
         }
-        Selection::None | Selection::Wip => {
+        Selection::None | Selection::Wip | Selection::VsWorkdir(_) => {
             st.selection = Selection::None;
             st.detail = None;
         }
     }
-}
-
-/// Cherry-picks `oids` onto HEAD in one git command, oldest first.
-fn cherry_pick(st: &mut AppState, oids: Vec<Oid>, fx: &mut Vec<Effect>) {
-    let Some(snap) = &st.snap else { return };
-    let oids = sel::in_graph_order(oids, snap, true);
-    if oids.is_empty() {
-        return;
-    }
-    if let Some(why) = sel::cherry_pick_blocker(snap, &oids) {
-        st.log(false, why);
-        return;
-    }
-    let n = oids.len();
-    let label = if n == 1 { "Cherry-pick".to_owned() } else { format!("Cherry-pick {n} commits") };
-    let mut cmd = args(&["cherry-pick"]);
-    cmd.extend(oids.iter().map(Oid::to_string));
-    super::ops::start_job(st, super::ops::JobSpec::new(label, vec![cmd]), fx);
 }

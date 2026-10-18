@@ -138,22 +138,42 @@ fn move_kind(op: &str, rest: &[&str]) -> Option<UndoKind> {
     if rest.iter().any(|a| NOT_RECORDED.contains(a)) {
         return None;
     }
-    let targets: Vec<&str> = rest.iter().copied().filter(|a| plain(a)).collect();
+    let picks = matches!(op, "cherry-pick" | "revert");
+    let targets = move_targets(rest, picks);
     let (op, detail) = match op {
         "merge" => (MoveOp::Merge, targets.first().map(|t| (*t).to_owned())),
         "rebase" => (MoveOp::Rebase, targets.first().map(|t| (*t).to_owned())),
-        "cherry-pick" => {
-            let detail = match targets.as_slice() {
-                [] => None,
-                [one] => Some(commit_label(one)),
-                many => Some(format!("{} commits", many.len())),
-            };
-            (MoveOp::CherryPick, detail)
-        }
-        "revert" => (MoveOp::Revert, targets.first().map(|t| commit_label(t))),
+        "cherry-pick" => (MoveOp::CherryPick, commits_label(&targets)),
+        "revert" => (MoveOp::Revert, commits_label(&targets)),
         _ => (MoveOp::Pull, None),
     };
     Some(UndoKind::Move { op, detail })
+}
+
+/// The plain arguments of a move command. For a cherry-pick or revert (`picks`), a mainline
+/// parent (`-m N`, `--mainline N`, `-mN`, `--mainline=N`) is left out: it isn't a commit.
+fn move_targets<'a>(rest: &[&'a str], picks: bool) -> Vec<&'a str> {
+    let mut out = Vec::new();
+    let mut args = rest.iter();
+    while let Some(a) = args.next() {
+        match *a {
+            "-m" | "--mainline" if picks => {
+                args.next();
+            }
+            s if plain(s) => out.push(s),
+            _ => {}
+        }
+    }
+    out
+}
+
+/// "abc1234" for one commit, "3 commits" for several.
+fn commits_label(targets: &[&str]) -> Option<String> {
+    match targets {
+        [] => None,
+        [one] => Some(commit_label(one)),
+        many => Some(format!("{} commits", many.len())),
+    }
 }
 
 /// A full commit id cut to its short form; anything else as it is.

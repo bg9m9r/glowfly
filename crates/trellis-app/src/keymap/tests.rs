@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 70] = [
+    const FROZEN: [&str; 72] = [
         "stage",
         "unstage",
         "stage-all",
@@ -91,6 +91,8 @@ fn ids_are_stable() {
         "rebase-remove-step",
         "rebase-edit-step",
         "revert-hunk",
+        "extend-selection",
+        "select-all-commits",
     ];
     let keys: Vec<&str> = BindingId::ALL.iter().map(|id| id.key()).collect();
     assert_eq!(keys, FROZEN);
@@ -151,6 +153,7 @@ fn rebindable_set() {
         I::RebaseContinue,
         I::RebaseSkip,
         I::RevertHunk,
+        I::SelectAllCommits,
     ];
     assert_eq!(rebindable, want);
 }

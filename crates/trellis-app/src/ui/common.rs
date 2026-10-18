@@ -188,7 +188,7 @@ pub fn capitalize(s: &str) -> String {
 }
 
 use crate::state::am_banner::{AM_ABORT, AM_CONTINUE, AM_NAME, AM_SKIP};
-use trellis_core::patch_ops;
+use trellis_core::{patch_ops, pick_ops};
 
 pub type StateAction = (&'static str, &'static [&'static str]);
 
@@ -202,10 +202,18 @@ pub fn state_actions(state: RepositoryState) -> Option<(&'static str, &'static [
         Merge => ("Merge", &[("Abort merge", &["merge", "--abort"])]),
         Rebase | RebaseMerge => ("Rebase", REBASE_ACTIONS),
         RebaseInteractive => ("Interactive rebase", REBASE_ACTIONS),
-        CherryPick | CherryPickSequence => {
-            ("Cherry-pick", &[("Continue", &["cherry-pick", "--continue"]), ("Abort cherry-pick", &["cherry-pick", "--abort"])])
-        }
-        Revert | RevertSequence => ("Revert", &[("Continue", &["revert", "--continue"]), ("Abort revert", &["revert", "--abort"])]),
+        CherryPick | CherryPickSequence => (
+            "Cherry-pick",
+            &[
+                ("Continue", &["cherry-pick", "--continue"]),
+                ("Skip commit", pick_ops::CHERRY_PICK_SKIP),
+                ("Abort cherry-pick", &["cherry-pick", "--abort"]),
+            ],
+        ),
+        Revert | RevertSequence => (
+            "Revert",
+            &[("Continue", &["revert", "--continue"]), ("Skip commit", pick_ops::REVERT_SKIP), ("Abort revert", &["revert", "--abort"])],
+        ),
         ApplyMailbox => (AM_NAME, &[(AM_CONTINUE, patch_ops::AM_CONTINUE), (AM_SKIP, patch_ops::AM_SKIP), (AM_ABORT, patch_ops::AM_ABORT)]),
         ApplyMailboxOrRebase => ("Apply mailbox", &[("Abort", &["am", "--abort"])]),
         Bisect => ("Bisect", &[("Reset bisect", &["bisect", "reset"])]),

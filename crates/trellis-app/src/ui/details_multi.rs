@@ -1,14 +1,18 @@
-//! Right panel for several selected commits: the list, actions on all of them, and with exactly
-//! two, the files that differ between them and their file actions.
+//! Right panel for several selected commits: the list, actions on all of them, and for a pair or
+//! one unbroken line of commits, the files that differ across them (either way round) and their
+//! file actions; otherwise why there is no combined diff.
 
 use super::common::{short, widget_row_height};
 use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
-use super::menus::{cherry_pick_button, copy_shas, patch_button};
+use super::menus::{cherry_pick_button, copy_shas, patch_button, revert_button};
 use super::theme::color;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
+use crate::msg::SelectionMsg;
 use crate::state::lfs::TrackContext;
+use crate::state::selection::MultiSelection;
+use crate::state::selection_span::{SPAN_FROM_ROOT, SPAN_GAPS, Span};
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, RichText};
 use trellis_core::repo::DiffTarget;
@@ -18,6 +22,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.label(RichText::new(format!("{} commits selected", m.len())).strong().size(15.0).color(color::text()));
     ui.horizontal_wrapped(|ui| {
         cherry_pick_button(ui, m, msgs);
+        revert_button(ui, m, msgs);
         patch_button(ui, m, msgs);
         if ui.button("Copy SHAs").clicked() {
             msgs.push(copy_shas(m));
@@ -26,7 +31,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
     ui.add_space(6.0);
 
-    let list_h = if m.pair().is_some() { 160.0 } else { ui.available_height() };
+    let list_h = if m.compare_ends().is_some() { 160.0 } else { ui.available_height() };
     // Only the rows in view are drawn: a range selection can span the whole history.
     let rows: Vec<(git2::Oid, usize)> = m.oids.iter().filter_map(|&o| Some((o, *snap.row_of.get(&o)?))).collect();
     let row_h = widget_row_height(ui);
@@ -46,14 +51,35 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         },
     );
 
-    let Some((older, newer)) = m.pair() else {
+    let Some((from, to)) = m.compare_ends() else {
         ui.add_space(8.0);
-        let note = "File changes are shown when exactly two commits are selected. Ctrl-click a commit to remove it from the selection.";
+        let note = if m.span == Span::FromRoot { SPAN_FROM_ROOT } else { SPAN_GAPS };
         ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap());
         return;
     };
     ui.separator();
-    ui.label(RichText::new(format!("Changes from {} to {}", short(older), short(newer))).strong().color(color::text()));
+    heading(ui, m, from, to, msgs);
+    files(ui, st, m, from, to, msgs);
+}
+
+/// "Changes from X to Y" (with the count for a line of commits) and Swap direction.
+fn heading(ui: &mut egui::Ui, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
+    let mut text = format!("Changes from {} to {}", short(from), short(to));
+    if let Span::Range { .. } = m.span {
+        text.push_str(&format!(" ({} commits combined)", m.len()));
+    }
+    // The button goes to its own line when the heading leaves no room for it.
+    ui.horizontal_wrapped(|ui| {
+        ui.label(RichText::new(text).strong().color(color::text()));
+        let tip = format!("Show the changes from {} to {} instead", short(to), short(from));
+        if ui.small_button("Swap direction").on_hover_text(tip).clicked() {
+            msgs.push(Msg::Selection(SelectionMsg::SwapCompare));
+        }
+    });
+}
+
+/// The files that differ from `from` to `to`, each opening its diff between them.
+fn files(ui: &mut egui::Ui, st: &AppState, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
     match &m.changes {
         None => {
             ui.label(RichText::new("Loading…").color(color::weak()));
@@ -75,10 +101,10 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 c.files.len(),
                 |ui, range| {
                     for f in &c.files[range] {
-                        let target = DiffTarget::Between(older, newer, f.path.clone());
-                        let src = RowSource::Between { older, newer };
+                        let target = DiffTarget::Between(from, to, f.path.clone());
+                        let src = RowSource::Between { from, to };
                         let actions = Some(RowActions { src, in_workdir: c.in_workdir(&f.path), lfs, diff_blocked, patch_blocked: None });
-                        changed_file_row(ui, f, target, open, newer, actions, msgs);
+                        changed_file_row(ui, f, target, open, m.oids[0], actions, msgs);
                     }
                 },
             );

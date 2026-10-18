@@ -338,7 +338,7 @@ fn comparison_file_list() {
     drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(newer)));
     drive(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(older)));
     let Selection::Commits(m) = &st.selection else { panic!("two commits selected") };
-    assert_eq!(m.pair(), Some((older, newer)));
+    assert_eq!(m.compare_ends(), Some((older, newer)));
     assert!(matches!(&m.changes, Some(Ok(c)) if c.files.len() == 3), "a, c and d differ");
     at_end_of(&mut st, DiffTarget::Between(older, newer, "a.txt".into()));
     let fx = run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));

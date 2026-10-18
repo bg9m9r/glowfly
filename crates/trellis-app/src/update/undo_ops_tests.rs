@@ -2,6 +2,7 @@
 //! them, undone and redone end to end, and refused for local changes without a stash offer.
 
 use super::cherry_pick_tests::feature_repo;
+use super::selection_tests::git as git_out;
 use super::tests::{drive, git, scratch_repo, state};
 use crate::msg::{CommitMsg, JobMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
 use crate::state::AppState;
@@ -96,5 +97,50 @@ fn cherry_pick_from_the_graph_is_undoable() {
     );
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "base");
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn a_multi_commit_cherry_pick_is_one_undo_step() {
+    let (mut st, dir, f) = feature_repo("undo-ops-pick-3", &[("f1", "base\n1\n"), ("f2", "base\n1\n2\n"), ("f3", "base\n1\n2\n3\n")], None);
+    drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f[0], f[1], f[2]])));
+    assert_eq!(head_summary(&st), "f3");
+    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
+    assert!(tip.starts_with("Undo cherry-pick of 3 commits"), "{tip}");
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(head_summary(&st), "base", "one step takes all three back");
+    drive(&mut st, Msg::Job(JobMsg::Redo));
+    assert_eq!(git_out(&dir, &["log", "--format=%s", "-4", "main"]).trim().lines().collect::<Vec<_>>(), ["f3", "f2", "f1", "base"]);
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn a_multi_commit_revert_is_one_undo_step() {
+    let (mut st, dir, f) = feature_repo("undo-ops-revert-2", &[("f1", "base\n1\n"), ("f2", "base\n1\n2\n")], None);
+    git(&dir, &["checkout", "-q", "feature"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    drive(&mut st, Msg::Selection(SelectionMsg::Revert(vec![f[0], f[1]])));
+    assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n");
+    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
+    assert!(tip.starts_with("Undo revert of 2 commits"), "{tip}");
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert_eq!(head_summary(&st), "f2");
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn a_mainline_cherry_pick_names_the_merge() {
+    let (mut st, dir, _) = feature_repo("undo-ops-pick-merge", &[("f1", "base\n1\n")], None);
+    let base = git_out(&dir, &["rev-parse", "main"]).trim().to_owned();
+    git(&dir, &["merge", "-q", "--no-ff", "feature", "-m", "merge feature"]);
+    let merge = git_out(&dir, &["rev-parse", "HEAD"]).trim().to_owned();
+    git(&dir, &["checkout", "-q", "-b", "other", &base]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    let oid = git2::Oid::from_str(&merge).unwrap();
+    drive(&mut st, Msg::Selection(SelectionMsg::PickMerge { op: crate::state::pick::PickOp::CherryPick, oid, mainline: 1 }));
+    assert_eq!(head_summary(&st), "merge feature");
+    assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n1\n");
+    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
+    assert!(tip.starts_with(&format!("Undo cherry-pick of {}", &merge[..7])), "{tip}");
     cleanup(&[&dir]);
 }

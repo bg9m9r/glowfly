@@ -75,7 +75,7 @@ fn revert_msg(st: &mut AppState) -> Option<Msg> {
         return None;
     }
     let (target, _) = st.diff.as_ref()?;
-    if target.is_working_tree() {
+    if !target.reverts_hunks() {
         return None;
     }
     let sel = &st.view.diff_lines;

@@ -15,6 +15,7 @@ pub fn hazard_of<'a>(st: &'a AppState, path: &str) -> Option<&'a Hazard> {
     let detail = st.detail.iter().flat_map(|d| &d.files);
     let compared = match &st.selection {
         Selection::Commits(m) => m.changes.as_ref().and_then(|c| c.as_ref().ok()).map(|c| c.files.as_slice()).unwrap_or_default(),
+        Selection::VsWorkdir(w) => w.changes.as_ref().and_then(|c| c.as_ref().ok()).map(|c| c.files.as_slice()).unwrap_or_default(),
         _ => &[],
     };
     snap.chain(detail).chain(compared).filter(|f: &&FileEntry| f.path == path).find_map(|f| f.hazard.as_ref())

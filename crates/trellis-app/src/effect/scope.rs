@@ -11,6 +11,7 @@ impl Effect {
             Effect::LoadStatus { workdir, .. }
             | Effect::LoadDetail { workdir, .. }
             | Effect::LoadCompare { workdir, .. }
+            | Effect::LoadWorkdirCompare { workdir, .. }
             | Effect::LoadDiff { workdir, .. }
             | Effect::HighlightDiff { workdir, .. }
             | Effect::LoadConflict { workdir, .. }

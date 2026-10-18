@@ -34,9 +34,9 @@ fn terminal_button_names_the_current_key() {
 fn discard_all_names_undos_current_key() {
     let mut keys = Keymap::default();
     keys.set(I::Undo, f8());
-    assert!(super::details::discard_all_text(&keys).contains("Undo (F8) or applying"));
+    assert!(super::details_wip::discard_all_text(&keys).contains("Undo (F8) or applying"));
     keys.set(I::Undo, Vec::new());
-    let text = super::details::discard_all_text(&keys);
+    let text = super::details_wip::discard_all_text(&keys);
     assert!(text.contains(" Undo or applying") && !text.contains('('), "{text}");
 }
 

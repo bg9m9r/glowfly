@@ -48,7 +48,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
                 |ui, range| {
                     for f in &files[range] {
                         let Some(target) = v.diff_target(&f.path) else { continue };
-                        let src = RowSource::Between { older: base, newer: tip };
+                        let src = RowSource::Between { from: base, to: tip };
                         let actions =
                             RowActions { src, in_workdir: c.comparison.in_workdir(&f.path), lfs, diff_blocked, patch_blocked: None };
                         changed_file_row(ui, f, target, open, tip, Some(actions), msgs);

@@ -56,7 +56,7 @@ pub fn diff_sides(workdir: &Path, target: &DiffTarget) -> Result<DiffSides> {
     let delta = diff.deltas().find(|d| rpath::touches(d, path)).ok_or_else(|| Error::NotFound(format!("no changes in {path}")))?;
     let old = side(&delta.old_file(), path)?;
     let mut new = side(&delta.new_file(), path)?;
-    if let DiffTarget::Unstaged(p) = target
+    if let DiffTarget::Unstaged(p) | DiffTarget::ToWorkdir(_, p) = target
         && delta.status() != git2::Delta::Deleted
     {
         new = SideSource::Working(p.clone());
@@ -69,6 +69,7 @@ pub fn diff_sides(workdir: &Path, target: &DiffTarget) -> Result<DiffSides> {
         DiffTarget::Between(from, to, _) => (short(*from), short(*to)),
         DiffTarget::Staged(_) => ("HEAD".into(), "index".into()),
         DiffTarget::Unstaged(_) => ("index".into(), "working tree".into()),
+        DiffTarget::ToWorkdir(oid, _) => (short(*oid), "working tree".into()),
     };
     let label = |s: &SideSource, l: String| if *s == SideSource::Empty { "empty".to_owned() } else { l };
     Ok(DiffSides { old_label: label(&old, old_label), new_label: label(&new, new_label), old, new })

@@ -29,7 +29,7 @@ fn with_selection(theme: ThemeChoice, name: &str, summaries: &[&str]) -> (AppSta
     let oids: Vec<Oid> = summaries.iter().map(|s| commit(&st, s)).collect();
     let mut sel = MultiSelection::build(oids.iter().copied(), oids[0], st.snap.as_ref().unwrap());
     if let Selection::Commits(m) = &mut sel
-        && let Some((older, newer)) = m.pair()
+        && let Some((older, newer)) = m.compare_ends()
     {
         m.changes = Some(repo::compare(&dir, older, newer).map_err(|e| e.to_string()));
     }
@@ -49,7 +49,7 @@ fn graph_two_commits_selected() {
     let names: Vec<(&str, char)> =
         m.changes.as_ref().unwrap().as_ref().unwrap().files.iter().map(|f| (f.path.as_str(), f.status)).collect();
     assert_eq!(names, [("app.txt", 'M'), ("search.txt", 'A')]);
-    let (older, newer) = m.pair().unwrap();
+    let (older, newer) = m.compare_ends().unwrap();
     assert_eq!((older, newer), (commit(&st, "Add login page"), commit(&st, "Search results page")));
     render("graph_two_commits_selected", st, true);
 
@@ -157,7 +157,7 @@ fn esc_collapses_after_closing_the_diff() {
     assert!(matches!(&h.state().1[..], [Msg::Selection(SelectionMsg::CollapseSelection)]));
 
     let (mut st, _) = with_selection(ThemeChoice::Dark, "multi-esc", &["Add login page", "Search results page"]);
-    let (older, newer) = multi(&st).pair().unwrap();
+    let (older, newer) = multi(&st).compare_ends().unwrap();
     let target = DiffTarget::Between(older, newer, "app.txt".into());
     st.diff = Some((target.clone(), repo::load_diff(&dir, &target).unwrap().into()));
     let mut h = esc_harness(st);

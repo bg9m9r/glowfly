@@ -53,6 +53,7 @@ pub mod palette_tools;
 pub mod palette_updates;
 pub mod patch;
 pub mod path_hazards;
+pub mod pick;
 pub mod pr_details;
 pub mod prefs;
 pub mod profiles;
@@ -75,6 +76,8 @@ pub mod repo_scan;
 pub mod repo_sync;
 pub mod search;
 pub mod selection;
+pub mod selection_span;
+pub mod selection_wip;
 pub mod shallow;
 pub mod signatures;
 pub mod sparse;
@@ -140,6 +143,8 @@ pub enum Selection {
     Commit(Oid),
     /// Two or more commits (Ctrl- or Shift-click in the graph).
     Commits(selection::MultiSelection),
+    /// One commit compared with the working directory: its row and the WIP row both selected.
+    VsWorkdir(selection_wip::WorkdirCompare),
 }
 
 impl Selection {
@@ -148,8 +153,14 @@ impl Selection {
         match self {
             Selection::Commit(o) => *o == oid,
             Selection::Commits(m) => m.contains(oid),
-            _ => false,
+            Selection::VsWorkdir(w) => w.oid == oid,
+            Selection::None | Selection::Wip => false,
         }
+    }
+
+    /// Whether the graph's WIP row is drawn selected (alone or compared with a commit).
+    pub fn wip_shown(&self) -> bool {
+        matches!(self, Selection::Wip | Selection::VsWorkdir(_))
     }
 }
 
@@ -257,6 +268,8 @@ pub enum Modal {
     SyncRepos,
     /// Rename tab (`ui/tab_dialog.rs`).
     RenameTab(tabs::RenameTabForm),
+    /// Which parent of a merge commit to cherry-pick or revert against (`ui/mainline_dialog.rs`).
+    Mainline(pick::MainlineForm),
 }
 
 /// The most commits "Load more" goes up to.

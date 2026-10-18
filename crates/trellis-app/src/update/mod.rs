@@ -11,6 +11,7 @@ mod build_status;
 mod clone;
 mod clone_service;
 mod commit;
+mod compare_wip;
 mod conflict;
 mod conflict_check;
 mod conflict_files;
@@ -44,6 +45,7 @@ mod onboarding;
 mod ops;
 mod palette;
 mod patch;
+mod pick;
 mod pr_details;
 mod prefs;
 mod profile_setup;
@@ -127,6 +129,8 @@ mod clone_sparse_tests;
 mod clone_tests;
 #[cfg(test)]
 mod commit_tests;
+#[cfg(test)]
+mod compare_wip_tests;
 #[cfg(test)]
 mod conflict_check_tests;
 #[cfg(test)]
@@ -264,6 +268,8 @@ mod path_hazards_tests;
 #[cfg(test)]
 mod perf_tests;
 #[cfg(test)]
+mod pick_tests;
+#[cfg(test)]
 mod pr_checkout_tests;
 #[cfg(test)]
 mod pr_details_tests;
@@ -313,6 +319,8 @@ mod revert_tests;
 mod search_paths_tests;
 #[cfg(test)]
 mod search_tests;
+#[cfg(test)]
+mod selection_span_tests;
 #[cfg(test)]
 mod selection_tests;
 #[cfg(test)]

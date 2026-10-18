@@ -51,12 +51,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             }
             super::refresh::load_finished(st, fx);
         }
-        RepoMsg::SelectWip => {
-            st.selection = Selection::Wip;
-            st.detail = None;
-            let key = st.snap.as_ref().and_then(|s| s.head_branch.clone()).and_then(|b| st.forge.as_ref().and_then(|f| f.branch_issue(&b)));
-            super::forge::want_issues(st, key.into_iter().collect(), fx);
-        }
+        RepoMsg::SelectWip => select_wip(st, fx),
         RepoMsg::SelectCommit(oid) => select_commit(st, oid, false, fx),
         RepoMsg::JumpTo(oid) => select_commit(st, oid, true, fx),
         RepoMsg::DetailLoaded { oid, result } => {
@@ -267,6 +262,7 @@ pub(super) fn close_diff(st: &mut AppState) {
 }
 
 fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
+    let state_before = st.snap.as_ref().filter(|_| kind == LoadKind::Refresh).map(|s| s.state);
     st.known.learn_snapshot(&snap);
     if kind == LoadKind::Open && super::tabs::open_elsewhere(st, &snap, fx) {
         super::deep_link_open::ready(st, now, fx);
@@ -317,6 +313,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             if matches!(st.selection, Selection::Commits(_)) {
                 super::selection::refreshed(st, &snap, fx);
             }
+            super::compare_wip::refreshed(st, &snap, fx);
             super::rebase::refreshed(st, &snap);
             super::shallow::refreshed(st, &snap, fx);
         }
@@ -325,6 +322,7 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     super::notify::loaded(st, &snap, kind, now, fx);
     st.snap = Some(snap);
+    super::pick::state_changed(st, state_before);
     super::search::snapshot_changed(st, fx);
     super::trust::loaded(st, kind, fx);
     super::submodule_batch::opened(st, kind, now, fx);
@@ -353,6 +351,14 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
     if reload {
         super::refresh::reload_after(st, fx);
     }
+}
+
+/// Selects the WIP row, asking for the issue the checked-out branch names.
+pub(super) fn select_wip(st: &mut AppState, fx: &mut Vec<Effect>) {
+    st.selection = Selection::Wip;
+    st.detail = None;
+    let key = st.snap.as_ref().and_then(|s| s.head_branch.clone()).and_then(|b| st.forge.as_ref().and_then(|f| f.branch_issue(&b)));
+    super::forge::want_issues(st, key.into_iter().collect(), fx);
 }
 
 pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut Vec<Effect>) {

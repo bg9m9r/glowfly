@@ -56,7 +56,7 @@ pub const ALREADY_REVERTED: &str = "your working copy already has this change un
 /// longer produces is refused as stale with `NotFound`.
 pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
     let target = &req.target;
-    if target.is_working_tree() {
+    if !target.reverts_hunks() {
         return Err(Error::Unsupported("only hunks of a commit or comparison diff can be reverted".into()));
     }
     let repo = Repository::open(workdir)?;

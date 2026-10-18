@@ -58,6 +58,7 @@ impl ShaCopy {
 pub fn copy_sha(st: &AppState) -> Result<ShaCopy, &'static str> {
     match &st.selection {
         Selection::Commit(oid) => Ok(ShaCopy::One(oid.to_string())),
+        Selection::VsWorkdir(w) => Ok(ShaCopy::One(w.oid.to_string())),
         Selection::Commits(m) => Ok(ShaCopy::Many(m.oids.len())),
         Selection::None | Selection::Wip => Err(st.settings.lang().tr("menu.edit.no_commit")),
     }
@@ -66,7 +67,12 @@ pub fn copy_sha(st: &AppState) -> Result<ShaCopy, &'static str> {
 /// The selected commit's summary for Copy commit message, or why it is disabled.
 pub fn copy_message(st: &AppState) -> Result<String, &'static str> {
     let no_commit = st.settings.lang().tr("menu.edit.no_commit");
-    let (Selection::Commit(oid), Some(snap)) = (&st.selection, &st.snap) else { return Err(no_commit) };
+    let oid = match &st.selection {
+        Selection::Commit(oid) => oid,
+        Selection::VsWorkdir(w) => &w.oid,
+        _ => return Err(no_commit),
+    };
+    let Some(snap) = &st.snap else { return Err(no_commit) };
     snap.row_of.get(oid).map(|&row| snap.commits[row].summary.clone()).ok_or(no_commit)
 }
 

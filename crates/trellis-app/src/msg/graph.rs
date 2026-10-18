@@ -2,11 +2,13 @@
 //! column widths, the commit search, and avatars (update/selection.rs, update/graph_filter.rs,
 //! update/graph_columns.rs, update/search.rs, update/avatars.rs).
 
+use crate::state::pick::PickOp;
 use git2::Oid;
 use trellis_core::repo::Comparison;
 use trellis_core::settings::{FilterOp, ResizableColumn};
 
-/// Selecting several graph rows, comparing two commits and cherry-picking (update/selection.rs).
+/// Selecting several graph rows, comparing commits (with each other or the working directory),
+/// cherry-picking and reverting (update/selection.rs, update/compare_wip.rs, update/pick.rs).
 pub enum SelectionMsg {
     /// Ctrl/Cmd-click on a graph row: add or remove the commit from the selection.
     ToggleCommit(Oid),
@@ -14,11 +16,30 @@ pub enum SelectionMsg {
     SelectCommitRange(Oid),
     /// Esc: back to the one commit the multi-selection started from.
     CollapseSelection,
-    /// Cherry-pick these commits onto HEAD, oldest first (the order is decided in update).
+    /// Cherry-pick these commits onto HEAD, oldest first (the order is decided in update). One
+    /// merge commit opens the mainline dialog first.
     CherryPick(Vec<Oid>),
-    /// The files that differ from commit `from` (older) to `to` (newer), with which of them are
-    /// missing from the working tree.
+    /// Revert these commits in one job, newest first. One merge commit opens the mainline
+    /// dialog first.
+    Revert(Vec<Oid>),
+    /// The mainline dialog's submit: cherry-pick or revert merge `oid` against parent
+    /// `mainline` (1-based).
+    PickMerge { op: PickOp, oid: Oid, mainline: u32 },
+    /// The files that differ from commit `from` to `to` (the selection's compare ends), with
+    /// which of them are missing from the working tree.
     CompareLoaded { from: Oid, to: Oid, result: Result<Comparison, String> },
+    /// Ctrl/Cmd-click on the WIP row: compare the one selected commit with the working
+    /// directory, or stop comparing.
+    ToggleWip,
+    /// The commit menu's Compare with working directory.
+    CompareWithWorkdir(Oid),
+    /// The files that differ from commit `oid` to the working tree, read for request
+    /// `generation`.
+    WorkdirCompareLoaded { oid: Oid, generation: u64, result: Result<Comparison, String> },
+    /// Swap direction: compare the selection's ends the other way round.
+    SwapCompare,
+    /// Select every commit the graph shows (Cmd/Ctrl+A).
+    SelectAll,
 }
 
 impl SelectionMsg {
@@ -30,7 +51,14 @@ impl SelectionMsg {
             | Self::SelectCommitRange(..)
             | Self::CollapseSelection
             | Self::CherryPick(..)
-            | Self::CompareLoaded { .. } => None,
+            | Self::Revert(..)
+            | Self::PickMerge { .. }
+            | Self::CompareLoaded { .. }
+            | Self::ToggleWip
+            | Self::CompareWithWorkdir(..)
+            | Self::WorkdirCompareLoaded { .. }
+            | Self::SwapCompare
+            | Self::SelectAll => None,
         }
     }
 }

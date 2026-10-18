@@ -78,7 +78,7 @@ fn harness_with(f: FileEntry, menu: Menu, dark: bool, tools: bool) -> Harness<'s
                 match menu {
                     Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], diff, None),
                     Menu::Between { in_workdir } => {
-                        commit_file_items(ui, msgs, RowSource::Between { older: oid(), newer: newer() }, &f, in_workdir, &[], diff, None)
+                        commit_file_items(ui, msgs, RowSource::Between { from: oid(), to: newer() }, &f, in_workdir, &[], diff, None)
                     }
                     Menu::Wip { missing, unstages } => {
                         let tool = if f.status == '!' {

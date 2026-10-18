@@ -24,7 +24,7 @@ pub(super) fn git(dir: &Path, a: &[&str], date: &str) {
     assert!(ok, "git {a:?} failed: {out}");
 }
 
-fn try_git(dir: &Path, a: &[&str], date: &str) -> (bool, String) {
+pub(super) fn try_git(dir: &Path, a: &[&str], date: &str) -> (bool, String) {
     let env = [
         ("GIT_AUTHOR_NAME", "Ada Lovelace"),
         ("GIT_AUTHOR_EMAIL", "ada@example.com"),

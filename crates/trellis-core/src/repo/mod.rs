@@ -78,7 +78,7 @@ pub use common_dir::{CommonDir, repo_name_of};
 pub use conflict::{Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, load_conflict, marker_size};
 pub use diff::{
     BranchChanges, Comparison, ViewDiff, branch_changes, commit_detail, commit_stats, commit_stats_until, compare, compare_files,
-    load_diff, load_diff_for_view, load_diff_with,
+    compare_workdir, load_diff, load_diff_for_view, load_diff_with,
 };
 use diff::{head_tree, path_opts, workdir_opts};
 pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions};
@@ -338,6 +338,8 @@ mod collide_tests;
 mod common_dir_tests;
 #[cfg(test)]
 mod compare_tests;
+#[cfg(test)]
+mod compare_workdir_tests;
 #[cfg(test)]
 mod conflict_tests;
 #[cfg(test)]

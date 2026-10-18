@@ -147,7 +147,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // Another worktree's row is never selected.
                 let selected = match (selection, commit) {
                     _ if worktree.is_some() => false,
-                    (Selection::Wip, None) => true,
+                    (s, None) if s.wip_shown() => true,
                     (s, Some(c)) => s.includes(c.oid),
                     _ => false,
                 };
@@ -189,7 +189,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     let right = worktree_wip::wip_box(&mp, cols.msg.0, mid, "// WIP");
                     worktree_wip::draw_counts(&mp, right + 12.0, mid, snap.changes);
                     if resp.clicked() {
-                        msgs.push(Msg::Repo(RepoMsg::SelectWip));
+                        msgs.push(select::wip_click(ui.input(|i| i.modifiers)));
                     }
                     continue;
                 };

@@ -23,11 +23,19 @@ pub enum Feature {
     SparseCheckout,
     /// `git merge-tree --write-tree`: predicting merge conflicts.
     MergeTree,
+    /// `git cherry-pick --skip` and `git revert --skip`: skipping the commit a sequence stopped at.
+    SequencerSkip,
 }
 
 impl Feature {
-    pub const ALL: [Feature; 5] =
-        [Feature::Restore, Feature::SubmoduleEdit, Feature::ForceIfIncludes, Feature::SparseCheckout, Feature::MergeTree];
+    pub const ALL: [Feature; 6] = [
+        Feature::Restore,
+        Feature::SequencerSkip,
+        Feature::SubmoduleEdit,
+        Feature::ForceIfIncludes,
+        Feature::SparseCheckout,
+        Feature::MergeTree,
+    ];
 
     /// The oldest git (major, minor) that has it.
     pub fn min(self) -> (u32, u32) {
@@ -38,6 +46,7 @@ impl Feature {
             // `set` learned `--cone`/`--no-cone` and the sparse-index options in 2.35.
             Feature::SparseCheckout => (2, 35),
             Feature::MergeTree => (2, 38),
+            Feature::SequencerSkip => (2, 23),
         }
     }
 
@@ -49,6 +58,7 @@ impl Feature {
             Feature::ForceIfIncludes => "force pushing only over commits you have seen",
             Feature::SparseCheckout => "sparse checkout",
             Feature::MergeTree => "predicting merge conflicts",
+            Feature::SequencerSkip => "skipping a commit in a cherry-pick or revert",
         }
     }
 
@@ -182,6 +192,18 @@ mod tests {
         let chosen = GitInfo { path: Some("/x/git".into()), version: None, chosen: true }.banner().unwrap();
         assert!(chosen.contains("couldn't run git") && chosen.contains("chosen in Preferences > Git"), "{chosen}");
         assert_eq!(Feature::SparseCheckout.needs_text(Some((2, 30, 1))), "Sparse checkout needs git 2.35 or newer (you have 2.30.1).");
+    }
+
+    #[test]
+    fn skipping_a_sequenced_commit_needs_2_23() {
+        assert_eq!(Feature::SequencerSkip.min(), (2, 23));
+        assert!(Feature::ALL.contains(&Feature::SequencerSkip));
+        assert!(missing_for(Some((2, 22, 0))).contains(&Feature::SequencerSkip));
+        assert!(!missing_for(Some((2, 23, 0))).contains(&Feature::SequencerSkip));
+        assert_eq!(
+            Feature::SequencerSkip.needs_text(Some((2, 22, 0))),
+            "Skipping a commit in a cherry-pick or revert needs git 2.23 or newer (you have 2.22.0)."
+        );
     }
 
     #[test]

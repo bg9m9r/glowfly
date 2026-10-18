@@ -1,7 +1,8 @@
 //! The top of the rebase banner on the WIP row: "<name> in progress · step N of M", the
 //! stopped commit (its short SHA a link to it in the graph, the summary, and why it stopped), a
 //! failed command, and the autostash note; plus the "Edit remaining steps…" button. The
-//! conflicted-files row and the other buttons are drawn by `details::wip_panel`.
+//! conflicted-files row and the other buttons are drawn by `details_banner::op_banner` (for
+//! `details_wip::wip_panel`).
 
 use crate::msg::{Msg, RebaseMsg, RepoMsg};
 use crate::state::rebase_banner::{EDIT_STEPS, SELECT_COMMIT, STASH_NOTE, lines};

@@ -261,7 +261,10 @@ Done except the group colors, which wait on repository groups in the repository 
   Ctrl-click toggles a commit and Shift-click selects a range of graph rows; Esc returns to one
   commit. The details panel lists the selection; with exactly two commits it lists the files that
   differ between them and opens their diff. Cherry-pick the selection (oldest first) and copy
-  their SHAs from the panel or the context menu.
+  their SHAs from the panel or the context menu. A commit can be compared with the working
+  directory, an unbroken line of commits shows one combined diff (either way round), Shift+Up/Down
+  and Ctrl+A extend the selection, several commits revert in one step, a merge is picked or
+  reverted against a chosen parent, and stopped picks and reverts offer Skip commit.
 - [x] **Live working-tree updates**
   The active tab's repository is watched with the `notify` crate (Preferences > General, on by
   default): outside edits re-read the status and ref or HEAD changes reload everything, within
@@ -730,12 +733,15 @@ follow-ups go to Ideas, not here.
 
 ### Multi-select commits
 
-- Compare a selected commit with the working directory (including Ctrl-clicking the WIP row
-  into a selection)
-- Extend the selection from the keyboard: Shift+Up/Down and Ctrl+A
-- Revert several commits; move or reword several (interactive rebase)
-- When a multi-commit cherry-pick stops on a conflict, select the WIP row, and add Skip commit
-  (`cherry-pick --skip`) to the cherry-pick banner
+- Swap direction for the commit-to-working-tree comparison (working tree to commit)
+- Revert Hunk and per-line revert on a commit-to-working-tree diff
+- Combined diff of a range that starts at the repository's first commit (from the empty tree)
+- Combined diff of a non-contiguous selection (each commit's own changes stacked)
+- Name the gap in a non-contiguous selection (the first commit whose parent isn't selected)
+- Cherry-pick or revert several commits that include merges, with one mainline for all of them
+- Say when a cherry-pick or revert changed nothing because the branch already has the changes
+- Compare with working directory from the command palette and the commit details panel
+- A key to go back from a select-all to the focused commit, with a toast naming the count
 
 ### Live working-tree updates
 
@@ -1109,15 +1115,6 @@ here, under the item they grew from.
 - Select several panel rows and move or change them together
 - Tell a plain merge-backend rebase from an interactive one: recent git marks both interactive,
   so the banner names both "Interactive rebase" and offers "Edit remaining steps…" for both
-
-### Multi-select commits
-
-- Combined diff of a contiguous range of three or more commits (the oldest's parent to the
-  newest), explaining when the selection isn't contiguous
-- Swap the compare direction (newer to older) in the two-commit view
-- Cherry-pick merge commits (choose the mainline parent with `-m`)
-- Undo and redo for cherry-picks (one commit or several)
-- Highlight the sidebar branches whose tips are in a multi-selection
 
 ### Live working-tree updates
 

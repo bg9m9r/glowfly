@@ -112,8 +112,13 @@ fn edit_menu_copy_items_follow_the_selection() {
     st.selection = Selection::Commits(MultiSelection {
         oids: vec![head, other],
         anchor: head,
+        cursor: head,
+        members: [head, other].into(),
+        span: crate::state::selection_span::Span::Pair { older: other, newer: head },
+        swapped: false,
         changes: None,
         pick_blocked: None,
+        revert_blocked: None,
         export_blocked: None,
     });
     assert_eq!(copy_sha(&st), Ok(ShaCopy::Many(2)));

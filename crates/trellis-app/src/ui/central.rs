@@ -21,7 +21,8 @@ use eframe::egui::{self, Key};
 
 /// Esc closes the innermost thing open: Preferences, the tour, the dashboard, the conflict view, the blame view, the
 /// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
-/// rebase panel (its message editor first), the Git Flow panel, then a multi-selection, and
+/// rebase panel (its message editor first), the Git Flow panel, then a multi-selection or a
+/// commit compared with the working directory, and
 /// finally the search bar. Dialogs (a credential prompt and the welcome included) and the command
 /// palette handle Esc themselves. In a text field Esc only leaves the field, and in the terminal it goes to the
 /// shell.
@@ -65,7 +66,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         msgs.push(if p.editing.is_some() { Msg::Rebase(RebaseMsg::RebaseCancelMessage) } else { Msg::Rebase(RebaseMsg::CloseRebase) });
     } else if st.gitflow_panel {
         msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel));
-    } else if matches!(st.selection, crate::state::Selection::Commits(_)) {
+    } else if matches!(st.selection, crate::state::Selection::Commits(_) | crate::state::Selection::VsWorkdir(_)) {
         msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
     } else {
         st.view.show_search = false;

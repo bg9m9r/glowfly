@@ -1,5 +1,6 @@
 //! File actions added to file rows' context menus: the file's history and blame, restore a file from a commit (one commit's
-//! rows, or the rows comparing two selected commits) or revert that change to it, open it in its default program, the
+//! rows, the rows comparing selected commits, or a commit with the working tree) or revert a
+//! commit's or comparison's change to it, open it in its default program, the
 //! external editor or the external diff tool (or resolve it in the merge tool), show it in the
 //! file manager, start a new file in its folder, (working-tree rows) rename or delete it and,
 //! for files in the working tree, track them in Git LFS, the Stash dialog's entries (the
@@ -55,8 +56,11 @@ pub(super) const REVERT_FILE: &str = "Revert changes to this file";
 pub(super) enum RowSource {
     /// One commit's change.
     Commit(Oid),
-    /// The change from `older` to `newer` (two selected commits).
-    Between { older: Oid, newer: Oid },
+    /// The change from commit `from` to commit `to` (two selected commits, a line of them, or a
+    /// pull request's).
+    Between { from: Oid, to: Oid },
+    /// The change from this commit to the working tree.
+    ToWorkdir(Oid),
 }
 
 /// File history of `path` (from commit `at`, or HEAD), then Blame of it there, disabled with the
@@ -91,15 +95,15 @@ pub(super) fn restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, oid: Oid, pat
     menu_item(msgs, ui, restore_label(status == 'D'), restore_msg(oid, path, status));
 }
 
-/// Restore a comparison row's file from the newer commit, or from the older one when the newer
-/// commit doesn't have it (status 'D'). The newer commit's first parent is not used for that
-/// case: it can be any commit, unrelated to this comparison, and may not have the file at all.
-fn between_restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, older: Oid, newer: Oid, f: &FileEntry) {
+/// Restore a comparison row's file from the commit compared to (`to`), or from `from` when `to`
+/// doesn't have it (status 'D'). `to`'s first parent is not used for that case: it can be any
+/// commit, unrelated to this comparison, and may not have the file at all.
+fn between_restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, from: Oid, to: Oid, f: &FileEntry) {
     let gone = f.status == 'D';
-    let oid = if gone { older } else { newer };
+    let oid = if gone { from } else { to };
     let mut r = ui.button(format!("Restore the version from {}…", short(oid)));
     if gone {
-        r = r.on_hover_text(format!("{} doesn't have this file, so this brings back its version from {}.", short(newer), short(older)));
+        r = r.on_hover_text(format!("{} doesn't have this file, so this brings back its version from {}.", short(to), short(from)));
     }
     if r.clicked() {
         msgs.push(Msg::Files(FilesMsg::RestoreFile { oid, path: f.path.clone(), deleted: false, confirmed: false, overwrite: false }));
@@ -121,6 +125,21 @@ pub(super) fn revert_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, target: D
     };
     if r.clicked() {
         msgs.push(Msg::Stage(StageMsg::RevertFile(target)));
+        ui.close_menu();
+    }
+}
+
+/// Restore a working-tree comparison row's file as commit `oid` has it; disabled for a file the
+/// commit doesn't have (added since, or a rename's new path).
+fn workdir_restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, oid: Oid, f: &FileEntry) {
+    let missing = matches!(f.status, 'A' | 'R').then(|| format!("{} doesn't have this file", short(oid)));
+    let r = ui.add_enabled(missing.is_none(), egui::Button::new(format!("Restore the version from {}…", short(oid))));
+    let r = match &missing {
+        Some(why) => r.on_disabled_hover_text(why),
+        None => r,
+    };
+    if r.clicked() {
+        msgs.push(Msg::Files(FilesMsg::RestoreFile { oid, path: f.path.clone(), deleted: false, confirmed: false, overwrite: false }));
         ui.close_menu();
     }
 }
@@ -208,10 +227,14 @@ pub(super) fn commit_file_items(
             menu_item_if(msgs, ui, PATCH_FILE, patch_blocked, m);
             DiffTarget::Commit(oid, f.path.clone())
         }
-        RowSource::Between { older, newer } => {
-            between_restore_item(ui, msgs, older, newer, f);
-            revert_file_item(ui, msgs, DiffTarget::Between(older, newer, f.path.clone()), revert_blocked);
-            DiffTarget::Between(older, newer, f.path.clone())
+        RowSource::Between { from, to } => {
+            between_restore_item(ui, msgs, from, to, f);
+            revert_file_item(ui, msgs, DiffTarget::Between(from, to, f.path.clone()), revert_blocked);
+            DiffTarget::Between(from, to, f.path.clone())
+        }
+        RowSource::ToWorkdir(oid) => {
+            workdir_restore_item(ui, msgs, oid, f);
+            DiffTarget::ToWorkdir(oid, f.path.clone())
         }
     };
     open_items(ui, msgs, &f.path, (!in_workdir).then_some(NOT_IN_WORKDIR), Some(diff_item(target, diff_blocked)));

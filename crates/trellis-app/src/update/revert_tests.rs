@@ -111,6 +111,21 @@ fn working_tree_or_missing_hunk_is_ignored() {
 }
 
 #[test]
+fn a_commit_compared_with_the_working_tree_has_no_revert() {
+    let (mut st, dir) = with_diff("revert-to-workdir", DiffTarget::Unstaged("a.txt".into()), one_hunk());
+    let target = DiffTarget::ToWorkdir(head(&st), "a.txt".into());
+    st.diff = Some((target.clone(), one_hunk().into()));
+    assert!(revert(&mut st, 0).is_empty(), "no Revert Hunk");
+    assert!(run(&mut st, Msg::Stage(StageMsg::RevertFile(target.clone()))).is_empty(), "no Revert changes to this file");
+    st.view.diff_lines.target = Some(target);
+    st.view.diff_lines.hunk = 0;
+    st.view.diff_lines.lines.insert(1);
+    assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty(), "no Revert lines");
+    assert!(st.log.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn whole_file_mode_uses_the_normal_hunk() {
     let dir = scratch_repo("revert-whole");
     let numbered = |edits: &[(usize, &str)]| -> String {

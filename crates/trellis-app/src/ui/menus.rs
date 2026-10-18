@@ -1,7 +1,7 @@
 //! Right-click menus for commits and remote branches (local branches: `branch_menu.rs`; pull
 //! request items: `pr_menu_items.rs`).
 
-use super::common::{menu_item, short};
+use super::common::{menu_item, menu_item_if, short};
 use super::ref_visibility;
 use super::theme::color;
 use crate::deep_link::{DeepLinkMsg, LinkTarget};
@@ -11,7 +11,7 @@ use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
 use crate::state::patch::PATCH_BLOCKED_MERGE;
-use crate::state::selection::MultiSelection;
+use crate::state::selection::{MultiSelection, cherry_pick_blocker};
 use crate::tag::TagMsg;
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, RichText};
@@ -28,9 +28,13 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mu
     menu_item(msgs, ui, "Create tag here…", Msg::Tag(TagMsg::NewTag { at: sha.clone(), annotated: false }));
     menu_item(msgs, ui, "Create worktree from this commit…", Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Commit(oid))));
     menu_item(msgs, ui, "Checkout this commit (detached)", Msg::git("Checkout", &["checkout", &sha]));
+    menu_item(msgs, ui, "Compare with working directory", Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)));
     ui.separator();
-    menu_item(msgs, ui, "Cherry-pick commit", Msg::git("Cherry-pick", &["cherry-pick", &sha]));
-    menu_item(msgs, ui, "Revert commit", Msg::git("Revert", &["revert", "--no-edit", &sha]));
+    let merge = c.parents.len() > 1;
+    let pick = if merge { "Cherry-pick merge commit…" } else { "Cherry-pick commit" };
+    menu_item_if(msgs, ui, pick, cherry_pick_blocker(snap, &[oid]), Msg::Selection(SelectionMsg::CherryPick(vec![oid])));
+    let revert = if merge { "Revert merge commit…" } else { "Revert commit" };
+    menu_item(msgs, ui, revert, Msg::Selection(SelectionMsg::Revert(vec![oid])));
     ui.menu_button("Reset current branch to this commit", |ui| {
         menu_item(msgs, ui, "Soft - keep all changes staged", Msg::git("Reset (soft)", &["reset", "--soft", &sha]));
         menu_item(msgs, ui, "Mixed - keep working copy, reset index", Msg::git("Reset (mixed)", &["reset", "--mixed", &sha]));
@@ -71,6 +75,7 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, snap: &Snapshot,
     ui.label(RichText::new(format!("{} commits selected", m.len())).color(color::weak()));
     ui.separator();
     let picked = cherry_pick_button(ui, m, msgs);
+    let reverted = revert_button(ui, m, msgs);
     let patched = patch_button(ui, m, msgs);
     let copy = egui::Button::new(format!("Copy patch of {} commits", m.len()));
     let mut r = ui.add_enabled(m.export_blocked.is_none(), copy);
@@ -80,7 +85,7 @@ pub fn multi_commit_menu(ui: &mut egui::Ui, m: &MultiSelection, snap: &Snapshot,
     if r.clicked() {
         msgs.push(Msg::Patch(PatchMsg::Copy(m.oids.clone())));
     }
-    if picked || patched || r.clicked() {
+    if picked || reverted || patched || r.clicked() {
         ui.close_menu();
     }
     super::rebase::edit_menu::multi(ui, m, snap, msgs);
@@ -98,6 +103,21 @@ pub(super) fn cherry_pick_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &m
     let clicked = r.clicked();
     if clicked {
         msgs.push(Msg::Selection(SelectionMsg::CherryPick(m.oids.clone())));
+    }
+    clicked
+}
+
+/// "Revert N commits", disabled with the reason on hover when a merge is selected. Returns
+/// whether it was clicked.
+pub(super) fn revert_button(ui: &mut egui::Ui, m: &MultiSelection, msgs: &mut Vec<Msg>) -> bool {
+    let button = egui::Button::new(format!("Revert {} commits", m.len()));
+    let mut r = ui.add_enabled(m.revert_blocked.is_none(), button);
+    if let Some(why) = m.revert_blocked {
+        r = r.on_disabled_hover_text(why);
+    }
+    let clicked = r.clicked();
+    if clicked {
+        msgs.push(Msg::Selection(SelectionMsg::Revert(m.oids.clone())));
     }
     clicked
 }

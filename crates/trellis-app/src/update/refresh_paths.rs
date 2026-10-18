@@ -74,12 +74,13 @@ pub(super) fn apply(
 ) {
     let Some(snap) = st.snap.as_mut() else { return };
     let fold = snap.ignorecase;
-    let touched = st.diff.as_ref().is_some_and(|(t, _)| t.is_working_tree() && repo::covers(&ps.covered, t.path(), fold));
+    let touched = st.diff.as_ref().is_some_and(|(t, _)| t.follows_workdir() && repo::covers(&ps.covered, t.path(), fold));
     merge_into(snap, ps, submodules);
     if must_reload(st) || (touched && diff_changed(st, open_stamp)) {
         super::repo::reload_diff(st, fx);
     }
     super::conflict::status_changed(st, now, fx);
+    super::compare_wip::status_read(st, fx);
 }
 
 #[cfg(test)]
