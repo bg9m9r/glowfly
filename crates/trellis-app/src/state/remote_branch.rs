@@ -3,6 +3,7 @@
 //! disabled items and `update` logs the same text when it refuses a late message.
 
 use git2::Oid;
+use trellis_core::branch_ops::{NameProblem, check_branch_name};
 use trellis_core::gitcli::args;
 use trellis_core::repo::{BranchInfo, Snapshot};
 
@@ -24,12 +25,22 @@ pub fn exists(snap: &Snapshot, remote: &str, name: &str) -> Option<Oid> {
     branches.iter().find(|(n, _)| n == name).map(|(_, o)| *o)
 }
 
-/// Why checking out `remote`/`name` as a new tracking branch is refused: a local branch of that
-/// name exists and tracks something else.
+/// Why checking out `remote`/`name` as a new tracking branch is refused, when no local branch
+/// tracks it: `name` can't be a local branch here, or it clashes with an existing local branch
+/// (the same name, a case or Unicode variant, a folder clash or a folder spelled differently),
+/// checked as the New branch dialog checks names.
 pub fn checkout_blocked(snap: &Snapshot, remote: &str, name: &str) -> Option<String> {
-    let taken = snap.locals.iter().any(|b| b.name == name);
-    (taken && tracking_local(snap, remote, name).is_none())
-        .then(|| format!("A local branch {name} already exists and doesn't track {remote}/{name}."))
+    if tracking_local(snap, remote, name).is_some() {
+        return None;
+    }
+    let locals: Vec<&str> = snap.locals.iter().map(|b| b.name.as_str()).collect();
+    match check_branch_name(name, &locals, None).err()? {
+        NameProblem::Exists(other) if other == name => {
+            Some(format!("A local branch {name} already exists and doesn't track {remote}/{name}."))
+        }
+        NameProblem::Empty | NameProblem::Invalid => Some(format!("{name} can't be used as a local branch name.")),
+        p => Some(p.message(name)),
+    }
 }
 
 /// Creates a local branch tracking `remote`/`name` and checks it out.

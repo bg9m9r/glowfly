@@ -8,7 +8,7 @@ use super::update;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::effect::Effect;
 use crate::msg::{BranchMsg, Msg, RepoMsg, SelectionMsg};
-use crate::state::remote_branch::tracking_local;
+use crate::state::remote_branch::{checkout_blocked, tracking_local};
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use std::path::Path;
@@ -101,6 +101,30 @@ fn checkout_remote_refusals() {
     assert_eq!(last_log(&st), "A local branch x already exists and doesn't track origin/x.");
     assert!(cmds(&mut st, checkout("origin", "gone")).is_empty());
     assert_eq!(last_log(&st), "origin/gone no longer exists.");
+    cleanup(&[&work, &bare]);
+}
+
+/// Names that clash with a local branch only by case, Unicode form or folder are refused like
+/// in the New branch dialog: loose ref files collide on Windows and macOS.
+#[test]
+fn checkout_remote_refuses_name_clashes() {
+    let (mut st, work, bare) = with_origin("rb-checkout-clash");
+    let snap = st.snap.as_mut().unwrap();
+    let tip = snap.head_oid.unwrap();
+    let feature = snap.locals.iter_mut().find(|b| b.name == "feature").unwrap();
+    feature.name = "Feature".into();
+    feature.tracking = None;
+    feature.upstream = None;
+    feature.upstream_ref = None;
+    let origin = &mut snap.remotes.iter_mut().find(|(r, _)| r == "origin").unwrap().1;
+    origin.push(("main/x".into(), tip));
+    origin.push(("con".into(), tip));
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!(checkout_blocked(snap, "origin", "feature").as_deref(), Some("A branch named Feature already exists."));
+    assert_eq!(checkout_blocked(snap, "origin", "main/x").as_deref(), Some("main/x clashes with branch main."), "a folder clash");
+    assert_eq!(checkout_blocked(snap, "origin", "con").is_some(), cfg!(windows), "Windows can't store con as a ref file");
+    assert!(cmds(&mut st, checkout("origin", "feature")).is_empty(), "Feature shadows a new feature");
+    assert_eq!(last_log(&st), "A branch named Feature already exists.");
     cleanup(&[&work, &bare]);
 }
 
