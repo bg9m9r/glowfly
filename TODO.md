@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 07:46 · **Diff viewer upgrade: hunk-level parse reuse, commit .gitattributes, fold keys, filled gaps and next-change scrolling**: Syntax highlighting resumes from parse checkpoints after staging, commit diffs take language overrides from the commit's gitattributes, the lines between hunks can be filled in and folded from the keyboard, and stepping to the next change reveals the file and survives refreshes (`6f79ca3e`)
 - 2026-10-18 07:27 · **Merge conflict tool**: Long unchanged runs folded in the panes and the output (opened together, folded back from the gutter), a resizable split between panes and output, picks and edits between the conflicts brought back when a file saved with markers is reopened, lines between the conflicts editable in the output, and long lines wrapped with Wrap lines (`b9f0962`)
 - 2026-10-18 06:46 · **Undo / Redo: hunk and line discards, operations finished after conflicts, and stash drop**: Hunk and line discards are named and undoable, merges and cherry-picks finished after resolving conflicts are recorded for undo, and dropping a stash can be undone (`7a8f97e`)
 - 2026-10-18 06:28 · **Whole-app journey tests**: Headless journey tests start the whole app on fixture repositories and drive it by visible labels through clone, staging, commit, push and pull, branching and merging, a conflicted rebase resolved in the conflict view, stash, and undo and redo, checking the screen and the repository on disk at each step (`1263c8e`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-17 22:59 · **Language**: Translated the menu bar, About dialog, toolbar, tab bar, update check and UI Customization page (`78fc616`)
 - 2026-10-17 22:11 · **Merge conflict tool**: Single-line picks with a checkbox per conflict line (taken in tick order), an editable output (only the conflicts' text, kept through picks until Discard edit), Save with markers that writes the file with markers for the conflicts not picked yet and leaves it conflicted, Mark all conflicted on the Resolved Files header, and palette entries for Mark all resolved and Mark conflicted (`ffa60c2`)
 - 2026-10-17 22:03 · **Blame gutter**: Blame before a line's commit (following renames) with Back, skip a commit, ignore-whitespace and move/copy toggles, full commit messages on hover, age colouring of the gutter, find in file and go to line, N / Shift+N between commits, and links to and from file history (`00bdcec`)
-- 2026-10-16 18:46 · **Interactive rebase: history editing from the graph**: Reword, squash and drop commits from the graph, with autostash of local changes and a step-aware banner while the rebase runs (`ee9778d`)
 
 ---
 
