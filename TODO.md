@@ -39,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 03:32 · **File history and blame: folder history, the whole file at a commit, renames forward and live refresh**: File history works for folders, a File view shows the whole file at a commit, renames are followed forwards as well as back, and the history re-runs when HEAD moves (`86bf468`)
 - 2026-10-18 03:14 · **Diff viewer upgrade: reverting from commit diffs (files, lines, renames, added files, three-way)**: Selected lines and whole files of a commit diff can be reverted in the working tree, following renames, removing files the commit added and merging three-way with later edits (`6c7112d`)
 - 2026-10-18 02:23 · **Interactive rebase: edit a running rebase, exec and break steps, keyboard control and undo**: The interactive rebase panel gains exec and break steps, combined squash messages, keyboard control and editing the remaining steps of a running rebase, and finished rebases can be undone in one step (`54a7422`)
-- 2026-10-18 02:07 · **Tabs (multiple open repos)**: Rename tab (shown in the tab bar, Window menu, tab list and window title, saved with the open tabs and kept when reopened), a tab list with the open and recently closed tabs, Ctrl+Shift+PgUp / PgDn to move the active tab, Esc to cancel a tab drag, and a confirmation before closing tabs that hold a commit draft or unsaved conflict choices (`a65aa9f`)
 
 ---
 
