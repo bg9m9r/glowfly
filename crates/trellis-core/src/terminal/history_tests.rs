@@ -102,6 +102,27 @@ fn select_all_ends_at_the_last_row_with_text() {
 }
 
 #[test]
+fn select_all_on_the_alternate_screen_copies_only_that_screen() {
+    let mut s = TermScreen::new(5, 20);
+    s.feed(lines(1, 12).as_bytes());
+    assert_eq!(s.history_len(), 7);
+    s.feed(b"\x1b[?1049h\x1b[H\x1b[2Jtop\r\nmiddle\r\nbottom");
+    assert!(s.alternate());
+    assert_eq!(s.first_line(), s.top_line(), "no history on the alternate screen");
+    let (start, end) = s.select_all();
+    assert_eq!(start, TermPoint { line: s.top_line(), col: 0 });
+    assert_eq!(s.text_between(start, end), "top\nmiddle\nbottom");
+    // A range that reaches back past the screen is cut at its top row.
+    let from_history = TermPoint { line: 0, col: 0 };
+    assert_eq!(s.text_between(from_history, end), "top\nmiddle\nbottom");
+
+    s.feed(b"\x1b[?1049l");
+    assert_eq!(s.first_line(), s.top_line() - 7, "the main screen's history is back");
+    let (start, end) = s.select_all();
+    assert_eq!(s.text_between(start, end), lines(1, 12).replace("\r\n", "\n"));
+}
+
+#[test]
 fn line_numbers_are_dropped_when_they_can_no_longer_be_followed() {
     // More output in one chunk than the history can count.
     let mut s = TermScreen::with_history(10, 20, 5);

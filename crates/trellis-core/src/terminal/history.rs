@@ -42,8 +42,13 @@ impl TermScreen {
         self.pushed - self.view as u64
     }
 
-    /// The oldest line in the history (the screen's top row when there is none).
+    /// The oldest line in the history (the screen's top row when there is none). The alternate
+    /// screen has no history of its own, so there it is the screen's top row: selections and
+    /// copies never reach into the main screen's history, which that grid can't read.
     pub fn first_line(&self) -> u64 {
+        if self.alternate() {
+            return self.pushed;
+        }
         self.pushed - self.history_len as u64
     }
 
@@ -109,7 +114,8 @@ impl TermScreen {
         (text, wrapped)
     }
 
-    /// From the oldest history row to the end of the screen's last row with text.
+    /// From the oldest history row (the screen's top row on the alternate screen) to the end of
+    /// the screen's last row with text.
     pub fn select_all(&mut self) -> (TermPoint, TermPoint) {
         self.parser.screen_mut().set_scrollback(0);
         let screen = self.parser.screen();
