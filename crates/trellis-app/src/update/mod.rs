@@ -83,7 +83,9 @@ mod submodule_edit;
 mod submodule_remove;
 mod submodules;
 mod tab_groups;
+mod tab_label;
 mod tabs;
+mod tabs_close;
 mod tag_annotate;
 mod tags;
 mod terminal;
@@ -333,6 +335,10 @@ mod submodule_remove_tests;
 mod submodule_tests;
 #[cfg(test)]
 mod tab_groups_tests;
+#[cfg(test)]
+mod tab_label_tests;
+#[cfg(test)]
+mod tabs_close_tests;
 #[cfg(test)]
 mod tabs_tests;
 #[cfg(test)]

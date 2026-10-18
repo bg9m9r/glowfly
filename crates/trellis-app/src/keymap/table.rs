@@ -199,6 +199,8 @@ pub const BINDINGS: &[Binding] = &[
     b(I::PrevTab, G::Tabs, "Previous tab", &[C::ctrl_shift(K::Tab)], W::Anywhere),
     fixed(I::GoToTab, G::Tabs, "Go to tab 1 to 8", &[C::cmd(K::DigitRange(1, 8))], W::Anywhere),
     b(I::LastTab, G::Tabs, "Go to the last tab", &[C::cmd(K::Digit(9))], W::Anywhere),
+    b(I::MoveTabLeft, G::Tabs, "Move tab left", &[C::cmd_shift(K::PageUp)], W::Anywhere),
+    b(I::MoveTabRight, G::Tabs, "Move tab right", &[C::cmd_shift(K::PageDown)], W::Anywhere),
     b(I::OpenFavorite1, G::Repositories, "Open favorite repository 1", &[C::cmd_alt(K::Digit(1))], W::NotTyping),
     b(I::OpenFavorite2, G::Repositories, "Open favorite repository 2", &[C::cmd_alt(K::Digit(2))], W::NotTyping),
     b(I::OpenFavorite3, G::Repositories, "Open favorite repository 3", &[C::cmd_alt(K::Digit(3))], W::NotTyping),

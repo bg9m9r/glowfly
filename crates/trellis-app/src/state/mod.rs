@@ -47,6 +47,7 @@ pub mod palette_kinds;
 pub mod palette_onboarding;
 pub mod palette_profiles;
 pub mod palette_recent;
+pub mod palette_tabs;
 pub mod palette_tools;
 pub mod palette_updates;
 pub mod patch;
@@ -82,6 +83,7 @@ pub mod ssh_use;
 pub mod stashes;
 pub mod submodules;
 pub mod tab_groups;
+pub mod tab_losses;
 pub mod tabs;
 pub mod tags;
 pub mod terminal;
@@ -252,6 +254,8 @@ pub enum Modal {
     },
     /// Fetch or pull across repositories (`ui/repo_sync.rs`): `AppState::repo_sync`'s rows.
     SyncRepos,
+    /// Rename tab (`ui/tab_dialog.rs`).
+    RenameTab(tabs::RenameTabForm),
 }
 
 /// The most commits "Load more" goes up to.
@@ -282,7 +286,7 @@ pub struct AppState {
     /// Tab to go back to if opening a repository in a new tab fails.
     pub tab_return: Option<usize>,
     /// Recently closed repositories, most recent last.
-    pub closed_tabs: Vec<PathBuf>,
+    pub closed_tabs: Vec<tabs::ClosedTab>,
     pub snap: Option<Snapshot>,
     /// Incremented for every repository load; stale results are ignored.
     pub load_gen: u64,

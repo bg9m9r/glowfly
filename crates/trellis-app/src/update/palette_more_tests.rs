@@ -162,13 +162,13 @@ fn tab_entries() {
     assert_eq!(st.tabs.len(), 2);
 
     let mut st = state();
-    st.closed_tabs = vec!["C:/work/old-repo".into()];
+    st.closed_tabs = vec![std::path::PathBuf::from("C:/work/old-repo").into()];
     let reopen = find(&st, "Reopen closed tab").expect("Reopen closed tab");
     assert_eq!(reopen.detail.as_deref(), Some("old-repo"));
     assert_eq!(reopen.shortcut(&st.keymap), Some(keys("Ctrl+Shift+T").as_str()));
 
     let dir = scratch_repo("palette-more-reopen");
-    st.closed_tabs = vec![dir.clone()];
+    st.closed_tabs = vec![dir.clone().into()];
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ReopenClosedTab)));
     assert!(st.closed_tabs.is_empty());
     assert!(st.snap.as_ref().is_some_and(|s| s.workdir == st.workdir().unwrap()));
@@ -239,4 +239,40 @@ fn keywords_match_synonyms() {
     assert!(matches(&st, "indentation", "Ignore whitespace changes"));
     assert!(matches(&st, "captions", "Hide toolbar labels"));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn tab_rename_move_and_reopen_entries() {
+    use super::tabs_close_tests::{fake, fake_tabs, names};
+    use crate::state::tabs::ClosedTab;
+    let mut st = fake_tabs(&["a", "b", "c"], 0);
+    assert!(!has(&st, "Move tab left"), "the first tab can't move left");
+    let right = find(&st, "Move tab right").expect("Move tab right");
+    assert_eq!(right.shortcut(&st.keymap), Some(keys("Ctrl+Shift+PgDn").as_str()));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::MoveTab(1))));
+    assert_eq!((names(&st), st.active_tab), (vec!["b".to_owned(), "a".into(), "c".into()], 1));
+    let left = find(&st, "Move tab left").expect("Move tab left");
+    assert_eq!(left.command, C::MoveTab(-1));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::MoveTab(-1))));
+    assert_eq!((names(&st), st.active_tab), (vec!["a".to_owned(), "b".into(), "c".into()], 0));
+
+    assert_eq!(find(&st, "Rename tab…").map(|e| e.command), Some(C::RenameTab));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::RenameTab)));
+    assert!(matches!(&st.modal, Some(Modal::RenameTab(f)) if f.tab == st.tabs[0].id));
+    st.modal = None;
+
+    st.closed_tabs = vec![ClosedTab::from(fake("old")), ClosedTab { path: fake("web"), label: Some("Frontend".into()) }];
+    let reopen: Vec<Entry> = entries(&st).into_iter().filter(|e| e.label.starts_with("Reopen closed tab: ")).collect();
+    let labels: Vec<&str> = reopen.iter().map(|e| e.label.as_str()).collect();
+    assert_eq!(labels, ["Reopen closed tab: Frontend", "Reopen closed tab: old"], "newest first");
+    assert_eq!(reopen[1].detail.as_deref(), Some(trellis_core::native_path::shown(&fake("old")).as_str()));
+    assert_eq!(find(&st, "Reopen closed tab").and_then(|e| e.detail), Some("Frontend".into()));
+    run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(reopen[1].command.clone())));
+    assert_eq!(st.closed_tabs.len(), 1);
+    assert!(st.tabs[st.active_tab].is(&fake("old")));
+
+    assert_eq!(C::RenameTab.recall_key(), Some("rename-tab"));
+    assert_eq!(C::MoveTab(-1).recall_key(), Some("move-tab-left"));
+    assert_eq!(C::MoveTab(1).recall_key(), Some("move-tab-right"));
+    assert_eq!(C::ReopenClosed(fake("old")).recall_key(), None);
 }

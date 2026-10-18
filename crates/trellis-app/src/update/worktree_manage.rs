@@ -109,7 +109,7 @@ pub(super) fn remove(st: &mut AppState, fx: &mut Vec<Effect>) {
     if ops::busy(st, false) {
         return;
     }
-    super::tabs::close_tabs(st, &showing, fx);
+    super::tabs_close::close_tabs(st, &showing, fx);
     let (name, force) = (form.name.clone(), form.force());
     let delete_remote = form.remote_ticked().cloned();
     let delete_branch = form.delete_branch.then(|| form.branch.clone()).flatten();

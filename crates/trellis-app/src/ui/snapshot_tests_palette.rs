@@ -101,7 +101,7 @@ fn palette_many_refs_footer() {
 #[test]
 fn palette_more() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-more");
-    st.closed_tabs = vec!["C:/work/old-repo".into()];
+    st.closed_tabs = vec![std::path::PathBuf::from("C:/work/old-repo").into()];
     st.palette = Some(Palette { query: "tab".into(), ..Default::default() });
     let mut h = harness(st, true);
     h.run();

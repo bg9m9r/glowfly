@@ -44,7 +44,7 @@ fn saves_of(st: &mut AppState, msg: Msg) -> Vec<(Vec<PathBuf>, usize)> {
 }
 
 fn saved(fx: &[Effect]) -> Vec<(Vec<PathBuf>, usize)> {
-    fx.iter().filter_map(|e| if let Effect::SaveTabs { paths, active } = e { Some((paths.clone(), *active)) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::SaveTabs { paths, active, .. } = e { Some((paths.clone(), *active)) } else { None }).collect()
 }
 
 fn tab_is(st: &AppState, i: usize, dir: &Path) -> bool {
@@ -139,7 +139,7 @@ fn restored_tabs_are_pulled_together_once_read() {
         let mut st = state();
         st.settings.group_worktree_tabs = on;
         let paths = vec![main.clone(), other.clone(), linked.clone()];
-        let fx = update(&mut st, Msg::Tabs(TabsMsg::RestoreTabs { paths: paths.clone(), active: 1 }), Instant::now());
+        let fx = update(&mut st, Msg::Tabs(TabsMsg::RestoreTabs { paths: paths.clone(), labels: Vec::new(), active: 1 }), Instant::now());
         let read = fx.iter().find_map(|e| if let Effect::ReadTabGroups(p) = e { Some(p.clone()) } else { None });
         assert_eq!(read.as_ref(), Some(&paths), "every restored tab is read");
         let Some(Msg::Tabs(TabsMsg::GroupsRead(mut results))) = crate::runner::execute(Effect::ReadTabGroups(paths)) else {
@@ -163,7 +163,11 @@ fn restored_tabs_are_pulled_together_once_read() {
 
     // A group a load found is kept.
     let mut st = state();
-    update(&mut st, Msg::Tabs(TabsMsg::RestoreTabs { paths: vec![main.clone(), other.clone()], active: 0 }), Instant::now());
+    update(
+        &mut st,
+        Msg::Tabs(TabsMsg::RestoreTabs { paths: vec![main.clone(), other.clone()], labels: Vec::new(), active: 0 }),
+        Instant::now(),
+    );
     let known = group("loaded");
     st.tabs[0].group = Some(known.clone());
     let read = vec![(main.clone(), CommonDir::at(&main)), (other.clone(), CommonDir::at(&other))];

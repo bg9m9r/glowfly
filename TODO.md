@@ -167,7 +167,9 @@ Done except the group colors, which wait on repository groups in the repository 
 
 - [x] **Tabs (multiple open repos)**
   Tab bar; Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+1–9 and Ctrl+Shift+T to reopen; open tabs restored
-  on start (only the active one loads until selected).
+  on start (only the active one loads until selected); rename tabs; tab list with recently
+  closed tabs; Ctrl+Shift+PgUp/PgDn move the tab; asks before closing unsaved drafts or
+  conflict choices.
   - [x] Drag to reorder tabs; tab context menu (close others, close to the right)
 - [x] **Undo / Redo**
   Toolbar Undo/Redo and Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) for checkout, commit/amend, reset,
@@ -661,10 +663,6 @@ ideas that grew out of each item and grouped by that item. They are not tracked 
 checkboxes; they are built after the open items above, roughly in this order. New
 follow-ups go to Ideas, not here.
 
-### Tabs (multiple open repos)
-
-- Ask before closing tabs that hold a commit draft or conflict picks
-
 ### Undo / Redo
 
 - Undo per-file, per-hunk and per-line discard (needs a safety stash or blob backup first)
@@ -961,8 +959,16 @@ here, under the item they grew from.
 
 ### Tabs (multiple open repos)
 
-- Keyboard reordering of tabs, and Escape to cancel a drag in progress
-- Rename a tab; a tab list with recently closed tabs to reopen any of them
+- Ask before quitting (window close button or File > Quit) when any tab holds a commit draft or
+  unsaved conflict choices
+- A keyboard shortcut that opens the tab list, and a search field to filter it
+- Move tab left / right entries in the Window menu and the tab context menu
+- A Clear entry for the recently closed list, and keeping that list across restarts
+- Offer a tab's custom label again when its repository is opened later from Recent or the
+  dashboard
+- Ask before closing tabs with other unsaved text (a half-written pull request description,
+  issue form or stash message)
+- Show the tab list button always, not only when there are closed tabs or the tabs had to shrink
 
 ### Undo / Redo
 

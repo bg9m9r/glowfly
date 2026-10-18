@@ -91,7 +91,9 @@ fn allowed(id: BindingId, l: &Live) -> bool {
         I::ToggleTerminal | I::ToggleLeftPanel | I::ToggleDetailsPanel | I::ToggleToolbar => !covered && !l.sheet,
         // Zoom works over everything (recording a key takes every press before this).
         I::ZoomIn | I::ZoomOut | I::ZoomReset => true,
-        I::NewTab | I::CloseTab | I::ReopenTab | I::NextTab | I::PrevTab | I::LastTab | I::GoToTab => !l.prefs && !l.palette,
+        I::NewTab | I::CloseTab | I::ReopenTab | I::NextTab | I::PrevTab | I::LastTab | I::MoveTabLeft | I::MoveTabRight | I::GoToTab => {
+            !l.prefs && !l.palette
+        }
         I::Undo | I::Redo => !covered && !l.sheet && !l.typing,
         I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
         I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
@@ -166,6 +168,8 @@ fn fire(id: BindingId, chord: Chord, st: &mut AppState, msgs: &mut Vec<Msg>) {
         I::NextTab => Msg::Tabs(TabsMsg::CycleTab(1)),
         I::PrevTab => Msg::Tabs(TabsMsg::CycleTab(-1)),
         I::LastTab => Msg::Tabs(TabsMsg::SelectTab(st.tabs.len().saturating_sub(1))),
+        I::MoveTabLeft => Msg::Tabs(TabsMsg::MoveActiveTab(-1)),
+        I::MoveTabRight => Msg::Tabs(TabsMsg::MoveActiveTab(1)),
         I::GoToTab => match chord.key {
             KeyName::Digit(d) => Msg::Tabs(TabsMsg::SelectTab(usize::from(d).saturating_sub(1))),
             _ => return,

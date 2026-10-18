@@ -21,11 +21,11 @@ fn three_tabs(name: &str) -> (AppState, PathBuf) {
 }
 
 /// The centre of tab `i`: three tabs are 220 wide, 1 apart, after a 6 margin.
-fn tab_centre(i: usize) -> Pos2 {
+pub(super) fn tab_centre(i: usize) -> Pos2 {
     pos2(6.0 + 221.0 * i as f32 + 110.0, 15.0)
 }
 
-fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<(PointerButton, bool)>) {
+pub(super) fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<(PointerButton, bool)>) {
     let events = &mut h.input_mut().events;
     events.push(Event::PointerMoved(pos));
     if let Some((button, pressed)) = button {
@@ -65,7 +65,7 @@ fn tab_drag_moves_and_snapshots() {
 #[test]
 fn tab_context_menu() {
     let (mut st, dir) = three_tabs("tab-menu");
-    st.closed_tabs = vec![PathBuf::from("C:/work/old-repo")];
+    st.closed_tabs = vec![PathBuf::from("C:/work/old-repo").into()];
     let mut h = harness(st, true);
     h.run();
     let right_click = |h: &mut Harness<'_, (AppState, Vec<Msg>)>, i: usize| {

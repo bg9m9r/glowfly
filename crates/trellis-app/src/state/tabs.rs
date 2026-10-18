@@ -10,6 +10,7 @@ use super::{CommitDraft, ForgeState, Selection};
 use git2::Oid;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use trellis_core::paths::{FolderId, same_spelling};
 use trellis_core::repo::{CommitDetail, CommonDir, DiffTarget, FileDiff, Snapshot};
 use trellis_core::settings::{DiffLayout, DiffMode};
@@ -18,7 +19,23 @@ use trellis_core::whole_file::Expanded;
 /// Closed tabs remembered for "Reopen closed tab".
 pub const MAX_CLOSED_TABS: usize = 10;
 
+/// The longest name a tab can be given (characters).
+pub const MAX_TAB_LABEL: usize = 64;
+
+/// A tab's identity for as long as it is open, whatever index it moves to: what a request
+/// waiting for an answer (the close confirmation, the rename dialog) names it by.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TabId(u64);
+
+impl TabId {
+    pub fn next() -> TabId {
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        TabId(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
 pub struct Tab {
+    pub id: TabId,
     /// The repository shown in this tab; `None` for a new tab (the welcome screen).
     pub path: Option<PathBuf>,
     pub name: String,
@@ -35,17 +52,24 @@ pub struct Tab {
     /// Everything this tab showed when it was last active. `None` for the active tab, and for
     /// a tab restored at startup that hasn't been loaded yet.
     pub parked: Option<Box<Parked>>,
+    /// The name the user gave the tab (Rename tab); `None` shows the folder name.
+    pub label: Option<String>,
 }
 
 impl Tab {
     pub fn empty() -> Self {
-        Self { path: None, name: "New tab".into(), real: None, folder: None, group: None, parked: None }
+        Self { id: TabId::next(), path: None, name: "New tab".into(), real: None, folder: None, group: None, parked: None, label: None }
     }
 
     /// A tab for `path` whose repository loads when the tab is first selected.
     pub fn unloaded(path: PathBuf) -> Self {
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string());
-        Self { path: Some(path), name, real: None, folder: None, group: None, parked: None }
+        Self { id: TabId::next(), path: Some(path), name, real: None, folder: None, group: None, parked: None, label: None }
+    }
+
+    /// The name the tab shows: its label, else the folder name.
+    pub fn shown_name(&self) -> &str {
+        self.label.as_deref().unwrap_or(&self.name)
     }
 
     /// Whether this tab shows the repository at `path` (as given, or where it really is), by
@@ -63,6 +87,72 @@ impl Tab {
     /// The names and identity this tab's folder is known by.
     pub fn place(&self) -> Place {
         Place { paths: [&self.path, &self.real].into_iter().flatten().cloned().collect(), folder: self.folder }
+    }
+}
+
+/// `text` as a tab label: control characters removed, trimmed, at most `MAX_TAB_LABEL`
+/// characters. `None` (the folder name is shown) when nothing is left or it is the folder name.
+pub fn clean_label(text: &str, folder: &str) -> Option<String> {
+    let kept: String = text.chars().filter(|c| !c.is_control()).collect();
+    let capped: String = kept.trim().chars().take(MAX_TAB_LABEL).collect();
+    let label = capped.trim_end();
+    (!label.is_empty() && label != folder).then(|| label.to_owned())
+}
+
+/// A closed tab remembered for reopening, with the label it had.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ClosedTab {
+    pub path: PathBuf,
+    pub label: Option<String>,
+}
+
+impl From<PathBuf> for ClosedTab {
+    fn from(path: PathBuf) -> Self {
+        Self { path, label: None }
+    }
+}
+
+impl ClosedTab {
+    /// The label, else the folder name.
+    pub fn name(&self) -> String {
+        match (&self.label, self.path.file_name()) {
+            (Some(label), _) => label.clone(),
+            (None, Some(name)) => name.to_string_lossy().into_owned(),
+            (None, None) => self.path.display().to_string(),
+        }
+    }
+}
+
+/// The Rename tab dialog.
+pub struct RenameTabForm {
+    pub tab: TabId,
+    pub path: PathBuf,
+    /// The folder name: the hint, and what an empty field goes back to.
+    pub folder: String,
+    pub current: Option<String>,
+    pub text: String,
+}
+
+impl RenameTabForm {
+    /// For a tab that shows a repository.
+    pub fn new(tab: &Tab) -> Self {
+        Self {
+            tab: tab.id,
+            path: tab.path.clone().unwrap_or_default(),
+            folder: tab.name.clone(),
+            current: tab.label.clone(),
+            text: tab.shown_name().to_owned(),
+        }
+    }
+
+    /// The label the field gives (`clean_label`).
+    pub fn label(&self) -> Option<String> {
+        clean_label(&self.text, &self.folder)
+    }
+
+    /// Whether Rename would change the label.
+    pub fn changed(&self) -> bool {
+        self.label() != self.current
     }
 }
 
@@ -172,5 +262,26 @@ mod tests {
         assert!(!place.is(Path::new("/w/Repo"), id(2)), "another folder");
         let unseen = Place { paths: vec![PathBuf::from("/w/repo")], folder: None };
         assert!(!unseen.is(Path::new("/x"), None), "no identity matches no identity");
+    }
+
+    #[test]
+    fn labels_are_cleaned() {
+        assert_eq!(clean_label("  Web app \t", "repo"), Some("Web app".into()));
+        assert_eq!(clean_label("Web\napp\u{7}", "repo"), Some("Webapp".into()));
+        assert_eq!(clean_label("", "repo"), None);
+        assert_eq!(clean_label("   ", "repo"), None);
+        assert_eq!(clean_label("\t\n\r", "repo"), None);
+        assert_eq!(clean_label(" repo ", "repo"), None, "the folder name is no label");
+        let long = "é".repeat(MAX_TAB_LABEL + 10);
+        assert_eq!(clean_label(&long, "repo").map(|l| l.chars().count()), Some(MAX_TAB_LABEL));
+    }
+
+    #[test]
+    fn tab_ids_are_distinct() {
+        let (a, b, c) = (Tab::empty(), Tab::unloaded(PathBuf::from("/w/a")), Tab::empty());
+        assert!(a.id != b.id && b.id != c.id && a.id != c.id);
+        assert_eq!(b.shown_name(), "a");
+        let named = Tab { label: Some("API".into()), ..Tab::unloaded(PathBuf::from("/w/a")) };
+        assert_eq!(named.shown_name(), "API");
     }
 }

@@ -59,7 +59,7 @@ pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 pub use repos::{ReposMsg, ScanFound};
 pub use sparse::SparseMsg;
 pub use stash::StashMsg;
-pub use tabs::TabsMsg;
+pub use tabs::{CloseRequest, TabsMsg};
 pub use trust::TrustMsg;
 pub use updates::{CheckedRelease, UpdateMsg};
 pub use work::{CommitMsg, JobMsg, StageMsg};

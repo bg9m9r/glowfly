@@ -73,6 +73,8 @@ mod stash_push_dialog;
 mod status;
 mod submodule_dialogs;
 mod submodules;
+mod tab_dialog;
+mod tab_list;
 mod tabs;
 mod tag_dialog;
 mod tags;
@@ -272,6 +274,10 @@ mod snapshot_tests_worktrees;
 #[cfg(test)]
 mod snapshot_tests_wrap;
 #[cfg(test)]
+mod tabs_dialog_tests;
+#[cfg(test)]
+mod tabs_list_tests;
+#[cfg(test)]
 mod tabs_tests;
 
 use crate::effect::{Effect, UiEffect};
@@ -316,7 +322,8 @@ impl TrellisApp {
         trellis_core::git_program::set(trellis_core::git_program::from_setting(settings.git_program.as_deref()).as_deref());
         let recent = crate::platform::load_recent();
         // Restore the last session's tabs (or, before tabs were saved, the last repository).
-        let (mut paths, active) = if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), 0) };
+        let (mut paths, labels, active) =
+            if settings.reopen_last_repo { crate::platform::load_tabs() } else { (Vec::new(), Vec::new(), 0) };
         if paths.is_empty() && settings.reopen_last_repo {
             // Not checked here (a network share may not answer): a folder that is gone fails to
             // load like any other.
@@ -352,7 +359,7 @@ impl TrellisApp {
             app.dispatch(&cc.egui_ctx, Msg::Prefs(PrefsMsg::SettingsUnreadable(problem.message())));
         }
         if !paths.is_empty() {
-            app.dispatch(&cc.egui_ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, active }));
+            app.dispatch(&cc.egui_ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, labels, active }));
         }
         match start {
             Some(crate::StartArg::Path(path)) => app.dispatch(&cc.egui_ctx, Msg::Repo(RepoMsg::Open(path))),

@@ -27,6 +27,8 @@ use eframe::egui::{self, Key};
 /// shell.
 pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if !ctx.input(|i| i.key_pressed(Key::Escape))
+        // That Esc cancels the tab drag (`tabs.rs`) and nothing else.
+        || super::tabs::dragging(ctx)
         || st.modal.is_some()
         || st.askpass.showing()
         || st.palette.is_some()

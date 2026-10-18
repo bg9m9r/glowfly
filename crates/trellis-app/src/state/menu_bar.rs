@@ -135,9 +135,13 @@ fn starts_own_line(line: &str) -> bool {
     mark.len() > body.len() && !body.is_empty() && body.len() <= 3 && body.chars().all(|c| c.is_ascii_alphanumeric())
 }
 
-/// Tab `i`'s name as the tab strip shows it: the active tab's from its loaded repository, an
-/// empty tab's "New tab" in the language (`Tab::name` keeps the English placeholder).
+/// Tab `i`'s name as the tab strip shows it: its label when it has one, the active tab's from its
+/// loaded repository, an empty tab's "New tab" in the language (`Tab::name` keeps the English
+/// placeholder).
 pub fn tab_name(st: &AppState, i: usize) -> &str {
+    if let Some(label) = &st.tabs[i].label {
+        return label;
+    }
     match (&st.snap, i == st.active_tab) {
         (Some(snap), true) => snap.name.as_str(),
         _ if st.tabs[i].path.is_none() => st.settings.lang().tr("tabs.new_tab.name"),

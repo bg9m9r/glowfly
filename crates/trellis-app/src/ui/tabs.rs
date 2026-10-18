@@ -1,7 +1,9 @@
-//! The tab bar above the toolbar: one tab per open repository, plus a "new tab" button. Tabs
-//! are dragged sideways to reorder them; right-clicking one offers the close actions. With
-//! Group worktree tabs on, tabs of one repository's worktrees form a group (`state/tab_groups.rs`)
-//! marked by a colored strip along their bottom; a tab dropped outside its group takes the group.
+//! The tab bar above the toolbar: one tab per open repository, plus a "new tab" button and, at
+//! the far end when there are closed tabs or the tabs had to shrink, the tab list
+//! (`tab_list.rs`). Tabs are dragged sideways to reorder them (Esc cancels a drag);
+//! right-clicking one offers Rename tab and the close actions. With Group worktree tabs on, tabs
+//! of one repository's worktrees form a group (`state/tab_groups.rs`) marked by a colored strip
+//! along their bottom; a tab dropped outside its group takes the group.
 
 use super::theme::color;
 use crate::msg::Msg;
@@ -10,20 +12,32 @@ use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
 use crate::state::tab_groups::{self, is_identity, move_order, new_index, shown_at};
 use eframe::egui::{
-    self, Align2, Button, Color32, CursorIcon, FontId, Id, PointerButton, Rect, Response, Sense, Stroke, StrokeKind, pos2, vec2,
+    self, Align, Align2, Button, Color32, CursorIcon, FontId, Id, Key, Layout, PointerButton, Rect, Response, Sense, Stroke, StrokeKind,
+    pos2, vec2,
 };
 use std::ops::Range;
 use trellis_core::i18n::Lang;
 
-const HEIGHT: f32 = 30.0;
+pub(super) const HEIGHT: f32 = 30.0;
 const ROUNDING: egui::CornerRadius = egui::CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 };
+/// Where the drag in progress is kept in egui's temporary memory.
+const DRAG_ID: &str = "tab-drag";
 
 /// A tab being dragged: its index and where on it the pointer grabbed it (from its left edge).
 /// Kept in egui's temporary memory, since the press position is gone by the release frame.
+/// `cancelled` once Esc snapped it back: the rest of that drag does nothing.
 #[derive(Clone, Copy)]
 struct TabDrag {
     from: usize,
     grab: f32,
+    cancelled: bool,
+}
+
+/// Whether a tab is being dragged now (and the drag wasn't cancelled): Esc then cancels the
+/// drag and nothing else.
+pub(crate) fn dragging(ctx: &egui::Context) -> bool {
+    let drag = ctx.data(|d| d.get_temp::<TabDrag>(Id::new(DRAG_ID)));
+    drag.is_some_and(|d| !d.cancelled) && ctx.input(|i| i.pointer.primary_down())
 }
 
 /// A drag in progress: the dragged tab, the order a drop now would give (`order[new] == old`),
@@ -50,7 +64,8 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 1.0;
                 // Tabs shrink to share the width once there are many.
-                let room = ui.available_width() - HEIGHT;
+                let list = super::tab_list::wanted(st, ui.available_width());
+                let room = ui.available_width() - HEIGHT * (1.0 + f32::from(u8::from(list)));
                 let width = (room / st.tabs.len() as f32).clamp(60.0, 220.0);
                 let pitch = width + ui.spacing().item_spacing.x;
                 let strip_left = ui.cursor().left();
@@ -119,6 +134,9 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                     ui.painter().rect_stroke(f.rect, ROUNDING, Stroke::new(1.0_f32, color::primary()), StrokeKind::Inside);
                 }
                 new_tab_button(ui, t, &st.keymap, msgs);
+                if list {
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| super::tab_list::button(ui, t, st, msgs));
+                }
             });
         });
 }
@@ -127,23 +145,35 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
 /// `MoveTab` with the slot under it when dropping it there changes the order (`blocks` are the
 /// tabs that move together, `tab_groups::move_order`).
 fn drag(ui: &egui::Ui, slots: &[Slot], blocks: &[Range<usize>], strip_left: f32, pitch: f32, msgs: &mut Vec<Msg>) -> Option<Floating> {
-    let drag_id = Id::new("tab-drag");
+    let drag_id = Id::new(DRAG_ID);
     let n = slots.len();
     if n < 2 {
+        ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
         return None;
     }
     if let Some((i, s)) = slots.iter().enumerate().find(|(_, s)| s.r.drag_started_by(PointerButton::Primary))
         && let Some(origin) = ui.input(|i| i.pointer.press_origin())
     {
-        ui.data_mut(|d| d.insert_temp(drag_id, TabDrag { from: i, grab: origin.x - s.rect.left() }));
+        ui.data_mut(|d| d.insert_temp(drag_id, TabDrag { from: i, grab: origin.x - s.rect.left(), cancelled: false }));
     }
-    let state = ui.data(|d| d.get_temp::<TabDrag>(drag_id))?;
+    let mut state = ui.data(|d| d.get_temp::<TabDrag>(drag_id))?;
     let slot = slots.get(state.from).filter(|s| s.r.dragged() || s.r.drag_stopped());
     let (Some(slot), Some(px)) = (slot, ui.input(|i| i.pointer.latest_pos())) else {
         // The drag ended without reaching this tab (e.g. the tabs changed under it).
         ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
         return None;
     };
+    if !state.cancelled && ui.input(|i| i.key_pressed(Key::Escape)) {
+        state.cancelled = true;
+        ui.data_mut(|d| d.insert_temp(drag_id, state));
+    }
+    if state.cancelled {
+        // Snapped back: the tab stays in its slot until the button is released.
+        if slot.r.drag_stopped() {
+            ui.data_mut(|d| d.remove::<TabDrag>(drag_id));
+        }
+        return None;
+    }
     let left = (px.x - state.grab).clamp(strip_left, strip_left + (n - 1) as f32 * pitch);
     let to = drop_slot(left, strip_left, pitch, n);
     let order = move_order(blocks, state.from, to);
@@ -225,6 +255,8 @@ fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, msgs
 /// The right-click menu of tab `i`. It acts on that tab without selecting it.
 fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<Msg>) {
     let n = st.tabs.len();
+    item(ui, msgs, st.tabs[i].path.is_some(), Button::new(t.tr("tabs.menu.rename")), Msg::Tabs(TabsMsg::RenameTabDialog(i)));
+    ui.separator();
     item(ui, msgs, true, Button::new(t.tr("tabs.menu.close")), Msg::Tabs(TabsMsg::CloseTab(i)));
     item(ui, msgs, n > 1, Button::new(t.tr("tabs.menu.close_others")), Msg::Tabs(TabsMsg::CloseOtherTabs(i)));
     item(ui, msgs, i + 1 < n, Button::new(t.tr("tabs.menu.close_right")), Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
@@ -232,8 +264,8 @@ fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<
     let reopen_key = st.keymap.hint(crate::keymap::BindingId::ReopenTab).unwrap_or_default();
     let reopen = Button::new(t.tr("tabs.menu.reopen")).shortcut_text(reopen_key);
     let r = item(ui, msgs, !st.closed_tabs.is_empty(), reopen, Msg::Tabs(TabsMsg::ReopenClosedTab));
-    if let Some(path) = st.closed_tabs.last() {
-        r.on_hover_text(trellis_core::native_path::shown(path));
+    if let Some(closed) = st.closed_tabs.last() {
+        r.on_hover_text(trellis_core::native_path::shown(&closed.path));
     }
 }
 

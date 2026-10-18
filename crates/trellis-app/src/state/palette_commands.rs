@@ -144,7 +144,13 @@ pub enum PaletteCommand {
     OpenRepo,
     NewTab,
     ReopenClosedTab,
+    /// Reopen this tab from the recently closed list.
+    ReopenClosed(PathBuf),
     CloseTab,
+    /// Open the Rename tab dialog for the active tab.
+    RenameTab,
+    /// Move the active tab one place left (-1) or right (1).
+    MoveTab(isize),
     OpenPrefs,
     /// Open the keyboard shortcut sheet.
     KeyboardShortcuts,
@@ -216,6 +222,8 @@ impl PaletteCommand {
             C::Redo => BindingId::Redo,
             C::NewTab => BindingId::NewTab,
             C::ReopenClosedTab => BindingId::ReopenTab,
+            C::MoveTab(d) if *d < 0 => BindingId::MoveTabLeft,
+            C::MoveTab(_) => BindingId::MoveTabRight,
             C::Refresh => BindingId::Refresh,
             C::StageAll => BindingId::StageAll,
             C::UnstageAll => BindingId::UnstageAll,
@@ -369,14 +377,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
 fn app_entries(st: &AppState, out: &mut Vec<Entry>) {
     use PaletteCommand as C;
     out.push(entry(C::OpenRepo, "Open repository…", "folder add"));
-    out.push(entry(C::NewTab, "New tab", "add open tab"));
-    if let Some(last) = st.closed_tabs.last() {
-        let e = entry(C::ReopenClosedTab, "Reopen closed tab", "restore undo closed recent tab");
-        out.push(with_detail(e, Some(folder_name(last))));
-    }
-    if st.snap.is_some() || st.tabs.len() > 1 {
-        out.push(entry(C::CloseTab, "Close tab", "close repository"));
-    }
+    super::palette_tabs::tab_entries(st, out);
     out.push(entry(C::Dashboard, "Open dashboard", "pull requests issues reviews assigned across repositories overview inbox"));
     out.push(entry(C::OpenPrefs, "Open Preferences", "settings options configure"));
     super::palette_profiles::profile_entries(st, out);

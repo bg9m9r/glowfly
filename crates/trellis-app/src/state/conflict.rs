@@ -86,6 +86,13 @@ impl ConflictView {
         self.auto.iter().filter(|a| a.is_some()).count()
     }
 
+    /// Chunks the user decided (a side, lines or typed text) that aren't saved: those not picked
+    /// automatically and not left unresolved. What closing the view would lose.
+    pub fn user_choices(&self) -> usize {
+        let default = ChunkPick::default();
+        self.picks.iter().enumerate().filter(|&(k, p)| self.auto.get(k).is_none_or(Option::is_none) && *p != default).count()
+    }
+
     /// The first chunk not resolved yet, or 0 when every chunk is.
     pub fn first_open(&self) -> usize {
         self.picks.iter().position(ChunkPick::is_open).unwrap_or(0)
@@ -122,5 +129,24 @@ impl ConflictView {
         }
         let rendered = self.file.as_ref().and_then(|f| edit_text(f, &self.picks));
         self.edit = rendered.map(|rendered| OutputEdit { buffer: rendered.text.clone(), rendered });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use trellis_core::repo::Choice;
+
+    #[test]
+    fn user_choices_skip_automatic_and_open_chunks() {
+        let mut v = ConflictView::loading("a.txt".into());
+        v.picks = vec![ChunkPick::Sides(Choice::Ours), ChunkPick::default(), ChunkPick::Sides(Choice::Theirs)];
+        v.auto = vec![None, None, Some(Trivial::Identical)];
+        assert_eq!(v.user_choices(), 1, "the automatic pick and the open chunk don't count");
+        v.picks[1] = ChunkPick::Edited { lines: vec!["x\n".into()], before: Box::new(ChunkPick::default()) };
+        assert_eq!(v.user_choices(), 2, "typed output counts");
+        v.auto[2] = None;
+        assert_eq!(v.user_choices(), 3, "an automatic pick the user changed counts");
+        assert_eq!(ConflictView::loading("b.txt".into()).user_choices(), 0);
     }
 }

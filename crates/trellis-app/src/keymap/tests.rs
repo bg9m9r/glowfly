@@ -20,7 +20,7 @@ fn every_id_has_exactly_one_row() {
 #[test]
 fn ids_are_stable() {
     // Users' settings files name bindings by these: renaming one loses their changes.
-    const FROZEN: [&str; 67] = [
+    const FROZEN: [&str; 69] = [
         "stage",
         "unstage",
         "stage-all",
@@ -39,6 +39,8 @@ fn ids_are_stable() {
         "prev-tab",
         "go-to-tab",
         "last-tab",
+        "move-tab-left",
+        "move-tab-right",
         "palette",
         "palette-move",
         "palette-run",
@@ -114,6 +116,8 @@ fn rebindable_set() {
         I::NextTab,
         I::PrevTab,
         I::LastTab,
+        I::MoveTabLeft,
+        I::MoveTabRight,
         I::Palette,
         I::Sheet,
         I::Search,
@@ -178,6 +182,8 @@ fn chord_text() {
     assert_eq!(keys.hint(I::Redo), Some("Ctrl+Y"));
     assert_eq!(keys.hint(I::Palette), Some("Ctrl+P"));
     assert_eq!(keys.hint(I::NextTab), Some("Ctrl+Tab"));
+    assert_eq!(keys.hint(I::MoveTabLeft), Some("Ctrl+Shift+PgUp"));
+    assert_eq!(keys.hint(I::MoveTabRight), Some("Ctrl+Shift+PgDn"));
     assert_eq!(keys.hint(I::CloseView), Some("Esc"));
     assert_eq!(keys.keys_text(I::NextChange), "F7 or Alt+Down");
     assert_eq!(keys.tip("New tab", I::NewTab), "New tab (Ctrl+T)");
@@ -243,7 +249,7 @@ fn filter_by_label_key_and_note() {
     let note = ids(&keys.filter("in the commit message"));
     assert!(note.contains(&I::Commit) && note.contains(&I::StageAllAndCommit), "{note:?}");
     assert!(keys.filter("zzz").is_empty());
-    assert_eq!(ids(&keys.filter("tabs")).len(), 7, "the group title matches");
+    assert_eq!(ids(&keys.filter("tabs")).len(), 9, "the group title matches");
 }
 
 #[cfg(not(target_os = "macos"))]

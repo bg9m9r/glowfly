@@ -144,3 +144,37 @@ fn esc_closes_the_tour_and_leaves_the_welcome_to_itself() {
 fn empty_diff() -> FileDiff {
     FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
 }
+
+#[test]
+fn esc_cancels_a_tab_drag() {
+    use super::tabs_tests::{pointer, tab_centre};
+    use crate::msg::TabsMsg;
+    use crate::ui::snapshot_check::CheckSnapshot;
+    use eframe::egui::PointerButton;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-tab-drag");
+    st.diff = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
+    let mut h = app_harness(st);
+    h.run();
+    let start = tab_centre(0);
+    pointer(&mut h, start, Some((PointerButton::Primary, true)));
+    h.step();
+    pointer(&mut h, start + egui::vec2(12.0, 0.0), None);
+    h.step();
+    let over = start + egui::vec2(272.0, 0.0);
+    pointer(&mut h, over, None);
+    h.step();
+    h.run();
+    assert!(super::tabs::dragging(&h.ctx), "the tab floats");
+    let msgs = esc(&mut h);
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))), "that Esc only cancels the drag");
+    assert!(!super::tabs::dragging(&h.ctx));
+    h.check_snapshot("tabs_drag_cancelled");
+
+    pointer(&mut h, over, Some((PointerButton::Primary, false)));
+    h.run();
+    let msgs = &h.state().1;
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::MoveTab { .. }))), "the release moves nothing");
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))));
+    drop(h);
+    remove_fixture(&dir);
+}

@@ -285,7 +285,8 @@ fn loaded(st: &mut AppState, snap: Snapshot, kind: LoadKind, now: Instant, fx: &
             fx.push(Effect::SaveRecent(st.recent.clone()));
             let missing = std::mem::take(&mut st.missing_repos);
             st.missing_repos = missing.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
-            fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Trellis", snap.name))));
+            let label = st.tabs.get(st.active_tab).and_then(|t| t.label.as_deref());
+            fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Trellis", label.unwrap_or(&snap.name)))));
             st.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
             st.detail = None;
             close_diff(st);

@@ -306,9 +306,11 @@ pub enum Effect {
     /// The common dir of each restored tab's folder, without loading it; reported as
     /// `TabsMsg::GroupsRead`.
     ReadTabGroups(Vec<PathBuf>),
-    /// The open tabs (repositories) and which one is active, for the next start.
+    /// The open tabs (repositories), their labels (parallel to `paths`) and which one is
+    /// active, for the next start.
     SaveTabs {
         paths: Vec<PathBuf>,
+        labels: Vec<Option<String>>,
         active: usize,
     },
     OpenUrl(String),

@@ -1,19 +1,20 @@
-//! Tabs: opening repositories side by side, switching, reordering, closing and reopening, and
-//! restoring the previous session. Switching parks the active tab's data and restores the
-//! other's; reordering moves parked data with its tab. Where a tab opens and how a drop moves it
-//! follow the worktree groups (`tab_groups.rs`).
+//! Tabs: opening repositories side by side, switching, reordering and restoring the previous
+//! session. Switching parks the active tab's data and restores the other's; reordering moves
+//! parked data with its tab. Where a tab opens and how a drop or a keyboard move moves it follow
+//! the worktree groups (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in
+//! `tab_label.rs`.
 
 use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::TabsMsg;
+use crate::msg::{CloseRequest, TabsMsg};
 use crate::state::conflict::ConflictView;
-use crate::state::tabs::{MAX_CLOSED_TABS, Parked};
+use crate::state::tabs::Parked;
 use crate::state::{AppState, Selection, Tab};
 use std::path::PathBuf;
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::DiffMode;
 
 pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
-    if matches!(msg, TabsMsg::NewTab | TabsMsg::SelectTab(_) | TabsMsg::CycleTab(_) | TabsMsg::ReopenClosedTab) {
+    if matches!(msg, TabsMsg::NewTab | TabsMsg::SelectTab(_) | TabsMsg::CycleTab(_) | TabsMsg::ReopenClosedTab | TabsMsg::ReopenClosed(_)) {
         super::dashboard::leave(st);
     }
     match msg {
@@ -26,19 +27,26 @@ pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
             let n = st.tabs.len() as isize;
             switch(st, (st.active_tab as isize + step).rem_euclid(n) as usize, fx);
         }
-        TabsMsg::CloseTab(i) => close(st, if i == usize::MAX { st.active_tab } else { i }, fx),
-        TabsMsg::ReopenClosedTab => {
-            if let Some(path) = st.closed_tabs.pop() {
-                open(st, path, fx);
+        TabsMsg::CloseTab(i) => super::tabs_close::asked(st, i, CloseRequest::One, fx),
+        TabsMsg::CloseOtherTabs(i) => super::tabs_close::asked(st, i, CloseRequest::Others, fx),
+        TabsMsg::CloseTabsToRight(i) => super::tabs_close::asked(st, i, CloseRequest::Right, fx),
+        TabsMsg::CloseConfirmed(req) => super::tabs_close::request(st, req, true, fx),
+        TabsMsg::ReopenClosedTab => super::tabs_close::reopen_last(st, fx),
+        TabsMsg::ReopenClosed(path) => super::tabs_close::reopen(st, path, fx),
+        TabsMsg::MoveTab { from, to } => super::tab_groups::moved(st, from, to, fx),
+        TabsMsg::MoveActiveTab(d) => {
+            let to = st.active_tab as isize + d.signum();
+            if (0..st.tabs.len() as isize).contains(&to) && d != 0 {
+                super::tab_groups::moved(st, st.active_tab, to as usize, fx);
             }
         }
-        TabsMsg::MoveTab { from, to } => super::tab_groups::moved(st, from, to, fx),
-        TabsMsg::CloseOtherTabs(i) if i < st.tabs.len() => close_where(st, |j| j == i, i, fx),
-        TabsMsg::CloseTabsToRight(i) if i < st.tabs.len() => close_where(st, |j| j <= i, i, fx),
-        TabsMsg::RestoreTabs { paths, active } => {
-            for path in paths {
+        TabsMsg::RenameTabDialog(i) => super::tab_label::dialog(st, if i == usize::MAX { st.active_tab } else { i }),
+        TabsMsg::SetTabLabel { tab, label } => super::tab_label::set(st, tab, label, fx),
+        TabsMsg::RestoreTabs { paths, labels, active } => {
+            for (k, path) in paths.into_iter().enumerate() {
                 if !st.tabs.iter().any(|t| t.is(&path)) {
-                    st.tabs.push(Tab::unloaded(path));
+                    let label = labels.get(k).cloned().flatten();
+                    st.tabs.push(Tab { label, ..Tab::unloaded(path) });
                 }
             }
             // Drop the empty tab the app starts with.
@@ -55,8 +63,6 @@ pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
             super::tab_groups::restored(st, fx);
         }
         TabsMsg::GroupsRead(read) => super::tab_groups::read(st, read, fx),
-        // Out of range: the tab is gone.
-        TabsMsg::CloseOtherTabs(_) | TabsMsg::CloseTabsToRight(_) => {}
     }
 }
 
@@ -170,8 +176,16 @@ fn switch(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     activate(st, i, fx);
 }
 
+/// The window title while tab `i` is active.
+pub(super) fn title(st: &AppState, i: usize) -> String {
+    match st.tabs.get(i) {
+        Some(tab) if tab.path.is_some() => format!("{} - Trellis", tab.shown_name()),
+        _ => "Trellis".to_owned(),
+    }
+}
+
 /// Makes tab `i` active, assuming the previous tab's data has been parked or discarded.
-fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
+pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     st.active_tab = i;
     let parked = st.tabs[i].parked.take().map(|p| *p).unwrap_or_default();
     unpark(st, parked);
@@ -182,11 +196,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     st.load_gen += 1;
     st.loading = false;
     st.refresh = Default::default();
-    let title = match &st.tabs[i].path {
-        Some(_) => format!("{} - Trellis", st.tabs[i].name),
-        None => "Trellis".to_owned(),
-    };
-    fx.push(Effect::Ui(UiEffect::SetTitle(title)));
+    fx.push(Effect::Ui(UiEffect::SetTitle(title(st, i))));
     if st.snap.is_some() {
         super::repo::refresh(st, fx);
         super::conflict::reload_pending(st, fx);
@@ -203,82 +213,7 @@ fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     fx.push(save(st));
 }
 
-fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
-    if i >= st.tabs.len() {
-        return;
-    }
-    if let Some(path) = st.tabs[i].path.clone() {
-        super::terminal::tab_closed(st, &path, &[i], fx);
-        remember_closed(st, path);
-    }
-    st.tab_return = None;
-    if i != st.active_tab {
-        st.tabs.remove(i);
-        if i < st.active_tab {
-            st.active_tab -= 1;
-        }
-        fx.push(save(st));
-        return;
-    }
-    park(st); // discarded with the tab
-    if st.tabs.len() == 1 {
-        st.tabs[0] = Tab::empty();
-        activate(st, 0, fx);
-    } else {
-        st.tabs.remove(i);
-        activate(st, i.min(st.tabs.len() - 1), fx);
-    }
-}
-
-/// Puts `path` on top of the "Reopen closed tab" stack.
-fn remember_closed(st: &mut AppState, path: PathBuf) {
-    st.closed_tabs.retain(|p| p != &path);
-    st.closed_tabs.push(path);
-    if st.closed_tabs.len() > MAX_CLOSED_TABS {
-        st.closed_tabs.remove(0);
-    }
-}
-
-/// Closes the tabs at `idx` (never the active one), as Close tab would.
-pub(super) fn close_tabs(st: &mut AppState, idx: &[usize], fx: &mut Vec<Effect>) {
-    let active = st.active_tab;
-    close_where(st, |j| j == active || !idx.contains(&j), active, fx);
-}
-
-/// Closes every tab for which `keep` is false. `survivor` (the tab the request came from) is
-/// always kept, and becomes active if the active tab closes.
-fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize, fx: &mut Vec<Effect>) {
-    let closing: Vec<usize> = (0..st.tabs.len()).filter(|&j| !keep(j)).collect();
-    if closing.is_empty() {
-        return;
-    }
-    // Right to left, so the leftmost closed tab is reopened first and the tabs come back in
-    // their original order.
-    for &j in closing.iter().rev() {
-        if let Some(path) = st.tabs[j].path.clone() {
-            super::terminal::tab_closed(st, &path, &closing, fx);
-            remember_closed(st, path);
-        }
-    }
-    st.tab_return = None;
-    let before = |i: usize| closing.iter().filter(|&&j| j < i).count();
-    let new_survivor = survivor - before(survivor);
-    if closing.contains(&st.active_tab) {
-        park(st); // discarded with the tab
-        for &j in closing.iter().rev() {
-            st.tabs.remove(j);
-        }
-        activate(st, new_survivor, fx);
-    } else {
-        st.active_tab -= before(st.active_tab);
-        for &j in closing.iter().rev() {
-            st.tabs.remove(j);
-        }
-        fx.push(save(st));
-    }
-}
-
-fn park(st: &mut AppState) -> Parked {
+pub(super) fn park(st: &mut AppState) -> Parked {
     st.stats_pending.clear();
     // Not kept: another tab may show the same path, and its diff reloads on return anyway.
     st.view.diff_lines.clear();
@@ -394,5 +329,6 @@ fn unpark(st: &mut AppState, p: Parked) {
 pub(super) fn save(st: &AppState) -> Effect {
     let with_path: Vec<(usize, PathBuf)> = st.tabs.iter().enumerate().filter_map(|(i, t)| t.path.clone().map(|p| (i, p))).collect();
     let active = with_path.iter().position(|(i, _)| *i >= st.active_tab).unwrap_or(0);
-    Effect::SaveTabs { paths: with_path.into_iter().map(|(_, p)| p).collect(), active }
+    let labels = with_path.iter().map(|(i, _)| st.tabs[*i].label.clone()).collect();
+    Effect::SaveTabs { paths: with_path.into_iter().map(|(_, p)| p).collect(), labels, active }
 }

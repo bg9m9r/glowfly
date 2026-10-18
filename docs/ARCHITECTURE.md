@@ -137,6 +137,12 @@ binary (package `trellis`).
   refuses it. Moving a worktree (`update/worktree_move.rs`) points the tabs, the recent list,
   the closed tabs, favorites and `KnownFolders` at the new folder; removing one closes the other
   tabs showing it first (`update/worktree_manage.rs`).
+  Each tab has a `TabId` for as long as it is open: what a request waiting for an answer names
+  it by, since its index changes when tabs move or close. Closing a tab that holds work only in
+  memory (a commit draft, conflict choices) asks first (`state/tab_losses.rs`), and the
+  confirmation carries a `CloseRequest` by id (`update/tabs_close.rs`). A tab's label (Rename
+  tab, `update/tab_label.rs`) is saved with the open tabs in tabs.txt and kept on the recently
+  closed list.
 - **Job follow-ups**: a job can carry what to do once it succeeds (`JobSpec`/`RunningJob`
   `then_push`, `then_open`, `then_pr`, `then_link`), handled in `update/ops.rs::finish_job`. Those that act
   on the repository run only while the job's tab is active and are logged otherwise. A follow-up that needs the refreshed snapshot waits for the
@@ -289,7 +295,8 @@ binary (package `trellis`).
    (`env_path`) is likewise computed once, on first use, and never changed. The git program
    (`git_program`) is the one setting that changes while Trellis runs: the shell sets it from
    the saved setting at startup, and afterwards only the runner sets it, after checking the new
-   program (`GitEnvEffect::Use`); tests set it only to the git already on PATH.
+   program (`GitEnvEffect::Use`); tests set it only to the git already on PATH. The counter
+   behind `TabId::next` only hands out distinct ids; nothing depends on their values.
 6. Each hosting provider implements `Forge`; the UI never matches on provider-specific types.
 7. `scripts/check.ps1` (fmt, clippy -D warnings, tests) must pass before committing.
 8. `trellis-core` returns `trellis_core::error::Error` (typed, via `thiserror`); decide behaviour

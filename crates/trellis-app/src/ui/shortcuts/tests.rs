@@ -237,3 +237,26 @@ fn run_keys_and_find_in_the_blame_view() {
     let m = press_msgs(&mut h, Modifiers::COMMAND, Key::F);
     assert!(matches!(&m[..], [Msg::Blame(BlameMsg::FocusFind)]), "{}", m.len());
 }
+
+#[test]
+fn move_tab_keys() {
+    use crate::msg::TabsMsg;
+    let moved = |m: &[Msg]| match m {
+        [Msg::Tabs(TabsMsg::MoveActiveTab(d))] => Some(*d),
+        _ => None,
+    };
+    let mut h = harness(unstaged(), false);
+    assert_eq!(moved(&press_msgs(&mut h, CMD_SHIFT, Key::PageUp)), Some(-1));
+    assert_eq!(moved(&press_msgs(&mut h, CMD_SHIFT, Key::PageDown)), Some(1));
+    let mut h = harness(unstaged(), true);
+    assert_eq!(moved(&press_msgs(&mut h, CMD_SHIFT, Key::PageDown)), Some(1), "while typing too");
+
+    let mut st = unstaged();
+    st.palette = Some(Default::default());
+    let mut h = harness(st, false);
+    assert!(press_msgs(&mut h, CMD_SHIFT, Key::PageUp).is_empty(), "not under the palette");
+    let mut st = unstaged();
+    st.prefs = Some(PrefsState::new(PrefPage::General));
+    let mut h = harness(st, false);
+    assert!(press_msgs(&mut h, CMD_SHIFT, Key::PageDown).is_empty(), "not under Preferences");
+}

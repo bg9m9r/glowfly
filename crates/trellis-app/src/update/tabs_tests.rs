@@ -143,7 +143,11 @@ fn a_failed_open_returns_to_the_previous_tab() {
 fn restored_tabs_load_when_first_selected() {
     let (a, b) = (scratch_repo("tabs-restore-a"), scratch_repo("tabs-restore-b"));
     let mut st = state();
-    let fx = update(&mut st, Msg::Tabs(TabsMsg::RestoreTabs { paths: vec![a.clone(), b.clone()], active: 1 }), Instant::now());
+    let fx = update(
+        &mut st,
+        Msg::Tabs(TabsMsg::RestoreTabs { paths: vec![a.clone(), b.clone()], labels: Vec::new(), active: 1 }),
+        Instant::now(),
+    );
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1), "the empty start tab is replaced");
     let loads: Vec<&PathBuf> = fx.iter().filter_map(|e| if let Effect::LoadRepo { path, .. } = e { Some(path) } else { None }).collect();
     assert_eq!(loads, [&b], "only the active tab loads at startup");
@@ -151,7 +155,7 @@ fn restored_tabs_load_when_first_selected() {
 
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, kind: LoadKind::Open, .. } if path == &a)));
-    match fx.iter().find_map(|e| if let Effect::SaveTabs { paths, active } = e { Some((paths, *active)) } else { None }) {
+    match fx.iter().find_map(|e| if let Effect::SaveTabs { paths, active, .. } = e { Some((paths, *active)) } else { None }) {
         Some((paths, active)) => assert_eq!((paths.len(), active), (2, 0)),
         None => panic!("switching tabs saves the session"),
     }
@@ -232,7 +236,12 @@ fn tab_names(st: &AppState) -> Vec<String> {
 }
 
 fn saved(fx: &[Effect]) -> Vec<(Vec<PathBuf>, usize)> {
-    fx.iter().filter_map(|e| if let Effect::SaveTabs { paths, active } = e { Some((paths.clone(), *active)) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::SaveTabs { paths, active, .. } = e { Some((paths.clone(), *active)) } else { None }).collect()
+}
+
+/// The paths on the recently closed list, oldest first.
+fn closed(st: &AppState) -> Vec<PathBuf> {
+    st.closed_tabs.iter().map(|c| c.path.clone()).collect()
 }
 
 #[test]
@@ -280,7 +289,7 @@ fn close_other_tabs_keeping_an_inactive_tab() {
     assert_eq!(st.tabs.len(), 1);
     assert!(active_is(&st, &a), "A's parked snapshot is restored");
     assert_eq!(st.closed_tabs.len(), 1);
-    assert!(super::tests::same_place(&st.closed_tabs[0], &b));
+    assert!(super::tests::same_place(&st.closed_tabs[0].path, &b));
     let saves = saved(&fx);
     assert_eq!(saves.len(), 1);
     assert!(saves[0].0.len() == 1 && super::tests::same_place(&saves[0].0[0], &a));
@@ -293,7 +302,7 @@ fn close_other_tabs_keeping_the_active_tab() {
     let mut st = fake_tabs(&["a", "b", "c", "d"], 2);
     let fx = update(&mut st, Msg::Tabs(TabsMsg::CloseOtherTabs(2)), Instant::now());
     assert_eq!((tab_names(&st), st.active_tab), (vec!["c".to_owned()], 0));
-    assert_eq!(st.closed_tabs, [fake("d"), fake("b"), fake("a")], "a is reopened first");
+    assert_eq!(closed(&st), [fake("d"), fake("b"), fake("a")], "a is reopened first");
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })));
     assert_eq!(saved(&fx), [(vec![fake("c")], 0)]);
     // With one tab left there is nothing to close.
@@ -332,12 +341,12 @@ fn bulk_close_skips_empty_tabs_and_caps_the_stack() {
     st.tabs.insert(1, Tab::empty());
     st.tabs.push(Tab::empty());
     update(&mut st, Msg::Tabs(TabsMsg::CloseOtherTabs(0)), Instant::now());
-    assert_eq!(st.closed_tabs, [fake("y")], "empty tabs are not remembered");
+    assert_eq!(closed(&st), [fake("y")], "empty tabs are not remembered");
 
     let names: Vec<String> = (0..13).map(|i| format!("t{i}")).collect();
     let mut st = fake_tabs(&names.iter().map(String::as_str).collect::<Vec<_>>(), 0);
     update(&mut st, Msg::Tabs(TabsMsg::CloseTabsToRight(0)), Instant::now());
     assert_eq!(st.closed_tabs.len(), MAX_CLOSED_TABS);
-    assert_eq!(st.closed_tabs.last(), Some(&fake("t1")), "the leftmost closed tab reopens first");
-    assert_eq!(st.closed_tabs[0], fake("t10"), "the rightmost ones drop off");
+    assert_eq!(closed(&st).last(), Some(&fake("t1")), "the leftmost closed tab reopens first");
+    assert_eq!(closed(&st)[0], fake("t10"), "the rightmost ones drop off");
 }
