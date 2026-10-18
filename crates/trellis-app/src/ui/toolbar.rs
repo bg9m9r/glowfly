@@ -139,12 +139,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     let can_pr = idle && snap.head_branch.is_some();
                     let service = fs.host_provider().map(Provider::name).unwrap_or_default();
                     let merge_request = fs.pr_noun() == "merge request";
-                    let tip = if merge_request {
-                        t.trf("toolbar.pr.tip_merge_request", &[("service", &service)])
+                    let args: &[(&str, &dyn std::fmt::Display)] = &[("service", &service)];
+                    let (tip, name) = if merge_request {
+                        (t.trf("toolbar.pr.tip_merge_request", args), t.trf("toolbar.pr.name_merge_request", args))
                     } else {
-                        t.trf("toolbar.pr.tip_pull_request", &[("service", &service)])
+                        (t.trf("toolbar.pr.tip_pull_request", args), t.trf("toolbar.pr.name_pull_request", args))
                     };
-                    if tool(ui, Icon::PullRequest, t.tr("toolbar.pr.button"), &tip, can_pr).on_hover_text(&tip).clicked()
+                    // The name starts with the caption, so speech input finds the button by what it shows.
+                    if tool(ui, Icon::PullRequest, t.tr("toolbar.pr.button"), &name, can_pr).on_hover_text(&tip).clicked()
                         && let Some(b) = &snap.head_branch
                     {
                         msgs.push(Msg::Forge(ForgeMsg::CreatePrDialog { source: b.clone(), target: None }));
@@ -170,7 +172,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
                     }
                     let palette = t.tr("toolbar.commands.tip");
-                    let pal = tool(ui, Icon::Palette, t.tr("toolbar.commands.button"), palette, true);
+                    let pal = tool(ui, Icon::Palette, t.tr("toolbar.commands.button"), t.tr("toolbar.commands.name"), true);
                     if pal.on_hover_text(st.keymap.tip(palette, BindingId::Palette)).clicked() {
                         msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
                     }

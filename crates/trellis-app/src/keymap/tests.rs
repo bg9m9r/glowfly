@@ -370,7 +370,9 @@ fn filter_follows_rebinding() {
 fn defaults_text_names_the_default_keys() {
     let mut k = Keymap::default();
     k.set(I::NextChange, vec![Chord::plain(KeyName::F(8))]);
-    assert_eq!(k.defaults_text(I::NextChange), "F7 or Alt+Down", "the defaults, not the current keys");
+    // Alt reads "Option" on macOS.
+    let alt = super::chord::KeyLabels::native().alt();
+    assert_eq!(k.defaults_text(I::NextChange), format!("F7 or {alt}+Down"), "the defaults, not the current keys");
     assert_eq!(k.keys_text(I::NextChange), "F8");
 }
 

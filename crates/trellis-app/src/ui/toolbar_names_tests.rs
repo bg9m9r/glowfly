@@ -33,7 +33,7 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
         "Show the terminal panel",
         "Open the repository folder",
         "Open settings",
-        "Command palette",
+        "Search and run commands",
         "Show or hide the commit search",
         "Show or hide the activity log",
         "Refresh the repository",
@@ -95,4 +95,48 @@ fn graph_rows_and_commit_fields_are_named() {
     assert!(h.query_by_label("Description").is_some());
     drop(h);
     remove_fixture(&dir);
+}
+
+/// Every tool button's name holds its caption in every language, so speech input finds the
+/// button by the word it shows ("click PR", "click Commands").
+#[test]
+fn tool_button_names_hold_their_captions() {
+    use crate::state::ForgeState;
+    use trellis_core::forge::{Provider, Target};
+    use trellis_core::i18n::Lang;
+    for lang in Lang::ALL {
+        let (mut st, dir) = with_repo(ThemeChoice::Dark, &format!("toolbar-captions-{}", lang.code()));
+        st.settings.language = lang.code().into();
+        let github =
+            Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+        st.forge = Some(ForgeState::new(Some(github), "origin".into(), None));
+        let pr = lang.trf("toolbar.pr.name_pull_request", &[("service", &"GitHub")]);
+        let mut h = harness(st, true);
+        h.run();
+        for (caption, name) in [
+            ("toolbar.undo.button", lang.tr("toolbar.undo.name")),
+            ("toolbar.redo.button", lang.tr("toolbar.redo.name")),
+            ("toolbar.pull.button", lang.tr("toolbar.pull.name")),
+            ("toolbar.push.button", lang.tr("toolbar.push.name")),
+            ("toolbar.branch.button", lang.tr("toolbar.branch.name")),
+            ("toolbar.stash.button", lang.tr("toolbar.stash.name")),
+            ("toolbar.pop.button", lang.tr("toolbar.pop.name")),
+            ("toolbar.pr.button", &pr),
+            ("toolbar.terminal.button", lang.tr("toolbar.terminal.name_show")),
+            ("toolbar.folder.button", lang.tr("toolbar.folder.name")),
+            ("toolbar.settings.button", lang.tr("toolbar.settings.name")),
+            ("toolbar.commands.button", lang.tr("toolbar.commands.name")),
+            ("toolbar.search.button", lang.tr("toolbar.search.name")),
+            ("toolbar.activity.button", lang.tr("toolbar.activity.name")),
+            ("toolbar.refresh.button", lang.tr("toolbar.refresh.name")),
+        ] {
+            let caption = lang.tr(caption);
+            assert_eq!(h.query_all_by_role_and_label(Role::Button, name).count(), 1, "{lang:?}: one {name:?} button");
+            assert!(name.to_lowercase().contains(&caption.to_lowercase()), "{lang:?}: {name:?} lacks its caption {caption:?}");
+        }
+        let mr = lang.trf("toolbar.pr.name_merge_request", &[("service", &"GitLab")]);
+        assert!(mr.contains(lang.tr("toolbar.pr.button")), "{lang:?}: {mr:?}");
+        drop(h);
+        remove_fixture(&dir);
+    }
 }
