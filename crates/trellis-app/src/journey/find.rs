@@ -15,8 +15,11 @@ pub(super) enum Region {
     Sidebar,
     /// The right panel: the commit or working-tree details.
     Details,
-    /// What no panel covers: the graph, a diff, the conflict view, the welcome.
+    /// What no panel covers: the graph, a diff, the conflict view, the welcome; never the
+    /// open command palette.
     Central,
+    /// The open command palette: its field and rows.
+    Palette,
 }
 
 /// Which of several matching widgets to take.
@@ -49,12 +52,14 @@ pub(super) fn centre(node: &Node<'_>) -> Option<Pos2> {
 fn in_region(ctx: &egui::Context, region: Region, node: &Node<'_>) -> bool {
     let Some(c) = centre(node) else { return false };
     let inside = |id: &str| panel(ctx, id).is_some_and(|r| r.contains(c));
+    let in_palette = || crate::ui::palette_rect(ctx).is_some_and(|r| r.contains(c));
     match region {
         Region::Anywhere => true,
         Region::Toolbar => inside("toolbar"),
         Region::Sidebar => inside("refs"),
         Region::Details => inside("detail"),
-        Region::Central => !PANELS.iter().any(|id| inside(id)),
+        Region::Central => !PANELS.iter().any(|id| inside(id)) && !in_palette(),
+        Region::Palette => in_palette(),
     }
 }
 
@@ -101,6 +106,11 @@ pub(super) fn count<S>(h: &Harness<'_, S>, label: &str, exact: bool, region: Reg
 /// Every name shown in `region`, in tree order, for failure messages.
 pub(super) fn labels_in<S>(h: &Harness<'_, S>, region: Region) -> Vec<String> {
     h.query_all(By::new()).filter(|n| in_region(&h.ctx, region, n)).filter_map(|n| text_of(&n)).filter(|t| !t.trim().is_empty()).collect()
+}
+
+/// The first text field in `region`.
+pub(super) fn field_in<'t, S>(h: &'t Harness<'_, S>, region: Region) -> Option<Node<'t>> {
+    h.query_all(By::new()).find(|n| matches!(n.role(), Role::TextInput | Role::MultilineTextInput) && in_region(&h.ctx, region, n))
 }
 
 /// The text field named `name`.

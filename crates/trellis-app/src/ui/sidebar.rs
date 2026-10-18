@@ -163,7 +163,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 continue;
             }
             let r = widgets::list_row(ui, 26.0, &s.message, None, *sel == Selection::Commit(s.oid), false);
-            let stash = |action| Msg::Job(JobMsg::Stash { action, index: s.index, oid: s.oid });
+            let stash = |action| crate::state::stash_confirm::stash_msg(snap, action, s);
             if r.clicked() {
                 msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
             }
@@ -171,12 +171,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 menu_item(msgs, ui, "Apply", stash(StashAction::Apply));
                 menu_item(msgs, ui, "Pop", stash(StashAction::Pop));
                 menu_item(msgs, ui, "Rename…", Msg::Stash(StashMsg::RenameDialog { oid: s.oid }));
-                menu_item(
-                    msgs,
-                    ui,
-                    "Delete",
-                    Msg::confirm("Delete stash", crate::state::stashes::drop_confirm_body(&s.message), "Delete", stash(StashAction::Drop)),
-                );
+                menu_item(msgs, ui, "Delete", stash(StashAction::Drop));
             });
         }
     }

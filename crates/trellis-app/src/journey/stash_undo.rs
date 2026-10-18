@@ -17,38 +17,38 @@ fn stash_pop_and_undo_redo_commit_and_merge() {
     commit_files(&repo, &[("b.txt", "b\n")], "Main moves on");
     let mut j = Journey::start(fx, Some(repo.clone()), vec![repo.clone()]);
     j.see("✔  main", Region::Sidebar);
-    j.disabled("Pop", Region::Toolbar);
+    j.disabled("Pop the latest stash", Region::Toolbar);
 
     // step 1: stash a local edit.
     write(&repo, "a.txt", "a edited\n");
     j.refresh();
-    j.click("Stash", Region::Toolbar, Pick::Only);
+    j.click("Stash all changes", Region::Toolbar, Pick::Only);
     j.toast(true, "Stash succeeded");
     assert!(disk::is_clean(&repo));
     assert_eq!(disk::stash_count(&repo), 1);
     j.see_contains("WIP on main", Region::Sidebar);
-    j.enabled("Pop", Region::Toolbar);
+    j.enabled("Pop the latest stash", Region::Toolbar);
 
     // step 2: pop it back.
-    j.click("Pop", Region::Toolbar, Pick::Only);
+    j.click("Pop the latest stash", Region::Toolbar, Pick::Only);
     j.toast(true, "Pop stash succeeded");
     assert_eq!(disk::work_text(&repo, "a.txt").as_deref(), Some("a edited\n"));
     assert_eq!(disk::stash_count(&repo), 0);
     assert_eq!(j.count_containing("WIP on main", Region::Sidebar), 0);
-    j.disabled("Pop", Region::Toolbar);
+    j.disabled("Pop the latest stash", Region::Toolbar);
 
     // step 3: commit it, undo the commit (the edit stays), redo it.
     let before = disk::head_oid(&repo);
     j.commit_all("Edit a");
     let commit = disk::head_oid(&repo);
     assert_eq!(disk::parents(&repo, commit), [before]);
-    j.click("Undo", Region::Toolbar, Pick::Only);
+    j.click("Undo the last action", Region::Toolbar, Pick::Only);
     j.toast(true, "Undo commit 'Edit a'");
     assert_eq!(disk::head_oid(&repo), before);
     assert_eq!(disk::work_text(&repo, "a.txt").as_deref(), Some("a edited\n"));
     assert!(!disk::is_clean(&repo), "the change is back in the working tree");
-    j.enabled("Redo", Region::Toolbar);
-    j.click("Redo", Region::Toolbar, Pick::Only);
+    j.enabled("Redo the undone action", Region::Toolbar);
+    j.click("Redo the undone action", Region::Toolbar, Pick::Only);
     j.toast(true, "Redo commit 'Edit a'");
     assert_eq!(disk::head_oid(&repo), commit);
     assert!(disk::is_clean(&repo));
@@ -59,11 +59,11 @@ fn stash_pop_and_undo_redo_commit_and_merge() {
     let merge = disk::head_oid(&repo);
     assert_eq!(disk::parents(&repo, merge), [commit, side_tip]);
     assert!(disk::work_text(&repo, "side.txt").is_some());
-    j.click("Undo", Region::Toolbar, Pick::Only);
+    j.click("Undo the last action", Region::Toolbar, Pick::Only);
     j.toast(true, "Undo");
     assert_eq!(disk::head_oid(&repo), commit);
     assert!(disk::work_text(&repo, "side.txt").is_none());
-    j.click("Redo", Region::Toolbar, Pick::Only);
+    j.click("Redo the undone action", Region::Toolbar, Pick::Only);
     j.toast(true, "Redo");
     assert_eq!(disk::head_oid(&repo), merge);
     assert_eq!(disk::work_text(&repo, "side.txt").as_deref(), Some("side\n"));

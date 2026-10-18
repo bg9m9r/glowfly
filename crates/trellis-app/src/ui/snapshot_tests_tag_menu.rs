@@ -90,6 +90,12 @@ fn tag_row_menu() {
     assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
 
     open_menu(&mut h);
+    h.get_by_label("Checkout (detached)").click();
+    h.run();
+    let want = TagMsg::Checkout { tag: "v0.1.0".into() };
+    assert!(pushed(&h, &|m| matches!(m, Msg::Tag(t) if *t == want)));
+
+    open_menu(&mut h);
     h.get_by_label("Annotate…").click();
     h.run();
     let want = TagMsg::OpenAnnotate { tag: "v0.1.0".into() };

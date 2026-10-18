@@ -72,7 +72,7 @@ fn toolbar_right_click_follows_the_setting() {
         st.settings.terminal.open_in_panel = in_panel;
         let mut h = harness(st, true);
         h.run();
-        let b = h.get_by_label("Terminal").bounding_box().expect("the toolbar button");
+        let b = h.get_by_label("Show the terminal panel").bounding_box().expect("the toolbar button");
         click(&mut h, pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32), PointerButton::Secondary);
         h.get_by_label(item).click();
         h.run();

@@ -43,9 +43,9 @@ fn dialog(theme: ThemeChoice, name: &str, staged: &[(&str, char)], form: StashPu
     (st, dir)
 }
 
-/// The dialog's Stash button (the toolbar has one too, higher up).
+/// The dialog's Stash button (the toolbar's is "Stash all changes").
 fn stash_button(h: &H) -> egui_kittest::kittest::Node<'_> {
-    h.get_all_by_label("Stash").max_by(|a, b| a.bounding_box().unwrap().y0.total_cmp(&b.bounding_box().unwrap().y0)).expect("Stash")
+    h.get_by_label("Stash")
 }
 
 /// Right-clicks the middle of the node labelled `label` (the topmost match).

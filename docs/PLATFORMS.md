@@ -270,6 +270,14 @@ second one next to it.
    English. Never read `env::var("LANG")` for it, and never read it again while Trellis runs. It
    is independent of the `LANGUAGE=C` that `gitcli` gives git children (rule 5).
 
+### Key labels
+
+1. **UI text names modifiers only through `Chord::text`/`Chord::parts` (`keymap::KeyLabels`),
+   never with a literal "Ctrl" or "Alt":** macOS reads "Cmd" for the command modifier and
+   "Option" for Alt ("Cmd+Option+1"); the real Ctrl key reads "Ctrl" everywhere. The choice is
+   the pure `KeyLabels::native()`, and `text_in`/`parts_in` take a style, so a test checks both
+   styles on every OS. Never paint the ⌘ ⌥ ⇧ glyphs: the bundled fonts lack them.
+
 ### Links and the running window
 
 1. **Register the `trellis` scheme for this user only:** `HKEY_CURRENT_USER\Software\Classes\trellis`

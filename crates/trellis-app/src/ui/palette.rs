@@ -9,12 +9,25 @@ use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::state::AppState;
 use crate::state::palette::{self, InputKind, Items, Mode, Palette};
+use crate::state::palette_nav::{Jump, PAGE_ROWS};
 use eframe::egui::{self, Align2, Color32, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, pos2, text::LayoutJob, vec2};
 
 const WIDTH: f32 = 560.0;
 const ROW_H: f32 = 28.0;
 const LIST_MAX_H: f32 = 360.0;
 const LABEL_SIZE: f32 = 13.5;
+// A page (PageUp/PageDown) is the rows the list shows at its full height.
+const _: () = assert!(PAGE_ROWS == (LIST_MAX_H / ROW_H) as usize);
+
+/// The id of the palette's modal area (its rect is in egui's memory under this id).
+pub(crate) const AREA_ID: &str = "trellis-palette";
+
+/// The palette's rect on screen while it is open (tests find its rows inside it).
+#[cfg(test)]
+pub(crate) fn area_rect(ctx: &egui::Context) -> Option<Rect> {
+    let layer = egui::LayerId::new(egui::Order::Foreground, Id::new(AREA_ID));
+    ctx.memory(|m| if m.areas().visible_last_frame(&layer) { m.area_rect(layer.id) } else { None })
+}
 
 /// Draws the open palette. A credential prompt above it keeps the keyboard.
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -22,7 +35,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let stepping = !matches!(p.mode, Mode::Commands);
     let empty = p.query.is_empty();
     let prompting = st.askpass.showing();
-    let id = Id::new("trellis-palette");
+    // The free-text step has no list, so the page and end keys stay with the field.
+    let listing = !matches!(p.mode, Mode::Input(_));
+    let id = Id::new(AREA_ID);
     let area = egui::Modal::default_area(id).anchor(Align2::CENTER_TOP, vec2(0.0, 80.0));
     let resp = egui::Modal::new(id).area(area).show(ctx, |ui| {
         ui.set_width(WIDTH);
@@ -34,6 +49,21 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
                 if i.consume_key(Modifiers::NONE, Key::ArrowUp) {
                     msgs.push(Msg::Palette(PaletteMsg::PaletteMove(-1)));
+                }
+                if listing {
+                    // Plain Home and End move the text cursor once there is a query.
+                    let end = |i: &mut egui::InputState, key| {
+                        i.consume_key(Modifiers::COMMAND, key) || (empty && i.consume_key(Modifiers::NONE, key))
+                    };
+                    let jumps = [
+                        (i.consume_key(Modifiers::NONE, Key::PageDown), Jump::PageDown),
+                        (i.consume_key(Modifiers::NONE, Key::PageUp), Jump::PageUp),
+                        (end(i, Key::Home), Jump::First),
+                        (end(i, Key::End), Jump::Last),
+                    ];
+                    for (_, j) in jumps.into_iter().filter(|(pressed, _)| *pressed) {
+                        msgs.push(Msg::Palette(PaletteMsg::PaletteJump(j)));
+                    }
                 }
                 run_selected = i.consume_key(Modifiers::NONE, Key::Enter);
                 // In a second step, Backspace on an empty field and Esc go back to the commands.
@@ -147,6 +177,7 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
             if r.clicked() {
                 msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(shown.entry.command.clone())));
             }
+            hover_selects(ui, &r, selected, i, msgs);
             if selected && p.scroll_to_selected {
                 r.scroll_to_me(None);
                 p.scroll_to_selected = false;
@@ -189,6 +220,7 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
                         {
                             msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(c)));
                         }
+                        hover_selects(ui, &resp, i == sel, i, msgs);
                         if i == sel && scroll {
                             resp.scroll_to_me(None);
                             scroll = false;
@@ -205,6 +237,14 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
     }
     p.scroll_to_selected = scroll;
     kind.footer()
+}
+
+/// Selects row `i` when the pointer moves onto it. Only real pointer movement counts: a list
+/// scrolling under a still pointer (by the wheel or to a keyboard selection) changes nothing.
+fn hover_selects(ui: &Ui, r: &Response, selected: bool, i: usize, msgs: &mut Vec<Msg>) {
+    if r.hovered() && !selected && ui.input(|inp| inp.pointer.delta() != egui::Vec2::ZERO) {
+        msgs.push(Msg::Palette(PaletteMsg::PaletteHover(i)));
+    }
 }
 
 /// One line of text in place of the list.

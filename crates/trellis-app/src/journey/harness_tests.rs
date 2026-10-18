@@ -85,3 +85,21 @@ fn picks_one_of_several_widgets_by_position() {
     assert!(near.y == first.y, "a Go on the first row's line");
     assert!(find::labels_in(&h, Region::Anywhere).contains(&"second row".to_owned()));
 }
+
+#[test]
+fn the_palette_is_its_own_region() {
+    let fx = Fixture::new("palette-region");
+    let repo = fx.work().join("app");
+    fx.init(&repo, &[("a.txt", "one\n")]);
+    let mut j = Journey::start(fx, Some(repo.clone()), vec![repo]);
+    j.open_palette("refresh");
+    assert!(j.state().palette.is_some(), "the palette's key opens it");
+    assert_eq!(j.count("Refresh", Region::Palette), 1, "the palette's row");
+    assert_eq!(j.count("Refresh", Region::Central), 0, "the palette's rows aren't in the centre");
+    assert_eq!(j.count("Refresh the repository", Region::Palette), 0, "the toolbar isn't in the palette");
+    j.click("Refresh", Region::Palette, Pick::Only);
+    assert!(j.state().palette.is_none(), "running a row closes the palette");
+    j.run_command("refresh", "Refresh");
+    assert!(j.state().palette.is_none());
+    assert_eq!(j.count("Refresh", Region::Palette), 0, "a closed palette has no region");
+}

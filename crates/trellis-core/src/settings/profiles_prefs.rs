@@ -104,6 +104,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "push_after_commit",
     "stage_renames",
     "push_new_tags",
+    // A one-time notice, like the status tip.
+    "detached_head_warned",
     "connections",
     "repo_trackers",
     "graph_filters",

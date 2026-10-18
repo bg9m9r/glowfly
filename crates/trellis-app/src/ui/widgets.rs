@@ -252,8 +252,8 @@ fn arc_arrow(p: &Painter, c: Pos2, start: f32, sweep: f32, s: Stroke) {
 }
 
 /// Toolbar button: caption above the icon (caption optional), tooltip with
-/// the caption when labels are hidden.
-pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, enabled: bool, labels: bool) -> Response {
+/// the caption when labels are hidden. `name` is its accessible name, which includes the caption.
+pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bool, labels: bool) -> Response {
     let sense = if enabled { Sense::click() } else { Sense::hover() };
     // A label may overhang the 54 px slot by 2.5 px a side, as English "Commands" does; a longer
     // one (a translation, say) widens the button to fit it with 2 px to spare a side.
@@ -281,7 +281,7 @@ pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, enabled: bool, labels: 
     } else {
         paint_icon(p, rect.center(), icon, col);
     }
-    super::access::name_button(&resp, enabled, label);
+    super::access::name_button(&resp, enabled, name);
     let resp = if labels { resp } else { resp.on_hover_text(label) };
     if enabled { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
 }

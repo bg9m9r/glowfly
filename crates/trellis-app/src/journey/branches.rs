@@ -8,7 +8,7 @@ use super::harness::Journey;
 
 /// Creates branch `name` from the toolbar's Branch button (checked out after creating).
 fn new_branch(j: &mut Journey, name: &str) {
-    j.click("Branch", Region::Toolbar, Pick::Only);
+    j.click("Create a branch", Region::Toolbar, Pick::Only);
     j.type_into("Branch name", name);
     j.click("Create", Region::Anywhere, Pick::Only);
     j.toast(true, "Create branch succeeded");

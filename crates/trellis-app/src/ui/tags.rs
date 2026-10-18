@@ -53,7 +53,7 @@ pub(in crate::ui) fn tag_menu(ui: &mut egui::Ui, name: &str, snap: &Snapshot, gr
     let remotes: Vec<String> = snap.remotes.iter().map(|(r, _)| r.clone()).collect();
     let blocked = (!idle).then_some(JOB_RUNNING);
     let tag = || name.to_owned();
-    menu_item(msgs, ui, "Checkout (detached)", Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]));
+    menu_item(msgs, ui, "Checkout (detached)", Msg::Tag(TagMsg::Checkout { tag: tag() }));
     // Stays enabled while a job runs, like Delete locally: update checks when the job would start.
     if snap.lightweight_tags.contains(name) && ui.button("Annotate…").on_hover_text(ANNOTATE_HINT).clicked() {
         msgs.push(Msg::Tag(TagMsg::OpenAnnotate { tag: tag() }));

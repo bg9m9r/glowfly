@@ -1,6 +1,7 @@
 //! The New tag dialog's form, and the name and remote checks its view and `update` share; the
 //! Annotate dialog's form and its check; the TAGS row menu's remote push and delete: the
-//! confirmation, job labels and headlines. Pure.
+//! confirmation, job labels and headlines; the tag checkout's headline and one-time
+//! detached-HEAD warning. Pure.
 
 use super::branches::default_remote;
 use crate::msg::Msg;
@@ -146,6 +147,26 @@ fn failure_reason(output: &str) -> String {
     let error = section.iter().find_map(|l| l.strip_prefix("error: ").or_else(|| l.strip_prefix("fatal: ")));
     let line = error.or_else(|| lines.iter().rfind(|l| !l.starts_with("$ ")).copied()).unwrap_or("");
     line.trim().trim_end_matches('.').to_owned()
+}
+
+/// The running tag checkout, kept so its end can name the tag and, the first time, warn about
+/// detached HEAD.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TagCheckoutJob {
+    pub label: String,
+    pub tag: String,
+    /// The tag's commit when the checkout started, for the "Create branch…" action.
+    pub oid: Option<git2::Oid>,
+    /// The repository the checkout runs in, so the action only runs there.
+    pub workdir: Option<std::path::PathBuf>,
+}
+
+/// What detached HEAD means, said once after the first tag checkout (and kept in the log).
+pub const DETACHED_WARNING: &str = "HEAD is detached: commits you make now are on no branch and can be lost when you check out something else. Create a branch to keep them.";
+
+/// The headline after checking out `tag`; `first` adds the detached-HEAD warning.
+pub fn checkout_headline(tag: &str, first: bool) -> String {
+    if first { format!("Checked out tag {tag}. {DETACHED_WARNING}") } else { format!("Checked out tag {tag} (detached HEAD)") }
 }
 
 /// The confirmation before deleting `tag` from `remotes`; accepting sends `TagMsg::DeleteRemote`.

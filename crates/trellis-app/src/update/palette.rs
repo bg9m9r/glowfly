@@ -25,12 +25,12 @@ use crate::msg::StashMsg;
 use crate::msg::TabsMsg;
 use crate::msg::TrustMsg;
 use crate::state::conflict_files::{conflicted_paths, mark_conflicted_body, restorable_paths};
-use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind, StashAction};
+use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, Pick, PickKind};
 use crate::state::palette_files::with_folders;
+use crate::state::stash_confirm;
 use crate::state::{AppState, PrefPage, Selection};
 use crate::tag::TagMsg;
 use std::time::Instant;
-use trellis_core::repo::StashInfo;
 use trellis_core::shallow_ops::Deepen;
 
 pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -48,6 +48,17 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             let Some(p) = st.palette.as_mut() else { return };
             p.selected = if len == 0 { 0 } else { (p.selected.min(len - 1) as isize + step).rem_euclid(len as isize) as usize };
             p.scroll_to_selected = true;
+        }
+        PaletteMsg::PaletteJump(j) => {
+            let len = palette::row_count(st);
+            let Some(p) = st.palette.as_mut() else { return };
+            p.selected = crate::state::palette_nav::jumped(p.selected, len, j);
+            p.scroll_to_selected = true;
+        }
+        PaletteMsg::PaletteHover(i) => {
+            if let Some(p) = st.palette.as_mut() {
+                p.selected = i;
+            }
         }
         PaletteMsg::RunPaletteCommand(cmd) => {
             // Two-step commands count when their step opens; picks and typed text never do.
@@ -206,13 +217,23 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::FetchMoreCommitsBy(n) => Msg::Job(JobMsg::Deepen(Deepen::By(n))),
         C::Push => Msg::Job(JobMsg::Push { force: false }),
         C::Stash => Msg::git("Stash", &["stash", "push", "-u"]),
-        C::PopStash => Msg::git("Pop stash", &["stash", "pop"]),
+        C::PopStash => {
+            let Some(m) = st.snap.as_ref().and_then(stash_confirm::pop_latest) else {
+                st.log(false, "There are no stashes.");
+                return;
+            };
+            m
+        }
         C::StashOp { action, oid } => {
-            let Some(s) = st.snap.as_ref().and_then(|s| s.stashes.iter().find(|x| x.oid == oid)).cloned() else {
+            let found = st.snap.as_ref().and_then(|snap| {
+                let s = snap.stashes.iter().find(|x| x.oid == oid)?;
+                Some(stash_confirm::stash_msg(snap, action, s))
+            });
+            let Some(m) = found else {
                 st.log(false, "That stash no longer exists.");
                 return;
             };
-            stash_msg(action, &s)
+            m
         }
         C::RenameStash { oid } => {
             if !st.snap.as_ref().is_some_and(|s| s.stashes.iter().any(|x| x.oid == oid)) {
@@ -286,7 +307,7 @@ fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect
         C::Theme(t) => Msg::Prefs(PrefsMsg::SetTheme(t)),
         C::Checkout(name) => Msg::Branch(crate::msg::BranchMsg::Checkout(name)),
         C::CheckoutRemote { remote, branch } => Msg::git("Checkout", &["checkout", "--track", &format!("{remote}/{branch}")]),
-        C::CheckoutTag(name) => Msg::git("Checkout", &["checkout", &format!("refs/tags/{name}")]),
+        C::CheckoutTag(name) => Msg::Tag(TagMsg::Checkout { tag: name }),
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
         C::CopyLink(t) => Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)),
         C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
@@ -334,14 +355,6 @@ fn mark_conflicted(paths: Vec<String>) -> Msg {
 }
 
 /// The same messages the sidebar's STASHES menu sends.
-fn stash_msg(action: StashAction, s: &StashInfo) -> Msg {
-    let git = Msg::Job(JobMsg::Stash { action, index: s.index, oid: s.oid });
-    match action {
-        StashAction::Drop => Msg::confirm("Delete stash", crate::state::stashes::drop_confirm_body(&s.message), "Delete", git),
-        StashAction::Apply | StashAction::Pop => git,
-    }
-}
-
 /// The single selected commit, if any (WIP, nothing or several commits give None).
 fn selected_commit(st: &AppState) -> Option<git2::Oid> {
     match &st.selection {

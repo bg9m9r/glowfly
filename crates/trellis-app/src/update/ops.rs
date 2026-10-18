@@ -116,8 +116,12 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             let tag = super::tags::headline(st, ok, &output);
             let patch = super::patch::headline(st, ok, &output);
             let stash = super::stash_push::headline(st, ok, &output);
-            let headline = flow.or(tag).or(patch).or(stash);
+            let (checkout, warn) = super::tag_checkout::headline(st, ok).map_or((None, None), |(t, w)| (Some(t), w));
+            let headline = flow.or(tag).or(patch).or(stash).or(checkout);
             finish_job(st, ok, output, headline.clone(), undo, now, fx);
+            if let Some(p) = warn {
+                super::tag_checkout::warned(st, p, fx);
+            }
             // Toasts fade after a few seconds; the log keeps what a stopped Finish left to do.
             if let (false, Some(h)) = (ok, headline) {
                 st.log(false, h);

@@ -112,6 +112,10 @@ pub enum PaletteMsg {
     ClosePalette,
     /// Move the palette selection by this many rows, wrapping.
     PaletteMove(isize),
+    /// Move the palette selection by a page or to an end of the list, clamped.
+    PaletteJump(crate::state::palette_nav::Jump),
+    /// The pointer moved onto row `.0` of the palette list: select it, without scrolling.
+    PaletteHover(usize),
     /// Close the palette and run this command (or, for a two-step command, open its sub-list).
     RunPaletteCommand(crate::state::palette::PaletteCommand),
     /// Leave a palette sub-list for the command list.
@@ -130,6 +134,8 @@ impl PaletteMsg {
             Self::TogglePalette
             | Self::ClosePalette
             | Self::PaletteMove(..)
+            | Self::PaletteJump(..)
+            | Self::PaletteHover(..)
             | Self::RunPaletteCommand(..)
             | Self::PaletteBack
             | Self::TrackedPathsLoaded { .. } => None,

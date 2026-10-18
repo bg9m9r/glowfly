@@ -192,6 +192,8 @@ mod snapshot_tests_onboarding;
 #[cfg(test)]
 mod snapshot_tests_palette;
 #[cfg(test)]
+mod snapshot_tests_palette_nav;
+#[cfg(test)]
 mod snapshot_tests_palette_recent;
 #[cfg(test)]
 mod snapshot_tests_palette_stash;
@@ -327,6 +329,8 @@ mod app;
 #[cfg(test)]
 pub(crate) use app::TestStart;
 pub use app::TrellisApp;
+#[cfg(test)]
+pub(crate) use palette::area_rect as palette_rect;
 
 /// Resources owned by the UI thread (textures, the spell checker's COM object).
 pub struct UiCache {

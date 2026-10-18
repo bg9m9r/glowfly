@@ -23,7 +23,7 @@ use trellis_core::i18n::Lang;
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let labels = st.settings.toolbar_labels;
-    let tool = |ui: &mut egui::Ui, icon, label, enabled| widgets::tool_button(ui, icon, label, enabled, labels);
+    let tool = |ui: &mut egui::Ui, icon, label: &str, name: &str, enabled| widgets::tool_button(ui, icon, label, name, enabled, labels);
     egui::TopBottomPanel::top("toolbar")
         .frame(egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(10, 4)))
         .show(ctx, |ui| {
@@ -72,15 +72,24 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.add_space(52.0);
                 let idle = st.job.is_none();
                 let undo_tip = st.undo.undo_tooltip(t, &st.keymap);
-                if tool(ui, Icon::Undo, t.tr("toolbar.undo.button"), idle && !st.undo.undo.is_empty()).on_hover_text(undo_tip).clicked() {
+                if tool(ui, Icon::Undo, t.tr("toolbar.undo.button"), t.tr("toolbar.undo.name"), idle && !st.undo.undo.is_empty())
+                    .on_hover_text(undo_tip)
+                    .clicked()
+                {
                     msgs.push(Msg::Job(JobMsg::Undo));
                 }
                 let redo_tip = st.undo.redo_tooltip(t, &st.keymap);
-                if tool(ui, Icon::Redo, t.tr("toolbar.redo.button"), idle && !st.undo.redo.is_empty()).on_hover_text(redo_tip).clicked() {
+                if tool(ui, Icon::Redo, t.tr("toolbar.redo.button"), t.tr("toolbar.redo.name"), idle && !st.undo.redo.is_empty())
+                    .on_hover_text(redo_tip)
+                    .clicked()
+                {
                     msgs.push(Msg::Job(JobMsg::Redo));
                 }
                 ui.add_space(6.0);
-                if tool(ui, Icon::Pull, t.tr("toolbar.pull.button"), idle).on_hover_text(t.tr("toolbar.pull.tip")).clicked() {
+                if tool(ui, Icon::Pull, t.tr("toolbar.pull.button"), t.tr("toolbar.pull.name"), idle)
+                    .on_hover_text(t.tr("toolbar.pull.tip"))
+                    .clicked()
+                {
                     msgs.push(Msg::git("Pull", &["pull", "--ff"]));
                 }
                 dropdown(ui, "pull-menu", t.tr("toolbar.pull_menu"), 240.0, |ui| {
@@ -96,7 +105,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         }
                     }
                 });
-                if tool(ui, Icon::Push, t.tr("toolbar.push.button"), idle).clicked() {
+                if tool(ui, Icon::Push, t.tr("toolbar.push.button"), t.tr("toolbar.push.name"), idle).clicked() {
                     msgs.push(Msg::Job(JobMsg::Push { force: false }));
                 }
                 let host = st.forge.as_ref().filter(|f| f.host.is_some());
@@ -117,14 +126,14 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         super::pr_menu_items::push_pr_item(ui, snap, fs, idle, msgs);
                     }
                 });
-                if tool(ui, Icon::Branch, t.tr("toolbar.branch.button"), idle).clicked() {
+                if tool(ui, Icon::Branch, t.tr("toolbar.branch.button"), t.tr("toolbar.branch.name"), idle).clicked() {
                     msgs.push(Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() }));
                 }
-                if tool(ui, Icon::Stash, t.tr("toolbar.stash.button"), idle && snap.is_dirty()).clicked() {
+                if tool(ui, Icon::Stash, t.tr("toolbar.stash.button"), t.tr("toolbar.stash.name"), idle && snap.is_dirty()).clicked() {
                     msgs.push(Msg::git("Stash", &["stash", "push", "-u"]));
                 }
-                if tool(ui, Icon::Pop, t.tr("toolbar.pop.button"), idle && !snap.stashes.is_empty()).clicked() {
-                    msgs.push(Msg::git("Pop stash", &["stash", "pop"]));
+                if tool(ui, Icon::Pop, t.tr("toolbar.pop.button"), t.tr("toolbar.pop.name"), idle && !snap.stashes.is_empty()).clicked() {
+                    msgs.extend(crate::state::stash_confirm::pop_latest(snap));
                 }
                 if let Some(fs) = host {
                     let can_pr = idle && snap.head_branch.is_some();
@@ -135,7 +144,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     } else {
                         t.trf("toolbar.pr.tip_pull_request", &[("service", &service)])
                     };
-                    if tool(ui, Icon::PullRequest, t.tr("toolbar.pr.button"), can_pr).on_hover_text(tip).clicked()
+                    if tool(ui, Icon::PullRequest, t.tr("toolbar.pr.button"), &tip, can_pr).on_hover_text(&tip).clicked()
                         && let Some(b) = &snap.head_branch
                     {
                         msgs.push(Msg::Forge(ForgeMsg::CreatePrDialog { source: b.clone(), target: None }));
@@ -148,30 +157,38 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 ui.add_space(6.0);
                 let tip = terminal_tip(t, &st.keymap, st.terminal.open, st.settings.terminal.open_in_panel);
                 terminal_button(ui, t, st.terminal.open, labels, &tip, super::terminal::right_click_item(t, &st.settings), msgs);
-                if tool(ui, Icon::Folder, t.tr("toolbar.folder.button"), true).clicked() {
+                if tool(ui, Icon::Folder, t.tr("toolbar.folder.button"), t.tr("toolbar.folder.name"), true).clicked() {
                     msgs.push(Msg::OpenFolder(snap.workdir.clone()));
                 }
 
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     let prefs_tip = st.keymap.tip(t.tr("toolbar.settings.tip"), BindingId::Prefs);
-                    if tool(ui, Icon::Gear, t.tr("toolbar.settings.button"), true).on_hover_text(prefs_tip).clicked() {
+                    if tool(ui, Icon::Gear, t.tr("toolbar.settings.button"), t.tr("toolbar.settings.name"), true)
+                        .on_hover_text(prefs_tip)
+                        .clicked()
+                    {
                         msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::General)));
                     }
-                    let pal = tool(ui, Icon::Palette, t.tr("toolbar.commands.button"), true);
                     let palette = t.tr("toolbar.commands.tip");
-                    pal.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, palette));
+                    let pal = tool(ui, Icon::Palette, t.tr("toolbar.commands.button"), palette, true);
                     if pal.on_hover_text(st.keymap.tip(palette, BindingId::Palette)).clicked() {
                         msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
                     }
                     let search_tip = st.keymap.tip(t.tr("toolbar.search.tip"), BindingId::Search);
-                    if tool(ui, Icon::Search, t.tr("toolbar.search.button"), true).on_hover_text(search_tip).clicked() {
+                    if tool(ui, Icon::Search, t.tr("toolbar.search.button"), t.tr("toolbar.search.name"), true)
+                        .on_hover_text(search_tip)
+                        .clicked()
+                    {
                         st.view.show_search = !st.view.show_search;
                     }
-                    if tool(ui, Icon::Activity, t.tr("toolbar.activity.button"), true).clicked() {
+                    if tool(ui, Icon::Activity, t.tr("toolbar.activity.button"), t.tr("toolbar.activity.name"), true).clicked() {
                         st.view.show_log = !st.view.show_log;
                     }
                     let refresh_tip = st.keymap.tip(t.tr("toolbar.refresh.tip"), BindingId::Refresh);
-                    if tool(ui, Icon::Refresh, t.tr("toolbar.refresh.button"), true).on_hover_text(refresh_tip).clicked() {
+                    if tool(ui, Icon::Refresh, t.tr("toolbar.refresh.button"), t.tr("toolbar.refresh.name"), true)
+                        .on_hover_text(refresh_tip)
+                        .clicked()
+                    {
                         msgs.push(Msg::Repo(RepoMsg::Refresh));
                     }
                     ui.add_space(6.0);
@@ -196,9 +213,8 @@ pub(super) fn terminal_tip(t: Lang, keys: &Keymap, open: bool, in_panel: bool) -
 /// Shows or hides the terminal panel; right-click offers `item` (Open in terminal: an external
 /// one, or a new tab in the panel). A bar under the button marks the panel as open.
 fn terminal_button(ui: &mut egui::Ui, t: Lang, open: bool, labels: bool, tip: &str, item: &str, msgs: &mut Vec<Msg>) {
-    let name = t.tr("toolbar.terminal.button");
-    let resp = widgets::tool_button(ui, Icon::Terminal, name, true, labels).on_hover_text(tip);
-    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+    let name = if open { t.tr("toolbar.terminal.name_hide") } else { t.tr("toolbar.terminal.name_show") };
+    let resp = widgets::tool_button(ui, Icon::Terminal, t.tr("toolbar.terminal.button"), name, true, labels).on_hover_text(tip);
     if open {
         let r = resp.rect;
         let bar = egui::Rect::from_min_max(egui::pos2(r.left() + 6.0, r.bottom() - 2.0), egui::pos2(r.right() - 6.0, r.bottom()));

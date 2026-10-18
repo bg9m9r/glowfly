@@ -1,5 +1,5 @@
-//! A chord: modifiers plus one key. Its display text ("Ctrl+Shift+S", "Cmd+," on macOS) and its
-//! settings-file form ("Mod+Shift+S", the same on every system), which `Chord::parse` reads back.
+//! A chord: modifiers plus one key. Its display text ("Ctrl+Shift+S"; "Cmd+," and "Cmd+Option+1"
+//! on macOS, chosen by `KeyLabels`) and its settings-file form ("Mod+Shift+S", the same on every system), which `Chord::parse` reads back.
 
 /// Modifiers of a chord. `command` is Ctrl, or Cmd on macOS ("Mod" in the settings file);
 /// `ctrl` is always the real Ctrl key (Ctrl+Tab).
@@ -140,6 +140,45 @@ impl KeyName {
     }
 }
 
+/// How modifiers are named on screen: PC style ("Ctrl", "Alt") or macOS style ("Cmd", "Option").
+/// The real Ctrl key reads "Ctrl" in both.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum KeyLabels {
+    Pc,
+    Mac,
+}
+
+impl KeyLabels {
+    /// The style of the system Trellis runs on.
+    pub const fn native() -> Self {
+        if cfg!(target_os = "macos") { KeyLabels::Mac } else { KeyLabels::Pc }
+    }
+
+    /// The name of the command modifier ("Mod" in the settings file).
+    pub fn command(self) -> &'static str {
+        match self {
+            KeyLabels::Pc => "Ctrl",
+            KeyLabels::Mac => "Cmd",
+        }
+    }
+
+    /// The name of the Alt key.
+    pub fn alt(self) -> &'static str {
+        match self {
+            KeyLabels::Pc => "Alt",
+            KeyLabels::Mac => "Option",
+        }
+    }
+
+    /// The modifiers that make a key safe to use while typing, as a phrase.
+    pub fn needs_modifier(self) -> &'static str {
+        match self {
+            KeyLabels::Pc => "Ctrl or Alt",
+            KeyLabels::Mac => "Cmd, Ctrl or Option",
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Chord {
     pub mods: Mods,
@@ -175,11 +214,17 @@ impl Chord {
         Self { mods: Mods { ctrl: true, shift: true, ..NONE }, key }
     }
 
-    /// The modifier and key names in display order, e.g. ["Ctrl", "Shift", "S"].
+    /// The modifier and key names in display order on this system, e.g. ["Ctrl", "Shift", "S"].
     pub fn parts(&self) -> Vec<&'static str> {
+        self.parts_in(KeyLabels::native())
+    }
+
+    /// The modifier and key names in display order in style `l`: command, Ctrl, Shift, Alt, then
+    /// the key (["Cmd", "Option", "1"] on macOS).
+    pub fn parts_in(&self, l: KeyLabels) -> Vec<&'static str> {
         let mut out = Vec::new();
         if self.mods.command {
-            out.push(if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" });
+            out.push(l.command());
         }
         if self.mods.ctrl {
             out.push("Ctrl");
@@ -188,15 +233,20 @@ impl Chord {
             out.push("Shift");
         }
         if self.mods.alt {
-            out.push("Alt");
+            out.push(l.alt());
         }
         out.push(self.key.display());
         out
     }
 
-    /// The chord as text, e.g. "Ctrl+Shift+S".
+    /// The chord as text on this system, e.g. "Ctrl+Shift+S".
     pub fn text(&self) -> String {
-        self.parts().join("+")
+        self.text_in(KeyLabels::native())
+    }
+
+    /// The chord as text in style `l`, e.g. "Cmd+Shift+S".
+    pub fn text_in(&self, l: KeyLabels) -> String {
+        self.parts_in(l).join("+")
     }
 
     /// The settings-file form: "Mod", "Ctrl", "Shift" and "Alt" in that order, then the key

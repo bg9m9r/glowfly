@@ -58,10 +58,10 @@ pub(super) fn scratch_repo(name: &str) -> PathBuf {
 }
 
 /// The shortcut `text`, written as Windows and Linux show it, as this system shows it: the
-/// Command modifier reads "Cmd" on macOS (`Chord::parts`). Plain Ctrl chords (Ctrl+`) have
-/// no business going through this.
+/// Command modifier reads "Cmd" and Alt reads "Option" on macOS (`KeyLabels`). Plain Ctrl
+/// chords (Ctrl+`) have no business going through this.
 pub(super) fn keys(text: &str) -> String {
-    if cfg!(target_os = "macos") { text.replacen("Ctrl+", "Cmd+", 1) } else { text.to_owned() }
+    if cfg!(target_os = "macos") { text.replacen("Ctrl+", "Cmd+", 1).replace("Alt+", "Option+") } else { text.to_owned() }
 }
 
 /// Whether `a` and `b` are the same folder on disk (tests compare a fixture's path, which may be

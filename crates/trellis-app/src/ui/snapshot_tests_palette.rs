@@ -5,6 +5,7 @@
 //! renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use super::snapshot_tests_palette_nav::palette_row;
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
@@ -116,8 +117,9 @@ fn palette_more() {
         p.selected = 0;
     }
     h.run();
-    // The toolbar's Refresh button, then the palette's row.
-    assert_eq!(h.query_all_by_label("Refresh").count(), 2);
+    // The palette's row, and the toolbar's button under its own name.
+    palette_row(&h, "Refresh");
+    assert!(h.query_by_label("Refresh the repository").is_some());
     h.press_key(Key::Enter);
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Refresh)))));

@@ -101,3 +101,21 @@ fn file_form_orders_modifiers() {
     assert!(c.has_command_mod() && Chord::alt(KeyName::Up).has_command_mod());
     assert!(!Chord::shift(KeyName::F(7)).has_command_mod());
 }
+
+#[test]
+fn mac_and_pc_labels() {
+    use super::chord::KeyLabels::{self, Mac, Pc};
+    use KeyName as K;
+    assert_eq!(Chord::cmd_alt(K::Digit(1)).text_in(Mac), "Cmd+Option+1");
+    assert_eq!(Chord::alt(K::Down).text_in(Mac), "Option+Down");
+    assert_eq!(Chord::ctrl(K::Tab).text_in(Mac), "Ctrl+Tab");
+    assert_eq!(Chord::cmd_shift(K::Letter('P')).text_in(Mac), "Cmd+Shift+P");
+    assert_eq!(Chord::cmd(K::Comma).text_in(Mac), "Cmd+,");
+    assert_eq!(Chord::cmd_alt(K::Digit(1)).text_in(Pc), "Ctrl+Alt+1");
+    assert_eq!(Chord::alt(K::Down).text_in(Pc), "Alt+Down");
+    assert_eq!(Chord::cmd_shift(K::Letter('P')).text_in(Pc), "Ctrl+Shift+P");
+    assert_eq!(Chord::ctrl(K::Tab).text_in(Pc), "Ctrl+Tab");
+    let m = Chord::cmd_shift(K::Letter('M'));
+    assert_eq!(m.parts_in(Mac), ["Cmd", "Shift", "M"]);
+    assert_eq!(m.text(), m.text_in(KeyLabels::native()));
+}

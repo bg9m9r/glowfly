@@ -1,6 +1,6 @@
 //! The keyboard bindings: every key Trellis answers to, grouped, labelled, and with the place it
 //! works in (`table.rs`), and their ids and settings-file names (`ids.rs`); chords, their
-//! display text and their settings-file form (`chord.rs`); the effective keymap, the defaults
+//! display text (PC or macOS modifier names, `KeyLabels`) and their settings-file form (`chord.rs`); the effective keymap, the defaults
 //! with the user's changes from Preferences > Keyboard (`active.rs`); and the rules for
 //! changing a key (`rebind.rs`). The shortcut matching
 //! (`ui/shortcuts/global.rs`), the sheet, the palette's hints and button tooltips all read the

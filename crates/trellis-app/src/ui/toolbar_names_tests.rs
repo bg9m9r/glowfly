@@ -1,5 +1,6 @@
 //! Accessible names of painted widgets and hint-only fields: every toolbar tool button by its
-//! label (disabled exactly when it can't be used), graph rows by their summary ("// WIP" for
+//! descriptive name (disabled exactly when it can't be used, and never the same as a palette
+//! row's), graph rows by their summary ("// WIP" for
 //! the working tree) and the commit box's fields by their hint. No image comparison.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -7,6 +8,9 @@ use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use trellis_core::settings::ThemeChoice;
 use trellis_core::undo::Action;
+
+const UNDO: &str = "Undo the last action";
+const REDO: &str = "Redo the undone action";
 
 /// Whether the toolbar's button `label` is disabled; panics unless exactly one button has it.
 fn disabled(h: &egui_kittest::Harness<'_, (crate::state::AppState, Vec<crate::msg::Msg>)>, label: &str) -> bool {
@@ -22,12 +26,23 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
     let (dirty, stashed) = (snap.is_dirty(), !snap.stashes.is_empty());
     let mut h = harness(st, true);
     h.run();
-    for label in ["Pull", "Push", "Branch", "Folder", "Settings", "Search", "Activity", "Refresh"] {
+    for label in [
+        "Pull the current branch",
+        "Push the current branch",
+        "Create a branch",
+        "Show the terminal panel",
+        "Open the repository folder",
+        "Open settings",
+        "Command palette",
+        "Show or hide the commit search",
+        "Show or hide the activity log",
+        "Refresh the repository",
+    ] {
         assert!(!disabled(&h, label), "{label}");
     }
-    assert!(disabled(&h, "Undo") && disabled(&h, "Redo"), "nothing to undo or redo yet");
-    assert_eq!(disabled(&h, "Stash"), !dirty);
-    assert_eq!(disabled(&h, "Pop"), !stashed);
+    assert!(disabled(&h, UNDO) && disabled(&h, REDO), "nothing to undo or redo yet");
+    assert_eq!(disabled(&h, "Stash all changes"), !dirty);
+    assert_eq!(disabled(&h, "Pop the latest stash"), !stashed);
     drop(h);
 
     // With something to undo, Undo works.
@@ -38,7 +53,29 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
     st.undo.record(Action::Commit { branch: Some("main".into()), from, to, message: "Last".into(), amend: false });
     let mut h = harness(st, true);
     h.run();
-    assert!(!disabled(&h, "Undo") && disabled(&h, "Redo"));
+    assert!(!disabled(&h, UNDO) && disabled(&h, REDO));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn toolbar_names_differ_from_palette_rows() {
+    let (st, dir) = with_repo(ThemeChoice::Dark, "toolbar-palette-names");
+    let rows: Vec<String> = crate::state::palette::shown(&st, "").into_iter().map(|s| s.entry.label).collect();
+    let mut h = harness(st, true);
+    h.run();
+    let bar = eframe::egui::containers::panel::PanelState::load(&h.ctx, eframe::egui::Id::new("toolbar")).expect("the toolbar").rect;
+    let names: Vec<String> = h
+        .query_all_by_role(Role::Button)
+        .filter(|n| {
+            n.raw_bounds().is_some_and(|b| bar.contains(eframe::egui::pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32)))
+        })
+        .filter_map(|n| n.label())
+        .collect();
+    assert!(names.contains(&"Refresh the repository".to_owned()), "{names:?}");
+    for name in &names {
+        assert!(!rows.contains(name), "{name:?} is both a toolbar button and a palette row");
+    }
     drop(h);
     remove_fixture(&dir);
 }

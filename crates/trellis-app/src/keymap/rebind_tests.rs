@@ -1,6 +1,7 @@
 //! The rebinding rules: which places overlap, folding Ctrl into Mod, which keys are refused,
 //! clashes with fixed and rebindable bindings, Swap, Add and Reset.
 
+use super::chord::KeyLabels;
 use super::rebind::Refusal;
 use super::*;
 
@@ -140,4 +141,12 @@ fn reset_takes_its_keys_back() {
     assert_eq!(k.chords(I::NewTab), [t]);
     assert_eq!(k.chords(I::Refresh), [Chord::plain(K::F(5))]);
     assert!(reset_taking(&mut k, I::NewTab, true).is_empty());
+}
+
+#[test]
+fn needs_modifier_names_the_modifiers_of_each_style() {
+    let q = Chord::plain(K::Letter('Q'));
+    assert!(Refusal::NeedsModifier.text_in(q, KeyLabels::Mac).contains("Cmd, Ctrl or Option"));
+    assert!(Refusal::NeedsModifier.text_in(q, KeyLabels::Pc).contains("Ctrl or Alt"));
+    assert_eq!(Refusal::NeedsModifier.text(q), Refusal::NeedsModifier.text_in(q, KeyLabels::native()));
 }

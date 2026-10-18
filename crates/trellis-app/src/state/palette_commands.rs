@@ -163,7 +163,7 @@ pub enum PaletteCommand {
         remote: String,
         branch: String,
     },
-    /// `git checkout refs/tags/<name>`: the tagged commit, detached.
+    /// `TagMsg::Checkout`: the tagged commit, detached.
     CheckoutTag(String),
     OpenRecent(PathBuf),
     /// Copy a trellis:// link to the repository or a branch.

@@ -274,6 +274,9 @@ pub struct Settings {
     /// Push a new tag to a remote right after creating it (New tag dialog checkbox).
     #[serde(default)]
     pub push_new_tags: bool,
+    /// The one-time detached-HEAD notice after a tag checkout has been shown.
+    #[serde(default)]
+    pub detached_head_warned: bool,
     /// Delete… moves files to the OS trash instead of removing them (Preferences > General).
     pub delete_to_trash: bool,
 
@@ -402,6 +405,7 @@ impl Default for Settings {
             push_after_commit: false,
             stage_renames: true,
             push_new_tags: false,
+            detached_head_warned: false,
             delete_to_trash: true,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),

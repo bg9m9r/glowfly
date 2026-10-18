@@ -28,6 +28,7 @@ pub(super) fn handle(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
         TagMsg::DeleteRemote { tag, remotes } => start_remote(st, RemoteTagOp::Delete, tag, remotes, fx),
         TagMsg::OpenAnnotate { tag } => super::tag_annotate::open(st, tag),
         TagMsg::Annotate { tag, at, message } => super::tag_annotate::annotate(st, &tag, &at, &message, fx),
+        TagMsg::Checkout { tag } => super::tag_checkout::checkout(st, tag, fx),
     }
 }
 

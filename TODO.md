@@ -348,6 +348,9 @@ Done except the group colors, which wait on repository groups in the repository 
   The list shows at most 200 rows; typing more narrows the rest. A Commands button in the
   toolbar opens the palette. The last 10 plain commands run from it (per session) are listed
   first for an empty query, and break ties between equally good matches for a typed one.
+  PgUp/PgDn move a page, Ctrl+Home/End (and Home/End with an empty query) go to the ends, and
+  the row under a moving mouse is selected. Applying or popping a stash on top of uncommitted
+  changes asks first.
   - [x] File finder: pick any tracked file to open its history or blame it
   - [x] Create tag and annotated tag
     - [x] Check tag names live in the New tag dialog (ref-format rules, an existing tag)
@@ -720,18 +723,6 @@ follow-ups go to Ideas, not here.
   repository
 - Hold Publish and other jobs that run in a different untrusted repository than the active one,
   using that repository's own decision
-
-### Command palette (fuzzy finder)
-
-- Push an existing tag to a remote from the sidebar TAGS menu and the graph's tag labels
-- Cmd-style labels on macOS for the shortcut hints and tooltips
-- Name the tag in the log after a tag checkout, and warn once that commits made while detached
-  can be lost
-- Accessible labels for every toolbar button, once tests no longer look up palette rows by bare
-  labels such as Refresh or Push
-- Confirm before applying or popping a stash on top of uncommitted changes, in the palette and
-  the sidebar alike
-- PageUp/PageDown/Home/End in the list, and the selection following the mouse
 
 ### Keyboard shortcuts
 
@@ -1252,11 +1243,23 @@ here, under the item they grew from.
 - An entry to clear the recent-commands list
 - Commands: syntax highlighting on/off (re-highlighting the open diff when flipped), show the
   working directory changes (select the WIP row), diff mode (whole file / hunks) toggle
-- Share one stash-action message builder between the sidebar and the palette
 - Refresh an open stash sub-list's rows when the stash stack changes while it is shown
   (choosing a stash already finds it again by its commit)
 - Apply or pop with `--index` to restore the staged state
 - Create, delete and edit files from the palette
+- The one-time detached-HEAD notice also for checking out a commit or a remote branch detached
+  (graph and commit menus)
+- A Preferences control to show the detached-HEAD notice again
+- macOS modifier symbols painted as shapes in the key caps (the bundled fonts lack the glyphs)
+- The toolbar buttons' keys also exposed as the accessibility keyboard-shortcut property
+- Accessible names that say what the repository and branch pickers are ("Repository: <name>")
+- The stash-apply question lists the files both the stash and the working tree change, and
+  says nothing when they don't overlap
+- A refusal with a clear reason, instead of a question, when the index has conflicts (git
+  can't apply a stash then)
+- The toolbar Pop and the palette's Pop stash name the stash by position and commit like the
+  sidebar does (stash@{0} with the revision guard)
+- Footer text listing the PgUp/PgDn and Home/End keys
 
 ### Keyboard shortcuts
 

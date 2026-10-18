@@ -131,6 +131,7 @@ fn tag_entries_check_out_detached() {
     let (cmds, record) = run_git(&run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::CheckoutTag("v1.0".into())))));
     assert_eq!(cmds, vec![args(&["checkout", "refs/tags/v1.0"])]);
     assert_eq!(record, Some(UndoKind::Checkout));
+    assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Checkout tag v1.0"), "through TagMsg::Checkout");
     st.job = None;
 
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::CheckoutTag("v1.0".into()))));

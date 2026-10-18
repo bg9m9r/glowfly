@@ -306,9 +306,38 @@ impl Journey {
 
     // ---- what a user does often
 
+    /// Runs a command from the palette: opens it, types `query` and clicks the row `row`.
+    #[track_caller]
+    pub fn run_command(&mut self, query: &str, row: &str) {
+        self.open_palette(query);
+        self.click(row, Region::Palette, Pick::Only);
+    }
+
+    /// Presses the palette's key and types `query` into its field.
+    #[track_caller]
+    pub fn open_palette(&mut self, query: &str) {
+        self.toasts.clear();
+        let chord = self.state().keymap.chords(crate::keymap::BindingId::Palette)[0];
+        let key = egui::Key::from_name(chord.key.config()).expect("the palette's key is an egui key");
+        let (m, mac) = (chord.mods, cfg!(target_os = "macos"));
+        let command = egui::Modifiers { ctrl: !mac, mac_cmd: mac, command: true, ..egui::Modifiers::NONE };
+        let mut modifiers = if m.command { command } else { egui::Modifiers::NONE };
+        modifiers.ctrl |= m.ctrl;
+        (modifiers.shift, modifiers.alt) = (m.shift, m.alt);
+        self.h.press_key_modifiers(modifiers, key);
+        self.settle();
+        {
+            let Some(node) = find::field_in(&self.h, Region::Palette) else {
+                panic!("{}", self.missing("text field", "palette search", Region::Palette, Pick::First))
+            };
+            node.type_text(query);
+        }
+        self.settle();
+    }
+
     /// Refresh in the toolbar, as after editing files outside the app.
     pub fn refresh(&mut self) {
-        self.click("Refresh", Region::Toolbar, Pick::Only);
+        self.click("Refresh the repository", Region::Toolbar, Pick::Only);
     }
 
     /// Selects the working tree's row in the graph.

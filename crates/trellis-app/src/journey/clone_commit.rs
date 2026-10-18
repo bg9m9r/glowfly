@@ -73,7 +73,7 @@ fn clone_stage_commit_push_pull() {
     j.see("Edit notes and add a todo list", Region::Central);
 
     // step 6: push to the bare remote.
-    j.click("Push", Region::Toolbar, Pick::Only);
+    j.click("Push the current branch", Region::Toolbar, Pick::Only);
     j.toast(true, "Push succeeded");
     assert_eq!(disk::remote_oid(&bare, "main"), Some(head));
 
@@ -82,7 +82,7 @@ fn clone_stage_commit_push_pull() {
     j.fx.clone_cli(&bare, &other);
     commit_files(&other, &[("remote.txt", "from elsewhere\n")], "Add remote.txt");
     git(&other, &["push", "-q", "origin", "main"]);
-    j.click("Pull", Region::Toolbar, Pick::Only);
+    j.click("Pull the current branch", Region::Toolbar, Pick::Only);
     j.toast(true, "Pull succeeded");
     assert_eq!(Some(disk::head_oid(&clone)), disk::remote_oid(&bare, "main"));
     assert_eq!(disk::work_text(&clone, "remote.txt").as_deref(), Some("from elsewhere\n"));

@@ -38,8 +38,8 @@ fn undo_created_branch() {
     assert!(h.query_by_label("Undo checkout of new branch feature/search").is_some());
     assert!(h.query_by_label("Switches back to main.").is_some());
     h.check_snapshot("undo_created_branch");
-    // The dialog's button, drawn after the toolbar's Undo.
-    h.get_all_by_label("Undo").last().unwrap().click();
+    // The dialog's button (the toolbar's is "Undo the last action").
+    h.get_by_label("Undo").click();
     h.run();
     assert!(pushed(&h, &undo_sent(true)));
     drop(h);
@@ -55,8 +55,8 @@ fn undo_created_branch_unticked() {
     h.run();
     assert!(matches!(&h.state().0.modal, Some(Modal::UndoCreated(f)) if !f.delete));
     h.check_snapshot("undo_created_branch_light");
-    // The dialog's button, drawn after the toolbar's Undo.
-    h.get_all_by_label("Undo").last().unwrap().click();
+    // The dialog's button (the toolbar's is "Undo the last action").
+    h.get_by_label("Undo").click();
     h.run();
     assert!(pushed(&h, &undo_sent(false)));
     drop(h);

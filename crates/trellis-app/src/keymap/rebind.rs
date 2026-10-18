@@ -3,7 +3,7 @@
 //! read a `Keymap` and say what to change.
 
 use super::active::{Keymap, answers};
-use super::chord::{Chord, KeyName};
+use super::chord::{Chord, KeyLabels, KeyName};
 use super::ids::BindingId;
 use super::table::{BINDINGS, Binding, When, binding};
 
@@ -47,15 +47,17 @@ pub enum Refusal {
 impl Refusal {
     /// The sentence Preferences shows under the row.
     pub fn text(self, c: Chord) -> String {
-        let key = c.text();
+        self.text_in(c, KeyLabels::native())
+    }
+
+    /// The sentence in key-label style `l`.
+    pub fn text_in(self, c: Chord, l: KeyLabels) -> String {
+        let key = c.text_in(l);
         match self {
             Refusal::Reserved if c.key == KeyName::Escape => format!("{key} can't be used: Esc cancels and closes things"),
             Refusal::Reserved => format!("{key} can't be used: it is kept for typing and moving around"),
             Refusal::ClipboardKey => format!("{key} can't be used: it is used for copy, cut, paste and select all"),
-            Refusal::NeedsModifier => {
-                let mods = if cfg!(target_os = "macos") { "Cmd, Ctrl or Alt" } else { "Ctrl or Alt" };
-                format!("{key} needs {mods}: this key also works while typing")
-            }
+            Refusal::NeedsModifier => format!("{key} needs {}: this key also works while typing", l.needs_modifier()),
         }
     }
 }

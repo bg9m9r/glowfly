@@ -1,4 +1,5 @@
-//! Renaming a stash: the STASHES row menu with Rename…, the Rename stash dialog (prefilled from a
+//! The STASHES row menu: Apply and Pop asking first on top of uncommitted changes (and the
+//! question's dialog) but not on a clean tree. Renaming a stash: Rename…, the Rename stash dialog (prefilled from a
 //! WIP entry, blank in the light theme, waiting while a job runs) and the palette's rename
 //! sub-list. The made-up stashes of `snapshot_tests_palette_stash` are injected into the shared
 //! fixture's snapshot so the images are deterministic.
@@ -8,7 +9,8 @@ use super::snapshot_tests_palette_stash::fixture_stashes;
 use super::snapshot_tests_remotes::running;
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::{Msg, StashMsg};
+use crate::msg::{JobMsg, Msg, StashMsg};
+use crate::state::palette::StashAction;
 use crate::state::palette::{Mode, Palette, Pick};
 use crate::state::stashes::RenameStashForm;
 use crate::state::{AppState, Modal};
@@ -60,14 +62,60 @@ fn stash_menu() {
     h.run();
     open_menu(&mut h, "On main: login form tweaks");
     for item in ["Apply", "Pop", "Rename…", "Delete"] {
-        // The toolbar has a Pop button too.
-        let want = if item == "Pop" { 2 } else { 1 };
-        assert_eq!(h.query_all_by_label(item).count(), want, "{item}");
+        // The toolbar's Pop is "Pop the latest stash".
+        assert_eq!(h.query_all_by_label(item).count(), 1, "{item}");
     }
     h.check_snapshot("stash_menu");
     h.get_by_label("Rename…").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Stash(StashMsg::RenameDialog { oid: o }) if *o == oid)));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn stash_menu_asks_on_a_dirty_tree() {
+    let (st, dir) = with_stashes(ThemeChoice::Dark, "stash-menu-dirty");
+    assert!(st.snap.as_ref().unwrap().is_dirty(), "the fixture has local changes");
+    let row = st.snap.as_ref().unwrap().stashes[0].message.clone();
+    let mut h = harness(st, true);
+    h.run();
+    for (item, title) in [("Apply", "Apply stash"), ("Pop", "Pop stash")] {
+        open_menu(&mut h, &row);
+        h.get_by_label(item).click();
+        h.run();
+        assert!(pushed(&h, &|m| matches!(m, Msg::Confirm { title: t, .. } if t == title)), "{item} asks first");
+        h.state_mut().1.clear();
+    }
+    drop(h);
+
+    // On a clean tree Apply runs straight away.
+    let (mut st, dir2) = with_stashes(ThemeChoice::Dark, "stash-menu-clean");
+    let snap = st.snap.as_mut().unwrap();
+    (snap.unstaged, snap.staged) = (Vec::new(), Vec::new());
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h, &row);
+    h.get_by_label("Apply").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Job(JobMsg::Stash { action: StashAction::Apply, index: 0, .. }))));
+    assert!(!pushed(&h, &|m| matches!(m, Msg::Confirm { .. })));
+    drop(h);
+    remove_fixture(&dir);
+    remove_fixture(&dir2);
+}
+
+#[test]
+fn stash_apply_confirm_light() {
+    let (mut st, dir) = with_stashes(ThemeChoice::Light, "stash-apply-confirm");
+    let snap = st.snap.as_ref().unwrap();
+    let msg = crate::state::stash_confirm::stash_msg(snap, StashAction::Apply, &snap.stashes[0]);
+    let Msg::Confirm { title, body, button, then } = msg else { panic!("a confirmation on a dirty tree") };
+    st.modal = Some(Modal::Confirm { title, body, button, then });
+    let mut h = harness(st, false);
+    h.run();
+    assert!(h.query_by_label_contains("on top of your uncommitted changes").is_some());
+    h.check_snapshot("stash_apply_confirm_light");
     drop(h);
     remove_fixture(&dir);
 }

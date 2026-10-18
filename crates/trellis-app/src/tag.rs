@@ -22,6 +22,9 @@ pub enum TagMsg {
     /// From the Annotate dialog: replaces `tag` with an annotated tag at `at` (a full sha)
     /// carrying `message`.
     Annotate { tag: String, at: String, message: String },
+    /// Checks out tag `tag` detached (`git checkout refs/tags/<tag>`), from the TAGS menu, the
+    /// graph's tag labels and the palette.
+    Checkout { tag: String },
 }
 
 impl TagMsg {
@@ -35,7 +38,8 @@ impl TagMsg {
             | Self::CreateTag { .. }
             | Self::SetPushNewTags(..)
             | Self::OpenAnnotate { .. }
-            | Self::Annotate { .. } => None,
+            | Self::Annotate { .. }
+            | Self::Checkout { .. } => None,
         }
     }
 }

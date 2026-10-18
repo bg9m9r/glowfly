@@ -226,6 +226,17 @@ fn push_new_tags_defaults_off() {
 }
 
 #[test]
+fn detached_head_notice_defaults_unshown() {
+    assert!(!Settings::default().detached_head_warned);
+    // Files written before the notice existed show it once.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.detached_head_warned);
+    let shown = Settings { detached_head_warned: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&shown).unwrap()).unwrap();
+    assert!(back.detached_head_warned);
+}
+
+#[test]
 fn delete_to_trash_defaults_on() {
     // Files written before the preference existed move deleted files to the trash.
     let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();

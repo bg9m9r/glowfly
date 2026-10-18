@@ -153,6 +153,8 @@ pub(super) mod palette_folder_tests;
 pub(super) mod palette_issue_tests;
 #[path = "palette_more_tests.rs"]
 pub(super) mod palette_more_tests;
+#[path = "palette_nav_tests.rs"]
+pub(super) mod palette_nav_tests;
 #[path = "palette_pick_tests.rs"]
 pub(super) mod palette_pick_tests;
 #[path = "palette_profile_tests.rs"]
@@ -263,6 +265,8 @@ pub(super) mod ssh_tests;
 pub(super) mod ssh_use_agent_tests;
 #[path = "ssh_use_tests.rs"]
 pub(super) mod ssh_use_tests;
+#[path = "stash_confirm_tests.rs"]
+pub(super) mod stash_confirm_tests;
 #[path = "stash_push_tests.rs"]
 pub(super) mod stash_push_tests;
 #[path = "stash_rename_tests.rs"]
@@ -289,6 +293,8 @@ pub(super) mod tabs_close_tests;
 pub(super) mod tabs_tests;
 #[path = "tag_annotate_tests.rs"]
 pub(super) mod tag_annotate_tests;
+#[path = "tag_checkout_tests.rs"]
+pub(super) mod tag_checkout_tests;
 #[path = "tag_remote_tests.rs"]
 pub(super) mod tag_remote_tests;
 #[path = "tag_tests.rs"]

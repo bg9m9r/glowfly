@@ -47,6 +47,7 @@ pub mod palette;
 pub mod palette_commands;
 pub mod palette_files;
 pub mod palette_kinds;
+pub mod palette_nav;
 pub mod palette_onboarding;
 pub mod palette_profiles;
 pub mod palette_recent;
@@ -90,6 +91,7 @@ pub mod sparse;
 pub mod ssh;
 pub mod ssh_service;
 pub mod ssh_use;
+pub mod stash_confirm;
 pub mod stashes;
 pub mod submodules;
 pub mod tab_groups;
@@ -405,6 +407,7 @@ pub struct AppState {
     pub gitflow_finish: Option<gitflow::FinishJob>,
     /// The running remote tag push or delete (update/tags.rs), for its headline.
     pub tag_job: Option<tags::RemoteTagJob>,
+    pub tag_checkout: Option<tags::TagCheckoutJob>,
     /// The running Apply patch job (update/patch.rs), for its headline.
     pub patch_apply: Option<patch::PendingApply>,
     /// The trellis:// link being opened and the scheme registration (global).
@@ -501,6 +504,7 @@ impl AppState {
             terminal,
             gitflow_finish: None,
             tag_job: None,
+            tag_checkout: None,
             patch_apply: None,
             deep_link: Default::default(),
             profile_switch: None,
