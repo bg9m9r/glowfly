@@ -1,6 +1,7 @@
 //! Planning an undo or redo: checking the repository still matches the recorded action and
 //! choosing the git commands (or file write) that reverse or re-apply it. Branches and tags are
-//! planned in `refs.rs`, merges and the like in `moved.rs`, stashes in `stash.rs`.
+//! planned in `refs.rs`, merges and the like in `moved.rs`, stashes (also dropped ones) in
+//! `stash.rs`.
 
 use super::record::{head, ref_exists};
 use super::{Action, HeadPos, Options, Plan, Refusal, discard_command, moved, refs, reset, saved, stash};
@@ -77,8 +78,14 @@ pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
 pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> Result<Plan> {
     // Only one file's bytes change, so a merge or rebase in progress doesn't matter.
     match action {
-        Action::Discard { path, before, after } => return saved::plan(workdir, path, *before, *after, redo, "discarded"),
+        Action::Discard { path, before, after, .. } => return saved::plan(workdir, path, *before, *after, redo, "discarded"),
         Action::Restore { path, before, after, .. } => return saved::plan(workdir, path, *before, *after, redo, "overwritten"),
+        // A stash store or drop touches no HEAD, index or file, so an operation in progress
+        // doesn't matter either.
+        Action::StashDrop { .. } => {
+            let repo = Repository::open(workdir)?;
+            return stash::plan_drop(workdir, &repo, action, redo);
+        }
         _ => {}
     }
     let repo = Repository::open(workdir)?;
@@ -169,6 +176,6 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
                 None => stale("The discarded-changes stash was dropped"),
             }
         }
-        Action::Discard { .. } | Action::Restore { .. } => unreachable!("planned above"),
+        Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } => unreachable!("planned above"),
     })
 }

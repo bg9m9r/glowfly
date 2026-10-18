@@ -677,12 +677,6 @@ ideas that grew out of each item and grouped by that item. They are not tracked 
 checkboxes; they are built after the open items above, roughly in this order. New
 follow-ups go to Ideas, not here.
 
-### Undo / Redo
-
-- Undo per-file, per-hunk and per-line discard (needs a safety stash or blob backup first)
-- Undo of a merge, cherry-pick or revert finished with --continue after conflicts
-- Undo of stash drop (put the dropped commit back with `stash store`)
-
 ### Diff viewer upgrade
 
 - Keep parse states per hunk across reloads (or checkpoint states by line), so staging one hunk
@@ -999,8 +993,18 @@ here, under the item they grew from.
 - Undo of branch rename and of the new branch made by `worktree add -b`
 - Undo of a Git Flow start or finish as one step
 - Roll back the remote-tracking refs a pull fetched when undoing it
-- Restore a popped stash at its original position in the list instead of at the top
+- Restore a popped or dropped stash at its original position in the list instead of at the top
 - Undo of a pop or apply onto a working tree that already had changes
+- Keep the undo history across merge, cherry-pick and revert `--abort` (HEAD goes back to where
+  the operation started)
+- Show the in-progress banner with Continue for a pick or revert sequence whose stopped commit
+  was committed from the commit box (libgit2 reports that state as clean)
+- Name the picked or reverted commits in the undo label of a sequence finished after conflicts
+  (it now says N commits)
+- Undo of a merge, cherry-pick or revert continued in the terminal panel or outside Trellis
+- Undo of discarding an untracked file or a symbolic link (only regular files are saved for undo)
+- Undo of a stash drop across restarts, by finding the dropped commit in the stash reflog or with
+  fsck
 
 ### Diff viewer upgrade
 

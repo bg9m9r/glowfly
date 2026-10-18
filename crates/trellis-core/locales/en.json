@@ -127,7 +127,7 @@
   "finder.truncated": "Stopped after looking in {max} folders. Add a folder closer to your repositories.",
   "finder.unreadable": "can't be read: {error}",
   "menu.common.no_repo": "Open a repository first",
-  "menu.edit.cant_undo": "Can't undo {label}: only checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, creating or deleting a branch or tag, stash, pop, apply, discards and file restores can be undone",
+  "menu.edit.cant_undo": "Can't undo {label}: only checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, creating or deleting a branch or tag, stash, pop, apply, drop, discards and file restores can be undone",
   "menu.edit.copy_branch": "Copy branch name",
   "menu.edit.copy_message": "Copy commit message",
   "menu.edit.copy_sha": "Copy commit SHA",

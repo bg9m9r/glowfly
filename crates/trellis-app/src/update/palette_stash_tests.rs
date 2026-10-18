@@ -14,6 +14,7 @@ use crate::state::palette::{InputKind, Items, Mode, Pick, PickKind, StashAction,
 use crate::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
+use trellis_core::undo::Action;
 
 const WITH_MESSAGE: &str = "Stash with message…";
 const CHOOSERS: [&str; 3] = ["Apply stash…", "Pop stash…", "Delete stash…"];
@@ -231,13 +232,14 @@ fn delete_chosen_stash_confirms() {
     let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("no confirmation") };
     assert_eq!(title, "Delete stash");
     assert_eq!(button, "Delete");
-    assert!(body.contains("On main: first") && body.contains("cannot be undone"), "{body}");
+    assert!(body.contains("On main: first") && body.contains("Undo brings it back"), "{body}");
     let first = st.snap.as_ref().unwrap().stashes[1].oid;
     assert!(
         matches!(then.as_ref(), Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid }) if *oid == first),
         "the confirmation doesn't drop the stash"
     );
     drive(&mut st, Msg::ConfirmAccepted);
+    assert!(matches!(st.undo.undo.last(), Some(Action::StashDrop { stash, .. }) if *stash == first), "{:?}", st.undo.undo);
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 1);
     assert!(snap.stashes[0].message.contains("second"));

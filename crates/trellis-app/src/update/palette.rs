@@ -337,7 +337,7 @@ fn mark_conflicted(paths: Vec<String>) -> Msg {
 fn stash_msg(action: StashAction, s: &StashInfo) -> Msg {
     let git = Msg::Job(JobMsg::Stash { action, index: s.index, oid: s.oid });
     match action {
-        StashAction::Drop => Msg::confirm("Delete stash", format!("Delete \"{}\"? This cannot be undone.", s.message), "Delete", git),
+        StashAction::Drop => Msg::confirm("Delete stash", crate::state::stashes::drop_confirm_body(&s.message), "Delete", git),
         StashAction::Apply | StashAction::Pop => git,
     }
 }

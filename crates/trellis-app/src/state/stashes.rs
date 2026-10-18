@@ -6,6 +6,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use trellis_core::repo::{FileEntry, Snapshot, StashInfo};
 use trellis_core::stash_ops::{StashScope, edited_message, split_message};
 
+/// The question before dropping the stash listed as `message` (sidebar STASHES menu and palette).
+pub fn drop_confirm_body(message: &str) -> String {
+    format!("Delete \"{message}\"? Undo brings it back while this tab is open.")
+}
+
 /// Why a stash can't run: nothing has changed.
 pub const NOTHING: &str = "There are no changes to stash.";
 /// Why a stash can't run: git can't stash with unmerged index entries.

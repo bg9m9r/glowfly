@@ -31,7 +31,7 @@ fn undo_brings_a_discarded_file_back_byte_for_byte() {
     let dir = base("sv-file");
     let edited: &[u8] = b"one\r\ntwo changed\r\n\xff no newline";
     std::fs::write(dir.join("f.txt"), edited).unwrap();
-    let a = discard_saving(&dir, "f.txt", || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
+    let a = discard_saving(&dir, "f.txt", Discarded::File, || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
     assert_eq!(a.describe(), "discard in f.txt");
     assert_eq!(read(&dir, "f.txt").unwrap(), b"one\ntwo\n");
 
@@ -46,7 +46,7 @@ fn undo_brings_a_discarded_file_back_byte_for_byte() {
 fn undo_of_a_discarded_deletion_deletes_again() {
     let dir = base("sv-deleted");
     std::fs::remove_file(dir.join("f.txt")).unwrap();
-    let a = discard_saving(&dir, "f.txt", || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
+    let a = discard_saving(&dir, "f.txt", Discarded::File, || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
     assert!(read(&dir, "f.txt").is_some(), "the discard restored it");
     apply(&dir, &a, false);
     assert!(read(&dir, "f.txt").is_none());
@@ -58,7 +58,9 @@ fn undo_of_a_hunk_discard() {
     let dir = base("sv-hunk");
     write(&dir, "f.txt", "one\ntwo\nthree\n");
     let d = repo::load_diff(&dir, &DiffTarget::Unstaged("f.txt".into())).unwrap();
-    let a = discard_saving(&dir, "f.txt", || repo::apply_hunk(&dir, "f.txt", 0, &d.hunks[0], HunkOp::Discard)).unwrap().unwrap();
+    let a = discard_saving(&dir, "f.txt", Discarded::Hunk, || repo::apply_hunk(&dir, "f.txt", 0, &d.hunks[0], HunkOp::Discard))
+        .unwrap()
+        .unwrap();
     assert_eq!(read(&dir, "f.txt").unwrap(), b"one\ntwo\n");
     apply(&dir, &a, false);
     assert_eq!(read(&dir, "f.txt").unwrap(), b"one\ntwo\nthree\n");
@@ -66,10 +68,101 @@ fn undo_of_a_hunk_discard() {
 }
 
 #[test]
+fn undo_and_redo_of_a_line_discard() {
+    let dir = scratch_repo("sv-lines");
+    write(
+        &dir, "f.txt", "one
+",
+    );
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    write(
+        &dir,
+        "f.txt",
+        "one
+two
+three
+",
+    );
+    let d = repo::load_diff(&dir, &DiffTarget::Unstaged("f.txt".into())).unwrap();
+    let h = &d.hunks[0];
+    let two = h.lines.iter().position(|l| l.origin == '+' && l.text == "two").expect("a +two line");
+    let discard = || repo::apply_lines(&dir, "f.txt", 0, h, &[two], HunkOp::Discard);
+    let a = discard_saving(&dir, "f.txt", Discarded::Lines(1), discard).unwrap().expect("undoable");
+    assert_eq!(a.describe(), "discard of 1 line in f.txt");
+    assert_eq!(
+        read(&dir, "f.txt").unwrap(),
+        b"one
+three
+"
+    );
+
+    apply(&dir, &a, false);
+    assert_eq!(
+        read(&dir, "f.txt").unwrap(),
+        b"one
+two
+three
+"
+    );
+    apply(&dir, &a, true);
+    assert_eq!(
+        read(&dir, "f.txt").unwrap(),
+        b"one
+three
+"
+    );
+    assert_eq!(a.wrote(true), "Discarded the lines in f.txt again");
+    assert_eq!(a.wrote(false), "Restored f.txt");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_hunk_discard_redo_is_refused_when_the_file_changed() {
+    let dir = base("sv-hunk-redo");
+    write(
+        &dir,
+        "f.txt",
+        "one
+two
+three
+",
+    );
+    let d = repo::load_diff(&dir, &DiffTarget::Unstaged("f.txt".into())).unwrap();
+    let discard = || repo::apply_hunk(&dir, "f.txt", 0, &d.hunks[0], HunkOp::Discard);
+    let a = discard_saving(&dir, "f.txt", Discarded::Hunk, discard).unwrap().unwrap();
+    assert_eq!(a.describe(), "discard of a hunk in f.txt");
+    assert_eq!(a.wrote(true), "Discarded the hunk in f.txt again");
+    apply(&dir, &a, false);
+    write(
+        &dir,
+        "f.txt",
+        "one
+two
+three
+four
+",
+    );
+    let Plan::Refuse(r) = plan(&dir, &a, true).unwrap() else { panic!("expected a refusal") };
+    assert!(r.is_stale() && r.message().contains("f.txt has changed since"), "{r:?}");
+    assert_eq!(
+        read(&dir, "f.txt").unwrap(),
+        b"one
+two
+three
+four
+"
+    );
+    let file = Action::Discard { path: "f.txt".into(), what: Discarded::File, before: None, after: None };
+    assert_eq!(file.wrote(true), "Discarded the changes in f.txt");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_file_edited_since_is_not_overwritten() {
     let dir = base("sv-edited");
     write(&dir, "f.txt", "lost?\n");
-    let a = discard_saving(&dir, "f.txt", || repo::discard_file(&dir, "f.txt")).unwrap().unwrap();
+    let a = discard_saving(&dir, "f.txt", Discarded::File, || repo::discard_file(&dir, "f.txt")).unwrap().unwrap();
     write(&dir, "f.txt", "newer work\n");
     let Plan::Refuse(r) = plan(&dir, &a, false).unwrap() else { panic!("expected a refusal") };
     assert!(r.is_stale() && r.message().contains("f.txt has changed since"), "{r:?}");
@@ -83,9 +176,9 @@ fn a_file_edited_since_is_not_overwritten() {
 #[test]
 fn nothing_to_undo_when_nothing_changed_or_the_discard_failed() {
     let dir = base("sv-noop");
-    assert_eq!(discard_saving(&dir, "f.txt", || repo::discard_file(&dir, "f.txt")).unwrap(), None);
+    assert_eq!(discard_saving(&dir, "f.txt", Discarded::File, || repo::discard_file(&dir, "f.txt")).unwrap(), None);
     write(&dir, "f.txt", "kept\n");
-    let failed = discard_saving(&dir, "f.txt", || Err(crate::error::Error::Other("no".into())));
+    let failed = discard_saving(&dir, "f.txt", Discarded::File, || Err(crate::error::Error::Other("no".into())));
     assert!(failed.is_err());
     assert_eq!(read(&dir, "f.txt").unwrap(), b"kept\n");
     let _ = std::fs::remove_dir_all(&dir);
@@ -103,7 +196,7 @@ fn undo_and_redo_replace_a_read_only_file() {
     let dir = base("sv-readonly");
     let f = dir.join("f.txt");
     std::fs::write(&f, "edited\n").unwrap();
-    let a = discard_saving(&dir, "f.txt", || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
+    let a = discard_saving(&dir, "f.txt", Discarded::File, || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
     // Read-only by the time of the undo (a tool or the user marked it so).
     set_readonly(&f, true);
     apply(&dir, &a, false);
@@ -120,7 +213,7 @@ fn undo_deletes_a_read_only_file() {
     let dir = base("sv-readonly-delete");
     let f = dir.join("f.txt");
     std::fs::remove_file(&f).unwrap();
-    let a = discard_saving(&dir, "f.txt", || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
+    let a = discard_saving(&dir, "f.txt", Discarded::File, || repo::discard_file(&dir, "f.txt")).unwrap().expect("undoable");
     set_readonly(&f, true);
     apply(&dir, &a, false);
     assert!(read(&dir, "f.txt").is_none());

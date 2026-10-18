@@ -287,6 +287,10 @@ pub(super) mod trust_held_tab_tests;
 pub(super) mod trust_held_tests;
 #[path = "trust_tests.rs"]
 pub(super) mod trust_tests;
+#[path = "undo_continue_tests.rs"]
+pub(super) mod undo_continue_tests;
+#[path = "undo_discard_tests.rs"]
+pub(super) mod undo_discard_tests;
 #[path = "undo_ops_tests.rs"]
 pub(super) mod undo_ops_tests;
 #[path = "undo_refs_tests.rs"]

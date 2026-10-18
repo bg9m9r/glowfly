@@ -7,7 +7,9 @@
 //! state around an operation, and `planning` decides how to reverse it, with `refs` (branches and
 //! tags), `moved` (merge, pull, cherry-pick, revert, rebase), `stash`, `reset` and `saved`.
 //! Rebases, also interactive ones and graph edits, are recorded around their run instead
-//! (`rebased.rs`): they finish in steps, possibly outside Trellis.
+//! (`rebased.rs`): they finish in steps, possibly outside Trellis. A merge, cherry-pick or revert
+//! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as
+//! one move from the HEAD it started at (`resumed.rs`).
 
 use crate::gitcli::args;
 use git2::Oid;
@@ -20,9 +22,10 @@ mod rebased;
 mod record;
 mod refs;
 mod reset;
+mod resumed;
 mod saved;
 mod stash;
-pub use action::{Action, Changes, Created, HeadPos};
+pub use action::{Action, Changes, Created, Discarded, HeadPos};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
@@ -108,6 +111,8 @@ mod refs_tests;
 mod reset_tests;
 #[cfg(test)]
 mod restore_tests;
+#[cfg(test)]
+mod resumed_tests;
 #[cfg(test)]
 mod saved_tests;
 #[cfg(test)]

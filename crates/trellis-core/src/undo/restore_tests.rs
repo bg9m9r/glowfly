@@ -215,7 +215,7 @@ fn discard_that_fails_after_changing_the_file_names_the_blob() {
         &dir, "f.txt", "mine
 ",
     );
-    let err = discard_saving(&dir, "f.txt", || {
+    let err = discard_saving(&dir, "f.txt", Discarded::File, || {
         std::fs::remove_file(dir.join("f.txt"))?;
         Err(Error::Other("cut short".into()))
     })
@@ -235,7 +235,7 @@ fn discard_that_fails_after_changing_the_file_names_the_blob() {
         &dir, "f.txt", "mine
 ",
     );
-    let err = discard_saving(&dir, "f.txt", || Err(Error::Other("refused".into()))).expect_err("fails");
+    let err = discard_saving(&dir, "f.txt", Discarded::File, || Err(Error::Other("refused".into()))).expect_err("fails");
     assert_eq!(err.to_string(), "refused");
     let _ = std::fs::remove_dir_all(&dir);
 }

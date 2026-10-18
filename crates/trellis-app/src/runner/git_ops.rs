@@ -6,24 +6,25 @@ use crate::msg::{JobMsg, Msg};
 use std::path::Path;
 use trellis_core::gitcli;
 use trellis_core::repo;
-use trellis_core::undo::{self, Action, Plan, Refusal};
+use trellis_core::undo::{self, Action, Discarded, Plan, Refusal};
 
 /// Runs a local op. Discards save the file's contents first and return the undo action.
 pub(super) fn local_op(workdir: &Path, op: LocalOp) -> trellis_core::error::Result<Option<Action>> {
     use trellis_core::repo::HunkOp::Discard;
-    let saving = |path: &str, f: &dyn Fn() -> trellis_core::error::Result<()>| undo::discard_saving(workdir, path, f);
+    let saving =
+        |path: &str, what: Discarded, f: &dyn Fn() -> trellis_core::error::Result<()>| undo::discard_saving(workdir, path, what, f);
     let done = |r: trellis_core::error::Result<()>| r.map(|()| None);
     match op {
         LocalOp::StageFile(p) => done(repo::stage_file(workdir, &p)),
         LocalOp::StageAll => done(repo::stage_all(workdir)),
         LocalOp::UnstagePaths(paths) => done(repo::unstage_paths(workdir, &paths)),
-        LocalOp::DiscardFile(path) => saving(&path, &|| repo::discard_file(workdir, &path)),
+        LocalOp::DiscardFile(path) => saving(&path, Discarded::File, &|| repo::discard_file(workdir, &path)),
         LocalOp::Hunk { op: Discard, path, index, expected } => {
-            saving(&path, &|| repo::apply_hunk(workdir, &path, index, &expected, Discard))
+            saving(&path, Discarded::Hunk, &|| repo::apply_hunk(workdir, &path, index, &expected, Discard))
         }
         LocalOp::Hunk { op, path, index, expected } => done(repo::apply_hunk(workdir, &path, index, &expected, op)),
         LocalOp::Lines { op: Discard, path, hunk, expected, lines } => {
-            saving(&path, &|| repo::apply_lines(workdir, &path, hunk, &expected, &lines, Discard))
+            saving(&path, Discarded::Lines(lines.len()), &|| repo::apply_lines(workdir, &path, hunk, &expected, &lines, Discard))
         }
         LocalOp::Lines { op, path, hunk, expected, lines } => done(repo::apply_lines(workdir, &path, hunk, &expected, &lines, op)),
         LocalOp::ResolveConflict { path, contents, expected } => done(repo::write_resolution(workdir, &path, &contents, &expected)),

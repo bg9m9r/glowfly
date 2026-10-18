@@ -175,12 +175,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                     msgs,
                     ui,
                     "Delete",
-                    Msg::confirm(
-                        "Delete stash",
-                        format!("Delete \"{}\"? This cannot be undone.", s.message),
-                        "Delete",
-                        stash(StashAction::Drop),
-                    ),
+                    Msg::confirm("Delete stash", crate::state::stashes::drop_confirm_body(&s.message), "Delete", stash(StashAction::Drop)),
                 );
             });
         }

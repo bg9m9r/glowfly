@@ -3,7 +3,7 @@
 //! database as a blob before and after, so undo can put the earlier version back and redo can
 //! write the later one again.
 
-use super::{Action, Plan, stale};
+use super::{Action, Discarded, Plan, stale};
 use crate::error::{Error, Result};
 use crate::persist::WriteOptions;
 use crate::repo::RestoredFrom;
@@ -128,13 +128,13 @@ fn failed_after_saving(workdir: &Path, path: &str, before: Option<Saved>, e: Err
     (error, after.ok().map(|a| (before, a)))
 }
 
-/// Runs `discard` on `path` with its contents saved first. Returns the action that undoes it,
+/// Runs `discard` on `path` (`what` says which part) with its contents saved first. Returns the action that undoes it,
 /// or `None` when nothing changed or the file isn't one whose contents can be saved (a symbolic
 /// link or a folder: the discard still runs). Any other failure to save refuses the discard. A
 /// discard that fails after changing the file says where its earlier contents are kept.
-pub fn discard_saving(workdir: &Path, path: &str, discard: impl FnOnce() -> Result<()>) -> Result<Option<Action>> {
+pub fn discard_saving(workdir: &Path, path: &str, what: Discarded, discard: impl FnOnce() -> Result<()>) -> Result<Option<Action>> {
     let ((), pair) = saving(workdir, path, true, discard).map_err(|(e, _)| e)?;
-    Ok(pair.map(|(before, after)| Action::Discard { path: path.to_owned(), before, after }))
+    Ok(pair.map(|(before, after)| Action::Discard { path: path.to_owned(), what, before, after }))
 }
 
 /// Restores `path` from commit `oid` (see [`crate::repo::restore_file`]) with the working copy
@@ -161,7 +161,11 @@ impl Action {
     /// Empty for actions that never plan a write.
     pub fn wrote(&self, redo: bool) -> String {
         match self {
-            Action::Discard { path, .. } if redo => format!("Discarded the changes in {path}"),
+            Action::Discard { path, what, .. } if redo => match what {
+                Discarded::File => format!("Discarded the changes in {path}"),
+                Discarded::Hunk => format!("Discarded the hunk in {path} again"),
+                Discarded::Lines(_) => format!("Discarded the lines in {path} again"),
+            },
             Action::Discard { path, .. } => format!("Restored {path}"),
             Action::Restore { path, .. } if redo => format!("Restored {path} again"),
             Action::Restore { path, before: Some(_), .. } => format!("Put back the earlier working copy of {path}"),

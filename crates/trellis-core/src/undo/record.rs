@@ -1,7 +1,7 @@
 //! Recording an operation: the repository state before it runs, and the `Action` it turned out
 //! to be once it has.
 
-use super::{Action, Created, HeadPos, ResetMode, UndoKind, is_clean, reset, stash};
+use super::{Action, Created, HeadPos, ResetMode, UndoKind, is_clean, reset, resumed, stash};
 use crate::error::{Error, Result};
 use git2::{BranchType, Oid, Repository};
 use std::collections::HashSet;
@@ -21,6 +21,10 @@ pub struct Before {
     /// For a pop or apply: the stash commit it applies, its list message, and whether the
     /// working tree was clean (`None`: unknown).
     apply: Option<Apply>,
+    /// For a commit or a Continue/Skip: the merge, cherry-pick or revert it may finish.
+    paused: Option<resumed::Paused>,
+    /// For a stash drop: the stash commit it drops and its list message.
+    dropped: Option<(Oid, Option<String>)>,
 }
 
 #[derive(Debug)]
@@ -75,7 +79,7 @@ fn local_names(repo: &Repository) -> Result<HashSet<String>> {
 }
 
 /// The stash commit `rev` names, and its message in the stash list.
-fn apply_target(workdir: &Path, rev: &str) -> Result<(Oid, Option<String>)> {
+pub(super) fn apply_target(workdir: &Path, rev: &str) -> Result<(Oid, Option<String>)> {
     let mut repo = Repository::open(workdir)?;
     let oid = repo.revparse_single(rev)?.peel_to_commit()?.id();
     let mut message = None;
@@ -92,7 +96,8 @@ fn apply_target(workdir: &Path, rev: &str) -> Result<(Oid, Option<String>)> {
 pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
     let repo = Repository::open(workdir)?;
     let (head, head_oid) = head(&repo);
-    let mut b = Before { head, head_oid, branch: None, stash_top: None, locals: None, existed: false, apply: None };
+    let mut b =
+        Before { head, head_oid, branch: None, stash_top: None, locals: None, existed: false, apply: None, paused: None, dropped: None };
     match kind {
         UndoKind::DeleteBranch(name) => b.branch = local_branch(&repo, name),
         UndoKind::DiscardAll | UndoKind::Reset(ResetMode::Hard) | UndoKind::StashPush { .. } => b.stash_top = stash_top(&repo),
@@ -104,7 +109,9 @@ pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
             let (target, message) = found.map_or((None, None), |(o, m)| (Some(o), m));
             b.apply = Some(Apply { target, message, clean: is_clean(workdir).ok() });
         }
-        UndoKind::Commit { .. } | UndoKind::Reset(_) | UndoKind::Move { .. } => {}
+        UndoKind::Commit { amend: false } | UndoKind::Resume(_) => b.paused = resumed::paused(workdir)?,
+        UndoKind::StashDrop { rev } => b.dropped = apply_target(workdir, rev.as_deref().unwrap_or("stash@{0}")).ok(),
+        UndoKind::Commit { amend: true } | UndoKind::Reset(_) | UndoKind::Move { .. } => {}
     }
     Ok(b)
 }
@@ -116,13 +123,14 @@ pub fn irreversible(b: &Before) -> bool {
 }
 
 /// The action an operation of `kind` performed, or `None` if it changed nothing undoable.
-pub fn after(workdir: &Path, kind: UndoKind, before: Before) -> Result<Option<Action>> {
+pub fn after(workdir: &Path, kind: UndoKind, mut before: Before) -> Result<Option<Action>> {
     let repo = Repository::open(workdir)?;
     let (pos, oid) = head(&repo);
     let moved = match (before.head_oid, oid) {
         (Some(from), Some(to)) if from != to => Some((from, to)),
         _ => None,
     };
+    let paused = before.paused.take();
     Ok(match kind {
         UndoKind::Checkout => match (before.head, pos) {
             (Some(from), Some(to)) if from != to => {
@@ -134,6 +142,22 @@ pub fn after(workdir: &Path, kind: UndoKind, before: Before) -> Result<Option<Ac
                     _ => None,
                 };
                 Some(Action::Checkout { from, to, created })
+            }
+            _ => None,
+        },
+        // A merge, cherry-pick or revert finished by this commit, or by a Continue or Skip.
+        UndoKind::Commit { .. } | UndoKind::Resume(_) if paused.is_some() => match paused {
+            Some(p) => resumed::finished(&repo, p, &pos, oid)?,
+            None => None,
+        },
+        UndoKind::Resume(_) => None,
+        UndoKind::StashDrop { .. } => match before.dropped {
+            Some((stash, message)) if reset::stash_index(workdir, stash)?.is_none() => {
+                let message = match message {
+                    Some(m) => m,
+                    None => repo.find_commit(stash)?.summary().unwrap_or_default().to_owned(),
+                };
+                Some(Action::StashDrop { stash, message })
             }
             _ => None,
         },

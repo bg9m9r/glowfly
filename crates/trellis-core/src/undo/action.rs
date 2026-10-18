@@ -24,13 +24,25 @@ pub struct Created {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Changes(pub Vec<(String, Option<Oid>)>);
 
+/// Which part of a file's unstaged changes a discard threw away.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Discarded {
+    File,
+    Hunk,
+    /// This many selected lines.
+    Lines(usize),
+}
+
 /// A recorded operation that can be undone (and then redone). `Discard` is one file's unstaged
-/// changes (all, a hunk or some lines) discarded: `before` is its content then and `after` what
-/// the discard left (`None`: absent). `Restore` is one file written from commit `oid`, with
-/// `before` the working copy it replaced and `after` what the restore wrote. A hard reset's
-/// `stash` holds the changes it stashed. A checkout that made a new branch (`-b`, `--track`)
-/// remembers it in `created`. `Moved` is a merge, pull, cherry-pick, revert or rebase (also an
-/// interactive one, or a history edit) that took HEAD from `from` to `to`. `StashApply` is a pop or apply onto a clean tree that left `left`.
+/// changes discarded, `what` saying which part (all, a hunk or some lines): `before` is its
+/// content then and `after` what the discard left (`None`: absent). `Restore` is one file
+/// written from commit `oid`, with `before` the working copy it replaced and `after` what the
+/// restore wrote. A hard reset's `stash` holds the changes it stashed. A checkout that made a
+/// new branch (`-b`, `--track`) remembers it in `created`. `Moved` is a merge, pull,
+/// cherry-pick, revert or rebase (also an interactive one, or a history edit) that took HEAD
+/// from `from` to `to`, including a merge, cherry-pick or revert that stopped for conflicts and
+/// was finished later. `StashApply` is a pop or apply onto a clean tree that left `left`.
+/// `StashDrop` is a dropped stash, put back with `stash store` under its list `message`.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
     Checkout {
@@ -63,6 +75,7 @@ pub enum Action {
     },
     Discard {
         path: String,
+        what: Discarded,
         before: Option<Saved>,
         after: Option<Saved>,
     },
@@ -101,6 +114,10 @@ pub enum Action {
         head: Oid,
         message: String,
         left: Changes,
+    },
+    StashDrop {
+        stash: Oid,
+        message: String,
     },
 }
 
@@ -142,7 +159,12 @@ impl Action {
             Action::Reset { mode, to, .. } => format!("{} reset to {}", mode.name(), short(*to)),
             Action::DeleteBranch { name, .. } => format!("delete of branch {name}"),
             Action::DiscardAll { .. } => "Discard all changes".to_owned(),
-            Action::Discard { path, .. } => format!("discard in {path}"),
+            Action::Discard { path, what, .. } => match what {
+                Discarded::File => format!("discard in {path}"),
+                Discarded::Hunk => format!("discard of a hunk in {path}"),
+                Discarded::Lines(1) => format!("discard of 1 line in {path}"),
+                Discarded::Lines(n) => format!("discard of {n} lines in {path}"),
+            },
             Action::Restore { path, .. } => format!("restore of {path}"),
             Action::CreateBranch { name, .. } => format!("creation of branch {name}"),
             Action::CreateTag { name, .. } => format!("creation of tag {name}"),
@@ -151,6 +173,7 @@ impl Action {
             Action::StashApply { pop, message, .. } => {
                 format!("{} of stash '{}'", if *pop { "pop" } else { "apply" }, cut50(message))
             }
+            Action::StashDrop { message, .. } => format!("drop of stash '{}'", cut50(message)),
         }
     }
 

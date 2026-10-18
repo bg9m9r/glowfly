@@ -77,6 +77,14 @@ pub enum UndoKind {
         pop: bool,
         rev: Option<String>,
     },
+    /// `merge --continue`, `cherry-pick`/`revert` `--continue` or `--skip`: carries on an
+    /// operation that stopped for conflicts; recorded as the whole operation once nothing is
+    /// left in progress.
+    Resume(MoveOp),
+    /// A drop of `rev` (`None`: the newest stash).
+    StashDrop {
+        rev: Option<String>,
+    },
 }
 
 fn plain(s: &str) -> bool {
@@ -101,6 +109,13 @@ impl UndoKind {
             ["branch", name, start] if plain(name) && plain(start) => Some(UndoKind::CreateBranch((*name).to_owned())),
             ["tag", name, at] if plain(name) && plain(at) => Some(UndoKind::CreateTag((*name).to_owned())),
             ["tag", "-a", name, at, "-m", _] if plain(name) && plain(at) => Some(UndoKind::CreateTag((*name).to_owned())),
+            [op @ ("merge" | "cherry-pick" | "revert"), "--continue"] | [op @ ("cherry-pick" | "revert"), "--skip"] => {
+                Some(UndoKind::Resume(match *op {
+                    "merge" => MoveOp::Merge,
+                    "cherry-pick" => MoveOp::CherryPick,
+                    _ => MoveOp::Revert,
+                }))
+            }
             [op @ ("merge" | "pull" | "cherry-pick" | "revert" | "rebase"), rest @ ..] => move_kind(op, rest),
             _ => stash_kind(&a, argv),
         }
@@ -131,7 +146,8 @@ fn checkout_kind(rest: &[&str]) -> Option<UndoKind> {
 }
 
 /// What a merge, pull, cherry-pick, revert or rebase did, unless it squashes, leaves the
-/// result uncommitted, edits interactively or carries on an operation already started.
+/// result uncommitted, edits interactively or carries on an operation already started (a
+/// plain Continue or Skip is a `Resume`, matched before this).
 fn move_kind(op: &str, rest: &[&str]) -> Option<UndoKind> {
     const NOT_RECORDED: &[&str] =
         &["--abort", "--continue", "--skip", "--quit", "--squash", "--no-commit", "-n", "-i", "--interactive", "--edit-todo"];
@@ -181,8 +197,8 @@ fn commit_label(rev: &str) -> String {
     if rev.len() == 40 && rev.bytes().all(|b| b.is_ascii_hexdigit()) { rev[..7].to_owned() } else { rev.to_owned() }
 }
 
-/// `stash push` (Discard all's own stash is `DiscardAll`), and `stash pop` / `stash apply` of
-/// one entry.
+/// `stash push` (Discard all's own stash is `DiscardAll`), and `stash pop` / `stash apply` /
+/// `stash drop` of one entry.
 fn stash_kind(a: &[&str], argv: &[String]) -> Option<UndoKind> {
     match a {
         ["stash", "push", "-u", "-m", m] if *m == DISCARD_STASH_MESSAGE => Some(UndoKind::DiscardAll),
@@ -194,6 +210,8 @@ fn stash_kind(a: &[&str], argv: &[String]) -> Option<UndoKind> {
         ["stash", verb @ ("pop" | "apply"), rev] if plain(rev) => {
             Some(UndoKind::StashApply { pop: *verb == "pop", rev: Some((*rev).to_owned()) })
         }
+        ["stash", "drop"] => Some(UndoKind::StashDrop { rev: None }),
+        ["stash", "drop", rev] if plain(rev) => Some(UndoKind::StashDrop { rev: Some((*rev).to_owned()) }),
         _ => None,
     }
 }

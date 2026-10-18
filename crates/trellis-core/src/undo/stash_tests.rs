@@ -255,3 +255,89 @@ fn pop_onto_a_dirty_tree_is_irreversible() {
     assert!(!run(&dir, &args(&["stash", "pop"])).0, "nothing left to pop");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// A repository with two stashes: "first" (stash@{1}) and "second" (stash@{0}).
+fn two_stashes(name: &str) -> PathBuf {
+    let (dir, _) = base(name);
+    write(&dir, "a.txt", "first\n");
+    git(&dir, &["stash", "push", "-q", "-m", "first"]);
+    write(&dir, "a.txt", "second\n");
+    git(&dir, &["stash", "push", "-q", "-m", "second"]);
+    dir
+}
+
+#[test]
+fn drop_undo_and_redo() {
+    let dir = two_stashes("undo-stash-drop");
+    let first = stashes(&dir)[1].1;
+    let (_, action) = record_kind(&dir, &["stash", "drop", "stash@{1}"]);
+    let action = action.expect("recorded");
+    assert_eq!(action, Action::StashDrop { stash: first, message: "On main: first".into() });
+    assert_eq!(action.describe(), "drop of stash 'On main: first'");
+    assert_eq!(stashes(&dir).len(), 1);
+
+    let undo = plan(&dir, &action, false).unwrap();
+    assert_eq!(undo, cmds(&[&["stash", "store", "-m", "On main: first", &first.to_string()]]));
+    run_plan(&dir, undo);
+    let list = stashes(&dir);
+    assert_eq!(list.len(), 2);
+    assert_eq!((list[0].1, list[0].2.as_str()), (first, "On main: first"), "back at the top, as it was listed");
+
+    let redo = plan(&dir, &action, true).unwrap();
+    assert_eq!(redo, cmds(&[&["stash", "drop", "stash@{0}"]]));
+    run_plan(&dir, redo);
+    assert!(stashes(&dir).iter().all(|s| s.1 != first));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn drop_of_the_newest_stash_is_recorded() {
+    let dir = two_stashes("undo-stash-drop-top");
+    let second = stashes(&dir)[0].1;
+    let (_, action) = record_kind(&dir, &["stash", "drop"]);
+    assert_eq!(action, Some(Action::StashDrop { stash: second, message: "On main: second".into() }));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn drop_undo_refused_when_back_or_gone() {
+    let dir = two_stashes("undo-stash-drop-back");
+    let (_, action) = record_kind(&dir, &["stash", "drop", "stash@{1}"]);
+    let action = action.expect("recorded");
+    run_plan(&dir, plan(&dir, &action, false).unwrap());
+    let r = refused(plan(&dir, &action, false).unwrap());
+    assert!(r.is_stale() && r.message().starts_with("The stash is already in the list"), "{r:?}");
+
+    let made_up = Oid::from_str("1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b").unwrap();
+    let lost = Action::StashDrop { stash: made_up, message: "On main: lost".into() };
+    let r = refused(plan(&dir, &lost, false).unwrap());
+    assert!(r.is_stale() && r.message().starts_with("The commit to go back to is gone"), "{r:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn drop_redo_refused_when_dropped_since() {
+    let dir = two_stashes("undo-stash-drop-since");
+    let (_, action) = record_kind(&dir, &["stash", "drop", "stash@{1}"]);
+    let action = action.expect("recorded");
+    run_plan(&dir, plan(&dir, &action, false).unwrap());
+    git(&dir, &["stash", "drop", "-q", "stash@{0}"]);
+    let r = refused(plan(&dir, &action, true).unwrap());
+    assert!(r.is_stale() && r.message().starts_with("The stash was dropped or applied since"), "{r:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn drop_undo_ignores_a_merge_in_progress() {
+    let dir = two_stashes("undo-stash-drop-merge");
+    let (_, action) = record_kind(&dir, &["stash", "drop", "stash@{1}"]);
+    let action = action.expect("recorded");
+    git(&dir, &["checkout", "-q", "-b", "other"]);
+    commit(&dir, "a.txt", "theirs\n", "theirs");
+    git(&dir, &["checkout", "-q", "main"]);
+    commit(&dir, "a.txt", "ours\n", "ours");
+    assert!(!run(&dir, &args(&["merge", "other"])).0, "the merge conflicts");
+    let Action::StashDrop { stash, .. } = &action else { panic!() };
+    assert_eq!(plan(&dir, &action, false).unwrap(), cmds(&[&["stash", "store", "-m", "On main: first", &stash.to_string()]]));
+    let _ = std::fs::remove_dir_all(&dir);
+}

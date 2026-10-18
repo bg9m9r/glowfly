@@ -1,4 +1,5 @@
-//! Apply, pop and drop of one stash (sidebar STASHES menu and palette), and renaming one. The
+//! Apply, pop and drop of one stash (sidebar STASHES menu and palette), and renaming one. A drop
+//! is recorded for undo, which stores the dropped commit back in the list. The
 //! stash list is numbered from the newest entry, so a stash made or dropped elsewhere since the
 //! snapshot shifts every `stash@{N}`: the job names the entry by position for git but carries
 //! the commit the user picked, and the runner refuses it if that position now holds another stash.
@@ -20,8 +21,9 @@ const GONE: &str = "That stash no longer exists.";
 pub(super) fn run(st: &mut AppState, action: StashAction, index: usize, oid: Oid, fx: &mut Vec<Effect>) {
     let refname = format!("stash@{{{index}}}");
     let cmd = args(&["stash", action.git_verb(), &refname]);
-    // git's "Dropped stash@{N} (<sha>)" line lands in the log, so a dropped stash can be found
-    // again (`git stash apply <sha>`) until it is garbage-collected.
+    // A drop is undoable while the tab is open; git's "Dropped stash@{N} (<sha>)" line also
+    // lands in the log, so a dropped stash can be found again (`git stash apply <sha>`) until it
+    // is garbage-collected.
     let spec = JobSpec { expect: Some((refname, oid)), ..JobSpec::new(action.job_label().into(), vec![cmd]) };
     start_job(st, spec, fx);
 }

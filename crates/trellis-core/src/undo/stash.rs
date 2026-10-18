@@ -3,6 +3,7 @@
 //! they were don't count). A pop or apply onto a clean working tree is
 //! undone by putting the stash back in the list (when it was dropped) and clearing what it
 //! applied, as long as the working tree is exactly as the pop left it: `changes` fingerprints it.
+//! A drop is undone by storing the dropped commit back at the top of the list.
 
 use super::planning::{dirty, gone, is_clean, stale};
 use super::{Action, Changes, Plan, reset::stash_index};
@@ -176,4 +177,24 @@ pub(super) fn plan_apply(workdir: &Path, repo: &Repository, action: &Action, hea
     let untracked: Vec<String> = status_entries(workdir)?.into_iter().filter(|e| e.status == '?').map(|e| e.path).collect();
     cmds.extend(clean_commands(untracked));
     Ok(Plan::Run(cmds))
+}
+
+/// Undoes a stash drop by storing the commit again under its list message (redo: drops it again,
+/// wherever it is in the list now).
+pub(super) fn plan_drop(workdir: &Path, repo: &Repository, action: &Action, redo: bool) -> Result<Plan> {
+    let Action::StashDrop { stash, message } = action else { unreachable!("a stash drop") };
+    let listed = stash_index(workdir, *stash)?;
+    if redo {
+        return Ok(match listed {
+            Some(n) => Plan::Run(vec![args(&["stash", "drop", &stash_ref(n)])]),
+            None => stale("The stash was dropped or applied since"),
+        });
+    }
+    Ok(if listed.is_some() {
+        stale("The stash is already in the list")
+    } else if repo.find_commit(*stash).is_err() {
+        gone()
+    } else {
+        Plan::Run(vec![args(&["stash", "store", "-m", message, &stash.to_string()])])
+    })
 }

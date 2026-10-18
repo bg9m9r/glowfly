@@ -1,7 +1,7 @@
 //! Headless tests for undoing stashes and pops, and for the "Stash changes and undo" offer when
 //! local changes block undoing a hard reset or Discard all.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, UndoResult};
 use crate::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
@@ -157,4 +157,57 @@ fn refusal_for_an_inactive_tab_offers_nothing() {
     let t = st.toasts.last().unwrap();
     assert!(!t.ok && t.action.is_none());
     cleanup(&[&a, &b]);
+}
+
+/// `committed`, plus two stashes made with git ("first" at stash@{1}, "second" at stash@{0});
+/// returns the oid of "first".
+fn two_stashes(name: &str) -> (AppState, PathBuf, git2::Oid) {
+    let (mut st, dir) = committed(name);
+    std::fs::write(dir.join("a.txt"), "first\n").unwrap();
+    git(&dir, &["stash", "push", "-q", "-m", "first"]);
+    std::fs::write(dir.join("a.txt"), "second\n").unwrap();
+    git(&dir, &["stash", "push", "-q", "-m", "second"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    let first = st.snap.as_ref().unwrap().stashes[1].oid;
+    (st, dir, first)
+}
+
+fn stash_oids(st: &AppState) -> Vec<git2::Oid> {
+    st.snap.as_ref().unwrap().stashes.iter().map(|s| s.oid).collect()
+}
+
+#[test]
+fn drop_from_the_sidebar_is_undoable() {
+    let (mut st, dir, first) = two_stashes("undo-stash-drop");
+    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid: first }));
+    assert!(!stash_oids(&st).contains(&first));
+    assert!(matches!(st.undo.undo.last(), Some(Action::StashDrop { stash, .. }) if *stash == first), "{:?}", st.undo.undo);
+    assert!(st.undo.blocked.is_none());
+    assert!(matches!(st.undo.undo.first(), Some(Action::Commit { .. })), "the commit is still under it: {:?}", st.undo.undo);
+    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
+    assert_eq!(tip, format!("Undo drop of stash 'On main: first' ({})", keys("Ctrl+Z")));
+
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    let back = st.snap.as_ref().unwrap().stashes.iter().find(|s| s.oid == first).cloned().expect("the stash is back");
+    assert_eq!(back.message, "On main: first");
+    assert!(st.toasts.last().is_some_and(|t| t.ok && t.text == "Undo drop of stash 'On main: first' succeeded"));
+    drive(&mut st, Msg::Job(JobMsg::Redo));
+    assert!(!stash_oids(&st).contains(&first));
+    assert!(matches!(st.undo.undo.last(), Some(Action::StashDrop { .. })));
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn drop_redo_refused_when_dropped_elsewhere() {
+    let (mut st, dir, first) = two_stashes("undo-stash-drop-elsewhere");
+    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid: first }));
+    drive(&mut st, Msg::Job(JobMsg::Undo));
+    assert!(stash_oids(&st).contains(&first));
+    git(&dir, &["stash", "drop", "-q", "stash@{0}"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    drive(&mut st, Msg::Job(JobMsg::Redo));
+    let t = st.toasts.last().unwrap();
+    assert!(!t.ok && t.text.contains("The stash was dropped or applied since"), "{}", t.text);
+    assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty(), "{:?}", st.undo);
+    cleanup(&[&dir]);
 }
