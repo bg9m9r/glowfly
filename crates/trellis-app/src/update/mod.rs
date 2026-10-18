@@ -61,6 +61,7 @@ mod remote_forks;
 mod remotes;
 mod repo;
 mod repo_scan;
+mod repo_sync;
 mod repos;
 mod search;
 mod search_paths;
@@ -280,6 +281,8 @@ mod remote_tests;
 #[cfg(test)]
 mod repo_scan_tests;
 #[cfg(test)]
+mod repo_sync_tests;
+#[cfg(test)]
 mod revert_tests;
 #[cfg(test)]
 mod search_paths_tests;
@@ -416,7 +419,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         // Each area's messages go to its handler, which matches them exhaustively.
         Msg::Repo(m) => repo::handle(st, m, now, &mut fx),
         Msg::Recent(m) => recent::handle(st, m, now, &mut fx),
-        Msg::Repos(m) => repos::handle(st, m, &mut fx),
+        Msg::Repos(m) => repos::handle(st, m, now, &mut fx),
         Msg::Load(m) => refresh::handle(st, m, now, &mut fx),
         Msg::Watch(m) => watch::handle(st, m, now, &mut fx),
         Msg::Selection(m) => selection::handle(st, m, &mut fx),

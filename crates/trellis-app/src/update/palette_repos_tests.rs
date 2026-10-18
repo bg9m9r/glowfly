@@ -85,3 +85,27 @@ fn list_commands_show_when_they_apply() {
     assert_eq!(R::OpenAllFavorites.recall_key(), Some("open-all-favorites"));
     assert!(matches!(R::FindRepos.msg(&st), Some(Msg::Repos(ReposMsg::ShowFinder))));
 }
+
+#[test]
+fn fetch_and_pull_across_repositories() {
+    use crate::state::repo_sync::{SyncKind, SyncScope};
+    let mut st = state();
+    assert!(!has(&st, "Fetch all favorites") && !has(&st, "Fetch all listed repositories"), "nothing listed");
+    st.recent = vec![PathBuf::from("/w/gone")];
+    st.missing_repos = vec![PathBuf::from("/w/gone")];
+    assert!(!has(&st, "Pull all favorites"), "no favorites");
+    let listed = shown(&st, "").into_iter().find(|s| s.entry.label == "Fetch all listed repositories").expect("one listed");
+    assert_eq!(listed.entry.detail.as_deref(), Some("0 repositories"), "a missing one is left out");
+    st.missing_repos.clear();
+    st.settings.favorite_repos = vec!["/w/a".into()];
+    st.recent = vec![PathBuf::from("/w/b")];
+    let list = shown(&st, "");
+    let detail = |label: &str| list.iter().find(|s| s.entry.label == label).and_then(|s| s.entry.detail.clone());
+    assert_eq!(detail("Pull all favorites").as_deref(), Some("1 repository"));
+    assert_eq!(detail("Pull all listed repositories").as_deref(), Some("2 repositories"));
+    run_cmd(&mut st, C::RepoList(R::Sync { kind: SyncKind::Pull, scope: SyncScope::Favorites }));
+    assert!(matches!(st.modal, Some(Modal::SyncRepos)));
+    assert_eq!(st.repo_sync.as_ref().map(|s| s.rows.len()), Some(1));
+    assert_eq!(st.palette_recent.keys(), ["pull-favorites"]);
+    assert_eq!(R::Sync { kind: SyncKind::Fetch, scope: SyncScope::Listed }.recall_key(), Some("fetch-listed"));
+}

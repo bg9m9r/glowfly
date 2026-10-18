@@ -8,12 +8,13 @@
 //! disk (`paths::FolderId`), so `submit` hands each job to a router thread that looks the folder
 //! up (once per spelling) and passes the job on, in order; the UI thread never waits on it.
 
-use crate::effect::{Effect, RebaseEffect, SubmoduleEffect};
+use crate::effect::{Effect, RebaseEffect, ReposEffect, SubmoduleEffect};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::mpsc::{self, Sender};
 use trellis_core::paths::FolderId;
+use trellis_core::repo_sync::SyncOp;
 
 pub(super) type Job = Box<dyn FnOnce() + Send>;
 
@@ -121,6 +122,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         Effect::Submodule(SubmoduleEffect::Remove(r)) => Some(&r.repo),
         Effect::RenameStash { cwd, .. } => Some(cwd),
         Effect::SparseCheckout { cwd, .. } => Some(cwd),
+        Effect::Repos(ReposEffect::Sync { path, op: SyncOp::Pull, .. }) => Some(path),
         // Reads, network calls, Trellis's own files (ordered by `saves`), git config (which no
         // queued job reads mid-way) and work outside the process. Listed one by one so a new
         // effect has to decide.
@@ -197,7 +199,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::Dashboard(_)
         | Effect::Issue(_)
         | Effect::Updates(_)
-        | Effect::Repos(_)
+        | Effect::Repos(ReposEffect::Scan { .. } | ReposEffect::Sync { op: SyncOp::Fetch { .. }, .. })
         | Effect::Ui(_) => None,
     }
 }
@@ -338,6 +340,10 @@ mod tests {
         assert_eq!(repo_of(&git(&[&["pull"]])), Some(w.as_path()));
         assert_eq!(repo_of(&git(&[&["fetch", "--all"]])), None, "auto-fetch doesn't hold up staging");
         assert_eq!(repo_of(&git(&[&["fetch", ".", "a:b"]])), Some(w.as_path()));
+        // Fetch or pull across repositories: a pull waits for the repository's other jobs.
+        let sync = |op| Effect::Repos(ReposEffect::Sync { generation: 1, index: 0, path: w.clone(), op, trusted: true });
+        assert_eq!(repo_of(&sync(SyncOp::Pull)), Some(w.as_path()));
+        assert_eq!(repo_of(&sync(SyncOp::Fetch { prune: true })), None);
         let op = Effect::LocalOp { workdir: w.clone(), op: crate::effect::LocalOp::StageAll };
         assert_eq!(repo_of(&op), Some(w.as_path()));
         assert_eq!(

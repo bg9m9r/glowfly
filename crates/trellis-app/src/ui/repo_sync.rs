@@ -1,0 +1,82 @@
+//! The fetch or pull across repositories dialog (`Modal::SyncRepos`): how far the run is, then
+//! a row per repository with how it went. The run goes on when the dialog is closed; its end
+//! is then told in a toast (update/repo_sync.rs).
+
+use super::theme::color;
+use crate::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, outcome_text};
+use eframe::egui::{self, Align, Layout, RichText};
+use trellis_core::native_path::shown;
+use trellis_core::repo_sync::Outcome;
+
+/// Why some repositories may fail where an open one would ask.
+const NO_PROMPTS_NOTE: &str = "Git doesn't ask for passwords here: a repository whose remote needs one that isn't saved fails.";
+
+/// Draws the dialog; returns true when it should close.
+pub fn show(ui: &mut egui::Ui, sync: Option<&RepoSync>) -> bool {
+    let mut close = false;
+    ui.set_width(560.0);
+    let Some(sync) = sync else {
+        return ui.button("Close").clicked();
+    };
+    ui.heading(sync.title());
+    ui.add_space(6.0);
+    let (done, all) = sync.progress();
+    if sync.running() {
+        ui.horizontal(|ui| {
+            ui.add(egui::Spinner::new());
+            let verb = match sync.kind {
+                SyncKind::Fetch => "Fetching",
+                SyncKind::Pull => "Pulling",
+            };
+            ui.label(format!("{verb}: {done} of {all} done"));
+        });
+    } else {
+        ui.label(sync.summary());
+    }
+    ui.label(RichText::new(NO_PROMPTS_NOTE).small().color(color::weak()));
+    ui.add_space(8.0);
+    egui::ScrollArea::vertical().max_height(380.0).auto_shrink([false, true]).show(ui, |ui| {
+        for r in &sync.rows {
+            row(ui, sync.kind, r);
+        }
+    });
+    ui.add_space(10.0);
+    let label = if sync.running() { "Close (keeps running)" } else { "Close" };
+    if ui.button(label).clicked() {
+        close = true;
+    }
+    close
+}
+
+/// The widest a repository's name is drawn before it is cut.
+const NAME_WIDTH: f32 = 180.0;
+
+/// One repository: its name (its path in the tip) and where it stands.
+fn row(ui: &mut egui::Ui, kind: SyncKind, r: &SyncRow) {
+    ui.horizontal(|ui| {
+        let size = egui::vec2(NAME_WIDTH, ui.spacing().interact_size.y);
+        ui.allocate_ui_with_layout(size, Layout::left_to_right(Align::Center), |ui| {
+            ui.set_min_width(NAME_WIDTH);
+            ui.add(egui::Label::new(RichText::new(&r.name).strong()).truncate()).on_hover_text(shown(&r.path));
+        });
+        ui.add_space(12.0);
+        ui.with_layout(Layout::left_to_right(Align::Center), |ui| match &r.state {
+            RowState::Waiting => {
+                ui.label(RichText::new("Waiting").color(color::weak()));
+            }
+            RowState::Running => {
+                ui.add(egui::Spinner::new().size(12.0));
+                ui.label(RichText::new("Running…").color(color::weak()));
+            }
+            RowState::Done(o) => {
+                let (text, bad) = outcome_text(kind, o);
+                let col = match o {
+                    Outcome::Untrusted => color::amber(),
+                    _ if bad => color::red(),
+                    _ => color::text(),
+                };
+                ui.add(egui::Label::new(RichText::new(&text).color(col)).truncate()).on_hover_text(text);
+            }
+        });
+    });
+}

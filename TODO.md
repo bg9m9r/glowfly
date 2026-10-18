@@ -474,7 +474,9 @@ Done except the group colors, which wait on repository groups in the repository 
     shown in the sheet, the palette and the welcome rows); drag or Move up/down to reorder
     favorites; "open" tags and Open all favorites; Remove missing entries, and an offer to forget a
     listed repository whose folder is gone; palette commands to favorite the open repository and
-    favorites listed first
+    favorites listed first; fetch or pull (fast-forward only) all favorites or every listed
+    repository, four at a time, with a result per repository, a "nothing to fetch" case, and
+    repositories that aren't trusted skipped
 - [x] **Graph columns and loading**
   Column toggles, compact layout and row highlighting are done (UI Customization). Missing:
   - [x] Resize columns: drag the header dividers (BRANCH/TAG, SHA, changes, author, date), double-click to reset, saved in settings
@@ -1446,9 +1448,10 @@ here, under the item they grew from.
 
 ### Repository management
 
-- Fetch or pull across many repositories (all favorites or all listed), with per-repository
-  results and a "nothing to fetch" case
 - Open all for the Recent list and for the Find repositories results
+- Fetch or pull across repositories from the welcome screen and for the Find repositories results
+- Ask for credentials during a fetch or pull across repositories (one prompt at a time) instead of failing
+- Retry only the failed repositories of a fetch or pull across repositories
 - Remember scan results between sessions, and notice new repositories in project folders
   without looking again
 - Scan options in Preferences: how deep to look and which folder names to skip

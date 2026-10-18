@@ -68,6 +68,7 @@ pub mod release_notes;
 pub mod remotes;
 pub mod repo_lists;
 pub mod repo_scan;
+pub mod repo_sync;
 pub mod search;
 pub mod selection;
 pub mod shallow;
@@ -247,6 +248,8 @@ pub enum Modal {
     FindRepos {
         filter: String,
     },
+    /// Fetch or pull across repositories (`ui/repo_sync.rs`): `AppState::repo_sync`'s rows.
+    SyncRepos,
 }
 
 /// The most commits "Load more" goes up to.
@@ -267,6 +270,8 @@ pub struct AppState {
     pub missing_offer: Option<PathBuf>,
     /// The Find repositories dialog's scan of the project folders: global, never parked.
     pub repo_scan: repo_scan::RepoScan,
+    /// The last fetch or pull across listed repositories, running or finished: global.
+    pub repo_sync: Option<repo_sync::RepoSync>,
     /// The identities of listed and loaded folders, as worker threads found them.
     pub known: known_folders::KnownFolders,
     /// Open tabs; the active one's repository data is in the fields below.
@@ -412,6 +417,7 @@ impl AppState {
             missing_repos: Vec::new(),
             missing_offer: None,
             repo_scan: Default::default(),
+            repo_sync: None,
             known: Default::default(),
             tabs: vec![Tab::empty()],
             active_tab: 0,

@@ -5,6 +5,7 @@
 use super::snapshot_tests::{harness, remove_fixture, render, settings, with_repo};
 use super::snapshot_tests_select::click;
 use crate::msg::{Msg, RecentMsg, ReposMsg};
+use crate::state::repo_sync::{SyncKind, SyncScope};
 use crate::state::{AppState, Tab};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, Rect, pos2, vec2};
@@ -258,12 +259,25 @@ fn repo_menu_actions() {
     let mut h = harness(st, true);
     h.run();
     open_repo_menu(&mut h);
-    for label in ["Find repositories in folders…", "Open all favorites in tabs", "Remove missing entry (1)", "open"] {
+    for label in
+        ["Find repositories in folders…", "Open all favorites in tabs", "Fetch or pull repositories", "Remove missing entry (1)", "open"]
+    {
         assert!(h.query_by_label(label).is_some(), "{label} is in the menu");
     }
     h.check_snapshot("repo_menu_actions");
     h.get_by_label("Find repositories in folders…").click();
     h.run();
     assert!(matches!(last(&h), Msg::Repos(ReposMsg::ShowFinder)));
+    // Fetch or pull, in a submenu.
+    open_repo_menu(&mut h);
+    h.get_by_label("Fetch or pull repositories").hover();
+    h.run();
+    for label in ["Fetch favorites", "Pull favorites", "Fetch all listed repositories", "Pull all listed repositories"] {
+        assert!(h.query_by_label(label).is_some(), "{label} is in the submenu");
+    }
+    h.check_snapshot("repo_menu_sync");
+    h.get_by_label("Pull favorites").click();
+    h.run();
+    assert!(matches!(last(&h), Msg::Repos(ReposMsg::StartSync { kind: SyncKind::Pull, scope: SyncScope::Favorites })));
     remove_fixture(&dir);
 }

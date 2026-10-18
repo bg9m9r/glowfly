@@ -1,12 +1,14 @@
 //! The palette's repository-list entries: favorites, then recent repositories, to open (each
 //! but the active one and missing ones), and the list commands: favorite or unfavorite the open
-//! repository, open all favorites in tabs, remove missing entries, find repositories in folders.
+//! repository, open all favorites in tabs, remove missing entries, find repositories in folders,
+//! and fetch or pull the favorites or every listed repository.
 
 use super::{Entry, PaletteCommand, entry, folder_name, with_detail};
 use crate::keymap::{BindingId, FAVORITE_BINDINGS};
 use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
 use crate::state::AppState;
 use crate::state::repo_lists::{favorites, is_favorite, is_missing, missing_counts, remove_missing_msg, unopened_favorites};
+use crate::state::repo_sync::{SyncKind, SyncScope, targets};
 use std::path::{Path, PathBuf};
 
 /// Recent repositories offered by the palette.
@@ -25,6 +27,11 @@ pub enum RepoListCommand {
     /// Ask, then remove the missing entries from both lists.
     RemoveMissing,
     FindRepos,
+    /// Fetch or pull the favorites or every listed repository.
+    Sync {
+        kind: SyncKind,
+        scope: SyncScope,
+    },
 }
 
 impl RepoListCommand {
@@ -44,6 +51,10 @@ impl RepoListCommand {
             Self::OpenAllFavorites => "open-all-favorites",
             Self::RemoveMissing => "remove-missing",
             Self::FindRepos => "find-repos",
+            Self::Sync { kind: SyncKind::Fetch, scope: SyncScope::Favorites } => "fetch-favorites",
+            Self::Sync { kind: SyncKind::Pull, scope: SyncScope::Favorites } => "pull-favorites",
+            Self::Sync { kind: SyncKind::Fetch, scope: SyncScope::Listed } => "fetch-listed",
+            Self::Sync { kind: SyncKind::Pull, scope: SyncScope::Listed } => "pull-listed",
         })
     }
 
@@ -55,6 +66,7 @@ impl RepoListCommand {
             Self::OpenAllFavorites => Msg::Recent(RecentMsg::OpenAll(favorites(&st.settings))),
             Self::RemoveMissing => remove_missing_msg(st)?,
             Self::FindRepos => Msg::Repos(ReposMsg::ShowFinder),
+            Self::Sync { kind, scope } => Msg::Repos(ReposMsg::StartSync { kind, scope }),
         })
     }
 }
@@ -110,4 +122,29 @@ pub(super) fn list_entries(st: &AppState, out: &mut Vec<Entry>) {
         out.push(with_detail(e, Some((recent + favs).to_string())));
     }
     out.push(entry(cmd(R::FindRepos), "Find repositories in folders…", "scan search project folders discover directory repositories"));
+    sync_entries(st, out);
+}
+
+/// Fetch or pull the favorites and every listed repository, when there are any, each with how
+/// many repositories it takes in (missing ones left out).
+fn sync_entries(st: &AppState, out: &mut Vec<Entry>) {
+    let favs = !st.settings.favorite_repos.is_empty();
+    if !favs && st.recent.is_empty() {
+        return;
+    }
+    let all = [
+        (SyncKind::Fetch, SyncScope::Favorites, "Fetch all favorites"),
+        (SyncKind::Pull, SyncScope::Favorites, "Pull all favorites"),
+        (SyncKind::Fetch, SyncScope::Listed, "Fetch all listed repositories"),
+        (SyncKind::Pull, SyncScope::Listed, "Pull all listed repositories"),
+    ];
+    for (kind, scope, label) in all {
+        if scope == SyncScope::Favorites && !favs {
+            continue;
+        }
+        let n = targets(st, scope).len();
+        let command = PaletteCommand::RepoList(RepoListCommand::Sync { kind, scope });
+        let e = entry(command, label, "many every repositories update download remote sync bulk recent starred");
+        out.push(with_detail(e, Some(repositories(n))));
+    }
 }

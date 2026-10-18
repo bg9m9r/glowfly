@@ -52,6 +52,9 @@ enum Kind {
     Update(Option<bool>),
     /// A scan of the project folders: the Find repositories dialog shows a spinner until it ends.
     RepoScan(u64, Vec<PathBuf>),
+    /// One repository of a fetch or pull across repositories (generation, row): it fails, so
+    /// the next one starts.
+    RepoSync(u64, usize),
     Log,
 }
 
@@ -104,6 +107,7 @@ impl Recovery {
             Effect::Updates(UpdateEffect::Check { manual }) => Kind::Update(Some(*manual)),
             Effect::Updates(UpdateEffect::Download(_)) => Kind::Update(None),
             Effect::Repos(ReposEffect::Scan { generation, roots }) => Kind::RepoScan(*generation, roots.clone()),
+            Effect::Repos(ReposEffect::Sync { generation, index, .. }) => Kind::RepoSync(*generation, *index),
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -132,6 +136,10 @@ impl Recovery {
                 let unreadable = roots.into_iter().map(|r| (r, text.clone())).collect();
                 let report = Box::new(crate::msg::ScanFound { unreadable, ..Default::default() });
                 Msg::Repos(crate::msg::ReposMsg::Scanned { generation, report })
+            }
+            Kind::RepoSync(generation, index) => {
+                let outcome = trellis_core::repo_sync::Outcome::Failed(text);
+                Msg::Repos(crate::msg::ReposMsg::Synced { generation, index, outcome })
             }
             Kind::Log => Msg::Logged { ok: false, text },
         };

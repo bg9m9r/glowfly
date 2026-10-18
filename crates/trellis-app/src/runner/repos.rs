@@ -1,5 +1,6 @@
-//! Finding repositories (`Effect::Repos`): scanning the project folders, then telling apart the
-//! spellings that name one folder (a link, nested roots) by identity.
+//! Repositories across folders (`Effect::Repos`): scanning the project folders, then telling
+//! apart the spellings that name one folder (a link, nested roots) by identity; and fetching or
+//! pulling one listed repository.
 
 use crate::effect::ReposEffect;
 use crate::msg::{Msg, ReposMsg, ScanFound};
@@ -25,6 +26,10 @@ pub(super) fn run(e: ReposEffect) -> Msg {
             }
             let report = ScanFound { found, unreadable: report.unreadable, truncated: report.truncated };
             Msg::Repos(ReposMsg::Scanned { generation, report: Box::new(report) })
+        }
+        ReposEffect::Sync { generation, index, path, op, trusted } => {
+            let outcome = trellis_core::repo_sync::sync(&path, op, trusted);
+            Msg::Repos(ReposMsg::Synced { generation, index, outcome })
         }
     }
 }
