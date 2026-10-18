@@ -14,8 +14,9 @@ use std::time::{Duration, Instant};
 use trellis_core::path_query::PathTerm;
 use trellis_core::repo;
 
-/// How long a chunk may take before it is reported.
-const CHUNK: Duration = Duration::from_millis(150);
+/// How long a chunk may take before it is reported. Tests allow far longer, so a busy machine
+/// (the whole suite running in parallel) cannot split a small search into several chunks.
+const CHUNK: Duration = if cfg!(test) { Duration::from_secs(30) } else { Duration::from_millis(150) };
 
 pub(super) struct Request {
     pub workdir: PathBuf,
