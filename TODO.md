@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 09:47 · **Live working-tree updates: config changes and linked worktree loads**: Outside edits to the repository's config (shared or per-worktree) reload the repository in full, and large linked worktrees are counted in the background after the load, shown as counting or not counted in WORKTREES (`4df693ed`)
 - 2026-10-18 09:28 · **File history and blame: the file view and folder entries**: Folder histories follow the folder's moves, the Diff / File choice is remembered, the File view gains find, go to line and wrapping, and folder entries get file actions, change stepping, LFS content and deleted-file views (`f19a0d86`)
 - 2026-10-18 08:51 · **Merge conflict tool: undo and redo of a saved resolution**: Saving a conflict resolution (or saving with markers) is recorded in the undo history, so undo brings the conflict and its earlier picks back and redo saves it again, with stale entries refused (`e5f83d16`)
 - 2026-10-18 08:19 · **Interactive rebase: rebase onto a commit, ref label menus, merge-preserving rebases and editing squash messages**: Branches can be rebased onto any commit, ref labels in the graph get their own menus, rebases can keep merge commits, and squash messages are edited in a dialog (`17a2183c`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 01:43 · **Repository management**: A Find repositories dialog that scans project folders, rebindable keys for the first nine favorites, reordering favorites, open markers with Open all, Remove missing entries, palette commands, and fetch or fast-forward pull of all favorites or listed repositories with a result per repository (`5b9b24c`)
 - 2026-10-18 00:57 · **Worktrees**: Branches checked out in another worktree marked in LOCAL with Checkout and Delete refused, worktrees created from a remote branch or pull request, Move, Remove also deleting the remote branch and closing the other tab, palette commands, and the worktree menu on WIP rows (`e3b272a`)
 - 2026-10-18 00:09 · **Built-in terminal: scrollback, selection, terminal tabs and In-App Terminal preferences**: Scrollback, mouse selection with copy, a context menu, multiple terminal tabs and an In-App Terminal preferences page for the built-in terminal (`89c7b74`)
-- 2026-10-17 23:54 · **Submodule upkeep**: Keep submodules updated after checkouts, pulls, merges, rebases and resets (Preferences > General, with a per-repository override in the SUBMODULES menu, leaving out submodules that would strand commits), Initialize all and Update all offered on open, Edit submodule… for the URL and branch, missing-folder and new states with resolved relative URLs, live status from submodule HEAD and ref changes, and palette commands (`c88c9e6`)
 
 ---
 
