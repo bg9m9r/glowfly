@@ -6,6 +6,7 @@
 
 use super::ops;
 use crate::effect::Effect;
+use crate::state::tabs::ClosedTab;
 use crate::state::worktree_manage::gone_text;
 use crate::state::worktree_move::{MoveForm, move_refused, move_request, moved_headline};
 use crate::state::worktrees::find;
@@ -117,7 +118,17 @@ fn retarget(st: &mut AppState, from: &Path, to: &Path, folder: Option<FolderId>,
         st.recent = recent;
         fx.push(Effect::SaveRecent(st.recent.clone()));
     }
-    if let Some(closed) = replaced(&st.closed_tabs, |p| st.same_folder(p, from), to) {
+    if st.closed_tabs.iter().any(|c| st.same_folder(&c.path, from)) {
+        // Each keeps its label; a closed tab that already named `to` is merged into it.
+        let mut closed: Vec<ClosedTab> = Vec::new();
+        for mut c in std::mem::take(&mut st.closed_tabs) {
+            if st.same_folder(&c.path, from) {
+                c.path = to.to_path_buf();
+            }
+            if !closed.iter().any(|q| same_spelling(&q.path, &c.path)) {
+                closed.push(c);
+            }
+        }
         st.closed_tabs = closed;
     }
     let favorites: Vec<PathBuf> = st.settings.favorite_repos.iter().map(|f| paths::decode(f)).collect();

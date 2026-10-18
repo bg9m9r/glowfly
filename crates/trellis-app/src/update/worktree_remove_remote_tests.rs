@@ -178,7 +178,7 @@ fn remove_closes_the_other_tab_first() {
     let fx = update(&mut st, wt(WorktreeMsg::Remove), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::RemoveWorktree(_))), "{fx:?}");
     assert_eq!((st.tabs.len(), st.active_tab), (1, 0));
-    assert!(st.closed_tabs.iter().any(|p| super::tests::same_place(p, &linked)), "Reopen closed tab has it");
+    assert!(st.closed_tabs.iter().any(|c| super::tests::same_place(&c.path, &linked)), "Reopen closed tab has it");
     super::tests::finish(&mut st, fx);
     assert!(!linked.exists());
 

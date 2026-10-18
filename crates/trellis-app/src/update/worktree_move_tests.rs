@@ -1,13 +1,14 @@
 //! Headless tests for moving a worktree: the refusals (main, this tab's, missing, locked), the
 //! typed target's problems, a move through the runner and what follows it (an inactive tab, the
-//! recent list, favorites and the saved tabs point at the new folder), a taken target reopening
-//! the dialog with the error, and Browse… filling the dialog.
+//! recent list, the closed tabs, favorites and the saved tabs point at the new folder), a taken
+//! target reopening the dialog with the error, and Browse… filling the dialog.
 
 use super::tests::{drive, finish, git, same_place, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg, TabsMsg};
 use crate::runner;
+use crate::state::tabs::ClosedTab;
 use crate::state::worktree_move::{MoveForm, target_problem};
 use crate::state::worktrees::find;
 use crate::state::{AppState, Modal};
@@ -103,6 +104,7 @@ fn a_move_retargets_tabs_and_lists() {
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert!(st.tabs[1].parked.as_ref().is_some_and(|p| p.snap.is_some()));
     st.settings.favorite_repos = vec![paths::encode(&side)];
+    st.closed_tabs = vec![ClosedTab { path: side.clone(), label: Some("Side work".into()) }];
     let to = side.with_file_name("deeper").join("renamed");
     drive(&mut st, wt(WorktreeMsg::MoveDialog(side.clone())));
     form(&mut st).folder = to.display().to_string();
@@ -121,6 +123,8 @@ fn a_move_retargets_tabs_and_lists() {
     assert!(tab.parked.as_ref().is_some_and(|p| p.snap.is_none()), "loads again when selected");
     assert!(st.recent.iter().any(|p| p == &to) && !st.recent.iter().any(|p| same_place(p, &side)), "{:?}", st.recent);
     assert_eq!(st.settings.favorite_repos, [paths::encode(&to)]);
+    let closed: Vec<_> = st.closed_tabs.iter().map(|c| (c.path.clone(), c.label.as_deref())).collect();
+    assert_eq!(closed, [(to.clone(), Some("Side work"))], "the closed tab keeps its label");
     assert!(st.snap.as_ref().unwrap().worktrees.iter().any(|w| same_place(&w.path, &to)));
 
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
