@@ -240,15 +240,21 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
 /// An arc of radius 7 around `c` from angle `start` (radians, clockwise from +x) through `sweep`,
 /// with a filled arrowhead at its end pointing along the direction of travel.
 fn arc_arrow(p: &Painter, c: Pos2, start: f32, sweep: f32, s: Stroke) {
-    let r = 7.0;
-    let at = |a: f32| pos2(c.x + r * a.cos(), c.y + r * a.sin());
-    p.add(egui::Shape::line((0..=24).map(|i| at(start + i as f32 / 24.0 * sweep)).collect(), s));
-    let a = start + sweep;
-    let tip = at(a);
-    let dir = vec2(-a.sin(), a.cos()) * sweep.signum(); // tangent along the sweep
+    const R: f32 = 7.0;
+    const HEAD: f32 = 5.5; // the head's length, along the arc
+    let at = |a: f32| pos2(c.x + R * a.cos(), c.y + R * a.sin());
+    let end = start + sweep;
+    // The head covers the arc's last HEAD px and points along the chord across them: the tangent
+    // at the end alone aims it off the curve, since a 7 px circle bends away within that length.
+    let base_angle = end - sweep.signum() * HEAD / R;
+    let (tip, base) = (at(end), at(base_angle));
+    let dir = (tip - base).normalized();
     let normal = vec2(dir.y, -dir.x);
-    let back = tip - dir * 4.5;
-    p.add(egui::Shape::convex_polygon(vec![tip + dir * 1.5, back + normal * 3.5, back - normal * 3.5], s.color, Stroke::NONE));
+    // The line stops just inside the head so its round end doesn't show past the barbs.
+    let line_end = base_angle + sweep.signum() / R;
+    let points = (0..=24).map(|i| at(start + i as f32 / 24.0 * (line_end - start))).collect();
+    p.add(egui::Shape::line(points, s));
+    p.add(egui::Shape::convex_polygon(vec![tip + dir * 0.5, base + normal * 3.5, base - normal * 3.5], s.color, Stroke::NONE));
 }
 
 /// Toolbar button: caption above the icon (caption optional), tooltip with
