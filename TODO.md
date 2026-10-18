@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 09:28 · **File history and blame: the file view and folder entries**: Folder histories follow the folder's moves, the Diff / File choice is remembered, the File view gains find, go to line and wrapping, and folder entries get file actions, change stepping, LFS content and deleted-file views (`f19a0d86`)
 - 2026-10-18 08:51 · **Merge conflict tool: undo and redo of a saved resolution**: Saving a conflict resolution (or saving with markers) is recorded in the undo history, so undo brings the conflict and its earlier picks back and redo saves it again, with stale entries refused (`e5f83d16`)
 - 2026-10-18 08:19 · **Interactive rebase: rebase onto a commit, ref label menus, merge-preserving rebases and editing squash messages**: Branches can be rebased onto any commit, ref labels in the graph get their own menus, rebases can keep merge commits, and squash messages are edited in a dialog (`17a2183c`)
 - 2026-10-18 07:46 · **Diff viewer upgrade: hunk-level parse reuse, commit .gitattributes, fold keys, filled gaps and next-change scrolling**: Syntax highlighting resumes from parse checkpoints after staging, commit diffs take language overrides from the commit's gitattributes, the lines between hunks can be filled in and folded from the keyboard, and stepping to the next change reveals the file and survives refreshes (`6f79ca3e`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 00:57 · **Worktrees**: Branches checked out in another worktree marked in LOCAL with Checkout and Delete refused, worktrees created from a remote branch or pull request, Move, Remove also deleting the remote branch and closing the other tab, palette commands, and the worktree menu on WIP rows (`e3b272a`)
 - 2026-10-18 00:09 · **Built-in terminal: scrollback, selection, terminal tabs and In-App Terminal preferences**: Scrollback, mouse selection with copy, a context menu, multiple terminal tabs and an In-App Terminal preferences page for the built-in terminal (`89c7b74`)
 - 2026-10-17 23:54 · **Submodule upkeep**: Keep submodules updated after checkouts, pulls, merges, rebases and resets (Preferences > General, with a per-repository override in the SUBMODULES menu, leaving out submodules that would strand commits), Initialize all and Update all offered on open, Edit submodule… for the URL and branch, missing-folder and new states with resolved relative URLs, live status from submodule HEAD and ref changes, and palette commands (`c88c9e6`)
-- 2026-10-17 23:09 · **Local patches**: Patches of uncommitted changes and single files, Copy patch, and an Apply patch dialog with git apply options and git am for patch series (`ac03f31`)
 
 ---
 
