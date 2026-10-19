@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-19 05:00 · **One style for empty, loading, error and banner states**: Empty panes (the dashboard, search with no matches, a history with no commits) get an icon, a title, a hint and their actions, loading and failed panes say what failed in plain words with Try again and Copy details, the git, Git LFS and operation notices share one full-width banner with an icon, and every form shows errors, warnings and information in one style, with a field's error held back until it is edited or a submit is tried (`63418541`)
 - 2026-10-19 04:18 · **A calm file header**: The diff header becomes one 48 px row with the file's icon, folder and name, status and context chips, change steps with a counter, a View menu (layout, section, whitespace, wrap, folds), labelled file actions that fold into a More menu when narrow, Stage or Unstage file and Close, and a changed image shows Before and After with sizes while other binary files show both sizes (`16017b31`)
 - 2026-10-19 03:14 · **History table that carries more information**: Graph rows are 40 px with a COMMIT column (author over the short SHA) and a right-aligned date, each row carries a faint band in its branch's lane colour, nodes show initials on a muted fill (merges a small dot, WIP a dashed ring), branches get one soft chip with local, remote and tag marks plus a "+N" chip that lists every label on hover, and a selected row gets an accent bar while a hovered one lifts (`97c7130e`)
 - 2026-10-19 02:46 · **Comfortable look**: Interface text is drawn in bundled Noto Sans and code, SHAs and file paths in JetBrains Mono, spacing moves onto an 8 px grid with 16 px panel padding, sidebar and file-list rows are 36 px, and every built-in theme gets one teal accent with panels lifted above the canvas (`a55ae626`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 11:33 · **Built-in terminal: the terminal keeps its keys, close confirmation, keyboard history scrolling, copy on select and middle-click paste**: A focused terminal keeps the tab, palette, search and refresh keys for its shell (Ctrl+digit and Alt+letter now reach it too), closing a tab whose shell runs a program asks first, Shift+PageUp/PageDown/Home/End scroll the history, and Preferences gains Copy on select and, on Linux, Middle-click paste (`666305eb`)
 - 2026-10-18 11:05 · **Branch operations**: The remote branch menu now offers the same operations as a local branch, run against its tracking branch or the checked-out branch, with review fixes applied (`a6f66ae9`)
 - 2026-10-18 10:34 · **Diff viewer upgrade: hunk and line operations with whitespace hidden, and undoable hunk reverts**: With Ignore whitespace on, staging, unstaging, discarding and reverting hunks and lines apply exactly the changes shown and leave the hidden whitespace changes as they are, and reverts from commit and comparison diffs can be undone and redone (`4d79db0f`)
-- 2026-10-18 10:14 · **Branch operations: the remote branch menu**: A remote branch's menu (left panel and graph labels) checks out its tracking branch or creates one, fast-forwards the tracking branch, and offers interactive rebase, conflict check, compare and set upstream against the checked-out branch (`a6f66ae9`)
 
 ---
 
@@ -191,7 +191,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       menu); hunk buttons at body size with Discard set apart
 - [ ] **Full-row selection in file lists**: the commit panel's and file history's file lists
       select the whole row with the same fill and accent bar as the graph and sidebar
-- [ ] **One style for empty, loading, error and banner states**: an `empty_state(icon, title,
+- [x] **One style for empty, loading, error and banner states**: an `empty_state(icon, title,
       hint, action)` widget for empty panes (the dashboard with Open, Clone and Connect; search
       with no matches with Clear search and a syntax hint; a whitespace-only diff with "Show
       whitespace changes"), loading and errors (warning icon, plain title, Try again and Copy
@@ -2322,3 +2322,16 @@ here, under the item they grew from.
 - Keyboard keys for the View menu's choices (layout, section, wrap, ignore whitespace)
 - Remember the View menu's last section per repository
 - A renamed file's header names the old path too ("old → new", the arrow painted)
+
+### One style for empty, loading, error and banner states
+
+- Hold back the problems of the forms that still show them at once (clone, init, remotes, submodules,
+  Git Flow, publish, create issue) until a field is edited or a submit is tried, as the branch, tag,
+  stash, file and worktree dialogs do
+- Show a warning for a prefilled value (a remote branch's name in Create worktree) only once it is
+  edited, like errors
+- A banner with a determinate progress bar for operations that report progress
+- Reach banner buttons with Tab and run them with Enter
+- Empty states for the stash, worktree, submodule and activity lists
+- Translate the pane titles and hints of the empty, loading and failed states
+- Split `ui/mod.rs` and `state/mod.rs`, which are past 400 lines
