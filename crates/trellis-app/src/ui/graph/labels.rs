@@ -1,6 +1,7 @@
 //! A commit row's BRANCH / TAG cell: one soft chip per label (`ref_group::chips`) with its
 //! painted marks, as many as fit whole, then a "+N" chip for the rest; the line joining them to
-//! the node; which tip the pointer over them asks for; and the ghost "+ branch" chip.
+//! the node; which tip the pointer over them asks for; where each chip is, for a double-click;
+//! and the ghost "+ branch" chip.
 
 use super::marks::{MARK_W, paint_cloud, paint_local, paint_tag};
 use super::paint::Columns;
@@ -185,6 +186,16 @@ pub(super) struct RefsCell {
     pub hovered_tip: Option<Tip>,
     /// The pointer is over the drawn chips or the "+N" chip.
     pub on_chip: bool,
+    /// Each drawn chip's rect, by its index in `RefsRow::chips`; hidden chips and the "+N" chip
+    /// have none.
+    pub chip_rects: Vec<Rect>,
+}
+
+impl RefsCell {
+    /// The drawn chip under `p`, by its index in the row's chips.
+    pub(super) fn chip_at(&self, p: Pos2) -> Option<usize> {
+        self.chip_rects.iter().position(|r| r.contains(p))
+    }
 }
 
 /// Draws a commit row's BRANCH / TAG cell in `rect` (see the module notes).
@@ -221,12 +232,13 @@ pub(super) fn refs_cell(painter: &Painter, cols: &Columns, rect: Rect, row: Refs
             rp.line_segment([pos2(end, mid), pos2(cols.refs.1, mid)], stroke);
             painter.with_clip_rect(cols.rect(cols.graph, rect)).line_segment([pos2(cols.graph.0, mid), pos2(edge, mid)], stroke);
         }
+        out.chip_rects = drawn;
         if let Some(p) = row.pointer {
             out.on_chip = hit.contains(p);
             out.hovered_tip = if f.plus && out.on_chip {
                 Some(Tip::All)
             } else {
-                let on = drawn.iter().position(|r| r.contains(p));
+                let on = out.chip_at(p);
                 on.filter(|&i| (i == 0 && f.first_cut) || row.chips[i].upstream.is_some()).map(Tip::One)
             };
         }
@@ -337,5 +349,16 @@ mod tests {
         // In a room narrower than the chip the name is cut and the marks keep their room.
         let f = fit(&[chip_w(&spec(true, true, false), 90.0)], 100.0, plus, 4.0);
         assert!(f.first_cut && f.first_w == 100.0, "{f:?}");
+    }
+
+    #[test]
+    fn chip_at_finds_the_chip_under_the_pointer() {
+        let rect = |x0: f32, x1: f32| Rect::from_min_max(pos2(x0, 9.0), pos2(x1, 31.0));
+        let cell = RefsCell { chip_rects: vec![rect(10.0, 60.0), rect(64.0, 120.0)], ..RefsCell::default() };
+        assert_eq!(cell.chip_at(pos2(30.0, 20.0)), Some(0));
+        assert_eq!(cell.chip_at(pos2(90.0, 20.0)), Some(1));
+        assert_eq!(cell.chip_at(pos2(62.0, 20.0)), None, "the gap between chips");
+        assert_eq!(cell.chip_at(pos2(30.0, 35.0)), None, "below the chip, still on the row");
+        assert_eq!(cell.chip_at(pos2(130.0, 20.0)), None, "past the last chip");
     }
 }

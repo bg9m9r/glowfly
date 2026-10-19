@@ -3,7 +3,7 @@
 //! multi-selection menu for a row of the selection.
 
 use crate::msg::Msg;
-use crate::state::{ForgeState, Selection};
+use crate::state::{ForgeState, Selection, remote_branch};
 use crate::ui::branch_menu::local_branch_menu;
 use crate::ui::menus::{commit_menu, multi_commit_menu};
 use crate::ui::remote_branch_menu::{RemoteMenu, remote_branch_menu};
@@ -76,14 +76,7 @@ fn label_menu(ui: &mut egui::Ui, l: &RefLabel, m: &RowMenu, msgs: &mut Vec<Msg>)
             }
         }
         RefKind::Remote => {
-            let remote = snap
-                .remotes
-                .iter()
-                .map(|(r, _)| r.as_str())
-                .filter(|r| l.name.strip_prefix(r).is_some_and(|rest| rest.starts_with('/')))
-                .max_by_key(|r| r.len());
-            if let Some(remote) = remote {
-                let name = &l.name[remote.len() + 1..];
+            if let Some((remote, name)) = remote_branch::split(snap, &l.name) {
                 let current = snap.head_branch.as_deref().unwrap_or_default();
                 let graph = filter();
                 let c = RemoteMenu { current, fs: m.forge, graph: &graph, sel: m.selection, t };

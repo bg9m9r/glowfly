@@ -1,7 +1,7 @@
 //! The commit graph: a table with configurable, resizable columns (branch / tag, graph, message,
-//! changes, commit, date), rows banded in their lane's colour, author nodes, ghost refs, branch
-//! highlighting, this tab's WIP row (`wip_row`: its label, change chips and line total) and
-//! other worktrees' WIP rows.
+//! changes, commit, date), rows banded in their lane's colour, author nodes, ref chips
+//! (double-click a branch chip to check it out), ghost refs, branch highlighting, this tab's WIP
+//! row (`wip_row`: its label, change chips and line total) and other worktrees' WIP rows.
 
 mod cells;
 mod header;
@@ -10,6 +10,7 @@ mod marks;
 mod more;
 mod nodes;
 mod paint;
+mod ref_checkout;
 mod ref_group;
 mod ref_menu;
 mod resize;
@@ -272,8 +273,17 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     _ if hovered && in_date => resp.on_hover_text_at_pointer(settings.date_tooltip(c.time, now, offset)),
                     _ => resp,
                 };
-                if resp.clicked() {
-                    let mods = ui.input(|i| i.modifiers);
+                // A plain double-click on a branch chip checks it out instead of clicking the row.
+                let mods = ui.input(|i| i.modifiers);
+                let checkout = resp
+                    .interact_pointer_pos()
+                    .filter(|_| resp.double_clicked() && mods.is_none())
+                    .and_then(|p| refs.chip_at(p))
+                    .and_then(|i| chips.get(i))
+                    .and_then(|chip| ref_checkout::double_click(chip, snap));
+                if let Some(m) = checkout {
+                    msgs.push(m);
+                } else if resp.clicked() {
                     let on_ghost = refs.ghost.zip(pointer).is_some_and(|(r, p)| r.contains(p));
                     msgs.push(if on_ghost && mods.is_none() {
                         Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() })

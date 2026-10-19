@@ -256,7 +256,7 @@ until this list says which option was chosen.
     rebase/stepwise"); the toasts name it when it is made and when it is put back or kept,
     with a button that selects it, and its Stashes row has an "auto" marker
   - When putting it back conflicts, say so and leave it in the list; nothing is lost
-- [ ] **Double-click a branch to check it out**: in the sidebar and on graph labels, through
+- [x] **Double-click a branch to check it out**: in the sidebar and on graph labels, through
       Stash and carry on when there are changes; a remote branch checks out its local tracking
       branch, creating it when there is none
 - [ ] **Errors say what to do**: failed git operations show a plain toast that names the cause
@@ -1628,6 +1628,18 @@ here, under the item they grew from.
 - Compare with the current branch from the local branch and tag menus too
 - Route the palette's remote checkout through the remote branch checkout message
 - An entry per local branch when several track the same remote branch (only one is offered now)
+
+### Double-click a branch to check it out
+
+- Double-click a tag (graph chip and TAGS row) to check it out detached, through the existing
+  tag checkout and its detached-HEAD warning
+- Double-click the "+N" chip to choose which hidden branch to check out
+- Double-clicking a branch that another worktree has checked out opens that worktree's tab
+  instead of logging the refusal
+- Branch chip and row tooltips mention that a double-click checks the branch out
+- Double-clicking the checked-out branch does nothing instead of logging that it is already
+  checked out
+- Enter on a selected graph row whose commit carries one branch checks that branch out
 
 ### Hide / show only branches in the graph
 

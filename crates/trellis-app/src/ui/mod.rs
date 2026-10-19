@@ -210,6 +210,8 @@ mod snapshot_tests_form_messages;
 #[cfg(test)]
 mod snapshot_tests_gitflow;
 #[cfg(test)]
+mod snapshot_tests_graph_double_click;
+#[cfg(test)]
 mod snapshot_tests_graph_ref_menu;
 #[cfg(test)]
 mod snapshot_tests_history;

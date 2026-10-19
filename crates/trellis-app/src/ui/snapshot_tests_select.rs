@@ -88,6 +88,19 @@ pub(super) fn click(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button
     h.run_ok();
 }
 
+/// A primary double-click at `pos` with `modifiers` held. Both clicks go in one frame: each
+/// harness step is a quarter second, past the double-click delay.
+pub(super) fn double_click(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, modifiers: Modifiers) {
+    h.input_mut().modifiers = modifiers;
+    let events = &mut h.input_mut().events;
+    events.push(Event::PointerMoved(pos));
+    for pressed in [true, false, true, false] {
+        events.push(Event::PointerButton { pos, button: PointerButton::Primary, pressed, modifiers });
+    }
+    h.run_ok();
+    h.input_mut().modifiers = Modifiers::NONE;
+}
+
 /// The y of graph row `row` (the WIP row is 0) in the window the harness draws.
 pub(super) fn row_y(row: usize) -> f32 {
     use crate::ui::graph::ROW_H;

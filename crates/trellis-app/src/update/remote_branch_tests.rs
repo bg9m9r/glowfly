@@ -8,7 +8,7 @@ use super::update;
 use crate::conflict_check::ConflictCheckMsg;
 use crate::effect::Effect;
 use crate::msg::{BranchMsg, Msg, RepoMsg, SelectionMsg};
-use crate::state::remote_branch::{checkout_blocked, tracking_local};
+use crate::state::remote_branch::{checkout_blocked, split, tracking_local};
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use std::path::Path;
@@ -179,5 +179,18 @@ fn set_upstream_from_remote_row() {
     let (mut st, work, bare) = with_origin("rb-set-upstream");
     let msg = Msg::Branch(BranchMsg::SetUpstream { branch: "main".into(), remote: "origin".into(), name: "feature".into() });
     assert_eq!(cmds(&mut st, msg), vec![args(&["branch", "--set-upstream-to=origin/feature", "main"])]);
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn split_uses_the_longest_remote() {
+    let (mut st, work, bare) = with_origin("rb-split");
+    let snap = st.snap.as_mut().unwrap();
+    let origin = snap.remotes.iter().find(|(r, _)| r == "origin").cloned().expect("origin");
+    snap.remotes = vec![origin, ("or".into(), Vec::new()), ("origin/x".into(), Vec::new())];
+    assert_eq!(split(snap, "origin/feature"), Some(("origin", "feature")));
+    assert_eq!(split(snap, "origin/x/y"), Some(("origin/x", "y")), "the longer remote wins");
+    assert_eq!(split(snap, "orphan/z"), None, "\"or\" isn't followed by '/'");
+    assert_eq!(split(snap, "nowhere"), None);
     cleanup(&[&work, &bare]);
 }

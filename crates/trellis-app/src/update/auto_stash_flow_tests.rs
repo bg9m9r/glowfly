@@ -1,17 +1,20 @@
 //! Stash and carry on, end to end on fixture repositories: the stash is made in the
 //! operation's job and put back once the operation is over, whether it finished at once, stopped
-//! and was continued, aborted or committed, or putting it back conflicted.
+//! and was continued, aborted or committed, or putting it back conflicted; and the branch
+//! checkouts a double-click on a graph chip sends.
 
 use super::auto_stash_tests::{ask, git_cmds, up};
 use super::cherry_pick_tests::feature_repo;
 use super::tests::{accept_stash, drive, finish, git};
 use crate::effect::Effect;
-use crate::msg::{AutoStashMsg, CommitMsg, JobMsg, Msg, RebaseMsg, RepoMsg, SelectionMsg};
-use crate::state::{AppState, Modal};
+use crate::msg::{AutoStashMsg, BranchMsg, CommitMsg, JobMsg, Msg, RebaseMsg, RepoMsg, SelectionMsg};
+use crate::state::{AppState, Modal, remote_branch};
 use git2::{Oid, RepositoryState};
 use std::path::Path;
 use trellis_core::gitcli::args;
 use trellis_core::rebase::Resume;
+use trellis_core::stash_ops::AutoStashFor;
+use trellis_core::undo::UndoKind;
 
 /// a.txt edited, so the tree has one changed file Trellis can stash.
 fn dirty(st: &mut AppState, dir: &Path) {
@@ -79,6 +82,102 @@ fn always_stash_saves_and_skips_prompt() {
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("main"));
     mine_is_back(&st, &dir);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn head_branch(st: &AppState) -> Option<&str> {
+    st.snap.as_ref().unwrap().head_branch.as_deref()
+}
+
+fn checkout_op(target: &str) -> AutoStashFor {
+    AutoStashFor::Checkout { target: target.into() }
+}
+
+fn checkout_remote(remote: &str, name: &str) -> Msg {
+    Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.into(), name: name.into() })
+}
+
+#[test]
+fn double_click_checkout_asks_then_stashes() {
+    let (mut st, dir, _) = feature_repo(
+        "asf-dbl-local",
+        &[(
+            "feature work",
+            "feature
+",
+        )],
+        None,
+    );
+    dirty(&mut st, &dir);
+    let feature = st.snap.as_ref().unwrap().locals.iter().find(|b| b.name == "feature").and_then(|b| b.oid).unwrap();
+    // The double-click's first click selects the row: no modal, so the guard isn't blocked.
+    drive(&mut st, Msg::Repo(RepoMsg::SelectCommit(feature)));
+    assert!(st.modal.is_none());
+    assert!(up(&mut st, Msg::Branch(BranchMsg::Checkout("feature".into()))).is_empty());
+    assert_eq!(ask(&st).op, checkout_op("feature"));
+    assert_eq!(ask(&st).files, 1);
+    assert!(matches!(&*ask(&st).retry, Msg::Branch(BranchMsg::Checkout(n)) if n == "feature"), "retried as sent");
+    let fx = up(&mut st, Msg::AutoStash(AutoStashMsg::Stash));
+    assert_eq!(
+        git_cmds(&fx),
+        vec![args(&["stash", "push", "-m", "Auto-stash before checking out feature"]), args(&["checkout", "feature", "--"])]
+    );
+    let record = Some(UndoKind::Checkout);
+    assert!(fx.iter().any(|e| matches!(e, Effect::RunGit { record: r, .. } if *r == record)), "undo records the checkout");
+    finish(&mut st, fx);
+    assert_eq!(head_branch(&st), Some("feature"));
+    mine_is_back(&st, &dir);
+
+    // With Always stash on, the double-click never stops at the prompt.
+    st.settings.auto_stash = true;
+    dirty(&mut st, &dir);
+    let fx = up(&mut st, Msg::Branch(BranchMsg::Checkout("main".into())));
+    assert!(st.modal.is_none());
+    assert_eq!(
+        git_cmds(&fx),
+        vec![args(&["stash", "push", "-m", "Auto-stash before checking out main"]), args(&["checkout", "main", "--"])]
+    );
+    finish(&mut st, fx);
+    assert_eq!(head_branch(&st), Some("main"));
+    mine_is_back(&st, &dir);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn double_click_remote_with_tracking_branch_asks_for_it() {
+    let (mut st, work, bare) = super::branch_tests::with_origin("asf-dbl-tracked");
+    dirty(&mut st, &work);
+    assert!(up(&mut st, checkout_remote("origin", "feature")).is_empty());
+    assert_eq!(ask(&st).op, checkout_op("feature"));
+    assert!(matches!(&*ask(&st).retry, Msg::Branch(BranchMsg::Checkout(n)) if n == "feature"), "the tracking branch's checkout");
+    accept_stash(&mut st);
+    assert_eq!(head_branch(&st), Some("feature"));
+    mine_is_back(&st, &work);
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&bare);
+}
+
+#[test]
+fn double_click_remote_without_local_creates_it_after_stashing() {
+    let (mut st, work, bare) = super::branch_tests::with_origin("asf-dbl-new");
+    git(&work, &["push", "-q", "origin", "main:other"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    dirty(&mut st, &work);
+    assert!(up(&mut st, checkout_remote("origin", "other")).is_empty());
+    assert_eq!(ask(&st).op, checkout_op("origin/other"));
+    let retry =
+        matches!(&*ask(&st).retry, Msg::Branch(BranchMsg::CheckoutRemote { remote, name }) if remote == "origin" && name == "other");
+    assert!(retry, "retried as sent");
+    let stash = ask(&st).op.stash_command();
+    let fx = up(&mut st, Msg::AutoStash(AutoStashMsg::Stash));
+    assert_eq!(git_cmds(&fx), vec![stash, args(&["checkout", "--track", "origin/other", "--"])]);
+    finish(&mut st, fx);
+    assert_eq!(head_branch(&st), Some("other"));
+    let snap = st.snap.as_ref().unwrap();
+    let other = snap.locals.iter().find(|b| b.name == "other").expect("the new branch");
+    assert!(remote_branch::tracks(other, "origin", "other"), "it tracks origin/other");
+    mine_is_back(&st, &work);
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&bare);
 }
 
 /// A merge of `feature` that stops on f.txt, with the changes in the stash.

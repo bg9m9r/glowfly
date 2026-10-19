@@ -1,6 +1,7 @@
 //! A remote-tracking branch's operations: the local branch that tracks it, whether it can be
-//! checked out or compared with HEAD, and why not. The remote branch menu shows these reasons on
-//! disabled items and `update` logs the same text when it refuses a late message.
+//! checked out or compared with HEAD, and why not, and how a graph label splits into remote and
+//! branch. The remote branch menu shows these reasons on disabled items and `update` logs the
+//! same text when it refuses a late message.
 
 use git2::Oid;
 use trellis_core::branch_ops::{NameProblem, check_branch_name};
@@ -17,6 +18,18 @@ pub fn tracks(b: &BranchInfo, remote: &str, name: &str) -> bool {
 pub fn tracking_local<'a>(snap: &'a Snapshot, remote: &str, name: &str) -> Option<&'a BranchInfo> {
     let found: Vec<&BranchInfo> = snap.locals.iter().filter(|b| tracks(b, remote, name)).collect();
     found.iter().find(|b| b.is_head).or_else(|| found.iter().find(|b| b.name == name)).or(found.first()).copied()
+}
+
+/// Splits remote-tracking label `label` ("origin/feature") into its remote and branch name, by
+/// the longest remote in the snapshot followed by '/'; None when no remote matches.
+pub fn split<'a>(snap: &Snapshot, label: &'a str) -> Option<(&'a str, &'a str)> {
+    let remote = snap
+        .remotes
+        .iter()
+        .map(|(r, _)| r.as_str())
+        .filter(|r| label.strip_prefix(r).is_some_and(|rest| rest.starts_with('/')))
+        .max_by_key(|r| r.len())?;
+    Some((&label[..remote.len()], &label[remote.len() + 1..]))
 }
 
 /// The tip of remote-tracking branch `remote`/`name`, when the snapshot has it.
