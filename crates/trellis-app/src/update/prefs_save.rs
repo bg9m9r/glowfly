@@ -4,7 +4,8 @@
 //! checkout through their own jobs.
 
 use crate::effect::Effect;
-use crate::profile::IdentityField;
+use crate::msg::Msg;
+use crate::profile::{IdentityField, ProfileMsg};
 use crate::state::prefs::GitConfigValues;
 use crate::state::{AppState, PrefPage};
 use std::time::Instant;
@@ -126,10 +127,23 @@ pub(super) fn revert_page(st: &mut AppState) {
 }
 
 /// "Save your changes?" answered Save: save, then complete the leave. A refused save keeps
-/// the page (with its problem shown) and drops the leave.
+/// the page (with its problem shown) and drops the leave. A held switch to a profile other
+/// than the edited one starts first, so the edited profile's identity waits for it
+/// (`profiles::set_identity`) rather than racing its writes to the global git config.
 pub(super) fn leave_save(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    if switches_elsewhere(st) {
+        replay(st, true, now, fx);
+        save_page(st, fx);
+        return;
+    }
     let saved = save_page(st, fx);
     replay(st, saved, now, fx);
+}
+
+/// Whether the held leave switches to a profile other than the one the page edits.
+fn switches_elsewhere(st: &AppState) -> bool {
+    let Some(p) = st.prefs.as_ref() else { return false };
+    matches!(p.leaving.as_deref(), Some(Msg::Profile(ProfileMsg::Switch(id))) if p.profiles.selected != Some(*id))
 }
 
 /// "Save your changes?" answered Discard: revert, then complete the leave.

@@ -55,7 +55,7 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
                 Ok(()) => {
                     if let Some(p) = st.prefs.as_mut() {
                         p.profiles.renaming = None;
-                        p.profiles.fill(&st.settings, None);
+                        p.profiles.refresh(&st.settings);
                     }
                     if st.settings.profile(id).map(|p| p.name.clone()) != before {
                         fx.push(save_settings(st));
@@ -89,7 +89,7 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
                         if p.profiles.renaming.as_ref().is_some_and(|f| f.id == id) {
                             p.profiles.renaming = None;
                         }
-                        p.profiles.fill(&st.settings, None);
+                        p.profiles.refresh(&st.settings);
                     }
                 }
                 Err(problem) => st.log(false, problem.message()),
@@ -225,7 +225,7 @@ fn rewritten(
         Ok(values) => {
             if let Some(p) = st.prefs.as_mut() {
                 p.git = Some(values);
-                p.profiles.fill(&st.settings, None);
+                p.profiles.refresh(&st.settings);
             }
         }
         Err(e) => {

@@ -65,6 +65,9 @@ fn leaves(st: &AppState, msg: &Msg) -> bool {
         Msg::GitEnv(GitEnvMsg::ShowPage) => other(PrefPage::Git),
         Msg::Profile(ProfileMsg::ShowPage) => other(PrefPage::Profile),
         Msg::Profile(ProfileMsg::Select(id)) => page == PrefPage::Profile && p.profiles.selected != Some(*id),
+        // Adding selects the new profile; a switch writes stored identities and then refills
+        // the page. (Renaming and deleting another profile keep the edits: profiles::refresh.)
+        Msg::Profile(ProfileMsg::Add { .. } | ProfileMsg::Switch(_)) => page == PrefPage::Profile,
         Msg::Ssh(SshMsg::ShowPage) => other(PrefPage::Ssh),
         Msg::Lfs(LfsMsg::ShowPage) => other(PrefPage::RepoLfs),
         Msg::GitFlow(GitFlowMsg::ShowPage) => other(PrefPage::RepoGitFlow),

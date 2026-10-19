@@ -67,13 +67,7 @@ pub fn unsaved(p: &PrefsState, settings: &Settings, snap: Option<&Snapshot>) -> 
         PrefPage::General => git.is_some_and(|(g, s)| g.longpaths != s.longpaths || g.autocrlf != s.autocrlf),
         PrefPage::RepoIdentity => git.is_some_and(|(g, s)| differ(&g.repo_name, &s.repo_name) || differ(&g.repo_email, &s.repo_email)),
         PrefPage::RepoHooks => git.is_some_and(|(g, s)| differ(&g.hooks_path, &s.hooks_path)),
-        PrefPage::Profile => {
-            let Some(profile) = p.profiles.selected.and_then(|id| settings.profile(id)) else { return false };
-            let pp = &p.profiles;
-            differ(&pp.author_name, &profile.author_name)
-                || differ(&pp.author_email, &profile.author_email)
-                || differ(&pp.signing_key, profile.signing_key.as_deref().unwrap_or(""))
-        }
+        PrefPage::Profile => p.profiles.edited(settings),
         PrefPage::RepoGitFlow => snap.is_some_and(|s| s.gitflow.is_initialized()) && p.gitflow.edited(),
         PrefPage::RepoSparse => p.sparse.status.as_ref().is_some_and(|s| s.enabled) && p.sparse.edited(),
         _ => false,

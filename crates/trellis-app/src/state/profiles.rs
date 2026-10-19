@@ -182,4 +182,23 @@ impl ProfilesPage {
         self.author_email = p.map(|p| p.author_email.clone()).unwrap_or_default();
         self.signing_key = p.and_then(|p| p.signing_key.clone()).unwrap_or_default();
     }
+
+    /// Whether the fields differ from the selected profile's stored identity (edits the Save /
+    /// Revert bar would save).
+    pub fn edited(&self, settings: &Settings) -> bool {
+        let Some(profile) = self.selected.and_then(|id| settings.profile(id)) else { return false };
+        let differ = |a: &str, b: &str| a.trim() != b.trim();
+        differ(&self.author_name, &profile.author_name)
+            || differ(&self.author_email, &profile.author_email)
+            || differ(&self.signing_key, profile.signing_key.as_deref().unwrap_or(""))
+    }
+
+    /// `fill(settings, None)` after a change that left the selected profile's identity alone
+    /// (a rename, another profile deleted, a rewrite): edited fields of a profile that still
+    /// exists keep their text, so the change doesn't throw the edits away.
+    pub fn refresh(&mut self, settings: &Settings) {
+        if !self.edited(settings) {
+            self.fill(settings, None);
+        }
+    }
 }
