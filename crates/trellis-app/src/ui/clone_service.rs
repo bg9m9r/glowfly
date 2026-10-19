@@ -93,7 +93,8 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, connections: &[Connection],
                 .hint_text("Filter repositories")
                 .desired_width(f32::INFINITY),
         );
-        if focus && ui.memory(|m| m.focused().is_none()) {
+        // Not on the Enter that left it: the dialog's frame reads that as running Clone.
+        if focus && !r.lost_focus() && ui.memory(|m| m.focused().is_none()) {
             r.request_focus();
         }
         ui.add_space(4.0);

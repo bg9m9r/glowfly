@@ -190,7 +190,9 @@ binary (package `trellis`).
   recorded when it opened (after every update). When they differ it asks "Discard your
   changes?" (`ui/dialog_guard.rs`), whose default button is Keep editing.
   Enter runs a dialog's default button: its primary, or Cancel or Close when it has none or
-  its tone is danger, so Enter never presses a danger button. `Modal::ConfirmDanger`
+  its tone is danger, so Enter never presses a danger button. Enter in a single-line field
+  runs the primary on the first press: the frame sees the field give up the focus, so a field
+  that takes the focus back when nothing has it skips the frame it lost it. `Modal::ConfirmDanger`
   (`state/confirm.rs`: `Modal::danger`, `with_ack`, `confirm_ready`) is the confirmation for a
   step that loses work; with an acknowledgement its danger button stays disabled until the box
   is ticked, and `update` refuses to run it before then.

@@ -36,7 +36,8 @@ fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Ms
         if edit.changed() {
             msgs.push(Msg::Init(InitMsg::FolderEdited));
         }
-        if focus && ui.memory(|m| m.focused().is_none()) {
+        // Not on the Enter that left it: the dialog's frame reads that as running Create.
+        if focus && !edit.lost_focus() && ui.memory(|m| m.focused().is_none()) {
             edit.request_focus();
         }
         if ui.add(buttons::secondary("Browse…").small()).clicked() {

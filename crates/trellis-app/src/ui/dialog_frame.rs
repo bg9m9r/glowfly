@@ -10,8 +10,9 @@
 //! and a resizable dialog's body sits in an `egui::Resize` with egui's grip at its bottom right.
 //!
 //! Keys: Enter with no modifiers runs the default button when a footer button has focus (egui
-//! presses it), when nothing has focus, or when a single-line field reported it (the form's
-//! `submit`); Ctrl/Cmd+Enter runs it from anywhere, a multiline field included. The default is the
+//! presses it), when nothing has focus, or when a single-line field gave up the focus on it or
+//! reported it (the form's `submit`); Ctrl/Cmd+Enter runs it from anywhere, a multiline field
+//! included. A field's Enter runs only a primary, never Cancel or Close. The default is the
 //! primary, or the dismiss button when there is none or the dialog's tone is Danger, so Enter
 //! never presses a danger button. On the first frame a dialog shows, its default button gets the
 //! focus unless the body gave it to a field. Esc stays with `dialog_guard::dismissal`.
@@ -255,6 +256,9 @@ impl Open {
         });
         let default_is_primary = tone == Tone::Normal && primary_r.is_some();
         let default_r = if default_is_primary { primary_r.as_ref() } else { dismiss_r.as_ref() };
+        // A single-line field gives up the focus on Enter, and nothing else in a dialog does:
+        // that Enter runs the primary as if the form reported it.
+        let field_enter = self.enter && !self.opened && self.focus_start.is_some() && ui.memory(|m| m.focused()).is_none();
         if self.opened
             && self.cx.keyboard
             && ui.memory(|m| m.focused()).is_none()
@@ -263,7 +267,8 @@ impl Open {
             r.request_focus();
         }
         // A focused footer button was already pressed by egui's own Enter.
-        let run_default = submit || self.cmd_enter || (self.enter && self.focus_start.is_none());
+        let run_default =
+            submit || self.cmd_enter || (self.enter && self.focus_start.is_none()) || (field_enter && default_is_primary);
         if run_default {
             if default_is_primary {
                 out.primary |= primary_on;
