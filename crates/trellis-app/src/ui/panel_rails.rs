@@ -4,13 +4,13 @@
 //! for that tool view only; `state::layout::details_shape` decides which is drawn).
 
 use super::access;
-use super::theme::{color, spacing};
+use super::theme::{color, spacing, type_scale};
 use super::widgets::{self, Icon};
 use crate::keymap::{BindingId, KeyAction};
 use crate::msg::{LayoutMsg, Msg};
 use crate::state::AppState;
 use crate::state::layout::{Panel, wip_change_count};
-use eframe::egui::{self, CornerRadius, FontId, Sense, Stroke, StrokeKind, pos2, vec2};
+use eframe::egui::{self, CornerRadius, Sense, Stroke, StrokeKind, pos2, vec2};
 
 /// The edge strip's width.
 pub const EDGE_W: f32 = 16.0;
@@ -85,7 +85,7 @@ pub(super) fn details_rail(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Ms
 /// A small accent pill with `count`, named and tipped `name`.
 fn change_pill(ui: &mut egui::Ui, count: usize, name: &str) -> egui::Response {
     let accent = color::accent();
-    let galley = ui.painter().layout_no_wrap(count.to_string(), FontId::proportional(12.5), color::text());
+    let galley = ui.painter().layout_no_wrap(count.to_string(), type_scale::font(type_scale::SMALL), color::text());
     let size = vec2((galley.size().x + 12.0).max(22.0), 20.0);
     let (rect, resp) = ui.allocate_exact_size(size, Sense::click());
     let p = ui.painter();
