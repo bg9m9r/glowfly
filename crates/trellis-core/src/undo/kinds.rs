@@ -168,7 +168,7 @@ fn move_kind(op: &str, rest: &[&str]) -> Option<UndoKind> {
 
 /// The plain arguments of a move command. For a cherry-pick or revert (`picks`), a mainline
 /// parent (`-m N`, `--mainline N`, `-mN`, `--mainline=N`) is left out: it isn't a commit.
-fn move_targets<'a>(rest: &[&'a str], picks: bool) -> Vec<&'a str> {
+pub(crate) fn move_targets<'a>(rest: &[&'a str], picks: bool) -> Vec<&'a str> {
     let mut out = Vec::new();
     let mut args = rest.iter();
     while let Some(a) = args.next() {
@@ -184,7 +184,7 @@ fn move_targets<'a>(rest: &[&'a str], picks: bool) -> Vec<&'a str> {
 }
 
 /// "abc1234" for one commit, "3 commits" for several.
-fn commits_label(targets: &[&str]) -> Option<String> {
+pub(crate) fn commits_label(targets: &[&str]) -> Option<String> {
     match targets {
         [] => None,
         [one] => Some(commit_label(one)),

@@ -247,6 +247,17 @@ fn delete_to_trash_defaults_on() {
 }
 
 #[test]
+fn auto_stash_default_off() {
+    assert!(!Settings::default().auto_stash);
+    // Files written before the preference existed ask before stashing.
+    let s: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!s.auto_stash);
+    let on = Settings { auto_stash: true, ..Settings::default() };
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&on).unwrap()).unwrap();
+    assert!(back.auto_stash);
+}
+
+#[test]
 fn favorite_repos_default_empty_and_round_trip() {
     assert!(Settings::default().favorite_repos.is_empty());
     // Files written before favorites existed load with none.

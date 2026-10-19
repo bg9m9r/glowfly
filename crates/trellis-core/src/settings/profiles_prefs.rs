@@ -49,6 +49,7 @@ profile_prefs! {
     conflict_check: bool,
     submodules: SubmodulePrefs,
     delete_to_trash: bool,
+    auto_stash: bool,
     // UI Customization
     theme: ThemeChoice,
     notification_location: Corner,

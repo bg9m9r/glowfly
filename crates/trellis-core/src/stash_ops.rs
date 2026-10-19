@@ -7,6 +7,10 @@
 //!
 //! `push` builds the Stash dialog's `git stash push` command lines (every change, only the
 //! staged changes, or chosen paths).
+//!
+//! `auto` names the stash Trellis makes before an operation that needs a clean work tree
+//! (checkout, pull, merge, rebase, cherry-pick, revert, hard reset), recognises it and git's own
+//! kept "autostash" in the list, and puts it back with `git stash pop` once nothing is in progress.
 
 use crate::error::Result;
 use crate::gitcli::{self, args};
@@ -14,7 +18,9 @@ use crate::repo::StashInfo;
 use git2::Oid;
 use std::path::Path;
 
+mod auto;
 mod push;
+pub use auto::{AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, pop_put_back, prepare_put_back};
 pub use push::{PATHS_ON_COMMAND_LINE, PushCommand, STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 
 /// Splits a stash list text into the branch it was made on and the part the user can edit:
@@ -154,3 +160,7 @@ mod tests;
 #[cfg(test)]
 #[path = "stash_ops/push_tests.rs"]
 mod push_tests;
+
+#[cfg(test)]
+#[path = "stash_ops/auto_tests.rs"]
+mod auto_tests;

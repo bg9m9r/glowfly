@@ -245,6 +245,8 @@ pub struct Settings {
     pub detached_head_warned: bool,
     /// Delete… moves files to the OS trash instead of removing them (Preferences > General).
     pub delete_to_trash: bool,
+    /// Stash uncommitted changes before checkout, pull, merge, rebase, cherry-pick and revert without asking (Preferences > General).
+    pub auto_stash: bool,
 
     /// Connected services. Secrets live in the OS credential store or Git Credential
     /// Manager, never here.
@@ -377,6 +379,7 @@ impl Default for Settings {
             push_new_tags: false,
             detached_head_warned: false,
             delete_to_trash: true,
+            auto_stash: false,
             connections: Vec::new(),
             repo_trackers: HashMap::new(),
             graph_filters: HashMap::new(),

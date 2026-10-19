@@ -34,6 +34,7 @@ mod stash;
 pub use action::{Action, Changes, Created, Discarded, HeadPos, Staged};
 pub use deleted::{DeleteVia, DeletedSaving, MAX_KEPT_BYTES, Trashers, delete_again, delete_saving, delete_staged_saving, put_back};
 pub use kinds::{MoveOp, ResetMode, UndoKind};
+pub(crate) use kinds::{commits_label, move_targets};
 use planning::{has_staged, is_clean, stale};
 pub use planning::{plan, plan_with};
 pub use rebased::{RebaseStart, rebase_start, rebased, unmoved};
