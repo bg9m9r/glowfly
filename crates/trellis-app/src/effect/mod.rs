@@ -120,6 +120,13 @@ pub enum Effect {
         generation: u64,
         diff: std::sync::Arc<FileDiff>,
     },
+    /// Reads the sizes and decodes the images of the binary diff shown at `generation`
+    /// (AppState::diff_shown_gen), for its header and preview.
+    LoadBinarySides {
+        workdir: PathBuf,
+        target: DiffTarget,
+        generation: u64,
+    },
     LoadConflict {
         workdir: PathBuf,
         path: String,

@@ -22,7 +22,9 @@ pub mod dashboard_rows;
 pub mod deep_link;
 pub mod dialog_guard;
 pub mod dialog_kind;
+pub mod diff_header;
 pub mod diff_nav;
+pub mod diff_preview;
 pub mod files;
 mod forge;
 pub mod forge_filter_form;
@@ -346,6 +348,8 @@ pub struct AppState {
     /// The request that produced the diff on screen. Hunk operations only run while this is
     /// `diff_gen`: otherwise a reload is on its way and the hunk indexes may no longer match.
     pub diff_shown_gen: u64,
+    /// The binary diff on screen's sizes and image previews (update/diff_preview.rs).
+    pub diff_preview: Option<diff_preview::DiffPreview>,
     /// The conflict being resolved; shown instead of the graph or a diff.
     pub conflict: Option<conflict::ConflictView>,
     /// Incremented for every conflict load request and whenever the view closes; older
@@ -485,6 +489,7 @@ impl AppState {
             diff: None,
             diff_gen: 0,
             diff_shown_gen: 0,
+            diff_preview: None,
             conflict: None,
             conflict_gen: 0,
             conflict_files: Default::default(),

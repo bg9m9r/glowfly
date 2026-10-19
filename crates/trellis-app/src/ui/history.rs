@@ -6,7 +6,7 @@
 
 use super::UiCache;
 use super::common::{menu_item, menu_item_if, short, status_color};
-use super::file_buttons::{self, CommitFile, Labels};
+use super::file_buttons::{self, CommitFile};
 use super::file_menu;
 use super::theme::color;
 use super::widgets::paint_cut_text;
@@ -317,7 +317,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
     let Some(target) = target else { return };
     match pane {
         HistoryPane::File => super::history_file::show(ui, st, cache, msgs),
-        HistoryPane::Diff if st.diff.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, &mut cache.diff_rows, msgs),
+        HistoryPane::Diff if st.diff.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, cache, msgs),
         HistoryPane::Diff => {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
@@ -332,7 +332,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
 fn file_actions(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>, f: &CommitFile) {
     let blocked = diff_blocked(&st.settings.external_tools);
     ui.horizontal_wrapped(|ui| {
-        file_buttons::show(ui, msgs, f, Labels::Full);
+        file_buttons::show(ui, msgs, f);
         if ui.add(buttons::secondary(OPEN_IN_DIFF_TOOL).enabled(blocked.is_none()).why(blocked)).clicked() {
             msgs.push(Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Commit(f.oid, f.path.to_owned()))));
         }

@@ -65,7 +65,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                             .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(12, 4)))
                             .show_inside(ui, |ui| threads::file_pane(ui, st, &path, msgs));
                     }
-                    super::diff::show(ui, st, &mut cache.diff_rows, msgs);
+                    super::diff::show(ui, st, cache, msgs);
                 } else {
                     ui.add_space(12.0);
                     ui.horizontal(|ui| {

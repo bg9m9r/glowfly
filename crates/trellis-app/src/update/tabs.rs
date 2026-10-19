@@ -206,6 +206,7 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         super::pull_request::reload_pending(st, fx);
         super::issue::reload_pending(st, fx);
         super::rebase::reload_pending(st, fx);
+        super::diff_preview::reload_pending(st, fx);
         super::conflict_check::want(st, fx);
     } else if let Some(path) = st.tabs[i].path.clone() {
         super::repo::load(st, path, LoadKind::Open, fx);
@@ -225,6 +226,7 @@ pub(super) fn park(st: &mut AppState) -> Parked {
         selection: std::mem::take(&mut st.selection),
         detail: st.detail.take(),
         diff: st.diff.take(),
+        diff_preview: st.diff_preview.take(),
         // A save in flight reports to this tab only if it is still active, so don't wait for it.
         conflict: st.conflict.take().map(|c| ConflictView { saving: false, ..c }),
         conflict_files: std::mem::take(&mut st.conflict_files),
@@ -259,6 +261,7 @@ fn unpark(st: &mut AppState, p: Parked) {
     st.selection = if st.snap.is_some() { p.selection } else { Selection::None };
     st.detail = p.detail;
     st.diff = p.diff;
+    st.diff_preview = p.diff_preview;
     st.lfs.diff = p.lfs_diff;
     // Diff results for this tab were dropped while it was parked: its hunks stay disabled
     // until the refresh that follows the switch reloads the diff.

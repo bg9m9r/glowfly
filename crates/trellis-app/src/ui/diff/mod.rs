@@ -2,20 +2,22 @@
 //! or the whole file, with hunk- and line-level stage, unstage and discard, Revert Hunk and
 //! Revert lines on commit and comparison diffs, and next/previous change navigation. In the
 //! whole-file view long unchanged runs are folded into "N unchanged lines" rows that open in
-//! place when clicked; an opened run folds back from a control on its first line, and the header
-//! can open or close them all. In the hunk view each hunk header after the first has a control
+//! place when clicked; an opened run folds back from a control on its first line, and the header's
+//! View menu can open or close them all. In the hunk view each hunk header after the first has a control
 //! that fills in the unchanged lines between it and the previous hunk (the same runs as the
 //! whole-file view's folds, open in both views), folded back from their first line. The fold
 //! keys (E and Shift+E by default) open the first closed run at or below the top and fold back
 //! the opened one at the top. With wrapping on, long lines continue on the next line and their
 //! rows grow to fit. Changed lines are selected by click, Shift-click and Ctrl/Cmd-click, or by
-//! pressing on one and dragging across the lines of its hunk.
+//! pressing on one and dragging across the lines of its hunk. A changed PNG or JPEG shows its
+//! before and after images (`preview`).
 
 pub(in crate::ui) mod fold;
 mod header;
 mod hunk_header;
 mod inline;
 mod lfs_note;
+pub(super) mod preview;
 pub(super) mod rows_cache;
 mod split;
 mod style;
@@ -23,13 +25,12 @@ mod syntax;
 mod thread_marks;
 pub(in crate::ui) mod wrap;
 
+use super::UiCache;
 use super::empty_state;
-use super::file_buttons::CommitFile;
 use super::theme::color;
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::diff_nav;
 use crate::state::lines::{LineClick, LineSelection};
 use crate::state::pull_request_threads::{self, Marks};
 use eframe::egui::{CursorIcon, FontId, Rect, Response, Sense, Ui, vec2};
@@ -41,7 +42,7 @@ use trellis_core::diff_rows::{GapLines, GapSpan};
 use trellis_core::highlight::DiffHighlight;
 use trellis_core::repo::{DiffTarget, FileDiff};
 use trellis_core::settings::DiffLayout;
-use trellis_core::whole_file::{self, Fold, WholeFile, folds};
+use trellis_core::whole_file::{self, Fold, WholeFile};
 
 /// The default row height and font, which the conflict view keeps; the diff viewer draws
 /// with `DiffStyle` from the settings.
@@ -96,66 +97,17 @@ impl DiffView<'_> {
     }
 }
 
-/// The open diff: its header bar (file, layout and mode, Previous / Next, toggles, file buttons)
-/// and, below it, `body`.
-pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
+/// The open diff: its header (`header`, one 48 px row) and, below it, `body`.
+pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     if st.diff.is_none() {
         // A scroll target for a diff that is gone is dropped, not kept for the next one.
         st.view.diff_scroll_to_row = None;
         return;
     }
-    let ignore_ws = st.settings.diff_ignore_whitespace;
-    // Where Previous and Next go: a change in this file, another file, or nowhere.
-    let nav = [diff_nav::step(st, -1).kind(), diff_nav::step(st, 1).kind()];
-    // An LFS summary shows instead of the rows, so the header has no row toggles (as for a binary file).
-    let lfs_summary = crate::state::lfs_notes::summary(st).is_some();
-    {
-        let Some((target, diff)) = &st.diff else { return };
-        let has_rows = !diff.binary && !diff.hunks.is_empty() && !lfs_summary;
-        ui.add_space(6.0);
-        let rows = has_rows.then_some((st.settings.diff_layout, st.settings.diff_mode));
-        // How many folds of the whole file on screen are open and closed, when it has any.
-        let fold_counts = whole_file::shown(diff, st.settings.diff_mode)
-            .map(|w| {
-                let all = folds(w);
-                let open = all.iter().filter(|f| st.view.diff_expanded.contains(f.key)).count();
-                header::FoldCounts { open, closed: all.len() - open }
-            })
-            .filter(|c| c.open + c.closed > 0 && has_rows);
-        // Restore, Open and Show for a commit's file, when the open detail lists it.
-        let commit_file = match target {
-            DiffTarget::Commit(oid, path) => st.detail.as_ref().filter(|d| d.oid == *oid).and_then(|d| {
-                d.files.iter().find(|f| f.path == *path).map(|f| CommitFile {
-                    oid: *oid,
-                    path: &f.path,
-                    status: f.status,
-                    open_path: &f.path,
-                    in_workdir: d.in_workdir(&f.path),
-                })
-            }),
-            _ => None,
-        };
-        let toggles = header::Toggles {
-            ignore_ws: (!diff.binary && !lfs_summary).then_some(ignore_ws),
-            wrap: has_rows.then_some(st.settings.diff_word_wrap),
-        };
-        let diff_tool = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
-        header::header_bar(
-            ui,
-            st.settings.lang(),
-            target,
-            commit_file.as_ref(),
-            rows,
-            nav,
-            toggles,
-            fold_counts,
-            &st.keymap,
-            diff_tool,
-            msgs,
-        );
-        ui.separator();
+    if let Some(m) = crate::state::diff_header::model(st) {
+        header::show(ui, &m, &st.keymap, st.settings.lang(), msgs);
     }
-    body(ui, st, rows_cache, msgs);
+    body(ui, st, cache, msgs);
 }
 
 /// Draws the open diff's rows and records the first visible row and how many rows fit.
@@ -282,12 +234,12 @@ pub(super) fn paint_mark(ui: &Ui, rect: Rect, selected: bool, hovered: bool) {
 
 /// The diff's rows without the header bar: what `show` draws below it, and what views that
 /// embed a commit's diff of a file (the file history) draw. A Git LFS pointer on either side
-/// shows a summary instead, until "Show pointer text"; a binary file and a diff without hunks
-/// get an empty state instead (whitespace-only, with a way to show it, when Ignore whitespace
+/// shows a summary instead, until "Show pointer text"; a binary file shows its image preview or
+/// sizes (`preview`), and a diff without hunks an empty state (whitespace-only, with a way to show it, when Ignore whitespace
 /// hides the changes). Commit
 /// diffs have Revert Hunk buttons and line selection for Revert lines (both off while
 /// whitespace is hidden).
-pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs: &mut Vec<Msg>) {
+pub(super) fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.diff_scroll_to_row.take();
     if let Some(note) = crate::state::lfs_notes::summary(st) {
         let text = crate::state::lfs_notes::summary_text(&note.change, &st.lfs.install);
@@ -300,7 +252,7 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCach
     {
         let Some((_, diff)) = &st.diff else { return };
         if diff.binary {
-            empty_state::binary_file(ui);
+            preview::show(ui, st, &mut cache.diff_images);
             return;
         }
         if diff.hunks.is_empty() {
@@ -314,5 +266,5 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCach
             return;
         }
     }
-    record_rows(ui, st, rows_cache, scroll_to, msgs);
+    record_rows(ui, st, &mut cache.diff_rows, scroll_to, msgs);
 }

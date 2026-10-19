@@ -9,7 +9,7 @@ use super::{
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
 use crate::msg::{
-    AvatarMsg, ConflictMsg, ForgeMsg, JobMsg, LoadMsg, Msg, PrefsMsg, PublishMsg, RecentMsg, RepoMsg, SelectionMsg, StageMsg,
+    AvatarMsg, ConflictMsg, DiffMsg, ForgeMsg, JobMsg, LoadMsg, Msg, PrefsMsg, PublishMsg, RecentMsg, RepoMsg, SelectionMsg, StageMsg,
 };
 use trellis_core::{avatars, forge, repo, undo};
 
@@ -79,6 +79,10 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         )),
         Effect::HighlightDiff { target, generation, diff, .. } => highlight::finish_job(target, generation, &diff, cancelled),
         Effect::LoadDiffGaps { workdir, target, generation, diff } => Some(diff_gaps::load_job(workdir, target, generation, diff)),
+        Effect::LoadBinarySides { workdir, target, generation } => {
+            let result = repo::binary_sides(&workdir, &target).map(std::sync::Arc::new).map_err(err);
+            Some(Msg::Diff(DiffMsg::BinarySidesLoaded { target, generation, result }))
+        }
         Effect::LoadConflict { workdir, path, generation } => {
             let result = repo::load_conflict(&workdir, &path).map_err(err);
             // The picks a file saved with markers holds come back with it.

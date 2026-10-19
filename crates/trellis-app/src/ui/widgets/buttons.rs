@@ -41,6 +41,8 @@ pub struct StyledButton<'a> {
     min_width: f32,
     min_height: f32,
     small: bool,
+    radius: u8,
+    text_size: Option<f32>,
 }
 
 /// The view's main action.
@@ -60,7 +62,18 @@ pub fn danger<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
 
 impl<'a> StyledButton<'a> {
     fn new(text: Cow<'a, str>, kind: Kind) -> Self {
-        Self { text, kind, enabled: true, why: None, tip: None, min_width: 0.0, min_height: 0.0, small: false }
+        Self {
+            text,
+            kind,
+            enabled: true,
+            why: None,
+            tip: None,
+            min_width: 0.0,
+            min_height: 0.0,
+            small: false,
+            radius: RADIUS,
+            text_size: None,
+        }
     }
 
     /// Whether it can be clicked (true by default).
@@ -100,13 +113,28 @@ impl<'a> StyledButton<'a> {
         self
     }
 
+    /// Rounder corners than the 4 px standard (the diff header's 6 px controls).
+    pub fn radius(mut self, r: u8) -> Self {
+        self.radius = r;
+        self
+    }
+
+    /// Text of `px` instead of the button text style's size.
+    pub fn text_size(mut self, px: f32) -> Self {
+        self.text_size = Some(px);
+        self
+    }
+
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }
 
     /// The text laid out in `fg` (egui's `strong` would pick its own colour over it).
     fn galley(&self, ui: &Ui, fg: Color32) -> std::sync::Arc<egui::Galley> {
-        let text = egui::RichText::new(self.text.as_ref()).color(fg);
+        let mut text = egui::RichText::new(self.text.as_ref()).color(fg);
+        if let Some(px) = self.text_size {
+            text = text.size(px);
+        }
         WidgetText::from(text).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, TextStyle::Button)
     }
 
@@ -156,11 +184,11 @@ impl Widget for StyledButton<'_> {
                 fill
             };
             let p = ui.painter();
-            p.rect(rect, CornerRadius::same(RADIUS), fill, stroke, StrokeKind::Inside);
+            p.rect(rect, CornerRadius::same(self.radius), fill, stroke, StrokeKind::Inside);
             let pos = rect.center() - galley.size() / 2.0;
             p.galley(pos, galley, fg);
             if resp.has_focus() {
-                p.rect_stroke(rect, CornerRadius::same(RADIUS), Stroke::new(2.0_f32, color::accent()), StrokeKind::Outside);
+                p.rect_stroke(rect, CornerRadius::same(self.radius), Stroke::new(2.0_f32, color::accent()), StrokeKind::Outside);
             }
         }
         if enabled {

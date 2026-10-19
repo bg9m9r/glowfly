@@ -134,6 +134,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     st.diff_shown_gen = generation;
                     super::highlight::schedule(st, fx);
                     super::diff_gaps::diff_shown(st, fx);
+                    super::diff_preview::diff_shown(st, fx);
                 }
                 // A reload that finds no changes left simply closes the diff.
                 Err(_) if reload => {
@@ -269,6 +270,7 @@ pub(super) fn close_diff(st: &mut AppState) {
     st.view.file_reveal = None;
     st.view.diff_open_line = None;
     st.view.diff_cursor = None;
+    st.diff_preview = None;
     next_diff_gen(st);
 }
 

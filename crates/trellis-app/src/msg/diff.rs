@@ -9,7 +9,7 @@ use std::sync::Arc;
 use trellis_core::conflict_restore::SavedPicks;
 use trellis_core::diff_rows::GapText;
 use trellis_core::highlight::DiffHighlight;
-use trellis_core::repo::{ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
+use trellis_core::repo::{BinarySides, ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
 use trellis_core::settings::{DiffLayout, DiffMode};
 
 /// The open diff: layout and mode, stepping between changes, folds, line selection, and the
@@ -82,6 +82,13 @@ pub enum DiffMsg {
         generation: u64,
         result: Result<Arc<GapText>, String>,
     },
+    /// The sizes and decoded images of the binary diff shown at `generation`
+    /// (`Effect::LoadBinarySides`).
+    BinarySidesLoaded {
+        target: DiffTarget,
+        generation: u64,
+        result: Result<Arc<BinarySides>, String>,
+    },
 }
 
 impl DiffMsg {
@@ -99,6 +106,8 @@ impl DiffMsg {
             | Self::OpenFoldAtTop
             | Self::CloseFoldAtTop
             | Self::GapsLoaded { .. }
+            // Dropped: `diff_preview::reload_pending` asks again when the tab is back.
+            | Self::BinarySidesLoaded { .. }
             | Self::ExpandAllUnchanged
             | Self::CollapseAllUnchanged
             | Self::SelectDiffLine { .. }

@@ -246,6 +246,7 @@ fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
                 diff_rows: Default::default(),
                 history_text: Default::default(),
                 blame_rows: Default::default(),
+                diff_images: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },

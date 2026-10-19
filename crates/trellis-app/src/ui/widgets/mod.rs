@@ -1,10 +1,11 @@
 //! Custom-painted widget controls: toolbar buttons and their spacing, section headers, chips,
 //! nav rows, icon buttons; icon shapes are in `icon.rs`, text cut to a width with an ellipsis
-//! is in `truncate.rs`, the shared rich tooltip and egui's tooltip style in `tooltip.rs`, and
-//! its rise into place in `tooltip_motion.rs`.
+//! is in `truncate.rs`, the shared rich tooltip and egui's tooltip style in `tooltip.rs`, its
+//! rise into place in `tooltip_motion.rs`, and the segmented control in `segmented.rs`.
 
 pub mod buttons;
 mod icon;
+pub mod segmented;
 pub mod tooltip;
 pub mod tooltip_motion;
 pub mod truncate;
@@ -13,7 +14,7 @@ pub use super::list_row::{
     GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row, list_row,
     list_row_cut, list_row_hidden,
 };
-pub use icon::{Icon, paint_icon};
+pub use icon::{Icon, paint_icon, paint_icon_sized};
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;

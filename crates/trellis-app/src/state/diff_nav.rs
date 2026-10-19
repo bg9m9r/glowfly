@@ -3,7 +3,7 @@
 use super::history::{FileHistoryView, HistoryKind};
 use super::{AppState, Selection, ViewState};
 use trellis_core::diff_rows::step_change;
-use trellis_core::repo::{DiffTarget, FileDiff};
+use trellis_core::repo::{DiffTarget, FileDiff, FileEntry};
 use trellis_core::settings::Settings;
 use trellis_core::whole_file::{self, Expanded};
 
@@ -113,10 +113,10 @@ pub fn next_file(st: &AppState, from: &DiffTarget, dir: isize) -> Option<DiffTar
 }
 
 /// The selected folder entry's files, when `from` is one of that commit's diffs.
-fn history_files(h: &FileHistoryView, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
+fn history_files(h: &FileHistoryView, from: &DiffTarget) -> Option<Vec<(DiffTarget, char)>> {
     let DiffTarget::Commit(oid, _) = from else { return None };
     let e = h.selected_entry().filter(|e| h.kind == HistoryKind::Folder && e.oid == *oid)?;
-    Some(e.files.iter().map(|f| DiffTarget::Commit(*oid, f.path.clone())).collect())
+    Some(e.files.iter().map(|f| (DiffTarget::Commit(*oid, f.path.clone()), f.status)).collect())
 }
 
 /// Whether `t` is in the file list it was opened from (`source_files`).
@@ -130,27 +130,35 @@ pub fn in_list(st: &AppState, t: &DiffTarget) -> bool {
 /// selected folder entry's files. `None` in a file history, which shows one file, or when the
 /// list isn't the one on screen.
 fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
+    Some(source_entries(st, from)?.into_iter().map(|(t, _)| t).collect())
+}
+
+/// `source_files` with each file's status letter.
+fn source_entries(st: &AppState, from: &DiffTarget) -> Option<Vec<(DiffTarget, char)>> {
     if let Some(h) = &st.history {
         return history_files(h, from);
     }
+    let of = |files: &[FileEntry], make: &dyn Fn(String) -> DiffTarget| -> Vec<(DiffTarget, char)> {
+        files.iter().map(|f| (make(f.path.clone()), f.status)).collect()
+    };
     match from {
         DiffTarget::Unstaged(_) | DiffTarget::Staged(_) => {
             let snap = st.snap.as_ref()?;
-            let unstaged = snap.unstaged.iter().filter(|f| f.status != '!').map(|f| DiffTarget::Unstaged(f.path.clone()));
-            let staged = snap.staged.iter().map(|f| DiffTarget::Staged(f.path.clone()));
+            let unstaged = snap.unstaged.iter().filter(|f| f.status != '!').map(|f| (DiffTarget::Unstaged(f.path.clone()), f.status));
+            let staged = snap.staged.iter().map(|f| (DiffTarget::Staged(f.path.clone()), f.status));
             Some(unstaged.chain(staged).collect())
         }
         DiffTarget::Commit(oid, _) => {
             let d = st.detail.as_ref().filter(|d| d.oid == *oid)?;
-            Some(d.files.iter().map(|f| DiffTarget::Commit(*oid, f.path.clone())).collect())
+            Some(of(&d.files, &|p| DiffTarget::Commit(*oid, p)))
         }
         DiffTarget::Between(a, b, _) => {
-            if let Some(t) = st.pull_request.as_ref().and_then(|v| v.diff_targets(*a, *b)) {
-                return Some(t);
+            if let Some(files) = st.pull_request.as_ref().and_then(|v| v.diff_files(*a, *b)) {
+                return Some(of(files, &|p| DiffTarget::Between(*a, *b, p)));
             }
             match &st.selection {
                 Selection::Commits(m) if m.compare_ends() == Some((*a, *b)) => match &m.changes {
-                    Some(Ok(c)) => Some(c.files.iter().map(|f| DiffTarget::Between(*a, *b, f.path.clone())).collect()),
+                    Some(Ok(c)) => Some(of(&c.files, &|p| DiffTarget::Between(*a, *b, p))),
                     _ => None,
                 },
                 _ => None,
@@ -158,10 +166,44 @@ fn source_files(st: &AppState, from: &DiffTarget) -> Option<Vec<DiffTarget>> {
         }
         DiffTarget::ToWorkdir(o, _) => match &st.selection {
             Selection::VsWorkdir(w) if w.oid == *o => match &w.changes {
-                Some(Ok(c)) => Some(c.files.iter().map(|f| DiffTarget::ToWorkdir(*o, f.path.clone())).collect()),
+                Some(Ok(c)) => Some(of(&c.files, &|p| DiffTarget::ToWorkdir(*o, p))),
                 _ => None,
             },
             _ => None,
         },
     }
+}
+
+/// Where the header's counter stands: change `index` of `total` in the open diff, or with no
+/// change rows (`files`) the file's place in the list it came from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Counter {
+    pub index: usize,
+    pub total: usize,
+    pub files: bool,
+}
+
+/// The open diff's counter: over its change rows (the changes at or above where stepping
+/// continues from, at least 1, as `current_hunk` counts), or for a file without rows (binary,
+/// empty, an LFS summary) its place in the list it came from. `None` when neither applies.
+pub fn counter(st: &AppState) -> Option<Counter> {
+    let (target, d) = st.diff.as_ref()?;
+    let rows = if super::lfs_notes::summary(st).is_some() { Vec::new() } else { change_rows_of(d, &st.settings, &st.view.diff_expanded) };
+    if !rows.is_empty() {
+        let index = rows.partition_point(|&r| r <= position(&st.view)).max(1);
+        return Some(Counter { index, total: rows.len(), files: false });
+    }
+    let files = source_files(st, target)?;
+    let i = files.iter().position(|t| t == target)?;
+    Some(Counter { index: i + 1, total: files.len(), files: true })
+}
+
+/// `target`'s status letter in the list it came from (M, A, D, R, T, ?), when it is listed.
+pub fn file_status(st: &AppState, target: &DiffTarget) -> Option<char> {
+    if let Some(s) = source_entries(st, target).and_then(|e| e.into_iter().find(|(t, _)| t == target).map(|(_, s)| s)) {
+        return Some(s);
+    }
+    // A file history's commit diff isn't in a list but its detail may still name it.
+    let DiffTarget::Commit(oid, path) = target else { return None };
+    st.detail.as_ref().filter(|d| d.oid == *oid)?.files.iter().find(|f| f.path == *path).map(|f| f.status)
 }

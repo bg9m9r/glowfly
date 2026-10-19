@@ -91,6 +91,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
             | Effect::LoadDiffGaps { .. }
+            | Effect::LoadBinarySides { .. }
             | Effect::LoadConflict { .. }
             | Effect::LocalOp { .. }
             | Effect::ReadConflictFiles { .. }

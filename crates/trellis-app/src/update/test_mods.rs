@@ -57,6 +57,8 @@ pub(super) mod diff_nav_refresh_tests;
 pub(super) mod diff_nav_tests;
 #[path = "diff_pairs_tests.rs"]
 pub(super) mod diff_pairs_tests;
+#[path = "diff_preview_tests.rs"]
+pub(super) mod diff_preview_tests;
 #[path = "diff_reveal_tests.rs"]
 pub(super) mod diff_reveal_tests;
 #[path = "diff_tests.rs"]

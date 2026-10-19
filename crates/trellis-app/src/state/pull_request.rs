@@ -9,7 +9,7 @@ use super::pull_request_actions::PrForms;
 use super::pull_request_threads::ThreadView;
 use git2::Oid;
 use trellis_core::forge::{PrPage, PrState, PullRequest, reviews_in_app};
-use trellis_core::repo::{BranchChanges, DiffTarget, Snapshot};
+use trellis_core::repo::{BranchChanges, DiffTarget, FileEntry, Snapshot};
 use trellis_core::text::is_bidi_control;
 
 /// The local tips of a pull request's branches: `refs/remotes/<remote>/<target>` and
@@ -153,13 +153,10 @@ impl PrView {
         }
     }
 
-    /// The diffs of the loaded files in list order, when (`a`, `b`) is (merge base, source tip).
-    pub fn diff_targets(&self, a: Oid, b: Oid) -> Option<Vec<DiffTarget>> {
+    /// The loaded files in list order, when (`a`, `b`) is (merge base, source tip).
+    pub fn diff_files(&self, a: Oid, b: Oid) -> Option<&[FileEntry]> {
         let Files::Loaded(c) = &self.files else { return None };
-        if c.base != a || self.tips.source != Some(b) {
-            return None;
-        }
-        c.comparison.files.iter().map(|f| self.diff_target(&f.path)).collect()
+        (c.base == a && self.tips.source == Some(b)).then_some(c.comparison.files.as_slice())
     }
 
     /// The diff of `path` from the merge base to the source tip, once the files are loaded

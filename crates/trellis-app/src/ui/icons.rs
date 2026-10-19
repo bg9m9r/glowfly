@@ -1,5 +1,6 @@
 //! Painting of the newer icons (code, eye, storage, flow, palette, shield, sparse, star, close,
-//! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue, check), called from
+//! lock, wrench, warning, keyboard, external diff, into, comment, pencil, plus, issue, check, more,
+//! the file pages and open file), called from
 //! `widgets::paint_icon`.
 
 use super::widgets::Icon;
@@ -166,7 +167,7 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
         Icon::ExternalDiff => {
             // Two narrow pages side by side, each with two short text lines, and a small arrow
             // leaving the top-right corner.
-            let (page_s, text_s) = (Stroke::new(1.2_f32, s.color), Stroke::new(1.0_f32, s.color));
+            let (page_s, text_s) = (Stroke::new(s.width * 0.75, s.color), Stroke::new(s.width * 0.625, s.color));
             for left in [c.x - 9.0, c.x - 1.5] {
                 let page = Rect::from_min_size(pos2(left, c.y - 3.5), vec2(6.5, 11.0));
                 p.rect_stroke(page, 0.5, page_s, egui::StrokeKind::Middle);
@@ -174,7 +175,7 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
                     p.line_segment([pos2(page.left() + 1.5, y), pos2(page.right() - 1.5, y)], text_s);
                 }
             }
-            let arrow = Stroke::new(1.4_f32, s.color);
+            let arrow = Stroke::new(s.width * 0.875, s.color);
             let (from, tip) = (pos2(c.x + 4.0, c.y - 2.0), pos2(c.x + 8.5, c.y - 6.5));
             p.line_segment([from, tip], arrow);
             p.line_segment([tip, pos2(tip.x - 3.5, tip.y)], arrow);
@@ -198,7 +199,7 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             let r = std::f32::consts::FRAC_1_SQRT_2;
             let (d, n) = (vec2(r, -r), vec2(r, r) * 2.2);
             let (tip, neck, end) = (pos2(c.x - 6.5, c.y + 6.5), pos2(c.x - 3.0, c.y + 3.0), pos2(c.x + 6.0, c.y - 6.0));
-            let thin = Stroke::new(1.4_f32, s.color);
+            let thin = Stroke::new(s.width * 0.875, s.color);
             line(neck + n, end + n);
             line(neck - n, end - n);
             p.line_segment([end + n, end - n], thin);
@@ -210,7 +211,7 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
             line(pos2(c.x, c.y - 5.0), pos2(c.x, c.y + 5.0));
         }
         Icon::Issue => {
-            p.circle_stroke(c, 6.0, Stroke::new(1.6_f32, s.color));
+            p.circle_stroke(c, 6.0, s);
             p.circle_filled(c, 1.8, s.color);
         }
         Icon::Check => {
@@ -223,7 +224,52 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
                 p.circle_filled(pos2(c.x + dx, c.y), 1.6, s.color);
             }
         }
+        Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary => {
+            page(p, c, s);
+            // The marks sit in the page's lower two thirds.
+            let y = c.y + 2.5;
+            match icon {
+                Icon::FileCode => {
+                    line(pos2(c.x - 2.0, y - 3.0), pos2(c.x - 4.5, y));
+                    line(pos2(c.x - 4.5, y), pos2(c.x - 2.0, y + 3.0));
+                    line(pos2(c.x + 2.0, y - 3.0), pos2(c.x + 4.5, y));
+                    line(pos2(c.x + 4.5, y), pos2(c.x + 2.0, y + 3.0));
+                }
+                Icon::FileImage => {
+                    p.circle_stroke(pos2(c.x + 2.5, y - 3.0), 1.4, s);
+                    p.add(egui::Shape::line(
+                        vec![pos2(c.x - 5.0, y + 4.5), pos2(c.x - 1.5, y), pos2(c.x + 1.0, y + 2.5), pos2(c.x + 5.0, y + 4.5)],
+                        s,
+                    ));
+                }
+                Icon::FileBinary => {
+                    line(pos2(c.x - 2.5, y - 3.5), pos2(c.x - 2.5, y + 3.5));
+                    let ring = Rect::from_center_size(pos2(c.x + 2.5, y), vec2(4.0, 7.0));
+                    p.rect_stroke(ring, 2.0, s, egui::StrokeKind::Middle);
+                }
+                _ => {
+                    line(pos2(c.x - 4.0, y - 1.5), pos2(c.x + 4.0, y - 1.5));
+                    line(pos2(c.x - 4.0, y + 2.5), pos2(c.x + 2.0, y + 2.5));
+                }
+            }
+        }
+        Icon::OpenFile => {
+            // A square open at its top-right corner, and an arrow leaving through the gap.
+            let (l, t, r, b) = (c.x - 8.0, c.y - 5.0, c.x + 5.0, c.y + 8.0);
+            p.add(egui::Shape::line(vec![pos2(c.x - 1.0, t), pos2(l, t), pos2(l, b), pos2(r, b), pos2(r, c.y + 2.0)], s));
+            let tip = pos2(c.x + 8.0, c.y - 8.0);
+            line(pos2(c.x - 2.0, c.y + 2.0), tip);
+            line(tip, pos2(tip.x - 6.0, tip.y));
+            line(tip, pos2(tip.x, tip.y + 6.0));
+        }
         _ => return false,
     }
     true
+}
+
+/// A 14 x 18 page outline centred on `c`, its top-right corner folded.
+fn page(p: &Painter, c: Pos2, s: Stroke) {
+    let (l, r, t, b, fold) = (c.x - 7.0, c.x + 7.0, c.y - 9.0, c.y + 9.0, 5.0);
+    p.add(egui::Shape::closed_line(vec![pos2(l, t), pos2(r - fold, t), pos2(r, t + fold), pos2(r, b), pos2(l, b)], s));
+    p.add(egui::Shape::line(vec![pos2(r - fold, t), pos2(r - fold, t + fold), pos2(r, t + fold)], s));
 }

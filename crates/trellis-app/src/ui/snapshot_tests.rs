@@ -144,6 +144,7 @@ fn harness_palette_sized(mut st: AppState, p: Palette, size: egui::Vec2) -> Harn
                 diff_rows: Default::default(),
                 history_text: Default::default(),
                 blame_rows: Default::default(),
+                diff_images: Default::default(),
             });
             // Tests inject working-tree files into the lists; count them as a status read would,
             // so the WIP row's counts match the files shown.

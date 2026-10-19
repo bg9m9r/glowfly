@@ -39,6 +39,12 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     {
         return;
     }
+    // That Esc closes the open popup (the diff header's View or file actions menu) only. egui
+    // closes a popup it draws on Esc too; closing it here also clears one no longer drawn.
+    if ctx.memory(|m| m.any_popup_open()) {
+        ctx.memory_mut(|m| m.close_popup());
+        return;
+    }
     if st.prefs.is_some() {
         msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
     } else if st.onboarding.tour.is_some() {
@@ -96,7 +102,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             } else if st.issue.is_some() {
                 issue::show(ui, st, msgs);
             } else if st.diff.is_some() {
-                diff::show(ui, st, &mut cache.diff_rows, msgs);
+                diff::show(ui, st, cache, msgs);
             } else if st.rebase.is_some() {
                 rebase::show(ui, st, cache, msgs);
             } else if st.gitflow_panel {

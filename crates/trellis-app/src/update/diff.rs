@@ -171,6 +171,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, fx: &mut Vec<Effect>) {
         DiffMsg::OpenFoldAtTop => super::fold_keys::open_at_top(st, fx),
         DiffMsg::CloseFoldAtTop => super::fold_keys::close_at_top(st),
         DiffMsg::GapsLoaded { target, generation, result } => super::diff_gaps::loaded(st, target, generation, result),
+        DiffMsg::BinarySidesLoaded { target, generation, result } => super::diff_preview::loaded(st, target, generation, result),
         DiffMsg::ExpandAllUnchanged => refold(st, |ex, w| {
             // Replacing the set also drops keys of folds that are gone (the gaps' text stays).
             let all = Expanded::all(w).with_gap_text_of(ex);

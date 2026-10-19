@@ -9,7 +9,8 @@
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the
 //! picks a file saved with markers holds), `template`
-//! (commit.template), `tool_sides` (versions for external tools), `touching` (commits that
+//! (commit.template), `tool_sides` (versions for external tools) and `binary_sides` (a binary diff's
+//! sizes and image previews), `touching` (commits that
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `workfile_unrm` (putting a deleted file back for undo), `noclobber` and
 //! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
@@ -25,6 +26,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 mod attrs;
+mod binary_sides;
 mod blame;
 mod blame_porcelain;
 mod collide;
@@ -85,6 +87,7 @@ mod workfile_unrm;
 mod worktree_counts;
 mod worktrees;
 
+pub use binary_sides::{BinarySide, BinarySides, PREVIEW_MAX_BYTES, binary_sides};
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
 pub use collide::{Collision, Folding, probe};
 pub use common_dir::{CommonDir, repo_name_of};

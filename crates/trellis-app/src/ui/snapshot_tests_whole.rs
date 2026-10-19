@@ -4,7 +4,7 @@
 //! header's Expand all / Collapse all. Shares the fixture repository and renderer with
 //! `snapshot_tests`.
 
-use super::snapshot_tests::{git, harness, remove_fixture, render, with_repo};
+use super::snapshot_tests::{git, harness, harness_sized, remove_fixture, render, with_repo};
 use crate::msg::DiffMsg;
 use crate::msg::Msg;
 use crate::msg::StageMsg;
@@ -221,7 +221,11 @@ fn fold_back_click_sends_collapse() {
 #[test]
 fn header_fold_buttons() {
     let (st, dir) = with_notes("whole-fold-header", ThemeChoice::Dark, DiffLayout::Inline);
-    let mut h = harness(st, true);
+    // Wide enough for the View button to name the layout and section.
+    let mut h = harness_sized(st, true, eframe::egui::vec2(1800.0, 820.0));
+    h.run();
+    assert!(h.query_by_label("Expand all").is_none(), "in the View menu, closed");
+    h.get_by_label("Inline \u{b7} Whole file").click();
     h.run();
     h.get_by_label("Collapse all").click();
     h.run();
@@ -231,6 +235,7 @@ fn header_fold_buttons() {
     assert!(matches!(h.state().1[..], [Msg::Diff(DiffMsg::ExpandAllUnchanged)]), "{} messages", h.state().1.len());
     h.state_mut().0.settings.diff_mode = DiffMode::Hunks;
     h.run();
+    assert!(h.query_by_label("Whole file").is_some(), "the menu is still open");
     assert!(h.query_by_label("Expand all").is_none() && h.query_by_label("Collapse all").is_none(), "not in the Hunks view");
     drop(h);
     remove_fixture(&dir);

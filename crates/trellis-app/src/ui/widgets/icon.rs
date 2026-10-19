@@ -1,5 +1,7 @@
 //! The `Icon` set and `paint_icon`: the first icons' shapes here, the newer ones in `ui/icons.rs`.
 
+use eframe::egui::emath::TSTransform;
+use eframe::egui::layers::ShapeIdx;
 use eframe::egui::{self, Align2, Color32, FontId, Painter, Pos2, Stroke, pos2, vec2};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -74,13 +76,39 @@ pub enum Icon {
     Check,
     /// Three dots in a row: a menu of more actions (the font lacks the ellipsis glyph's weight).
     More,
+    /// A page with its top-right corner folded: a text file (the diff header).
+    File,
+    /// The page with angle brackets: a source file.
+    FileCode,
+    /// The page with a hill and a sun: an image.
+    FileImage,
+    /// The page with a 1 and a 0: a binary file.
+    FileBinary,
+    /// A square with an arrow out of its top-right corner: open the file in its default app.
+    OpenFile,
 }
 
 /// Every icon's line width: they are outlines only.
 pub const STROKE: f32 = 1.6;
 
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
-    let s = Stroke::new(STROKE, col);
+    paint_icon_stroke(p, c, icon, Stroke::new(STROKE, col));
+}
+
+/// `icon` drawn `size` px across instead of the usual 20, its lines still `STROKE` wide: drawn
+/// at 20 px with thicker lines, then the shapes it added are scaled about `c`.
+pub fn paint_icon_sized(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: f32) {
+    let scale = size / 20.0;
+    let layer = p.layer_id();
+    let start = p.ctx().graphics(|g| g.get(layer).map_or(ShapeIdx(0), |l| l.next_idx()));
+    paint_icon_stroke(p, c, icon, Stroke::new(STROKE / scale, col));
+    let end = p.ctx().graphics(|g| g.get(layer).map_or(ShapeIdx(0), |l| l.next_idx()));
+    let transform = TSTransform { scaling: scale, translation: c.to_vec2() * (1.0 - scale) };
+    p.ctx().graphics_mut(|g| g.entry(layer).transform_range(start, end, transform));
+}
+
+fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
+    let col = s.color;
     if crate::ui::icons::paint(p, c, icon, s) {
         return;
     }
@@ -234,6 +262,7 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
         Icon::Code | Icon::Eye | Icon::EyeOff | Icon::Storage | Icon::Flow | Icon::Palette | Icon::Shield | Icon::Sparse => {} // icons.rs
         Icon::Star | Icon::StarFilled | Icon::Close | Icon::Lock | Icon::Tools | Icon::Warning | Icon::Keyboard => {}          // icons.rs
         Icon::ExternalDiff | Icon::Into | Icon::Comment | Icon::Pencil | Icon::Plus | Icon::Issue | Icon::Check | Icon::More => {} // icons.rs
+        Icon::File | Icon::FileCode | Icon::FileImage | Icon::FileBinary | Icon::OpenFile => {} // icons.rs
     }
 }
 

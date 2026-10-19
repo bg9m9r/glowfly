@@ -92,6 +92,23 @@ pub fn truncate_label(ui: &mut Ui, text: impl Into<WidgetText>, max_w: f32) -> R
     if cut { resp.on_hover_text(full) } else { resp }
 }
 
+/// `text` with characters taken off its start, behind "…", until it fits in `max_w` in `font`
+/// (just "…" when nothing does): a path whose end matters more than its start.
+pub fn cut_left(ui: &Ui, text: &str, font: &FontId, max_w: f32) -> String {
+    let width = |s: &str| ui.painter().layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
+    if width(text) <= max_w {
+        return text.to_owned();
+    }
+    let chars: Vec<char> = text.chars().collect();
+    for start in 1..chars.len() {
+        let cut = format!("{ELLIPSIS}{}", chars[start..].iter().collect::<String>());
+        if width(&cut) <= max_w {
+            return cut;
+        }
+    }
+    ELLIPSIS.to_string()
+}
+
 /// A text field's hint cut to the field: `TextEdit::hint_text` keeps a laid-out galley as it
 /// is (it lays a plain hint out on one uncut line). Drawn in egui's weak hint colour. Returns
 /// the hint and whether it was cut, for the caller's hover with the whole hint.

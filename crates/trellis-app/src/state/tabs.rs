@@ -183,6 +183,8 @@ pub struct Parked {
     pub selection: Selection,
     pub detail: Option<CommitDetail>,
     pub diff: Option<(DiffTarget, std::sync::Arc<FileDiff>)>,
+    /// The binary diff's sizes and previews (one still loading is asked for again on return).
+    pub diff_preview: Option<super::diff_preview::DiffPreview>,
     /// The open conflict with its picks (a load in flight is requested again on return).
     pub conflict: Option<ConflictView>,
     /// The Conflicted Files counts and Resolved Files (read again on return).

@@ -38,7 +38,7 @@ pub(super) const OPEN_DEFAULT: &str = "Open with default app";
 pub(super) const FILE_HISTORY: &str = "File history";
 pub(super) const BLAME: &str = "Blame";
 pub(super) const FOLDER_HISTORY: &str = "History of this folder";
-pub(super) const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
+pub(super) use crate::state::files::NOT_IN_WORKDIR;
 const DELETED_IN_WORKDIR: &str = "Not in your working tree (deleted)";
 const CONFLICTED: &str = "Resolve the conflict first";
 pub(super) const NEW_FILE_HERE: &str = "New file in this folder…";

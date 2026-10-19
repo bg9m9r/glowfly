@@ -14,6 +14,7 @@ impl Effect {
             Effect::LoadDiff { .. } => "load-diff",
             Effect::HighlightDiff { .. } => "highlight",
             Effect::LoadDiffGaps { .. } => "load-diff-gaps",
+            Effect::LoadBinarySides { .. } => "binary-sides",
             Effect::LoadConflict { .. } => "load-conflict",
             Effect::LoadFileHistory { .. } => "file-history",
             Effect::LoadBlame(_) => "blame",
@@ -106,6 +107,7 @@ impl Effect {
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
             | Effect::LoadDiffGaps { .. }
+            | Effect::LoadBinarySides { .. }
             | Effect::LoadConflict { .. }
             | Effect::LoadFileHistory { .. }
             | Effect::LoadBlame(_)

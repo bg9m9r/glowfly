@@ -176,6 +176,8 @@ mod snapshot_tests_file_actions;
 #[cfg(test)]
 mod snapshot_tests_file_dialogs;
 #[cfg(test)]
+mod snapshot_tests_file_header;
+#[cfg(test)]
 mod snapshot_tests_file_menu;
 #[cfg(test)]
 mod snapshot_tests_file_menu_lfs;
@@ -371,6 +373,8 @@ pub struct UiCache {
     pub history_text: history_text_cache::HistoryTextCache,
     /// The blame view's line widths and wrapped row heights.
     pub blame_rows: blame::rows::BlameRowsCache,
+    /// The binary diff's before and after image textures.
+    pub diff_images: diff::preview::PreviewTextures,
 }
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.

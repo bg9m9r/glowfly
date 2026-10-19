@@ -22,6 +22,7 @@ mod deep_link_open;
 mod dialog;
 mod diff;
 mod diff_gaps;
+mod diff_preview;
 mod files;
 mod fold_keys;
 mod forge;

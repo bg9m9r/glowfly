@@ -7,6 +7,7 @@ use eframe::egui::{
     self, Align, Color32, CornerRadius, FontId, Layout, Painter, Pos2, Rect, Response, RichText, Stroke, StrokeKind, Ui, UiBuilder, pos2,
     vec2,
 };
+use trellis_core::lfs::pointer::size_text;
 
 /// The width the hint wraps at.
 const HINT_WIDTH: f32 = 360.0;
@@ -26,6 +27,22 @@ pub(super) const NO_CHANGES_HINT: &str = "Only the file's mode changed, or the f
 /// A binary file's diff (and its File view in the file history).
 pub(super) fn binary_file(ui: &mut Ui) {
     empty_state(ui, EmptyIcon::Binary, BINARY_TITLE, BINARY_HINT, None);
+}
+
+/// A binary file's diff with its sizes known (a file that isn't an image preview).
+pub(super) fn binary_sizes(ui: &mut Ui, old: Option<u64>, new: Option<u64>) {
+    empty_state(ui, EmptyIcon::Binary, BINARY_TITLE, &sizes_hint(old, new), None);
+}
+
+/// "12.4 KB before, 14.1 KB after", "Added, 14.1 KB" or "Deleted, 12.4 KB"; the plain hint
+/// without either size.
+pub(super) fn sizes_hint(old: Option<u64>, new: Option<u64>) -> String {
+    match (old, new) {
+        (Some(a), Some(b)) => format!("{} before, {} after", size_text(a), size_text(b)),
+        (None, Some(b)) => format!("Added, {}", size_text(b)),
+        (Some(a), None) => format!("Deleted, {}", size_text(a)),
+        (None, None) => BINARY_HINT.to_owned(),
+    }
 }
 
 /// A diff whose changes Ignore whitespace hides all of; true when its button asks to show them.
@@ -82,7 +99,7 @@ fn body_font(ui: &Ui) -> FontId {
 }
 
 /// A 30 x 38 page with its top-right corner folded, centred on `c`, and its mark.
-fn paint(p: &Painter, c: Pos2, icon: EmptyIcon, col: Color32) {
+pub(super) fn paint(p: &Painter, c: Pos2, icon: EmptyIcon, col: Color32) {
     let s = Stroke::new(1.6_f32, col);
     let (l, r, t, b, fold) = (c.x - 15.0, c.x + 15.0, c.y - 19.0, c.y + 19.0, 9.0);
     let outline = vec![pos2(l, t), pos2(r - fold, t), pos2(r, t + fold), pos2(r, b), pos2(l, b)];

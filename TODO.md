@@ -161,7 +161,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
     "+N" chip when a commit has more labels than fit, and hovering lists them all
   - Selection is a light accent tint with a 3 px accent bar at the left edge; hover is a
     slightly lifted row
-- [ ] **A calm file header**: the bar above a diff becomes a real header, 48 px on the raised
+- [x] **A calm file header**: the bar above a diff becomes a real header, 48 px on the raised
       surface with a 1 px edge below, and one row at every width (nothing wraps to a second row)
   - Left: a file-type icon, the folder in a quiet colour then the file name in semibold (the
     folder shortens from the left when space runs out, never the name), a status chip with
@@ -2278,8 +2278,6 @@ here, under the item they grew from.
 - Keep the trust prompt's footer the same between held and not-held prompts (Don't trust vs
   Cancel as the dismiss button)
 - Show the primary button's text in a strong weight once the bundled font has one
-- The diff header's 28 px buttons make its first row wrap a little earlier on narrow panels;
-  consider small buttons there
 - Remember a resizable dialog's size between openings
 
 ### Comfortable look
@@ -2313,3 +2311,14 @@ here, under the item they grew from.
 - Click the "+N" chip to open a popup of all labels with their menus
 - Cut a date that doesn't fit at its start ("…10:00 AM") so the time stays visible
 - Fill the WIP node's dashed ring so the lane line doesn't show through it
+
+### A calm file header
+
+- Compare a changed image as an overlay or with a swipe handle, beside Before and After
+- Preview more image formats (GIF, WebP, BMP, ICO) and SVG, drawn rather than shown as text
+- Zoom and pan the image preview, with a pixel difference view
+- Preview images stored in Git LFS from their local objects
+- The image preview in the file history's File view and in the conflict view
+- Keyboard keys for the View menu's choices (layout, section, wrap, ignore whitespace)
+- Remember the View menu's last section per repository
+- A renamed file's header names the old path too ("old → new", the arrow painted)

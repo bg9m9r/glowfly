@@ -7,7 +7,7 @@
 //! without changes at its call site.
 
 use super::tooltip_motion;
-use super::truncate::truncate_label;
+use super::truncate::{cut_left, truncate_label};
 use crate::keymap::Keymap;
 use crate::state::tip::{Tip, TipPreview, TipRow, TipSub};
 use crate::ui::common::{status_color, status_label};
@@ -123,22 +123,6 @@ fn preview(ui: &mut Ui, p: &TipPreview, t: Lang) {
             weak(ui, note);
         }
     });
-}
-
-/// `path` with characters taken off its start, behind "…", until it fits in `max_w`.
-fn cut_left(ui: &Ui, path: &str, font: &FontId, max_w: f32) -> String {
-    let width = |s: &str| ui.painter().layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
-    if width(path) <= max_w {
-        return path.to_owned();
-    }
-    let chars: Vec<char> = path.chars().collect();
-    for start in 1..chars.len() {
-        let cut = format!("\u{2026}{}", chars[start..].iter().collect::<String>());
-        if width(&cut) <= max_w {
-            return cut;
-        }
-    }
-    "\u{2026}".to_owned()
 }
 
 /// Gives `resp` the rich tooltip `build` makes (only while it shows): on hover, or under the

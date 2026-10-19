@@ -15,6 +15,7 @@ impl Effect {
             | Effect::LoadDiff { workdir, .. }
             | Effect::HighlightDiff { workdir, .. }
             | Effect::LoadDiffGaps { workdir, .. }
+            | Effect::LoadBinarySides { workdir, .. }
             | Effect::LoadConflict { workdir, .. }
             | Effect::LoadFileHistory { workdir, .. }
             | Effect::LoadTrackedPaths { workdir, .. }

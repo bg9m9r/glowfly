@@ -108,7 +108,7 @@ const BUTTON_FILES: &[&str] = &[
     "ui/tour.rs",
     "ui/history.rs",
     "ui/blame/header.rs",
-    "ui/diff/header.rs",
+    "ui/diff/header/",
     "ui/terminal/mod.rs",
     "ui/op_strip.rs",
     "ui/sign_in_banner.rs",

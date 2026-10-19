@@ -2,6 +2,8 @@
 //! request is running; what status says about a path being deleted, the trash's name, the
 //! file manager's show-in-folder label, and the offer of the home Trash (`TrashOffer`).
 
+/// Why Open and Show in folder are off for a file the working tree doesn't have.
+pub const NOT_IN_WORKDIR: &str = "Not in your working tree (deleted, renamed or never checked out)";
 /// The platform's name for where deleted files go.
 pub const TRASH: &str = if cfg!(windows) { "Recycle Bin" } else { "Trash" };
 /// The show-in-file-manager label for this platform.

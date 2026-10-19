@@ -28,6 +28,7 @@ pub(super) fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)
                 diff_rows: Default::default(),
                 history_text: Default::default(),
                 blame_rows: Default::default(),
+                diff_images: Default::default(),
             });
             draw(ctx, st, cache, msgs);
         },
@@ -197,6 +198,27 @@ fn esc_in_file_history_clears_a_line_selection_first() {
     h.state_mut().0.view.diff_lines.clear();
     let msgs = esc(&mut h);
     assert!(msgs.iter().any(|m| matches!(m, Msg::History(HistoryMsg::CloseFileHistory))), "the next Esc closes the history");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn esc_with_the_view_menu_open_closes_only_the_menu() {
+    use egui_kittest::kittest::Queryable;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-view-menu");
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    st.diff = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
+    let mut h = app_harness(st);
+    h.run();
+    let view = if h.query_by_label("Inline \u{b7} Hunks").is_some() { "Inline \u{b7} Hunks" } else { "View" };
+    h.get_by_label(view).click();
+    h.run();
+    assert!(h.query_by_label("Ignore whitespace").is_some(), "the View menu is open");
+
+    let msgs = esc(&mut h);
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))), "the first Esc only closes the menu");
+    assert!(h.query_by_label("Ignore whitespace").is_none(), "the menu is closed");
+    assert!(esc(&mut h).iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))), "the next closes the diff");
     drop(h);
     remove_fixture(&dir);
 }

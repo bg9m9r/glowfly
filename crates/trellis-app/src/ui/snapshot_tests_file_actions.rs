@@ -1,13 +1,12 @@
 //! File action buttons in headers: the file history's selected commit (Restore this version,
 //! Open with default app, Show in folder), its row menu, and the commit diff header (Restore…,
-//! Open, Show). Covers enablement when the file is gone from the working tree, the messages
-//! clicks send, and that working-tree and comparison diff headers gain no buttons. Shares the
-//! fixture repository and renderer with `snapshot_tests`.
+//! Open, Show; Open and Show on working-tree diffs). Covers enablement when the file is gone
+//! from the working tree, the messages clicks send, and that comparison diff headers gain no
+//! buttons. Shares the fixture repository and renderer with `snapshot_tests`.
 
-use super::file_buttons::{OPEN_SHORT, RESTORE_SHORT};
 use super::file_menu::{NOT_IN_WORKDIR, OPEN_DEFAULT, OPEN_IN_EDITOR, SHOW_IN_FOLDER};
 use super::history::{BLAME_AT, entry_menu};
-use super::snapshot_tests::{harness, remove_fixture, with_history, with_repo};
+use super::snapshot_tests::{harness, harness_sized, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
 use super::snapshot_tests_revert::with_commit_diff;
 use super::theme::{apply_theme, color};
@@ -26,6 +25,13 @@ use trellis_core::repo::{self, DiffTarget, HistoryEntry, LoadOptions};
 use trellis_core::settings::{DiffLayout, ThemeChoice};
 
 const RESTORE: &str = "Restore this version…";
+/// The diff header's labelled file actions and its Close control.
+const RESTORE_SHORT: &str = "Restore…";
+const OPEN_SHORT: &str = "Open";
+const CLOSE_DIFF: &str = "Close diff";
+/// A window wide enough for the diff header to label its file actions rather than fold them
+/// into its "More file actions" menu.
+const WIDE: egui::Vec2 = egui::vec2(1800.0, 820.0);
 
 /// Takes src/app.txt out of the working tree and reloads status, which then lists it as deleted.
 fn remove_app(st: &mut AppState, dir: &Path) {
@@ -177,7 +183,7 @@ fn history_entry_menu() {
 fn diff_commit_header_buttons() {
     let (st, dir) = with_commit_diff("diff-commit-actions", ThemeChoice::Dark, DiffLayout::Inline, false);
     let oid = st.detail.as_ref().unwrap().oid;
-    let mut h = harness(st, true);
+    let mut h = harness_sized(st, true, WIDE);
     h.run();
     h.check_snapshot("diff_commit_header_buttons");
     let msgs = click(&mut h, RESTORE_SHORT);
@@ -203,7 +209,7 @@ fn diff_commit_header_buttons() {
 }
 
 #[test]
-fn working_tree_diff_header_unchanged() {
+fn working_tree_diff_header_opens_the_file() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "diff-wip-actions");
     let target = DiffTarget::Unstaged("README.md".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
@@ -211,17 +217,20 @@ fn working_tree_diff_header_unchanged() {
     let fix = st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == "Fix build on Windows").expect("the fix commit");
     let (newer, older) = (fix.oid, fix.parents[0]);
     st.diff = Some((target, diff.into()));
-    let mut h = harness(st, true);
+    let mut h = harness_sized(st, true, WIDE);
     h.run();
     assert!(h.query_by_label("Stage file").is_some());
-    assert!(h.query_by_label(OPEN_SHORT).is_none() && h.query_by_label(RESTORE_SHORT).is_none());
+    assert!(h.query_by_label(OPEN_SHORT).is_some() && h.query_by_label(SHOW_IN_FOLDER).is_some(), "the working file opens");
+    assert!(h.query_by_label(RESTORE_SHORT).is_none());
+    let msgs = click(&mut h, OPEN_SHORT);
+    assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::OpenWorkingFile(p))] if p == "README.md"));
 
     // Comparing two commits.
     let target = DiffTarget::Between(older, newer, "app.txt".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
     h.state_mut().0.diff = Some((target, diff.into()));
     h.run();
-    assert!(h.query_by_label("Close  (Esc)").is_some(), "the header is drawn");
+    assert!(h.query_by_label(CLOSE_DIFF).is_some(), "the header is drawn");
     assert!(h.query_by_label(OPEN_SHORT).is_none() && h.query_by_label(RESTORE_SHORT).is_none());
     assert!(h.query_by_label(SHOW_IN_FOLDER).is_none() && h.query_by_label(NOT_IN_WORKDIR).is_none());
     drop(h);
