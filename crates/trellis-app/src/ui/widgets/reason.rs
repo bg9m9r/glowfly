@@ -11,7 +11,7 @@
 //!   it is disabled (`state::blocked`), or `SET_UP` for an entry that opens the setting it needs.
 //!   The suffix is painted text, not a widget, so the item's accessible name stays its label.
 
-use super::super::theme::color;
+use super::super::theme::{color, type_scale};
 use super::truncate::truncate_label;
 use crate::state::blocked::Blocked;
 use eframe::egui::{
@@ -19,10 +19,10 @@ use eframe::egui::{
 };
 
 /// The reason line's text size, and the height a `line` always takes.
-pub const LINE_SIZE: f32 = 12.5;
+pub const LINE_SIZE: f32 = type_scale::SMALL;
 pub const LINE_H: f32 = 18.0;
 /// A menu item's suffix: its text size and the space between the label and it.
-pub const SUFFIX_SIZE: f32 = 12.0;
+pub const SUFFIX_SIZE: f32 = type_scale::SMALL;
 pub const SUFFIX_GAP: f32 = 10.0;
 /// The least free space in a dialog footer's row for its reason to go there, and the space
 /// between the reason and the dismiss button.
