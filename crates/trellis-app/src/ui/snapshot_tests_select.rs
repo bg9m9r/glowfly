@@ -217,6 +217,17 @@ fn graph_commit_menu() {
     // A commit main doesn't contain: main can be rebased onto it, plainly or interactively.
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.check_snapshot("graph_commit_menu");
+    // Groups in order: branch and tag, integrate, rewrite, view, copy.
+    let order = [
+        "Checkout (detached)",
+        "Create tag here…",
+        "Cherry-pick",
+        "Interactive rebase from here…",
+        "Compare with working directory",
+        "Create patch…",
+    ];
+    let ys: Vec<f64> = order.iter().map(|l| h.get_by_label(l).bounding_box().expect("a laid-out item").y0).collect();
+    assert!(ys.windows(2).all(|w| w[0] < w[1]), "{order:?} top to bottom, got {ys:?}");
     assert!(!h.get_by_label("Rebase main onto this commit").is_disabled());
     h.state_mut().1.clear();
     h.get_by_label("Interactive rebase main onto this commit…").click();

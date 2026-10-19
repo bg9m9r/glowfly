@@ -41,7 +41,7 @@ pub fn local_branch_menu(
     ui.separator();
     integrate_items(ui, b, snap, msgs);
     push_items(ui, b, snap, msgs);
-    if let Some(fs) = fs {
+    if let Some(fs) = fs.filter(|fs| forge_items_shown(fs, name)) {
         ui.separator();
         if fs.host.is_some() {
             super::pr_menu_items::local(ui, b, snap, fs, sel, msgs);
@@ -61,6 +61,13 @@ pub fn local_branch_menu(
         ui.separator();
         delete_items(ui, b, snap, msgs);
     }
+}
+
+/// Whether the pull request and issue group draws anything: pull request items need a code
+/// host, the issue item an issue key in the branch name. Without either, its separator would
+/// sit right above the next group's.
+pub(crate) fn forge_items_shown(fs: &ForgeState, branch: &str) -> bool {
+    fs.host.is_some() || fs.branch_issue(branch).is_some()
 }
 
 /// Checkout (or open the worktree that has it), a new branch or worktree from it, rename and
@@ -193,5 +200,29 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut V
                 Msg::Branch(BranchMsg::DeleteBranchAndRemote(name.to_owned())),
             ),
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::forge_items_shown;
+    use crate::state::ForgeState;
+    use trellis_core::forge::{Account, Provider, Target};
+
+    fn jira() -> Target {
+        Target::jira(&Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() }, "PROJ")
+    }
+
+    fn github() -> Target {
+        Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() }
+    }
+
+    #[test]
+    fn forge_group_needs_a_host_or_an_issue_key() {
+        let tracker_only = ForgeState::new(None, String::new(), Some(jira()));
+        assert!(!forge_items_shown(&tracker_only, "main"), "no host and no issue key: no group, no separator");
+        assert!(forge_items_shown(&tracker_only, "PROJ-7-login"), "the issue item");
+        let hosted = ForgeState::new(Some(github()), "origin".into(), None);
+        assert!(forge_items_shown(&hosted, "main"), "the pull request items");
     }
 }

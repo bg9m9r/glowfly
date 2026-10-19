@@ -28,8 +28,6 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mu
     let merge = c.parents.len() > 1;
     commit_menu_header(ui, &c.summary, oid);
     menu_item(msgs, ui, "Checkout (detached)", Msg::git("Checkout", &["checkout", &sha]));
-    menu_item(msgs, ui, "Compare with working directory", Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)));
-    ui.separator();
     menu_item(msgs, ui, "Create branch here…", Msg::Branch(BranchMsg::NewBranch { start: Some(sha.clone()), name: String::new() }));
     menu_item(msgs, ui, "Create tag here…", Msg::Tag(TagMsg::NewTag { at: sha.clone(), annotated: false }));
     menu_item(msgs, ui, "Create worktree from this commit…", Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Commit(oid))));
@@ -49,6 +47,8 @@ pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mu
     reset_menu(ui, c, snap, msgs);
     menu_item(msgs, ui, "Interactive rebase from here…", Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid))));
     super::rebase::edit_menu::single(ui, oid, snap, msgs);
+    ui.separator();
+    menu_item(msgs, ui, "Compare with working directory", Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)));
     ui.separator();
     let patch = ui.add_enabled(!merge, egui::Button::new("Create patch…")).on_disabled_hover_text(PATCH_BLOCKED_MERGE);
     if patch.clicked() {
