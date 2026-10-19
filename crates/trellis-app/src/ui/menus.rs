@@ -11,7 +11,7 @@ use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
-use crate::state::commit_menu::{RESET_HARD, RESET_HARD_NOTE, RESET_MIXED, RESET_SOFT, hard_reset_body, reset_title};
+use crate::state::commit_menu::{hard_reset_body, reset_title};
 use crate::state::patch::PATCH_BLOCKED_MERGE;
 use crate::state::rebase_onto::{onto_commit_blocker, onto_menu_labels};
 use crate::state::selection::{MultiSelection, cherry_pick_blocker};
@@ -23,58 +23,64 @@ use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{CommitInfo, Snapshot};
 use trellis_core::worktree_ops::WorktreeBase;
 
-pub fn commit_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let oid = c.oid;
     let sha = oid.to_string();
     let merge = c.parents.len() > 1;
     commit_menu_header(ui, &c.summary, oid);
-    menu_item(msgs, ui, "Checkout (detached)", Msg::git("Checkout", &["checkout", &sha]));
-    menu_item(msgs, ui, "Create branch here…", Msg::Branch(BranchMsg::NewBranch { start: Some(sha.clone()), name: String::new() }));
-    menu_item(msgs, ui, "Create tag here…", Msg::Tag(TagMsg::NewTag { at: sha.clone(), annotated: false }));
-    menu_item(msgs, ui, "Create worktree from this commit…", Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Commit(oid))));
+    menu_item(msgs, ui, t.tr("commits.menu.checkout_detached"), Msg::git("Checkout", &["checkout", &sha]));
+    let new_branch = Msg::Branch(BranchMsg::NewBranch { start: Some(sha.clone()), name: String::new() });
+    menu_item(msgs, ui, t.tr("commits.menu.create_branch"), new_branch);
+    menu_item(msgs, ui, t.tr("commits.menu.create_tag"), Msg::Tag(TagMsg::NewTag { at: sha.clone(), annotated: false }));
+    let worktree = Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Commit(oid)));
+    menu_item(msgs, ui, t.tr("commits.menu.create_worktree"), worktree);
     ui.separator();
-    let pick = if merge { "Cherry-pick merge commit…" } else { "Cherry-pick" };
+    let pick = if merge { t.tr("commits.menu.cherry_pick_merge") } else { t.tr("commits.menu.cherry_pick") };
     menu_item_if(msgs, ui, pick, cherry_pick_blocker(snap, &[oid]), Msg::Selection(SelectionMsg::CherryPick(vec![oid])));
-    let revert = if merge { "Revert merge commit…" } else { "Revert" };
+    let revert = if merge { t.tr("commits.menu.revert_merge") } else { t.tr("commits.menu.revert") };
     menu_item(msgs, ui, revert, Msg::Selection(SelectionMsg::Revert(vec![oid])));
     if let Some(current) = snap.head_branch.as_deref() {
         let blocked = onto_commit_blocker(snap, oid);
-        let (plain, interactive) = onto_menu_labels(current);
+        let (plain, interactive) = onto_menu_labels(t, current);
         menu_item_if(msgs, ui, plain, blocked.as_deref(), Msg::git("Rebase", &["rebase", &sha]));
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));
         menu_item_if(msgs, ui, interactive, blocked.as_deref(), onto);
     }
     ui.separator();
-    reset_menu(ui, c, snap, msgs);
-    menu_item(msgs, ui, "Interactive rebase from here…", Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid))));
-    super::rebase::edit_menu::single(ui, oid, snap, msgs);
+    reset_menu(ui, t, c, snap, msgs);
+    let from_here = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(oid)));
+    menu_item(msgs, ui, t.tr("commits.menu.interactive_from"), from_here);
+    super::rebase::edit_menu::single(ui, t, oid, snap, msgs);
     ui.separator();
-    menu_item(msgs, ui, "Compare with working directory", Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)));
+    menu_item(msgs, ui, t.tr("commits.menu.compare_workdir"), Msg::Selection(SelectionMsg::CompareWithWorkdir(oid)));
     ui.separator();
-    let patch = reason::menu_button(ui, "Create patch…", "", ItemState::blocked_by(merge.then_some(PATCH_BLOCKED_MERGE)));
+    let patch_state = ItemState::blocked_by(merge.then_some(PATCH_BLOCKED_MERGE));
+    let patch = reason::menu_button(ui, t.tr("commits.menu.create_patch"), "", patch_state);
     if patch.clicked() {
         msgs.push(Msg::Patch(PatchMsg::Export(vec![oid])));
         ui.close_menu();
     }
-    ui.menu_button("Copy", |ui| {
-        menu_item(msgs, ui, "SHA", Msg::Copy(sha.clone()));
-        menu_item(msgs, ui, "Message", Msg::Copy(c.summary.clone()));
-        menu_item(msgs, ui, "Link", Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Commit(oid))));
+    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+        menu_item(msgs, ui, t.tr("commits.menu.copy_sha"), Msg::Copy(sha.clone()));
+        menu_item(msgs, ui, t.tr("commits.menu.copy_message"), Msg::Copy(c.summary.clone()));
+        menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Commit(oid))));
         let blocked = merge.then_some(PATCH_BLOCKED_MERGE);
-        menu_item_if(msgs, ui, "Patch", blocked, Msg::Patch(PatchMsg::Copy(vec![oid])));
+        menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), blocked, Msg::Patch(PatchMsg::Copy(vec![oid])));
     });
 }
 
 /// The reset submenu: soft, mixed and hard (asked first), titled with the branch it moves.
-fn reset_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+fn reset_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let sha = c.oid.to_string();
     let current = snap.head_branch.as_deref();
-    ui.menu_button(reset_title(current), |ui| {
-        menu_item(msgs, ui, RESET_SOFT, Msg::git("Reset (soft)", &["reset", "--soft", &sha]));
-        menu_item(msgs, ui, RESET_MIXED, Msg::git("Reset (mixed)", &["reset", "--mixed", &sha]));
+    ui.menu_button(reset_title(t, current), |ui| {
+        menu_item(msgs, ui, t.tr("commits.menu.reset.soft"), Msg::git("Reset (soft)", &["reset", "--soft", &sha]));
+        menu_item(msgs, ui, t.tr("commits.menu.reset.mixed"), Msg::git("Reset (mixed)", &["reset", "--mixed", &sha]));
         let hard = Msg::git("Reset (hard)", &["reset", "--hard", &sha]);
-        menu_item(msgs, ui, RESET_HARD, Msg::confirm_danger("Hard reset", hard_reset_body(current, c), "Reset", hard));
-        menu_note(ui, RESET_HARD_NOTE);
+        let body = hard_reset_body(t, current, c);
+        let confirm = Msg::confirm_danger(t.tr("commits.menu.reset.hard_title"), body, t.tr("commits.menu.reset.button"), hard);
+        menu_item(msgs, ui, t.tr("commits.menu.reset.hard"), confirm);
+        menu_note(ui, t.tr("commits.menu.reset.hard_hint"));
     });
 }
 

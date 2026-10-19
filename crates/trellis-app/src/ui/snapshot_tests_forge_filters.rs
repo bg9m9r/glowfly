@@ -17,7 +17,7 @@ use trellis_core::forge::{
 };
 use trellis_core::settings::{RepoForgeFilters, ThemeChoice};
 
-fn target(provider: Provider, host: &str) -> Target {
+pub(super) fn target(provider: Provider, host: &str) -> Target {
     Target { provider, host: host.into(), owner: "o".into(), project: String::new(), repo: "r".into() }
 }
 

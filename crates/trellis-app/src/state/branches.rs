@@ -4,6 +4,7 @@
 use git2::RepositoryState;
 use trellis_core::branch_ops::{FastForward, fast_forward_state};
 use trellis_core::gitcli::args;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{BranchInfo, Snapshot, Tracking};
 
 pub const NO_REMOTES: &str = "This repository has no remotes.";
@@ -112,15 +113,12 @@ pub fn delete_with_remote_blocked(b: &BranchInfo, t: &Tracking, head: Option<&st
 }
 
 /// The confirmation text for deleting `b` and its upstream `t`.
-pub fn delete_with_remote_body(b: &BranchInfo, t: &Tracking) -> String {
+pub fn delete_with_remote_body(lang: Lang, b: &BranchInfo, t: &Tracking) -> String {
     let (name, remote, merge) = (&b.name, &t.remote, &t.merge);
-    let mut body =
-        format!("Delete local branch {name} and {merge} on {remote}? The remote branch is removed for everyone who uses {remote}.");
+    let mut body = lang.trf("branch.delete_both.body", &[("branch", name), ("remote_branch", merge), ("remote", remote)]);
     if b.behind > 0 {
-        body.push_str(&format!(
-            " {remote}/{merge} has {} that {name} doesn't have. They will no longer be on any branch.",
-            commits(b.behind)
-        ));
+        body.push(' ');
+        body.push_str(&lang.trn("branch.delete_both.behind_note", b.behind, &[("remote", remote), ("merge", merge), ("branch", name)]));
     }
     body
 }

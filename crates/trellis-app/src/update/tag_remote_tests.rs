@@ -14,6 +14,7 @@ use crate::state::{AppState, Modal, RunningJob};
 use crate::tag::TagMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use trellis_core::i18n::Lang;
 
 /// `with_origin` plus a second bare remote `backup` and a local tag `v1`. Returns (state,
 /// working repository, origin, backup).
@@ -172,7 +173,7 @@ fn refused_without_snapshot() {
 #[test]
 fn confirm_then_delete() {
     let (mut st, work, origin, backup) = with_two("tag-confirm-delete");
-    update(&mut st, delete_remote_confirm("v1", names(&["origin", "backup"])), Instant::now());
+    update(&mut st, delete_remote_confirm(Lang::En, "v1", names(&["origin", "backup"])), Instant::now());
     let Some(Modal::ConfirmDanger { title, body, button, .. }) = &st.modal else { panic!("expected the confirmation") };
     assert_eq!(title, "Delete tag from all remotes");
     assert_eq!(body, "Delete tag v1 from origin and backup? Your local tag stays, and anyone who already fetched it keeps their copy.");
@@ -182,7 +183,7 @@ fn confirm_then_delete() {
     assert_eq!(label(&st), "Delete tag v1 from origin and backup");
 
     st.job = None;
-    update(&mut st, delete_remote_confirm("v1", names(&["origin"])), Instant::now());
+    update(&mut st, delete_remote_confirm(Lang::En, "v1", names(&["origin"])), Instant::now());
     let Some(Modal::ConfirmDanger { title, body, button, .. }) = &st.modal else { panic!("expected the confirmation") };
     assert_eq!(title, "Delete tag from remote");
     assert_eq!(body, "Delete tag v1 from origin? Your local tag stays, and anyone who already fetched it keeps their copy.");

@@ -11,6 +11,7 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{
     self, Align, Color32, CursorIcon, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Shape, Stroke, UiBuilder, pos2, vec2,
 };
+use trellis_core::i18n::Lang;
 use trellis_core::settings::{FilterOp, GraphFilter};
 
 const HIDDEN_TIP: &str = "Hidden from the graph. Click to show it.";
@@ -22,18 +23,18 @@ fn filter_msg(op: FilterOp) -> Msg {
 
 /// "Hide/Show in graph" and "Solo/Stop soloing" for the ref `full`, in a menu headed by its
 /// name. Hiding is disabled with the reason on hover for the checked-out branch (`head`).
-pub fn menu_items(ui: &mut egui::Ui, full: &str, filter: &GraphFilter, head: bool, msgs: &mut Vec<Msg>) {
+pub fn menu_items(ui: &mut egui::Ui, t: Lang, full: &str, filter: &GraphFilter, head: bool, msgs: &mut Vec<Msg>) {
     let r = full.to_owned();
     if filter.is_hidden(full) {
-        menu_item(msgs, ui, "Show in graph", filter_msg(FilterOp::Show(r.clone())));
+        menu_item(msgs, ui, t.tr("refs.menu.show_in_graph"), filter_msg(FilterOp::Show(r.clone())));
     } else {
         let blocked = head.then_some(HEAD_ALWAYS_SHOWN);
-        menu_item_if(msgs, ui, "Hide in graph", blocked, filter_msg(FilterOp::Hide(r.clone())));
+        menu_item_if(msgs, ui, t.tr("refs.menu.hide_in_graph"), blocked, filter_msg(FilterOp::Hide(r.clone())));
     }
     if filter.is_soloed(full) {
-        menu_item(msgs, ui, "Stop soloing", filter_msg(FilterOp::Unsolo(r)));
+        menu_item(msgs, ui, t.tr("refs.menu.stop_soloing"), filter_msg(FilterOp::Unsolo(r)));
     } else {
-        menu_item(msgs, ui, "Solo", filter_msg(FilterOp::Solo(r)));
+        menu_item(msgs, ui, t.tr("refs.menu.solo"), filter_msg(FilterOp::Solo(r)));
     }
 }
 

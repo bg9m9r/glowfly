@@ -185,7 +185,12 @@ fn blocked_add_without_menu_keeps_section() {
                 }
             };
             let add = HeaderAdd { name: "Probe add".into(), tip: None, blocked: Some("Not now".into()), action: AddAction::Menu(&items) };
-            show(ui, Header { title: "Probe", count: Some(1), add: Some(add), menu: None }, open, msgs);
+            show(
+                ui,
+                Header { key: "probe", title: "Probe", count: Some(1), add: Some(add), menu: None, t: trellis_core::i18n::Lang::En },
+                open,
+                msgs,
+            );
         },
         (true, Vec::new()),
     );

@@ -27,13 +27,12 @@ use trellis_core::settings::{GraphFilter, SizedPanel};
 
 type Shown<'a> = dyn Fn(&str) -> bool + 'a;
 
-/// The filter field's hint, cut with "…" in a narrow panel (whole on hover while empty).
-const FILTER_HINT: &str = "Filter (branches, PRs, issues)";
-
 /// Draws the panel at `fit`'s width (`panel_size::side_fits`).
 pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg>) {
     let id = egui::Id::new(panel_size::SIDEBAR_ID);
     panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Sidebar));
+    // The filter field's hint, cut with "…" in a narrow panel (whole on hover while empty).
+    let filter_hint = st.settings.lang().tr("sidebar.filter.hint");
     let resp = panel_size::side(egui::SidePanel::left(id), fit).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
         panel_size::fill(ui);
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
@@ -42,11 +41,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         ui.horizontal(|ui| {
             ui.add_space(widgets::PAD_X);
             let width = ui.available_width() - widgets::PAD_X;
-            let (hint, cut) = widgets::truncate::hint(ui, FILTER_HINT, width);
+            let (hint, cut) = widgets::truncate::hint(ui, filter_hint, width);
             let empty = st.view.ref_filter.is_empty();
             let r = controls::field(ui, egui::TextEdit::singleline(&mut st.view.ref_filter).hint_text(hint).desired_width(width));
             if empty && cut {
-                r.on_hover_text(FILTER_HINT);
+                r.on_hover_text(filter_hint);
             }
         });
         ui.add_space(8.0);
@@ -59,6 +58,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
 
 fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
     let actions = crate::state::section_actions::all(st);
+    let t = st.settings.lang();
     let open_tabs = crate::state::tabs::open_places(&st.tabs);
     let open_issue = st.issue.as_ref().map(|v| v.key.clone());
     let Some(snap) = &st.snap else { return };
@@ -76,8 +76,14 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let slot = super::build_status::tip_slot(fs);
 
     let local_menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, &actions.local);
-    let local =
-        Header { title: "Local", count: Some(snap.locals.len()), add: Some(HeaderAdd::send(&actions.local)), menu: Some(&local_menu) };
+    let local = Header {
+        key: "local",
+        title: t.tr("sidebar.local.header"),
+        count: Some(snap.locals.len()),
+        add: Some(HeaderAdd::send(&actions.local)),
+        menu: Some(&local_menu),
+        t,
+    };
     section_header::show(ui, local, &mut sections.local, msgs);
     if sections.local {
         for b in snap.locals.iter().filter(|b| shown(&b.name)) {
@@ -97,7 +103,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 parts.push(Part::Text(l));
             }
             if worktree.is_some() {
-                parts.push(Part::Text("worktree"));
+                parts.push(Part::Text(t.tr("sidebar.local.worktree.part")));
             }
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
             let selected = b.oid.is_some_and(|o| sel.includes(o));
@@ -132,27 +138,30 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
             ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &format!("refs/heads/{}", b.name), &b.name, graph, msgs);
-            r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, graph, sel, msgs));
+            r.context_menu(|ui| local_branch_menu(ui, t, b, snap, fs, graph, sel, msgs));
         }
     }
 
     let connections = &st.settings.connections;
     let filtering = !filter.is_empty();
     let add_remote = &actions.remote;
-    let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering, connections, add_remote };
+    let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering, connections, add_remote, t };
     super::remotes::section(ui, snap, &mut sections.remote, ctx, hover_next, tips_seen, msgs);
 
     if let Some(f) = fs.filter(|f| f.host.is_some()) {
-        let title = if f.pr_noun() == "merge request" { "Merge requests" } else { "Pull requests" };
+        let title = f.prs_header(t);
+        let chip_tip =
+            if f.pr_noun() == "merge request" { t.tr("sidebar.mrs.filter_chip.tip") } else { t.tr("sidebar.prs.filter_chip.tip") };
         let view = forge_filters::pr_view(f, &repo_filters);
         let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
         let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
-            super::pr_menu_items::pr_menu(ui, snap, f, idle, msgs);
+            super::pr_menu_items::pr_menu(ui, t, snap, f, idle, msgs);
             ui.separator();
-            menu_item(msgs, ui, "New filter…", Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Prs)));
+            menu_item(msgs, ui, t.tr("sidebar.new_filter"), Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Prs)));
         };
         let add = actions.pr.as_ref().map(HeaderAdd::send);
-        forge_filter_menu::header(ui, title, view.rows.len(), &mut sections.prs, picker, (add, &menu), msgs);
+        let section = ("prs", title, chip_tip, view.rows.len());
+        forge_filter_menu::header(ui, t, section, &mut sections.prs, picker, (add, &menu), msgs);
         if sections.prs {
             pull_requests(ui, snap, f, &view, sel, &shown, msgs);
         }
@@ -166,28 +175,29 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 action_item(ui, msgs, a);
             }
             ui.separator();
-            menu_item(msgs, ui, "New filter…", Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Issues)));
+            menu_item(msgs, ui, t.tr("sidebar.new_filter"), Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Issues)));
         };
         let add = actions.issue.as_ref().map(HeaderAdd::send);
-        forge_filter_menu::header(ui, "Issues", view.rows.len(), &mut sections.issues, picker, (add, &menu), msgs);
+        let section = ("issues", t.tr("sidebar.issues.header"), t.tr("sidebar.issues.filter_chip.tip"), view.rows.len());
+        forge_filter_menu::header(ui, t, section, &mut sections.issues, picker, (add, &menu), msgs);
         if sections.issues {
             let in_app = provider.is_some_and(forge::issues_in_app);
             issues(ui, snap, f, &view, &shown, (open_issue.as_deref(), in_app), msgs);
         }
     }
     if let Some(s) = snap.gitflow.settings() {
-        let rows = super::gitflow_section::Rows { shown: &shown, sel, fs, graph, filtering };
+        let rows = super::gitflow_section::Rows { shown: &shown, sel, fs, graph, filtering, t };
         super::gitflow_section::section(ui, snap, &s, &mut sections.gitflow, rows, hover_next, msgs);
     }
 
-    let rows = super::tags::Rows { shown: &shown, sel, idle, graph, new_tag: &actions.tag, annotated: &actions.annotated_tag };
+    let rows = super::tags::Rows { shown: &shown, sel, idle, graph, new_tag: &actions.tag, annotated: &actions.annotated_tag, t };
     super::tags::section(ui, snap, &mut sections.tags, rows, msgs);
 
     let stash = (&actions.stash, &actions.stash_staged);
-    super::stashes::section(ui, snap, &mut sections.stashes, sel, &shown, stash, msgs);
-    let rows = super::worktrees::Rows { shown: &shown, sel, open_tabs: &open_tabs, add: &actions.worktree, filtering };
+    super::stashes::section(ui, t, snap, &mut sections.stashes, (sel, &shown), stash, msgs);
+    let rows = super::worktrees::Rows { shown: &shown, sel, open_tabs: &open_tabs, add: &actions.worktree, filtering, t };
     super::worktrees::section(ui, snap, &mut sections.worktrees, rows, hover_next, msgs);
-    super::submodules::section(ui, snap, &sub_cx, &mut sections.submodules, (&shown, filtering), &actions.submodule, msgs);
+    super::submodules::section(ui, t, snap, &sub_cx, &mut sections.submodules, (&shown, filtering, &actions.submodule), msgs);
     ui.add_space(12.0);
 }
 

@@ -19,26 +19,31 @@ use crate::state::submodules::{
 use crate::submodule::{Batch, SubmoduleMsg};
 use crate::ui::theme::controls;
 use eframe::egui::{self, Painter, Pos2, Stroke, pos2, vec2};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{Snapshot, SubmoduleInfo, SubmoduleState};
 use trellis_core::settings::SubmoduleUpdates;
 
+/// The row filter, whether a filter is typed, and the section's add action.
+type Filtered<'a> = (&'a dyn Fn(&str) -> bool, bool, &'a SectionAction);
+
 pub(super) fn section(
     ui: &mut egui::Ui,
+    t: Lang,
     snap: &Snapshot,
     cx: &SectionCx,
     open: &mut bool,
-    (shown, filtering): (&dyn Fn(&str) -> bool, bool),
-    add: &SectionAction,
+    (shown, filtering, add): Filtered,
     msgs: &mut Vec<Msg>,
 ) {
     let items = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| header_menu(ui, snap, cx, add, msgs);
-    let h = Header { title: "Submodules", count: Some(snap.submodules.len()), add: Some(HeaderAdd::send(add)), menu: Some(&items) };
+    let title = t.tr("sidebar.submodules.header");
+    let h = Header { key: "submodules", title, count: Some(snap.submodules.len()), add: Some(HeaderAdd::send(add)), menu: Some(&items), t };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;
     }
     if snap.submodules.is_empty() && !filtering {
-        section_header::empty_row(ui, "No submodules", add, msgs);
+        section_header::empty_row(ui, t.tr("sidebar.submodules.empty"), add, msgs);
     }
     for sm in snap.submodules.iter().filter(|s| shown(&s.path) || shown(&s.name)) {
         let col = match sm.state {

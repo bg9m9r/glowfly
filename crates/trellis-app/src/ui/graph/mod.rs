@@ -71,12 +71,13 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let total = rows.len();
         // While filtering every node sits in the first lane, without lane lines.
         let lanes = if filtered { 1 } else { snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES) };
-        let graph_w = header::graph_width(ui, lanes);
+        let t = st.settings.lang();
+        let graph_w = header::graph_width(ui, t, lanes);
         let cols_cfg = st.settings.columns;
 
         select::keyboard_nav(ui, &st.selection, snap, &rows, &mut st.view, msgs);
 
-        let widths = header::column_header(ui, snap, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
+        let widths = header::column_header(ui, t, snap, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
         if filtered && total == 0 {
             return super::graph_empty::no_matches(ui, st, msgs);
         }
@@ -118,7 +119,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let offset = st.view.utc_offset;
         let avatars = &mut cache.avatars;
         let stats = &st.stats;
-        let wip_label = settings.lang().tr("graph.wip.label");
+        let wip_label = t.tr("graph.wip.label");
         let wip_total = st.line_counts.wip().and_then(|w| w.total());
         let mut want_stats: Vec<Oid> = Vec::new();
         let mut hover_tip_next = None;
@@ -133,7 +134,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             for row in range {
                 if more_row && row == total {
                     let line = Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), ROW_H));
-                    more::loading_row(ui, ROW_H, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0);
+                    more::loading_row(ui, t, ROW_H, Columns::new(line, graph_w, &cols_cfg, &widths).msg.0);
                     continue;
                 }
                 let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());

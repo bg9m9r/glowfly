@@ -12,6 +12,7 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, CornerRadius, Layout, Rect, Response, Sense, Stroke, UiBuilder, pos2, vec2};
 use trellis_core::forge::filters::matching;
 use trellis_core::forge::{Builtin, FilterChoice, FilterKind, Provider, SavedFilter};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::RepoForgeFilters;
 
 /// What a section's chip shows and offers.
@@ -28,16 +29,17 @@ const ROW: f32 = 26.0;
 
 /// The section header (with its + and ⋯) and the filter chip just left of them. A click on
 /// the chip, the + or the ⋯ leaves the section as it is.
+/// `key` is the section's stable id, `title` its header and `chip_tip` the chip's hover, in `t`.
 pub(super) fn header(
     ui: &mut egui::Ui,
-    title: &str,
-    count: usize,
+    t: Lang,
+    (key, title, chip_tip, count): (&'static str, &str, &str, usize),
     open: &mut bool,
     p: Picker,
     (add, menu): (Option<HeaderAdd>, MenuFn),
     msgs: &mut Vec<Msg>,
 ) -> Response {
-    let h = section_header::Header { title, count: Some(count), add, menu: Some(menu) };
+    let h = section_header::Header { key, title, count: Some(count), add, menu: Some(menu), t };
     let HeaderResponse { header: resp, free_right: right } = section_header::show(ui, h, open, msgs);
     let painter = ui.painter().clone();
     let (title_font, _) = widgets::section_fonts(ui);
@@ -57,26 +59,20 @@ pub(super) fn header(
     painter.rect_stroke(chip, CornerRadius::same(10), Stroke::new(1.0_f32, color::border()), egui::StrokeKind::Inside);
     painter.galley(pos2(chip.left() + 8.0, cy - galley.size().y / 2.0), galley, color::weak());
     widgets::chevron(&painter, pos2(chip.right() - 10.0, cy + 0.5), true, color::weak());
-    let name = format!("{title} filter: {}", p.label);
+    let name = t.trf("sidebar.filter_chip.name", &[("section", &title), ("filter", &p.label)]);
     chip_resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name.clone()));
-    let chip_resp =
-        chip_resp.on_hover_text(format!("Choose which {} to show", section_name(title))).on_hover_cursor(egui::CursorIcon::PointingHand);
+    let chip_resp = chip_resp.on_hover_text(chip_tip).on_hover_cursor(egui::CursorIcon::PointingHand);
     if chip_resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(popup));
     }
     egui::popup::popup_below_widget(ui, popup, &chip_resp, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_width(270.0);
-        popover(ui, &p, msgs);
+        popover(ui, t, &p, msgs);
     });
     resp
 }
 
-/// The section's title inside a sentence: "Pull requests" → "pull requests".
-fn section_name(title: &str) -> String {
-    title.to_lowercase()
-}
-
-fn popover(ui: &mut egui::Ui, p: &Picker, msgs: &mut Vec<Msg>) {
+fn popover(ui: &mut egui::Ui, t: Lang, p: &Picker, msgs: &mut Vec<Msg>) {
     ui.spacing_mut().item_spacing.y = 0.0;
     let shown = p.filters.choice(p.kind);
     let builtins: &[Builtin] = if p.kind == FilterKind::Prs { &Builtin::PRS } else { &Builtin::ISSUES };
@@ -108,7 +104,7 @@ fn popover(ui: &mut egui::Ui, p: &Picker, msgs: &mut Vec<Msg>) {
     }
     ui.add_space(4.0);
     ui.separator();
-    if row(ui, "New filter…", false, true).clicked() {
+    if row(ui, t.tr("sidebar.new_filter"), false, true).clicked() {
         choose(ui, msgs, FilterMsg::NewDialog(p.kind));
     }
 }

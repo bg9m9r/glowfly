@@ -22,6 +22,7 @@ use eframe::egui::{self, Align2, Rect, Response, Sense, Stroke, pos2, vec2};
 use git2::Oid;
 use trellis_core::forge::{self, Issue};
 use trellis_core::gitflow::{Branches, FlowGroup, FlowKind, GitFlowSettings, grouped, total};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::GraphFilter;
 
@@ -34,6 +35,7 @@ pub(super) struct Rows<'a> {
     pub graph: &'a GraphFilter,
     /// The left-panel filter has text.
     pub filtering: bool,
+    pub t: Lang,
 }
 
 pub(super) fn section(
@@ -51,14 +53,16 @@ pub(super) fn section(
             start_item(ui, snap, k, msgs);
         }
     };
+    let t = rows.t;
     let add = HeaderAdd {
-        name: "Start Git Flow branch".into(),
-        tip: Some("Start a feature, release or hotfix".into()),
+        name: t.tr("sidebar.gitflow.start.name").into(),
+        tip: Some(t.tr("sidebar.gitflow.start.tip").into()),
         blocked: None,
         action: AddAction::Menu(&starts),
     };
     let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| header_menu(ui, snap, msgs);
-    let h = Header { title: "Git Flow", count: Some(total(&groups)), add: Some(add), menu: Some(&menu) };
+    let title = t.tr("sidebar.gitflow.header");
+    let h = Header { key: "gitflow", title, count: Some(total(&groups)), add: Some(add), menu: Some(&menu), t };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;
@@ -77,7 +81,7 @@ pub(super) fn section(
             let label = if b.head { format!("✔  {}", b.short) } else { b.short.to_owned() };
             let selected = info.oid.is_some_and(|o| *rows.sel == Selection::Commit(o));
             let worktree = crate::state::worktree_branches::elsewhere(snap, b.name);
-            let right = worktree.map(|_| [widgets::Part::Text("worktree")]);
+            let right = worktree.map(|_| [widgets::Part::Text(t.tr("sidebar.local.worktree.part"))]);
             let (r, _, cut) = widgets::list_row_cut(
                 ui,
                 widgets::NESTED_INDENT,
@@ -112,7 +116,7 @@ pub(super) fn section(
                 let finish = format!("Finish {} {}…", g.kind.noun(), b.short);
                 menu_item(msgs, ui, finish, Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
                 ui.separator();
-                local_branch_menu(ui, info, snap, rows.fs, rows.graph, rows.sel, msgs);
+                local_branch_menu(ui, t, info, snap, rows.fs, rows.graph, rows.sel, msgs);
             });
         }
     }

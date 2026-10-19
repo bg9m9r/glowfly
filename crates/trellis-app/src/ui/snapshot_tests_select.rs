@@ -7,7 +7,6 @@ use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::msg::SelectionMsg;
 use crate::patch::PatchMsg;
-use crate::state::commit_menu::{RESET_HARD, RESET_HARD_NOTE, RESET_MIXED, RESET_SOFT};
 use crate::state::selection::MultiSelection;
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -16,6 +15,7 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use std::path::PathBuf;
+use trellis_core::i18n::Lang;
 use trellis_core::intraline;
 use trellis_core::repo::{self, DiffTarget};
 use trellis_core::settings::ThemeChoice;
@@ -189,10 +189,11 @@ fn graph_commit_menu_reset_submenu() {
     click(&mut h, pos2(700.0, row_y(row)), PointerButton::Secondary);
     open_submenu(&mut h, "Reset main to this commit");
     h.check_snapshot("graph_commit_menu_reset_submenu");
-    for item in [RESET_SOFT, RESET_MIXED, RESET_HARD, RESET_HARD_NOTE] {
+    let reset = ["commits.menu.reset.soft", "commits.menu.reset.mixed", "commits.menu.reset.hard", "commits.menu.reset.hard_hint"];
+    for item in reset.map(|k| Lang::En.tr(k)) {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
-    h.get_by_label(RESET_HARD).click();
+    h.get_by_label(Lang::En.tr("commits.menu.reset.hard")).click();
     h.run();
     let sha = fix.to_string()[..7].to_owned();
     let named = format!("\"Fix build on Windows\" ({sha})");

@@ -14,6 +14,7 @@ use eframe::egui::menu::BarState;
 use eframe::egui::{
     self, Align2, CornerRadius, FontId, Id, Rect, Response, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2,
 };
+use trellis_core::i18n::Lang;
 
 /// The + and ⋯ buttons' size.
 const BUTTON: f32 = 20.0;
@@ -84,11 +85,16 @@ impl<'a> HeaderAdd<'a> {
 
 /// What `show` draws.
 pub struct Header<'a> {
+    /// The section's stable id ("local", "tags"), never translated, so hover and menu state
+    /// survive a language switch.
+    pub key: &'static str,
     pub title: &'a str,
     pub count: Option<usize>,
     pub add: Option<HeaderAdd<'a>>,
     /// The ⋯'s menu, also on a right-click anywhere on the header.
     pub menu: Option<MenuFn<'a>>,
+    /// The language of the ⋯'s name and hover.
+    pub t: Lang,
 }
 
 pub struct HeaderResponse {
@@ -114,7 +120,7 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
     let cy = rect.center().y;
     let add_rect = Rect::from_min_max(pos2(right - BUTTON, cy - BUTTON / 2.0), pos2(right, cy + BUTTON / 2.0));
     let more_rect = add_rect.translate(vec2(-(BUTTON + GAP), 0.0));
-    let id = |part: &str| ui.make_persistent_id(("section-header", h.title, part));
+    let id = |part: &str| ui.make_persistent_id(("section-header", h.key, part));
     let (add_id, more_id) = (id("add"), id("more"));
 
     let enabled = h.add.as_ref().is_some_and(|a| a.blocked.is_none());
@@ -131,9 +137,9 @@ pub fn show(ui: &mut Ui, h: Header, open: &mut bool, msgs: &mut Vec<Msg>) -> Hea
     });
     let more = h.menu.map(|_| {
         let r = ui.interact(more_rect, more_id, Sense::click());
-        let name = format!("{} actions", h.title);
+        let name = h.t.trf("sidebar.section.more.name", &[("section", &h.title)]);
         r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, name.clone()));
-        r.on_hover_text("More actions").on_hover_cursor(egui::CursorIcon::PointingHand)
+        r.on_hover_text(h.t.tr("sidebar.section.more.tip")).on_hover_cursor(egui::CursorIcon::PointingHand)
     });
 
     if let (Some(a), Some(r), true) = (&h.add, &add, enabled) {

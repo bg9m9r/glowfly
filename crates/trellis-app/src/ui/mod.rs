@@ -222,6 +222,10 @@ mod snapshot_tests_issue_create;
 #[cfg(test)]
 mod snapshot_tests_language_chrome;
 #[cfg(test)]
+mod snapshot_tests_language_main;
+#[cfg(test)]
+mod snapshot_tests_language_menus;
+#[cfg(test)]
 mod snapshot_tests_language_panels;
 #[cfg(test)]
 mod snapshot_tests_lfs;

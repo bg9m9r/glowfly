@@ -2,6 +2,7 @@
 //! entries can be used, and what they are called.
 
 use git2::Oid;
+use trellis_core::i18n::Lang;
 use trellis_core::rebase;
 use trellis_core::repo::Snapshot;
 
@@ -26,8 +27,9 @@ pub fn onto_labels(current: &str, oid: Oid) -> (String, String) {
 }
 
 /// The commit menu's plain and interactive entries: the menu's header already names the commit.
-pub fn onto_menu_labels(current: &str) -> (String, String) {
-    (format!("Rebase {current} onto this commit"), format!("Interactive rebase {current} onto this commit…"))
+pub fn onto_menu_labels(t: Lang, current: &str) -> (String, String) {
+    let args: [(&str, &dyn std::fmt::Display); 1] = [("branch", &current)];
+    (t.trf("commits.menu.rebase_onto", &args), t.trf("commits.menu.interactive_onto", &args))
 }
 
 #[cfg(test)]
@@ -35,6 +37,6 @@ mod tests {
     #[test]
     fn menu_labels_leave_the_commit_to_the_header() {
         let want = ("Rebase main onto this commit".to_owned(), "Interactive rebase main onto this commit…".to_owned());
-        assert_eq!(super::onto_menu_labels("main"), want);
+        assert_eq!(super::onto_menu_labels(trellis_core::i18n::Lang::En, "main"), want);
     }
 }

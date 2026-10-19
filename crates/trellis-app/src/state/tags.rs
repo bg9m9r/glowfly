@@ -6,6 +6,7 @@
 use super::branches::default_remote;
 use crate::msg::Msg;
 use crate::tag::TagMsg;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 use trellis_core::tag_ops::{TagNameProblem, check_tag_name};
 
@@ -171,15 +172,21 @@ pub fn checkout_headline(tag: &str, first: bool) -> String {
     if first { format!("Checked out tag {tag}. {DETACHED_WARNING}") } else { format!("Checked out tag {tag} (detached HEAD)") }
 }
 
+/// "a", "a and b", or "a, b and c", joined in `t`.
+pub fn remote_list_in(t: Lang, remotes: &[String]) -> String {
+    match remotes {
+        [] => String::new(),
+        [one] => one.clone(),
+        [init @ .., last] => t.trf("common.list.and", &[("rest", &init.join(", ")), ("last", last)]),
+    }
+}
+
 /// The confirmation before deleting `tag` from `remotes`; accepting sends `TagMsg::DeleteRemote`.
-pub fn delete_remote_confirm(tag: &str, remotes: Vec<String>) -> Msg {
+pub fn delete_remote_confirm(t: Lang, tag: &str, remotes: Vec<String>) -> Msg {
     let (title, button) = match &remotes[..] {
-        [one] => ("Delete tag from remote", format!("Delete from {one}")),
-        _ => ("Delete tag from all remotes", "Delete from all remotes".to_owned()),
+        [one] => (t.tr("tag.delete_remote.title_one"), t.trf("tag.delete_remote.button_one", &[("remote", one)])),
+        _ => (t.tr("tag.delete_remote.title_all"), t.tr("tag.delete_remote.button_all").to_owned()),
     };
-    let body = format!(
-        "Delete tag {tag} from {}? Your local tag stays, and anyone who already fetched it keeps their copy.",
-        remote_list(&remotes)
-    );
+    let body = t.trf("tag.delete_remote.body", &[("tag", &tag), ("remotes", &remote_list_in(t, &remotes))]);
     Msg::confirm_danger(title, body, &button, Msg::Tag(TagMsg::DeleteRemote { tag: tag.to_owned(), remotes }))
 }

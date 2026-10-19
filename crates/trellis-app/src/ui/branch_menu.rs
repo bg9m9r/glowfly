@@ -21,13 +21,16 @@ use crate::state::worktrees::open_blocked;
 use crate::state::{ForgeState, Selection};
 use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
+use trellis_core::i18n::Lang;
 use trellis_core::rebase::RebaseBase;
 use trellis_core::repo::{BranchInfo, Snapshot};
 use trellis_core::settings::GraphFilter;
 use trellis_core::worktree_ops::WorktreeBase;
 
+#[allow(clippy::too_many_arguments)]
 pub fn local_branch_menu(
     ui: &mut egui::Ui,
+    t: Lang,
     b: &BranchInfo,
     snap: &Snapshot,
     fs: Option<&ForgeState>,
@@ -37,105 +40,114 @@ pub fn local_branch_menu(
 ) {
     let name = b.name.as_str();
     menu_header(ui, name);
-    branch_items(ui, b, snap, msgs);
+    branch_items(ui, t, b, snap, msgs);
     ui.separator();
-    integrate_items(ui, b, snap, msgs);
-    push_items(ui, b, snap, msgs);
+    integrate_items(ui, t, b, snap, msgs);
+    push_items(ui, t, b, snap, msgs);
     // Always drawn: without a code host, a disabled item says why there are no pull requests.
     ui.separator();
     match fs.filter(|fs| fs.host.is_some()) {
-        Some(fs) => super::pr_menu_items::local(ui, b, snap, fs, sel, msgs),
-        None => super::pr_menu_items::local_no_host(ui, b, snap, msgs),
+        Some(fs) => super::pr_menu_items::local(ui, t, b, snap, fs, sel, msgs),
+        None => super::pr_menu_items::local_no_host(ui, t, b, snap, msgs),
     }
     if let Some(fs) = fs
         && let Some(key) = fs.branch_issue(name)
     {
-        menu_item(msgs, ui, format!("Open {} {}", fs.issue_noun(), fs.mention(&key)), Msg::OpenUrl(fs.issue_url(&key)));
+        let label = t.trf("branch.menu.open_issue", &[("noun", &fs.issue_word(t)), ("issue", &fs.mention(&key))]);
+        menu_item(msgs, ui, label, Msg::OpenUrl(fs.issue_url(&key)));
     }
     ui.separator();
-    ref_visibility::menu_items(ui, &format!("refs/heads/{name}"), filter, b.is_head, msgs);
+    ref_visibility::menu_items(ui, t, &format!("refs/heads/{name}"), filter, b.is_head, msgs);
     ui.separator();
-    ui.menu_button("Copy", |ui| {
-        menu_item(msgs, ui, "Name", Msg::Copy(name.to_owned()));
-        menu_item(msgs, ui, "Link", Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::LocalBranch(name.to_owned()))));
+    ui.menu_button(t.tr("commits.menu.copy"), |ui| {
+        menu_item(msgs, ui, t.tr("refs.copy.name"), Msg::Copy(name.to_owned()));
+        menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::LocalBranch(name.to_owned()))));
     });
     if !b.is_head {
         ui.separator();
-        delete_items(ui, b, snap, msgs);
+        delete_items(ui, t, b, snap, msgs);
     }
 }
 
 /// Checkout (or open the worktree that has it), a new branch or worktree from it, rename and
 /// upstream.
-fn branch_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+fn branch_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     if !b.is_head {
         let checkout = Msg::Branch(BranchMsg::Checkout(name.to_owned()));
-        menu_item_if(msgs, ui, "Checkout", checkout_blocked(snap, name).as_deref(), checkout);
+        menu_item_if(msgs, ui, t.tr("branch.menu.checkout"), checkout_blocked(snap, name).as_deref(), checkout);
         if let Some(wt) = elsewhere(snap, name) {
             let open = Msg::Worktree(WorktreeMsg::Open(wt.path.clone()));
-            menu_item_if(msgs, ui, "Open worktree", open_blocked(wt), open);
+            menu_item_if(msgs, ui, t.tr("branch.menu.open_worktree"), open_blocked(wt), open);
         }
     }
     if let Some(o) = b.oid {
-        menu_item(msgs, ui, "Create branch here…", Msg::Branch(BranchMsg::NewBranch { start: Some(o.to_string()), name: String::new() }));
+        let new_branch = Msg::Branch(BranchMsg::NewBranch { start: Some(o.to_string()), name: String::new() });
+        menu_item(msgs, ui, t.tr("commits.menu.create_branch"), new_branch);
         let base = WorktreeBase::Branch(name.to_owned());
-        menu_item(msgs, ui, "Create worktree from this branch…", Msg::Worktree(WorktreeMsg::CreateDialog(base)));
+        menu_item(msgs, ui, t.tr("branch.menu.create_worktree"), Msg::Worktree(WorktreeMsg::CreateDialog(base)));
     }
-    menu_item(msgs, ui, "Rename…", Msg::Branch(BranchMsg::RenameBranchDialog(name.to_owned())));
+    menu_item(msgs, ui, t.tr("branch.menu.rename"), Msg::Branch(BranchMsg::RenameBranchDialog(name.to_owned())));
     let no_remotes = snap.remotes.is_empty().then_some(NO_REMOTES);
-    menu_item_if(msgs, ui, "Set upstream…", no_remotes, Msg::Branch(BranchMsg::SetUpstreamDialog(name.to_owned())));
+    menu_item_if(msgs, ui, t.tr("branch.menu.set_upstream"), no_remotes, Msg::Branch(BranchMsg::SetUpstreamDialog(name.to_owned())));
     if b.tracking.is_some() {
-        menu_item(msgs, ui, "Unset upstream", Msg::Branch(BranchMsg::UnsetUpstream(name.to_owned())));
+        menu_item(msgs, ui, t.tr("branch.menu.unset_upstream"), Msg::Branch(BranchMsg::UnsetUpstream(name.to_owned())));
     }
 }
 
 /// Merge, rebase and conflict check against the checked-out branch; on the checked-out branch
 /// itself, the conflict check against its target.
-fn integrate_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let current = snap.head_branch.as_deref().unwrap_or_default();
     if b.is_head {
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckNow);
         match trellis_core::conflict_check::target_for(snap) {
-            Some(t) => menu_item(msgs, ui, format!("Check for conflicts with {}", t.name), check),
-            None => menu_item_if(msgs, ui, "Check for conflicts", Some(NO_TARGET), check),
+            Some(target) => menu_item(msgs, ui, t.trf("branch.menu.check_conflicts_with", &[("branch", &target.name)]), check),
+            None => menu_item_if(msgs, ui, t.tr("branch.menu.check_conflicts"), Some(NO_TARGET), check),
         }
     } else if !current.is_empty() {
-        menu_item(msgs, ui, format!("Merge into {current}"), Msg::git("Merge", &["merge", name]));
-        menu_item(msgs, ui, format!("Rebase {current} onto this branch"), Msg::git("Rebase", &["rebase", name]));
+        let args: [(&str, &dyn std::fmt::Display); 1] = [("branch", &current)];
+        menu_item(msgs, ui, t.trf("branch.menu.merge_into", &args), Msg::git("Merge", &["merge", name]));
+        menu_item(msgs, ui, t.trf("branch.menu.rebase_onto", &args), Msg::git("Rebase", &["rebase", name]));
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch(name.to_owned())));
-        menu_item(msgs, ui, format!("Interactive rebase {current} onto this branch…"), onto);
+        menu_item(msgs, ui, t.trf("branch.menu.interactive_onto", &args), onto);
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(name.to_owned()));
-        menu_item(msgs, ui, format!("Check for conflicts with {current}"), check);
+        menu_item(msgs, ui, t.trf("branch.menu.check_conflicts_with", &args), check);
     }
 }
 
 /// Fast-forward, Push, and the "Push to" submenu (one entry per remote).
-fn push_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let ff_label = match branches::upstream_label(b) {
-        Some(up) => format!("Fast-forward to {up}"),
-        None => "Fast-forward".to_owned(),
+        Some(up) => t.trf("branch.menu.fast_forward_to", &[("upstream", &up)]),
+        None => t.tr("branch.menu.fast_forward").to_owned(),
     };
     let ff_blocked = branches::fast_forward_blocked(b, snap.state);
     menu_item_if(msgs, ui, ff_label, ff_blocked.as_deref(), Msg::Branch(BranchMsg::FastForwardBranch(name.to_owned())));
 
     let has_remotes = !snap.remotes.is_empty();
     let push_blocked = branches::push_blocked(b, has_remotes);
-    menu_item_if(msgs, ui, "Push", push_blocked.as_deref(), Msg::Branch(BranchMsg::PushBranch { branch: name.to_owned(), remote: None }));
+    menu_item_if(
+        msgs,
+        ui,
+        t.tr("branch.menu.push"),
+        push_blocked.as_deref(),
+        Msg::Branch(BranchMsg::PushBranch { branch: name.to_owned(), remote: None }),
+    );
     if !has_remotes {
         return;
     }
     // egui draws the submenu arrow; the label has none of its own.
-    ui.menu_button("Push to", |ui| {
-        let tracked = branches::remote_tracking(b).map(|t| t.remote.as_str());
+    ui.menu_button(t.tr("branch.menu.push_to"), |ui| {
+        let tracked = branches::remote_tracking(b).map(|tr| tr.remote.as_str());
         for (remote, _) in &snap.remotes {
             let is_upstream = tracked == Some(remote.as_str());
             let mut job = LayoutJob::default();
             RichText::new(remote).append_to(&mut job, ui.style(), FontSelection::Default, egui::Align::Center);
             if is_upstream {
-                RichText::new(" (upstream)").color(color::weak()).append_to(
+                RichText::new(format!(" {}", t.tr("branch.menu.push_to.upstream"))).color(color::weak()).append_to(
                     &mut job,
                     ui.style(),
                     FontSelection::Default,
@@ -157,7 +169,7 @@ fn push_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec
 
 /// Delete, force delete and, with an upstream on a remote, delete together with it (only when
 /// the checked-out branch contains it). All are disabled for a branch another worktree has.
-fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+fn delete_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let head = snap.head_branch.as_deref();
     let in_worktree = delete_blocked(snap, name);
@@ -165,38 +177,38 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut V
     menu_item_if(
         msgs,
         ui,
-        "Delete…",
+        t.tr("branch.menu.delete"),
         in_worktree,
         Msg::confirm_danger(
-            "Delete branch",
-            format!("Delete local branch {name}?"),
-            "Delete",
+            t.tr("branch.delete.title"),
+            t.trf("branch.delete.body", &[("branch", &name)]),
+            t.tr("common.delete.button"),
             Msg::git("Delete branch", &["branch", "-d", name]),
         ),
     );
     menu_item_if(
         msgs,
         ui,
-        "Force delete…",
+        t.tr("branch.menu.force_delete"),
         in_worktree,
         Msg::confirm_danger(
-            "Force delete branch",
-            format!("Delete {name} even if it has unmerged commits?"),
-            "Delete",
+            t.tr("branch.force_delete.title"),
+            t.trf("branch.force_delete.body", &[("branch", &name)]),
+            t.tr("common.delete.button"),
             Msg::git("Delete branch", &["branch", "-D", name]),
         ),
     );
-    if let Some(t) = branches::can_delete_with_remote(b) {
-        let blocked = in_worktree.map(str::to_owned).or_else(|| branches::delete_with_remote_blocked(b, t, head));
+    if let Some(tr) = branches::can_delete_with_remote(b) {
+        let blocked = in_worktree.map(str::to_owned).or_else(|| branches::delete_with_remote_blocked(b, tr, head));
         menu_item_if(
             msgs,
             ui,
-            format!("Delete together with {}…", t.display()),
+            t.trf("branch.menu.delete_with_remote", &[("remote_branch", &tr.display())]),
             blocked.as_deref(),
             Msg::confirm_danger(
-                "Delete local and remote branch",
-                branches::delete_with_remote_body(b, t),
-                "Delete both",
+                t.tr("branch.delete_both.title"),
+                branches::delete_with_remote_body(t, b, tr),
+                t.tr("branch.delete_both.button"),
                 Msg::Branch(BranchMsg::DeleteBranchAndRemote(name.to_owned())),
             ),
         );

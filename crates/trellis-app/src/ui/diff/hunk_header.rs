@@ -7,6 +7,7 @@ use crate::ui::theme::{color, type_scale};
 use crate::ui::widgets::buttons;
 use eframe::egui::{Rect, Stroke, Ui, pos2, vec2};
 use trellis_core::highlight;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, HunkOp};
 
 /// The space between buttons, the wider one that sets Discard apart (with a divider in it), and
@@ -14,8 +15,6 @@ use trellis_core::repo::{DiffTarget, HunkOp};
 const GAP: f32 = 6.0;
 const APART: f32 = 20.0;
 const MIN_W: f32 = 96.0;
-/// Why the buttons are disabled while the diff reloads.
-const UPDATING: &str = "Updating the diff…";
 
 /// A hunk's action button.
 #[derive(Clone, Copy)]
@@ -64,26 +63,19 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     };
     let (row_h, mid_y) = (v.style.row_h, rect.top() + v.style.row_h / 2.0);
     let body = text_px(row_h);
-    let revert_tip = {
-        let what = if selected > 0 { "the selected changes" } else { "this change" };
-        format!("Undo {what} in your working copy of {path}. The commit itself is not changed.")
+    let t = v.t;
+    let revert_tip = if selected > 0 {
+        t.trf("diff.hunk.revert_selected.tip", &[("path", &path)])
+    } else {
+        t.trf("diff.hunk.revert.tip", &[("path", &path)])
     };
+    let updating = t.tr("diff.hunk.updating");
     let mut x = ui.clip_rect().right() - 8.0;
     for (i, &b) in list.iter().enumerate() {
-        let verb = match b {
-            HunkButton::Revert => "Revert",
-            HunkButton::Op(HunkOp::Stage) => "Stage",
-            HunkButton::Op(HunkOp::Unstage) => "Unstage",
-            HunkButton::Op(HunkOp::Discard) => "Discard",
-        };
-        let label = match selected {
-            0 => format!("{verb} hunk"),
-            1 => format!("{verb} 1 line"),
-            n => format!("{verb} {n} lines"),
-        };
+        let label = button_label(t, b, selected);
         let discard = matches!(b, HunkButton::Op(HunkOp::Discard));
         let styled = if discard { buttons::danger(label) } else { buttons::secondary(label) };
-        let mut styled = styled.text_size(body).height(row_h - 2.0).min_width(MIN_W).enabled(v.hunk_gen.is_some()).why(Some(UPDATING));
+        let mut styled = styled.text_size(body).height(row_h - 2.0).min_width(MIN_W).enabled(v.hunk_gen.is_some()).why(Some(updating));
         if let HunkButton::Revert = b {
             styled = styled.tip(&revert_tip);
         }
@@ -111,19 +103,36 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
         } else {
             Msg::Stage(StageMsg::Hunk { op, path: path.to_owned(), index: h, generation })
         };
+        let yes = t.tr("common.discard.button");
         msgs.push(match (op, selected) {
-            (HunkOp::Discard, 0) => Msg::confirm_danger(
-                "Discard hunk",
-                format!("Discard this change in {path}? You can bring it back with Undo."),
-                "Discard",
-                m,
-            ),
+            (HunkOp::Discard, 0) => {
+                Msg::confirm_danger(t.tr("diff.hunk.discard.title"), t.trf("diff.hunk.discard.body", &[("path", &path)]), yes, m)
+            }
             (HunkOp::Discard, n) => {
-                let what = if n == 1 { "the selected line".to_owned() } else { format!("the {n} selected lines") };
-                Msg::confirm_danger("Discard lines", format!("Discard {what} in {path}? You can bring them back with Undo."), "Discard", m)
+                let body = t.trn("diff.discard_lines.body", n, &[("path", &path)]);
+                Msg::confirm_danger(t.tr("diff.discard_lines.title"), body, yes, m)
             }
             _ => m,
         });
+    }
+}
+
+/// A button's text in `t`: "Stage hunk", or "Stage N lines" with `selected` lines.
+fn button_label(t: Lang, b: HunkButton, selected: usize) -> String {
+    if selected == 0 {
+        return match b {
+            HunkButton::Revert => t.tr("diff.hunk.revert"),
+            HunkButton::Op(HunkOp::Stage) => t.tr("diff.hunk.stage"),
+            HunkButton::Op(HunkOp::Unstage) => t.tr("diff.hunk.unstage"),
+            HunkButton::Op(HunkOp::Discard) => t.tr("diff.hunk.discard"),
+        }
+        .to_owned();
+    }
+    match b {
+        HunkButton::Revert => t.trn("diff.hunk.revert_lines", selected, &[]),
+        HunkButton::Op(HunkOp::Stage) => t.trn("diff.hunk.stage_lines", selected, &[]),
+        HunkButton::Op(HunkOp::Unstage) => t.trn("diff.hunk.unstage_lines", selected, &[]),
+        HunkButton::Op(HunkOp::Discard) => t.trn("diff.hunk.discard_lines", selected, &[]),
     }
 }
 

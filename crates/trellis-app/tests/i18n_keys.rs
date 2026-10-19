@@ -1,7 +1,12 @@
 //! Every translation key the code looks up exists in the English catalog, and every English key
 //! is looked up somewhere, so a typo shows up here rather than as a raw key on screen and the
 //! catalogs don't collect dead text. Keys are found as string literals right after `.tr(`,
-//! `.trf(` or `.trn(` (for `trn`, the `.one` and `.other` forms are what exists).
+//! `.trf(` or `.trn(` (for `trn`, the `.one` and `.other` forms are what exists). Also: no view
+//! brings back an English "Cancel" or "Close" button; they come from `common.cancel.button`,
+//! `common.close.button` and `common.close_esc.button`.
+
+#[path = "support/views.rs"]
+mod views;
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -102,4 +107,53 @@ fn the_scan_finds_keys_across_lines_and_skips_tests_and_comments() {
                // t.tr(\"in.comment\")\n#[cfg(test)]\nmod tests {\n    fn b() { t.tr(\"in.test\"); }\n}\n";
     let keys = keys_in(&code(src));
     assert_eq!(keys, [("a.b".to_owned(), false), ("c.d".to_owned(), false), ("e".to_owned(), true)]);
+}
+
+/// The button calls a view's Cancel or Close could be made with.
+const BUTTON_CALLS: [&str; 4] = ["secondary(", "Button::new(", "ui.button(", "close_label("];
+const ENGLISH_DISMISS: [&str; 3] = ["\"Cancel\"", "\"Close\"", "\"Close  (Esc)\""];
+
+/// The places in `line` that pass an English Cancel or Close straight to a button.
+fn literal_dismiss(line: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for call in BUTTON_CALLS {
+        for (at, _) in line.match_indices(call) {
+            let arg = line[at + call.len()..].trim_start();
+            if let Some(lit) = ENGLISH_DISMISS.iter().find(|l| arg.starts_with(**l)) {
+                out.push(format!("{call}{lit}"));
+            }
+        }
+    }
+    out
+}
+
+#[test]
+fn views_have_no_literal_cancel_or_close() {
+    let mut found = Vec::new();
+    for (rel, text) in views::view_sources() {
+        for (i, line) in views::code_lines(&text).iter().enumerate() {
+            for hit in literal_dismiss(line) {
+                found.push(format!("{rel}:{}: {hit}", i + 1));
+            }
+        }
+    }
+    assert!(
+        found.is_empty(),
+        "use t.tr(\"common.cancel.button\") / t.tr(\"common.close.button\") instead:
+{}",
+        found.join(
+            "
+"
+        )
+    );
+}
+
+#[test]
+fn the_dismiss_scan_finds_literal_buttons() {
+    assert_eq!(literal_dismiss("if ui.add(buttons::secondary(\"Cancel\")).clicked() {"), ["secondary(\"Cancel\""]);
+    assert_eq!(literal_dismiss("ui.button( \"Close\")"), ["ui.button(\"Close\""]);
+    assert_eq!(literal_dismiss("Footer::new().close_label(\"Close  (Esc)\")"), ["close_label(\"Close  (Esc)\""]);
+    assert_eq!(literal_dismiss("egui::Button::new(\"Close\")"), ["Button::new(\"Close\""]);
+    assert!(literal_dismiss("ui.button(t.tr(\"common.cancel.button\"))").is_empty());
+    assert!(literal_dismiss("ui.button(\"Cancel rebase\")").is_empty());
 }

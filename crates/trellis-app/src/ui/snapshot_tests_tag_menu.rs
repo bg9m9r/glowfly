@@ -18,6 +18,7 @@ use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::LoadOptions;
 use trellis_core::settings::{FilterOp, GraphFilter, ThemeChoice};
 
@@ -169,7 +170,9 @@ fn tag_row_menu_one_remote() {
 #[test]
 fn tag_delete_remote_confirm_light() {
     let (mut st, dir) = with_tags(ThemeChoice::Light, "tag-delete-remote-confirm", &["origin", "backup"]);
-    let Msg::ConfirmDanger { title, body, button, then, .. } = delete_remote_confirm("v0.1.0", both()) else { panic!("a confirmation") };
+    let Msg::ConfirmDanger { title, body, button, then, .. } = delete_remote_confirm(Lang::En, "v0.1.0", both()) else {
+        panic!("a confirmation")
+    };
     st.modal = Some(Modal::danger(title, body, button, *then));
     let mut h = harness(st, false);
     h.run();

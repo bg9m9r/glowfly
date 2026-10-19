@@ -2,13 +2,8 @@
 //! commit named by its summary in confirmations.
 
 use git2::Oid;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::CommitInfo;
-
-pub const RESET_SOFT: &str = "Soft: keep changes staged";
-pub const RESET_MIXED: &str = "Mixed: keep files, unstage";
-pub const RESET_HARD: &str = "Hard: reset files too…";
-/// The weak line under the Hard item.
-pub const RESET_HARD_NOTE: &str = "Changes are stashed and Undo restores them";
 
 /// The most characters of a summary the menu's header shows.
 const HEADER_CHARS: usize = 80;
@@ -19,10 +14,10 @@ fn short(oid: Oid) -> String {
 
 /// The reset submenu's title: "Reset main to this commit", or "Reset to this commit" when
 /// HEAD is detached.
-pub fn reset_title(current: Option<&str>) -> String {
+pub fn reset_title(t: Lang, current: Option<&str>) -> String {
     match current {
-        Some(b) => format!("Reset {b} to this commit"),
-        None => "Reset to this commit".into(),
+        Some(b) => t.trf("commits.menu.reset.title", &[("branch", &b)]),
+        None => t.tr("commits.menu.reset.title_detached").to_owned(),
     }
 }
 
@@ -45,12 +40,8 @@ pub fn commit_name(c: &CommitInfo) -> String {
 }
 
 /// The Hard reset confirmation's body. `current` is the checked-out branch (None: detached).
-pub fn hard_reset_body(current: Option<&str>, c: &CommitInfo) -> String {
-    format!(
-        "Reset {} to {}? Uncommitted changes to tracked files are stashed first, so Undo brings them back. Untracked files stay as they are.",
-        current.unwrap_or("HEAD"),
-        commit_name(c)
-    )
+pub fn hard_reset_body(t: Lang, current: Option<&str>, c: &CommitInfo) -> String {
+    t.trf("commits.menu.reset.hard_body", &[("branch", &current.unwrap_or("HEAD")), ("commit", &commit_name(c))])
 }
 
 #[cfg(test)]
@@ -72,8 +63,10 @@ mod tests {
 
     #[test]
     fn reset_title_names_the_branch() {
-        assert_eq!(reset_title(Some("main")), "Reset main to this commit");
-        assert_eq!(reset_title(None), "Reset to this commit");
+        assert_eq!(reset_title(Lang::En, Some("main")), "Reset main to this commit");
+        assert_eq!(reset_title(Lang::En, None), "Reset to this commit");
+        let de = reset_title(Lang::De, Some("main"));
+        assert!(de.contains("main") && de != reset_title(Lang::En, Some("main")), "{de}");
     }
 
     #[test]
@@ -97,10 +90,12 @@ mod tests {
 
     #[test]
     fn hard_reset_body_says_what_it_keeps() {
-        let body = hard_reset_body(Some("main"), &commit("Fix build"));
+        let body = hard_reset_body(Lang::En, Some("main"), &commit("Fix build"));
         assert!(body.starts_with("Reset main to \"Fix build\" (1a2b3c4)?"), "{body}");
         assert!(body.contains("stashed") && body.contains("Undo") && body.contains("Untracked files"), "{body}");
-        assert!(hard_reset_body(None, &commit("Fix build")).starts_with("Reset HEAD to"));
-        assert!(hard_reset_body(None, &commit("")).starts_with("Reset HEAD to 1a2b3c4?"));
+        assert!(hard_reset_body(Lang::En, None, &commit("Fix build")).starts_with("Reset HEAD to"));
+        assert!(hard_reset_body(Lang::En, None, &commit("")).starts_with("Reset HEAD to 1a2b3c4?"));
+        let want = "Reset main to \"Fix build\" (1a2b3c4)? Uncommitted changes to tracked files are stashed first, so Undo brings them back. Untracked files stay as they are.";
+        assert_eq!(body, want);
     }
 }

@@ -85,13 +85,14 @@ fn nothing_listed(ui: &mut Ui, show: DashShow, filter: &str, msgs: &mut Vec<Msg>
 
 fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let d = &st.dashboard;
+    let t = st.settings.lang();
     ui.horizontal(|ui| {
         ui.vertical(|ui| {
             ui.label(RichText::new("Dashboard").font(type_scale::strong(ui, type_scale::TITLE)).color(color::strong()));
             ui.label(RichText::new("Pull requests and issues across your repositories").color(color::weak()));
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if icon(ui, Icon::Close, st.settings.lang().tr("common.close.button")).clicked() {
+            if icon(ui, Icon::Close, t.tr("common.close.button")).clicked() {
                 msgs.push(dash(DashboardMsg::Close));
             }
             if icon(ui, Icon::Refresh, "Refresh").clicked() {
@@ -102,7 +103,7 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let status = match (d.phase, d.fetched_at) {
                 (Phase::Scanning, _) => "Reading repositories…".to_owned(),
                 (Phase::Fetching, _) => format!("Asking {asking} service{}…", if asking == 1 { "" } else { "s" }),
-                (Phase::Idle, Some(at)) => format!("Updated {}", trellis_core::dates::relative(st.view.now - at)),
+                (Phase::Idle, Some(at)) => t.trf("dashboard.updated", &[("age", &trellis_core::dates::relative(t, st.view.now - at))]),
                 (Phase::Idle, None) => String::new(),
             };
             let r = ui.label(RichText::new(status).color(color::weak()));

@@ -24,7 +24,7 @@ impl Settings {
     /// Graph and list dates: the Date/Time format, or relative ("3 hours ago") to `now`.
     pub fn format_time(&self, secs: i64, now: i64, utc_offset: i32) -> String {
         if self.relative_dates {
-            return crate::dates::relative(now - secs);
+            return crate::dates::relative(self.lang(), now - secs);
         }
         self.fmt(secs, &self.date_time_format, DEFAULT_DATE_TIME_FORMAT, utc_offset)
     }
@@ -47,7 +47,7 @@ impl Settings {
     /// List dates with no room for the time (file history, blame): relative, or the Date format.
     pub fn format_day(&self, secs: i64, now: i64, utc_offset: i32) -> String {
         if self.relative_dates {
-            return crate::dates::relative(now - secs);
+            return crate::dates::relative(self.lang(), now - secs);
         }
         self.format_date(secs, utc_offset)
     }
@@ -55,6 +55,6 @@ impl Settings {
     /// Hover text for a shown date: the verbose date, and its age unless dates are already relative.
     pub fn date_tooltip(&self, secs: i64, now: i64, utc_offset: i32) -> String {
         let verbose = self.format_verbose(secs, utc_offset);
-        if self.relative_dates { verbose } else { format!("{verbose}\n{}", crate::dates::relative(now - secs)) }
+        if self.relative_dates { verbose } else { format!("{verbose}\n{}", crate::dates::relative(self.lang(), now - secs)) }
     }
 }

@@ -6,6 +6,7 @@ use git2::Oid;
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 use trellis_core::forge::{self, Account, Auth, Issue, Provider, PullRequest, RefStyle, Target};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::TrackerChoice;
 
 /// A Jira site's project keys, read once per tracker to tell keys from look-alikes (`UTF-8`).
@@ -123,6 +124,16 @@ impl ForgeState {
         self.host_provider().map(Provider::pr_noun).unwrap_or("pull request")
     }
 
+    /// What this host calls a pull request, in `t` ("merge request" on GitLab).
+    pub fn pr_word(&self, t: Lang) -> &'static str {
+        if self.pr_noun() == "merge request" { t.tr("forge.noun.merge_request") } else { t.tr("forge.noun.pull_request") }
+    }
+
+    /// The PULL REQUESTS section's header, in `t` ("Merge requests" on GitLab).
+    pub fn prs_header(&self, t: Lang) -> &'static str {
+        if self.pr_noun() == "merge request" { t.tr("sidebar.mrs.header") } else { t.tr("sidebar.prs.header") }
+    }
+
     pub fn pr_label(&self, id: u64) -> String {
         format!("{}{id}", self.host_provider().map(Provider::pr_prefix).unwrap_or("#"))
     }
@@ -190,8 +201,17 @@ impl ForgeState {
         self.tracker.as_ref().map_or("issue", |t| super::issue_words::noun(t.provider))
     }
 
+    /// What this tracker calls an issue, in `t` ("work item", "card").
+    pub fn issue_word(&self, t: Lang) -> &'static str {
+        match self.tracker.as_ref().map(|t| t.provider) {
+            Some(Provider::AzureDevOps) => t.tr("forge.noun.work_item"),
+            Some(Provider::Trello) => t.tr("forge.noun.card"),
+            _ => t.tr("forge.noun.issue"),
+        }
+    }
+
     /// The commit details' heading over the issue chips, in this tracker's word.
-    pub fn issues_header(&self, t: trellis_core::i18n::Lang) -> &'static str {
+    pub fn issues_header(&self, t: Lang) -> &'static str {
         match self.tracker.as_ref().map(|t| t.provider) {
             Some(Provider::AzureDevOps) => t.tr("details.issues.work_item.header"),
             Some(Provider::Trello) => t.tr("details.issues.card.header"),

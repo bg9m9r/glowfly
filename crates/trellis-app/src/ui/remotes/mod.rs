@@ -24,6 +24,7 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align2, Response, Sense, pos2, vec2};
 use git2::Oid;
 use trellis_core::forge::Connection;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{RemoteInfo, Snapshot};
 use trellis_core::settings::GraphFilter;
 
@@ -48,6 +49,7 @@ pub(super) struct Ctx<'a> {
     pub connections: &'a [Connection],
     /// The header's Add remote.
     pub add_remote: &'a SectionAction,
+    pub t: Lang,
 }
 
 pub(in crate::ui) fn section(
@@ -61,7 +63,14 @@ pub(in crate::ui) fn section(
 ) {
     let slot = super::build_status::tip_slot(c.fs);
     let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, c.add_remote);
-    let h = Header { title: "Remote", count: Some(snap.remotes.len()), add: Some(HeaderAdd::send(c.add_remote)), menu: Some(&menu) };
+    let h = Header {
+        key: "remote",
+        title: c.t.tr("sidebar.remote.header"),
+        count: Some(snap.remotes.len()),
+        add: Some(HeaderAdd::send(c.add_remote)),
+        menu: Some(&menu),
+        t: c.t,
+    };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;
@@ -78,7 +87,7 @@ pub(in crate::ui) fn section(
         let r = group_row(ui, remote).on_hover_text(tooltip(info));
         r.context_menu(|ui| group_menu(ui, info, c.idle, c.connections, msgs));
         if branches.is_empty() && !c.filtering {
-            hint_row(ui, "No branches yet. Fetch this remote to load them.".to_owned());
+            hint_row(ui, c.t.tr("sidebar.remote.no_branches.hint").to_owned());
         }
         for (name, oid) in branches.iter().filter(|(n, _)| (c.shown)(n)) {
             if widgets::list_row_hidden(ui) {
@@ -100,7 +109,7 @@ pub(in crate::ui) fn section(
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
             }
             ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/remotes/{full}"), &full, c.graph, msgs);
-            let m = RemoteMenu { current: c.current, fs: c.fs, graph: c.graph, sel: c.sel };
+            let m = RemoteMenu { current: c.current, fs: c.fs, graph: c.graph, sel: c.sel, t: c.t };
             r.context_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &m, msgs));
         }
     }

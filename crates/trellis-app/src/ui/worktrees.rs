@@ -20,6 +20,7 @@ use crate::state::worktrees::{listed, open_blocked, right_text, tooltip};
 use crate::worktree::WorktreeMsg;
 use eframe::egui;
 use git2::Oid;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{Snapshot, WorktreeInfo};
 
 /// What the rows are drawn against: the left-panel filter (and whether it has text), the
@@ -30,23 +31,25 @@ pub(super) struct Rows<'a> {
     pub open_tabs: &'a [crate::state::tabs::Place],
     pub add: &'a SectionAction,
     pub filtering: bool,
+    pub t: Lang,
 }
 
 pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows: Rows, hover_next: &mut Option<Oid>, msgs: &mut Vec<Msg>) {
-    let Rows { shown, sel, open_tabs, add, filtering } = rows;
+    let Rows { shown, sel, open_tabs, add, filtering, t } = rows;
     let list = listed(snap);
     let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
         action_item(ui, msgs, add);
         ui.separator();
-        menu_item_if(msgs, ui, "Prune missing worktrees", prune_blocked(snap), Msg::Worktree(WorktreeMsg::Prune));
+        menu_item_if(msgs, ui, t.tr("sidebar.worktrees.prune"), prune_blocked(snap), Msg::Worktree(WorktreeMsg::Prune));
     };
-    let h = Header { title: "Worktrees", count: Some(list.len()), add: Some(HeaderAdd::send(add)), menu: Some(&menu) };
+    let title = t.tr("sidebar.worktrees.header");
+    let h = Header { key: "worktrees", title, count: Some(list.len()), add: Some(HeaderAdd::send(add)), menu: Some(&menu), t };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;
     }
     if list.is_empty() && !filtering {
-        section_header::empty_row(ui, "No worktrees", add, msgs);
+        section_header::empty_row(ui, t.tr("sidebar.worktrees.empty"), add, msgs);
     }
     let matches = |w: &WorktreeInfo| {
         shown(&w.folder_name()) || w.branch.as_deref().is_some_and(shown) || shown(&trellis_core::native_path::shown(&w.path))

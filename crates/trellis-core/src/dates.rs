@@ -1,6 +1,7 @@
 //! Date formatting with moment.js-style patterns such as `MM/DD/YYYY @ h:mm A`,
 //! localized month and weekday names, and relative times.
 
+use crate::i18n::Lang;
 use chrono::{DateTime, FixedOffset, Locale};
 
 /// Converts a moment.js pattern to a chrono format string. Text in `[brackets]` is literal.
@@ -90,16 +91,18 @@ pub fn format(secs: i64, pattern: &str, locale_setting: &str, utc_offset: i32) -
     out
 }
 
-pub fn relative(delta: i64) -> String {
-    let plural = |n: i64, unit: &str| format!("{n} {unit}{} ago", if n == 1 { "" } else { "s" });
+/// How long ago `delta` seconds is, in `t`: "just now", "3 hours ago", "yesterday". Negative
+/// deltas (a clock ahead of ours) are "just now".
+pub fn relative(t: Lang, delta: i64) -> String {
+    let n = |d: i64| usize::try_from(d).unwrap_or(0);
     match delta {
-        d if d < 60 => "just now".into(),
-        d if d < 3600 => plural(d / 60, "minute"),
-        d if d < 86_400 => plural(d / 3600, "hour"),
-        d if d < 86_400 * 2 => "yesterday".into(),
-        d if d < 86_400 * 30 => plural(d / 86_400, "day"),
-        d if d < 86_400 * 365 => plural(d / (86_400 * 30), "month"),
-        d => plural(d / (86_400 * 365), "year"),
+        d if d < 60 => t.tr("dates.just_now").to_owned(),
+        d if d < 3600 => t.trn("dates.minutes_ago", n(d / 60), &[]),
+        d if d < 86_400 => t.trn("dates.hours_ago", n(d / 3600), &[]),
+        d if d < 86_400 * 2 => t.tr("dates.yesterday").to_owned(),
+        d if d < 86_400 * 30 => t.trn("dates.days_ago", n(d / 86_400), &[]),
+        d if d < 86_400 * 365 => t.trn("dates.months_ago", n(d / (86_400 * 30)), &[]),
+        d => t.trn("dates.years_ago", n(d / (86_400 * 365)), &[]),
     }
 }
 
@@ -143,8 +146,27 @@ mod tests {
         assert_eq!(format(secs, "MMMM D, YYYY HH:mm", "en_US", 0), "October 13, 2026 12:00");
         assert_eq!(format(secs, "MMMM YYYY", "de_DE", 0), "Oktober 2026");
         assert_eq!(format(secs, "HH:mm", "en_US", -5 * 3600), "07:00", "offset applied");
-        assert_eq!(relative(30), "just now");
-        assert_eq!(relative(7200), "2 hours ago");
-        assert_eq!(relative(90_000), "yesterday");
+    }
+
+    #[test]
+    fn relative_keeps_the_english_texts() {
+        let en = |d: i64| relative(Lang::En, d);
+        assert_eq!(en(30), "just now");
+        assert_eq!(en(60), "1 minute ago");
+        assert_eq!(en(7200), "2 hours ago");
+        assert_eq!(en(90_000), "yesterday");
+        assert_eq!(en(3 * 86_400), "3 days ago");
+        assert_eq!(en(45 * 86_400), "1 month ago");
+        assert_eq!(en(400 * 86_400), "1 year ago");
+        assert_eq!(en(-5), "just now");
+    }
+
+    #[test]
+    fn relative_follows_the_language() {
+        assert_eq!(relative(Lang::De, 7200), "vor 2 Stunden");
+        assert_eq!(relative(Lang::De, 60), "vor 1 Minute");
+        assert_eq!(relative(Lang::De, 90_000), "gestern");
+        assert_eq!(relative(Lang::Es, 3 * 86_400), "hace 3 días");
+        assert_eq!(relative(Lang::Es, 60), "hace 1 minuto");
     }
 }

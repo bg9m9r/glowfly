@@ -67,6 +67,15 @@ fn tooltip_adds_age_unless_relative() {
 }
 
 #[test]
+fn relative_dates_follow_the_language() {
+    let de = Settings { relative_dates: true, language: "de".into(), ..en() };
+    assert_eq!(de.format_time(SECS, SECS + 7200, 0), "vor 2 Stunden");
+    assert_eq!(de.format_day(SECS, SECS + 90_000, 0), "gestern");
+    let absolute = Settings { language: "de".into(), ..en() };
+    assert_eq!(absolute.date_tooltip(SECS, SECS + 7200, 0).lines().nth(1), Some("vor 2 Stunden"));
+}
+
+#[test]
 fn defaults_match_constants() {
     let d = Settings::default();
     assert_eq!(d.date_format, DEFAULT_DATE_FORMAT);

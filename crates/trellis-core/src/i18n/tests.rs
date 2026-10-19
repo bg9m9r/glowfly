@@ -131,3 +131,14 @@ fn from_setting_resolves_codes() {
     names.sort();
     assert_eq!(menu, names, "the menu is sorted by native name");
 }
+
+#[test]
+fn all_buttons_keep_all() {
+    let keys = ["details.wip.discard_all.button", "details.wip.stage_all.button", "details.wip.unstage_all.button"];
+    for key in keys {
+        let has = |lang: Lang, word: &str| lang.tr(key).to_lowercase().split_whitespace().any(|w| w == word);
+        assert!(has(Lang::En, "all"), "en {key}: {}", Lang::En.tr(key));
+        assert!(has(Lang::De, "alle"), "de {key}: {}", Lang::De.tr(key));
+        assert!(has(Lang::Es, "todo"), "es {key}: {}", Lang::Es.tr(key));
+    }
+}

@@ -218,7 +218,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       Integrations page shows each connected account once and hides the token form behind "Add
       another account"; checkbox rows always have an inline label; rows stay inside the content
       column
-- [ ] **Complete translations**: the graph column headers, sidebar sections, filter
+- [x] **Complete translations**: the graph column headers, sidebar sections, filter
       placeholder, WIP row, dates, the commit, branch and tag menus, hunk buttons and every
       dialog's Cancel come from the tables; "Discard all" and "Stage all" keep "all"; a test
       renders each panel in German and fails on strings from an English allow-list
@@ -1079,6 +1079,19 @@ blockers and major findings are Milestone 1 items.
 Polish, edge cases and power-user extras that are not planned work. Nothing here is built
 until a triage moves it to Later or a milestone. New follow-ups from finished items go
 here, under the item they grew from.
+
+### Complete translations
+
+- The diff file header: Stage file / Unstage file, the Unstaged and Staged chips and the
+  primary button's tooltip
+- Disabled menu items' reasons ("This commit isn't on the current branch", "has no upstream",
+  "isn't on a code host") and the shared busy reason
+- Job and activity-log labels (the titles git jobs run under, such as "Reset (hard)")
+- The worktree row menu (Prune missing worktrees), the Git Flow header menu, the pull request
+  and issue row menus, and the filter popover's "Saved filters" and "None yet"
+- Built-in filter names on the pull request and issue filter chips
+- Names only screen readers hear: the column resize grips and the hidden and solo markers
+- The branch rows' ahead/behind tooltips and the graph header's shallow-clone tooltip
 
 ### Disabled actions say why
 

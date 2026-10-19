@@ -86,5 +86,19 @@ Keep terms the same across pages.
 | revert | Revert | revertir |
 | parent commit | Eltern-Commit | commit padre |
 | working directory | Arbeitsverzeichnis | directorio de trabajo |
+| checkout (verb) | auschecken | hacer checkout |
+| merge (noun / verb) | Merge / mergen | fusión / fusionar |
+| rebase | Rebase | rebase / hacer rebase |
+| tag | Tag | etiqueta |
+| upstream | Upstream | upstream |
+| worktree | Worktree | worktree |
+| submodule | Submodul | submódulo |
+| hunk | Hunk | bloque |
+| line (of a diff) | Zeile | línea |
+| hide / solo (in the graph) | ausblenden / Solo | ocultar / aislar |
+| fast-forward | Fast-Forward | avance rápido |
+| reset (soft / mixed / hard) | zurücksetzen (Soft / Mixed / Hard) | restablecer (soft / mixed / hard) |
+| pull request / merge request | Pull Request / Merge Request | pull request / merge request |
+| issue / work item / card | Issue / Arbeitselement / Karte | incidencia / elemento de trabajo / tarjeta |
 
 German uses the informal "du"; Spanish uses "tú".

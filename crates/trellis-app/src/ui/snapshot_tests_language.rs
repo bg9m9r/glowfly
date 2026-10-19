@@ -102,7 +102,9 @@ fn dialog_buttons_german() {
     use crate::state::Modal;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "language-dialog-de");
     st.settings.language = "de".into();
-    st.modal = Some(Modal::danger("Zweig löschen", "Lokalen Zweig search löschen?", "Löschen", Msg::ClearLog));
+    let de = trellis_core::i18n::Lang::De;
+    let body = de.trf("branch.delete.body", &[("branch", &"search")]);
+    st.modal = Some(Modal::danger(de.tr("branch.delete.title"), body, de.tr("common.delete.button"), Msg::ClearLog));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("confirm_dialog_german");

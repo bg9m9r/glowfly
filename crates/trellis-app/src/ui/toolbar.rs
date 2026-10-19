@@ -91,7 +91,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     }
                     if let Some(fs) = host {
                         ui.separator();
-                        super::pr_menu_items::push_pr_item(ui, snap, fs, idle, msgs);
+                        super::pr_menu_items::push_pr_item(ui, t, snap, fs, idle, msgs);
                     }
                 });
                 widgets::tool_gap(ui);
@@ -125,7 +125,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         msgs.push(Msg::Forge(ForgeMsg::CreatePrDialog { source: b.clone(), target: None }));
                     }
                     let name = if merge_request { t.tr("toolbar.pr_menu.merge_request") } else { t.tr("toolbar.pr_menu.pull_request") };
-                    dropdown(ui, "pr-menu", name, 260.0, labels, |ui| super::pr_menu_items::pr_menu(ui, snap, fs, idle, msgs));
+                    dropdown(ui, "pr-menu", name, 260.0, labels, |ui| super::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs));
                 } else {
                     // The PR button and its caret's room, so the buttons after them stay put.
                     let w = widgets::tool_width(ui, t.tr("toolbar.pr.button"), labels);

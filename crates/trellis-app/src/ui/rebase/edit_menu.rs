@@ -22,11 +22,11 @@ fn entry(ui: &mut egui::Ui, text: String, blocked: Option<&str>, edit: QuickEdit
 }
 
 /// Reword, squash into parent and drop for the commit `oid`.
-pub fn single(ui: &mut egui::Ui, oid: Oid, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+pub fn single(ui: &mut egui::Ui, t: Lang, oid: Oid, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let b = rebase_quick::single(snap, oid);
-    entry(ui, "Reword…".into(), b.reword.as_deref(), QuickEdit::Reword(oid), msgs);
-    entry(ui, "Squash into parent…".into(), b.squash.as_deref(), QuickEdit::SquashIntoParent(oid), msgs);
-    entry(ui, "Drop…".into(), b.drop.as_deref(), QuickEdit::Drop(vec![oid]), msgs);
+    entry(ui, t.tr("commits.menu.reword").into(), b.reword.as_deref(), QuickEdit::Reword(oid), msgs);
+    entry(ui, t.tr("commits.menu.squash_parent").into(), b.squash.as_deref(), QuickEdit::SquashIntoParent(oid), msgs);
+    entry(ui, t.tr("commits.menu.drop").into(), b.drop.as_deref(), QuickEdit::Drop(vec![oid]), msgs);
 }
 
 /// Squash and drop for the selected commits, in `t`'s words (the menu's header gives the count).

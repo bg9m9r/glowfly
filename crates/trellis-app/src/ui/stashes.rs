@@ -10,16 +10,17 @@ use crate::state::Selection;
 use crate::state::palette::StashAction;
 use crate::state::section_actions::SectionAction;
 use eframe::egui;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 
 /// Draws the section; `all` and `staged` are the header's Stash changes and Stash staged
 /// changes.
 pub(super) fn section(
     ui: &mut egui::Ui,
+    t: Lang,
     snap: &Snapshot,
     open: &mut bool,
-    sel: &Selection,
-    shown: &dyn Fn(&str) -> bool,
+    (sel, shown): (&Selection, &dyn Fn(&str) -> bool),
     (all, staged): (&SectionAction, &SectionAction),
     msgs: &mut Vec<Msg>,
 ) {
@@ -27,7 +28,8 @@ pub(super) fn section(
         action_item(ui, msgs, all);
         action_item(ui, msgs, staged);
     };
-    let h = Header { title: "Stashes", count: Some(snap.stashes.len()), add: Some(HeaderAdd::send(all)), menu: Some(&menu) };
+    let title = t.tr("sidebar.stashes.header");
+    let h = Header { key: "stashes", title, count: Some(snap.stashes.len()), add: Some(HeaderAdd::send(all)), menu: Some(&menu), t };
     section_header::show(ui, h, open, msgs);
     if !*open {
         return;

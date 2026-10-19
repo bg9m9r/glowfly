@@ -40,6 +40,7 @@ pub(super) use style::DiffStyle;
 pub(super) use syntax::paint_line;
 use trellis_core::diff_rows::{GapLines, GapSpan};
 use trellis_core::highlight::DiffHighlight;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileDiff};
 use trellis_core::settings::DiffLayout;
 use trellis_core::whole_file::{self, Fold, WholeFile};
@@ -84,6 +85,8 @@ pub(super) struct DiffView<'a> {
     /// Code comment markers by file line, for a pull request's file whose threads can be
     /// placed on its lines.
     pub marks: Option<&'a Marks>,
+    /// The language of the hunk buttons and their confirmations.
+    pub t: Lang,
 }
 
 impl DiffView<'_> {
@@ -160,7 +163,8 @@ fn rows(ui: &mut Ui, st: &AppState, cache: &mut DiffRowsCache, scroll_to: Option
     let marks = st.pull_request.as_ref().filter(|v| v.shows(target)).and_then(|v| pull_request_threads::marks(v, target.path()));
     let marks = marks.as_ref();
     let hunk_gen = st.hunk_ops_gen();
-    let view = DiffView { target, diff, whole, opened, gaps, gap_lines, hl, header_hl, hunk_gen, sel, style, wrap, marks };
+    let t = st.settings.lang();
+    let view = DiffView { target, diff, whole, opened, gaps, gap_lines, hl, header_hl, hunk_gen, sel, style, wrap, marks, t };
     Some(match layout {
         DiffLayout::Inline => inline::show(ui, &view, &cache.inline, cache.widest, m, scroll_to, msgs),
         DiffLayout::Split => split::show(ui, &view, &cache.split, cache.widest, m, scroll_to, msgs),

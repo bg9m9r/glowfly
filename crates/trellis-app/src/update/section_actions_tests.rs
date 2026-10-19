@@ -40,25 +40,25 @@ fn job_running() -> Option<String> {
 #[test]
 fn new_branch_opens_from_head() {
     let (mut st, dir) = opened("sa-branch");
-    let a = new_branch(&st);
+    let a = new_branch(&st, Lang::En);
     assert_eq!((a.name.as_str(), a.label(), a.blocked.clone()), ("New branch", "New branch…".to_owned(), None));
     assert!(matches!(a.msg(), Msg::Branch(BranchMsg::NewBranch { start: None, ref name }) if name.is_empty()));
     run(&mut st, &a);
     assert!(matches!(st.modal, Some(Modal::NewBranch { start: None, .. })));
     st.modal = None;
     st.job = Some(running_job(&dir));
-    assert_eq!(new_branch(&st).blocked, job_running());
+    assert_eq!(new_branch(&st, Lang::En).blocked, job_running());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn add_remote_and_submodule_open_their_dialogs() {
     let (mut st, dir) = opened("sa-remote");
-    assert!(add_remote().blocked.is_none() && add_submodule().blocked.is_none());
-    run(&mut st, &add_remote());
+    assert!(add_remote(Lang::En).blocked.is_none() && add_submodule(Lang::En).blocked.is_none());
+    run(&mut st, &add_remote(Lang::En));
     assert!(matches!(&st.modal, Some(Modal::Remote(f)) if f.original.is_none()), "the add form");
     st.modal = None;
-    run(&mut st, &add_submodule());
+    run(&mut st, &add_submodule(Lang::En));
     assert!(matches!(st.modal, Some(Modal::AddSubmodule(_))));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -67,18 +67,18 @@ fn add_remote_and_submodule_open_their_dialogs() {
 fn new_tag_is_on_head() {
     let (mut st, dir) = opened("sa-tag");
     let head = st.snap.as_ref().unwrap().head_oid.unwrap().to_string();
-    let a = new_tag(&st, false);
+    let a = new_tag(&st, Lang::En, false);
     assert!(a.blocked.is_none());
     assert!(matches!(a.msg(), Msg::Tag(TagMsg::NewTag { ref at, annotated: false }) if *at == head));
     run(&mut st, &a);
     assert!(matches!(&st.modal, Some(Modal::NewTag(f)) if !f.annotated && f.at == head));
     st.modal = None;
-    let annotated = new_tag(&st, true);
+    let annotated = new_tag(&st, Lang::En, true);
     run(&mut st, &annotated);
     assert!(matches!(&st.modal, Some(Modal::NewTag(f)) if f.annotated));
     st.snap.as_mut().unwrap().head_oid = None;
     for annotated in [false, true] {
-        assert_eq!(new_tag(&st, annotated).blocked.as_deref(), Some(NO_COMMIT_TAG));
+        assert_eq!(new_tag(&st, Lang::En, annotated).blocked.as_deref(), Some(NO_COMMIT_TAG));
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -86,30 +86,30 @@ fn new_tag_is_on_head() {
 #[test]
 fn stash_needs_changes_and_no_job() {
     let (mut st, dir) = opened("sa-stash");
-    let a = stash(&st, StashScope::All);
+    let a = stash(&st, Lang::En, StashScope::All);
     assert!(a.blocked.is_none(), "{:?}", a.blocked);
     assert!(matches!(a.msg(), Msg::Stash(StashMsg::PushDialog { scope: StashScope::All, path: None })));
     run(&mut st, &a);
     assert!(matches!(&st.modal, Some(Modal::StashPush(f)) if f.scope == StashScope::All));
     st.modal = None;
-    assert!(matches!(stash(&st, StashScope::Staged).msg(), Msg::Stash(StashMsg::PushDialog { scope: StashScope::Staged, .. })));
+    assert!(matches!(stash(&st, Lang::En, StashScope::Staged).msg(), Msg::Stash(StashMsg::PushDialog { scope: StashScope::Staged, .. })));
 
     st.job = Some(running_job(&dir));
-    assert_eq!(stash(&st, StashScope::All).blocked, job_running());
+    assert_eq!(stash(&st, Lang::En, StashScope::All).blocked, job_running());
     st.job = None;
     let snap = st.snap.as_mut().unwrap();
     snap.staged.clear();
     snap.unstaged.clear();
     let clean = Some(Lang::En.tr("toolbar.tip.blocked.no_changes").to_owned());
-    assert_eq!(stash(&st, StashScope::All).blocked, clean);
-    assert_eq!(stash(&st, StashScope::Staged).blocked, clean);
+    assert_eq!(stash(&st, Lang::En, StashScope::All).blocked, clean);
+    assert_eq!(stash(&st, Lang::En, StashScope::Staged).blocked, clean);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn add_worktree_starts_from_head() {
     let (mut st, dir) = opened("sa-worktree");
-    let a = add_worktree(&st);
+    let a = add_worktree(&st, Lang::En);
     assert!(a.blocked.is_none());
     let base = WorktreeBase::Branch("main".into());
     assert!(matches!(a.msg(), Msg::Worktree(WorktreeMsg::CreateDialog(ref b)) if *b == base));
@@ -121,16 +121,16 @@ fn add_worktree_starts_from_head() {
     let head = snap.head_oid.unwrap();
     snap.head_branch = None;
     assert_eq!(section_actions::worktree_base(snap), Some(WorktreeBase::Commit(head)));
-    assert!(matches!(add_worktree(&st).msg(), Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Commit(o))) if o == head));
+    assert!(matches!(add_worktree(&st, Lang::En).msg(), Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Commit(o))) if o == head));
     st.snap.as_mut().unwrap().head_oid = None;
-    assert_eq!(add_worktree(&st).blocked.as_deref(), Some(NO_COMMIT_WORKTREE));
+    assert_eq!(add_worktree(&st, Lang::En).blocked.as_deref(), Some(NO_COMMIT_WORKTREE));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn create_pr_needs_a_host_a_branch_and_no_open_pr() {
     let (mut st, work, bare) = with_host("sa-pr");
-    let pr = |st: &AppState| create_pr(st, st.forge.as_ref().unwrap());
+    let pr = |st: &AppState| create_pr(st, Lang::En, st.forge.as_ref().unwrap());
     let a = pr(&st).expect("a code host");
     assert_eq!((a.name.as_str(), a.blocked.clone()), ("Create pull request", None));
     assert!(matches!(a.msg(), Msg::Forge(ForgeMsg::CreatePrDialog { ref source, target: None }) if source == "main"));
