@@ -30,7 +30,8 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let Some(view) = st.blame.as_mut() else { return };
     let scroll_to = view.scroll_to.take();
     ui.add_space(6.0);
-    header::show(ui, &mut st.blame, &st.settings, st.snap.as_ref(), msgs);
+    let over_history = st.history.is_some() && st.blame.as_ref().is_some_and(|v| v.over_history);
+    header::show(ui, &mut st.blame, &st.settings, st.snap.as_ref(), over_history, msgs);
     ui.separator();
     let Some(view) = &st.blame else { return };
     match &view.data {

@@ -186,7 +186,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       "Uncommitted changes", then M 3 · A 1 · D 1 chips with tinted fills and a right-aligned
       `+48 −17`); added green, removed red, modified amber, matching the status letters;
       computed off the UI thread and cached per commit
-- [ ] **Toggles look like toggles**: Diff/File/Blame, the dashboard tabs and the search mode
+- [x] **Toggles look like toggles**: Diff/File/Blame, the dashboard tabs and the search mode
       are segmented controls (the diff's own view switches move into the file header's View
       menu); hunk buttons at body size with Discard set apart
 - [ ] **Full-row selection in file lists**: the commit panel's and file history's file lists
@@ -2344,3 +2344,12 @@ here, under the item they grew from.
 - Counts for Git LFS files from their real content
 - Sort a file list by the size of its change
 - A preference to hide the per-file bars
+
+### Toggles look like toggles
+
+- Blame header switch: after "Blame before this commit" or Back, Diff and File could select the blamed commit in the history instead of its original selection
+- Segmented control: an accessible radio-group node with a group name, and Left and Right arrow keys to move between segments
+- Blame header row 2: show Ignore whitespace and Wrap lines as checkboxes, like the diff's View menu
+- Blame header: hide or rename the row-2 File history button while the Diff | File | Blame switch shows, since both lead back to the history
+- Hunk header: fold the hunk buttons into one menu when the visible width is too narrow for body-size labels
+- Search bar: measure the Highlight | Filter width instead of the fixed CONTROLS_W

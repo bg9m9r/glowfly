@@ -1,5 +1,5 @@
-//! The graph's search bar: the query field, the Filter toggle, the author picker, the match
-//! count and Close. It edits only the query and author filter text; everything else is a
+//! The graph's search bar: the query field, the Highlight | Filter mode, the author picker, the
+//! match count and Close. It edits only the query and author filter text; everything else is a
 //! `SearchMsg` for update/search.rs.
 
 use crate::keymap::BindingId;
@@ -9,15 +9,16 @@ use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::widgets;
 use crate::ui::widgets::buttons;
+use crate::ui::widgets::segmented::segmented;
 use eframe::egui::{self, Key, PopupCloseBehavior, RichText};
 use trellis_core::matching::contains_lower;
 
 /// How many authors the picker lists before asking for a narrower filter.
 const MAX_AUTHORS: usize = 200;
 
-/// Room for the Filter toggle, author picker, match count ("12 so far, searching…") and Close
-/// after the query field.
-const CONTROLS_W: f32 = 430.0;
+/// Room for the Highlight | Filter mode, author picker, match count ("12 so far, searching…")
+/// and Close after the query field.
+const CONTROLS_W: f32 = 525.0;
 
 /// The empty query field's hint (cut with "…" in a narrow field), also its hover text when the
 /// field is empty and the hint is cut.
@@ -51,8 +52,10 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             r.request_focus();
         }
 
-        let tip = st.keymap.tip("Show only matching commits", BindingId::SearchFilter);
-        if ui.selectable_label(st.search.filter, "Filter").on_hover_text(tip).clicked() {
+        // The SearchFilter key flips between the two modes, so both tips name it.
+        let highlight = st.keymap.tip("Mark the matching commits and dim the rest", BindingId::SearchFilter);
+        let filter = st.keymap.tip("Show only matching commits", BindingId::SearchFilter);
+        if segmented(ui, st.search.filter, &[(false, "Highlight", &highlight), (true, "Filter", &filter)]).is_some() {
             msgs.push(Msg::Search(SearchMsg::ToggleFilter));
         }
 

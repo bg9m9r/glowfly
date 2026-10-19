@@ -1,6 +1,7 @@
 //! The file and folder history view: the commits that changed a file (newest first, following
 //! renames) or anything under a folder on the left, and the selected commit on the right with
-//! its diff of the file or, in the File view, the whole file as of it (`history_file.rs`). A
+//! its diff of the file or, in the File view, the whole file as of it (`history_file.rs`); the
+//! header's Diff | File | Blame switch picks between those and the blame as of it. A
 //! folder entry lists its changed files (`history_folder.rs`), one of which is shown. Each
 //! commit can restore its version of a file; Open and Show act on the file as it is today.
 
@@ -9,6 +10,7 @@ use super::common::{menu_item, menu_item_if, short, status_color};
 use super::empty_state::{EmptyIcon, empty_state};
 use super::file_buttons::{self, CommitFile};
 use super::file_menu;
+use super::file_view_switch::{self, FileShow};
 use super::theme::color;
 use super::widgets::paint_cut_text;
 use crate::msg::BlameMsg;
@@ -49,7 +51,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
 
 /// "File history" or "Folder history", the path ("now <name>" when the file was renamed after
 /// the commit it was opened at), "as of <sha>" when the walk didn't start at HEAD, then the
-/// Diff / File toggle, Blame and Close.
+/// Diff | File | Blame switch and Close.
 fn header(ui: &mut Ui, t: Lang, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
@@ -71,41 +73,19 @@ fn header(ui: &mut Ui, t: Lang, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
             if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
                 msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
             }
+            ui.add_space(8.0);
             let shown = view.shown();
-            let blocked = match shown {
-                None => Some("Select a commit first"),
-                Some((_, _, 'D')) => Some("This commit deletes the file"),
-                Some(_) => None,
-            };
-            let r = ui.add(buttons::secondary(file_menu::BLAME).enabled(blocked.is_none()));
-            let r = match blocked {
-                Some(why) => r.on_hover_text(why),
-                None => r.on_hover_text("Blame the file as of the selected commit"),
-            };
-            if r.clicked()
-                && let Some((oid, path, _)) = shown
-            {
-                msgs.push(Msg::Blame(BlameMsg::Open { path: path.to_owned(), at: Some(oid) }));
-            }
-            pane_toggle(ui, view, msgs);
-        });
-    });
-}
-
-/// The Diff / File segmented toggle (laid out right to left: File, then Diff to its left).
-fn pane_toggle(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
-    ui.add_enabled_ui(view.shown().is_some(), |ui| {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 0.0;
-            let buttons = [
-                (HistoryPane::File, "File", "The whole file as of this commit"),
-                (HistoryPane::Diff, "Diff", "This commit's changes to the file"),
-            ];
-            for (pane, label, tip) in buttons {
-                let r = ui.selectable_label(view.pane == pane, label).on_hover_text(tip).on_disabled_hover_text("Select a commit first");
-                if r.clicked() && view.pane != pane {
-                    msgs.push(Msg::History(HistoryMsg::SetHistoryPane(pane)));
+            let all_off = shown.is_none().then_some(file_view_switch::NO_COMMIT);
+            let blame_off = matches!(shown, Some((_, _, 'D'))).then_some(file_view_switch::DELETES);
+            match file_view_switch::show(ui, view.pane.into(), all_off, blame_off) {
+                Some(FileShow::Diff) => msgs.push(Msg::History(HistoryMsg::SetHistoryPane(HistoryPane::Diff))),
+                Some(FileShow::File) => msgs.push(Msg::History(HistoryMsg::SetHistoryPane(HistoryPane::File))),
+                Some(FileShow::Blame) => {
+                    if let Some((oid, path, _)) = shown {
+                        msgs.push(Msg::Blame(BlameMsg::Open { path: path.to_owned(), at: Some(oid) }));
+                    }
                 }
+                None => {}
             }
         });
     });

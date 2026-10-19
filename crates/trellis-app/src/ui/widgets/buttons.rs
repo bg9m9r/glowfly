@@ -11,6 +11,9 @@
 //! never an outline, and never egui's fade (the button senses hover only instead of going through
 //! `add_enabled`). A disabled button explains itself on hover with `why`. A focused button gets a
 //! 2 px `accent` ring outside its edge.
+//!
+//! Sizes: 28 px high by default, 24 px `small`, taller with `min_height`, or an exact `height`
+//! inside a fixed-height row.
 
 use super::super::theme::{color, contrast};
 use eframe::egui::{self, Color32, CornerRadius, Response, Sense, Stroke, StrokeKind, TextStyle, Ui, Widget, WidgetText, vec2};
@@ -43,6 +46,7 @@ pub struct StyledButton<'a> {
     small: bool,
     radius: u8,
     text_size: Option<f32>,
+    height: Option<f32>,
 }
 
 /// The view's main action.
@@ -73,6 +77,7 @@ impl<'a> StyledButton<'a> {
             small: false,
             radius: RADIUS,
             text_size: None,
+            height: None,
         }
     }
 
@@ -125,6 +130,12 @@ impl<'a> StyledButton<'a> {
         self
     }
 
+    /// An exact height, for a button inside a fixed-height row (the diff's hunk headers).
+    pub fn height(mut self, h: f32) -> Self {
+        self.height = Some(h);
+        self
+    }
+
     pub fn is_enabled(&self) -> bool {
         self.enabled
     }
@@ -139,9 +150,13 @@ impl<'a> StyledButton<'a> {
     }
 
     fn size(&self, galley: &egui::Galley) -> egui::Vec2 {
-        let h = if self.small { SMALL_HEIGHT } else { HEIGHT.max(self.min_height) };
         let s = galley.size() + 2.0 * PADDING;
-        vec2(s.x.max(self.min_width), s.y.max(h))
+        let w = s.x.max(self.min_width);
+        if let Some(h) = self.height {
+            return vec2(w, h);
+        }
+        let h = if self.small { SMALL_HEIGHT } else { HEIGHT.max(self.min_height) };
+        vec2(w, s.y.max(h))
     }
 
     /// The width it takes in `ui` (for laying out a right-aligned row).
@@ -237,6 +252,9 @@ mod tests {
             assert!(r.rect.height() >= HEIGHT);
             let r = ui.add(secondary("OK").small());
             assert!(r.rect.height() >= SMALL_HEIGHT && r.rect.height() < HEIGHT);
+            let r = ui.add(secondary("Stage Hunk").height(17.0).min_width(96.0));
+            assert_eq!(r.rect.height(), 17.0, "an exact height");
+            assert_eq!(r.rect.width(), 96.0, "the least width still applies");
         });
         h.run();
     }

@@ -1,12 +1,15 @@
 //! The blame header. Row 1: "Blame", the path, the commit it is shown at, its size, "Updating…"
-//! while it is blamed again after HEAD moved, and Close. Row 2: Back, File history, the
-//! whitespace, move and Wrap lines toggles, the skipped commits, and at the right go to line
-//! and find in the file. Before a blame has loaded, row 2 has Back and File
+//! while it is blamed again after HEAD moved, and Close, with the Diff | File | Blame switch
+//! (Blame raised) before Close when it was opened over a file history on its shown file. Row 2:
+//! Back, File history, the whitespace, move and Wrap lines toggles, the skipped commits, and at
+//! the right go to line and find in the file. Before a blame has loaded, row 2 has Back and File
 //! history only.
 
 use crate::msg::{BlameMsg, Msg};
 use crate::state::blame::BlameView;
+use crate::state::history::HistoryPane;
 use crate::ui::common::{caret_after, short};
+use crate::ui::file_view_switch::{self, FileShow};
 use crate::ui::find_bar::{FindIntent, plural};
 use crate::ui::history_file::{WRAP_LINES, WRAP_TIP};
 use crate::ui::theme::color;
@@ -40,9 +43,17 @@ const MOVES: [(BlameMoves, &str); 3] = [
 /// The least width find and go to line need; narrower, they move to a row of their own.
 const FIND_ROW_MIN: f32 = 340.0;
 
-pub(super) fn show(ui: &mut Ui, blame: &mut Option<BlameView>, settings: &Settings, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) {
+/// `over_history`: opened over a file history on its shown file, which is still open.
+pub(super) fn show(
+    ui: &mut Ui,
+    blame: &mut Option<BlameView>,
+    settings: &Settings,
+    snap: Option<&Snapshot>,
+    over_history: bool,
+    msgs: &mut Vec<Msg>,
+) {
     let Some(view) = blame.as_mut() else { return };
-    first_row(ui, settings.lang(), view, msgs);
+    first_row(ui, settings.lang(), view, over_history, msgs);
     ui.add_space(4.0);
     let mut own_row = false;
     ui.horizontal(|ui| {
@@ -86,8 +97,9 @@ pub(super) fn show(ui: &mut Ui, blame: &mut Option<BlameView>, settings: &Settin
     }
 }
 
-/// "Blame", the path, the commit it is shown at, its size, and Close.
-fn first_row(ui: &mut Ui, t: trellis_core::i18n::Lang, view: &BlameView, msgs: &mut Vec<Msg>) {
+/// "Blame", the path, the commit it is shown at, its size, and Close (after the Diff | File |
+/// Blame switch back to the history, `over_history`).
+fn first_row(ui: &mut Ui, t: trellis_core::i18n::Lang, view: &BlameView, over_history: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         ui.label(RichText::new("Blame").color(color::weak()));
@@ -110,6 +122,17 @@ fn first_row(ui: &mut Ui, t: trellis_core::i18n::Lang, view: &BlameView, msgs: &
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
                 msgs.push(Msg::Blame(BlameMsg::Close));
+            }
+            if over_history {
+                ui.add_space(8.0);
+                let pane = match file_view_switch::show(ui, FileShow::Blame, None, None) {
+                    Some(FileShow::Diff) => Some(HistoryPane::Diff),
+                    Some(FileShow::File) => Some(HistoryPane::File),
+                    Some(FileShow::Blame) | None => None,
+                };
+                if let Some(pane) = pane {
+                    msgs.push(Msg::Blame(BlameMsg::BackToHistory(pane)));
+                }
             }
         });
     });

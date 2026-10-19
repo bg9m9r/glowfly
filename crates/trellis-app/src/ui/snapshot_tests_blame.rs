@@ -1,10 +1,11 @@
 //! The blame view: a Rust file whose lines come from three commits by two authors (dark and
 //! light), a blame that failed, the Blame item under File history in file menus, clicking and
-//! hovering a run's gutter (with the commit's body), the header's File history button, and the
-//! file history header's Blame button. Shares the fixture
-//! repository and renderer with `snapshot_tests`.
+//! hovering a run's gutter (with the commit's body), the header's File history button, the file
+//! history header's Blame segment, and the Diff | File | Blame switch over a file history.
+//! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::file_menu::{BLAME, FOLDER_HISTORY, history_items};
+use super::file_view_switch::{DIFF, FILE};
 use super::snapshot_tests::{git, harness, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
 use super::theme::{apply_theme, color};
@@ -13,9 +14,11 @@ use crate::msg::HistoryMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::blame::{BlameData, BlameView};
+use crate::state::history::{FileHistoryView, HistoryPane};
 use crate::ui::common::short;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
+use eframe::egui::accesskit::Toggled;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
@@ -212,6 +215,36 @@ fn history_header_blames_the_selected_entry() {
     h.state_mut().1.clear();
     h.run();
     assert!(h.get_by_label(BLAME).is_disabled());
+    assert!(h.get_by_label(DIFF).is_disabled() && h.get_by_label(FILE).is_disabled(), "the whole switch waits");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn blame_over_history() {
+    let (mut st, dir, _) = with_blame(ThemeChoice::Dark, "blame-over-history");
+    st.history = Some(FileHistoryView::loading("src/main.rs".into(), None));
+    st.blame.as_mut().unwrap().over_history = true;
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("blame_over_history");
+    // The row's "Blame" title shares the name; the segment is the one with a toggled state.
+    let blame = h.get_all_by_label(BLAME).find(|n| n.toggled().is_some()).expect("the switch shows");
+    assert_eq!(blame.toggled(), Some(Toggled::True), "Blame is raised");
+    for (label, pane) in [(DIFF, HistoryPane::Diff), (FILE, HistoryPane::File)] {
+        h.state_mut().1.clear();
+        h.get_by_label(label).click();
+        h.run();
+        assert!(matches!(&h.state().1[..], [Msg::Blame(BlameMsg::BackToHistory(p))] if *p == pane), "{label} goes back to the history");
+    }
+    drop(h);
+    remove_fixture(&dir);
+
+    // A blame opened any other way has no switch.
+    let (st, dir, _) = with_blame(ThemeChoice::Dark, "blame-not-over-history");
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label(DIFF).is_none());
     drop(h);
     remove_fixture(&dir);
 }

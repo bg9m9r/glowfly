@@ -1,11 +1,12 @@
 //! Moving between blames: Blame before this commit and Back, skipping commits, the whitespace,
-//! move and wrap toggles, and the jump to the file's history.
+//! move and wrap toggles, the jump to the file's history, and the header's Diff and File back to
+//! the history the blame was opened over.
 
 use super::reload;
 use crate::effect::Effect;
 use crate::state::AppState;
 use crate::state::blame::{BACK_LIMIT, BlameLanding, BlameStep};
-use crate::state::history::HistoryKind;
+use crate::state::history::{HistoryKind, HistoryPane};
 use git2::Oid;
 use std::time::Instant;
 use trellis_core::settings::BlameMoves;
@@ -120,4 +121,14 @@ pub(super) fn open_history(st: &mut AppState, select: Option<Oid>, fx: &mut Vec<
     let (path, at) = (view.path.clone(), view.at);
     let blamed = at.or_else(|| view.data.as_ref().map(|d| d.blame.at));
     super::super::history::open(st, path, at, select.or(blamed), HistoryKind::File, fx);
+}
+
+/// The header's Diff or File over a file history: closes the blame and shows the history
+/// underneath in `pane` (saved, and the File view asks for its text).
+pub(super) fn back_to_history(st: &mut AppState, pane: HistoryPane, fx: &mut Vec<Effect>) {
+    if st.history.is_none() || st.blame.is_none() {
+        return;
+    }
+    super::close(st);
+    super::super::history_view::set_pane(st, pane, fx);
 }

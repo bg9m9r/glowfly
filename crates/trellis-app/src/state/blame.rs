@@ -89,6 +89,9 @@ pub struct BlameView {
     pub follow: Option<Oid>,
     /// The generation `data` was loaded with. It keys the UI's row-measure cache.
     pub data_gen: u64,
+    /// Opened from the file history on its shown file, which stays underneath: the header offers
+    /// Diff and File to go back to it.
+    pub over_history: bool,
 }
 
 impl BlameView {
@@ -110,6 +113,7 @@ impl BlameView {
             focus_find: false,
             follow: None,
             data_gen: 0,
+            over_history: false,
         }
     }
 

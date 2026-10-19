@@ -7,7 +7,7 @@ use super::{UiCache, avatars::Avatars, draw, theme::color};
 use crate::msg::{Msg, RepoMsg, SearchMsg};
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
-use eframe::egui::accesskit::Role;
+use eframe::egui::accesskit::{Role, Toggled};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
@@ -99,7 +99,11 @@ fn graph_search_filtered() {
         send(&mut st, SearchMsg::ToggleFilter);
         assert!(st.search.filter);
         assert_eq!(st.search.matches.len(), 3);
-        render(name, st, dark);
+        let mut h = harness(st, dark);
+        h.run();
+        assert_eq!(h.get_by_label("Filter").toggled(), Some(Toggled::True), "the Filter mode is raised");
+        h.check_snapshot(name);
+        drop(h);
         remove_fixture(&dir);
     }
 }
@@ -213,7 +217,13 @@ fn the_bar_sends_search_messages() {
     assert_eq!(h.state().0.view.search, "log");
     assert_eq!(search_msgs(&h), ["QueryChanged"]);
 
+    // Highlight is the mode at first; clicking it again changes nothing.
+    assert_eq!(h.get_by_label("Highlight").toggled(), Some(Toggled::True));
+    assert_eq!(h.get_by_label("Filter").toggled(), Some(Toggled::False));
     h.state_mut().1.clear();
+    h.get_by_label("Highlight").click();
+    h.run();
+    assert!(search_msgs(&h).is_empty(), "the current mode sends nothing");
     h.get_by_label("Filter").click();
     h.run();
     assert_eq!(search_msgs(&h), ["ToggleFilter"]);

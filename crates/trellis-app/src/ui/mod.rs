@@ -41,6 +41,7 @@ mod empty_state_icons;
 mod file_buttons;
 mod file_dialogs;
 mod file_menu;
+mod file_view_switch;
 mod find_bar;
 mod forge_filter_dialog;
 mod forge_filter_menu;

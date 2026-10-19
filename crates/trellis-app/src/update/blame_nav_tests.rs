@@ -1,5 +1,6 @@
 //! Headless tests for moving in and between blames: Blame before this commit and Back, skipping
-//! commits, the header toggles, the jump to file history, find, go to line and the run keys.
+//! commits, the header toggles, the jump to file history and back to the history underneath,
+//! find, go to line and the run keys.
 
 use super::HELD;
 use crate::effect::{BlameRequest, Effect};
@@ -326,5 +327,36 @@ fn blame_parent_end_to_end() {
     let v = view(&st);
     assert_eq!(v.at, None);
     assert_eq!(v.data.as_ref().map(|d| d.blame.at), Some(c2));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn blame_from_the_history_offers_the_way_back() {
+    use crate::msg::HistoryMsg;
+    use crate::state::history::HistoryPane;
+    let dir = scratch_repo("blame-nav-over-history");
+    commit_file(&dir, "one\ntwo\n", "second");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }));
+    drive(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(0)));
+    let (at, path) = st.history.as_ref().and_then(|h| h.shown()).map(|(o, p, _)| (o, p.to_owned())).expect("an entry shown");
+    drive(&mut st, Msg::Blame(BlameMsg::Open { path: path.clone(), at: Some(at) }));
+    assert!(view(&st).over_history, "opened on the history's shown file");
+
+    let fx = send(&mut st, BlameMsg::BackToHistory(HistoryPane::File));
+    assert!(st.blame.is_none(), "the blame closes");
+    assert_eq!(st.history.as_ref().expect("the history stays").pane, HistoryPane::File);
+    assert_eq!(st.settings.history.pane, HistoryPane::File, "saved like the history's own switch");
+    assert!(fx.iter().any(|e| matches!(e, Effect::LoadFileText(_))), "the File view asks for its text: {fx:?}");
+
+    // Blamed at HEAD rather than the shown commit: no way back.
+    drive(&mut st, Msg::Blame(BlameMsg::Open { path, at: None }));
+    assert!(!view(&st).over_history);
+    // With no history underneath, the message leaves the blame alone.
+    st.blame.as_mut().unwrap().over_history = true;
+    st.history = None;
+    assert!(send(&mut st, BlameMsg::BackToHistory(HistoryPane::Diff)).is_empty());
+    assert!(st.blame.is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }

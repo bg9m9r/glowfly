@@ -121,6 +121,7 @@ fn file_history_file_deleted() {
     h.run();
     h.check_snapshot("file_history_file_deleted");
     assert!(h.get_by_label("Blame").is_disabled(), "nothing to blame in a deleting commit");
+    assert!(!h.get_by_label("Diff").is_disabled() && !h.get_by_label("File").is_disabled(), "only Blame is off");
     drop(h);
     remove_fixture(&dir);
 }

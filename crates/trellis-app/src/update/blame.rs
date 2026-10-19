@@ -1,8 +1,8 @@
 //! The blame view: opening it on a file (at HEAD or a commit), its result, re-running a HEAD
 //! blame when a refresh finds HEAD moved, selecting a line's commit on the graph, and closing
-//! it. Stepping back, skipping commits, the header toggles and
-//! the jump to file history are in `blame_nav.rs`; find, go to line and the run keys in
-//! `blame_find.rs`.
+//! it. Stepping back, skipping commits, the header toggles, the jump to file history and the
+//! way back to the history underneath are in `blame_nav.rs`; find, go to line and the run keys
+//! in `blame_find.rs`.
 
 use crate::effect::{BlameRequest, Effect};
 use crate::msg::{BlameMsg, Msg, TrustMsg};
@@ -38,12 +38,14 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
             if st.history.is_none() {
                 super::repo::close_diff(st);
             }
+            // Opened on the history's shown file: its header offers the way back to it.
+            let over = st.history.as_ref().and_then(|h| h.shown()).is_some_and(|(oid, p, _)| at == Some(oid) && p == path);
             if !st.runs_git_unasked() {
-                st.blame = Some(BlameView::failed(path, at, HELD));
+                st.blame = Some(BlameView { over_history: over, ..BlameView::failed(path, at, HELD) });
                 hold(st, now, fx);
                 return;
             }
-            st.blame = Some(BlameView::loading(path, at));
+            st.blame = Some(BlameView { over_history: over, ..BlameView::loading(path, at) });
             request(st, fx);
         }
         BlameMsg::Loaded { path, generation, result } => loaded(st, path, generation, result),
@@ -63,6 +65,7 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
         BlameMsg::SetMoves(m) => nav::set_moves(st, m, now, fx),
         BlameMsg::SetWrapLines(on) => nav::set_wrap_lines(st, on, fx),
         BlameMsg::OpenHistory { select } => nav::open_history(st, select, fx),
+        BlameMsg::BackToHistory(pane) => nav::back_to_history(st, pane, fx),
         BlameMsg::FindChanged => find::find_changed(st),
         BlameMsg::FindStep(d) => find::find_step(st, d),
         BlameMsg::FocusFind => find::focus_find(st),

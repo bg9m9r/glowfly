@@ -10,6 +10,7 @@ use crate::msg::{DashboardMsg, Msg, PrefsMsg};
 use crate::state::dashboard::{AccountRow, AccountState, Basis, DashShow, LocalRepo, Phase, TargetData};
 use crate::state::{AppState, PrefPage};
 use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::accesskit::Toggled;
 use eframe::egui::{self, Key, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -203,6 +204,12 @@ fn menu_item(h: &mut H, row: &str, item: &str) -> Vec<Msg> {
 fn dashboard_controls_and_menus_push_messages() {
     let mut h = harness(state(ThemeChoice::Dark), true);
     h.run();
+    let mine = h.query_by_label_contains("Mine (").expect("the Mine segment");
+    assert_eq!(mine.toggled(), Some(Toggled::True), "Mine is raised");
+    assert_eq!(h.get_by_label("Review requested (2)").toggled(), Some(Toggled::False));
+    h.query_by_label_contains("Mine (").unwrap().click();
+    h.run();
+    assert!(!pushed(&mut h).iter().any(|m| matches!(m, Msg::Dashboard(_))), "the current one sends nothing");
     h.get_by_label("Review requested (2)").click();
     h.run();
     assert!(pushed(&mut h).iter().any(|m| matches!(m, Msg::Dashboard(DashboardMsg::Show(DashShow::Review)))));

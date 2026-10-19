@@ -1,12 +1,14 @@
 //! The history's File view (a file renamed after the commit it was opened at, in syntax colors
-//! with line numbers, and a binary file's note) and the folder history (dark and light). Shares
-//! the fixture repository and renderer with `snapshot_tests`.
+//! with line numbers, and a binary file's note), the Diff | File | Blame switch waiting for a
+//! commit, and the folder history (dark and light). Shares the fixture repository and renderer
+//! with `snapshot_tests`.
 
-use super::snapshot_tests::{git, harness, remove_fixture, with_repo};
+use super::snapshot_tests::{git, harness, remove_fixture, with_history, with_repo};
 use crate::msg::{HistoryMsg, Msg};
 use crate::state::AppState;
 use crate::state::history::{FileHistoryView, FileText, FileTextData, HistoryKind, HistoryPane, TextError, TextState};
 use crate::ui::snapshot_check::CheckSnapshot;
+use eframe::egui::accesskit::Toggled;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use std::path::{Path, PathBuf};
@@ -101,6 +103,7 @@ fn file_history_file_view() {
     h.run();
     h.check_snapshot("file_history_file_view");
     assert!(h.query_by_label("now src/lib.rs").is_some());
+    assert_eq!(h.get_by_label("File").toggled(), Some(Toggled::True), "the File pane is raised");
     h.get_by_label("Diff").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::History(HistoryMsg::SetHistoryPane(HistoryPane::Diff)))));
@@ -172,6 +175,23 @@ fn folder_history_light() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("folder_history_light");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn file_history_switch_waits_for_a_commit() {
+    let (mut st, dir) = with_history("history-switch-waits", ThemeChoice::Dark, 500, 0);
+    st.history.as_mut().unwrap().selected = None;
+    let mut h = harness(st, true);
+    h.run();
+    for label in ["Diff", "File", "Blame"] {
+        assert!(h.get_by_label(label).is_disabled(), "{label} waits for a commit");
+    }
+    h.get_by_label("Diff").hover();
+    h.run();
+    assert!(h.query_by_label_contains("Select a commit first").is_some(), "the hover says why");
+    h.check_snapshot("file_history_switch_waits_for_a_commit");
     drop(h);
     remove_fixture(&dir);
 }

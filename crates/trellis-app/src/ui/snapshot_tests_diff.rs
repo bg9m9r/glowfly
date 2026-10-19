@@ -290,3 +290,51 @@ fn diff_similar_pairs() {
     render("diff_similar_pairs_inline", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
+
+#[test]
+fn diff_hunk_buttons() {
+    use super::snapshot_check::CheckSnapshot;
+    use super::snapshot_tests::{harness, remove_fixture};
+    use egui_kittest::kittest::Queryable;
+    // Working tree: Stage Hunk at the right edge, Discard Hunk set apart to its left.
+    let (st, dir) = with_diff(DiffLayout::Inline, "diff-hunk-buttons");
+    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
+    let mut h = harness(st, true);
+    h.run();
+    let stage = h.get_by_label("Stage Hunk").bounding_box().expect("the button has bounds");
+    let discard = h.get_by_label("Discard Hunk").bounding_box().expect("the button has bounds");
+    assert!(stage.x0 > discard.x1, "Stage sits at the edge, right of Discard");
+    assert!(stage.x0 - discard.x1 >= 16.0, "a wider gap sets Discard apart");
+    for b in [stage, discard] {
+        assert!(((b.y1 - b.y0) as f32 - (row_h - 2.0)).abs() < 0.5, "the buttons fill the row");
+    }
+    h.check_snapshot("diff_hunk_buttons");
+    drop(h);
+    remove_fixture(&dir);
+
+    // The smallest diff font: the buttons still fit the shorter row.
+    let (mut st, dir) = with_diff(DiffLayout::Inline, "diff-hunk-buttons-small");
+    st.settings.diff_font_size = *trellis_core::settings::DIFF_FONT_SIZES.start();
+    let row_h = crate::ui::diff::DiffStyle::new(&st.settings).row_h;
+    let mut h = harness(st, true);
+    h.run();
+    let stage = h.get_by_label("Stage Hunk").bounding_box().expect("the button has bounds");
+    assert!(((stage.y1 - stage.y0) as f32 - (row_h - 2.0)).abs() < 0.5);
+    h.check_snapshot("diff_hunk_buttons_small_font");
+    drop(h);
+    remove_fixture(&dir);
+
+    // A reload on its way disables both, saying why.
+    let (mut st, dir) = with_diff(DiffLayout::Inline, "diff-hunk-buttons-reload");
+    st.diff_gen += 1;
+    assert_eq!(st.hunk_ops_gen(), None);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.get_by_label("Stage Hunk").is_disabled());
+    assert!(h.get_by_label("Discard Hunk").is_disabled());
+    h.get_by_label("Stage Hunk").hover();
+    h.run();
+    assert!(h.query_by_label_contains("Updating the diff").is_some(), "the hover says why");
+    drop(h);
+    remove_fixture(&dir);
+}

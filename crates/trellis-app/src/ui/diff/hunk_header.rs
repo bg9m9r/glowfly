@@ -4,9 +4,18 @@
 use super::{DiffView, fold, syntax};
 use crate::msg::{Msg, StageMsg};
 use crate::ui::theme::color;
-use eframe::egui::{self, Layout, Rect, RichText, TextStyle, Ui, pos2, vec2};
+use crate::ui::widgets::buttons;
+use eframe::egui::{Rect, Stroke, TextStyle, Ui, pos2, vec2};
 use trellis_core::highlight;
 use trellis_core::repo::{DiffTarget, HunkOp};
+
+/// The space between buttons, the wider one that sets Discard apart (with a divider in it), and
+/// a button's least width.
+const GAP: f32 = 6.0;
+const APART: f32 = 20.0;
+const MIN_W: f32 = 96.0;
+/// Why the buttons are disabled while the diff reloads.
+const UPDATING: &str = "Updating the diff…";
 
 /// A hunk's action button.
 #[derive(Clone, Copy)]
@@ -18,11 +27,13 @@ enum HunkButton {
 }
 
 /// A hunk header row: the `@@` line (its function context in syntax colors), plus its buttons
-/// pinned to the visible right edge so they stay in view when scrolled sideways: Stage /
-/// Unstage / Discard Hunk on working-tree diffs (or Stage / Unstage / Discard N lines when the
-/// hunk has selected lines), Revert Hunk (or Revert N lines) on commit and comparison diffs. The buttons are
-/// disabled while a reload is on its way (`hunk_gen` is `None`), since the hunk indexes may no
-/// longer match the file. With whitespace changes hidden they apply only the changes shown.
+/// in body-size text, pinned to the visible right edge so they stay in view when scrolled
+/// sideways: on working-tree diffs Stage Hunk at the edge and Discard Hunk (in the danger
+/// style) to its left behind a wider gap with a divider, Unstage Hunk on staged diffs (each
+/// "N lines" when the hunk has selected lines), Revert Hunk (or Revert N lines) on commit and
+/// comparison diffs. The buttons are disabled while a reload is on its way (`hunk_gen` is
+/// `None`), since the hunk indexes may no longer match the file. With whitespace changes hidden
+/// they apply only the changes shown.
 pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs: &mut Vec<Msg>) {
     ui.painter().rect_filled(rect, 0.0, color::hunk_bg());
     // In the hunk view, the closed gap above this hunk opens from a control before the text.
@@ -37,16 +48,23 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     syntax::paint_header(ui.painter(), pos2(x, rect.center().y), raw, ctx, &v.style.font, v.style.tab);
     let path = v.target.path();
     let selected = v.sel.map_or(0, |s| s.count_in(v.target, h));
-    let buttons: &[HunkButton] = match v.target {
-        DiffTarget::Unstaged(_) => &[HunkButton::Op(HunkOp::Discard), HunkButton::Op(HunkOp::Stage)],
+    // Laid out right to left: Stage at the edge, then Discard set apart.
+    let list: &[HunkButton] = match v.target {
+        DiffTarget::Unstaged(_) => &[HunkButton::Op(HunkOp::Stage), HunkButton::Op(HunkOp::Discard)],
         DiffTarget::Staged(_) => &[HunkButton::Op(HunkOp::Unstage)],
         DiffTarget::Commit(..) | DiffTarget::Between(..) => &[HunkButton::Revert],
         // Comparing a commit with the working tree: nothing to stage or revert per hunk.
         DiffTarget::ToWorkdir(..) => &[],
     };
-    let small = TextStyle::Small.resolve(ui.style());
+    let (row_h, mid_y) = (v.style.row_h, rect.top() + v.style.row_h / 2.0);
+    // Body-size text, smaller only where the smallest diff fonts make the row too short for it.
+    let body = TextStyle::Body.resolve(ui.style()).size.min(row_h - 4.0);
+    let revert_tip = {
+        let what = if selected > 0 { "the selected changes" } else { "this change" };
+        format!("Undo {what} in your working copy of {path}. The commit itself is not changed.")
+    };
     let mut x = ui.clip_rect().right() - 8.0;
-    for &b in buttons {
+    for (i, &b) in list.iter().enumerate() {
         let verb = match b {
             HunkButton::Revert => "Revert",
             HunkButton::Op(HunkOp::Stage) => "Stage",
@@ -58,23 +76,23 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
             1 => format!("{verb} 1 line"),
             n => format!("{verb} {n} lines"),
         };
-        let text_w = ui.fonts(|f| f.layout_no_wrap(label.clone(), small.clone(), color::text()).size().x);
-        let w = (text_w + 16.0).max(96.0);
-        let r = Rect::from_min_size(pos2(x - w, rect.top() + 1.0), vec2(w, v.style.row_h - 2.0));
-        x -= w + 6.0;
-        let mut builder = egui::UiBuilder::new().max_rect(r).layout(Layout::centered_and_justified(egui::Direction::TopDown));
-        let reason = v.hunk_gen.is_none().then_some("Updating the diff...");
-        if reason.is_some() {
-            builder = builder.disabled();
-        }
-        let mut button = ui
-            .allocate_new_ui(builder, |ui| ui.add(egui::Button::new(RichText::new(label).small())))
-            .inner
-            .on_disabled_hover_text(reason.unwrap_or_default());
+        let discard = matches!(b, HunkButton::Op(HunkOp::Discard));
+        let styled = if discard { buttons::danger(label) } else { buttons::secondary(label) };
+        let mut styled = styled.text_size(body).height(row_h - 2.0).min_width(MIN_W).enabled(v.hunk_gen.is_some()).why(Some(UPDATING));
         if let HunkButton::Revert = b {
-            let what = if selected > 0 { "the selected changes" } else { "this change" };
-            button = button.on_hover_text(format!("Undo {what} in your working copy of {path}. The commit itself is not changed."));
+            styled = styled.tip(&revert_tip);
         }
+        if discard && i > 0 {
+            // Set apart from Stage: a wider gap with a divider in its middle.
+            x -= APART - GAP;
+            let line_x = x + APART / 2.0;
+            let half = (row_h - 6.0) / 2.0;
+            ui.painter().vline(line_x, (mid_y - half)..=(mid_y + half), Stroke::new(1.0_f32, color::border()));
+        }
+        let w = styled.desired_width(ui);
+        let r = Rect::from_min_size(pos2(x - w, rect.top() + 1.0), vec2(w, row_h - 2.0));
+        let button = ui.put(r, styled);
+        x -= w + GAP;
         let (true, Some(generation)) = (button.clicked(), v.hunk_gen) else { continue };
         let op = match b {
             HunkButton::Revert => {

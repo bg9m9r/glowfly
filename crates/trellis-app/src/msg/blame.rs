@@ -3,6 +3,7 @@
 
 use super::Inactive;
 use crate::state::blame::BlameData;
+use crate::state::history::HistoryPane;
 use git2::Oid;
 use trellis_core::settings::BlameMoves;
 
@@ -40,6 +41,9 @@ pub enum BlameMsg {
     OpenHistory {
         select: Option<Oid>,
     },
+    /// The blame header's Diff or File segment, over a file history: close the blame and show the
+    /// history in `pane`.
+    BackToHistory(HistoryPane),
     /// The find field's text changed.
     FindChanged,
     /// To the next (1) or previous (-1) match, wrapping round.
@@ -73,6 +77,7 @@ impl BlameMsg {
             | Self::SetMoves(..)
             | Self::SetWrapLines(..)
             | Self::OpenHistory { .. }
+            | Self::BackToHistory(..)
             | Self::FindChanged
             | Self::FindStep(..)
             | Self::FocusFind

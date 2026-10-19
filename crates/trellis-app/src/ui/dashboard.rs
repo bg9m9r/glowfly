@@ -6,6 +6,7 @@
 use super::dashboard_rows::{issue_row, pr_row, repo_row};
 use super::empty_state::{EmptyIcon, PaneButton, empty_state};
 use super::theme::color;
+use super::widgets::segmented::{Segment, segmented_opts};
 use super::widgets::{self, Icon};
 use crate::msg::{CloneMsg, DashboardMsg, Msg, PrefsMsg, RepoMsg};
 use crate::state::dashboard::{AccountState, DashShow, Phase, service_header};
@@ -114,12 +115,17 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 
 fn controls(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let n = counts(&st.dashboard, &st.dashboard.filter.trim().to_lowercase());
+    // What each segment lists, in DashShow::index order.
+    const TIPS: [&str; 3] = [
+        "Open pull requests you opened",
+        "Open pull requests waiting for your review",
+        "Open issues, work items and cards assigned to you",
+    ];
+    let labels = DashShow::ALL.map(|s| format!("{} ({})", s.label(), n[s.index()]));
+    let options = DashShow::ALL.map(|s| Segment::new(s, labels[s.index()].as_str(), TIPS[s.index()]));
     ui.horizontal(|ui| {
-        for s in DashShow::ALL {
-            let text = format!("{} ({})", s.label(), n[s.index()]);
-            if ui.selectable_label(st.dashboard.show == s, text).clicked() && st.dashboard.show != s {
-                msgs.push(dash(DashboardMsg::Show(s)));
-            }
+        if let Some(s) = segmented_opts(ui, st.dashboard.show, &options) {
+            msgs.push(dash(DashboardMsg::Show(s)));
         }
         ui.add_space(12.0);
         controls::field(
