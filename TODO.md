@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-18 22:54 · **No missing glyphs**: The sidebar's ahead/behind counts get painted arrows, the PR tooltip, path preview and CJK locale names use text the fonts can draw, and a test fails on any shown character the bundled fonts lack (`5ae87ca4`)
 - 2026-10-18 22:20 · **In-progress operations stay visible and safe**: A strip under the toolbar shows the operation in progress and its conflicts and opens the WIP view, Abort, Skip and Reset bisect ask first (a fully resolved merge, cherry-pick or revert is stashed first so Undo restores it), merges get a prefilled draft and Commit merge, and the conflict header has one Save and mark resolved with progress and a more-actions menu (`ac802477`)
 - 2026-10-18 22:10 · **Dialogs keep what was typed**: A click on the backdrop no longer closes a form dialog, and Esc on an edited form asks "Discard your changes?" before closing it; information and confirm dialogs still close on a backdrop click (`f9dc208b`)
 - 2026-10-18 15:42 · **Git LFS: live pattern refresh, a missing git-lfs warning, and LFS status in file lists and diffs**: Edits to LFS patterns refresh status and the Git LFS page without a full reload, a banner warns when git-lfs is missing, and file rows and diffs show LFS badges and pointer size summaries (`0f58bf01`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 07:37 · **Credential prompts**: HTTPS sign-ins typed in Trellis can be remembered with git's credential helper (setting up the system's store when git has none, and dropping rejected ones), OpenSSH before 8.4 asks through Trellis on Linux and macOS, and auto-fetch skips remotes that need a sign-in, with a banner to sign in (`ae17084`)
 - 2026-10-18 07:27 · **Merge conflict tool**: Long unchanged runs folded in the panes and the output (opened together, folded back from the gutter), a resizable split between panes and output, picks and edits between the conflicts brought back when a file saved with markers is reopened, lines between the conflicts editable in the output, and long lines wrapped with Wrap lines (`b9f0962`)
 - 2026-10-18 06:46 · **Undo / Redo: hunk and line discards, operations finished after conflicts, and stash drop**: Hunk and line discards are named and undoable, merges and cherry-picks finished after resolving conflicts are recorded for undo, and dropping a stash can be undone (`7a8f97e`)
-- 2026-10-18 06:28 · **Whole-app journey tests**: Headless journey tests start the whole app on fixture repositories and drive it by visible labels through clone, staging, commit, push and pull, branching and merging, a conflicted rebase resolved in the conflict view, stash, and undo and redo, checking the screen and the repository on disk at each step (`1263c8e`)
 
 ---
 
