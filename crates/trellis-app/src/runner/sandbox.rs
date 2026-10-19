@@ -105,7 +105,7 @@ impl<W: Waker + Clone> Runner<W> {
             | Effect::DetectLfs { .. }
             | Effect::RemoveWorktree(_)
             | Effect::MoveWorktree(_)
-            | Effect::RenameStash { .. }
+            | Effect::Stash(_)
             | Effect::LoadLfs { .. }
             | Effect::LoadSparse { .. }
             | Effect::SparseCheckout { .. }
@@ -143,14 +143,8 @@ impl<W: Waker + Clone> Runner<W> {
                 return None;
             }
             Effect::Forge { .. }
-            | Effect::RepoOwners { .. }
-            | Effect::CreateRepo { .. }
-            | Effect::Connect { .. }
-            | Effect::SaveToken { .. }
-            | Effect::DeleteToken(_)
-            | Effect::ForgetCredentialManager { .. }
+            | Effect::Account(_)
             | Effect::Credential(_)
-            | Effect::TrelloBoards { .. }
             | Effect::FetchAvatars(_)
             | Effect::SetGitConfig { global: true, .. }
             | Effect::OpenUrl(_)

@@ -105,9 +105,7 @@ pub(super) fn skipped(effect: &Effect) -> bool {
         effect,
         // These need a user or the network; tests don't exercise them here.
         Effect::Ui(_) | Effect::PickFolder { .. } | Effect::OpenUrl(_) | Effect::OpenTerminal(_) | Effect::OpenFolder(_)
-            | Effect::Forge { .. } | Effect::Connect { .. } | Effect::SaveToken { .. } | Effect::DeleteToken(_)
-            | Effect::RepoOwners { .. } | Effect::CreateRepo { .. }
-            | Effect::ForgetCredentialManager { .. } | Effect::TrelloBoards { .. } | Effect::SaveSettings(_) | Effect::SaveRecent(_)
+            | Effect::Forge { .. } | Effect::Account(_) | Effect::SaveSettings(_) | Effect::SaveRecent(_)
             | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::AnswerPrompt { .. }
             // Shells are never started by these tests.
             | Effect::Terminal(_)

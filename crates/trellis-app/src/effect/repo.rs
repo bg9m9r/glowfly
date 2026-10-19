@@ -121,3 +121,10 @@ pub struct UndoOpts {
     /// Undoing a checkout that created a branch also deletes the branch.
     pub delete_created: bool,
 }
+
+/// Whether a repository load opens the repository or refreshes the one on screen.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum LoadKind {
+    Open,
+    Refresh,
+}

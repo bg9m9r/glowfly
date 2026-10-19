@@ -2,7 +2,7 @@
 //! preferences and connected accounts it loaded (`Settings::swap_profile_setup`), and keeping
 //! a shared sign-in while any profile still lists its account.
 
-use crate::effect::Effect;
+use crate::effect::{AccountEffect, Effect};
 use crate::state::{AppState, ForgeState};
 use std::time::Instant;
 use trellis_core::forge::Account;
@@ -55,7 +55,7 @@ fn reset_forge(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 pub(super) fn forget_tokens(st: &AppState, accounts: impl IntoIterator<Item = Account>, fx: &mut Vec<Effect>) {
     for a in accounts {
         if !st.settings.account_in_use(&a) {
-            fx.push(Effect::DeleteToken(a));
+            fx.push(Effect::Account(AccountEffect::DeleteToken(a)));
         }
     }
 }

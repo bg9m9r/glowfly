@@ -48,17 +48,11 @@ impl Effect {
             | Effect::DetectLfs { .. }
             | Effect::RemoveWorktree(_)
             | Effect::MoveWorktree(_)
-            | Effect::RenameStash { .. }
+            | Effect::Stash(_)
             | Effect::SparseCheckout { .. }
             | Effect::RunGit { .. }
             | Effect::UndoRedo { .. }
-            | Effect::RepoOwners { .. }
-            | Effect::CreateRepo { .. }
-            | Effect::Connect { .. }
-            | Effect::SaveToken { .. }
-            | Effect::DeleteToken(_)
-            | Effect::ForgetCredentialManager { .. }
-            | Effect::TrelloBoards { .. }
+            | Effect::Account(_)
             | Effect::FetchAvatars(_)
             | Effect::ReadGitConfig { .. }
             | Effect::SetGitConfig { .. }

@@ -1,7 +1,7 @@
 //! The Board picker of Repo-specific preferences > Issue tracker, while Trello is the
 //! repository's tracker: each account's boards load once per Preferences session.
 
-use crate::effect::Effect;
+use crate::effect::{AccountEffect, Effect};
 use crate::state::trello::BoardList;
 use crate::state::{AppState, PrefPage};
 use trellis_core::forge::{self, Account, TrelloBoard};
@@ -40,7 +40,7 @@ fn start(st: &mut AppState, account: Account, fx: &mut Vec<Effect>) {
         return;
     }
     p.trello_boards = BoardList { account: Some(account.clone()), loading: true, boards: Vec::new(), error: None };
-    fx.push(Effect::TrelloBoards { account, cwd });
+    fx.push(Effect::Account(AccountEffect::TrelloBoards { account, cwd }));
 }
 
 /// The boards arrived; a reply for an account no longer shown is ignored.

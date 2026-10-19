@@ -122,7 +122,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         Effect::RemoveWorktree(r) => Some(&r.repo),
         Effect::MoveWorktree(r) => Some(&r.repo),
         Effect::Submodule(SubmoduleEffect::Remove(r)) => Some(&r.repo),
-        Effect::RenameStash { cwd, .. } => Some(cwd),
+        Effect::Stash(e) => Some(e.cwd()),
         Effect::SparseCheckout { cwd, .. } => Some(cwd),
         Effect::Repos(ReposEffect::Sync { path, op: SyncOp::Pull, .. }) => Some(path),
         // Reads, network calls, Trellis's own files (ordered by `saves`), git config (which no
@@ -159,13 +159,7 @@ pub(super) fn repo_of(effect: &Effect) -> Option<&Path> {
         | Effect::LoadSparse { .. }
         | Effect::Rebase(RebaseEffect::LoadPlan { .. } | RebaseEffect::PrepareEdit { .. } | RebaseEffect::LoadRemaining { .. })
         | Effect::Forge { .. }
-        | Effect::RepoOwners { .. }
-        | Effect::CreateRepo { .. }
-        | Effect::Connect { .. }
-        | Effect::SaveToken { .. }
-        | Effect::DeleteToken(_)
-        | Effect::ForgetCredentialManager { .. }
-        | Effect::TrelloBoards { .. }
+        | Effect::Account(_)
         | Effect::Stats { .. }
         | Effect::LineCounts(_)
         | Effect::SearchPaths { .. }

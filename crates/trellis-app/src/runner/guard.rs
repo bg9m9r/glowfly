@@ -2,8 +2,8 @@
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
 use crate::effect::{
-    CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, SubmoduleEffect, UndoResult,
-    UpdateEffect,
+    CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, StashEffect, SubmoduleEffect,
+    UndoResult, UpdateEffect,
 };
 use crate::msg::BlameMsg;
 use crate::msg::CloneMsg;
@@ -96,7 +96,7 @@ impl Recovery {
             Effect::RemoveWorktree(_)
             | Effect::MoveWorktree(_)
             | Effect::Submodule(SubmoduleEffect::Remove(_))
-            | Effect::RenameStash { .. }
+            | Effect::Stash(StashEffect::Rename { .. })
             | Effect::SparseCheckout { .. }
             | Effect::Clone(CloneEffect::Sparse { .. })
             | Effect::Init(InitEffect::Run { .. })
@@ -238,7 +238,8 @@ mod tests {
 
     #[test]
     fn a_panicking_stash_rename_ends_its_job() {
-        let effect = Effect::RenameStash { cwd: "C:/r".into(), index: 1, oid: git2::Oid::zero(), message: "On main: x".into() };
+        let effect =
+            Effect::Stash(StashEffect::Rename { cwd: "C:/r".into(), index: 1, oid: git2::Oid::zero(), message: "On main: x".into() });
         assert!(effect.scope().is_none(), "unscoped: the job ends whichever tab is active");
         let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).expect("a failure result");
         let Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }) = &msg else { panic!("not a failed job") };

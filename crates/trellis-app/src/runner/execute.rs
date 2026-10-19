@@ -8,10 +8,8 @@ use super::{
 };
 use crate::effect::{Effect, UndoResult};
 use crate::lfs::LfsMsg;
-use crate::msg::{
-    AvatarMsg, ConflictMsg, DiffMsg, ForgeMsg, JobMsg, LoadMsg, Msg, PrefsMsg, PublishMsg, RecentMsg, RepoMsg, SelectionMsg, StageMsg,
-};
-use trellis_core::{avatars, forge, repo, undo};
+use crate::msg::{AvatarMsg, ConflictMsg, DiffMsg, ForgeMsg, JobMsg, LoadMsg, Msg, PrefsMsg, RecentMsg, RepoMsg, SelectionMsg, StageMsg};
+use trellis_core::{avatars, repo, undo};
 
 pub(super) fn err(e: trellis_core::error::Error) -> String {
     e.to_string()
@@ -109,7 +107,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::RemoveWorktree(r) => Some(worktrees::remove(r)),
         Effect::MoveWorktree(r) => Some(worktrees::move_(r)),
         Effect::CountWorktreeChanges(r) => Some(worktrees::count(r)),
-        Effect::RenameStash { cwd, index, oid, message } => Some(stashes::rename(&cwd, index, oid, &message)),
+        Effect::Stash(e) => Some(stashes::run(e)),
         Effect::LoadLfs { workdir, generation } => {
             Some(Msg::Lfs(LfsMsg::Loaded { generation, result: trellis_core::lfs::status(&workdir).map_err(err) }))
         }
@@ -130,28 +128,7 @@ fn execute_unscoped(effect: Effect, cancelled: &dyn Fn() -> bool, graph_cache: &
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
             Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))
         }
-        Effect::RepoOwners { account, cwd } => {
-            let result = forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::repo_owners(&account, &a)).map_err(err);
-            Some(Msg::Publish(PublishMsg::PublishOwners { account, result }))
-        }
-        Effect::CreateRepo { account, cwd, user, repo, branch } => {
-            let result =
-                forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::create_repo(&account, &a, &user, &repo)).map_err(err);
-            Some(Msg::Publish(PublishMsg::Published { workdir: cwd, branch, result }))
-        }
-        Effect::Connect { account, user, token, cwd } => Some(forge_calls::connect(account, user, token, &cwd)),
-        Effect::TrelloBoards { account, cwd } => Some(forge_calls::trello_boards(account, &cwd)),
-        Effect::SaveToken { account, user, token } => forge::save_token(&account, user.as_deref(), &token)
-            .err()
-            .map(|e| Msg::Logged { ok: false, text: format!("Connected, but the token could not be saved: {e}") }),
-        Effect::DeleteToken(account) => forge::delete_token(&account).err().map(|e| Msg::Logged { ok: false, text: e.to_string() }),
-        Effect::ForgetCredentialManager { accounts, cwd } => {
-            let failures: Vec<String> = accounts
-                .iter()
-                .filter_map(|a| forge::forget_credential_manager(a, &cwd).err().map(|e| format!("{}: {e}", a.display())))
-                .collect();
-            (!failures.is_empty()).then(|| Msg::Logged { ok: false, text: failures.join("\n") })
-        }
+        Effect::Account(e) => forge_calls::account(e),
         Effect::Stats { workdir, oids } => Some(Msg::Repo(RepoMsg::StatsLoaded(repo::commit_stats(&workdir, &oids)))),
         Effect::LineCounts(e) => Some(line_counts::run(e)),
         Effect::SearchPaths { workdir, request, terms, oids } => {

@@ -5,7 +5,7 @@
 
 use super::profiles_tests::{PERSONAL, WORK, profile, run, saves, two_profiles, values};
 use super::tests::{drive, git, scratch_repo};
-use crate::effect::Effect;
+use crate::effect::{AccountEffect, Effect};
 use crate::msg::{ForgeMsg, Msg, RepoMsg};
 use crate::profile::ProfileMsg;
 use crate::state::{AppState, ForgeState, PrefPage};
@@ -46,7 +46,7 @@ fn switch(st: &mut AppState, id: trellis_core::settings::ProfileId) -> Vec<Effec
 fn token_deletes(fx: &[Effect]) -> Vec<Account> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::DeleteToken(a) => Some(a.clone()),
+            Effect::Account(AccountEffect::DeleteToken(a)) => Some(a.clone()),
             _ => None,
         })
         .collect()
@@ -228,7 +228,7 @@ fn disconnect_keeps_shared_token() {
     let fx = run(&mut st, Msg::Forge(ForgeMsg::ForgetTokens { gcm: true }));
     assert_eq!(token_deletes(&fx), vec![bb.account.clone()]);
     let gcm = fx.iter().find_map(|e| match e {
-        Effect::ForgetCredentialManager { accounts, .. } => Some(accounts.clone()),
+        Effect::Account(AccountEffect::ForgetCredentialManager { accounts, .. }) => Some(accounts.clone()),
         _ => None,
     });
     assert_eq!(gcm, Some(vec![bb.account]), "the shared GitHub sign-in stays");

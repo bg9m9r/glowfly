@@ -3,7 +3,7 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
+use crate::effect::{AccountEffect, Effect};
 use crate::msg::JobMsg;
 use crate::msg::Msg;
 use crate::msg::PublishMsg;
@@ -52,7 +52,7 @@ fn push_without_a_remote_offers_github() {
     assert_eq!((f.branch.as_str(), f.private, f.loading), ("main", true, true));
     assert!(f.name.starts_with("trellis-app-test-publish-offer"), "named after the folder: {}", f.name);
     assert_eq!(f.accounts, [github()], "github.com when nothing is connected");
-    assert!(matches!(&fx[..], [Effect::RepoOwners { account, .. }] if *account == github()));
+    assert!(matches!(&fx[..], [Effect::Account(AccountEffect::Owners { account, .. })] if *account == github()));
 
     // Owners arrive: the user's login is selected and creation becomes possible.
     run(&mut st, Msg::Publish(PublishMsg::PublishOwners { account: github(), result: Ok(vec!["ada".into(), "acme".into()]) }));
@@ -65,7 +65,7 @@ fn push_without_a_remote_offers_github() {
     let fx = run(&mut st, Msg::Publish(PublishMsg::Publish));
     let want = NewRepo { owner: "acme".into(), name: "demo".into(), description: "A demo".into(), private: true };
     assert!(
-        matches!(&fx[..], [Effect::CreateRepo { user, repo, branch, .. }] if user == "ada" && *repo == want && branch == "main"),
+        matches!(&fx[..], [Effect::Account(AccountEffect::CreateRepo { user, repo, branch, .. })] if user == "ada" && *repo == want && branch == "main"),
         "{fx:?}"
     );
     assert!(form(&st).creating);
@@ -110,7 +110,7 @@ fn connected_accounts_are_offered_github_com_first() {
     assert_eq!(form(&st).accounts, [github(), ghe.clone()], "GitHub accounts only");
 
     let fx = run(&mut st, Msg::Publish(PublishMsg::PublishAccount(1)));
-    assert!(matches!(&fx[..], [Effect::RepoOwners { account, .. }] if *account == ghe));
+    assert!(matches!(&fx[..], [Effect::Account(AccountEffect::Owners { account, .. })] if *account == ghe));
     assert!(form(&st).user.is_none() && form(&st).loading);
     let _ = std::fs::remove_dir_all(&dir);
 }

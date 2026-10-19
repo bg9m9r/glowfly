@@ -1,14 +1,44 @@
-//! Calls to hosting services: pull requests and issues (`Effect::Forge`), connecting an
-//! account (`Effect::Connect`) and a Trello account's boards (`Effect::TrelloBoards`).
+//! Calls to hosting services: pull requests and issues (`Effect::Forge`), and connected
+//! accounts (`Effect::Account`): signing in, tokens, owners, creating a repository and a Trello
+//! account's boards.
 
-use crate::effect::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::{ForgeMsg, Msg};
+use crate::effect::{AccountEffect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use crate::msg::{ForgeMsg, Msg, PublishMsg};
 use std::path::Path;
 use trellis_core::forge::{self, Account, Auth, Target};
 
+/// Runs one account effect; the token saves and drops answer only when they fail.
+pub(super) fn account(e: AccountEffect) -> Option<Msg> {
+    let err = |e: trellis_core::error::Error| e.to_string();
+    match e {
+        AccountEffect::Owners { account, cwd } => {
+            let result = forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::repo_owners(&account, &a)).map_err(err);
+            Some(Msg::Publish(PublishMsg::PublishOwners { account, result }))
+        }
+        AccountEffect::CreateRepo { account, cwd, user, repo, branch } => {
+            let result =
+                forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::create_repo(&account, &a, &user, &repo)).map_err(err);
+            Some(Msg::Publish(PublishMsg::Published { workdir: cwd, branch, result }))
+        }
+        AccountEffect::Connect { account, user, token, cwd } => Some(connect(account, user, token, &cwd)),
+        AccountEffect::TrelloBoards { account, cwd } => Some(trello_boards(account, &cwd)),
+        AccountEffect::SaveToken { account, user, token } => forge::save_token(&account, user.as_deref(), &token)
+            .err()
+            .map(|e| Msg::Logged { ok: false, text: format!("Connected, but the token could not be saved: {e}") }),
+        AccountEffect::DeleteToken(account) => forge::delete_token(&account).err().map(|e| Msg::Logged { ok: false, text: e.to_string() }),
+        AccountEffect::ForgetCredentialManager { accounts, cwd } => {
+            let failures: Vec<String> = accounts
+                .iter()
+                .filter_map(|a| forge::forget_credential_manager(a, &cwd).err().map(|e| format!("{}: {e}", a.display())))
+                .collect();
+            (!failures.is_empty()).then(|| Msg::Logged { ok: false, text: failures.join("\n") })
+        }
+    }
+}
+
 /// Signs in to `account` with a saved or entered token, or through Git Credential Manager,
 /// and checks that the sign-in works.
-pub(super) fn connect(account: Account, user: Option<String>, token: Option<String>, cwd: &Path) -> Msg {
+fn connect(account: Account, user: Option<String>, token: Option<String>, cwd: &Path) -> Msg {
     let (method, auth, saved) = match token {
         Some(t) => {
             let auth = Auth::from_token(account.provider, user.as_deref(), &t, "saved token");
@@ -22,7 +52,7 @@ pub(super) fn connect(account: Account, user: Option<String>, token: Option<Stri
 
 /// The open boards of a connected Trello account, for the Issue Tracker page's Board picker.
 /// `connected` is true: update sends this only for a connected account.
-pub(super) fn trello_boards(account: Account, cwd: &Path) -> Msg {
+fn trello_boards(account: Account, cwd: &Path) -> Msg {
     let result =
         forge::resolve_auth(&account, cwd, false, true).and_then(|a| forge::trello_boards(&account, &a)).map_err(|e| e.to_string());
     Msg::Forge(ForgeMsg::TrelloBoardsLoaded { account, result })

@@ -1,6 +1,7 @@
 //! Tests for the per-repository effect queue (runner/queue.rs).
 
 use super::*;
+use crate::effect::StashEffect;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -247,7 +248,7 @@ fn every_effect_that_changes_a_repository_queues() {
             name: "wt".into(),
             folder: None,
         }),
-        Effect::RenameStash { cwd: w.clone(), index: 0, oid: git2::Oid::zero(), message: "On main: x".into() },
+        Effect::Stash(StashEffect::Rename { cwd: w.clone(), index: 0, oid: git2::Oid::zero(), message: "On main: x".into() }),
         Effect::SparseCheckout { cwd: w.clone(), command: trellis_core::sparse_ops::SparseCommand::Reapply },
     ];
     for e in &changing {

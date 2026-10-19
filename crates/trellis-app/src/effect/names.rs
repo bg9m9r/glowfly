@@ -32,7 +32,7 @@ impl Effect {
             Effect::RemoveWorktree(_) => "remove-worktree",
             Effect::MoveWorktree(_) => "move-worktree",
             Effect::CountWorktreeChanges(_) => "count-worktree-changes",
-            Effect::RenameStash { .. } => "rename-stash",
+            Effect::Stash(e) => e.name(),
             Effect::LoadLfs { .. } => "lfs-status",
             Effect::LoadSparse { .. } => "sparse-status",
             Effect::SparseCheckout { .. } => "sparse-checkout",
@@ -40,13 +40,7 @@ impl Effect {
             Effect::UndoRedo { .. } => "undo-redo",
             Effect::Rebase(e) => e.name(),
             Effect::Forge { .. } => "forge",
-            Effect::Connect { .. } => "connect",
-            Effect::RepoOwners { .. } => "repo-owners",
-            Effect::CreateRepo { .. } => "create-repo",
-            Effect::SaveToken { .. } => "save-token",
-            Effect::DeleteToken(_) => "delete-token",
-            Effect::ForgetCredentialManager { .. } => "forget-gcm",
-            Effect::TrelloBoards { .. } => "trello-boards",
+            Effect::Account(e) => e.name(),
             Effect::Stats { .. } => "stats",
             Effect::LineCounts(e) => e.name(),
             Effect::SearchPaths { .. } => "search-paths",
@@ -125,7 +119,7 @@ impl Effect {
             | Effect::DetectLfs { .. }
             | Effect::RemoveWorktree(_)
             | Effect::MoveWorktree(_)
-            | Effect::RenameStash { .. }
+            | Effect::Stash(_)
             | Effect::LoadLfs { .. }
             | Effect::LoadSparse { .. }
             | Effect::SparseCheckout { .. }
@@ -133,13 +127,7 @@ impl Effect {
             | Effect::UndoRedo { .. }
             | Effect::Rebase(_)
             | Effect::Forge { .. }
-            | Effect::Connect { .. }
-            | Effect::RepoOwners { .. }
-            | Effect::CreateRepo { .. }
-            | Effect::SaveToken { .. }
-            | Effect::DeleteToken(_)
-            | Effect::ForgetCredentialManager { .. }
-            | Effect::TrelloBoards { .. }
+            | Effect::Account(_)
             | Effect::Stats { .. }
             | Effect::LineCounts(_)
             | Effect::SearchPaths { .. }

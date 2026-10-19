@@ -7,7 +7,7 @@
 use super::palette_stash_tests::two_stashes;
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
+use crate::effect::{Effect, StashEffect};
 use crate::msg::Msg;
 use crate::msg::PaletteMsg;
 use crate::msg::RepoMsg;
@@ -77,7 +77,7 @@ fn renaming_keeps_the_commit_and_the_place() {
     let fx = run(&mut st, rename(first.oid, "  renamed \n"));
     let want = format!("On {branch}: renamed");
     match &fx[..] {
-        [Effect::RenameStash { index: 1, oid, message, .. }] => {
+        [Effect::Stash(StashEffect::Rename { index: 1, oid, message, .. })] => {
             assert_eq!(*oid, first.oid);
             assert_eq!(*message, want);
         }

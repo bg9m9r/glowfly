@@ -6,7 +6,7 @@
 //! The Stash dialog's messages go to update/stash_push.rs.
 
 use super::ops::{self, JobSpec, start_job};
-use crate::effect::Effect;
+use crate::effect::{Effect, StashEffect};
 use crate::msg::StashMsg;
 use crate::state::palette::StashAction;
 use crate::state::stashes::RenameStashForm;
@@ -73,7 +73,7 @@ fn rename(st: &mut AppState, oid: Oid, body: &str, fx: &mut Vec<Effect>) {
         return;
     }
     // Recorded undo actions find stashes by commit, which a rename keeps.
-    let effect = move |cwd| Effect::RenameStash { cwd, index: s.index, oid, message };
+    let effect = move |cwd| Effect::Stash(StashEffect::Rename { cwd, index: s.index, oid, message });
     if ops::begin_job(st, "Rename stash", true, effect, fx) == ops::Started::Now {
         close_dialog(st);
     }

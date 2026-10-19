@@ -6,11 +6,12 @@ use crate::msg::{FilePurpose, FolderPurpose};
 use git2::Oid;
 use std::path::PathBuf;
 use trellis_core::askpass::Reply;
-use trellis_core::forge::{Account, Auth, NewRepo, Target};
+use trellis_core::forge::{Auth, Target};
 use trellis_core::repo::{DiffTarget, FileDiff, HistoryStart, LoadOptions};
 use trellis_core::settings::Settings;
 use trellis_core::undo::{Action, UndoKind};
 
+mod account;
 mod blame;
 mod clone;
 mod credential;
@@ -27,9 +28,12 @@ mod rebase;
 mod repo;
 mod repos;
 mod scope;
+mod stash;
 mod submodule;
+mod ui;
 mod updates;
 
+pub use account::AccountEffect;
 pub use blame::BlameRequest;
 pub use clone::CloneEffect;
 pub use credential::CredentialEffect;
@@ -42,16 +46,12 @@ pub use issue::*;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
 pub use notify::{DesktopNote, NoteKind};
 pub use rebase::RebaseEffect;
-pub use repo::{ConflictRead, KnownRepo, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
+pub use repo::{ConflictRead, KnownRepo, LoadKind, LocalOp, StatusRead, UndoOpts, UndoResult, WatchTarget};
 pub use repos::ReposEffect;
+pub use stash::StashEffect;
 pub use submodule::SubmoduleEffect;
+pub use ui::UiEffect;
 pub use updates::UpdateEffect;
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum LoadKind {
-    Open,
-    Refresh,
-}
 
 #[derive(Debug)]
 pub enum Effect {
@@ -193,14 +193,8 @@ pub enum Effect {
     /// Runs `git worktree move` once the target is free. Unscoped like RunGit: it ends the
     /// active job.
     MoveWorktree(crate::worktree::MoveRequest),
-    /// Renames the stash list entry stash@{index} (only if it still is commit `oid`) to
-    /// `message`, keeping its position. Unscoped like RunGit: it ends the active job.
-    RenameStash {
-        cwd: PathBuf,
-        index: usize,
-        oid: Oid,
-        message: String,
-    },
+    /// Stash list jobs: renaming an entry (stash.rs).
+    Stash(StashEffect),
     /// Git LFS status for the preferences page: installed version, set up or not, tracked patterns.
     LoadLfs {
         workdir: PathBuf,
@@ -262,40 +256,9 @@ pub enum Effect {
         connected: bool,
         call: ForgeCall,
     },
-    /// Where the signed-in user can create repositories (their login, then organizations).
-    RepoOwners {
-        account: Account,
-        cwd: PathBuf,
-    },
-    /// Creates a repository for `workdir`; the result carries what is needed to push to it.
-    CreateRepo {
-        account: Account,
-        cwd: PathBuf,
-        user: String,
-        repo: NewRepo,
-        branch: String,
-    },
-    Connect {
-        account: Account,
-        user: Option<String>,
-        token: Option<String>,
-        cwd: PathBuf,
-    },
-    SaveToken {
-        account: Account,
-        user: Option<String>,
-        token: String,
-    },
-    DeleteToken(Account),
-    ForgetCredentialManager {
-        accounts: Vec<Account>,
-        cwd: PathBuf,
-    },
-    /// The open boards of a connected Trello account (Issue Tracker > Board).
-    TrelloBoards {
-        account: Account,
-        cwd: PathBuf,
-    },
+    /// Connected accounts: signing in, tokens, creating a repository, owners and boards
+    /// (account.rs); unscoped.
+    Account(AccountEffect),
     Stats {
         workdir: PathBuf,
         oids: Vec<Oid>,
@@ -434,19 +397,4 @@ pub enum Effect {
     /// Finding repositories in project folders (runner/repos.rs); unscoped, reads folder listings only.
     Repos(ReposEffect),
     Ui(UiEffect),
-}
-
-/// Effects that need the window, carried out by the UI shell.
-#[derive(Debug, PartialEq)]
-pub enum UiEffect {
-    CopyText(String),
-    SetTitle(String),
-    /// A credential prompt opened: flash the taskbar entry if the window isn't focused.
-    RequestAttention,
-    /// A link arrived: un-minimize, raise and focus the window (or flash it when that fails).
-    FocusWindow,
-    /// File > Quit: close the main window.
-    CloseWindow,
-    /// Read the clipboard into an Event::Paste for the focused widget on the next frame.
-    RequestPaste,
 }

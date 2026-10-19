@@ -3,7 +3,7 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg};
 use crate::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
 use std::time::Instant;
@@ -47,7 +47,7 @@ fn my_issues_calls(fx: &[Effect]) -> Vec<bool> {
 }
 
 fn board_loads(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::TrelloBoards { account, .. } if *account == acct())).count()
+    fx.iter().filter(|e| matches!(e, Effect::Account(AccountEffect::TrelloBoards { account, .. }) if *account == acct())).count()
 }
 
 fn card(key: &str, title: &str) -> Issue {

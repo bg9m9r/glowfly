@@ -2,7 +2,7 @@
 //! and push the current branch to it.
 
 use super::ops::{JobSpec, start_job};
-use crate::effect::Effect;
+use crate::effect::{AccountEffect, Effect};
 use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
 use crate::state::{AppState, Modal};
@@ -50,7 +50,7 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
             f.creating = true;
             f.error = None;
             let repo = NewRepo { owner: f.owner.clone(), name, description: f.description.trim().to_owned(), private: f.private };
-            fx.push(Effect::CreateRepo { account, cwd: f.workdir.clone(), user, repo, branch: f.branch.clone() });
+            fx.push(Effect::Account(AccountEffect::CreateRepo { account, cwd: f.workdir.clone(), user, repo, branch: f.branch.clone() }));
         }
         PublishMsg::Published { workdir, branch, result } => match result {
             Ok(repo) => {
@@ -130,5 +130,5 @@ fn load_owners(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(account) = f.account().cloned() else { return };
     f.loading = true;
     f.error = None;
-    fx.push(Effect::RepoOwners { account, cwd: f.workdir.clone() });
+    fx.push(Effect::Account(AccountEffect::Owners { account, cwd: f.workdir.clone() }));
 }

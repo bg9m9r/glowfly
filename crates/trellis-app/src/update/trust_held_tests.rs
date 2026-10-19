@@ -4,7 +4,7 @@
 use super::jobs::{JobSpec, Started, begin_job, start_job};
 use super::tests::{scratch_repo, state};
 use super::trust_tests::{asking, drive, open, real, run, untrusted_repo};
-use crate::effect::{Effect, InitEffect};
+use crate::effect::{Effect, InitEffect, StashEffect};
 use crate::msg::{CloneMsg, CommitMsg, InitMsg, Msg, TrustMsg};
 use crate::patch::PatchMsg;
 use crate::state::clone::CloneRequest;
@@ -247,11 +247,11 @@ fn a_job_in_another_repository_is_not_held() {
 fn begin_job_jobs_and_undo_are_held() {
     let (mut st, dir) = held_repo("held-begin");
     let mut fx = Vec::new();
-    let effect = |cwd| Effect::RenameStash { cwd, index: 0, oid: git2::Oid::zero(), message: "m".into() };
+    let effect = |cwd| Effect::Stash(StashEffect::Rename { cwd, index: 0, oid: git2::Oid::zero(), message: "m".into() });
     assert_eq!(begin_job(&mut st, "Rename stash", true, effect, &mut fx), Started::Held);
     assert!(fx.is_empty(), "{fx:?}");
     let fx = trust_and_run(&mut st);
-    assert!(fx.iter().any(|e| matches!(e, Effect::RenameStash { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Stash(StashEffect::Rename { .. }))), "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Rename stash"));
     let _ = std::fs::remove_dir_all(&dir);
 }
