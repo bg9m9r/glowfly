@@ -23,7 +23,7 @@ use trellis_core::repo::LoadOptions;
 use trellis_core::settings::{FilterOp, GraphFilter, ThemeChoice};
 
 const ITEMS: [&str; 8] =
-    ["Checkout (detached)", "Annotate…", "Push to", "Hide in graph", "Solo", "Copy", "Delete locally…", "Delete from remote"];
+    ["Checkout (detached)", "Annotate…", "Push to", "Hide in graph", "Show only this", "Copy", "Delete locally…", "Delete from remote"];
 
 /// The fixture with the TAGS section open and the given remotes (no branches on them).
 fn with_tags(theme: ThemeChoice, name: &str, remotes: &[&str]) -> (AppState, PathBuf) {
@@ -213,7 +213,7 @@ fn tags_hidden_solo() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("tags_hidden_solo");
-    assert!(h.query_by_label("Soloing v0.2.0").is_some());
+    assert!(h.query_by_label("Showing only v0.2.0").is_some());
     assert!(h.query_by_label("1 hidden from the graph").is_some());
     h.get_by_label("Show v0.1.0 in graph").click();
     h.run();
@@ -221,8 +221,9 @@ fn tags_hidden_solo() {
 
     let at = tag_row(&h, "v0.2.0");
     click(&mut h, at, PointerButton::Secondary);
-    assert_eq!(h.get_all_by_label("Stop soloing v0.2.0").count(), 1, "the row's marker");
-    assert_eq!(h.get_all_by_label("Stop soloing").count(), 2, "the banner's button and the menu item");
+    assert_eq!(h.get_all_by_label("Stop showing only v0.2.0").count(), 1, "the row's marker");
+    assert_eq!(h.get_all_by_label("Stop showing only this").count(), 1, "the menu item");
+    assert_eq!(h.get_all_by_label("Show the rest").count(), 1, "the banner's button");
     assert!(!h.get_by_label("Hide in graph").is_disabled());
     drop(h);
     remove_fixture(&dir);

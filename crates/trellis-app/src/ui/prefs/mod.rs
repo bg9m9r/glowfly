@@ -152,7 +152,11 @@ fn nav(ctx: &egui::Context, page: PrefPage, repo_name: Option<&str>, t: Lang, ms
     egui::SidePanel::left("prefs-nav").exact_width(250.0).resizable(false).frame(egui::Frame::new().fill(color::panel())).show(ctx, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         ui.add_space(6.0);
-        if widgets::nav_row(ui, Some(Icon::Back), t.tr("prefs.nav.exit"), false).on_hover_text("Esc").clicked() {
+        let back = if repo_name.is_some() { t.tr("prefs.nav.back_to_repo") } else { t.tr("prefs.nav.back") };
+        let r = widgets::nav_row(ui, Some(Icon::Back), back, false);
+        // Its text is painted; name the row for screen readers.
+        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, back));
+        if r.on_hover_text("Esc").clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::ClosePrefs));
         }
         ui.add_space(12.0);

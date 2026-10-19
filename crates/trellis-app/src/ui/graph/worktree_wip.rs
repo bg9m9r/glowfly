@@ -1,10 +1,9 @@
 //! Other worktrees' WIP rows in the graph (a dashed node in its lane's colour joined to the
-//! worktree's HEAD commit, a "// WIP · <folder>" box and the change counts). This tab's own
+//! worktree's HEAD commit, a "Uncommitted changes · <folder>" box and the change counts). This tab's own
 //! WIP row is drawn by `wip_row`.
 
 use super::nodes;
 use super::paint::{Columns, draw_lanes, lane_x, paint_pencil};
-use crate::state::worktrees::wip_label;
 use crate::ui::common::{added_color, lane_color, modified_color, removed_color};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
@@ -44,15 +43,24 @@ fn draw_counts(mp: &Painter, x: f32, mid: f32, c: ChangeCounts) {
     }
 }
 
-/// Draws worktree `wt`'s WIP row `w` in `rect`: its lanes and dashed node when the tree column
-/// is shown, then its box and counts in the message column.
-pub(super) fn draw(painter: &Painter, gp: &Painter, cols: &Columns, rect: Rect, w: &WorktreeWipRow, wt: &WorktreeInfo, tree: bool) {
+/// Draws worktree `wt`'s WIP row `w` in `rect`: its lanes and dashed node with the tree
+/// column's painter `gp` (None while that column is hidden), then its box holding `label` and
+/// its counts in the message column.
+pub(super) fn draw(
+    painter: &Painter,
+    gp: Option<&Painter>,
+    cols: &Columns,
+    rect: Rect,
+    w: &WorktreeWipRow,
+    wt: &WorktreeInfo,
+    label: &str,
+) {
     let mid = rect.center().y;
-    if tree {
+    if let Some(gp) = gp {
         draw_lanes(gp, cols.graph.0, rect, &w.row);
         nodes::wip_ring(gp, pos2(lane_x(cols.graph.0, w.row.col), mid), lane_color(w.row.col));
     }
     let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
-    let right = wip_box(&mp, cols.msg.0, mid, &wip_label(wt));
+    let right = wip_box(&mp, cols.msg.0, mid, label);
     draw_counts(&mp, right + 12.0, mid, wt.changes);
 }

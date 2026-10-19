@@ -1,8 +1,9 @@
 //! Esc against the keyboard focus: in a text field it only leaves the field, and a terminal
 //! hidden under Preferences doesn't keep it from closing them. Runs the shell's Esc handling
-//! before drawing, in the app's order.
+//! before drawing, in the app's order. The Preferences nav's top row, which Esc also stands for,
+//! names where it goes back to.
 
-use super::snapshot_tests::{remove_fixture, with_repo};
+use super::snapshot_tests::{remove_fixture, settings, with_repo};
 use super::{UiCache, avatars::Avatars, draw, escape_key, theme::color};
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
@@ -11,6 +12,7 @@ use crate::state::terminal::{SessionStatus, TermSession};
 use crate::state::{AppState, PrefPage, PrefsState};
 use eframe::egui::{self, Key};
 use egui_kittest::Harness;
+use egui_kittest::kittest::Queryable;
 use trellis_core::repo::{DiffTarget, FileDiff};
 use trellis_core::settings::ThemeChoice;
 use trellis_core::spell::Speller;
@@ -222,4 +224,28 @@ fn esc_with_the_view_menu_open_closes_only_the_menu() {
     assert!(esc(&mut h).iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))), "the next closes the diff");
     drop(h);
     remove_fixture(&dir);
+}
+
+/// Opens Preferences on General in `st`, clicks the nav's top row by `label` (and checks the
+/// other name isn't shown), and returns what it pushed.
+fn click_back(st: AppState, label: &str, other: &str) -> Vec<Msg> {
+    let mut st = st;
+    st.prefs = Some(PrefsState::new(PrefPage::General));
+    let mut h = app_harness(st);
+    h.run();
+    assert!(h.query_by_label(other).is_none(), "{other} is not shown");
+    h.state_mut().1.clear();
+    h.get_by_label(label).click();
+    h.run_ok();
+    std::mem::take(&mut h.state_mut().1)
+}
+
+#[test]
+fn prefs_back_row_names_where_it_goes() {
+    let closes = |msgs: &[Msg]| msgs.iter().any(|m| matches!(m, Msg::Prefs(PrefsMsg::ClosePrefs)));
+    let (st, dir) = with_repo(ThemeChoice::Dark, "prefs-back");
+    assert!(closes(&click_back(st, "Back to repository", "Back")), "with a repository open");
+    remove_fixture(&dir);
+    let st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), std::time::Instant::now());
+    assert!(closes(&click_back(st, "Back", "Back to repository")), "without one");
 }

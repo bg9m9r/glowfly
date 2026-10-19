@@ -108,7 +108,7 @@ pub(in crate::ui) fn section(
             } else if r.clicked() {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
             }
-            ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/remotes/{full}"), &full, c.graph, msgs);
+            ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/remotes/{full}"), &full, c.graph, c.t, msgs);
             let m = RemoteMenu { current: c.current, fs: c.fs, graph: c.graph, sel: c.sel, t: c.t };
             r.context_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &m, msgs));
         }

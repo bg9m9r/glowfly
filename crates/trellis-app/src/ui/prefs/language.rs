@@ -1,5 +1,6 @@
 //! Preferences > Language & region: the interface language, and how dates and times are written
-//! (the locale, four patterns with live previews of the current time, and relative dates). It
+//! (the locale, four patterns that follow the locale while blank, each with a live preview of
+//! the current time, and relative dates). It
 //! edits the settings in place, so the next frame is drawn in the new language and the shell
 //! saves the change.
 
@@ -7,7 +8,7 @@ use super::{check_row, help, row, section};
 use crate::ui::theme::{color, controls, type_scale};
 use eframe::egui::{self, RichText, Ui, vec2};
 use trellis_core::i18n::{self, Lang, SYSTEM};
-use trellis_core::settings::Settings;
+use trellis_core::settings::{DateKind, Settings};
 
 /// `now` is the current time and the local UTC offset, for the previews.
 pub fn language_page(ui: &mut Ui, s: &mut Settings, now: (i64, i32)) {
@@ -60,17 +61,18 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
             }
         });
     });
-    let d = Settings::default();
+    // After the locale picker, so a new locale's hints and previews show on the same frame.
+    let [date, long, date_time, full] = [DateKind::Date, DateKind::LongDate, DateKind::DateTime, DateKind::Full].map(|k| s.date_default(k));
     let loc = s.date_locale.clone();
-    date_pattern(ui, t.tr("prefs.ui.date_format.label"), &mut s.date_format, &d.date_format, &loc, now);
-    date_pattern(ui, t.tr("prefs.ui.date_word_format.label"), &mut s.date_word_format, &d.date_word_format, &loc, now);
-    date_pattern(ui, t.tr("prefs.ui.date_time_format.label"), &mut s.date_time_format, &d.date_time_format, &loc, now);
-    date_pattern(ui, t.tr("prefs.ui.date_verbose_format.label"), &mut s.date_verbose_format, &d.date_verbose_format, &loc, now);
+    date_pattern(ui, t.tr("prefs.ui.date_format.label"), &mut s.date_format, date, &loc, now);
+    date_pattern(ui, t.tr("prefs.ui.long_date_format.label"), &mut s.date_word_format, long, &loc, now);
+    date_pattern(ui, t.tr("prefs.ui.date_time_format.label"), &mut s.date_time_format, date_time, &loc, now);
+    date_pattern(ui, t.tr("prefs.ui.full_date_format.label"), &mut s.date_verbose_format, full, &loc, now);
     let (label, check) = (t.tr("prefs.ui.relative_dates.label"), t.tr("prefs.ui.relative_dates.check"));
     check_row(ui, label, &mut s.relative_dates, check, None);
 }
 
-/// A date pattern field with a live preview of the current time.
+/// A date pattern field with a live preview of the current time; blank shows and uses `default`.
 fn date_pattern(ui: &mut Ui, label: &str, value: &mut String, default: &str, locale: &str, now: (i64, i32)) {
     row(ui, label, |ui| {
         ui.horizontal_wrapped(|ui| {

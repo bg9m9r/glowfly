@@ -95,7 +95,7 @@ Keep terms the same across pages.
 | submodule | Submodul | submódulo |
 | hunk | Hunk | bloque |
 | line (of a diff) | Zeile | línea |
-| hide / solo (in the graph) | ausblenden / Solo | ocultar / aislar |
+| hide / show only (in the graph) | ausblenden / nur … zeigen | ocultar / mostrar solo |
 | fast-forward | Fast-Forward | avance rápido |
 | reset (soft / mixed / hard) | zurücksetzen (Soft / Mixed / Hard) | restablecer (soft / mixed / hard) |
 | pull request / merge request | Pull Request / Merge Request | pull request / merge request |

@@ -101,13 +101,29 @@ fn existing_defaults() -> Settings {
     Settings { welcome_done: true, ..Settings::default() }
 }
 
-/// Early builds stored a preset name ("Iso", "Long", "Relative") in `date_format`.
+/// Early builds stored a preset name ("Iso", "Long", "Relative") in `date_format`; builds
+/// before the patterns followed the locale saved the old built-in patterns, which mean "unset".
 fn migrate(mut s: Settings) -> Settings {
     if matches!(s.date_format.as_str(), "Iso" | "Long" | "Relative") {
         s.relative_dates = s.date_format == "Relative";
         s.date_format = Settings::default().date_format;
     }
+    forget_old_date_defaults(&mut s.date_format, &mut s.date_word_format, &mut s.date_time_format, &mut s.date_verbose_format);
+    for p in s.profiles.iter_mut().filter_map(|p| p.prefs.as_mut()) {
+        forget_old_date_defaults(&mut p.date_format, &mut p.date_word_format, &mut p.date_time_format, &mut p.date_verbose_format);
+    }
     s
+}
+
+/// Clears each date pattern that still holds the built-in value older builds saved, so it
+/// follows the date locale; any other pattern is the user's own and stays.
+fn forget_old_date_defaults(date: &mut String, word: &mut String, time: &mut String, verbose: &mut String) {
+    let fields = [(date, "MM/DD/YYYY"), (word, "MMMM D, YYYY"), (time, "MM/DD/YYYY @ h:mm A"), (verbose, "MMMM D, YYYY h:mm A")];
+    for (field, old) in fields {
+        if field.as_str() == old {
+            field.clear();
+        }
+    }
 }
 
 /// Reads a JSON object one setting at a time, so a value this version doesn't understand (an

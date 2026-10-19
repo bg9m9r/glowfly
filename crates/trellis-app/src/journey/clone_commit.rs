@@ -59,7 +59,7 @@ fn clone_stage_commit_push_pull() {
 
     // step 5: commit the staged changes; the second hunk stays in the working tree.
     j.type_into("Commit summary", "Edit notes and add a todo list");
-    j.click("Commit changes to 2 files", Region::Details, Pick::Only);
+    j.click("Commit 2 files", Region::Details, Pick::Only);
     j.toast(true, "Commit succeeded");
     let head = disk::head_oid(&clone);
     assert_eq!(disk::summary(&clone, head), "Edit notes and add a todo list");

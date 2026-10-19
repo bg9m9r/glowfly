@@ -50,7 +50,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         });
         ui.add_space(8.0);
         let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
-        ref_visibility::banner(ui, &filter, msgs);
+        ref_visibility::banner(ui, st.settings.lang(), &filter, msgs);
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));
     });
     panel_size::track(ctx, st, SizedPanel::Sidebar, id, resp.response.rect.width(), msgs);
@@ -137,7 +137,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
-            ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &format!("refs/heads/{}", b.name), &b.name, graph, msgs);
+            ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &format!("refs/heads/{}", b.name), &b.name, graph, t, msgs);
             r.context_menu(|ui| local_branch_menu(ui, t, b, snap, fs, graph, sel, msgs));
         }
     }

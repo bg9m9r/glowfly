@@ -121,8 +121,10 @@ const ENGLISH: &[&str] = &[
     "Delete from remote…",
     "Show in graph",
     "Hide in graph",
-    "Solo",
-    "Stop soloing",
+    "Show only this",
+    "Stop showing only this",
+    "Showing only *",
+    "Show the rest",
     // Tag menu.
     "Annotate…",
     "All remotes",

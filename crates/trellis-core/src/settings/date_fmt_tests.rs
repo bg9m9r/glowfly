@@ -1,23 +1,65 @@
-//! The Date, Date word, Date/Time and verbose formats, relative ages and date hover text.
+//! The Date, Long date, Date and time and Full date and time formats, their locale defaults,
+//! relative ages and date hover text. Every test names its date locale; none reads the OS.
 
-use super::{DEFAULT_DATE_FORMAT, DEFAULT_DATE_TIME_FORMAT, DEFAULT_DATE_VERBOSE_FORMAT, DEFAULT_DATE_WORD_FORMAT, Settings};
+use super::{DateKind, Settings};
 
 /// 2026-10-13 12:00 UTC.
 const SECS: i64 = 1_791_892_800;
 
+fn with_locale(locale: &str) -> Settings {
+    Settings { date_locale: locale.into(), ..Settings::default() }
+}
+
 fn en() -> Settings {
-    Settings { date_locale: "en_US".into(), ..Settings::default() }
+    with_locale("en_US")
 }
 
 #[test]
-fn date_and_date_word_use_their_patterns() {
+fn defaults_are_blank() {
+    let d = Settings::default();
+    for p in [&d.date_format, &d.date_word_format, &d.date_time_format, &d.date_verbose_format] {
+        assert_eq!(p, "");
+    }
+}
+
+#[test]
+fn us_english_blank_fields() {
     let s = en();
     assert_eq!(s.format_date(SECS, 0), "10/13/2026");
     assert_eq!(s.format_date_word(SECS, 0), "October 13, 2026");
-    let de = Settings { date_locale: "de_DE".into(), ..Settings::default() };
-    assert_eq!(de.format_date_word(SECS, 0), "Oktober 13, 2026");
-    let iso = Settings { date_format: "YYYY-MM-DD".into(), ..en() };
-    assert_eq!(iso.format_date(SECS, 0), "2026-10-13");
+    assert_eq!(s.format_time(SECS, SECS, 0), "10/13/2026 12:00 PM");
+    assert_eq!(s.format_verbose(SECS, 0), "October 13, 2026 12:00 PM");
+}
+
+#[test]
+fn german_blank_fields() {
+    let s = with_locale("de_DE");
+    assert_eq!(s.format_date(SECS, 0), "13.10.2026");
+    assert_eq!(s.format_date_word(SECS, 0), "13. Oktober 2026");
+    assert_eq!(s.format_time(SECS, SECS, 0), "13.10.2026 12:00");
+    assert_eq!(s.format_verbose(SECS, 0), "13. Oktober 2026 12:00");
+}
+
+#[test]
+fn unknown_locale_uses_iso() {
+    let s = with_locale("xx");
+    assert_eq!(s.format_date(SECS, 0), "2026-10-13");
+    assert_eq!(s.format_time(SECS, SECS, 0), "2026-10-13 12:00");
+    assert_eq!(s.format_verbose(SECS, 0), "2026-10-13 12:00:00");
+}
+
+#[test]
+fn a_typed_pattern_wins() {
+    let s = Settings { date_format: "YYYY-MM-DD".into(), date_time_format: "  ".into(), ..with_locale("de_DE") };
+    assert_eq!(s.format_date(SECS, 0), "2026-10-13");
+    assert_eq!(s.format_time(SECS, SECS, 0), "13.10.2026 12:00", "whitespace is blank");
+}
+
+#[test]
+fn date_default_follows_the_locale() {
+    assert_eq!(en().date_default(DateKind::DateTime), "MM/DD/YYYY h:mm A");
+    assert_eq!(with_locale("de_DE").date_default(DateKind::DateTime), "DD.MM.YYYY HH:mm");
+    assert_eq!(with_locale("C").date_default(DateKind::DateTime), "YYYY-MM-DD HH:mm");
 }
 
 #[test]
@@ -33,21 +75,6 @@ fn format_day_is_relative_or_date() {
     assert_eq!(en().format_day(SECS, SECS + 90_000, 0), "10/13/2026");
     let s = Settings { relative_dates: true, ..en() };
     assert_eq!(s.format_day(SECS, SECS + 90_000, 0), "yesterday");
-}
-
-#[test]
-fn blank_patterns_use_defaults() {
-    let s = Settings {
-        date_format: "  ".into(),
-        date_word_format: String::new(),
-        date_time_format: String::new(),
-        date_verbose_format: " ".into(),
-        ..en()
-    };
-    assert_eq!(s.format_date(SECS, 0), "10/13/2026");
-    assert_eq!(s.format_date_word(SECS, 0), "October 13, 2026");
-    assert_eq!(s.format_time(SECS, SECS, 0), "10/13/2026 @ 12:00 PM");
-    assert_eq!(s.format_verbose(SECS, 0), "October 13, 2026 12:00 PM");
 }
 
 #[test]
@@ -73,13 +100,4 @@ fn relative_dates_follow_the_language() {
     assert_eq!(de.format_day(SECS, SECS + 90_000, 0), "gestern");
     let absolute = Settings { language: "de".into(), ..en() };
     assert_eq!(absolute.date_tooltip(SECS, SECS + 7200, 0).lines().nth(1), Some("vor 2 Stunden"));
-}
-
-#[test]
-fn defaults_match_constants() {
-    let d = Settings::default();
-    assert_eq!(d.date_format, DEFAULT_DATE_FORMAT);
-    assert_eq!(d.date_word_format, DEFAULT_DATE_WORD_FORMAT);
-    assert_eq!(d.date_time_format, DEFAULT_DATE_TIME_FORMAT);
-    assert_eq!(d.date_verbose_format, DEFAULT_DATE_VERBOSE_FORMAT);
 }

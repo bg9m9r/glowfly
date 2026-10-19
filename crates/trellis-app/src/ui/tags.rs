@@ -55,7 +55,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
             msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
         }
         let full = format!("refs/tags/{name}");
-        ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &full, name, graph, msgs);
+        ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &full, name, graph, t, msgs);
         r.context_menu(|ui| tag_menu(ui, t, name, snap, graph, idle, msgs));
     }
 }

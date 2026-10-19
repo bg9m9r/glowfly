@@ -235,13 +235,13 @@ From hands-on testing on 2026-10-19. The behaviour fixes come first; the design 
 wait for a choice on the design board, so don't plan an item marked "Waiting on a design choice"
 until this list says which option was chosen.
 
-- [ ] **Trellis's own wording**: rewrite these labels and help texts in fresh words of our
+- [x] **Trellis's own wording**: rewrite these labels and help texts in fresh words of our
       own, in every language table, the docs and the snapshots: the help for the default branch
       name, the initial-commits warning, core.longpaths and the auto-fetch interval; the "How do
       I renew an expired key?" link; "Automatically group worktree tabs together"; "Exit
       preferences" (say "Back to repository"); the commit button's "Commit changes to N files" /
       "Stage files to commit" (e.g. "Commit 2 files" / "Stage something to commit"); the
-      "// WIP" worktree placeholder (use "Uncommitted changes · folder", as in the main row);
+      worktree WIP row's placeholder text (use "Uncommitted changes · folder", as in the main row);
       the date settings' "Date word" and verbose names (say "Long date" and "Full date and
       time"), with the default format taken from the system's locale or ISO 8601 instead of
       `MM/DD/YYYY @ h:mm A`; and the option names Ghost branch (say "Quick-branch chip"), Smart
@@ -376,26 +376,29 @@ Done except the group colors, which wait on repository groups in the repository 
 
 - [x] **Theme** dropdown (dark, light, more)
 - [x] **Notification location** (bottom left, top right, …), once toasts exist
-- [x] **Date/Time section**: date/time locale (system or a chosen locale) and four custom format
-      strings with live previews: *Date* (`MM/DD/YYYY`), *Date word* (`MMMM D, YYYY`),
-      *Date/Time* (`MM/DD/YYYY @ h:mm A`, the graph's date column) and *Date verbose*
-      (`MMMM D, YYYY h:mm A`, commit details). Date shows in file history and blame rows, Date
-      word in the issue panel and the file history footer, and hovering a graph, history or
-      comment date shows its full date and age.
+- [x] **Date/Time section**: date/time locale (system or a chosen locale) and four format
+      patterns with live previews: *Date*, *Long date*, *Date and time* (the graph's date
+      column) and *Full date and time* (commit details). A blank pattern follows the locale's
+      usual one (`MM/DD/YYYY h:mm A` in US English, `DD.MM.YYYY HH:mm` in German), or ISO 8601
+      (`YYYY-MM-DD HH:mm`) for a locale Trellis has no row for. Date shows in file history and
+      blame rows, Long date in the issue panel and the file history footer, and hovering a
+      graph, history or comment date shows its full date and age.
 - [ ] **Default group color / reset all to default**,
       for repo groups in the repository manager. (Workspace color belongs to cloud Workspaces,
       which are out of scope.)
-- [x] **Automatically group worktree tabs together**: tabs of one repository's worktrees open
+- [x] **Keep a repository's worktree tabs side by side**: tabs of one repository's worktrees open
       and stay side by side with a colored strip; a drop outside the group moves the whole group
 - [x] **Show toolbar icon labels**
 - [x] **Enable spell checking** in commit messages
 - [x] **Author initials vs avatars**: real avatars (Gravatar or the hosting service's
       avatar, cached on disk), with initials as the opt-in.
-- [x] **Show ghost branch on the current commit**: a faded "+ branch" after the checked-out
-      commit's labels when it is hovered or selected; click it to branch from the current branch
-- [x] **Highlight associated rows when hovering a branch**
-- [x] **Branch visibility in commit graph**: All / Smart.
-      Smart shows only the current branch, its upstream and target, and branches with PRs.
+- [x] **Quick-branch chip on the checked-out commit**: a faint "+ branch" chip after the
+      checked-out commit's labels when it is pointed at or selected; click it to branch from the
+      current branch
+- [x] **Trace a branch on hover**: a branch's commits light up while the pointer is on its label
+- [x] **Branch visibility in commit graph**: All branches / Relevant branches.
+      Relevant branches keeps only the current branch, its upstream, the default branch, and
+      branches with PRs.
 - [x] **Graph column toggles**, one per column:
   - [x] Show branches and tags (BRANCH/TAG column)
   - [x] Show commit author (exists)
@@ -534,11 +537,12 @@ Done except the group colors, which wait on repository groups in the repository 
   check out its tracking branch or a new one, fast-forward the tracking branch, and interactive
   rebase, conflict check, compare and set upstream against the checked-out branch.
   - [x] Rename the checked-out branch from the command palette
-- [x] **Hide / solo branches in the graph**
-  Hide or show local and remote branches and solo one or more of them from the left panel's
-  branch menus. Hidden rows stay listed, dimmed, with a marker that shows them again; soloed rows
-  get a marker that stops soloing; a banner under the filter box says what is filtered, with
-  Stop soloing and Show all. Saved per repository; refs that no longer exist are dropped.
+- [x] **Hide / show only branches in the graph**
+  Hide or show local and remote branches, or show only one or more of them ("Show only this"),
+  from the left panel's branch menus. Hidden rows stay listed, dimmed, with a marker that shows
+  them again; shown-only rows get a marker that stops showing only them ("Stop showing only
+  this"); a banner under the filter box says what is filtered, with Show the rest and Show all.
+  Saved per repository; refs that no longer exist are dropped.
 - [x] **Commit panel extras**
   - [x] Commit template (`commit.template` prefills an empty draft; the template's comment lines are left out)
   - [x] "Push after committing" checkbox
@@ -657,7 +661,7 @@ Done except the group colors, which wait on repository groups in the repository 
   - [x] Prune worktree records whose folders are gone (`git worktree prune`), from the section
     header menu or a missing row
   - [x] Show worktree WIP nodes in the graph: a WIP row per worktree with uncommitted changes, at
-    its HEAD commit (dashed node, "// WIP · <folder>" with counts, a tooltip, click to open its
+    its HEAD commit (dashed node, "Uncommitted changes · <folder>" with counts, a tooltip, click to open its
     tab; counted with libgit2 on full loads; UI Customization > Show other worktrees' changes)
   - [x] Branches checked out in another worktree marked `worktree` in LOCAL (tooltip with the
     folder), with Checkout and Delete refused everywhere and Open worktree in their menu; create a
@@ -718,7 +722,7 @@ Done except the group colors, which wait on repository groups in the repository 
   (Push a tag and delete it locally exist; tag signing is on the Commit Signing page.)
   - [x] Delete a tag from one or all remotes and push it to all remotes, from the TAGS row menu
   - [x] Annotate an existing lightweight tag (replace it with an annotated tag at the same commit)
-  - [x] Hide tags in the graph (see Hide/solo)
+  - [x] Hide tags in the graph (see Hide / show only)
 - [x] **Stash improvements**
   Stash selected files only, a stash message field, rename a stash. (Stash with a message exists
   in the palette; hiding stashes is under Later.)
@@ -1226,7 +1230,7 @@ here, under the item they grew from.
 - The worktree row menu (Prune missing worktrees), the Git Flow header menu, the pull request
   and issue row menus, and the filter popover's "Saved filters" and "None yet"
 - Built-in filter names on the pull request and issue filter chips
-- Names only screen readers hear: the column resize grips and the hidden and solo markers
+- Names only screen readers hear: the column resize grips and the hidden and show-only markers
 - The branch rows' ahead/behind tooltips and the graph header's shallow-clone tooltip
 
 ### Preferences structure
@@ -1539,15 +1543,15 @@ here, under the item they grew from.
 - Route the palette's remote checkout through the remote branch checkout message
 - An entry per local branch when several track the same remote branch (only one is offered now)
 
-### Hide / solo branches in the graph
+### Hide / show only branches in the graph
 
-- Hide / solo from the graph's BRANCH/TAG ref-label menus
+- Hide / show only from the graph's BRANCH/TAG ref-label menus
 - Hide stashes in the graph
-- Hide, solo or stop soloing several selected branches at once (multi-select in the left panel)
+- Hide, show only or stop showing only several selected branches at once (multi-select in the left panel)
 - Hide all / show all per section (LOCAL, REMOTE, TAGS) from the section header menu
-- Hover toggles (hide / solo) on rows that are not hidden or soloed
+- Hover toggles (hide / show only) on rows that are not hidden or shown-only
 - A graph-header button listing hidden branches and tags, to unhide them from there
-- Keep the hidden/solo state when a branch is renamed (rename the entry instead of dropping it)
+- Keep the hidden / shown-only state when a branch is renamed (rename the entry instead of dropping it)
 
 ### Commit panel extras
 
@@ -1734,7 +1738,7 @@ here, under the item they grew from.
 - A Refresh worktree changes item in the WORKTREES header menu that counts again without walking
   the history
 - Watch other worktrees' folders so their WIP rows update live
-- A WIP row for a worktree whose HEAD is outside the loaded history (hidden or soloed branch,
+- A WIP row for a worktree whose HEAD is outside the loaded history (hidden or shown-only branch,
   truncated history), e.g. pinned at the top
 - Select a worktree WIP row to preview its changed files in the details panel without opening
   its tab
@@ -1826,7 +1830,7 @@ here, under the item they grew from.
 - Publish to GitLab, Bitbucket and Azure DevOps
 - Add an existing remote URL from the Publish dialog
 - Undo removing or renaming a remote (re-add it with its URLs and fetch, or rename it back)
-- Rewrite the saved graph filter's hidden or soloed refs when a remote is renamed or removed
+- Rewrite the saved graph filter's hidden or shown-only refs when a remote is renamed or removed
 - Edit remotes defined outside the repository's config, and every URL of a remote with several
   fetch or push URLs
 - Per-remote options: fetch refspecs, tag fetching, prune on fetch, the default branch
@@ -1976,7 +1980,7 @@ here, under the item they grew from.
 - Warn when connecting an account another profile already uses with a different user
 - Per-profile diff header toggles (inline/split layout, hunks/whole file, ignore whitespace, word wrap)
 - Per-profile External Tools (editor and terminal programs)
-- Per-profile repository-specific settings (issue tracker, hidden/soloed refs)
+- Per-profile repository-specific settings (issue tracker, hidden and shown-only refs)
 - A "Saved with profile X" caption on the General, UI Customization and Editor pages
 - Copy or reset one profile's preferences from another profile on the Profile page
 - Refresh an open Clone dialog's account list when the profile switches
@@ -2480,7 +2484,7 @@ here, under the item they grew from.
   (menu_margin)
 - A soft shadow or edge under the lifted side panels in light themes, beyond the palette step
 - Retune the graph lane colours against the refreshed canvases (with the History table item)
-- The graph filter banner (Soloing / hidden from the graph) on the sidebar's 16 px inset, its
+- The graph filter banner (Showing only / hidden from the graph) on the sidebar's 16 px inset, its
   icon and text lined up with the rows' markers and names, without cutting its text
 
 ### History table that carries more information
@@ -2494,7 +2498,7 @@ here, under the item they grew from.
 - Show the changes column by default for new installs (stats are computed in the background per
   visible row)
 - Right-clicking a specific chip opens that ref's menu directly instead of the per-label submenus
-- Draw the ghost "+ branch" chip as a soft fill without an outline to match the ref labels
+- Draw the quick-branch "+ branch" chip as a soft fill without an outline to match the ref labels
 - Show which remote(s) a folded branch is in sync with as small remote initials beside the cloud
   mark when there are several remotes
 - Click the "+N" chip to open a popup of all labels with their menus
@@ -2608,3 +2612,17 @@ here, under the item they grew from.
 - The commit button's label is cut with "…" in a narrow panel; show the whole label on hover
 - The search bar's fixed count slot leaves the query field at its 160 px minimum in a
   740 px graph pane; shrink the slot or move the count under the field when narrow
+
+### Trellis's own wording
+
+- Translate the rest of the Commit signing page (labels, help, expiry warning, key generation)
+- Translate the worktree WIP row's tooltip lines and change counts ("2 modified, 1 added")
+- Read the OS's own short and long date patterns instead of the per-language table
+- Regional date defaults beyond the language (en_CA and fr_CA in ISO order, pt_PT, de_CH)
+- Genitive month names in Polish long dates ("1 lutego", not "1 luty")
+- A "Use the locale's format" reset button beside each date pattern field
+- Rename internal identifiers to the new names (ghost_refs, highlight_ref_rows,
+  BranchVisibility::Smart, FilterOp::Solo, date_word_format, date_verbose_format), with serde
+  aliases so old settings files still load
+- The "Showing only …" banner line is cut short beside the wider "Show the rest" button in the
+  default sidebar width; give the line more room or move the button under it

@@ -14,7 +14,7 @@ use trellis_core::settings::ThemeChoice;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
-/// The verbose date of the first commit (the row below WIP): the tooltip's first line.
+/// The full date and time of the first commit (the row below WIP): the tooltip's first line.
 fn first_commit_verbose(st: &AppState) -> String {
     let c = &st.snap.as_ref().unwrap().commits[0];
     st.settings.date_tooltip(c.time, st.view.now, 0).lines().next().unwrap().to_owned()

@@ -10,6 +10,7 @@ use egui_kittest::kittest::Queryable;
 use egui_kittest::{Harness, TestRenderer};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::{Settings, ThemeChoice};
 
 /// How long one step may take before the journey fails with a diagnosis.
@@ -351,7 +352,10 @@ impl Journey {
         self.select_wip();
         self.click("Stage all", Region::Details, Pick::Only);
         self.type_into("Commit summary", summary);
-        self.click_containing("Commit changes to", Region::Details, Pick::Only);
+        // The button names the staged count; a bare "Commit " would also match "Commit summary".
+        let n = self.state().snap.as_ref().map_or(0, |s| s.staged.len());
+        let label = Lang::En.trn("commit.button.commit", n, &[("push", &""), ("skip", &"")]);
+        self.click_containing(&label, Region::Details, Pick::Only);
         self.toast(true, "Commit succeeded");
     }
 

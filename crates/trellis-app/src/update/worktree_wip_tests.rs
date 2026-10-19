@@ -14,6 +14,7 @@ use crate::worktree::WorktreeMsg;
 use git2::Oid;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{ChangeCounts, ChangesRead, WorktreeInfo};
 
 /// scratch_repo (a.txt modified) with a linked worktree on `side` beside it that has a.txt
@@ -144,7 +145,8 @@ fn worktree_wip_text() {
     assert_eq!(counts_text(ChangeCounts { modified: 2, added: 1, deleted: 3 }), "2 modified, 1 added, 3 deleted");
     assert_eq!(counts_text(ChangeCounts { modified: 0, added: 4, deleted: 0 }), "4 added");
     let wt = info(Some("feature/login"), Some("on usb"));
-    assert_eq!(wip_label(&wt), "// WIP · feature-login");
+    assert_eq!(wip_label(Lang::En, &wt), "Uncommitted changes · feature-login");
+    assert_eq!(wip_label(Lang::De, &wt), "Nicht committete Änderungen · feature-login");
     let tip = wip_tooltip(&wt);
     let lines: Vec<&str> = tip.lines().collect();
     assert_eq!(lines[0], "Uncommitted changes in feature-login");

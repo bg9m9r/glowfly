@@ -51,7 +51,7 @@ is going and [TODO.md](TODO.md) for the backlog.
 ## What it does
 
 - **Commit graph**: lane layout with merge/fork curves, branch, remote and tag badges, a
-  `// WIP` node above HEAD when the tree is dirty, ↑/↓ keyboard navigation, and commit search
+  "Uncommitted changes" row above HEAD when the tree is dirty, ↑/↓ keyboard navigation, and commit search
   (Enter jumps to the next match).
 - **Sidebar**: local branches (ahead/behind counts), remotes, tags and stashes. Click jumps to the
   commit, double-click checks out, and right-click opens merge, rebase, delete, push-tag,
@@ -123,7 +123,11 @@ sub-list, and forms with right-aligned labels.
   Trello).
   Each has a connection card with "Connect to …" (signs in through Git Credential Manager), or a
   host domain plus token. Credentials are verified before being saved.
-- **UI Customization**: author/date columns and date format (ISO, long, relative).
+- **UI Customization**: graph columns, the quick-branch chip, trace a branch on hover, and
+  branch visibility (All branches / Relevant branches).
+- **Language & region**: interface language, date/time locale and four patterns (Date, Long
+  date, Date and time and Full date and time) that follow the locale until you type your own,
+  and relative dates.
 - **Editor**: how the diff viewer draws text: font size, tab size (tab stops), line numbers,
   syntax highlighting and word-level highlights. Changes apply at once, without reloading.
 - **Commit Signing**: `commit.gpgsign`, `gpg.format`, `user.signingkey`.

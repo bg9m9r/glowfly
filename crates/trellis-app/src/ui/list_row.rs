@@ -154,7 +154,7 @@ pub const TITLE_X: f32 = 32.0;
 pub const ROW_INDENT: f32 = 40.0;
 /// Where a row nested under a remote or a Git Flow group starts.
 pub const NESTED_INDENT: f32 = 48.0;
-/// The centre of a row's hidden or solo marker (`ref_visibility::row_marker`), left of its text.
+/// The centre of a row's hidden or show-only marker (`ref_visibility::row_marker`), left of its text.
 pub const GUTTER_X: f32 = 24.0;
 /// The same for a nested row.
 pub const NESTED_GUTTER_X: f32 = 32.0;

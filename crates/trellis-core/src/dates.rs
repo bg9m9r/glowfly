@@ -1,8 +1,11 @@
-//! Date formatting with moment.js-style patterns such as `MM/DD/YYYY @ h:mm A`,
-//! localized month and weekday names, and relative times.
+//! Date formatting with moment.js-style patterns such as `YYYY-MM-DD HH:mm`, localized month
+//! and weekday names, relative times, and each locale's usual patterns (`default_pattern`).
 
 use crate::i18n::Lang;
 use chrono::{DateTime, FixedOffset, Locale};
+
+mod locale_patterns;
+pub use locale_patterns::{DateKind, default_pattern};
 
 /// Converts a moment.js pattern to a chrono format string. Text in `[brackets]` is literal.
 pub fn to_chrono(pattern: &str) -> String {
@@ -58,15 +61,11 @@ pub fn to_chrono(pattern: &str) -> String {
     out
 }
 
-/// The locale to use: an explicit one like "de_DE", or the operating system's.
+/// The locale for month and weekday words: an explicit one like "de_DE", or the operating
+/// system's (read once per run); en_US when chrono has no words for it.
 pub fn locale(setting: &str) -> Locale {
-    let name = if setting.is_empty() || setting.eq_ignore_ascii_case("system") {
-        sys_locale::get_locale().unwrap_or_else(|| "en-US".into())
-    } else {
-        setting.to_owned()
-    };
-    // OS locales look like "en-US"; chrono wants "en_US".
-    Locale::try_from(name.replace('-', "_").as_str()).unwrap_or(Locale::en_US)
+    let name = locale_patterns::locale_tag(setting).unwrap_or_else(|| "en_US".into());
+    Locale::try_from(name.as_str()).unwrap_or(Locale::en_US)
 }
 
 /// The machine's current UTC offset in seconds (pass it to `format`).
@@ -124,6 +123,9 @@ pub const LOCALES: [(&str, &str); 14] = [
     ("zh_CN", "Chinese (Simplified)"),
     ("ko_KR", "Korean"),
 ];
+
+#[cfg(test)]
+mod locale_patterns_tests;
 
 #[cfg(test)]
 mod tests {

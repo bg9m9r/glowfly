@@ -97,8 +97,8 @@ fn fill_replaces_named_placeholders_only() {
 fn trn_picks_one_and_other() {
     assert_eq!((plural_suffix(0), plural_suffix(1), plural_suffix(2)), ("other", "one", "other"));
     let none: [(&str, &dyn Display); 2] = [("push", &""), ("skip", &"")];
-    assert_eq!(Lang::En.trn("commit.button.commit", 1, &none), "Commit changes to 1 file");
-    assert_eq!(Lang::En.trn("commit.button.commit", 3, &none), "Commit changes to 3 files");
+    assert_eq!(Lang::En.trn("commit.button.commit", 1, &none), "Commit 1 file");
+    assert_eq!(Lang::En.trn("commit.button.commit", 3, &none), "Commit 3 files");
 }
 
 #[test]

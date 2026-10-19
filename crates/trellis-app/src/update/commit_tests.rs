@@ -83,7 +83,7 @@ fn shortcut_refusals_toast() {
 
     st.draft.summary = "Work".into();
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty(), "nothing staged");
-    assert_eq!(last_toast(&st), (false, "Stage files to commit.".into()));
+    assert_eq!(last_toast(&st), (false, "Nothing is staged yet. Stage a file or a hunk first.".into()));
     assert!(!update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now()).is_empty(), "stage-all has changes to stage");
     st.job = None;
 

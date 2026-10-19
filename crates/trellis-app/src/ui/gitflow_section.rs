@@ -111,7 +111,16 @@ pub(super) fn section(
             {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
-            ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/heads/{}", b.name), b.name, rows.graph, msgs);
+            ref_visibility::row_marker(
+                ui,
+                &r,
+                widgets::NESTED_GUTTER_X,
+                &format!("refs/heads/{}", b.name),
+                b.name,
+                rows.graph,
+                rows.t,
+                msgs,
+            );
             r.context_menu(|ui| {
                 let finish = format!("Finish {} {}…", g.kind.noun(), b.short);
                 menu_item(msgs, ui, finish, Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));

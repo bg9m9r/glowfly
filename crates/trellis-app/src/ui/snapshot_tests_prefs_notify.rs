@@ -43,7 +43,7 @@ fn group_worktree_tabs_row() {
     h.run();
     h.check_snapshot("prefs_ui_group_worktree_tabs");
     assert!(h.state().0.settings.group_worktree_tabs, "on by default");
-    h.get_by_label("Automatically group worktree tabs together").click();
+    h.get_by_label("Keep a repository's worktree tabs side by side").click();
     h.run();
     assert!(!h.state().0.settings.group_worktree_tabs);
 }

@@ -25,6 +25,7 @@ your system keychain. Needs git 2.31 or newer and GnuPG 2.1.12 or newer; with ol
 
 /// `settings` is edited in place (the shell saves it after the frame).
 pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
+    let t = settings.lang();
     let Some(git) = prefs.git.as_mut() else { return };
     let signing = &mut prefs.signing;
     let format = SigningFormat::from_config(&git.signing_format);
@@ -110,7 +111,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         if selected.is_some_and(|k| k.expired) {
             warn(ui, "This key has expired; commits signed with it won't verify.");
         }
-        if format == SigningFormat::OpenPgp && ui.link("How do I renew an expired key?").clicked() {
+        if format == SigningFormat::OpenPgp && ui.link(t.tr("prefs.signing.extend_key.link")).clicked() {
             msgs.push(Msg::OpenUrl(RENEW_HELP.into()));
         }
         if format == SigningFormat::Ssh {

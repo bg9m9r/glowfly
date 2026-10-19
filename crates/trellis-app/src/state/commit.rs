@@ -202,10 +202,10 @@ mod tests {
     fn button_label_suffixes() {
         let en = Lang::En;
         let mut d = CommitDraft::default();
-        assert_eq!(d.button_label(en, 1, false, false), "Commit changes to 1 file");
-        assert_eq!(d.button_label(en, 0, false, false), "Stage files to commit");
+        assert_eq!(d.button_label(en, 1, false, false), "Commit 1 file");
+        assert_eq!(d.button_label(en, 0, false, false), "Stage something to commit");
         d.skip_hooks = true;
-        assert_eq!(d.button_label(en, 2, true, false), "Commit changes to 2 files and push (skip hooks)");
+        assert_eq!(d.button_label(en, 2, true, false), "Commit 2 files and push (skip hooks)");
         d.skip_hooks = false;
         d.amend = true;
         assert_eq!(d.button_label(en, 0, true, false), "Amend previous commit and push");

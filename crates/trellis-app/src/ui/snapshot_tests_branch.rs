@@ -190,13 +190,13 @@ fn sidebar_hidden_solo() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("sidebar_hidden_solo");
-    assert!(h.query_by_label("Stop soloing").is_some());
+    assert!(h.query_by_label("Show the rest").is_some());
     assert!(h.query_by_label("Show all").is_some());
     assert!(h.query_by_label("Show origin/main in graph").is_some());
     h.get_by_label("Show login-page in graph").click();
     h.run();
     assert!(pushed(&h, &FilterOp::Show("refs/heads/login-page".into())));
-    h.get_by_label("Stop soloing").click();
+    h.get_by_label("Show the rest").click();
     h.run();
     assert!(pushed(&h, &FilterOp::StopSoloing));
     drop(h);
@@ -210,15 +210,16 @@ fn branch_menu_visibility_items() {
     h.run();
     row_menu(&mut h, "✔  main", false);
     assert!(h.get_by_label("Hide in graph").is_disabled(), "the checked-out branch");
-    assert!(h.query_by_label("Solo").is_some());
+    assert!(h.query_by_label("Show only this").is_some());
     drop(h);
 
     let (st, _) = hidden_solo("visibility-menu");
     let mut h = harness(st, true);
     h.run();
     row_menu(&mut h, "search", false);
-    assert_eq!(h.get_all_by_label("Stop soloing search").count(), 1, "the row's marker");
-    assert_eq!(h.get_all_by_label("Stop soloing").count(), 2, "the banner's button and the menu item");
+    assert_eq!(h.get_all_by_label("Stop showing only search").count(), 1, "the row's marker");
+    assert_eq!(h.get_all_by_label("Stop showing only this").count(), 1, "the menu item");
+    assert_eq!(h.get_all_by_label("Show the rest").count(), 1, "the banner's button");
     assert!(h.query_by_label("Hide in graph").is_some_and(|n| !n.is_disabled()));
     drop(h);
 
@@ -226,7 +227,7 @@ fn branch_menu_visibility_items() {
     let mut h = harness(st, true);
     h.run();
     row_menu(&mut h, "search", true);
-    assert!(h.query_by_label("Solo").is_some());
+    assert!(h.query_by_label("Show only this").is_some());
     h.get_by_label("Hide in graph").click();
     h.run();
     assert!(pushed(&h, &FilterOp::Hide("refs/remotes/origin/search".into())));

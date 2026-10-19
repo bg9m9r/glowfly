@@ -162,7 +162,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // The row's accessible name: its summary, or the text of its WIP box.
                 match (commit, worktree) {
                     (Some(c), _) => super::access::name_button(&resp, true, &c.summary),
-                    (None, Some((_, wt))) => super::access::name_button(&resp, true, &crate::state::worktrees::wip_label(wt)),
+                    (None, Some((_, wt))) => super::access::name_button(&resp, true, &crate::state::worktrees::wip_label(t, wt)),
                     (None, None) => super::access::name_button(&resp, true, wip_label),
                 }
                 // Another worktree's row is never selected.
@@ -183,7 +183,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // Another worktree's row: a click opens (or switches to) that worktree's tab; its
                 // menu is the WORKTREES row's.
                 if let Some((w, wt)) = worktree {
-                    worktree_wip::draw(&painter, &gp, &cols, rect, w, wt, cols_cfg.tree);
+                    let label = crate::state::worktrees::wip_label(t, wt);
+                    worktree_wip::draw(&painter, cols_cfg.tree.then_some(&gp), &cols, rect, w, wt, &label);
                     let resp = resp.on_hover_text(wip_tooltip(wt));
                     if resp.clicked() && open_blocked(wt).is_none() {
                         msgs.push(Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));

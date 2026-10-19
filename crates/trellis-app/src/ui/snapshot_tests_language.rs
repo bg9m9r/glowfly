@@ -1,5 +1,5 @@
 //! Language snapshots: Preferences > General in German (long labels must fit their column), the
-//! Language & region page and its Language menu open, External Tools in Spanish with its warnings, and the main window's commit
+//! Language & region page (also with a German date locale) and its Language menu open, External Tools in Spanish with its warnings, and the main window's commit
 //! box and status bar in German; and switching the language from the menu takes effect on the
 //! next frame.
 
@@ -55,6 +55,19 @@ fn prefs_language() {
     // Row labels and section titles are painted; the image shows them.
     assert!(h.query_all_by_label("Language & region").next().is_some(), "the nav entry and title");
     assert!(h.query_by_label_contains("3 hours ago").is_some(), "relative dates moved here");
+}
+
+/// With a German date locale and blank patterns, each field's hint and preview use the German
+/// order, on the first frame.
+#[test]
+fn prefs_language_de_locale() {
+    let mut st = prefs(ThemeChoice::Dark, PrefPage::Language, "en");
+    st.settings.date_locale = "de_DE".into();
+    let mut h = harness_sized(st, true, egui::vec2(1400.0, 1000.0));
+    h.run();
+    h.check_snapshot("prefs_language_de_locale");
+    let s = &h.state().0.settings;
+    assert!(s.date_format.is_empty() && s.date_verbose_format.is_empty(), "showing a default doesn't save it");
 }
 
 #[test]

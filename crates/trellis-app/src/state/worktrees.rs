@@ -7,6 +7,7 @@ use crate::worktree::NewWorktree;
 use git2::Oid;
 use std::path::Path;
 use trellis_core::branch_ops::check_branch_name;
+use trellis_core::i18n::Lang;
 use trellis_core::paths::{is_within, same_spelling};
 use trellis_core::repo::{ChangeCounts, ChangesRead, Snapshot, WorktreeInfo};
 use trellis_core::worktree_ops::{WorktreeBase, folder_slug, parse_folder};
@@ -159,9 +160,10 @@ pub fn counts_text(c: ChangeCounts) -> String {
     parts.join(", ")
 }
 
-/// The text in the box of another worktree's WIP row in the graph.
-pub fn wip_label(wt: &WorktreeInfo) -> String {
-    format!("// WIP · {}", wt.folder_name())
+/// The text in the box of another worktree's WIP row in the graph, and its accessible name:
+/// "Uncommitted changes · <folder>", like this tab's own WIP row.
+pub fn wip_label(t: Lang, wt: &WorktreeInfo) -> String {
+    t.trf("graph.wip.worktree_label", &[("folder", &wt.folder_name())])
 }
 
 /// The hover text of another worktree's WIP row, one fact per line.

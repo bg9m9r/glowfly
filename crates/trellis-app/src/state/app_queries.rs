@@ -35,10 +35,10 @@ impl AppState {
         std::env::temp_dir()
     }
 
-    /// How to load the repository at `workdir`, with the hidden and soloed refs saved for it.
+    /// How to load the repository at `workdir`, with the hidden and shown-only refs saved for it.
     pub fn load_options(&self, workdir: &Path) -> LoadOptions {
         let (smart, trusted) = (self.settings.branch_visibility == BranchVisibility::Smart, self.trusts(workdir));
-        // Smart visibility also keeps branches that have open pull requests.
+        // Relevant branches also keeps branches that have open pull requests.
         let extra_tips = self.forge.as_ref().map(|f| f.prs.iter().map(|p| p.source.clone()).collect()).unwrap_or_default();
         let (f, worktree_wips) = (self.settings.graph_filter_for(&self.repo_key(workdir)), self.settings.worktree_wips);
         LoadOptions { max_commits: self.commits_wanted(), smart, extra_tips, hidden: f.hidden, solo: f.solo, trusted, worktree_wips }

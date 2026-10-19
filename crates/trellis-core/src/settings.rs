@@ -28,9 +28,9 @@ mod tools;
 mod trust;
 mod updates;
 mod zoom;
+pub use crate::dates::DateKind;
 pub use blame::{BlameMoves, BlamePrefs};
 pub use column_widths::{ColumnWidths, ResizableColumn, drag_width};
-pub use date_fmt::{DEFAULT_DATE_FORMAT, DEFAULT_DATE_TIME_FORMAT, DEFAULT_DATE_VERBOSE_FORMAT, DEFAULT_DATE_WORD_FORMAT};
 pub use downloads::downloads_dir;
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
 pub use file::{LoadProblem, settings_file};
@@ -83,7 +83,7 @@ pub enum DescriptionMode {
 #[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum BranchVisibility {
     All,
-    /// The checked-out branch, its upstream, the default branch, and branches with open PRs.
+    /// "Relevant branches": the checked-out branch, its upstream, the default branch, open PRs.
     Smart,
 }
 
@@ -161,13 +161,15 @@ pub struct Settings {
     pub desktop_notifications: bool,
     /// "system" or a locale such as "de_DE".
     pub date_locale: String,
-    /// moment.js-style patterns (see `date_fmt`). Date: file history and blame rows; Date word:
-    /// created-on lines (issue panel, history footer).
+    /// moment.js-style patterns; blank follows the date locale (`dates::default_pattern`).
+    /// Date: file history and blame rows; Long date (`date_word_format`): created-on lines;
+    /// Date and time (`date_time_format`): the graph; Full date and time
+    /// (`date_verbose_format`): details and hovers.
     pub date_format: String,
     pub date_word_format: String,
     pub date_time_format: String,
     pub date_verbose_format: String,
-    /// Show "3 hours ago" in the graph instead of the date/time format.
+    /// Show "3 hours ago" in the graph instead of the Date and time format.
     pub relative_dates: bool,
     pub toolbar_labels: bool,
     /// Tooltips and popups appear without fading or sliding in (egui's animations off).
@@ -186,7 +188,9 @@ pub struct Settings {
     pub spellcheck: bool,
     /// Initials instead of Gravatar / hosting-service avatars.
     pub use_initials: bool,
+    /// The quick-branch chip on the checked-out commit (Preferences > UI Customization).
     pub ghost_refs: bool,
+    /// Trace a branch on hover: light up its commits while the pointer is on its graph label.
     pub highlight_ref_rows: bool,
     /// Show a WIP row in the graph for each other worktree with uncommitted changes
     /// (Preferences > UI Customization).
@@ -336,10 +340,10 @@ impl Default for Settings {
             behind_alerts: true,
             desktop_notifications: false,
             date_locale: "system".into(),
-            date_format: DEFAULT_DATE_FORMAT.into(),
-            date_word_format: DEFAULT_DATE_WORD_FORMAT.into(),
-            date_time_format: DEFAULT_DATE_TIME_FORMAT.into(),
-            date_verbose_format: DEFAULT_DATE_VERBOSE_FORMAT.into(),
+            date_format: String::new(),
+            date_word_format: String::new(),
+            date_time_format: String::new(),
+            date_verbose_format: String::new(),
             relative_dates: false,
             toolbar_labels: true,
             reduce_motion: false,
@@ -413,6 +417,8 @@ impl Settings {
 
 #[cfg(test)]
 mod date_fmt_tests;
+#[cfg(test)]
+mod date_migrate_tests;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

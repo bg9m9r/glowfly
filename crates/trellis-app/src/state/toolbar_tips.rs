@@ -120,7 +120,7 @@ const MINUTE: i64 = 60;
 const HOUR: i64 = 60 * MINUTE;
 const DAY: i64 = 24 * HOUR;
 
-/// "Last fetched 2 minutes ago" (just now, minutes, hours, days up to 30), then the Date word
+/// "Last fetched 2 minutes ago" (just now, minutes, hours, days up to 30), then the Long date
 /// format; "Not fetched yet" without a time.
 pub fn fetched_line(t: Lang, settings: &Settings, fetched_at: Option<i64>, now: i64, utc_offset: i32) -> String {
     let Some(at) = fetched_at else {
