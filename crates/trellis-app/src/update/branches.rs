@@ -20,10 +20,12 @@ pub(super) fn handle(st: &mut AppState, msg: BranchMsg, fx: &mut Vec<Effect>) {
     match msg {
         BranchMsg::Checkout(name) => checkout(st, &name, fx),
         BranchMsg::CheckoutRemote { remote, name } => checkout_remote(st, &remote, &name, fx),
-        BranchMsg::NewBranch { start, name } => st.modal = Some(Modal::NewBranch { start, name, checkout: true }),
+        BranchMsg::NewBranch { start, name } => {
+            st.modal = Some(Modal::NewBranch { start, name, checkout: true, touched: Default::default() })
+        }
         BranchMsg::RenameBranchDialog(name) => {
             if let Some(b) = find(st, &name) {
-                st.modal = Some(Modal::RenameBranch { old: b.name.clone(), name: b.name });
+                st.modal = Some(Modal::RenameBranch { old: b.name.clone(), name: b.name, touched: Default::default() });
             }
         }
         BranchMsg::RenameBranch { old, new } => rename(st, &old, new.trim(), fx),
@@ -133,7 +135,7 @@ fn upstream_dialog(st: &mut AppState, name: &str) {
     let tracked = branches::remote_tracking(&b);
     let remote = tracked.map(|t| t.remote.clone()).or_else(|| branches::default_remote(snap)).unwrap_or_default();
     let remote_branch = tracked.map(|t| t.merge.clone()).unwrap_or_else(|| b.name.clone());
-    st.modal = Some(Modal::SetUpstream { branch: b.name, remote, name: remote_branch });
+    st.modal = Some(Modal::SetUpstream { branch: b.name, remote, name: remote_branch, touched: Default::default() });
 }
 
 fn set_upstream(st: &mut AppState, branch: &str, remote: &str, name: &str, fx: &mut Vec<Effect>) {

@@ -32,7 +32,7 @@ use crate::state::build_status::MAX_SEEN;
 use crate::state::graph_rows::{DisplayRow, GraphRows};
 use crate::state::worktrees::{open_blocked, wip_tooltip};
 use crate::worktree::WorktreeMsg;
-use eframe::egui::{self, Rect, RichText, Sense, pos2, vec2};
+use eframe::egui::{self, Rect, Sense, pos2, vec2};
 use git2::Oid;
 use labels::Tip;
 use nodes::NodeKind;
@@ -58,8 +58,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
     {
         let Some(snap) = &st.snap else { return };
         if snap.commits.is_empty() && snap.graph.wip.is_none() {
-            ui.centered_and_justified(|ui| ui.label(RichText::new("This repository has no commits yet.").color(color::weak())));
-            return;
+            return super::graph_empty::no_commits(ui);
         }
         // The search dims or hides rows only while its bar is shown.
         let rows = GraphRows::new(snap, &st.search, st.view.show_search);
@@ -75,9 +74,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
         let widths = header::column_header(ui, snap, graph_w, &cols_cfg, st.settings.column_widths, &mut st.view.column_drag, msgs);
         if filtered && total == 0 {
-            let text = if st.search.searching_files() { "Searching changed files…" } else { "No commits match this search." };
-            ui.centered_and_justified(|ui| ui.label(RichText::new(text).color(color::weak())));
-            return;
+            return super::graph_empty::no_matches(ui, st, msgs);
         }
 
         // Pull requests by head commit, for graph badges.

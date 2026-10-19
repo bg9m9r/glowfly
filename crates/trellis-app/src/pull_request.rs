@@ -140,6 +140,8 @@ pub enum PullRequestMsg {
     Tab(PrTab),
     /// Load the page from the service again (Try again).
     Reload,
+    /// Compare the branches again after Files changed failed (Try again).
+    ReloadFiles,
     /// Post the comment box's text.
     PostComment,
     /// Submit the review form.
@@ -177,6 +179,7 @@ impl PullRequestMsg {
             | Self::FilesLoaded { .. }
             | Self::Tab(_)
             | Self::Reload
+            | Self::ReloadFiles
             | Self::PostComment
             | Self::SubmitReview
             | Self::Merge

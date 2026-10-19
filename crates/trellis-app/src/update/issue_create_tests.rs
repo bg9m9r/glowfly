@@ -196,7 +196,7 @@ fn a_branch_can_follow() {
     let msg = reply(&st, IssueReply::Created(Ok(issue.clone())));
     run(&mut st, msg);
     match &st.modal {
-        Some(Modal::NewBranch { start: None, name, checkout: true }) => assert_eq!(name, &branch_name_for(&issue)),
+        Some(Modal::NewBranch { start: None, name, checkout: true, .. }) => assert_eq!(name, &branch_name_for(&issue)),
         _ => panic!("the New branch dialog"),
     }
     done(st, dir);

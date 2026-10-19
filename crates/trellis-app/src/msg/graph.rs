@@ -43,6 +43,9 @@ pub enum SelectionMsg {
     SwapCompare,
     /// Select every commit the graph shows (Cmd/Ctrl+A).
     SelectAll,
+    /// Try again after the comparison's file list (of a commit range or with the working
+    /// directory) couldn't be read.
+    RetryCompare,
 }
 
 impl SelectionMsg {
@@ -62,7 +65,8 @@ impl SelectionMsg {
             | Self::CompareWithHead { .. }
             | Self::WorkdirCompareLoaded { .. }
             | Self::SwapCompare
-            | Self::SelectAll => None,
+            | Self::SelectAll
+            | Self::RetryCompare => None,
         }
     }
 }
@@ -104,6 +108,9 @@ pub enum SearchMsg {
     ToggleFilter,
     /// The bar's Close button: hide it, clear the query and turn the filter off.
     Close,
+    /// Clear search (no matches): empty the query and the author filter; the bar stays open
+    /// with its field focused and the filter as it was.
+    Clear,
     /// The author picker is open and has no author list yet (sent each frame, like WantStats;
     /// handled once).
     WantAuthors,
@@ -130,9 +137,14 @@ impl SearchMsg {
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             // All are intents for the active tab.
-            Self::Open | Self::QueryChanged | Self::Next | Self::ToggleFilter | Self::Close | Self::WantAuthors | Self::PickAuthor(..) => {
-                None
-            }
+            Self::Open
+            | Self::QueryChanged
+            | Self::Next
+            | Self::ToggleFilter
+            | Self::Close
+            | Self::Clear
+            | Self::WantAuthors
+            | Self::PickAuthor(..) => None,
             // The tab asks again for what is unsearched when it is shown (tabs::activate →
             // search_paths::resume).
             Self::PathsSearched { .. } => None,

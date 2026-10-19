@@ -33,6 +33,13 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, fx: &mut Vec<Effect>) {
             st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
             recompute(st);
         }
+        SearchMsg::Clear => {
+            st.view.search.clear();
+            st.view.author_filter.clear();
+            st.search.paths = PathSearch { requests: st.search.paths.requests, ..Default::default() };
+            recompute(st);
+            st.view.focus_search = true;
+        }
         SearchMsg::WantAuthors => {
             if st.search.authors.is_none()
                 && let Some(snap) = &st.snap

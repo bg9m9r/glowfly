@@ -15,6 +15,8 @@ pub enum DashboardMsg {
     Refresh,
     /// The Mine / Review requested / Assigned switch.
     Show(DashShow),
+    /// Clear filter, when nothing matches it.
+    ClearFilter,
     /// Sign in to one account interactively and ask its targets again.
     SignIn(Account),
     /// Open this local clone in a tab.
@@ -42,6 +44,7 @@ impl DashboardMsg {
             | Self::Close
             | Self::Refresh
             | Self::Show(_)
+            | Self::ClearFilter
             | Self::SignIn(_)
             | Self::OpenRepo(_)
             | Self::OpenPr { .. }

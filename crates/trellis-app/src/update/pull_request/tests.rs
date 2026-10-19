@@ -46,7 +46,7 @@ pub(super) fn pr(id: u64, head: Option<Oid>) -> PullRequest {
 /// A repository with origin: f.txt (and `more`) committed on feature, m.txt on main, both
 /// pushed, and pull request 7 from feature into main listed by the service. Returns (state,
 /// working repository, bare repository, merge base).
-pub(super) fn setup(name: &str, more: &[&str]) -> (AppState, PathBuf, PathBuf, Oid) {
+pub(in crate::update) fn setup(name: &str, more: &[&str]) -> (AppState, PathBuf, PathBuf, Oid) {
     let (mut st, work, bare) = with_origin(name);
     let base = rev(&work, "main");
     git(&work, &["checkout", "-q", "feature"]);
@@ -73,7 +73,7 @@ fn set_pr(st: &mut AppState, f: impl FnOnce(&mut PullRequest)) {
     f(&mut st.forge.as_mut().unwrap().prs[0]);
 }
 
-pub(super) fn open(st: &mut AppState) {
+pub(in crate::update) fn open(st: &mut AppState) {
     drive(st, Msg::PullRequest(PullRequestMsg::Open(7)));
 }
 

@@ -27,7 +27,7 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
                     view.loading = false;
                     view.rerun = false;
                     view.error = Some(e.clone());
-                    st.log(false, e);
+                    st.log(false, format!("Could not load the history of {path}: {e}"));
                 }
             }
         }
@@ -47,6 +47,8 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
             let start = HistoryStart::Resume(view.resume.clone());
             request(st, start, st.settings.commit_limit(), fx);
         }
+        HistoryMsg::RetryFileHistory => retry(st, fx),
+        HistoryMsg::RetryFileText => history_view::retry_text(st, fx),
         HistoryMsg::CloseFileHistory => {
             close(st);
             super::repo::close_diff(st);
@@ -188,6 +190,21 @@ pub(super) fn head_moved(st: &mut AppState, new: &Snapshot, fx: &mut Vec<Effect>
     view.error = None;
     let start = start_for(view, old);
     let limit = base * view.batches.max(1);
+    request(st, start, limit, fx);
+}
+
+/// Try again after a failed walk: the first batch (or a re-run) again as deep as it had
+/// searched, or the Search further batch that failed.
+fn retry(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let base = st.settings.commit_limit();
+    let Some(view) = st.history.as_mut().filter(|v| !v.loading && v.error.is_some()) else { return };
+    view.loading = true;
+    view.error = None;
+    let (start, limit) = if view.entries.is_empty() || view.rerun {
+        (start_for(view, None), base * view.batches.max(1))
+    } else {
+        (HistoryStart::Resume(view.resume.clone()), base)
+    };
     request(st, start, limit, fx);
 }
 

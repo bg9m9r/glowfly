@@ -5,7 +5,7 @@
 use super::snapshot_tests::{git, harness, remove_fixture, with_repo};
 use crate::msg::{HistoryMsg, Msg};
 use crate::state::AppState;
-use crate::state::history::{FileHistoryView, FileText, FileTextData, HistoryKind, HistoryPane, TextState};
+use crate::state::history::{FileHistoryView, FileText, FileTextData, HistoryKind, HistoryPane, TextError, TextState};
 use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
@@ -113,7 +113,7 @@ fn file_history_file_binary_light() {
     let (mut st, dir) = with_file_view("history-file-binary", ThemeChoice::Light);
     st.settings.diff_line_numbers = false;
     let text = st.history.as_mut().unwrap().text.as_mut().unwrap();
-    text.state = TextState::Failed("Binary file not shown".into());
+    text.state = TextState::Failed(TextError { message: "Binary file not shown".into(), retry: false });
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label(super::empty_state::BINARY_TITLE).is_some());

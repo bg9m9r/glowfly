@@ -92,10 +92,10 @@ fn arrow_down_skips_worktree_wip_rows() {
     assert_eq!(commit_row(&st, 2) - commit_row(&st, 1), 3, "two worktree rows between them");
     st.selection = Selection::Commit(one);
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     h.state_mut().1.clear();
     h.press_key(Key::ArrowDown);
-    h.run();
+    h.run_steps(4);
     let selected: Vec<_> =
         h.state().1.iter().filter_map(|m| if let Msg::Repo(RepoMsg::SelectCommit(o)) = m { Some(*o) } else { None }).collect();
     assert_eq!(selected, [two]);

@@ -220,12 +220,20 @@ fn held_prompt(st: &AppState) -> Option<&str> {
 
 #[test]
 fn a_dialog_that_closes_itself_leaves_the_prompt_for_its_job() {
-    let st = submit_held("trust-new-branch", Modal::NewBranch { start: None, name: "topic".into(), checkout: false }, "Create");
+    let st = submit_held(
+        "trust-new-branch",
+        Modal::NewBranch { start: None, name: "topic".into(), checkout: false, touched: Default::default() },
+        "Create",
+    );
     assert_eq!(held_prompt(&st), Some("Create branch"), "the prompt names the job");
     assert!(st.trust.held.is_some(), "the job waits for the decision");
     assert!(st.job.is_none());
 
-    let st = submit_held("trust-rename-branch", Modal::RenameBranch { old: "search".into(), name: "find".into() }, "Rename");
+    let st = submit_held(
+        "trust-rename-branch",
+        Modal::RenameBranch { old: "search".into(), name: "find".into(), touched: Default::default() },
+        "Rename",
+    );
     assert_eq!(held_prompt(&st), Some("Rename branch"));
     assert!(st.trust.held.is_some());
 }

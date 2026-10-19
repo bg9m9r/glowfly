@@ -50,6 +50,15 @@ pub fn empty_text(show: DashShow) -> &'static str {
     }
 }
 
+/// The line under `empty_text`: what the switch would list.
+pub fn empty_hint(show: DashShow) -> &'static str {
+    match show {
+        DashShow::Mine => "Pull requests and issues you opened show here.",
+        DashShow::Review => "Pull requests that ask for your review show here.",
+        DashShow::Assigned => "Issues and pull requests assigned to you show here.",
+    }
+}
+
 fn keeps(data: &TargetData, row: Row, filter_lower: &str) -> bool {
     if filter_lower.is_empty() {
         return true;

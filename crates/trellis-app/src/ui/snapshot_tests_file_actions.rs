@@ -184,7 +184,7 @@ fn diff_commit_header_buttons() {
     let (st, dir) = with_commit_diff("diff-commit-actions", ThemeChoice::Dark, DiffLayout::Inline, false);
     let oid = st.detail.as_ref().unwrap().oid;
     let mut h = harness_sized(st, true, WIDE);
-    h.run();
+    h.run_steps(4);
     h.check_snapshot("diff_commit_header_buttons");
     let msgs = click(&mut h, RESTORE_SHORT);
     assert!(
@@ -197,12 +197,12 @@ fn diff_commit_header_buttons() {
     assert!(matches!(&msgs[..], [Msg::Files(FilesMsg::ShowWorkingFile(p))] if p == "app.txt"));
 
     h.state_mut().0.detail.as_mut().unwrap().absent.insert("app.txt".into());
-    h.run();
+    h.run_steps(4);
     assert!(h.get_by_label(OPEN_SHORT).is_disabled() && h.get_by_label(SHOW_IN_FOLDER).is_disabled());
     assert!(!h.get_by_label(RESTORE_SHORT).is_disabled());
 
     h.state_mut().0.detail = None;
-    h.run();
+    h.run_steps(4);
     assert!(h.query_by_label(RESTORE_SHORT).is_none(), "no detail lists the file");
     drop(h);
     remove_fixture(&dir);

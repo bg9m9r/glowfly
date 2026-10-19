@@ -9,7 +9,9 @@
 use super::UiCache;
 use super::diff::wrap::{self, MIN_COLS, RowMetrics, Wrap};
 use super::diff::{DiffStyle, paint_line};
+use super::empty_state::{EmptyIcon, empty_state};
 use super::find_bar::{self, FindIntent, plural};
+use super::pane_status::{self, Failure};
 use super::theme::color;
 use super::widgets::truncate;
 use crate::msg::{DiffMsg, HistoryMsg, Msg};
@@ -24,6 +26,10 @@ pub(in crate::ui) const WRAP_LINES: &str = "Wrap lines";
 pub(in crate::ui) const WRAP_TIP: &str = "Continue long lines on the next line";
 pub(in crate::ui) const DELETED_NOTE: &str = "Deleted by this commit; this is its last version";
 pub(in crate::ui) const LFS_UNTRUSTED: &str = "Git LFS pointer. Trust this repository to see the file's content.";
+pub(in crate::ui) const LOADING_FILE: &str = "Loading the file…";
+pub(in crate::ui) const FAILED_TITLE: &str = "Couldn't read this version of the file";
+pub(in crate::ui) const UNAVAILABLE_TITLE: &str = "Can't show this version";
+pub(in crate::ui) const EMPTY_FILE: &str = "This file is empty";
 /// The least width the toolbar needs to keep find and go to line on its one row.
 const ONE_ROW: f32 = 560.0;
 
@@ -33,23 +39,36 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     let before = status == 'D';
     let text = view.text.as_ref().filter(|t| t.oid == oid && t.path == path && t.before == before);
     let data = match text.map(|t| &t.state) {
-        None | Some(TextState::Loading) => return note(ui, "Loading…", false, color::weak()),
-        Some(TextState::Failed(e)) if e.starts_with(BINARY_NOT_SHOWN) => return super::empty_state::binary_file(ui),
-        Some(TextState::Failed(e)) => return note(ui, &e.clone(), true, color::weak()),
+        None | Some(TextState::Loading) => return pane_status::loading(ui, LOADING_FILE),
+        Some(TextState::Failed(e)) if e.message.starts_with(BINARY_NOT_SHOWN) => return super::empty_state::binary_file(ui),
+        Some(TextState::Failed(e)) if !e.retry => {
+            empty_state(ui, EmptyIcon::File, UNAVAILABLE_TITLE, &e.message, &[]);
+            return;
+        }
+        Some(TextState::Failed(e)) => {
+            let (t, error) = (st.settings.lang(), e.message.clone());
+            let retry = Some(Msg::History(HistoryMsg::RetryFileText));
+            return pane_status::failed(ui, t, Failure { title: FAILED_TITLE, error: &error, retry }, msgs);
+        }
         Some(TextState::Ready(data)) => data.clone(),
     };
     let notes = notes(&data.lfs, before);
     if data.lines.is_empty() && notes.is_empty() {
-        return note(ui, "This file is empty", false, color::weak());
+        return empty_file(ui);
     }
     toolbar(ui, st, data.lines.len(), &notes, msgs);
     for (text, col, _) in notes.iter().filter(|n| n.2) {
         note(ui, text, true, *col);
     }
     if data.lines.is_empty() {
-        return note(ui, "This file is empty", false, color::weak());
+        return empty_file(ui);
     }
     body(ui, st, cache, data);
+}
+
+/// An empty file's File view (and blame's).
+pub(super) fn empty_file(ui: &mut Ui) {
+    empty_state(ui, EmptyIcon::File, EMPTY_FILE, "", &[]);
 }
 
 /// A line of text in `col` below the commit block; `wrap` for messages that can run long.

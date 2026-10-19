@@ -37,6 +37,7 @@ mod dialog_frame;
 mod dialog_guard;
 mod diff;
 mod empty_state;
+mod empty_state_icons;
 mod file_buttons;
 mod file_dialogs;
 mod file_menu;
@@ -49,9 +50,11 @@ mod gitflow_finish_dialog;
 mod gitflow_panel;
 mod gitflow_section;
 mod graph;
+mod graph_empty;
 mod history;
 mod history_file;
 mod history_folder;
+mod history_footer;
 mod history_text_cache;
 mod icons;
 mod init_dialog;
@@ -66,6 +69,7 @@ mod menus;
 mod modals;
 mod op_strip;
 mod palette;
+mod pane_status;
 mod panel_size;
 mod patch_apply_dialog;
 mod patch_save_dialog;
@@ -128,6 +132,8 @@ mod snapshot_tests;
 #[cfg(test)]
 mod snapshot_tests_askpass;
 #[cfg(test)]
+mod snapshot_tests_banners;
+#[cfg(test)]
 mod snapshot_tests_blame;
 #[cfg(test)]
 mod snapshot_tests_blame_menu;
@@ -170,6 +176,8 @@ mod snapshot_tests_diff;
 #[cfg(test)]
 mod snapshot_tests_editor;
 #[cfg(test)]
+mod snapshot_tests_empty_panes;
+#[cfg(test)]
 mod snapshot_tests_esc;
 #[cfg(test)]
 mod snapshot_tests_file_actions;
@@ -185,6 +193,8 @@ mod snapshot_tests_file_menu_lfs;
 mod snapshot_tests_forge_filters;
 #[cfg(test)]
 mod snapshot_tests_forks;
+#[cfg(test)]
+mod snapshot_tests_form_messages;
 #[cfg(test)]
 mod snapshot_tests_gitflow;
 #[cfg(test)]
@@ -225,6 +235,8 @@ mod snapshot_tests_palette_nav;
 mod snapshot_tests_palette_recent;
 #[cfg(test)]
 mod snapshot_tests_palette_stash;
+#[cfg(test)]
+mod snapshot_tests_pane_status;
 #[cfg(test)]
 mod snapshot_tests_patch;
 #[cfg(test)]

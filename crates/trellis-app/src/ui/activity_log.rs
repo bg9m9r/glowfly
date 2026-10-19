@@ -1,12 +1,12 @@
 //! The logs panel at the bottom: the activity log, with earlier sessions' entries in dimmed
 //! groups, and the ends of the error and performance logs, read by the runner.
 
+use super::pane_status::{self, Failure};
 use super::panel_size;
 use super::theme::color;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
-use crate::state::logs::LogFileView;
 use crate::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
 use eframe::egui::{self, Align, Layout, RichText, TextStyle, Ui};
 use trellis_core::settings::SizedPanel;
@@ -28,7 +28,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         header(ui, st, msgs);
         match st.logs.tab {
             LogKind::Activity => activity(ui, st),
-            kind => file(ui, st.logs.file.as_ref().filter(|v| v.kind == kind)),
+            kind => file(ui, st, kind, msgs),
         }
     });
     panel_size::track(ctx, st, SizedPanel::Activity, id, resp.response.rect.height(), msgs);
@@ -104,18 +104,13 @@ fn activity(ui: &mut Ui, st: &AppState) {
 }
 
 /// The end of the error or performance log, one monospace row per line.
-fn file(ui: &mut Ui, view: Option<&LogFileView>) {
+fn file(ui: &mut Ui, st: &AppState, kind: LogKind, msgs: &mut Vec<Msg>) {
+    let view = st.logs.file.as_ref().filter(|v| v.kind == kind);
     let tail = match view.and_then(|v| v.tail.as_ref()) {
-        None => {
-            ui.horizontal(|ui| {
-                ui.add(egui::Spinner::new().size(12.0));
-                ui.label(RichText::new("Reading…").color(color::weak()));
-            });
-            return;
-        }
+        None => return pane_status::loading_line(ui, "Reading…"),
         Some(Err(e)) => {
-            ui.label(RichText::new(format!("Couldn't read this log: {e}")).color(color::red()));
-            return;
+            let f = Failure { title: "Couldn't read this log", error: e, retry: Some(Msg::Logs(LogsMsg::Show(kind))) };
+            return pane_status::failed_line(ui, st.settings.lang(), f, msgs);
         }
         Some(Ok(t)) if t.lines.is_empty() => {
             ui.label(RichText::new("Nothing has been logged here yet.").color(color::faint()));

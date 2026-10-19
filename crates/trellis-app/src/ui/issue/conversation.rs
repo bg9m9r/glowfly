@@ -2,17 +2,19 @@
 //! pull request conversation shows them), or why they aren't shown: loading, held while the
 //! repository isn't trusted, or the failure with Try again.
 
+use super::super::pane_status::{self, Failure};
 use super::super::pull_request::note;
 use super::super::theme::color;
 use crate::msg::{IssueMsg, Msg};
 use crate::state::AppState;
 use crate::state::issue::{Details, IssueView};
 use crate::state::pull_request::description_text;
-use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::Entry;
 use trellis_core::settings::Settings;
 use trellis_core::text::printable;
+
+const LOADING: &str = "Loading the issue…";
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(v) = &st.issue else { return };
@@ -23,12 +25,11 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             note(ui, text, color::weak());
         }
         Details::Held => note(ui, "Trust this repository to load its issue.", color::weak()),
-        Details::Loading => note(ui, "Loading the issue…", color::weak()),
+        Details::Loading => pane_status::loading(ui, LOADING),
         Details::Failed(e) => {
-            note(ui, e.as_str(), color::red());
-            if ui.add(buttons::secondary("Try again")).clicked() {
-                msgs.push(Msg::Issue(IssueMsg::Reload));
-            }
+            let title = format!("Couldn't load this {}", v.noun);
+            let retry = Some(Msg::Issue(IssueMsg::Reload));
+            pane_status::failed(ui, st.settings.lang(), Failure { title: &title, error: e, retry }, msgs);
         }
         Details::Loaded(_) => conversation(ui, v, &st.settings, st.view.now, st.view.utc_offset),
     });

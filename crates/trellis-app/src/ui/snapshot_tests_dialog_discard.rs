@@ -28,7 +28,7 @@ fn sent(h: &H, want: DialogMsg) -> bool {
 #[test]
 fn discard_question_over_a_form() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "dialog-discard");
-    st.modal = Some(Modal::NewBranch { start: None, name: "feature/login".into(), checkout: true });
+    st.modal = Some(Modal::NewBranch { start: None, name: "feature/login".into(), checkout: true, touched: Default::default() });
     st.dialog.asking = true;
     let mut h = harness(st, true);
     h.run();

@@ -3,23 +3,21 @@
 //! into the user's account, add the fork as a remote and fetch it.
 
 use super::super::dialog_frame::{Cx, Dialog, Footer};
-use super::super::theme::color;
+use super::super::pane_status::{self, Failure};
 use super::super::widgets::buttons;
+use super::super::widgets::form_message::{self, Message};
 use super::dialog::{field, note, problem_line};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::forks::{ForkCreate, ForkStep, added_as, error_text};
 use crate::ui::theme::controls;
-use eframe::egui::{self, RichText};
+use eframe::egui;
 use trellis_core::forge::Connection;
 use trellis_core::remote_ops::{RemoteNameProblem, check_remote_name};
 use trellis_core::repo::Snapshot;
 
 fn spinner_line(ui: &mut egui::Ui, text: String) {
-    ui.horizontal(|ui| {
-        ui.add(egui::Spinner::new());
-        ui.label(text);
-    });
+    pane_status::loading_line(ui, &text);
 }
 
 /// The remote name field and its problem line; returns (Enter pressed, the name is usable). The
@@ -62,10 +60,9 @@ pub fn show(
         ForkStep::Checking => match &f.error {
             None => spinner_line(ui, format!("Looking for your fork of {repo}…")),
             Some(e) => {
-                ui.label(RichText::new(error_text(e)).color(color::red()));
-                if ui.add(buttons::secondary("Retry").small()).clicked() {
-                    msgs.push(Msg::Remote(RemoteMsg::RetryForks));
-                }
+                let error = error_text(e);
+                let f = Failure { title: "Couldn't look for your fork", error: &error, retry: Some(Msg::Remote(RemoteMsg::RetryForks)) };
+                pane_status::failed_line(ui, cx.t, f, msgs);
             }
         },
         ForkStep::Mine { fork, .. } => {
@@ -94,7 +91,8 @@ pub fn show(
             ui.add_space(6.0);
             let (enter, ok) = name_field(ui, f, snap, !creating, focus);
             if let Some(e) = &f.error {
-                ui.label(RichText::new(error_text(e)).color(color::red()));
+                ui.add_space(4.0);
+                form_message::form(ui, Message::error(error_text(e)));
             }
             if creating {
                 ui.add_space(4.0);

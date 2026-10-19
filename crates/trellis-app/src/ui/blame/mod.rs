@@ -15,12 +15,16 @@ pub(in crate::ui) mod menu;
 pub(in crate::ui) mod rows;
 
 use super::UiCache;
-use super::theme::color;
-use crate::msg::Msg;
+use super::pane_status::{self, Failure};
+use crate::msg::{BlameMsg, Msg};
 use crate::state::AppState;
 use crate::state::blame::{BlameData, BlameView};
-use eframe::egui::{self, RichText, Ui};
+use eframe::egui::Ui;
 use menu::LineTarget;
+
+pub(in crate::ui) const LOADING: &str = "Loading the blame…";
+pub(in crate::ui) const FAILED_TITLE: &str = "Couldn't blame this file";
+pub(in crate::ui) const HELD_TITLE: &str = "Blame is paused until you trust this repository";
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = st.blame.as_mut() else { return };
@@ -28,12 +32,6 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     ui.add_space(6.0);
     header::show(ui, &mut st.blame, &st.settings, st.snap.as_ref(), msgs);
     ui.separator();
-    let note = |ui: &mut Ui, text: RichText| {
-        ui.horizontal(|ui| {
-            ui.add_space(10.0);
-            ui.add(egui::Label::new(text).wrap());
-        });
-    };
     let Some(view) = &st.blame else { return };
     match &view.data {
         // A re-run after HEAD moved keeps the old blame on screen.
@@ -46,10 +44,14 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                 }
             }
         }
-        _ if view.loading => note(ui, RichText::new("Loading…").color(color::weak())),
+        _ if view.loading => pane_status::loading(ui, LOADING),
         _ => match &view.error {
-            Some(e) => note(ui, RichText::new(e).color(color::red())),
-            None => note(ui, RichText::new("This file is empty").color(color::weak())),
+            Some(e) => {
+                let title = if e == crate::state::blame::HELD { HELD_TITLE } else { FAILED_TITLE };
+                let f = Failure { title, error: e, retry: Some(Msg::Blame(BlameMsg::Retry)) };
+                pane_status::failed(ui, st.settings.lang(), f, msgs);
+            }
+            None => super::history_file::empty_file(ui),
         },
     }
 }

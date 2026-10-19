@@ -7,7 +7,7 @@ use super::details::file_reveal::reveal;
 use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
 use super::theme::color;
-use crate::msg::Msg;
+use crate::msg::{Msg, SelectionMsg};
 use crate::state::lfs::TrackContext;
 use crate::state::{AppState, Selection};
 use eframe::egui::{self, RichText};
@@ -31,11 +31,15 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     ui.separator();
     ui.label(RichText::new(t.trf("details.workdir.changes", &[("sha", &short(oid))])).strong().color(color::text()));
     match &w.changes {
-        None => {
-            ui.label(RichText::new(t.tr("common.loading")).color(color::weak()));
-        }
+        None => super::pane_status::loading_line(ui, t.tr("common.loading")),
         Some(Err(e)) => {
-            ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
+            let retry = Some(Msg::Selection(SelectionMsg::RetryCompare));
+            super::pane_status::failed_line(
+                ui,
+                t,
+                super::pane_status::Failure { title: t.tr("details.workdir.failed.title"), error: e, retry },
+                msgs,
+            );
         }
         Some(Ok(c)) if c.files.is_empty() => {
             ui.label(RichText::new(t.tr("details.workdir.same")).color(color::weak()));

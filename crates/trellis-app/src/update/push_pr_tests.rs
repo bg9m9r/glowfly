@@ -199,7 +199,7 @@ fn push_in_another_tab_only_logs() {
 fn other_modal_is_not_replaced() {
     let (mut st, work, bare) = with_host("pr-push-other-modal");
     st.forge.as_mut().unwrap().open_after_load = Some(PrStart { source: "topic".into(), target: None });
-    st.modal = Some(Modal::RenameBranch { old: "feature".into(), name: "feature2".into() });
+    st.modal = Some(Modal::RenameBranch { old: "feature".into(), name: "feature2".into(), touched: Default::default() });
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(matches!(st.modal, Some(Modal::RenameBranch { .. })));
     assert!(logged(&st, "Use Create pull request… to continue"));

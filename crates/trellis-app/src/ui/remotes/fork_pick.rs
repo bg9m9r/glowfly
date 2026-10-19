@@ -4,6 +4,7 @@
 //! once the job starts.
 
 use super::super::dialog_frame::{Cx, Dialog, Footer};
+use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
 use super::super::widgets::buttons;
 use super::dialog::{field, note, problem_line};
@@ -70,15 +71,11 @@ pub fn show(
     let mut submit = false;
     let mut listed = false;
     if p.loading {
-        ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new());
-            ui.label("Loading forks…");
-        });
+        pane_status::loading_line(ui, "Loading forks…");
     } else if let Some(e) = &p.error {
-        ui.label(RichText::new(error_text(e)).color(color::red()));
-        if ui.add(buttons::secondary("Retry").small()).clicked() {
-            msgs.push(Msg::Remote(RemoteMsg::RetryForks));
-        }
+        let error = error_text(e);
+        let f = Failure { title: "Couldn't list the forks", error: &error, retry: Some(Msg::Remote(RemoteMsg::RetryForks)) };
+        pane_status::failed_line(ui, cx.t, f, msgs);
     } else if p.list.forks.is_empty() {
         ui.label(format!("Nobody has forked {repo} yet."));
         if p.target.provider.creates_forks() && ui.add(buttons::secondary(format!("Fork it on {service}…")).small()).clicked() {

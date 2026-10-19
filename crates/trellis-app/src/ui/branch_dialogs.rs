@@ -1,17 +1,22 @@
 //! The new branch, rename and upstream dialogs of a local branch. Names are checked live with
 //! the pure helpers in `branch_ops`; `update` (or git itself, for a new branch) checks them
-//! again before anything changes.
+//! again before anything changes. A name's problem shows under its field once the field was
+//! edited or a submit was tried (`form_message`).
 
 use super::dialog_frame::{Cx, Dialog, Footer};
-use super::theme::color;
 use super::widgets::buttons;
+use super::widgets::form_message::{self, Message};
 use crate::msg::BranchMsg;
 use crate::msg::{JobMsg, Msg};
+use crate::state::touched::Touched;
 use crate::ui::theme::controls;
-use eframe::egui::{self, Key, RichText};
+use eframe::egui::{self, Key};
 use trellis_core::branch_ops::{NameProblem, branch_name_warning, check_branch_name, is_valid_branch_name};
 use trellis_core::gitcli::args;
 use trellis_core::repo::{BranchInfo, Snapshot};
+
+/// The name field's key in `Touched`.
+const NAME: &str = "name";
 
 fn branch<'a>(snap: Option<&'a Snapshot>, name: &str) -> Option<&'a BranchInfo> {
     snap?.locals.iter().find(|b| b.name == name)
@@ -21,51 +26,51 @@ fn locals(snap: Option<&Snapshot>) -> Vec<&str> {
     snap.map(|s| s.locals.iter().map(|b| b.name.as_str()).collect()).unwrap_or_default()
 }
 
-/// The red problem line for `name` (none for an empty name unless `empty_too`), or else the
-/// amber warning that Windows can't store it.
-fn name_lines(ui: &mut egui::Ui, name: &str, problem: Option<&NameProblem>, empty_too: bool) {
-    let line = match problem {
-        Some(NameProblem::Empty) if !empty_too => None,
-        Some(p) => Some(RichText::new(p.message(name)).color(color::red())),
-        None => branch_name_warning(name).map(|w| RichText::new(w).color(color::amber())),
-    };
-    if let Some(line) = line {
-        ui.add_space(4.0);
-        ui.label(line);
+/// The error for `name`'s problem, or else the warning that Windows can't store it.
+fn name_message(name: &str, problem: Option<&NameProblem>) -> Option<Message<'static>> {
+    match problem {
+        Some(p) => Some(Message::error(p.message(name))),
+        None => branch_name_warning(name).map(Message::warning),
     }
 }
 
-/// The new branch dialog, at `start` (a commit) or HEAD; returns true when it should close. Its
-/// field keeps the keyboard focus unless `cx.keyboard` is false.
-pub fn new_branch(
-    ui: &mut egui::Ui,
-    cx: Cx,
-    start: Option<&str>,
-    name: &mut String,
-    checkout: &mut bool,
-    snap: Option<&Snapshot>,
-    msgs: &mut Vec<Msg>,
-) -> bool {
-    let heading = match (start, snap.and_then(|s| s.head_branch.as_deref())) {
+/// What the New branch dialog edits: the commit it starts at (HEAD when None), the name, the
+/// checkout box, and which fields were edited.
+pub struct NewBranchForm<'a> {
+    pub start: Option<&'a str>,
+    pub name: &'a mut String,
+    pub checkout: &'a mut bool,
+    pub touched: &'a mut Touched,
+}
+
+/// The new branch dialog; returns true when it should close. Its field keeps the keyboard focus
+/// unless `cx.keyboard` is false.
+pub fn new_branch(ui: &mut egui::Ui, cx: Cx, f: NewBranchForm, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
+    let heading = match (f.start, snap.and_then(|s| s.head_branch.as_deref())) {
         (Some(s), _) => format!("New branch at {}", &s[..7.min(s.len())]),
         (None, Some(b)) => format!("New branch from {b}"),
         (None, None) => "New branch at HEAD".to_owned(),
     };
     let d = Dialog::new(cx, heading).begin(ui);
-    let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
+    let r = controls::field(ui, egui::TextEdit::singleline(f.name).hint_text("branch-name").desired_width(f32::INFINITY));
     super::access::name_field(&r, "Branch name");
+    form_message::track(f.touched, NAME, &r);
+    // Read before focus is requested again, which would hide that Enter left the field.
+    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if cx.keyboard {
         r.request_focus();
     }
-    let new = name.trim();
+    let new = f.name.trim();
     let problem = check_branch_name(new, &locals(snap), None).err();
-    name_lines(ui, new, problem.as_ref(), false);
-    controls::checkbox(ui, checkout, "Check out after creating");
-    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    form_message::field(ui, f.touched, NAME, name_message(new, problem.as_ref()));
+    controls::checkbox(ui, f.checkout, "Check out after creating");
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create").enabled(problem.is_none())).submit(submit));
+    if out.attempted {
+        f.touched.attempt();
+    }
     if out.primary {
-        let mut cmd = if *checkout { args(&["checkout", "-b", new]) } else { args(&["branch", new]) };
-        if let Some(s) = start {
+        let mut cmd = if *f.checkout { args(&["checkout", "-b", new]) } else { args(&["branch", new]) };
+        if let Some(s) = f.start {
             cmd.push(s.to_owned());
         }
         msgs.push(Msg::Job(JobMsg::Git { label: "Create branch".into(), cmds: vec![cmd] }));
@@ -73,11 +78,22 @@ pub fn new_branch(
     out.primary || out.dismiss
 }
 
-/// The rename dialog; returns true when it should close. Its field keeps the keyboard focus
-/// unless `cx.keyboard` is false (a credential prompt is open above it).
-pub fn rename(ui: &mut egui::Ui, cx: Cx, old: &str, name: &mut String, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
+/// The rename dialog for `old`, editing `(name, touched)`; returns true when it should close.
+/// Its field keeps the keyboard focus unless `cx.keyboard` is false (a credential prompt is open
+/// above it).
+pub fn rename(
+    ui: &mut egui::Ui,
+    cx: Cx,
+    old: &str,
+    (name, touched): (&mut String, &mut Touched),
+    snap: Option<&Snapshot>,
+    msgs: &mut Vec<Msg>,
+) -> bool {
     let d = Dialog::new(cx, format!("Rename branch {old}")).begin(ui);
     let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
+    form_message::track(touched, NAME, &r);
+    // Read before focus is requested again, which would hide that Enter left the field.
+    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if cx.keyboard {
         r.request_focus();
     }
@@ -85,29 +101,30 @@ pub fn rename(ui: &mut egui::Ui, cx: Cx, old: &str, name: &mut String, snap: Opt
     let unchanged = new == old;
     let problem = if unchanged { None } else { check_branch_name(new, &locals(snap), Some(old)).err() };
     if !unchanged {
-        name_lines(ui, new, problem.as_ref(), true);
+        form_message::field(ui, touched, NAME, name_message(new, problem.as_ref()));
     }
     if let Some(t) = branch(snap, old).and_then(|b| b.tracking.as_ref()).filter(|t| t.is_remote()) {
-        ui.add_space(4.0);
-        ui.label(RichText::new(format!("Its upstream setting moves with it; {} is not renamed.", t.display())).color(color::weak()));
+        let note = format!("Its upstream setting moves with it; {} is not renamed.", t.display());
+        form_message::field(ui, touched, NAME, Some(Message::info(note)));
     }
     let valid = !unchanged && problem.is_none();
-    let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Rename").enabled(valid)).submit(submit));
+    if out.attempted && !unchanged {
+        touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Branch(BranchMsg::RenameBranch { old: old.to_owned(), new: new.to_owned() }));
     }
     out.primary || out.dismiss
 }
 
-/// The upstream dialog: which remote branch `branch` pulls from and pushes to. Returns true when
-/// it should close.
+/// The upstream dialog: which remote branch `branch` pulls from and pushes to, editing
+/// `(remote, name, touched)`. Returns true when it should close.
 pub fn upstream(
     ui: &mut egui::Ui,
     cx: Cx,
     branch_name: &str,
-    remote: &mut String,
-    name: &mut String,
+    (remote, name, touched): (&mut String, &mut String, &mut Touched),
     snap: Option<&Snapshot>,
     msgs: &mut Vec<Msg>,
 ) -> bool {
@@ -122,25 +139,29 @@ pub fn upstream(
         });
         ui.end_row();
         ui.label("Branch");
-        controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(300.0));
+        let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(300.0));
+        form_message::track(touched, NAME, &r);
         ui.end_row();
     });
     let target = name.trim();
     let valid = is_valid_branch_name(target);
     let exists = remotes.iter().any(|(r, b)| *r == *remote && b.iter().any(|(n, _)| n == target));
-    ui.add_space(6.0);
+    ui.add_space(4.0);
     let status = if !valid {
-        RichText::new("Not a valid branch name.").color(color::red())
+        Message::error("Not a valid branch name.")
     } else if exists {
-        RichText::new(format!("Tracks {remote}/{target}.")).color(color::weak())
+        Message::info(format!("Tracks {remote}/{target}."))
     } else {
-        RichText::new(format!("{remote}/{target} doesn't exist yet. Push {branch_name} to create it.")).color(color::amber())
+        Message::info(format!("{remote}/{target} doesn't exist yet. Push {branch_name} to create it."))
     };
-    ui.label(status);
+    form_message::field(ui, touched, NAME, Some(status));
     let current = branch(snap, branch_name).and_then(|b| b.tracking.as_ref());
     let unchanged = current.is_some_and(|t| t.remote == *remote && t.merge == target);
     let save = buttons::primary("Save").enabled(valid && !unchanged && !remote.is_empty());
     let out = d.finish(ui, Footer::new().cancel().primary(save));
+    if out.attempted {
+        touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Branch(BranchMsg::SetUpstream { branch: branch_name.to_owned(), remote: remote.clone(), name: target.to_owned() }));
     }

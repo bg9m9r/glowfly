@@ -56,8 +56,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
 fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let Some(d) = &st.detail else {
-        ui.label(RichText::new(t.tr("common.loading")).color(color::weak()));
-        return;
+        return super::pane_status::loading_line(ui, t.tr("common.loading"));
     };
     let open = st.diff.as_ref().map(|(target, _)| target);
     ui.horizontal(|ui| {

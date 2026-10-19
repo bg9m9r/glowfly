@@ -242,7 +242,7 @@ fn history_error_is_shown_and_logged() {
     let v = st.history.as_ref().unwrap();
     assert_eq!(v.error.as_deref(), Some("boom"));
     assert!(!v.loading && !v.complete());
-    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "boom"));
+    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not load the history of a.txt: boom"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

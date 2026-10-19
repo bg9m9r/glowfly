@@ -5,6 +5,7 @@
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::buttons;
+use super::widgets::form_message::{self, Message};
 use crate::msg::Msg;
 use crate::state::tags::{AnnotateForm, TagForm, annotate_problem, push_remote, tag_problem};
 use crate::tag::TagMsg;
@@ -13,7 +14,9 @@ use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::branch_ops::ref_name_warning;
 use trellis_core::names::blocks_here;
 use trellis_core::repo::Snapshot;
-use trellis_core::tag_ops::TagNameProblem;
+
+/// The name field's key in `Touched`.
+const NAME: &str = "name";
 
 const PUSH_HINT: &str = "After creating the tag, push it to this remote in the same operation; you may be asked for credentials.";
 
@@ -36,19 +39,16 @@ pub fn new_tag(ui: &mut egui::Ui, cx: Cx, form: &mut TagForm, snap: Option<&Snap
         ui,
         egui::TextEdit::singleline(&mut form.name).id(Id::new("trellis-tag-name")).hint_text("v1.0.0").desired_width(f32::INFINITY),
     );
+    form_message::track(&mut form.touched, NAME, &r);
     // Read before focus is requested again below, which would hide that Enter left the field.
     let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     let problem = tag_problem(snap, &form.name);
-    if let Some(p) = problem.as_ref().filter(|p| **p != TagNameProblem::Empty) {
-        ui.add_space(4.0);
-        ui.label(RichText::new(p.message(form.name.trim())).color(color::red()));
-    } else if problem.is_none()
-        && let Some(w) = ref_name_warning(form.name.trim(), blocks_here())
-    {
+    let name_msg = match &problem {
+        Some(p) => Some(Message::error(p.message(form.name.trim()))),
         // Allowed here, but Windows can't store it as a ref file.
-        ui.add_space(4.0);
-        ui.label(RichText::new(w).color(color::amber()));
-    }
+        None => ref_name_warning(form.name.trim(), blocks_here()).map(Message::warning),
+    };
+    form_message::field(ui, &form.touched, NAME, name_msg);
     let hint = if form.annotated { "Message (required)" } else { "Message (optional, makes an annotated tag)" };
     controls::field(
         ui,
@@ -67,6 +67,9 @@ pub fn new_tag(ui: &mut egui::Ui, cx: Cx, form: &mut TagForm, snap: Option<&Snap
         push_row(ui, form, snap, push_on, msgs);
     }
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create tag").enabled(valid)).submit(enter));
+    if out.attempted {
+        form.touched.attempt();
+    }
     if out.primary {
         msgs.push(Msg::Tag(TagMsg::CreateTag {
             at: form.at.clone(),
@@ -131,8 +134,8 @@ pub fn annotate_tag(ui: &mut egui::Ui, cx: Cx, form: &mut AnnotateForm, snap: Op
         r.request_focus();
     }
     if let Some(p) = &problem {
-        ui.add_space(4.0);
-        ui.label(RichText::new(p).color(color::red()));
+        ui.add_space(6.0);
+        form_message::form(ui, Message::error(p.as_str()));
     }
     let valid = problem.is_none() && !form.message.trim().is_empty();
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Annotate").enabled(valid)));

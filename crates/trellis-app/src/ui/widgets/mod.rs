@@ -1,11 +1,16 @@
 //! Custom-painted widget controls: toolbar buttons and their spacing, section headers, chips,
 //! nav rows, icon buttons; icon shapes are in `icon.rs`, text cut to a width with an ellipsis
 //! is in `truncate.rs`, the shared rich tooltip and egui's tooltip style in `tooltip.rs`, its
-//! rise into place in `tooltip_motion.rs`, and the segmented control in `segmented.rs`.
+//! rise into place in `tooltip_motion.rs`, and the segmented control in `segmented.rs`. The
+//! banner style is in `banner.rs`, field and form messages in `form_message.rs`, and the error,
+//! warning and information marks in `severity.rs`.
 
+pub mod banner;
 pub mod buttons;
+pub mod form_message;
 mod icon;
 pub mod segmented;
+pub mod severity;
 pub mod tooltip;
 pub mod tooltip_motion;
 pub mod truncate;

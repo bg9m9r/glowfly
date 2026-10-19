@@ -251,6 +251,8 @@ pub(super) mod remote_tests;
 pub(super) mod repo_scan_tests;
 #[path = "repo_sync_tests.rs"]
 pub(super) mod repo_sync_tests;
+#[path = "retry_tests.rs"]
+pub(super) mod retry_tests;
 #[path = "revert_lines_tests.rs"]
 pub(super) mod revert_lines_tests;
 #[path = "revert_tests.rs"]

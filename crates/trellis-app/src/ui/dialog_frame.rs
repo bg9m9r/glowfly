@@ -271,6 +271,7 @@ impl Open {
         if run_default {
             if default_is_primary {
                 out.primary |= primary_on;
+                out.attempted = !primary_on;
             } else if dismiss_r.is_some() {
                 out.dismiss = true;
             }
@@ -377,6 +378,9 @@ pub struct Outcome {
     pub dismiss: bool,
     pub alt: Option<usize>,
     pub extra: Option<usize>,
+    /// Enter asked for the primary while it was disabled: the form shows every field's problem
+    /// (`state::touched::Touched::attempt`).
+    pub attempted: bool,
 }
 
 /// The acknowledgement above the footer of a step that loses work for good: a checkbox with

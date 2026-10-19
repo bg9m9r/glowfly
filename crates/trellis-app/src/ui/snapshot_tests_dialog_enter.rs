@@ -50,7 +50,8 @@ fn init_dialog_enter_blocked_keeps_folder_focus() {
 #[test]
 fn set_upstream_dialog_enter_in_branch_saves() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "upstream-enter");
-    st.modal = Some(Modal::SetUpstream { branch: "search".into(), remote: "origin".into(), name: "topic".into() });
+    st.modal =
+        Some(Modal::SetUpstream { branch: "search".into(), remote: "origin".into(), name: "topic".into(), touched: Default::default() });
     let mut h = harness(st, true);
     h.run();
     h.get(By::new().role(Role::TextInput).value("topic")).focus();

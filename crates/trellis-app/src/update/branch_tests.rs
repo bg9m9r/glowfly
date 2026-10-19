@@ -97,7 +97,7 @@ fn rename(old: &str, new: &str) -> Msg {
 fn rename_dialog_and_checks() {
     let (mut st, work, bare) = with_origin("br-rename");
     update(&mut st, Msg::Branch(BranchMsg::RenameBranchDialog("feature".into())), Instant::now());
-    assert!(matches!(&st.modal, Some(Modal::RenameBranch { old, name }) if old == "feature" && name == "feature"));
+    assert!(matches!(&st.modal, Some(Modal::RenameBranch { old, name, .. }) if old == "feature" && name == "feature"));
     assert_eq!(cmds(&mut st, rename("feature", " feature-2 ")), vec![args(&["branch", "-m", "feature", "feature-2"])]);
     assert!(st.modal.is_none(), "the dialog closes");
 
@@ -136,7 +136,9 @@ fn upstream_dialog_and_commands() {
     git(&work, &["branch", "x"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     update(&mut st, Msg::Branch(BranchMsg::SetUpstreamDialog("x".into())), Instant::now());
-    assert!(matches!(&st.modal, Some(Modal::SetUpstream { branch, remote, name }) if branch == "x" && remote == "origin" && name == "x"));
+    assert!(
+        matches!(&st.modal, Some(Modal::SetUpstream { branch, remote, name, .. }) if branch == "x" && remote == "origin" && name == "x")
+    );
     local(&mut st, "feature").tracking = Some(Tracking { remote: "origin".into(), merge: "other".into() });
     update(&mut st, Msg::Branch(BranchMsg::SetUpstreamDialog("feature".into())), Instant::now());
     assert!(matches!(&st.modal, Some(Modal::SetUpstream { remote, name, .. }) if remote == "origin" && name == "other"));

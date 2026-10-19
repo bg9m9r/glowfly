@@ -1,6 +1,7 @@
 //! The cross-repository dashboard: Mine and Assigned with rows from several services, the
-//! Not loaded section, the dashboard over an open repository, the empty and reading states, and
-//! the messages its controls and row menus push.
+//! Not loaded section, the dashboard over an open repository, the reading state, and the
+//! messages its controls and row menus push. Its empty states are in
+//! `snapshot_tests_empty_panes`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, settings, with_repo};
 use super::snapshot_tests_select::click;
@@ -114,7 +115,7 @@ fn dashboard(st: &mut AppState) {
     d.unreadable = vec![(path("old-site"), "missing".into())];
 }
 
-fn state(theme: ThemeChoice) -> AppState {
+pub(super) fn state(theme: ThemeChoice) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     dashboard(&mut st);
     st
@@ -160,10 +161,7 @@ fn dashboard_over_repo() {
 }
 
 #[test]
-fn dashboard_empty_and_reading() {
-    let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
-    st.dashboard.open = true;
-    render("dashboard_empty", st, true);
+fn dashboard_reading() {
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     let d = &mut st.dashboard;
     (d.open, d.phase) = (true, Phase::Fetching);

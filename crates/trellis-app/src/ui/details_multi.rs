@@ -86,11 +86,15 @@ fn heading(ui: &mut egui::Ui, t: Lang, m: &MultiSelection, from: git2::Oid, to: 
 /// The files that differ from `from` to `to`, each opening its diff between them.
 fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: git2::Oid, to: git2::Oid, msgs: &mut Vec<Msg>) {
     match &m.changes {
-        None => {
-            ui.label(RichText::new(t.tr("common.loading")).color(color::weak()));
-        }
+        None => super::pane_status::loading_line(ui, t.tr("common.loading")),
         Some(Err(e)) => {
-            ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
+            let retry = Some(Msg::Selection(SelectionMsg::RetryCompare));
+            super::pane_status::failed_line(
+                ui,
+                t,
+                super::pane_status::Failure { title: t.tr("details.multi.failed.title"), error: e, retry },
+                msgs,
+            );
         }
         Some(Ok(c)) if c.files.is_empty() => {
             ui.label(RichText::new(t.tr("details.multi.same_files")).color(color::weak()));

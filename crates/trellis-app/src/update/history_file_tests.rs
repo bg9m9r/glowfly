@@ -8,7 +8,7 @@ use super::update;
 use crate::effect::{Effect, FileTextRequest};
 use crate::msg::{HistoryMsg, Msg, RepoMsg};
 use crate::state::AppState;
-use crate::state::history::{FileTextData, HistoryPane, TextState};
+use crate::state::history::{FileTextData, HistoryPane, TextError, TextState};
 use std::sync::Arc;
 use std::time::Instant;
 use trellis_core::repo::DiffTarget;
@@ -142,13 +142,30 @@ fn stale_text_is_ignored() {
     assert!(matches!(text.state, TextState::Loading));
     send(
         &mut st,
-        HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), before: false, result: Err("Binary file not shown".into()) },
+        HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), before: false, result: Err(fixed("Binary file not shown")) },
     );
     let text = st.history.as_ref().unwrap().text.as_ref().unwrap();
-    assert!(matches!(&text.state, TextState::Failed(e) if e == "Binary file not shown"));
+    assert!(matches!(&text.state, TextState::Failed(e) if e.message == "Binary file not shown" && !e.retry));
     // A late duplicate doesn't replace what arrived.
     send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), before: false, result: Ok(data) });
     assert!(matches!(&st.history.as_ref().unwrap().text.as_ref().unwrap().state, TextState::Failed(_)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A failure that a retry can't fix.
+fn fixed(message: &str) -> TextError {
+    TextError { message: message.into(), retry: false }
+}
+
+#[test]
+fn a_too_large_file_cant_be_retried() {
+    let (mut st, dir) = with_view("history-file-too-large");
+    send(&mut st, HistoryMsg::SelectHistoryEntry(0));
+    send(&mut st, HistoryMsg::SetHistoryPane(HistoryPane::File));
+    let why = fixed("a.txt is too large to show (9 MB)");
+    send(&mut st, HistoryMsg::FileTextLoaded { oid: oid(1), path: "a.txt".into(), before: false, result: Err(why.clone()) });
+    let text = st.history.as_ref().unwrap().text.as_ref().unwrap();
+    assert!(matches!(&text.state, TextState::Failed(e) if *e == why));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

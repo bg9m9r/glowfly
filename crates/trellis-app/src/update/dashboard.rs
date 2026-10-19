@@ -27,6 +27,7 @@ pub(super) fn handle(st: &mut AppState, msg: DashboardMsg, now: Instant, fx: &mu
         DashboardMsg::Close => st.dashboard.open = false,
         DashboardMsg::Refresh => start(st, fx),
         DashboardMsg::Show(s) => st.dashboard.show = s,
+        DashboardMsg::ClearFilter => st.dashboard.filter.clear(),
         DashboardMsg::SignIn(account) => sign_in(st, account, fx),
         DashboardMsg::OpenRepo(path) => super::tabs::open(st, path, fx),
         DashboardMsg::OpenPr { path, target, id } => open_pr(st, path, target, id, now, fx),

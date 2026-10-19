@@ -156,7 +156,7 @@ pub(super) fn created(
             }
             super::forge::refresh(st, true, false, now, fx);
             if branch {
-                st.modal = Some(Modal::NewBranch { start: None, name, checkout: true });
+                st.modal = Some(Modal::NewBranch { start: None, name, checkout: true, touched: Default::default() });
             } else if waiting {
                 st.modal = None;
             }

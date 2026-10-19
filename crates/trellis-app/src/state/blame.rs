@@ -7,6 +7,9 @@ use git2::Oid;
 use trellis_core::highlight::Span;
 use trellis_core::repo::Blame;
 
+/// Why a held (untrusted) repository's blame doesn't run, shown in its place.
+pub const HELD: &str = "Blame runs git in this repository. Trust it first (the Untrusted chip in the toolbar).";
+
 /// How many "Blame before this commit" steps Back remembers; the oldest goes first.
 pub const BACK_LIMIT: usize = 50;
 

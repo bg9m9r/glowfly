@@ -35,7 +35,8 @@ fn settle(h: &mut H) {
     for _ in 0..4 {
         h.step();
     }
-    h.run();
+    // A loading pane's spinner keeps repainting; stop at the step limit then.
+    h.run_ok();
 }
 
 fn german_wip(name: &str, details: f32) -> (AppState, PathBuf) {
@@ -169,7 +170,7 @@ fn sidebar_issue_long_title() {
     let (mut st, dir) = with_issue(ThemeChoice::Dark, "truncate-issue-row", github(), issue, None);
     st.settings.panel_sizes.sidebar = Some(240.0);
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     h.check_snapshot("sidebar_issue_long_title");
     h.get_by_label(&format!("#12  {title}")).hover();
     settle(&mut h);

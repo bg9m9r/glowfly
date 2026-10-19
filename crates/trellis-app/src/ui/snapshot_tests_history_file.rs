@@ -172,7 +172,7 @@ fn folder_history_moved() {
     view.selected = Some(0);
     st.history = Some(view);
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     h.check_snapshot("folder_history_moved");
     drop(h);
     remove_fixture(&dir);

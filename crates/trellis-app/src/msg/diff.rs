@@ -252,6 +252,10 @@ pub enum HistoryMsg {
     StepHistoryFile(isize),
     /// Continue the walk past the commit limit.
     MoreFileHistory,
+    /// Try again after the walk failed: the same request as the one that failed.
+    RetryFileHistory,
+    /// Try again after the File view's text couldn't be read.
+    RetryFileText,
     /// "View on graph": close the history and select the commit.
     ShowInGraph(Oid),
     FileHistoryLoaded {
@@ -265,7 +269,7 @@ pub enum HistoryMsg {
         oid: Oid,
         path: String,
         before: bool,
-        result: Result<Arc<FileTextData>, String>,
+        result: Result<Arc<FileTextData>, crate::state::history::TextError>,
     },
 }
 
@@ -286,6 +290,8 @@ impl HistoryMsg {
             | Self::FileGoToLine
             | Self::StepHistoryFile(..)
             | Self::MoreFileHistory
+            | Self::RetryFileHistory
+            | Self::RetryFileText
             | Self::ShowInGraph(..)
             | Self::FileHistoryLoaded { .. }
             | Self::FileTextLoaded { .. } => None,

@@ -68,9 +68,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 let ack = ack.as_deref().map(|label| (label, acked));
                 close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Danger, ack, msgs);
             }
-            Modal::NewBranch { start, name, checkout } => {
+            Modal::NewBranch { start, name, checkout, touched } => {
                 // Not under a credential prompt or the discard question: its fields need the keyboard.
-                close = super::branch_dialogs::new_branch(ui, cx, start.as_deref(), name, checkout, snap, msgs);
+                let form = super::branch_dialogs::NewBranchForm { start: start.as_deref(), name, checkout, touched };
+                close = super::branch_dialogs::new_branch(ui, cx, form, snap, msgs);
             }
             Modal::NewTag(form) => close = super::tag_dialog::new_tag(ui, cx, form, snap, push_tags, msgs),
             Modal::AnnotateTag(form) => close = super::tag_dialog::annotate_tag(ui, cx, form, snap, msgs),
@@ -92,11 +93,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 close = super::create_pr_dialog::show(ui, cx, form, fs, snap, idle, msgs);
             }
             Modal::Publish(f) => close = super::publish::form(ui, cx, f, idle, msgs),
-            Modal::RenameBranch { old, name } => close = super::branch_dialogs::rename(ui, cx, old, name, snap, msgs),
+            Modal::RenameBranch { old, name, touched } => close = super::branch_dialogs::rename(ui, cx, old, (name, touched), snap, msgs),
             Modal::RenameStash(form) => close = super::stash_dialog::rename(ui, cx, form, idle, msgs),
             Modal::StashPush(form) => close = super::stash_push_dialog::show(ui, cx, form, snap, idle, msgs),
-            Modal::SetUpstream { branch, remote, name } => {
-                close = super::branch_dialogs::upstream(ui, cx, branch, remote, name, snap, msgs)
+            Modal::SetUpstream { branch, remote, name, touched } => {
+                close = super::branch_dialogs::upstream(ui, cx, branch, (remote, name, touched), snap, msgs)
             }
             Modal::NewFile(form) => close = super::file_dialogs::new_file(ui, cx, form, snap, msgs),
             Modal::RenameFile { old, form } => close = super::file_dialogs::rename_file(ui, cx, old, form, snap, stage_renames, msgs),

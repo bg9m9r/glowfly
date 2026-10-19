@@ -39,7 +39,8 @@ pub(super) fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)
 pub(super) fn esc(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Vec<Msg> {
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
-    h.run();
+    // A loading pane's spinner keeps repainting; stop at the step limit then.
+    h.run_ok();
     std::mem::take(&mut h.state_mut().1)
 }
 
@@ -111,7 +112,7 @@ fn esc_closes_blame_before_history() {
     st.history = Some(FileHistoryView::loading("README.md".into(), None));
     st.blame = Some(BlameView::loading("README.md".into(), None));
     let mut h = app_harness(st);
-    h.run();
+    h.run_steps(4);
     let msgs = esc(&mut h);
     assert!(msgs.iter().any(|m| matches!(m, Msg::Blame(BlameMsg::Close))), "Esc closes the blame view");
     assert!(!msgs.iter().any(|m| matches!(m, Msg::History(HistoryMsg::CloseFileHistory))), "and leaves the history open");
@@ -191,7 +192,7 @@ fn esc_in_file_history_clears_a_line_selection_first() {
     st.view.diff_lines.target = Some(DiffTarget::Commit(git2::Oid::zero(), "README.md".into()));
     st.view.diff_lines.lines.insert(1);
     let mut h = app_harness(st);
-    h.run();
+    h.run_steps(4);
     let msgs = esc(&mut h);
     assert!(msgs.iter().any(|m| matches!(m, Msg::Diff(DiffMsg::ClearLineSelection))), "Esc drops the selection");
     assert!(!msgs.iter().any(|m| matches!(m, Msg::History(HistoryMsg::CloseFileHistory))), "and leaves the history open");

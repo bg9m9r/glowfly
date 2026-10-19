@@ -52,6 +52,11 @@ impl GitState {
         (!self.has(f)).then(|| f.needs_text(self.info.as_ref().and_then(|i| i.version)))
     }
 
+    /// The check answered and git couldn't be run at all (no version), not merely too old.
+    pub fn git_unusable(&self) -> bool {
+        self.info.as_ref().is_some_and(|i| i.version.is_none())
+    }
+
     /// The banner's text, unless it was closed or all is well.
     pub fn banner(&self) -> Option<String> {
         if self.banner_dismissed {

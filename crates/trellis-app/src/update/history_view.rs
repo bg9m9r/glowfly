@@ -5,7 +5,7 @@
 use crate::effect::{Effect, FileTextRequest};
 use crate::state::AppState;
 use crate::state::blame_find::search;
-use crate::state::history::{FileText, FileTextData, HistoryKind, HistoryPane, TextState};
+use crate::state::history::{FileText, FileTextData, HistoryKind, HistoryPane, TextError, TextState};
 use git2::Oid;
 use std::sync::Arc;
 use trellis_core::repo::DiffTarget;
@@ -50,13 +50,23 @@ pub(super) fn want_text(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::LoadFileText(FileTextRequest { workdir, oid, path, before, smudge }));
 }
 
+/// Try again after the File view's text failed: asks for it once more.
+pub(super) fn retry_text(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let Some(view) = st.history.as_mut() else { return };
+    if !view.text.as_ref().is_some_and(|t| matches!(t.state, TextState::Failed(_))) {
+        return;
+    }
+    view.text = None;
+    want_text(st, fx);
+}
+
 /// The text of `path` as of `oid` (or its parent) arrived: kept only while the view still waits
 /// for it. The find field's matches are found again in it, without moving to one.
-pub(super) fn text_loaded(st: &mut AppState, oid: Oid, path: &str, before: bool, result: Result<Arc<FileTextData>, String>) {
+pub(super) fn text_loaded(st: &mut AppState, oid: Oid, path: &str, before: bool, result: Result<Arc<FileTextData>, TextError>) {
     let waiting = |t: &&mut FileText| t.oid == oid && t.path == path && t.before == before && matches!(t.state, TextState::Loading);
     let Some(view) = st.history.as_mut() else { return };
     let Some(text) = view.text.as_mut().filter(waiting) else { return };
-    let failed = result.as_ref().err().cloned();
+    let failed = result.as_ref().err().map(|e| e.message.clone());
     if let Ok(data) = &result {
         view.nav.find.hits = search(&data.lines, &view.nav.find.query);
         view.nav.find.current = None;

@@ -3,6 +3,7 @@
 //! and `update` fills the URL with its clone URL.
 
 use super::clone_dialog::note;
+use super::pane_status::{self, Failure};
 use super::theme::color;
 use super::widgets::buttons;
 use crate::msg::{CloneMsg, Msg, PrefsMsg};
@@ -13,6 +14,7 @@ use crate::state::forks::error_text;
 use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Layout, RichText};
 use trellis_core::forge::Connection;
+use trellis_core::i18n::Lang;
 
 /// The repositories the filter keeps (only the rows in view are laid out: a list can hold 1000).
 fn rows(ui: &mut egui::Ui, p: &ServicePicker, msgs: &mut Vec<Msg>) {
@@ -61,7 +63,7 @@ fn account(ui: &mut egui::Ui, p: &ServicePicker, connections: &[Connection], msg
 
 /// The tab's contents; returns true when Open Integrations closes the dialog. The filter takes
 /// the focus when nothing has it, unless `focus` is false (a credential prompt is open above).
-pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, connections: &[Connection], focus: bool, msgs: &mut Vec<Msg>) -> bool {
+pub fn show(ui: &mut egui::Ui, t: Lang, form: &mut CloneForm, connections: &[Connection], focus: bool, msgs: &mut Vec<Msg>) -> bool {
     let p = &mut form.service;
     if p.accounts.is_empty() {
         ui.label("Connect GitHub, GitLab or Bitbucket in Preferences > Integrations to pick from your repositories.");
@@ -74,15 +76,11 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, connections: &[Connection],
     account(ui, p, connections, msgs);
     ui.add_space(4.0);
     if p.loading || p.loaded.is_none() {
-        ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new());
-            ui.label("Loading your repositories…");
-        });
+        pane_status::loading_line(ui, "Loading your repositories…");
     } else if let Some(e) = &p.error {
-        ui.label(RichText::new(error_text(e)).color(color::red()));
-        if ui.add(buttons::secondary("Retry").small()).clicked() {
-            msgs.push(Msg::Clone(CloneMsg::RetryRepos));
-        }
+        let error = error_text(e);
+        let f = Failure { title: "Couldn't list your repositories", error: &error, retry: Some(Msg::Clone(CloneMsg::RetryRepos)) };
+        pane_status::failed_line(ui, t, f, msgs);
     } else if p.list.repos.is_empty() {
         ui.label("No repositories found for this account.");
     } else {

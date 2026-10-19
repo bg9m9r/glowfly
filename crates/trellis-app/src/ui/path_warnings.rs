@@ -3,6 +3,7 @@
 //! row's path saying why its actions are off.
 
 use super::theme::color;
+use super::widgets::banner::{self, BannerKind};
 use crate::state::path_hazards::warnings;
 use eframe::egui::{self, RichText};
 use trellis_core::repo::{FileEntry, Snapshot};
@@ -13,10 +14,10 @@ pub(super) fn banner(ui: &mut egui::Ui, snap: &Snapshot) {
     if lines.is_empty() {
         return;
     }
-    egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
-        ui.label(RichText::new("File names").strong());
+    banner::frame(ui, BannerKind::Warning, None, |ui| {
+        ui.label(RichText::new("File names").strong().color(color::text()));
         for line in lines {
-            ui.add(egui::Label::new(line).wrap());
+            ui.add(egui::Label::new(RichText::new(line).color(color::text())).wrap());
         }
     });
     ui.add_space(6.0);

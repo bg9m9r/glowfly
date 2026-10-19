@@ -20,6 +20,8 @@ use crate::state::tool_compare::{IN_MERGE_TOOL, merge_blocked, merging};
 use eframe::egui::{self, Frame, RichText, Ui};
 use trellis_core::repo::{ConflictContent, ConflictFile, Side};
 
+const LOADING: &str = "Loading the conflict…";
+
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
     let wrap = st.settings.diff_word_wrap;
@@ -39,8 +41,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     auto_note(ui, view);
     restored_note(ui, view);
     let Some(file) = &view.file else {
-        ui.label(RichText::new("Loading…").color(color::weak()));
-        return;
+        return super::pane_status::loading(ui, LOADING);
     };
     if !matches!(file.content, ConflictContent::Text(_)) {
         fallback(ui, view, file, in_tool, msgs);

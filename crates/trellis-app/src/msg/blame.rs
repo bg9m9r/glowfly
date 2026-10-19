@@ -50,6 +50,8 @@ pub enum BlameMsg {
     GoToLine,
     /// To the first line of the next (1) or previous (-1) run.
     StepRun(isize),
+    /// Try again after the blame failed (in a held repository, asks for trust again).
+    Retry,
 }
 
 impl BlameMsg {
@@ -75,7 +77,8 @@ impl BlameMsg {
             | Self::FindStep(..)
             | Self::FocusFind
             | Self::GoToLine
-            | Self::StepRun(..) => None,
+            | Self::StepRun(..)
+            | Self::Retry => None,
         }
     }
 }

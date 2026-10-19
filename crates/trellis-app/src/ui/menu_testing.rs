@@ -13,7 +13,8 @@ type H = Harness<'static, (AppState, Vec<Msg>)>;
 /// Hovers the submenu button `parent` so its submenu opens.
 pub(super) fn open_submenu(h: &mut H, parent: &str) {
     h.get_by_label(parent).hover();
-    h.run();
+    // A loading pane's spinner keeps repainting; stop at the step limit then.
+    h.run_ok();
 }
 
 /// A node's text: a label widget keeps it as its value, a button as its label.

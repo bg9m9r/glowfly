@@ -6,6 +6,7 @@
 
 use super::UiCache;
 use super::common::{menu_item, menu_item_if, short, status_color};
+use super::empty_state::{EmptyIcon, empty_state};
 use super::file_buttons::{self, CommitFile};
 use super::file_menu;
 use super::theme::color;
@@ -25,6 +26,9 @@ use trellis_core::repo::{DiffTarget, HistoryEntry};
 const ROW_H: f32 = 44.0;
 /// The row menu's item that blames the file as of the entry's commit.
 pub(super) const BLAME_AT: &str = "Blame at this commit";
+pub(super) const NO_SELECTION_TITLE: &str = "No commit selected";
+const NO_SELECTION_HINT: &str = "Select a commit to see its changes to the file.";
+const LOADING_CHANGES: &str = "Loading the changes…";
 pub(super) const NOT_ON_GRAPH: &str = "Not visible on the graph: its branch is hidden or it is older than the commit limit";
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -112,6 +116,9 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
     keyboard(ui, view, msgs);
     let in_wd = view.in_workdir(st.snap.as_ref());
     let diff_blocked = diff_blocked(&st.settings.external_tools);
+    if view.entries.is_empty() {
+        return super::history_footer::empty_list(ui, st, view, msgs);
+    }
     egui::ScrollArea::vertical().id_salt("file-history").auto_shrink([false, false]).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
         for (i, e) in view.entries.iter().enumerate() {
@@ -148,7 +155,7 @@ fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg
             ui.painter().hline(rect.x_range(), rect.bottom() - 0.5, (1.0, color::border()));
         }
         ui.add_space(8.0);
-        footer(ui, st, view, msgs);
+        super::history_footer::footer(ui, st, view, msgs);
     });
 }
 
@@ -222,37 +229,6 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: History
     date_rect
 }
 
-fn footer(ui: &mut Ui, st: &AppState, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
-    egui::Frame::new().inner_margin(egui::Margin { left: 12, right: 10, top: 0, bottom: 0 }).show(ui, |ui| {
-        ui.spacing_mut().item_spacing.y = 6.0;
-        if view.loading {
-            ui.label(RichText::new("Loading…").color(color::weak()));
-        } else if let Some(e) = &view.error {
-            ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
-        } else if view.complete() {
-            if view.entries.is_empty() {
-                let none = match view.kind {
-                    HistoryKind::File => "No commits change this file",
-                    HistoryKind::Folder => "No commits change this folder",
-                };
-                ui.label(RichText::new(none).color(color::weak()));
-            } else {
-                ui.label(RichText::new("Reached the first commit").color(color::faint()));
-            }
-        } else {
-            // Stopped at the commit limit.
-            if let Some((oid, time)) = view.searched_until {
-                let date = st.settings.format_date_word(time, st.view.utc_offset);
-                ui.label(RichText::new(format!("Searched back to {date} ({})", short(oid))).color(color::weak()));
-            }
-            if ui.add(buttons::secondary("Search further")).clicked() {
-                msgs.push(Msg::History(HistoryMsg::MoreFileHistory));
-            }
-        }
-    });
-    ui.add_space(8.0);
-}
-
 /// Up and Down move the selection while no text field has focus.
 fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
     if view.entries.is_empty() || ui.ctx().memory(|m| m.focused().is_some()) {
@@ -280,8 +256,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
     let shown = view.shown().map(|(oid, path, status)| (oid, path.to_owned(), status));
     let Some(e) = view.selected_entry().cloned() else {
         if !view.loading && !view.entries.is_empty() {
-            ui.add_space(10.0);
-            ui.label(RichText::new("Select a commit to see its changes to the file.").color(color::weak()));
+            empty_state(ui, EmptyIcon::File, NO_SELECTION_TITLE, NO_SELECTION_HINT, &[]);
         }
         return;
     };
@@ -318,13 +293,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
     match pane {
         HistoryPane::File => super::history_file::show(ui, st, cache, msgs),
         HistoryPane::Diff if st.diff.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, cache, msgs),
-        HistoryPane::Diff => {
-            ui.add_space(4.0);
-            ui.horizontal(|ui| {
-                ui.add_space(10.0);
-                ui.label(RichText::new("Loading…").color(color::weak()));
-            });
-        }
+        HistoryPane::Diff => super::pane_status::loading(ui, LOADING_CHANGES),
     }
 }
 

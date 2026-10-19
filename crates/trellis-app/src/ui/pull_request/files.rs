@@ -3,16 +3,24 @@
 
 use super::super::details::file_reveal::reveal;
 use super::super::details::{RowActions, changed_file_row};
+use super::super::empty_state::{EmptyIcon, empty_state};
 use super::super::file_menu::RowSource;
+use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
 use crate::msg::Msg;
+use crate::pull_request::PullRequestMsg;
 use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::lfs::TrackContext;
 use crate::state::pull_request::{Files, PrView, empty_text, fetch_blocked, files_heading, out_of_sync, unrelated_text};
+use crate::ui::widgets::banner::{self, BannerKind};
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::repo::DiffTarget;
+
+pub(in crate::ui) const LOADING: &str = "Comparing the branches…";
+pub(in crate::ui) const FAILED_TITLE: &str = "Couldn't compare the branches";
+const NO_FILES: &str = "No changed files";
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) {
     let heading = match &v.files {
@@ -24,18 +32,17 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
     let weak = |ui: &mut Ui, text: String| ui.add(egui::Label::new(RichText::new(text).color(color::weak())).wrap());
     match &v.files {
         Files::Missing => {}
-        Files::Loading => {
-            weak(ui, "Loading…".to_owned());
-        }
+        Files::Loading => pane_status::loading(ui, LOADING),
         Files::Unrelated => {
             let shallow = st.snap.as_ref().is_some_and(|s| !s.shallow_roots.is_empty());
             weak(ui, unrelated_text(v, shallow));
         }
         Files::Failed(e) => {
-            ui.add(egui::Label::new(RichText::new(e).color(color::red())).wrap());
+            let retry = Some(Msg::PullRequest(PullRequestMsg::ReloadFiles));
+            pane_status::failed(ui, st.settings.lang(), Failure { title: FAILED_TITLE, error: e, retry }, msgs);
         }
         Files::Loaded(c) if c.comparison.files.is_empty() => {
-            weak(ui, empty_text(v));
+            empty_state(ui, EmptyIcon::File, NO_FILES, &empty_text(v), &[]);
         }
         Files::Loaded(c) => {
             let Some(tip) = v.tips.source else { return };
@@ -63,8 +70,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
 fn notes(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) {
     let notes = out_of_sync(v);
     let Some(snap) = st.snap.as_ref().filter(|_| !notes.is_empty()) else { return };
-    egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
-        ui.set_width(ui.available_width());
+    banner::frame(ui, BannerKind::Warning, None, |ui| {
         for n in &notes {
             ui.add(egui::Label::new(RichText::new(n.text(v)).color(color::text())).wrap());
         }

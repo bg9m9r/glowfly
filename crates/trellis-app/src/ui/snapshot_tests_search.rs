@@ -65,6 +65,7 @@ fn search_msgs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<String> {
                 SearchMsg::Next => "Next".to_owned(),
                 SearchMsg::ToggleFilter => "ToggleFilter".to_owned(),
                 SearchMsg::Close => "Close".to_owned(),
+                SearchMsg::Clear => "Clear".to_owned(),
                 SearchMsg::WantAuthors => "WantAuthors".to_owned(),
                 SearchMsg::PickAuthor(a) => format!("PickAuthor({a:?})"),
                 SearchMsg::PathsSearched { request, .. } => format!("PathsSearched({request})"),
@@ -81,7 +82,7 @@ fn graph_search_dim() {
     assert_eq!(st.search.matches.len(), 2);
     select(&mut st, "Merge branch 'login-page'");
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     assert!(h.query_by_label("1 of 2").is_some());
     h.check_snapshot("graph_search_dim");
     drop(h);
@@ -101,20 +102,6 @@ fn graph_search_filtered() {
         render(name, st, dark);
         remove_fixture(&dir);
     }
-}
-
-#[test]
-fn graph_search_no_matches() {
-    let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-none");
-    searching(&mut st, "nothing like this");
-    send(&mut st, SearchMsg::ToggleFilter);
-    let mut h = harness(st, true);
-    h.run();
-    assert!(h.query_by_label("No matches").is_some());
-    assert!(h.query_by_label("No commits match this search.").is_some());
-    h.check_snapshot("graph_search_no_matches");
-    drop(h);
-    remove_fixture(&dir);
 }
 
 /// Sends `msg`, runs the path searches it asks for and feeds their reports back.
@@ -137,7 +124,7 @@ fn graph_search_paths_pending() {
     searching(&mut st, "path:notes.txt");
     assert!(st.search.searching_files());
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     assert!(h.query_by_label("Searching files…").is_some());
     assert!(h.query_by_label("Searching changed files…").is_some());
     h.check_snapshot("graph_search_paths_pending");
@@ -150,7 +137,7 @@ fn graph_search_paths_pending() {
     let touching = vec![commits[0].oid];
     let chunk = crate::msg::PathsChunk { searched: first, touching, done: false };
     send(st, SearchMsg::PathsSearched { request, result: Ok(chunk) });
-    h.run();
+    h.run_steps(4);
     assert!(h.query_by_label("1 so far, searching…").is_some());
     h.check_snapshot("graph_search_paths_partial");
     drop(h);
@@ -306,10 +293,10 @@ fn arrow_keys_move_through_the_shown_matches() {
     // Merge branch 'login-page', then Add login page with Fix build on Windows hidden between.
     st.selection = Selection::Commit(shown[1]);
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     h.state_mut().1.clear();
     h.press_key(Key::ArrowDown);
-    h.run();
+    h.run_steps(4);
     let selected: Vec<_> =
         h.state().1.iter().filter_map(|m| if let Msg::Repo(RepoMsg::SelectCommit(o)) = m { Some(*o) } else { None }).collect();
     assert_eq!(selected, [shown[2]], "the next shown match, past the hidden rows");

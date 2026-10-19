@@ -18,7 +18,7 @@ mod calls_tests;
 #[cfg(test)]
 mod merge_tests;
 #[cfg(test)]
-mod tests;
+pub(in crate::update) mod tests;
 mod threads;
 #[cfg(test)]
 mod threads_tests;
@@ -62,6 +62,7 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
             }
         }
         PullRequestMsg::Reload => load(st, fx),
+        PullRequestMsg::ReloadFiles => request(st, fx),
         PullRequestMsg::PostComment => calls::post_comment(st, fx),
         PullRequestMsg::SubmitReview => calls::submit_review(st, fx),
         PullRequestMsg::Merge => calls::merge(st, fx),

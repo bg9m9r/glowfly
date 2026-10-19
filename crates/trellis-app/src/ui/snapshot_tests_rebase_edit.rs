@@ -48,7 +48,7 @@ fn multi_commit_menu_edit() {
     let (mut st, dir, [c3, c2, c1]) = with_linear(ThemeChoice::Dark, "multi-edit", false);
     select(&mut st, &[c3, c2]);
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     // Row 0 is the WIP row (the README is modified).
     click(&mut h, pos2(700.0, row_y(1)), PointerButton::Secondary);
     h.check_snapshot("multi_commit_menu_edit");
@@ -60,12 +60,12 @@ fn multi_commit_menu_edit() {
     assert_eq!(in_menu, ["2 commits selected"]);
     h.state_mut().1.clear();
     h.get_by_label("Squash…").click();
-    h.run();
+    h.run_steps(4);
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(RebaseMsg::Edit(QuickEdit::Squash(o))) if *o == [c3, c2])));
 
     // Not one after another: only Drop.
     select(&mut h.state_mut().0, &[c3, c1]);
-    h.run();
+    h.run_steps(4);
     click(&mut h, pos2(700.0, row_y(1)), PointerButton::Secondary);
     assert!(h.get_by_label("Squash…").is_disabled());
     assert!(!h.get_by_label("Drop…").is_disabled());

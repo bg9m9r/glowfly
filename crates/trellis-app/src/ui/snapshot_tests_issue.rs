@@ -163,6 +163,9 @@ fn issue_panel_failed() {
     h.check_snapshot("issue_panel_failed");
     assert!(h.get_by_label("Open in browser").is_disabled(), "no link");
     assert!(h.query_by_label("No branches for this issue yet.").is_some());
+    assert!(h.query_by_label("Couldn't load this issue").is_some());
+    assert!(h.query_by_label("Issue #12 wasn't found").is_some(), "without the kind prefix");
+    assert!(h.query_by_label("Copy details").is_some());
     h.get_by_label("Try again").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Reload))));
@@ -174,10 +177,10 @@ fn issue_panel_failed() {
 fn sidebar_issues_with_add() {
     let (st, dir) = with_issue(ThemeChoice::Light, "issue-sidebar", github(), crash(), None);
     let mut h = harness(st, false);
-    h.run();
+    h.run_steps(4);
     h.check_snapshot("sidebar_issues_with_add");
     h.get_by_label("Create issue").click();
-    h.run();
+    h.run_steps(4);
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::CreateDialog))));
     assert!(h.state().0.view.sections.issues, "the + leaves the section open");
 
@@ -189,7 +192,7 @@ fn sidebar_issues_with_add() {
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Open(k)) if k == "14")));
     click(&mut h, center, PointerButton::Secondary);
     h.get_by_label("View issue").click();
-    h.run();
+    h.run_steps(4);
     assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Issue(IssueMsg::Open(k)) if k == "14")).count(), 2);
     assert!(h.state().1.iter().all(|m| !matches!(m, Msg::OpenUrl(_))), "no browser for a click");
     drop(h);
@@ -214,7 +217,7 @@ fn create_is_disabled_with_the_reason() {
 fn esc_closes_the_issue_panel() {
     let (st, dir) = with_issue(ThemeChoice::Dark, "issue-esc", github(), crash(), None);
     let mut h = super::snapshot_tests_esc::app_harness(st);
-    h.run();
+    h.run_steps(4);
     let msgs = super::snapshot_tests_esc::esc(&mut h);
     assert!(msgs.iter().any(|m| matches!(m, Msg::Issue(IssueMsg::Close))));
     drop(h);

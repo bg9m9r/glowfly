@@ -5,7 +5,7 @@
 //! (`state::op_confirm`).
 
 use super::common::state_actions;
-use super::theme::color;
+use super::widgets::banner::{self, BannerKind};
 use super::widgets::buttons;
 use crate::msg::{CommitMsg, ConflictMsg, Msg};
 use crate::state::AppState;
@@ -29,7 +29,14 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
     }
     let skip_blocked = st.git.blocked(Feature::SequencerSkip);
     let t = st.settings.lang();
-    egui::Frame::group(ui.style()).fill(color::banner()).show(ui, |ui| {
+    let kind = if !conflicted.is_empty() {
+        BannerKind::Warning
+    } else if st.job.is_some() {
+        BannerKind::Progress
+    } else {
+        BannerKind::Info
+    };
+    banner::frame(ui, kind, None, |ui| {
         match (in_progress, &snap.rebase) {
             (Some((name, _)), Some(p)) => super::rebase::banner::progress(ui, p, name, !conflicted.is_empty(), msgs),
             (Some((name, _)), None) => super::am_banner::title(ui, snap, name, !conflicted.is_empty()),

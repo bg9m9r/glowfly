@@ -131,7 +131,7 @@ pub fn show(
     msgs: &mut Vec<Msg>,
 ) -> bool {
     let mut d = Dialog::new(cx, "Clone a repository").wide().begin(ui);
-    let mut close = d.body(ui, |ui| body(ui, cx.keyboard, form, today, sparse_blocked, connections, msgs));
+    let mut close = d.body(ui, |ui| body(ui, cx, form, today, sparse_blocked, connections, msgs));
     let p = form.problems_now(today);
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Clone").enabled(!p.blocked)));
     if out.primary
@@ -147,7 +147,7 @@ pub fn show(
 /// Open Integrations closes the dialog.
 fn body(
     ui: &mut egui::Ui,
-    focus: bool,
+    cx: Cx,
     form: &mut CloneForm,
     today: NaiveDate,
     sparse_blocked: Option<&str>,
@@ -171,7 +171,7 @@ fn body(
             // typing. The folder check doesn't affect the URL's line.
             problem(ui, form.problems(today, true).url.as_ref());
         }
-        CloneSource::Service => close |= super::clone_service::show(ui, form, connections, focus, msgs),
+        CloneSource::Service => close |= super::clone_service::show(ui, cx.t, form, connections, cx.keyboard, msgs),
     }
     ui.add_space(4.0);
     ui.horizontal(|ui| {

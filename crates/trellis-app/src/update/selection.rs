@@ -54,6 +54,22 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, fx: &mut Vec<Effect>)
         SelectionMsg::CherryPick(oids) => super::pick::run(st, PickOp::CherryPick, oids, None, fx),
         SelectionMsg::Revert(oids) => super::pick::run(st, PickOp::Revert, oids, None, fx),
         SelectionMsg::PickMerge { op, oid, mainline } => super::pick::run(st, op, vec![oid], Some(mainline), fx),
+        SelectionMsg::RetryCompare => retry_compare(st, fx),
+    }
+}
+
+/// Try again after a comparison's file list failed: asks for it once more.
+fn retry_compare(st: &mut AppState, fx: &mut Vec<Effect>) {
+    match &mut st.selection {
+        Selection::Commits(m) => {
+            m.changes = None;
+            request_compare(st, fx);
+        }
+        Selection::VsWorkdir(w) => {
+            w.changes = None;
+            super::compare_wip::request(st, fx);
+        }
+        Selection::None | Selection::Wip | Selection::Commit(_) => {}
     }
 }
 

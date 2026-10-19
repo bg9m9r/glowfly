@@ -23,7 +23,7 @@ mod nav;
 mod nav_tests;
 
 /// Shown instead of a blame while git is held in the repository.
-pub(crate) const HELD: &str = "Blame runs git in this repository. Trust it first (the Untrusted chip in the toolbar).";
+pub(crate) use crate::state::blame::HELD;
 
 pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
@@ -68,6 +68,11 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
         BlameMsg::FocusFind => find::focus_find(st),
         BlameMsg::GoToLine => find::go_to_line(st),
         BlameMsg::StepRun(d) => find::step_run(st, d),
+        BlameMsg::Retry => {
+            let Some(view) = st.blame.as_ref().filter(|v| !v.loading) else { return };
+            let land = BlameLanding { line: view.cursor.unwrap_or(view.top_line), center: view.cursor.is_some() };
+            reload(st, land, now, fx);
+        }
     }
 }
 

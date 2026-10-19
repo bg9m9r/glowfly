@@ -41,7 +41,15 @@ pub enum TextState {
     Loading,
     Ready(Arc<FileTextData>),
     /// Why it can't be shown (binary, too large, a submodule, missing).
-    Failed(String),
+    Failed(TextError),
+}
+
+/// Why a file's text couldn't be loaded, and whether asking again could help: a fixed reason
+/// (binary, too large, a submodule or folder) can't, a read error can.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TextError {
+    pub message: String,
+    pub retry: bool,
 }
 
 /// The File view's text: `path` as of commit `oid` (with `before`, as of its parent).

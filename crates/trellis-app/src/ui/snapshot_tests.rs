@@ -288,7 +288,10 @@ fn ghost_branch_on_the_current_commit() {
     st.selection = Selection::Commit(head);
     // Room for it after main's two chips.
     st.settings.column_widths = trellis_core::settings::ColumnWidths { refs: 280.0, ..Default::default() };
-    render("graph_ghost_branch", st, true);
+    // The commit's details are still loading (a spinner): a fixed number of frames.
+    let mut h = harness(st, true);
+    h.run_steps(4);
+    h.check_snapshot("graph_ghost_branch");
 }
 
 /// The fixture in the middle of merging `theme-tweaks`, which conflicts with main in `file`

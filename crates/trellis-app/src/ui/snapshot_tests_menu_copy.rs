@@ -80,7 +80,7 @@ fn multi_commit_menu_copy_patch_merge() {
     let why = m.export_blocked.expect("a merge has no patch of its own");
     let at = pos2(700.0, row_y(row(&st, merge)));
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     click(&mut h, at, PointerButton::Secondary);
     open_submenu(&mut h, "Copy");
     assert!(submenu_item(&h, "Copy", "Patch").is_disabled(), "{why}");

@@ -7,6 +7,7 @@ use super::snapshot_tests_select::click;
 use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
 use crate::msg::Msg;
+use crate::state::touched::Touched;
 use crate::state::{AppState, Modal};
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
@@ -35,11 +36,18 @@ fn tracked(st: &mut AppState, ahead: usize, behind: usize) {
     b.merged = true;
 }
 
+/// A form whose name field was typed in, so its problem shows.
+pub(super) fn typed() -> Touched {
+    let mut t = Touched::default();
+    t.mark("name");
+    t
+}
+
 #[test]
 fn rename_branch_dialog() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "rename-branch");
     tracked(&mut st, 0, 0);
-    st.modal = Some(Modal::RenameBranch { old: "search".into(), name: "login-page".into() });
+    st.modal = Some(Modal::RenameBranch { old: "search".into(), name: "login-page".into(), touched: typed() });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("rename_branch_dialog");
@@ -55,7 +63,7 @@ fn rename_branch_dialog() {
 fn new_branch_dialog_folder_case() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "new-branch-folder-case");
     branch(&mut st, "search").name = "feature/search".into();
-    st.modal = Some(Modal::NewBranch { start: None, name: "Feature/login".into(), checkout: true });
+    st.modal = Some(Modal::NewBranch { start: None, name: "Feature/login".into(), checkout: true, touched: typed() });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("new_branch_dialog_folder_case");
@@ -70,7 +78,8 @@ fn set_upstream_dialog_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "set-upstream");
     let main = tip(&st, "main");
     st.snap.as_mut().unwrap().remotes = vec![("origin".into(), vec![("main".into(), main)])];
-    st.modal = Some(Modal::SetUpstream { branch: "search".into(), remote: "origin".into(), name: "search".into() });
+    st.modal =
+        Some(Modal::SetUpstream { branch: "search".into(), remote: "origin".into(), name: "search".into(), touched: Default::default() });
     render("set_upstream_dialog_light", st, false);
     remove_fixture(&dir);
 }

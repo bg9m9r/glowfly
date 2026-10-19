@@ -73,13 +73,13 @@ fn branch_menu_push_pr() {
     let (mut st, dir) = with_host(ThemeChoice::Dark, "branch-menu-push-pr", &["main"]);
     st.selection = Selection::Commit(tip(&st, "main"));
     let mut h = harness(st, true);
-    h.run();
+    h.run_steps(4);
     open_row_menu(&mut h, true);
     h.check_snapshot("branch_menu_push_pr");
     assert!(h.query_by_label("Push and create a pull request…").is_some());
     assert!(h.query_by_label("Create pull request…").is_none(), "the service would refuse a missing source");
     h.get_by_label("Push and create a pull request into main…").click();
-    h.run();
+    h.run_steps(4);
     assert!(sent(&h, |f| matches!(f, ForgeMsg::PushAndStartPr { branch, target: Some(t) } if branch == "search" && t == "main")));
     drop(h);
     remove_fixture(&dir);

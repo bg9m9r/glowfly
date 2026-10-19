@@ -18,7 +18,7 @@ fn head(st: &AppState) -> String {
 }
 
 fn form(at: &str, name: &str, annotated: bool) -> Modal {
-    Modal::NewTag(TagForm { at: at.into(), name: name.into(), message: String::new(), annotated, remote: String::new() })
+    Modal::NewTag(TagForm { at: at.into(), name: name.into(), annotated, ..TagForm::default() })
 }
 
 /// The first `TagMsg::CreateTag` pushed, as (name, message, push), if any.
@@ -113,12 +113,14 @@ fn new_tag_dialog_invalid_name() {
     st.modal = Some(form(&sha, "release 1.0", false));
     let mut h = harness(st, true);
     h.run();
-    h.check_snapshot("new_tag_dialog_invalid_name");
-    assert!(h.query_by_label("Tag names can't contain spaces.").is_some());
+    // Nobody typed the name yet: its problem waits for an edit or a submit.
+    assert!(h.query_by_label("Tag names can't contain spaces.").is_none());
     assert!(h.get_by_label("Create tag").is_disabled());
     h.press_key(Key::Enter);
     h.run();
     assert!(created(&h).is_none());
+    h.check_snapshot("new_tag_dialog_invalid_name");
+    assert!(h.query_by_label("Tag names can't contain spaces.").is_some(), "Enter shows it");
     assert!(matches!(&h.state().0.modal, Some(Modal::NewTag(f)) if f.name == "release 1.0"));
     drop(h);
     remove_fixture(&dir);
@@ -128,7 +130,11 @@ fn new_tag_dialog_invalid_name() {
 fn new_tag_dialog_existing_name() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "new-tag-existing");
     let sha = head(&st);
-    st.modal = Some(form(&sha, "v0.1.0", false));
+    let mut f = form(&sha, "v0.1.0", false);
+    if let Modal::NewTag(t) = &mut f {
+        t.touched.mark("name");
+    }
+    st.modal = Some(f);
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("new_tag_dialog_existing_light");
@@ -155,9 +161,9 @@ fn new_tag_dialog_push_remotes() {
     st.modal = Some(Modal::NewTag(TagForm {
         at: sha.clone(),
         name: "v1.3.0".into(),
-        message: String::new(),
         annotated: false,
         remote: "origin".into(),
+        ..TagForm::default()
     }));
     let mut h = harness(st, true);
     h.run();

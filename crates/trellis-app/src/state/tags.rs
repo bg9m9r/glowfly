@@ -20,6 +20,8 @@ pub struct TagForm {
     pub annotated: bool,
     /// The remote picked for the push ("" when the repository has none).
     pub remote: String,
+    /// Which fields were edited, and whether a submit was tried.
+    pub touched: super::touched::Touched,
 }
 
 /// What is wrong with `name` (trimmed here) as a new tag, given the snapshot's tags; None when

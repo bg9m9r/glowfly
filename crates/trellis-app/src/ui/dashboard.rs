@@ -3,18 +3,22 @@
 //! rows grouped by service account and repository (`dashboard_rows.rs`); and what couldn't be
 //! loaded, with the way to fix it.
 
-use super::common::hint_row;
 use super::dashboard_rows::{issue_row, pr_row, repo_row};
+use super::empty_state::{EmptyIcon, PaneButton, empty_state};
 use super::theme::color;
 use super::widgets::{self, Icon};
-use crate::msg::{DashboardMsg, Msg, PrefsMsg};
+use crate::msg::{CloneMsg, DashboardMsg, Msg, PrefsMsg, RepoMsg};
 use crate::state::dashboard::{AccountState, DashShow, Phase, service_header};
-use crate::state::dashboard_rows::{Row, counts, empty_text, sections};
+use crate::state::dashboard_rows::{Row, counts, empty_hint, empty_text, sections};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::controls;
 use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Ui};
 use trellis_core::forge::Account;
+
+pub(super) const NO_MATCH_TITLE: &str = "Nothing matches the filter";
+const NO_MATCH_HINT: &str = "The filter looks at each title, number, author and repository.";
+pub(super) const CLEAR_FILTER: &str = "Clear filter";
 
 fn dash(m: DashboardMsg) -> Msg {
     Msg::Dashboard(m)
@@ -33,8 +37,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         ui.add_space(10.0);
         let d = &st.dashboard;
         if d.basis.is_none() && !d.is_busy() {
-            hint_row(ui, "Open or clone repositories to see their pull requests and issues here.".into());
-            return;
+            return no_repositories(ui, st, msgs);
         }
         controls(ui, st, msgs);
         ui.add_space(6.0);
@@ -49,6 +52,33 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.add_space(12.0);
         });
     });
+}
+
+/// No repositories are known yet: open, clone, or connect a service.
+fn no_repositories(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+    let t = st.settings.lang();
+    let list = [
+        PaneButton { text: t.tr("common.open_repo.button"), primary: true },
+        PaneButton { text: t.tr("common.clone_repo.button"), primary: false },
+        PaneButton { text: t.tr("dashboard.empty.connect.button"), primary: false },
+    ];
+    match empty_state(ui, EmptyIcon::Repos, t.tr("dashboard.empty.title"), t.tr("dashboard.empty.hint"), &list) {
+        Some(0) => msgs.push(Msg::Repo(RepoMsg::PickRepo)),
+        Some(1) => msgs.push(Msg::Clone(CloneMsg::Dialog)),
+        Some(_) => msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations))),
+        None => {}
+    }
+}
+
+/// The switch lists nothing: nothing matches the filter, or nothing waits.
+fn nothing_listed(ui: &mut Ui, show: DashShow, filter: &str, msgs: &mut Vec<Msg>) {
+    if filter.is_empty() {
+        empty_state(ui, EmptyIcon::Inbox, empty_text(show), empty_hint(show), &[]);
+    } else if empty_state(ui, EmptyIcon::Search, NO_MATCH_TITLE, NO_MATCH_HINT, &[PaneButton { text: CLEAR_FILTER, primary: false }])
+        .is_some()
+    {
+        msgs.push(dash(DashboardMsg::ClearFilter));
+    }
 }
 
 fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
@@ -106,7 +136,7 @@ fn body(ui: &mut Ui, st: &AppState, filter: &str, msgs: &mut Vec<Msg>) {
     let found = sections(d, d.show, filter);
     let rows: usize = found.iter().flat_map(|s| &s.repos).map(|r| r.rows.len()).sum();
     if rows == 0 && d.phase == Phase::Idle {
-        hint_row(ui, empty_text(d.show).into());
+        nothing_listed(ui, d.show, filter, msgs);
     }
     for s in &found {
         ui.add_space(10.0);

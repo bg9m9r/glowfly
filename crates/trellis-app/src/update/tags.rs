@@ -16,7 +16,7 @@ pub(super) fn handle(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
     match msg {
         TagMsg::NewTag { at, annotated } => {
             let remote = st.snap.as_ref().and_then(default_remote).unwrap_or_default();
-            st.modal = Some(Modal::NewTag(TagForm { at, name: String::new(), message: String::new(), annotated, remote }));
+            st.modal = Some(Modal::NewTag(TagForm { at, annotated, remote, ..TagForm::default() }));
         }
         TagMsg::CreateTag { at, name, message, push } => create(st, &at, &name, &message, push, fx),
         TagMsg::SetPushNewTags(on) if st.settings.push_new_tags != on => {

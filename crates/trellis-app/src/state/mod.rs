@@ -117,6 +117,7 @@ pub mod toasts;
 pub mod tool_compare;
 pub mod toolbar_tips;
 pub mod tools;
+pub mod touched;
 pub mod trello;
 pub mod trust;
 pub mod undo;
@@ -209,6 +210,7 @@ pub enum Modal {
         start: Option<String>,
         name: String,
         checkout: bool,
+        touched: touched::Touched,
     },
     NewTag(tags::TagForm),
     AnnotateTag(tags::AnnotateForm),
@@ -250,6 +252,7 @@ pub enum Modal {
     RenameBranch {
         old: String,
         name: String,
+        touched: touched::Touched,
     },
     RenameStash(stashes::RenameStashForm),
     StashPush(stashes::StashPushForm),
@@ -257,6 +260,7 @@ pub enum Modal {
         branch: String,
         remote: String,
         name: String,
+        touched: touched::Touched,
     },
     NewFile(files::PathForm),
     RenameFile {

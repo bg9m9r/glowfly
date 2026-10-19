@@ -83,7 +83,8 @@ pub(super) fn click(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button
         events.push(Event::PointerButton { pos, button, pressed, modifiers: Modifiers::NONE });
         h.step();
     }
-    h.run();
+    // A loading pane's spinner keeps repainting; stop at the step limit then.
+    h.run_ok();
 }
 
 /// The y of graph row `row` (the WIP row is 0) in the window the harness draws.

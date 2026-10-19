@@ -3,6 +3,7 @@
 //! pinned below. Services without
 //! in-app reviews show a note instead of the timeline and the box.
 
+use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
 use super::{note, threads, tone_color};
 use crate::msg::Msg;
@@ -18,9 +19,13 @@ use trellis_core::forge::{Entry, EntryKind, Verdict};
 use trellis_core::settings::Settings;
 use trellis_core::text::printable;
 
+pub(in crate::ui) const LOADING: &str = "Loading the conversation…";
+pub(in crate::ui) const FAILED_TITLE: &str = "Couldn't load the conversation";
+
 pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let go_to = threads::go_to_reasons(st);
     let scroll = st.view.pr_thread_scroll.take();
+    let t = st.settings.lang();
     let ctx = threads::Ctx { settings: &st.settings, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
     let Some(v) = st.pull_request.as_mut() else { return };
     let supported = !matches!(v.page, Page::Unsupported);
@@ -43,12 +48,10 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         note(ui, text, color::weak());
                     }
                     Page::Held => note(ui, "Trust this repository to load its pull request.", color::weak()),
-                    Page::Loading => note(ui, "Loading the conversation…", color::weak()),
+                    Page::Loading => pane_status::loading(ui, LOADING),
                     Page::Failed(e) => {
-                        note(ui, e.as_str(), color::red());
-                        if ui.add(buttons::secondary("Try again")).clicked() {
-                            msgs.push(Msg::PullRequest(PullRequestMsg::Reload));
-                        }
+                        let retry = Some(Msg::PullRequest(PullRequestMsg::Reload));
+                        pane_status::failed(ui, t, Failure { title: FAILED_TITLE, error: e, retry }, msgs);
                     }
                     Page::Loaded(_) => timeline(ui, v, &ctx, msgs),
                 }

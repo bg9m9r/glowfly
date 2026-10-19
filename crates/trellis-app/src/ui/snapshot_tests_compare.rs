@@ -104,7 +104,7 @@ fn shift_arrows_extend_the_selection() {
     let rows: Vec<Oid> = st.snap.as_ref().unwrap().commits.iter().map(|c| c.oid).collect();
     st.selection = Selection::Commit(rows[1]);
     let mut h = app_harness(st);
-    h.run();
+    h.run_steps(4);
     let msgs = arrow(&mut h, Modifiers::SHIFT, Key::ArrowDown);
     assert!(matches!(&msgs[..], [Msg::Selection(SelectionMsg::SelectCommitRange(o))] if *o == rows[2]), "{}", msgs.len());
 
