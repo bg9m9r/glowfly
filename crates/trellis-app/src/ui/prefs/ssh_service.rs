@@ -6,10 +6,12 @@ use crate::msg::Msg;
 use crate::ssh::SshMsg;
 use crate::state::ssh_service::{UploadForm, UploadState, already_note};
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, CornerRadius, RichText, Ui};
 use trellis_core::forge::title_problem;
+use trellis_core::i18n::Lang;
 
-pub(super) fn upload_form(ui: &mut Ui, form: &mut UploadForm, file: &str, msgs: &mut Vec<Msg>) {
+pub(super) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &str, msgs: &mut Vec<Msg>) {
     egui::Frame::new().fill(color::panel()).corner_radius(CornerRadius::same(6)).inner_margin(egui::Margin::symmetric(12, 10)).show(
         ui,
         |ui| {
@@ -29,7 +31,7 @@ pub(super) fn upload_form(ui: &mut Ui, form: &mut UploadForm, file: &str, msgs: 
                 if primary_button(ui, "Add key", form.send_blocked().is_none()).clicked() {
                     msgs.push(Msg::Ssh(SshMsg::SendToService));
                 }
-                if ui.button("Cancel").clicked() {
+                if ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked() {
                     msgs.push(Msg::Ssh(SshMsg::CancelService));
                 }
                 if form.state == UploadState::Sending {
@@ -41,7 +43,7 @@ pub(super) fn upload_form(ui: &mut Ui, form: &mut UploadForm, file: &str, msgs: 
                 UploadState::AlreadyThere(title) => help(ui, &already_note(form.service(), title)),
                 UploadState::Failed { message, .. } => {
                     warn(ui, message);
-                    if ui.button("Copy key and open settings").clicked() {
+                    if ui.add(buttons::secondary("Copy key and open settings")).clicked() {
                         msgs.push(Msg::Ssh(SshMsg::OpenKeySettings { key: form.key.clone(), account: form.account.clone() }));
                     }
                 }

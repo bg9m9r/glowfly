@@ -7,6 +7,7 @@ use super::widgets::{self, Icon};
 use crate::msg::{Msg, RepoMsg};
 use crate::state::AppState;
 use crate::state::op_strip::strip_text;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, CursorIcon, Layout, RichText, Sense, UiBuilder};
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
@@ -19,7 +20,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
             egui::Frame::new().inner_margin(egui::Margin::symmetric(12, 6)).show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if ui.button(t.tr("op_strip.show.button")).clicked() {
+                        if ui.add(buttons::secondary(t.tr("op_strip.show.button"))).clicked() {
                             msgs.push(Msg::Repo(RepoMsg::ShowInProgress));
                         }
                         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {

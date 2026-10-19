@@ -4,7 +4,9 @@
 //! the pure rules in `state::worktrees`; the folder's contents are checked on disk by the runner
 //! after Create worktree.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::worktrees::{WorktreeForm, branch_problem, default_folder, folder_problem, folder_warning};
@@ -16,9 +18,9 @@ use trellis_core::worktree_ops::WorktreeBase;
 
 /// The dialog for `form`; returns true when Cancel closes it (`update` closes it once the job
 /// starts). The New branch field keeps the keyboard focus unless the folder field has it, or
-/// `focus` is false (a credential prompt is open above it).
-pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Snapshot>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
+/// `cx.keyboard` is false (a credential prompt is open above it).
+pub fn new_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut WorktreeForm, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
+    let focus = cx.keyboard;
     let (heading, hint) = match &form.base {
         WorktreeBase::Branch(b) => (format!("Create worktree from {b}"), format!("Optional. Leave empty to check out {b}")),
         WorktreeBase::Commit(_) => {
@@ -29,21 +31,20 @@ pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Sn
             (format!("Create worktree from {full}"), format!("Name of the new local branch; it tracks {full}"))
         }
     };
-    ui.heading(form.title.clone().unwrap_or(heading));
-    ui.add_space(6.0);
+    let d = Dialog::new(cx, form.title.clone().unwrap_or(heading)).begin(ui);
 
     let folder_id = Id::new("trellis-worktree-folder");
     ui.label(RichText::new("Folder").color(color::weak()));
     let mut enter = false;
     ui.horizontal(|ui| {
-        let browse_w = 80.0;
+        let browse_w = 84.0;
         let r =
             controls::field(ui, egui::TextEdit::singleline(&mut form.folder).id(folder_id).desired_width(ui.available_width() - browse_w));
         if r.changed() {
             form.folder_edited = true;
         }
         enter |= r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-        if ui.button("Browse…").clicked() {
+        if ui.add(buttons::secondary("Browse…").small()).clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::WorktreeParent)));
         }
     });
@@ -78,15 +79,10 @@ pub fn new_worktree(ui: &mut egui::Ui, form: &mut WorktreeForm, snap: Option<&Sn
 
     ui.add_space(4.0);
     controls::checkbox(ui, &mut form.open, "Open in a new tab");
-    ui.add_space(8.0);
     let valid = snap.is_some() && folder_bad.is_none() && branch_bad.is_none() && !form.busy();
-    ui.horizontal(|ui| {
-        if ui.add_enabled(valid, egui::Button::new("Create worktree")).clicked() || (enter && valid) {
-            msgs.push(Msg::Worktree(WorktreeMsg::Submit));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create worktree").enabled(valid)).submit(enter));
+    if out.primary {
+        msgs.push(Msg::Worktree(WorktreeMsg::Submit));
+    }
+    out.dismiss
 }

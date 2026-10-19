@@ -2,7 +2,9 @@
 //! service, drawn by `clone_service.rs`), the folder to clone into and the shallow and sparse
 //! clone options, checked as the user types with the pure rules in `state::clone`.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::CloneMsg;
 use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
@@ -117,19 +119,42 @@ fn sparse_options(ui: &mut egui::Ui, form: &mut CloneForm, today: NaiveDate, blo
 
 /// The Clone dialog; returns true when it should close. `today` is the local date, the latest
 /// start date a shallow clone accepts; `sparse_blocked` says why sparse checkout is off, if it
-/// is. The repository filter takes the focus only when `focus` (no credential prompt is open).
+/// is. The repository filter takes the focus only when `cx.keyboard` (no credential prompt is
+/// open).
 pub fn show(
     ui: &mut egui::Ui,
+    cx: Cx,
     form: &mut CloneForm,
     today: NaiveDate,
     sparse_blocked: Option<&str>,
     connections: &[Connection],
+    msgs: &mut Vec<Msg>,
+) -> bool {
+    let mut d = Dialog::new(cx, "Clone a repository").wide().begin(ui);
+    let mut close = d.body(ui, |ui| body(ui, cx.keyboard, form, today, sparse_blocked, connections, msgs));
+    let p = form.problems_now(today);
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Clone").enabled(!p.blocked)));
+    if out.primary
+        && let Some(req) = form.request(today)
+    {
+        msgs.push(Msg::Clone(CloneMsg::Start(req)));
+        close = true;
+    }
+    close || out.dismiss
+}
+
+/// The tabs, the URL or the repository list, the folder and the options; returns true when
+/// Open Integrations closes the dialog.
+fn body(
+    ui: &mut egui::Ui,
     focus: bool,
+    form: &mut CloneForm,
+    today: NaiveDate,
+    sparse_blocked: Option<&str>,
+    connections: &[Connection],
     msgs: &mut Vec<Msg>,
 ) -> bool {
     let mut close = false;
-    ui.heading("Clone a repository");
-    ui.add_space(4.0);
     tabs(ui, form, msgs);
     ui.add_space(4.0);
     match form.source {
@@ -161,7 +186,7 @@ pub fn show(
         if edit.changed() {
             msgs.push(Msg::Clone(CloneMsg::ParentEdited));
         }
-        if ui.button("Browse…").clicked() {
+        if ui.add(buttons::secondary("Browse…").small()).clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::CloneParent)));
         }
     });
@@ -173,18 +198,5 @@ pub fn show(
     ui.add_space(6.0);
     shallow_options(ui, form, today);
     sparse_options(ui, form, today, sparse_blocked);
-    ui.add_space(8.0);
-    let p = form.problems_now(today);
-    ui.horizontal(|ui| {
-        if ui.add_enabled(!p.blocked, egui::Button::new("Clone")).clicked()
-            && let Some(req) = form.request(today)
-        {
-            msgs.push(Msg::Clone(CloneMsg::Start(req)));
-            close = true;
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
     close
 }

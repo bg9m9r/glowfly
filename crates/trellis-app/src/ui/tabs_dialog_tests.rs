@@ -47,6 +47,55 @@ fn tabs_rename_dialog() {
     remove_fixture(&dir);
 }
 
+/// The Rename tab dialog over a tab labelled API, its field changed to `text`.
+fn rename_open(name: &str, text: &str) -> (H, std::path::PathBuf) {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
+    st.tabs[1].label = Some("API".into());
+    let mut form = RenameTabForm::new(&st.tabs[1]);
+    form.text = text.into();
+    st.modal = Some(Modal::RenameTab(form));
+    let mut h = harness(st, true);
+    h.run();
+    (h, dir)
+}
+
+#[test]
+fn tabs_rename_enter() {
+    use eframe::egui::{Key, PointerButton};
+    // Typing then Enter in the field renames.
+    let (mut h, dir) = rename_open("tabs-rename-enter", "");
+    // The dialog's field is drawn after the window's own.
+    h.get_all_by_role(eframe::egui::accesskit::Role::TextInput).last().expect("the field").type_text("Frontend");
+    h.run();
+    h.press_key(Key::Enter);
+    h.run();
+    assert_eq!(label_set(&h), Some(Some("Frontend".to_owned())));
+    drop(h);
+
+    // A click on the dialog's background, then Enter, also renames.
+    let (mut h, _) = rename_open("tabs-rename-enter", "Frontend");
+    let help = super::snapshot_tests_worktrees::center(
+        &h,
+        "Shown in the tab bar, the Window menu and the window title. Leave it empty to use the folder name.",
+    );
+    super::snapshot_tests_select::click(&mut h, help, PointerButton::Primary);
+    h.press_key(Key::Enter);
+    h.run();
+    assert_eq!(label_set(&h), Some(Some("Frontend".to_owned())));
+    drop(h);
+
+    // With Use folder name focused, Enter presses it, not Rename.
+    let (mut h, _) = rename_open("tabs-rename-enter", "Frontend");
+    h.get_by_label("Use folder name").focus();
+    h.run();
+    h.press_key(Key::Enter);
+    h.run();
+    assert_eq!(label_set(&h), Some(None));
+    assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Tabs(TabsMsg::SetTabLabel { .. }))).count(), 1);
+    drop(h);
+    remove_fixture(&dir);
+}
+
 #[test]
 fn tabs_close_confirm() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "tabs-close-confirm");

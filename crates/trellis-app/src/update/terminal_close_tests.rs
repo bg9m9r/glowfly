@@ -81,10 +81,10 @@ fn a_running_program_asks_and_close_confirms() {
     assert!(fx.is_empty(), "{fx:?}");
     assert!(has(&st, one));
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, then }) => {
+        Some(Modal::ConfirmDanger { title, body, button, then, .. }) => {
             assert_eq!(title, "Close terminal");
             assert_eq!(body, "Terminal 1 is running git. Close it and stop git?");
-            assert_eq!(button, "Close");
+            assert_eq!(button, "Close terminal", "the action, not a dismiss label");
             assert!(matches!(**then, Msg::Terminal(T::CloseTabNow(c)) if c == one));
         }
         _ => panic!("expected a confirmation"),
@@ -102,7 +102,7 @@ fn an_unnamed_program_gets_the_generic_question() {
     started(&mut st, one);
     activity(&mut st, one, running(None));
     match &st.modal {
-        Some(Modal::Confirm { body, .. }) => assert_eq!(body, "Terminal 1 is running a program. Close it and stop it?"),
+        Some(Modal::ConfirmDanger { body, .. }) => assert_eq!(body, "Terminal 1 is running a program. Close it and stop it?"),
         _ => panic!("expected a confirmation"),
     }
     let _ = std::fs::remove_dir_all(&dir);

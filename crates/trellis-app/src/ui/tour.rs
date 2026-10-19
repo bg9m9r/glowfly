@@ -11,6 +11,7 @@ use crate::onboarding::OnboardingMsg;
 use crate::state::AppState;
 use crate::state::layout::{self, Panel};
 use crate::state::onboarding_tour::{NO_REPOSITORY, PANEL_HIDDEN, TourStep};
+use crate::ui::widgets::buttons;
 use eframe::egui::{
     self, Align, Align2, Color32, CornerRadius, Id, LayerId, Layout, Order, Rect, RichText, Stroke, StrokeKind, pos2, vec2,
 };
@@ -116,7 +117,7 @@ fn card(ui: &mut egui::Ui, st: &AppState, step: TourStep, missing: Option<Missin
             ui.add_space(6.0);
             ui.horizontal(|ui| {
                 ui.label(RichText::new(PANEL_HIDDEN).color(color::weak()));
-                if ui.button("Show it").clicked() {
+                if ui.add(buttons::secondary("Show it")).clicked() {
                     msgs.push(Msg::Layout(LayoutMsg::SetPanel { panel, shown: true }));
                 }
             });
@@ -128,10 +129,10 @@ fn card(ui: &mut egui::Ui, st: &AppState, step: TourStep, missing: Option<Missin
     if step == TourStep::Palette {
         ui.add_space(6.0);
         ui.horizontal(|ui| {
-            if ui.button("Open the palette").clicked() {
+            if ui.add(buttons::secondary("Open the palette")).clicked() {
                 msgs.push(Msg::Palette(PaletteMsg::TogglePalette));
             }
-            if ui.button("Show shortcuts").clicked() {
+            if ui.add(buttons::secondary("Show shortcuts")).clicked() {
                 msgs.push(Msg::Shortcut(KeyAction::ToggleSheet));
             }
         });
@@ -141,10 +142,10 @@ fn card(ui: &mut egui::Ui, st: &AppState, step: TourStep, missing: Option<Missin
         ui.label(RichText::new(format!("{} of {}", step.number(), TourStep::ALL.len())).color(color::weak()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let next = if step.next().is_some() { "Next" } else { "Done" };
-            if ui.button(next).clicked() {
+            if ui.add(buttons::primary(next)).clicked() {
                 send(msgs, OnboardingMsg::TourNext);
             }
-            if step.prev().is_some() && ui.button("Back").clicked() {
+            if step.prev().is_some() && ui.add(buttons::secondary("Back")).clicked() {
                 send(msgs, OnboardingMsg::TourBack);
             }
         });

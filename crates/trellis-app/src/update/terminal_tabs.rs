@@ -71,12 +71,7 @@ pub(super) fn activity(st: &mut AppState, id: u64, activity: ShellActivity, fx: 
         Some(p) => format!("Terminal {n} is running {p}. Close it and stop {p}?"),
         None => format!("Terminal {n} is running a program. Close it and stop it?"),
     };
-    st.modal = Some(Modal::Confirm {
-        title: "Close terminal".into(),
-        body,
-        button: "Close".into(),
-        then: Box::new(Msg::Terminal(TerminalMsg::CloseTabNow(id))),
-    });
+    st.modal = Some(Modal::danger("Close terminal", body, "Close terminal", Msg::Terminal(TerminalMsg::CloseTabNow(id))));
 }
 
 /// Stops session `id`'s shell if it runs and removes its tab; the tab to its right becomes
@@ -140,12 +135,12 @@ pub(super) fn ask_kill_all(st: &mut AppState) {
     if n < 2 {
         return;
     }
-    st.modal = Some(Modal::Confirm {
-        title: "Kill all terminals".into(),
-        body: format!("Stop {n} terminals? Everything running in them stops too."),
-        button: "Kill all".into(),
-        then: Box::new(Msg::Terminal(TerminalMsg::KillAll)),
-    });
+    st.modal = Some(Modal::danger(
+        "Kill all terminals",
+        format!("Stop {n} terminals? Everything running in them stops too."),
+        "Kill all",
+        Msg::Terminal(TerminalMsg::KillAll),
+    ));
 }
 
 /// Stops every running shell of the active repository; their tabs stay, with Restart.

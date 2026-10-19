@@ -10,7 +10,8 @@ use crate::ui::common::{caret_after, short};
 use crate::ui::find_bar::{FindIntent, plural};
 use crate::ui::history_file::{WRAP_LINES, WRAP_TIP};
 use crate::ui::theme::color;
-use eframe::egui::{self, Align, Layout, RichText, Ui};
+use crate::ui::widgets::buttons;
+use eframe::egui::{Align, Layout, RichText, Ui};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::{BlameMoves, Settings};
 
@@ -41,13 +42,13 @@ const FIND_ROW_MIN: f32 = 340.0;
 
 pub(super) fn show(ui: &mut Ui, blame: &mut Option<BlameView>, settings: &Settings, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) {
     let Some(view) = blame.as_mut() else { return };
-    first_row(ui, view, msgs);
+    first_row(ui, settings.lang(), view, msgs);
     ui.add_space(4.0);
     let mut own_row = false;
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         let back = view.back.last().map(|s| s.at.map_or_else(|| "HEAD".to_owned(), short));
-        let r = ui.add_enabled(back.is_some(), egui::Button::new(BACK));
+        let r = ui.add(buttons::secondary(BACK).enabled(back.is_some()));
         let r = match &back {
             Some(at) => r.on_hover_text(format!("Back to the blame at {at}")),
             None => r,
@@ -55,7 +56,7 @@ pub(super) fn show(ui: &mut Ui, blame: &mut Option<BlameView>, settings: &Settin
         if r.clicked() {
             msgs.push(Msg::Blame(BlameMsg::Back));
         }
-        let r = ui.button(FILE_HISTORY).on_hover_text("The history of this file from the blamed commit");
+        let r = ui.add(buttons::secondary(FILE_HISTORY)).on_hover_text("The history of this file from the blamed commit");
         if r.clicked() {
             msgs.push(Msg::Blame(BlameMsg::OpenHistory { select: None }));
         }
@@ -86,7 +87,7 @@ pub(super) fn show(ui: &mut Ui, blame: &mut Option<BlameView>, settings: &Settin
 }
 
 /// "Blame", the path, the commit it is shown at, its size, and Close.
-fn first_row(ui: &mut Ui, view: &BlameView, msgs: &mut Vec<Msg>) {
+fn first_row(ui: &mut Ui, t: trellis_core::i18n::Lang, view: &BlameView, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         ui.label(RichText::new("Blame").color(color::weak()));
@@ -107,7 +108,7 @@ fn first_row(ui: &mut Ui, view: &BlameView, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(UPDATING).color(color::weak())).on_hover_text("Blaming again: HEAD moved");
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.button("Close  (Esc)").clicked() {
+            if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
                 msgs.push(Msg::Blame(BlameMsg::Close));
             }
         });
@@ -157,7 +158,7 @@ fn skipped_chip(ui: &mut Ui, view: &BlameView, snap: Option<&Snapshot>, msgs: &m
         .collect();
     let text = format!("Skipping {}", plural(view.skipped.len(), "commit", "commits"));
     ui.label(RichText::new(text).color(color::amber())).on_hover_text(tip.join("\n"));
-    if ui.small_button(SHOW_ALL).on_hover_text("Stop skipping commits").clicked() {
+    if ui.add(buttons::secondary(SHOW_ALL).small()).on_hover_text("Stop skipping commits").clicked() {
         msgs.push(Msg::Blame(BlameMsg::ClearSkipped));
     }
 }

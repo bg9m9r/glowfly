@@ -144,7 +144,7 @@ fn out_of_sync_update_asks_first() {
     drive(&mut st, msg(PATH, false));
     assert!(st.job.is_none());
     match &st.modal {
-        Some(Modal::Confirm { then, title, body, button }) => {
+        Some(Modal::ConfirmDanger { then, title, body, button, .. }) => {
             assert_eq!(title, "Update submodule");
             // The commit is on the submodule's main branch, so nothing is left behind.
             assert!(body.contains("Branches inside") && button == "Update", "{body}");
@@ -219,7 +219,7 @@ fn update_names_commits_it_would_leave_behind() {
     let left = sub(&st).left_behind;
     assert_eq!(left.iter().map(|c| c.0).collect::<Vec<_>>(), vec![second, first], "the row is read again");
     match &st.modal {
-        Some(Modal::Confirm { body, button, then, .. }) => {
+        Some(Modal::ConfirmDanger { body, button, then, .. }) => {
             let short = |o: Oid| o.to_string()[..7].to_owned();
             assert!(body.contains(&format!("\n    {} second", short(second))), "{body}");
             assert!(body.contains(&format!("\n    {} first", short(first))), "{body}");
@@ -234,7 +234,7 @@ fn update_names_commits_it_would_leave_behind() {
     git(&parent.join(PATH), &["branch", "keep"]);
     drive(&mut st, msg(PATH, false));
     match &st.modal {
-        Some(Modal::Confirm { body, button, .. }) => {
+        Some(Modal::ConfirmDanger { body, button, .. }) => {
             assert!(body.contains("Branches inside") && button == "Update", "{body}");
         }
         _ => panic!("expected a confirmation"),

@@ -33,6 +33,7 @@ mod details_banner;
 mod details_multi;
 mod details_wip;
 mod details_workdir;
+mod dialog_frame;
 mod dialog_guard;
 mod diff;
 mod empty_state;
@@ -160,6 +161,8 @@ mod snapshot_tests_deep_link;
 mod snapshot_tests_dialog_discard;
 #[cfg(test)]
 mod snapshot_tests_dialog_frame;
+#[cfg(test)]
+mod snapshot_tests_dialog_keys;
 #[cfg(test)]
 mod snapshot_tests_diff;
 #[cfg(test)]

@@ -15,7 +15,9 @@ use crate::state::profiles::{
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::widgets;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Align2, CornerRadius, FontId, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
+use trellis_core::i18n::Lang;
 use trellis_core::settings::{Profile, ProfileId, Settings};
 
 /// The list and its rows are wider than a form field, to fit the buttons beside the identity.
@@ -31,7 +33,7 @@ pub fn profile_page(
     msgs: &mut Vec<Msg>,
 ) {
     list(ui, settings, page, switching, msgs);
-    add_form(ui, page, msgs);
+    add_form(ui, settings.lang(), page, msgs);
     fields(ui, settings, page, git, msgs);
 }
 
@@ -47,7 +49,7 @@ fn list(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, switching: Op
         help(ui, LIST_HELP);
         if page.adding.is_none() {
             ui.add_space(4.0);
-            if ui.button(ADD_BUTTON).clicked() {
+            if ui.add(buttons::secondary(ADD_BUTTON)).clicked() {
                 page.adding = Some(AddForm::new());
             }
         }
@@ -103,17 +105,16 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
     {
         let ui = &mut child;
         let deletable = !current && switching != Some(p.id);
-        let delete = ui.add_enabled(deletable, egui::Button::new(DELETE_BUTTON));
-        let delete = if current { delete.on_disabled_hover_text(DELETE_DISABLED) } else { delete };
-        if delete.clicked() {
+        let delete = buttons::secondary(DELETE_BUTTON).enabled(deletable).why(current.then_some(DELETE_DISABLED));
+        if ui.add(delete).clicked() {
             msgs.push(Msg::Profile(ProfileMsg::AskDelete(p.id)));
         }
-        if ui.button(RENAME_BUTTON).clicked() {
+        if ui.add(buttons::secondary(RENAME_BUTTON)).clicked() {
             page.renaming = Some(RenameForm::new(p.id, &p.name));
         }
         if switching == Some(p.id) {
             ui.add(egui::Spinner::new().size(14.0));
-        } else if !current && ui.add_enabled(switching.is_none(), egui::Button::new(SWITCH_BUTTON)).clicked() {
+        } else if !current && ui.add(buttons::secondary(SWITCH_BUTTON).enabled(switching.is_none())).clicked() {
             msgs.push(Msg::Profile(ProfileMsg::Switch(p.id)));
         }
     }
@@ -144,7 +145,7 @@ fn rename_field(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
     }
 }
 
-fn add_form(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
+fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
     let Some(form) = page.adding.as_mut() else { return };
     let mut cancel = false;
     row(ui, NEW_LABEL, |ui| {
@@ -166,7 +167,7 @@ fn add_form(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
                     copy_accounts: form.copy_accounts,
                 }));
             }
-            cancel = ui.button("Cancel").clicked();
+            cancel = ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked();
         });
     });
     if cancel {

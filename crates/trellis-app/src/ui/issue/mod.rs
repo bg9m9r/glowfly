@@ -13,14 +13,16 @@ use super::widgets::{self, Icon};
 use crate::msg::{IssueMsg, Msg};
 use crate::state::AppState;
 use crate::state::issue::IssueView;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Sense, Ui, vec2};
+use trellis_core::i18n::Lang;
 use trellis_core::text::printable;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.issue else { return };
     let open_label = st.forge.as_ref().map_or("Open in browser", |f| f.open_issue_label());
     ui.add_space(6.0);
-    header(ui, view, open_label, msgs);
+    header(ui, st.settings.lang(), view, open_label, msgs);
     ui.horizontal(|ui| {
         ui.add_space(32.0);
         let line = printable(&view.kind_line(&st.settings, st.view.utc_offset));
@@ -51,20 +53,21 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
 }
 
 /// The icon, mention and title on the left; Close, Copy link and Open in browser on the right.
-fn header(ui: &mut Ui, v: &IssueView, open_label: &str, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, t: Lang, v: &IssueView, open_label: &str, msgs: &mut Vec<Msg>) {
     let url = &v.issue.url;
     ui.horizontal(|ui| {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(8.0);
-            if ui.button("Close  (Esc)").clicked() {
+            if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
                 msgs.push(Msg::Issue(IssueMsg::Close));
             }
             let no_link = format!("The service sent no link for this {}.", v.noun);
             let has_link = !url.is_empty();
-            if ui.add_enabled(has_link, egui::Button::new("Copy link")).on_disabled_hover_text(&no_link).clicked() {
+            let why = (!has_link).then_some(no_link.as_str());
+            if ui.add(buttons::secondary("Copy link").enabled(has_link).why(why)).clicked() {
                 msgs.push(Msg::Copy(url.clone()));
             }
-            if ui.add_enabled(has_link, egui::Button::new(open_label)).on_disabled_hover_text(&no_link).clicked() {
+            if ui.add(buttons::secondary(open_label).enabled(has_link).why(why)).clicked() {
                 msgs.push(Msg::OpenUrl(url.clone()));
             }
             if v.reloading {

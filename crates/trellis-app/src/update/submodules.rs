@@ -61,12 +61,12 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mu
                 start_job(st, JobSpec::new(job_label(&sm), vec![update_args(&sm.path)]), fx);
                 return;
             }
-            st.modal = Some(Modal::Confirm {
-                title: "Update submodule".into(),
-                body: confirm_update_body(&sm),
-                button: confirm_update_button(&sm),
-                then: Box::new(Msg::Submodule(SubmoduleMsg::Update { path, confirmed: true })),
-            });
+            st.modal = Some(Modal::danger(
+                "Update submodule",
+                confirm_update_body(&sm),
+                confirm_update_button(&sm),
+                Msg::Submodule(SubmoduleMsg::Update { path, confirmed: true }),
+            ));
         }
         SubmoduleMsg::AddDialog => add::dialog(st),
         SubmoduleMsg::AddEdited => add::edited(st, fx),

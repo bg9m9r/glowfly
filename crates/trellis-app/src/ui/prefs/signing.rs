@@ -7,6 +7,7 @@ use crate::msg::{FilePurpose, Msg};
 use crate::state::PrefsState;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::settings::Settings;
@@ -58,7 +59,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                 set(msgs, format.program_key(), value);
                 msgs.push(Msg::Prefs(PrefsMsg::LoadSigningKeys));
             }
-            if ui.button("Browse").clicked() {
+            if ui.add(buttons::secondary("Browse")).clicked() {
                 msgs.push(Msg::Prefs(PrefsMsg::PickFile(FilePurpose::SigningProgram)));
             }
         });
@@ -98,7 +99,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
             if widgets::icon_button(ui, Icon::Refresh, "Reload keys").clicked() {
                 msgs.push(Msg::Prefs(PrefsMsg::LoadSigningKeys));
             }
-            if ui.add_enabled(!git.signing_key.is_empty(), egui::Button::new("Copy public key")).clicked() {
+            if ui.add(buttons::secondary("Copy public key").enabled(!git.signing_key.is_empty())).clicked() {
                 msgs.push(Msg::Prefs(PrefsMsg::CopyPublicKey));
             }
         });
@@ -155,7 +156,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                 if text_field(ui, &mut git.ssh_allowed_signers, "~/.ssh/allowed_signers").lost_focus() {
                     set(msgs, "gpg.ssh.allowedSignersFile", &git.ssh_allowed_signers);
                 }
-                if ui.button("Browse").clicked() {
+                if ui.add(buttons::secondary("Browse")).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::PickFile(FilePurpose::SshAllowedSigners)));
                 }
             });

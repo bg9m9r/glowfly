@@ -6,6 +6,7 @@ use crate::msg::Msg;
 use crate::themes::{ThemeMsg, ThemeState};
 use crate::ui::theme::{color, custom};
 use crate::ui::theme_names;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::{BuiltinTheme, Settings, ThemeCatalog, ThemeChoice};
@@ -28,13 +29,13 @@ pub fn theme_row(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut 
                     ui.selectable_value(&mut s.theme, ThemeChoice::Custom(f.id.clone()), theme_names::file_entry(t, f));
                 }
             });
-            if ui.button(t.tr("prefs.ui.theme.open_folder.button")).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.ui.theme.open_folder.button"))).clicked() {
                 msgs.push(Msg::Theme(ThemeMsg::OpenFolder));
             }
-            if ui.button(t.tr("prefs.ui.theme.reload.button")).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.ui.theme.reload.button"))).clicked() {
                 msgs.push(Msg::Theme(ThemeMsg::Reload));
             }
-            if ui.button(t.tr("prefs.ui.theme.create.button")).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.ui.theme.create.button"))).clicked() {
                 let p = color::current();
                 msgs.push(Msg::Theme(ThemeMsg::CreateFromCurrent { colors: custom::starter(&p), dark: p.dark }));
             }

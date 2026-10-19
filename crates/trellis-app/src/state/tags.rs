@@ -179,5 +179,5 @@ pub fn delete_remote_confirm(tag: &str, remotes: Vec<String>) -> Msg {
         "Delete tag {tag} from {}? Your local tag stays, and anyone who already fetched it keeps their copy.",
         remote_list(&remotes)
     );
-    Msg::confirm(title, body, &button, Msg::Tag(TagMsg::DeleteRemote { tag: tag.to_owned(), remotes }))
+    Msg::confirm_danger(title, body, &button, Msg::Tag(TagMsg::DeleteRemote { tag: tag.to_owned(), remotes }))
 }

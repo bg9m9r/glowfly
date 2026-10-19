@@ -96,9 +96,13 @@ fn remove_form() -> RemoveForm {
         dirty: true,
         unpushed: (0..7).map(commit).collect(),
         stashes: 1,
+        acked: false,
     }
 }
 
+const ACK: &str = "Lose its uncommitted changes, 7 commits and 1 stash for good";
+
+/// With work to lose, Remove submodule waits for the acknowledgement.
 fn remove_confirm(theme: ThemeChoice, name: &str, dark: bool) {
     let (mut st, dir) = with_repo(theme, name);
     st.modal = Some(Modal::RemoveSubmodule(remove_form()));
@@ -107,6 +111,28 @@ fn remove_confirm(theme: ThemeChoice, name: &str, dark: bool) {
     h.check_snapshot(name.replace('-', "_").as_str());
     assert!(h.query_by_label_contains("and 2 more").is_some());
     assert!(h.query_by_label("It has 1 stash; it is deleted with the stored module.").is_some());
+    assert!(h.get_by_role_and_label(Role::Button, "Remove submodule").is_disabled());
+    h.get_by_role_and_label(Role::Button, "Remove submodule").click();
+    h.run();
+    assert!(!pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::Remove))), "not before the tick");
+    h.get_by_label(ACK).click();
+    h.run();
+    h.check_snapshot(&format!("{}_ticked", name.replace('-', "_")));
+    h.get_by_role_and_label(Role::Button, "Remove submodule").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::Remove))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn submodule_remove_without_loss_needs_no_tick() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "submodule-remove-clean");
+    let form = RemoveForm { dirty: false, unpushed: Vec::new(), stashes: 0, ..remove_form() };
+    st.modal = Some(Modal::RemoveSubmodule(form));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label_contains("for good").is_none(), "no acknowledgement");
     h.get_by_role_and_label(Role::Button, "Remove submodule").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Submodule(SubmoduleMsg::Remove))));

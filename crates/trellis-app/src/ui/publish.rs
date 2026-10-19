@@ -1,7 +1,9 @@
 //! The "Publish to GitHub" dialog: where to create the repository, its name, visibility and
 //! description. Creating it adds it as `origin` and pushes the current branch.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::Msg;
 use crate::msg::PublishMsg;
 use crate::state::publish::PublishForm;
@@ -10,11 +12,9 @@ use eframe::egui::{self, RichText};
 use trellis_core::forge;
 
 /// Draws the form; returns true when the dialog should close.
-pub fn form(ui: &mut egui::Ui, f: &mut PublishForm, idle: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
-    ui.heading("Publish to GitHub");
-    ui.label(RichText::new(format!("This repository has no remote. Create one and push {} to it.", f.branch)).color(color::weak()));
-    ui.add_space(8.0);
+pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+    let subtitle = format!("This repository has no remote. Create one and push {} to it.", f.branch);
+    let d = Dialog::new(cx, "Publish to GitHub").subtitle(subtitle).begin(ui);
 
     if f.accounts.len() > 1 {
         ui.horizontal(|ui| {
@@ -57,20 +57,18 @@ pub fn form(ui: &mut egui::Ui, f: &mut PublishForm, idle: bool, msgs: &mut Vec<M
         ui.add_space(4.0);
         ui.label(RichText::new(e.as_str()).color(color::red()));
     }
-
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        let ready = idle && !f.loading && !f.creating && f.user.is_some() && !f.owner.is_empty() && forge::valid_repo_name(name);
-        let label = if f.creating { "Creating…" } else { "Create and push" };
-        if ui.add_enabled(ready, egui::Button::new(RichText::new(label).strong())).clicked() {
-            msgs.push(Msg::Publish(PublishMsg::Publish));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-        if f.creating {
+    if f.creating {
+        ui.horizontal(|ui| {
             ui.spinner();
-        }
-    });
-    close
+            ui.label(RichText::new("Creating the repository…").color(color::weak()));
+        });
+    }
+
+    let ready = idle && !f.loading && !f.creating && f.user.is_some() && !f.owner.is_empty() && forge::valid_repo_name(name);
+    let label = if f.creating { "Creating…" } else { "Create and push" };
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ready)));
+    if out.primary {
+        msgs.push(Msg::Publish(PublishMsg::Publish));
+    }
+    out.dismiss
 }

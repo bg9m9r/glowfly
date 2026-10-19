@@ -60,7 +60,28 @@ fn worktree_remove_force_light() {
     h.run();
     h.check_snapshot("worktree_remove_force_light");
     assert!(h.query_by_label_contains("It has 3 changed or untracked files.").is_some());
-    assert!(h.query_by_label("Force remove").is_some());
+    assert!(h.get_by_label("Force remove").is_disabled(), "forcing waits for the acknowledgement");
+    h.get_by_label("Force remove").click();
+    h.run();
+    assert!(!pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Remove))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn worktree_force_remove_ack() {
+    let (st, dir) = remove_dialog(ThemeChoice::Dark, "worktree-force-ack", "feature-login", |f| {
+        f.refusal = Some(Refusal::Changes(3));
+    });
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("Delete 3 changed or untracked files for good").click();
+    h.run();
+    h.check_snapshot("worktree_force_remove_ack");
+    assert!(!h.get_by_label("Force remove").is_disabled());
+    h.get_by_label("Force remove").click();
+    h.run();
+    assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Remove))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -77,6 +98,9 @@ fn worktree_remove_locked() {
     h.check_snapshot("worktree_remove_locked");
     assert!(h.query_by_label_contains("This worktree is locked (on usb).").is_some());
     assert!(h.query_by_label_contains("Also delete branch").is_none(), "a detached worktree has no branch to delete");
+    assert!(h.get_by_label("Force remove").is_disabled(), "forcing waits for the acknowledgement");
+    h.get_by_label("Delete any uncommitted changes in it for good").click();
+    h.run();
     assert!(!h.get_by_label("Force remove").is_disabled());
     // While a job runs the button waits (a spinner keeps repainting, so step instead of run).
     h.state_mut().0.job = Some(crate::state::RunningJob {

@@ -125,6 +125,43 @@ fn create_pr_dialog_push() {
     remove_fixture(&dir);
 }
 
+/// In the description, Enter adds a line and Ctrl/Cmd+Enter creates the pull request.
+#[test]
+fn create_pr_dialog_ctrl_enter() {
+    use eframe::egui::{Key, Modifiers};
+    let (mut st, dir) = with_host(ThemeChoice::Dark, "create-pr-ctrl-enter", &["main", "search"]);
+    tracked(&mut st, 0);
+    st.modal = Some(Modal::CreatePr {
+        source: "search".into(),
+        target: "main".into(),
+        targets: vec!["main".into()],
+        title: "Search results page".into(),
+        description: String::new(),
+        draft: false,
+        items: String::new(),
+    });
+    let mut h = harness(st, true);
+    h.run();
+    let created = |h: &Harness<'_, (AppState, Vec<Msg>)>| sent(h, |f| matches!(f, ForgeMsg::CreatePr(_)));
+    // The commit box under the dialog has a Description too; the dialog's is drawn last.
+    h.get_all_by_label("Description").last().expect("the dialog's description").focus();
+    h.run();
+    h.get_all_by_label("Description").last().expect("the dialog's description").type_text("Adds paging");
+    h.run();
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(!created(&h), "Enter in the description adds a line");
+    match &h.state().0.modal {
+        Some(Modal::CreatePr { description, .. }) => assert_eq!(description, "Adds paging\n"),
+        _ => panic!("the dialog stays open"),
+    }
+    h.press_key_modifiers(Modifiers::COMMAND, Key::Enter);
+    h.run();
+    assert!(created(&h), "Ctrl/Cmd+Enter creates it");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 /// Opens the toolbar's Push dropdown.
 fn open_push_menu(h: &mut Harness<'_, (AppState, Vec<Msg>)>) {
     h.get_by_label("More push actions").click();

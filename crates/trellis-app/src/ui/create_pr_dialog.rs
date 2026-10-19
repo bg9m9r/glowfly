@@ -2,7 +2,9 @@
 //! description, linked issues, draft.
 
 use super::common::{capitalize, issue_chip, parse_keys};
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::state::ForgeState;
@@ -39,14 +41,60 @@ fn push_note(snap: &Snapshot, fs: &ForgeState, source: &str, pushed: bool) -> Op
     }
 }
 
-/// The create pull/merge request form; returns true when the dialog should close.
-pub(super) fn show(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+/// The create pull/merge request form; returns true when the dialog should close. Ctrl/Cmd+Enter
+/// in the description creates it.
+pub(super) fn show(
+    ui: &mut egui::Ui,
+    cx: Cx,
+    mut f: PrForm,
+    fs: &ForgeState,
+    snap: Option<&Snapshot>,
+    idle: bool,
+    msgs: &mut Vec<Msg>,
+) -> bool {
     let Some(host) = fs.host.as_ref() else { return true };
-    let mut close = false;
     let noun = fs.pr_noun();
-    ui.heading(format!("Create {noun}"));
-    ui.label(RichText::new(format!("{} · {}", host.provider.name(), host.display())).color(color::weak()));
-    ui.add_space(8.0);
+    let subtitle = format!("{} · {}", host.provider.name(), host.display());
+    let mut d = Dialog::new(cx, format!("Create {noun}")).subtitle(subtitle).wide().begin(ui);
+    let (pushed, keys) = d.body(ui, |ui| body(ui, &mut f, fs, snap, idle, msgs));
+    let valid = pushed && !f.title.trim().is_empty() && !f.target.is_empty() && f.target != f.source;
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(format!("Create {noun}")).enabled(valid)));
+    if out.primary {
+        // Trackers linked by mention get "Closes #12"-style lines; Azure Boards items are
+        // linked through the API.
+        let mut body = f.description.trim().to_owned();
+        let links: Vec<String> = fs
+            .tracker
+            .as_ref()
+            .map(|t| keys.iter().filter_map(|k| forge::link_line(host.provider, t.provider, k)).collect())
+            .unwrap_or_default();
+        if !links.is_empty() {
+            if !body.is_empty() {
+                body.push_str("\n\n");
+            }
+            body.push_str(&links.join("\n"));
+        }
+        msgs.push(Msg::Forge(ForgeMsg::CreatePr(NewPullRequest {
+            source: f.source.clone(),
+            target: f.target.clone(),
+            title: f.title.trim().to_owned(),
+            description: body,
+            draft: *f.draft,
+            issues: keys,
+        })));
+    }
+    out.primary || out.dismiss
+}
+
+/// The form's fields; returns whether the source is on the host's remote, and the linked keys.
+fn body(
+    ui: &mut egui::Ui,
+    f: &mut PrForm,
+    fs: &ForgeState,
+    snap: Option<&Snapshot>,
+    idle: bool,
+    msgs: &mut Vec<Msg>,
+) -> (bool, Vec<String>) {
     ui.horizontal(|ui| {
         ui.label(RichText::new(f.source.as_str()).strong());
         ui.label("into");
@@ -63,7 +111,7 @@ pub(super) fn show(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&
             ui.label(RichText::new(text).color(color::amber()));
             // The dialog stays open: it is the one shown again once the push lands.
             if let Some(local) = local
-                && ui.add_enabled(idle, egui::Button::new(format!("Push {local}"))).clicked()
+                && ui.add(buttons::secondary(format!("Push {local}")).small().enabled(idle)).clicked()
             {
                 msgs.push(Msg::Forge(ForgeMsg::PushAndStartPr { branch: local, target: Some(f.target.clone()) }));
             }
@@ -71,10 +119,11 @@ pub(super) fn show(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&
     }
     ui.add_space(6.0);
     controls::field(ui, egui::TextEdit::singleline(f.title).hint_text("Title").desired_width(f32::INFINITY));
-    controls::field(
+    let r = controls::field(
         ui,
         egui::TextEdit::multiline(f.description).hint_text("Description (Markdown)").desired_rows(5).desired_width(f32::INFINITY),
     );
+    super::access::name_field(&r, "Description");
     let keys = parse_keys(f.items);
     if fs.tracker.is_some() {
         ui.horizontal(|ui| {
@@ -91,37 +140,5 @@ pub(super) fn show(ui: &mut egui::Ui, f: PrForm, fs: &ForgeState, snap: Option<&
         }
     }
     controls::checkbox(ui, f.draft, "Create as draft");
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        let valid = pushed && !f.title.trim().is_empty() && !f.target.is_empty() && f.target != f.source;
-        if ui.add_enabled(valid, egui::Button::new(RichText::new(format!("Create {noun}")).strong())).clicked() {
-            // Trackers linked by mention get "Closes #12"-style lines; Azure Boards items are
-            // linked through the API.
-            let mut body = f.description.trim().to_owned();
-            let links: Vec<String> = fs
-                .tracker
-                .as_ref()
-                .map(|t| keys.iter().filter_map(|k| forge::link_line(host.provider, t.provider, k)).collect())
-                .unwrap_or_default();
-            if !links.is_empty() {
-                if !body.is_empty() {
-                    body.push_str("\n\n");
-                }
-                body.push_str(&links.join("\n"));
-            }
-            msgs.push(Msg::Forge(ForgeMsg::CreatePr(NewPullRequest {
-                source: f.source.clone(),
-                target: f.target.clone(),
-                title: f.title.trim().to_owned(),
-                description: body,
-                draft: *f.draft,
-                issues: keys.clone(),
-            })));
-            close = true;
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    (pushed, keys)
 }

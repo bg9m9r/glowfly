@@ -72,7 +72,7 @@ fn reset_menu(ui: &mut egui::Ui, c: &CommitInfo, snap: &Snapshot, msgs: &mut Vec
         menu_item(msgs, ui, RESET_SOFT, Msg::git("Reset (soft)", &["reset", "--soft", &sha]));
         menu_item(msgs, ui, RESET_MIXED, Msg::git("Reset (mixed)", &["reset", "--mixed", &sha]));
         let hard = Msg::git("Reset (hard)", &["reset", "--hard", &sha]);
-        menu_item(msgs, ui, RESET_HARD, Msg::confirm("Hard reset", hard_reset_body(current, c), "Reset", hard));
+        menu_item(msgs, ui, RESET_HARD, Msg::confirm_danger("Hard reset", hard_reset_body(current, c), "Reset", hard));
         menu_note(ui, RESET_HARD_NOTE);
     });
 }

@@ -11,6 +11,7 @@ use crate::remote::RemoteMsg;
 use crate::state::AppState;
 use crate::state::lfs::TrackContext;
 use crate::state::pull_request::{Files, PrView, empty_text, fetch_blocked, files_heading, out_of_sync, unrelated_text};
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::repo::DiffTarget;
 
@@ -69,9 +70,9 @@ fn notes(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) {
             ui.add(egui::Label::new(RichText::new(n.text(v)).color(color::text())).wrap());
         }
         let blocked = fetch_blocked(snap, &v.remote, st.job.is_none());
-        let mut r = ui.add_enabled(blocked.is_none(), egui::Button::new(format!("Fetch {}", v.remote)));
+        let mut r = ui.add(buttons::secondary(format!("Fetch {}", v.remote)).enabled(blocked.is_none()));
         if let Some(why) = &blocked {
-            r = r.on_disabled_hover_text(why);
+            r = r.on_hover_text(why);
         }
         if r.clicked() {
             msgs.push(Msg::Remote(RemoteMsg::Fetch(v.remote.clone())));

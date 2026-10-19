@@ -195,7 +195,7 @@ fn graph_commit_menu_reset_submenu() {
     let sha = fix.to_string()[..7].to_owned();
     let named = format!("\"Fix build on Windows\" ({sha})");
     let asked = h.state().1.iter().any(
-        |m| matches!(m, Msg::Confirm { title, body, .. } if title == "Hard reset" && body.contains(&named) && body.contains("Untracked files")),
+        |m| matches!(m, Msg::ConfirmDanger { title, body, .. } if title == "Hard reset" && body.contains(&named) && body.contains("Untracked files")),
     );
     assert!(asked, "the confirmation names the commit by its summary");
     drop(h);

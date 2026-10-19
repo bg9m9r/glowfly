@@ -9,6 +9,7 @@ use crate::msg::Msg;
 use crate::state::git_env::GitState;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use std::path::PathBuf;
 use trellis_core::git_program::{Candidate, from_setting};
@@ -61,10 +62,10 @@ pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Ve
         }
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            if ui.add_enabled(!busy, egui::Button::new("Browse…")).clicked() {
+            if ui.add(buttons::secondary("Browse…").enabled(!busy)).clicked() {
                 msgs.push(Msg::GitEnv(GitEnvMsg::Browse));
             }
-            if ui.add_enabled(page.candidates.is_some(), egui::Button::new("Look again")).clicked() {
+            if ui.add(buttons::secondary("Look again").enabled(page.candidates.is_some())).clicked() {
                 msgs.push(Msg::GitEnv(GitEnvMsg::Rescan));
             }
         });

@@ -33,7 +33,11 @@ fn discard_question_over_a_form() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("discard_changes_question");
-    assert!(h.ctx.memory(|m| m.focused()).is_none(), "the form's field doesn't take the focus");
+    assert!(h.get_by_label("Keep editing").is_focused(), "the safe answer takes the focus, not the form's field");
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(sent(&h, DialogMsg::KeepEditing), "Enter keeps editing");
+    h.state_mut().1.clear();
 
     h.get_by_label("Keep editing").click();
     h.run();

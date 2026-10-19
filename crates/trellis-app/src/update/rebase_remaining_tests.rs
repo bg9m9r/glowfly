@@ -100,7 +100,7 @@ fn update_steps_asks_about_drops_and_runs_the_edit() {
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     assert!(fx.is_empty());
     match &st.modal {
-        Some(Modal::Confirm { title, button, .. }) => assert_eq!((title.as_str(), button.as_str()), ("Drop commits", "Update steps")),
+        Some(Modal::ConfirmDanger { title, button, .. }) => assert_eq!((title.as_str(), button.as_str()), ("Drop commits", "Update steps")),
         _ => panic!("expected a confirmation"),
     }
     let fx = up(&mut st, Msg::ConfirmAccepted);

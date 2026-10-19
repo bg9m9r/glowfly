@@ -12,6 +12,7 @@ use crate::state::pull_request::{Page, PrAction, PrView, description_text};
 use crate::state::pull_request_actions::{comment_blocked, error_for, verdict_text};
 use crate::state::pull_request_threads::{self, Item};
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Margin, RichText, Ui};
 use trellis_core::forge::{Entry, EntryKind, Verdict};
 use trellis_core::settings::Settings;
@@ -45,7 +46,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     Page::Loading => note(ui, "Loading the conversation…", color::weak()),
                     Page::Failed(e) => {
                         note(ui, e.as_str(), color::red());
-                        if ui.button("Try again").clicked() {
+                        if ui.add(buttons::secondary("Try again")).clicked() {
                             msgs.push(Msg::PullRequest(PullRequestMsg::Reload));
                         }
                     }
@@ -135,9 +136,9 @@ fn comment_box(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
     controls::field(ui, edit);
     let blocked = comment_blocked(v);
     ui.horizontal(|ui| {
-        let mut r = ui.add_enabled(blocked.is_none(), egui::Button::new("Comment"));
+        let mut r = ui.add(buttons::secondary("Comment").enabled(blocked.is_none()));
         if let Some(why) = &blocked {
-            r = r.on_disabled_hover_text(why);
+            r = r.on_hover_text(why);
         }
         if r.clicked() {
             msgs.push(Msg::PullRequest(PullRequestMsg::PostComment));

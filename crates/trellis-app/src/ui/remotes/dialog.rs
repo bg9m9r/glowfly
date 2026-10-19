@@ -2,7 +2,9 @@
 //! as they are typed. `update` checks the request again and closes the dialog once the job
 //! starts. When adding, a link opens the Add a fork dialog for a remote whose service lists forks.
 
+use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::theme::color;
+use super::super::widgets::buttons;
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
 use crate::state::remotes::{RemoteForm, extra_push_urls, name_problem, push_problem, push_same_as_fetch, url_problem};
@@ -35,18 +37,19 @@ pub(super) fn note(ui: &mut egui::Ui, text: impl Into<String>) {
 /// `fork_source` is the remote and service the fork link offers (add mode only).
 pub fn show(
     ui: &mut egui::Ui,
+    cx: Cx,
     form: &mut RemoteForm,
     snap: Option<&Snapshot>,
     fork_source: Option<(String, String)>,
-    focus: bool,
     idle: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let mut close = false;
-    match &form.original {
-        Some(o) => ui.heading(format!("Edit remote {}", o.name)),
-        None => ui.heading("Add remote"),
+    let focus = cx.keyboard;
+    let title = match &form.original {
+        Some(o) => format!("Edit remote {}", o.name),
+        None => "Add remote".to_owned(),
     };
+    let d = Dialog::new(cx, title).begin(ui);
     if let (None, Some((remote, service))) = (&form.original, fork_source)
         && ui.link(format!("Pick a fork of {remote} on {service}…")).clicked()
     {
@@ -95,15 +98,10 @@ pub fn show(
     let valid = name_p.is_none() && url_p.is_none() && push_p.is_none();
     let ready = valid && idle && form.changed();
     let enter = enter_name || enter_url || enter_push;
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        let label = if form.is_edit() { "Save" } else { "Add remote" };
-        if ui.add_enabled(ready, egui::Button::new(label)).clicked() || (enter && ready) {
-            msgs.push(Msg::Remote(RemoteMsg::Submit));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let label = if form.is_edit() { "Save" } else { "Add remote" };
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ready)).submit(enter));
+    if out.primary {
+        msgs.push(Msg::Remote(RemoteMsg::Submit));
+    }
+    out.dismiss
 }

@@ -313,7 +313,7 @@ fn end_to_end_trash() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "a.txt".into(), confirmed: false }));
-    assert!(matches!(&st.modal, Some(Modal::Confirm { button, .. }) if *button == format!("Move to {TRASH}")));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { button, .. }) if *button == format!("Move to {TRASH}")));
     drive(&mut st, Msg::ConfirmAccepted);
 
     assert!(!dir.join("a.txt").exists());

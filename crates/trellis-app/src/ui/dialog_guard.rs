@@ -1,7 +1,9 @@
 //! How a dialog was dismissed (a backdrop click or Esc), and the "Discard your changes?"
 //! question stacked over an edited form (update/dialog.rs decides what each one does).
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::{DialogMsg, Dismiss, Msg};
 use eframe::egui::{self, Id, Key, Modifiers, RichText};
 use trellis_core::i18n::Lang;
@@ -19,22 +21,24 @@ pub(super) fn dismissal<T>(resp: &egui::ModalResponse<T>) -> Option<Dismiss> {
 
 /// The question over an edited form that Esc tried to close. Drawn after the form's modal, so
 /// it is the top one: the form beneath is dimmed and takes no input. Esc and a backdrop click
-/// mean Keep editing.
+/// mean Keep editing, and so does Enter: Keep editing has the focus when it opens.
 pub(super) fn discard_question(ctx: &egui::Context, t: Lang, msgs: &mut Vec<Msg>) {
-    let resp = super::theme::modal(ctx, Id::new("trellis-modal-discard")).show(ctx, |ui| {
-        ui.set_width(360.0);
-        ui.heading(t.tr("dialog.discard.title"));
-        ui.add_space(6.0);
+    let id = Id::new("trellis-modal-discard");
+    // It takes the keyboard over the form beneath.
+    let cx = Cx { t, keyboard: true, key: id };
+    let resp = super::theme::dialog(ctx, id).show(ctx, |ui| {
+        let d = Dialog::new(cx, t.tr("dialog.discard.title")).begin(ui);
         ui.label(RichText::new(t.tr("dialog.discard.body")).color(color::weak()));
-        ui.add_space(12.0);
-        ui.horizontal(|ui| {
-            if ui.button(t.tr("dialog.discard.keep.button")).clicked() {
-                msgs.push(Msg::Dialog(DialogMsg::KeepEditing));
-            }
-            if ui.button(t.tr("dialog.discard.discard.button")).clicked() {
-                msgs.push(Msg::Dialog(DialogMsg::Discard));
-            }
-        });
+        let footer = Footer::new()
+            .alt(buttons::secondary(t.tr("dialog.discard.discard.button")))
+            .primary(buttons::primary(t.tr("dialog.discard.keep.button")));
+        let out = d.finish(ui, footer);
+        if out.primary {
+            msgs.push(Msg::Dialog(DialogMsg::KeepEditing));
+        }
+        if out.alt == Some(0) {
+            msgs.push(Msg::Dialog(DialogMsg::Discard));
+        }
     });
     if dismissal(&resp).is_some() {
         msgs.push(Msg::Dialog(DialogMsg::KeepEditing));

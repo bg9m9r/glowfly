@@ -17,7 +17,9 @@ use crate::state::AppState;
 use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
 use crate::state::tool_compare::{OPEN_IN_DIFF_TOOL, diff_blocked};
 use crate::tools::ToolsMsg;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Align2, CursorIcon, FontId, Key, Layout, RichText, Sense, Ui, pos2, vec2};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, HistoryEntry};
 
 const ROW_H: f32 = 44.0;
@@ -30,7 +32,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let file_scroll = st.view.history_file_scroll.take();
     let Some(view) = &st.history else { return };
     ui.add_space(6.0);
-    header(ui, view, msgs);
+    header(ui, st.settings.lang(), view, msgs);
     ui.separator();
     let room = ui.available_width();
     super::panel_size::inner_side(egui::SidePanel::left("file-history-list"), crate::state::panel_layout::HISTORY_LIST, room)
@@ -44,7 +46,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
 /// "File history" or "Folder history", the path ("now <name>" when the file was renamed after
 /// the commit it was opened at), "as of <sha>" when the walk didn't start at HEAD, then the
 /// Diff / File toggle, Blame and Close.
-fn header(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, t: Lang, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         let (title, path) = match view.kind {
@@ -62,7 +64,7 @@ fn header(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
                 .on_hover_text("The history as seen from this commit (it is not part of HEAD's history of this file)");
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui.button("Close  (Esc)").clicked() {
+            if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
                 msgs.push(Msg::History(HistoryMsg::CloseFileHistory));
             }
             let shown = view.shown();
@@ -71,9 +73,9 @@ fn header(ui: &mut Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
                 Some((_, _, 'D')) => Some("This commit deletes the file"),
                 Some(_) => None,
             };
-            let r = ui.add_enabled(blocked.is_none(), egui::Button::new(file_menu::BLAME));
+            let r = ui.add(buttons::secondary(file_menu::BLAME).enabled(blocked.is_none()));
             let r = match blocked {
-                Some(why) => r.on_disabled_hover_text(why),
+                Some(why) => r.on_hover_text(why),
                 None => r.on_hover_text("Blame the file as of the selected commit"),
             };
             if r.clicked()
@@ -243,7 +245,7 @@ fn footer(ui: &mut Ui, st: &AppState, view: &FileHistoryView, msgs: &mut Vec<Msg
                 let date = st.settings.format_date_word(time, st.view.utc_offset);
                 ui.label(RichText::new(format!("Searched back to {date} ({})", short(oid))).color(color::weak()));
             }
-            if ui.button("Search further").clicked() {
+            if ui.add(buttons::secondary("Search further")).clicked() {
                 msgs.push(Msg::History(HistoryMsg::MoreFileHistory));
             }
         }
@@ -295,7 +297,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
             if link.clicked() {
                 msgs.push(Msg::History(HistoryMsg::ShowInGraph(e.oid)));
             }
-            if ui.small_button("Copy SHA").clicked() {
+            if ui.add(buttons::secondary("Copy SHA").small()).clicked() {
                 msgs.push(Msg::Copy(e.oid.to_string()));
             }
         });
@@ -331,8 +333,7 @@ fn file_actions(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>, f: &CommitFile)
     let blocked = diff_blocked(&st.settings.external_tools);
     ui.horizontal_wrapped(|ui| {
         file_buttons::show(ui, msgs, f, Labels::Full);
-        let r = ui.add_enabled(blocked.is_none(), egui::Button::new(OPEN_IN_DIFF_TOOL));
-        if r.on_disabled_hover_text(blocked.unwrap_or_default()).clicked() {
+        if ui.add(buttons::secondary(OPEN_IN_DIFF_TOOL).enabled(blocked.is_none()).why(blocked)).clicked() {
             msgs.push(Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Commit(f.oid, f.path.to_owned()))));
         }
     });

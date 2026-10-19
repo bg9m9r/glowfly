@@ -7,10 +7,13 @@ use crate::msg::Msg;
 use crate::ssh::SshMsg;
 use crate::state::ssh::{NO_KEYGEN, SshPage};
 use crate::state::ssh_use::{AGENT_ON, NOT_TRUSTED, add_blocked, chosen_at};
+use crate::ui::common::{menu_item, menu_item_if};
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, Color32, CornerRadius, FontId, RichText, Sense, Ui, vec2};
 use trellis_core::forge::Account;
+use trellis_core::i18n::Lang;
 use trellis_core::paths::same_spelling;
 use trellis_core::ssh_keys::{SshKeyPair, SshListing};
 
@@ -24,12 +27,12 @@ pub struct SshContext {
     pub job: Option<String>,
 }
 
-pub fn ssh_page(ui: &mut Ui, page: &mut SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
+pub fn ssh_page(ui: &mut Ui, t: Lang, page: &mut SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
     if let Some(error) = &page.error {
         row(ui, "Key Pairs", |ui| {
             warn(ui, error);
             ui.add_space(4.0);
-            if ui.button("Reload").clicked() {
+            if ui.add(buttons::secondary("Reload")).clicked() {
                 msgs.push(Msg::Ssh(SshMsg::Reload));
             }
         });
@@ -42,13 +45,13 @@ pub fn ssh_page(ui: &mut Ui, page: &mut SshPage, cx: &SshContext, msgs: &mut Vec
         });
         return;
     };
-    key_pairs(ui, page, &listing, cx, msgs);
+    key_pairs(ui, t, page, &listing, cx, msgs);
     super::ssh_git::choice_row(ui, page, &listing, cx, msgs);
     super::ssh_git::agent_row(ui, page, cx, msgs);
     super::ssh_generate::generate_form(ui, page, &listing, msgs);
 }
 
-fn key_pairs(ui: &mut Ui, page: &mut SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
+fn key_pairs(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
     row(ui, "Key Pairs", |ui| {
         ui.horizontal(|ui| {
             help(ui, "Private keys in your .ssh folder that have a matching .pub file. ssh and git use them to reach SSH remotes.");
@@ -67,7 +70,7 @@ fn key_pairs(ui: &mut Ui, page: &mut SshPage, listing: &SshListing, cx: &SshCont
         for key in &listing.keys {
             key_row(ui, key, page, cx, msgs);
             if let Some(form) = page.upload.as_mut().filter(|f| same_spelling(&f.key, &key.private)) {
-                super::ssh_service::upload_form(ui, form, &key.file_name(), msgs);
+                super::ssh_service::upload_form(ui, t, form, &key.file_name(), msgs);
             }
         }
     });
@@ -97,7 +100,7 @@ fn key_row(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs:
                     actions(ui, key, page, cx, msgs);
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    if ui.button("Copy public key").clicked() {
+                    if ui.add(buttons::secondary("Copy public key")).clicked() {
                         msgs.push(Msg::Ssh(SshMsg::CopyPublicKey(key.private.clone())));
                     }
                 });
@@ -116,25 +119,20 @@ fn actions(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs:
     ui.horizontal(|ui| {
         ui.spacing_mut().button_padding = vec2(6.0, 2.0);
         if cx.use_agent {
-            ui.add_enabled(false, egui::Button::new(small("Use for git…"))).on_disabled_hover_text(AGENT_ON);
+            ui.add(buttons::secondary("Use for git…").small().enabled(false).why(Some(AGENT_ON)));
         } else {
             ui.menu_button(small("Use for git…"), |ui| {
-                if ui.button("For all repositories").clicked() {
-                    msgs.push(Msg::Ssh(SshMsg::UseKey { key: key.private.clone(), repo: false, confirmed: false }));
-                    ui.close_menu();
-                }
+                let use_key = |repo| Msg::Ssh(SshMsg::UseKey { key: key.private.clone(), repo, confirmed: false });
+                menu_item(msgs, ui, "For all repositories", use_key(false));
                 if let Some(repo) = &page.repo {
-                    let item = ui.add_enabled(repo.trusted, egui::Button::new(format!("For {} only", repo.name)));
-                    if item.on_disabled_hover_text(NOT_TRUSTED).clicked() {
-                        msgs.push(Msg::Ssh(SshMsg::UseKey { key: key.private.clone(), repo: true, confirmed: false }));
-                        ui.close_menu();
-                    }
+                    let blocked = (!repo.trusted).then_some(NOT_TRUSTED);
+                    menu_item_if(msgs, ui, format!("For {} only", repo.name), blocked, use_key(true));
                 }
             });
         }
         let blocked = add_blocked(page, cx.job.as_deref());
-        let add = ui.add_enabled(blocked.is_none(), egui::Button::new(small("Add to agent")));
-        if add.on_disabled_hover_text(blocked.unwrap_or_default()).clicked() {
+        let add = buttons::secondary("Add to agent").small().enabled(blocked.is_none()).why(blocked.as_deref());
+        if ui.add(add).clicked() {
             msgs.push(Msg::Ssh(SshMsg::AddToAgent(key.private.clone())));
         }
         if page.agent_adding.as_ref().is_some_and(|p| same_spelling(p, &key.private)) {
@@ -142,13 +140,10 @@ fn actions(ui: &mut Ui, key: &SshKeyPair, page: &SshPage, cx: &SshContext, msgs:
         }
         ui.menu_button(small("Add to service…"), |ui| {
             if cx.services.is_empty() {
-                ui.add_enabled(false, egui::Button::new("Connect a service in Integrations first"));
+                ui.label(RichText::new("Connect a service in Integrations first").color(color::weak()));
             }
             for (account, label) in &cx.services {
-                if ui.button(label).clicked() {
-                    msgs.push(Msg::Ssh(SshMsg::ChooseService { key: key.private.clone(), account: account.clone() }));
-                    ui.close_menu();
-                }
+                menu_item(msgs, ui, label, Msg::Ssh(SshMsg::ChooseService { key: key.private.clone(), account: account.clone() }));
             }
         });
         let mut chips: Vec<(String, Color32)> = chosen_at(page.choice.as_ref(), &key.private)

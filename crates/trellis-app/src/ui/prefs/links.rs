@@ -6,6 +6,7 @@ use crate::deep_link::DeepLinkMsg;
 use crate::msg::Msg;
 use crate::state::deep_link::{SchemeView, can_unregister, status_text};
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::i18n::Lang;
 use trellis_core::url_scheme::SchemeStatus;
@@ -23,13 +24,13 @@ pub fn links_row(ui: &mut Ui, t: Lang, view: &SchemeView, msgs: &mut Vec<Msg>) {
         let other = matches!(view, SchemeView::Known(SchemeStatus::OtherProgram(_)));
         ui.horizontal(|ui| {
             let register = if other { t.tr("prefs.links.register_this.button") } else { t.tr("prefs.links.register.button") };
-            if ui.add_enabled(!checking, egui::Button::new(register)).clicked() {
+            if ui.add(buttons::secondary(register).enabled(!checking)).clicked() {
                 msgs.push(Msg::DeepLink(DeepLinkMsg::Register));
             }
-            if ui.add_enabled(!checking && can_unregister(view), egui::Button::new(t.tr("prefs.links.unregister.button"))).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.links.unregister.button")).enabled(!checking && can_unregister(view))).clicked() {
                 msgs.push(Msg::DeepLink(DeepLinkMsg::Unregister));
             }
-            if error && ui.button(t.tr("prefs.links.check_again.button")).clicked() {
+            if error && ui.add(buttons::secondary(t.tr("prefs.links.check_again.button"))).clicked() {
                 msgs.push(Msg::DeepLink(DeepLinkMsg::CheckScheme));
             }
         });

@@ -10,6 +10,7 @@ use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::gitflow::GitFlowPage;
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::branch_ops::is_valid_branch_name;
 use trellis_core::gitflow::{BranchPlan, Branches, FlowKind, GitFlowSettings, InitProblem, check_settings, flow_branches, plan_branches};
@@ -150,7 +151,7 @@ fn buttons(ui: &mut Ui, page: &GitFlowPage, b: &Branches, initialized: bool, bus
             if primary_button(ui, label, enabled).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::Apply));
             }
-            if edited && ui.button("Discard changes").clicked() {
+            if edited && ui.add(buttons::secondary("Discard changes")).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::Discard));
             }
         });
@@ -164,7 +165,7 @@ fn start_row(ui: &mut Ui, s: &GitFlowSettings, b: &Branches, busy: bool, msgs: &
             for kind in FlowKind::ALL {
                 let base = s.base(kind);
                 let exists = b.local(base);
-                let r = ui.add_enabled(!busy && exists, egui::Button::new(format!("Start {}…", kind.noun())));
+                let r = ui.add(buttons::secondary(format!("Start {}…", kind.noun())).enabled(!busy && exists));
                 let hover = if exists {
                     format!("Branch from {base}")
                 } else if kind == FlowKind::Hotfix {
@@ -172,7 +173,7 @@ fn start_row(ui: &mut Ui, s: &GitFlowSettings, b: &Branches, busy: bool, msgs: &
                 } else {
                     format!("{base} doesn't exist. Save to create it.")
                 };
-                if r.on_hover_text(&hover).on_disabled_hover_text(&hover).clicked() {
+                if r.on_hover_text(&hover).clicked() {
                     msgs.push(Msg::GitFlow(GitFlowMsg::StartDialog(kind)));
                 }
             }
@@ -198,7 +199,7 @@ fn finish_row(ui: &mut Ui, choice: &mut String, s: &GitFlowSettings, b: &Branche
                     ui.selectable_value(choice, (*n).to_owned(), *n);
                 }
             });
-            if ui.add_enabled(!busy, egui::Button::new("Finish…")).clicked() {
+            if ui.add(buttons::secondary("Finish…").enabled(!busy)).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(choice.clone())));
             }
         });

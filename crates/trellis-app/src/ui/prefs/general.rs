@@ -11,7 +11,8 @@ use crate::state::deep_link::SchemeView;
 use crate::state::prefs::{Autocrlf, GitConfigValues};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
-use eframe::egui::{self, Color32, RichText, Ui};
+use crate::ui::widgets::buttons;
+use eframe::egui::{self, RichText, Ui};
 use trellis_core::git_version::GitInfo;
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
@@ -39,7 +40,7 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
     row(ui, t.tr("prefs.general.git.label"), |ui| {
         ui.horizontal(|ui| {
             ui.label(RichText::new(git_program_text(t, program)).color(color::text()));
-            if ui.button(t.tr("prefs.general.git.button")).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.general.git.button"))).clicked() {
                 msgs.push(Msg::GitEnv(crate::git_env::GitEnvMsg::ShowPage));
             }
         });
@@ -105,7 +106,7 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
         help(ui, t.tr("prefs.general.extended_logging.help"));
     });
     row(ui, t.tr("prefs.general.logs.label"), |ui| {
-        if ui.button(t.tr("prefs.general.logs.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("prefs.general.logs.button"))).clicked() {
             msgs.push(Msg::Logs(LogsMsg::OpenFolder));
         }
         help(ui, t.tr("prefs.general.logs.help"));
@@ -143,20 +144,13 @@ pub fn general_page(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigVal
 fn forget_row(ui: &mut Ui, t: Lang, s: &Settings, msgs: &mut Vec<Msg>) {
     row(ui, t.tr("prefs.general.forget.label"), |ui| {
         let n = s.connections.len();
-        let danger = |text: &str, on: bool| {
-            egui::Button::new(RichText::new(text).color(if on { Color32::WHITE } else { color::faint() })).fill(if on {
-                color::danger()
-            } else {
-                color::danger_off()
-            })
-        };
         ui.horizontal(|ui| {
-            if ui.add_enabled(n > 0, danger(t.tr("prefs.general.forget.button"), n > 0)).clicked() {
+            if ui.add(buttons::danger(t.tr("prefs.general.forget.button")).enabled(n > 0)).clicked() {
                 msgs.push(Msg::Forge(ForgeMsg::ForgetTokens { gcm: false }));
             }
             let gcm_hosts = s.connections.iter().filter(|c| c.account.provider.supports_gcm()).count();
-            if ui.add_enabled(gcm_hosts > 0, danger(t.tr("prefs.general.forget.gcm_button"), gcm_hosts > 0)).clicked() {
-                msgs.push(Msg::confirm(
+            if ui.add(buttons::danger(t.tr("prefs.general.forget.gcm_button")).enabled(gcm_hosts > 0)).clicked() {
+                msgs.push(Msg::confirm_danger(
                     t.tr("prefs.general.forget.confirm_title"),
                     t.trn("prefs.general.forget.gcm_body", gcm_hosts, &[]),
                     t.tr("prefs.general.forget.button"),

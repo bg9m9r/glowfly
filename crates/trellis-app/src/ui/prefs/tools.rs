@@ -10,6 +10,7 @@ use super::{help, row, text_field, warn};
 use crate::msg::Msg;
 use crate::state::tools::{bundle_warning, missing_warnings, template_warnings};
 use crate::tools::{ToolKind, ToolsMsg};
+use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
 use trellis_core::external_tools::{self, DIFF_PLACEHOLDERS, EDITOR_PLACEHOLDERS, MERGE_PLACEHOLDERS};
 use trellis_core::i18n::Lang;
@@ -40,7 +41,7 @@ pub fn tools_page(ui: &mut Ui, s: &mut Settings, msgs: &mut Vec<Msg>) {
         warnings(ui, t, &et.editor_repo_args, &EDITOR_PLACEHOLDERS, &[]);
     });
     row(ui, t.tr("prefs.tools.arguments.label"), |ui| {
-        if ui.button(t.tr("prefs.tools.restore.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("prefs.tools.restore.button"))).clicked() {
             reset(s);
         }
     });
@@ -80,7 +81,7 @@ fn diff_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
         warnings(ui, t, &et.diff_tool_args, &DIFF_PLACEHOLDERS, &["{local}", "{remote}"]);
     });
     row(ui, t.tr("prefs.tools.arguments.label"), |ui| {
-        if ui.button(t.tr("prefs.tools.restore.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("prefs.tools.restore.button"))).clicked() {
             reset_diff(s);
         }
     });
@@ -103,7 +104,7 @@ fn merge_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
         warnings(ui, t, &et.merge_tool_args, &MERGE_PLACEHOLDERS, &["{ours}", "{theirs}", "{output}"]);
     });
     row(ui, t.tr("prefs.tools.arguments.label"), |ui| {
-        if ui.button(t.tr("prefs.tools.restore.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("prefs.tools.restore.button"))).clicked() {
             reset_merge(s);
         }
     });
@@ -113,7 +114,7 @@ fn merge_section(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {
 fn program_field(ui: &mut Ui, t: Lang, value: &mut String, hint: &str, kind: ToolKind, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         text_field(ui, value, hint);
-        if ui.button(t.tr("prefs.tools.browse.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("prefs.tools.browse.button"))).clicked() {
             msgs.push(Msg::Tools(ToolsMsg::Browse(kind)));
         }
     });

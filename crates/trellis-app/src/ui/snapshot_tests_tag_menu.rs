@@ -70,14 +70,14 @@ fn tag_row_menu() {
     submenu_item(&h, "Delete from remote", "All remotes…").click();
     h.run();
     let want = TagMsg::DeleteRemote { tag: "v0.1.0".into(), remotes: both() };
-    assert!(pushed(&h, &|m| matches!(m, Msg::Confirm { then, .. } if matches!(&**then, Msg::Tag(t) if *t == want))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmDanger { then, .. } if matches!(&**then, Msg::Tag(t) if *t == want))));
 
     open_menu(&mut h);
     open_submenu(&mut h, "Delete from remote");
     submenu_item(&h, "Delete from remote", "origin…").click();
     h.run();
     let want = TagMsg::DeleteRemote { tag: "v0.1.0".into(), remotes: vec!["origin".into()] };
-    assert!(pushed(&h, &|m| matches!(m, Msg::Confirm { then, .. } if matches!(&**then, Msg::Tag(t) if *t == want))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmDanger { then, .. } if matches!(&**then, Msg::Tag(t) if *t == want))));
 
     open_menu(&mut h);
     open_submenu(&mut h, "Push to");
@@ -161,7 +161,7 @@ fn tag_row_menu_one_remote() {
     assert!(h.query_by_label("Push to").is_none() && h.query_by_label("Delete from remote").is_none());
     h.get_by_label("Delete locally…").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::Confirm { title, button, .. } if title == "Delete tag" && button == "Delete")));
+    assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmDanger { title, button, .. } if title == "Delete tag" && button == "Delete")));
     drop(h);
     remove_fixture(&dir);
 }
@@ -169,8 +169,8 @@ fn tag_row_menu_one_remote() {
 #[test]
 fn tag_delete_remote_confirm_light() {
     let (mut st, dir) = with_tags(ThemeChoice::Light, "tag-delete-remote-confirm", &["origin", "backup"]);
-    let Msg::Confirm { title, body, button, then } = delete_remote_confirm("v0.1.0", both()) else { panic!("a confirmation") };
-    st.modal = Some(Modal::Confirm { title, body, button, then });
+    let Msg::ConfirmDanger { title, body, button, then, .. } = delete_remote_confirm("v0.1.0", both()) else { panic!("a confirmation") };
+    st.modal = Some(Modal::danger(title, body, button, *then));
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label_contains("Your local tag stays").is_some());

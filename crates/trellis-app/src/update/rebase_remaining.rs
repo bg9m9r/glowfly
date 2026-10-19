@@ -58,7 +58,7 @@ pub(super) fn update_steps(st: &mut AppState, confirmed: bool, now: Instant, fx:
         && let Some((title, body)) = start_question(drops, p.branch(), false)
     {
         let then = Msg::Rebase(RebaseMsg::StartRebase { confirmed: true, autostash: false });
-        fx.extend(super::update(st, Msg::confirm(&title, body, UPDATE, then), now));
+        fx.extend(super::update(st, Msg::confirm_danger(&title, body, UPDATE, then), now));
         return;
     }
     let Some(request) = edit_request(p) else { return };

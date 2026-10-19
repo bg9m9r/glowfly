@@ -196,7 +196,7 @@ pub(super) fn wip_file_row(
                         msgs,
                         ui,
                         t.tr("details.wip.discard.item"),
-                        Msg::confirm(
+                        Msg::confirm_danger(
                             t.tr("details.wip.discard.title"),
                             t.trf("details.wip.discard.body", &[("path", &f.path)]),
                             t.tr("details.wip.discard.button"),

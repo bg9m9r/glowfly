@@ -211,11 +211,16 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
             }
         }
         Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then }),
-        Msg::ConfirmDanger { title, body, button, then } => {
-            st.modal = Some(crate::state::Modal::ConfirmDanger { title, body, button, then });
+        Msg::ConfirmDanger { title, body, button, ack, then } => {
+            st.modal = Some(crate::state::Modal::ConfirmDanger { title, body, button, ack, acked: false, then });
         }
         Msg::ConfirmAccepted => {
-            if let Some(crate::state::Modal::Confirm { then, .. } | crate::state::Modal::ConfirmDanger { then, .. }) = st.modal.take() {
+            // A step that needs the acknowledgement waits, open, until it is ticked.
+            if !st.modal.as_ref().is_some_and(crate::state::Modal::confirm_ready) {
+                tracing::debug!("confirmation not ready (no confirm open, or its acknowledgement isn't ticked)");
+            } else if let Some(crate::state::Modal::Confirm { then, .. } | crate::state::Modal::ConfirmDanger { then, .. }) =
+                st.modal.take()
+            {
                 fx.extend(update(st, *then, now));
             }
         }

@@ -8,7 +8,9 @@ use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::KeysPage;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
-use eframe::egui::{self, Align, Id, Layout, RichText, TextEdit, Ui, vec2};
+use crate::ui::widgets::buttons;
+use eframe::egui::{Align, Id, Layout, RichText, TextEdit, Ui, vec2};
+use trellis_core::i18n::Lang;
 
 /// The widest the list gets, so a row's keys stay near its label.
 const MAX_W: f32 = 760.0;
@@ -16,7 +18,7 @@ const MAX_W: f32 = 760.0;
 const HELP: &str =
     "Click a key to change it, or Add to give an action another key. Fixed keys work in one place only and can't be changed.";
 
-pub fn keyboard_page(ui: &mut Ui, page: &mut KeysPage, keys: &Keymap, msgs: &mut Vec<Msg>) {
+pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, msgs: &mut Vec<Msg>) {
     ui.set_max_width(MAX_W);
     help(ui, HELP);
     ui.add_space(8.0);
@@ -28,8 +30,9 @@ pub fn keyboard_page(ui: &mut Ui, page: &mut KeysPage, keys: &Keymap, msgs: &mut
             .margin(vec2(8.0, 5.0));
         controls::field(ui, field);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            let reset = ui.add_enabled(keys.customized() && !page.confirm_reset_all, egui::Button::new("Reset all to defaults"));
-            if reset.on_disabled_hover_text("Every shortcut has its default key").clicked() {
+            let why = (!keys.customized()).then_some("Every shortcut has its default key");
+            let reset = buttons::secondary("Reset all to defaults").enabled(keys.customized() && !page.confirm_reset_all).why(why);
+            if ui.add(reset).clicked() {
                 msgs.push(Msg::Keys(KeysMsg::AskResetAll));
             }
         });
@@ -42,7 +45,7 @@ pub fn keyboard_page(ui: &mut Ui, page: &mut KeysPage, keys: &Keymap, msgs: &mut
             if primary_button(ui, "Reset all", true).clicked() {
                 msgs.push(Msg::Keys(KeysMsg::ResetAll));
             }
-            if ui.button("Cancel").clicked() {
+            if ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked() {
                 msgs.push(Msg::Keys(KeysMsg::CancelResetAll));
             }
         });
@@ -57,7 +60,7 @@ pub fn keyboard_page(ui: &mut Ui, page: &mut KeysPage, keys: &Keymap, msgs: &mut
         ui.label(RichText::new(group.title()).strong().size(12.5).color(color::weak()));
         ui.add_space(2.0);
         for b in rows {
-            keyboard_row::row(ui, b, keys, page, msgs);
+            keyboard_row::row(ui, t, b, keys, page, msgs);
         }
     }
 }

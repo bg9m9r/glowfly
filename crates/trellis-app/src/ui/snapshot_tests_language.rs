@@ -94,3 +94,24 @@ fn main_window_german() {
     drop(h);
     remove_fixture(&dir);
 }
+
+/// Cancel and Close come from the catalog: a German confirmation and About.
+#[test]
+fn dialog_buttons_german() {
+    use crate::msg::Msg;
+    use crate::state::Modal;
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "language-dialog-de");
+    st.settings.language = "de".into();
+    st.modal = Some(Modal::danger("Zweig löschen", "Lokalen Zweig search löschen?", "Löschen", Msg::ClearLog));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("confirm_dialog_german");
+    assert!(h.query_by_label("Abbrechen").is_some(), "Cancel is German");
+    assert!(h.query_by_label("Cancel").is_none());
+    h.state_mut().0.modal = Some(Modal::About);
+    h.run();
+    assert!(h.query_by_label("Schließen").is_some(), "Close is German");
+    assert!(h.query_by_label("Close").is_none());
+    drop(h);
+    remove_fixture(&dir);
+}

@@ -2,7 +2,9 @@
 //! it), says when the repository is the user's own, and otherwise is the confirmation to fork it
 //! into the user's account, add the fork as a remote and fetch it.
 
+use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::theme::color;
+use super::super::widgets::buttons;
 use super::dialog::{field, note, problem_line};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
@@ -42,17 +44,17 @@ fn name_field(ui: &mut egui::Ui, f: &mut ForkCreate, snap: Option<&Snapshot>, en
 /// while a job runs (`idle` false), Fork and add remote while the fork is being created.
 pub fn show(
     ui: &mut egui::Ui,
+    cx: Cx,
     f: &mut ForkCreate,
     snap: Option<&Snapshot>,
     connections: &[Connection],
-    focus: bool,
     idle: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
+    let focus = cx.keyboard;
     let repo = f.target.display();
     let service = f.target.provider.name();
-    ui.heading(format!("Fork {repo} on {service}"));
-    ui.add_space(8.0);
+    let d = Dialog::new(cx, format!("Fork {repo} on {service}")).begin(ui);
     // (primary button label, enabled, message) when the step has one.
     let mut primary: Option<(&str, bool, RemoteMsg)> = None;
     let mut submit = false;
@@ -61,7 +63,7 @@ pub fn show(
             None => spinner_line(ui, format!("Looking for your fork of {repo}…")),
             Some(e) => {
                 ui.label(RichText::new(error_text(e)).color(color::red()));
-                if ui.button("Retry").clicked() {
+                if ui.add(buttons::secondary("Retry").small()).clicked() {
                     msgs.push(Msg::Remote(RemoteMsg::RetryForks));
                 }
             }
@@ -102,23 +104,17 @@ pub fn show(
             primary = Some(("Fork and add remote", ok && !creating, RemoteMsg::CreateFork));
         }
     }
-    let mut close = false;
-    ui.add_space(10.0);
-    ui.horizontal(|ui| match primary {
-        Some((label, enabled, msg)) => {
-            if ui.add_enabled(enabled, egui::Button::new(label)).clicked() || (submit && enabled) {
-                msgs.push(Msg::Remote(msg));
-            }
-            if ui.button("Cancel").clicked() {
-                close = true;
-            }
-        }
-        None => {
-            let label = if matches!(f.step, ForkStep::Checking) { "Cancel" } else { "Close" };
-            if ui.button(label).clicked() {
-                close = true;
-            }
-        }
-    });
-    close
+    let footer = match &primary {
+        Some((label, enabled, _)) => Footer::new().cancel().primary(buttons::primary(*label).enabled(*enabled)).submit(submit),
+        // While it looks for the fork, nothing has happened yet to close.
+        None if matches!(f.step, ForkStep::Checking) => Footer::new().cancel(),
+        None => Footer::new().close(),
+    };
+    let out = d.finish(ui, footer);
+    if out.primary
+        && let Some((_, _, msg)) = primary
+    {
+        msgs.push(Msg::Remote(msg));
+    }
+    out.dismiss
 }

@@ -3,7 +3,9 @@
 //! and reverse options, or as commits), why it can't be applied now, then Apply. `update`
 //! checks the choice again before running anything.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::apply::{ApplyForm, ApplyMode, NO_MESSAGES, NOTHING_TO_APPLY, THREE_WAY_INDEX, apply_blocked};
@@ -23,11 +25,19 @@ const ON_FAIL: [(OnFail, &str); 3] = [
 
 /// Draws the dialog; returns true when it should close. Apply waits while a job runs (`idle`
 /// is false); on Apply the dialog stays open until `update` starts the job.
-pub fn show(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
-    ui.heading("Apply patch");
-    ui.label(RichText::new(&form.name).color(color::weak()));
-    ui.add_space(6.0);
+pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut ApplyForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+    let mut d = Dialog::new(cx, "Apply patch").subtitle(form.name.clone()).begin(ui);
+    let blocked = d.body(ui, |ui| body(ui, form, snap));
+    let button = buttons::primary("Apply").enabled(blocked.is_none() && idle).why(blocked.as_deref().or((!idle).then_some(BUSY)));
+    let out = d.finish(ui, Footer::new().cancel().primary(button));
+    if out.primary {
+        msgs.push(Msg::Patch(PatchMsg::Apply(form.request())));
+    }
+    out.dismiss
+}
+
+/// What the patch holds and how to apply it; returns why it can't be applied now.
+fn body(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>) -> Option<String> {
     match form.summary_line() {
         Some(line) => ui.label(RichText::new(line).strong()),
         None => ui.label(RichText::new(NOTHING_TO_APPLY).color(color::red())),
@@ -59,21 +69,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut ApplyForm, snap: Option<&Snapshot>, id
         ui.add(egui::Label::new(RichText::new(why).color(color::red())).wrap());
     }
     // Without a snapshot there is no repository to apply to.
-    let blocked = blocked.or(snap.is_none().then(|| NOTHING_TO_APPLY.to_owned()));
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        let mut button = ui.add_enabled(blocked.is_none() && idle, egui::Button::new("Apply"));
-        if let Some(why) = blocked.as_deref().or((!idle).then_some(BUSY)) {
-            button = button.on_disabled_hover_text(why);
-        }
-        if button.clicked() {
-            msgs.push(Msg::Patch(PatchMsg::Apply(form.request())));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    blocked.or(snap.is_none().then(|| NOTHING_TO_APPLY.to_owned()))
 }
 
 /// The files the patch touches, a few rows high.

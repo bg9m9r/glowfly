@@ -5,6 +5,7 @@ use super::{help, row};
 use crate::msg::{ForgeMsg, Msg};
 use crate::state::trello::BoardList;
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::{self, Account, Provider, Target};
 use trellis_core::settings::TrackerChoice;
@@ -63,7 +64,7 @@ pub(super) fn board_row(ui: &mut Ui, account: &Account, board: &str, board_name:
         } else if let Some(e) = &list.error {
             ui.horizontal_wrapped(|ui| {
                 ui.label(RichText::new(e).size(12.0).color(color::red()));
-                if ui.small_button("Try again").clicked() {
+                if ui.add(buttons::secondary("Try again").small()).clicked() {
                     msgs.push(Msg::Forge(ForgeMsg::LoadTrelloBoards(account.clone())));
                 }
             });

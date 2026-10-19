@@ -136,9 +136,26 @@ fn rename_checks_the_target() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// The open danger confirmation's acknowledgement label, if it asks for one.
+pub(super) fn ack(st: &AppState) -> Option<&str> {
+    match &st.modal {
+        Some(Modal::ConfirmDanger { ack, .. }) => ack.as_deref(),
+        _ => None,
+    }
+}
+
+/// Ticks the open danger confirmation's acknowledgement.
+pub(super) fn tick(st: &mut AppState) {
+    if let Some(Modal::ConfirmDanger { acked, .. }) = st.modal.as_mut() {
+        *acked = true;
+    }
+}
+
 pub(super) fn confirm(st: &AppState) -> (&str, &str, &str, &Msg) {
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, then }) => (title, body, button, then),
+        Some(Modal::Confirm { title, body, button, then } | Modal::ConfirmDanger { title, body, button, then, .. }) => {
+            (title, body, button, then)
+        }
         _ => panic!("expected the confirmation"),
     }
 }
@@ -362,7 +379,7 @@ fn end_to_end_unstage_and_delete() {
     assert!(st.snap.as_ref().unwrap().staged.contains(&entry("new.txt", 'A')));
 
     drive(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "new.txt".into(), confirmed: false }));
-    assert!(matches!(&st.modal, Some(Modal::Confirm { title, .. }) if title == "Delete new file"));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { title, .. }) if title == "Delete new file"));
     drive(&mut st, Msg::ConfirmAccepted);
     assert!(!dir.join("new.txt").exists());
     let snap = st.snap.as_ref().unwrap();

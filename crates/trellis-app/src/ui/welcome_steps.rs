@@ -7,6 +7,7 @@ use crate::state::git_env::GitState;
 use crate::state::onboarding::Welcome;
 use crate::state::{PrefPage, host_text};
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, vec2};
 use trellis_core::forge::Connection;
 use trellis_core::i18n::Lang;
@@ -91,7 +92,7 @@ pub fn connect(ui: &mut egui::Ui, t: Lang, connections: &[Connection], msgs: &mu
         ui.add_space(6.0);
         t.tr("welcome.connect.another.button")
     };
-    if ui.button(label).clicked() {
+    if ui.add(buttons::secondary(label)).clicked() {
         msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
     }
 }
@@ -130,20 +131,19 @@ pub fn start(ui: &mut egui::Ui, t: Lang, w: &mut Welcome, has_repo: bool, msgs: 
     text(ui, t.tr("welcome.start.intro"));
     ui.add_space(10.0);
     ui.vertical_centered(|ui| {
-        let size = vec2(260.0, 34.0);
         let choices = [
             (StartChoice::Open, t.tr("common.open_repo.button")),
             (StartChoice::Clone, t.tr("common.clone_repo.button")),
             (StartChoice::Init, t.tr("common.init_repo.button")),
         ];
         for (choice, label) in choices {
-            if ui.add(egui::Button::new(label).min_size(size)).clicked() {
+            if ui.add(buttons::secondary(label).min_width(260.0).min_height(34.0)).clicked() {
                 msgs.push(Msg::Onboarding(OnboardingMsg::Finish(Some(choice))));
             }
         }
         ui.add_space(6.0);
         if has_repo {
-            if ui.button(t.tr("welcome.start.tour_now.button")).clicked() {
+            if ui.add(buttons::secondary(t.tr("welcome.start.tour_now.button"))).clicked() {
                 msgs.push(Msg::Onboarding(OnboardingMsg::StartTour));
             }
         } else {

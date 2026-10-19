@@ -198,7 +198,7 @@ fn saved_row(ui: &mut egui::Ui, s: &SavedFilter, checked: bool, (up, down): (boo
     child.spacing_mut().item_spacing.x = 1.0;
     if widgets::icon_button(&mut child, Icon::Close, "Remove…").clicked() {
         let body = format!("Remove the saved filter \u{201c}{}\u{201d}? Its conditions can't be brought back.", s.name);
-        let m = Msg::confirm("Remove filter", body, "Remove", Msg::ForgeFilter(FilterMsg::Remove(s.id)));
+        let m = Msg::confirm_danger("Remove filter", body, "Remove", Msg::ForgeFilter(FilterMsg::Remove(s.id)));
         ui.memory_mut(|mem| mem.close_popup());
         msgs.push(m);
     }

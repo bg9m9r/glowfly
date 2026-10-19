@@ -4,6 +4,7 @@
 
 use super::clone_dialog::note;
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::{CloneMsg, Msg, PrefsMsg};
 use crate::state::PrefPage;
 use crate::state::clone::CloneForm;
@@ -64,7 +65,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, connections: &[Connection],
     let p = &mut form.service;
     if p.accounts.is_empty() {
         ui.label("Connect GitHub, GitLab or Bitbucket in Preferences > Integrations to pick from your repositories.");
-        if ui.button("Open Integrations").clicked() {
+        if ui.add(buttons::secondary("Open Integrations").small()).clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
             return true;
         }
@@ -79,7 +80,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut CloneForm, connections: &[Connection],
         });
     } else if let Some(e) = &p.error {
         ui.label(RichText::new(error_text(e)).color(color::red()));
-        if ui.button("Retry").clicked() {
+        if ui.add(buttons::secondary("Retry").small()).clicked() {
             msgs.push(Msg::Clone(CloneMsg::RetryRepos));
         }
     } else if p.list.repos.is_empty() {

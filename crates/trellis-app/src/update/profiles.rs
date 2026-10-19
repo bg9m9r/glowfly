@@ -74,12 +74,7 @@ pub(super) fn handle(st: &mut AppState, m: ProfileMsg, now: Instant, fx: &mut Ve
                 return;
             }
             let Some(name) = st.settings.profile(id).map(|p| p.name.clone()) else { return };
-            st.modal = Some(Modal::Confirm {
-                title: DELETE_TITLE.into(),
-                body: delete_body(&name),
-                button: DELETE_BUTTON.into(),
-                then: Box::new(Msg::Profile(ProfileMsg::Delete(id))),
-            });
+            st.modal = Some(Modal::danger(DELETE_TITLE, delete_body(&name), DELETE_BUTTON, Msg::Profile(ProfileMsg::Delete(id))));
         }
         ProfileMsg::Delete(id) => {
             // The button is disabled on the switch's target; a confirmation can't outlive that.

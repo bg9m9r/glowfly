@@ -33,7 +33,7 @@ fn graph_label_menu_branch() {
     h.state_mut().1.clear();
     h.get_by_label("Delete…").click();
     h.run();
-    let confirm = h.state().1.iter().any(|m| matches!(m, Msg::Confirm { title, .. } if title == "Delete branch"));
+    let confirm = h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { title, .. } if title == "Delete branch"));
     assert!(confirm, "the confirmation is asked for");
 
     // Elsewhere on the row, the commit menu.
@@ -60,7 +60,7 @@ fn graph_label_menu_many() {
     h.state_mut().1.clear();
     h.get_by_label("Delete locally…").click();
     h.run();
-    let confirm = h.state().1.iter().any(|m| matches!(m, Msg::Confirm { title, .. } if title == "Delete tag"));
+    let confirm = h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { title, .. } if title == "Delete tag"));
     assert!(confirm, "the confirmation is asked for");
     drop(h);
     remove_fixture(&dir);

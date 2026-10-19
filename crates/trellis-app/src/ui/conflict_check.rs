@@ -3,8 +3,9 @@
 //! for. Texts come from state/conflict_check.rs; the buttons send the same Merge and Rebase
 //! jobs as the branch menus.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::{self, Icon};
+use super::widgets::{self, Icon, buttons};
 use crate::conflict_check::ConflictCheckMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -63,16 +64,18 @@ fn popover(ui: &mut egui::Ui, report: &ConflictReport, paths: &[String], remote:
         ui.label(cc::headline(report));
     } else {
         ui.label(format!("{} changed on both sides:", cc::file_count(paths.len())));
-        file_list(ui, paths);
+        file_list(ui, paths, true);
     }
     ui.add_space(8.0);
     ui.horizontal_wrapped(|ui| {
         // The chip shows only a result for the inputs on screen.
-        if let Some(m) = actions(ui, report, idle) {
-            ui.memory_mut(|mem| mem.close_popup());
-            msgs.push(m);
+        for (label, m) in actions(report) {
+            if ui.add(buttons::secondary(label).small().enabled(idle).why(Some(JOB_RUNNING))).clicked() {
+                ui.memory_mut(|mem| mem.close_popup());
+                msgs.push(m);
+            }
         }
-        if ui.button("Check again").clicked() {
+        if ui.add(buttons::secondary("Check again").small()).clicked() {
             ui.memory_mut(|mem| mem.close_popup());
             msgs.push(Msg::ConflictCheck(ConflictCheckMsg::CheckNow));
         }
@@ -83,64 +86,79 @@ fn popover(ui: &mut egui::Ui, report: &ConflictReport, paths: &[String], remote:
 
 /// The report dialog's contents; returns true when Close was clicked. `on_head`: the report is
 /// for what is checked out now (otherwise it offers no Merge or Rebase).
-pub fn report_modal(ui: &mut egui::Ui, report: &ConflictReport, remote: bool, on_head: bool, idle: bool, msgs: &mut Vec<Msg>) -> bool {
-    ui.heading("Conflict check");
-    ui.add_space(6.0);
-    if let Some(note) = cc::target_note(&report.request.target, &report.request.branch, remote) {
-        ui.label(RichText::new(note).color(color::weak()));
-        ui.add_space(4.0);
-    }
-    ui.label(cc::headline(report));
-    if let Ok(Prediction::Conflicts(paths)) = &report.result
-        && !paths.is_empty()
-    {
-        ui.add_space(4.0);
-        file_list(ui, paths);
-    }
-    if cc::offers_actions(report) && !on_head {
-        ui.add_space(8.0);
-        ui.label(RichText::new(cc::HEAD_MOVED).color(color::weak()));
-    }
-    ui.add_space(12.0);
-    let mut close = false;
-    ui.horizontal(|ui| {
-        if on_head && let Some(m) = actions(ui, report, idle) {
-            msgs.push(Msg::CloseModal);
-            msgs.push(m);
+pub fn report_modal(
+    ui: &mut egui::Ui,
+    cx: Cx,
+    report: &ConflictReport,
+    remote: bool,
+    on_head: bool,
+    idle: bool,
+    msgs: &mut Vec<Msg>,
+) -> bool {
+    let mut d = Dialog::new(cx, "Conflict check").resizable("conflict-report").begin(ui);
+    d.body(ui, |ui| {
+        if let Some(note) = cc::target_note(&report.request.target, &report.request.branch, remote) {
+            ui.label(RichText::new(note).color(color::weak()));
+            ui.add_space(4.0);
         }
-        close = ui.button("Close").clicked();
+        ui.label(cc::headline(report));
+        if let Ok(Prediction::Conflicts(paths)) = &report.result
+            && !paths.is_empty()
+        {
+            ui.add_space(4.0);
+            file_list(ui, paths, false);
+        }
+        if cc::offers_actions(report) && !on_head {
+            ui.add_space(8.0);
+            ui.label(RichText::new(cc::HEAD_MOVED).color(color::weak()));
+        }
     });
-    close
+    let actions = if on_head { actions(report) } else { Vec::new() };
+    let mut footer = Footer::new().extra(buttons::secondary("Check again")).close();
+    for (label, _) in &actions {
+        footer = footer.alt(buttons::secondary(label.as_str()).enabled(idle).why(Some(JOB_RUNNING)));
+    }
+    let out = d.finish(ui, footer);
+    if let Some(i) = out.alt
+        && let Some((_, m)) = actions.into_iter().nth(i)
+    {
+        msgs.push(Msg::CloseModal);
+        msgs.push(m);
+    }
+    if out.extra == Some(0) {
+        msgs.push(Msg::ConflictCheck(ConflictCheckMsg::CheckNow));
+    }
+    out.dismiss
 }
 
-/// The Merge and Rebase buttons (only for a real merge), off while a job runs. Returns the
-/// message of the one clicked.
-fn actions(ui: &mut egui::Ui, report: &ConflictReport, idle: bool) -> Option<Msg> {
+/// The Merge and Rebase actions (only for a real merge), as (label, message).
+fn actions(report: &ConflictReport) -> Vec<(String, Msg)> {
     if !cc::offers_actions(report) {
-        return None;
+        return Vec::new();
     }
     let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
-    let mut clicked = None;
-    let merge = ui.add_enabled(idle, egui::Button::new(format!("Merge {theirs} into {ours}"))).on_disabled_hover_text(JOB_RUNNING);
-    if merge.clicked() {
-        clicked = Some(Msg::git("Merge", &["merge", theirs]));
-    }
-    let rebase = ui.add_enabled(idle, egui::Button::new(format!("Rebase {ours} onto {theirs}"))).on_disabled_hover_text(JOB_RUNNING);
-    if rebase.clicked() {
-        clicked = Some(Msg::git("Rebase", &["rebase", theirs]));
-    }
-    clicked
+    vec![
+        (format!("Merge {theirs} into {ours}"), Msg::git("Merge", &["merge", theirs])),
+        (format!("Rebase {ours} onto {theirs}"), Msg::git("Rebase", &["rebase", theirs])),
+    ]
 }
 
-/// The paths in monospace, at most SHOWN_FILES, in a short scroll area.
-fn file_list(ui: &mut egui::Ui, paths: &[String]) {
+/// The paths in monospace, at most SHOWN_FILES; in the popover in a short scroll area of its
+/// own (`short`), in the report dialog in the dialog's.
+fn file_list(ui: &mut egui::Ui, paths: &[String], short: bool) {
     let (shown, more) = cc::file_list(paths);
     egui::Frame::new().fill(color::input()).corner_radius(4.0).inner_margin(egui::Margin::symmetric(8, 6)).show(ui, |ui| {
-        egui::ScrollArea::vertical().max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
+        let lines = |ui: &mut egui::Ui| {
             for p in &shown {
                 ui.label(RichText::new(p).monospace());
             }
-        });
+        };
+        if short {
+            egui::ScrollArea::vertical().max_height(180.0).auto_shrink([false, true]).show(ui, lines);
+        } else {
+            ui.set_width(ui.available_width());
+            lines(ui);
+        }
     });
     // Below the scroll area, so it shows without scrolling.
     if let Some(more) = more {

@@ -34,6 +34,7 @@ use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align2, Color32, FontId, RichText, Sense, Stroke, Ui, pos2, vec2};
 use trellis_core::forge::Provider;
 
@@ -83,12 +84,7 @@ pub(super) fn text_field(ui: &mut Ui, value: &mut String, hint: &str) -> egui::R
 }
 
 pub(super) fn primary_button(ui: &mut Ui, text: &str, enabled: bool) -> egui::Response {
-    let fill = if enabled { color::primary() } else { color::primary_off() };
-    let fg = if enabled { Color32::WHITE } else { color::faint() };
-    ui.add_enabled(
-        enabled,
-        egui::Button::new(RichText::new(text).color(fg)).fill(fill).stroke(Stroke::new(1.0_f32, color::primary_border())),
-    )
+    ui.add(buttons::primary(text).enabled(enabled))
 }
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -160,13 +156,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                     PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
                     PrefPage::Ui => appearance::ui_page(ui, settings, themes, now, msgs),
                     PrefPage::Editor => editor::editor_page(ui, settings),
-                    PrefPage::Keyboard => keyboard::keyboard_page(ui, &mut prefs.keys, keymap, msgs),
+                    PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &mut prefs.keys, keymap, msgs),
                     PrefPage::Tools => tools::tools_page(ui, settings, msgs),
                     PrefPage::Terminal => terminal::terminal_page(ui, settings),
                     PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
                     PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
                     PrefPage::RepoSparse => sparse::sparse_page(ui, &mut prefs.sparse, &sparse_cx, msgs),
-                    PrefPage::Ssh => ssh::ssh_page(ui, &mut prefs.ssh, &ssh_cx, msgs),
+                    PrefPage::Ssh => ssh::ssh_page(ui, t, &mut prefs.ssh, &ssh_cx, msgs),
                     _ => {
                         let Some(git) = prefs.git.as_mut() else { return };
                         match page {

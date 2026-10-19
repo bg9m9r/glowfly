@@ -21,6 +21,8 @@ pub struct RemoveForm {
     /// Commits on no remote-tracking branch inside it, newest first.
     pub unpushed: Vec<(Oid, String)>,
     pub stashes: usize,
+    /// The acknowledgement that the warnings' work is lost for good is ticked.
+    pub acked: bool,
 }
 
 impl RemoveForm {
@@ -33,7 +35,33 @@ impl RemoveForm {
             dirty: f.info.is_dirty(),
             unpushed: f.unpushed.clone(),
             stashes: f.stashes,
+            acked: false,
         }
+    }
+
+    /// Whether the button waits for the acknowledgement: removing loses work for good.
+    pub fn needs_ack(&self) -> bool {
+        !self.warnings().is_empty()
+    }
+
+    /// The acknowledgement's label, naming what is lost: "Lose its uncommitted changes, 2 commits
+    /// and 1 stash for good".
+    pub fn ack_label(&self) -> Option<String> {
+        let mut lost = Vec::new();
+        if self.dirty {
+            lost.push("its uncommitted changes".to_owned());
+        }
+        if !self.unpushed.is_empty() {
+            lost.push(count_commits(self.unpushed.len()));
+        }
+        match self.stashes {
+            0 => {}
+            1 => lost.push("1 stash".to_owned()),
+            n => lost.push(format!("{n} stashes")),
+        }
+        let last = lost.pop()?;
+        let list = if lost.is_empty() { last } else { format!("{} and {last}", lost.join(", ")) };
+        Some(format!("Lose {list} for good"))
     }
 
     /// The lines under "This deletes:".
@@ -125,6 +153,7 @@ mod tests {
             dirty: false,
             unpushed: Vec::new(),
             stashes: 0,
+            acked: false,
         }
     }
 
@@ -154,6 +183,21 @@ mod tests {
         let w = one.warnings();
         assert!(w[0].starts_with("1 commit in it is on no remote-tracking branch; removing the submodule loses it:"), "{}", w[0]);
         assert_eq!(w[1], "It has 1 stash; it is deleted with the stored module.");
+    }
+
+    #[test]
+    fn acknowledgement_names_what_is_lost() {
+        assert!(!form().needs_ack());
+        assert_eq!(form().ack_label(), None);
+        let label = |f: RemoveForm| {
+            assert!(f.needs_ack());
+            f.ack_label().unwrap()
+        };
+        assert_eq!(label(RemoveForm { dirty: true, ..form() }), "Lose its uncommitted changes for good");
+        assert_eq!(label(RemoveForm { unpushed: commits(1), ..form() }), "Lose 1 commit for good");
+        assert_eq!(label(RemoveForm { stashes: 3, ..form() }), "Lose 3 stashes for good");
+        let all = RemoveForm { dirty: true, unpushed: commits(2), stashes: 1, ..form() };
+        assert_eq!(label(all), "Lose its uncommitted changes, 2 commits and 1 stash for good");
     }
 
     #[test]

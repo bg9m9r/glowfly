@@ -128,7 +128,13 @@ fn remove_dirty_offers_force() {
     let f = remove_form(&mut st);
     assert_eq!(f.refusal, Some(Refusal::Changes(1)));
     assert_eq!(f.button(), "Force remove");
+    assert!(!f.acked, "the acknowledgement starts unticked");
 
+    // Forcing waits for the acknowledgement.
+    drive(&mut st, wt(WorktreeMsg::Remove));
+    assert!(linked.join("new.txt").exists());
+    assert!(matches!(st.modal, Some(Modal::RemoveWorktree(_))), "the dialog stays open");
+    remove_form(&mut st).acked = true;
     drive(&mut st, wt(WorktreeMsg::Remove));
     assert!(!linked.exists() && entry(&st, &linked).is_none());
     assert!(last_log(&st).1.contains("worktree remove --force"), "{}", last_log(&st).1);
@@ -144,6 +150,7 @@ fn remove_locked_opens_in_force_mode() {
     drive(&mut st, wt(WorktreeMsg::RemoveDialog(linked.clone())));
     assert_eq!(remove_form(&mut st).refusal, Some(Refusal::Locked("usb".into())));
     assert_eq!(remove_form(&mut st).force(), RemoveForce::Lock);
+    remove_form(&mut st).acked = true;
     drive(&mut st, wt(WorktreeMsg::Remove));
     assert!(last_log(&st).1.contains("worktree remove --force --force"), "{}", last_log(&st).1);
     assert!(entry(&st, &linked).is_none() && !linked.exists());

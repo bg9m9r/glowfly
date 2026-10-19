@@ -6,6 +6,7 @@ use crate::msg::{Msg, UpdateMsg};
 use crate::state::updates::{UpdateStatus, UpdatesState, available_text, download_failed_text};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::settings::Settings;
 
@@ -23,7 +24,7 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
     row(ui, t.tr("prefs.general.updates.label"), |ui| {
         controls::checkbox(ui, &mut s.updates.check, t.tr("prefs.general.updates.check"));
         ui.label(RichText::new(u.prefs_line(t, view.last_checked.as_deref())).color(color::text()));
-        if ui.add_enabled(!u.busy(), egui::Button::new(t.tr("prefs.general.updates.check_now.button"))).clicked() {
+        if ui.add(buttons::secondary(t.tr("prefs.general.updates.check_now.button")).enabled(!u.busy())).clicked() {
             send(msgs, UpdateMsg::CheckNow);
         }
         match &u.status {
@@ -35,7 +36,7 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
             UpdateStatus::CheckFailed(e) => {
                 let text = t.trf("prefs.general.updates.couldnt_check", &[("error", e)]);
                 ui.add(egui::Label::new(RichText::new(text).color(color::red())).wrap());
-                if ui.button(t.tr("updates.try_again.button")).clicked() {
+                if ui.add(buttons::secondary(t.tr("updates.try_again.button"))).clicked() {
                     send(msgs, UpdateMsg::CheckNow);
                 }
             }
@@ -43,10 +44,10 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
                 ui.label(RichText::new(available_text(t, &o.version)).strong().color(color::blue()));
                 ui.horizontal(|ui| {
                     let label = if o.asset.is_some() { t.tr("updates.download.button") } else { t.tr("updates.open_release_page.button") };
-                    if ui.button(label).clicked() {
+                    if ui.add(buttons::secondary(label)).clicked() {
                         send(msgs, if o.asset.is_some() { UpdateMsg::Download } else { UpdateMsg::OpenReleasePage });
                     }
-                    if ui.button(t.tr("updates.release_notes.button")).clicked() {
+                    if ui.add(buttons::secondary(t.tr("updates.release_notes.button"))).clicked() {
                         send(msgs, UpdateMsg::ShowNotes);
                     }
                 });
@@ -61,13 +62,13 @@ pub fn updates_row(ui: &mut Ui, s: &mut Settings, view: &UpdatesView, msgs: &mut
                 } else {
                     (t.tr("updates.show_file.button"), UpdateMsg::ShowFile)
                 };
-                if ui.button(label).clicked() {
+                if ui.add(buttons::secondary(label)).clicked() {
                     send(msgs, m);
                 }
             }
             UpdateStatus::DownloadFailed { error, .. } => {
                 ui.add(egui::Label::new(RichText::new(download_failed_text(t, error)).color(color::red())).wrap());
-                if ui.button(t.tr("updates.try_again.button")).clicked() {
+                if ui.add(buttons::secondary(t.tr("updates.try_again.button"))).clicked() {
                     send(msgs, UpdateMsg::Download);
                 }
             }

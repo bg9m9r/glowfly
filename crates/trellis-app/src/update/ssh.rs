@@ -79,12 +79,12 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
                 Err(GenerateFailure::Exists(path)) => {
                     // The question only makes sense while the form it would re-run is open.
                     if st.prefs.is_some() {
-                        st.modal = Some(Modal::Confirm {
-                            title: REPLACE_TITLE.into(),
-                            body: replace_body(&path),
-                            button: REPLACE_BUTTON.into(),
-                            then: Box::new(Msg::Ssh(SshMsg::Generate { overwrite: true })),
-                        });
+                        st.modal = Some(Modal::danger(
+                            REPLACE_TITLE,
+                            replace_body(&path),
+                            REPLACE_BUTTON,
+                            Msg::Ssh(SshMsg::Generate { overwrite: true }),
+                        ));
                     }
                 }
                 Err(GenerateFailure::Failed(e)) => {

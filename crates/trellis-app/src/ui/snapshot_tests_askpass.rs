@@ -83,7 +83,13 @@ fn credential_prompt_host_key() {
     h.run();
     h.check_snapshot("credential_prompt_host_key");
     assert!(h.query_by_label("Yes").is_some_and(|n| !n.is_disabled()));
-    h.get_by_label("No").click();
+    // A stray Enter doesn't accept an unknown host key: Cancel is the default.
+    h.press_key(eframe::egui::Key::Enter);
+    h.run();
+    assert!(!pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::AnswerCredentials))));
+    assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
+    h.state_mut().1.clear();
+    h.get_by_label("Cancel").click();
     h.run();
     assert!(pushed(&h, |m| matches!(m, Msg::Credentials(CredentialMsg::CancelCredentials))));
     drop(h);

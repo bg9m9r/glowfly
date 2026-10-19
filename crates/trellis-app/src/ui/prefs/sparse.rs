@@ -7,6 +7,7 @@ use crate::msg::{Msg, SparseMsg};
 use crate::state::sparse::{SparsePage, summary};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Key, Modifiers, RichText, Ui, vec2};
 use trellis_core::sparse_ops::{SparseMode, SparseStatus};
 
@@ -25,7 +26,7 @@ pub fn sparse_page(ui: &mut Ui, page: &mut SparsePage, cx: &SparseContext, msgs:
     if let Some(error) = &page.error {
         warn(ui, error);
         ui.add_space(6.0);
-        if ui.button("Check again").clicked() {
+        if ui.add(buttons::secondary("Check again")).clicked() {
             msgs.push(Msg::Sparse(SparseMsg::Reload));
         }
         return;
@@ -126,22 +127,22 @@ fn actions_row(ui: &mut Ui, page: &SparsePage, status: &SparseStatus, cx: &Spars
             } else {
                 ("Turn on", "Check out only what this list names.")
             };
-            if primary_button(ui, text, !busy).on_hover_text(tip).on_disabled_hover_text(tip).clicked() {
+            if primary_button(ui, text, !busy).on_hover_text(tip).clicked() {
                 msgs.push(Msg::Sparse(SparseMsg::Apply));
             }
             if !status.enabled {
                 return;
             }
-            if page.edited() && ui.button("Undo edits").clicked() {
+            if page.edited() && ui.add(buttons::secondary("Undo edits")).clicked() {
                 msgs.push(Msg::Sparse(SparseMsg::ResetForm));
             }
             let reapply = "Write or remove files again to match the current paths, for example after committing or discarding \
                            changes that kept files outside them.";
-            if ui.add_enabled(!busy, egui::Button::new("Reapply")).on_hover_text(reapply).on_disabled_hover_text(reapply).clicked() {
+            if ui.add(buttons::secondary("Reapply").enabled(!busy)).on_hover_text(reapply).clicked() {
                 msgs.push(Msg::Sparse(SparseMsg::Reapply));
             }
             let off = "Check out every tracked file again and stop using sparse checkout.";
-            if ui.add_enabled(!busy, egui::Button::new("Turn off")).on_hover_text(off).on_disabled_hover_text(off).clicked() {
+            if ui.add(buttons::secondary("Turn off").enabled(!busy)).on_hover_text(off).clicked() {
                 msgs.push(Msg::Sparse(SparseMsg::Disable));
             }
         });

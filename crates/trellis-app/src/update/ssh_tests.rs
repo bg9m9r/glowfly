@@ -198,7 +198,7 @@ fn replace_flow() {
     let path = home().join(".ssh").join("id_ed25519");
     ssh(&mut st, SshMsg::Generated(Err(GenerateFailure::Exists(path.clone()))));
     assert!(!page(&st).generating);
-    let Some(Modal::Confirm { title, body, button, .. }) = &st.modal else { panic!("a confirmation") };
+    let Some(Modal::ConfirmDanger { title, body, button, .. }) = &st.modal else { panic!("a confirmation") };
     assert_eq!((title.as_str(), button.as_str()), ("Replace SSH key", "Replace key"));
     assert!(body.starts_with(&path.display().to_string()));
 

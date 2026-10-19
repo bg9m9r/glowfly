@@ -148,7 +148,7 @@ fn fallback(ui: &mut Ui, view: &ConflictView, file: &ConflictFile, in_tool: bool
             let r = ui.add_enabled(!view.saving && !in_tool, egui::Button::new(&label));
             if (if in_tool { r.on_disabled_hover_text(IN_MERGE_TOOL) } else { r }).clicked() {
                 let resolve = Msg::Conflict(ConflictMsg::ResolveWithSide { path: path.clone(), side });
-                msgs.push(Msg::confirm("Resolve conflict", body, if deleted { "Delete" } else { "Replace" }, resolve));
+                msgs.push(Msg::confirm_danger("Resolve conflict", body, if deleted { "Delete" } else { "Replace" }, resolve));
             }
         }
     });

@@ -16,6 +16,7 @@ use crate::state::pull_request_threads::{
     resolve_blocked, resolve_label, resolved_toggle, where_text,
 };
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Color32, FontId, Layout, Margin, RichText, Sense, Stroke, Ui, vec2};
 use std::collections::HashMap;
 use trellis_core::forge::ReviewThread;
@@ -59,10 +60,10 @@ pub(super) fn filter_bar(ui: &mut Ui, v: &PrView, path: Option<&str>, msgs: &mut
     }
     let tv = &v.threads;
     ui.horizontal_wrapped(|ui| {
-        if resolved > 0 && ui.button(resolved_toggle(tv, resolved)).clicked() {
+        if resolved > 0 && ui.add(buttons::secondary(resolved_toggle(tv, resolved))).clicked() {
             msgs.push(Msg::PullRequest(PullRequestMsg::ShowResolved(!tv.show_resolved)));
         }
-        if outdated > 0 && ui.button(outdated_toggle(tv, outdated)).clicked() {
+        if outdated > 0 && ui.add(buttons::secondary(outdated_toggle(tv, outdated))).clicked() {
             msgs.push(Msg::PullRequest(PullRequestMsg::ShowOutdated(!tv.show_outdated)));
         }
         let (r, o) = hidden(p, tv, path);
@@ -128,7 +129,7 @@ fn header(ui: &mut Ui, t: &ReviewThread, place: Place, open: bool, ctx: &Ctx, ms
     // Show/Hide keeps its place on the right; the rest wraps in the width left of it.
     ui.horizontal(|ui| {
         ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
-            if ui.button(if open { "Hide" } else { "Show" }).clicked() {
+            if ui.add(buttons::secondary(if open { "Hide" } else { "Show" })).clicked() {
                 msgs.push(Msg::PullRequest(PullRequestMsg::ToggleThread(t.id.clone())));
             }
             ui.with_layout(Layout::left_to_right(Align::Center).with_main_wrap(true), |ui| {
@@ -191,18 +192,18 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
     controls::field(ui, egui::TextEdit::multiline(draft).desired_rows(2).hint_text("Reply…").desired_width(f32::INFINITY));
     ui.horizontal(|ui| {
         let blocked = reply_blocked(v, t);
-        let r = ui.add_enabled(blocked.is_none(), egui::Button::new("Reply"));
+        let r = ui.add(buttons::secondary("Reply").enabled(blocked.is_none()));
         let r = match &blocked {
-            Some(why) => r.on_disabled_hover_text(why),
+            Some(why) => r.on_hover_text(why),
             None => r,
         };
         if r.clicked() {
             msgs.push(Msg::PullRequest(PullRequestMsg::Reply(t.id.clone())));
         }
         let blocked = resolve_blocked(v, t);
-        let r = ui.add_enabled(blocked.is_none(), egui::Button::new(resolve_label(t)));
+        let r = ui.add(buttons::secondary(resolve_label(t)).enabled(blocked.is_none()));
         let r = match &blocked {
-            Some(why) => r.on_disabled_hover_text(why),
+            Some(why) => r.on_hover_text(why),
             None => r,
         };
         if r.clicked() {

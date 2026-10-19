@@ -129,7 +129,7 @@ mod tests {
 
     fn asked(m: Msg) -> (String, String, String, Msg) {
         match m {
-            Msg::ConfirmDanger { title, body, button, then } => (title, body, button, *then),
+            Msg::ConfirmDanger { title, body, button, then, .. } => (title, body, button, *then),
             _ => panic!("expected a danger confirmation"),
         }
     }

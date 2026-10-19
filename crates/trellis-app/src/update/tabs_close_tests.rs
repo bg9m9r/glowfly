@@ -51,7 +51,7 @@ fn park_draft(st: &mut AppState, i: usize, summary: &str) {
 /// The open confirmation's title and body.
 fn confirm(st: &AppState) -> Option<(&str, &str)> {
     match &st.modal {
-        Some(Modal::Confirm { title, body, .. }) => Some((title, body)),
+        Some(Modal::ConfirmDanger { title, body, .. }) => Some((title, body)),
         _ => None,
     }
 }
@@ -71,7 +71,7 @@ fn closing_a_tab_with_a_draft_asks_first() {
     assert!(body.starts_with("b holds work that isn't saved anywhere:"), "{body}");
     assert!(body.contains("- its commit message draft"), "{body}");
     assert_eq!(saves(&fx), 0);
-    assert!(matches!(&st.modal, Some(Modal::Confirm { button, .. }) if button == "Close tab"));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { button, .. }) if button == "Close tab"));
 
     let fx = accept(&mut st);
     assert_eq!(names(&st), ["a"]);
@@ -98,7 +98,7 @@ fn ctrl_w_and_bulk_closes_ask_too() {
         assert_eq!(title, "Close 2 tabs?");
         assert!(body.starts_with("Some of these tabs hold work that isn't saved anywhere:"), "{body}");
         assert!(body.contains("- b: its commit message draft") && body.contains("- c: its commit message draft"), "{body}");
-        assert!(matches!(&st.modal, Some(Modal::Confirm { button, .. }) if button == "Close 2 tabs"));
+        assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { button, .. }) if button == "Close 2 tabs"));
         assert_eq!((st.tabs.len(), saves(&fx)), (3, 0));
     }
     accept(&mut st);

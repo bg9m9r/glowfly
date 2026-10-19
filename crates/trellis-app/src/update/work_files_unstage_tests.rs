@@ -116,7 +116,7 @@ fn end_to_end_delete_staged_rename() {
     assert!(st.snap.as_ref().unwrap().staged.contains(&entry("c.txt", 'R')));
 
     drive(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "c.txt".into(), confirmed: false }));
-    assert!(matches!(&st.modal, Some(Modal::Confirm { title, .. }) if title == "Delete renamed file"));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { title, .. }) if title == "Delete renamed file"));
     drive(&mut st, Msg::ConfirmAccepted);
     assert!(!dir.join("c.txt").exists());
     let snap = st.snap.as_ref().unwrap();

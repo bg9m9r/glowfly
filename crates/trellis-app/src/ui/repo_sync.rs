@@ -2,6 +2,7 @@
 //! a row per repository with how it went. The run goes on when the dialog is closed; its end
 //! is then told in a toast (update/repo_sync.rs).
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::truncate;
 use crate::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, outcome_text};
@@ -12,15 +13,12 @@ use trellis_core::repo_sync::Outcome;
 /// Why some repositories may fail where an open one would ask.
 const NO_PROMPTS_NOTE: &str = "Git doesn't ask for passwords here: a repository whose remote needs one that isn't saved fails.";
 
-/// Draws the dialog; returns true when it should close.
-pub fn show(ui: &mut egui::Ui, sync: Option<&RepoSync>) -> bool {
-    let mut close = false;
-    ui.set_width(560.0);
-    let Some(sync) = sync else {
-        return ui.button("Close").clicked();
-    };
-    ui.heading(sync.title());
-    ui.add_space(6.0);
+/// Draws the dialog (wide, with a resizable list); returns true when it should close.
+pub fn show(ui: &mut egui::Ui, cx: Cx, sync: Option<&RepoSync>) -> bool {
+    let t = cx.t;
+    // Nothing to show without a run.
+    let Some(sync) = sync else { return true };
+    let mut d = Dialog::new(cx, sync.title()).wide().resizable("repo-sync").begin(ui);
     let (done, all) = sync.progress();
     if sync.running() {
         ui.horizontal(|ui| {
@@ -36,17 +34,13 @@ pub fn show(ui: &mut egui::Ui, sync: Option<&RepoSync>) -> bool {
     }
     ui.label(RichText::new(NO_PROMPTS_NOTE).small().color(color::weak()));
     ui.add_space(8.0);
-    egui::ScrollArea::vertical().max_height(380.0).auto_shrink([false, true]).show(ui, |ui| {
+    d.body(ui, |ui| {
         for r in &sync.rows {
             row(ui, sync.kind, r);
         }
     });
-    ui.add_space(10.0);
-    let label = if sync.running() { "Close (keeps running)" } else { "Close" };
-    if ui.button(label).clicked() {
-        close = true;
-    }
-    close
+    let label = if sync.running() { t.tr("repo_sync.close_running.button") } else { t.tr("common.close.button") };
+    d.finish(ui, Footer::new().close_label(label)).dismiss
 }
 
 /// The widest a repository's name is drawn before it is cut.

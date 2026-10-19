@@ -3,7 +3,9 @@
 //! the problem stopping it.
 
 use super::common::capitalize;
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
 use crate::state::gitflow::FinishForm;
@@ -12,15 +14,14 @@ use eframe::egui::{self, Key, RichText};
 use trellis_core::gitflow::{Branches, FinishProblem, WorkState, check_finish, short_name};
 use trellis_core::repo::Snapshot;
 
-/// Draws the dialog; returns true when it should close. `focus` is false under a credential
-/// prompt, whose fields need the keyboard.
-pub fn finish(ui: &mut egui::Ui, form: &mut FinishForm, snap: Option<&Snapshot>, idle: bool, focus: bool, msgs: &mut Vec<Msg>) -> bool {
+/// Draws the dialog; returns true when it should close. `cx.keyboard` is false under a
+/// credential prompt, whose fields need the keyboard. Ctrl/Cmd+Enter in the message finishes.
+pub fn finish(ui: &mut egui::Ui, cx: Cx, form: &mut FinishForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let Some((snap, s)) = snap.and_then(|snap| Some((snap, snap.gitflow.settings()?))) else { return true };
     let kind = form.kind;
-    let mut close = false;
-    ui.heading(format!("Finish {} {}", kind.noun(), short_name(&s, kind, &form.branch)));
-    ui.label(RichText::new(format!("Branch {}", form.branch)).color(color::weak()));
-    ui.add_space(6.0);
+    let focus = cx.keyboard;
+    let title = format!("Finish {} {}", kind.noun(), short_name(&s, kind, &form.branch));
+    let d = Dialog::new(cx, title).subtitle(format!("Branch {}", form.branch)).begin(ui);
     let mut submit = false;
     if kind.versioned() {
         let hint = trellis_core::gitflow::default_tag(&s, kind, &form.branch).unwrap_or_default();
@@ -55,16 +56,11 @@ pub fn finish(ui: &mut egui::Ui, form: &mut FinishForm, snap: Option<&Snapshot>,
             ui.add(egui::Label::new(RichText::new(p.message()).color(color::red())).wrap());
         }
     }
-    ui.add_space(10.0);
     let valid = result.is_ok() && idle;
-    ui.horizontal(|ui| {
-        // Update closes the dialog once the job starts.
-        if ui.add_enabled(valid, egui::Button::new("Finish")).clicked() || (submit && valid) {
-            msgs.push(Msg::GitFlow(GitFlowMsg::Finish { branch: form.branch.clone(), options: form.options() }));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Finish").enabled(valid)).submit(submit));
+    // Update closes the dialog once the job starts.
+    if out.primary {
+        msgs.push(Msg::GitFlow(GitFlowMsg::Finish { branch: form.branch.clone(), options: form.options() }));
+    }
+    out.dismiss
 }

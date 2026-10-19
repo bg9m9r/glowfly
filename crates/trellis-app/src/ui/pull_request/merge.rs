@@ -11,6 +11,7 @@ use crate::state::pull_request_actions::{
     method_label,
 };
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::{MergeMethod, PrState};
 use trellis_core::repo::Snapshot;
@@ -27,7 +28,7 @@ pub(super) fn show(ui: &mut Ui, v: &mut PrView, snap: Option<&Snapshot>, default
             note(ui, format!("Merged into {target}."), color::text());
             let offer = snap.and_then(|s| delete_branch_offer(v, s, default_branch));
             if let Some(confirm) = offer
-                && ui.button(format!("Delete {} on {}", printable(&v.pr.source), v.remote)).clicked()
+                && ui.add(buttons::secondary(format!("Delete {} on {}", printable(&v.pr.source), v.remote))).clicked()
             {
                 msgs.push(confirm);
             }
@@ -88,9 +89,9 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
     }
     ui.add_space(4.0);
     let blocked = merge_blocked(v);
-    let mut r = ui.add_enabled(blocked.is_none(), egui::Button::new(format!("Merge {}", v.noun)));
+    let mut r = ui.add(buttons::secondary(format!("Merge {}", v.noun)).enabled(blocked.is_none()));
     if let Some(why) = &blocked {
-        r = r.on_disabled_hover_text(why);
+        r = r.on_hover_text(why);
     }
     if r.clicked() {
         msgs.push(merge_confirm(v, default_branch));

@@ -67,7 +67,7 @@ fn wip_header_german_narrow() {
 
     click_header_action(&mut h, discard, more);
     let title = de.tr("details.wip.discard_all.title");
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Confirm { title: t, .. } if t == title)), "Discard all asks in German");
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { title: t, .. } if t == title)), "Discard all asks in German");
     drop(h);
     remove_fixture(&dir);
 }

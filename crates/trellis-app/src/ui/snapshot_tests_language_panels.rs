@@ -131,10 +131,9 @@ fn details_wip_spanish() {
     h.check_snapshot("details_wip_spanish");
     click_header_action(&mut h, Lang::Es.tr("details.wip.discard_all.button"), Lang::Es.tr("details.wip.more.tip"));
     let body = discard_all_text(Lang::Es, &h.state().0.keymap);
-    let asked =
-        h.state().1.iter().any(
-            |m| matches!(m, Msg::Confirm { title, body: b, .. } if title == Lang::Es.tr("details.wip.discard_all.title") && *b == body),
-        );
+    let asked = h.state().1.iter().any(
+        |m| matches!(m, Msg::ConfirmDanger { title, body: b, .. } if title == Lang::Es.tr("details.wip.discard_all.title") && *b == body),
+    );
     assert!(asked, "Discard all asks in Spanish");
     drop(h);
     remove_fixture(&dir);

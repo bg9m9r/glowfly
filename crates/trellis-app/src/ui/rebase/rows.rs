@@ -111,6 +111,7 @@ fn paint(ui: &Ui, rect: Rect, step: &TodoStep, text: &str, look: &Look, shade: S
 pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let look = Look { settings: &st.settings, now: st.view.now, offset: st.view.utc_offset, snap: st.snap.as_ref() };
     let spell = st.settings.spellcheck;
+    let t = st.settings.lang();
     let covered = st.modal.is_some() || st.palette.is_some() || st.prefs.is_some() || st.askpass.showing();
     let Some(panel) = st.rebase.as_mut() else { return };
     let enabled = panel.editable();
@@ -139,7 +140,7 @@ pub(super) fn list(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
             r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, enabled, &label));
             slots.push(Slot { rect, r, movable: panel.movable(i) });
             if editor_row == Some(i) {
-                editor::show(ui, panel, cache, spell, msgs);
+                editor::show(ui, t, panel, cache, spell, msgs);
             }
         }
         let floating = if can_drag { drag::drag(ui, &slots, list_top, ROW_H + GAP, msgs) } else { None };

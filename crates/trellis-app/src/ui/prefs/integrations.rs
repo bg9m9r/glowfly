@@ -7,6 +7,7 @@ use crate::state::profiles::accounts_owner;
 use crate::state::{ForgeState, PrefsState};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Sense, Stroke, Ui, vec2};
 use std::path::Path;
@@ -40,7 +41,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
                         ui.label(
                             RichText::new(format!("{} · {} via {}", c.account.display(), c.user, c.method)).size(12.0).color(color::weak()),
                         );
-                        if ui.small_button("Disconnect").clicked() {
+                        if ui.add(buttons::secondary("Disconnect").small()).clicked() {
                             msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
                         }
                     }
@@ -156,7 +157,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(c.account.display()).color(color::text()));
                     ui.label(RichText::new(format!("{} · {}", c.user, c.method)).size(12.0).color(color::weak()));
-                    if ui.small_button("Disconnect").clicked() {
+                    if ui.add(buttons::secondary("Disconnect").small()).clicked() {
                         msgs.push(Msg::Forge(ForgeMsg::Disconnect(c.account.clone())));
                     }
                 });

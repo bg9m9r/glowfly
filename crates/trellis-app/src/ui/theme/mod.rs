@@ -76,6 +76,17 @@ pub fn modal(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
     egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(frame)
 }
 
+/// The frame of every dialog (`dialog_frame`): `modal` with 18 px of padding on all sides and
+/// 8 px corners. The command palette and the welcome flow keep `modal`'s look.
+pub fn dialog(ctx: &egui::Context, id: egui::Id) -> egui::Modal {
+    let p = color::current();
+    let frame = egui::Frame::popup(&ctx.style())
+        .stroke(Stroke::new(1.0_f32, p.dialog_border))
+        .inner_margin(egui::Margin::same(18))
+        .corner_radius(8);
+    egui::Modal::new(id).backdrop_color(backdrop(&p)).frame(frame)
+}
+
 /// Styles egui from this thread's active palette (tests that draw without the shell).
 #[cfg(test)]
 pub fn apply_theme(ctx: &egui::Context) {

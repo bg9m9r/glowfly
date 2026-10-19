@@ -25,6 +25,27 @@ fn mainline_dialog() {
     remove_fixture(&dir);
 }
 
+/// Clicking a parent takes the focus off the default button (a radio doesn't keep it); Enter
+/// still runs the pick, with the parent chosen.
+#[test]
+fn mainline_radio_then_enter() {
+    use crate::msg::{Msg, SelectionMsg};
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "mainline-enter");
+    let snap = st.snap.as_ref().unwrap();
+    let merge = snap.commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;
+    st.modal = Some(Modal::Mainline(MainlineForm::new(PickOp::CherryPick, merge, snap).expect("a merge")));
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label_contains("Parent 2:").click();
+    h.run();
+    h.press_key(eframe::egui::Key::Enter);
+    h.run();
+    let picked = |m: &Msg| matches!(m, Msg::Selection(SelectionMsg::PickMerge { mainline: 2, .. }));
+    assert!(h.state().1.iter().any(picked), "Enter picks parent 2");
+    drop(h);
+    remove_fixture(&dir);
+}
+
 /// The fixture stopped in a cherry-pick: "Fix build on Windows" picked onto a branch from "Add
 /// app skeleton" that changed app.txt too.
 fn stopped_pick(name: &str) -> (AppState, PathBuf) {

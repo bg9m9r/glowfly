@@ -1,4 +1,5 @@
-//! Dialogs: confirmation (drawn by `confirm_dialog.rs`, also in its danger form), new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
+//! Dialogs, every one drawn through `dialog_frame` (title, scrolling body, footer in the fixed
+//! order, Enter and the default button's focus) in `theme::dialog`: confirmation (drawn by `confirm_dialog.rs`, also in its danger form), new branch, new tag and annotate tag (drawn by `tag_dialog.rs`), create
 //! worktree (drawn by `worktree_dialog.rs`), remove and lock worktree (drawn by
 //! `worktree_manage_dialog.rs`), add and remove submodule (drawn by `submodule_dialogs.rs`), clone
 //! (drawn by `clone_dialog.rs` and `clone_service.rs`), init (drawn by `init_dialog.rs`), create
@@ -24,6 +25,7 @@
 
 use crate::msg::{DialogMsg, Msg};
 use crate::state::{AppState, Modal};
+use crate::ui::dialog_frame::{Cx, Tone};
 use eframe::egui;
 
 #[path = "confirm_dialog.rs"]
@@ -55,76 +57,82 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
     let mut close = false;
     let first = msgs.len();
-    let resp = super::theme::modal(ctx, egui::Id::new("trellis-modal")).show(ctx, |ui| {
-        ui.set_width(460.0);
+    let resp = super::theme::dialog(ctx, egui::Id::new("trellis-modal")).show(ctx, |ui| {
+        // A dialog's key in egui's memory: the first frame of each kind takes the focus.
+        let cx = Cx { t, keyboard, key: egui::Id::new("trellis-dialog").with(std::mem::discriminant(&*modal)) };
         match modal {
-            Modal::Confirm { title, body, button, .. } => close = confirm_dialog::show(ui, t, title, body, button, false, msgs),
-            Modal::ConfirmDanger { title, body, button, .. } => close = confirm_dialog::show(ui, t, title, body, button, true, msgs),
+            Modal::Confirm { title, body, button, .. } => {
+                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Normal, None, msgs)
+            }
+            Modal::ConfirmDanger { title, body, button, ack, acked, .. } => {
+                let ack = ack.as_deref().map(|label| (label, acked));
+                close = confirm_dialog::show(ui, cx, (title, body, button), Tone::Danger, ack, msgs);
+            }
             Modal::NewBranch { start, name, checkout } => {
                 // Not under a credential prompt or the discard question: its fields need the keyboard.
-                close = super::branch_dialogs::new_branch(ui, start.as_deref(), name, checkout, snap, keyboard, msgs);
+                close = super::branch_dialogs::new_branch(ui, cx, start.as_deref(), name, checkout, snap, msgs);
             }
-            Modal::NewTag(form) => close = super::tag_dialog::new_tag(ui, form, snap, push_tags, keyboard, msgs),
-            Modal::AnnotateTag(form) => close = super::tag_dialog::annotate_tag(ui, form, snap, keyboard, msgs),
-            Modal::NewWorktree(form) => close = super::worktree_dialog::new_worktree(ui, form, snap, keyboard, msgs),
-            Modal::RemoveWorktree(form) => close = super::worktree_manage_dialog::remove(ui, form, idle, msgs),
-            Modal::LockWorktree(form) => close = super::worktree_manage_dialog::lock(ui, form, keyboard, idle, msgs),
-            Modal::MoveWorktree(form) => close = super::worktree_move_dialog::move_worktree(ui, form, snap, keyboard, idle, msgs),
-            Modal::AddSubmodule(form) => close = super::submodule_dialogs::add(ui, form, snap, keyboard, idle, msgs),
-            Modal::EditSubmodule(form) => close = super::submodule_dialogs::edit(ui, form, keyboard, idle, msgs),
-            Modal::RemoveSubmodule(form) => close = super::submodule_dialogs::remove(ui, form, idle, msgs),
-            Modal::Clone(form) => {
-                close = super::clone_dialog::show(ui, form, today, sparse_blocked.as_deref(), connections, keyboard, msgs)
-            }
-            Modal::Init(form) => close = super::init_dialog::show(ui, form, chrono::Datelike::year(&today), keyboard, msgs),
+            Modal::NewTag(form) => close = super::tag_dialog::new_tag(ui, cx, form, snap, push_tags, msgs),
+            Modal::AnnotateTag(form) => close = super::tag_dialog::annotate_tag(ui, cx, form, snap, msgs),
+            Modal::NewWorktree(form) => close = super::worktree_dialog::new_worktree(ui, cx, form, snap, msgs),
+            Modal::RemoveWorktree(form) => close = super::worktree_manage_dialog::remove(ui, cx, form, idle, msgs),
+            Modal::LockWorktree(form) => close = super::worktree_manage_dialog::lock(ui, cx, form, idle, msgs),
+            Modal::MoveWorktree(form) => close = super::worktree_move_dialog::move_worktree(ui, cx, form, snap, idle, msgs),
+            Modal::AddSubmodule(form) => close = super::submodule_dialogs::add(ui, cx, form, snap, idle, msgs),
+            Modal::EditSubmodule(form) => close = super::submodule_dialogs::edit(ui, cx, form, idle, msgs),
+            Modal::RemoveSubmodule(form) => close = super::submodule_dialogs::remove(ui, cx, form, idle, msgs),
+            Modal::Clone(form) => close = super::clone_dialog::show(ui, cx, form, today, sparse_blocked.as_deref(), connections, msgs),
+            Modal::Init(form) => close = super::init_dialog::show(ui, cx, form, chrono::Datelike::year(&today), msgs),
             Modal::CreatePr { source, target, targets, title, description, draft, items } => {
                 let Some(fs) = fs.filter(|f| f.host.is_some()) else {
                     close = true;
                     return;
                 };
                 let form = super::create_pr_dialog::PrForm { source, target, targets, title, description, draft, items };
-                close = super::create_pr_dialog::show(ui, form, fs, snap, idle, msgs);
+                close = super::create_pr_dialog::show(ui, cx, form, fs, snap, idle, msgs);
             }
-            Modal::Publish(f) => close = super::publish::form(ui, f, idle, msgs),
-            Modal::RenameBranch { old, name } => close = super::branch_dialogs::rename(ui, old, name, snap, keyboard, msgs),
-            Modal::RenameStash(form) => close = super::stash_dialog::rename(ui, form, keyboard, idle, msgs),
-            Modal::StashPush(form) => close = super::stash_push_dialog::show(ui, form, snap, keyboard, idle, msgs),
-            Modal::SetUpstream { branch, remote, name } => close = super::branch_dialogs::upstream(ui, branch, remote, name, snap, msgs),
-            Modal::NewFile(form) => close = super::file_dialogs::new_file(ui, form, snap, keyboard, msgs),
-            Modal::RenameFile { old, form } => close = super::file_dialogs::rename_file(ui, old, form, snap, stage_renames, keyboard, msgs),
+            Modal::Publish(f) => close = super::publish::form(ui, cx, f, idle, msgs),
+            Modal::RenameBranch { old, name } => close = super::branch_dialogs::rename(ui, cx, old, name, snap, msgs),
+            Modal::RenameStash(form) => close = super::stash_dialog::rename(ui, cx, form, idle, msgs),
+            Modal::StashPush(form) => close = super::stash_push_dialog::show(ui, cx, form, snap, idle, msgs),
+            Modal::SetUpstream { branch, remote, name } => {
+                close = super::branch_dialogs::upstream(ui, cx, branch, remote, name, snap, msgs)
+            }
+            Modal::NewFile(form) => close = super::file_dialogs::new_file(ui, cx, form, snap, msgs),
+            Modal::RenameFile { old, form } => close = super::file_dialogs::rename_file(ui, cx, old, form, snap, stage_renames, msgs),
             Modal::Remote(form) => {
                 let fork_source = snap.and_then(|s| crate::state::forks::fork_source(s, connections));
-                close = super::remotes::dialog::show(ui, form, snap, fork_source, keyboard, idle, msgs);
+                close = super::remotes::dialog::show(ui, cx, form, snap, fork_source, idle, msgs);
             }
-            Modal::AddFork(p) => close = super::remotes::fork_pick::show(ui, p, snap, connections, keyboard, idle, msgs),
-            Modal::CreateFork(f) => close = super::remotes::fork_create::show(ui, f, snap, connections, keyboard, idle, msgs),
-            Modal::GitFlowStart(form) => close = super::gitflow_dialog::start(ui, form, snap, keyboard, msgs),
-            Modal::GitFlowFinish(form) => close = super::gitflow_finish_dialog::finish(ui, form, snap, idle, keyboard, msgs),
-            Modal::Shortcuts { filter } => close = super::shortcuts::sheet(ui, filter, keyboard, keys),
-            Modal::Trust(p) => close = super::trust_dialog::show(ui, p, msgs),
+            Modal::AddFork(p) => close = super::remotes::fork_pick::show(ui, cx, p, snap, connections, idle, msgs),
+            Modal::CreateFork(f) => close = super::remotes::fork_create::show(ui, cx, f, snap, connections, idle, msgs),
+            Modal::GitFlowStart(form) => close = super::gitflow_dialog::start(ui, cx, form, snap, msgs),
+            Modal::GitFlowFinish(form) => close = super::gitflow_finish_dialog::finish(ui, cx, form, snap, idle, msgs),
+            Modal::Shortcuts { filter } => close = super::shortcuts::sheet(ui, cx, filter, keys),
+            Modal::Trust(p) => close = super::trust_dialog::show(ui, cx, p, msgs),
             Modal::ConflictReport(r) => {
                 let remote = snap.is_some_and(|s| crate::state::conflict_check::is_remote(s, &r.request.target));
                 let on_head = snap.is_some_and(|s| crate::state::conflict_check::for_head(r, s));
-                close = super::conflict_check::report_modal(ui, r, remote, on_head, idle, msgs);
+                close = super::conflict_check::report_modal(ui, cx, r, remote, on_head, idle, msgs);
             }
-            Modal::ForgeFilter(form) => close = super::forge_filter_dialog::show(ui, form, fs, &repo_filters, keyboard, msgs),
-            Modal::DeepLink(d) => close = super::deep_link_dialog::show(ui, d, msgs),
-            Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, form, fs, keyboard, msgs),
-            Modal::RewordCommit(form) => close = super::rebase::reword_dialog::show(ui, form, snap, keyboard, idle, msgs),
-            Modal::About => close = super::menu_bar::about(ui, t, git, crate::state::menu_bar::VERSION, msgs),
-            Modal::ReleaseNotes(d) => close = super::release_notes::show(ui, t, d, msgs),
-            Modal::UndoCreated(form) => close = super::undo_dialog::created_branch(ui, form, msgs),
-            Modal::ApplyPatch(form) => close = super::patch_apply_dialog::show(ui, form, snap, idle, msgs),
-            Modal::SavePatch(form) => close = super::patch_save_dialog::show(ui, form, snap, idle, msgs),
+            Modal::ForgeFilter(form) => close = super::forge_filter_dialog::show(ui, cx, form, fs, &repo_filters, msgs),
+            Modal::DeepLink(d) => close = super::deep_link_dialog::show(ui, cx, d, msgs),
+            Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, cx, form, fs, msgs),
+            Modal::RewordCommit(form) => close = super::rebase::reword_dialog::show(ui, cx, form, snap, idle, msgs),
+            Modal::About => close = super::menu_bar::about(ui, cx, git, crate::state::menu_bar::VERSION, msgs),
+            Modal::ReleaseNotes(d) => close = super::release_notes::show(ui, cx, d, msgs),
+            Modal::UndoCreated(form) => close = super::undo_dialog::created_branch(ui, cx, form, msgs),
+            Modal::ApplyPatch(form) => close = super::patch_apply_dialog::show(ui, cx, form, snap, idle, msgs),
+            Modal::SavePatch(form) => close = super::patch_save_dialog::show(ui, cx, form, snap, idle, msgs),
             Modal::FindRepos { filter } => {
                 let (rows, folders) = finder.as_ref().map(|(r, f)| (&r[..], &f[..])).unwrap_or_default();
                 let lists = super::repo_finder::FinderLists { rows, scan: repo_scan, folders };
-                close = super::repo_finder::show(ui, t, filter, lists, keyboard, msgs);
+                close = super::repo_finder::show(ui, cx, filter, lists, msgs);
             }
-            Modal::SyncRepos => close = super::repo_sync::show(ui, repo_sync),
-            Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, form, keyboard, msgs),
-            Modal::Mainline(form) => close = super::mainline_dialog::show(ui, form, idle, msgs),
-            Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, o, msgs),
+            Modal::SyncRepos => close = super::repo_sync::show(ui, cx, repo_sync),
+            Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, cx, form, msgs),
+            Modal::Mainline(form) => close = super::mainline_dialog::show(ui, cx, form, idle, msgs),
+            Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, cx, o, msgs),
         }
     });
     if close {

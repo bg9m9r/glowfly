@@ -229,7 +229,7 @@ fn delete_chosen_stash_confirms() {
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     assert!(st.palette.is_none());
     assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })));
-    let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("no confirmation") };
+    let Some(Modal::ConfirmDanger { title, body, button, then, .. }) = &st.modal else { panic!("no confirmation") };
     assert_eq!(title, "Delete stash");
     assert_eq!(button, "Delete");
     assert!(body.contains("On main: first") && body.contains("Undo brings it back"), "{body}");

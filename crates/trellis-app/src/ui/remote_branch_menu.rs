@@ -75,7 +75,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
         msgs,
         ui,
         "Delete from remote…",
-        Msg::confirm(
+        Msg::confirm_danger(
             "Delete remote branch",
             format!("Delete branch {name} on {remote}? This affects everyone using the remote."),
             "Delete",

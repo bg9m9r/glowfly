@@ -2,12 +2,14 @@
 //! checked as it is typed, and the new tag can be pushed to a remote in the same job. Also the
 //! Annotate dialog, which replaces a lightweight tag with an annotated one on the same commit.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::Msg;
 use crate::state::tags::{AnnotateForm, TagForm, annotate_problem, push_remote, tag_problem};
 use crate::tag::TagMsg;
 use crate::ui::theme::controls;
-use eframe::egui::{self, Id, Key, Modifiers, RichText};
+use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::branch_ops::ref_name_warning;
 use trellis_core::names::blocks_here;
 use trellis_core::repo::Snapshot;
@@ -17,18 +19,18 @@ const PUSH_HINT: &str = "After creating the tag, push it to this remote in the s
 
 /// The New tag dialog for `form`; returns true when Cancel closes it (`update` closes it once the
 /// tag job starts). The name field keeps the keyboard focus unless the message field has it, or
-/// `focus` is false (a credential prompt is open above it). `push_on` is the saved state of the
-/// push checkbox, shown when the repository has remotes.
-pub fn new_tag(ui: &mut egui::Ui, form: &mut TagForm, snap: Option<&Snapshot>, push_on: bool, focus: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
+/// `cx.keyboard` is false (a credential prompt is open above it). `push_on` is the saved state of
+/// the push checkbox, shown when the repository has remotes. Ctrl/Cmd+Enter in the message
+/// creates the tag.
+pub fn new_tag(ui: &mut egui::Ui, cx: Cx, form: &mut TagForm, snap: Option<&Snapshot>, push_on: bool, msgs: &mut Vec<Msg>) -> bool {
+    let focus = cx.keyboard;
     let short = &form.at[..7.min(form.at.len())];
-    if form.annotated {
-        ui.heading(format!("New annotated tag at {short}"));
-        ui.label(RichText::new("Annotated tags keep a message, the tagger and the date.").color(color::weak()));
+    let d = if form.annotated {
+        Dialog::new(cx, format!("New annotated tag at {short}")).subtitle("Annotated tags keep a message, the tagger and the date.")
     } else {
-        ui.heading(format!("New tag at {short}"));
-    }
-    ui.add_space(6.0);
+        Dialog::new(cx, format!("New tag at {short}"))
+    };
+    let d = d.begin(ui);
     let msg_id = Id::new("trellis-tag-message");
     let r = controls::field(
         ui,
@@ -64,21 +66,16 @@ pub fn new_tag(ui: &mut egui::Ui, form: &mut TagForm, snap: Option<&Snapshot>, p
         ui.add_space(4.0);
         push_row(ui, form, snap, push_on, msgs);
     }
-    ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        if ui.add_enabled(valid, egui::Button::new("Create tag")).clicked() || (enter && valid) {
-            msgs.push(Msg::Tag(TagMsg::CreateTag {
-                at: form.at.clone(),
-                name: form.name.trim().into(),
-                message: form.message.trim().into(),
-                push: (push_on && remotes.is_some()).then(|| form.remote.clone()),
-            }));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create tag").enabled(valid)).submit(enter));
+    if out.primary {
+        msgs.push(Msg::Tag(TagMsg::CreateTag {
+            at: form.at.clone(),
+            name: form.name.trim().into(),
+            message: form.message.trim().into(),
+            push: (push_on && remotes.is_some()).then(|| form.remote.clone()),
+        }));
+    }
+    out.dismiss
 }
 
 /// "Push to <remote>" with one remote, or a checkbox and a remote picker with several. A remote
@@ -108,12 +105,12 @@ fn push_row(ui: &mut egui::Ui, form: &mut TagForm, snap: &Snapshot, push_on: boo
 }
 
 /// The Annotate dialog for `form`; returns true when Cancel closes it (`update` closes it once the
-/// job starts). The message field keeps the keyboard focus unless `focus` is false (a credential
-/// prompt is open above it); Ctrl+Enter submits, plain Enter adds a line.
-pub fn annotate_tag(ui: &mut egui::Ui, form: &mut AnnotateForm, snap: Option<&Snapshot>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
+/// job starts). The message field keeps the keyboard focus unless `cx.keyboard` is false (a
+/// credential prompt is open above it); Ctrl/Cmd+Enter submits (the frame), plain Enter adds a
+/// line.
+pub fn annotate_tag(ui: &mut egui::Ui, cx: Cx, form: &mut AnnotateForm, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
     let short = &form.at[..7.min(form.at.len())];
-    ui.heading(format!("Annotate tag {}", form.tag));
+    let d = Dialog::new(cx, format!("Annotate tag {}", form.tag)).begin(ui);
     let what = format!("Replaces the lightweight tag with an annotated one on commit {short}. The name and commit stay the same.");
     ui.label(RichText::new(what).color(color::weak()));
     if snap.is_some_and(|s| !s.remotes.is_empty()) {
@@ -122,11 +119,6 @@ pub fn annotate_tag(ui: &mut egui::Ui, form: &mut AnnotateForm, snap: Option<&Sn
     ui.add_space(6.0);
     let id = Id::new("trellis-annotate-tag-message");
     let problem = annotate_problem(snap, &form.tag, &form.at);
-    // Taken before the field draws, so Ctrl+Enter never reaches it as a new line.
-    let submit = problem.is_none()
-        && !form.message.trim().is_empty()
-        && ui.memory(|m| m.has_focus(id))
-        && ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter));
     let r = controls::field(
         ui,
         egui::TextEdit::multiline(&mut form.message)
@@ -135,7 +127,7 @@ pub fn annotate_tag(ui: &mut egui::Ui, form: &mut AnnotateForm, snap: Option<&Sn
             .desired_rows(4)
             .desired_width(f32::INFINITY),
     );
-    if focus && !r.has_focus() {
+    if cx.keyboard && !r.has_focus() {
         r.request_focus();
     }
     if let Some(p) = &problem {
@@ -143,14 +135,9 @@ pub fn annotate_tag(ui: &mut egui::Ui, form: &mut AnnotateForm, snap: Option<&Sn
         ui.label(RichText::new(p).color(color::red()));
     }
     let valid = problem.is_none() && !form.message.trim().is_empty();
-    ui.add_space(8.0);
-    ui.horizontal(|ui| {
-        if ui.add_enabled(valid, egui::Button::new("Annotate")).clicked() || submit {
-            msgs.push(Msg::Tag(TagMsg::Annotate { tag: form.tag.clone(), at: form.at.clone(), message: form.message.trim().into() }));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Annotate").enabled(valid)));
+    if out.primary {
+        msgs.push(Msg::Tag(TagMsg::Annotate { tag: form.tag.clone(), at: form.at.clone(), message: form.message.trim().into() }));
+    }
+    out.dismiss
 }

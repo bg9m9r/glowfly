@@ -18,7 +18,7 @@ fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 
 fn confirm(st: &AppState) -> (&str, &str, &str) {
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, .. }) => (title, body, button),
+        Some(Modal::Confirm { title, body, button, .. } | Modal::ConfirmDanger { title, body, button, .. }) => (title, body, button),
         _ => panic!("expected a confirmation"),
     }
 }

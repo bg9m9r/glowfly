@@ -3,8 +3,9 @@
 //! job the user started waits for the decision, it names that job and offers Trust and run or
 //! Cancel instead.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::{self, Icon};
+use super::widgets::{self, Icon, buttons};
 use crate::msg::{Msg, TrustMsg};
 use crate::state::trust::{TrustPrompt, hooks_label, shown_value};
 use eframe::egui::{self, RichText, Ui};
@@ -13,10 +14,24 @@ use trellis_core::text::printable;
 use trellis_core::trust::TrustScan;
 
 /// Draws the prompt; returns true when Cancel was clicked (the dialog closes without a
-/// decision). The other buttons send a decision and update closes it.
-pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
-    ui.heading("Trust this repository?");
-    ui.add_space(2.0);
+/// decision). The other buttons send a decision and update closes it. Enter never trusts: the
+/// footer's tone makes Cancel the default (and with no Cancel there is no default).
+pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
+    let mut d = Dialog::new(cx, "Trust this repository?").begin(ui);
+    d.body(ui, |ui| body(ui, p));
+    let footer = match p.held {
+        Some(_) => Footer::new().cancel().danger(buttons::primary("Trust and run")),
+        None => Footer::new().alt(buttons::secondary("Don't trust")).danger(buttons::primary("Trust")),
+    };
+    let out = d.finish(ui, footer);
+    if out.primary || out.alt.is_some() {
+        msgs.push(Msg::Trust(TrustMsg::Decide { real: p.real.clone(), trusted: out.primary }));
+    }
+    out.dismiss
+}
+
+/// Where the repository is, the job waiting, and what in it runs programs.
+fn body(ui: &mut Ui, p: &TrustPrompt) {
     ui.label(RichText::new(printable(&p.name)).strong());
     ui.add(egui::Label::new(RichText::new(trellis_core::native_path::shown(&p.workdir)).color(color::weak())).wrap());
     if let Some(label) = &p.held {
@@ -35,7 +50,7 @@ pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
                 .wrap(),
         );
         ui.add_space(8.0);
-        egui::ScrollArea::vertical().max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
+        egui::ScrollArea::vertical().id_salt("trust-findings").max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
             findings(ui, &p.scan, &p.workdir);
             for m in &p.scan.submodules {
                 ui.add_space(4.0);
@@ -53,23 +68,6 @@ pub fn show(ui: &mut Ui, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
         )
         .wrap(),
     );
-    ui.add_space(12.0);
-    let mut cancel = false;
-    ui.horizontal(|ui| {
-        if p.held.is_some() {
-            if ui.button("Trust and run").clicked() {
-                msgs.push(Msg::Trust(TrustMsg::Decide { real: p.real.clone(), trusted: true }));
-            }
-            cancel = ui.button("Cancel").clicked();
-            return;
-        }
-        for (label, trusted) in [("Trust", true), ("Don't trust", false)] {
-            if ui.button(label).clicked() {
-                msgs.push(Msg::Trust(TrustMsg::Decide { real: p.real.clone(), trusted }));
-            }
-        }
-    });
-    cancel
 }
 
 /// The settings and hooks of one repository (the top one or a submodule).

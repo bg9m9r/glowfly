@@ -4,7 +4,9 @@
 //! removes rows; ticks are kept by path. `update` checks the choice again before saving.
 
 use super::common::{status_color, status_label, widget_row_height};
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::Msg;
 use crate::patch::PatchMsg;
 use crate::state::patch::changes::{SaveChangesForm, blocked, rows, untracked_count};
@@ -24,15 +26,24 @@ const CHOICES: [(WipScope, &str, &str); 3] = [
 
 /// Draws the dialog; returns true when it should close. Save… waits while a job runs (`idle`
 /// is false); on Save… the dialog stays open until `update` asks where to save.
-pub fn show(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
-    ui.heading("Create patch");
+pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut SaveChangesForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let on = match snap.and_then(|s| s.head_branch.as_deref()) {
         Some(b) => format!("From uncommitted changes on {b}"),
         None => "From uncommitted changes on detached HEAD".to_owned(),
     };
-    ui.label(RichText::new(on).color(color::weak()));
-    ui.add_space(8.0);
+    let mut d = Dialog::new(cx, "Create patch").subtitle(on).begin(ui);
+    let blocked = d.body(ui, |ui| body(ui, form, snap));
+    let button = buttons::primary("Save…").enabled(blocked.is_none() && idle).why(blocked.or((!idle).then_some(BUSY)));
+    let out = d.finish(ui, Footer::new().cancel().primary(button));
+    if out.primary {
+        let paths = form.pick.then(|| snap.map(|s| form.ticked(s)).unwrap_or_default());
+        msgs.push(Msg::Patch(PatchMsg::SaveChanges { scope: form.scope, paths, untracked: form.untracked }));
+    }
+    out.dismiss
+}
+
+/// What goes in; returns why nothing can be saved now.
+fn body(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: Option<&Snapshot>) -> Option<&'static str> {
     ui.label(RichText::new("What goes in").strong());
     for (scope, text, note) in CHOICES {
         controls::radio_value(ui, &mut form.scope, scope, text);
@@ -53,21 +64,7 @@ pub fn show(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: Option<&Snapsho
         ui.add_space(4.0);
         ui.label(RichText::new(why).color(color::red()));
     }
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        let mut button = ui.add_enabled(blocked.is_none() && idle, egui::Button::new("Save…"));
-        if let Some(why) = blocked.or((!idle).then_some(BUSY)) {
-            button = button.on_disabled_hover_text(why);
-        }
-        if button.clicked() {
-            let paths = form.pick.then(|| snap.map(|s| form.ticked(s)).unwrap_or_default());
-            msgs.push(Msg::Patch(PatchMsg::SaveChanges { scope: form.scope, paths, untracked: form.untracked }));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    blocked
 }
 
 /// Select all / Select none, the ticked count, and one row per file of the scope: its box,
@@ -76,10 +73,10 @@ fn checklist(ui: &mut egui::Ui, form: &mut SaveChangesForm, snap: &Snapshot) {
     let files = rows(snap, form.scope);
     let ticked = files.iter().filter(|f| form.chosen.contains(&f.path)).count();
     ui.horizontal(|ui| {
-        if ui.small_button("Select all").clicked() {
+        if ui.add(buttons::secondary("Select all").small()).clicked() {
             form.chosen.extend(files.iter().map(|f| f.path.clone()));
         }
-        if ui.small_button("Select none").clicked() {
+        if ui.add(buttons::secondary("Select none").small()).clicked() {
             form.chosen.clear();
         }
         let noun = if files.len() == 1 { "file" } else { "files" };

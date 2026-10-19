@@ -3,7 +3,9 @@
 //! Submitting leaves the dialog open: `update` closes it on success or puts core's error in the
 //! form.
 
+use super::dialog_frame::{Cx, Dialog, Footer, Open};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
@@ -12,13 +14,11 @@ use eframe::egui::{self, Key, RichText};
 use trellis_core::repo::{PathProblem, Snapshot, check_new_path, new_path_warning};
 
 /// The New file dialog; returns true when it should close (Cancel). Its field keeps the keyboard
-/// focus unless `focus` is false (a credential prompt is open above it).
-pub fn new_file(ui: &mut egui::Ui, form: &mut PathForm, snap: Option<&Snapshot>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
-    ui.heading("New file");
-    ui.label(RichText::new("A path inside the repository; missing folders are created.").color(color::weak()));
-    ui.add_space(6.0);
-    let (submit, valid) = path_field(ui, form, snap, None, focus);
-    buttons(ui, form, "Create", submit, valid, || Msg::WorkFile(WorkFileMsg::CreateFile(form.text.clone())), msgs)
+/// focus unless `cx.keyboard` is false (a credential prompt is open above it).
+pub fn new_file(ui: &mut egui::Ui, cx: Cx, form: &mut PathForm, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
+    let d = Dialog::new(cx, "New file").subtitle("A path inside the repository; missing folders are created.").begin(ui);
+    let (submit, valid) = path_field(ui, form, snap, None, cx.keyboard);
+    footer(ui, d, form, "Create", submit, valid, || Msg::WorkFile(WorkFileMsg::CreateFile(form.text.clone())), msgs)
 }
 
 const STAGE_HINT: &str = "Moves the file in the index too, so the old and new paths show as one staged rename. The file's other staged and unstaged changes are kept.";
@@ -28,16 +28,15 @@ const STAGE_HINT: &str = "Moves the file in the index too, so the old and new pa
 /// sends a `Msg` (update saves the setting).
 pub fn rename_file(
     ui: &mut egui::Ui,
+    cx: Cx,
     old: &str,
     form: &mut PathForm,
     snap: Option<&Snapshot>,
     stage_renames: bool,
-    focus: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    ui.heading(format!("Rename {old}"));
-    ui.add_space(6.0);
-    let (submit, valid) = path_field(ui, form, snap, Some(old), focus);
+    let d = Dialog::new(cx, format!("Rename {old}")).begin(ui);
+    let (submit, valid) = path_field(ui, form, snap, Some(old), cx.keyboard);
     let tracked = snap.is_some_and(|s| tracked(s, old));
     if tracked {
         ui.add_space(4.0);
@@ -53,7 +52,7 @@ pub fn rename_file(
         ui.label(RichText::new(note).color(color::weak()));
     }
     let msg = || Msg::WorkFile(WorkFileMsg::RenameFile { from: old.to_owned(), to: form.text.clone(), stage: tracked && stage_renames });
-    buttons(ui, form, "Rename", submit, valid, msg, msgs)
+    footer(ui, d, form, "Rename", submit, valid, msg, msgs)
 }
 
 /// The path field with its problem line and normalized preview. Returns (Enter pressed in the
@@ -107,9 +106,11 @@ fn error_line(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).color(color::red()));
 }
 
-/// Submit and Cancel, with a spinner while a request runs. Returns true for Cancel.
-fn buttons(
+/// A spinner while a request runs, then Cancel and the submit button. Returns true for Cancel.
+#[allow(clippy::too_many_arguments)]
+fn footer(
     ui: &mut egui::Ui,
+    d: Open,
     form: &PathForm,
     label: &str,
     submit: bool,
@@ -117,19 +118,12 @@ fn buttons(
     msg: impl FnOnce() -> Msg,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let mut close = false;
-    ui.add_space(10.0);
-    let enabled = valid && !form.busy;
-    ui.horizontal(|ui| {
-        if ui.add_enabled(enabled, egui::Button::new(label)).clicked() || (submit && enabled) {
-            msgs.push(msg());
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-        if form.busy {
-            ui.add(egui::Spinner::new().size(12.0));
-        }
-    });
-    close
+    if form.busy {
+        ui.add(egui::Spinner::new().size(12.0));
+    }
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(valid && !form.busy)).submit(submit));
+    if out.primary {
+        msgs.push(msg());
+    }
+    out.dismiss
 }

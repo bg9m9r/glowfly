@@ -140,7 +140,19 @@ pub fn show(ui: &mut Ui, st: &mut AppState, rows_cache: &mut DiffRowsCache, msgs
             wrap: has_rows.then_some(st.settings.diff_word_wrap),
         };
         let diff_tool = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
-        header::header_bar(ui, target, commit_file.as_ref(), rows, nav, toggles, fold_counts, &st.keymap, diff_tool, msgs);
+        header::header_bar(
+            ui,
+            st.settings.lang(),
+            target,
+            commit_file.as_ref(),
+            rows,
+            nav,
+            toggles,
+            fold_counts,
+            &st.keymap,
+            diff_tool,
+            msgs,
+        );
         ui.separator();
     }
     body(ui, st, rows_cache, msgs);

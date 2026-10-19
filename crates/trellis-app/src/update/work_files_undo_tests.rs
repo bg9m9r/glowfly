@@ -90,7 +90,7 @@ fn unstage_and_delete_is_staged_again_by_undo() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     drive(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "n.txt".into(), confirmed: false }));
-    assert!(matches!(&st.modal, Some(Modal::Confirm { button, .. }) if button == "Unstage and delete"));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { button, .. }) if button == "Unstage and delete"));
     drive(&mut st, Msg::ConfirmAccepted);
     assert!(!dir.join("n.txt").exists());
     assert!(!st.snap.as_ref().unwrap().staged.iter().any(|f| f.path == "n.txt"));

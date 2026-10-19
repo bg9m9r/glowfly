@@ -189,7 +189,7 @@ fn confirm_delete_trash() {
         Msg::WorkFile(WorkFileMsg::DeleteFile { path: "notes/scratch.txt".into(), confirmed: false }),
         std::time::Instant::now(),
     );
-    assert!(matches!(&st.modal, Some(Modal::Confirm { .. })));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { .. })));
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("confirm_delete_trash");

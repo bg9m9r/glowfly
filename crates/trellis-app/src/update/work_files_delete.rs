@@ -56,12 +56,8 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
         None if trash => format!("{path} goes to the {TRASH}. Discarding the deletion brings it back from the last commit."),
         None => format!("{path} is deleted from your working tree. Discarding the deletion brings it back from the last commit."),
     };
-    st.modal = Some(Modal::Confirm {
-        title: "Delete file".into(),
-        body,
-        button: if trash { format!("Move to {TRASH}") } else { "Delete".into() },
-        then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Delete { path, mode }))),
-    });
+    let button = if trash { format!("Move to {TRASH}") } else { "Delete".into() };
+    st.modal = Some(Modal::danger("Delete file", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Delete { path, mode }))));
 }
 
 /// Opens the confirmation for discarding the untracked file `path`, worded by whether it goes
@@ -80,12 +76,10 @@ pub(super) fn ask_discard(st: &mut AppState, path: String) {
     } else {
         (format!("Delete untracked file {path}? This cannot be undone."), "Discard".to_owned())
     };
-    st.modal = Some(Modal::Confirm {
-        title: "Discard changes".into(),
-        body,
-        button,
-        then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode }))),
-    });
+    let trash = mode == DeleteMode::Trash;
+    let modal = Modal::danger("Discard changes", body, button, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::Discard { path, mode })));
+    // Without the trash nothing keeps a copy of an untracked file: ask for the acknowledgement.
+    st.modal = Some(if trash { modal } else { modal.with_ack(st.settings.lang().tr("common.ack.check")) });
 }
 
 /// The confirmation for `path`, staged as new or (`renamed`) as a staged rename's new path:
@@ -127,8 +121,8 @@ pub(super) fn unstage_confirm(path: String, renamed: bool, gone: bool, edits: bo
         body.push_str(&format!(" The copy in the {TRASH} has your unstaged edits; Undo{hint} brings back the staged version too."));
     }
     let title = if renamed { "Delete renamed file" } else { "Delete new file" };
-    let then = Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::UnstageDelete { path, mode })));
-    Modal::Confirm { title: title.into(), body, button: "Unstage and delete".into(), then }
+    let then = Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::UnstageDelete { path, mode }));
+    Modal::danger(title, body, "Unstage and delete", then)
 }
 
 /// The trash couldn't take `op`'s file and nothing changed. Only when there is definitely no
@@ -161,12 +155,10 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
             if matches!(op, FileOp::UnstageDelete { .. }) {
                 body.push_str(" It also leaves the staging area.");
             }
-            Modal::Confirm {
-                title: "Delete permanently?".into(),
-                body,
-                button: "Delete permanently".into(),
-                then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone().permanent()))),
-            }
+            let then = Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone().permanent()));
+            let modal = Modal::danger("Delete permanently?", body, "Delete permanently", then);
+            // Discarding an untracked file keeps no copy for Undo.
+            if undoable { modal } else { modal.with_ack(st.settings.lang().tr("common.ack.check")) }
         }
         TrashProblem::InUse => retry(
             "File in use".into(),

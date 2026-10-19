@@ -3,7 +3,9 @@
 //! dialog (an optional reason). `update` checks the request again and
 //! closes the dialog once the job starts.
 
+use super::dialog_frame::{self, Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::Msg;
 use crate::state::worktree_manage::{LockForm, RemoveForm};
 use crate::ui::theme::controls;
@@ -11,12 +13,25 @@ use crate::worktree::WorktreeMsg;
 use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::worktree_ops::Refusal;
 
-/// The Remove dialog; returns true when Cancel closes it. The button is disabled while a job
-/// runs (`idle` false).
-pub fn remove(ui: &mut egui::Ui, form: &mut RemoveForm, idle: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
-    ui.heading(format!("Remove worktree {}", form.name));
-    ui.add_space(6.0);
+/// The Remove dialog; returns true when Cancel closes it. The danger button is disabled while a
+/// job runs (`idle` false), and in force mode until the acknowledgement is ticked.
+pub fn remove(ui: &mut egui::Ui, cx: Cx, form: &mut RemoveForm, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+    let mut d = Dialog::new(cx, format!("Remove worktree {}", form.name)).begin(ui);
+    d.body(ui, |ui| body(ui, form));
+    if let Some(label) = form.ack_label() {
+        dialog_frame::ack(ui, cx.t, &mut form.acked, Some(&label));
+    }
+    let ok = idle && (!form.needs_ack() || form.acked);
+    let why = if idle { cx.t.tr("common.ack.tip") } else { "Another operation is still running." };
+    let out = d.finish(ui, Footer::new().cancel().danger(buttons::danger(form.button()).enabled(ok).why(Some(why))));
+    if out.primary {
+        msgs.push(Msg::Worktree(WorktreeMsg::Remove));
+    }
+    out.dismiss
+}
+
+/// What goes, why force is needed, and the branch options.
+fn body(ui: &mut egui::Ui, form: &mut RemoveForm) {
     ui.label(format!(
         "Deletes the folder {} and everything in it, and drops git's record of the worktree. Commits and branches stay in the repository.",
         trellis_core::native_path::shown(&form.path)
@@ -51,28 +66,12 @@ pub fn remove(ui: &mut egui::Ui, form: &mut RemoveForm, idle: bool, msgs: &mut V
             ui.label(RichText::new(note).color(color::red()));
         }
     }
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        let mut text = RichText::new(form.button());
-        if form.refusal.is_some() {
-            text = text.color(color::red());
-        }
-        if ui.add_enabled(idle, egui::Button::new(text)).clicked() {
-            msgs.push(Msg::Worktree(WorktreeMsg::Remove));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
 }
 
 /// The Lock dialog; returns true when Cancel closes it. The reason field has the keyboard focus
-/// unless `focus` is false (a credential prompt is open above it); Enter locks.
-pub fn lock(ui: &mut egui::Ui, form: &mut LockForm, focus: bool, idle: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
-    ui.heading(format!("Lock worktree {}", form.name));
-    ui.add_space(6.0);
+/// unless `cx.keyboard` is false (a credential prompt is open above it); Enter locks.
+pub fn lock(ui: &mut egui::Ui, cx: Cx, form: &mut LockForm, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+    let d = Dialog::new(cx, format!("Lock worktree {}", form.name)).begin(ui);
     ui.label(
         RichText::new(
             "git won't prune a locked worktree when its folder is missing (for example on a removable drive), and removing it needs Force remove.",
@@ -89,17 +88,12 @@ pub fn lock(ui: &mut egui::Ui, form: &mut LockForm, focus: bool, idle: bool, msg
             .desired_width(f32::INFINITY),
     );
     let enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-    if focus {
+    if cx.keyboard {
         r.request_focus();
     }
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        if ui.add_enabled(idle, egui::Button::new("Lock")).clicked() || (enter && idle) {
-            msgs.push(Msg::Worktree(WorktreeMsg::Lock));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Lock").enabled(idle)).submit(enter));
+    if out.primary {
+        msgs.push(Msg::Worktree(WorktreeMsg::Lock));
+    }
+    out.dismiss
 }

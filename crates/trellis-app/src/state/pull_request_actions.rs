@@ -248,7 +248,7 @@ pub fn delete_branch_offer(v: &PrView, snap: &Snapshot, default_branch: Option<&
     }
     super::pull_request::Tips::of(snap, &v.remote, &v.pr).source?;
     let (remote, source) = (v.remote.as_str(), v.pr.source.as_str());
-    Some(Msg::confirm(
+    Some(Msg::confirm_danger(
         "Delete remote branch",
         format!("Delete branch {source} on {remote}? This affects everyone using the remote."),
         "Delete",

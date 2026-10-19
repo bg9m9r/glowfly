@@ -4,6 +4,7 @@
 
 use super::{help, row};
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Ui};
 use trellis_core::settings::{DIFF_FONT_SIZES, HistoryPane, Settings, TAB_SIZES};
 
@@ -42,7 +43,7 @@ pub fn editor_page(ui: &mut Ui, s: &mut Settings) {
         help(ui, t.tr("prefs.editor.history_pane.help"));
     });
     row(ui, t.tr("prefs.editor.reset.label"), |ui| {
-        if ui.button(t.tr("prefs.editor.reset.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("prefs.editor.reset.button"))).clicked() {
             reset(s);
         }
     });

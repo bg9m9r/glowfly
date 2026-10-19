@@ -6,6 +6,7 @@
 
 use super::{help, row, text_field, warn};
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Ui};
 use trellis_core::external_tools;
 use trellis_core::i18n::Lang;
@@ -74,7 +75,7 @@ pub(crate) fn page_for(ui: &mut Ui, s: &mut Settings, linux: bool) {
         help(ui, t.tr("prefs.terminal.open_in_panel.help"));
     });
     row(ui, t.tr("prefs.terminal.reset.label"), |ui| {
-        if ui.button(t.tr("prefs.terminal.reset.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("prefs.terminal.reset.button"))).clicked() {
             p.reset_page();
         }
     });

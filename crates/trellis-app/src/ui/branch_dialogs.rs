@@ -2,7 +2,9 @@
 //! the pure helpers in `branch_ops`; `update` (or git itself, for a new branch) checks them
 //! again before anything changes.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::BranchMsg;
 use crate::msg::{JobMsg, Msg};
 use crate::ui::theme::controls;
@@ -34,60 +36,49 @@ fn name_lines(ui: &mut egui::Ui, name: &str, problem: Option<&NameProblem>, empt
 }
 
 /// The new branch dialog, at `start` (a commit) or HEAD; returns true when it should close. Its
-/// field keeps the keyboard focus unless `focus` is false.
+/// field keeps the keyboard focus unless `cx.keyboard` is false.
 pub fn new_branch(
     ui: &mut egui::Ui,
+    cx: Cx,
     start: Option<&str>,
     name: &mut String,
     checkout: &mut bool,
     snap: Option<&Snapshot>,
-    focus: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let mut close = false;
     let heading = match (start, snap.and_then(|s| s.head_branch.as_deref())) {
         (Some(s), _) => format!("New branch at {}", &s[..7.min(s.len())]),
         (None, Some(b)) => format!("New branch from {b}"),
         (None, None) => "New branch at HEAD".to_owned(),
     };
-    ui.heading(heading);
-    ui.add_space(6.0);
+    let d = Dialog::new(cx, heading).begin(ui);
     let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
     super::access::name_field(&r, "Branch name");
-    if focus {
+    if cx.keyboard {
         r.request_focus();
     }
     let new = name.trim();
     let problem = check_branch_name(new, &locals(snap), None).err();
     name_lines(ui, new, problem.as_ref(), false);
     controls::checkbox(ui, checkout, "Check out after creating");
-    ui.add_space(8.0);
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-    ui.horizontal(|ui| {
-        let valid = problem.is_none();
-        if ui.add_enabled(valid, egui::Button::new("Create")).clicked() || (submit && valid) {
-            let mut cmd = if *checkout { args(&["checkout", "-b", new]) } else { args(&["branch", new]) };
-            if let Some(s) = start {
-                cmd.push(s.to_owned());
-            }
-            msgs.push(Msg::Job(JobMsg::Git { label: "Create branch".into(), cmds: vec![cmd] }));
-            close = true;
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create").enabled(problem.is_none())).submit(submit));
+    if out.primary {
+        let mut cmd = if *checkout { args(&["checkout", "-b", new]) } else { args(&["branch", new]) };
+        if let Some(s) = start {
+            cmd.push(s.to_owned());
         }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+        msgs.push(Msg::Job(JobMsg::Git { label: "Create branch".into(), cmds: vec![cmd] }));
+    }
+    out.primary || out.dismiss
 }
 
 /// The rename dialog; returns true when it should close. Its field keeps the keyboard focus
-/// unless `focus` is false (a credential prompt is open above it).
-pub fn rename(ui: &mut egui::Ui, old: &str, name: &mut String, snap: Option<&Snapshot>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
-    ui.heading(format!("Rename branch {old}"));
-    ui.add_space(6.0);
+/// unless `cx.keyboard` is false (a credential prompt is open above it).
+pub fn rename(ui: &mut egui::Ui, cx: Cx, old: &str, name: &mut String, snap: Option<&Snapshot>, msgs: &mut Vec<Msg>) -> bool {
+    let d = Dialog::new(cx, format!("Rename branch {old}")).begin(ui);
     let r = controls::field(ui, egui::TextEdit::singleline(name).hint_text("branch-name").desired_width(f32::INFINITY));
-    if focus {
+    if cx.keyboard {
         r.request_focus();
     }
     let new = name.trim();
@@ -100,35 +91,27 @@ pub fn rename(ui: &mut egui::Ui, old: &str, name: &mut String, snap: Option<&Sna
         ui.add_space(4.0);
         ui.label(RichText::new(format!("Its upstream setting moves with it; {} is not renamed.", t.display())).color(color::weak()));
     }
-    ui.add_space(10.0);
     let valid = !unchanged && problem.is_none();
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-    ui.horizontal(|ui| {
-        if ui.add_enabled(valid, egui::Button::new("Rename")).clicked() || (submit && valid) {
-            msgs.push(Msg::Branch(BranchMsg::RenameBranch { old: old.to_owned(), new: new.to_owned() }));
-            close = true;
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Rename").enabled(valid)).submit(submit));
+    if out.primary {
+        msgs.push(Msg::Branch(BranchMsg::RenameBranch { old: old.to_owned(), new: new.to_owned() }));
+    }
+    out.primary || out.dismiss
 }
 
 /// The upstream dialog: which remote branch `branch` pulls from and pushes to. Returns true when
 /// it should close.
 pub fn upstream(
     ui: &mut egui::Ui,
+    cx: Cx,
     branch_name: &str,
     remote: &mut String,
     name: &mut String,
     snap: Option<&Snapshot>,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let mut close = false;
-    ui.heading(format!("Upstream for {branch_name}"));
-    ui.label(RichText::new("Pull from and push to:").color(color::weak()));
-    ui.add_space(8.0);
+    let d = Dialog::new(cx, format!("Upstream for {branch_name}")).subtitle("Pull from and push to:").begin(ui);
     let remotes: &[(String, Vec<(String, git2::Oid)>)] = snap.map(|s| s.remotes.as_slice()).unwrap_or_default();
     egui::Grid::new("upstream-form").num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
         ui.label("Remote");
@@ -156,19 +139,10 @@ pub fn upstream(
     ui.label(status);
     let current = branch(snap, branch_name).and_then(|b| b.tracking.as_ref());
     let unchanged = current.is_some_and(|t| t.remote == *remote && t.merge == target);
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        if ui.add_enabled(valid && !unchanged && !remote.is_empty(), egui::Button::new("Save")).clicked() {
-            msgs.push(Msg::Branch(BranchMsg::SetUpstream {
-                branch: branch_name.to_owned(),
-                remote: remote.clone(),
-                name: target.to_owned(),
-            }));
-            close = true;
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let save = buttons::primary("Save").enabled(valid && !unchanged && !remote.is_empty());
+    let out = d.finish(ui, Footer::new().cancel().primary(save));
+    if out.primary {
+        msgs.push(Msg::Branch(BranchMsg::SetUpstream { branch: branch_name.to_owned(), remote: remote.clone(), name: target.to_owned() }));
+    }
+    out.primary || out.dismiss
 }

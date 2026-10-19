@@ -24,6 +24,8 @@ pub struct RemoveForm {
     pub delete_remote: bool,
     /// Another tab shows the worktree: Remove closes it first.
     pub close_tabs: bool,
+    /// The acknowledgement that force mode deletes changes for good is ticked.
+    pub acked: bool,
 }
 
 /// The upstream the Remove dialog can delete along with the branch, and why it can't now.
@@ -45,6 +47,7 @@ impl RemoveForm {
             remote: None,
             delete_remote: false,
             close_tabs: false,
+            acked: false,
         }
     }
 
@@ -79,6 +82,20 @@ impl RemoveForm {
             (true, true, false) => "Force remove and delete branch",
             (true, true, true) => "Force remove and delete local and remote branch",
         }
+    }
+
+    /// Whether the button waits for the acknowledgement: force mode deletes uncommitted
+    /// changes for good.
+    pub fn needs_ack(&self) -> bool {
+        self.refusal.is_some()
+    }
+
+    /// The acknowledgement's label, naming what force mode deletes.
+    pub fn ack_label(&self) -> Option<String> {
+        Some(match self.refusal.as_ref()? {
+            Refusal::Changes(n) => format!("Delete {} for good", changed_files(*n)),
+            Refusal::Locked(_) => "Delete any uncommitted changes in it for good".to_owned(),
+        })
     }
 
     /// The amber note when another tab shows the worktree.
@@ -230,5 +247,37 @@ pub fn needs_force_text(name: &str, refusal: &Refusal) -> String {
     match refusal {
         Refusal::Changes(n) => format!("{name} wasn't removed: it has {}", changed_files(*n)),
         Refusal::Locked(_) => format!("{name} wasn't removed: it is locked"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn form(refusal: Option<Refusal>) -> RemoveForm {
+        RemoveForm {
+            path: PathBuf::from("wt"),
+            name: "wt".into(),
+            branch: None,
+            delete_branch: false,
+            refusal,
+            remote: None,
+            delete_remote: false,
+            close_tabs: false,
+            acked: false,
+        }
+    }
+
+    #[test]
+    fn force_mode_needs_the_acknowledgement() {
+        assert!(!form(None).needs_ack());
+        assert_eq!(form(None).ack_label(), None);
+        let changes = form(Some(Refusal::Changes(3)));
+        assert!(changes.needs_ack());
+        assert_eq!(changes.ack_label().as_deref(), Some("Delete 3 changed or untracked files for good"));
+        assert_eq!(form(Some(Refusal::Changes(0))).ack_label().as_deref(), Some("Delete changed or untracked files for good"));
+        let locked = form(Some(Refusal::Locked("usb".into())));
+        assert!(locked.needs_ack());
+        assert_eq!(locked.ack_label().as_deref(), Some("Delete any uncommitted changes in it for good"));
     }
 }

@@ -10,9 +10,11 @@ use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
 use crate::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked};
 use crate::state::{AppState, PrefPage};
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Align2, FontId, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use git2::Oid;
 use trellis_core::gitflow::{Branches, FlowBranch, FlowGroup, GitFlowSettings, grouped};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::Snapshot;
 
 const NOT_SET_UP: &str = "Git Flow isn't set up in this repository.";
@@ -20,7 +22,7 @@ const NOT_SET_UP: &str = "Git Flow isn't set up in this repository.";
 pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
     ui.add_space(8.0);
-    header(ui, snap.gitflow.settings().as_ref(), msgs);
+    header(ui, st.settings.lang(), snap.gitflow.settings().as_ref(), msgs);
     ui.add_space(4.0);
     ui.separator();
     let margin = egui::Margin { left: 14, right: 14, top: 4, bottom: 8 };
@@ -28,7 +30,7 @@ pub fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         egui::Frame::new().inner_margin(margin).show(ui, |ui| {
             ui.label(RichText::new(NOT_SET_UP).color(color::weak()));
             ui.add_space(6.0);
-            if ui.add(egui::Button::new("Set up Git Flow…").min_size(vec2(0.0, 28.0))).clicked() {
+            if ui.add(buttons::primary("Set up Git Flow…")).clicked() {
                 msgs.push(configure());
             }
         });
@@ -59,7 +61,7 @@ fn subtitle(s: &GitFlowSettings) -> String {
 }
 
 /// Title and subtitle on the left; Close and Configure… on the right.
-fn header(ui: &mut Ui, s: Option<&GitFlowSettings>, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, t: Lang, s: Option<&GitFlowSettings>, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(14.0);
         ui.vertical(|ui| {
@@ -71,12 +73,12 @@ fn header(ui: &mut Ui, s: Option<&GitFlowSettings>, msgs: &mut Vec<Msg>) {
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(14.0);
-            let close = egui::Button::new("Close").min_size(vec2(0.0, 28.0));
-            if ui.add(close).on_hover_text("Back to the graph (Esc)").clicked() {
+            let close = buttons::secondary(t.tr("common.close.button")).tip("Back to the graph (Esc)");
+            if ui.add(close).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::ClosePanel));
             }
-            let config = egui::Button::new("Configure…").min_size(vec2(0.0, 28.0));
-            if ui.add(config).on_hover_text("Branches and prefixes in Preferences > Git Flow").clicked() {
+            let config = buttons::secondary("Configure…").tip("Branches and prefixes in Preferences > Git Flow");
+            if ui.add(config).clicked() {
                 msgs.push(configure());
             }
         });
@@ -132,9 +134,9 @@ fn group(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, g: &F
         ui.label(RichText::new(g.len().to_string()).color(color::faint()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let blocked = start_blocked(snap, kind);
-            let mut r = ui.add_enabled(blocked.is_none(), egui::Button::new(format!("Start {}…", kind.noun())));
+            let mut r = ui.add(buttons::secondary(format!("Start {}…", kind.noun())).enabled(blocked.is_none()));
             if let Some(why) = &blocked {
-                r = r.on_disabled_hover_text(why);
+                r = r.on_hover_text(why);
             }
             if r.clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::StartDialog(kind)));
@@ -169,7 +171,7 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
     }
     let builder = UiBuilder::new().max_rect(rect.shrink2(vec2(8.0, 2.0))).layout(Layout::right_to_left(Align::Center));
     ui.allocate_new_ui(builder, |ui| {
-        if ui.button("Finish…").on_hover_text(format!("Finish {} {}", g.kind.noun(), b.short)).clicked() {
+        if ui.add(buttons::secondary("Finish…")).on_hover_text(format!("Finish {} {}", g.kind.noun(), b.short)).clicked() {
             msgs.push(Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
         }
         let elsewhere = st.snap.as_ref().and_then(|s| crate::state::worktree_branches::checkout_blocked(s, b.name));
@@ -182,9 +184,9 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
         } else {
             None
         };
-        let r = ui.add_enabled(why.is_none(), egui::Button::new("Checkout"));
+        let r = ui.add(buttons::secondary("Checkout").enabled(why.is_none()));
         let r = match why {
-            Some(w) => r.on_disabled_hover_text(w),
+            Some(w) => r.on_hover_text(w),
             None => r,
         };
         if r.clicked() {

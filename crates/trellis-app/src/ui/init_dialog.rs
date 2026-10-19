@@ -3,7 +3,9 @@
 //! types with the pure rules in `state::init`.
 
 use super::clone_dialog::{destination, note, problem};
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg};
 use crate::state::init::{FolderLine, GITIGNORE_KEPT, InitForm};
 use crate::ui::theme::controls;
@@ -37,7 +39,7 @@ fn folder(ui: &mut egui::Ui, form: &mut InitForm, focus: bool, msgs: &mut Vec<Ms
         if focus && ui.memory(|m| m.focused().is_none()) {
             edit.request_focus();
         }
-        if ui.button("Browse…").clicked() {
+        if ui.add(buttons::secondary("Browse…").small()).clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::InitRepo)));
         }
     });
@@ -96,11 +98,23 @@ fn license(ui: &mut egui::Ui, form: &mut InitForm, year: i32) {
 
 /// The Init dialog; returns true when it should close. `year` is the local year, for a
 /// license's copyright line. The folder field takes the focus when nothing has it, unless
-/// `focus` is false (a credential prompt is open above it).
-pub fn show(ui: &mut egui::Ui, form: &mut InitForm, year: i32, focus: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
-    ui.heading("Start a new repository");
-    ui.add_space(6.0);
+/// `cx.keyboard` is false (a credential prompt is open above it).
+pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut InitForm, year: i32, msgs: &mut Vec<Msg>) -> bool {
+    let mut d = Dialog::new(cx, "Start a new repository").begin(ui);
+    d.body(ui, |ui| body(ui, form, year, cx.keyboard, msgs));
+    let blocked = form.problems().blocked;
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Create repository").enabled(!blocked)));
+    let mut close = out.dismiss;
+    if out.primary
+        && let Some(req) = form.request(year)
+    {
+        msgs.push(Msg::Init(InitMsg::Start(req)));
+        close = true;
+    }
+    close
+}
+
+fn body(ui: &mut egui::Ui, form: &mut InitForm, year: i32, focus: bool, msgs: &mut Vec<Msg>) {
     folder(ui, form, focus, msgs);
     ui.add_space(6.0);
     ui.horizontal(|ui| {
@@ -123,18 +137,4 @@ pub fn show(ui: &mut egui::Ui, form: &mut InitForm, year: i32, focus: bool, msgs
         // Treated as off: nothing would be committed.
         ui.add_enabled(false, controls::Check::new(&mut false, RichText::new(commit_text).color(color::weak())));
     }
-    ui.add_space(8.0);
-    let blocked = form.problems().blocked;
-    ui.horizontal(|ui| {
-        if ui.add_enabled(!blocked, egui::Button::new("Create repository")).clicked()
-            && let Some(req) = form.request(year)
-        {
-            msgs.push(Msg::Init(InitMsg::Start(req)));
-            close = true;
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
 }

@@ -4,6 +4,7 @@
 use super::appearance::{combo, section};
 use super::{help, row};
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
 use trellis_core::i18n::Lang;
 use trellis_core::settings::{ColumnWidths, DescriptionMode as DM, GraphColumns, Settings};
@@ -43,11 +44,11 @@ pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     });
     row(ui, t.tr("prefs.ui.columns.label"), |ui| {
         ui.horizontal(|ui| {
-            if ui.button(t.tr("prefs.ui.columns.default.button")).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.ui.columns.default.button"))).clicked() {
                 *c = GraphColumns::default();
                 s.column_widths = ColumnWidths::default();
             }
-            if ui.button(t.tr("prefs.ui.columns.compact.button")).clicked() {
+            if ui.add(buttons::secondary(t.tr("prefs.ui.columns.compact.button"))).clicked() {
                 *c = GraphColumns::compact();
                 s.column_widths = ColumnWidths::default();
             }

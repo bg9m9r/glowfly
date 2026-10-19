@@ -205,3 +205,33 @@ fn a_credential_prompt_keeps_esc_and_clicks() {
     dismiss(&mut st, Dismiss::Backdrop);
     assert!(matches!(st.modal, Some(Modal::About)), "nothing is dismissed under the prompt");
 }
+
+fn copies(fx: &[crate::effect::Effect], text: &str) -> bool {
+    use crate::effect::{Effect, UiEffect};
+    matches!(fx, [Effect::Ui(UiEffect::CopyText(t))] if t == text)
+}
+
+#[test]
+fn danger_confirmation_waits_for_its_acknowledgement() {
+    let mut st = state();
+    run(&mut st, Msg::confirm_danger_ack("Delete", "Sure?".into(), "Delete", "I understand", Msg::Copy("x".into())));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { ack: Some(a), acked: false, .. }) if a == "I understand"));
+    assert!(run(&mut st, Msg::ConfirmAccepted).is_empty(), "nothing runs before the tick");
+    assert!(matches!(st.modal, Some(Modal::ConfirmDanger { .. })), "the question stays open");
+    if let Some(Modal::ConfirmDanger { acked, .. }) = st.modal.as_mut() {
+        *acked = true;
+    }
+    let fx = run(&mut st, Msg::ConfirmAccepted);
+    assert!(st.modal.is_none());
+    assert!(copies(&fx, "x"));
+}
+
+#[test]
+fn danger_confirmation_without_acknowledgement_runs_at_once() {
+    let mut st = state();
+    run(&mut st, Msg::confirm_danger("Delete", "Sure?".into(), "Delete", Msg::Copy("y".into())));
+    assert!(matches!(st.modal, Some(Modal::ConfirmDanger { ack: None, acked: false, .. })));
+    let fx = run(&mut st, Msg::ConfirmAccepted);
+    assert!(st.modal.is_none());
+    assert!(copies(&fx, "y"));
+}

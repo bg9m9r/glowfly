@@ -11,7 +11,7 @@ use trellis_core::repo::{Snapshot, StashInfo};
 /// `message`.
 pub fn guarded(snap: &Snapshot, action: StashAction, message: &str, run: Msg) -> Msg {
     match action {
-        StashAction::Drop => Msg::confirm("Delete stash", drop_confirm_body(message), "Delete", run),
+        StashAction::Drop => Msg::confirm_danger("Delete stash", drop_confirm_body(message), "Delete", run),
         StashAction::Apply | StashAction::Pop if snap.is_dirty() => {
             let button = if action == StashAction::Pop { "Pop" } else { "Apply" };
             Msg::confirm(action.job_label(), dirty_body(action, message), button, run)
@@ -70,7 +70,9 @@ mod tests {
         let (dir, clean) = fixture("guard");
         assert!(matches!(guarded(&clean, StashAction::Apply, "wip", run()), Msg::Job(JobMsg::Git { .. })));
         assert!(matches!(guarded(&clean, StashAction::Pop, "wip", run()), Msg::Job(JobMsg::Git { .. })));
-        assert!(matches!(guarded(&clean, StashAction::Drop, "wip", run()), Msg::Confirm { ref title, .. } if title == "Delete stash"));
+        assert!(
+            matches!(guarded(&clean, StashAction::Drop, "wip", run()), Msg::ConfirmDanger { ref title, .. } if title == "Delete stash")
+        );
         std::fs::write(dir.join("a.txt"), "b").unwrap();
         let dirty = trellis_core::repo::load(&dir, &trellis_core::repo::LoadOptions::all(100)).unwrap();
         assert!(dirty.is_dirty());

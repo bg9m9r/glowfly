@@ -10,6 +10,7 @@ use crate::msg::Msg;
 use crate::onboarding::OnboardingMsg;
 use crate::state::AppState;
 use crate::state::onboarding::{Welcome, WelcomeStep};
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Id, Layout, RichText, vec2};
 use trellis_core::i18n::Lang;
 
@@ -83,35 +84,35 @@ fn footer(ui: &mut egui::Ui, t: Lang, w: &Welcome, no_connections: bool, msgs: &
     let send = |msgs: &mut Vec<Msg>, m: OnboardingMsg| msgs.push(Msg::Onboarding(m));
     ui.horizontal(|ui| {
         let busy = w.identity.saving;
-        if w.step.prev().is_some() && ui.add_enabled(!busy, egui::Button::new(t.tr("welcome.back.button"))).clicked() {
+        if w.step.prev().is_some() && ui.add(buttons::secondary(t.tr("welcome.back.button")).enabled(!busy)).clicked() {
             send(msgs, OnboardingMsg::Back);
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| match w.step {
             WelcomeStep::Identity => {
                 let f = &w.identity;
                 let ready = !f.saving && !f.reading;
-                if ui.add_enabled(ready, egui::Button::new(t.tr("welcome.continue.button"))).clicked() {
+                if ui.add(buttons::primary(t.tr("welcome.continue.button")).enabled(ready)).clicked() {
                     send(msgs, OnboardingMsg::SaveIdentity);
                 }
                 if f.saving {
                     ui.add(egui::Spinner::new());
                 }
-                if ui.add_enabled(!f.saving, egui::Button::new(t.tr("welcome.skip_for_now.button"))).clicked() {
+                if ui.add(buttons::secondary(t.tr("welcome.skip_for_now.button")).enabled(!f.saving)).clicked() {
                     send(msgs, OnboardingMsg::Skip);
                 }
             }
             WelcomeStep::Connect if no_connections => {
-                if ui.button(t.tr("welcome.skip_step.button")).clicked() {
+                if ui.add(buttons::secondary(t.tr("welcome.skip_step.button"))).clicked() {
                     send(msgs, OnboardingMsg::Skip);
                 }
             }
             WelcomeStep::Connect | WelcomeStep::Git => {
-                if ui.button(t.tr("welcome.continue.button")).clicked() {
+                if ui.add(buttons::primary(t.tr("welcome.continue.button"))).clicked() {
                     send(msgs, OnboardingMsg::Next);
                 }
             }
             WelcomeStep::Start => {
-                if ui.button(t.tr("welcome.done.button")).clicked() {
+                if ui.add(buttons::primary(t.tr("welcome.done.button"))).clicked() {
                     send(msgs, OnboardingMsg::Finish(None));
                 }
             }

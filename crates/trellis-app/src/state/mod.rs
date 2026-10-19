@@ -12,6 +12,7 @@ pub mod clone;
 pub mod clone_service;
 pub mod commit;
 pub mod commit_menu;
+pub mod confirm;
 pub mod conflict;
 pub mod conflict_check;
 pub mod conflict_files;
@@ -223,10 +224,13 @@ pub enum Modal {
         then: Box<Msg>,
     },
     /// `Confirm` for a step that loses work: drawn with a danger button that Enter doesn't press.
+    /// With `ack` (its label), the button waits for `acked` (constructors in `confirm.rs`).
     ConfirmDanger {
         title: String,
         body: String,
         button: String,
+        ack: Option<String>,
+        acked: bool,
         then: Box<Msg>,
     },
     Clone(clone::CloneForm),

@@ -210,7 +210,7 @@ fn deleting_asks_first_and_never_the_current_profile() {
     profile(&mut st, ProfileMsg::Select(PERSONAL));
     profile(&mut st, ProfileMsg::AskDelete(PERSONAL));
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, .. }) => {
+        Some(Modal::ConfirmDanger { title, body, button, .. }) => {
             assert_eq!(title, "Delete profile");
             assert!(body.contains("\"Personal\"") && body.contains("can't be undone"), "{body}");
             assert_eq!(button, "Delete");

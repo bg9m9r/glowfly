@@ -43,7 +43,7 @@ fn ask(oid: Oid, path: &str, deleted: bool) -> Msg {
 
 fn confirm_body(st: &AppState) -> &str {
     match &st.modal {
-        Some(Modal::Confirm { body, .. }) => body,
+        Some(Modal::Confirm { body, .. } | Modal::ConfirmDanger { body, .. }) => body,
         _ => panic!("expected the confirmation"),
     }
 }
@@ -285,7 +285,7 @@ fn ignored_file_is_not_overwritten_without_a_warning() {
     assert!(!confirm_body(&st).contains("overwritten"), "status shows nothing to warn about");
     drive(&mut st, Msg::ConfirmAccepted);
     assert_eq!(std::fs::read_to_string(dir.join(".env")).unwrap(), "TOKEN=secret\n", "nothing written");
-    let Some(Modal::Confirm { body, then, .. }) = &st.modal else { panic!("asks again") };
+    let Some(Modal::ConfirmDanger { body, then, .. }) = &st.modal else { panic!("asks again") };
     assert!(body.contains("ignored") && body.contains("Undo") && body.contains(&short(old)), "{body}");
     assert!(matches!(&**then, Msg::Files(FilesMsg::RestoreFile { confirmed: true, overwrite: true, .. })));
 

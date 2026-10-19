@@ -167,14 +167,19 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut V
         ui,
         "Delete…",
         in_worktree,
-        Msg::confirm("Delete branch", format!("Delete local branch {name}?"), "Delete", Msg::git("Delete branch", &["branch", "-d", name])),
+        Msg::confirm_danger(
+            "Delete branch",
+            format!("Delete local branch {name}?"),
+            "Delete",
+            Msg::git("Delete branch", &["branch", "-d", name]),
+        ),
     );
     menu_item_if(
         msgs,
         ui,
         "Force delete…",
         in_worktree,
-        Msg::confirm(
+        Msg::confirm_danger(
             "Force delete branch",
             format!("Delete {name} even if it has unmerged commits?"),
             "Delete",
@@ -188,7 +193,7 @@ fn delete_items(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut V
             ui,
             format!("Delete together with {}…", t.display()),
             blocked.as_deref(),
-            Msg::confirm(
+            Msg::confirm_danger(
                 "Delete local and remote branch",
                 branches::delete_with_remote_body(b, t),
                 "Delete both",

@@ -144,7 +144,7 @@ fn kill_all_asks_first_and_stops_only_this_repository() {
     let two = spawned(run(&mut st, T::NewTab));
     run(&mut st, T::AskKillAll);
     match st.modal.take() {
-        Some(Modal::Confirm { title, body, button, then }) => {
+        Some(Modal::ConfirmDanger { title, body, button, then, .. }) => {
             assert_eq!((title.as_str(), button.as_str()), ("Kill all terminals", "Kill all"));
             assert!(body.contains("2 terminals"), "{body}");
             assert!(matches!(*then, Msg::Terminal(T::KillAll)));

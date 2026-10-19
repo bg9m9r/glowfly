@@ -25,7 +25,9 @@ use crate::state::AppState;
 use crate::state::rebase::{HINT, PanelSource, RebasePanel, needs_stash};
 use crate::state::rebase_remaining::{NO_STEPS, REMAINING_HINT, REMAINING_TITLE, UPDATE};
 use crate::state::rebase_steps::NewStep;
-use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, Ui, vec2};
+use crate::ui::widgets::buttons;
+use eframe::egui::{self, Align, Layout, RichText, Sense, Stroke, Ui, vec2};
+use trellis_core::i18n::Lang;
 
 const STASH_HINT: &str = "Uncommitted changes will be stashed first and put back afterwards.";
 
@@ -34,7 +36,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let remaining = panel.source == PanelSource::Remaining;
     let blocker = st.snap.as_ref().and_then(|s| panel.start_blocker(s, st.job.is_some()));
     ui.add_space(8.0);
-    header(ui, panel, blocker.as_deref(), msgs);
+    header(ui, st.settings.lang(), panel, blocker.as_deref(), msgs);
     ui.add_space(4.0);
     egui::Frame::new().inner_margin(egui::Margin { left: 14, right: 14, top: 0, bottom: 4 }).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 2.0;
@@ -61,7 +63,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
 }
 
 /// Title and subtitle on the left; Reset, Cancel and Start rebase (or Update steps) on the right.
-fn header(ui: &mut Ui, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Vec<Msg>) {
     let (title, primary) =
         if panel.source == PanelSource::Remaining { (REMAINING_TITLE, UPDATE) } else { ("Interactive rebase", "Start rebase") };
     ui.horizontal(|ui| {
@@ -73,26 +75,16 @@ fn header(ui: &mut Ui, panel: &RebasePanel, blocker: Option<&str>, msgs: &mut Ve
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(14.0);
-            let enabled = blocker.is_none();
-            let (fg, fill) = if enabled { (Color32::WHITE, color::primary()) } else { (color::faint(), color::primary_off()) };
-            let start = egui::Button::new(RichText::new(primary).strong().color(fg))
-                .fill(fill)
-                .stroke(Stroke::new(1.0_f32, color::primary_border()))
-                .min_size(egui::vec2(0.0, 28.0));
-            let mut r = ui.add_enabled(enabled, start);
-            if let Some(why) = blocker {
-                r = r.on_disabled_hover_text(why);
-            }
-            if r.clicked() {
+            if ui.add(buttons::primary(primary).enabled(blocker.is_none()).why(blocker)).clicked() {
                 msgs.push(Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
             }
-            let cancel = egui::Button::new("Cancel").min_size(egui::vec2(0.0, 28.0));
-            if ui.add_enabled(!panel.starting, cancel).on_hover_text("Close without changing anything (Esc)").clicked() {
+            let cancel =
+                buttons::secondary(t.tr("common.cancel.button")).enabled(!panel.starting).tip("Close without changing anything (Esc)");
+            if ui.add(cancel).clicked() {
                 msgs.push(Msg::Rebase(RebaseMsg::CloseRebase));
             }
-            let reset = egui::Button::new("Reset").min_size(egui::vec2(0.0, 28.0));
             let tip = if panel.stale { "Reload the list from the repository" } else { "Back to the original order and actions" };
-            if ui.add_enabled(panel.editable(), reset).on_hover_text(tip).clicked() {
+            if ui.add(buttons::secondary("Reset").enabled(panel.editable()).tip(tip)).clicked() {
                 msgs.push(Msg::Rebase(RebaseMsg::RebaseReset));
             }
             if panel.starting {

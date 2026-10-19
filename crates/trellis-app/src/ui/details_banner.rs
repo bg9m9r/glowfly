@@ -38,7 +38,7 @@ pub(super) fn op_banner(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, confl
         if let Some(first) = conflicted.first() {
             ui.horizontal(|ui| {
                 ui.label(t.trn("details.banner.conflicted", conflicted.len(), &[]));
-                if ui.button(t.tr("details.banner.view_conflicts.button")).clicked() {
+                if ui.add(buttons::secondary(t.tr("details.banner.view_conflicts.button"))).clicked() {
                     msgs.push(Msg::Conflict(ConflictMsg::OpenConflict(first.path.clone())));
                 }
             });

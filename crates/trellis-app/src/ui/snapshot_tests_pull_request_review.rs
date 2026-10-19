@@ -125,7 +125,7 @@ fn pull_request_merged_light() {
     h.get_by_label("Delete search on origin").click();
     h.run();
     let then = h.state().1.iter().find_map(|m| match m {
-        Msg::Confirm { title, then, .. } if title == "Delete remote branch" => Some(matches!(**then, Msg::Job(_))),
+        Msg::ConfirmDanger { title, then, .. } if title == "Delete remote branch" => Some(matches!(**then, Msg::Job(_))),
         _ => None,
     });
     assert_eq!(then, Some(true));

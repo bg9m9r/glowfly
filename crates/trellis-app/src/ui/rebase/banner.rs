@@ -7,6 +7,7 @@
 use crate::msg::{Msg, RebaseMsg, RepoMsg};
 use crate::state::rebase_banner::{EDIT_STEPS, SELECT_COMMIT, STASH_NOTE, lines};
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText};
 use git2::RepositoryState;
 use trellis_core::rebase::RebaseProgress;
@@ -47,7 +48,7 @@ fn words(ui: &mut egui::Ui, text: &str) {
 
 /// "Edit remaining steps…", only while an interactive rebase is in progress.
 pub fn edit_steps_button(ui: &mut egui::Ui, state: RepositoryState, msgs: &mut Vec<Msg>) {
-    if state == RepositoryState::RebaseInteractive && ui.button(EDIT_STEPS).clicked() {
+    if state == RepositoryState::RebaseInteractive && ui.add(buttons::secondary(EDIT_STEPS)).clicked() {
         msgs.push(Msg::Rebase(RebaseMsg::OpenRemaining));
     }
 }

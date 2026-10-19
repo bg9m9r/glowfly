@@ -16,6 +16,7 @@ use crate::state::{AppState, PrefPage};
 use crate::terminal::TerminalMsg;
 use crate::ui::common::menu_item_if;
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, FontSelection, Layout, RichText, text::LayoutJob};
 use trellis_core::i18n::Lang;
 use trellis_core::settings::Settings;
@@ -56,27 +57,26 @@ fn header(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let alive = snap.map_or(0, |s| st.terminal.sessions_for(&s.workdir).filter(|t| t.alive()).count());
     ui.horizontal(|ui| {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if ui
-                .small_button("Hide")
-                .on_hover_text(st.keymap.tip("Hide the terminal panel", crate::keymap::BindingId::ToggleTerminal))
-                .clicked()
-            {
+            let hide = st.keymap.tip("Hide the terminal panel", crate::keymap::BindingId::ToggleTerminal);
+            if ui.add(buttons::secondary("Hide").small().tip(&hide)).clicked() {
                 msgs.push(Msg::Terminal(TerminalMsg::Hide));
             }
             match session {
                 Some(s) if !s.alive() => {
-                    if ui.small_button("Restart").clicked() {
+                    if ui.add(buttons::secondary("Restart").small()).clicked() {
                         msgs.push(Msg::Terminal(TerminalMsg::Restart));
                     }
                 }
                 _ => {
                     let alive = session.is_some_and(|s| s.alive());
-                    if ui.add_enabled(alive, egui::Button::new("Kill").small()).on_hover_text(KILL_TIP).clicked() {
+                    if ui.add(buttons::secondary("Kill").small().enabled(alive)).on_hover_text(KILL_TIP).clicked() {
                         msgs.push(Msg::Terminal(TerminalMsg::Kill));
                     }
                 }
             }
-            if alive >= 2 && ui.small_button("Kill all").on_hover_text("Stop every terminal of this repository").clicked() {
+            if alive >= 2
+                && ui.add(buttons::secondary("Kill all").small()).on_hover_text("Stop every terminal of this repository").clicked()
+            {
                 msgs.push(Msg::Terminal(TerminalMsg::AskKillAll));
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
@@ -119,10 +119,10 @@ fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             st.terminal.focused = false;
             ui.label(RichText::new(format!("Could not start the shell: {error}")).color(color::red()));
             ui.horizontal(|ui| {
-                if ui.button("Restart").clicked() {
+                if ui.add(buttons::secondary("Restart")).clicked() {
                     msgs.push(Msg::Terminal(TerminalMsg::Restart));
                 }
-                if ui.button("Open Preferences").clicked() {
+                if ui.add(buttons::secondary("Open Preferences")).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Terminal)));
                 }
             });
@@ -160,7 +160,7 @@ fn exit_strip(ui: &mut egui::Ui, code: Option<u32>, msgs: &mut Vec<Msg>) {
                 None => "Process exited".to_owned(),
             };
             ui.label(RichText::new(text).color(color::text()));
-            if ui.small_button("Restart").clicked() {
+            if ui.add(buttons::secondary("Restart").small()).clicked() {
                 msgs.push(Msg::Terminal(TerminalMsg::Restart));
             }
         });

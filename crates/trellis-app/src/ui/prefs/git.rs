@@ -4,6 +4,7 @@ use super::{help, row, text_field};
 use crate::msg::PrefsMsg;
 use crate::msg::{FolderPurpose, Msg};
 use crate::state::prefs::GitConfigValues;
+use crate::ui::widgets::buttons;
 use eframe::egui::Ui;
 
 pub fn identity_page(ui: &mut Ui, git: &mut GitConfigValues, msgs: &mut Vec<Msg>) {
@@ -37,7 +38,7 @@ pub fn hooks_page(ui: &mut Ui, git: &mut GitConfigValues, msgs: &mut Vec<Msg>) {
         let mut commit = false;
         ui.horizontal(|ui| {
             commit = text_field(ui, &mut git.hooks_path, ".git/hooks").lost_focus();
-            if ui.button("Browse").clicked() {
+            if ui.add(buttons::secondary("Browse")).clicked() {
                 msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::HooksPath)));
             }
         });

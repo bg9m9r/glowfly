@@ -206,11 +206,13 @@ pub enum Msg {
         then: Box<Msg>,
     },
     /// Ask before running `then`, which loses work: drawn with a danger button
-    /// (`Msg::confirm_danger`).
+    /// (`Msg::confirm_danger`). With `ack`, a checkbox with that label must be ticked first
+    /// (`Msg::confirm_danger_ack`), for a step that loses work for good.
     ConfirmDanger {
         title: String,
         body: String,
         button: String,
+        ack: Option<String>,
         then: Box<Msg>,
     },
     ConfirmAccepted,
@@ -333,6 +335,13 @@ impl Msg {
     }
 
     pub fn confirm_danger(title: &str, body: String, button: &str, then: Msg) -> Msg {
-        Msg::ConfirmDanger { title: title.into(), body, button: button.into(), then: Box::new(then) }
+        Msg::ConfirmDanger { title: title.into(), body, button: button.into(), ack: None, then: Box::new(then) }
+    }
+
+    /// `confirm_danger` whose button waits for the acknowledgement `ack` to be ticked. For views;
+    /// `update` code builds the Modal with `Modal::danger(..).with_ack(..)` instead.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn confirm_danger_ack(title: &str, body: String, button: &str, ack: &str, then: Msg) -> Msg {
+        Msg::ConfirmDanger { title: title.into(), body, button: button.into(), ack: Some(ack.into()), then: Box::new(then) }
     }
 }

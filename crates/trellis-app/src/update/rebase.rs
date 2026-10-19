@@ -183,7 +183,13 @@ fn start(st: &mut AppState, confirmed: bool, autostash: bool, now: Instant, fx: 
         && let Some((title, body)) = start_question(drops, p.branch(), stash)
     {
         let then = Msg::Rebase(RebaseMsg::StartRebase { confirmed: true, autostash: stash });
-        fx.extend(super::update(st, Msg::confirm(&title, body, "Start rebase", then), now));
+        // Dropping commits loses them; only stashing first is an ordinary question.
+        let ask = if drops > 0 {
+            Msg::confirm_danger(&title, body, "Start rebase", then)
+        } else {
+            Msg::confirm(&title, body, "Start rebase", then)
+        };
+        fx.extend(super::update(st, ask, now));
         return;
     }
     let Some(plan) = p.plan.as_ref() else { return };

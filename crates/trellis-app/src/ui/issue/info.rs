@@ -12,6 +12,7 @@ use crate::state::AppState;
 use crate::state::gitflow::start_blocked;
 use crate::state::issue::{IssueView, linked_branches, meta_rows, state_label};
 use crate::state::issue_words::labels_label;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Color32, FontId, Layout, RichText, Sense, Ui, vec2};
 use trellis_core::forge;
 use trellis_core::gitflow::FlowKind;
@@ -45,9 +46,9 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                     } else {
                         None
                     };
-                    let r = ui.add_enabled(blocked.is_none(), egui::Button::new("Checkout"));
+                    let r = ui.add(buttons::secondary("Checkout").enabled(blocked.is_none()));
                     let r = match blocked {
-                        Some(why) => r.on_disabled_hover_text(why),
+                        Some(why) => r.on_hover_text(why),
                         None => r,
                     };
                     if r.clicked() {
@@ -60,15 +61,15 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         None => note(ui, "No branches for this issue yet.", color::faint()),
     }
     heading(ui, "Actions");
-    if ui.button("Create branch…").clicked() {
+    if ui.add(buttons::secondary("Create branch…")).clicked() {
         msgs.push(Msg::Branch(BranchMsg::NewBranch { start: None, name: forge::branch_name_for(&v.issue) }));
     }
     if let Some(snap) = st.snap.as_ref().filter(|s| s.gitflow.is_initialized()) {
         for k in FlowKind::ALL {
             let blocked = start_blocked(snap, k);
-            let r = ui.add_enabled(blocked.is_none(), egui::Button::new(format!("Start Git Flow {}…", k.noun())));
+            let r = ui.add(buttons::secondary(format!("Start Git Flow {}…", k.noun())).enabled(blocked.is_none()));
             let r = match &blocked {
-                Some(why) => r.on_disabled_hover_text(why),
+                Some(why) => r.on_hover_text(why),
                 None => r,
             };
             if r.clicked() {
@@ -77,7 +78,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         }
     }
     let (label, text) = fs.copy_issue_item(&v.issue);
-    if ui.button(label).clicked() {
+    if ui.add(buttons::secondary(label)).clicked() {
         msgs.push(Msg::Copy(text));
     }
 }

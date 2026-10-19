@@ -75,7 +75,7 @@ pub(in crate::ui) fn tag_menu(ui: &mut egui::Ui, name: &str, snap: &Snapshot, gr
     });
     ui.separator();
     let delete = Msg::git("Delete tag", &["tag", "-d", name]);
-    menu_item(msgs, ui, "Delete locally…", Msg::confirm("Delete tag", format!("Delete local tag {name}?"), "Delete", delete));
+    menu_item(msgs, ui, "Delete locally…", Msg::confirm_danger("Delete tag", format!("Delete local tag {name}?"), "Delete", delete));
     if !remotes.is_empty() {
         delete_remote_menu(ui, name, &remotes, blocked, msgs);
     }

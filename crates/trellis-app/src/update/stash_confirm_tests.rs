@@ -36,7 +36,9 @@ fn argv(a: &[&str]) -> Vec<Vec<String>> {
 /// The open Confirm's title, body and button.
 fn confirm(st: &AppState) -> (String, String, String) {
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, .. }) => (title.clone(), body.clone(), button.clone()),
+        Some(Modal::Confirm { title, body, button, .. } | Modal::ConfirmDanger { title, body, button, .. }) => {
+            (title.clone(), body.clone(), button.clone())
+        }
         _ => panic!("no confirmation is open"),
     }
 }

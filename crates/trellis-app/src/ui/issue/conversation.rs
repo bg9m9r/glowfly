@@ -8,6 +8,7 @@ use crate::msg::{IssueMsg, Msg};
 use crate::state::AppState;
 use crate::state::issue::{Details, IssueView};
 use crate::state::pull_request::description_text;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::Entry;
 use trellis_core::settings::Settings;
@@ -25,7 +26,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         Details::Loading => note(ui, "Loading the issue…", color::weak()),
         Details::Failed(e) => {
             note(ui, e.as_str(), color::red());
-            if ui.button("Try again").clicked() {
+            if ui.add(buttons::secondary("Try again")).clicked() {
                 msgs.push(Msg::Issue(IssueMsg::Reload));
             }
         }

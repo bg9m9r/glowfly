@@ -84,7 +84,10 @@ fn stash_menu_asks_on_a_dirty_tree() {
         open_menu(&mut h, &row);
         h.get_by_label(item).click();
         h.run();
-        assert!(pushed(&h, &|m| matches!(m, Msg::Confirm { title: t, .. } if t == title)), "{item} asks first");
+        assert!(
+            pushed(&h, &|m| matches!(m, Msg::Confirm { title: t, .. } | Msg::ConfirmDanger { title: t, .. } if t == title)),
+            "{item} asks first"
+        );
         h.state_mut().1.clear();
     }
     drop(h);
@@ -99,7 +102,7 @@ fn stash_menu_asks_on_a_dirty_tree() {
     h.get_by_label("Apply").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Job(JobMsg::Stash { action: StashAction::Apply, index: 0, .. }))));
-    assert!(!pushed(&h, &|m| matches!(m, Msg::Confirm { .. })));
+    assert!(!pushed(&h, &|m| matches!(m, Msg::Confirm { .. } | Msg::ConfirmDanger { .. })));
     drop(h);
     remove_fixture(&dir);
     remove_fixture(&dir2);

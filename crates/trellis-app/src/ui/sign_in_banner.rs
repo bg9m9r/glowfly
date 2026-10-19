@@ -6,8 +6,9 @@ use crate::msg::{CredentialMsg, Msg};
 use crate::state::AppState;
 use crate::state::sign_in::banner_line;
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
-use eframe::egui::{self, RichText, Stroke};
+use eframe::egui::{self, RichText};
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = st.snap.as_ref() else { return };
@@ -22,13 +23,10 @@ pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                 ui.horizontal(|ui| {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         let (workdir, remote) = (n.workdir.clone(), n.remote.clone());
-                        if ui.button("Not now").clicked() {
+                        if ui.add(buttons::secondary("Not now")).clicked() {
                             msgs.push(Msg::Credentials(CredentialMsg::DismissSignIn { workdir: workdir.clone(), remote: remote.clone() }));
                         }
-                        let fetch = egui::Button::new(RichText::new(format!("Fetch {}", n.remote)).color(egui::Color32::WHITE))
-                            .fill(color::primary())
-                            .stroke(Stroke::new(1.0_f32, color::primary_border()));
-                        if ui.add(fetch).clicked() {
+                        if ui.add(buttons::primary(format!("Fetch {}", n.remote))).clicked() {
                             msgs.push(Msg::Credentials(CredentialMsg::SignInFetch { workdir, remote }));
                         }
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {

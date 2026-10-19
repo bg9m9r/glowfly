@@ -9,13 +9,15 @@ use crate::state::rebase::{Editing, RebasePanel};
 use crate::ui::spell_edit::spell_text_edit;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, CornerRadius, Id, Response, RichText, Stroke, Ui};
+use trellis_core::i18n::Lang;
 
 pub const COMBINED_LABEL: &str = "Message of the combined commit";
 pub const COMMAND_HINT: &str = "Shell command, e.g. cargo test";
 
 /// The open editor, under the SHA and summary and as wide as the row.
-pub(super) fn show(ui: &mut Ui, panel: &mut RebasePanel, cache: &mut UiCache, spell: bool, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut UiCache, spell: bool, msgs: &mut Vec<Msg>) {
     let Some(editing) = panel.editing else { return };
     let enabled = panel.editable();
     // The editor that had focus last frame: a new one takes it once.
@@ -54,30 +56,30 @@ pub(super) fn show(ui: &mut Ui, panel: &mut RebasePanel, cache: &mut UiCache, sp
                         }
                         ui.horizontal(|ui| match editing {
                             Editing::Message(_) => {
-                                if ui.button("Update message").clicked() {
+                                if ui.add(buttons::secondary("Update message")).clicked() {
                                     send(msgs, RebaseMsg::RebaseSaveMessage);
                                 }
-                                if ui.link("Cancel").clicked() {
+                                if ui.link(t.tr("common.cancel.button")).clicked() {
                                     send(msgs, RebaseMsg::RebaseCancelMessage);
                                 }
                             }
                             Editing::Combined(_) => {
-                                if ui.button("Update message").clicked() {
+                                if ui.add(buttons::secondary("Update message")).clicked() {
                                     send(msgs, RebaseMsg::RebaseSaveMessage);
                                 }
-                                if ui.button("Use git's message").on_hover_text("Forget the typed message").clicked() {
+                                if ui.add(buttons::secondary("Use git's message")).on_hover_text("Forget the typed message").clicked() {
                                     send(msgs, RebaseMsg::RebaseResetCombined);
                                 }
-                                if ui.link("Cancel").clicked() {
+                                if ui.link(t.tr("common.cancel.button")).clicked() {
                                     send(msgs, RebaseMsg::RebaseCancelMessage);
                                 }
                             }
                             Editing::Command(_) => {
                                 let typed = !panel.draft.trim().is_empty();
-                                if ui.add_enabled(typed, egui::Button::new("Save")).clicked() {
+                                if ui.add(buttons::secondary("Save").enabled(typed)).clicked() {
                                     send(msgs, RebaseMsg::RebaseSaveMessage);
                                 }
-                                if ui.link("Cancel").clicked() {
+                                if ui.link(t.tr("common.cancel.button")).clicked() {
                                     send(msgs, RebaseMsg::RebaseCancelMessage);
                                 }
                             }

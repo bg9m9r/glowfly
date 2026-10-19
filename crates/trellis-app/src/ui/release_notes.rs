@@ -1,22 +1,26 @@
 //! The release notes dialog (`Modal::ReleaseNotes`): a newer release on offer on top, then the
 //! notes bundled with this build, newest first. Esc closes it through the usual `CloseModal`.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::{self, Icon};
+use super::widgets::{self, Icon, buttons};
 use crate::msg::{Msg, UpdateMsg};
 use crate::state::release_notes::NotesDialog;
 use eframe::egui::{self, FontId, RichText, Sense, Stroke, pos2, vec2};
 use trellis_core::changelog::{NoteSection, ReleaseNotes, Span, SpanStyle};
 use trellis_core::i18n::Lang;
 
-const WIDTH: f32 = 600.0;
+/// Draws the dialog (wide, and resizable); true when Close was clicked.
+pub fn show(ui: &mut egui::Ui, cx: Cx, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
+    let t = cx.t;
+    let running = t.trf("release_notes.running", &[("version", &d.current)]);
+    let mut dialog = Dialog::new(cx, t.tr("release_notes.title")).subtitle(running).wide().resizable("release-notes").begin(ui);
+    dialog.body(ui, |ui| body(ui, t, d, msgs));
+    dialog.finish(ui, Footer::new().note(t.tr("release_notes.esc_hint")).close()).dismiss
+}
 
-/// Draws the dialog; true when Close was clicked.
-pub fn show(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {
-    ui.set_width(WIDTH);
-    ui.heading(t.tr("release_notes.title"));
-    ui.label(RichText::new(t.trf("release_notes.running", &[("version", &d.current)])).color(color::weak()));
-    ui.add_space(10.0);
+/// The offer, then the notes of each release.
+fn body(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) {
     if let Some(offer) = &d.offer {
         egui::Frame::new()
             .fill(color::panel())
@@ -24,7 +28,7 @@ pub fn show(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) ->
             .corner_radius(6)
             .inner_margin(egui::Margin::same(12))
             .show(ui, |ui| {
-                ui.set_width(WIDTH - 26.0);
+                ui.set_width(ui.available_width());
                 let title = t.trf("release_notes.available", &[("version", &offer.version)]);
                 ui.label(RichText::new(title).strong().size(15.0).color(color::text()));
                 if let Some(notes) = &d.offered_notes {
@@ -39,7 +43,7 @@ pub fn show(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) ->
                 } else {
                     (t.tr("updates.open_release_page.button"), UpdateMsg::OpenReleasePage)
                 };
-                if ui.add(widgets_primary(label)).clicked() {
+                if ui.add(buttons::primary(label)).clicked() {
                     msgs.push(Msg::Updates(msg));
                 }
             });
@@ -48,33 +52,18 @@ pub fn show(ui: &mut egui::Ui, t: Lang, d: &NotesDialog, msgs: &mut Vec<Msg>) ->
     if d.releases.is_empty() {
         ui.label(RichText::new(t.tr("release_notes.none")).color(color::weak()));
         ui.add_space(6.0);
-        if ui.button(t.tr("release_notes.open_releases.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("release_notes.open_releases.button"))).clicked() {
             msgs.push(Msg::Updates(UpdateMsg::OpenReleasePage));
         }
     } else {
-        egui::ScrollArea::vertical().id_salt("trellis-release-notes").max_height(480.0).auto_shrink([false, true]).show(ui, |ui| {
-            for (i, r) in d.releases.iter().enumerate() {
-                if i > 0 {
-                    ui.add_space(8.0);
-                    ui.separator();
-                }
-                release(ui, t, r, d.is_new(r), msgs);
+        for (i, r) in d.releases.iter().enumerate() {
+            if i > 0 {
+                ui.add_space(8.0);
+                ui.separator();
             }
-        });
+            release(ui, t, r, d.is_new(r), msgs);
+        }
     }
-    ui.add_space(12.0);
-    let mut close = false;
-    ui.horizontal(|ui| {
-        close = ui.button(t.tr("common.close.button")).clicked();
-        ui.label(RichText::new(t.tr("release_notes.esc_hint")).color(color::faint()));
-    });
-    close
-}
-
-fn widgets_primary(label: &str) -> egui::Button<'_> {
-    egui::Button::new(RichText::new(label).color(egui::Color32::WHITE))
-        .fill(color::primary())
-        .stroke(Stroke::new(1.0_f32, color::primary_border()))
 }
 
 /// One release: its version (a link to the comparison, when there is one), date, "New" chip

@@ -9,13 +9,15 @@ use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::{KeysPage, Pending};
 use crate::ui::shortcuts::Caps;
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{Align, CornerRadius, FontId, Layout, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, vec2};
+use trellis_core::i18n::Lang;
 
 /// The most keys a row offers Add for.
 const MAX_KEYS: usize = 4;
 
-pub fn row(ui: &mut Ui, b: &'static Binding, keys: &Keymap, page: &KeysPage, msgs: &mut Vec<Msg>) {
+pub fn row(ui: &mut Ui, t: Lang, b: &'static Binding, keys: &Keymap, page: &KeysPage, msgs: &mut Vec<Msg>) {
     let recording = page.recording.filter(|r| r.id == b.id).map(|r| r.slot);
     let push = |msgs: &mut Vec<Msg>, m: KeysMsg| msgs.push(Msg::Keys(m));
     ui.horizontal(|ui| {
@@ -41,13 +43,16 @@ pub fn row(ui: &mut Ui, b: &'static Binding, keys: &Keymap, page: &KeysPage, msg
                 return;
             }
             let chords = keys.chords(b.id);
-            let reset = |ui: &mut Ui| ui.small_button("Reset").on_hover_text(format!("Back to {}", keys.defaults_text(b.id)));
+            let reset =
+                |ui: &mut Ui| ui.add(buttons::secondary("Reset").small()).on_hover_text(format!("Back to {}", keys.defaults_text(b.id)));
             if !keys.is_default(b.id) && reset(ui).clicked() {
                 push(msgs, KeysMsg::Reset(b.id));
             }
             if recording == Some(Slot::Add) {
                 pill(ui);
-            } else if chords.len() < MAX_KEYS && ui.small_button("Add").on_hover_text("Give this action another key").clicked() {
+            } else if chords.len() < MAX_KEYS
+                && ui.add(buttons::secondary("Add").small()).on_hover_text("Give this action another key").clicked()
+            {
                 push(msgs, KeysMsg::Record { id: b.id, slot: Slot::Add });
             }
             if chords.is_empty() && recording != Some(Slot::Add) {
@@ -79,13 +84,13 @@ pub fn row(ui: &mut Ui, b: &'static Binding, keys: &Keymap, page: &KeysPage, msg
         });
     }
     if let Some(p) = page.pending.as_ref().filter(|p| p.id() == b.id) {
-        pending(ui, p, keys, msgs);
+        pending(ui, t, p, keys, msgs);
     }
     ui.add_space(2.0);
 }
 
 /// The warning or notice under a row, with what can be done about it.
-fn pending(ui: &mut Ui, p: &Pending, keys: &Keymap, msgs: &mut Vec<Msg>) {
+fn pending(ui: &mut Ui, t: Lang, p: &Pending, keys: &Keymap, msgs: &mut Vec<Msg>) {
     let label = |id| crate::keymap::binding(id).label;
     ui.horizontal_wrapped(|ui| {
         ui.add_space(12.0);
@@ -108,7 +113,7 @@ fn pending(ui: &mut Ui, p: &Pending, keys: &Keymap, msgs: &mut Vec<Msg>) {
                 if let Some(swap) = swap {
                     let after: Vec<String> = theirs.iter().map(|k| if k == chord { swap.text() } else { k.text() }).collect();
                     let tip = format!("{} gets {} instead", label(*other), after.join(" or "));
-                    if ui.button("Swap").on_hover_text(tip).clicked() {
+                    if ui.add(buttons::secondary("Swap")).on_hover_text(tip).clicked() {
                         msgs.push(Msg::Keys(KeysMsg::Swap));
                     }
                 }
@@ -118,10 +123,10 @@ fn pending(ui: &mut Ui, p: &Pending, keys: &Keymap, msgs: &mut Vec<Msg>) {
                 } else {
                     format!("{} keeps {}", label(*other), left.join(" or "))
                 };
-                if ui.button("Use here").on_hover_text(tip).clicked() {
+                if ui.add(buttons::secondary("Use here")).on_hover_text(tip).clicked() {
                     msgs.push(Msg::Keys(KeysMsg::UseHere));
                 }
-                if ui.button("Cancel").clicked() {
+                if ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked() {
                     msgs.push(Msg::Keys(KeysMsg::DismissPending));
                 }
             }
@@ -130,7 +135,7 @@ fn pending(ui: &mut Ui, p: &Pending, keys: &Keymap, msgs: &mut Vec<Msg>) {
 }
 
 fn ok(ui: &mut Ui, msgs: &mut Vec<Msg>) {
-    if ui.button("OK").clicked() {
+    if ui.add(buttons::secondary("OK")).clicked() {
         msgs.push(Msg::Keys(KeysMsg::DismissPending));
     }
 }

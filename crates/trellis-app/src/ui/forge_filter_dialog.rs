@@ -2,7 +2,9 @@
 //! conditions. Controls for conditions the service can't apply are disabled with the reason;
 //! labels, milestones and sprints come from the service once loaded.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::{FilterMsg, Msg};
 use crate::state::ForgeState;
 use crate::state::forge_filter_form::FilterForm;
@@ -21,22 +23,33 @@ const WIDTH: f32 = 230.0;
 const LABEL_W: f32 = 100.0;
 
 /// Draws the dialog; returns true when it should close. The name field takes the keyboard
-/// focus when nothing has it, unless `focus` is false (a credential prompt is above it).
+/// focus when nothing has it, unless `cx.keyboard` is false (a credential prompt is above it).
 pub fn show(
     ui: &mut egui::Ui,
+    cx: Cx,
     form: &mut FilterForm,
     fs: Option<&ForgeState>,
     existing: &RepoForgeFilters,
-    focus: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let mut close = false;
-    ui.heading(form.title());
     let target = fs.and_then(|f| crate::state::forge_filters::target_for(f, form.kind));
+    let mut d = Dialog::new(cx, form.title());
     if let Some(t) = &target {
-        ui.label(RichText::new(format!("{} · {}", t.provider.name(), t.display())).color(color::weak()));
+        d = d.subtitle(format!("{} · {}", t.provider.name(), t.display()));
     }
-    ui.add_space(8.0);
+    let mut d = d.begin(ui);
+    let submit = d.body(ui, |ui| body(ui, form, fs, existing, cx.keyboard));
+    let label = if form.editing.is_some() { "Save" } else { "Create filter" };
+    let ok = form.problems(existing).is_empty();
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ok)).submit(submit));
+    if out.primary {
+        msgs.push(Msg::ForgeFilter(FilterMsg::Save));
+    }
+    out.dismiss
+}
+
+/// The name and the conditions; returns whether Enter left the name field.
+fn body(ui: &mut egui::Ui, form: &mut FilterForm, fs: Option<&ForgeState>, existing: &RepoForgeFilters, focus: bool) -> bool {
     let r = controls::field(ui, egui::TextEdit::singleline(&mut form.name).hint_text("Filter name").desired_width(f32::INFINITY));
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
     if focus && ui.memory(|m| m.focused().is_none()) {
@@ -64,18 +77,7 @@ pub fn show(
             ui.label(RichText::new(p).color(color::red()));
         }
     }
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        let label = if form.editing.is_some() { "Save" } else { "Create filter" };
-        let ok = problems.is_empty();
-        if ui.add_enabled(ok, egui::Button::new(label)).clicked() || (submit && ok) {
-            msgs.push(Msg::ForgeFilter(FilterMsg::Save));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    submit
 }
 
 struct Fields<'a> {

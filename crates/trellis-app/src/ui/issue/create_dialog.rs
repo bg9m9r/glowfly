@@ -6,7 +6,9 @@
 //! above the buttons. The view edits the form's text and picks in place; a committed project
 //! or board, Create, Try again and the write-token link are sent as messages.
 
+use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::theme::color;
+use super::super::widgets::buttons;
 use super::picker::{Picker, multi};
 use crate::msg::{IssueMsg, Msg};
 use crate::state::issue_form::{IssueForm, OptionsState};
@@ -19,17 +21,30 @@ use trellis_core::forge::filters::Named;
 use trellis_core::text::printable;
 
 /// Draws the dialog; returns true when it should close. The title takes the keyboard focus
-/// when nothing has it, unless `focus` is false (a credential prompt is above it).
-pub fn show(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
+/// when nothing has it, unless `cx.keyboard` is false (a credential prompt is above it).
+pub fn show(ui: &mut Ui, cx: Cx, form: &mut IssueForm, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) -> bool {
     let p = form.provider();
-    let noun = words::noun(p);
-    ui.heading(form.heading());
-    ui.label(RichText::new(format!("{} · {}", p.name(), form.target.display())).color(color::weak()));
+    let subtitle = format!("{} · {}", p.name(), form.target.display());
+    let mut d = Dialog::new(cx, form.heading()).subtitle(subtitle).wide().begin(ui);
     if p == Provider::Trello {
         write_note(ui, form, msgs);
+        ui.add_space(4.0);
     }
-    ui.add_space(8.0);
+    let submit = d.body(ui, |ui| body(ui, form, fs, cx.keyboard, msgs));
+    let blocked = form.submit_blocked();
+    let label = if form.busy { "Creating…".to_owned() } else { form.heading() };
+    let ok = blocked.is_none() && !form.busy;
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ok).why(blocked.as_deref())).submit(submit));
+    if out.primary {
+        msgs.push(Msg::Issue(IssueMsg::Create));
+    }
+    out.dismiss
+}
+
+/// The fields, the loading state and the problems; returns whether Enter left the title.
+fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool, msgs: &mut Vec<Msg>) -> bool {
+    let p = form.provider();
+    let noun = words::noun(p);
     ui.spacing_mut().item_spacing.y = 4.0;
     if p.is_jira() {
         caption(ui, words::project_label(p));
@@ -118,23 +133,7 @@ pub fn show(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: b
     if let Some(e) = &form.error {
         ui.add(egui::Label::new(RichText::new(format!("Couldn't create the {noun}: {e}")).color(color::red())).wrap());
     }
-    ui.add_space(10.0);
-    let blocked = form.submit_blocked();
-    ui.horizontal(|ui| {
-        let label = if form.busy { "Creating…".to_owned() } else { form.heading() };
-        let ok = blocked.is_none() && !form.busy;
-        let mut r = ui.add_enabled(ok, egui::Button::new(label));
-        if let Some(why) = &blocked {
-            r = r.on_disabled_hover_text(why);
-        }
-        if r.clicked() || (submit && ok) {
-            msgs.push(Msg::Issue(IssueMsg::Create));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    submit
 }
 
 fn caption(ui: &mut Ui, text: &str) {

@@ -82,7 +82,7 @@ fn update_all_asks_when_commits_would_be_stranded() {
     assert!(fx.is_empty() && st.job.is_none(), "{fx:?}");
     assert_eq!(sub(&st).left_behind.len(), 1, "the row was read again");
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, then }) => {
+        Some(Modal::ConfirmDanger { title, body, button, then, .. }) => {
             assert_eq!(title, "Update all submodules");
             assert!(body.contains(&format!("{PATH}: 1 commit")) && body.contains(&detached.to_string()[..7]), "{body}");
             assert_eq!(button, CONFIRM_ALL_BUTTON);

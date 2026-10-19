@@ -43,6 +43,10 @@ pub(super) fn checked(st: &mut AppState, path: String, result: Result<Option<Box
 /// The confirmation's button: checks the submodule again and starts the removal job.
 pub(super) fn confirm(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(Modal::RemoveSubmodule(form)) = st.modal.as_ref() else { return };
+    if form.needs_ack() && !form.acked {
+        tracing::debug!("removing submodule {} waits for the acknowledgement", form.path);
+        return;
+    }
     let path = form.path.clone();
     let Some(sm) = find(st, &path) else {
         st.modal = None;

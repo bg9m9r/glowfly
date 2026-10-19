@@ -3,7 +3,9 @@
 //! remote under a name Trellis suggests. `update` checks the request again and closes the dialog
 //! once the job starts.
 
+use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::theme::color;
+use super::super::widgets::buttons;
 use super::dialog::{field, note, problem_line};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
@@ -53,18 +55,18 @@ fn rows(ui: &mut egui::Ui, p: &ForkPicker, snap: Option<&Snapshot>, connections:
 /// is disabled while a job runs (`idle` false).
 pub fn show(
     ui: &mut egui::Ui,
+    cx: Cx,
     p: &mut ForkPicker,
     snap: Option<&Snapshot>,
     connections: &[Connection],
-    focus: bool,
     idle: bool,
     msgs: &mut Vec<Msg>,
 ) -> bool {
+    let focus = cx.keyboard;
     let repo = p.target.display();
     let service = p.target.provider.name();
-    ui.heading(format!("Add a fork of {repo}"));
-    note(ui, format!("Forks on {service}. The one you pick is added as a remote."));
-    ui.add_space(8.0);
+    let subtitle = format!("Forks on {service}. The one you pick is added as a remote.");
+    let d = Dialog::new(cx, format!("Add a fork of {repo}")).subtitle(subtitle).begin(ui);
     let mut submit = false;
     let mut listed = false;
     if p.loading {
@@ -74,12 +76,12 @@ pub fn show(
         });
     } else if let Some(e) = &p.error {
         ui.label(RichText::new(error_text(e)).color(color::red()));
-        if ui.button("Retry").clicked() {
+        if ui.add(buttons::secondary("Retry").small()).clicked() {
             msgs.push(Msg::Remote(RemoteMsg::RetryForks));
         }
     } else if p.list.forks.is_empty() {
         ui.label(format!("Nobody has forked {repo} yet."));
-        if p.target.provider.creates_forks() && ui.button(format!("Fork it on {service}…")).clicked() {
+        if p.target.provider.creates_forks() && ui.add(buttons::secondary(format!("Fork it on {service}…")).small()).clicked() {
             msgs.push(Msg::Remote(RemoteMsg::ForkOnService(p.remote.clone())));
         }
     } else {
@@ -112,15 +114,13 @@ pub fn show(
         ui.add_space(4.0);
         controls::checkbox(ui, &mut p.fetch_after, "Fetch its branches after adding");
     }
-    let mut close = false;
-    ui.add_space(10.0);
-    ui.horizontal(|ui| {
-        if listed && (ui.add_enabled(ready, egui::Button::new("Add remote")).clicked() || (submit && ready)) {
-            msgs.push(Msg::Remote(RemoteMsg::AddFork));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let mut footer = Footer::new().cancel().submit(submit);
+    if listed {
+        footer = footer.primary(buttons::primary("Add remote").enabled(ready));
+    }
+    let out = d.finish(ui, footer);
+    if out.primary {
+        msgs.push(Msg::Remote(RemoteMsg::AddFork));
+    }
+    out.dismiss
 }

@@ -4,20 +4,27 @@ use super::*;
 use eframe::egui::vec2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
+use trellis_core::i18n::Lang;
 
+/// The English Close label (`common.close_esc.button`).
+const CLOSE: &str = "Close  (Esc)";
 const TOGGLES: Toggles = Toggles { ignore_ws: Some(false), wrap: Some(false) };
 
-/// The top of Expand all, of Wrap lines and of Close in a header bar `width` wide.
+/// The middle of Expand all, of Wrap lines and of Close in a header bar `width` wide.
 fn tops(width: f32) -> (f64, f64, f64) {
     let target = DiffTarget::Unstaged("notes.txt".into());
     let folds = Some(FoldCounts { open: 1, closed: 1 });
     let rows = Some((DiffLayout::Inline, DiffMode::WholeFile));
     let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-        header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, folds, &Keymap::default(), None, &mut Vec::new());
+        header_bar(ui, Lang::En, &target, None, rows, [StepKind::Change; 2], TOGGLES, folds, &Keymap::default(), None, &mut Vec::new());
     });
     h.run();
-    let top = |label: &str| h.get_by_label(label).bounding_box().expect("laid out").y0;
-    (top("Expand all"), top(WRAP), top("Close  (Esc)"))
+    // Middles, not tops: a 28 px button and a shorter toggle on one row share their centre.
+    let top = |label: &str| {
+        let b = h.get_by_label(label).bounding_box().expect("laid out");
+        (b.y0 + b.y1) / 2.0
+    };
+    (top("Expand all"), top(WRAP), top(CLOSE))
 }
 
 #[test]
@@ -35,7 +42,9 @@ fn wrap_toggle_sends_msg() {
     let target = DiffTarget::Unstaged("notes.txt".into());
     let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
     let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui_state(
-        |ui, msgs: &mut Vec<Msg>| header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, msgs),
+        |ui, msgs: &mut Vec<Msg>| {
+            header_bar(ui, Lang::En, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, msgs)
+        },
         Vec::new(),
     );
     h.run();
@@ -45,14 +54,14 @@ fn wrap_toggle_sends_msg() {
 
     let no_rows = Toggles { ignore_ws: Some(false), wrap: None };
     let mut h = Harness::builder().with_size(vec2(1400.0, 80.0)).build_ui(|ui| {
-        header_bar(ui, &target, None, None, [StepKind::End; 2], no_rows, None, &Keymap::default(), None, &mut Vec::new());
+        header_bar(ui, Lang::En, &target, None, None, [StepKind::End; 2], no_rows, None, &Keymap::default(), None, &mut Vec::new());
     });
     h.run();
     assert!(h.query_by_label(WRAP).is_none(), "no rows, no wrap toggle");
     assert!(h.query_by_label(IGNORE_WS).is_some());
 }
 
-/// The top of Ignore whitespace, Open, Close and the path in a commit's header bar `width`
+/// The middle of Ignore whitespace, Open, Close and the path in a commit's header bar `width`
 /// wide, and the right edge of the path's kind and the left edge of the leftmost toggle.
 fn commit_layout(width: f32) -> ([f64; 4], f64, f64) {
     let oid = git2::Oid::from_bytes(&[7; 20]).unwrap();
@@ -60,11 +69,24 @@ fn commit_layout(width: f32) -> ([f64; 4], f64, f64) {
     let file = CommitFile { oid, path: "notes.txt", status: 'M', open_path: "notes.txt", in_workdir: true };
     let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
     let mut h = Harness::builder().with_size(vec2(width, 80.0)).build_ui(|ui| {
-        header_bar(ui, &target, Some(&file), rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, &mut Vec::new());
+        header_bar(
+            ui,
+            Lang::En,
+            &target,
+            Some(&file),
+            rows,
+            [StepKind::Change; 2],
+            TOGGLES,
+            None,
+            &Keymap::default(),
+            None,
+            &mut Vec::new(),
+        );
     });
     h.run();
     let rect = |label: &str| h.get_by_label(label).bounding_box().expect("laid out");
-    let tops = [rect(IGNORE_WS).y0, rect(file_buttons::OPEN_SHORT).y0, rect(CLOSE).y0, rect("notes.txt").y0];
+    let mid = |label: &str| (rect(label).y0 + rect(label).y1) / 2.0;
+    let tops = [mid(IGNORE_WS), mid(file_buttons::OPEN_SHORT), mid(CLOSE), mid("notes.txt")];
     (tops, rect("commit 0707070").x1, rect("Whole file").x0)
 }
 
@@ -100,11 +122,12 @@ fn toggles_move_down_in_a_narrow_bar() {
     let rows = Some((DiffLayout::Inline, DiffMode::Hunks));
     let layout = |width: f32| {
         let mut h = Harness::builder().with_size(vec2(width, 120.0)).build_ui(|ui| {
-            header_bar(ui, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, &mut Vec::new());
+            header_bar(ui, Lang::En, &target, None, rows, [StepKind::Change; 2], TOGGLES, None, &Keymap::default(), None, &mut Vec::new());
         });
         h.run();
         let rect = |label: &str| h.get_by_label(label).bounding_box().expect("laid out");
-        (rect(CLOSE).y0, rect("Split").y0, rect(IGNORE_WS).y0, rect("0101010..0202020").x1, rect("Hunks").x0.min(rect("Whole file").x0))
+        let mid = |label: &str| (rect(label).y0 + rect(label).y1) / 2.0;
+        (mid(CLOSE), mid("Split"), mid(IGNORE_WS), rect("0101010..0202020").x1, rect("Hunks").x0.min(rect("Whole file").x0))
     };
     let (close, split, ws, _, _) = layout(1000.0);
     assert!((split - close).abs() < 4.0 && (ws - close).abs() < 4.0, "one row when wide");

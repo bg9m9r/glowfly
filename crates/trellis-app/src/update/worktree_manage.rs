@@ -79,7 +79,12 @@ pub(super) fn remove(st: &mut AppState, fx: &mut Vec<Effect>) {
         let refusal = Refusal::Locked(reason.clone());
         st.log(false, needs_force_text(&form.name, &refusal));
         form.refusal = Some(refusal);
+        form.acked = false;
         st.modal = Some(Modal::RemoveWorktree(form));
+        return;
+    }
+    if form.needs_ack() && !form.acked {
+        tracing::debug!("force remove of {} waits for the acknowledgement", form.name);
         return;
     }
     if let Some(why) = remote_changed(st, &mut form) {

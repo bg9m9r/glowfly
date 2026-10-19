@@ -14,6 +14,7 @@ use crate::state::ssh_use::{
 use crate::state::trust::shown_value;
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::paths::same_spelling;
@@ -60,7 +61,7 @@ fn level(
 ) {
     ui.label(RichText::new(name).size(12.5).strong().color(color::text()));
     let stop = |ui: &mut Ui, msgs: &mut Vec<Msg>| {
-        if ui.button(RichText::new("Stop using").size(12.0)).clicked() {
+        if ui.add(buttons::secondary("Stop using").small()).clicked() {
             msgs.push(Msg::Ssh(SshMsg::StopUsing { repo, confirmed: false }));
         }
     };

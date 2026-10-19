@@ -2,7 +2,9 @@
 //! the user types with the pure rules in `state::worktree_move`; the runner checks the disk and
 //! reports a taken folder under the field. `update` closes the dialog once the job starts.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::{FolderPurpose, Msg, PrefsMsg};
 use crate::state::worktree_move::{MoveForm, target_problem};
 use crate::state::worktrees::folder_warning;
@@ -12,29 +14,21 @@ use eframe::egui::{self, Id, Key, RichText};
 use trellis_core::repo::Snapshot;
 
 /// The dialog for `form`; returns true when Cancel closes it. The folder field has the keyboard
-/// focus unless `focus` is false (a credential prompt is open above it); Enter moves.
-pub fn move_worktree(
-    ui: &mut egui::Ui,
-    form: &mut MoveForm,
-    snap: Option<&Snapshot>,
-    focus: bool,
-    idle: bool,
-    msgs: &mut Vec<Msg>,
-) -> bool {
-    let mut close = false;
-    ui.heading(format!("Move worktree {}", form.name));
-    ui.add_space(6.0);
+/// focus unless `cx.keyboard` is false (a credential prompt is open above it); Enter moves.
+pub fn move_worktree(ui: &mut egui::Ui, cx: Cx, form: &mut MoveForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
+    let focus = cx.keyboard;
+    let d = Dialog::new(cx, format!("Move worktree {}", form.name)).begin(ui);
     ui.label(RichText::new("New folder").color(color::weak()));
     let mut enter = false;
     ui.horizontal(|ui| {
-        let browse_w = 80.0;
+        let browse_w = 84.0;
         let edit = egui::TextEdit::singleline(&mut form.folder).id(Id::new("trellis-worktree-move-folder"));
         let r = controls::field(ui, edit.desired_width(ui.available_width() - browse_w));
         enter = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
         if focus && !enter {
             r.request_focus();
         }
-        if ui.button("Browse…").clicked() {
+        if ui.add(buttons::secondary("Browse…").small()).clicked() {
             msgs.push(Msg::Prefs(PrefsMsg::PickFolder(FolderPurpose::WorktreeParent)));
         }
     });
@@ -48,15 +42,10 @@ pub fn move_worktree(
     ui.label(
         RichText::new("git moves the folder and updates its records. A tab showing it follows it to the new folder.").color(color::weak()),
     );
-    ui.add_space(10.0);
     let valid = snap.is_some() && bad.is_none() && idle;
-    ui.horizontal(|ui| {
-        if ui.add_enabled(valid, egui::Button::new("Move")).clicked() || (enter && valid) {
-            msgs.push(Msg::Worktree(WorktreeMsg::Move));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Move").enabled(valid)).submit(enter));
+    if out.primary {
+        msgs.push(Msg::Worktree(WorktreeMsg::Move));
+    }
+    out.dismiss
 }

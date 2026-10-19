@@ -12,6 +12,7 @@ use crate::state::dashboard::{AccountState, DashShow, Phase, service_header};
 use crate::state::dashboard_rows::{Row, counts, empty_text, sections};
 use crate::state::{AppState, PrefPage};
 use crate::ui::theme::controls;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Ui};
 use trellis_core::forge::Account;
 
@@ -58,7 +59,7 @@ fn header(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new("Pull requests and issues across your repositories").color(color::weak()));
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if icon(ui, Icon::Close, "Close").clicked() {
+            if icon(ui, Icon::Close, st.settings.lang().tr("common.close.button")).clicked() {
                 msgs.push(dash(DashboardMsg::Close));
             }
             if icon(ui, Icon::Refresh, "Refresh").clicked() {
@@ -149,7 +150,7 @@ fn problem(ui: &mut Ui, text: String, add_buttons: impl FnOnce(&mut Ui)) {
 }
 
 fn connect(ui: &mut Ui, msgs: &mut Vec<Msg>) {
-    if ui.small_button("Connect…").clicked() {
+    if ui.add(buttons::secondary("Connect…").small()).clicked() {
         msgs.push(Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Integrations)));
     }
 }
@@ -178,7 +179,7 @@ fn not_loaded(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         match &a.state {
             AccountState::NotConnected => problem(ui, format!("{name}: not connected"), |ui| connect(ui, msgs)),
             AccountState::SignInFailed(e) => problem(ui, format!("{name}: {e}"), |ui| {
-                if ui.small_button("Sign in").clicked() {
+                if ui.add(buttons::secondary("Sign in").small()).clicked() {
                     msgs.push(dash(DashboardMsg::SignIn(a.account.clone())));
                 }
                 connect(ui, msgs);

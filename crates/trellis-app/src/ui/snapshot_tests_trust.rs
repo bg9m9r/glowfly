@@ -118,6 +118,10 @@ fn trust_prompt_held() {
     h.check_snapshot("trust_prompt_held");
     assert!(h.query_by_label("Pull needs git to run this repository's settings and hooks.").is_some());
     assert!(h.query_by_label("Don't trust").is_none(), "a held job offers Trust and run or Cancel");
+    h.press_key(eframe::egui::Key::Enter);
+    h.run();
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::Decide { .. }))), "Enter never trusts");
+    h.state_mut().1.clear();
     h.get_by_label("Trust and run").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::Decide { trusted: true, .. }))));

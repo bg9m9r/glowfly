@@ -35,12 +35,7 @@ pub(super) fn handle(st: &mut AppState, msg: RemoteMsg, fx: &mut Vec<Effect>) {
                 return;
             }
             let Some(body) = st.snap.as_ref().map(|s| remove_body(s, &name)) else { return };
-            st.modal = Some(Modal::Confirm {
-                title: format!("Remove remote {name}"),
-                body,
-                button: "Remove remote".into(),
-                then: Box::new(Msg::Remote(RemoteMsg::Remove(name))),
-            });
+            st.modal = Some(Modal::danger(format!("Remove remote {name}"), body, "Remove remote", Msg::Remote(RemoteMsg::Remove(name))));
         }
         RemoteMsg::Remove(name) => {
             if configured(st, &name).is_none() {

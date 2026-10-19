@@ -7,6 +7,7 @@ use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::state::lfs::{INSTALL_URL, LfsPage};
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Key, RichText, Ui};
 use trellis_core::lfs::{LfsCommand, LfsPattern, LfsStatus};
 
@@ -27,7 +28,7 @@ pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec
     if let Some(error) = &page.error {
         warn(ui, error);
         ui.add_space(6.0);
-        if ui.button("Check again").clicked() {
+        if ui.add(buttons::secondary("Check again")).clicked() {
             msgs.push(Msg::Lfs(LfsMsg::Reload));
         }
         return;
@@ -54,10 +55,10 @@ fn missing(ui: &mut Ui, status: &LfsStatus, msgs: &mut Vec<Msg>) {
         help(ui, "Install it from git-lfs.com, then choose Check again.");
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            if ui.button("Get Git LFS").clicked() {
+            if ui.add(buttons::secondary("Get Git LFS")).clicked() {
                 msgs.push(Msg::OpenUrl(INSTALL_URL.into()));
             }
-            if ui.button("Check again").clicked() {
+            if ui.add(buttons::secondary("Check again")).clicked() {
                 msgs.push(Msg::Lfs(LfsMsg::Reload));
             }
         });
@@ -138,7 +139,7 @@ fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx
                 page.pattern_error = None;
             }
             submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
-            submit |= ui.add_enabled(!busy, egui::Button::new("Track")).clicked();
+            submit |= ui.add(buttons::secondary("Track").enabled(!busy)).clicked();
         });
         if submit && !busy {
             msgs.push(Msg::Lfs(LfsMsg::Track(page.new_pattern.clone())));
@@ -148,7 +149,7 @@ fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx
         }
     });
     row(ui, ".gitattributes", |ui| {
-        if ui.add_enabled(status.has_gitattributes, egui::Button::new("Open .gitattributes")).clicked() {
+        if ui.add(buttons::secondary("Open .gitattributes").enabled(status.has_gitattributes)).clicked() {
             msgs.push(Msg::Files(FilesMsg::OpenWorkingFile(".gitattributes".into())));
         }
         if !status.has_gitattributes {
@@ -169,8 +170,7 @@ fn pattern_list(ui: &mut Ui, patterns: &[LfsPattern], editable: bool, busy: bool
             }
             if editable {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let b = egui::Button::new(RichText::new("Untrack").size(12.0)).small();
-                    if ui.add_enabled(!busy, b).clicked() {
+                    if ui.add(buttons::secondary("Untrack").small().enabled(!busy)).clicked() {
                         msgs.push(Msg::Lfs(LfsMsg::Untrack(p.raw.clone())));
                     }
                 });
@@ -198,13 +198,9 @@ fn commands_row(ui: &mut Ui, cx: &LfsContext, msgs: &mut Vec<Msg>) {
     ui.horizontal_wrapped(|ui| {
         for command in LfsCommand::ALL {
             let no_remote = command.needs_remote() && cx.remote.is_none();
-            let r = ui.add_enabled(!busy && !no_remote, egui::Button::new(command.name()));
-            let r = if no_remote {
-                r.on_disabled_hover_text("Add a remote first")
-            } else {
-                let text = hover(command, cx.remote.as_deref());
-                r.on_hover_text(&text).on_disabled_hover_text(text)
-            };
+            // A disabled button still shows its tip (it senses hover only).
+            let tip = if no_remote { "Add a remote first".to_owned() } else { hover(command, cx.remote.as_deref()) };
+            let r = ui.add(buttons::secondary(command.name()).enabled(!busy && !no_remote)).on_hover_text(tip);
             if r.clicked() {
                 msgs.push(Msg::Lfs(LfsMsg::Run { command, confirmed: false }));
             }

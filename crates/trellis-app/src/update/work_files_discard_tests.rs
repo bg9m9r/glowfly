@@ -5,7 +5,7 @@
 //! Discarding a tracked file still reverts it to the index version.
 
 use super::tests::{drive, scratch_repo, state};
-use super::work_files_tests::{confirm, empty_diff, entry, last_log, loaded, run, work_ops};
+use super::work_files_tests::{ack, confirm, empty_diff, entry, last_log, loaded, run, tick, work_ops};
 use crate::effect::{DeleteMode, Effect, FileOp, LocalOp, WorkFileOk};
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
@@ -44,6 +44,8 @@ fn discard_confirm_trash() {
     assert_eq!(body, format!("u.txt isn't tracked by git. Discarding it moves it to the {TRASH}, so you can restore it from there."));
     assert_eq!(button, format!("Move to {TRASH}"));
     assert_eq!(op, discard("u.txt", DeleteMode::Trash));
+    assert!(matches!(st.modal, Some(Modal::ConfirmDanger { .. })));
+    assert_eq!(ack(&st), None, "the trash keeps a copy: no acknowledgement");
 
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert_eq!(work_ops(&fx), [discard("u.txt", DeleteMode::Trash)]);
@@ -60,6 +62,10 @@ fn discard_confirm_trash_off() {
     assert!(!body.contains(TRASH));
     assert_eq!(button, "Discard");
     assert_eq!(op, discard("u.txt", DeleteMode::Permanent));
+    assert_eq!(ack(&st), Some("I understand this can't be undone"));
+    assert!(run(&mut st, Msg::ConfirmAccepted).is_empty(), "nothing runs before the tick");
+    tick(&mut st);
+    assert_eq!(work_ops(&run(&mut st, Msg::ConfirmAccepted)), [discard("u.txt", DeleteMode::Permanent)]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -73,6 +79,7 @@ fn discard_mode_fixed_at_ask_time() {
 
     ask(&mut st, "u.txt");
     st.settings.delete_to_trash = true;
+    tick(&mut st);
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert_eq!(work_ops(&fx), [discard("u.txt", DeleteMode::Permanent)]);
     let _ = std::fs::remove_dir_all(&dir);
@@ -114,6 +121,8 @@ fn discard_trash_refused_offers_permanent() {
         )
     );
     assert!(matches!(then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) if *op == discard("u.txt", DeleteMode::PermanentNoTrash)));
+    assert!(ack(&st).is_some(), "discarding an untracked file for good asks for the acknowledgement");
+    tick(&mut st);
     let fx = run(&mut st, Msg::ConfirmAccepted);
     assert_eq!(work_ops(&fx), [discard("u.txt", DeleteMode::PermanentNoTrash)]);
 
@@ -217,7 +226,8 @@ fn discard_end_to_end(name: &str, to_trash: bool) -> (PathBuf, AppState, String)
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert!(st.snap.as_ref().unwrap().unstaged.contains(&entry("u.txt", '?')));
     drive(&mut st, Msg::WorkFile(WorkFileMsg::DiscardUntracked("u.txt".into())));
-    assert!(matches!(&st.modal, Some(Modal::Confirm { .. })));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { .. })));
+    tick(&mut st);
     drive(&mut st, Msg::ConfirmAccepted);
     assert!(!dir.join("u.txt").exists());
     assert!(st.snap.as_ref().unwrap().unstaged.iter().all(|f| f.path != "u.txt"));

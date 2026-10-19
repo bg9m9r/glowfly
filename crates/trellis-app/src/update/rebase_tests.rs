@@ -288,7 +288,7 @@ fn drops_are_confirmed_before_starting() {
     up(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 2, to: 0 }));
     assert!(up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false })).is_empty());
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, .. }) => {
+        Some(Modal::ConfirmDanger { title, body, button, .. }) => {
             assert_eq!((title.as_str(), button.as_str()), ("Drop commits", "Start rebase"));
             assert_eq!(body, "Drop 1 commit from main? Their changes will be removed.");
         }

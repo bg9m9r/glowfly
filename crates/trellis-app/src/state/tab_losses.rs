@@ -66,5 +66,5 @@ pub fn close_confirm(st: &AppState, closing: &[usize], then: Msg) -> Option<Moda
     }
     let (title, button) =
         if n == 1 { ("Close tab?".to_owned(), "Close tab".to_owned()) } else { (format!("Close {n} tabs?"), format!("Close {n} tabs")) };
-    Some(Modal::Confirm { title, body: body.join("\n"), button, then: Box::new(then) })
+    Some(Modal::danger(title, body.join("\n"), button, then))
 }

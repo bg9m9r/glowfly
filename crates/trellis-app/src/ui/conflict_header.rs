@@ -49,7 +49,7 @@ pub(super) fn header_bar(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option
 
 /// The header's buttons, laid out right to left.
 fn header_buttons(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option<&str>, in_tool: bool, keys: &Keymap, msgs: &mut Vec<Msg>) {
-    if ui.button(t.tr("conflict.header.close.button")).clicked() {
+    if ui.add(buttons::secondary(t.tr("conflict.header.close.button"))).clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     }
     let text = view.file.as_ref().is_some_and(|f| matches!(f.content, ConflictContent::Text(_)));

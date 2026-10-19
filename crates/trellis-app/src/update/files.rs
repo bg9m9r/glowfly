@@ -35,16 +35,16 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
         FilesMsg::RestoreWouldOverwrite { path, oid, reason } => {
             // Status said the file was clean, but the disk disagrees (an ignored file, edits git
             // skips, or a stale status). Ask again, this time saying what will be lost.
-            st.modal = Some(Modal::Confirm {
-                title: "Restore file".into(),
-                body: format!(
+            st.modal = Some(Modal::danger(
+                "Restore file",
+                format!(
                     "{reason}.\n\nRestoring the version from commit {} replaces it; Undo{} puts its current contents back.",
                     short(oid),
                     undo_hint(st)
                 ),
-                button: "Restore anyway".into(),
-                then: Box::new(Msg::Files(FilesMsg::RestoreFile { oid, path, deleted: false, confirmed: true, overwrite: true })),
-            });
+                "Restore anyway",
+                Msg::Files(FilesMsg::RestoreFile { oid, path, deleted: false, confirmed: true, overwrite: true }),
+            ));
             super::repo::refresh_status(st, fx);
         }
         FilesMsg::FileRestored { path, oid, result, undo } => {
@@ -128,11 +128,13 @@ fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
     } else {
         "The change is left unstaged; discarding it brings back the current version.".to_owned()
     };
-    st.modal = Some(Modal::Confirm {
-        title: "Restore file".into(),
-        body: format!("{source}\n\n{note}"),
-        button: "Restore".into(),
-        then: Box::new(Msg::Files(FilesMsg::RestoreFile { oid, path, deleted, confirmed: true, overwrite: dirty })),
+    let then = Msg::Files(FilesMsg::RestoreFile { oid, path, deleted, confirmed: true, overwrite: dirty });
+    let body = format!("{source}\n\n{note}");
+    // Overwriting uncommitted changes is a danger step; a clean restore is not.
+    st.modal = Some(if dirty {
+        Modal::danger("Restore file", body, "Restore", then)
+    } else {
+        Modal::Confirm { title: "Restore file".into(), body, button: "Restore".into(), then: Box::new(then) }
     });
 }
 

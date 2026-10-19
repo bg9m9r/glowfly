@@ -62,12 +62,12 @@ fn run(st: &mut AppState, batch: Batch, list: &[SubmoduleInfo], confirmed: bool,
         return;
     }
     if batch == Batch::UpdateAll && !plan.stranding.is_empty() && !confirmed {
-        st.modal = Some(Modal::Confirm {
-            title: "Update all submodules".into(),
-            body: confirm_all_body(&plan.stranding),
-            button: CONFIRM_ALL_BUTTON.into(),
-            then: Box::new(Msg::Submodule(SubmoduleMsg::Batch { batch: Batch::UpdateAll, confirmed: true })),
-        });
+        st.modal = Some(Modal::danger(
+            "Update all submodules",
+            confirm_all_body(&plan.stranding),
+            CONFIRM_ALL_BUTTON,
+            Msg::Submodule(SubmoduleMsg::Batch { batch: Batch::UpdateAll, confirmed: true }),
+        ));
         return;
     }
     let cmds = crate::state::submodules::batch::cmds(batch, &plan);

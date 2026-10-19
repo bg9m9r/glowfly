@@ -53,7 +53,7 @@ impl HeaderAction {
             Self::UnstageAll => Msg::Stage(StageMsg::UnstageAll),
             Self::NewFile => Msg::WorkFile(WorkFileMsg::NewFileDialog(String::new())),
             // Discarding goes through a stash so it can be recovered.
-            Self::DiscardAll => Msg::confirm(
+            Self::DiscardAll => Msg::confirm_danger(
                 t.tr("details.wip.discard_all.title"),
                 discard_all_text(t, keys),
                 t.tr("details.wip.discard_all.button"),

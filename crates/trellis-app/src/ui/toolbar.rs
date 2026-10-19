@@ -112,7 +112,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 let host = st.forge.as_ref().filter(|f| f.host.is_some());
                 dropdown(ui, "push-menu", t.tr("toolbar.push_menu"), if host.is_some() { 260.0 } else { 200.0 }, labels, |ui| {
                     if ui.add_enabled(idle, egui::Button::new(t.tr("toolbar.force_push"))).clicked() {
-                        msgs.push(Msg::confirm(
+                        msgs.push(Msg::confirm_danger(
                             t.tr("toolbar.force_push.title"),
                             t.tr("toolbar.force_push.body").into(),
                             t.tr("toolbar.force_push.button"),

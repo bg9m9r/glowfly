@@ -19,7 +19,9 @@ use crate::pull_request::PullRequestMsg;
 use crate::state::AppState;
 use crate::state::pull_request::{Files, PrTab, PrView, Tone};
 use crate::state::pull_request_threads::on_file;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Align, Color32, FontId, Layout, Margin, RichText, Sense, Ui, vec2};
+use trellis_core::i18n::Lang;
 use trellis_core::text::printable;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
@@ -27,7 +29,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     let shows_diff = st.diff.as_ref().is_some_and(|(t, _)| view.shows(t));
     let tab = view.tab;
     ui.add_space(6.0);
-    header(ui, view, msgs);
+    header(ui, st.settings.lang(), view, msgs);
     tabs(ui, view, msgs);
     ui.separator();
     let room = ui.available_width();
@@ -120,20 +122,21 @@ pub(in crate::ui) fn heading(ui: &mut Ui, text: &str) {
 }
 
 /// The icon, label, title and Draft chip, the links and Close; below, the author and branches.
-fn header(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
+fn header(ui: &mut Ui, t: Lang, v: &PrView, msgs: &mut Vec<Msg>) {
     let pr = &v.pr;
     ui.horizontal(|ui| {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(8.0);
-            if ui.button("Close  (Esc)").clicked() {
+            if ui.add(buttons::secondary(t.tr("common.close_esc.button"))).clicked() {
                 msgs.push(Msg::PullRequest(PullRequestMsg::Close));
             }
             let no_link = format!("The service sent no link for this {}.", v.noun);
             let has_link = !pr.url.is_empty();
-            if ui.add_enabled(has_link, egui::Button::new("Copy link")).on_disabled_hover_text(&no_link).clicked() {
+            let why = (!has_link).then_some(no_link.as_str());
+            if ui.add(buttons::secondary("Copy link").enabled(has_link).why(why)).clicked() {
                 msgs.push(Msg::Copy(pr.url.clone()));
             }
-            if ui.add_enabled(has_link, egui::Button::new("Open in browser")).on_disabled_hover_text(&no_link).clicked() {
+            if ui.add(buttons::secondary("Open in browser").enabled(has_link).why(why)).clicked() {
                 msgs.push(Msg::OpenUrl(pr.url.clone()));
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {

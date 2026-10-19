@@ -2,8 +2,9 @@
 //! filter, and the repositories found under them, grouped by project folder. Each row stars the
 //! repository or opens it; the scan itself runs in the runner (`ReposMsg`).
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::{self, Icon};
+use super::widgets::{self, Icon, buttons};
 use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
 use crate::state::repo_lists::favorite_label;
 use crate::state::repo_scan::{FinderRow, RepoScan, matches};
@@ -23,13 +24,13 @@ pub struct FinderLists<'a> {
 }
 
 /// Draws the dialog; returns true when it should close. The filter keeps the keyboard focus
-/// unless `focus` is false (a credential prompt is open above it).
-pub fn show(ui: &mut egui::Ui, t: Lang, filter: &mut String, lists: FinderLists, focus: bool, msgs: &mut Vec<Msg>) -> bool {
+/// unless `cx.keyboard` is false (a credential prompt is open above it). The results list can be
+/// resized.
+pub fn show(ui: &mut egui::Ui, cx: Cx, filter: &mut String, lists: FinderLists, msgs: &mut Vec<Msg>) -> bool {
+    let t = cx.t;
     let mut close = false;
     let (scan, folders) = (lists.scan, lists.folders);
-    ui.set_width(560.0);
-    ui.heading(t.tr("finder.title"));
-    ui.add_space(8.0);
+    let mut d = Dialog::new(cx, t.tr("finder.title")).wide().resizable("repo-finder").begin(ui);
     ui.label(RichText::new(t.tr("finder.folders.header")).strong());
     for f in folders {
         folder_row(ui, t, f, scan, msgs);
@@ -38,7 +39,7 @@ pub fn show(ui: &mut egui::Ui, t: Lang, filter: &mut String, lists: FinderLists,
         ui.label(RichText::new(t.tr("finder.no_folders")).color(color::weak()));
     }
     ui.horizontal(|ui| {
-        if ui.button(t.tr("finder.add_folder.button")).clicked() {
+        if ui.add(buttons::secondary(t.tr("finder.add_folder.button")).small()).clicked() {
             msgs.push(Msg::Repos(ReposMsg::AddFolder));
         }
         if !folders.is_empty() && look_again(ui, t).clicked() {
@@ -52,16 +53,13 @@ pub fn show(ui: &mut egui::Ui, t: Lang, filter: &mut String, lists: FinderLists,
     if !folders.is_empty() {
         ui.add_space(10.0);
         let r = controls::field(ui, egui::TextEdit::singleline(filter).hint_text(t.tr("finder.filter.hint")).desired_width(f32::INFINITY));
-        if focus {
+        if cx.keyboard {
             r.request_focus();
         }
         ui.add_space(6.0);
-        results(ui, t, filter, &lists, msgs, &mut close);
+        d.body(ui, |ui| results(ui, t, filter, &lists, msgs, &mut close));
     }
-    ui.add_space(10.0);
-    if ui.button(t.tr("common.close.button")).clicked() {
-        close = true;
-    }
+    close |= d.finish(ui, Footer::new().close()).dismiss;
     close
 }
 
@@ -96,21 +94,19 @@ fn results(ui: &mut egui::Ui, t: Lang, filter: &str, lists: &FinderLists, msgs: 
         if matching.is_empty() {
             weak(ui, t.tr("finder.no_match"));
         }
-        egui::ScrollArea::vertical().max_height(380.0).auto_shrink([false, true]).show(ui, |ui| {
-            for root in folders {
-                let group: Vec<&&FinderRow> = matching.iter().filter(|r| same_spelling(&r.repo.root, root)).collect();
-                if group.is_empty() {
-                    continue;
-                }
-                ui.add_space(4.0);
-                weak(ui, &format!("{} ({})", shown(root), group.len()));
-                for r in group {
-                    if row(ui, t, r, msgs) {
-                        *close = true;
-                    }
+        for root in folders {
+            let group: Vec<&&FinderRow> = matching.iter().filter(|r| same_spelling(&r.repo.root, root)).collect();
+            if group.is_empty() {
+                continue;
+            }
+            ui.add_space(4.0);
+            weak(ui, &format!("{} ({})", shown(root), group.len()));
+            for r in group {
+                if row(ui, t, r, msgs) {
+                    *close = true;
                 }
             }
-        });
+        }
     }
     if scan.truncated {
         weak(ui, &t.trf("finder.truncated", &[("max", &trellis_core::repo_scan::MAX_FOLDERS)]));

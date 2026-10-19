@@ -16,8 +16,10 @@ use crate::ui::common::short;
 use crate::ui::file_buttons::{self, CommitFile, Labels};
 use crate::ui::file_menu::SHOW_IN_FOLDER;
 use crate::ui::theme::color;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::{Icon, icon_button};
 use eframe::egui::{self, Align, Layout, Response, RichText, Ui};
+use trellis_core::i18n::Lang;
 use trellis_core::repo::DiffTarget;
 use trellis_core::settings::{DiffLayout, DiffMode};
 
@@ -64,6 +66,7 @@ pub(super) struct FoldCounts {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn header_bar(
     ui: &mut Ui,
+    t: Lang,
     target: &DiffTarget,
     file: Option<&CommitFile>,
     rows: Option<(DiffLayout, DiffMode)>,
@@ -85,14 +88,15 @@ pub(super) fn header_bar(
     };
     // In a narrow bar (a panel beside the diff) the arrows and toggles move down too, rather
     // than run over the path.
+    let close = t.tr("common.close_esc.button");
     let stage_w = match target {
-        DiffTarget::Unstaged(_) => button_w(ui, STAGE_FILE),
-        DiffTarget::Staged(_) => button_w(ui, UNSTAGE_FILE),
+        DiffTarget::Unstaged(_) => styled_w(ui, STAGE_FILE),
+        DiffTarget::Staged(_) => styled_w(ui, UNSTAGE_FILE),
         _ => 0.0,
     };
     let middle_w = middle_width(ui, rows.is_some(), show_nav);
     let middle_down = middle_w > 0.0
-        && lead_width(ui, target.path(), &kind) + button_w(ui, CLOSE) + icon_w(ui) + stage_w + middle_w > ui.available_width();
+        && lead_width(ui, target.path(), &kind) + styled_w(ui, close) + icon_w(ui) + stage_w + middle_w > ui.available_width();
     let mut wrapped = false;
     let mut files_wrapped = false;
     ui.horizontal(|ui| {
@@ -103,8 +107,8 @@ pub(super) fn header_bar(
             // The commit file buttons move down too when even without the tail they would reach
             // the path.
             files_wrapped = file.is_some()
-                && (middle_down || button_w(ui, CLOSE) + icon_w(ui) + file_buttons_width(ui) + middle_w > ui.available_width());
-            if ui.button(CLOSE).clicked() {
+                && (middle_down || styled_w(ui, close) + icon_w(ui) + file_buttons_width(ui) + middle_w > ui.available_width());
+            if ui.add(buttons::secondary(close)).clicked() {
                 msgs.push(Msg::Repo(RepoMsg::CloseDiff));
             }
             let tool =
@@ -119,7 +123,7 @@ pub(super) fn header_bar(
                         Some(k) => format!("Stage this file ({k}). With lines selected, {k} stages only those lines."),
                         None => "Stage this file".to_owned(),
                     };
-                    if ui.button(STAGE_FILE).on_hover_text(tip).clicked() {
+                    if ui.add(buttons::secondary(STAGE_FILE)).on_hover_text(tip).clicked() {
                         msgs.push(Msg::Stage(StageMsg::StageFile(p.clone())));
                     }
                 }
@@ -128,7 +132,7 @@ pub(super) fn header_bar(
                         Some(k) => format!("Unstage this file ({k}). With lines selected, {k} unstages only those lines."),
                         None => "Unstage this file".to_owned(),
                     };
-                    if ui.button(UNSTAGE_FILE).on_hover_text(tip).clicked() {
+                    if ui.add(buttons::secondary(UNSTAGE_FILE)).on_hover_text(tip).clicked() {
                         msgs.push(Msg::Stage(StageMsg::UnstageFile(p.clone())));
                     }
                 }
@@ -213,7 +217,6 @@ fn lead_width(ui: &Ui, path: &str, kind: &str) -> f32 {
     8.0 + w(path, egui::FontId::proportional(15.0)) + w(kind, body) + 2.0 * ui.spacing().item_spacing.x
 }
 
-const CLOSE: &str = "Close  (Esc)";
 const STAGE_FILE: &str = "Stage file";
 const UNSTAGE_FILE: &str = "Unstage file";
 const COLLAPSE_ALL: &str = "Collapse all";
@@ -229,6 +232,11 @@ fn button_w(ui: &Ui, text: &str) -> f32 {
     let s = ui.spacing();
     let text_w = ui.fonts(|f| f.layout_no_wrap(text.to_owned(), font, color::text()).size().x);
     text_w + 2.0 * s.button_padding.x + s.item_spacing.x
+}
+
+/// The width a `buttons::secondary` takes in the bar, with the gap after it.
+fn styled_w(ui: &Ui, text: &str) -> f32 {
+    buttons::secondary(text).desired_width(ui) + ui.spacing().item_spacing.x
 }
 
 /// The width an icon button takes in the bar, with the gap after it.
@@ -252,7 +260,7 @@ fn middle_width(ui: &Ui, rows: bool, nav: bool) -> f32 {
 /// The width `tail` takes with the fold buttons when `folds`, and with the toggles that
 /// `toggles` shows.
 fn tail_width(ui: &Ui, folds: bool, toggles: Toggles) -> f32 {
-    let folds = if folds { 10.0 + button_w(ui, COLLAPSE_ALL) + button_w(ui, EXPAND_ALL) } else { 0.0 };
+    let folds = if folds { 10.0 + styled_w(ui, COLLAPSE_ALL) + styled_w(ui, EXPAND_ALL) } else { 0.0 };
     let ws = if toggles.ignore_ws.is_some() { 10.0 + button_w(ui, IGNORE_WS) } else { 0.0 };
     let wrap = if toggles.wrap.is_some() { 10.0 + button_w(ui, WRAP) } else { 0.0 };
     folds + ws + wrap
@@ -267,12 +275,12 @@ fn tail(ui: &mut Ui, folds: Option<FoldCounts>, toggles: Toggles, gap: bool, msg
         if gap {
             ui.add_space(10.0);
         }
-        let collapse = ui.add_enabled(c.open > 0, egui::Button::new(COLLAPSE_ALL));
-        if collapse.on_hover_text(COLLAPSE_ALL_TIP).on_disabled_hover_text(COLLAPSE_ALL_OFF_TIP).clicked() {
+        let collapse = buttons::secondary(COLLAPSE_ALL).enabled(c.open > 0).tip(COLLAPSE_ALL_TIP).why(Some(COLLAPSE_ALL_OFF_TIP));
+        if ui.add(collapse).clicked() {
             msgs.push(Msg::Diff(DiffMsg::CollapseAllUnchanged));
         }
-        let expand = ui.add_enabled(c.closed > 0, egui::Button::new(EXPAND_ALL));
-        if expand.on_hover_text(EXPAND_ALL_TIP).on_disabled_hover_text(EXPAND_ALL_OFF_TIP).clicked() {
+        let expand = buttons::secondary(EXPAND_ALL).enabled(c.closed > 0).tip(EXPAND_ALL_TIP).why(Some(EXPAND_ALL_OFF_TIP));
+        if ui.add(expand).clicked() {
             msgs.push(Msg::Diff(DiffMsg::ExpandAllUnchanged));
         }
     }

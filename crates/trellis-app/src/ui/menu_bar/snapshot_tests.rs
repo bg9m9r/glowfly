@@ -198,16 +198,16 @@ fn about_through_the_window() {
 /// The About dialog alone, as `modals.rs` draws it, with a fixed version so a release doesn't
 /// change the image.
 fn about_harness(git: GitState) -> Harness<'static, (GitState, Vec<Msg>)> {
-    Harness::builder().with_size(egui::vec2(560.0, 820.0)).build_state(
+    Harness::builder().with_size(egui::vec2(1024.0, 700.0)).build_state(
         |ctx, (git, msgs): &mut (GitState, Vec<Msg>)| {
             color::set_palette(&theme::DARK);
             theme::apply_style(ctx, &theme::DARK);
             ctx.set_theme(theme::egui_theme(&theme::DARK));
             egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |_| {});
-            egui::Modal::new(egui::Id::new("trellis-modal")).show(ctx, |ui| {
-                ui.set_width(460.0);
-                super::about(ui, trellis_core::i18n::Lang::En, git, "1.2.3", msgs);
-            });
+            let id = egui::Id::new("trellis-modal");
+            let cx = crate::ui::dialog_frame::Cx { t: trellis_core::i18n::Lang::En, keyboard: true, key: id.with("about") };
+            let resp = theme::dialog(ctx, id).show(ctx, |ui| super::about(ui, cx, git, "1.2.3", msgs));
+            ctx.data_mut(|d| d.insert_temp(egui::Id::new("about-rect"), resp.response.rect));
         },
         (git, Vec::new()),
     )
@@ -219,6 +219,9 @@ fn about_dialog() {
     let mut h = about_harness(git);
     h.run();
     h.check_snapshot("about_dialog");
+    // The resizable dialog, its padding included, fits inside the window.
+    let rect = h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("about-rect"))).unwrap();
+    assert!(h.ctx.screen_rect().contains_rect(rect), "{rect:?}");
     assert!(h.query_by_label("Git 2.47.1").is_some());
     h.get_by_label("Copy version info").click();
     h.run();

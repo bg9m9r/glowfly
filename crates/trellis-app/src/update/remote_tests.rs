@@ -262,7 +262,7 @@ fn edit_unchanged_and_gone() {
 fn remove_asks_then_removes() {
     let (mut st, work, bare) = with_origin("remote-remove");
     assert!(run(&mut st, RemoteMsg::RemoveDialog("origin".into())).is_empty());
-    let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("no confirmation") };
+    let Some(Modal::ConfirmDanger { title, body, button, then, .. }) = &st.modal else { panic!("no confirmation") };
     assert_eq!(title, "Remove remote origin");
     assert_eq!(button, "Remove remote");
     for part in ["origin/main", "origin/feature", "the local branches", "main", "feature", "Nothing changes on the server."] {

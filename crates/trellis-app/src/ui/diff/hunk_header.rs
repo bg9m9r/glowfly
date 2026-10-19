@@ -89,12 +89,15 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
             Msg::Stage(StageMsg::Hunk { op, path: path.to_owned(), index: h, generation })
         };
         msgs.push(match (op, selected) {
-            (HunkOp::Discard, 0) => {
-                Msg::confirm("Discard hunk", format!("Discard this change in {path}? You can bring it back with Undo."), "Discard", m)
-            }
+            (HunkOp::Discard, 0) => Msg::confirm_danger(
+                "Discard hunk",
+                format!("Discard this change in {path}? You can bring it back with Undo."),
+                "Discard",
+                m,
+            ),
             (HunkOp::Discard, n) => {
                 let what = if n == 1 { "the selected line".to_owned() } else { format!("the {n} selected lines") };
-                Msg::confirm("Discard lines", format!("Discard {what} in {path}? You can bring them back with Undo."), "Discard", m)
+                Msg::confirm_danger("Discard lines", format!("Discard {what} in {path}? You can bring them back with Undo."), "Discard", m)
             }
             _ => m,
         });

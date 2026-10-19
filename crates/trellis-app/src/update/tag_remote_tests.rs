@@ -173,7 +173,7 @@ fn refused_without_snapshot() {
 fn confirm_then_delete() {
     let (mut st, work, origin, backup) = with_two("tag-confirm-delete");
     update(&mut st, delete_remote_confirm("v1", names(&["origin", "backup"])), Instant::now());
-    let Some(Modal::Confirm { title, body, button, .. }) = &st.modal else { panic!("expected the confirmation") };
+    let Some(Modal::ConfirmDanger { title, body, button, .. }) = &st.modal else { panic!("expected the confirmation") };
     assert_eq!(title, "Delete tag from all remotes");
     assert_eq!(body, "Delete tag v1 from origin and backup? Your local tag stays, and anyone who already fetched it keeps their copy.");
     assert_eq!(button, "Delete from all remotes");
@@ -183,7 +183,7 @@ fn confirm_then_delete() {
 
     st.job = None;
     update(&mut st, delete_remote_confirm("v1", names(&["origin"])), Instant::now());
-    let Some(Modal::Confirm { title, body, button, .. }) = &st.modal else { panic!("expected the confirmation") };
+    let Some(Modal::ConfirmDanger { title, body, button, .. }) = &st.modal else { panic!("expected the confirmation") };
     assert_eq!(title, "Delete tag from remote");
     assert_eq!(body, "Delete tag v1 from origin? Your local tag stays, and anyone who already fetched it keeps their copy.");
     assert_eq!(button, "Delete from origin");

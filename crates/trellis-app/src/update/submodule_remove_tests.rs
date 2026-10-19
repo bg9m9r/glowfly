@@ -118,6 +118,27 @@ fn remove_starts_the_job_and_closes() {
     cleanup(&[&parent, &lib]);
 }
 
+/// With work it would lose, Remove waits for the acknowledgement.
+#[test]
+fn remove_with_warnings_waits_for_the_acknowledgement() {
+    let (mut st, parent, lib) = opened("sm-rm-ack");
+    let mut f = facts(sub(&st), None);
+    f.stashes = 2;
+    let form = RemoveForm::from_facts(&f);
+    assert!(form.needs_ack() && !form.acked);
+    st.modal = Some(Modal::RemoveSubmodule(form));
+    assert!(run(&mut st, sm(SubmoduleMsg::Remove)).is_empty(), "no job before the tick");
+    assert!(st.job.is_none());
+    assert!(matches!(st.modal, Some(Modal::RemoveSubmodule(_))), "the dialog stays");
+    if let Some(Modal::RemoveSubmodule(form)) = st.modal.as_mut() {
+        form.acked = true;
+    }
+    let fx = run(&mut st, sm(SubmoduleMsg::Remove));
+    assert!(matches!(&fx[..], [Effect::Submodule(SubmoduleEffect::Remove(_))]), "{fx:?}");
+    assert!(st.modal.is_none());
+    cleanup(&[&parent, &lib]);
+}
+
 #[test]
 fn remove_in_an_untrusted_repository_asks_first() {
     let (mut st, dir) = held_repo("sm-rm-held");

@@ -4,7 +4,9 @@
 //! `update` checks the choice again before running anything.
 
 use super::common::{status_color, status_label, widget_row_height};
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
+use super::widgets::buttons;
 use crate::msg::{Msg, StashMsg};
 use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
 use crate::ui::theme::controls;
@@ -22,18 +24,16 @@ const CHOICES: [(StashScope, &str, &str); 3] = [
 ];
 
 /// Draws the dialog; returns true when it should close. The message field takes the keyboard
-/// focus once when the dialog opens, unless `focus` is false (a credential prompt is open above
-/// it). Stash waits while a job runs (`idle` is false); on submit the dialog stays open until
-/// `update` starts the stash.
-pub fn show(ui: &mut egui::Ui, form: &mut StashPushForm, snap: Option<&Snapshot>, focus: bool, idle: bool, msgs: &mut Vec<Msg>) -> bool {
-    let mut close = false;
-    ui.heading("Stash changes");
+/// focus once when the dialog opens, unless `cx.keyboard` is false (a credential prompt is open
+/// above it). Stash waits while a job runs (`idle` is false); on submit the dialog stays open
+/// until `update` starts the stash.
+pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let on = match snap.and_then(|s| s.head_branch.as_deref()) {
         Some(b) => format!("on {b}"),
         None => "on detached HEAD".to_owned(),
     };
-    ui.label(RichText::new(on).color(color::weak()));
-    ui.add_space(6.0);
+    let focus = cx.keyboard;
+    let d = Dialog::new(cx, "Stash changes").subtitle(on).begin(ui);
     let r = controls::field(ui, egui::TextEdit::singleline(&mut form.message).hint_text("Message (optional)").desired_width(f32::INFINITY));
     // Read before focus is taken, or the Enter that just left the field is missed.
     let submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
@@ -59,21 +59,13 @@ pub fn show(ui: &mut egui::Ui, form: &mut StashPushForm, snap: Option<&Snapshot>
     }
     // Without a snapshot there is nothing to check, and nothing to stash.
     let blocked = blocked.or(snap.is_none().then_some(NOTHING));
-    ui.add_space(10.0);
     let valid = blocked.is_none() && idle;
-    ui.horizontal(|ui| {
-        let mut button = ui.add_enabled(valid, egui::Button::new("Stash"));
-        if let Some(why) = blocked.or((!idle).then_some(BUSY)) {
-            button = button.on_disabled_hover_text(why);
-        }
-        if button.clicked() || (submit && valid) {
-            msgs.push(Msg::Stash(StashMsg::Push { scope: form.scope, message: form.message.clone(), paths: paths.clone() }));
-        }
-        if ui.button("Cancel").clicked() {
-            close = true;
-        }
-    });
-    close
+    let stash = buttons::primary("Stash").enabled(valid).why(blocked.or((!idle).then_some(BUSY)));
+    let out = d.finish(ui, Footer::new().cancel().primary(stash).submit(submit));
+    if out.primary {
+        msgs.push(Msg::Stash(StashMsg::Push { scope: form.scope, message: form.message.clone(), paths }));
+    }
+    out.dismiss
 }
 
 /// Select all / Select none, the ticked count, and one row per working-tree file: its box,
@@ -83,10 +75,10 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
     let files = wip_files(snap);
     let ticked = files.iter().filter(|f| stashable(f) && form.chosen.contains(&f.path)).count();
     ui.horizontal(|ui| {
-        if ui.small_button("Select all").clicked() {
+        if ui.add(buttons::secondary("Select all").small()).clicked() {
             form.chosen.extend(files.iter().filter(|f| stashable(f)).map(|f| f.path.clone()));
         }
-        if ui.small_button("Select none").clicked() {
+        if ui.add(buttons::secondary("Select none").small()).clicked() {
             form.chosen.clear();
         }
         let total = files.iter().filter(|f| stashable(f)).count();

@@ -12,7 +12,8 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::commit::{commit_blocked, pushes_after};
 use crate::ui::theme::controls;
-use eframe::egui::{self, Align, Color32, Key, Layout, Modifiers, RichText, vec2};
+use crate::ui::widgets::buttons;
+use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText};
 use trellis_core::i18n::Lang;
 
 /// Height the commit box needs below the file lists (the lists share what is left).
@@ -49,7 +50,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
         ui.horizontal(|ui| {
             issue_chip(ui, fs, &key, msgs);
             let hover = if fs.message_ref(&key) == tag { t.tr("commit.link_tip.mention") } else { t.tr("commit.link_tip.link") };
-            if !mentioned && ui.small_button(t.trf("commit.link_button", &[("tag", &tag)])).on_hover_text(hover).clicked() {
+            if !mentioned
+                && ui.add(buttons::secondary(t.trf("commit.link_button", &[("tag", &tag)])).small()).on_hover_text(hover).clicked()
+            {
                 msgs.push(Msg::Commit(CommitMsg::AppendToDescription(fs.message_ref(&key))));
             }
         });
@@ -87,11 +90,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     let label = st.draft.button_label(t, snap.staged.len(), pushes_after(st), snap.state == git2::RepositoryState::Merge);
     let blocked = commit_blocked(st, false);
     let enabled = blocked.is_none();
-    let button = egui::Button::new(RichText::new(label).strong().color(if enabled { Color32::WHITE } else { color::faint() }))
-        .fill(if enabled { color::primary() } else { color::toolbar() })
-        .min_size(vec2(ui.available_width(), 34.0));
-    let r = ui.add_enabled(enabled, button).on_hover_text(shortcuts_tip(t, &st.keymap)).on_disabled_hover_text(blocked.unwrap_or_default());
-    if r.clicked() {
+    let tip = shortcuts_tip(t, &st.keymap);
+    let button = buttons::primary(label).enabled(enabled).why(blocked).tip(&tip).min_width(ui.available_width()).min_height(34.0);
+    if ui.add(button).clicked() {
         msgs.push(Msg::Commit(CommitMsg::Commit));
     }
 

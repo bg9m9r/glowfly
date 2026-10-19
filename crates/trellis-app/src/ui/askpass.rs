@@ -2,8 +2,9 @@
 //! included) for what git or ssh asks through the askpass helper. Edits only the prompt's text
 //! buffers and view flags; answering and cancelling go through `Msg`s.
 
+use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
-use super::widgets::{self, Icon};
+use super::widgets::{self, Icon, buttons};
 use crate::msg::CredentialMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -32,7 +33,6 @@ struct Layout {
     /// Show the whole prompt text (a host-key question).
     full_text: bool,
     primary: &'static str,
-    secondary: &'static str,
 }
 
 impl Layout {
@@ -49,7 +49,6 @@ impl Layout {
             help: None,
             full_text: false,
             primary,
-            secondary: "Cancel",
         }
     }
 }
@@ -84,9 +83,7 @@ fn layout(p: &PendingPrompt) -> Layout {
             help: Some(GPG_HELP),
             ..Layout::new("Unlock signing key".into(), "Unlock")
         },
-        PromptKind::Confirm => {
-            Layout { key_icon: false, full_text: true, secondary: "No", ..Layout::new("Confirm SSH connection".into(), "Yes") }
-        }
+        PromptKind::Confirm => Layout { key_icon: false, full_text: true, ..Layout::new("Confirm SSH connection".into(), "Yes") },
         PromptKind::Other { secret } => {
             let field = Some("Answer");
             Layout {
@@ -124,18 +121,16 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let l = layout(&front);
     let p = &mut st.askpass;
     let secret_id = Id::new("trellis-credentials-secret");
+    let id = Id::new("trellis-credentials");
+    // On top of everything, so it takes the keyboard.
+    let cx = Cx { t: st.settings.lang(), keyboard: true, key: id };
     // The response's should_close() is deliberately ignored: the backdrop must not cancel.
-    super::theme::modal(ctx, Id::new("trellis-credentials")).show(ctx, |ui| {
-        ui.set_width(420.0);
-        ui.horizontal(|ui| {
-            if l.key_icon {
-                let (rect, _) = ui.allocate_exact_size(egui::vec2(18.0, 18.0), egui::Sense::hover());
-                widgets::paint_icon(ui.painter(), rect.center(), Icon::Key, color::text());
-                ui.add_space(2.0);
-            }
-            ui.heading(l.title.as_str());
-        });
-        ui.add_space(4.0);
+    super::theme::dialog(ctx, id).show(ctx, |ui| {
+        let mut d = Dialog::new(cx, l.title.as_str());
+        if l.key_icon {
+            d = d.icon(Icon::Key);
+        }
+        let mut d = d.begin(ui);
         if let Some(line) = &l.line {
             ui.add(egui::Label::new(RichText::new(line).color(color::weak())).wrap());
         }
@@ -147,9 +142,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.label(RichText::new(format!("Key {key}")).monospace().color(color::weak()));
         }
         if l.full_text {
-            egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
-                ui.add(egui::Label::new(RichText::new(front.prompt.text.trim_end()).monospace()).wrap());
-            });
+            d.body(ui, |ui| ui.add(egui::Label::new(RichText::new(front.prompt.text.trim_end()).monospace()).wrap()));
         }
         ui.add_space(8.0);
         let enter = ui.input(|i| i.key_pressed(Key::Enter));
@@ -201,22 +194,24 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.add_space(2.0);
             ui.add(egui::Label::new(RichText::new(help).color(color::weak()).size(12.0)).wrap());
         }
-        ui.add_space(10.0);
-        let valid = p.can_submit();
-        let mut cancel = ui.input(|i| i.key_pressed(Key::Escape));
-        ui.horizontal(|ui| {
-            submit |= ui.add_enabled(valid, egui::Button::new(RichText::new(l.primary).strong())).clicked();
-            cancel |= ui.button(l.secondary).clicked();
-        });
         if !l.full_text {
-            let footer = if l.remember && p.remember {
+            let saved = if l.remember && p.remember {
                 "Trellis saves this sign-in with git's credential helper once git accepts it."
             } else {
                 "Trellis doesn't save what you type here."
             };
             ui.add_space(6.0);
-            ui.label(RichText::new(footer).color(color::weak()).size(12.0));
+            ui.label(RichText::new(saved).color(color::weak()).size(12.0));
         }
+        let valid = p.can_submit();
+        let mut cancel = ui.input(|i| i.key_pressed(Key::Escape));
+        let button = buttons::primary(l.primary).enabled(valid);
+        // A host-key question isn't answered Yes by a stray Enter: Yes keeps the primary style,
+        // but the dialog's tone makes Cancel the default.
+        let footer = if l.full_text { Footer::new().danger(button) } else { Footer::new().primary(button) };
+        let out = d.finish(ui, footer.cancel().submit(submit));
+        submit = out.primary;
+        cancel |= out.dismiss;
         if cancel {
             msgs.push(Msg::Credentials(CredentialMsg::CancelCredentials));
         } else if submit && valid {

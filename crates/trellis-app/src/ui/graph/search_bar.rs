@@ -8,6 +8,7 @@ use crate::state::{AppState, Selection};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
 use crate::ui::widgets;
+use crate::ui::widgets::buttons;
 use eframe::egui::{self, Key, PopupCloseBehavior, RichText};
 use trellis_core::matching::contains_lower;
 
@@ -71,7 +72,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
             }
         }
 
-        if ui.small_button("Close").clicked() {
+        if ui.add(buttons::secondary(st.settings.lang().tr("common.close.button")).small()).clicked() {
             msgs.push(Msg::Search(SearchMsg::Close));
         }
     });

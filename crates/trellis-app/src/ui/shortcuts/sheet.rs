@@ -4,31 +4,26 @@
 
 use super::Caps;
 use crate::keymap::{Binding, Keymap};
+use crate::ui::dialog_frame::{Cx, Dialog, Footer};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
-use eframe::egui::{Align, Id, Layout, RichText, ScrollArea, Sense, TextEdit, Ui, vec2};
+use eframe::egui::{Align, Id, Layout, RichText, Sense, TextEdit, Ui, vec2};
 
-const WIDTH: f32 = 540.0;
-const LIST_MAX_H: f32 = 460.0;
-
-/// Draws the sheet inside the dialog with the keys in effect; `focus` gives the filter field the
-/// keyboard (not under a credential prompt). Returns true when Close is clicked.
-pub fn show(ui: &mut Ui, filter: &mut String, focus: bool, keys: &Keymap) -> bool {
-    ui.set_width(WIDTH);
-    ui.heading("Keyboard shortcuts");
-    ui.add_space(6.0);
+/// Draws the sheet inside the dialog with the keys in effect; `cx.keyboard` gives the filter
+/// field the keyboard (not under a credential prompt). Returns true when Close is clicked.
+pub fn show(ui: &mut Ui, cx: Cx, filter: &mut String, keys: &Keymap) -> bool {
+    let mut d = Dialog::new(cx, "Keyboard shortcuts").wide().resizable("shortcut-sheet").begin(ui);
     let field = TextEdit::singleline(filter)
         .id(Id::new("trellis-shortcut-filter"))
         .hint_text("Filter by action or key")
         .desired_width(f32::INFINITY);
     let r = controls::field(ui, field);
-    if focus {
+    if cx.keyboard {
         r.request_focus();
     }
     ui.add_space(4.0);
     let groups = keys.filter(filter);
-    ScrollArea::vertical().id_salt("trellis-shortcut-list").max_height(LIST_MAX_H).show(ui, |ui| {
-        ui.set_width(ui.available_width());
+    d.body(ui, |ui| {
         if groups.is_empty() {
             ui.add_space(8.0);
             ui.label(RichText::new("No shortcuts match").color(color::weak()));
@@ -41,15 +36,7 @@ pub fn show(ui: &mut Ui, filter: &mut String, focus: bool, keys: &Keymap) -> boo
             }
         }
     });
-    ui.add_space(8.0);
-    let mut close = false;
-    ui.horizontal(|ui| {
-        ui.label(RichText::new("Esc to close").color(color::weak()));
-        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            close = ui.button("Close").clicked();
-        });
-    });
-    close
+    d.finish(ui, Footer::new().note("Esc to close").close()).dismiss
 }
 
 /// One binding: the action and its context note on the left (wrapping when long), the key caps
