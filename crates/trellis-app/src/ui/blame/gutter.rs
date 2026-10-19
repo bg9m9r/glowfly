@@ -2,8 +2,9 @@
 //! text with the commit's whole message.
 
 use crate::state::AppState;
-use crate::ui::common::{paint_cut_line, short};
+use crate::ui::common::short;
 use crate::ui::theme::color;
+use crate::ui::widgets::paint_cut_text;
 use eframe::egui::{Align2, FontId, Painter, Rect, Ui, pos2, vec2};
 use trellis_core::repo::BlameCommit;
 
@@ -31,9 +32,9 @@ pub(super) fn text(ui: &Ui, st: &AppState, fonts: &Fonts, c: &BlameCommit, first
     let date = st.settings.format_day(c.time, st.view.now, st.view.utc_offset);
     let date = ui.painter().text(pos2(sha.left() - 10.0, y), Align2::RIGHT_CENTER, date, fonts.name.clone(), color::weak());
     let author = if c.author.is_empty() { "Unknown" } else { c.author.as_str() };
-    paint_cut_line(ui, pos2(left, y), author, fonts.name.clone(), color::text(), date.left() - 10.0 - left);
+    paint_cut_text(ui.painter(), pos2(left, y), author, fonts.name.clone(), color::text(), date.left() - 10.0 - left);
     if let Some(r) = second {
-        paint_cut_line(ui, pos2(left, r.center().y), &c.summary, fonts.name.clone(), color::faint(), right - left);
+        paint_cut_text(ui.painter(), pos2(left, r.center().y), &c.summary, fonts.name.clone(), color::faint(), right - left);
     }
 }
 

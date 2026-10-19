@@ -4,7 +4,7 @@
 
 use super::common::{menu_item, menu_item_if, state_color};
 use super::theme::color;
-use super::widgets;
+use super::widgets::{self, Part, truncate::full_tip};
 use crate::msg::{DashboardMsg, Msg};
 use crate::state::AppState;
 use crate::state::dashboard::{Dashboard, TargetData, pr_label, target_name};
@@ -40,7 +40,8 @@ fn open_repo_item(ui: &mut Ui, st: &AppState, data: &TargetData, msgs: &mut Vec<
 pub(super) fn repo_row(ui: &mut Ui, st: &AppState, data: &TargetData, msgs: &mut Vec<Msg>) {
     let names = data.folder_names();
     let right = folders_text(&names);
-    let r = widgets::list_row(ui, 8.0, &target_name(&data.target), Some((&right, color::weak())), false, true);
+    let name = target_name(&data.target);
+    let (r, _, cut) = widgets::list_row_cut(ui, 8.0, &name, Some((&[Part::Text(&right)][..], color::weak())), 0.0, false, true);
     let preferred = Dashboard::preferred_local(data, st);
     if r.clicked()
         && let Some(l) = preferred
@@ -48,7 +49,10 @@ pub(super) fn repo_row(ui: &mut Ui, st: &AppState, data: &TargetData, msgs: &mut
         msgs.push(dash(DashboardMsg::OpenRepo(l.path.clone())));
     }
     let paths: Vec<String> = data.locals.iter().map(|l| trellis_core::native_path::shown(&l.path)).collect();
-    let r = r.on_hover_text(paths.join("\n"));
+    let r = match full_tip(cut, &name, Some(paths.join("\n"))) {
+        Some(tip) => r.on_hover_text(tip),
+        None => r,
+    };
     let page =
         data.locals.iter().filter(|l| !l.remote_url.is_empty()).find_map(|l| forge::web_page(&l.remote_url, &st.settings.connections).ok());
     r.context_menu(|ui| {
@@ -64,8 +68,9 @@ pub(super) fn repo_row(ui: &mut Ui, st: &AppState, data: &TargetData, msgs: &mut
 }
 
 /// A two-line row: `title` (with dim `right` text and a marker slot at the right), and `sub`
-/// below it in weak text. Returns the response and the marker's rect.
-fn two_line_row(ui: &mut Ui, title: &str, sub: &str, right: (&str, Color32), slot: f32) -> (Response, Rect) {
+/// below it in weak text, each cut with "…". Returns the response, the marker's rect and
+/// whether the title was cut.
+fn two_line_row(ui: &mut Ui, title: &str, sub: &str, right: (&str, Color32), slot: f32) -> (Response, Rect, bool) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 40.0), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, title));
     let p = ui.painter_at(rect);
@@ -78,13 +83,12 @@ fn two_line_row(ui: &mut Ui, title: &str, sub: &str, right: (&str, Color32), slo
     p.galley(pos2(rect.right() - g.size().x - 10.0 - slot, top - g.size().y / 2.0), g, right.1);
     let clip = Rect::from_min_max(pos2(rect.left() + INDENT, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
     let line = |text: &str, y: f32, size: f32, col: Color32| {
-        let g = p.layout_no_wrap(text.to_owned(), FontId::proportional(size), col);
-        p.with_clip_rect(clip).galley(pos2(clip.left(), y - g.size().y / 2.0), g, col);
+        widgets::paint_cut_text(&p.with_clip_rect(clip), pos2(clip.left(), y), text, FontId::proportional(size), col, clip.width())
     };
-    line(title, top, 13.0, color::text());
+    let cut = line(title, top, 13.0, color::text()).cut;
     line(sub, rect.top() + 29.0, 11.5, color::weak());
     let marker = Rect::from_min_max(pos2(rect.right() - 10.0 - slot, rect.top()), pos2(rect.right() - 10.0, rect.top() + 24.0));
-    (resp, marker)
+    (resp, marker, cut)
 }
 
 pub(super) fn pr_row(ui: &mut Ui, st: &AppState, data: &TargetData, pr: &PullRequest, slot: f32, msgs: &mut Vec<Msg>) {
@@ -97,7 +101,8 @@ pub(super) fn pr_row(ui: &mut Ui, st: &AppState, data: &TargetData, pr: &PullReq
     if pr.reviewers.iter().any(|r| r.state.starts_with("changes")) {
         sub.push_str(" · changes requested");
     }
-    let (r, marker) = two_line_row(ui, &title, &sub, (&right, color::purple()), slot);
+    // The pull request's tooltip has the whole title, so it stays the only one.
+    let (r, marker, _) = two_line_row(ui, &title, &sub, (&right, color::purple()), slot);
     if let Some(c) = &pr.checks
         && slot > 0.0
     {
@@ -130,7 +135,10 @@ pub(super) fn pr_row(ui: &mut Ui, st: &AppState, data: &TargetData, pr: &PullReq
 
 pub(super) fn issue_row(ui: &mut Ui, st: &AppState, data: &TargetData, issue: &Issue, msgs: &mut Vec<Msg>) {
     let t = &data.target;
-    let r = widgets::list_row(ui, INDENT, &issue_text(t, issue), Some((&issue.state, state_color(&issue.state))), false, false);
+    // The tooltip has the whole title, so a cut one needs no hover of its own.
+    let right = [Part::Text(&issue.state)];
+    let (r, _, _) =
+        widgets::list_row_cut(ui, INDENT, &issue_text(t, issue), Some((&right[..], state_color(&issue.state))), 0.0, false, false);
     let assignee = issue.assignee.as_deref().unwrap_or("unassigned");
     let mut tip = format!("{} {}: {}\n{} · {assignee}", issue.kind, issue.key, issue.title, issue.state);
     if let Some(line) = forge_filters::facet_line(&issue.facets) {

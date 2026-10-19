@@ -16,7 +16,7 @@ use trellis_core::forge::{Account, Entry, EntryKind, Issue, IssueDetails, IssueF
 use trellis_core::repo::LoadOptions;
 use trellis_core::settings::ThemeChoice;
 
-fn github() -> Target {
+pub(super) fn github() -> Target {
     Target { provider: Provider::GitHub, host: "github.com".into(), owner: "acme".into(), project: String::new(), repo: "demo".into() }
 }
 
@@ -24,7 +24,7 @@ fn jira() -> Target {
     Target::jira(&Account { provider: Provider::JiraCloud, host: "acme.atlassian.net".into(), org: String::new() }, "PROJ")
 }
 
-fn crash() -> Issue {
+pub(super) fn crash() -> Issue {
     Issue {
         key: "12".into(),
         title: "Crash on start when the config folder is missing".into(),
@@ -42,7 +42,7 @@ fn comment(author: &str, time: i64, body: &str) -> Entry {
 
 /// The fixture on GitHub (acme/demo) with `issue` assigned and, `with_branch`, a branch named
 /// after it; the panel open for it.
-fn with_issue(theme: ThemeChoice, name: &str, tracker: Target, issue: Issue, branch: Option<&str>) -> (AppState, PathBuf) {
+pub(super) fn with_issue(theme: ThemeChoice, name: &str, tracker: Target, issue: Issue, branch: Option<&str>) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let d = "2026-01-10T10:00:00+00:00";
     git(&dir, &["remote", "add", "origin", "https://github.com/acme/demo.git"], d);

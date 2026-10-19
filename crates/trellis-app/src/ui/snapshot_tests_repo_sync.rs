@@ -18,11 +18,11 @@ fn abs(rel: &str) -> PathBuf {
     PathBuf::from(if cfg!(windows) { format!("C:/{rel}") } else { format!("/{rel}") })
 }
 
-fn row(name: &str, state: RowState) -> SyncRow {
+pub(super) fn row(name: &str, state: RowState) -> SyncRow {
     SyncRow { path: abs(&format!("src/{name}")), name: name.into(), state }
 }
 
-fn dialog(theme: ThemeChoice, kind: SyncKind, rows: Vec<SyncRow>) -> AppState {
+pub(super) fn dialog(theme: ThemeChoice, kind: SyncKind, rows: Vec<SyncRow>) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     st.repo_sync = Some(RepoSync { generation: 1, kind, scope: SyncScope::Listed, rows });
     st.modal = Some(Modal::SyncRepos);

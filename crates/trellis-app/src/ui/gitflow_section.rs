@@ -63,8 +63,9 @@ pub(super) fn section(
             let label = if b.head { format!("✔  {}", b.short) } else { b.short.to_owned() };
             let selected = info.oid.is_some_and(|o| *rows.sel == Selection::Commit(o));
             let worktree = crate::state::worktree_branches::elsewhere(snap, b.name);
-            let right = worktree.map(|_| ("worktree", color::weak()));
-            let r = widgets::list_row(ui, 34.0, &label, right, selected, b.head);
+            let right = worktree.map(|_| [widgets::Part::Text("worktree")]);
+            let (r, _, cut) =
+                widgets::list_row_cut(ui, 34.0, &label, right.as_ref().map(|p| (&p[..], color::weak())), 0.0, selected, b.head);
             if r.hovered() {
                 *hover_next = info.oid;
             }
@@ -77,7 +78,7 @@ pub(super) fn section(
                 ),
                 None => tip,
             };
-            let r = r.on_hover_text(tip);
+            let r = r.on_hover_text(widgets::truncate::full_tip(cut, &label, Some(tip)).unwrap_or_default());
             if r.double_clicked() {
                 msgs.push(Msg::Branch(BranchMsg::Checkout(b.name.to_owned())));
             } else if r.clicked()

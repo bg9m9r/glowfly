@@ -130,6 +130,7 @@
   "details.wip.discard_all.button": "Discard all",
   "details.wip.discard_all.title": "Discard all changes",
   "details.wip.mark_resolved.button": "Mark resolved",
+  "details.wip.more.tip": "More actions",
   "details.wip.new_file.button": "New file…",
   "details.wip.none": "None",
   "details.wip.not_committed": "Not committed yet",

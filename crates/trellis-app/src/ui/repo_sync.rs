@@ -3,6 +3,7 @@
 //! is then told in a toast (update/repo_sync.rs).
 
 use super::theme::color;
+use super::widgets::truncate;
 use crate::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, outcome_text};
 use eframe::egui::{self, Align, Layout, RichText};
 use trellis_core::native_path::shown;
@@ -57,7 +58,9 @@ fn row(ui: &mut egui::Ui, kind: SyncKind, r: &SyncRow) {
         let size = egui::vec2(NAME_WIDTH, ui.spacing().interact_size.y);
         ui.allocate_ui_with_layout(size, Layout::left_to_right(Align::Center), |ui| {
             ui.set_min_width(NAME_WIDTH);
-            ui.add(egui::Label::new(RichText::new(&r.name).strong()).truncate()).on_hover_text(shown(&r.path));
+            // One tooltip: the whole name above the path when the name is cut.
+            let (resp, cut) = truncate::cut_label(ui, RichText::new(&r.name).strong(), NAME_WIDTH);
+            resp.on_hover_text(if cut { format!("{}\n{}", r.name, shown(&r.path)) } else { shown(&r.path) });
         });
         ui.add_space(12.0);
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| match &r.state {
@@ -75,7 +78,7 @@ fn row(ui: &mut egui::Ui, kind: SyncKind, r: &SyncRow) {
                     _ if bad => color::red(),
                     _ => color::text(),
                 };
-                ui.add(egui::Label::new(RichText::new(&text).color(col)).truncate()).on_hover_text(text);
+                truncate::truncate_label(ui, RichText::new(&text).color(col), ui.available_width());
             }
         });
     });

@@ -56,9 +56,8 @@ pub(super) fn header(
         right -= 24.0;
     }
     let room = (right - (resp.rect.left() + 22.0 + title_w + 6.0) - 26.0).max(24.0);
-    let mut job = egui::text::LayoutJob::simple_singleline(p.label.to_owned(), FontId::proportional(11.5), color::weak());
-    job.wrap = egui::text::TextWrapping::truncate_at_width(room);
-    let galley = ui.fonts(|f| f.layout_job(job));
+    let job = widgets::truncate::cut_job(p.label, FontId::proportional(11.5), color::weak());
+    let galley = widgets::truncate::cut_galley(ui.ctx(), job, room);
     let cy = resp.rect.center().y;
     let chip = Rect::from_min_max(pos2(right - galley.size().x - 26.0, cy - 10.0), pos2(right, cy + 10.0));
     let id = ui.make_persistent_id(("forge-filter-chip", p.kind == FilterKind::Prs));
@@ -176,7 +175,7 @@ fn paint_row(ui: &egui::Ui, rect: Rect, text: &str, checked: bool, enabled: bool
     }
     let col = if enabled { color::text() } else { color::faint() };
     let font = FontId::proportional(13.0);
-    super::common::paint_cut_line(ui, pos2(rect.left() + 24.0, rect.center().y), text, font, col, rect.width() - 28.0);
+    widgets::paint_cut_text(p, pos2(rect.left() + 24.0, rect.center().y), text, font, col, rect.width() - 28.0);
 }
 
 /// A saved filter's row; while hovered or on show it also has Edit, Move up, Move down and

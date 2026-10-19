@@ -132,7 +132,7 @@ are in Later > UI review polish.
       inside; the modal backdrop dims about the same in light and dark and dialogs get a
       border; muted text, chips (the HEAD pill, tag pills, selected toggles) and selection
       colours reach 4.5:1 for text in light, dark, sand and high contrast
-- [ ] **Truncation with an ellipsis and the full text on hover**: one helper for every
+- [x] **Truncation with an ellipsis and the full text on hover**: one helper for every
       single-line label that can be cut (the graph's message and body preview, resized columns,
       dates, sidebar issue titles with their state chip reserved first, the search placeholder,
       the update pill, repository names in repo sync); column headers keep a minimum width so
@@ -2200,3 +2200,21 @@ here, under the item they grew from.
   release-note chips
 - The text cursor takes its colour from the palette
 - Graph lane colours checked for contrast against bg in the light themes
+
+### Truncation with an ellipsis and the full text on hover
+
+- Narrow windows (below about 1100 px): the graph's right-aligned columns run over BRANCH / TAG
+  and GRAPH, and the toolbar's right-hand buttons overlap the left ones; give columns way in turn
+- The untrusted LFS note could carry a Trust… link that opens the trust dialog
+- Fade out the last few pixels instead of drawing an ellipsis, as an appearance option
+- Middle ellipsis for paths (keep the file name, cut folders) in file lists, repo sync paths and
+  the stash dialogs
+- Trim trailing spaces before the ellipsis ("Project …" becomes "Project…")
+- Cut a very long issue or PR state when it would leave the title less than ~40% of the row
+- Show the full 40-character SHA and the author's email in the graph cells' hover
+- Fold the Conflicted and Resolved Files headers' buttons into the same more-actions menu
+- A more-actions overflow for the main toolbar and the issue and PR panel headers when translated
+  labels don't fit
+- Translate the graph column titles (the floors already size the columns for longer titles)
+- Cut the file history row's date when the panel is narrower than the date
+- Show the whole text of a cut row when it gets keyboard focus, not only on hover

@@ -1,11 +1,14 @@
 //! Custom-painted widget controls: toolbar buttons, section headers, chips, nav rows, icon
-//! buttons; icon shapes are in `icon.rs`.
+//! buttons; icon shapes are in `icon.rs`, and text cut to a width with an ellipsis is in
+//! `truncate.rs`.
 
 pub mod buttons;
 mod icon;
+pub mod truncate;
 
-pub use super::list_row::{Part, list_row, list_row_hidden, list_row_slot};
+pub use super::list_row::{Part, list_row, list_row_cut, list_row_hidden};
 pub use icon::{Icon, paint_icon};
+pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
 

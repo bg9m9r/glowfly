@@ -47,7 +47,8 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         };
         let selected = wt.head.is_some_and(|o| *sel == Selection::Commit(o));
         let right = right_text(wt);
-        let r = widgets::list_row(ui, 26.0, &label, Some((&right, col)), selected, wt.current);
+        let parts = [widgets::Part::Text(&right)];
+        let (r, _, cut) = widgets::list_row_cut(ui, 26.0, &label, Some((&parts[..], col)), 0.0, selected, wt.current);
         if r.hovered() {
             *hover_next = wt.head;
         }
@@ -59,7 +60,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
             ),
             None => tooltip(wt),
         };
-        let r = r.on_hover_text(tip);
+        let r = r.on_hover_text(widgets::truncate::full_tip(cut, &label, Some(tip)).unwrap_or_default());
         if r.double_clicked() {
             if open_blocked(wt).is_none() {
                 msgs.push(Msg::Worktree(WorktreeMsg::Open(wt.path.clone())));

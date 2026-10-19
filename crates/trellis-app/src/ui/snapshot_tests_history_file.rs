@@ -23,7 +23,7 @@ use trellis_core::repo::{self, FileAtOptions, HistoryStart, LfsState, LoadOption
 use trellis_core::settings::ThemeChoice;
 
 /// The File view's text replaced by `lines` (highlighted as Rust) with `lfs`.
-fn set_text(st: &mut AppState, lines: Vec<String>, lfs: LfsState) {
+pub(super) fn set_text(st: &mut AppState, lines: Vec<String>, lfs: LfsState) {
     let view = st.history.as_mut().unwrap();
     let text = view.text.as_mut().unwrap();
     let spans = highlight::highlight_file(SyntaxHint { path: "lib.rs", language: None }, &lines);

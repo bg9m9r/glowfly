@@ -1,5 +1,9 @@
 //! The WIP panel: the in-progress banner, the Conflicted, Resolved, Unstaged and Staged Files
-//! lists with their rows' actions, and the commit box.
+//! lists with their rows' actions, and the commit box. The Unstaged and Staged Files headers are
+//! in `details_wip_header.rs`.
+
+#[path = "details_wip_header.rs"]
+mod header;
 
 use super::UiCache;
 use super::common::{menu_item, status_color, status_label, widget_row_height};
@@ -15,7 +19,7 @@ use crate::state::AppState;
 use crate::state::lfs::{TrackContext, track_items};
 use crate::state::tool_compare::{RESOLVE_IN_MERGE_TOOL, ToolAvail};
 use crate::tools::ToolsMsg;
-use eframe::egui::{self, Align, Layout, RichText, Sense};
+use eframe::egui::{self, RichText};
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{DiffTarget, FileEntry, Snapshot};
 use trellis_core::undo::DISCARD_STASH_MESSAGE;
@@ -96,27 +100,9 @@ fn file_list(
     } else {
         t.trf("details.wip.unstaged.header", &[("count", &count)])
     };
-    // The Staged header's background opens its menu; registered before the header's buttons, so
-    // they keep their own clicks.
-    let sense = if staged { Sense::click() } else { Sense::hover() };
-    let header = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
-        egui::Frame::new().fill(color::toolbar()).inner_margin(egui::Margin::symmetric(8, 5)).corner_radius(3).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    header_buttons(ui, staged, count, ctx, msgs);
-                    // Drawn after the buttons, so a long title is cut short (whole on hover)
-                    // instead of running under them. Not selectable, so a right-click on the
-                    // title reaches the header's menu.
-                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        let text = RichText::new(title).strong().color(color::text());
-                        ui.add(egui::Label::new(text).selectable(false).truncate());
-                    });
-                });
-            });
-        });
-    });
+    let header = header::header(ui, title, staged, count, ctx, msgs);
     if staged {
-        header.response.context_menu(|ui| file_menu::staged_header_items(ui, msgs, snap));
+        header.context_menu(|ui| file_menu::staged_header_items(ui, msgs, snap));
     }
     let area = egui::ScrollArea::vertical().id_salt(id).max_height(max_h).auto_shrink([false, true]);
     if count == 0 {
@@ -140,38 +126,6 @@ fn file_list(
             wip_file_row(ui, snap, f, staged, open, ctx, None, msgs);
         }
     });
-}
-
-/// The header's buttons, right to left: Unstage all on Staged Files; Stage all, Discard all
-/// (when there are files) and New file… on Unstaged Files.
-fn header_buttons(ui: &mut egui::Ui, staged: bool, count: usize, ctx: RowContext, msgs: &mut Vec<Msg>) {
-    let (keys, t) = (ctx.keys, ctx.lang);
-    if staged {
-        let tip = keys.tip(t.tr("details.wip.unstage_all.tip"), BindingId::UnstageAll);
-        if count > 0 && ui.small_button(t.tr("details.wip.unstage_all.button")).on_hover_text(tip).clicked() {
-            msgs.push(Msg::Stage(StageMsg::UnstageAll));
-        }
-        return;
-    }
-    if count > 0 {
-        let tip = keys.tip(t.tr("details.wip.stage_all.tip"), BindingId::StageAll);
-        if ui.small_button(t.tr("details.wip.stage_all.button")).on_hover_text(tip).clicked() {
-            msgs.push(Msg::Stage(StageMsg::StageAll));
-        }
-        if ui.small_button(t.tr("details.wip.discard_all.button")).clicked() {
-            // Discarding goes through a stash so it can be recovered.
-            msgs.push(Msg::confirm(
-                t.tr("details.wip.discard_all.title"),
-                discard_all_text(t, keys),
-                t.tr("details.wip.discard_all.button"),
-                Msg::git("Discard all changes", &["stash", "push", "-u", "-m", DISCARD_STASH_MESSAGE]),
-            ));
-        }
-    }
-    // Drawn last, so it sits leftmost; shown even when nothing has changed.
-    if ui.small_button(t.tr("details.wip.new_file.button")).clicked() {
-        msgs.push(Msg::WorkFile(WorkFileMsg::NewFileDialog(String::new())));
-    }
 }
 
 /// A row of the Unstaged, Staged or Conflicted Files list: status, Stage / Unstage / Mark

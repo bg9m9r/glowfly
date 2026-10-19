@@ -1,7 +1,9 @@
 //! The history's File view: the whole file as of the selected commit (for a commit that deletes
 //! it, the version just before), in the editor font with optional line numbers and syntax
 //! colors. A toolbar row gives its size and notes (Git LFS, a deleted file's last version), find
-//! and go to line, and the Wrap lines toggle; unwrapped, long lines scroll sideways. The text
+//! and go to line, and the Wrap lines toggle; a note that asks for something (an LFS pointer
+//! shown in place of the file) wraps on a line of its own under it. Unwrapped, long lines scroll
+//! sideways. The text
 //! comes from `FileHistoryView::text` (read by the runner); this only draws it.
 
 use super::UiCache;
@@ -9,6 +11,7 @@ use super::diff::wrap::{self, MIN_COLS, RowMetrics, Wrap};
 use super::diff::{DiffStyle, paint_line};
 use super::find_bar::{self, FindIntent, plural};
 use super::theme::color;
+use super::widgets::truncate;
 use crate::msg::{DiffMsg, HistoryMsg, Msg};
 use crate::state::AppState;
 use crate::state::blame_find::ranges;
@@ -30,49 +33,57 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     let before = status == 'D';
     let text = view.text.as_ref().filter(|t| t.oid == oid && t.path == path && t.before == before);
     let data = match text.map(|t| &t.state) {
-        None | Some(TextState::Loading) => return note(ui, "Loading…", false),
-        Some(TextState::Failed(e)) => return note(ui, &e.clone(), true),
+        None | Some(TextState::Loading) => return note(ui, "Loading…", false, color::weak()),
+        Some(TextState::Failed(e)) => return note(ui, &e.clone(), true, color::weak()),
         Some(TextState::Ready(data)) => data.clone(),
     };
     let notes = notes(&data.lfs, before);
     if data.lines.is_empty() && notes.is_empty() {
-        return note(ui, "This file is empty", false);
+        return note(ui, "This file is empty", false, color::weak());
     }
     toolbar(ui, st, data.lines.len(), &notes, msgs);
+    for (text, col, _) in notes.iter().filter(|n| n.2) {
+        note(ui, text, true, *col);
+    }
     if data.lines.is_empty() {
-        return note(ui, "This file is empty", false);
+        return note(ui, "This file is empty", false, color::weak());
     }
     body(ui, st, cache, data);
 }
 
-/// A line of weak text below the commit block; `wrap` for messages that can run long.
-fn note(ui: &mut Ui, text: &str, wrap: bool) {
+/// A line of text in `col` below the commit block; `wrap` for messages that can run long.
+fn note(ui: &mut Ui, text: &str, wrap: bool, col: Color32) {
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         ui.add_space(10.0);
-        let label = egui::Label::new(RichText::new(text).color(color::weak()));
+        let label = egui::Label::new(RichText::new(text).color(col));
         ui.add(if wrap { label.wrap() } else { label });
     });
 }
 
-/// What the toolbar says about the version shown, each with its color.
-fn notes(lfs: &LfsState, before: bool) -> Vec<(String, Color32)> {
+/// A note about the version shown: its text, its color, and whether it asks for something
+/// (wrapped under the toolbar rather than cut in it).
+type Note = (String, Color32, bool);
+
+/// What the File view says about the version shown.
+fn notes(lfs: &LfsState, before: bool) -> Vec<Note> {
     let mut out = Vec::new();
     if before {
-        out.push((DELETED_NOTE.to_owned(), color::weak()));
+        out.push((DELETED_NOTE.to_owned(), color::weak(), false));
     }
     match lfs {
         LfsState::None => {}
-        LfsState::Content => out.push(("Stored in Git LFS".to_owned(), color::weak())),
-        LfsState::Pointer => out.push((LFS_UNTRUSTED.to_owned(), color::amber())),
-        LfsState::Unavailable(why) => out.push((format!("Git LFS pointer: {why}"), color::amber())),
+        LfsState::Content => out.push(("Stored in Git LFS".to_owned(), color::weak(), false)),
+        LfsState::Pointer => out.push((LFS_UNTRUSTED.to_owned(), color::amber(), true)),
+        LfsState::Unavailable(why) => out.push((format!("Git LFS pointer: {why}"), color::amber(), true)),
     }
     out
 }
 
-/// "N lines" and the notes on the left; on the right, right to left, find and go to line, then
-/// Wrap lines. Narrower than `ONE_ROW`, find and go to line move to a row of their own.
-fn toolbar(ui: &mut Ui, st: &mut AppState, n: usize, notes: &[(String, Color32)], msgs: &mut Vec<Msg>) {
+/// "N lines" and the notes that ask for nothing (cut with "…") on the left; on the right, right
+/// to left, find and go to line, then Wrap lines. Narrower than `ONE_ROW`, find and go to line
+/// move to a row of their own.
+fn toolbar(ui: &mut Ui, st: &mut AppState, n: usize, notes: &[Note], msgs: &mut Vec<Msg>) {
     let wrap = st.settings.diff_word_wrap;
     let Some(view) = st.history.as_mut() else { return };
     let nav = &mut view.nav;
@@ -98,9 +109,9 @@ fn toolbar(ui: &mut Ui, st: &mut AppState, n: usize, notes: &[(String, Color32)]
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
             ui.add_space(10.0);
             ui.label(RichText::new(plural(n, "line", "lines")).color(color::weak()));
-            for (text, col) in notes {
+            for (text, col, _) in notes.iter().filter(|n| !n.2) {
                 ui.label(RichText::new("·").color(color::faint()));
-                ui.add(egui::Label::new(RichText::new(text).color(*col)).truncate());
+                truncate::truncate_label(ui, RichText::new(text).color(*col), ui.available_width());
             }
         });
     });

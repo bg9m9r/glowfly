@@ -1,6 +1,7 @@
 //! The commit graph: configurable, resizable columns (branch/tag, graph, SHA, message, changes,
 //! author, date), avatars, ghost refs, branch highlighting, and other worktrees' WIP rows.
 
+mod cells;
 mod header;
 mod more;
 mod paint;
@@ -59,7 +60,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let total = rows.len();
         // While filtering every node sits in the first lane, without lane lines.
         let lanes = if filtered { 1 } else { snap.graph.max_width.clamp(1, MAX_VISIBLE_LANES) };
-        let graph_w = lanes as f32 * LANE_W + 10.0;
+        let graph_w = header::graph_width(ui, lanes);
         let cols_cfg = st.settings.columns;
 
         select::keyboard_nav(ui, &st.selection, snap, &rows, &mut st.view, msgs);
@@ -262,73 +263,29 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     }
                 }
 
-                if cols_cfg.sha {
-                    painter.with_clip_rect(cols.rect(cols.sha, rect)).text(
-                        pos2(cols.sha.0, mid),
-                        Align2::LEFT_CENTER,
-                        &c.oid.to_string()[..7],
-                        FontId::monospace(12.0),
-                        color::weak(),
-                    );
-                }
-
                 let fg = if dim { color::text().gamma_multiply(0.35) } else { color::text() };
                 let weak = if dim { color::weak().gamma_multiply(0.35) } else { color::weak() };
-                if cols_cfg.message {
-                    let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
-                    let mut x = cols.msg.0;
-                    if let Some((label, draft)) = pr_at.get(&c.oid) {
-                        let col = if *draft { color::weak() } else { color::purple() };
-                        x += widgets::chip(&mp, x, mid, label, col.gamma_multiply(0.35), col) + 6.0;
-                    }
-                    let g = mp.layout_no_wrap(c.summary.clone(), FontId::proportional(13.0), fg);
-                    let w = g.size().x;
-                    mp.galley(pos2(x, mid - g.size().y / 2.0), g, fg);
-                    let show_body = match cols_cfg.description {
-                        DescriptionMode::Always => true,
-                        DescriptionMode::OnHover => hovered || selected,
-                        DescriptionMode::Never => false,
-                    };
-                    if show_body && !c.body.is_empty() {
-                        mp.text(pos2(x + w + 10.0, mid), Align2::LEFT_CENTER, &c.body, FontId::proportional(12.5), weak);
-                    }
+                let show_body = match cols_cfg.description {
+                    DescriptionMode::Always => true,
+                    DescriptionMode::OnHover => hovered || selected,
+                    DescriptionMode::Never => false,
+                };
+                let stat = stats.get(&c.oid).copied().filter(|_| cols_cfg.changes);
+                if cols_cfg.changes && stat.is_none() {
+                    want_stats.push(c.oid);
                 }
-                if cols_cfg.changes {
-                    match stats.get(&c.oid) {
-                        Some(&(_files, adds, dels)) => {
-                            let cp = painter.with_clip_rect(cols.rect(cols.changes, rect));
-                            let g = cp.layout_no_wrap(format!("+{adds}"), FontId::proportional(12.0), color::green());
-                            let w = g.size().x;
-                            cp.galley(pos2(cols.changes.0, mid - g.size().y / 2.0), g, color::green());
-                            cp.text(
-                                pos2(cols.changes.0 + w + 6.0, mid),
-                                Align2::LEFT_CENTER,
-                                format!("−{dels}"),
-                                FontId::proportional(12.0),
-                                color::red(),
-                            );
-                        }
-                        None => want_stats.push(c.oid),
-                    }
-                }
-                if cols_cfg.author {
-                    painter.with_clip_rect(cols.rect(cols.author, rect)).text(
-                        pos2(cols.author.0, mid),
-                        Align2::LEFT_CENTER,
-                        &c.author,
-                        FontId::proportional(12.5),
-                        weak,
-                    );
-                }
-                if cols_cfg.date {
-                    painter.with_clip_rect(cols.rect(cols.date, rect)).text(
-                        pos2(cols.date.0, mid),
-                        Align2::LEFT_CENTER,
-                        settings.format_time(c.time, now, offset),
-                        FontId::proportional(12.5),
-                        weak,
-                    );
-                }
+                let cells = cells::Cells {
+                    cols: &cols,
+                    rect,
+                    cfg: &cols_cfg,
+                    commit: c,
+                    pr: pr_at.get(&c.oid),
+                    show_body,
+                    colors: (fg, weak),
+                    date: cols_cfg.date.then(|| settings.format_time(c.time, now, offset)),
+                    stats: stat,
+                };
+                let text = cells::draw(&painter, &cells);
 
                 let in_refs = pointer.is_some_and(|p| cols.rect(cols.refs, rect).contains(p));
                 let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.date, rect).contains(p));
@@ -341,6 +298,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     Some([only]) if hovered && cut_chip.zip(pointer).is_some_and(|(r, p)| r.contains(p)) => {
                         resp.on_hover_text_at_pointer(&only.name)
                     }
+                    _ if hovered && text.msg.hovered(pointer) => resp.on_hover_ui_at_pointer(|ui| cells::message_tip(ui, c, show_body)),
+                    _ if hovered && text.sha.hovered(pointer) => resp.on_hover_text_at_pointer(&c.oid.to_string()[..7]),
+                    _ if hovered && text.author.hovered(pointer) => resp.on_hover_text_at_pointer(&c.author),
                     _ if hovered && in_date => resp.on_hover_text_at_pointer(settings.date_tooltip(c.time, now, offset)),
                     _ => resp,
                 };

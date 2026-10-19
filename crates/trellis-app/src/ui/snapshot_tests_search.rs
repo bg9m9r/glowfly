@@ -18,7 +18,7 @@ use trellis_core::settings::ThemeChoice;
 use trellis_core::spell::Speller;
 
 /// The fixture with one more commit on main, by Grace Hopper.
-fn with_two_authors(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_two_authors(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     std::fs::write(dir.join("notes.txt"), "notes\n").unwrap();
     let d = "2026-01-11T10:00:00+00:00";
@@ -32,12 +32,12 @@ fn with_two_authors(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn send(st: &mut AppState, msg: SearchMsg) {
+pub(super) fn send(st: &mut AppState, msg: SearchMsg) {
     crate::update::update(st, Msg::Search(msg), Instant::now());
 }
 
 /// The bar shown with `q` typed into it.
-fn searching(st: &mut AppState, q: &str) {
+pub(super) fn searching(st: &mut AppState, q: &str) {
     st.view.show_search = true;
     st.view.search = q.into();
     send(st, SearchMsg::QueryChanged);

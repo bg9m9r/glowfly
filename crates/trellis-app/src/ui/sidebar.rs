@@ -27,6 +27,9 @@ use trellis_core::settings::{GraphFilter, SizedPanel};
 
 type Shown<'a> = dyn Fn(&str) -> bool + 'a;
 
+/// The filter field's hint, cut with "…" in a narrow panel (whole on hover while empty).
+const FILTER_HINT: &str = "Filter (branches, PRs, issues)";
+
 /// Draws the panel at `fit`'s width (`panel_size::side_fits`).
 pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg>) {
     let id = egui::Id::new(panel_size::SIDEBAR_ID);
@@ -38,12 +41,13 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             ui.add_space(8.0);
-            controls::field(
-                ui,
-                egui::TextEdit::singleline(&mut st.view.ref_filter)
-                    .hint_text("Filter (branches, PRs, issues)")
-                    .desired_width(ui.available_width() - 8.0),
-            );
+            let width = ui.available_width() - 8.0;
+            let (hint, cut) = widgets::truncate::hint(ui, FILTER_HINT, width);
+            let empty = st.view.ref_filter.is_empty();
+            let r = controls::field(ui, egui::TextEdit::singleline(&mut st.view.ref_filter).hint_text(hint).desired_width(width));
+            if empty && cut {
+                r.on_hover_text(FILTER_HINT);
+            }
         });
         ui.add_space(8.0);
         let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
@@ -95,7 +99,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
             let selected = b.oid.is_some_and(|o| sel.includes(o));
             let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
-            let (r, marker) = widgets::list_row_slot(ui, 26.0, &label, right, slot, selected, b.is_head);
+            let (r, marker, cut) = widgets::list_row_cut(ui, 26.0, &label, right, slot, selected, b.is_head);
             if r.hovered() {
                 *hover_next = b.oid;
             }
@@ -105,8 +109,10 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
                 (None, Some(t)) => Some(format!("tracking {} (not on the remote)", t.display())),
                 (None, None) => None,
             };
+            // A cut name comes first, whole.
+            let whole = cut.then(|| label.clone());
             let lines: Vec<String> =
-                [tracking, tip, worktree.map(crate::state::worktree_branches::local_tip_line)].into_iter().flatten().collect();
+                [whole, tracking, tip, worktree.map(crate::state::worktree_branches::local_tip_line)].into_iter().flatten().collect();
             let r = if lines.is_empty() {
                 r
             } else {
@@ -209,8 +215,9 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
         let right = format!("{}{}", f.pr_label(pr.id), if votes > 0 { format!(" ✔{votes}") } else { String::new() });
         let tip = f.pr_heads.get(&pr.id).copied();
         let selected = tip.is_some_and(|o| *sel == Selection::Commit(o));
-        let (r, marker) =
-            widgets::list_row_slot(ui, 26.0, &title, Some((&[Part::Text(&right)][..], color::purple())), slot, selected, false);
+        // The tooltip has the whole title, so a cut one needs no hover of its own.
+        let (r, marker, _) =
+            widgets::list_row_cut(ui, 26.0, &title, Some((&[Part::Text(&right)][..], color::purple())), slot, selected, false);
         if let Some(c) = &pr.checks {
             super::build_status::paint_marker(&ui.painter_at(r.rect), marker.center(), c.state);
         }
@@ -268,7 +275,9 @@ fn issues(
         }
         let text = format!("{}  {}", f.mention(&issue.key), issue.title);
         let selected = open == Some(issue.key.as_str());
-        let r = widgets::list_row(ui, 26.0, &text, Some((&issue.state, state_color(&issue.state))), selected, false);
+        // The tooltip has the whole title, so a cut one needs no hover of its own.
+        let right = [Part::Text(&issue.state)];
+        let (r, _, _) = widgets::list_row_cut(ui, 26.0, &text, Some((&right[..], state_color(&issue.state))), 0.0, selected, false);
         let assignee = issue.assignee.as_deref().unwrap_or("unassigned");
         let mut tip = format!("{} {}: {}\n{} · {assignee}", issue.kind, issue.key, issue.title, issue.state);
         if let Some(line) = forge_filters::facet_line(&issue.facets) {

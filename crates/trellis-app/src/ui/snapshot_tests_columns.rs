@@ -12,9 +12,9 @@ use egui_kittest::kittest::Queryable;
 use trellis_core::settings::ResizableColumn::*;
 use trellis_core::settings::{ColumnWidths, ThemeChoice};
 
-type H = Harness<'static, (AppState, Vec<Msg>)>;
+pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
-fn pointer(h: &mut H, pos: Pos2, button: Option<bool>) {
+pub(super) fn pointer(h: &mut H, pos: Pos2, button: Option<bool>) {
     let events = &mut h.input_mut().events;
     events.push(Event::PointerMoved(pos));
     if let Some(pressed) = button {
@@ -23,7 +23,7 @@ fn pointer(h: &mut H, pos: Pos2, button: Option<bool>) {
 }
 
 /// The centre of the grip labelled `label`.
-fn grip(h: &H, label: &str) -> Pos2 {
+pub(super) fn grip(h: &H, label: &str) -> Pos2 {
     let b = h.get_by_label(label).bounding_box().expect("the grip has bounds");
     pos2((b.x0 + b.x1) as f32 / 2.0, (b.y0 + b.y1) as f32 / 2.0)
 }

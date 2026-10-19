@@ -7,6 +7,7 @@ use crate::msg::{Msg, SearchMsg};
 use crate::state::{AppState, Selection};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
+use crate::ui::widgets;
 use eframe::egui::{self, Key, PopupCloseBehavior, RichText};
 use trellis_core::matching::contains_lower;
 
@@ -17,7 +18,8 @@ const MAX_AUTHORS: usize = 200;
 /// after the query field.
 const CONTROLS_W: f32 = 430.0;
 
-/// The empty query field's hint, also its hover text while empty (a narrow graph clips it).
+/// The empty query field's hint (cut with "…" in a narrow field), also its hover text when the
+/// field is empty and the hint is cut.
 const HINT: &str = "Search messages, authors and SHAs; narrow with author: or path:";
 
 pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
@@ -26,8 +28,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         // The field gives up width before the controls after it run out of room.
         let width = (ui.available_width() - CONTROLS_W).clamp(160.0, 420.0);
         let empty = st.view.search.is_empty();
-        let r = controls::field(ui, egui::TextEdit::singleline(&mut st.view.search).hint_text(HINT).desired_width(width));
-        let r = if empty { r.on_hover_text(HINT) } else { r };
+        let (hint, hint_cut) = widgets::truncate::hint(ui, HINT, width);
+        let r = controls::field(ui, egui::TextEdit::singleline(&mut st.view.search).hint_text(hint).desired_width(width));
+        let r = if empty && hint_cut { r.on_hover_text(HINT) } else { r };
 
         // A credential prompt, the command palette or the author picker keeps the keyboard.
         let covered = st.askpass.showing() || st.palette.is_some();

@@ -40,9 +40,10 @@ pub(super) fn section(
             _ => color::amber(),
         };
         let word = row_word(sm);
-        let r = widgets::list_row(ui, 26.0, &sm.path, word.as_deref().map(|w| (w, col)), false, false);
+        let right = word.as_deref().map(|w| [widgets::Part::Text(w)]);
+        let (r, _, cut) = widgets::list_row_cut(ui, 26.0, &sm.path, right.as_ref().map(|p| (&p[..], col)), 0.0, false, false);
         marker(ui.painter(), pos2(r.rect.left() + 16.0, r.rect.center().y), sm);
-        let r = r.on_hover_text(tooltip(sm));
+        let r = r.on_hover_text(widgets::truncate::full_tip(cut, &sm.path, Some(tooltip(sm))).unwrap_or_default());
         if r.double_clicked() && open_blocked(sm).is_none() {
             msgs.push(Msg::Submodule(SubmoduleMsg::Open(sm.path.clone())));
         }

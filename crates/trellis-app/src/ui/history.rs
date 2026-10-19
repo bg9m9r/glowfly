@@ -5,10 +5,11 @@
 //! commit can restore its version of a file; Open and Show act on the file as it is today.
 
 use super::UiCache;
-use super::common::{menu_item, menu_item_if, paint_cut_line, short, status_color};
+use super::common::{menu_item, menu_item_if, short, status_color};
 use super::file_buttons::{self, CommitFile, Labels};
 use super::file_menu;
 use super::theme::color;
+use super::widgets::paint_cut_text;
 use crate::msg::BlameMsg;
 use crate::msg::HistoryMsg;
 use crate::msg::Msg;
@@ -190,17 +191,18 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: History
     let y1 = rect.top() + 13.0;
     let y2 = rect.top() + 31.0;
 
-    let sha_w = paint_cut_line(ui, pos2(left, y1), &short(e.oid), mono.clone(), color::weak(), 80.0);
-    paint_cut_line(ui, pos2(left + sha_w + 8.0, y1), &e.summary, body, color::text(), right - left - sha_w - 8.0);
+    let p = ui.painter();
+    let sha_w = paint_cut_text(p, pos2(left, y1), &short(e.oid), mono.clone(), color::weak(), 80.0).rect.width();
+    paint_cut_text(p, pos2(left + sha_w + 8.0, y1), &e.summary, body, color::text(), right - left - sha_w - 8.0);
 
     let date = st.settings.format_day(e.time, st.view.now, st.view.utc_offset);
     let date_rect = ui.painter().text(pos2(right, y2), Align2::RIGHT_CENTER, date, small.clone(), color::weak());
     let date_w = date_rect.width();
-    let status_w = paint_cut_line(ui, pos2(left, y2), &e.status.to_string(), mono, status_color(e.status), 20.0);
+    let status_w = paint_cut_text(p, pos2(left, y2), &e.status.to_string(), mono, status_color(e.status), 20.0).rect.width();
     let mut x = left + status_w.max(8.0) + 8.0;
     let limit = right - date_w - 12.0;
     let author = if e.author.is_empty() { "Unknown" } else { e.author.as_str() };
-    x += paint_cut_line(ui, pos2(x, y2), author, small.clone(), color::text(), limit - x);
+    x += paint_cut_text(p, pos2(x, y2), author, small.clone(), color::text(), limit - x).rect.width();
     let extra = match kind {
         HistoryKind::Folder => {
             let n = if e.files.len() == 1 { "1 file".to_owned() } else { format!("{} files", e.files.len()) };
@@ -213,7 +215,7 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: History
     };
     if let Some(extra) = extra {
         x += 10.0;
-        paint_cut_line(ui, pos2(x, y2), &extra, small, color::weak(), limit - x);
+        paint_cut_text(p, pos2(x, y2), &extra, small, color::weak(), limit - x);
     }
     date_rect
 }

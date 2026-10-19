@@ -20,7 +20,7 @@ use trellis_core::settings::ThemeChoice;
 
 /// The fixture with `origin` (two branches, a separate push URL with a password) and `backup`
 /// (no branches yet).
-fn with_remotes(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
+pub(super) fn with_remotes(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_mut().unwrap();
     let main = snap.locals.iter().find(|b| b.name == "main").and_then(|b| b.oid).unwrap();

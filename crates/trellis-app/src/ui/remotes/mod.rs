@@ -77,12 +77,13 @@ pub(in crate::ui) fn section(
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let (r, marker) = widgets::list_row_slot(ui, 34.0, name, None, slot, c.sel.includes(*oid), false);
+            let (r, marker, cut) = widgets::list_row_cut(ui, 34.0, name, None, slot, c.sel.includes(*oid), false);
             if r.hovered() {
                 *hover_next = Some(*oid);
             }
-            let r = match super::build_status::tip_row(ui, &r, marker, c.fs, Some(*oid), tips) {
-                Some(line) => r.on_hover_text(line),
+            let line = super::build_status::tip_row(ui, &r, marker, c.fs, Some(*oid), tips);
+            let r = match widgets::truncate::full_tip(cut, name, line) {
+                Some(tip) => r.on_hover_text(tip),
                 None => r,
             };
             let full = format!("{remote}/{name}");

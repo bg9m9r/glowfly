@@ -4,8 +4,7 @@
 use super::rows::{BUTTONS_W, COMBO_W, COMBO_X, GAP, GRIP_X, INDENT, Look, META_W, Place, ROW_H, SHA_X, Shade, fill};
 use crate::msg::{Msg, RebaseMsg};
 use crate::ui::theme::color;
-use crate::ui::widgets::{Icon, icon_button, paint_icon};
-use eframe::egui::text::{LayoutJob, TextWrapping};
+use crate::ui::widgets::{Icon, icon_button, paint_cut_text, paint_icon};
 use eframe::egui::{
     self, Align, Align2, Color32, CornerRadius, FontId, Layout, Rect, RichText, Stroke, StrokeKind, Ui, UiBuilder, pos2, vec2,
 };
@@ -99,15 +98,7 @@ pub(super) fn paint_action(ui: &Ui, row: Rect, a: RebaseAction) {
 /// One line of text cut to `max_w` with an ellipsis, vertically centred on `pos.y`. Returns its
 /// width.
 pub(super) fn line(ui: &Ui, pos: egui::Pos2, text: &str, font: FontId, c: Color32, max_w: f32) -> f32 {
-    if max_w <= 0.0 {
-        return 0.0;
-    }
-    let mut job = LayoutJob::simple_singleline(text.to_owned(), font, c);
-    job.wrap = TextWrapping::truncate_at_width(max_w);
-    let galley = ui.fonts(|f| f.layout_job(job));
-    let w = galley.size().x;
-    ui.painter().galley(pos2(pos.x, pos.y - galley.size().y / 2.0), galley, c);
-    w
+    paint_cut_text(ui.painter(), pos, text, font, c, max_w).rect.width()
 }
 
 /// The row's controls: what it is, which actions its combo box offers, and whether it is fixed

@@ -1,8 +1,9 @@
-//! The sidebar's list rows: one line of text with optional dim text (words, or counts with
-//! painted arrows) and a marker slot at the right, plus the skip-if-scrolled-away helper the long
-//! sections use.
+//! The sidebar's list rows: one line of text (cut with "…" when it doesn't fit) with optional dim
+//! text (words, or counts with painted arrows) and a marker slot at the right, plus the
+//! skip-if-scrolled-away helper the long sections use.
 
 use super::theme::color;
+use super::widgets::truncate;
 
 use std::sync::Arc;
 
@@ -20,6 +21,7 @@ pub enum Part<'a> {
 }
 
 /// One sidebar list row. Returns the click response; `right` is optional dim text at the right.
+/// A row whose text is cut short shows the whole text on hover.
 pub fn list_row(ui: &mut Ui, indent: f32, text: &str, right: Option<(&str, Color32)>, selected: bool, strong: bool) -> Response {
     let parts = right.map(|(r, _)| [Part::Text(r)]);
     let right = right.zip(parts.as_ref()).map(|((_, c), p)| (&p[..], c));
@@ -37,6 +39,21 @@ pub fn list_row_slot(
     selected: bool,
     strong: bool,
 ) -> (Response, Rect) {
+    let (r, marker, cut) = list_row_cut(ui, indent, text, right, slot, selected, strong);
+    (if cut { r.on_hover_text(text) } else { r }, marker)
+}
+
+/// `list_row_slot` without a hover of its own: also returns whether the text was cut (ending in
+/// "…"), for a caller whose tooltip holds the whole text or gets it as its first line.
+pub fn list_row_cut(
+    ui: &mut Ui,
+    indent: f32,
+    text: &str,
+    right: Option<(&[Part<'_>], Color32)>,
+    slot: f32,
+    selected: bool,
+    strong: bool,
+) -> (Response, Rect, bool) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), LIST_ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
@@ -68,11 +85,9 @@ pub fn list_row_slot(
     let text_rect = Rect::from_min_max(pos2(rect.left() + indent, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
     let font = if strong { FontId::new(13.0, egui::FontFamily::Proportional) } else { FontId::proportional(13.0) };
     let col = if strong { color::strong() } else { color::text() };
-    let g = p.layout_no_wrap(text.to_owned(), font, col);
-    let clipped = p.with_clip_rect(text_rect);
-    clipped.galley(pos2(text_rect.left(), rect.center().y - g.size().y / 2.0), g, col);
+    let cut = truncate::paint_cut(&p, pos2(text_rect.left(), rect.center().y), truncate::cut_job(text, font, col), text_rect.width());
     let marker = Rect::from_min_max(pos2(rect.right() - 10.0 - slot, rect.top()), pos2(rect.right() - 10.0, rect.bottom()));
-    (resp, marker)
+    (resp, marker, cut.cut)
 }
 
 /// The space between two right-hand parts (a space's width at 12 px).

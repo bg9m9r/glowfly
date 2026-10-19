@@ -68,7 +68,7 @@ fn release(with_files: bool) -> Release {
     }
 }
 
-fn the_offer() -> Offer {
+pub(super) fn the_offer() -> Offer {
     offer(
         &release(true),
         &Version::parse("0.2.0").unwrap(),
@@ -94,13 +94,13 @@ fn prefs(status: UpdateStatus) -> AppState {
     st
 }
 
-fn status_bar(status: UpdateStatus) -> AppState {
+pub(super) fn status_bar(status: UpdateStatus) -> AppState {
     let mut st = app(ThemeChoice::Dark);
     st.updates.status = status;
     st
 }
 
-fn sent(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, m: &UpdateMsg) -> bool {
+pub(super) fn sent(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, m: &UpdateMsg) -> bool {
     h.state().1.iter().any(|x| matches!(x, Msg::Updates(u) if u == m))
 }
 

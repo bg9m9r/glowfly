@@ -16,11 +16,23 @@ use crate::msg::{Msg, ReposMsg};
 use crate::state::onboarding::{WelcomeStep, identity_problem};
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;
+use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use trellis_core::i18n::Lang;
 use trellis_core::repo;
 use trellis_core::settings::ThemeChoice;
+
+/// Clicks the WIP header's button `label`, through the more-actions menu (`more`) when the
+/// button moved there.
+pub(super) fn click_header_action(h: &mut Harness<'_, (AppState, Vec<Msg>)>, label: &str, more: &str) {
+    if h.query_by_label(label).is_none() {
+        h.get_by_label(more).click();
+        h.run();
+    }
+    h.get_by_label(label).click();
+    h.run();
+}
 
 fn commit(st: &AppState, summary: &str) -> Oid {
     st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == summary).unwrap().oid
@@ -117,8 +129,7 @@ fn details_wip_spanish() {
     let header = Lang::Es.trf("details.wip.unstaged.header", &[("count", &count)]);
     assert!(h.query_by_label(&header).is_some(), "{header} is shown");
     h.check_snapshot("details_wip_spanish");
-    h.get_by_label(Lang::Es.tr("details.wip.discard_all.button")).click();
-    h.run();
+    click_header_action(&mut h, Lang::Es.tr("details.wip.discard_all.button"), Lang::Es.tr("details.wip.more.tip"));
     let body = discard_all_text(Lang::Es, &h.state().0.keymap);
     let asked =
         h.state().1.iter().any(

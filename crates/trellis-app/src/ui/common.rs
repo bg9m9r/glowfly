@@ -74,20 +74,6 @@ pub fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-/// One line of text cut to `max_w` with an ellipsis, vertically centred on `pos.y` from
-/// `pos.x`; returns its width.
-pub fn paint_cut_line(ui: &egui::Ui, pos: egui::Pos2, text: &str, font: egui::FontId, c: Color32, max_w: f32) -> f32 {
-    if max_w <= 0.0 {
-        return 0.0;
-    }
-    let mut job = egui::text::LayoutJob::simple_singleline(text.to_owned(), font, c);
-    job.wrap = egui::text::TextWrapping::truncate_at_width(max_w);
-    let galley = ui.fonts(|f| f.layout_job(job));
-    let w = galley.size().x;
-    ui.painter().galley(pos2(pos.x, pos.y - galley.size().y / 2.0), galley, c);
-    w
-}
-
 /// The widest a ref menu's header gets before its name wraps onto more lines.
 const MENU_HEADER_W: f32 = 320.0;
 
@@ -146,13 +132,12 @@ pub fn issue_chip(ui: &mut egui::Ui, fs: &ForgeState, key: &str, msgs: &mut Vec<
     r.on_hover_text(format!("Open in {}", fs.tracker_name()));
 }
 
+/// A faint note under a section's header, indented like its rows and wrapped within the panel
+/// (it often says what to do, so it is never cut).
 pub fn hint_row(ui: &mut egui::Ui, text: String) {
-    ui.add_space(4.0);
-    ui.horizontal(|ui| {
-        ui.add_space(26.0);
-        ui.label(RichText::new(text).size(11.5).color(color::faint()));
+    egui::Frame::new().inner_margin(egui::Margin { left: 26, right: 8, top: 4, bottom: 4 }).show(ui, |ui| {
+        ui.add(egui::Label::new(RichText::new(text).size(11.5).color(color::faint())).wrap());
     });
-    ui.add_space(4.0);
 }
 
 pub fn forge_error_rows(ui: &mut egui::Ui, error: &str, msgs: &mut Vec<Msg>) {
