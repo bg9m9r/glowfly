@@ -191,11 +191,29 @@ are in Later > UI review polish.
       weight; monospace only for SHAs, paths, code and fingerprints (not the compare header or
       activity log prose);
       sentence case for every label and button; one section-header style; one link colour
-- [ ] **Toggles look like toggles**: Hunks/Whole file, Inline/Split, Diff/File/Blame, the
-      dashboard tabs and the search mode are segmented controls; Wrap lines and Ignore
-      whitespace are checkboxes or framed chips; the diff header fits on one row with view
-      options in a View ▾ menu and the same slot order for every kind of diff; hunk buttons at
-      body size with Discard set apart
+- [ ] **Toggles look like toggles**: Diff/File/Blame, the dashboard tabs and the search mode
+      are segmented controls (the diff's own view switches move into the file header's View
+      menu); hunk buttons at body size with Discard set apart
+- [ ] **A calm file header**: the bar above a diff becomes a real header, 48 px on the raised
+      surface with a 1 px edge below, and one row at every width (nothing wraps to a second row)
+  - Left: a file-type icon, the folder in a quiet colour then the file name in semibold (the
+    folder shortens from the left when space runs out, never the name), a status chip with
+    line counts (M +24 −9, or the sizes for a binary file), and a chip for the context: the
+    short commit with its summary on hover, "Unstaged" or "Staged"
+  - Right, always in this order with thin dividers: previous/next change with "2 / 5" (for a
+    file with no lines they step between files); a View ▾ button that names the current view
+    ("Inline · Hunks") and opens Layout (Inline | Split) and Show (Hunks | Whole file) as
+    segmented controls, Ignore whitespace and Wrap long lines as checkboxes, and Expand all /
+    Collapse all in Whole file; the file actions with icon and label (Restore…, Open, Show in
+    folder) plus the external diff tool as an icon; Stage file or Unstage file as the one
+    filled primary button; Close as a × with "Esc" in its tooltip. Groups that don't apply
+    drop out and the rest keep their places
+  - Every control 28 px tall, 6 px radius, transparent until hovered, 13 px text and 16 px
+    outline icons; every icon-only control has a tooltip in the shared style
+  - Working-tree files get Open as well as Stage file
+  - In a narrow panel the labelled file actions fold into a ⋯ menu
+  - A changed image shows before and after with dimensions and sizes instead of "Binary file
+    not shown"; other binary files show both sizes
 - [ ] **Full-row selection in file lists**: the commit panel's and file history's file lists
       select the whole row with the same fill and accent bar as the graph and sidebar
 - [ ] **One style for empty, loading, error and banner states**: an `empty_state(icon, title,
