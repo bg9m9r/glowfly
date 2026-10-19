@@ -34,7 +34,8 @@ fn shortcut_sheet_filtered_light() {
     h.run();
     h.check_snapshot("shortcut_sheet_filtered_light");
     assert!(h.query_by_label("Stage all files").is_some());
-    assert!(h.query_by_label("New tab").is_none());
+    // Only the tab bar's + is named New tab: the sheet's row is filtered out.
+    assert_eq!(h.query_all_by_label("New tab").count(), 1);
     drop(h);
     remove_fixture(&dir);
 }

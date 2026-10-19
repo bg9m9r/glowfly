@@ -171,3 +171,25 @@ fn a_grouped_tab_names_its_repository_on_hover() {
         remove_fixture(&dir);
     }
 }
+
+#[test]
+fn new_tab_plus_matches_the_close_cross() {
+    let (st, dir) = with_repo(ThemeChoice::Dark, "tabs-new-tab");
+    let mut h = harness(st, true);
+    h.run();
+    let b = h.get_by_label("New tab").bounding_box().expect("the + has bounds");
+    let (w, ht) = ((b.x1 - b.x0) as f32, (b.y1 - b.y0) as f32);
+    assert_eq!((w, ht), (super::tabs::HEIGHT, super::tabs::HEIGHT), "the click target is the whole slot");
+    let centre = pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32);
+    assert!((centre.y - tab_centre(0).y).abs() <= 0.5, "the + sits on the tabs' line: {centre:?}");
+    pointer(&mut h, centre, None);
+    h.run();
+    h.check_snapshot("tabs_new_tab_hover");
+    pointer(&mut h, centre, Some((PointerButton::Primary, true)));
+    h.step();
+    pointer(&mut h, centre, Some((PointerButton::Primary, false)));
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Tabs(TabsMsg::NewTab))), "a click opens a new tab");
+    drop(h);
+    remove_fixture(&dir);
+}

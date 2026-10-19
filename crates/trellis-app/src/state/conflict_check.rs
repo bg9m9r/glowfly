@@ -178,14 +178,22 @@ pub fn headline(report: &ConflictReport) -> String {
     }
 }
 
-/// The toolbar chip's hover text (for a Conflicts result).
-pub fn chip_tooltip(report: &ConflictReport) -> String {
+/// The toolbar chip's hover text: what it warns about, where the target came from (`remote`:
+/// it is a remote-tracking branch) and what a click shows. Any result gets a fitting text,
+/// though the chip is drawn only for conflicts.
+pub fn chip_tooltip(report: &ConflictReport, remote: bool) -> String {
     let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
-    let n = match &report.result {
-        Ok(Prediction::Conflicts(paths)) if !paths.is_empty() => format!(" in {}", file_count(paths.len())),
-        _ => String::new(),
-    };
-    format!("Merging {theirs} into {ours} would stop with conflicts{n}. Click for details.")
+    let listed = matches!(&report.result, Ok(Prediction::Conflicts(paths)) if !paths.is_empty());
+    let mut lines = vec![match &report.result {
+        Ok(Prediction::Conflicts(paths)) if !paths.is_empty() => {
+            format!("Merging {theirs} into {ours} would stop with conflicts in {}.", file_count(paths.len()))
+        }
+        Ok(Prediction::Conflicts(_)) => format!("Merging {theirs} into {ours} would stop with conflicts."),
+        Ok(Prediction::Clean | Prediction::UpToDate | Prediction::FastForward) | Err(_) => headline(report),
+    }];
+    lines.extend(target_note(&report.request.target, ours, remote));
+    lines.push(if listed { "Click to see the files and merge or rebase." } else { "Click for details." }.into());
+    lines.join("\n")
 }
 
 /// Where the target came from, and for a remote one that its last fetched state counts. None

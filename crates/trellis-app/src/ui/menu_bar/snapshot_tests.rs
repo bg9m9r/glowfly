@@ -50,7 +50,10 @@ fn click(name: &str, title: &str, item: &str, prepare: impl FnOnce(&mut AppState
     let (mut st, dir) = with_bar(ThemeChoice::Dark, name);
     prepare(&mut st);
     let mut h = opened(st, true, title);
-    h.get_by_label(item).click();
+    // The tab bar's + is named New tab too; the menu's item is the wider one.
+    let width = |n: &egui_kittest::kittest::Node<'_>| n.bounding_box().map_or(0.0, |b| b.x1 - b.x0);
+    let node = h.query_all_by_label(item).max_by(|a, b| width(a).total_cmp(&width(b))).unwrap_or_else(|| panic!("{item}"));
+    node.click();
     h.run();
     (h, dir)
 }

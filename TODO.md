@@ -271,7 +271,7 @@ until this list says which option was chosen.
 - [x] **One label for a branch and its copies on every remote**: a same-commit copy on any
       remote (`fork/x` as well as the upstream) folds into the label with the cloud instead of
       counting as "+1"
-- [ ] **Small fixes from testing**: the terminal tab bar's + is centred and drawn like the ×
+- [x] **Small fixes from testing**: the terminal tab bar's + is centred and drawn like the ×
       (the repository tab bar's too); the ⚠ badge by the branch picker says on hover what it
       warns about and opens it on click
 - [ ] **Brand colour and tinted neutrals** (from the colour review, 2026-10-19): the accent moves
@@ -2768,3 +2768,18 @@ here, under the item they grew from.
 - Translate job labels so the fallback "<label> failed: ..." text is fully in the UI language
 - A Fetch-then-fast-forward fix for a sidebar Fast-forward that was rejected as non-fast-forward
   on a non-HEAD branch
+
+### Small fixes from testing
+
+- Show the conflict chip for a failed automatic check too (with the error in its tooltip),
+  instead of only logging the error once
+- Let the conflict chip take keyboard focus, with Enter/Space opening its popover and Esc
+  returning focus to it
+- Give the repository tab bar's close × an accessible name (Close tab) without breaking queries
+  for the tab menu's item of the same name
+- Use `tab_glyph` for the other small painted × buttons (repository list, repository finder,
+  welcome, tour) so every close cross in the app looks the same
+- A middle-click or double-click on the empty tab-bar area opens a new tab, like the + does
+- The chip's hover and click failure seen in the running app didn't reproduce headlessly (pointer
+  tests, the whole app, 60 fps mouse moves); if it recurs, check egui's hit-test there with
+  `debug.show_interactive_widgets`

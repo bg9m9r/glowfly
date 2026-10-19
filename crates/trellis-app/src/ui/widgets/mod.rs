@@ -6,7 +6,8 @@
 //! banner style is in `banner.rs`, field and form messages in `form_message.rs`, and the error,
 //! warning and information marks in `severity.rs`. The shared row selection and hover look is
 //! in `row_fill.rs`, and the weak lines and menu suffixes that say why an action is disabled
-//! (or that it opens a setting first) in `reason.rs`.
+//! (or that it opens a setting first) in `reason.rs`. The tab bars' painted close × and
+//! new-tab + are in `tab_glyph.rs`.
 
 pub mod banner;
 pub mod buttons;
@@ -17,6 +18,7 @@ pub mod row_fill;
 pub mod section_header;
 pub mod segmented;
 pub mod severity;
+pub mod tab_glyph;
 pub mod tooltip;
 pub mod tooltip_motion;
 pub mod truncate;

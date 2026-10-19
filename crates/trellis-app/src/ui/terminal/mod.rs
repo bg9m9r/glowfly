@@ -59,6 +59,11 @@ fn header(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let tab = snap.map(|s| s.name.as_str()).unwrap_or_default();
     let alive = snap.map_or(0, |s| st.terminal.sessions_for(&s.workdir).filter(|t| t.alive()).count());
     ui.horizontal(|ui| {
+        // As tall as the tab strip from the start, so the buttons drawn before it are centred on
+        // the same line as its labels.
+        if let Some(h) = tabs::row_height(ui, st) {
+            ui.set_min_height(h);
+        }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let hide = st.keymap.tip("Hide the terminal panel", crate::keymap::BindingId::ToggleTerminal);
             if ui.add(buttons::secondary("Hide").small().tip(&hide)).clicked() {

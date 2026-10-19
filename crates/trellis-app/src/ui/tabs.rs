@@ -12,8 +12,10 @@ use crate::state::AppState;
 use crate::state::menu_bar::tab_name;
 use crate::state::tab_groups::{self, is_identity, move_order, new_index, shown_at};
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::tab_glyph::{self, TabGlyph};
 use eframe::egui::{
-    self, Align, Align2, Button, Color32, CursorIcon, Id, Key, Layout, PointerButton, Rect, Response, Sense, Stroke, StrokeKind, pos2, vec2,
+    self, Align, Align2, Button, Color32, CursorIcon, Id, Key, Layout, PointerButton, Rect, Response, Sense, Stroke, StrokeKind,
+    WidgetInfo, WidgetType, pos2, vec2,
 };
 use std::ops::Range;
 use trellis_core::i18n::Lang;
@@ -207,7 +209,7 @@ fn paint_group_strip(p: &egui::Painter, rect: Rect, color: Color32, first: bool,
 }
 
 fn close_rect(tab: Rect) -> Rect {
-    Rect::from_center_size(pos2(tab.right() - 14.0, tab.center().y), vec2(16.0, 16.0))
+    Rect::from_center_size(pos2(tab.right() - 14.0, tab.center().y), vec2(tab_glyph::BOX, tab_glyph::BOX))
 }
 
 fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, active: bool, hovered: bool, show_close: bool, close_hovered: bool) {
@@ -235,24 +237,17 @@ fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, active: bool, hovered: b
     );
     // Close button: shown on the active and hovered tabs.
     if show_close {
-        if close_hovered {
-            p.rect_filled(close_rect, 3.0, color::selected());
-        }
-        let c = close_rect.center();
-        let s = Stroke::new(1.4_f32, text_col);
-        p.line_segment([c + vec2(-4.0, -4.0), c + vec2(4.0, 4.0)], s);
-        p.line_segment([c + vec2(-4.0, 4.0), c + vec2(4.0, -4.0)], s);
+        tab_glyph::paint(p, close_rect.center(), TabGlyph::Close, text_col, close_hovered.then(color::selected));
     }
 }
 
+/// The + after the tabs: drawn like a tab's close × (`tab_glyph`), on the same line, in its
+/// own HEIGHT-square slot.
 fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, msgs: &mut Vec<Msg>) {
     let (rect, r) = ui.allocate_exact_size(vec2(HEIGHT, HEIGHT), Sense::click());
+    r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, t.tr("tabs.new_tab.tip")));
     let r = r.on_hover_text(keys.tip(t.tr("tabs.new_tab.tip"), crate::keymap::BindingId::NewTab));
-    let c = rect.center();
-    let col = if r.hovered() { color::text() } else { color::weak() };
-    let s = Stroke::new(1.6_f32, col);
-    ui.painter().line_segment([pos2(c.x - 6.0, c.y), pos2(c.x + 6.0, c.y)], s);
-    ui.painter().line_segment([pos2(c.x, c.y - 6.0), pos2(c.x, c.y + 6.0)], s);
+    tab_glyph::paint(ui.painter(), rect.center(), TabGlyph::Plus, color::weak(), r.hovered().then(color::selected));
     if r.clicked() {
         msgs.push(Msg::Tabs(TabsMsg::NewTab));
     }

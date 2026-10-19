@@ -11,11 +11,14 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict_check::{self as cc, ConflictReport, JOB_RUNNING};
 use crate::ui::theme::type_scale;
-use eframe::egui::{self, CornerRadius, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
+use eframe::egui::{self, CornerRadius, Id, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
 use trellis_core::conflict_check::Prediction;
 
 /// The chip's height; the toolbar row is 48px.
 const HEIGHT: f32 = 24.0;
+/// The chip's click target and its popover (one of each per window).
+const CHIP_ID: &str = "conflict-chip";
+const POPOVER_ID: &str = "conflict-popover";
 
 /// The check the chip shows and its conflicting paths, while it is drawn.
 pub fn shown(st: &AppState) -> Option<(&ConflictReport, &Vec<String>)> {
@@ -30,14 +33,17 @@ pub fn shown(st: &AppState) -> Option<(&ConflictReport, &Vec<String>)> {
 
 /// Draws the chip while the preference is on and the last automatic check, for the inputs on
 /// screen, found conflicts; nothing otherwise (not even its spacing, so the toolbar doesn't
-/// move). A click opens the popover below it.
+/// move). Hovering it says what it warns about; a click opens the popover below it, and another
+/// closes it. The chip and its popover have fixed ids (there is one per window), so neither
+/// depends on how many widgets the toolbar drew before them.
 pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some((report, paths)) = shown(st) else { return };
     let Some(snap) = &st.snap else { return };
     let count = if paths.is_empty() { "!".to_owned() } else { paths.len().to_string() };
     let galley = ui.painter().layout_no_wrap(count, type_scale::font(type_scale::SMALL), color::text());
     ui.add_space(8.0);
-    let (rect, resp) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, HEIGHT), Sense::click());
+    let (rect, _) = ui.allocate_exact_size(vec2(galley.size().x + 36.0, HEIGHT), Sense::hover());
+    let resp = ui.interact(rect, Id::new(CHIP_ID), Sense::click());
     let amber = color::amber();
     let p = ui.painter();
     let radius = CornerRadius::same((HEIGHT / 2.0) as u8);
@@ -47,12 +53,12 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     p.galley(pos2(rect.left() + 27.0, rect.center().y - galley.size().y / 2.0), galley, color::text());
     let target = report.request.target.name.clone();
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Conflicts with {target}")));
-    let resp = resp.on_hover_text(cc::chip_tooltip(report)).on_hover_cursor(egui::CursorIcon::PointingHand);
-    let id = ui.make_persistent_id("conflict-popover");
+    let remote = cc::is_remote(snap, &report.request.target);
+    let resp = resp.on_hover_text(cc::chip_tooltip(report, remote)).on_hover_cursor(egui::CursorIcon::PointingHand);
+    let id = Id::new(POPOVER_ID);
     if resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }
-    let remote = cc::is_remote(snap, &report.request.target);
     let idle = st.job.is_none();
     egui::popup::popup_below_widget(ui, id, &resp, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_width(380.0);

@@ -158,9 +158,30 @@ fn headlines() {
 }
 
 #[test]
-fn chip_tooltip_text() {
-    let r = report(request(1, TargetKind::DefaultBranch), conflicts(&["a", "b", "c"]));
-    assert_eq!(chip_tooltip(&r), "Merging main into feature would stop with conflicts in 3 files. Click for details.");
+fn chip_tooltip_says_what_and_where() {
+    let tip = |kind, result, remote| chip_tooltip(&report(request(1, kind), result), remote);
+    assert_eq!(
+        tip(TargetKind::DefaultBranch, conflicts(&["a", "b", "c"]), false),
+        "Merging main into feature would stop with conflicts in 3 files.\nmain is this repository's default branch.\nClick to see the files and merge or rebase."
+    );
+    let one = tip(TargetKind::DefaultBranch, conflicts(&["a"]), false);
+    assert!(one.starts_with("Merging main into feature would stop with conflicts in 1 file.\n"), "{one}");
+    assert_eq!(
+        tip(TargetKind::DefaultBranch, conflicts(&[]), false),
+        "Merging main into feature would stop with conflicts.\nmain is this repository's default branch.\nClick for details."
+    );
+    let up = tip(TargetKind::Upstream, conflicts(&["a"]), true);
+    assert!(up.starts_with("Merging origin/feature into feature would stop with conflicts in 1 file.\n"), "{up}");
+    assert!(up.contains("\norigin/feature is the upstream of feature. Compared with the last fetched state of origin/feature.\n"), "{up}");
+    assert_eq!(
+        tip(TargetKind::Chosen, conflicts(&["a", "b"]), false),
+        "Merging main into feature would stop with conflicts in 2 files.\nClick to see the files and merge or rebase.",
+        "a chosen target has no note line"
+    );
+    let err = tip(TargetKind::DefaultBranch, Err("boom".into()), false);
+    assert!(err.starts_with("Couldn't check feature against main: boom\n"), "{err}");
+    assert!(err.ends_with("\nClick for details."), "{err}");
+    assert_eq!(tip(TargetKind::Chosen, Ok(Prediction::Clean), false), "main merges into feature without conflicts.\nClick for details.");
 }
 
 #[test]
