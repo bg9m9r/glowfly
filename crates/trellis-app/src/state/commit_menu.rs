@@ -1,9 +1,10 @@
 //! The commit menus' wording: the reset submenu's title and modes, the header's summary, and a
 //! commit named by its summary in confirmations.
 
+use crate::msg::Msg;
 use git2::Oid;
 use trellis_core::i18n::Lang;
-use trellis_core::repo::CommitInfo;
+use trellis_core::repo::{CommitInfo, Snapshot};
 
 /// The most characters of a summary the menu's header shows.
 const HEADER_CHARS: usize = 80;
@@ -44,9 +45,25 @@ pub fn hard_reset_body(t: Lang, current: Option<&str>, c: &CommitInfo) -> String
     t.trf("commits.menu.reset.hard_body", &[("branch", &current.unwrap_or("HEAD")), ("commit", &commit_name(c))])
 }
 
+/// The Hard reset item's message: the bare reset when the auto-stash prompt will ask instead
+/// (so it asks once), otherwise the reset behind its danger confirmation. The prompt asks only
+/// when its gate blocks; with an operation in progress or conflicted files it doesn't, so the
+/// confirmation stays.
+pub fn hard_reset_msg(t: Lang, snap: &Snapshot, c: &CommitInfo) -> Msg {
+    let sha = c.oid.to_string();
+    let hard = Msg::git("Reset (hard)", &["reset", "--hard", &sha]);
+    if crate::state::auto_stash::blocks(snap) {
+        return hard;
+    }
+    let body = hard_reset_body(t, snap.head_branch.as_deref(), c);
+    Msg::confirm_danger(t.tr("commits.menu.reset.hard_title"), body, t.tr("commits.menu.reset.button"), hard)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::op_fixture::{rows, snapshot};
+    use git2::RepositoryState;
 
     fn commit(summary: &str) -> CommitInfo {
         let oid = Oid::from_str("1a2b3c4d5e6f708192a3b4c5d6e7f80910111213").unwrap();
@@ -97,5 +114,22 @@ mod tests {
         assert!(hard_reset_body(Lang::En, None, &commit("")).starts_with("Reset HEAD to 1a2b3c4?"));
         let want = "Reset main to \"Fix build\" (1a2b3c4)? Uncommitted changes to tracked files are stashed first, so Undo brings them back. Untracked files stay as they are.";
         assert_eq!(body, want);
+    }
+
+    #[test]
+    fn hard_reset_confirms_unless_the_auto_stash_prompt_asks() {
+        let c = commit("Fix build");
+        let confirms = |snap: &Snapshot| matches!(hard_reset_msg(Lang::En, snap, &c), Msg::ConfirmDanger { .. });
+        let mut snap = snapshot("hard-reset-confirm");
+        assert!(confirms(&snap), "a clean tree confirms");
+        snap.unstaged = rows(&[("a.txt", 'M')]);
+        assert!(!confirms(&snap), "the auto-stash prompt asks instead");
+        for state in [RepositoryState::Merge, RepositoryState::RebaseInteractive, RepositoryState::Bisect] {
+            snap.state = state;
+            assert!(confirms(&snap), "{state:?} with changes: no prompt, so the confirmation stays");
+        }
+        snap.state = RepositoryState::Clean;
+        snap.unstaged = rows(&[("a.txt", '!')]);
+        assert!(confirms(&snap), "conflicted files: no prompt, so the confirmation stays");
     }
 }
