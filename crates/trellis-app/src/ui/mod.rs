@@ -23,6 +23,7 @@ mod conflict_files;
 mod conflict_fold;
 mod conflict_output;
 mod conflict_panes;
+mod create_pr_dialog;
 mod dashboard;
 mod dashboard_rows;
 mod date_tip;
