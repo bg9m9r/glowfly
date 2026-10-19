@@ -96,6 +96,77 @@ fn abort_merge_all_resolved_stashes_and_undo_restores() {
 }
 
 #[test]
+fn abort_leaves_an_unrelated_edit_in_place() {
+    let dir = scratch_repo("op-abort-unrelated");
+    git(&dir, &["config", "core.autocrlf", "false"]);
+    std::fs::write(
+        dir.join("README.md"),
+        "readme
+",
+    )
+    .unwrap();
+    git(&dir, &["commit", "-q", "-am", "base"]);
+    git(&dir, &["add", "README.md"]);
+    git(&dir, &["commit", "-q", "-m", "readme"]);
+    git(&dir, &["checkout", "-q", "-b", "other"]);
+    std::fs::write(
+        dir.join("a.txt"),
+        "one
+theirs
+",
+    )
+    .unwrap();
+    git(&dir, &["commit", "-q", "-am", "theirs"]);
+    git(&dir, &["checkout", "-q", "main"]);
+    std::fs::write(
+        dir.join("a.txt"),
+        "one
+ours
+",
+    )
+    .unwrap();
+    git(&dir, &["commit", "-q", "-am", "ours"]);
+    std::fs::write(
+        dir.join("README.md"),
+        "readme
+mine
+",
+    )
+    .unwrap();
+    let (ok, _) = trellis_core::gitcli::run(&dir, &trellis_core::gitcli::args(&["merge", "other"]));
+    assert!(!ok, "the merge stops for the conflict");
+    let mut st = opened(&dir);
+    resolve(
+        &mut st,
+        &dir,
+        "a.txt",
+        "one
+merged
+",
+    );
+    let Msg::ConfirmDanger { body, .. } = banner(&st, "Abort") else { panic!("asks first") };
+    assert!(body.ends_with("This can't be undone."), "no stash promised: {body}");
+    ask(&mut st, "Abort");
+    drive(&mut st, Msg::ConfirmAccepted);
+    assert_eq!(repo_state(&st), RepositoryState::Clean);
+    assert_eq!(
+        read(&dir, "a.txt"),
+        "one
+ours
+"
+    );
+    assert_eq!(
+        read(&dir, "README.md"),
+        "readme
+mine
+",
+        "the unrelated edit stays in the working tree"
+    );
+    assert_eq!(top_stash(&dir), None, "nothing hidden in a stash");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn abort_with_conflicts_left_is_plain() {
     let dir = two_conflicts("op-abort-plain");
     let mut st = opened(&dir);

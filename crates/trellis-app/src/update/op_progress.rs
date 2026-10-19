@@ -26,7 +26,8 @@ pub(super) fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// Runs the confirmed abort `args` (named `label`). With `keep`, its changes are stashed first,
-/// recorded as an undoable stash push, unless conflicts came back since the dialog asked.
+/// recorded as an undoable stash push, unless conflicts or edits outside the operation's files
+/// appeared since the dialog asked.
 pub(super) fn abort(st: &mut AppState, label: String, args: Vec<String>, keep: bool, now: Instant, fx: &mut Vec<Effect>) {
     if !keep {
         super::ops::job(st, JobMsg::Git { label, cmds: vec![args] }, now, fx);

@@ -2165,6 +2165,7 @@ here, under the item they grew from.
 - Undo for aborting a rebase, a patch series or a multi-commit cherry-pick or revert
 - Undo for Skip commit and Skip patch (the resolved files of the skipped step)
 - Undo of a kept abort also brings back the merge state (MERGE_HEAD), not only the changes
+- Keep the resolved changes in a stash also when unrelated edits are present (stash only the operation's paths, renames' old paths too)
 - A dedicated undo label for the abort stash ("Undo abort of merge") instead of the stash's
 - Prefill the commit draft from MERGE_MSG when a cherry-pick or revert stops for conflicts too
 - Disable the Amend checkbox during a merge, with the reason on hover

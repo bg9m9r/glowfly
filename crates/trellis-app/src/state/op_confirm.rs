@@ -1,7 +1,8 @@
 //! Asking before the in-progress banner's Abort, Skip and Reset bisect, which lose work: what
 //! each does, what is lost (the resolved files, edits in conflicted ones) and whether Undo
-//! brings it back. A merge, single cherry-pick or single revert with every conflict resolved
-//! aborts by stashing its changes first (`trellis_core::undo::abort_keeping_commands`).
+//! brings it back. A merge, single cherry-pick or single revert with every conflict resolved and
+//! no edits outside its files aborts by stashing its changes first
+//! (`trellis_core::undo::abort_keeping_commands`).
 
 use super::AppState;
 use super::op_actions::action_text;
@@ -35,12 +36,15 @@ impl Risky {
 
 /// Whether an abort can keep the resolved changes in a stash: a merge, single cherry-pick or
 /// single revert (a sequence's stash wouldn't pop back meaningfully), nothing conflicted (git
-/// can't stash unmerged entries), and a tracked change to keep.
+/// can't stash unmerged entries), and staged changes to keep. Every unstaged tracked change must
+/// be to a staged file: the stash takes all tracked changes, so an edit unrelated to the
+/// operation would leave the working tree with them, where a plain abort keeps it in place.
 pub fn can_keep(snap: &Snapshot) -> bool {
     use RepositoryState::*;
+    let in_op = |path: &str| snap.staged.iter().any(|s| s.path == path);
     matches!(snap.state, Merge | CherryPick | Revert)
-        && !snap.unstaged.iter().any(|f| f.status == '!')
-        && (!snap.staged.is_empty() || snap.unstaged.iter().any(|f| f.status != '?'))
+        && !snap.staged.is_empty()
+        && snap.unstaged.iter().all(|f| f.status == '?' || (f.status != '!' && in_op(&f.path)))
 }
 
 /// What the banner button `label` running `args` sends: Continue as it is, the others behind a
@@ -236,10 +240,14 @@ mod tests {
         snap.state = RepositoryState::Merge;
         snap.unstaged = rows(&[("b.txt", '!')]);
         assert!(!can_keep(&snap), "a conflicted file");
+        snap.unstaged = rows(&[("new.txt", '?'), ("a.txt", 'M')]);
+        assert!(can_keep(&snap), "untracked files and further edits to a staged file");
+        snap.unstaged = rows(&[("README.md", 'M')]);
+        assert!(!can_keep(&snap), "an edit unrelated to the operation stays in place instead");
         snap.staged.clear();
         snap.unstaged = rows(&[("new.txt", '?')]);
         assert!(!can_keep(&snap), "only untracked files");
-        snap.unstaged = rows(&[("new.txt", '?'), ("a.txt", 'M')]);
-        assert!(can_keep(&snap), "an unstaged tracked change");
+        snap.unstaged = rows(&[("a.txt", 'M')]);
+        assert!(!can_keep(&snap), "only an unstaged change, which no operation file has");
     }
 }
