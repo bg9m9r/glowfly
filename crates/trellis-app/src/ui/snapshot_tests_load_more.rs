@@ -24,7 +24,7 @@ fn graph_header_offers_more_commits() {
     // With room in the message column, the count shows too.
     let (mut st, _) = with_repo(ThemeChoice::Dark, "load-more");
     st.snap.as_mut().unwrap().truncated = true;
-    st.settings.columns.author = false;
+    st.settings.columns.commit = false;
     st.settings.columns.date = false;
     render("graph_load_more_count", st, true);
     remove_fixture(&dir);

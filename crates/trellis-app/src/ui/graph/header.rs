@@ -13,6 +13,7 @@ use crate::state::ColumnDrag;
 use crate::state::shallow::{header_tooltip, history_remote};
 use crate::ui::theme::color;
 use crate::ui::widgets::paint_cut_text;
+use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use eframe::egui::{self, Align2, FontId, Pos2, Rect, Response, Sense, Stroke, pos2, vec2};
 use trellis_core::repo::Snapshot;
 use trellis_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
@@ -33,21 +34,19 @@ const TITLE_FONT: f32 = 10.5;
 enum Title {
     Refs,
     Graph,
-    Sha,
     Msg,
     Changes,
-    Author,
+    Commit,
     Date,
 }
 
 /// Each column's title, left to right.
-const TITLES: [(&str, Title); 7] = [
+const TITLES: [(&str, Title); 6] = [
     ("BRANCH / TAG", Title::Refs),
     ("GRAPH", Title::Graph),
-    ("SHA", Title::Sha),
-    ("COMMIT MESSAGE", Title::Msg),
+    ("MESSAGE", Title::Msg),
     ("CHANGES", Title::Changes),
-    ("AUTHOR", Title::Author),
+    ("COMMIT", Title::Commit),
     ("DATE", Title::Date),
 ];
 
@@ -60,10 +59,9 @@ impl Title {
         match self {
             Self::Refs => c.refs,
             Self::Graph => c.tree,
-            Self::Sha => c.sha,
             Self::Msg => c.message,
             Self::Changes => c.changes,
-            Self::Author => c.author,
+            Self::Commit => c.commit,
             Self::Date => c.date,
         }
     }
@@ -73,10 +71,9 @@ impl Title {
         match self {
             Self::Refs => cols.refs,
             Self::Graph => cols.graph,
-            Self::Sha => cols.sha,
             Self::Msg => (cols.msg.0 - 6.0, cols.msg.1),
             Self::Changes => cols.changes,
-            Self::Author => cols.author,
+            Self::Commit => cols.commit,
             Self::Date => cols.date,
         }
     }
@@ -86,9 +83,8 @@ impl Title {
     fn resizable(self) -> Option<(ResizableColumn, f32)> {
         match self {
             Self::Refs => Some((ResizableColumn::Refs, 0.0)),
-            Self::Sha => Some((ResizableColumn::Sha, 10.0)),
             Self::Changes => Some((ResizableColumn::Changes, 8.0)),
-            Self::Author => Some((ResizableColumn::Author, 8.0)),
+            Self::Commit => Some((ResizableColumn::Commit, 8.0)),
             Self::Date => Some((ResizableColumn::Date, 0.0)),
             Self::Graph | Self::Msg => None,
         }
@@ -107,14 +103,14 @@ pub(super) fn graph_width(ui: &egui::Ui, lanes: usize) -> f32 {
 }
 
 /// The least width of each resizable column: its title with padding, plus the gap the width
-/// includes. SHA also fits a seven-character SHA.
-fn floors(ui: &egui::Ui, font: &FontId) -> [(ResizableColumn, f32); 5] {
-    let sha_w = text_w(ui, "0000000", &FontId::monospace(12.0)) + 10.0 + 2.0;
+/// includes. COMMIT also fits a seven-character SHA.
+fn floors(ui: &egui::Ui, font: &FontId) -> [(ResizableColumn, f32); 4] {
+    let sha_w = text_w(ui, "0000000", &FontId::monospace(11.5)) + 8.0 + 2.0;
     let mut out = ResizableColumn::ALL.map(|c| (c, 0.0));
     for (text, title) in TITLES {
         let Some((col, gap)) = title.resizable() else { continue };
         let mut floor = text_w(ui, text, font) + 2.0 * TITLE_PAD + gap;
-        if col == ResizableColumn::Sha {
+        if col == ResizableColumn::Commit {
             floor = floor.max(sha_w);
         }
         if let Some(slot) = out.iter_mut().find(|(c, _)| *c == col) {
@@ -174,23 +170,31 @@ pub(super) fn column_header(
     widths
 }
 
-/// The column titles, each cut to its column (whole on hover when cut), then the dividers
-/// between them, so no title covers one.
+/// The column titles, each cut to its column (whole on hover when cut; DATE right-aligned like
+/// its dates), then the dividers between them, so no title covers one.
 fn titles(ui: &egui::Ui, hdr: Rect, cols: &Columns, cols_cfg: &GraphColumns, font: &FontId) {
     let p = ui.painter();
     let weak = color::weak();
     p.line_segment([hdr.left_bottom(), hdr.right_bottom()], Stroke::new(1.0_f32, color::border()));
-    let shown = || TITLES.into_iter().filter(|(_, t)| t.shown(cols_cfg)).map(|(text, t)| (text, t.extent(cols)));
-    for (text, col) in shown() {
+    let shown = || TITLES.into_iter().filter(|(_, t)| t.shown(cols_cfg)).map(|(text, t)| (text, t, t.extent(cols)));
+    for (text, title, col) in shown() {
         let clip = p.with_clip_rect(Rect::from_x_y_ranges(col.0..=col.1.max(col.0), hdr.y_range()));
-        let at = pos2(col.0 + TITLE_PAD, hdr.center().y);
-        let cut = paint_cut_text(&clip, at, text, font.clone(), weak, (col.1 - col.0) - 2.0 * TITLE_PAD);
+        let max_w = (col.1 - col.0) - 2.0 * TITLE_PAD;
+        let cut = if title == Title::Date {
+            let g = cut_galley(ui.ctx(), cut_job(text, font.clone(), weak), max_w);
+            let rect = Align2::RIGHT_CENTER.anchor_size(pos2(col.1 - TITLE_PAD, hdr.center().y), g.size());
+            let cut = g.elided;
+            clip.galley(rect.min, g, weak);
+            crate::ui::widgets::Cut { rect, cut }
+        } else {
+            paint_cut_text(&clip, pos2(col.0 + TITLE_PAD, hdr.center().y), text, font.clone(), weak, max_w)
+        };
         // Only over the title itself, clear of the dividers' grips.
         if cut.cut && cut.rect.width() > 0.0 {
             let _ = ui.interact(cut.rect, ui.id().with(("column-title", text)), Sense::hover()).on_hover_text(text);
         }
     }
-    for (_, col) in shown() {
+    for (_, _, col) in shown() {
         if col.0 > hdr.left() + 1.0 {
             p.line_segment([pos2(col.0, hdr.top() + 4.0), pos2(col.0, hdr.bottom() - 4.0)], Stroke::new(1.0_f32, color::border()));
         }
@@ -306,14 +310,14 @@ mod tests {
     use super::*;
     use ResizableColumn::*;
 
-    const NARROW: ColumnWidths = ColumnWidths { refs: 100.0, sha: 60.0, changes: 60.0, author: 60.0, date: 80.0 };
+    const NARROW: ColumnWidths = ColumnWidths { refs: 100.0, changes: 60.0, commit: 80.0, date: 80.0 };
 
     #[test]
     fn floors_widen_narrow_columns_only() {
-        let floors = [(Refs, 90.0), (Sha, 62.0), (Changes, 66.0), (Author, 64.0), (Date, 40.0)];
+        let floors = [(Refs, 90.0), (Changes, 66.0), (Commit, 84.0), (Date, 40.0)];
         let w = floored(NARROW, &floors);
         assert_eq!((w.get(Refs), w.get(Date)), (100.0, 80.0), "wider columns are unchanged");
-        assert_eq!((w.get(Sha), w.get(Changes), w.get(Author)), (62.0, 66.0, 64.0));
+        assert_eq!((w.get(Changes), w.get(Commit)), (66.0, 84.0));
     }
 
     #[test]
@@ -324,8 +328,8 @@ mod tests {
                 let font = FontId::proportional(TITLE_FONT);
                 let floors = floors(ui, &font);
                 let floor = |c: ResizableColumn| floors.iter().find(|(x, _)| *x == c).map_or(0.0, |f| f.1);
-                assert!(floor(Author) >= text_w(ui, "AUTHOR", &font) + 2.0 * TITLE_PAD + 8.0);
-                assert!(floor(Sha) >= text_w(ui, "0000000", &FontId::monospace(12.0)) + 10.0);
+                assert!(floor(Commit) >= text_w(ui, "COMMIT", &font) + 2.0 * TITLE_PAD + 8.0);
+                assert!(floor(Commit) >= text_w(ui, "0000000", &FontId::monospace(11.5)) + 8.0);
                 let w = floored(NARROW, &floors);
                 for (col, f) in floors {
                     assert!(w.get(col) >= f && w.get(col) >= NARROW.get(col), "{col:?}");

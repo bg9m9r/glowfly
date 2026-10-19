@@ -15,7 +15,7 @@ use trellis_core::settings::Settings;
 /// What a row's menu is drawn against.
 pub(super) struct RowMenu<'a> {
     pub commit: &'a CommitInfo,
-    /// Where the row's ref chips are (the first chip and the "+N" one), if it has any.
+    /// Where the row's ref chips are (the drawn chips and the "+N" chip), if it has any.
     pub labels_hit: Option<Rect>,
     pub snap: &'a Snapshot,
     pub selection: &'a Selection,

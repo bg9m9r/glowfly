@@ -363,8 +363,8 @@ fn column_widths_old_files() {
     assert_eq!(s.column_widths, ColumnWidths::default());
     // A partial object fills in the rest.
     let s: Settings = serde_json::from_str(r#"{"column_widths":{"author":200}}"#).unwrap();
-    assert_eq!(s.column_widths.get(ResizableColumn::Author), 200.0);
-    assert_eq!(s.column_widths, ColumnWidths { author: 200.0, ..ColumnWidths::default() });
+    assert_eq!(s.column_widths.get(ResizableColumn::Commit), 200.0);
+    assert_eq!(s.column_widths, ColumnWidths { commit: 200.0, ..ColumnWidths::default() });
     let wide = Settings { column_widths: ColumnWidths::default().with(ResizableColumn::Refs, 300.0), ..Settings::default() };
     let back: Settings = serde_json::from_str(&serde_json::to_string(&wide).unwrap()).unwrap();
     assert_eq!(back.column_widths, wide.column_widths);
@@ -459,4 +459,30 @@ fn zoom_and_panels_default_for_old_files() {
     let off = Settings { show_toolbar: false, ..Settings::default() };
     let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
     assert!(!back.show_toolbar && back.show_left_panel);
+}
+
+/// The graph keys as the version before the COMMIT column wrote them.
+const OLD_GRAPH_KEYS: &str = r#""columns": {"refs": true, "tree": true, "sha": true, "message": true,
+    "description": "OnHover", "changes": false, "author": false, "date": true},
+    "column_widths": {"refs": 200.0, "sha": 90.0, "changes": 100.0, "author": 210.0, "date": 120.0}"#;
+
+#[test]
+fn old_graph_columns_load_without_resets() {
+    let text = format!(r#"{{"auto_fetch_minutes": 7, {OLD_GRAPH_KEYS}}}"#);
+    let (dir, file) = scratch_settings("old-columns", text.as_bytes());
+    let (s, problem) = Settings::load_from(&file);
+    assert_eq!(problem, None);
+    assert!(s.columns.commit && s.columns.commit_sha, "the old SHA column shows the commit column");
+    assert_eq!(s.columns.description, DescriptionMode::OnHover);
+    assert_eq!((s.column_widths.get(ResizableColumn::Commit), s.column_widths.get(ResizableColumn::Refs)), (210.0, 200.0));
+    let _ = std::fs::remove_dir_all(&dir);
+
+    // Through the lenient path (another key is unreadable), the graph keys are still kept.
+    let text = format!(r#"{{"theme": "Sepia", {OLD_GRAPH_KEYS}}}"#);
+    let (dir, file) = scratch_settings("old-columns-lenient", text.as_bytes());
+    let (s, problem) = Settings::load_from(&file);
+    assert_eq!(problem.and_then(|p| p.reset), Some(vec!["theme".to_owned()]));
+    assert!(s.columns.commit);
+    assert_eq!(s.column_widths.get(ResizableColumn::Commit), 210.0);
+    let _ = std::fs::remove_dir_all(&dir);
 }

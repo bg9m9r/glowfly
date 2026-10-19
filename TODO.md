@@ -149,7 +149,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
     4 px rise, none with reduced motion; stays on screen at the window edge; keyboard focus
     shows it too
   - Disabled buttons keep their tooltip and say why ("No stashes to pop")
-- [ ] **History table that carries more information**: 40 px rows with columns for branches
+- [x] **History table that carries more information**: 40 px rows with columns for branches
       and tags, graph, message (the widest, with a weak first body line after the summary),
       changes (`+N −M`), commit (author with the short SHA under it) and a right-aligned date
   - Each branch keeps one colour through its lane, its label, a line joining label to node and
@@ -2295,3 +2295,21 @@ here, under the item they grew from.
 - Retune the graph lane colours against the refreshed canvases (with the History table item)
 - The graph filter banner (Soloing / hidden from the graph) on the sidebar's 16 px inset, its
   icon and text lined up with the rows' markers and names, without cutting its text
+
+### History table that carries more information
+
+- Give successive branches that reuse a lane slot different colours (colour per lane occupancy
+  rather than per lane index), so neighbouring unrelated branches don't share a colour
+- Option to show the committer rather than the author on nodes and in the commit column
+  (CommitInfo carries only the author today)
+- Show only the body's real first line in the message preview instead of the flattened body
+  (needs the line break kept in CommitInfo)
+- Show the changes column by default for new installs (stats are computed in the background per
+  visible row)
+- Right-clicking a specific chip opens that ref's menu directly instead of the per-label submenus
+- Draw the ghost "+ branch" chip as a soft fill without an outline to match the ref labels
+- Show which remote(s) a folded branch is in sync with as small remote initials beside the cloud
+  mark when there are several remotes
+- Click the "+N" chip to open a popup of all labels with their menus
+- Cut a date that doesn't fit at its start ("…10:00 AM") so the time stays visible
+- Fill the WIP node's dashed ring so the lane line doesn't show through it

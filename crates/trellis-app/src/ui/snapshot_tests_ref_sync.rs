@@ -22,7 +22,7 @@ const IN_SYNC: &str = "search, in sync with origin/search";
 
 /// The fixture with origin/search (search's upstream) at search's tip when `in_sync`, else
 /// further down the history.
-fn with_upstream(theme: ThemeChoice, name: &str, in_sync: bool) -> (AppState, PathBuf, Oid) {
+pub(super) fn with_upstream(theme: ThemeChoice, name: &str, in_sync: bool) -> (AppState, PathBuf, Oid) {
     let (mut st, dir) = with_repo(theme, name);
     let snap = st.snap.as_mut().unwrap();
     let search = snap.locals.iter().find(|b| b.name == "search").and_then(|b| b.oid).unwrap();

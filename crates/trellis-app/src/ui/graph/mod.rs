@@ -1,13 +1,18 @@
-//! The commit graph: configurable, resizable columns (branch/tag, graph, SHA, message, changes,
-//! author, date), avatars, ghost refs, branch highlighting, and other worktrees' WIP rows.
+//! The commit graph: a table with configurable, resizable columns (branch / tag, graph, message,
+//! changes, commit, date), rows banded in their lane's colour, author nodes, ghost refs, branch
+//! highlighting, and other worktrees' WIP rows.
 
 mod cells;
 mod header;
+mod labels;
+mod marks;
 mod more;
+mod nodes;
 mod paint;
 mod ref_group;
 mod ref_menu;
 mod resize;
+mod row_look;
 mod search_bar;
 mod select;
 mod worktree_wip;
@@ -17,7 +22,6 @@ pub use paint::draw_avatar;
 use super::UiCache;
 use super::common::lane_color;
 use super::theme::color;
-use super::widgets;
 use crate::msg::BranchMsg;
 use crate::msg::GraphMsg;
 use crate::msg::LoadMsg;
@@ -28,15 +32,18 @@ use crate::state::build_status::MAX_SEEN;
 use crate::state::graph_rows::{DisplayRow, GraphRows};
 use crate::state::worktrees::{open_blocked, wip_tooltip};
 use crate::worktree::WorktreeMsg;
-use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, RichText, Sense, Stroke, pos2, vec2};
+use eframe::egui::{self, Rect, RichText, Sense, pos2, vec2};
 use git2::Oid;
-use paint::{Columns, draw_lanes, draw_ref_labels, lane_x};
+use labels::Tip;
+use nodes::NodeKind;
+use paint::{Columns, draw_lanes, lane_x};
 use std::collections::HashMap;
 use trellis_core::repo::RefKind;
 use trellis_core::settings::DescriptionMode;
 
-const ROW_H: f32 = 30.0;
-const LANE_W: f32 = 22.0;
+/// The height of a graph row.
+pub(crate) const ROW_H: f32 = 40.0;
+const LANE_W: f32 = 24.0;
 const MAX_VISIBLE_LANES: usize = 12;
 
 /// The commit graph with its column header.
@@ -164,14 +171,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let hovered = resp.hovered();
                 let lane_col = lane_color(g.col);
                 let highlighted = commit.is_some_and(|c| highlight.is_some_and(|h| h.contains(&c.oid)));
-                if selected {
-                    painter.rect_filled(rect, 0.0, color::selected());
-                    painter.rect_filled(Rect::from_min_size(pos2(cols.msg.0 - 6.0, rect.top()), vec2(2.0, ROW_H)), 0.0, lane_col);
-                } else if highlighted {
-                    painter.rect_filled(rect, 0.0, lane_col.gamma_multiply(0.16));
-                } else if hovered {
-                    painter.rect_filled(rect, 0.0, color::hover());
-                }
+                row_look::paint(&painter, rect, row_look::RowLook { lane: lane_col, highlighted, selected, hovered });
 
                 let gp = painter.with_clip_rect(cols.rect(cols.graph, rect));
                 let node_x = lane_x(cols.graph.0, if filtered { 0 } else { g.col });
@@ -193,7 +193,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
 
                 let Some(c) = commit else {
                     if cols_cfg.tree {
-                        widgets::dashed_circle(&gp, pos2(node_x, mid), 10.0, Stroke::new(1.6_f32, color::weak()));
+                        nodes::wip_ring(&gp, pos2(node_x, mid), lane_col);
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
                     let right = worktree_wip::wip_box(&mp, cols.msg.0, mid, "// WIP");
@@ -205,63 +205,32 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 };
 
                 let dim = searching && !filtered && st.search.position(index).is_none();
+                let kind = if c.parents.len() > 1 { NodeKind::Merge } else { NodeKind::Commit };
                 if cols_cfg.tree {
-                    if c.parents.len() > 1 {
-                        gp.circle_filled(pos2(node_x, mid), 5.0, lane_col);
+                    if kind == NodeKind::Merge {
+                        nodes::merge_dot(&gp, pos2(node_x, mid), lane_col);
                     } else {
                         let av = if settings.use_initials { None } else { Some(&mut *avatars) };
-                        draw_avatar(&gp, pos2(node_x, mid), 10.0, &c.author, &c.email, lane_col, av);
+                        nodes::commit(&gp, pos2(node_x, mid), &c.author, &c.email, lane_col, av);
                     }
                 }
 
-                // BRANCH / TAG column, connected to the node.
-                let mut ghost_rect = None;
-                let mut labels_hit = None;
-                // The first chip, and whether its name is cut off: hovering it shows the whole name.
-                let mut first_chip = None;
-                let chips = snap.refs.get(&c.oid).map(|l| ref_group::chips(l, &snap.locals));
+                // BRANCH / TAG column, joined to the node.
+                let chips = snap.refs.get(&c.oid).map(|l| ref_group::chips(l, &snap.locals)).unwrap_or_default();
+                let mut refs = labels::RefsCell::default();
                 if cols_cfg.refs {
-                    let rp = painter.with_clip_rect(cols.rect(cols.refs, rect));
-                    let mut labels_end = cols.refs.0;
-                    if let Some((labels, chips)) = snap.refs.get(&c.oid).zip(chips.as_deref()) {
-                        let mut mark = None;
-                        if tips.is_some() && labels.iter().any(|l| matches!(l.kind, RefKind::Local | RefKind::Remote)) {
-                            tips_seen.push(c.oid);
-                            mark = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
-                        }
-                        let drawn = draw_ref_labels(&rp, cols.refs.0 + 6.0, cols.refs.1 - 6.0, mid, chips, lane_col, mark);
-                        let (label_rect, end) = (drawn.rect, drawn.end);
-                        first_chip = Some((label_rect, drawn.cut));
-                        if cols_cfg.tree {
-                            gp.line_segment([pos2(cols.graph.0, mid), pos2(node_x - 10.0, mid)], Stroke::new(1.5_f32, lane_col));
-                            rp.line_segment([pos2(end, mid), pos2(cols.refs.1, mid)], Stroke::new(1.5_f32, lane_col));
-                        }
-                        if pointer.is_some_and(|p| label_rect.contains(p)) {
-                            hover_tip_next = Some(c.oid);
-                        }
-                        labels_end = end;
-                        labels_hit = Some(Rect::from_min_max(label_rect.min, pos2(end, label_rect.max.y)));
+                    let labels = snap.refs.get(&c.oid).map_or(&[][..], |l| l.as_slice());
+                    let mut build = None;
+                    if tips.is_some() && labels.iter().any(|l| matches!(l.kind, RefKind::Local | RefKind::Remote)) {
+                        tips_seen.push(c.oid);
+                        build = tips.and_then(|t| t.checks(c.oid)).map(|c| c.state);
                     }
-                    // A faded "+ branch" after the checked-out commit's labels: click it to branch
-                    // from the current branch (other commits: right-click > Create branch here).
-                    let r = Rect::from_min_size(pos2(labels_end + 6.0, mid - 11.0), vec2(80.0, 22.0));
-                    let is_head = snap.head_oid == Some(c.oid);
-                    if settings.ghost_refs && is_head && (hovered || selected) && r.right() <= cols.refs.1 - 6.0 {
-                        rp.rect_filled(r, CornerRadius::same(3), color::bg());
-                        rp.rect_stroke(
-                            r,
-                            CornerRadius::same(3),
-                            Stroke::new(1.0_f32, lane_col.gamma_multiply(0.6)),
-                            egui::StrokeKind::Inside,
-                        );
-                        rp.text(
-                            pos2(r.left() + 8.0, mid),
-                            Align2::LEFT_CENTER,
-                            "+ branch",
-                            FontId::proportional(12.0),
-                            lane_col.gamma_multiply(0.8),
-                        );
-                        ghost_rect = Some(r);
+                    let ghost = settings.ghost_refs && snap.head_oid == Some(c.oid) && (hovered || selected);
+                    let node_edge_x = cols_cfg.tree.then(|| node_x - nodes::radius(kind));
+                    let row = labels::RefsRow { chips: &chips, lane: lane_col, build, node_edge_x, pointer, ghost };
+                    refs = labels::refs_cell(&painter, &cols, rect, row);
+                    if refs.on_chip {
+                        hover_tip_next = Some(c.oid);
                     }
                 }
 
@@ -289,18 +258,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 };
                 let text = cells::draw(&painter, &cells);
 
-                let in_refs = pointer.is_some_and(|p| cols.rect(cols.refs, rect).contains(p));
                 let in_date = cols_cfg.date && pointer.is_some_and(|p| cols.rect(cols.date, rect).contains(p));
-                // A lone chip names itself on hover when cut off or folding in its upstream.
-                let on_chip = first_chip.zip(pointer).is_some_and(|((r, _), p)| r.contains(p));
-                let explain = first_chip.is_some_and(|(_, cut)| cut) || chips.as_ref().is_some_and(|c| c[0].upstream.is_some());
-                let resp = match chips.as_deref() {
-                    Some(chips) if hovered && in_refs && chips.len() > 1 => resp.on_hover_ui_at_pointer(|ui| {
-                        for chip in chips {
-                            ui.label(chip.tip());
-                        }
-                    }),
-                    Some([only]) if hovered && on_chip && explain => resp.on_hover_text_at_pointer(only.tip()),
+                let resp = match refs.hovered_tip {
+                    Some(Tip::All) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_list(ui, &chips, lane_col)),
+                    Some(Tip::One(i)) if hovered => resp.on_hover_ui_at_pointer(|ui| labels::tip_row(ui, &chips[i], lane_col)),
                     _ if hovered && text.msg.hovered(pointer) => resp.on_hover_ui_at_pointer(|ui| cells::message_tip(ui, c, show_body)),
                     _ if hovered && text.sha.hovered(pointer) => resp.on_hover_text_at_pointer(&c.oid.to_string()[..7]),
                     _ if hovered && text.author.hovered(pointer) => resp.on_hover_text_at_pointer(&c.author),
@@ -309,14 +270,14 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 };
                 if resp.clicked() {
                     let mods = ui.input(|i| i.modifiers);
-                    let on_ghost = ghost_rect.zip(pointer).is_some_and(|(r, p)| r.contains(p));
+                    let on_ghost = refs.ghost.zip(pointer).is_some_and(|(r, p)| r.contains(p));
                     msgs.push(if on_ghost && mods.is_none() {
                         Msg::Branch(BranchMsg::NewBranch { start: None, name: String::new() })
                     } else {
                         select::row_click(c.oid, mods)
                     });
                 }
-                let menu = ref_menu::RowMenu { commit: c, labels_hit, snap, selection, settings, forge, idle };
+                let menu = ref_menu::RowMenu { commit: c, labels_hit: refs.labels_hit, snap, selection, settings, forge, idle };
                 ref_menu::context_menu(ui, &resp, menu, msgs);
             }
             last

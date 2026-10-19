@@ -285,6 +285,8 @@ fn ghost_branch_on_the_current_commit() {
     let (mut st, _dir) = with_repo(ThemeChoice::Dark, "ghost");
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("HEAD");
     st.selection = Selection::Commit(head);
+    // Room for it after main's two chips.
+    st.settings.column_widths = trellis_core::settings::ColumnWidths { refs: 280.0, ..Default::default() };
     render("graph_ghost_branch", st, true);
 }
 

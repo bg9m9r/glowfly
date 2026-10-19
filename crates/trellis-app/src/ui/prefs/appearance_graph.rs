@@ -18,9 +18,6 @@ pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     row(ui, t.tr("prefs.ui.graph.tree.label"), |ui| {
         controls::checkbox(ui, &mut c.tree, "");
     });
-    row(ui, t.tr("prefs.ui.graph.sha.label"), |ui| {
-        controls::checkbox(ui, &mut c.sha, "");
-    });
     row(ui, t.tr("prefs.ui.graph.message.label"), |ui| {
         controls::checkbox(ui, &mut c.message, "");
     });
@@ -37,7 +34,10 @@ pub fn graph_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
         help(ui, t.tr("prefs.ui.graph.changes.help"));
     });
     row(ui, t.tr("prefs.ui.graph.author.label"), |ui| {
-        controls::checkbox(ui, &mut c.author, "");
+        controls::checkbox(ui, &mut c.commit, "");
+    });
+    row(ui, t.tr("prefs.ui.graph.sha.label"), |ui| {
+        ui.add_enabled_ui(c.commit, |ui| controls::checkbox(ui, &mut c.commit_sha, ""));
     });
     row(ui, t.tr("prefs.ui.graph.date.label"), |ui| {
         controls::checkbox(ui, &mut c.date, "");

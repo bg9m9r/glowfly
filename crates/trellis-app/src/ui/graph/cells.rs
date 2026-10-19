@@ -1,17 +1,22 @@
-//! A commit row's text cells: SHA, the commit message (pull request chip, then the summary and
-//! the dim body preview as one line), changes, author and date. Each is cut to its column with
-//! "…"; `RowText` says which were cut, for the row's tooltip.
+//! A commit row's text cells: the message (pull request chip, then the summary and the dim body
+//! preview as one line), changes, the commit (the author with the short SHA under it) and the
+//! date, right-aligned. Each is cut to its column with "…"; `RowText` says which were cut, for
+//! the row's tooltip.
 
 use super::paint::Columns;
 use crate::ui::theme::color;
+use crate::ui::widgets::truncate::{cut_galley, cut_job};
 use crate::ui::widgets::{self, Cut, paint_cut, paint_cut_text};
 use eframe::egui::text::{LayoutJob, TextFormat};
-use eframe::egui::{Align, Color32, FontId, Label, Painter, Rect, RichText, Ui, pos2};
+use eframe::egui::{Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
 use trellis_core::repo::CommitInfo;
 use trellis_core::settings::GraphColumns;
 
 /// The widest the hover with a cut message gets before it wraps.
 const TIP_W: f32 = 420.0;
+/// How far the author line sits above the row's middle, and the SHA line below it, when both show.
+const AUTHOR_DY: f32 = -7.0;
+const SHA_DY: f32 = 8.0;
 
 /// Where the row's cut-able cells were painted, and whether each was cut (empty when hidden).
 #[derive(Default)]
@@ -55,11 +60,6 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
     let mid = rect.center().y;
     let width = |col: (f32, f32)| col.1 - col.0;
     let mut text = RowText::default();
-    if cfg.sha {
-        let sp = painter.with_clip_rect(cols.rect(cols.sha, rect));
-        let sha = &c.oid.to_string()[..7];
-        text.sha = paint_cut_text(&sp, pos2(cols.sha.0, mid), sha, FontId::monospace(12.0), color::weak(), width(cols.sha));
-    }
     if cfg.message {
         let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
         let mut x = cols.msg.0;
@@ -81,16 +81,32 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
             paint_cut_text(&cp, pos2(x, mid), &format!("−{dels}"), font, color::red(), cols.changes.1 - x);
         }
     }
-    if cfg.author {
-        let ap = painter.with_clip_rect(cols.rect(cols.author, rect));
-        text.author = paint_cut_text(&ap, pos2(cols.author.0, mid), &c.author, FontId::proportional(12.5), weak, width(cols.author));
+    if cfg.commit {
+        let cp = painter.with_clip_rect(cols.rect(cols.commit, rect));
+        let w = width(cols.commit);
+        let author_y = if cfg.commit_sha { mid + AUTHOR_DY } else { mid };
+        text.author = paint_cut_text(&cp, pos2(cols.commit.0, author_y), &c.author, FontId::proportional(12.5), weak, w);
+        if cfg.commit_sha {
+            let sha = &c.oid.to_string()[..7];
+            text.sha = paint_cut_text(&cp, pos2(cols.commit.0, mid + SHA_DY), sha, FontId::monospace(11.5), color::faint(), w);
+        }
     }
     if let Some(date) = row.date.as_deref().filter(|_| cfg.date) {
         let dp = painter.with_clip_rect(cols.rect(cols.date, rect));
         // A cut date keeps the row's date tooltip, which has the whole date.
-        paint_cut_text(&dp, pos2(cols.date.0, mid), date, FontId::proportional(12.5), weak, width(cols.date));
+        paint_cut_right(&dp, pos2(cols.date.1, mid), date, FontId::proportional(12.5), weak, width(cols.date));
     }
     text
+}
+
+/// One line of `text` with its right end at `right` (vertically centred on `right.y`), cut to
+/// `max_w` with "…".
+fn paint_cut_right(p: &Painter, right: Pos2, text: &str, font: FontId, color: Color32, max_w: f32) -> Cut {
+    let galley = cut_galley(p.ctx(), cut_job(text, font, color), max_w);
+    let min = pos2(right.x - galley.size().x, right.y - galley.size().y / 2.0);
+    let cut = Cut { rect: Rect::from_min_size(min, galley.size()), cut: galley.elided };
+    p.galley(min, galley, color);
+    cut
 }
 
 /// The hover of a cut message: the summary in strong text, then the body preview when the row

@@ -11,6 +11,7 @@ mod downloads;
 mod editor;
 mod file;
 mod forge_filters;
+mod graph_columns;
 mod graph_filter;
 mod history;
 mod language;
@@ -34,6 +35,7 @@ pub use downloads::downloads_dir;
 pub use editor::{DEFAULT_DIFF_FONT_SIZE, DIFF_FONT_SIZES, TAB_SIZES};
 pub use file::{LoadProblem, settings_file};
 pub use forge_filters::RepoForgeFilters;
+pub use graph_columns::GraphColumns;
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use history::{HistoryPane, HistoryPrefs};
 pub use panel_sizes::{PanelSizes, SizedPanel};
@@ -105,50 +107,6 @@ pub enum TrackerChoice {
         #[serde(default)]
         board_name: String,
     },
-}
-
-/// Which parts of the commit graph are shown (UI Customization > graph toggles).
-#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(default)]
-pub struct GraphColumns {
-    pub refs: bool,
-    pub tree: bool,
-    pub sha: bool,
-    pub message: bool,
-    pub description: DescriptionMode,
-    pub changes: bool,
-    pub author: bool,
-    pub date: bool,
-}
-
-impl Default for GraphColumns {
-    fn default() -> Self {
-        Self {
-            refs: true,
-            tree: true,
-            sha: false,
-            message: true,
-            description: DescriptionMode::Always,
-            changes: false,
-            author: true,
-            date: true,
-        }
-    }
-}
-
-impl GraphColumns {
-    pub fn compact() -> Self {
-        Self {
-            refs: true,
-            tree: true,
-            sha: false,
-            message: true,
-            description: DescriptionMode::OnHover,
-            changes: false,
-            author: false,
-            date: false,
-        }
-    }
 }
 
 /// How the diff viewer lays out a file's changes.

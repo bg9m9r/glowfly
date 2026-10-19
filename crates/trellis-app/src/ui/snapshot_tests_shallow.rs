@@ -46,7 +46,7 @@ fn graph_header_shallow_and_truncated() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "shallow-truncated");
     make_shallow(&mut st);
     st.snap.as_mut().unwrap().truncated = true;
-    st.settings.columns.author = false;
+    st.settings.columns.commit = false;
     st.settings.columns.date = false;
     let mut h = harness(st, false);
     h.run();

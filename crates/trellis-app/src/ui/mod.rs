@@ -192,6 +192,8 @@ mod snapshot_tests_history;
 #[cfg(test)]
 mod snapshot_tests_history_file;
 #[cfg(test)]
+mod snapshot_tests_history_table;
+#[cfg(test)]
 mod snapshot_tests_init;
 #[cfg(test)]
 mod snapshot_tests_issue;

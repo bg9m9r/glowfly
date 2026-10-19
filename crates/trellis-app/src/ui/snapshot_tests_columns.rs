@@ -31,9 +31,8 @@ pub(super) fn grip(h: &H, label: &str) -> Pos2 {
 #[test]
 fn graph_columns_resized() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "columns-resized");
-    st.settings.columns.sha = true;
-    // Wider BRANCH / TAG and SHA, narrower author and date, all still leaving a message column.
-    st.settings.column_widths = ColumnWidths { refs: 220.0, sha: 90.0, author: 110.0, date: 100.0, ..ColumnWidths::default() };
+    // Wider BRANCH / TAG, narrower commit and date, all still leaving a message column.
+    st.settings.column_widths = ColumnWidths { refs: 220.0, commit: 110.0, date: 100.0, ..ColumnWidths::default() };
     render("graph_columns_resized", st, true);
     remove_fixture(&dir);
 }
@@ -43,28 +42,28 @@ fn graph_column_drag() {
     let (st, dir) = with_repo(ThemeChoice::Light, "columns-drag");
     let mut h = harness(st, false);
     h.run();
-    let start = grip(&h, "Resize author column");
+    let start = grip(&h, "Resize commit column");
     pointer(&mut h, start, Some(true));
     h.step();
     let drag_to = |h: &mut H, dx: f32| {
         pointer(h, start - egui::vec2(dx, 0.0), None);
         h.step();
     };
-    for dx in [10.0, 20.0, 30.0, 40.0] {
+    for dx in [8.0, 12.0, 16.0, 20.0] {
         drag_to(&mut h, dx);
     }
     h.run();
-    // Dragging the author divider left widens the column, following the pointer.
+    // Dragging the commit divider left widens the column, following the pointer.
     let drag = h.state().0.view.column_drag.expect("a drag is in progress");
-    assert_eq!((drag.col, drag.start_width, drag.width), (Author, 148.0, 188.0));
+    assert_eq!((drag.col, drag.start_width, drag.width), (Commit, 170.0, 190.0));
     for dx in [50.0, 60.0] {
         drag_to(&mut h, dx);
     }
     h.run();
-    // In this window the message column has less than 60 px to give before its minimum width.
+    // In this window the message column has less than 50 px to give before its minimum width.
     let drag = h.state().0.view.column_drag.expect("a drag is in progress");
-    assert!(drag.room < 60.0, "{drag:?}");
-    let expected = 148.0 + drag.room.round();
+    assert!(drag.room < 50.0, "{drag:?}");
+    let expected = 170.0 + drag.room.round();
     assert_eq!(drag.width, expected);
     assert!(h.state().1.iter().all(|m| !matches!(m, Msg::Graph(GraphMsg::ResizeColumn { .. }))), "nothing is sent while dragging");
     h.check_snapshot("graph_column_drag_light");
@@ -77,7 +76,7 @@ fn graph_column_drag() {
         .iter()
         .filter_map(|m| if let Msg::Graph(GraphMsg::ResizeColumn { col, width }) = m { Some((*col, *width)) } else { None })
         .collect();
-    assert_eq!(resized, [(Author, expected)]);
+    assert_eq!(resized, [(Commit, expected)]);
     assert!(h.state().0.view.column_drag.is_none());
     drop(h);
     remove_fixture(&dir);
@@ -108,12 +107,12 @@ fn graph_column_double_click_resets() {
 fn graph_grips_follow_visible_columns() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "columns-grips");
     st.settings.columns.tree = false;
-    st.settings.columns.sha = true;
     st.settings.columns.changes = false;
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Resize branch / tag column").is_some());
-    assert!(h.query_by_label("Resize SHA column").is_some());
+    assert!(h.query_by_label("Resize commit column").is_some());
+    assert!(h.query_by_label("Resize SHA column").is_none(), "the SHA is part of the commit column");
     assert!(h.query_by_label("Resize changes column").is_none(), "a hidden column has no grip");
     drop(h);
     remove_fixture(&dir);

@@ -135,6 +135,35 @@ fn ref_chips_are_readable() {
 }
 
 #[test]
+fn ref_chips_are_soft() {
+    let mut failures = Vec::new();
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        for lane in 0..crate::ui::common::LANE_COUNT {
+            let lane_col = crate::ui::common::lane_color(lane);
+            let fill = |style| contrast::ref_chip(style, lane_col, p).0;
+            for style in [ChipStyle::Branch, ChipStyle::Remote, ChipStyle::CurrentBranch] {
+                let r = ratio(fill(style), p.bg);
+                if r >= 3.0 {
+                    failures.push(format!("{t:?} lane {lane} {style:?}: {r:.2}:1 against the background"));
+                }
+            }
+            if fill(ChipStyle::Branch) == fill(ChipStyle::CurrentBranch) {
+                failures.push(format!("{t:?} lane {lane}: the checked-out branch looks like any other"));
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{}",
+        failures.join(
+            "
+"
+        )
+    );
+}
+
+#[test]
 fn backdrop_dims_light_and_dark_alike() {
     assert!(backdrop(&DARK).a() > backdrop(&LIGHT).a());
     // High contrast dark is left out: its surfaces are already black, so there is little to dim.

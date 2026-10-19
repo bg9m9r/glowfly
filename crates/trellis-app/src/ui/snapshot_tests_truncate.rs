@@ -87,19 +87,24 @@ fn wip_header_german_wide() {
     remove_fixture(&dir);
 }
 
+const LONG_AUTHOR: &str = "Augusta Ada King-Noel";
+
 #[test]
 fn graph_columns_narrow() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "truncate-columns");
-    st.settings.columns.sha = true;
-    st.settings.column_widths = ColumnWidths { refs: 100.0, sha: 60.0, changes: 60.0, author: 60.0, date: 80.0 };
+    st.settings.column_widths = ColumnWidths { refs: 100.0, changes: 60.0, commit: 80.0, date: 80.0 };
+    // A name longer than the narrowest commit column.
+    let snap = st.snap.as_mut().unwrap();
+    snap.commits.iter_mut().find(|c| c.summary == "Search results page").unwrap().author = LONG_AUTHOR.into();
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("graph_columns_narrow");
-    let x = grip(&h, "Resize author column").x + 20.0;
-    let y = center(&h, "Search results page").y;
+    // The author line sits above the row's middle, over the short SHA.
+    let x = grip(&h, "Resize commit column").x + 20.0;
+    let y = center(&h, "Search results page").y - 7.0;
     pointer(&mut h, pos2(x, y), None);
     settle(&mut h);
-    assert!(h.query_by_label("Ada Lovelace").is_some(), "the cut author's hover has the whole name");
+    assert!(h.query_by_label(LONG_AUTHOR).is_some(), "the cut author's hover has the whole name");
     h.check_snapshot("graph_author_cut_tip");
     drop(h);
     remove_fixture(&dir);
@@ -110,8 +115,8 @@ fn uncut_cells_have_no_hover() {
     let (st, dir) = with_repo(ThemeChoice::Dark, "truncate-uncut");
     let mut h = harness(st, true);
     h.run();
-    let x = grip(&h, "Resize author column").x + 20.0;
-    let y = center(&h, "Search results page").y;
+    let x = grip(&h, "Resize commit column").x + 20.0;
+    let y = center(&h, "Search results page").y - 7.0;
     pointer(&mut h, pos2(x, y), None);
     settle(&mut h);
     assert!(h.query_by_label("Ada Lovelace").is_none(), "a whole author has no hover");
@@ -147,7 +152,7 @@ fn graph_message_cut() {
     h.run();
     h.check_snapshot("graph_message_cut");
     // Near the message column's right end, where the cut text ends in "…".
-    let x = grip(&h, "Resize author column").x - 30.0;
+    let x = grip(&h, "Resize commit column").x - 30.0;
     let y = center(&h, LONG_SUMMARY).y;
     pointer(&mut h, pos2(x, y), None);
     settle(&mut h);

@@ -4,27 +4,26 @@
 use serde::{Deserialize, Serialize};
 use std::ops::RangeInclusive;
 
-/// A graph column whose width can be dragged. GRAPH is sized by its lanes and COMMIT MESSAGE
-/// takes what is left, so neither is here.
+/// A graph column whose width can be dragged. GRAPH is sized by its lanes and MESSAGE takes
+/// what is left, so neither is here.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum ResizableColumn {
     Refs,
-    Sha,
     Changes,
-    Author,
+    /// The COMMIT column: the author with the short SHA under it.
+    Commit,
     Date,
 }
 
 impl ResizableColumn {
-    pub const ALL: [Self; 5] = [Self::Refs, Self::Sha, Self::Changes, Self::Author, Self::Date];
+    pub const ALL: [Self; 4] = [Self::Refs, Self::Changes, Self::Commit, Self::Date];
 
     /// The column's name in accessible labels ("Resize <title> column").
     pub fn title(self) -> &'static str {
         match self {
             Self::Refs => "branch / tag",
-            Self::Sha => "SHA",
             Self::Changes => "changes",
-            Self::Author => "author",
+            Self::Commit => "commit",
             Self::Date => "date",
         }
     }
@@ -33,9 +32,8 @@ impl ResizableColumn {
     pub fn default_width(self) -> f32 {
         match self {
             Self::Refs => 190.0,
-            Self::Sha => 74.0,
             Self::Changes => 100.0,
-            Self::Author => 148.0,
+            Self::Commit => 170.0,
             Self::Date => 150.0,
         }
     }
@@ -44,9 +42,8 @@ impl ResizableColumn {
     pub fn range(self) -> RangeInclusive<f32> {
         match self {
             Self::Refs => 100.0..=480.0,
-            Self::Sha => 60.0..=160.0,
             Self::Changes => 60.0..=220.0,
-            Self::Author => 60.0..=360.0,
+            Self::Commit => 80.0..=360.0,
             Self::Date => 80.0..=360.0,
         }
     }
@@ -54,7 +51,7 @@ impl ResizableColumn {
     /// Whether the column is resized from its right divider (dragging right widens it). The
     /// right-aligned columns are resized from their left divider instead.
     pub fn grows_right(self) -> bool {
-        matches!(self, Self::Refs | Self::Sha)
+        matches!(self, Self::Refs)
     }
 }
 
@@ -63,22 +60,18 @@ impl ResizableColumn {
 #[serde(default)]
 pub struct ColumnWidths {
     pub refs: f32,
-    pub sha: f32,
     pub changes: f32,
-    pub author: f32,
+    /// Files written before the COMMIT column stored the AUTHOR column's width; an old `sha`
+    /// width is ignored.
+    #[serde(alias = "author")]
+    pub commit: f32,
     pub date: f32,
 }
 
 impl Default for ColumnWidths {
     fn default() -> Self {
         use ResizableColumn::*;
-        Self {
-            refs: Refs.default_width(),
-            sha: Sha.default_width(),
-            changes: Changes.default_width(),
-            author: Author.default_width(),
-            date: Date.default_width(),
-        }
+        Self { refs: Refs.default_width(), changes: Changes.default_width(), commit: Commit.default_width(), date: Date.default_width() }
     }
 }
 
@@ -86,9 +79,8 @@ impl ColumnWidths {
     fn slot(&mut self, col: ResizableColumn) -> &mut f32 {
         match col {
             ResizableColumn::Refs => &mut self.refs,
-            ResizableColumn::Sha => &mut self.sha,
             ResizableColumn::Changes => &mut self.changes,
-            ResizableColumn::Author => &mut self.author,
+            ResizableColumn::Commit => &mut self.commit,
             ResizableColumn::Date => &mut self.date,
         }
     }
@@ -97,9 +89,8 @@ impl ColumnWidths {
     pub fn get(&self, col: ResizableColumn) -> f32 {
         let w = match col {
             ResizableColumn::Refs => self.refs,
-            ResizableColumn::Sha => self.sha,
             ResizableColumn::Changes => self.changes,
-            ResizableColumn::Author => self.author,
+            ResizableColumn::Commit => self.commit,
             ResizableColumn::Date => self.date,
         };
         if !w.is_finite() {
@@ -152,10 +143,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn column_width_defaults_match_old_layout() {
+    fn column_width_defaults() {
         let w = ColumnWidths::default();
-        assert_eq!([Refs, Sha, Changes, Author, Date].map(|c| w.get(c)), [190.0, 74.0, 100.0, 148.0, 150.0]);
+        assert_eq!([Refs, Changes, Commit, Date].map(|c| w.get(c)), [190.0, 100.0, 170.0, 150.0]);
         assert_eq!(ResizableColumn::ALL.map(|c| w.get(c)), ResizableColumn::ALL.map(|c| c.default_width()));
+    }
+
+    #[test]
+    fn old_author_width_becomes_the_commit_width() {
+        let w: ColumnWidths = serde_json::from_str(r#"{"refs":200,"sha":90,"author":210,"date":120}"#).unwrap();
+        assert_eq!([Refs, Changes, Commit, Date].map(|c| w.get(c)), [200.0, 100.0, 210.0, 120.0]);
+        let json = serde_json::to_value(w).unwrap();
+        assert!(json.get("author").is_none() && json.get("sha").is_none(), "{json}");
+        assert_eq!(serde_json::from_value::<ColumnWidths>(json).unwrap(), w);
     }
 
     #[test]
@@ -163,38 +163,38 @@ mod tests {
         let mut w = ColumnWidths::default();
         assert!(w.set(Refs, 5000.0));
         assert_eq!(w.refs, 480.0);
-        assert!(w.set(Sha, 3.0));
-        assert_eq!(w.sha, 60.0);
-        assert!(w.set(Author, 200.4));
-        assert_eq!(w.author, 200.0);
-        assert!(!w.set(Author, 200.0), "the same width is no change");
+        assert!(w.set(Commit, 3.0));
+        assert_eq!(w.commit, 80.0);
+        assert!(w.set(Commit, 200.4));
+        assert_eq!(w.commit, 200.0);
+        assert!(!w.set(Commit, 200.0), "the same width is no change");
         assert!(!w.set(Date, f32::NAN));
         assert_eq!(w.date, 150.0);
 
-        let edited = ColumnWidths { refs: f32::INFINITY, author: 9999.0, ..ColumnWidths::default() };
+        let edited = ColumnWidths { refs: f32::INFINITY, commit: 9999.0, ..ColumnWidths::default() };
         assert_eq!(edited.get(Refs), 190.0);
-        assert_eq!(edited.get(Author), 360.0);
+        assert_eq!(edited.get(Commit), 360.0);
     }
 
     #[test]
     fn reset_restores_the_default() {
-        let mut w = ColumnWidths::default().with(Author, 220.0);
-        assert_eq!(w.get(Author), 220.0);
-        assert!(w.reset(Author));
-        assert_eq!(w.get(Author), 148.0);
-        assert!(!w.reset(Author));
+        let mut w = ColumnWidths::default().with(Commit, 220.0);
+        assert_eq!(w.get(Commit), 220.0);
+        assert!(w.reset(Commit));
+        assert_eq!(w.get(Commit), 170.0);
+        assert!(!w.reset(Commit));
     }
 
     #[test]
     fn drag_width_direction_and_room() {
         assert_eq!(drag_width(Refs, 190.0, 50.0, 500.0), 240.0);
         // Dragging a right-side column's divider left widens it.
-        assert_eq!(drag_width(Author, 148.0, -60.0, 500.0), 208.0);
+        assert_eq!(drag_width(Commit, 170.0, -60.0, 500.0), 230.0);
         assert_eq!(drag_width(Date, 150.0, 40.0, 500.0), 110.0);
         // The message column keeps its minimum.
-        assert_eq!(drag_width(Author, 148.0, -100.0, 30.0), 178.0);
-        assert_eq!(drag_width(Author, 148.0, 500.0, 0.0), 60.0);
+        assert_eq!(drag_width(Commit, 170.0, -100.0, 30.0), 200.0);
+        assert_eq!(drag_width(Commit, 170.0, 500.0, 0.0), 80.0);
         // Negative room counts as none.
-        assert_eq!(drag_width(Sha, 74.0, 10.0, -5.0), 74.0);
+        assert_eq!(drag_width(Refs, 190.0, 10.0, -5.0), 190.0);
     }
 }

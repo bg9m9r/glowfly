@@ -51,7 +51,7 @@ fn round_trip_copies_profile_fields() {
         initial_commits: 900,
         ..Settings::default()
     };
-    src.column_widths.set(ResizableColumn::Author, 222.0);
+    src.column_widths.set(ResizableColumn::Commit, 222.0);
     let mut dst = Settings::default();
     ProfilePrefs::from_settings(&src).apply_to(&mut dst);
     assert_eq!(ProfilePrefs::from_settings(&dst), ProfilePrefs::from_settings(&src));

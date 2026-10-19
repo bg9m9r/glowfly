@@ -88,7 +88,8 @@ pub(super) fn click(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button
 
 /// The y of graph row `row` (the WIP row is 0) in the window the harness draws.
 pub(super) fn row_y(row: usize) -> f32 {
-    ROWS_TOP + 30.0 * row as f32 + 15.0
+    use crate::ui::graph::ROW_H;
+    ROWS_TOP + ROW_H * row as f32 + ROW_H / 2.0
 }
 
 /// Where the graph's first row starts (below the tab bar, toolbar and column header).

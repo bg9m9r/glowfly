@@ -4,9 +4,7 @@
 use super::color::Palette;
 use eframe::egui::Color32;
 
-/// The dark text colour chips use when white would be less readable.
-const NEAR_BLACK: Color32 = Color32::from_rgb(0x10, 0x12, 0x16);
-/// How many 5% steps `ink` and `readable_on` take at most.
+/// How many 5% steps `readable_on` takes at most.
 const MAX_STEPS: usize = 20;
 
 /// WCAG relative luminance.
@@ -48,21 +46,6 @@ pub fn dimmed(c: Color32, backdrop: Color32) -> Color32 {
     Color32::from_rgb(scale(c.r()), scale(c.g()), scale(c.b()))
 }
 
-/// White or near-black text for `fill`, whichever contrasts more. While the ratio is below
-/// `min`, the fill moves 5% toward the opposite pole of the text. Returns (fill, text).
-pub fn ink(fill: Color32, min: f64) -> (Color32, Color32) {
-    let fg = if ratio(Color32::WHITE, fill) >= ratio(NEAR_BLACK, fill) { Color32::WHITE } else { NEAR_BLACK };
-    let away = if fg == Color32::WHITE { Color32::BLACK } else { Color32::WHITE };
-    let mut fill = fill;
-    for _ in 0..MAX_STEPS {
-        if ratio(fg, fill) >= min {
-            break;
-        }
-        fill = mix(fill, away, 0.05);
-    }
-    (fill, fg)
-}
-
 /// `fg` moved 5% at a time toward white (on a `dark` palette) or black until it reaches `min`
 /// on `fill`.
 pub fn readable_on(fg: Color32, fill: Color32, dark: bool, min: f64) -> Color32 {
@@ -96,20 +79,19 @@ impl ChipStyle {
     pub const ALL: [ChipStyle; 5] = [Self::Head, Self::CurrentBranch, Self::Branch, Self::Remote, Self::Tag];
 }
 
-/// A ref chip's (fill, text) colours for a ref on a lane of colour `lane`. Every fill is
-/// opaque, so the text reaches 4.5:1 on selected and hovered rows too.
+/// A ref chip's (fill, text) colours for a ref on a lane of colour `lane`: soft tints of the
+/// lane (a little stronger for the checked-out branch), the palette's tag colours, and a neutral
+/// tint for a detached HEAD. Every fill is opaque, so the text reaches 4.5:1 on selected and
+/// hovered rows too.
 pub fn ref_chip(style: ChipStyle, lane: Color32, p: &Palette) -> (Color32, Color32) {
+    let tint = |dark_t: f32, light_t: f32| {
+        let fill = mix(p.bg, lane, if p.dark { dark_t } else { light_t });
+        (fill, readable_on(lane, fill, p.dark, 4.5))
+    };
     match style {
-        ChipStyle::Head => (p.text, p.bg),
+        ChipStyle::Head => (mix(p.bg, p.text, 0.16), p.text),
         ChipStyle::Tag => (p.tag_bg, p.tag_fg),
-        ChipStyle::CurrentBranch | ChipStyle::Branch => {
-            let strength = if style == ChipStyle::CurrentBranch { 0.75 } else { 0.65 };
-            let base = if p.dark { mix(p.bg, lane, strength) } else { lane };
-            ink(base, 4.5)
-        }
-        ChipStyle::Remote => {
-            let fill = mix(p.bg, lane, 0.25);
-            (fill, readable_on(lane, fill, p.dark, 4.5))
-        }
+        ChipStyle::Branch | ChipStyle::Remote => tint(0.28, 0.20),
+        ChipStyle::CurrentBranch => tint(0.40, 0.30),
     }
 }

@@ -1,12 +1,13 @@
-//! Other worktrees' WIP rows in the graph (a dashed node joined to the worktree's HEAD commit, a
-//! "// WIP · <folder>" box and the change counts), plus the box and counts drawing shared with
-//! this tab's own WIP row.
+//! Other worktrees' WIP rows in the graph (a dashed node in its lane's colour joined to the
+//! worktree's HEAD commit, a "// WIP · <folder>" box and the change counts), plus the box and
+//! counts drawing shared with this tab's own WIP row.
 
+use super::nodes;
 use super::paint::{Columns, draw_lanes, lane_x, paint_pencil};
 use crate::state::worktrees::wip_label;
+use crate::ui::common::lane_color;
 use crate::ui::theme::color;
-use crate::ui::widgets;
-use eframe::egui::{CornerRadius, FontId, Painter, Rect, Stroke, pos2, vec2};
+use eframe::egui::{CornerRadius, FontId, Painter, Rect, pos2, vec2};
 use trellis_core::graph::WorktreeWipRow;
 use trellis_core::repo::{ChangeCounts, WorktreeInfo};
 
@@ -48,7 +49,7 @@ pub(super) fn draw(painter: &Painter, gp: &Painter, cols: &Columns, rect: Rect, 
     let mid = rect.center().y;
     if tree {
         draw_lanes(gp, cols.graph.0, rect, &w.row);
-        widgets::dashed_circle(gp, pos2(lane_x(cols.graph.0, w.row.col), mid), 10.0, Stroke::new(1.6_f32, color::weak()));
+        nodes::wip_ring(gp, pos2(lane_x(cols.graph.0, w.row.col), mid), lane_color(w.row.col));
     }
     let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
     let right = wip_box(&mp, cols.msg.0, mid, &wip_label(wt));
