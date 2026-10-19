@@ -79,6 +79,7 @@ fn prefs_lfs_busy() {
         then_pr: None,
         then_link: false,
         keeps_undo: false,
+        fetches: false,
     });
     // The status bar's job spinner keeps repainting; a fixed number of frames (egui's clock
     // advances by a fixed step) keeps the image reproducible. The page itself draws no spinner.

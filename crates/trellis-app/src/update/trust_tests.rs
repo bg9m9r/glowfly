@@ -79,6 +79,7 @@ pub(super) fn job(then_open: (PathBuf, Created)) -> RunningJob {
         then_link: false,
         then_open: Some(then_open),
         keeps_undo: true,
+        fetches: false,
     }
 }
 

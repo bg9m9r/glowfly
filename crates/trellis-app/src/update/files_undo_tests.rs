@@ -49,7 +49,7 @@ fn restore_then_undo_and_redo() {
     drive(&mut st, restore(head(&dir), "a.txt"));
     assert_eq!(text(&dir, "a.txt"), "one\n");
     assert!(top_is_restore_of(&st, "a.txt"), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_tooltip(st.settings.lang(), &st.keymap), format!("Undo restore of a.txt ({})", keys("Ctrl+Z")));
+    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo restore of a.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(text(&dir, "a.txt"), "one\ntwo\n", "the edits are back");

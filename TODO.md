@@ -136,7 +136,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       weight; monospace only for SHAs, paths, code and fingerprints (not the compare header or
       activity log prose);
       sentence case for every label and button; one section-header style; one link colour
-- [ ] **Restyled toolbar and rich tooltips**: the toolbar keeps a label under each icon
+- [x] **Restyled toolbar and rich tooltips**: the toolbar keeps a label under each icon
       (outline icons, even spacing, a rounded hover fill) and every button gets a rich tooltip:
       a header with the action's title and a weak line under it (the shortcut as keycaps, or
       the state: "main is 2 ahead, 0 behind", "4 files changed", "Last fetched 2 minutes ago"),
@@ -2255,3 +2255,20 @@ here, under the item they grew from.
 - Tag and branch Copy submenus add a link to the object on a chosen remote's hosting page
 - The Hard reset confirmation says how many files will be stashed
 - The remote group menu's header shows the repository path (owner/repo) weak next to the name
+
+### Restyled toolbar and rich tooltips
+
+- The other hover texts (sidebar rows, graph ref chips, file rows, status bar chips) move onto
+  the rich layout: a title, a state line and a preview where one helps
+- The pull menu's items preview what each does: the commits a rebase replays, or "can't
+  fast-forward" for fast-forward only when the branches have diverged
+- Push on a branch with no upstream previews the commits no remote has yet
+- Last fetched is per repository (FETCH_HEAD); a per-remote time would tell a fetch of backup
+  from one of origin
+- Menus share the tooltip's 8 px corners through egui's popup frame; give menus their own
+  radius if they should stay tighter
+- A narrow window drops toolbar buttons off the right edge; move the ones that don't fit into a
+  More menu
+- Keycaps show a binding's first chord only; list a second chord when one is set
+- Undo's preview of a rebase or history edit lists the rewritten commits side by side with the
+  ones it brings back

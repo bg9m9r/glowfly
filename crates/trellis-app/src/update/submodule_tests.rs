@@ -289,6 +289,7 @@ fn update_blocked_cases() {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     });
     assert!(update(&mut st, msg(PATH, true), Instant::now()).is_empty());
     assert_eq!(last_log(&st), (false, "Another operation is still running.".to_owned()));

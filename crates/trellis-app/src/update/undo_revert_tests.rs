@@ -3,7 +3,7 @@
 //! history, undone to the exact working copy from before, redone, and recorded in a parked tab
 //! when the revert finishes there.
 
-use super::tests::{drive, finish, git, keys, scratch_repo, state};
+use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::{DiffMsg, Inactive, JobMsg, Msg, RepoMsg, RevertWhat, StageMsg, TabsMsg};
@@ -72,7 +72,7 @@ fn revert_hunk_with_whitespace_hidden_undo_and_redo() {
     assert_eq!(read(&dir), reverted, "only the shown change is reverted");
     assert!(top_is(&st, Discarded::RevertedHunk), "{:?}", st.undo.undo);
     let lang = st.settings.lang();
-    assert_eq!(st.undo.undo_tooltip(lang, &st.keymap), format!("Undo revert of a hunk in f.txt ({})", keys("Ctrl+Z")));
+    assert_eq!(st.undo.undo_entry(lang, true).0, "Undo revert of a hunk in f.txt");
     assert_eq!(st.undo.undo_entry(lang, true).0, "Undo revert of a hunk in f.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));

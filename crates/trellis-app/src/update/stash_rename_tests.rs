@@ -131,6 +131,7 @@ fn refusals_leave_or_close_the_dialog() {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     });
     assert!(run(&mut st, rename(first.oid, "renamed")).is_empty());
     assert_eq!(last_log(&st), (false, "Another operation is still running.".into()));

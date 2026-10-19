@@ -75,6 +75,7 @@ fn prefs_sparse_busy() {
         then_pr: None,
         then_link: false,
         keeps_undo: false,
+        fetches: false,
     });
     // The status bar's job spinner keeps repainting; a fixed number of frames keeps the image
     // reproducible.

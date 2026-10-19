@@ -58,6 +58,7 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             v.widgets.open.weak_bg_fill = p.hover;
             style.spacing.item_spacing = vec2(6.0, 4.0);
             style.spacing.button_padding = vec2(8.0, 3.0);
+            super::widgets::tooltip::style(style, p);
         });
     }
 }

@@ -225,6 +225,7 @@ fn mark_all_conflicted_sends_every_restorable_path() {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     });
     assert!(restorable_paths(&st).is_empty());
     st.job = None;

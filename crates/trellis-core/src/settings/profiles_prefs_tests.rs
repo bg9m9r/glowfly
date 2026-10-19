@@ -260,3 +260,18 @@ fn swap_carries_keeping_submodules_updated() {
     s.swap_profile_setup(A);
     assert!(s.submodules.keep_updated, "A's, saved on the way out");
 }
+
+#[test]
+fn reduce_motion_defaults_off_and_switches_with_the_profile() {
+    assert!(!Settings::default().reduce_motion);
+    // Files written before the setting existed keep the animations.
+    let old: Settings = serde_json::from_str(r#"{"auto_fetch_minutes": 5}"#).unwrap();
+    assert!(!old.reduce_motion);
+    let mut s = two();
+    s.reduce_motion = true;
+    s.swap_profile_setup(B);
+    assert!(!s.reduce_motion, "B's saved preference");
+    s.active_profile = Some(B);
+    s.swap_profile_setup(A);
+    assert!(s.reduce_motion, "A's, saved on the way out");
+}

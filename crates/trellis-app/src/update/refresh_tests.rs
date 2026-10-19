@@ -43,6 +43,7 @@ fn quiet_job(dir: &std::path::Path) -> RunningJob {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     }
 }
 

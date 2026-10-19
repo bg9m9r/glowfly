@@ -49,6 +49,7 @@ fn cherry_pick_refusals() {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
     assert!(up(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f.c(3), f.c(2)]))).is_empty());
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("Another operation is still running."));

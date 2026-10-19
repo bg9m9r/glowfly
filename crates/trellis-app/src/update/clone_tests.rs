@@ -109,6 +109,7 @@ fn a_second_clone_waits_for_the_running_job() {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
     assert!(update(&mut st, Msg::Clone(CloneMsg::Start(request(CloneOptions::default()))), Instant::now()).is_empty());
     assert_eq!(st.log.last().unwrap().text, "Another operation is still running.");

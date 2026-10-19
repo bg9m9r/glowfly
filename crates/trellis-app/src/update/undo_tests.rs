@@ -1,7 +1,7 @@
 //! Headless tests for undo and redo: what gets recorded, when the history is kept or cleared,
 //! and undoing each kind of operation end to end against real repositories.
 
-use super::tests::{drive, git, keys, scratch_repo, state};
+use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::CommitMsg;
@@ -63,9 +63,9 @@ fn commit_then_undo_and_redo_end_to_end() {
     let (mut st, dir) = committed("undo-commit");
     assert_eq!(st.undo.undo.len(), 1);
     assert!(
-        st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with("Undo commit 'Second line'"),
+        st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo commit 'Second line'"),
         "{}",
-        st.undo.undo_tooltip(st.settings.lang(), &st.keymap)
+        st.undo.undo_entry(st.settings.lang(), true).0
     );
 
     st.draft = Default::default();
@@ -125,12 +125,12 @@ fn unrecorded_job_blocks_and_fetch_keeps_history() {
     done(&mut st, true);
     assert!(st.undo.undo.is_empty() && st.undo.redo.is_empty());
     assert_eq!(st.undo.blocked.as_deref(), Some("Rename branch"));
-    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
+    let tip = st.undo.undo_entry(st.settings.lang(), true).1.unwrap_or_default();
     assert!(tip.starts_with("Can't undo Rename branch"), "{tip}");
 
     let fx = update(&mut st, Msg::Job(JobMsg::Undo), Instant::now());
     assert!(fx.is_empty());
-    assert_eq!(last_toast(&st), (false, st.undo.undo_tooltip(st.settings.lang(), &st.keymap)));
+    assert_eq!(last_toast(&st), (false, tip));
     cleanup(&[&dir]);
 }
 
@@ -261,6 +261,7 @@ fn undo_requires_idle_and_history() {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
     assert!(update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("still running")));
@@ -298,7 +299,7 @@ fn discarded_file_comes_back_with_undo() {
     drive(&mut st, Msg::Stage(StageMsg::DiscardFile("a.txt".into())));
     assert_ne!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");
     assert!(matches!(st.undo.undo.last(), Some(Action::Discard { path, .. }) if path == "a.txt"), "{:?}", st.undo.undo);
-    assert_eq!(st.undo.undo_tooltip(st.settings.lang(), &st.keymap), format!("Undo discard in a.txt ({})", keys("Ctrl+Z")));
+    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo discard in a.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "work in progress\n");

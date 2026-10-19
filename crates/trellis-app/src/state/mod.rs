@@ -109,12 +109,15 @@ pub mod tab_losses;
 pub mod tabs;
 pub mod tags;
 pub mod terminal;
+pub mod tip;
 pub mod toasts;
 pub mod tool_compare;
+pub mod toolbar_tips;
 pub mod tools;
 pub mod trello;
 pub mod trust;
 pub mod undo;
+pub mod undo_preview;
 pub mod updates;
 mod view;
 pub mod watch;
@@ -192,6 +195,8 @@ pub struct RunningJob {
     pub then_link: bool,
     /// The job can't make the undo history wrong (fetch, push, or an undo/redo itself).
     pub keeps_undo: bool,
+    /// The job fetches (a fetch or pull command): its success moves `Snapshot::fetched_at`.
+    pub fetches: bool,
 }
 
 /// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter

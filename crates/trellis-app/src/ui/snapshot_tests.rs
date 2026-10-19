@@ -111,7 +111,7 @@ pub(super) fn settings(theme: ThemeChoice) -> Settings {
 }
 
 /// 2026-02-01 12:00 UTC, shown in UTC: rendering never depends on the machine's clock or zone.
-const NOW: i64 = 1_769_947_200;
+pub(super) const NOW: i64 = 1_769_947_200;
 
 /// A window-sized harness drawing `st`; the messages views push collect in its state.
 pub(super) fn harness(st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {

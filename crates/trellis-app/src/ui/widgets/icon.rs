@@ -76,8 +76,11 @@ pub enum Icon {
     More,
 }
 
+/// Every icon's line width: they are outlines only.
+pub const STROKE: f32 = 1.6;
+
 pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
-    let s = Stroke::new(1.8_f32, col);
+    let s = Stroke::new(STROKE, col);
     if crate::ui::icons::paint(p, c, icon, s) {
         return;
     }
@@ -159,9 +162,10 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
             line(pos2(c.x + 1.0, c.y - 5.0), pos2(c.x + 3.0, c.y - 7.5));
             line(pos2(c.x + 1.0, c.y - 5.0), pos2(c.x + 3.0, c.y - 2.5));
         }
+        // A list: a short and a long line on each of three rows.
         Icon::Activity => {
             for dy in [-6.0, 0.0, 6.0] {
-                p.circle_filled(pos2(c.x - 7.0, c.y + dy), 1.4, col);
+                line(pos2(c.x - 8.0, c.y + dy), pos2(c.x - 6.0, c.y + dy));
                 line(pos2(c.x - 3.0, c.y + dy), pos2(c.x + 8.0, c.y + dy));
             }
         }
@@ -234,21 +238,20 @@ pub fn paint_icon(p: &Painter, c: Pos2, icon: Icon, col: Color32) {
 }
 
 /// An arc of radius 7 around `c` from angle `start` (radians, clockwise from +x) through `sweep`,
-/// with a filled arrowhead at its end pointing along the direction of travel.
+/// with an open arrowhead of two strokes at its end pointing along the direction of travel.
 fn arc_arrow(p: &Painter, c: Pos2, start: f32, sweep: f32, s: Stroke) {
     const R: f32 = 7.0;
-    const HEAD: f32 = 5.5; // the head's length, along the arc
+    const HEAD: f32 = 5.0; // the barbs' length back along the arc
     let at = |a: f32| pos2(c.x + R * a.cos(), c.y + R * a.sin());
     let end = start + sweep;
-    // The head covers the arc's last HEAD px and points along the chord across them: the tangent
-    // at the end alone aims it off the curve, since a 7 px circle bends away within that length.
-    let base_angle = end - sweep.signum() * HEAD / R;
-    let (tip, base) = (at(end), at(base_angle));
+    // The head points along the chord across the arc's last HEAD px: the tangent at the end
+    // alone aims it off the curve, since a 7 px circle bends away within that length.
+    let (tip, base) = (at(end), at(end - sweep.signum() * HEAD / R));
     let dir = (tip - base).normalized();
     let normal = vec2(dir.y, -dir.x);
-    // The line stops just inside the head so its round end doesn't show past the barbs.
-    let line_end = base_angle + sweep.signum() / R;
-    let points = (0..=24).map(|i| at(start + i as f32 / 24.0 * (line_end - start))).collect();
+    let points = (0..=24).map(|i| at(start + i as f32 / 24.0 * sweep)).collect();
     p.add(egui::Shape::line(points, s));
-    p.add(egui::Shape::convex_polygon(vec![tip + dir * 0.5, base + normal * 3.5, base - normal * 3.5], s.color, Stroke::NONE));
+    let back = tip - dir * 4.0;
+    p.line_segment([back + normal * 3.5, tip], s);
+    p.line_segment([back - normal * 3.5, tip], s);
 }

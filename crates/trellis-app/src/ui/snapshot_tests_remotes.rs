@@ -57,6 +57,7 @@ pub(super) fn running(st: &mut AppState) {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
 }
 

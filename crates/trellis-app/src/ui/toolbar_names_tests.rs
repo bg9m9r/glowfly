@@ -3,7 +3,8 @@
 //! row's), graph rows by their summary ("// WIP" for
 //! the working tree) and the commit box's fields by their hint. No image comparison.
 
-use super::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::ui::snapshot_tests_remotes::with_remotes;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use trellis_core::settings::ThemeChoice;
@@ -11,6 +12,7 @@ use trellis_core::undo::Action;
 
 const UNDO: &str = "Undo the last action";
 const REDO: &str = "Redo the undone action";
+const PULL: &str = "Pull the current branch";
 
 /// Whether the toolbar's button `label` is disabled; panics unless exactly one button has it.
 fn disabled(h: &egui_kittest::Harness<'_, (crate::state::AppState, Vec<crate::msg::Msg>)>, label: &str) -> bool {
@@ -27,7 +29,6 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
     let mut h = harness(st, true);
     h.run();
     for label in [
-        "Pull the current branch",
         "Push the current branch",
         "Create a branch",
         "Show the terminal panel",
@@ -41,6 +42,7 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
         assert!(!disabled(&h, label), "{label}");
     }
     assert!(disabled(&h, UNDO) && disabled(&h, REDO), "nothing to undo or redo yet");
+    assert!(disabled(&h, PULL), "no remote to pull from");
     assert_eq!(disabled(&h, "Stash all changes"), !dirty);
     assert_eq!(disabled(&h, "Pop the latest stash"), !stashed);
     drop(h);
@@ -54,6 +56,16 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
     let mut h = harness(st, true);
     h.run();
     assert!(!disabled(&h, UNDO) && disabled(&h, REDO));
+    drop(h);
+
+    // With an upstream for main, Pull works.
+    let (mut st, _) = with_remotes(ThemeChoice::Dark, "toolbar-names");
+    let main = st.snap.as_mut().unwrap().locals.iter_mut().find(|b| b.name == "main").unwrap();
+    main.upstream = Some("origin/main".into());
+    main.tracking = Some(trellis_core::repo::Tracking { remote: "origin".into(), merge: "main".into() });
+    let mut h = harness(st, true);
+    h.run();
+    assert!(!disabled(&h, PULL));
     drop(h);
     remove_fixture(&dir);
 }

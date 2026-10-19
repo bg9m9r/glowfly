@@ -89,6 +89,7 @@ fn worktree_remove_locked() {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     });
     h.run_steps(2);
     assert!(h.get_by_label("Force remove").is_disabled());

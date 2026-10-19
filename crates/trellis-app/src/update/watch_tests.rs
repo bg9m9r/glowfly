@@ -42,6 +42,7 @@ fn job(workdir: Option<PathBuf>) -> RunningJob {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     }
 }
 

@@ -72,6 +72,7 @@ fn conflict_view_merge_tool_disabled() {
         then_link: false,
         then_open: None,
         keeps_undo: false,
+        fetches: false,
     });
     // The status bar's job spinner keeps repainting; a fixed number of frames keeps the image
     // reproducible.
@@ -116,6 +117,7 @@ fn conflict_view_while_the_merge_tool_has_the_file() {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
     let mut h = super::snapshot_tests::harness(st, true);
     h.run_steps(4);

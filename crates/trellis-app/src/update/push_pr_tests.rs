@@ -186,6 +186,7 @@ fn push_in_another_tab_only_logs() {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
     update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }), Instant::now());
     assert!(logged(&st, "Its tab is no longer active"));

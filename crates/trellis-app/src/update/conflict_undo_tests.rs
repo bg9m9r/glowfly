@@ -4,7 +4,7 @@
 //! entry that expired is dropped alone.
 
 use super::conflict_tests::{conflicted_repo, two_conflicts};
-use super::tests::{drive, git, keys, scratch_repo, state};
+use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
 use crate::msg::{CommitMsg, ConflictMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
@@ -115,8 +115,8 @@ fn undo_and_redo_a_saved_resolution() {
     assert!(st.conflict.is_none(), "resolved and closed");
     assert!(matches!(st.undo.undo.last(), Some(Action::Resolve { staged: Some(_), .. })), "{:?}", st.undo.undo);
     assert_eq!(undo_label(&st), "Undo resolution of a.txt");
-    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
-    assert_eq!(tip, format!("Undo resolution of a.txt ({})", keys("Ctrl+Z")));
+    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    assert_eq!(tip, "Undo resolution of a.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(bytes(&dir, "a.txt"), markers);

@@ -63,6 +63,8 @@ pub(super) mod diff_reveal_tests;
 pub(super) mod diff_tests;
 #[path = "editor_tests.rs"]
 pub(super) mod editor_tests;
+#[path = "fetch_time_tests.rs"]
+pub(super) mod fetch_time_tests;
 #[path = "files_open_tests.rs"]
 pub(super) mod files_open_tests;
 #[path = "files_tests.rs"]

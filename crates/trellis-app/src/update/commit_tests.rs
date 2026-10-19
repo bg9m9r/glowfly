@@ -171,6 +171,7 @@ fn no_push_when_commit_fails_or_tab_changed() {
         then_link: false,
         then_open: None,
         keeps_undo: false,
+        fetches: false,
     };
     let done = |ok| Msg::Job(JobMsg::JobDone { ok, output: String::new(), undo: None });
 

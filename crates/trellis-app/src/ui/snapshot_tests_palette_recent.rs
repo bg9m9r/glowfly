@@ -46,8 +46,10 @@ fn toolbar_palette_tooltip_light() {
     for _ in 0..4 {
         h.run();
     }
-    let want = h.state().0.keymap.tip("Command palette", BindingId::Palette);
-    assert!(h.query_by_label_contains(&want).is_some(), "the tooltip shows {want}");
+    // The title, then the key as caps.
+    assert!(h.query_by_label("Command palette").is_some(), "the tooltip shows its title");
+    let key = h.state().0.keymap.hint(BindingId::Palette).expect("the palette has a key").to_owned();
+    assert!(h.query_by_label(&key).is_some(), "the tooltip shows {key}");
     h.check_snapshot("toolbar_palette_tooltip_light");
     remove_fixture(&dir);
 }

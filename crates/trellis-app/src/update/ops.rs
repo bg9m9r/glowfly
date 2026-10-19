@@ -285,6 +285,15 @@ pub(super) fn finish_job(
         (Some(a), Some(b)) => trellis_core::paths::same_spelling(a, &b),
         (a, b) => a.is_none() && b.is_none(),
     };
+    // Pull's tooltip says when the repository last fetched; other tabs read FETCH_HEAD on load.
+    let fetched = st.view.now;
+    if ok
+        && job.fetches
+        && here
+        && let Some(snap) = st.snap.as_mut()
+    {
+        snap.fetched_at = Some(fetched);
+    }
     let reopen = super::conflict::after_undo(&undo, ok);
     super::undo::finished(st, &job, ok, undo, here);
     if here && let Some((p, open_closed)) = reopen {

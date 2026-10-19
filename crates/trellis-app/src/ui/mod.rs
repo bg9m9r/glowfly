@@ -334,8 +334,6 @@ mod tabs_dialog_tests;
 mod tabs_list_tests;
 #[cfg(test)]
 mod tabs_tests;
-#[cfg(test)]
-mod toolbar_names_tests;
 
 use crate::msg::Msg;
 use crate::state::AppState;
@@ -364,6 +362,7 @@ pub struct UiCache {
 
 /// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
 pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    widgets::tooltip::configure(ctx, st.settings.reduce_motion);
     status::status_bar(ctx, st, msgs);
     if st.prefs.is_some() {
         // The terminal isn't drawn, so it can't hold the keyboard (and Esc closes Preferences).
@@ -405,4 +404,5 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     askpass::show(ctx, st, msgs);
     status::toasts(ctx, st, msgs);
     st.view.was_typing = shortcuts::text_field_focused(ctx);
+    widgets::tooltip_motion::animate(ctx, st.settings.reduce_motion);
 }

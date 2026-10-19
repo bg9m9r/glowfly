@@ -53,7 +53,7 @@ fn a_deleted_file_comes_back_with_undo_and_goes_again_with_redo() {
     drive(&mut st, delete_confirmed("a.txt"));
     assert!(!dir.join("a.txt").exists());
     assert!(matches!(st.undo.undo.last(), Some(Action::DeleteFile { path, via: DeleteVia::Trash, .. }) if path == "a.txt"));
-    assert_eq!(st.undo.undo_tooltip(st.settings.lang(), &st.keymap), format!("Undo delete of a.txt ({})", keys("Ctrl+Z")));
+    assert_eq!(st.undo.undo_entry(st.settings.lang(), true).0, "Undo delete of a.txt");
     let bin_before = in_bin(&contents);
 
     drive(&mut st, Msg::Job(JobMsg::Undo));

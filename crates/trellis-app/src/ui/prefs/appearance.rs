@@ -110,7 +110,8 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
     });
 }
 
-/// Interface: zoom, the panels, toolbar labels, spell checking and the graph's extras.
+/// Interface: zoom, the panels, toolbar labels, reduced motion, spell checking and the graph's
+/// extras.
 fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     use trellis_core::settings::BranchVisibility as BV;
     section(ui, t.tr("prefs.ui.interface.section"));
@@ -137,6 +138,10 @@ fn interface_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
     });
     row(ui, t.tr("prefs.ui.toolbar_labels.label"), |ui| {
         controls::checkbox(ui, &mut s.toolbar_labels, "");
+    });
+    row(ui, t.tr("prefs.ui.reduce_motion.label"), |ui| {
+        controls::checkbox(ui, &mut s.reduce_motion, "");
+        help(ui, t.tr("prefs.ui.reduce_motion.help"));
     });
     row(ui, t.tr("prefs.ui.spellcheck.label"), |ui| {
         controls::checkbox(ui, &mut s.spellcheck, "");

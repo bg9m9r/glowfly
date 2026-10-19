@@ -1,9 +1,12 @@
-//! Custom-painted widget controls: toolbar buttons, section headers, chips, nav rows, icon
-//! buttons; icon shapes are in `icon.rs`, and text cut to a width with an ellipsis is in
-//! `truncate.rs`.
+//! Custom-painted widget controls: toolbar buttons and their spacing, section headers, chips,
+//! nav rows, icon buttons; icon shapes are in `icon.rs`, text cut to a width with an ellipsis
+//! is in `truncate.rs`, the shared rich tooltip and egui's tooltip style in `tooltip.rs`, and
+//! its rise into place in `tooltip_motion.rs`.
 
 pub mod buttons;
 mod icon;
+pub mod tooltip;
+pub mod tooltip_motion;
 pub mod truncate;
 
 pub use super::list_row::{Part, list_row, list_row_cut, list_row_hidden};
@@ -12,51 +15,95 @@ pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
 
-use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 
-/// Toolbar button: caption above the icon (caption optional), tooltip with
-/// the caption when labels are hidden. `name` is its accessible name, which includes the caption.
+/// A tool slot's width with captions shown; a longer caption widens it to the caption plus
+/// `CAPTION_PAD`.
+pub const TOOL_W: f32 = 56.0;
+/// A tool slot's width with captions hidden.
+pub const TOOL_W_BARE: f32 = 40.0;
+/// A tool slot's height, the toolbar row's whole height.
+pub const TOOL_H: f32 = 48.0;
+/// Room beside a caption inside its slot, both sides together.
+pub const CAPTION_PAD: f32 = 8.0;
+/// The icon's centre and the caption's, below the slot's top.
+pub const ICON_Y: f32 = 17.0;
+pub const CAPTION_Y: f32 = 37.0;
+/// The corners of a slot's hover fill, pressed fill and focus ring.
+pub const TOOL_RADIUS: u8 = 6;
+/// Between the buttons of one toolbar group (egui's item spacing there); a dropdown caret sits
+/// right against its button.
+pub const TOOL_SPACING: f32 = 4.0;
+/// Between two toolbar groups.
+pub const GROUP_GAP: f32 = 16.0;
+
+/// Toolbar button: the icon with its caption under it (captions optional). `name` is its
+/// accessible name, which includes the caption; the caller attaches the tooltip
+/// (`tooltip::attach`). A disabled button still takes the keyboard focus, so Tab reaches its
+/// reason.
 pub fn tool_button(ui: &mut Ui, icon: Icon, label: &str, name: &str, enabled: bool, labels: bool) -> Response {
-    let sense = if enabled { Sense::click() } else { Sense::hover() };
-    // A label may overhang the 54 px slot by 2.5 px a side, as English "Commands" does; a longer
-    // one (a translation, say) widens the button to fit it with 2 px to spare a side.
+    let sense = if enabled { Sense::click() } else { Sense::hover() | Sense::FOCUSABLE };
     let width = if labels {
         let text_w = ui.painter().layout_no_wrap(label.to_owned(), FontId::proportional(12.0), Color32::PLACEHOLDER).size().x;
-        if text_w > 59.0 { text_w + 4.0 } else { 54.0 }
+        TOOL_W.max(text_w + CAPTION_PAD)
     } else {
-        38.0
+        TOOL_W_BARE
     };
-    let (rect, resp) = ui.allocate_exact_size(vec2(width, 46.0), sense);
+    let (rect, resp) = ui.allocate_exact_size(vec2(width, TOOL_H), sense);
     let p = ui.painter();
-    if enabled && resp.hovered() {
-        p.rect_filled(rect, CornerRadius::same(4), color::hover());
+    let slot = rect.shrink(1.0);
+    let radius = CornerRadius::same(TOOL_RADIUS);
+    if enabled && resp.is_pointer_button_down_on() {
+        p.rect_filled(slot, radius, color::selected());
+    } else if enabled && resp.hovered() {
+        p.rect_filled(slot, radius, color::hover());
+    }
+    if resp.has_focus() {
+        p.rect_stroke(slot, radius, Stroke::new(1.5_f32, color::accent()), StrokeKind::Inside);
     }
     let col = if enabled { color::text() } else { color::faint() };
     if labels {
-        p.text(
-            pos2(rect.center().x, rect.top() + 9.0),
-            Align2::CENTER_CENTER,
-            label,
-            FontId::proportional(12.0),
-            if enabled { color::weak() } else { color::faint() },
-        );
-        paint_icon(p, pos2(rect.center().x, rect.top() + 30.0), icon, col);
+        let caption = if !enabled {
+            color::faint()
+        } else if resp.hovered() {
+            color::text()
+        } else {
+            color::weak()
+        };
+        paint_icon(p, pos2(rect.center().x, rect.top() + ICON_Y), icon, col);
+        p.text(pos2(rect.center().x, rect.top() + CAPTION_Y), Align2::CENTER_CENTER, label, FontId::proportional(12.0), caption);
     } else {
         paint_icon(p, rect.center(), icon, col);
     }
     super::access::name_button(&resp, enabled, name);
-    let resp = if labels { resp } else { resp.on_hover_text(label) };
     if enabled { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
 }
 
-/// Small dropdown caret button that sits next to a tool button.
-pub fn caret_button(ui: &mut Ui) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(14.0, 46.0), Sense::click());
+/// The space between two toolbar groups (with `TOOL_SPACING` between the items).
+pub fn tool_gap(ui: &mut Ui) {
+    ui.add_space(GROUP_GAP - ui.spacing().item_spacing.x);
+}
+
+/// `tool_gap` with a 1 px, 24 px tall line in its middle.
+pub fn tool_divider(ui: &mut Ui) {
+    let spacing = ui.spacing().item_spacing.x;
+    let x = ui.cursor().min.x - spacing + GROUP_GAP / 2.0;
+    let y = ui.available_rect_before_wrap().center().y;
+    let x = x.round() + 0.5;
+    ui.painter().line_segment([pos2(x, y - 12.0), pos2(x, y + 12.0)], Stroke::new(1.0_f32, color::border()));
+    tool_gap(ui);
+}
+
+/// Small dropdown caret button right against its tool button (no spacing between them), with
+/// the caret at the button's icon height.
+pub fn caret_button(ui: &mut Ui, labels: bool) -> Response {
+    ui.add_space(-ui.spacing().item_spacing.x);
+    let (rect, resp) = ui.allocate_exact_size(vec2(14.0, TOOL_H), Sense::click());
     let p = ui.painter();
     if resp.hovered() {
-        p.rect_filled(rect, CornerRadius::same(3), color::hover());
+        p.rect_filled(rect.shrink(1.0), CornerRadius::same(TOOL_RADIUS), color::hover());
     }
-    let c = pos2(rect.center().x, rect.top() + 28.0);
+    let c = if labels { pos2(rect.center().x, rect.top() + ICON_Y) } else { rect.center() };
     p.add(egui::Shape::convex_polygon(
         vec![pos2(c.x - 4.0, c.y - 2.0), pos2(c.x + 4.0, c.y - 2.0), pos2(c.x, c.y + 3.0)],
         color::weak(),

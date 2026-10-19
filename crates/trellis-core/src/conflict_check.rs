@@ -68,7 +68,7 @@ pub fn target_for(snap: &Snapshot) -> Option<MergeTarget> {
     snap.head_oid?;
     let head = snap.head_info()?;
     let upstream = head.upstream.as_deref();
-    if let (Some(name), Some(oid)) = (upstream, upstream_oid(snap, head))
+    if let (Some(name), Some(oid)) = (upstream, snap.upstream_oid(head))
         && head.behind > 0
     {
         return Some(MergeTarget { name: name.to_owned(), oid, kind: TargetKind::Upstream });
@@ -78,11 +78,11 @@ pub fn target_for(snap: &Snapshot) -> Option<MergeTarget> {
     if let Some(r) = remote {
         let recorded = snap.remote_heads.iter().find(|(name, _)| name == r).map(|(_, b)| b.as_str());
         for b in recorded.into_iter().chain(["main", "master"]) {
-            candidates.push((format!("{r}/{b}"), remote_oid(snap, r, b)));
+            candidates.push((format!("{r}/{b}"), snap.remote_oid(r, b)));
         }
     }
     for b in ["main", "master"] {
-        candidates.push((b.to_owned(), local_oid(snap, b)));
+        candidates.push((b.to_owned(), snap.local_oid(b)));
     }
     candidates.into_iter().find_map(|(name, oid)| {
         let usable = name != branch && Some(name.as_str()) != upstream;
@@ -90,27 +90,11 @@ pub fn target_for(snap: &Snapshot) -> Option<MergeTarget> {
     })
 }
 
-/// The commit the branch's upstream points at, when its ref exists.
-fn upstream_oid(snap: &Snapshot, head: &BranchInfo) -> Option<Oid> {
-    head.upstream.as_ref()?;
-    let t = head.tracking.as_ref()?;
-    if t.is_remote() { remote_oid(snap, &t.remote, &t.merge) } else { local_oid(snap, &t.merge) }
-}
-
 /// The remote whose default branch counts: the upstream's, else `origin`, else the first one.
 fn home_remote<'a>(snap: &'a Snapshot, head: &BranchInfo) -> Option<&'a str> {
     let names = || snap.remotes.iter().map(|(r, _)| r.as_str());
     let tracked = head.tracking.as_ref().filter(|t| t.is_remote()).map(|t| t.remote.as_str());
     tracked.and_then(|t| names().find(|r| *r == t)).or_else(|| names().find(|r| *r == "origin")).or_else(|| names().next())
-}
-
-fn remote_oid(snap: &Snapshot, remote: &str, branch: &str) -> Option<Oid> {
-    let (_, branches) = snap.remotes.iter().find(|(r, _)| r == remote)?;
-    branches.iter().find(|(b, _)| b == branch).map(|(_, oid)| *oid)
-}
-
-fn local_oid(snap: &Snapshot, name: &str) -> Option<Oid> {
-    snap.locals.iter().find(|b| b.name == name)?.oid
 }
 
 fn too_old(version: Option<(u32, u32, u32)>) -> Error {

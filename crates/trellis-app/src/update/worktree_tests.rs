@@ -255,6 +255,7 @@ fn busy_and_stale_tab() {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     });
     assert!(update(&mut st, wt(WorktreeMsg::Submit), Instant::now()).is_empty());
     assert_eq!(last_log(&st), (false, "Another operation is still running.".to_owned()));

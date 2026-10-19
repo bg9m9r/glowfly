@@ -191,6 +191,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         super::worktree_counts::count_in_load(&mut worktrees, &super::worktree_counts::LoadLimits::DEFAULT);
     }
     let shallow_roots = super::shallow::roots(&repo);
+    let fetched_at = super::fetch_time::fetched_at(&git_dir, &common.dir);
 
     let mut starts: Vec<Oid> = head_oid.into_iter().collect();
     let tips = visible_tips(&repo, opts, head_branch.as_deref(), &locals);
@@ -269,6 +270,7 @@ pub fn load_cached(path: &Path, opts: &LoadOptions, cache: &GraphCache) -> Resul
         worktrees,
         trust_scan,
         shallow_roots,
+        fetched_at,
         graph,
         refs_key,
         loaded_with,

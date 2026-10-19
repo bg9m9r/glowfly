@@ -1,7 +1,7 @@
 //! Headless tests for undoing stashes and pops, and for the "Stash changes and undo" offer when
 //! local changes block undoing a hard reset or Discard all.
 
-use super::tests::{drive, git, keys, scratch_repo, state};
+use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use crate::effect::{Effect, UndoResult};
 use crate::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
@@ -50,7 +50,7 @@ fn toolbar_stash_undo_and_redo() {
     drive(&mut st, Msg::git("Stash", &["stash", "push", "-u"]));
     assert!(!dirty(&st));
     assert!(matches!(st.undo.undo.last(), Some(Action::StashPush { .. })), "{:?}", st.undo.undo);
-    assert!(st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with("Undo stash 'WIP on main"));
+    assert!(st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo stash 'WIP on main"));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir, "a.txt"), "one\ntwo\n");
     assert!(st.snap.as_ref().unwrap().stashes.is_empty());
@@ -73,7 +73,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     assert!(matches!(&fx[..], [Effect::RunGit { record: Some(k), .. }] if *k == want), "start_job recognises it: {fx:?}");
     super::tests::finish(&mut st, fx);
     assert!(dirty(&st));
-    assert!(st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with("Undo pop of stash 'On main: wip'"));
+    assert!(st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo pop of stash 'On main: wip'"));
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let snap = st.snap.as_ref().unwrap();
@@ -184,8 +184,8 @@ fn drop_from_the_sidebar_is_undoable() {
     assert!(matches!(st.undo.undo.last(), Some(Action::StashDrop { stash, .. }) if *stash == first), "{:?}", st.undo.undo);
     assert!(st.undo.blocked.is_none());
     assert!(matches!(st.undo.undo.first(), Some(Action::Commit { .. })), "the commit is still under it: {:?}", st.undo.undo);
-    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
-    assert_eq!(tip, format!("Undo drop of stash 'On main: first' ({})", keys("Ctrl+Z")));
+    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    assert_eq!(tip, "Undo drop of stash 'On main: first'");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let back = st.snap.as_ref().unwrap().stashes.iter().find(|s| s.oid == first).cloned().expect("the stash is back");

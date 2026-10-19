@@ -61,6 +61,7 @@ profile_prefs! {
     date_verbose_format: String,
     relative_dates: bool,
     toolbar_labels: bool,
+    reduce_motion: bool,
     zoom_percent: u16,
     show_left_panel: bool,
     show_details_panel: bool,

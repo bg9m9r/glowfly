@@ -104,6 +104,7 @@ fn a_remote_that_needs_a_sign_in_is_paused_and_skipped() {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
     let remotes = vec![("origin".to_owned(), "https://github.com/me/app.git".to_owned())];
     st.sign_in.fetching = Some(FetchRun { workdir: dir.clone(), remotes, auto: true });

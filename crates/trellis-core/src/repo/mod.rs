@@ -14,7 +14,8 @@
 //! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
-//! `shallow`. Paths: `entry`
+//! `shallow`; `divergence` (the commits on each side of a branch and its upstream, from the
+//! loaded graph) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
 //! one path exactly) and `collide` (paths a file system can't keep apart).
 
@@ -33,8 +34,10 @@ mod conflict_saved;
 mod diff;
 mod diff_gaps;
 mod diff_types;
+mod divergence;
 mod entry;
 mod exact;
+mod fetch_time;
 mod file_at;
 mod folder_history;
 mod graph_cache;
@@ -94,6 +97,7 @@ pub use diff::{
 use diff::{head_tree, path_opts, workdir_opts};
 pub use diff_gaps::load_gap_text;
 pub use diff_types::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadDiffOptions};
+pub use divergence::Divergence;
 pub use entry::{FileEntry, Hazard};
 pub use file_at::{BINARY_NOT_SHOWN, FILE_VIEW_MAX_BYTES, FileAt, FileAtOptions, LfsState, file_at, file_at_with};
 pub use folder_history::{folder_file_today, folder_history};
@@ -295,6 +299,9 @@ pub struct Snapshot {
     pub trust_scan: crate::trust::TrustScan,
     /// The commits where a shallow clone's history stops (their parents weren't downloaded), from the repository's shallow file; empty for a full clone. Refreshed by full loads only.
     pub shallow_roots: Vec<Oid>,
+    /// When this worktree's repository last fetched (FETCH_HEAD's time, Unix seconds), read by
+    /// full loads; jobs that fetch set it too.
+    pub fetched_at: Option<i64>,
     pub graph: Layout,
     /// `refs_key` when the load started: a later equal key means only the status can differ.
     pub refs_key: u64,
@@ -372,6 +379,8 @@ mod convert_write_tests;
 mod diff_tests;
 #[cfg(test)]
 mod discard_tests;
+#[cfg(test)]
+mod divergence_tests;
 #[cfg(test)]
 mod exact_tests;
 #[cfg(test)]

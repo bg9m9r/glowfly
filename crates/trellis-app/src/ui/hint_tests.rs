@@ -19,16 +19,17 @@ fn conflict_steps_name_the_current_key() {
 
 #[test]
 fn terminal_button_names_the_current_key() {
-    let mut keys = Keymap::default();
-    keys.set(I::ToggleTerminal, f8());
-    let en = trellis_core::i18n::Lang::En;
-    assert!(super::toolbar::terminal_tip(en, &keys, false, false).starts_with("Show the terminal panel (F8)\n"));
-    keys.set(I::ToggleTerminal, Vec::new());
-    let tip = super::toolbar::terminal_tip(en, &keys, true, false);
-    assert!(tip.starts_with("Hide the terminal panel\n") && !tip.contains('('), "{tip}");
-    assert!(tip.ends_with("\nRight-click to open an external terminal"), "{tip}");
-    let tip = super::toolbar::terminal_tip(en, &keys, false, true);
-    assert!(tip.ends_with("\nRight-click for a new terminal tab"), "{tip}");
+    use crate::state::tip::TipSub;
+    let mut st = crate::state::AppState::new(Default::default(), Vec::new(), std::time::Instant::now());
+    st.keymap.set(I::ToggleTerminal, f8());
+    let tip = super::toolbar::tips::terminal(&st);
+    assert_eq!(tip.title, "Show the terminal panel");
+    // The caps are drawn from the keymap's first chord when the tooltip shows.
+    assert_eq!(tip.sub, Some(TipSub::Keys(I::ToggleTerminal)));
+    assert_eq!(st.keymap.chords(I::ToggleTerminal), &f8()[..]);
+    assert_eq!(tip.body.as_deref(), Some("Right-click to open an external terminal."));
+    st.settings.terminal.open_in_panel = true;
+    assert_eq!(super::toolbar::tips::terminal(&st).body.as_deref(), Some("Right-click for a new terminal tab."));
 }
 
 #[test]

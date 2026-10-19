@@ -110,6 +110,7 @@ pub(super) fn running_job(dir: &Path) -> RunningJob {
         then_link: false,
         then_open: None,
         keeps_undo: false,
+        fetches: false,
     }
 }
 

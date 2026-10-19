@@ -208,6 +208,7 @@ mod tests {
             then_pr: None,
             then_link: false,
             keeps_undo: false,
+            fetches: false,
         });
         update(&mut st, msg, Instant::now());
         assert!(st.job.is_none(), "the UI can start another operation");

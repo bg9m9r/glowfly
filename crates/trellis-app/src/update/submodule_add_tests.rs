@@ -177,6 +177,7 @@ fn add_waits_for_a_good_form() {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     });
     assert!(run(&mut st, sm(SubmoduleMsg::Add)).is_empty());
     assert_eq!(last_log(&st), (false, "Another operation is still running.".to_owned()));

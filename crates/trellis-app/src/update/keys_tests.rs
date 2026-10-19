@@ -213,15 +213,14 @@ fn startup_ignores_bad_entries() {
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn tooltips_follow_rebinding() {
+    // The Undo tooltip draws the binding's first chord as key caps (ui/toolbar_tips.rs).
     let mut st = page();
     let shift_k = Chord::cmd_shift(K::Letter('K'));
     record(&mut st, I::Undo, Slot::Replace(0), shift_k);
-    let oid = git2::Oid::zero();
-    st.undo.record(trellis_core::undo::Action::DeleteBranch { name: "topic".into(), oid, upstream: None });
-    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
-    assert!(tip.contains("(Ctrl+Shift+K)"), "{tip}");
+    assert_eq!(st.keymap.chords(I::Undo).first(), Some(&shift_k));
+    assert_eq!(st.keymap.hint(I::Undo), Some("Ctrl+Shift+K"));
     st.keymap.set(I::Undo, Vec::new());
-    assert!(!st.undo.undo_tooltip(st.settings.lang(), &st.keymap).contains('('), "no empty parentheses");
+    assert!(st.keymap.chords(I::Undo).is_empty(), "no caps to draw");
 }
 
 #[test]

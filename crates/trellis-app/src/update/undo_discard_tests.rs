@@ -2,7 +2,7 @@
 //! what was discarded, undo and redo write the file back exactly, several discards undo in
 //! order, and a file edited since is never overwritten.
 
-use super::tests::{drive, git, keys, scratch_repo, state};
+use super::tests::{drive, git, scratch_repo, state};
 use crate::msg::{DiffMsg, JobMsg, Msg, RepoMsg, StageMsg};
 use crate::state::AppState;
 use crate::state::lines::LineClick::Only;
@@ -50,8 +50,8 @@ fn hunk_discard_undo_and_redo() {
     discard_first_hunk(&mut st);
     assert_eq!(read(&dir, "big.txt"), numbered(&[28]));
     assert!(matches!(st.undo.undo.last(), Some(Action::Discard { what: Discarded::Hunk, .. })), "{:?}", st.undo.undo);
-    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
-    assert_eq!(tip, format!("Undo discard of a hunk in big.txt ({})", keys("Ctrl+Z")));
+    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
+    assert_eq!(tip, "Undo discard of a hunk in big.txt");
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(read(&dir, "big.txt"), numbered(&[2, 28]), "the exact text comes back");

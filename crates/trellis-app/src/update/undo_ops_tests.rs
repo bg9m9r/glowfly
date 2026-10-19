@@ -41,9 +41,9 @@ fn merge_undo_and_redo_end_to_end() {
     assert_eq!(head_summary(&st), "on feature");
     assert!(matches!(st.undo.undo.last(), Some(Action::Moved { op: MoveOp::Merge, .. })), "{:?}", st.undo.undo);
     assert!(
-        st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with("Undo merge of feature"),
+        st.undo.undo_entry(st.settings.lang(), true).0.starts_with("Undo merge of feature"),
         "{}",
-        st.undo.undo_tooltip(st.settings.lang(), &st.keymap)
+        st.undo.undo_entry(st.settings.lang(), true).0
     );
 
     drive(&mut st, Msg::Job(JobMsg::Undo));
@@ -92,9 +92,7 @@ fn cherry_pick_from_the_graph_is_undoable() {
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![picks[0]])));
     assert_eq!(head_summary(&st), "f1");
     let Some(Action::Moved { op: MoveOp::CherryPick, .. }) = st.undo.undo.last() else { panic!("{:?}", st.undo.undo) };
-    assert!(
-        st.undo.undo_tooltip(st.settings.lang(), &st.keymap).starts_with(&format!("Undo cherry-pick of {}", &picks[0].to_string()[..7]))
-    );
+    assert!(st.undo.undo_entry(st.settings.lang(), true).0.starts_with(&format!("Undo cherry-pick of {}", &picks[0].to_string()[..7])));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "base");
     cleanup(&[&dir]);
@@ -105,7 +103,7 @@ fn a_multi_commit_cherry_pick_is_one_undo_step() {
     let (mut st, dir, f) = feature_repo("undo-ops-pick-3", &[("f1", "base\n1\n"), ("f2", "base\n1\n2\n"), ("f3", "base\n1\n2\n3\n")], None);
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f[0], f[1], f[2]])));
     assert_eq!(head_summary(&st), "f3");
-    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
+    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
     assert!(tip.starts_with("Undo cherry-pick of 3 commits"), "{tip}");
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "base", "one step takes all three back");
@@ -121,7 +119,7 @@ fn a_multi_commit_revert_is_one_undo_step() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Selection(SelectionMsg::Revert(vec![f[0], f[1]])));
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n");
-    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
+    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
     assert!(tip.starts_with("Undo revert of 2 commits"), "{tip}");
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert_eq!(head_summary(&st), "f2");
@@ -140,7 +138,7 @@ fn a_mainline_cherry_pick_names_the_merge() {
     drive(&mut st, Msg::Selection(SelectionMsg::PickMerge { op: crate::state::pick::PickOp::CherryPick, oid, mainline: 1 }));
     assert_eq!(head_summary(&st), "merge feature");
     assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n"), "base\n1\n");
-    let tip = st.undo.undo_tooltip(st.settings.lang(), &st.keymap);
+    let tip = st.undo.undo_entry(st.settings.lang(), true).0;
     assert!(tip.starts_with(&format!("Undo cherry-pick of {}", &merge[..7])), "{tip}");
     cleanup(&[&dir]);
 }

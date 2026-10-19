@@ -22,7 +22,7 @@ fn repo_state(st: &AppState) -> RepositoryState {
 }
 
 fn tooltip(st: &AppState) -> String {
-    st.undo.undo_tooltip(st.settings.lang(), &st.keymap)
+    st.undo.undo_entry(st.settings.lang(), true).0
 }
 
 fn read(dir: &Path, f: &str) -> String {

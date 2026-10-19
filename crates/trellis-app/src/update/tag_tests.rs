@@ -150,6 +150,7 @@ fn create_tag_unknown_remote_and_busy() {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     });
     let fx = update(&mut st, create(&sha, "v1", "", Some("origin")), Instant::now());
     assert!(fx.is_empty());

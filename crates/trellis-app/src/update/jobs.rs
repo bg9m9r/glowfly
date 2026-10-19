@@ -83,6 +83,7 @@ pub(super) fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) 
         then_link: spec.then_link,
         then_open: spec.then_open,
         keeps_undo: super::undo::keeps_history(&spec.cmds),
+        fetches: spec.cmds.iter().any(|c| matches!(c.first().map(String::as_str), Some("fetch" | "pull"))),
     };
     // Background jobs fail rather than pop up a credential prompt.
     let prompts = !spec.quiet;
@@ -127,6 +128,7 @@ pub(super) fn begin_job(
         then_link: false,
         then_open: None,
         keeps_undo,
+        fetches: false,
     };
     launch(st, job, None, effect, fx)
 }
@@ -153,6 +155,7 @@ pub(super) fn begin_tool_job(st: &mut AppState, label: &str, effect: impl FnOnce
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
     fx.push(effect(cwd));
     Started::Now
@@ -179,6 +182,7 @@ pub(super) fn start_effect_job(
         then_link: false,
         then_open,
         keeps_undo: false,
+        fetches: false,
     };
     launch(st, job, Some(cwd), effect, fx)
 }

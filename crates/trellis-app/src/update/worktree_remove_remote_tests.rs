@@ -143,6 +143,7 @@ fn job(dir: &Path) -> RunningJob {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     }
 }
 

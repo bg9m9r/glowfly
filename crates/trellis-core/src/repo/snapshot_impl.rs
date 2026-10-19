@@ -42,6 +42,25 @@ impl Snapshot {
         self.locals.iter().find(|b| b.is_head)
     }
 
+    /// The commit `b`'s upstream points at, when its ref exists (a tracking setting whose ref is
+    /// gone gives None).
+    pub fn upstream_oid(&self, b: &BranchInfo) -> Option<Oid> {
+        b.upstream.as_ref()?;
+        let t = b.tracking.as_ref()?;
+        if t.is_remote() { self.remote_oid(&t.remote, &t.merge) } else { self.local_oid(&t.merge) }
+    }
+
+    /// The commit the remote-tracking branch `remote`/`branch` points at.
+    pub fn remote_oid(&self, remote: &str, branch: &str) -> Option<Oid> {
+        let (_, branches) = self.remotes.iter().find(|(r, _)| r == remote)?;
+        branches.iter().find(|(b, _)| b == branch).map(|(_, oid)| *oid)
+    }
+
+    /// The commit the local branch `name` points at.
+    pub fn local_oid(&self, name: &str) -> Option<Oid> {
+        self.locals.iter().find(|b| b.name == name)?.oid
+    }
+
     /// Whether status says `path` is gone from the working tree: deleted there (unstaged 'D'),
     /// or deleted in the index ('D' staged) with nothing at the path since.
     pub fn missing_from_workdir(&self, path: &str) -> bool {

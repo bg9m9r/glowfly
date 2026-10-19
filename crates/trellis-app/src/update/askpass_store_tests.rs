@@ -41,6 +41,7 @@ fn start_job(st: &mut AppState, workdir: Option<PathBuf>) {
         then_link: false,
         then_open: None,
         keeps_undo: true,
+        fetches: false,
     });
 }
 

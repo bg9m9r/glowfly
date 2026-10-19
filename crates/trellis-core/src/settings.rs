@@ -212,6 +212,8 @@ pub struct Settings {
     /// Show "3 hours ago" in the graph instead of the Date/Time format.
     pub relative_dates: bool,
     pub toolbar_labels: bool,
+    /// Tooltips and popups appear without fading or sliding in (egui's animations off).
+    pub reduce_motion: bool,
     /// Window zoom in percent (keys, palette, Preferences > UI Customization); read through
     /// `zoom_level()`/`zoom_factor()`.
     pub zoom_percent: u16,
@@ -382,6 +384,7 @@ impl Default for Settings {
             date_verbose_format: DEFAULT_DATE_VERBOSE_FORMAT.into(),
             relative_dates: false,
             toolbar_labels: true,
+            reduce_motion: false,
             zoom_percent: DEFAULT_ZOOM_PERCENT,
             show_left_panel: true,
             show_details_panel: true,

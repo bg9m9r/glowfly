@@ -114,6 +114,7 @@ fn annotate_refusals_keep_dialog() {
         then_pr: None,
         then_link: false,
         keeps_undo: true,
+        fetches: false,
     });
     refuse(&mut st, annotate(&sha, "notes"), "Another operation is still running.");
     st.job = None;

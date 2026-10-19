@@ -80,20 +80,6 @@ impl UndoHistory {
         }
     }
 
-    pub fn undo_tooltip(&self, t: Lang, keys: &crate::keymap::Keymap) -> String {
-        match self.undo.last() {
-            Some(a) => keys.tip(&t.trf("menu.edit.undo_action", &[("action", &a.describe())]), crate::keymap::BindingId::Undo),
-            None => self.undo_reason(t),
-        }
-    }
-
-    pub fn redo_tooltip(&self, t: Lang, keys: &crate::keymap::Keymap) -> String {
-        match self.redo.last() {
-            Some(a) => keys.tip(&t.trf("menu.edit.redo_action", &[("action", &a.describe())]), crate::keymap::BindingId::Redo),
-            None => self.redo_reason(t),
-        }
-    }
-
     /// Edit > Undo: its label ("Undo checkout of main", or "Undo" with nothing to undo) and why
     /// it is disabled, if it is: a job is running (`idle` false) or there is nothing to undo.
     pub fn undo_entry(&self, t: Lang, idle: bool) -> (String, Option<String>) {
@@ -139,7 +125,6 @@ fn entry(t: Lang, redo: bool, top: Option<&Action>, idle: bool, reason: impl FnO
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::keymap::{BindingId, Keymap};
     use crate::state::rebase::JOB_RUNNING;
     use trellis_core::undo::HeadPos;
 
@@ -167,14 +152,14 @@ mod tests {
 
     #[test]
     fn tooltips_are_unchanged() {
-        let keys = Keymap::default();
+        // The toolbar's tooltips take their title and reason from the entries.
         let mut h = UndoHistory::default();
-        assert_eq!(h.undo_tooltip(Lang::En, &keys), "Nothing to undo");
-        assert_eq!(h.redo_tooltip(Lang::En, &keys), "Nothing to redo");
+        assert_eq!(h.undo_entry(Lang::En, true).1.as_deref(), Some("Nothing to undo"));
+        assert_eq!(h.redo_entry(Lang::En, true).1.as_deref(), Some("Nothing to redo"));
         h.record(checkout());
-        assert_eq!(h.undo_tooltip(Lang::En, &keys), keys.tip("Undo checkout of main", BindingId::Undo));
+        assert_eq!(h.undo_entry(Lang::En, true), ("Undo checkout of main".to_owned(), None));
         h.invalidate("Rename branch");
-        let tip = h.undo_tooltip(Lang::En, &keys);
+        let tip = h.undo_entry(Lang::En, true).1.unwrap();
         assert_eq!(tip, Lang::En.trf("menu.edit.cant_undo", &[("label", &"Rename branch")]));
         assert!(tip.starts_with("Can't undo Rename branch: only checkout, commit"), "{tip}");
         assert!(tip.contains("merge, pull, rebase, cherry-pick, revert") && tip.contains("stash, pop, apply, drop"));
