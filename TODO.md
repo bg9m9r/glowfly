@@ -19,6 +19,7 @@ Want to help? Pick an unticked item, open an issue to discuss the approach, then
 The last 20 completed TODO items, newest first: when (local time), which item, and what was
 done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
+- 2026-10-19 01:57 · **Dialog frame and button styles**: Every dialog shares one frame (title, scrolling or resizable body, two widths, a footer in one order with Cancel or Close before the actions), Enter runs the default button and it has focus on open, steps that lose work get a red danger confirmation (with an acknowledgement box for removing a submodule or force-removing a worktree), and pages and panels use the primary, secondary and danger buttons with one disabled look and translated Cancel and Close (`3d68fa4a`)
 - 2026-10-19 01:28 · **Restyled toolbar and rich tooltips**: Toolbar buttons get a caption under an outline icon in evenly spaced groups with a rounded hover fill, and every button gets a rich tooltip with its keys or state (ahead/behind, last fetched), what it will touch (the commits Push sends or Pull brings in, the stash Pop applies, what Undo reverts) and why it is off, in one shared frame with a fade and rise that Reduce motion turns off (`81299d25`)
 - 2026-10-19 00:11 · **Menus name their object once**: Every object menu is headed once by what it acts on (a commit by its summary), its items are grouped by intent with one Copy submenu and ellipses on items that ask first, the tag menu gets Push to and Delete from remote submenus, and the reset submenu says what each mode keeps (`eb601808`)
 - 2026-10-18 23:58 · **Truncation with an ellipsis and the full text on hover**: Text that doesn't fit ends in "…" with the whole text on hover (graph cells, list rows, search hints, the update chip, repo sync), column headers keep their titles' width, notes that ask for something wrap, and WIP header buttons that don't fit move into a more-actions menu (`62c93c9f`)
@@ -38,7 +39,6 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 - 2026-10-18 09:47 · **Live working-tree updates: config changes and linked worktree loads**: Outside edits to the repository's config (shared or per-worktree) reload the repository in full, and large linked worktrees are counted in the background after the load, shown as counting or not counted in WORKTREES (`4df693ed`)
 - 2026-10-18 09:28 · **File history and blame: the file view and folder entries**: Folder histories follow the folder's moves, the Diff / File choice is remembered, the File view gains find, go to line and wrapping, and folder entries get file actions, change stepping, LFS content and deleted-file views (`f19a0d86`)
 - 2026-10-18 08:51 · **Merge conflict tool: undo and redo of a saved resolution**: Saving a conflict resolution (or saving with markers) is recorded in the undo history, so undo brings the conflict and its earlier picks back and redo saves it again, with stale entries refused (`e5f83d16`)
-- 2026-10-18 08:19 · **Interactive rebase: rebase onto a commit, ref label menus, merge-preserving rebases and editing squash messages**: Branches can be rebased onto any commit, ref labels in the graph get their own menus, rebases can keep merge commits, and squash messages are edited in a dialog (`17a2183c`)
 
 ---
 
@@ -111,18 +111,18 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       opens a dialog or confirmation ends in "…"; commits are named by summary, not a bare SHA;
       the reset submenu says what each mode keeps ("Hard: reset files too; changes are stashed
       and Undo restores them")
-- [ ] **Dialog frame and button styles**: one shared dialog frame (16–20 px padding, title,
+- [x] **Dialog frame and button styles**: one shared dialog frame (16–20 px padding, title,
       body, footer with buttons in a fixed order, two standard widths with content-driven
       limits, long-content dialogs resizable) and three button styles (primary filled with the
       accent, secondary with a border, danger filled red; disabled is a neutral fill with weak
       text, never an outline) used by every modal, panel and preference page
-  - Enter runs the primary action and Esc cancels in every dialog; the primary button (the
-    safe one for a danger confirm) has focus when the dialog opens
-  - `Msg::Confirm` gets a danger kind; Delete, Discard, Force delete, closing tabs with unsaved
-    work and the like use it
-  - Losing unpushed commits, stashes or changed files for good (remove a submodule, force
-    remove a worktree) needs an acknowledgement checkbox before the button enables
-  - Cancel and Close come from the translation tables, not literals
+  - [x] Enter runs the primary action and Esc cancels in every dialog; the primary button (the
+        safe one for a danger confirm) has focus when the dialog opens
+  - [x] `Msg::Confirm` gets a danger kind; Delete, Discard, Force delete, closing tabs with unsaved
+        work and the like use it
+  - [x] Losing unpushed commits, stashes or changed files for good (remove a submodule, force
+        remove a worktree) needs an acknowledgement checkbox before the button enables
+  - [x] Cancel and Close come from the translation tables, not literals
 - [ ] **Comfortable look**: the UI aims for comfortable and pleasing over dense. List rows
       (graph, sidebar, file lists) about 36 px; 16–20 px padding in panels and dialogs on an 8 px
       spacing grid; Noto Sans for the interface and JetBrains Mono for code, SHAs and paths
@@ -2177,8 +2177,6 @@ here, under the item they grew from.
   name is filled after the lookup)
 - Ask before a trust prompt or another dialog replaces an edited form
 - Ask before closing the window or the tab while an edited form is open
-- Enter on the discard question runs Keep editing, with focus on it when it opens (with the
-  shared dialog frame's Enter and focus rules)
 
 ### In-progress operations stay visible and safe
 
@@ -2272,3 +2270,14 @@ here, under the item they grew from.
 - Keycaps show a binding's first chord only; list a second chord when one is set
 - Undo's preview of a rebase or history edit lists the rewritten commits side by side with the
   ones it brings back
+
+### Dialog frame and button styles
+
+- Draw the menu items, the issue picker's list and the remaining small inline buttons (diff hunk
+  actions, file-row Stage) with the shared styles, or give them a documented style of their own
+- Keep the trust prompt's footer the same between held and not-held prompts (Don't trust vs
+  Cancel as the dismiss button)
+- Show the primary button's text in a strong weight once the bundled font has one
+- The diff header's 28 px buttons make its first row wrap a little earlier on narrow panels;
+  consider small buttons there
+- Remember a resizable dialog's size between openings
