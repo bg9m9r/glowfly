@@ -3,7 +3,7 @@
   "about.copy_info.tip": "Para informes de errores",
   "about.copy_notices.button": "Copiar todos los avisos",
   "about.license": "Con licencia {license}",
-  "about.notices.intro": "Trellis incluye definiciones de sintaxis para resaltar diffs; sus licencias aparecen a continuación.",
+  "about.notices.intro": "Trellis incluye fuentes y definiciones de sintaxis para resaltar diffs; sus licencias aparecen a continuación.",
   "about.notices.title": "Avisos de terceros",
   "about.tagline": "Un cliente de Git rápido y nativo para Windows, macOS y Linux.",
   "about.version": "Versión {version}",

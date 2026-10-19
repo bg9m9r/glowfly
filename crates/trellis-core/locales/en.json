@@ -3,7 +3,7 @@
   "about.copy_info.tip": "For bug reports",
   "about.copy_notices.button": "Copy all notices",
   "about.license": "Licensed under {license}",
-  "about.notices.intro": "Trellis bundles syntax definitions for highlighting diffs; their licenses follow.",
+  "about.notices.intro": "Trellis bundles fonts and syntax definitions for highlighting diffs; their licenses follow.",
   "about.notices.title": "Third-party notices",
   "about.tagline": "A fast, native Git client for Windows, macOS and Linux.",
   "about.version": "Version {version}",

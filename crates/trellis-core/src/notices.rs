@@ -1,38 +1,50 @@
 //! The third-party notices (THIRD-PARTY-NOTICES.md), embedded at build time so Help > About can
-//! show the licenses of the bundled syntax definitions without reading any file.
+//! show the licenses of the bundled fonts and syntax definitions without reading any file.
 
 use std::sync::OnceLock;
 
 /// The whole notices file.
 pub const TEXT: &str = include_str!("../../../THIRD-PARTY-NOTICES.md");
 
+/// The hand-maintained font licenses (first in the file).
+const FONT_BEGIN: &str = "<!-- BEGIN FONT LICENSES -->";
+const FONT_END: &str = "<!-- END FONT LICENSES -->";
+/// The syntax licenses, generated from the two-face crate.
 const BEGIN: &str = "<!-- BEGIN GENERATED SYNTAX LICENSES -->";
 const END: &str = "<!-- END GENERATED SYNTAX LICENSES -->";
 
-/// One bundled definition's license.
+/// One bundled font's or definition's license.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Notice {
-    /// A readable name, such as "Rust" or "Crontab / cron_descriptor".
+    /// A readable name, such as "Noto Sans", "Rust" or "Crontab / cron_descriptor".
     pub name: String,
-    /// Where the license comes from in the syntax set ("syntaxes/02_Extra/AWK/LICENSE").
+    /// Where the license comes from ("fonts/Noto Sans/OFL.txt", "syntaxes/02_Extra/AWK/LICENSE").
     pub source: String,
     /// The license text.
     pub text: String,
 }
 
-/// The licenses between the generated markers, in file order. Each `<details>` block gives its
-/// `<summary>` (the source) and the lines of its text fence. Empty without the markers.
+/// The licenses of the font section, then of the syntax section (their order in the file).
+/// Each `<details>` block gives its `<summary>` (the source) and the lines of its text fence. A
+/// section without both its markers gives nothing: it is not as written.
 pub fn parse(md: &str) -> Vec<Notice> {
+    let mut out = section(md, FONT_BEGIN, FONT_END);
+    out.extend(section(md, BEGIN, END));
+    out
+}
+
+/// The `<details>` blocks between `begin` and `end`, in file order; empty without `end`.
+fn section(md: &str, begin: &str, end: &str) -> Vec<Notice> {
     let mut out = Vec::new();
     let mut inside = false;
     let mut source: Option<String> = None;
     let mut text: Option<Vec<&str>> = None;
     for line in md.lines() {
         if !inside {
-            inside = line.trim() == BEGIN;
+            inside = line.trim() == begin;
             continue;
         }
-        if line.trim() == END {
+        if line.trim() == end {
             return out;
         }
         if let Some(lines) = text.as_mut() {
@@ -51,16 +63,16 @@ pub fn parse(md: &str) -> Vec<Notice> {
             text = Some(Vec::new());
         }
     }
-    // No END marker: the file is not as generated.
     Vec::new()
 }
 
-/// A readable name for a license's source path: the folders below the syntax group, joined with
-/// " / ", with the package folder's underscores as spaces ("syntaxes/02_Extra/HTML_(Twig)/LICENSE"
-/// is "HTML (Twig)").
+/// A readable name for a license's source path: the folders below the syntax group (or below
+/// `fonts`), joined with " / ", with the package folder's underscores as spaces
+/// ("syntaxes/02_Extra/HTML_(Twig)/LICENSE" is "HTML (Twig)", "fonts/Noto Sans/OFL.txt" is
+/// "Noto Sans").
 pub fn display_name(source: &str) -> String {
     let mut parts: Vec<&str> = source.split('/').filter(|p| !p.is_empty()).collect();
-    if parts.first() == Some(&"syntaxes") {
+    if parts.first().is_some_and(|p| *p == "syntaxes" || *p == "fonts") {
         parts.remove(0);
     }
     if parts.first().is_some_and(|p| is_group(p)) {
@@ -133,5 +145,40 @@ mod tests {
         assert_eq!(display_name("syntaxes/02_Extra/PureScript/NOTICE"), "PureScript");
         assert_eq!(display_name("syntaxes/02_Extra/MediaWiki/license.md"), "MediaWiki");
         assert_eq!(display_name("syntaxes/02_Extra/Org_mode/LICENSE"), "Org mode");
+        assert_eq!(display_name("fonts/Noto Sans/OFL.txt"), "Noto Sans");
+        assert_eq!(display_name("fonts/JetBrains Mono/OFL.txt"), "JetBrains Mono");
+    }
+
+    #[test]
+    fn the_embedded_file_names_the_bundled_fonts() {
+        let all = licenses();
+        let first_syntax = all.iter().position(|n| n.source.starts_with("syntaxes/")).expect("a syntax license");
+        for name in ["Noto Sans", "JetBrains Mono"] {
+            let i = all.iter().position(|n| n.name == name).unwrap_or_else(|| panic!("no {name} license"));
+            assert!(i < first_syntax, "{name} comes before the syntax licenses");
+            assert!(all[i].text.contains("SIL OPEN FONT LICENSE") && all[i].text.contains("Version 1.1"), "{name}");
+        }
+    }
+
+    /// Font blocks before the syntax sample, as in the file.
+    fn with_fonts(font_end: bool, syntax_end: bool) -> String {
+        let fonts = "<!-- BEGIN FONT LICENSES -->\n<details>\n<summary>fonts/Noto Sans/OFL.txt</summary>\n\n````text\nFont terms\n````\n</details>\n\n";
+        let mut md = format!("intro\n{fonts}{}\n{SAMPLE}", if font_end { FONT_END } else { "" });
+        if !syntax_end {
+            md = md.replace(END, "");
+        }
+        md
+    }
+
+    #[test]
+    fn font_section_parses_like_the_syntax_section() {
+        let both = parse(&with_fonts(true, true));
+        let names: Vec<&str> = both.iter().map(|n| n.name.as_str()).collect();
+        assert_eq!(names, ["Noto Sans", "Rust", "Crontab / cron_descriptor"]);
+        assert_eq!(both[0].text, "Font terms");
+        assert_eq!(parse(&with_fonts(true, true).replace('\n', "\r\n")), both);
+        // A section missing its END marker gives nothing; the other still parses.
+        assert_eq!(parse(&with_fonts(false, true)), both[1..]);
+        assert_eq!(parse(&with_fonts(true, false)), both[..1]);
     }
 }

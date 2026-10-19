@@ -123,7 +123,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
   - [x] Losing unpushed commits, stashes or changed files for good (remove a submodule, force
         remove a worktree) needs an acknowledgement checkbox before the button enables
   - [x] Cancel and Close come from the translation tables, not literals
-- [ ] **Comfortable look**: the UI aims for comfortable and pleasing over dense. List rows
+- [x] **Comfortable look**: the UI aims for comfortable and pleasing over dense. List rows
       (graph, sidebar, file lists) about 36 px; 16–20 px padding in panels and dialogs on an 8 px
       spacing grid; Noto Sans for the interface and JetBrains Mono for code, SHAs and paths
       (bundled, OFL, with egui's fonts as fallback); a refreshed palette with one teal accent
@@ -2281,3 +2281,17 @@ here, under the item they grew from.
 - The diff header's 28 px buttons make its first row wrap a little earlier on narrow panels;
   consider small buttons there
 - Remember a resizable dialog's size between openings
+
+### Comfortable look
+
+- An opt-in compact density in Preferences > UI Customization (Comfortable | Compact: about
+  28 px rows on a 4 px grid), never the default
+- 16 px padding and grid spacing for the bottom panels (activity log, terminal, conflict
+  output), the banners and the Git Flow panel
+- Preferences navigation and integrations side panels on the 16 px padding with 36 px rows
+- Menu and popup margins on the 8 px grid, once dialogs no longer share egui's popup frame
+  (menu_margin)
+- A soft shadow or edge under the lifted side panels in light themes, beyond the palette step
+- Retune the graph lane colours against the refreshed canvases (with the History table item)
+- The graph filter banner (Soloing / hidden from the graph) on the sidebar's 16 px inset, its
+  icon and text lined up with the rows' markers and names, without cutting its text

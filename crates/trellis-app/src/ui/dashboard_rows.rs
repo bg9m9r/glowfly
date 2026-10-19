@@ -14,7 +14,7 @@ use eframe::egui::{self, Color32, FontId, Rect, Response, Sense, Ui, pos2, vec2}
 use trellis_core::forge::{self, Issue, Provider, PullRequest};
 
 /// Indent of pull request and issue rows (as in the sidebar).
-const INDENT: f32 = 26.0;
+const INDENT: f32 = widgets::ROW_INDENT;
 const NO_LINK: &str = "The service gave no link";
 
 fn dash(m: DashboardMsg) -> Msg {
@@ -41,7 +41,7 @@ pub(super) fn repo_row(ui: &mut Ui, st: &AppState, data: &TargetData, msgs: &mut
     let names = data.folder_names();
     let right = folders_text(&names);
     let name = target_name(&data.target);
-    let (r, _, cut) = widgets::list_row_cut(ui, 8.0, &name, Some((&[Part::Text(&right)][..], color::weak())), 0.0, false, true);
+    let (r, _, cut) = widgets::list_row_cut(ui, widgets::PAD_X, &name, Some((&[Part::Text(&right)][..], color::weak())), 0.0, false, true);
     let preferred = Dashboard::preferred_local(data, st);
     if r.clicked()
         && let Some(l) = preferred
@@ -79,15 +79,16 @@ fn two_line_row(ui: &mut Ui, title: &str, sub: &str, right: (&str, Color32), slo
     }
     let top = rect.top() + 12.0;
     let g = p.layout_no_wrap(right.0.to_owned(), FontId::proportional(12.0), right.1);
-    let right_w = g.size().x + 14.0 + slot;
-    p.galley(pos2(rect.right() - g.size().x - 10.0 - slot, top - g.size().y / 2.0), g, right.1);
+    let right_w = g.size().x + widgets::PAD_X + 8.0 + slot;
+    p.galley(pos2(rect.right() - g.size().x - widgets::PAD_X - slot, top - g.size().y / 2.0), g, right.1);
     let clip = Rect::from_min_max(pos2(rect.left() + INDENT, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
     let line = |text: &str, y: f32, size: f32, col: Color32| {
         widgets::paint_cut_text(&p.with_clip_rect(clip), pos2(clip.left(), y), text, FontId::proportional(size), col, clip.width())
     };
     let cut = line(title, top, 13.0, color::text()).cut;
     line(sub, rect.top() + 29.0, 11.5, color::weak());
-    let marker = Rect::from_min_max(pos2(rect.right() - 10.0 - slot, rect.top()), pos2(rect.right() - 10.0, rect.top() + 24.0));
+    let marker =
+        Rect::from_min_max(pos2(rect.right() - widgets::PAD_X - slot, rect.top()), pos2(rect.right() - widgets::PAD_X, rect.top() + 24.0));
     (resp, marker, cut)
 }
 

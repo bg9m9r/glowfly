@@ -46,16 +46,16 @@ pub(super) fn header(
     let resp = widgets::section_header(ui, title, Some(count), open);
     let painter = ui.painter().clone();
     let title_w = painter.layout_no_wrap(title.to_owned(), FontId::proportional(13.0), color::text()).size().x;
-    // Just left of the count, which `section_header` draws 10 px from the right edge.
+    // Just left of the count, which `section_header` draws `PAD_X` from the right edge.
     let count_w = painter.layout_no_wrap(count.to_string(), FontId::proportional(13.0), color::text()).size().x;
-    let mut right = resp.rect.right() - 16.0 - count_w;
+    let mut right = resp.rect.right() - (widgets::PAD_X + 6.0) - count_w;
     if let Some(a) = add {
         let cy = resp.rect.center().y;
         let rect = Rect::from_min_max(pos2(right - 20.0, cy - 10.0), pos2(right, cy + 10.0));
         add_button(ui, rect, &a, msgs);
         right -= 24.0;
     }
-    let room = (right - (resp.rect.left() + 22.0 + title_w + 6.0) - 26.0).max(24.0);
+    let room = (right - (resp.rect.left() + widgets::TITLE_X + title_w + 6.0) - 26.0).max(24.0);
     let job = widgets::truncate::cut_job(p.label, FontId::proportional(11.5), color::weak());
     let galley = widgets::truncate::cut_galley(ui.ctx(), job, room);
     let cy = resp.rect.center().y;

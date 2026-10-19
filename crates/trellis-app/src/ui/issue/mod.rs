@@ -43,7 +43,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     ui.separator();
     let room = ui.available_width();
     crate::ui::panel_size::inner_side(egui::SidePanel::left("issue-side"), crate::state::panel_layout::ISSUE_SIDE, room)
-        .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::symmetric(10, 8)))
+        .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::same(super::theme::spacing::PANEL_PAD)))
         .show_inside(ui, |ui| {
             egui::ScrollArea::vertical().id_salt("issue-side-scroll").auto_shrink([false, false]).show(ui, |ui| info::show(ui, st, msgs));
         });

@@ -2,7 +2,7 @@
 //! operation is in progress: conflicted files with their marker counts and Mark all resolved,
 //! and resolved files with Mark conflicted (one or all).
 
-use super::common::{menu_item, widget_row_height};
+use super::common::menu_item;
 use super::details_wip::{OpenFile, RowContext, wip_file_row};
 use super::file_menu;
 use super::theme::color;
@@ -55,7 +55,7 @@ fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, 
         }
     });
     let area = egui::ScrollArea::vertical().id_salt("Conflicted Files").max_height(lists.height).auto_shrink([false, true]);
-    area.show_rows(ui, widget_row_height(ui), rows.len(), |ui, range| {
+    area.show_rows(ui, super::widgets::LIST_ROW_H, rows.len(), |ui, range| {
         for f in &rows[range] {
             wip_file_row(ui, snap, f, false, open, ctx, st.conflict_files.count_note(&f.path), msgs);
         }
@@ -74,7 +74,7 @@ fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, op
         }
     });
     let area = egui::ScrollArea::vertical().id_salt("Resolved Files").max_height(lists.height).auto_shrink([false, true]);
-    area.show_rows(ui, widget_row_height(ui), rows.len(), |ui, range| {
+    area.show_rows(ui, super::widgets::LIST_ROW_H, rows.len(), |ui, range| {
         for r in &rows[range] {
             resolved_row(ui, st, snap, r, open, msgs);
         }
@@ -102,12 +102,12 @@ fn resolved_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, r: &ResolvedF
         let body = mark_conflicted_body(std::slice::from_ref(path));
         Msg::confirm("Mark conflicted", body, "Mark conflicted", Msg::Conflict(ConflictMsg::MarkConflicted(vec![path.clone()])))
     };
-    ui.horizontal(|ui| {
+    super::widgets::file_row(ui, |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(14.0, 14.0), Sense::hover());
         paint_icon(ui.painter(), rect.center(), Icon::Check, color::green());
         let staged = snap.staged.iter().any(|f| f.path == *path);
         let selected = matches!(open.diff, Some(DiffTarget::Staged(p)) if p == path);
-        let label = ui.selectable_label(selected, path);
+        let label = ui.selectable_label(selected, egui::RichText::new(path).monospace());
         super::path_warnings::mark(ui, &r.entry);
         if label.clicked() && staged {
             msgs.push(Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged(path.clone()))));

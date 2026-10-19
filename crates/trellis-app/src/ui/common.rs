@@ -161,19 +161,22 @@ pub fn issue_chip(ui: &mut egui::Ui, fs: &ForgeState, key: &str, msgs: &mut Vec<
 /// A faint note under a section's header, indented like its rows and wrapped within the panel
 /// (it often says what to do, so it is never cut).
 pub fn hint_row(ui: &mut egui::Ui, text: String) {
-    egui::Frame::new().inner_margin(egui::Margin { left: 26, right: 8, top: 4, bottom: 4 }).show(ui, |ui| {
-        ui.add(egui::Label::new(RichText::new(text).size(11.5).color(color::faint())).wrap());
-    });
+    egui::Frame::new().inner_margin(egui::Margin { left: widgets::ROW_INDENT as i8, right: widgets::PAD_X as i8, top: 4, bottom: 4 }).show(
+        ui,
+        |ui| {
+            ui.add(egui::Label::new(RichText::new(text).size(11.5).color(color::faint())).wrap());
+        },
+    );
 }
 
 pub fn forge_error_rows(ui: &mut egui::Ui, error: &str, msgs: &mut Vec<Msg>) {
     ui.add_space(4.0);
     ui.horizontal(|ui| {
-        ui.add_space(26.0);
+        ui.add_space(widgets::ROW_INDENT);
         ui.label(RichText::new(error).color(color::red()).size(12.0));
     });
     ui.horizontal(|ui| {
-        ui.add_space(26.0);
+        ui.add_space(widgets::ROW_INDENT);
         if ui.small_button("Sign in").clicked() {
             msgs.push(Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true }));
         }

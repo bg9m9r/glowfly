@@ -9,7 +9,10 @@ pub mod tooltip;
 pub mod tooltip_motion;
 pub mod truncate;
 
-pub use super::list_row::{Part, list_row, list_row_cut, list_row_hidden};
+pub use super::list_row::{
+    GROUP_ROW_H, GUTTER_X, LIST_ROW_H, NESTED_GUTTER_X, NESTED_INDENT, PAD_X, Part, ROW_INDENT, SECTION_H, TITLE_X, file_row, list_row,
+    list_row_cut, list_row_hidden,
+};
 pub use icon::{Icon, paint_icon};
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
@@ -123,16 +126,16 @@ pub fn chevron(p: &Painter, c: Pos2, open: bool, col: Color32) {
 
 /// Sidebar section header: chevron, uppercase title, count on the right. Toggles `open`.
 pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 30.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SECTION_H), Sense::click());
     let p = ui.painter();
     if resp.hovered() {
         p.rect_filled(rect, 0.0, color::hover());
     }
     p.line_segment([rect.left_top(), rect.right_top()], Stroke::new(1.0_f32, color::border()));
-    chevron(p, pos2(rect.left() + 10.0, rect.center().y), *open, color::weak());
-    p.text(pos2(rect.left() + 22.0, rect.center().y), Align2::LEFT_CENTER, title, FontId::proportional(13.0), color::text());
+    chevron(p, pos2(rect.left() + PAD_X, rect.center().y), *open, color::weak());
+    p.text(pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, FontId::proportional(13.0), color::text());
     if let Some(n) = count {
-        p.text(pos2(rect.right() - 10.0, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), FontId::proportional(13.0), color::blue());
+        p.text(pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), FontId::proportional(13.0), color::blue());
     }
     if resp.clicked() {
         *open = !*open;

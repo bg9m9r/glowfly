@@ -78,7 +78,7 @@ pub(in crate::ui) fn section(
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let (r, marker, cut) = widgets::list_row_cut(ui, 34.0, name, None, slot, c.sel.includes(*oid), false);
+            let (r, marker, cut) = widgets::list_row_cut(ui, widgets::NESTED_INDENT, name, None, slot, c.sel.includes(*oid), false);
             if r.hovered() {
                 *hover_next = Some(*oid);
             }
@@ -93,7 +93,7 @@ pub(in crate::ui) fn section(
             } else if r.clicked() {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
             }
-            ref_visibility::row_marker(ui, &r, 20.0, &format!("refs/remotes/{full}"), &full, c.graph, msgs);
+            ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/remotes/{full}"), &full, c.graph, msgs);
             let m = RemoteMenu { current: c.current, fs: c.fs, graph: c.graph, sel: c.sel };
             r.context_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &m, msgs));
         }
@@ -102,14 +102,14 @@ pub(in crate::ui) fn section(
 
 /// A remote's name, dim and small, on a clickable row with a hover fill.
 fn group_row(ui: &mut egui::Ui, name: &str) -> Response {
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), widgets::GROUP_ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
     let p = ui.painter_at(rect);
     if resp.hovered() {
         p.rect_filled(rect, 0.0, color::hover());
     }
-    p.text(pos2(rect.left() + 24.0, rect.center().y), Align2::LEFT_CENTER, name, FontId::proportional(12.0), color::weak());
+    p.text(pos2(rect.left() + widgets::ROW_INDENT, rect.center().y), Align2::LEFT_CENTER, name, FontId::proportional(12.0), color::weak());
     resp
 }
 

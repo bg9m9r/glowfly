@@ -38,10 +38,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         panel_size::fill(ui);
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         ui.spacing_mut().item_spacing.y = 0.0;
-        ui.add_space(8.0);
+        ui.add_space(widgets::PAD_X);
         ui.horizontal(|ui| {
-            ui.add_space(8.0);
-            let width = ui.available_width() - 8.0;
+            ui.add_space(widgets::PAD_X);
+            let width = ui.available_width() - widgets::PAD_X;
             let (hint, cut) = widgets::truncate::hint(ui, FILTER_HINT, width);
             let empty = st.view.ref_filter.is_empty();
             let r = controls::field(ui, egui::TextEdit::singleline(&mut st.view.ref_filter).hint_text(hint).desired_width(width));
@@ -99,7 +99,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             let label = if b.is_head { format!("✔  {}", b.name) } else { b.name.clone() };
             let selected = b.oid.is_some_and(|o| sel.includes(o));
             let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
-            let (r, marker, cut) = widgets::list_row_cut(ui, 26.0, &label, right, slot, selected, b.is_head);
+            let (r, marker, cut) = widgets::list_row_cut(ui, widgets::ROW_INDENT, &label, right, slot, selected, b.is_head);
             if r.hovered() {
                 *hover_next = b.oid;
             }
@@ -128,7 +128,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
-            ref_visibility::row_marker(ui, &r, 13.0, &format!("refs/heads/{}", b.name), &b.name, graph, msgs);
+            ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &format!("refs/heads/{}", b.name), &b.name, graph, msgs);
             r.context_menu(|ui| local_branch_menu(ui, b, snap, fs, graph, sel, msgs));
         }
     }
@@ -173,7 +173,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
             if widgets::list_row_hidden(ui) {
                 continue;
             }
-            let r = widgets::list_row(ui, 26.0, &s.message, None, *sel == Selection::Commit(s.oid), false);
+            let r = widgets::list_row(ui, widgets::ROW_INDENT, &s.message, None, *sel == Selection::Commit(s.oid), false);
             let stash = |action| crate::state::stash_confirm::stash_msg(snap, action, s);
             if r.clicked() {
                 msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
@@ -216,8 +216,15 @@ fn pull_requests(ui: &mut egui::Ui, snap: &Snapshot, f: &ForgeState, view: &PrVi
         let tip = f.pr_heads.get(&pr.id).copied();
         let selected = tip.is_some_and(|o| *sel == Selection::Commit(o));
         // The tooltip has the whole title, so a cut one needs no hover of its own.
-        let (r, marker, _) =
-            widgets::list_row_cut(ui, 26.0, &title, Some((&[Part::Text(&right)][..], color::purple())), slot, selected, false);
+        let (r, marker, _) = widgets::list_row_cut(
+            ui,
+            widgets::ROW_INDENT,
+            &title,
+            Some((&[Part::Text(&right)][..], color::purple())),
+            slot,
+            selected,
+            false,
+        );
         if let Some(c) = &pr.checks {
             super::build_status::paint_marker(&ui.painter_at(r.rect), marker.center(), c.state);
         }
@@ -277,7 +284,8 @@ fn issues(
         let selected = open == Some(issue.key.as_str());
         // The tooltip has the whole title, so a cut one needs no hover of its own.
         let right = [Part::Text(&issue.state)];
-        let (r, _, _) = widgets::list_row_cut(ui, 26.0, &text, Some((&right[..], state_color(&issue.state))), 0.0, selected, false);
+        let (r, _, _) =
+            widgets::list_row_cut(ui, widgets::ROW_INDENT, &text, Some((&right[..], state_color(&issue.state))), 0.0, selected, false);
         let assignee = issue.assignee.as_deref().unwrap_or("unassigned");
         let mut tip = format!("{} {}: {}\n{} · {assignee}", issue.kind, issue.key, issue.title, issue.state);
         if let Some(line) = forge_filters::facet_line(&issue.facets) {

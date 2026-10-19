@@ -1,5 +1,5 @@
-//! Palettes: by-name access, the built-ins' contrast rules, palettes from theme files and the
-//! per-thread selection.
+//! Palettes: by-name access, the built-ins' contrast and shape rules, palettes from theme files,
+//! the per-thread selection, and the spacing grid.
 
 use super::color::{self, Palette};
 use super::contrast::{self, ChipStyle, ratio};
@@ -29,9 +29,9 @@ fn builtins() {
     for t in BuiltinTheme::ALL {
         assert_eq!(builtin(t).dark, t.is_dark(), "{t:?}");
     }
-    // The original palettes are unchanged.
-    assert_eq!((DARK.bg, DARK.text, DARK.syn_attr, DARK.diff_del_word), (rgb(0x1e2229), rgb(0xd3d8e0), rgb(0x8ac6d0), rgb(0x76303a)));
-    assert_eq!((LIGHT.bg, LIGHT.text, LIGHT.syn_attr, LIGHT.diff_del_word), (rgb(0xfafbfc), rgb(0x242931), rgb(0x006b75), rgb(0xf2b4b4)));
+    // A few values pinned, so a palette change is deliberate.
+    assert_eq!((DARK.bg, DARK.text, DARK.syn_attr, DARK.diff_del_word), (rgb(0x1a1d22), rgb(0xdde1e7), rgb(0x8ac6d0), rgb(0x76303a)));
+    assert_eq!((LIGHT.bg, LIGHT.text, LIGHT.syn_attr, LIGHT.diff_del_word), (rgb(0xf3f5f8), rgb(0x1f242b), rgb(0x006b75), rgb(0xf2b4b4)));
 }
 
 fn rgb(c: u32) -> Color32 {
@@ -89,6 +89,11 @@ fn builtins_meet_the_contrast_rules() {
                 check(s, bg, if high { 4.5 } else { 2.4 });
             }
         }
+        // Filled primary buttons (the commit button) carry white text.
+        let white = ratio(Color32::WHITE, p.primary);
+        if white < text_min {
+            failures.push(format!("{t:?}: white on primary is {white:.2}:1, below {text_min}:1"));
+        }
         let (text, weak, faint) = (ratio(p.text, p.panel), ratio(p.weak, p.panel), ratio(p.faint, p.panel));
         if weak < faint + 1.0 || text <= weak {
             failures.push(format!("{t:?}: on panel text {text:.2}, weak {weak:.2} and faint {faint:.2} are too close"));
@@ -143,6 +148,61 @@ fn backdrop_dims_light_and_dark_alike() {
     }
 }
 
+/// The HSL hue of `c`, in degrees (0 for a grey).
+fn hue(c: Color32) -> f32 {
+    let [r, g, b] = [c.r(), c.g(), c.b()].map(|v| f32::from(v) / 255.0);
+    let (max, min) = (r.max(g).max(b), r.min(g).min(b));
+    let d = max - min;
+    if d == 0.0 {
+        return 0.0;
+    }
+    let h = if max == r {
+        ((g - b) / d).rem_euclid(6.0)
+    } else if max == g {
+        (b - r) / d + 2.0
+    } else {
+        (r - g) / d + 4.0
+    };
+    h * 60.0
+}
+
+#[test]
+fn one_teal_accent_and_amber_for_progress() {
+    assert!((hue(rgb(0x2ec4d1)) - 184.9).abs() < 0.5 && hue(rgb(0xff0000)) == 0.0 && hue(rgb(0x0000ff)) == 240.0);
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        for (key, c) in [("accent", p.accent), ("primary", p.primary), ("primary_border", p.primary_border), ("selected", p.selected)] {
+            let h = hue(c);
+            assert!((170.0..=200.0).contains(&h), "{t:?}: {key}'s hue is {h:.0}");
+        }
+        let h = hue(p.amber);
+        assert!((30.0..=50.0).contains(&h), "{t:?}: amber's hue is {h:.0}");
+    }
+}
+
+#[test]
+fn panels_are_lifted() {
+    for t in BuiltinTheme::ALL {
+        let p = builtin(t);
+        let l = contrast::lightness;
+        assert!(l(p.panel) > l(p.bg), "{t:?}: panel is lighter than the canvas");
+        if p.dark {
+            assert!(l(p.toolbar) > l(p.panel), "{t:?}: toolbar is lighter than the panel");
+        }
+    }
+}
+
+#[test]
+fn spacing_is_on_the_grid() {
+    use super::spacing::*;
+    let all = [GRID, ITEM_SPACING.x, ITEM_SPACING.y, BUTTON_PADDING.x, BUTTON_PADDING.y, PANEL_PAD_F];
+    for v in all {
+        assert_eq!(v % 4.0, 0.0, "{v} is on the 4 px grid");
+    }
+    assert!((16..=20).contains(&PANEL_PAD));
+    assert_eq!(PANEL_PAD_F, f32::from(PANEL_PAD));
+}
+
 #[test]
 fn egui_style_follows_the_palette() {
     let plain = egui::Context::default();
@@ -157,6 +217,8 @@ fn egui_style_follows_the_palette() {
         assert_eq!(v.widgets.inactive.bg_stroke, plain.style_of(egui_theme(p)).visuals.widgets.inactive.bg_stroke, "{t:?}: buttons");
         let hint = ratio(v.weak_text_color(), p.input);
         assert!(hint >= 3.0, "{t:?}: hint text is {hint:.2}:1 on input");
+        assert_eq!(style.spacing.item_spacing, spacing::ITEM_SPACING, "{t:?}");
+        assert_eq!(style.spacing.button_padding, spacing::BUTTON_PADDING, "{t:?}");
     }
 }
 

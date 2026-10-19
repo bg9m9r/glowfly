@@ -2,7 +2,7 @@
 //! that differ from it to the working tree (staged and unstaged changes and untracked files),
 //! each opening that diff.
 
-use super::common::{short, widget_row_height};
+use super::common::short;
 use super::details::file_reveal::reveal;
 use super::details::{RowActions, changed_file_row};
 use super::file_menu::RowSource;
@@ -44,7 +44,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let open = st.diff.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
             let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
-            let row_h = widget_row_height(ui);
+            let row_h = super::widgets::LIST_ROW_H;
             egui::ScrollArea::vertical().id_salt("workdir-files").auto_shrink([false, false]).show_rows(
                 ui,
                 row_h,

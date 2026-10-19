@@ -34,7 +34,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     ui.separator();
     let room = ui.available_width();
     let side = crate::ui::panel_size::inner_side(egui::SidePanel::left("pull-request-side"), crate::state::panel_layout::PR_SIDE, room)
-        .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::symmetric(10, 8)));
+        .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::same(super::theme::spacing::PANEL_PAD)));
     let center = egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg()));
     match tab {
         PrTab::Overview => {

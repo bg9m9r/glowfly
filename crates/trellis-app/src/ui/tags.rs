@@ -39,12 +39,12 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         if widgets::list_row_hidden(ui) {
             continue;
         }
-        let r = widgets::list_row(ui, 26.0, name, None, *sel == Selection::Commit(*oid), false);
+        let r = widgets::list_row(ui, widgets::ROW_INDENT, name, None, *sel == Selection::Commit(*oid), false);
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
         }
         let full = format!("refs/tags/{name}");
-        ref_visibility::row_marker(ui, &r, 13.0, &full, name, graph, msgs);
+        ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &full, name, graph, msgs);
         r.context_menu(|ui| tag_menu(ui, name, snap, graph, idle, msgs));
     }
 }

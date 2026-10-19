@@ -3,11 +3,12 @@
 //! directory (`details_workdir.rs`).
 
 use super::UiCache;
-use super::common::{issue_chip, lane_color, menu_item, short, status_color, status_label, widget_row_height};
+use super::common::{issue_chip, lane_color, menu_item, short, status_color, status_label};
 use super::file_menu::{self, RowSource};
 use super::graph::draw_avatar;
 use super::panel_size;
 use super::theme::color;
+use super::widgets;
 use crate::msg::Msg;
 use crate::msg::RepoMsg;
 use crate::state::lfs::{TrackContext, track_items};
@@ -28,7 +29,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
     let id = egui::Id::new(panel_size::DETAILS_ID);
     panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Details));
     let resp = panel_size::side(egui::SidePanel::right(id), fit)
-        .frame(egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin::same(10)))
+        .frame(egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin::same(super::theme::spacing::PANEL_PAD)))
         .show(ctx, |ui| {
             panel_size::fill(ui);
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
@@ -112,7 +113,7 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
     ui.label(RichText::new(t.trn("details.commit.changed_files", n, &[])).strong().color(color::text()));
     let lfs = TrackContext::of(st);
     let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
-    let row_h = widget_row_height(ui);
+    let row_h = widgets::LIST_ROW_H;
     egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
         let index = |t: &DiffTarget| d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()));
         file_reveal::reveal(ui, "commit-files", st.view.file_reveal.as_ref(), index, &range, row_h);
@@ -151,9 +152,9 @@ pub(super) fn changed_file_row(
     actions: RowActions<'_>,
     msgs: &mut Vec<Msg>,
 ) {
-    ui.horizontal(|ui| {
+    widgets::file_row(ui, |ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
-        let r = ui.selectable_label(open == Some(&target), &f.path);
+        let r = ui.selectable_label(open == Some(&target), RichText::new(&f.path).monospace());
         super::path_warnings::mark(ui, f);
         super::lfs_badge::badge(ui, f);
         if r.clicked() {

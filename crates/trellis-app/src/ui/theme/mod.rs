@@ -1,4 +1,5 @@
-//! Colors: the built-in palettes, palettes built from theme files, and egui widget styling.
+//! Colors: the built-in palettes, palettes built from theme files, and egui widget styling,
+//! with the bundled fonts (`fonts.rs`) and the spacing grid (`spacing.rs`).
 //!
 //! Views read colors through `color::text()` etc. The active palette is a per-thread copy: the
 //! shell's [`ThemeCache`] works out the palette for the chosen theme (again only when the
@@ -7,7 +8,7 @@
 //! different palettes in parallel don't affect each other.
 
 use crate::themes::ThemeState;
-use eframe::egui::{self, Stroke, vec2};
+use eframe::egui::{self, Stroke};
 use trellis_core::settings::ThemeChoice;
 
 mod builtin;
@@ -16,6 +17,8 @@ pub mod color;
 pub mod contrast;
 pub mod controls;
 pub mod custom;
+pub mod fonts;
+pub mod spacing;
 
 pub use builtin::{DARK, LIGHT, builtin};
 #[cfg(test)]
@@ -27,9 +30,11 @@ pub fn egui_theme(p: &Palette) -> egui::Theme {
     if p.dark { egui::Theme::Dark } else { egui::Theme::Light }
 }
 
-/// Styles egui's built-in widgets from `p`, in the egui theme `p` uses. The other egui theme
-/// gets DARK or LIGHT, so a stray switch never shows egui's own defaults.
+/// Styles egui's built-in widgets from `p`, in the egui theme `p` uses, and installs the bundled
+/// fonts (`fonts::install`, a cheap no-op once they are in). The other egui theme gets DARK or
+/// LIGHT, so a stray switch never shows egui's own defaults.
 pub fn apply_style(ctx: &egui::Context, p: &Palette) {
+    fonts::install(ctx);
     let other = if p.dark { &LIGHT } else { &DARK };
     for p in [p, other] {
         ctx.style_mut_of(egui_theme(p), |style| {
@@ -56,8 +61,8 @@ pub fn apply_style(ctx: &egui::Context, p: &Palette) {
             v.widgets.hovered.weak_bg_fill = p.hover;
             v.widgets.active.weak_bg_fill = p.selected;
             v.widgets.open.weak_bg_fill = p.hover;
-            style.spacing.item_spacing = vec2(6.0, 4.0);
-            style.spacing.button_padding = vec2(8.0, 3.0);
+            style.spacing.item_spacing = spacing::ITEM_SPACING;
+            style.spacing.button_padding = spacing::BUTTON_PADDING;
             super::widgets::tooltip::style(style, p);
         });
     }
@@ -134,5 +139,7 @@ impl ThemeCache {
 mod controls_tests;
 #[cfg(test)]
 mod snapshot_tests_controls;
+#[cfg(test)]
+mod snapshot_tests_fonts;
 #[cfg(test)]
 mod tests;

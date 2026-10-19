@@ -6,7 +6,7 @@
 mod header;
 
 use super::UiCache;
-use super::common::{menu_item, status_color, status_label, widget_row_height};
+use super::common::{menu_item, status_color, status_label};
 use super::file_menu::{self, ToolItem};
 use super::theme::color;
 use crate::keymap::{BindingId, Keymap};
@@ -110,7 +110,7 @@ fn file_list(
         return;
     }
     // Only the rows in view are drawn: a working tree can have thousands of changed files.
-    let row_h = widget_row_height(ui);
+    let row_h = super::widgets::LIST_ROW_H;
     area.show_rows(ui, row_h, count, |ui, range| {
         let index = |t: &DiffTarget| {
             let path = match t {
@@ -151,7 +151,7 @@ pub(super) fn wip_file_row(
         (false, false) => Msg::Stage(StageMsg::StageFile(f.path.clone())),
     };
     let t = ctx.lang;
-    ui.horizontal(|ui| {
+    super::widgets::file_row(ui, |ui| {
         ui.label(RichText::new(status_label(f.status).to_string()).monospace().strong().color(status_color(f.status)));
         let action = match (staged, conflicted) {
             (true, _) => t.tr("details.wip.unstage.button"),
@@ -169,7 +169,7 @@ pub(super) fn wip_file_row(
             Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
             _ => false,
         };
-        let r = ui.selectable_label(selected, &f.path);
+        let r = ui.selectable_label(selected, RichText::new(&f.path).monospace());
         super::path_warnings::mark(ui, f);
         super::lfs_badge::badge(ui, f);
         if let Some((text, green)) = note {

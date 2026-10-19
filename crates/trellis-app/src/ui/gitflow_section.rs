@@ -64,8 +64,15 @@ pub(super) fn section(
             let selected = info.oid.is_some_and(|o| *rows.sel == Selection::Commit(o));
             let worktree = crate::state::worktree_branches::elsewhere(snap, b.name);
             let right = worktree.map(|_| [widgets::Part::Text("worktree")]);
-            let (r, _, cut) =
-                widgets::list_row_cut(ui, 34.0, &label, right.as_ref().map(|p| (&p[..], color::weak())), 0.0, selected, b.head);
+            let (r, _, cut) = widgets::list_row_cut(
+                ui,
+                widgets::NESTED_INDENT,
+                &label,
+                right.as_ref().map(|p| (&p[..], color::weak())),
+                0.0,
+                selected,
+                b.head,
+            );
             if r.hovered() {
                 *hover_next = info.oid;
             }
@@ -86,7 +93,7 @@ pub(super) fn section(
             {
                 msgs.push(Msg::Repo(RepoMsg::JumpTo(o)));
             }
-            ref_visibility::row_marker(ui, &r, 20.0, &format!("refs/heads/{}", b.name), b.name, rows.graph, msgs);
+            ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/heads/{}", b.name), b.name, rows.graph, msgs);
             r.context_menu(|ui| {
                 let finish = format!("Finish {} {}…", g.kind.noun(), b.short);
                 menu_item(msgs, ui, finish, Msg::GitFlow(GitFlowMsg::FinishDialog(b.name.to_owned())));
@@ -133,7 +140,7 @@ fn group(ui: &mut egui::Ui, snap: &Snapshot, s: &GitFlowSettings, g: &FlowGroup,
 /// A group's title, dim and small, with its count and a '+' (named `plus_name`) at the right
 /// end. Returns the row's and the '+''s responses.
 fn group_row(ui: &mut egui::Ui, title: &str, count: usize, plus_name: &str, enabled: bool) -> (Response, Response) {
-    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 22.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), widgets::GROUP_ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, title));
     let p = ui.painter_at(rect);
@@ -141,10 +148,10 @@ fn group_row(ui: &mut egui::Ui, title: &str, count: usize, plus_name: &str, enab
         p.rect_filled(rect, 0.0, color::hover());
     }
     let font = FontId::proportional(12.0);
-    let t = p.text(pos2(rect.left() + 24.0, rect.center().y), Align2::LEFT_CENTER, title, font.clone(), color::weak());
+    let t = p.text(pos2(rect.left() + widgets::ROW_INDENT, rect.center().y), Align2::LEFT_CENTER, title, font.clone(), color::weak());
     p.text(pos2(t.right() + 6.0, rect.center().y), Align2::LEFT_CENTER, count.to_string(), font, color::faint());
 
-    let c = pos2(rect.right() - 16.0, rect.center().y);
+    let c = pos2(rect.right() - widgets::PAD_X, rect.center().y);
     let plus = ui.interact(Rect::from_center_size(c, vec2(18.0, 18.0)), resp.id.with("start"), Sense::click());
     plus.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, plus_name));
     if enabled && plus.hovered() {

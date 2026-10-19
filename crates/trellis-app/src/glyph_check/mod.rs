@@ -3,9 +3,8 @@
 //! from the translation files (`trellis-core/locales/*.json`) has a glyph in the fonts egui
 //! draws with. A character without one draws as a box.
 //!
-//! This lives in the crate rather than `tests/` so that, if the app ever installs fonts of its
-//! own, `fonts()` can build its context the same way the app does (only in-crate code can call
-//! that).
+//! This lives in the crate rather than `tests/` so that `fonts()` installs the app's bundled
+//! fonts the way the app does (`ui::theme::fonts::install`, which only in-crate code can call).
 
 mod scan;
 
@@ -18,17 +17,22 @@ use std::path::{Path, PathBuf};
 const NEVER_DRAWN: &[(char, &str)] =
     &[('\u{061C}', "Arabic letter mark: text.rs matches it to strip bidi controls from server text; never drawn")];
 
-/// A context with the fonts the app draws with. They exist only after the first pass. If the
-/// app ever installs its own fonts, install them here the same way.
+/// A context with the fonts the app draws with: the bundled ones, installed as the app does.
+/// They exist only after the first pass.
 fn fonts() -> egui::Context {
     let ctx = egui::Context::default();
+    crate::ui::theme::fonts::install(&ctx);
     let _ = ctx.run(egui::RawInput::default(), |_| {});
     ctx
 }
 
 /// Whether the UI's text font (Proportional; Monospace falls back to the same fonts) has `c`.
 fn drawable(ctx: &egui::Context, c: char) -> bool {
-    ctx.fonts(|f| f.has_glyph(&egui::FontId::proportional(13.0), c))
+    drawable_in(ctx, &egui::FontId::proportional(13.0), c)
+}
+
+fn drawable_in(ctx: &egui::Context, font: &egui::FontId, c: char) -> bool {
+    ctx.fonts(|f| f.has_glyph(font, c))
 }
 
 /// The `crates/` folder, from the manifest folder at run time (target dirs may be shared
@@ -94,11 +98,15 @@ fn shown_characters() -> (Vec<(char, String, usize)>, usize, usize) {
 #[test]
 fn fonts_have_what_the_ui_uses_and_lack_what_it_paints() {
     let ctx = fonts();
-    // '\u{2714}' (heavy check mark) comes from the emoji fallback; U+200E is invisible.
+    // '\u{2714}' (heavy check mark) comes from egui's emoji fallback; U+200E is invisible.
+    // Monospace text (JetBrains Mono, then the same fallbacks) draws them too.
+    let mono = egui::FontId::monospace(13.0);
     for c in ['a', '\u{e9}', '\u{df}', '\u{2026}', '\u{b7}', '\u{201c}', '\u{2714}', '\u{200e}'] {
         assert!(drawable(&ctx, c), "U+{:04X} should be drawable", c as u32);
+        assert!(drawable_in(&ctx, &mono, c), "U+{:04X} should be drawable in monospace", c as u32);
     }
-    // Arrows, the midline ellipsis, the caret, the pencil and CJK are not.
+    // Noto Sans has no arrows, midline ellipsis, caret or pencil, and no CJK, so the UI paints
+    // them (the ahead/behind arrows too, though JetBrains Mono has arrows).
     for c in ['\u{2191}', '\u{2193}', '\u{2192}', '\u{22ef}', '\u{25be}', '\u{270e}', '\u{65e5}'] {
         assert!(!drawable(&ctx, c), "U+{:04X} is expected to be missing", c as u32);
     }

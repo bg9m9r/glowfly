@@ -48,7 +48,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         let selected = wt.head.is_some_and(|o| *sel == Selection::Commit(o));
         let right = right_text(wt);
         let parts = [widgets::Part::Text(&right)];
-        let (r, _, cut) = widgets::list_row_cut(ui, 26.0, &label, Some((&parts[..], col)), 0.0, selected, wt.current);
+        let (r, _, cut) = widgets::list_row_cut(ui, widgets::ROW_INDENT, &label, Some((&parts[..], col)), 0.0, selected, wt.current);
         if r.hovered() {
             *hover_next = wt.head;
         }

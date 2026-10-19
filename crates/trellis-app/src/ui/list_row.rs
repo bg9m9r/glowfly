@@ -1,13 +1,14 @@
 //! The sidebar's list rows: one line of text (cut with "…" when it doesn't fit) with optional dim
 //! text (words, or counts with painted arrows) and a marker slot at the right, plus the
-//! skip-if-scrolled-away helper the long sections use.
+//! skip-if-scrolled-away helper the long sections use; the file lists' fixed-height rows
+//! (`file_row`); and the side panels' row heights and insets.
 
-use super::theme::color;
+use super::theme::{color, fonts, spacing};
 use super::widgets::truncate;
 
 use std::sync::Arc;
 
-use eframe::egui::{self, Color32, FontId, Galley, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
+use eframe::egui::{self, Align, Color32, FontId, Galley, Layout, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
 
 /// One piece of a list row's dim right-hand text.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -63,11 +64,11 @@ pub fn list_row_cut(
     } else if resp.hovered() {
         p.rect_filled(rect, 0.0, color::hover());
     }
-    let mut right_w = if slot > 0.0 { slot + 14.0 } else { 0.0 };
+    let mut right_w = if slot > 0.0 { slot + PAD_X + PARTS_GAP } else { 0.0 };
     if let Some((parts, col)) = right {
         let (total, pieces) = layout_parts(&p, parts, col);
-        right_w = total + 14.0 + slot;
-        let mut x = rect.right() - 10.0 - slot - total;
+        right_w = total + PAD_X + PARTS_GAP + slot;
+        let mut x = rect.right() - PAD_X - slot - total;
         let cy = rect.center().y;
         for (i, piece) in pieces.into_iter().enumerate() {
             if i > 0 {
@@ -83,15 +84,17 @@ pub fn list_row_cut(
         }
     }
     let text_rect = Rect::from_min_max(pos2(rect.left() + indent, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
-    let font = if strong { FontId::new(13.0, egui::FontFamily::Proportional) } else { FontId::proportional(13.0) };
+    let font = if strong { fonts::semibold(ui, 13.0) } else { FontId::proportional(13.0) };
     let col = if strong { color::strong() } else { color::text() };
     let cut = truncate::paint_cut(&p, pos2(text_rect.left(), rect.center().y), truncate::cut_job(text, font, col), text_rect.width());
-    let marker = Rect::from_min_max(pos2(rect.right() - 10.0 - slot, rect.top()), pos2(rect.right() - 10.0, rect.bottom()));
+    let marker = Rect::from_min_max(pos2(rect.right() - PAD_X - slot, rect.top()), pos2(rect.right() - PAD_X, rect.bottom()));
     (resp, marker, cut.cut)
 }
 
 /// The space between two right-hand parts (a space's width at 12 px).
 const GAP: f32 = 6.0;
+/// The least space between a row's (cut) text and its right-hand parts or marker slot.
+const PARTS_GAP: f32 = spacing::GRID;
 /// The space between a count and its arrow, and the arrow's width.
 const ARROW_GAP: f32 = 1.5;
 const ARROW_W: f32 = 6.0;
@@ -133,8 +136,25 @@ fn paint_arrow(p: &Painter, c: Pos2, up: bool, col: Color32) {
     p.line_segment([pos2(c.x + 2.6, tip + back), pos2(c.x, tip)], s);
 }
 
-/// The height of a `list_row`.
-pub const LIST_ROW_H: f32 = 24.0;
+/// The height of a `list_row`, and of a file list's rows (`file_row`).
+pub const LIST_ROW_H: f32 = 36.0;
+/// The height of a sidebar section header (`widgets::section_header`).
+pub const SECTION_H: f32 = 36.0;
+/// The height of a remote's or a Git Flow group's row.
+pub const GROUP_ROW_H: f32 = 32.0;
+/// The sidebar's inset: the filter field's from the panel's edges, the section chevrons' centre,
+/// and the right-hand parts' and counts' from the right edge.
+pub const PAD_X: f32 = spacing::PANEL_PAD_F;
+/// Where a section header's title starts.
+pub const TITLE_X: f32 = 32.0;
+/// Where a list row's text starts.
+pub const ROW_INDENT: f32 = 40.0;
+/// Where a row nested under a remote or a Git Flow group starts.
+pub const NESTED_INDENT: f32 = 48.0;
+/// The centre of a row's hidden or solo marker (`ref_visibility::row_marker`), left of its text.
+pub const GUTTER_X: f32 = 24.0;
+/// The same for a nested row.
+pub const NESTED_GUTTER_X: f32 = 32.0;
 
 /// For a `list_row` about to be drawn: when it would be scrolled out of view, takes its space
 /// (and one widget id, as the row does) and returns true, so the caller skips it. Long sections
@@ -147,3 +167,17 @@ pub fn list_row_hidden(ui: &mut Ui) -> bool {
     ui.allocate_space(size);
     true
 }
+
+/// One row of a file list drawn with `ScrollArea::show_rows(ui, LIST_ROW_H, ..)`: `add`'s widgets
+/// left to right, vertically centred in a row exactly `LIST_ROW_H` tall.
+pub fn file_row<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> egui::InnerResponse<R> {
+    let w = ui.available_width();
+    ui.allocate_ui_with_layout(vec2(w, LIST_ROW_H), Layout::left_to_right(Align::Center), |ui| {
+        ui.set_min_height(LIST_ROW_H);
+        add(ui)
+    })
+}
+
+#[cfg(test)]
+#[path = "list_row_tests.rs"]
+mod tests;

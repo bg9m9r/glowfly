@@ -42,6 +42,8 @@ pub struct TrellisApp {
 impl TrellisApp {
     pub fn new(cc: &eframe::CreationContext<'_>, start: Option<crate::StartArg>, logs: crate::logging::LogSetup) -> Self {
         let ctx = &cc.egui_ctx;
+        // Before the first pass, so the first frame is drawn in the bundled fonts.
+        theme::fonts::install(ctx);
         let (settings, problem) = Settings::load();
         // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
         trellis_core::git_program::set(trellis_core::git_program::from_setting(settings.git_program.as_deref()).as_deref());
