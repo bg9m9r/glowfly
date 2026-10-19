@@ -1,6 +1,7 @@
 //! Tabs: opening repositories side by side, switching, reordering and restoring the previous
-//! session. Switching parks the active tab's data and restores the other's; reordering moves
-//! parked data with its tab. Where a tab opens and how a drop or a keyboard move moves it follow
+//! session. Switching parks the active tab's data and restores the other's, and swaps their
+//! activity logs (`Tab::log`, outside `Parked`); reordering moves parked data and logs with its
+//! tab. Where a tab opens and how a drop or a keyboard move moves it follow
 //! the worktree groups (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in
 //! `tab_label.rs`.
 
@@ -49,14 +50,18 @@ pub(super) fn handle(st: &mut AppState, msg: TabsMsg, fx: &mut Vec<Effect>) {
                     st.tabs.push(Tab { label, ..Tab::unloaded(path) });
                 }
             }
-            // Drop the empty tab the app starts with.
+            // Drop the empty tab the app starts with; its lines (settings or theme problems)
+            // go to the restored tab.
+            let mut carried = None;
             if st.tabs.len() > 1 && st.snap.is_none() && st.tabs[st.active_tab].path.is_none() {
+                carried = Some(std::mem::take(&mut st.log));
                 st.tabs.remove(st.active_tab);
                 st.active_tab = usize::MAX; // nothing to park
             }
             let target = active.min(st.tabs.len() - 1);
             if st.active_tab == usize::MAX {
                 activate(st, target, fx);
+                super::logs_tabs::carry(st, carried.unwrap_or_default());
             } else {
                 switch(st, target, fx);
             }
@@ -126,9 +131,12 @@ pub(super) fn open_failed(st: &mut AppState, fx: &mut Vec<Effect>) {
     match st.tab_return.take() {
         Some(back) if back < st.tabs.len() && st.tabs.len() > 1 => {
             let failed = st.active_tab;
+            // The failure stays readable in the tab the open came from.
+            let carried = std::mem::take(&mut st.log);
             st.tabs.remove(failed);
             st.active_tab = usize::MAX;
             activate(st, if back > failed { back - 1 } else { back }, fx);
+            super::logs_tabs::carry(st, carried);
         }
         _ => {
             st.tabs[st.active_tab] = Tab::empty();
@@ -147,6 +155,8 @@ pub(super) fn opened(st: &mut AppState) -> Effect {
         tab.name = snap.name.clone();
     }
     super::tab_groups::loaded(st);
+    // Earlier entries held for this repository, now that its path is known.
+    super::logs_tabs::claim(st);
     save(st)
 }
 
@@ -160,9 +170,11 @@ pub(super) fn open_elsewhere(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Ef
     tracing::debug!(path = %snap.workdir.display(), "already open in another tab");
     st.tab_return = None;
     park(st); // discarded with the tab
+    let carried = std::mem::take(&mut st.log);
     st.tabs.remove(here);
     st.active_tab = usize::MAX;
     activate(st, if there > here { there - 1 } else { there }, fx);
+    super::logs_tabs::carry(st, carried);
     true
 }
 
@@ -173,6 +185,7 @@ fn switch(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     st.tab_return = None;
     let parked = park(st);
     st.tabs[st.active_tab].parked = Some(Box::new(parked));
+    st.tabs[st.active_tab].log = std::mem::take(&mut st.log);
     activate(st, i, fx);
 }
 
@@ -184,11 +197,14 @@ pub(super) fn title(st: &AppState, i: usize) -> String {
     }
 }
 
-/// Makes tab `i` active, assuming the previous tab's data has been parked or discarded.
+/// Makes tab `i` active, assuming the previous tab's data and log have been parked or
+/// discarded: `log` becomes tab `i`'s.
 pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     st.active_tab = i;
+    st.log = std::mem::take(&mut st.tabs[i].log);
     let parked = st.tabs[i].parked.take().map(|p| *p).unwrap_or_default();
     unpark(st, parked);
+    super::logs_tabs::claim(st);
     super::search_paths::resume(st, fx);
     super::watch::sync(st, fx);
     super::terminal::sync(st, fx);

@@ -1,8 +1,9 @@
 //! Trellis's log files, all in `settings::log_dir`:
 //!
 //! - `activity.jsonl`: the activity panel's lines across sessions, one JSON object per line
-//!   (`{"v":1,"session":…,"at":…,"ok":…,"text":…}`, times in Unix seconds, `session` the start
-//!   of the session that wrote it). Kept to the newest entries: trimmed when it is opened, and
+//!   (`{"v":1,"session":…,"at":…,"ok":…,"text":…,"repo":…}`, times in Unix seconds, `session`
+//!   the start of the session that wrote it, `repo` the repository of the tab it was logged in,
+//!   left out for a tab without one). Kept to the newest entries: trimmed when it is opened, and
 //!   whenever appends take it past twice that many ([`ActivityFile`]).
 //! - `errors.log`: warnings, errors and panics, as text lines from the app's tracing setup,
 //!   rotated by size ([`RotatingFile`], [`ERROR_LOG_BYTES`]).
@@ -17,7 +18,7 @@ mod lines;
 mod rotate;
 mod tail;
 
-pub use activity::{ActivityEntry, ActivityFile, MAX_ENTRY_BYTES, activity_line, parse_activity};
+pub use activity::{ActivityEntry, ActivityFile, MAX_ENTRY_BYTES, activity_line, parse_activity, same_repo};
 pub use lines::{git_run_line, perf_line, redact_url_userinfo};
 pub use rotate::{RotatingFile, rotated_path};
 pub use tail::{LogTail, read_tail};

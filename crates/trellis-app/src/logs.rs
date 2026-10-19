@@ -27,6 +27,15 @@ impl LogKind {
     }
 }
 
+/// A new line for the activity file: the repository is that of the tab it was logged in (None
+/// for a tab without one).
+#[derive(Clone, Debug, PartialEq)]
+pub struct NewLine {
+    pub ok: bool,
+    pub text: String,
+    pub repo: Option<PathBuf>,
+}
+
 /// The earlier sessions' activity, read from the logs folder `dir` at startup.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EarlierLog {
@@ -53,6 +62,9 @@ pub enum LogsMsg {
     SetExtended(bool),
     /// A git command ended while extended logging is on.
     GitRan(GitRun),
+    /// A failure toast's Details: select that tab if it is still open and show its activity
+    /// log.
+    Details(crate::state::tabs::TabId),
 }
 
 impl LogsMsg {
@@ -66,7 +78,8 @@ impl LogsMsg {
             | Self::FileRead { .. }
             | Self::OpenFolder
             | Self::SetExtended(_)
-            | Self::GitRan(_) => None,
+            | Self::GitRan(_)
+            | Self::Details(_) => None,
         }
     }
 }
@@ -76,10 +89,11 @@ impl LogsMsg {
 pub enum LogsEffect {
     /// Read the activity file; reported as `LogsMsg::ActivityLoaded`.
     LoadActivity,
-    /// Append these (ok, text) lines to the activity file, stamped with the session and time.
-    Append(Vec<(bool, String)>),
-    /// Delete the activity file.
-    ClearActivity,
+    /// Append these lines to the activity file, stamped with the session and time.
+    Append(Vec<NewLine>),
+    /// Remove the lines of the tab for `repo` (None: a tab without a repository) from the
+    /// activity file.
+    ClearActivity { repo: Option<PathBuf> },
     /// Read the end of the error or performance log; reported as `LogsMsg::FileRead`.
     ReadFile { kind: LogKind, generation: u64 },
     /// Create the logs folder if needed and show it in the file manager.

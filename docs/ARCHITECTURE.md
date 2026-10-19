@@ -140,7 +140,9 @@ binary (package `trellis`).
   it in `state::tabs::Parked` and restores the other tab's. Results of repository-scoped effects
   (`Effect::scope`) come back as `Msg::Scoped`. If their tab is no longer active, only what the
   area's `on_inactive` returns is applied (a log line, an undo entry for that tab, a dialog's
-  result); the rest is dropped.
+  result); the rest is dropped. Each tab's activity log lives outside `Parked`, in `Tab::log`
+  (the active one's in `AppState::log`): `switch` and `activate` swap it, so a restored tab that
+  hasn't loaded still gets lines.
   Paths are resolved on disk once, when a repository loads (`Snapshot::real_workdir`, with its
   identity `Snapshot::folder`). `update` compares paths with the pure `paths::same_spelling` plus
   the identities worker threads found (`AppState::same_folder`, `state/known_folders.rs`); it
@@ -320,10 +322,19 @@ binary (package `trellis`).
   `settings.gpg_prompts_in_app` is off, `update/askpass.rs` answers `Reply::UseSystem` without
   showing anything; that, an unreachable app, or a GnuPG without loopback runs gpg exactly as
   git asked, so GnuPG's own pinentry appears.
-- **Logs**: `AppState::log` / `log_quiet` also queue each line in the outbox
+- **Logs**: each tab has its own activity log: the active tab's is `AppState::log`, the others'
+  `Tab::log`. `AppState::log` / `log_quiet` add to the active tab's; `log_in` / `log_quiet_in`
+  route a line to the tab showing a repository (a scoped result, a finished job, a git command).
+  Each line is also queued, tagged with its tab's repository, in the outbox
   `LogsState::pending` (`state/logs.rs`), which the end of `update` flushes as
-  `Effect::Logs(LogsEffect::Append)` once the activity file has loaded (`LogsMsg::Start` at
-  startup reads it, and earlier sessions' entries go in front of this session's). One ordered
+  `Effect::Logs(LogsEffect::Append)` once the activity file has loaded; `activity.jsonl` lines
+  carry that `repo` (`paths::encode`). `LogsMsg::Start` at startup reads the file, and its
+  earlier entries are handed to the tabs showing their repositories, in front of this session's
+  lines; those for a repository no tab shows wait in `LogsState::unclaimed` until a tab
+  activates or opens it (`update/logs_tabs.rs`). Nothing opens the panel by itself: a failure
+  logged with `log` / `log_in` is announced at the end of `update` as a failure toast with
+  Details (`logs_tabs::announce`), or gives Details to a failure toast pushed in that update;
+  Details selects the line's tab and shows its activity log. One ordered
   log worker (`runner/logs.rs`) owns the activity file and the performance log and stamps
   times, so `update` reads no clock. `Runner::run` times every effect that doesn't wait on the
   user (`Effect::timed`) and gitcli's run observer times every git command; those taking

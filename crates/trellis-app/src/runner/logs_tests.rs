@@ -32,7 +32,11 @@ fn worker_keeps_the_activity_log_across_sessions() {
     let (w, rx) = worker(&dir);
     w.submit(LogsEffect::LoadActivity);
     assert_eq!(next(&rx), LogsMsg::ActivityLoaded(Ok(EarlierLog { dir: dir.clone(), entries: Vec::new() })));
-    w.submit(LogsEffect::Append(vec![(true, "Fetched origin".into()), (false, "Push failed:\nrejected".into())]));
+    let a = dir.join("a");
+    w.submit(LogsEffect::Append(vec![
+        NewLine { ok: true, text: "Fetched origin".into(), repo: Some(a.clone()) },
+        NewLine { ok: false, text: "Push failed:\nrejected".into(), repo: None },
+    ]));
     // A missing log reads as empty; the answer also shows the append before it was done.
     w.submit(LogsEffect::ReadFile { kind: LogKind::Errors, generation: 7 });
     assert_eq!(next(&rx), LogsMsg::FileRead { kind: LogKind::Errors, generation: 7, result: Ok(LogTail::default()) });
@@ -44,14 +48,23 @@ fn worker_keeps_the_activity_log_across_sessions() {
     let LogsMsg::ActivityLoaded(Ok(earlier)) = next(&rx) else { panic!("not loaded") };
     let texts: Vec<(bool, &str)> = earlier.entries.iter().map(|e| (e.ok, e.text.as_str())).collect();
     assert_eq!(texts, [(true, "Fetched origin"), (false, "Push failed:\nrejected")]);
+    assert_eq!(earlier.entries[0].repo.as_deref(), Some(a.as_path()), "tagged with its tab's repository");
+    assert_eq!(earlier.entries[1].repo, None);
     let session = earlier.entries[0].session;
     assert!((before..=after).contains(&session), "the first worker's session");
     assert!(earlier.entries.iter().all(|e| e.session == session && e.at >= session));
 
-    w.submit(LogsEffect::ClearActivity);
+    w.submit(LogsEffect::ClearActivity { repo: Some(a.clone()) });
     w.submit(LogsEffect::ReadFile { kind: LogKind::Performance, generation: 8 });
     next(&rx);
-    assert!(!dir.join(logs::ACTIVITY_FILE).exists(), "Clear deletes the file");
+    let (left, _) = logs::parse_activity(&std::fs::read_to_string(dir.join(logs::ACTIVITY_FILE)).unwrap());
+    let texts: Vec<&str> = left.iter().map(|e| e.text.as_str()).collect();
+    assert_eq!(texts, ["Push failed:\nrejected"], "Clear removes only that tab's lines");
+    w.submit(LogsEffect::ClearActivity { repo: None });
+    w.submit(LogsEffect::ReadFile { kind: LogKind::Performance, generation: 9 });
+    next(&rx);
+    let (left, _) = logs::parse_activity(&std::fs::read_to_string(dir.join(logs::ACTIVITY_FILE)).unwrap());
+    assert!(left.is_empty(), "{left:?}");
     drop(w);
     let _ = std::fs::remove_dir_all(&dir);
 }

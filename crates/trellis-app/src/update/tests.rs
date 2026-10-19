@@ -414,8 +414,9 @@ fn unreadable_settings_are_reported_once() {
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsUnreadable("Settings could not be read".into())), Instant::now());
     assert!(fx.is_empty(), "{fx:?}");
     assert!(st.log.iter().any(|l| !l.ok && l.text == "Settings could not be read"));
-    assert!(st.view.show_log);
+    assert!(!st.view.show_log);
     assert_eq!(st.toasts.len(), 1);
+    assert!(crate::update::logs_tabs::tests::failure_with_details(&st), "its toast offers Details");
 }
 
 #[test]

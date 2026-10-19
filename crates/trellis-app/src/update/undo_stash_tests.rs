@@ -155,7 +155,7 @@ fn refusal_for_an_inactive_tab_offers_nothing() {
     assert!(matches!(&reply, Msg::Job(JobMsg::JobDone { undo: Some(UndoResult::Refused { offer_stash: true, .. }), .. })));
     update(&mut st, reply, Instant::now());
     let t = st.toasts.last().unwrap();
-    assert!(!t.ok && t.action.is_none());
+    assert!(!t.ok && t.action.as_ref().is_none_or(|a| a.label == "Details"), "no stash offer");
     cleanup(&[&a, &b]);
 }
 

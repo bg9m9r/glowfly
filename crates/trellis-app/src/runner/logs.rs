@@ -6,7 +6,7 @@
 use super::Waker;
 use crate::effect::Effect;
 use crate::logging::{FileDetail, LogSetup};
-use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg};
+use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
 use crate::msg::Msg;
 use crate::state::LOG_LIMIT;
 use std::path::PathBuf;
@@ -159,10 +159,10 @@ impl<W: Waker> Worker<W> {
                 self.send(Msg::Logs(LogsMsg::ActivityLoaded(result)));
             }
             LogsEffect::Append(lines) => self.append(lines),
-            LogsEffect::ClearActivity => {
-                self.unsaved.clear();
-                if let Some(Err(e)) = self.activity.as_mut().map(ActivityFile::clear) {
-                    self.send(Msg::Logged { ok: false, text: format!("Couldn't delete the activity log: {e}") });
+            LogsEffect::ClearActivity { repo } => {
+                self.unsaved.retain(|e| !logs::same_repo(e.repo.as_deref(), repo.as_deref()));
+                if let Some(Err(e)) = self.activity.as_mut().map(|f| f.remove_repo(repo.as_deref())) {
+                    self.send(Msg::Logged { ok: false, text: format!("Couldn't clear the activity log: {e}") });
                 }
             }
             LogsEffect::ReadFile { kind, generation } => {
@@ -197,10 +197,11 @@ impl<W: Waker> Worker<W> {
 
     /// Appends `lines` (after any that failed before); after `MAX_APPEND_FAILURES` failures in a
     /// row the file is dropped for the session.
-    fn append(&mut self, lines: Vec<(bool, String)>) {
+    fn append(&mut self, lines: Vec<NewLine>) {
         let Some(file) = self.activity.as_mut() else { return };
         let at = chrono::Utc::now().timestamp();
-        self.unsaved.extend(lines.into_iter().map(|(ok, text)| ActivityEntry { session: self.session, at, ok, text }));
+        let session = self.session;
+        self.unsaved.extend(lines.into_iter().map(|l| ActivityEntry { session, at, ok: l.ok, text: l.text, repo: l.repo }));
         let over = self.unsaved.len().saturating_sub(LOG_LIMIT);
         self.unsaved.drain(..over);
         match file.append(&self.unsaved) {

@@ -58,6 +58,11 @@ fn create_from_current_names_and_bases_the_copy() {
     assert_eq!((f.name.as_str(), f.base), ("Trellis Light (copy)", BuiltinTheme::Light), "the theme the system picked");
 }
 
+/// How many failure toasts are up.
+fn failures(st: &AppState) -> usize {
+    st.toasts.iter().filter(|t| !t.ok).count()
+}
+
 #[test]
 fn created_selects_reloads_and_reveals() {
     let mut st = state();
@@ -74,11 +79,11 @@ fn created_selects_reloads_and_reveals() {
     let fx = run(&mut st, ThemeMsg::Created(Err("disk full".into())));
     assert!(fx.is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not create a theme file: disk full"));
-    assert!(st.view.show_log);
+    assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st));
 }
 
 #[test]
-fn loaded_logs_problems_and_opens_the_log_once() {
+fn loaded_logs_problems_and_announces_once() {
     let mut st = state();
     let bad = || file("ocean", r##"{"colors": {"acent": "#000000", "panel": "#12345"}}"##);
     let fx = run(&mut st, ThemeMsg::Loaded(catalog(vec![bad()])));
@@ -87,20 +92,20 @@ fn loaded_logs_problems_and_opens_the_log_once() {
     let lines: Vec<&str> = st.log.iter().map(|l| l.text.as_str()).collect();
     assert_eq!(lines.len(), 2, "{lines:?}");
     assert!(lines.iter().all(|l| l.starts_with("Theme ocean.json: ")), "{lines:?}");
-    assert!(!st.view.show_log, "an unselected file's problems stay quiet");
+    assert!(!st.view.show_log && st.toasts.is_empty(), "an unselected file's problems stay quiet");
 
     st.settings.theme = ThemeChoice::Custom("ocean".into());
     run(&mut st, ThemeMsg::Loaded(catalog(vec![bad()])));
     assert_eq!(st.themes.generation, 2);
-    assert!(st.view.show_log);
+    assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st));
+    assert_eq!(failures(&st), 1);
     let last = &st.log.last().unwrap().text;
     assert!(last.contains("ocean.json") && last.contains("Trellis Dark"), "{last}");
     let count = st.log.len();
 
-    st.view.show_log = false;
     run(&mut st, ThemeMsg::Loaded(catalog(vec![bad()])));
     assert_eq!(st.log.len(), count + 2, "only the quiet lines again");
-    assert!(!st.view.show_log, "the same problems aren't announced twice");
+    assert_eq!(failures(&st), 1, "the same problems aren't announced twice");
 }
 
 #[test]
@@ -110,10 +115,9 @@ fn a_missing_selected_file_is_logged() {
     run(&mut st, ThemeMsg::Loaded(ThemeCatalog::default()));
     let last = &st.log.last().unwrap().text;
     assert!(last.contains("gone.json") && last.contains("Trellis Dark"), "{last}");
-    assert!(st.view.show_log);
-    st.view.show_log = false;
+    assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st));
     run(&mut st, ThemeMsg::Loaded(ThemeCatalog::default()));
-    assert!(!st.view.show_log);
+    assert_eq!(failures(&st), 1, "announced once");
 }
 
 #[test]

@@ -93,7 +93,10 @@ fn inspected_elsewhere_or_unreadable() {
     let other = dir.with_file_name("someone-else");
     run(&mut st, PatchMsg::Inspected { workdir: other, path: p.clone(), result: Ok(PatchSummary::default()) });
     assert!(last_log(&st).contains("no longer the active tab"), "{}", last_log(&st));
-    assert!(st.modal.is_none() && st.toasts.is_empty());
+    assert!(
+        st.modal.is_none() && st.toasts.len() == 1 && crate::update::logs_tabs::tests::failure_with_details(&st),
+        "announced with Details"
+    );
 
     let workdir = st.workdir().unwrap();
     run(&mut st, PatchMsg::Inspected { workdir: workdir.clone(), path: p.clone(), result: Err("access denied".into()) });

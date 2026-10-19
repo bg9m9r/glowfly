@@ -54,17 +54,40 @@ pub struct Tab {
     pub parked: Option<Box<Parked>>,
     /// The name the user gave the tab (Rename tab); `None` shows the folder name.
     pub label: Option<String>,
+    /// This tab's activity log while it isn't the active tab; the active tab's is
+    /// `AppState::log`. Not in `Parked`: a tab restored but not loaded yet still gets lines.
+    pub log: Vec<super::LogEntry>,
 }
 
 impl Tab {
     pub fn empty() -> Self {
-        Self { id: TabId::next(), path: None, name: "New tab".into(), real: None, folder: None, group: None, parked: None, label: None }
+        Self {
+            id: TabId::next(),
+            path: None,
+            name: "New tab".into(),
+            real: None,
+            folder: None,
+            group: None,
+            parked: None,
+            label: None,
+            log: Vec::new(),
+        }
     }
 
     /// A tab for `path` whose repository loads when the tab is first selected.
     pub fn unloaded(path: PathBuf) -> Self {
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.display().to_string());
-        Self { id: TabId::next(), path: Some(path), name, real: None, folder: None, group: None, parked: None, label: None }
+        Self {
+            id: TabId::next(),
+            path: Some(path),
+            name,
+            real: None,
+            folder: None,
+            group: None,
+            parked: None,
+            label: None,
+            log: Vec::new(),
+        }
     }
 
     /// The name the tab shows: its label, else the folder name.

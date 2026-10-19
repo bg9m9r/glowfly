@@ -191,7 +191,7 @@ pub struct RunningJob {
     pub label: String,
     /// The repository the job runs in (its tab), if any.
     pub workdir: Option<PathBuf>,
-    /// Background jobs (auto-fetch) don't pop the activity log open or show toasts.
+    /// Background jobs (auto-fetch) don't show toasts or announce failures.
     pub quiet: bool,
     pub clear_commit: bool,
     pub then_open: Option<(PathBuf, trust::Created)>,
@@ -410,6 +410,7 @@ pub struct AppState {
     pub job: Option<RunningJob>,
     /// The active tab's undo history.
     pub undo: undo::UndoHistory,
+    /// The active tab's activity log (other tabs keep theirs in `Tab::log`; state/logs.rs).
     pub log: Vec<LogEntry>,
     /// The log files: persistence of the activity log, the panel's tab (state/logs.rs).
     pub logs: logs::LogsState,

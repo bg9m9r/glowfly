@@ -263,7 +263,7 @@ until this list says which option was chosen.
       and the fix ("Your changes to 3 files would be overwritten: Stash and pull") instead of
       raw git text such as "Merge with strategy ort failed"; find where the `<stdin>` whitespace
       warnings in a failed pull's log come from and stop showing them
-- [ ] **Activity panel opens only when asked**: nothing opens it but the toolbar's Activity
+- [x] **Activity panel opens only when asked**: nothing opens it but the toolbar's Activity
       button, the View menu or a toast's Details; each repository tab has its own log
 - [ ] **Terminal keeps the prompt's space**: pwsh's "PS C:\path> " loses its trailing space on
       longer paths (the cursor sits right after ">"); reproduce from the raw byte stream in a
@@ -2701,3 +2701,15 @@ here, under the item they grew from.
   aliases so old settings files still load
 - The "Showing only …" banner line is cut short beside the wider "Show the rest" button in the
   default sidebar width; give the line more room or move the button under it
+
+### Activity panel opens only when asked
+
+- Name the tab in a failure toast raised for a tab that isn't active ("In web-app: ...")
+- Reopen closed tab brings back that tab's activity lines from this session (today they return
+  only next session, from activity.jsonl)
+- Keep more earlier-session lines per repository in activity.jsonl (its 500-entry cap is shared
+  by every repository)
+- A marker on the toolbar's Activity button while the active tab has failures not yet seen
+- An "All tabs" view in the activity panel that merges every tab's lines
+- Clear in a repository tab also forgets the legacy untagged lines shown there (they age out)
+- Say in the activity panel's header which tab's log it shows

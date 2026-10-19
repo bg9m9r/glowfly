@@ -26,17 +26,20 @@ fn dir() -> PathBuf {
 }
 
 fn earlier(n: usize) -> Vec<ActivityEntry> {
-    (0..n).map(|i| ActivityEntry { session: 1_000, at: 1_000 + i as i64, ok: i % 2 == 0, text: format!("earlier {i}") }).collect()
+    (0..n)
+        .map(|i| ActivityEntry { session: 1_000, at: 1_000 + i as i64, ok: i % 2 == 0, text: format!("earlier {i}"), repo: None })
+        .collect()
 }
 
 fn loaded(st: &mut AppState, entries: Vec<ActivityEntry>) -> Vec<Effect> {
     logs(st, LogsMsg::ActivityLoaded(Ok(EarlierLog { dir: dir(), entries })))
 }
 
+/// The lines of each Append, as (ok, text); `repo` is checked in logs_tabs_tests.rs.
 fn appends(fx: &[Effect]) -> Vec<Vec<(bool, String)>> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::Logs(LogsEffect::Append(lines)) => Some(lines.clone()),
+            Effect::Logs(LogsEffect::Append(lines)) => Some(lines.iter().map(|l| (l.ok, l.text.clone())).collect()),
             _ => None,
         })
         .collect()
@@ -105,14 +108,14 @@ fn clear_empties_panel_and_file() {
     st.log_quiet(true, "now");
     let fx = run(&mut st, Msg::ClearLog);
     assert!(st.log.is_empty(), "earlier entries go too");
-    assert!(matches!(fx[..], [Effect::Logs(LogsEffect::ClearActivity)]), "{fx:?}");
+    assert!(matches!(fx[..], [Effect::Logs(LogsEffect::ClearActivity { repo: None })]), "{fx:?}");
 
     // Before the file is read, Clear deletes it once it has been, without showing its entries.
     let mut st = state();
     st.log_quiet(true, "early");
     assert!(run(&mut st, Msg::ClearLog).is_empty());
     let fx = loaded(&mut st, earlier(3));
-    assert!(matches!(fx[..], [Effect::Logs(LogsEffect::ClearActivity)]), "{fx:?}");
+    assert!(matches!(fx[..], [Effect::Logs(LogsEffect::ClearActivity { repo: None })]), "{fx:?}");
     assert!(st.log.is_empty());
 }
 

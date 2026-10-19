@@ -9,6 +9,7 @@ use crate::keymap::BindingId;
 use crate::msg::WorkFileMsg;
 use crate::state::files::{PathForm, listed, tracked};
 use crate::state::{AppState, Modal};
+use std::path::Path;
 use std::time::Instant;
 use trellis_core::repo::{DiffTarget, PathProblem, check_new_path};
 
@@ -67,14 +68,14 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
 
 /// A result for a tab that is no longer active: the error goes to the log, the success to a
 /// toast, and a dialog still waiting for it is closed.
-pub(super) fn inactive_result(st: &mut AppState, op: FileOp, result: Result<WorkFileOk, String>, now: Instant) {
+pub(super) fn inactive_result(st: &mut AppState, workdir: &Path, op: FileOp, result: Result<WorkFileOk, String>, now: Instant) {
     if matches!(&st.modal, Some(Modal::NewFile(f) | Modal::RenameFile { form: f, .. }) if f.busy) {
         st.modal = None;
     }
     match result {
         // The key hint would name the active tab's Undo, which isn't this one's.
         Ok(ok) => st.toast(true, success_text(&op, &ok, None), now),
-        Err(e) => st.log(false, failure(&op, &e)),
+        Err(e) => st.log_in(Some(workdir), false, failure(&op, &e)),
     }
 }
 

@@ -212,7 +212,8 @@ fn a_failure_keeps_the_dialog_with_the_message() {
     assert!(!f.busy);
     assert_eq!(f.error.as_deref(), Some("the server said “title: can't be blank”"));
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.starts_with("Creating the issue failed: ")));
-    assert!(st.toasts.iter().all(|t| t.ok), "the dialog shows it");
+    // The dialog shows it; the failure toast only points to the log.
+    assert!(st.toasts.iter().all(|t| t.ok || t.action.as_ref().is_some_and(|a| a.label == "Details")));
     done(st, dir);
 }
 

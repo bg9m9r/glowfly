@@ -334,6 +334,7 @@
   "layout.edge.details.tip": "Show the commit details panel",
   "layout.edge.left.button": "Show left panel",
   "layout.edge.left.tip": "Show the left panel",
+  "logs.toast.details.button": "Details",
   "menu.common.no_repo": "Open a repository first",
   "menu.edit.cant_undo": "Can't undo {label}: only checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, creating or deleting a branch or tag, stash, pop, apply, drop, discards, file restores and saved conflict resolutions can be undone",
   "menu.edit.copy_branch": "Copy branch name",

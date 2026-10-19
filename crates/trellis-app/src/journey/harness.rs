@@ -300,9 +300,10 @@ impl Journey {
         );
     }
 
-    /// Whether the activity log mentions `text`.
+    /// Whether any tab's activity log mentions `text`.
     pub fn logged(&self, text: &str) -> bool {
-        self.state().log.iter().any(|e| e.text.contains(text))
+        let st = self.state();
+        st.log.iter().chain(st.tabs.iter().flat_map(|t| t.log.iter())).any(|e| e.text.contains(text))
     }
 
     // ---- what a user does often

@@ -334,6 +334,7 @@
   "layout.edge.details.tip": "Den Bereich mit den Commit-Details einblenden",
   "layout.edge.left.button": "Linke Leiste einblenden",
   "layout.edge.left.tip": "Die linke Leiste einblenden",
+  "logs.toast.details.button": "Details",
   "menu.common.no_repo": "Öffne zuerst ein Repository",
   "menu.edit.cant_undo": "{label} kann nicht rückgängig gemacht werden: Rückgängig machen lassen sich nur Checkout, Commit, Reset, Merge, Pull, Rebase, Cherry-Pick, Revert, das Erstellen oder Löschen eines Branches oder Tags, Stash, Pop, Apply, Drop, Verwerfen, das Wiederherstellen von Dateien und gespeicherte Konfliktlösungen",
   "menu.edit.copy_branch": "Branch-Namen kopieren",

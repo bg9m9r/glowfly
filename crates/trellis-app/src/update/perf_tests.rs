@@ -20,7 +20,7 @@ fn activity_log_keeps_only_the_newest_entries() {
     assert!(!st.view.show_log, "a quiet entry doesn't open the log");
     st.log(false, "failed");
     assert_eq!(st.log.len(), LOG_LIMIT);
-    assert!(st.view.show_log);
+    assert!(st.logs.announce.is_some() && !st.view.show_log, "announced at the end of the next update");
 }
 
 #[test]

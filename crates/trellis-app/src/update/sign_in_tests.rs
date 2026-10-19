@@ -90,7 +90,7 @@ fn a_remote_that_needs_a_sign_in_is_paused_and_skipped() {
     assert_eq!((n.host.as_deref(), n.need), (Some("github.com"), AuthNeed::Https));
     let logged: Vec<&str> = st.log[lines..].iter().map(|l| l.text.as_str()).collect();
     assert!(logged.contains(&"Auto-fetch skipped origin: it needs you to sign in."), "{logged:?}");
-    assert!(st.view.show_log, "said where the user sees it");
+    assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st), "said where the user sees it");
 
     // The same failure again (an auto-fetch already under way) adds nothing.
     let lines = st.log.len();

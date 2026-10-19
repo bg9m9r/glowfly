@@ -8,7 +8,7 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn entry(at: i64, text: &str) -> ActivityEntry {
-    ActivityEntry { session: 100, at, ok: at % 2 == 0, text: text.into() }
+    ActivityEntry { session: 100, at, ok: at % 2 == 0, text: text.into(), repo: None }
 }
 
 fn line_count(path: &Path) -> usize {
@@ -28,6 +28,7 @@ fn activity_line_round_trips() {
         at: 1_700_000_042,
         ok: false,
         text: "Push failed:\n\"rejected\" — naïve 日本\r\nend".into(),
+        repo: None,
     };
     let line = activity_line(&e);
     assert!(line.ends_with('\n'));
@@ -52,7 +53,7 @@ fn long_text_is_capped_on_a_char_boundary() {
     // Three-byte chars put a char boundary off the cap's exact byte.
     for pad in 0..3 {
         let text = format!("{}{}", "a".repeat(pad), "語".repeat(MAX_ENTRY_BYTES));
-        let line = activity_line(&ActivityEntry { session: 1, at: 2, ok: true, text });
+        let line = activity_line(&ActivityEntry { session: 1, at: 2, ok: true, text, repo: None });
         let (back, _) = parse_activity(&line);
         let kept = &back[0].text;
         assert!(kept.len() <= MAX_ENTRY_BYTES, "{}", kept.len());
@@ -60,7 +61,7 @@ fn long_text_is_capped_on_a_char_boundary() {
         assert!(kept.ends_with('…'));
     }
     let short = "x".repeat(MAX_ENTRY_BYTES);
-    let (back, _) = parse_activity(&activity_line(&ActivityEntry { session: 1, at: 2, ok: true, text: short.clone() }));
+    let (back, _) = parse_activity(&activity_line(&ActivityEntry { session: 1, at: 2, ok: true, text: short.clone(), repo: None }));
     assert_eq!(back[0].text, short, "text at the cap is kept whole");
 }
 
@@ -112,5 +113,69 @@ fn clear_removes_the_file_and_append_recreates_it() {
     file.append(&[entry(3, "c")]).unwrap();
     let (_, entries) = ActivityFile::open(path, 3).unwrap();
     assert_eq!(entries, vec![entry(3, "c")]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn in_repo(at: i64, text: &str, repo: Option<&Path>) -> ActivityEntry {
+    ActivityEntry { repo: repo.map(Path::to_path_buf), ..entry(at, text) }
+}
+
+#[test]
+fn repo_is_written_only_when_set() {
+    let repo = crate::paths::temp_dir().join("repo");
+    let tagged = in_repo(1, "fetched", Some(&repo));
+    let line = activity_line(&tagged);
+    assert!(line.contains("\"repo\""), "{line}");
+    assert_eq!(parse_activity(&line), (vec![tagged], 0));
+    let untagged = activity_line(&entry(2, "settings"));
+    assert!(!untagged.contains("\"repo\""), "{untagged}");
+    assert_eq!(parse_activity(&untagged), (vec![entry(2, "settings")], 0));
+}
+
+#[test]
+fn legacy_lines_read_without_a_repo() {
+    let (entries, skipped) = parse_activity(r#"{"v":1,"session":1,"at":2,"ok":true,"text":"x"}"#);
+    assert_eq!(skipped, 0);
+    assert_eq!(entries, vec![ActivityEntry { session: 1, at: 2, ok: true, text: "x".into(), repo: None }]);
+}
+
+#[test]
+fn repo_path_with_a_newline_survives() {
+    let repo = crate::paths::temp_dir().join("a\nb");
+    let e = in_repo(1, "x", Some(&repo));
+    let line = activity_line(&e);
+    assert_eq!(line.matches('\n').count(), 1, "one line per entry: {line}");
+    assert!(line.ends_with('\n'));
+    assert_eq!(parse_activity(&line), (vec![e], 0));
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        let odd = crate::paths::temp_dir().join(std::ffi::OsStr::from_bytes(b"caf\xe9"));
+        let e = in_repo(2, "y", Some(&odd));
+        let line = activity_line(&e);
+        assert!(line.contains("\"repo\""), "{line}");
+        assert_eq!(parse_activity(&line), (vec![e], 0));
+    }
+}
+
+#[test]
+fn remove_repo_keeps_other_repositories() {
+    let dir = scratch("remove-repo");
+    let path = dir.join("activity.jsonl");
+    let (a, b) = (dir.join("a"), dir.join("b"));
+    let (mut file, _) = ActivityFile::open(path.clone(), 10).unwrap();
+    let all = [in_repo(1, "in a", Some(&a)), in_repo(2, "in b", Some(&b)), in_repo(3, "nowhere", None), in_repo(4, "a again", Some(&a))];
+    file.append(&all).unwrap();
+    file.remove_repo(Some(&a)).unwrap();
+    let (entries, _) = parse_activity(&std::fs::read_to_string(&path).unwrap());
+    assert_eq!(entries, vec![all[1].clone(), all[2].clone()]);
+    let (mut file, reopened) = ActivityFile::open(path.clone(), 10).unwrap();
+    assert_eq!(reopened, vec![all[1].clone(), all[2].clone()]);
+    file.remove_repo(None).unwrap();
+    let (_, reopened) = ActivityFile::open(path.clone(), 10).unwrap();
+    assert_eq!(reopened, vec![all[1].clone()]);
+    std::fs::remove_file(&path).unwrap();
+    file.remove_repo(Some(&b)).unwrap();
+    assert!(!path.exists(), "a missing file stays missing");
     let _ = std::fs::remove_dir_all(&dir);
 }

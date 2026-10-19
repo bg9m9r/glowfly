@@ -232,7 +232,7 @@ fn reverted_results() {
         finish(&mut st, fx);
         assert!(st.log.last().is_some_and(|l| !l.ok && l.text == text), "{:?}", st.log.last().map(|l| &l.text));
     }
-    assert!(st.view.show_log);
+    assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st), "announced with Details");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

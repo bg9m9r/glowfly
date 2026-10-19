@@ -108,7 +108,7 @@ fn failed_checkout_keeps_the_default_text_and_the_flag() {
     run(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output: output.into(), undo: None }));
     let toast = st.toasts.last().expect("a toast");
     assert!(!toast.ok && toast.text.starts_with("Checkout tag v1.0 failed: "), "{}", toast.text);
-    assert!(toast.action.is_none());
+    assert_eq!(toast.action.as_ref().map(|a| a.label.as_str()), Some("Details"), "no Don't warn again");
     assert!(!st.settings.detached_head_warned);
     assert!(st.tag_checkout.is_none());
     let _ = std::fs::remove_dir_all(&dir);

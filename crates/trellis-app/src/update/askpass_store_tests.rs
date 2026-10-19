@@ -208,7 +208,10 @@ fn reports_what_became_of_the_sign_in() {
     let toasts = st.toasts.len();
     send(&mut st, Msg::Credentials(CredentialMsg::Forgotten { host: "github.com".into(), result: Ok(()) }));
     assert!(st.log.last().is_some_and(|l| l.ok));
+    assert_eq!(st.toasts.len(), toasts, "dropping a sign-in isn't toasted");
     send(&mut st, Msg::Credentials(CredentialMsg::Forgotten { host: "github.com".into(), result: Err("helper failed".into()) }));
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("helper failed")));
-    assert_eq!(st.toasts.len(), toasts, "dropping a sign-in is never toasted");
+    let last = st.toasts.last().unwrap();
+    assert!(!last.ok && last.text.contains("helper failed") && last.action.is_some(), "a failure is announced with Details");
+    assert!(!st.view.show_log);
 }

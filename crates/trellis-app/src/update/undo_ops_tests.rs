@@ -58,7 +58,7 @@ fn merge_undo_and_redo_end_to_end() {
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let t = st.toasts.last().expect("a toast");
     assert!(!t.ok && t.text.contains("Commit or stash your changes first"), "{}", t.text);
-    assert!(t.action.is_none(), "only hard resets and Discard all offer to stash");
+    assert!(t.action.as_ref().is_none_or(|a| a.label == "Details"), "only hard resets and Discard all offer to stash");
     assert_eq!(st.undo.undo.len(), 1);
     cleanup(&[&dir]);
 }

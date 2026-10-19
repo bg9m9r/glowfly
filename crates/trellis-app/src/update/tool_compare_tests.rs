@@ -78,7 +78,7 @@ fn opening_a_diff_without_a_tool_opens_preferences() {
     st.settings.external_tools.diff_tool_args = "\"{local} {remote}".into();
     assert!(run(&mut st, ToolsMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))).is_empty());
     let (ok, text, action) = toast(&st);
-    assert!(!ok && text.contains("Diff tool arguments") && action.is_none(), "{text}");
+    assert!(!ok && text.contains("Diff tool arguments") && action.as_deref() == Some("Details"), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -195,8 +195,8 @@ fn a_saved_merge_ends_the_job_with_mark_resolved() {
 fn other_merge_ends_are_reported() {
     let (mut st, dir) = running("tc-ends");
     let cases = [
-        (MergeEnd::Unchanged, false, None),
-        (MergeEnd::Exited { code: Some(1), said: "bad".into(), changed: false }, false, None),
+        (MergeEnd::Unchanged, false, Some("Details")),
+        (MergeEnd::Exited { code: Some(1), said: "bad".into(), changed: false }, false, Some("Details")),
         (MergeEnd::Failed(LaunchFailure::NotFound), false, Some("Open preferences")),
         (MergeEnd::Resolved, true, None),
     ];

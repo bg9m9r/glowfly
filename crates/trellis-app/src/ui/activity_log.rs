@@ -1,5 +1,5 @@
-//! The logs panel at the bottom: the activity log, with earlier sessions' entries in dimmed
-//! groups, and the ends of the error and performance logs, read by the runner.
+//! The logs panel at the bottom: the active tab's activity log, with earlier sessions' entries
+//! in dimmed groups, and the ends of the error and performance logs, read by the runner.
 
 use super::pane_status::{self, Failure};
 use super::panel_size;

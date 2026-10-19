@@ -155,7 +155,7 @@ fn exported_error_is_toasted_and_logged() {
     assert_eq!(last_toast(&st), (false, "Could not create the patch: boom".to_owned()));
     assert_eq!(last_log(&st), "Could not create the patch: boom");
     assert!(st.log.last().is_some_and(|l| !l.ok));
-    assert!(st.view.show_log);
+    assert!(!st.view.show_log && crate::update::logs_tabs::tests::failure_with_details(&st), "the toast offers Details");
 }
 
 #[test]

@@ -286,14 +286,15 @@ pub(super) fn finish_job(
     let status = if ok { "done" } else { "FAILED" };
     let text = format!("{} {status}\n{output}", job.label);
     if job.quiet {
-        st.log_quiet(ok, text);
+        st.log_quiet_in(job.workdir.as_deref(), ok, text);
     } else {
         let headline = headline.unwrap_or_else(|| {
             if ok { format!("{} succeeded", job.label) } else { format!("{} failed: {}", job.label, last_line(&output)) }
         });
         super::notify::desktop(st, NoteKind::Job, &headline, job.workdir.as_deref(), fx);
+        // Pushed first, so a failure's announcement gives this toast its Details.
         st.toast(ok, headline, now);
-        st.log(ok, text);
+        st.log_in(job.workdir.as_deref(), ok, text);
     }
     // The user may have switched tabs while the job ran.
     let here = match (job.workdir.as_deref(), st.workdir()) {

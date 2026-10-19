@@ -47,7 +47,7 @@ fn missing_marker() -> Vec<ThemeProblem> {
     vec![ThemeProblem::Unreadable("not in the themes folder".into())]
 }
 
-/// Keeps a freshly read catalog, logs every problem quietly, and opens the log once when the
+/// Keeps a freshly read catalog, logs every problem quietly, and announces once when the
 /// selected theme file is missing or has new problems.
 fn loaded(st: &mut AppState, cat: ThemeCatalog) {
     for f in &cat.files {

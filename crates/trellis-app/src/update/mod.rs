@@ -48,6 +48,7 @@ mod layout;
 mod lfs;
 mod line_counts;
 mod logs;
+mod logs_tabs;
 mod notify;
 mod onboarding;
 mod op_progress;
@@ -146,6 +147,8 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
         st.dialog.track(st.modal.as_ref());
         return fx;
     };
+    // A failure logged from here on is announced by a toast; one pushed by now isn't this one's.
+    let toast_mark = st.toast_seq;
     match msg {
         // Each area's messages go to its handler, which matches them exhaustively.
         Msg::Repo(m) => repo::handle(st, m, now, &mut fx),
@@ -262,6 +265,7 @@ pub fn update(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     st.dialog.track(st.modal.as_ref());
     // An expanded commit panel lasts only for the tool view it was expanded in.
     crate::state::layout::drop_stale_expansion(st);
+    logs_tabs::announce(st, toast_mark, now);
     logs::flush(st, &mut fx);
     fx
 }

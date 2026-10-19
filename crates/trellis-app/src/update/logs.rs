@@ -5,8 +5,8 @@
 use crate::effect::Effect;
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg};
 use crate::state::AppState;
-use crate::state::logs::{LOG_LIMIT, LogEntry, LogFileView, Persist};
-use trellis_core::logs::git_run_line;
+use crate::state::logs::{LogFileView, Persist};
+use trellis_core::logs::{git_run_line, same_repo};
 
 pub(super) fn handle(st: &mut AppState, m: LogsMsg, fx: &mut Vec<Effect>) {
     match m {
@@ -47,27 +47,26 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, fx: &mut Vec<Effect>) {
         LogsMsg::GitRan(run) => {
             if st.settings.extended_logging {
                 let ok = run.ok && !run.timed_out && run.code.is_some();
-                st.log_quiet(ok, git_run_line(&run));
+                st.log_quiet_in(Some(&run.cwd), ok, git_run_line(&run));
             }
         }
+        LogsMsg::Details(tab) => super::logs_tabs::details(st, tab, fx),
     }
 }
 
-/// Puts the earlier sessions' newest entries in front of this session's, as many as fit under
-/// `LOG_LIMIT`, and starts writing new lines to the file.
+/// Hands the earlier sessions' entries to their tabs, in front of this session's lines
+/// (update/logs_tabs.rs), and starts writing new lines to the file.
 fn loaded(st: &mut AppState, earlier: EarlierLog, fx: &mut Vec<Effect>) {
     st.logs.dir = Some(earlier.dir);
     st.logs.persist = Persist::On;
-    // Cleared before the file was read: the earlier entries go too.
-    if std::mem::take(&mut st.logs.clear_on_load) {
-        fx.push(Effect::Logs(LogsEffect::ClearActivity));
-        return;
+    let mut entries = earlier.entries;
+    // Tabs cleared before the file was read: their earlier entries go too.
+    for repo in std::mem::take(&mut st.logs.clear_on_load) {
+        entries.retain(|e| !same_repo(e.repo.as_deref(), repo.as_deref()));
+        fx.push(Effect::Logs(LogsEffect::ClearActivity { repo }));
     }
-    let room = LOG_LIMIT.saturating_sub(st.log.len());
-    let skip = earlier.entries.len().saturating_sub(room);
-    let mut log: Vec<LogEntry> = earlier.entries.into_iter().skip(skip).map(LogEntry::earlier).collect();
-    log.append(&mut st.log);
-    st.log = log;
+    super::logs_tabs::distribute(st, entries);
+    super::logs_tabs::claim(st);
 }
 
 fn persistence_off(st: &mut AppState) {
@@ -76,7 +75,7 @@ fn persistence_off(st: &mut AppState) {
 }
 
 /// Opens the panel on `kind`; a file tab reads its file again.
-fn show(st: &mut AppState, kind: LogKind, fx: &mut Vec<Effect>) {
+pub(super) fn show(st: &mut AppState, kind: LogKind, fx: &mut Vec<Effect>) {
     st.view.show_log = true;
     st.logs.tab = kind;
     if kind == LogKind::Activity {
@@ -87,14 +86,16 @@ fn show(st: &mut AppState, kind: LogKind, fx: &mut Vec<Effect>) {
     fx.push(Effect::Logs(LogsEffect::ReadFile { kind, generation: st.logs.file_gen }));
 }
 
-/// The activity panel's Clear: empties the log, earlier sessions' entries too, and deletes the
-/// file.
+/// The activity panel's Clear: empties the active tab's log, earlier sessions' entries too,
+/// and removes its repository's lines from the file. Other tabs keep theirs.
 pub(super) fn clear(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let tag = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
     st.log.clear();
-    st.logs.pending.clear();
+    st.logs.pending.retain(|l| !same_repo(l.repo.as_deref(), tag.as_deref()));
+    st.logs.unclaimed.retain(|e| !same_repo(e.repo.as_deref(), tag.as_deref()));
     match st.logs.persist {
-        Persist::On => fx.push(Effect::Logs(LogsEffect::ClearActivity)),
-        Persist::Waiting => st.logs.clear_on_load = true,
+        Persist::On => fx.push(Effect::Logs(LogsEffect::ClearActivity { repo: tag })),
+        Persist::Waiting => st.logs.clear_on_load.push(tag),
         Persist::Off => {}
     }
 }

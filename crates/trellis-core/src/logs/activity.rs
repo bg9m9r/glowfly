@@ -14,6 +14,18 @@ pub struct ActivityEntry {
     pub at: i64,
     pub ok: bool,
     pub text: String,
+    /// The repository of the tab it was logged in; None for a tab without one and for lines
+    /// older builds wrote.
+    pub repo: Option<PathBuf>,
+}
+
+/// Whether two entries' repositories are the same: both none, or the same spelling.
+pub fn same_repo(a: Option<&Path>, b: Option<&Path>) -> bool {
+    match (a, b) {
+        (None, None) => true,
+        (Some(a), Some(b)) => crate::paths::same_spelling(a, b),
+        _ => false,
+    }
 }
 
 /// The longest text an entry keeps in the file; longer text is cut on a char boundary and ends
@@ -30,6 +42,9 @@ struct LineOut<'a> {
     at: i64,
     ok: bool,
     text: &'a str,
+    /// Written with `paths::encode`, so any path survives the JSON text.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    repo: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -39,6 +54,8 @@ struct LineIn {
     at: i64,
     ok: bool,
     text: String,
+    #[serde(default)]
+    repo: Option<String>,
 }
 
 /// `text`, at most [`MAX_ENTRY_BYTES`] long.
@@ -57,7 +74,14 @@ fn capped(text: &str) -> std::borrow::Cow<'_, str> {
 /// The file's line for `e`, ending in '\n'. Newlines in the text are escaped by JSON, so each
 /// entry stays on one line.
 pub fn activity_line(e: &ActivityEntry) -> String {
-    let line = LineOut { v: VERSION, session: e.session, at: e.at, ok: e.ok, text: &capped(&e.text) };
+    let line = LineOut {
+        v: VERSION,
+        session: e.session,
+        at: e.at,
+        ok: e.ok,
+        text: &capped(&e.text),
+        repo: e.repo.as_deref().map(crate::paths::encode),
+    };
     let mut s = serde_json::to_string(&line).unwrap_or_default();
     s.push('\n');
     s
@@ -70,7 +94,13 @@ pub fn parse_activity(text: &str) -> (Vec<ActivityEntry>, usize) {
     let mut skipped = 0;
     for line in text.lines() {
         match serde_json::from_str::<LineIn>(line) {
-            Ok(l) if l.v == VERSION => entries.push(ActivityEntry { session: l.session, at: l.at, ok: l.ok, text: l.text }),
+            Ok(l) if l.v == VERSION => entries.push(ActivityEntry {
+                session: l.session,
+                at: l.at,
+                ok: l.ok,
+                text: l.text,
+                repo: l.repo.as_deref().map(crate::paths::decode),
+            }),
             _ => skipped += 1,
         }
     }
@@ -119,6 +149,20 @@ impl ActivityFile {
     pub fn clear(&mut self) -> io::Result<()> {
         persist::remove_file(&self.path)?;
         self.lines = 0;
+        Ok(())
+    }
+
+    /// Removes the entries logged for `repo` (None: those logged without a repository),
+    /// keeping every other repository's. A missing file is fine; nothing is rewritten when
+    /// nothing was removed.
+    pub fn remove_repo(&mut self, repo: Option<&Path>) -> io::Result<()> {
+        let (mut entries, _) = read(&self.path)?;
+        let before = entries.len();
+        entries.retain(|e| !same_repo(e.repo.as_deref(), repo));
+        if entries.len() != before {
+            write_all(&self.path, &entries)?;
+        }
+        self.lines = entries.len();
         Ok(())
     }
 }

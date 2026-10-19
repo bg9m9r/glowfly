@@ -334,6 +334,7 @@
   "layout.edge.details.tip": "Mostrar el panel de detalles del commit",
   "layout.edge.left.button": "Mostrar el panel izquierdo",
   "layout.edge.left.tip": "Mostrar el panel izquierdo",
+  "logs.toast.details.button": "Detalles",
   "menu.common.no_repo": "Abre primero un repositorio",
   "menu.edit.cant_undo": "No se puede deshacer {label}: solo se pueden deshacer checkout, commit, reset, merge, pull, rebase, cherry-pick, revert, crear o eliminar una rama o etiqueta, stash, pop, apply, drop, descartes, restauraciones de archivos y resoluciones de conflictos guardadas",
   "menu.edit.copy_branch": "Copiar nombre de la rama",

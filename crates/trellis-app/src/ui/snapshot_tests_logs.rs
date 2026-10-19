@@ -1,4 +1,5 @@
-//! The logs panel: earlier sessions' activity in dimmed groups, and the error log's tab.
+//! The logs panel: earlier sessions' activity in dimmed groups, the error log's tab, and the
+//! failure toast with Details.
 
 use super::snapshot_tests::{harness, settings};
 use crate::logs::{LogKind, LogsMsg};
@@ -16,7 +17,7 @@ const FIRST: i64 = 1_791_970_200;
 const SECOND: i64 = FIRST + 86_400;
 
 fn earlier(session: i64, minutes: i64, ok: bool, text: &str) -> LogEntry {
-    LogEntry::earlier(ActivityEntry { session, at: session + minutes * 60, ok, text: text.into() })
+    LogEntry::earlier(ActivityEntry { session, at: session + minutes * 60, ok, text: text.into(), repo: None })
 }
 
 #[test]
@@ -82,4 +83,22 @@ fn preferences_general_logging() {
     assert!(msgs.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::SetExtended(false)))), "the checkbox sends a message");
     assert!(h.state().0.settings.extended_logging, "and doesn't change the setting itself");
     assert!(msgs.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::OpenFolder))));
+}
+
+/// A failure announced by a toast with Details instead of opening the panel: red, with a
+/// button.
+#[test]
+fn toast_failure_details() {
+    let (mut st, dir) = super::snapshot_tests::with_repo(ThemeChoice::Dark, "failure-details");
+    crate::update::update(&mut st, Msg::Logged { ok: false, text: "Couldn't reach github.com".into() }, Instant::now());
+    assert!(!st.view.show_log);
+    let id = st.toasts.last().map(|t| t.id).unwrap();
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("toast_failure_details");
+    h.get_by_label("Details").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ToastAction(t) if *t == id)));
+    drop(h);
+    super::snapshot_tests::remove_fixture(&dir);
 }

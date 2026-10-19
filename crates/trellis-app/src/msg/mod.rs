@@ -240,11 +240,11 @@ pub enum Msg {
 
 /// What a result for a tab that is no longer active still needs (`Msg::on_inactive`).
 pub enum Inactive {
-    /// A failure for the activity log.
+    /// A failure for that tab's activity log.
     Log(String),
     /// An undoable operation: its undo belongs to the history of the tab it ran in.
     Undo(trellis_core::undo::Action),
-    /// A failure for the activity log that still left an undoable change (both of the above).
+    /// A failure for that tab's activity log that still left an undoable change (both of the above).
     LogAndUndo { text: String, undo: trellis_core::undo::Action },
     /// A working-tree file operation's result: a dialog may still be waiting for it.
     WorkFile { op: FileOp, result: Result<WorkFileOk, String> },
@@ -327,8 +327,9 @@ impl Msg {
             | Msg::OpenTerminal
             | Msg::OpenFolder(_)
             | Msg::Scoped { .. }
-            | Msg::ClearLog
-            | Msg::Logged { .. } => None,
+            | Msg::ClearLog => None,
+            // Every runner line is a failure; it belongs to that tab's log.
+            Msg::Logged { ok, text } => (!ok).then_some(Inactive::Log(text)),
         }
     }
 
