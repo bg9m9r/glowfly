@@ -38,14 +38,15 @@ fn commit() -> BlameCommit {
 /// A small window drawing the line menu for line 4 inside a menu frame.
 fn menu(before: bool, on_graph: bool) -> Harness<'static, Vec<Msg>> {
     let c = commit();
-    Harness::builder().with_size(egui::vec2(240.0, 190.0)).build_ui_state(
+    // Wide enough for the disabled items' reasons after their labels.
+    Harness::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());
             ui.ctx().set_theme(egui::Theme::Dark);
             ui.painter().rect_filled(ui.max_rect(), 0.0, color::bg());
             egui::Frame::menu(ui.style()).show(ui, |ui| {
-                ui.set_width(200.0);
+                ui.set_min_width(200.0);
                 menu_style(ui.style_mut());
                 let t = LineTarget { line: 4, text: LINE, commit: &c, before, skipped: false, on_graph };
                 line_menu(ui, msgs, &t);

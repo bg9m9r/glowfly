@@ -11,12 +11,16 @@ use super::super::widgets::form_message;
 use super::dialog::{field, note, problem_line};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
+use crate::state::blocked::BUSY;
 use crate::state::forks::{ForkPicker, added_as, error_text, visible};
 use crate::ui::theme::controls;
 use eframe::egui::{self, Id, Layout, RichText};
 use trellis_core::forge::Connection;
 use trellis_core::remote_ops::{RemoteNameProblem, check_remote_name};
 use trellis_core::repo::Snapshot;
+
+/// Why Add remote is disabled before a fork is picked.
+pub(crate) const PICK_FIRST: &str = "Pick a fork from the list";
 
 /// The list of forks (only the rows in view are laid out: a list can hold 1000); a click on a
 /// row that isn't a remote yet picks it.
@@ -118,9 +122,16 @@ pub fn show(
         ui.add_space(4.0);
         controls::checkbox(ui, &mut p.fetch_after, "Fetch its branches after adding");
     }
+    let why = if !idle {
+        Some(BUSY.to_owned())
+    } else if p.picked.is_none() {
+        Some(PICK_FIRST.to_owned())
+    } else {
+        super::fork_create::name_why(name_p.as_ref(), &p.touched)
+    };
     let mut footer = Footer::new().cancel().submit(submit);
     if listed {
-        footer = footer.primary(buttons::primary("Add remote").enabled(ready));
+        footer = footer.primary(buttons::primary("Add remote").enabled(ready).why(why.as_deref()));
     }
     let out = d.finish(ui, footer);
     if out.attempted {

@@ -228,10 +228,10 @@ pub(super) fn wip_file_row(
         let items = if missing { Vec::new() } else { track_items(&f.path, ctx.lfs) };
         let tool = if conflicted {
             let msg = Msg::Tools(ToolsMsg::ResolveInMergeTool(f.path.clone()));
-            ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: ctx.tools.merge.as_deref() }
+            ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: ctx.tools.merge.as_deref(), setup: ctx.tools.setup.merge }
         } else {
-            file_menu::diff_item(target(), ctx.tools.diff)
+            file_menu::diff_item(target(), ctx.tools.setup.diff)
         };
-        file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items, tool);
+        file_menu::wip_file_items(ui, msgs, f, missing, unstages, &items, ctx.tools.setup.editor, tool);
     });
 }

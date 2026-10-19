@@ -9,7 +9,9 @@ use super::super::widgets::form_message::{self, Message};
 use super::dialog::{field, note, problem_line};
 use crate::msg::Msg;
 use crate::remote::RemoteMsg;
+use crate::state::blocked::BUSY;
 use crate::state::forks::{ForkCreate, ForkStep, added_as, error_text};
+use crate::state::touched::Touched;
 use crate::ui::theme::controls;
 use eframe::egui;
 use trellis_core::forge::Connection;
@@ -20,9 +22,28 @@ fn spinner_line(ui: &mut egui::Ui, text: String) {
     pane_status::loading_line(ui, &text);
 }
 
-/// The remote name field and its problem line; returns (Enter pressed, the name is usable). The
-/// field takes the focus when nothing has it, if `focus`.
-fn name_field(ui: &mut egui::Ui, f: &mut ForkCreate, snap: Option<&Snapshot>, enabled: bool, focus: bool) -> (bool, bool) {
+/// Why the primary is disabled for an empty remote name (never shown under the field).
+pub(super) const NO_NAME: &str = "Enter a name for the remote.";
+
+/// What the footer says about the remote name's `problem`: an empty name always, any other
+/// problem only until the field shows it (once touched or after a try).
+pub(super) fn name_why(problem: Option<&RemoteNameProblem>, touched: &Touched) -> Option<String> {
+    match problem? {
+        RemoteNameProblem::Empty => Some(NO_NAME.to_owned()),
+        p if !touched.shows("name") => Some(p.message()),
+        _ => None,
+    }
+}
+
+/// The remote name field and its problem line; returns whether Enter was pressed and the name's
+/// problem, if any. The field takes the focus when nothing has it, if `focus`.
+fn name_field(
+    ui: &mut egui::Ui,
+    f: &mut ForkCreate,
+    snap: Option<&Snapshot>,
+    enabled: bool,
+    focus: bool,
+) -> (bool, Option<RemoteNameProblem>) {
     let mut enter = false;
     ui.add_enabled_ui(enabled, |ui| {
         let (r, e) = field(ui, "Remote name", &mut f.name, "trellis-fork-create-name", "fork");
@@ -40,7 +61,7 @@ fn name_field(ui: &mut egui::Ui, f: &mut ForkCreate, snap: Option<&Snapshot>, en
         "name",
         problem.as_ref().filter(|p| **p != RemoteNameProblem::Empty).map(|p| p.message()).unwrap_or_default(),
     );
-    (enter, problem.is_none())
+    (enter, problem)
 }
 
 /// The Fork dialog; returns true when Cancel or Close closes it. The name field takes the focus
@@ -59,8 +80,8 @@ pub fn show(
     let repo = f.target.display();
     let service = f.target.provider.name();
     let d = Dialog::new(cx, format!("Fork {repo} on {service}")).begin(ui);
-    // (primary button label, enabled, message) when the step has one.
-    let mut primary: Option<(&str, bool, RemoteMsg)> = None;
+    // (primary button label, enabled, why not, message) when the step has one.
+    let mut primary: Option<(&str, bool, Option<String>, RemoteMsg)> = None;
     let mut submit = false;
     match f.step.clone() {
         ForkStep::Checking => match &f.error {
@@ -80,11 +101,12 @@ pub fn show(
                 }
                 None => {
                     ui.add_space(6.0);
-                    let (enter, ok) = name_field(ui, f, snap, true, focus);
+                    let (enter, problem) = name_field(ui, f, snap, true, focus);
                     ui.add_space(4.0);
                     controls::checkbox(ui, &mut f.fetch_after, "Fetch its branches after adding");
                     submit = enter;
-                    primary = Some(("Add as remote", ok && idle, RemoteMsg::AddMyFork));
+                    let why = if idle { name_why(problem.as_ref(), &f.touched) } else { Some(BUSY.to_owned()) };
+                    primary = Some(("Add as remote", problem.is_none() && idle, why, RemoteMsg::AddMyFork));
                 }
             }
         }
@@ -95,7 +117,7 @@ pub fn show(
             let creating = matches!(f.step, ForkStep::Creating { .. });
             ui.label(format!("Creates a copy of {repo} under your account ({user}) on {service}, adds it as a remote and fetches it."));
             ui.add_space(6.0);
-            let (enter, ok) = name_field(ui, f, snap, !creating, focus);
+            let (enter, problem) = name_field(ui, f, snap, !creating, focus);
             if let Some(e) = &f.error {
                 ui.add_space(4.0);
                 form_message::form(ui, Message::error(error_text(e)));
@@ -105,11 +127,15 @@ pub fn show(
                 spinner_line(ui, format!("Creating the fork on {service}… This can take a few seconds."));
             }
             submit = enter;
-            primary = Some(("Fork and add remote", ok && !creating, RemoteMsg::CreateFork));
+            // While creating, the spinner says why.
+            let why = if creating { None } else { name_why(problem.as_ref(), &f.touched) };
+            primary = Some(("Fork and add remote", problem.is_none() && !creating, why, RemoteMsg::CreateFork));
         }
     }
     let footer = match &primary {
-        Some((label, enabled, _)) => Footer::new().cancel().primary(buttons::primary(*label).enabled(*enabled)).submit(submit),
+        Some((label, enabled, why, _)) => {
+            Footer::new().cancel().primary(buttons::primary(*label).enabled(*enabled).why(why.as_deref())).submit(submit)
+        }
         // While it looks for the fork, nothing has happened yet to close.
         None if matches!(f.step, ForkStep::Checking) => Footer::new().cancel(),
         None => Footer::new().close(),
@@ -119,7 +145,7 @@ pub fn show(
         f.touched.attempt();
     }
     if out.primary
-        && let Some((_, _, msg)) = primary
+        && let Some((_, _, _, msg)) = primary
     {
         msgs.push(Msg::Remote(msg));
     }

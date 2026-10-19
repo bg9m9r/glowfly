@@ -8,6 +8,7 @@ use super::theme::color;
 use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
 use crate::msg::Msg;
+use crate::state::blocked::BUSY;
 use crate::state::worktree_manage::{LockForm, RemoveForm};
 use crate::ui::theme::controls;
 use crate::worktree::WorktreeMsg;
@@ -23,7 +24,7 @@ pub fn remove(ui: &mut egui::Ui, cx: Cx, form: &mut RemoveForm, idle: bool, msgs
         dialog_frame::ack(ui, cx.t, &mut form.acked, Some(&label));
     }
     let ok = idle && (!form.needs_ack() || form.acked);
-    let why = if idle { cx.t.tr("common.ack.tip") } else { "Another operation is still running." };
+    let why = if idle { cx.t.tr("common.ack.tip") } else { BUSY };
     let out = d.finish(ui, Footer::new().cancel().danger(buttons::danger(form.button()).enabled(ok).why(Some(why))));
     if out.primary {
         msgs.push(Msg::Worktree(WorktreeMsg::Remove));
@@ -93,7 +94,8 @@ pub fn lock(ui: &mut egui::Ui, cx: Cx, form: &mut LockForm, idle: bool, msgs: &m
     if cx.keyboard {
         r.request_focus();
     }
-    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary("Lock").enabled(idle)).submit(enter));
+    let lock = buttons::primary("Lock").enabled(idle).why((!idle).then_some(BUSY));
+    let out = d.finish(ui, Footer::new().cancel().primary(lock).submit(enter));
     if out.primary {
         msgs.push(Msg::Worktree(WorktreeMsg::Lock));
     }

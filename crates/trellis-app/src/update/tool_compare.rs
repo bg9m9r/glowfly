@@ -1,15 +1,16 @@
 //! The external diff and merge tools: opening a diff in the diff tool (an unscoped effect that
 //! reports only failures), and resolving a conflict in the merge tool as the single active job,
-//! ended through `ops::finish_job` when the program exits. The rules are in
+//! ended through `ops::finish_job` when the program exits. With no program set, either one opens
+//! Preferences > External Tools instead (`tools::show_page`). The rules are in
 //! state/tool_compare.rs; the runner side is runner/tools/compare.rs.
 
-use super::tools::{fail, fail_to_prefs, prefs_action};
+use super::tools::{fail, prefs_action, show_page};
 use crate::effect::Effect;
 use crate::msg::ConflictMsg;
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::ToastAction;
-use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL, diff_request, merge_end_text, merge_label, merge_request, not_found};
+use crate::state::tool_compare::{ToolSetup, diff_request, merge_end_text, merge_label, merge_request, not_found};
 use crate::tools::{MergeEnd, MergeToolRequest, ToolEffect};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -20,9 +21,11 @@ use trellis_core::repo::DiffTarget;
 /// repository is trusted.
 pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, now: Instant, fx: &mut Vec<Effect>) {
     let Some(w) = st.workdir() else { return };
+    if ToolSetup::of(&st.settings.external_tools).diff.is_some() {
+        return show_page(st, now, fx);
+    }
     match diff_request(&st.settings.external_tools, &w, &target, st.runs_git_unasked()) {
         Ok(req) => fx.push(Effect::Tool(ToolEffect::OpenDiff(req))),
-        Err(text) if text == NO_DIFF_TOOL => fail_to_prefs(st, text, now),
         Err(text) => fail(st, text, now),
     }
 }
@@ -37,9 +40,11 @@ pub(super) fn resolve(st: &mut AppState, path: String, now: Instant, fx: &mut Ve
         st.log(false, format!("{path} is not conflicted"));
         return;
     }
+    if ToolSetup::of(&st.settings.external_tools).merge.is_some() {
+        return show_page(st, now, fx);
+    }
     let req = match merge_request(&st.settings.external_tools, &w, &path, st.runs_git_unasked()) {
         Ok(r) => r,
-        Err(text) if text == NO_MERGE_TOOL => return fail_to_prefs(st, text, now),
         Err(text) => return fail(st, text, now),
     };
     if super::jobs::busy(st, false) {

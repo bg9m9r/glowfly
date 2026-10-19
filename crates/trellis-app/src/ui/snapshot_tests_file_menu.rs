@@ -3,7 +3,8 @@
 //! two commits, and working-tree rows (a modified file, one whose file is gone, a conflicted
 //! one, and a staged new file present or gone, whose delete also unstages it). New file in this
 //! folder is enabled on every row. Open in external diff tool (Resolve in external merge tool
-//! on a conflicted row) is disabled until a tool is set. Revert changes to this file needs the
+//! on a conflicted row) and Open in external editor stay enabled with "Set up…" until a program
+//! is set (they then open Preferences). Disabled items show a short reason. Revert changes to this file needs the
 //! file in the working tree, unless the commit deleted it. Clicks check the messages the items
 //! send.
 
@@ -15,7 +16,7 @@ use super::theme::{apply_theme, color};
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
-use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL};
+use crate::state::tool_compare::ToolSetup;
 use crate::tools::ToolsMsg;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui;
@@ -60,9 +61,9 @@ fn harness(f: FileEntry, menu: Menu, dark: bool) -> Harness<'static, Vec<Msg>> {
 
 /// `harness`, with the diff and merge tools set when `tools`.
 fn harness_with(f: FileEntry, menu: Menu, dark: bool, tools: bool) -> Harness<'static, Vec<Msg>> {
-    let (diff, merge) = if tools { (None, None) } else { (Some(NO_DIFF_TOOL), Some(NO_MERGE_TOOL)) };
-    // The comparison's restore item names a commit, so it needs a wider window.
-    let width = if matches!(menu, Menu::Between { .. }) { 300.0 } else { 260.0 };
+    let setup = if tools { ToolSetup::default() } else { ToolSetup::of(&trellis_core::settings::ExternalTools::default()) };
+    // The menu grows to fit its widest item, a disabled one's reason included.
+    let width = 440.0;
     Harness::builder().with_size(egui::vec2(width, 260.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(dark);
@@ -70,24 +71,24 @@ fn harness_with(f: FileEntry, menu: Menu, dark: bool, tools: bool) -> Harness<'s
             ui.ctx().set_theme(if dark { egui::Theme::Dark } else { egui::Theme::Light });
             ui.painter().rect_filled(ui.max_rect(), 0.0, color::bg());
             egui::Frame::menu(ui.style()).show(ui, |ui| {
-                ui.set_width(width - 40.0);
+                ui.set_min_width(220.0);
                 menu_style(ui.style_mut());
                 // The row's existing items, which come first in the real menu.
                 let _ = ui.button(if matches!(menu, Menu::Wip { .. }) { "Stage" } else { "File history" });
                 let _ = ui.button("Copy path");
                 match menu {
-                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], diff, None),
+                    Menu::Commit { in_workdir } => commit_file_items(ui, msgs, RowSource::Commit(oid()), &f, in_workdir, &[], setup, None),
                     Menu::Between { in_workdir } => {
-                        commit_file_items(ui, msgs, RowSource::Between { from: oid(), to: newer() }, &f, in_workdir, &[], diff, None)
+                        commit_file_items(ui, msgs, RowSource::Between { from: oid(), to: newer() }, &f, in_workdir, &[], setup, None)
                     }
                     Menu::Wip { missing, unstages } => {
                         let tool = if f.status == '!' {
                             let msg = Msg::Tools(ToolsMsg::ResolveInMergeTool(f.path.clone()));
-                            ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: merge }
+                            ToolItem { label: RESOLVE_IN_MERGE_TOOL, msg, blocked: None, setup: setup.merge }
                         } else {
-                            diff_item(DiffTarget::Unstaged(f.path.clone()), diff)
+                            diff_item(DiffTarget::Unstaged(f.path.clone()), setup.diff)
                         };
-                        wip_file_items(ui, msgs, &f, missing, unstages, &[], tool)
+                        wip_file_items(ui, msgs, &f, missing, unstages, &[], setup.editor, tool)
                     }
                 }
             });
@@ -211,12 +212,15 @@ fn file_menu_wip_conflicted() {
     let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false, unstages: false }, true);
     h.run();
     h.check_snapshot("file_menu_wip_conflicted");
-    assert!(h.get_by_label(RESOLVE_IN_MERGE_TOOL).is_disabled(), "no merge tool set");
+    assert!(!h.get_by_label(RESOLVE_IN_MERGE_TOOL).is_disabled(), "no merge tool set: it opens Preferences");
     assert!(h.query_by_label(OPEN_IN_DIFF_TOOL).is_none());
     assert!(!h.get_by_label(OPEN_DEFAULT).is_disabled());
     assert!(!h.get_by_label(NEW_FILE_HERE).is_disabled());
     assert!(h.get_by_label(RENAME).is_disabled());
     assert!(h.get_by_label(DELETE).is_disabled());
+    h.get_by_label(RESOLVE_IN_MERGE_TOOL).click();
+    h.run();
+    assert!(matches!(&h.state()[..], [Msg::Tools(ToolsMsg::ResolveInMergeTool(p))] if p == "src/both.txt"));
     drop(h);
 
     let mut h = harness(entry("src/both.txt", '!'), Menu::Wip { missing: false, unstages: true }, true);
@@ -232,14 +236,21 @@ fn file_menu_wip_conflicted() {
 }
 
 #[test]
-fn diff_tool_items_need_a_tool_and_send_their_targets() {
-    // Disabled without a tool, even where the file is in the working tree.
+fn diff_tool_entry_without_a_tool_is_enabled() {
+    // Enabled without a tool too: update opens Preferences > External Tools.
     for menu in [Menu::Commit { in_workdir: true }, Menu::Wip { missing: false, unstages: false }] {
         let mut h = harness(entry("src/app.txt", 'M'), menu, true);
         h.run();
-        assert!(h.get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
+        assert!(!h.get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
+        h.get_by_label(OPEN_IN_DIFF_TOOL).click();
+        h.run();
+        assert!(matches!(&h.state()[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
     }
-    // Enabled with one, even for a file gone from the working tree.
+}
+
+#[test]
+fn diff_tool_items_send_their_targets() {
+    // Enabled, even for a file gone from the working tree.
     let cases = [
         (Menu::Commit { in_workdir: false }, DiffTarget::Commit(oid(), "src/app.txt".into())),
         (Menu::Between { in_workdir: true }, DiffTarget::Between(oid(), newer(), "src/app.txt".into())),

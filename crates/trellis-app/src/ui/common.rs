@@ -2,11 +2,13 @@
 
 use super::theme::color;
 use super::widgets;
+use super::widgets::reason::{self, ItemState};
 use crate::msg::CloneMsg;
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
 use crate::msg::RepoMsg;
+use crate::state::blocked::Blocked;
 use crate::state::{AppState, ForgeState, PrefPage, Status};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
@@ -145,26 +147,32 @@ pub fn menu_note(ui: &mut egui::Ui, text: &str) {
     ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).selectable(false));
 }
 
-/// A menu item's button. Its text never wraps: a submenu opens narrow and grows to fit its
-/// widest item, so wrapping text would break every word across lines.
-fn menu_button(label: impl Into<egui::WidgetText>) -> egui::Button<'static> {
-    egui::Button::new(label).wrap_mode(egui::TextWrapMode::Extend)
-}
-
+/// A menu item. Its text never wraps: a submenu opens narrow and grows to fit its widest item,
+/// so wrapping text would break every word across lines.
 pub fn menu_item(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, m: Msg) {
-    if ui.add(menu_button(label)).clicked() {
-        msgs.push(m);
-        ui.close_menu();
-    }
+    menu_item_state(msgs, ui, label, ItemState::Ready, m);
 }
 
-/// A menu item that is disabled, with the reason on hover, while `blocked` is set.
+/// A menu item that is disabled while `blocked` is set: a short form of the reason follows the
+/// label, and the whole reason shows on hover.
 pub fn menu_item_if(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<&str>, m: Msg) {
-    let mut r = ui.add_enabled(blocked.is_none(), menu_button(label));
-    if let Some(why) = blocked {
-        r = r.on_disabled_hover_text(why);
-    }
-    if r.clicked() {
+    menu_item_state(msgs, ui, label, ItemState::blocked_by(blocked), m);
+}
+
+/// `menu_item_if` with the site's own short form of the reason.
+pub fn menu_item_blocked(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, blocked: Option<Blocked<'_>>, m: Msg) {
+    menu_item_state(msgs, ui, label, blocked.map_or(ItemState::Ready, ItemState::Blocked), m);
+}
+
+/// A menu item that stays enabled while what it needs isn't set up (`setup` holds the hover
+/// note): a weak "Set up…" follows the label, and running it opens the setting.
+pub fn menu_item_setup(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, setup: Option<&str>, m: Msg) {
+    menu_item_state(msgs, ui, label, setup.map_or(ItemState::Ready, ItemState::Setup), m);
+}
+
+/// A menu item in `state` (`reason::menu_button`), pushing `m` and closing the menu when clicked.
+pub fn menu_item_state(msgs: &mut Vec<Msg>, ui: &mut egui::Ui, label: impl Into<egui::WidgetText>, state: ItemState<'_>, m: Msg) {
+    if reason::menu_button(ui, label, "", state).clicked() {
         msgs.push(m);
         ui.close_menu();
     }
@@ -286,6 +294,10 @@ pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         super::repo_list::welcome_sections(ui, st, msgs);
     });
 }
+
+#[cfg(test)]
+#[path = "snapshot_tests_disabled_reasons.rs"]
+mod reason_snapshots;
 
 #[cfg(test)]
 mod tests {

@@ -48,7 +48,12 @@ pub(super) fn generate_form(ui: &mut Ui, page: &mut SshPage, listing: &SshListin
     });
     row(ui, "", |ui| {
         ui.horizontal(|ui| {
-            if primary_button(ui, "Generate key", page.can_generate()).clicked() {
+            // Not the problems already warned about above.
+            let warned = |w: &str| {
+                w == MISMATCH || page.location_problem().is_some_and(|p| p.message() == w) || comment_problem(&page.comment) == Some(w)
+            };
+            let why = page.blocked().filter(|w| !warned(w));
+            if primary_button(ui, "Generate key", page.can_generate(), why.as_deref()).clicked() {
                 msgs.push(Msg::Ssh(SshMsg::Generate { overwrite: false }));
             }
             if page.generating {

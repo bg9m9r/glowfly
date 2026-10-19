@@ -30,7 +30,9 @@ const ON_FAIL: [(OnFail, &str); 3] = [
 pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut ApplyForm, snap: Option<&Snapshot>, idle: bool, msgs: &mut Vec<Msg>) -> bool {
     let mut d = Dialog::new(cx, "Apply patch").subtitle(form.name.clone()).begin(ui);
     let blocked = d.body(ui, |ui| body(ui, form, snap));
-    let button = buttons::primary("Apply").enabled(blocked.is_none() && idle).why(blocked.as_deref().or((!idle).then_some(BUSY)));
+    // The body already says why it can't be applied; the footer only says it waits.
+    let why = if blocked.is_some() { None } else { (!idle).then_some(BUSY) };
+    let button = buttons::primary("Apply").enabled(blocked.is_none() && idle).why(why);
     let out = d.finish(ui, Footer::new().cancel().primary(button));
     if out.primary {
         msgs.push(Msg::Patch(PatchMsg::Apply(form.request())));

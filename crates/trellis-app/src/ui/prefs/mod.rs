@@ -84,8 +84,21 @@ pub(super) fn text_field(ui: &mut Ui, value: &mut String, hint: &str) -> egui::R
     controls::field(ui, egui::TextEdit::singleline(value).hint_text(hint).desired_width(320.0).margin(vec2(8.0, 5.0)))
 }
 
-pub(super) fn primary_button(ui: &mut Ui, text: &str, enabled: bool) -> egui::Response {
-    ui.add(buttons::primary(text).enabled(enabled))
+/// The widest a disabled primary's reason gets beside it before it is cut.
+const REASON_W: f32 = 280.0;
+
+/// A page's primary button; while disabled, `why` shows as a weak line beside it (pass None when
+/// the page already shows that problem above the button). Returns the button's response.
+pub(super) fn primary_button(ui: &mut Ui, text: &str, enabled: bool, why: Option<&str>) -> egui::Response {
+    let button = buttons::primary(text).enabled(enabled).why(why);
+    let Some(why) = why.filter(|_| !enabled) else { return ui.add(button) };
+    let with_reason = |ui: &mut Ui| {
+        let r = ui.add(button);
+        widgets::reason::beside(ui, why, REASON_W);
+        r
+    };
+    // Beside it: in the caller's row, or in a row of its own.
+    if ui.layout().is_horizontal() { with_reason(ui) } else { ui.horizontal(with_reason).inner }
 }
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {

@@ -43,7 +43,7 @@ pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, m
         ui.horizontal(|ui| {
             warn(ui, "Put every shortcut back to its default key?");
             ui.add_space(8.0);
-            if primary_button(ui, "Reset all", true).clicked() {
+            if primary_button(ui, "Reset all", true, None).clicked() {
                 msgs.push(Msg::Keys(KeysMsg::ResetAll));
             }
             if ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked() {

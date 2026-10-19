@@ -5,9 +5,11 @@
 //! Without a code host, a row menu keeps one disabled item saying why. Also the pull request
 //! tooltip the sidebar and the dashboard share.
 
-use super::common::{menu_item, menu_item_if};
+use super::common::{menu_item, menu_item_blocked, menu_item_if};
+use super::widgets::reason::{self, ItemState};
 use crate::msg::ForgeMsg;
 use crate::msg::Msg;
+use crate::state::blocked::{BUSY, Blocked, short_form};
 use crate::state::push_pr::{self, HostBranch};
 use crate::state::{ForgeState, Selection};
 use eframe::egui;
@@ -98,22 +100,33 @@ pub(super) fn remote(ui: &mut egui::Ui, name: &str, oid: Oid, snap: &Snapshot, f
     }
 }
 
+/// Why a pull request can't go through `remote` (or no remote at all), with a short form that
+/// names the remote.
+fn no_host(remote: Option<&str>) -> Blocked<'static> {
+    let full = push_pr::no_host_reason(remote);
+    let short = match remote {
+        Some(r) => format!("{r} isn't on a code host"),
+        None => short_form(&full).into_owned(),
+    };
+    Blocked::new(short, full)
+}
+
 /// A LOCAL row when no remote is on a code host: one disabled item saying why.
 pub(super) fn local_no_host(ui: &mut egui::Ui, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    let why = push_pr::no_host_reason(push_pr::pr_remote(b, snap).as_deref());
-    menu_item_if(msgs, ui, "Create pull request…", Some(&why), create(&b.name, None));
+    let why = no_host(push_pr::pr_remote(b, snap).as_deref());
+    menu_item_blocked(msgs, ui, "Create pull request…", Some(why), create(&b.name, None));
 }
 
 /// A REMOTE row when no remote is on a code host: one disabled item saying why, from the
 /// checked-out branch into this one when that is another branch.
 pub(super) fn remote_no_host(ui: &mut egui::Ui, remote: &str, name: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    let why = push_pr::no_host_reason(Some(remote));
+    let why = no_host(Some(remote));
     match snap.head_info().filter(|h| !push_pr::is_same_branch(h, remote, name)) {
         Some(h) => {
             let label = format!("Create pull request from {} into this branch…", h.name);
-            menu_item_if(msgs, ui, label, Some(&why), create(&h.name, Some(name)));
+            menu_item_blocked(msgs, ui, label, Some(why), create(&h.name, Some(name)));
         }
-        None => menu_item_if(msgs, ui, "Create pull request…", Some(&why), create(name, None)),
+        None => menu_item_blocked(msgs, ui, "Create pull request…", Some(why), create(name, None)),
     }
 }
 
@@ -126,7 +139,9 @@ pub(super) fn pr_menu(ui: &mut egui::Ui, snap: &Snapshot, fs: &ForgeState, idle:
         push_pr_item(ui, snap, fs, idle, msgs);
         return;
     }
-    let r = ui.add_enabled(idle && head.is_some(), egui::Button::new(format!("Create {}…", fs.pr_noun())));
+    let no_head = format!("Check out a branch to create a {}", fs.pr_noun());
+    let why = if !idle { Some(BUSY) } else { head.is_none().then_some(no_head.as_str()) };
+    let r = reason::menu_button(ui, format!("Create {}…", fs.pr_noun()), "", ItemState::blocked_by(why));
     if r.clicked()
         && let Some(b) = head
     {
@@ -144,10 +159,8 @@ pub(super) fn push_pr_item(ui: &mut egui::Ui, snap: &Snapshot, fs: &ForgeState, 
         Some(b) => format!("Push {} and create a {noun}…", b.name),
         None => format!("Push and create a {noun}…"),
     };
-    let mut r = ui.add_enabled(idle && item.is_ok(), egui::Button::new(label));
-    if let Err(why) = &item {
-        r = r.on_disabled_hover_text(why);
-    }
+    let why = if !idle { Some(BUSY) } else { item.as_ref().err().map(String::as_str) };
+    let r = reason::menu_button(ui, label, "", ItemState::blocked_by(why));
     if r.clicked()
         && let Ok(branch) = item
     {

@@ -7,6 +7,8 @@ use crate::state::AppState;
 use crate::state::tool_compare::MERGE_TOOL_BUTTON;
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::{harness, with_conflict};
+use eframe::egui;
+use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use std::path::PathBuf;
 use trellis_core::repo::Choice;
@@ -48,8 +50,23 @@ fn conflict_header_progress() {
         assert!(h.query_by_label(gone).is_none(), "{gone} is in the menu now");
     }
     assert_eq!(h.query_all_by_label("Mark resolved").count(), 1, "only the file row's");
+    let (why, save) = (bounds(&h, SAVE_WHY), bounds(&h, "Save and mark resolved"));
+    assert!(why.right() <= save.left(), "the reason is left of Save: {why:?} {save:?}");
+    if let Some(view) = h.state_mut().0.conflict.as_mut() {
+        view.picks[1] = Choice::Theirs.into();
+    }
+    h.run();
+    assert!(!h.get_by_label("Save and mark resolved").is_disabled());
+    assert!(h.query_by_label(SAVE_WHY).is_none(), "no reason once every conflict is picked");
     drop(h);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+}
+
+const SAVE_WHY: &str = "Pick every conflict first (1 left), or use Save with markers";
+
+fn bounds(h: &Harness<'static, (AppState, Vec<crate::msg::Msg>)>, label: &str) -> egui::Rect {
+    let b = h.get_by_label(label).bounding_box().expect("bounds");
+    egui::Rect::from_min_max(egui::pos2(b.x0 as f32, b.y0 as f32), egui::pos2(b.x1 as f32, b.y1 as f32))
 }
 
 #[test]
@@ -64,6 +81,12 @@ fn conflict_more_menu() {
         assert!(h.query_by_label(item).is_some(), "{item}");
     }
     assert_eq!(h.query_all_by_label("Mark resolved").count(), 2, "the menu's and the file row's");
+    // No merge tool is set: the entry stays enabled and opens it, through Preferences if needed.
+    assert!(!h.get_by_label(MERGE_TOOL_BUTTON).is_disabled());
+    h.get_by_label(MERGE_TOOL_BUTTON).click();
+    h.run();
+    let sent = |m: &crate::msg::Msg| matches!(m, crate::msg::Msg::Tools(crate::tools::ToolsMsg::ResolveInMergeTool(_)));
+    assert!(h.state().1.iter().any(sent), "it sends ResolveInMergeTool");
     drop(h);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }

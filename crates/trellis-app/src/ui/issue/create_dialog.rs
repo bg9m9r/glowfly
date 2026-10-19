@@ -36,7 +36,8 @@ pub fn show(ui: &mut Ui, cx: Cx, form: &mut IssueForm, fs: Option<&ForgeState>, 
     let blocked = form.submit_blocked();
     let label = if form.busy { "Creating…".to_owned() } else { form.heading() };
     let ok = blocked.is_none() && !form.busy;
-    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ok).why(blocked.as_deref())).submit(submit));
+    let why = footer_why(form);
+    let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(ok).why(why.as_deref())).submit(submit));
     if out.attempted {
         form.touched.attempt();
     }
@@ -156,6 +157,27 @@ fn body(ui: &mut Ui, form: &mut IssueForm, fs: Option<&ForgeState>, focus: bool,
         form_message::form(ui, Message::error(format!("Couldn't create the {noun}: {e}")));
     }
     submit
+}
+
+/// The key of the field line that shows `field`'s problem.
+fn field_key(field: IssueField) -> &'static str {
+    match field {
+        IssueField::Project => "project",
+        IssueField::Title => "title",
+        IssueField::Description => "description",
+        IssueField::Type => "type",
+        IssueField::Assignees => "people",
+    }
+}
+
+/// Why Create is disabled, for the footer: the first problem only until its field shows it
+/// (one reason on screen at a time), and the wait for the types always.
+fn footer_why(form: &IssueForm) -> Option<String> {
+    let Some((field, why)) = form.field_problems().into_iter().next() else { return form.submit_blocked() };
+    // Without types to choose from, the type's problem is the form's, always shown.
+    let listed = form.loaded().is_some_and(|o| !o.types.is_empty());
+    let shown = form.touched.shows(field_key(field)) || (field == IssueField::Type && !listed);
+    (!shown).then_some(why)
 }
 
 /// `field`'s problem under it, once the field named `key` was edited or Create was tried.

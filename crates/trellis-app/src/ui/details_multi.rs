@@ -28,9 +28,9 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         RichText::new(t.trn("details.multi.selected", m.len(), &[])).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text()),
     );
     ui.horizontal_wrapped(|ui| {
-        cherry_pick_button(ui, t.trn("details.multi.cherry_pick.button", m.len(), &[]), m, msgs);
-        revert_button(ui, t.trn("details.multi.revert.button", m.len(), &[]), m, msgs);
-        patch_button(ui, t.trn("details.multi.patch.button", m.len(), &[]), m, msgs);
+        cherry_pick_button(ui, t.trn("details.multi.cherry_pick.button", m.len(), &[]), m, false, msgs);
+        revert_button(ui, t.trn("details.multi.revert.button", m.len(), &[]), m, false, msgs);
+        patch_button(ui, t.trn("details.multi.patch.button", m.len(), &[]), m, false, msgs);
         if ui.button(t.tr("details.multi.copy_shas.button")).clicked() {
             msgs.push(copy_shas(m));
         }
@@ -108,7 +108,7 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
         Some(Ok(c)) => {
             let open = st.diff.as_ref().map(|(target, _)| target);
             let lfs = TrackContext::of(st);
-            let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
+            let tools = crate::state::tool_compare::ToolSetup::of(&st.settings.external_tools);
             let row_h = widgets::LIST_ROW_H;
             egui::ScrollArea::vertical().id_salt("multi-files").auto_shrink([false, false]).show_rows(
                 ui,
@@ -121,8 +121,7 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
                         let target = DiffTarget::Between(from, to, f.path.clone());
                         let src = RowSource::Between { from, to };
                         let in_workdir = c.in_workdir(&f.path);
-                        let actions =
-                            RowActions { src, history_at: m.oids[0], in_workdir, lfs, diff_blocked, patch_blocked: None, lines: None };
+                        let actions = RowActions { src, history_at: m.oids[0], in_workdir, lfs, tools, patch_blocked: None, lines: None };
                         changed_file_row(ui, t, f, target, open, actions, msgs);
                     }
                 },

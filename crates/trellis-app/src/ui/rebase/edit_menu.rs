@@ -1,11 +1,12 @@
 //! The graph menus' history edits: reword, squash into the parent and drop one commit, or
 //! squash and drop a multi-selection. Each opens a dialog or a confirmation, so each label ends
-//! in an ellipsis. An entry that can't be used is disabled with the reason
-//! on hover (`state::rebase_quick`).
+//! in an ellipsis. An entry that can't be used is disabled with a short reason after its label
+//! and the whole one on hover (`state::rebase_quick`).
 
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::rebase_quick;
 use crate::state::selection::MultiSelection;
+use crate::ui::widgets::reason::{self, ItemState};
 use eframe::egui;
 use git2::Oid;
 use trellis_core::i18n::Lang;
@@ -14,11 +15,7 @@ use trellis_core::repo::Snapshot;
 
 /// One entry: pushes `edit` and closes the menu when clicked.
 fn entry(ui: &mut egui::Ui, text: String, blocked: Option<&str>, edit: QuickEdit, msgs: &mut Vec<Msg>) {
-    let mut r = ui.add_enabled(blocked.is_none(), egui::Button::new(text));
-    if let Some(why) = blocked {
-        r = r.on_disabled_hover_text(why);
-    }
-    if r.clicked() {
+    if reason::menu_button(ui, text, "", ItemState::blocked_by(blocked)).clicked() {
         msgs.push(Msg::Rebase(RebaseMsg::Edit(edit)));
         ui.close_menu();
     }

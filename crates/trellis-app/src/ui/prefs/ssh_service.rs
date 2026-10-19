@@ -29,7 +29,10 @@ pub(super) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &st
                 warn(ui, problem);
             }
             ui.horizontal(|ui| {
-                if primary_button(ui, "Add key", form.send_blocked().is_none()).clicked() {
+                // Not the title's problem, warned about above.
+                let blocked = form.send_blocked();
+                let why = blocked.filter(|b| title_problem(&form.title) != Some(*b));
+                if primary_button(ui, "Add key", blocked.is_none(), why).clicked() {
                     msgs.push(Msg::Ssh(SshMsg::SendToService));
                 }
                 if ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked() {

@@ -92,7 +92,7 @@ fn create_issue_jira_dark() {
     });
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label("Enter a summary.").is_none(), "nobody typed a summary yet");
+    assert_eq!(h.query_all_by_label("Enter a summary.").count(), 1, "nobody typed a summary yet: only the footer says it");
     // Enter on the disabled Create shows it, under the Summary field.
     h.press_key(Key::Enter);
     h.run();
@@ -132,7 +132,7 @@ fn loading_choices_and_a_failed_load() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Loading labels, people and types…").is_some());
-    assert!(h.query_by_label("Enter a title.").is_none(), "nobody typed a title yet");
+    assert_eq!(h.query_all_by_label("Enter a title.").count(), 1, "nobody typed a title yet: only the footer says it");
     if let Some(Modal::CreateIssue(f)) = h.state_mut().0.modal.as_mut() {
         f.options = OptionsState::Failed("timed out".into());
     }
@@ -204,10 +204,10 @@ fn trello_asks_for_a_board_and_a_write_token() {
     }
     assert!(h.query_by_label("Labels").is_none(), "no labels before a board");
     assert!(h.get_by_role_and_label(Role::Button, "Create card").is_disabled());
-    assert!(h.query_by_label("Choose a board.").is_none(), "nothing tried yet");
+    assert_eq!(h.query_all_by_label("Choose a board.").count(), 1, "nothing tried yet: only the footer says it");
     h.press_key(Key::Enter);
     h.run();
-    assert!(h.query_by_label("Choose a board.").is_some(), "a submit shows it");
+    assert_eq!(h.query_all_by_label("Choose a board.").count(), 1, "a submit shows it under its field, and only there");
     h.get_by_label("Allow a write token").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpenUrl(u) if u.contains("scope=read,write"))));

@@ -65,9 +65,11 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
         None => {}
     }
     // Without a snapshot there is nothing to check, and nothing to stash.
+    // The body already says why, except without a snapshot.
+    let why = if blocked.is_some() { None } else { snap.is_none().then_some(NOTHING).or((!idle).then_some(BUSY)) };
     let blocked = blocked.or(snap.is_none().then_some(NOTHING));
     let valid = blocked.is_none() && idle;
-    let stash = buttons::primary("Stash").enabled(valid).why(blocked.or((!idle).then_some(BUSY)));
+    let stash = buttons::primary("Stash").enabled(valid).why(why);
     let out = d.finish(ui, Footer::new().cancel().primary(stash).submit(submit));
     if out.primary {
         msgs.push(Msg::Stash(StashMsg::Push { scope: form.scope, message: form.message.clone(), paths }));

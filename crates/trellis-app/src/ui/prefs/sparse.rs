@@ -4,6 +4,7 @@
 
 use super::{help, primary_button, row, warn};
 use crate::msg::{Msg, SparseMsg};
+use crate::state::blocked::BUSY;
 use crate::state::sparse::{SparsePage, summary};
 use crate::ui::theme::color;
 use crate::ui::theme::controls;
@@ -128,7 +129,7 @@ fn actions_row(ui: &mut Ui, page: &SparsePage, status: &SparseStatus, cx: &Spars
             } else {
                 ("Turn on", "Check out only what this list names.")
             };
-            if primary_button(ui, text, !busy).on_hover_text(tip).clicked() {
+            if primary_button(ui, text, !busy, busy.then_some(BUSY)).on_hover_text(tip).clicked() {
                 msgs.push(Msg::Sparse(SparseMsg::Apply));
             }
             if !status.enabled {

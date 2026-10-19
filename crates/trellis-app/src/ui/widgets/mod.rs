@@ -4,12 +4,14 @@
 //! rise into place in `tooltip_motion.rs`, and the segmented control in `segmented.rs`. The
 //! banner style is in `banner.rs`, field and form messages in `form_message.rs`, and the error,
 //! warning and information marks in `severity.rs`. The shared row selection and hover look is
-//! in `row_fill.rs`.
+//! in `row_fill.rs`, and the weak lines and menu suffixes that say why an action is disabled
+//! (or that it opens a setting first) in `reason.rs`.
 
 pub mod banner;
 pub mod buttons;
 pub mod form_message;
 mod icon;
+pub mod reason;
 pub mod row_fill;
 pub mod segmented;
 pub mod severity;

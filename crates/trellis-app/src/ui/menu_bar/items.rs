@@ -1,10 +1,12 @@
-//! Menu items with their key on the right and, when disabled, the reason on hover, and check
-//! items with a check box in the gutter before the label.
+//! Menu items with their key on the right and, when disabled, a short form of the reason after
+//! the label (the whole one on hover), and check items with a check box in the gutter before
+//! the label. A disabled submenu is drawn as a disabled item: it can't open.
 
 use crate::keymap::{BindingId, Keymap};
 use crate::msg::Msg;
 use crate::ui::theme::controls::paint_check_box;
-use eframe::egui::{self, Button, Color32, Rect, TextStyle, WidgetInfo, WidgetText, WidgetType, pos2, vec2};
+use crate::ui::widgets::reason::{self, ItemState};
+use eframe::egui::{self, Color32, Rect, TextStyle, WidgetInfo, WidgetText, WidgetType, pos2, vec2};
 
 /// One item: `label`, the current key of `key` right-aligned, disabled with `blocked` as the
 /// hover text, pushing `msg` and closing the menu when clicked.
@@ -17,8 +19,7 @@ pub(super) fn item(
     msg: Msg,
     msgs: &mut Vec<Msg>,
 ) {
-    let button = Button::new(label).shortcut_text(hint(keys, key));
-    if clicked(ui, button, blocked) {
+    if clicked(ui, label, hint(keys, key), blocked) {
         msgs.push(msg);
         ui.close_menu();
     }
@@ -36,25 +37,18 @@ pub(super) fn check_item(ui: &mut egui::Ui, keys: &Keymap, label: &str, on: bool
         first.leading_space = gutter;
     }
     let enabled = blocked.is_none();
-    let mut r = ui.add_enabled(enabled, Button::new(job).shortcut_text(hint(keys, key)));
+    let r = reason::menu_button(ui, job, hint(keys, key), ItemState::blocked_by(blocked));
     let pad = ui.spacing().button_padding.x;
     let gutter_rect = Rect::from_min_size(pos2(r.rect.left() + pad, r.rect.top()), vec2(ui.spacing().icon_width, r.rect.height()));
     paint_check_box(ui, gutter_rect, on, r.hovered());
     r.widget_info(|| WidgetInfo::selected(WidgetType::Checkbox, enabled, on, label));
-    if let Some(why) = blocked {
-        r = r.on_disabled_hover_text(why);
-    }
     r.clicked()
 }
 
-/// Adds `button`, enabled unless `blocked` (then the reason shows on hover); whether it was
-/// clicked.
-pub(super) fn clicked(ui: &mut egui::Ui, button: Button, blocked: Option<&str>) -> bool {
-    let mut r = ui.add_enabled(blocked.is_none(), button);
-    if let Some(why) = blocked {
-        r = r.on_disabled_hover_text(why);
-    }
-    r.clicked()
+/// Adds an item of `label` with `shortcut` at the right, enabled unless `blocked` (then a short
+/// form of the reason follows the label); whether it was clicked.
+pub(super) fn clicked(ui: &mut egui::Ui, label: impl Into<WidgetText>, shortcut: impl Into<WidgetText>, blocked: Option<&str>) -> bool {
+    reason::menu_button(ui, label, shortcut, ItemState::blocked_by(blocked)).clicked()
 }
 
 /// The key text an item shows for `key`: its first key in the keymap, or nothing.
@@ -62,10 +56,15 @@ pub(in crate::ui) fn hint(keys: &Keymap, key: Option<BindingId>) -> String {
     key.and_then(|k| keys.hint(k)).unwrap_or_default().to_owned()
 }
 
-/// A submenu, disabled with `blocked` as the hover text.
+/// A submenu, or while `blocked` a disabled plain item with the reason's short form and no
+/// arrow (it can't open, and egui's submenu button can't make room for the suffix).
 pub(super) fn submenu_if(ui: &mut egui::Ui, label: &str, blocked: Option<&str>, add_contents: impl FnOnce(&mut egui::Ui)) {
-    let r = ui.add_enabled_ui(blocked.is_none(), |ui| ui.menu_button(label, add_contents)).inner.response;
-    if let Some(why) = blocked {
-        r.on_disabled_hover_text(why);
+    match blocked {
+        Some(why) => {
+            reason::menu_button(ui, label, "", ItemState::Blocked(why.into()));
+        }
+        None => {
+            ui.menu_button(label, add_contents);
+        }
     }
 }

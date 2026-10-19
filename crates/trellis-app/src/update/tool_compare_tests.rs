@@ -1,4 +1,5 @@
-//! Headless tests for the external diff and merge tools: refusals that point to Preferences,
+//! Headless tests for the external diff and merge tools: opening Preferences when no program
+//! is set, refusals of unusable arguments,
 //! the requests planned for each diff target (with git's filters only in a trusted
 //! repository), the merge tool started as the single active job without the trust prompt, and
 //! how its end is reported (and that the conflict view writes nothing over the tool's work).
@@ -10,7 +11,6 @@ use crate::effect::Effect;
 use crate::msg::{ConflictMsg, Msg, RepoMsg, StageMsg};
 use crate::state::AppState;
 use crate::state::PrefPage;
-use crate::state::tool_compare::{NO_DIFF_TOOL, NO_MERGE_TOOL};
 use crate::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, ToolEffect, ToolsMsg};
 use git2::Oid;
 use std::path::{Path, PathBuf};
@@ -57,16 +57,22 @@ fn make_untrusted(dir: &Path) {
     git(dir, &["config", "core.sshCommand", "ssh -v"]);
 }
 
+/// Whether `fx` holds any tool effect (a launch, a diff or a merge).
+fn any_tool(fx: &[Effect]) -> bool {
+    fx.iter().any(|e| matches!(e, Effect::Tool(_)))
+}
+
 #[test]
-fn opening_a_diff_without_a_tool_points_to_preferences() {
+fn opening_a_diff_without_a_tool_opens_preferences() {
     let dir = scratch_repo("tc-no-diff-tool");
     let mut st = opened(&dir);
-    assert!(run(&mut st, ToolsMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into()))).is_empty());
-    assert_eq!(toast(&st), (false, NO_DIFF_TOOL.to_owned(), Some("Open preferences".to_owned())));
-    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(NO_DIFF_TOOL));
-    let id = st.toasts.last().unwrap().id;
-    update(&mut st, Msg::ToastAction(id), Instant::now());
+    let (toasts, last_log) = (st.toasts.len(), st.log.last().map(|l| l.text.clone()));
+    let fx = run(&mut st, ToolsMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
+    assert!(!any_tool(&fx), "{fx:?}");
     assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
+    assert_eq!(st.toasts.len(), toasts, "no failure toast");
+    assert_eq!(st.log.last().map(|l| l.text.clone()), last_log, "no failure in the log");
+    st.prefs = None;
 
     st.settings.external_tools.diff_tool = "meld".into();
     st.settings.external_tools.diff_tool_args = "\"{local} {remote}".into();
@@ -110,10 +116,14 @@ fn opening_a_diff_sends_the_target_with_filters_when_trusted() {
 fn resolving_starts_the_merge_tool_as_the_active_job() {
     let dir = conflicted_repo("tc-resolve");
     let mut st = opened(&dir);
-    // No tool set: nothing starts, and the toast points to Preferences.
-    assert!(run(&mut st, ToolsMsg::ResolveInMergeTool("a.txt".into())).is_empty());
-    assert_eq!(toast(&st), (false, NO_MERGE_TOOL.to_owned(), Some("Open preferences".to_owned())));
+    // No tool set: nothing starts, and Preferences opens on External Tools.
+    let toasts = st.toasts.len();
+    let fx = run(&mut st, ToolsMsg::ResolveInMergeTool("a.txt".into()));
+    assert!(!any_tool(&fx), "{fx:?}");
     assert!(st.job.is_none());
+    assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
+    assert_eq!(st.toasts.len(), toasts, "no toast");
+    st.prefs = None;
 
     st.settings.external_tools.merge_tool = "kdiff3".into();
     assert!(run(&mut st, ToolsMsg::ResolveInMergeTool("notes.txt".into())).is_empty());
@@ -126,6 +136,16 @@ fn resolving_starts_the_merge_tool_as_the_active_job() {
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Resolve a.txt in the merge tool"));
     // One job at a time.
     assert!(run(&mut st, ToolsMsg::ResolveInMergeTool("a.txt".into())).is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn resolving_a_clean_file_without_a_tool_does_not_open_preferences() {
+    let dir = conflicted_repo("tc-resolve-clean");
+    let mut st = opened(&dir);
+    assert!(run(&mut st, ToolsMsg::ResolveInMergeTool("notes.txt".into())).is_empty());
+    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("notes.txt is not conflicted"));
+    assert!(st.prefs.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

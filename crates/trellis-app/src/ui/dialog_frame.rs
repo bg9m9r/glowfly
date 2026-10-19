@@ -5,7 +5,9 @@
 //! extras (Use folder name, Copy info) | gap | dismiss (Cancel or Close), 12 px, alternatives,
 //! primary
 //!
-//! A dialog with no primary puts Close at the right edge. The width is Narrow (460 px) or Wide
+//! A dialog with no primary puts Close at the right edge. A disabled primary or danger button
+//! says why in a weak line before the dismiss button, or just above the row when it has no room
+//! (`dialog_footer.rs`, which holds the footer and its layout). The width is Narrow (460 px) or Wide
 //! (600 px), clamped to the window; the body scrolls instead of pushing the footer off screen,
 //! and a resizable dialog's body sits in an `egui::Resize` with egui's grip at its bottom right.
 //!
@@ -18,12 +20,15 @@
 //! focus unless the body gave it to a field. Esc stays with `dialog_guard::dismissal`.
 
 use super::theme::{color, controls};
-use super::widgets::buttons::{self, StyledButton};
 use super::widgets::{Icon, paint_icon};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Id, Key, Modifiers, Response, RichText, Ui};
 use std::borrow::Cow;
 use trellis_core::i18n::Lang;
+
+#[path = "dialog_footer.rs"]
+mod footer;
+pub use footer::{Footer, Outcome};
 
 /// The standard widths of the content.
 pub const NARROW: f32 = 460.0;
@@ -33,10 +38,6 @@ const MARGIN: f32 = 48.0;
 const PAD: f32 = 18.0;
 /// The least content width, however small the window.
 const MIN_WIDTH: f32 = 320.0;
-/// The least width of a footer button.
-const FOOTER_BUTTON: f32 = 76.0;
-/// Between the dismiss button and the actions.
-const DISMISS_GAP: f32 = 12.0;
 /// The space under the body taken by the footer before it was first measured.
 const FOOTER_GUESS: f32 = 16.0 + 28.0;
 
@@ -203,58 +204,8 @@ impl Open {
     /// Draws the footer and works out what was pressed, by click or by key.
     pub fn finish(self, ui: &mut Ui, footer: Footer<'_>) -> Outcome {
         let start = self.body_end.unwrap_or_else(|| ui.cursor().top());
-        let Footer { primary, alts, extras, note, dismiss, tone, submit } = footer;
-        let t = self.cx.t;
-        let spacing = ui.spacing().item_spacing.x;
-        let mut out = Outcome::default();
-        ui.add_space(16.0);
-        let dismiss = dismiss.map(|d| buttons::secondary(d.text(t)).min_width(FOOTER_BUTTON));
-        let alts: Vec<_> = alts.into_iter().map(|b| b.min_width(FOOTER_BUTTON)).collect();
-        let primary = primary.map(|b| b.min_width(FOOTER_BUTTON));
-        let primary_on = primary.as_ref().is_some_and(StyledButton::is_enabled);
-        // The width of the right-hand group, to push it against the edge.
-        let mut right: Vec<f32> = Vec::new();
-        let mut gap_after_dismiss = 0.0;
-        if let Some(d) = &dismiss {
-            right.push(d.desired_width(ui));
-            if !alts.is_empty() || primary.is_some() {
-                gap_after_dismiss = (DISMISS_GAP - spacing).max(0.0);
-            }
-        }
-        right.extend(alts.iter().map(|b| b.desired_width(ui)));
-        right.extend(primary.iter().map(|b| b.desired_width(ui)));
-        let right_w = right.iter().sum::<f32>() + spacing * right.len().saturating_sub(1) as f32 + gap_after_dismiss;
-        let (mut dismiss_r, mut primary_r): (Option<Response>, Option<Response>) = (None, None);
-        ui.horizontal(|ui| {
-            for (i, b) in extras.into_iter().enumerate() {
-                if ui.add(b.min_width(FOOTER_BUTTON)).clicked() {
-                    out.extra = Some(i);
-                }
-            }
-            if let Some(n) = &note {
-                ui.label(RichText::new(n.as_ref()).color(color::weak()));
-            }
-            let gap = ui.available_width() - right_w;
-            if gap > 0.0 {
-                ui.add_space(gap);
-            }
-            if let Some(d) = dismiss {
-                let r = ui.add(d);
-                out.dismiss = r.clicked();
-                dismiss_r = Some(r);
-                ui.add_space(gap_after_dismiss);
-            }
-            for (i, b) in alts.into_iter().enumerate() {
-                if ui.add(b).clicked() {
-                    out.alt = Some(i);
-                }
-            }
-            if let Some(b) = primary {
-                let r = ui.add(b);
-                out.primary = r.clicked();
-                primary_r = Some(r);
-            }
-        });
+        let footer::Laid { mut out, dismiss: dismiss_r, primary: primary_r, primary_on, tone, submit } =
+            footer::lay_out(ui, footer, self.cx.t);
         let default_is_primary = tone == Tone::Normal && primary_r.is_some();
         let default_r = if default_is_primary { primary_r.as_ref() } else { dismiss_r.as_ref() };
         // A single-line field gives up the focus on Enter, and nothing else in a dialog does:
@@ -281,107 +232,6 @@ impl Open {
         ui.data_mut(|d| d.insert_temp(self.cx.key.with("dialog-below"), below));
         out
     }
-}
-
-/// The dismiss button's label.
-enum Dismiss<'a> {
-    Cancel,
-    Close,
-    Text(Cow<'a, str>),
-}
-
-impl<'a> Dismiss<'a> {
-    fn text(self, t: Lang) -> Cow<'a, str> {
-        match self {
-            Dismiss::Cancel => t.tr("common.cancel.button").into(),
-            Dismiss::Close => t.tr("common.close.button").into(),
-            Dismiss::Text(s) => s,
-        }
-    }
-}
-
-/// A dialog's buttons; `Open::finish` lays them out in the fixed order.
-#[derive(Default)]
-pub struct Footer<'a> {
-    primary: Option<StyledButton<'a>>,
-    alts: Vec<StyledButton<'a>>,
-    extras: Vec<StyledButton<'a>>,
-    note: Option<Cow<'a, str>>,
-    dismiss: Option<Dismiss<'a>>,
-    tone: Tone,
-    submit: bool,
-}
-
-impl<'a> Footer<'a> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// The main action, at the right edge; the default button.
-    pub fn primary(mut self, b: StyledButton<'a>) -> Self {
-        self.primary = Some(b);
-        self
-    }
-
-    /// A step that loses work, at the right edge. The dialog's tone becomes Danger: Cancel is
-    /// the default, so no key presses it.
-    pub fn danger(mut self, b: StyledButton<'a>) -> Self {
-        self.primary = Some(b);
-        self.tone = Tone::Danger;
-        self
-    }
-
-    /// Another action, between the dismiss button and the primary.
-    pub fn alt(mut self, b: StyledButton<'a>) -> Self {
-        self.alts.push(b);
-        self
-    }
-
-    /// An action at the left edge.
-    pub fn extra(mut self, b: StyledButton<'a>) -> Self {
-        self.extras.push(b);
-        self
-    }
-
-    /// A weak note at the left edge, after the extras.
-    pub fn note(mut self, text: impl Into<Cow<'a, str>>) -> Self {
-        self.note = Some(text.into());
-        self
-    }
-
-    pub fn cancel(mut self) -> Self {
-        self.dismiss = Some(Dismiss::Cancel);
-        self
-    }
-
-    pub fn close(mut self) -> Self {
-        self.dismiss = Some(Dismiss::Close);
-        self
-    }
-
-    /// A dismiss button with its own label.
-    pub fn close_label(mut self, text: impl Into<Cow<'a, str>>) -> Self {
-        self.dismiss = Some(Dismiss::Text(text.into()));
-        self
-    }
-
-    /// Whether a single-line field reported Enter this frame (runs the default button).
-    pub fn submit(mut self, submit: bool) -> Self {
-        self.submit = submit;
-        self
-    }
-}
-
-/// What the footer's buttons did this frame.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Outcome {
-    pub primary: bool,
-    pub dismiss: bool,
-    pub alt: Option<usize>,
-    pub extra: Option<usize>,
-    /// Enter asked for the primary while it was disabled: the form shows every field's problem
-    /// (`state::touched::Touched::attempt`).
-    pub attempted: bool,
 }
 
 /// The acknowledgement above the footer of a step that loses work for good: a checkbox with

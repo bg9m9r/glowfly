@@ -1,0 +1,167 @@
+//! Disabled actions that say why on screen: a dialog footer's reason line beside Cancel, cut when
+//! long, above the buttons when extras and a note take the row's room, and for a danger button;
+//! and menu items with a short weak reason after a disabled label, or "Set up…" after an entry
+//! that opens a setting first.
+
+use super::{menu_item, menu_item_blocked, menu_item_if, menu_item_setup};
+use crate::msg::Msg;
+use crate::state::blocked::Blocked;
+use crate::state::tool_compare::{DIFF_TOOL_SETUP, OPEN_IN_DIFF_TOOL};
+use crate::tools::ToolsMsg;
+use crate::ui::dialog_frame::{Cx, Dialog, Footer};
+use crate::ui::snapshot_check::CheckSnapshot;
+use crate::ui::snapshot_tests_file_menu::menu_style;
+use crate::ui::theme::{apply_theme, color};
+use crate::ui::widgets::buttons;
+use eframe::egui;
+use egui_kittest::Harness;
+use egui_kittest::kittest::Queryable;
+use trellis_core::i18n::Lang;
+use trellis_core::repo::DiffTarget;
+
+const NO_NAME: &str = "Enter a name for the branch.";
+
+fn paint_theme(ui: &mut egui::Ui, dark: bool) {
+    color::set_dark(dark);
+    apply_theme(ui.ctx());
+    ui.ctx().set_theme(if dark { egui::Theme::Dark } else { egui::Theme::Light });
+    ui.painter().rect_filled(ui.max_rect(), 0.0, color::bg());
+}
+
+/// A Narrow dialog in a 520 x 260 window with a body line and the footer `footer` builds.
+fn dialog(dark: bool, footer: impl Fn() -> Footer<'static> + 'static) -> Harness<'static> {
+    Harness::builder().with_size(egui::vec2(520.0, 260.0)).build_ui(move |ui| {
+        paint_theme(ui, dark);
+        let cx = Cx { t: Lang::En, keyboard: false, key: egui::Id::new("reason-dialog") };
+        egui::Frame::popup(ui.style()).inner_margin(18).corner_radius(8).show(ui, |ui| {
+            let mut d = Dialog::new(cx, "New branch").begin(ui);
+            d.body(ui, |ui| ui.label("The branch starts at main."));
+            d.finish(ui, footer());
+        });
+    })
+}
+
+fn create_footer() -> Footer<'static> {
+    Footer::new().cancel().primary(buttons::primary("Create branch").enabled(false).why(Some(NO_NAME)))
+}
+
+/// The bounds of the one node named `label`.
+fn bounds(h: &Harness, label: &str) -> egui::Rect {
+    let b = h.get_by_label(label).bounding_box().expect("bounds");
+    egui::Rect::from_min_max(egui::pos2(b.x0 as f32, b.y0 as f32), egui::pos2(b.x1 as f32, b.y1 as f32))
+}
+
+#[test]
+fn dialog_reason_beside_cancel() {
+    for (dark, name) in [(true, "dialog_reason_beside_cancel"), (false, "dialog_reason_beside_cancel_light")] {
+        let mut h = dialog(dark, create_footer);
+        h.run();
+        h.check_snapshot(name);
+        assert!(h.get_by_label("Create branch").is_disabled());
+        assert!(h.query_by_label(NO_NAME).is_some(), "the reason is on screen");
+        let (why, cancel) = (bounds(&h, NO_NAME), bounds(&h, "Cancel"));
+        assert!(why.right() < cancel.left(), "{why:?} ends left of {cancel:?}");
+        assert!(why.top() < cancel.bottom() && why.bottom() > cancel.top(), "on Cancel's row");
+    }
+}
+
+#[test]
+fn dialog_reason_cut_when_long() {
+    let long = "The branch name can't be used because another branch with almost exactly the same name is checked out in a worktree.";
+    assert!(long.chars().count() >= 110);
+    let mut h = dialog(true, move || Footer::new().cancel().primary(buttons::primary("Create branch").enabled(false).why(Some(long))));
+    h.run();
+    h.check_snapshot("dialog_reason_cut_when_long");
+    let (why, cancel) = (bounds(&h, long), bounds(&h, "Cancel"));
+    assert!(why.right() < cancel.left() && why.left() > 0.0, "cut to the row's room: {why:?}");
+}
+
+#[test]
+fn dialog_reason_above_with_extras() {
+    let footer = || {
+        Footer::new()
+            .extra(buttons::secondary("Use folder name"))
+            .note("Draft saved")
+            .cancel()
+            .primary(buttons::primary("Create branch").enabled(false).why(Some(NO_NAME)))
+    };
+    let mut h = dialog(true, footer);
+    h.run();
+    h.check_snapshot("dialog_reason_above_with_extras");
+    let (why, cancel) = (bounds(&h, NO_NAME), bounds(&h, "Cancel"));
+    assert!(why.bottom() <= cancel.top(), "on its own line above: {why:?} {cancel:?}");
+    assert!(cancel.top() - why.bottom() < 12.0, "just above the buttons: {why:?} {cancel:?}");
+    assert!(bounds(&h, "Create branch").right() <= 520.0, "the row still fits");
+}
+
+#[test]
+fn dialog_danger_reason() {
+    let footer = || Footer::new().cancel().danger(buttons::danger("Delete branch").enabled(false).why(Some("Tick the box above first")));
+    let mut h = dialog(true, footer);
+    h.run();
+    h.check_snapshot("dialog_danger_reason");
+    assert!(h.get_by_label("Delete branch").is_disabled());
+    assert!(h.query_by_label("Tick the box above first").is_some());
+}
+
+#[test]
+fn enabled_primary_has_no_reason() {
+    let mut h = dialog(true, || Footer::new().cancel().primary(buttons::primary("Create branch").why(Some(NO_NAME))));
+    h.run();
+    assert!(!h.get_by_label("Create branch").is_disabled());
+    assert!(h.query_by_label(NO_NAME).is_none());
+}
+
+const UNLOCK_WHY: &str = "It is locked. Unlock it first.";
+const LONG_WHY: &str = "Choose the branch you want to compare against before starting";
+const PR: &str = "Create pull request…";
+
+/// A menu frame of five items (with `reasons`, four of them blocked or waiting for setup); the
+/// state is the messages sent and the frame's width.
+fn menu(dark: bool, reasons: bool) -> Harness<'static, (Vec<Msg>, f32)> {
+    Harness::builder().with_size(egui::vec2(480.0, 220.0)).build_ui_state(
+        move |ui, (msgs, width): &mut (Vec<Msg>, f32)| {
+            paint_theme(ui, dark);
+            let r = egui::Frame::menu(ui.style()).show(ui, |ui| {
+                menu_style(ui.style_mut());
+                let why = |w| reasons.then_some(w);
+                menu_item(msgs, ui, "Copy path", Msg::Copy("path".into()));
+                menu_item_if(msgs, ui, "Unlock", why(UNLOCK_WHY), Msg::Copy("unlock".into()));
+                menu_item_if(msgs, ui, "Compare…", why(LONG_WHY), Msg::Copy("compare".into()));
+                let pr = reasons.then(|| Blocked::new("Not connected", "Connect GitHub in Preferences first"));
+                menu_item_blocked(msgs, ui, PR, pr, Msg::Copy("pr".into()));
+                let open = Msg::Tools(ToolsMsg::OpenDiff(DiffTarget::Unstaged("a.txt".into())));
+                menu_item_setup(msgs, ui, OPEN_IN_DIFF_TOOL, why(DIFF_TOOL_SETUP), open);
+            });
+            *width = r.response.rect.width();
+        },
+        (Vec::new(), 0.0),
+    )
+}
+
+#[test]
+fn menu_disabled_suffix() {
+    let mut plain = menu(true, false);
+    plain.run();
+    let plain_w = plain.state().1;
+    for (dark, name) in [(true, "menu_disabled_suffix"), (false, "menu_disabled_suffix_light")] {
+        let mut h = menu(dark, true);
+        h.run();
+        h.check_snapshot(name);
+        assert!(h.state().1 > plain_w + 40.0, "the suffixes widen the menu: {} vs {plain_w}", h.state().1);
+        assert!(h.get_by_label("Unlock").is_disabled(), "found by its exact label");
+        assert!(h.get_by_label(PR).is_disabled());
+        assert!(!h.get_by_label("Copy path").is_disabled());
+        h.get_by_label("Unlock").click();
+        h.run();
+        assert!(h.state().0.is_empty(), "a disabled item sends nothing");
+        h.get_by_label("Unlock").hover();
+        h.run();
+        h.run();
+        assert!(h.query_by_label(UNLOCK_WHY).is_some(), "the whole reason on hover");
+        assert!(!h.get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
+        h.get_by_label(OPEN_IN_DIFF_TOOL).click();
+        h.run();
+        assert!(matches!(&h.state().0[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
+    }
+}

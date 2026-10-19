@@ -1,5 +1,6 @@
 //! Headless tests for the external editor and a custom terminal: the launches planned from
-//! Preferences > External tools, the refusals and failures (log line and red toast), the program
+//! Preferences > External tools, Preferences opening when no editor is set, the refusals and
+//! failures (log line and red toast), the program
 //! pickers, Open in terminal with and without a custom terminal, and the palette entries.
 
 use super::tests::{drive, scratch_repo, state};
@@ -9,7 +10,6 @@ use crate::msg::{Msg, PaletteMsg, RepoMsg};
 use crate::state::AppState;
 use crate::state::PrefPage;
 use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::tools::NO_EDITOR;
 use crate::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -59,16 +59,41 @@ fn failure(st: &AppState) -> String {
     log.text.clone()
 }
 
+/// Whether `fx` launches anything.
+fn launches(fx: &[Effect]) -> bool {
+    fx.iter().any(|e| matches!(e, Effect::Tool(ToolEffect::Launch { .. })))
+}
+
 #[test]
-fn opening_a_file_without_an_editor_explains_how_to_set_one() {
+fn opening_without_an_editor_opens_preferences() {
     let (mut st, dir) = open("tools-no-editor", "");
-    assert!(run(&mut st, open_file("a.txt", None)).is_empty());
-    assert_eq!(failure(&st), NO_EDITOR);
+    let fx = run(&mut st, open_file("a.txt", None));
+    assert!(!launches(&fx), "{fx:?}");
+    assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
+    assert!(st.toasts.is_empty(), "no failure toast");
     // Only whitespace or an empty pair of quotes is no editor either.
+    st.prefs = None;
     st.settings.external_tools.editor = " \"\" ".into();
-    assert!(run(&mut st, ToolsMsg::OpenRepo).is_empty());
-    assert_eq!(failure(&st), NO_EDITOR);
+    let fx = run(&mut st, ToolsMsg::OpenRepo);
+    assert!(!launches(&fx), "{fx:?}");
+    assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
+    assert!(st.toasts.is_empty(), "no failure toast");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn launch_failures_still_point_to_preferences() {
+    let mut st = state();
+    let failed = ToolsMsg::LaunchFailed {
+        kind: ToolKind::DiffTool,
+        program: "meld".into(),
+        target: "a.txt".into(),
+        failure: LaunchFailure::NotFound,
+    };
+    assert!(run(&mut st, failed).is_empty());
+    failure(&st);
+    let action = st.toasts.last().and_then(|t| t.action.as_ref()).map(|a| a.label.as_str());
+    assert_eq!(action, Some("Open Preferences"));
 }
 
 #[test]
@@ -267,6 +292,14 @@ fn palette_offers_the_diff_and_merge_tools_for_what_is_open() {
     st.settings.external_tools.diff_tool = "/opt/meld/bin/meld".into();
     assert_eq!(find(&st, diff_label).and_then(|e| e.detail).as_deref(), Some("meld"));
     assert!(find(&st, merge_label).is_none(), "needs the conflict view");
+    // Run before a tool is set, it opens Preferences > External Tools.
+    st.settings.external_tools.diff_tool.clear();
+    let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Tools(ToolsMsg::OpenDiff(target.clone())))), Instant::now());
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Tool(_))), "{fx:?}");
+    assert_eq!(st.prefs.as_ref().map(|p| p.page), Some(PrefPage::Tools));
+    assert_eq!(st.palette_recent.position("open-in-diff-tool"), Some(0));
+    st.prefs = None;
+    st.settings.external_tools.diff_tool = "/opt/meld/bin/meld".into();
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Tools(ToolsMsg::OpenDiff(target.clone())))), Instant::now());
     assert!(matches!(&fx[..], [Effect::Tool(ToolEffect::OpenDiff(r))] if r.target == target), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);

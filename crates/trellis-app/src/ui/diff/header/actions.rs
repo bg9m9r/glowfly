@@ -1,6 +1,7 @@
 //! The header's file actions, primary action and Close: Restore… (a commit's file), Open and
 //! Show in folder (labelled, or folded into one ⋯ menu in a narrow header), the external diff
-//! tool, Stage file or Unstage file, and the × that closes the diff.
+//! tool (always enabled: with no tool set its tooltip says it opens Preferences > External
+//! Tools), Stage file or Unstage file, and the × that closes the diff.
 
 use super::controls::{self, SPACE, ghost, icon_tip};
 use crate::keymap::{BindingId, Keymap};
@@ -106,16 +107,16 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, fold: bool, keys: &Keymap, t: L
             }
         }
     }
-    if let Some(blocked) = m.actions.diff_tool {
+    if let Some(setup) = m.actions.diff_tool {
         if m.actions.labelled() {
             ui.add_space(SPACE);
         }
         let tip = Tip::new(OPEN_IN_DIFF_TOOL);
-        let tip = match blocked {
-            Some(why) => tip.body(why),
+        let tip = match setup {
+            Some(note) => tip.body(note),
             None => tip,
         };
-        let r = icon_tip(ghost(ui, Some(Icon::ExternalDiff), None, OPEN_IN_DIFF_TOOL, blocked.is_none()), keys, t, tip);
+        let r = icon_tip(ghost(ui, Some(Icon::ExternalDiff), None, OPEN_IN_DIFF_TOOL, true), keys, t, tip);
         if r.clicked() {
             msgs.push(Msg::Tools(ToolsMsg::OpenDiff(m.target.clone())));
             r.surrender_focus();

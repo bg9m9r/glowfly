@@ -37,11 +37,11 @@ fn theme(ui: &mut egui::Ui, dark: bool) {
 
 /// A window drawing the submenu's entries inside a menu frame.
 fn body(items: Vec<TrackItem>, dark: bool) -> Harness<'static, Vec<Msg>> {
-    Harness::builder().with_size(egui::vec2(260.0, 120.0)).build_ui_state(
+    Harness::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, dark);
             egui::Frame::menu(ui.style()).show(ui, |ui| {
-                ui.set_width(220.0);
+                ui.set_min_width(220.0);
                 menu_style(ui.style_mut());
                 lfs_track_items(ui, msgs, &items);
             });
@@ -62,7 +62,7 @@ fn file_menu_wip_lfs() {
                 let _ = ui.button("Stage");
                 let _ = ui.button("Copy path");
                 let tool = super::file_menu::diff_item(trellis_core::repo::DiffTarget::Unstaged(PATH.into()), None);
-                wip_file_items(ui, msgs, &f, false, false, &lfs, tool);
+                wip_file_items(ui, msgs, &f, false, false, &lfs, None, tool);
             });
         },
         Vec::new(),
@@ -122,7 +122,7 @@ fn commit_menu(in_workdir: bool) -> Harness<'static, Vec<Msg>> {
     Harness::builder().with_size(egui::vec2(260.0, 240.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             theme(ui, true);
-            commit_file_items(ui, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs, None, None);
+            commit_file_items(ui, msgs, RowSource::Commit(oid), &f, in_workdir, &lfs, Default::default(), None);
         },
         Vec::new(),
     )

@@ -5,6 +5,7 @@ use super::{help, primary_button, row, text_field, warn};
 use crate::lfs::LfsMsg;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
+use crate::state::blocked::BUSY;
 use crate::state::lfs::{INSTALL_URL, LfsPage};
 use crate::ui::theme::color;
 use crate::ui::theme::type_scale;
@@ -101,7 +102,7 @@ fn not_set_up(ui: &mut Ui, status: &LfsStatus, repo: &str, busy: bool, msgs: &mu
             );
         }
         ui.add_space(4.0);
-        if primary_button(ui, "Initialize LFS", !busy).clicked() {
+        if primary_button(ui, "Initialize LFS", !busy, busy.then_some(BUSY)).clicked() {
             msgs.push(Msg::Lfs(LfsMsg::Initialize));
         }
     });

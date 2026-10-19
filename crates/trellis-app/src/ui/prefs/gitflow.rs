@@ -8,6 +8,7 @@ use super::appearance::section;
 use super::{help, primary_button, row, text_field, warn};
 use crate::gitflow::GitFlowMsg;
 use crate::msg::Msg;
+use crate::state::blocked::BUSY;
 use crate::state::gitflow::GitFlowPage;
 use crate::ui::theme::color;
 use crate::ui::widgets::buttons;
@@ -149,7 +150,15 @@ fn buttons(ui: &mut Ui, page: &GitFlowPage, b: &Branches, initialized: bool, bus
         ui.add_space(4.0);
         ui.horizontal(|ui| {
             let label = if initialized { "Save" } else { "Initialize Git Flow" };
-            if primary_button(ui, label, enabled).clicked() {
+            // A problem line above already says why; else busy, or nothing to save.
+            let why = if problem.is_some() {
+                None
+            } else if busy {
+                Some(BUSY)
+            } else {
+                (initialized && !edited && !missing).then_some("Nothing changed")
+            };
+            if primary_button(ui, label, enabled, why).clicked() {
                 msgs.push(Msg::GitFlow(GitFlowMsg::Apply));
             }
             if edited && ui.add(buttons::secondary("Discard changes")).clicked() {

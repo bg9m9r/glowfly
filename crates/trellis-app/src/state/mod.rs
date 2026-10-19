@@ -6,6 +6,7 @@ mod app_queries;
 pub mod askpass;
 pub mod blame;
 pub mod blame_find;
+pub mod blocked;
 pub mod branches;
 pub mod build_status;
 pub mod clone;

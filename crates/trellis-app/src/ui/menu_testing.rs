@@ -27,13 +27,15 @@ pub(super) fn texts_containing(h: &H, text: &str) -> Vec<String> {
     h.query_all_by_label_contains(text).map(|n| node_text(&n)).collect()
 }
 
-/// The entry `label` of the open submenu `parent`: the match right of the parent's button whose
+/// The entry `label` of the open submenu `parent`: the match beside the parent's button whose
 /// centre is nearest the parent's. Panics when there is none.
 pub(super) fn submenu_item<'a>(h: &'a H, parent: &str, label: &'a str) -> Node<'a> {
     let p = h.get_by_label(parent).bounding_box().expect("the submenu button");
     let (px, py) = ((p.x0 + p.x1) / 2.0, (p.y0 + p.y1) / 2.0);
     let dist = |n: &Node| {
-        n.bounding_box().filter(|b| b.x0 > p.x1 - 4.0).map(|b| {
+        // Out past the menu's edge: right of it (egui shifts a submenu without room left, over
+        // the menu), or left of it.
+        n.bounding_box().filter(|b| b.x1 > p.x1 + 4.0 || b.x1 < p.x0 + 4.0).map(|b| {
             let (x, y) = ((b.x0 + b.x1) / 2.0 - px, (b.y0 + b.y1) / 2.0 - py);
             x * x + y * y
         })

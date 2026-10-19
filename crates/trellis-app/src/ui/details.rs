@@ -119,7 +119,7 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
         super::line_counts::total(&mut end, c.total);
     }
     let lfs = TrackContext::of(st);
-    let diff_blocked = crate::state::tool_compare::diff_blocked(&st.settings.external_tools);
+    let tools = crate::state::tool_compare::ToolSetup::of(&st.settings.external_tools);
     let row_h = widgets::LIST_ROW_H;
     egui::ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, d.files.len(), |ui, range| {
         let index = |t: &DiffTarget| d.files.iter().position(|f| *t == DiffTarget::Commit(d.oid, f.path.clone()));
@@ -129,7 +129,7 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
             let src = RowSource::Commit(d.oid);
             let lines = counts.and_then(|c| c.get(&f.path).map(|n| (n, c.largest)));
             let in_workdir = d.in_workdir(&f.path);
-            let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, diff_blocked, patch_blocked, lines };
+            let actions = RowActions { src, history_at: d.oid, in_workdir, lfs, tools, patch_blocked, lines };
             changed_file_row(ui, t, f, DiffTarget::Commit(d.oid, f.path.clone()), open, actions, msgs);
         }
     });
@@ -137,14 +137,14 @@ fn commit_panel(ui: &mut egui::Ui, st: &AppState, cache: &mut UiCache, msgs: &mu
 
 /// What a file row draws and offers: where its change comes from, the commit its history and
 /// blame are seen from, whether the path is in the working tree, what Track in Git LFS needs,
-/// why Open in external diff tool is disabled, and its line counts.
+/// which external programs aren't set yet (their entries say "Set up…"), and its line counts.
 #[derive(Clone, Copy)]
 pub(super) struct RowActions<'a> {
     pub src: RowSource,
     pub history_at: Oid,
     pub in_workdir: bool,
     pub lfs: TrackContext<'a>,
-    pub diff_blocked: Option<&'a str>,
+    pub tools: crate::state::tool_compare::ToolSetup,
     /// Why Create patch from this file… is unavailable (a merge commit).
     pub patch_blocked: Option<&'a str>,
     /// The file's lines added and removed, and the largest change in its list (the bar's
@@ -190,6 +190,6 @@ pub(super) fn changed_file_row(
         file_menu::history_items(ui, msgs, &f.path, Some(a.history_at), missing.as_deref());
         menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(f.path.clone()));
         let items = if a.in_workdir { track_items(&f.path, a.lfs) } else { Vec::new() };
-        file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.diff_blocked, a.patch_blocked);
+        file_menu::commit_file_items(ui, msgs, a.src, f, a.in_workdir, &items, a.tools, a.patch_blocked);
     });
 }

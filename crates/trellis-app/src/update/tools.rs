@@ -1,6 +1,8 @@
 //! The external editor, a custom terminal and the diff and merge tools: planning each launch
 //! from Preferences > External tools (state/tools.rs), the program pickers, and reporting
 //! launches that failed; the diff and merge tools' own steps are in update/tool_compare.rs.
+//! A tool entry run while its program isn't set opens Preferences > External Tools instead
+//! (`show_page`), whoever sent it: a menu, a header, the palette or a stale frame.
 //! Repository trust doesn't hold these up: the programs and their arguments come from the
 //! user's own settings, never from the repository.
 
@@ -10,6 +12,7 @@ use crate::msg::PrefsMsg;
 use crate::state::AppState;
 use crate::state::PrefPage;
 use crate::state::ToastAction;
+use crate::state::tool_compare::ToolSetup;
 use crate::state::tools::{editor_file, editor_repo, failure_text, terminal};
 use crate::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 use std::time::Instant;
@@ -18,6 +21,9 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
     match msg {
         ToolsMsg::OpenFile { path, line } => {
             let Some(w) = st.workdir() else { return };
+            if ToolSetup::of(&st.settings.external_tools).editor.is_some() {
+                return show_page(st, now, fx);
+            }
             // Always absolute, so a file named like an option can't be read as one.
             let file = w.join(&path);
             match editor_file(&st.settings.external_tools, &w, &file, line.unwrap_or(1)) {
@@ -30,12 +36,15 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
                 st.log(false, "Open a repository first.");
                 return;
             };
+            if ToolSetup::of(&st.settings.external_tools).editor.is_some() {
+                return show_page(st, now, fx);
+            }
             match editor_repo(&st.settings.external_tools, &w) {
                 Ok(launch) => fx.push(Effect::Tool(ToolEffect::Launch { kind: ToolKind::Editor, launch, target: name, check: None })),
                 Err(text) => fail(st, text, now),
             }
         }
-        ToolsMsg::ShowPage => super::prefs::handle(st, PrefsMsg::OpenPrefs(PrefPage::Tools), now, fx),
+        ToolsMsg::ShowPage => show_page(st, now, fx),
         ToolsMsg::Browse(kind) => fx.push(Effect::Tool(ToolEffect::PickProgram(kind))),
         ToolsMsg::ProgramPicked { path: None, .. } => {}
         ToolsMsg::ProgramPicked { kind, path: Some(p) } => {
@@ -82,6 +91,11 @@ pub(super) fn open_terminal(st: &mut AppState, now: Instant, fx: &mut Vec<Effect
     }
 }
 
+/// Opens Preferences > External Tools (a tool entry run while its program isn't set).
+pub(super) fn show_page(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    super::prefs::handle(st, PrefsMsg::OpenPrefs(PrefPage::Tools), now, fx);
+}
+
 /// A failure for the activity log and a red toast.
 pub(super) fn fail(st: &mut AppState, text: String, now: Instant) {
     st.toast(false, text.clone(), now);
@@ -93,7 +107,7 @@ pub(super) fn prefs_action() -> ToastAction {
     ToastAction { label: "Open preferences".into(), msg: Box::new(Msg::Tools(ToolsMsg::ShowPage)), workdir: None }
 }
 
-/// A failure the settings can fix (no tool set, or not found): the log and a red toast with an
+/// A failure the settings can fix (a program that wasn't found): the log and a red toast with an
 /// Open Preferences button.
 pub(super) fn fail_to_prefs(st: &mut AppState, text: String, now: Instant) {
     st.toast_action(false, text.clone(), prefs_action(), now);

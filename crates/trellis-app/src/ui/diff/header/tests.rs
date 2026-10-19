@@ -8,7 +8,7 @@ use crate::keymap::BindingId;
 use crate::msg::{DiffMsg, FilesMsg, RepoMsg, StageMsg};
 use crate::state::diff_header::{Actions, ChangeText, Context, FileKind, FoldCounts, OpenAction, Primary, RestoreAction, ViewGroup};
 use crate::state::diff_nav::{Counter, StepKind};
-use crate::state::tool_compare::{NO_DIFF_TOOL, OPEN_IN_DIFF_TOOL};
+use crate::state::tool_compare::{DIFF_TOOL_SETUP, OPEN_IN_DIFF_TOOL};
 use crate::tools::ToolsMsg;
 use crate::ui::file_menu::{OPEN_DEFAULT, SHOW_IN_FOLDER};
 use eframe::egui;
@@ -149,9 +149,10 @@ fn controls_send_their_messages() {
     assert!(matches!(&click(unstaged(), 1400.0, CLOSE_NAME)[..], [Msg::Repo(RepoMsg::CloseDiff)]));
     assert!(matches!(&click(unstaged(), 1400.0, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
 
-    let blocked = HeaderModel { actions: Actions { diff_tool: Some(Some(NO_DIFF_TOOL)), ..unstaged().actions }, ..unstaged() };
-    assert!(click(blocked.clone(), 1400.0, OPEN_IN_DIFF_TOOL).is_empty());
-    assert!(harness(blocked, 1400.0).get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
+    // With no tool set the icon stays usable: update opens Preferences > External Tools.
+    let unset = HeaderModel { actions: Actions { diff_tool: Some(Some(DIFF_TOOL_SETUP)), ..unstaged().actions }, ..unstaged() };
+    assert!(!harness(unset.clone(), 1400.0).get_by_label(OPEN_IN_DIFF_TOOL).is_disabled());
+    assert!(matches!(&click(unset, 1400.0, OPEN_IN_DIFF_TOOL)[..], [Msg::Tools(ToolsMsg::OpenDiff(_))]));
     let end = HeaderModel { next: StepKind::End, ..unstaged() };
     assert!(harness(end.clone(), 1400.0).get_by_label(NEXT_NAME).is_disabled());
     assert!(click(end, 1400.0, NEXT_NAME).is_empty());

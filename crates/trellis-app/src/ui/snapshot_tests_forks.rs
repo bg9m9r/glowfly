@@ -11,6 +11,7 @@ use crate::remote::RemoteMsg;
 use crate::state::forks::{ForkCreate, ForkPicker, ForkStep};
 use crate::state::remotes::RemoteForm;
 use crate::state::{AppState, Modal};
+use crate::ui::remotes::fork_pick::PICK_FIRST;
 use crate::ui::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use eframe::egui::accesskit::Role;
@@ -134,6 +135,26 @@ fn fork_picker_dialog() {
     h.get_by_role_and_label(Role::Button, "Add remote").click();
     h.run();
     assert!(pushed(&h, &|m| matches!(m, Msg::Remote(RemoteMsg::AddFork))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn fork_picker_says_pick_first() {
+    let (mut st, dir) = with_github(ThemeChoice::Dark, "fork-picker-pick-first");
+    st.modal = Some(Modal::AddFork(Box::new(picker(&st, vec![fork("ada", false), fork("grace", true)]))));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(button_disabled(&h, "Add remote"));
+    assert!(h.query_by_label(PICK_FIRST).is_some(), "the footer says why before a pick");
+    if let Some(Modal::AddFork(p)) = h.state_mut().0.modal.as_mut() {
+        p.picked = Some(0);
+        p.name = "ada".into();
+        p.suggested = "ada".into();
+    }
+    h.run();
+    assert!(!button_disabled(&h, "Add remote"));
+    assert!(h.query_by_label(PICK_FIRST).is_none());
     drop(h);
     remove_fixture(&dir);
 }

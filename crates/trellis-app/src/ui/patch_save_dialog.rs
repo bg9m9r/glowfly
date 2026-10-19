@@ -35,7 +35,9 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut SaveChangesForm, snap: Option<
     };
     let mut d = Dialog::new(cx, "Create patch").subtitle(on).begin(ui);
     let blocked = d.body(ui, |ui| body(ui, form, snap));
-    let button = buttons::primary("Save…").enabled(blocked.is_none() && idle).why(blocked.or((!idle).then_some(BUSY)));
+    // The body already says why it's blocked; the footer says only that a job is running.
+    let why = if blocked.is_some() { None } else { (!idle).then_some(BUSY) };
+    let button = buttons::primary("Save…").enabled(blocked.is_none() && idle).why(why);
     let out = d.finish(ui, Footer::new().cancel().primary(button));
     if out.primary {
         let paths = form.pick.then(|| snap.map(|s| form.ticked(s)).unwrap_or_default());

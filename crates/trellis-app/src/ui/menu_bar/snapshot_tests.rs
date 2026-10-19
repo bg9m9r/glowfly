@@ -114,6 +114,28 @@ fn menu_bar_edit() {
 }
 
 #[test]
+fn disabled_items_keep_their_labels() {
+    let (st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-disabled-labels");
+    let mut h = opened(st, true, "Edit");
+    // Keyed and disabled: found by its label alone, its reason's short form painted beside it.
+    assert!(h.get_by_label("Redo").is_disabled());
+    h.get_by_label("Redo").click();
+    h.run();
+    assert!(!sent(&h, |m| matches!(m, Msg::Job(JobMsg::Redo))), "a disabled item sends nothing");
+    drop(h);
+
+    remove_fixture(&dir);
+
+    let (mut st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-disabled-recent");
+    st.recent.clear();
+    st.settings.favorite_repos.clear();
+    let h = opened(st, true, "File");
+    assert!(h.get_by_label("Open recent").is_disabled(), "a blocked submenu is a disabled item");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn menu_bar_view_dark_and_light() {
     let (st, dir) = with_bar(ThemeChoice::Dark, "menu-bar-view");
     let mut h = opened(st, true, "View");

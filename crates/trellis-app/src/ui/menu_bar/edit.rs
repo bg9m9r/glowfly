@@ -7,7 +7,7 @@ use crate::msg::{JobMsg, Msg, SearchMsg};
 use crate::state::menu_bar::{ShaCopy, copy_branch, copy_message, copy_sha};
 use crate::state::{AppState, Selection};
 use crate::ui::menus::copy_shas;
-use eframe::egui::{self, Button};
+use eframe::egui;
 
 pub(super) fn menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
@@ -22,8 +22,7 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let no_repo = st.snap.is_none().then_some(t.tr("menu.common.no_repo"));
         item(ui, &st.keymap, t.tr("menu.edit.find"), Some(I::Search), no_repo, Msg::Search(SearchMsg::Open), msgs);
         // What the key does: show the bar and flip the filter.
-        let filter = Button::new(t.tr("menu.edit.filter")).shortcut_text(hint(&st.keymap, Some(I::SearchFilter)));
-        if clicked(ui, filter, no_repo) {
+        if clicked(ui, t.tr("menu.edit.filter"), hint(&st.keymap, Some(I::SearchFilter)), no_repo) {
             st.view.show_search = true;
             msgs.push(Msg::Search(SearchMsg::ToggleFilter));
             ui.close_menu();

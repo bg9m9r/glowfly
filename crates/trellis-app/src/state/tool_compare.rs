@@ -1,8 +1,9 @@
-//! Rules of the external diff and merge tools: when their entries are disabled and why,
-//! planning a request from Preferences > External tools, and what a merge tool run's end says.
+//! Rules of the external diff and merge tools: which programs are not set yet (`ToolSetup`: the
+//! entries stay enabled and open Preferences > External tools), when the merge tool entry is
+//! disabled and why, planning a request from the settings, and what a merge tool run's end says.
 
 use super::AppState;
-use super::tools::{failure_text, unmatched};
+use super::tools::{EDITOR_SETUP, failure_text, unmatched};
 use crate::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, ToolKind};
 use std::path::Path;
 use trellis_core::external_tools;
@@ -17,6 +18,9 @@ pub const RESOLVE_IN_MERGE_TOOL: &str = "Resolve in external merge tool";
 pub const MERGE_TOOL_BUTTON: &str = "Open in merge tool";
 pub const NO_DIFF_TOOL: &str = "No external diff tool is set. Choose one in Preferences > External tools.";
 pub const NO_MERGE_TOOL: &str = "No external merge tool is set. Choose one in Preferences > External tools.";
+/// The hover notes of the tool entries while no program is set (they open the page).
+pub const DIFF_TOOL_SETUP: &str = "No external diff tool is set yet: this opens Preferences > External tools to choose one.";
+pub const MERGE_TOOL_SETUP: &str = "No external merge tool is set yet: this opens Preferences > External tools to choose one.";
 /// Why the merge tool can't start while a job runs.
 pub const BUSY: &str = "Another operation is still running";
 const DELETED: &str = "One side deleted the file: keep or delete it with the buttons below";
@@ -40,18 +44,30 @@ pub fn merging(st: &AppState, path: &str) -> bool {
     job.label == merge_label(path) && job.workdir.as_deref().is_some_and(|w| trellis_core::paths::same_spelling(w, &here))
 }
 
-/// Why Open in external diff tool is disabled, or None.
-pub fn diff_blocked(t: &ExternalTools) -> Option<&'static str> {
-    external_tools::program(&t.diff_tool).is_none().then_some(NO_DIFF_TOOL)
+/// Which external programs are not set yet, each with its entries' hover note. Their entries
+/// stay enabled: running one opens Preferences > External Tools (decided in update).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ToolSetup {
+    pub editor: Option<&'static str>,
+    pub diff: Option<&'static str>,
+    pub merge: Option<&'static str>,
+}
+
+impl ToolSetup {
+    pub fn of(t: &ExternalTools) -> Self {
+        let unset = |program: &str, note| external_tools::program(program).is_none().then_some(note);
+        Self {
+            editor: unset(&t.editor, EDITOR_SETUP),
+            diff: unset(&t.diff_tool, DIFF_TOOL_SETUP),
+            merge: unset(&t.merge_tool, MERGE_TOOL_SETUP),
+        }
+    }
 }
 
 /// Why the merge tool can't be offered for a conflict whose `content` is known (None when it
-/// isn't loaded): no tool set, a job running (`busy`), one side deleted the file, or content
-/// a tool can't merge. Binary files are fine.
-pub fn merge_blocked(t: &ExternalTools, content: Option<&ConflictContent>, busy: bool) -> Option<String> {
-    if external_tools::program(&t.merge_tool).is_none() {
-        return Some(NO_MERGE_TOOL.to_owned());
-    }
+/// isn't loaded): a job running (`busy`), one side deleted the file, or content a tool can't
+/// merge. Binary files are fine. No tool set is not a blocker (`ToolSetup`).
+pub fn merge_blocked(content: Option<&ConflictContent>, busy: bool) -> Option<String> {
     if busy {
         return Some(BUSY.to_owned());
     }
@@ -108,17 +124,16 @@ pub fn not_found(end: &MergeEnd) -> bool {
     matches!(end, MergeEnd::Failed(LaunchFailure::NotFound))
 }
 
-/// What file rows need for their tool entries: why the diff tool item is disabled, and why the
-/// merge tool item is (the content is not known on rows, so only no tool and busy count).
+/// What file rows need for their tool entries: which programs are not set yet, and why the
+/// merge tool item is disabled (the content is not known on rows, so only busy counts).
 pub struct ToolAvail {
-    pub diff: Option<&'static str>,
+    pub setup: ToolSetup,
     pub merge: Option<String>,
 }
 
 impl ToolAvail {
     pub fn of(st: &AppState) -> Self {
-        let t = &st.settings.external_tools;
-        Self { diff: diff_blocked(t), merge: merge_blocked(t, None, st.job.is_some()) }
+        Self { setup: ToolSetup::of(&st.settings.external_tools), merge: merge_blocked(None, st.job.is_some()) }
     }
 }
 
@@ -133,18 +148,24 @@ mod tests {
 
     #[test]
     fn entries_say_why_they_are_disabled() {
-        assert_eq!(diff_blocked(&tools("", "")), Some(NO_DIFF_TOOL));
-        assert_eq!(diff_blocked(&tools(" \"\" ", "")), Some(NO_DIFF_TOOL));
-        assert_eq!(diff_blocked(&tools("meld", "")), None);
-        let set = tools("", "kdiff3");
-        assert_eq!(merge_blocked(&tools("meld", ""), None, false).as_deref(), Some(NO_MERGE_TOOL));
-        assert_eq!(merge_blocked(&set, None, true).as_deref(), Some(BUSY));
-        assert_eq!(merge_blocked(&set, Some(&ConflictContent::DeletedBy(Side::Theirs)), false).as_deref(), Some(DELETED));
+        assert_eq!(merge_blocked(None, false), None, "no merge tool set is not a blocker");
+        assert_eq!(merge_blocked(None, true).as_deref(), Some(BUSY));
+        assert_eq!(merge_blocked(Some(&ConflictContent::DeletedBy(Side::Theirs)), false).as_deref(), Some(DELETED));
         let sub = ConflictContent::Unsupported("a submodule".into());
-        assert_eq!(merge_blocked(&set, Some(&sub), false).as_deref(), Some("A submodule can't be merged in a tool"));
-        assert_eq!(merge_blocked(&set, Some(&ConflictContent::Binary), false), None, "binary files are fine");
-        assert_eq!(merge_blocked(&set, Some(&ConflictContent::Text(Vec::new())), false), None);
-        assert_eq!(merge_blocked(&set, None, false), None);
+        assert_eq!(merge_blocked(Some(&sub), false).as_deref(), Some("A submodule can't be merged in a tool"));
+        assert_eq!(merge_blocked(Some(&ConflictContent::Binary), false), None, "binary files are fine");
+        assert_eq!(merge_blocked(Some(&ConflictContent::Text(Vec::new())), false), None);
+    }
+
+    #[test]
+    fn tool_setup_names_what_is_unset() {
+        let unset = ToolSetup { editor: Some(EDITOR_SETUP), diff: Some(DIFF_TOOL_SETUP), merge: Some(MERGE_TOOL_SETUP) };
+        assert_eq!(ToolSetup::of(&tools("", "")), unset);
+        let quoted = ExternalTools { editor: " \"\" ".into(), ..tools(" \"\" ", " \"\" ") };
+        assert_eq!(ToolSetup::of(&quoted), unset, "an empty quoted program counts as unset");
+        let set = ExternalTools { editor: "code".into(), ..tools("meld", "kdiff3") };
+        assert_eq!(ToolSetup::of(&set), ToolSetup::default());
+        assert_eq!(ToolSetup::of(&tools("meld", "")).merge, Some(MERGE_TOOL_SETUP));
     }
 
     #[test]

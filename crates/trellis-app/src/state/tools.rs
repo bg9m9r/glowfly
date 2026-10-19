@@ -11,6 +11,8 @@ use trellis_core::settings::ExternalTools;
 /// The file rows' menu item.
 pub const OPEN_IN_EDITOR: &str = "Open in external editor";
 pub const NO_EDITOR: &str = "No external editor is set. Choose one in Preferences > External tools.";
+/// The editor entries' hover note while no editor is set (they open the page).
+pub const EDITOR_SETUP: &str = "No external editor is set yet: this opens Preferences > External tools to choose one.";
 /// The palette's detail when no editor is set.
 pub const NO_EDITOR_DETAIL: &str = "no editor set";
 

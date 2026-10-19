@@ -37,6 +37,22 @@ fn commit_box_options() {
 }
 
 #[test]
+fn commit_box_says_why() {
+    const NO_SUMMARY: &str = "Write a summary for the commit.";
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "commit-says-why");
+    git(&dir, &["add", "README.md"], "2026-01-11T10:00:00+00:00");
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label(NO_SUMMARY).is_some(), "under the disabled button");
+    h.state_mut().0.draft.summary = "Add login form".into();
+    h.run();
+    assert!(h.query_by_label(NO_SUMMARY).is_none(), "gone once it can commit");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn commit_box_template_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "commit-template");
     let t = CommitTemplate::parse("\n# Why is this change needed?\n# What does it change?\n", '#').unwrap();

@@ -1,5 +1,6 @@
 //! The "Your review" section: the verdict (comment, approve, request changes), a summary, and
-//! the Submit review button, or Finish review for a review already started on the service.
+//! the Submit review button, or Finish review for a review already started on the service, with
+//! why it is disabled under it.
 
 use super::super::theme::color;
 use super::{heading, note};
@@ -8,7 +9,7 @@ use crate::pull_request::PullRequestMsg;
 use crate::state::pull_request::{PrAction, PrView};
 use crate::state::pull_request_actions::{error_for, review_blocked, review_button, review_choice_blocked};
 use crate::ui::theme::controls;
-use crate::ui::widgets::buttons;
+use crate::ui::widgets::{buttons, reason};
 use eframe::egui::{self, Ui};
 use trellis_core::forge::ReviewEvent;
 
@@ -48,9 +49,9 @@ pub(super) fn show(ui: &mut Ui, v: &mut PrView, msgs: &mut Vec<Msg>) {
         note(ui, "You have a review in progress on the service; this submits it with its comments.", color::weak());
     }
     let blocked = review_blocked(v);
-    let mut r = ui.add(buttons::secondary(review_button(v)).enabled(blocked.is_none()));
-    if let Some(why) = &blocked {
-        r = r.on_hover_text(why);
+    let r = ui.add(buttons::secondary(review_button(v)).enabled(blocked.is_none()).why(blocked.as_deref()));
+    if blocked.is_some() {
+        reason::line(ui, blocked.as_deref(), egui::Align::Min);
     }
     if r.clicked() {
         msgs.push(Msg::PullRequest(PullRequestMsg::SubmitReview));

@@ -1,13 +1,14 @@
 //! The conflict view's header: the path and the operation on one row; under it, from the right
 //! edge inwards, Close, the more-actions menu (Save with markers, Open in merge tool, Reset
-//! picks…, Mark resolved), the primary Save and mark resolved, how many conflicts are resolved,
-//! and the conflict counter with previous/next. Files with no chunk view get only Close and the
+//! picks…, Mark resolved), the primary Save and mark resolved (with why it is disabled to its
+//! left), how many conflicts are resolved, and the conflict counter with previous/next. With no
+//! merge tool set, Open in merge tool stays enabled ("Set up…") and opens Preferences. Files with no chunk view get only Close and the
 //! menu.
 
 use super::super::access;
-use super::super::common::menu_item_if;
+use super::super::common::{menu_item_if, menu_item_setup};
 use super::super::theme::color;
-use super::super::widgets::{self, Icon, buttons, icon_button};
+use super::super::widgets::{self, Icon, buttons, icon_button, reason};
 use super::step_tip;
 use crate::keymap::Keymap;
 use crate::msg::{ConflictMsg, Msg};
@@ -18,6 +19,9 @@ use crate::ui::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText, Ui, vec2};
 use trellis_core::i18n::Lang;
 use trellis_core::repo::{ConflictContent, Operation, SideLabels};
+
+/// The widest Save's reason gets before it is cut.
+const SAVE_REASON_W: f32 = 260.0;
 
 /// What the open file is in the middle of: "Merging feature into main".
 fn operation_text(t: Lang, l: &SideLabels) -> String {
@@ -31,9 +35,17 @@ fn operation_text(t: Lang, l: &SideLabels) -> String {
     }
 }
 
-/// The header's two rows. `tool` is why the merge tool can't open (if it can't); nothing writes
-/// the file while `in_tool`.
-pub(super) fn header_bar(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option<&str>, in_tool: bool, keys: &Keymap, msgs: &mut Vec<Msg>) {
+/// The merge tool entry: why it can't open (if it can't), and its setup note while no merge
+/// tool is set (it then opens Preferences > External Tools).
+#[derive(Clone, Copy, Debug, Default)]
+pub(super) struct MergeTool<'a> {
+    pub blocked: Option<&'a str>,
+    pub setup: Option<&'static str>,
+}
+
+/// The header's two rows, with the merge `tool` entry in the menu; nothing writes the file while
+/// `in_tool`.
+pub(super) fn header_bar(ui: &mut Ui, t: Lang, view: &ConflictView, tool: MergeTool, in_tool: bool, keys: &Keymap, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         ui.add_space(8.0);
         // Cut short rather than run past the panel.
@@ -51,7 +63,7 @@ pub(super) fn header_bar(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option
 }
 
 /// The header's buttons, laid out right to left.
-fn header_buttons(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option<&str>, in_tool: bool, keys: &Keymap, msgs: &mut Vec<Msg>) {
+fn header_buttons(ui: &mut Ui, t: Lang, view: &ConflictView, tool: MergeTool, in_tool: bool, keys: &Keymap, msgs: &mut Vec<Msg>) {
     if ui.add(buttons::secondary(t.tr("conflict.header.close.button"))).clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     }
@@ -72,6 +84,10 @@ fn header_buttons(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option<&str>,
     let save = if can { save.on_hover_text(t.tr("conflict.header.save.tip")) } else { save };
     if save.clicked() {
         msgs.push(Msg::Conflict(ConflictMsg::SaveConflict));
+    }
+    if !can {
+        // Right to left: this lands left of Save.
+        reason::beside(ui, &why, SAVE_REASON_W);
     }
     let n = view.chunk_count();
     if n == 0 {
@@ -104,7 +120,7 @@ fn header_buttons(ui: &mut Ui, t: Lang, view: &ConflictView, tool: Option<&str>,
 
 /// The painted more-actions button and its menu, each item disabled with its reason. Save with
 /// markers and Reset picks… are for text files (`text`) only.
-fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: Option<&str>, in_tool: bool, msgs: &mut Vec<Msg>) {
+fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeTool, in_tool: bool, msgs: &mut Vec<Msg>) {
     let path = &view.path;
     let menu = egui::menu::menu_custom_button(ui, egui::Button::new("").min_size(vec2(28.0, 24.0)), |ui| {
         if text {
@@ -116,7 +132,11 @@ fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: Option
                 Msg::Conflict(ConflictMsg::SaveConflictKeepMarkers),
             );
         }
-        menu_item_if(msgs, ui, MERGE_TOOL_BUTTON, tool, Msg::Tools(ToolsMsg::ResolveInMergeTool(path.clone())));
+        let open = Msg::Tools(ToolsMsg::ResolveInMergeTool(path.clone()));
+        match tool.blocked {
+            Some(why) => menu_item_if(msgs, ui, MERGE_TOOL_BUTTON, Some(why), open),
+            None => menu_item_setup(msgs, ui, MERGE_TOOL_BUTTON, tool.setup, open),
+        }
         if text {
             let blocked = if in_tool {
                 Some(IN_MERGE_TOOL)

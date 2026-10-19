@@ -205,7 +205,7 @@ foundation (spacing, fonts, palette, type) and the views built on it before the 
       to bring it back, and the View menu shows them with check marks; toasts sit below the
       toolbar and line up; the toolbar's buttons don't move with the branch name's length or
       the PR button
-- [ ] **Disabled actions say why**: a disabled primary button has a one-line reason next to it
+- [x] **Disabled actions say why**: a disabled primary button has a one-line reason next to it
       (the rebase panel's pattern) and a disabled menu item a short weak suffix; setup-gated
       items ("Open in external diff tool" with no tool set) stay enabled and open the setting
 - [ ] **Sidebar create actions**: every section header shows a hover + (and a ⋯ for its menu)
@@ -1079,6 +1079,32 @@ blockers and major findings are Milestone 1 items.
 Polish, edge cases and power-user extras that are not planned work. Nothing here is built
 until a triage moves it to Later or a milestone. New follow-ups from finished items go
 here, under the item they grew from.
+
+### Disabled actions say why
+
+- Toolbar dropdown items (Fetch all, the Pull variants, Force push, Publish, the branch picker)
+  get the weak disabled suffix too
+- Other setup-gated entries stay enabled and open their setting: pull request and issue items
+  that need a connected account open Preferences > Integrations, and an issue tracker that isn't
+  chosen opens Repo-Specific Preferences > Issue Tracker
+- When Preferences opens from a setup-gated entry, focus and highlight the matching field (diff
+  tool, merge tool or editor)
+- Footer reasons for the form dialogs whose primary is disabled only by a field problem with no
+  reason given (clone, init, tag, new and rename branch, worktree create and move, submodule add
+  and edit, publish, create PR, Git Flow dialogs, credential prompt)
+- Reasons for the remaining preference-page buttons with more than one blocker (the integrations
+  token Connect: token or user missing)
+- Expose a disabled menu item's short reason to screen readers as its description once egui's
+  accesskit support allows it
+- One shared BUSY constant: replace the copies of "Another operation is still running." in the
+  patch, stash, mainline, submodule and worktree dialogs and `state/remotes.rs` with
+  `state::blocked::BUSY`
+- Draw the rebase panel's blocker with the shared reason helper so every disabled reason has one
+  look (it is red today)
+- Explicit short forms for menu reasons whose derived form ends in "…" in real menus (the commit
+  menu's Cherry-pick, the blame menu's Blame before this commit)
+- The multi-commit selection panel's disabled Cherry-pick and Revert buttons say why only on
+  hover; give them a reason line like the other panels
 
 ### Tabs (multiple open repos)
 

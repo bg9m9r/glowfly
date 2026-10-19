@@ -9,7 +9,8 @@
 //! drawing into the open menu's `Ui`, so tests can render them without opening a popup. `file_buttons` reuses the labels, reasons and restore message for the same
 //! actions as header buttons.
 
-use super::common::{menu_item, menu_item_if, short};
+use super::common::{menu_item, menu_item_if, menu_item_setup, short};
+use super::widgets::reason::{self, ItemState};
 use crate::lfs::LfsMsg;
 use crate::msg::BlameMsg;
 use crate::msg::FilesMsg;
@@ -25,6 +26,7 @@ use crate::state::lfs::TrackItem;
 pub(super) use crate::state::tool_compare::OPEN_IN_DIFF_TOOL;
 #[cfg(test)]
 pub(super) use crate::state::tool_compare::RESOLVE_IN_MERGE_TOOL;
+use crate::state::tool_compare::ToolSetup;
 pub(super) use crate::state::tools::OPEN_IN_EDITOR;
 use crate::tools::ToolsMsg;
 use eframe::egui;
@@ -118,10 +120,9 @@ pub(super) fn revert_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, target: D
         DiffTarget::Between(..) => "Undo the changes between these commits to the file in your working copy.",
         _ => "Undo this commit's changes to the file in your working copy. The commit itself is not changed.",
     };
-    let r = ui.add_enabled(blocked.is_none(), egui::Button::new(REVERT_FILE));
     let r = match blocked {
-        Some(why) => r.on_disabled_hover_text(why),
-        None => r.on_hover_text(hover),
+        Some(why) => reason::menu_button(ui, REVERT_FILE, "", ItemState::Blocked(why.into())),
+        None => reason::menu_button(ui, REVERT_FILE, "", ItemState::Ready).on_hover_text(hover),
     };
     if r.clicked() {
         msgs.push(Msg::Stage(StageMsg::RevertFile(target)));
@@ -133,39 +134,52 @@ pub(super) fn revert_file_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, target: D
 /// commit doesn't have (added since, or a rename's new path).
 fn workdir_restore_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, oid: Oid, f: &FileEntry) {
     let missing = matches!(f.status, 'A' | 'R').then(|| format!("{} doesn't have this file", short(oid)));
-    let r = ui.add_enabled(missing.is_none(), egui::Button::new(format!("Restore the version from {}…", short(oid))));
-    let r = match &missing {
-        Some(why) => r.on_disabled_hover_text(why),
-        None => r,
-    };
+    let state = ItemState::blocked_by(missing.as_deref());
+    let r = reason::menu_button(ui, format!("Restore the version from {}…", short(oid)), "", state);
     if r.clicked() {
         msgs.push(Msg::Files(FilesMsg::RestoreFile { oid, path: f.path.clone(), deleted: false, confirmed: false, overwrite: false }));
         ui.close_menu();
     }
 }
 
-/// An external diff or merge tool entry: its label, what it sends, and why it is disabled.
+/// An external diff or merge tool entry: its label, what it sends, why it is disabled, and its
+/// setup note while its program isn't set (it then stays enabled and opens Preferences).
 pub(super) struct ToolItem<'a> {
     pub label: &'static str,
     pub msg: Msg,
     pub blocked: Option<&'a str>,
+    pub setup: Option<&'static str>,
 }
 
-/// Open in external diff tool for `target`, disabled with `blocked`.
-pub(super) fn diff_item(target: DiffTarget, blocked: Option<&str>) -> ToolItem<'_> {
-    ToolItem { label: OPEN_IN_DIFF_TOOL, msg: Msg::Tools(ToolsMsg::OpenDiff(target)), blocked }
+/// Open in external diff tool for `target`, with "Set up…" while no tool is set (`setup`).
+pub(super) fn diff_item(target: DiffTarget, setup: Option<&'static str>) -> ToolItem<'static> {
+    ToolItem { label: OPEN_IN_DIFF_TOOL, msg: Msg::Tools(ToolsMsg::OpenDiff(target)), blocked: None, setup }
 }
 
 fn tool_item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, item: ToolItem) {
-    menu_item_if(msgs, ui, item.label, item.blocked, item.msg);
+    match item.blocked {
+        Some(why) => menu_item_if(msgs, ui, item.label, Some(why), item.msg),
+        None => menu_item_setup(msgs, ui, item.label, item.setup, item.msg),
+    }
 }
 
-/// Open with default app, open in the external editor, the `tool` entry (with its own reason
-/// when disabled: it needs no working file) and show in folder, the others disabled with
-/// `missing` as the reason.
-pub(super) fn open_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str, missing: Option<&str>, tool: Option<ToolItem>) {
+/// Open with default app, open in the external editor (with "Set up…" while no editor is set:
+/// `editor_setup`), the `tool` entry (with its own reason when disabled: it needs no working
+/// file) and show in folder, the others disabled with `missing` as the reason.
+pub(super) fn open_items(
+    ui: &mut egui::Ui,
+    msgs: &mut Vec<Msg>,
+    path: &str,
+    missing: Option<&str>,
+    editor_setup: Option<&'static str>,
+    tool: Option<ToolItem>,
+) {
     menu_item_if(msgs, ui, OPEN_DEFAULT, missing, Msg::Files(FilesMsg::OpenWorkingFile(path.to_owned())));
-    menu_item_if(msgs, ui, OPEN_IN_EDITOR, missing, Msg::Tools(ToolsMsg::OpenFile { path: path.to_owned(), line: None }));
+    let editor = Msg::Tools(ToolsMsg::OpenFile { path: path.to_owned(), line: None });
+    match missing {
+        Some(_) => menu_item_if(msgs, ui, OPEN_IN_EDITOR, missing, editor),
+        None => menu_item_setup(msgs, ui, OPEN_IN_EDITOR, editor_setup, editor),
+    }
     if let Some(item) = tool {
         tool_item(ui, msgs, item);
     }
@@ -182,10 +196,9 @@ fn new_file_here(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, path: &str) {
 /// what it writes.
 pub(super) fn lfs_track_items(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
     for item in items {
-        let r = ui.add_enabled(item.blocked.is_none(), egui::Button::new(&item.label));
         let r = match &item.blocked {
-            Some(why) => r.on_disabled_hover_text(why),
-            None => r.on_hover_text(&item.hover),
+            Some(why) => reason::menu_button(ui, &item.label, "", ItemState::Blocked(why.as_str().into())),
+            None => reason::menu_button(ui, &item.label, "", ItemState::Ready).on_hover_text(&item.hover),
         };
         if r.clicked() {
             msgs.push(Msg::Lfs(LfsMsg::TrackPath(item.target.clone())));
@@ -203,8 +216,8 @@ fn lfs_submenu(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, items: &[TrackItem]) {
 }
 
 /// Extra items for a commit's file row, or a row comparing two commits: separator, restore,
-/// revert changes to this file (disabled unless `in_workdir`, or the file was deleted), (one commit's row) Create patch from this file… (disabled with `patch_blocked`), open items (disabled unless `in_workdir`; Open in external diff tool disabled with
-/// `diff_blocked`), separator and new file in this folder, then (only `in_workdir`) the Track
+/// revert changes to this file (disabled unless `in_workdir`, or the file was deleted), (one commit's row) Create patch from this file… (disabled with `patch_blocked`), open items (disabled unless `in_workdir`; the editor and diff tool entries
+/// say "Set up…" while `tools` has no program for them), separator and new file in this folder, then (only `in_workdir`) the Track
 /// in Git LFS submenu with `lfs`.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn commit_file_items(
@@ -214,7 +227,7 @@ pub(super) fn commit_file_items(
     f: &FileEntry,
     in_workdir: bool,
     lfs: &[TrackItem],
-    diff_blocked: Option<&str>,
+    tools: ToolSetup,
     patch_blocked: Option<&str>,
 ) {
     ui.separator();
@@ -237,7 +250,7 @@ pub(super) fn commit_file_items(
             DiffTarget::ToWorkdir(oid, f.path.clone())
         }
     };
-    open_items(ui, msgs, &f.path, (!in_workdir).then_some(NOT_IN_WORKDIR), Some(diff_item(target, diff_blocked)));
+    open_items(ui, msgs, &f.path, (!in_workdir).then_some(NOT_IN_WORKDIR), tools.editor, Some(diff_item(target, tools.diff)));
     ui.separator();
     new_file_here(ui, msgs, &f.path);
     if in_workdir {
@@ -248,9 +261,11 @@ pub(super) fn commit_file_items(
 /// Extra items for a working-tree row: separator, open items (disabled when `missing`, with
 /// `tool` among them: the row's diff tool entry, or the merge tool's for a conflicted row), then
 /// separator, new file in this folder, rename and delete (the last two also disabled while the
-/// row is conflicted), then (unless `missing`) the Track in Git LFS submenu with `lfs`. `unstages` means deleting this path also takes it out of the index (staged
+/// row is conflicted), then (unless `missing`) the Track in Git LFS submenu with `lfs`. The editor
+/// entry says "Set up…" while no editor is set (`editor_setup`). `unstages` means deleting this path also takes it out of the index (staged
 /// as new or as a rename's new path): the item then reads "Unstage and delete…" and stays enabled
 /// when the file is already gone, since unstaging it is still useful.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn wip_file_items(
     ui: &mut egui::Ui,
     msgs: &mut Vec<Msg>,
@@ -258,11 +273,12 @@ pub(super) fn wip_file_items(
     missing: bool,
     unstages: bool,
     lfs: &[TrackItem],
+    editor_setup: Option<&'static str>,
     tool: ToolItem,
 ) {
     ui.separator();
     let gone = missing.then_some(DELETED_IN_WORKDIR);
-    open_items(ui, msgs, &f.path, gone, Some(tool));
+    open_items(ui, msgs, &f.path, gone, editor_setup, Some(tool));
     ui.separator();
     new_file_here(ui, msgs, &f.path);
     let conflicted = (f.status == '!').then_some(CONFLICTED);

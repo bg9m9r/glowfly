@@ -16,7 +16,7 @@ use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::conflict::ConflictView;
 use crate::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
-use crate::state::tool_compare::{IN_MERGE_TOOL, merge_blocked, merging};
+use crate::state::tool_compare::{IN_MERGE_TOOL, ToolSetup, merge_blocked, merging};
 use crate::ui::theme::type_scale;
 use eframe::egui::{self, Frame, RichText, Ui};
 use trellis_core::repo::{ConflictContent, ConflictFile, Side};
@@ -27,11 +27,13 @@ pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();
     let wrap = st.settings.diff_word_wrap;
     let Some(view) = &st.conflict else { return };
-    let tool = merge_blocked(&st.settings.external_tools, view.file.as_ref().map(|f| &f.content), st.job.is_some());
+    let blocked = merge_blocked(view.file.as_ref().map(|f| &f.content), st.job.is_some());
+    let setup = ToolSetup::of(&st.settings.external_tools).merge;
     // Nothing here writes the file while the merge tool has it open; it closes the view on a change.
     let in_tool = merging(st, &view.path);
     ui.add_space(6.0);
-    header::header_bar(ui, st.settings.lang(), view, tool.as_deref(), in_tool, &st.keymap, msgs);
+    let tool = header::MergeTool { blocked: blocked.as_deref(), setup };
+    header::header_bar(ui, st.settings.lang(), view, tool, in_tool, &st.keymap, msgs);
     ui.separator();
     if in_tool {
         ui.horizontal(|ui| {

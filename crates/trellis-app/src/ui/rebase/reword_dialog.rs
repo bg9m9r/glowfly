@@ -35,7 +35,9 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut RewordForm, snap: Option<&Snap
         ui.label(RichText::new(STASH_NOTE).color(color::weak()));
     }
     let blocked = form.blocker(idle);
-    let button = buttons::primary(form.button(stash)).enabled(blocked.is_none()).why(blocked);
+    // A blank message's reason shows under the field once it is touched; the footer says it until then.
+    let why = blocked.filter(|b| *b != BLANK || !form.touched.shows("message"));
+    let button = buttons::primary(form.button(stash)).enabled(blocked.is_none()).why(why);
     let out = d.finish(ui, Footer::new().cancel().primary(button));
     if out.attempted {
         form.touched.attempt();

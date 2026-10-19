@@ -16,6 +16,9 @@ use std::path::Path;
 use trellis_core::forge::{self, Account, Provider, Target};
 use trellis_core::settings::{Settings, TrackerChoice};
 
+/// Why Connect waits: the host isn't known yet.
+const NO_HOST: &str = "Enter the host domain first";
+
 pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
     let provider = prefs.int_provider;
     let account = forge::parse_host(provider, &prefs.int_host).map(|(host, org)| Account { provider, host, org });
@@ -61,9 +64,11 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
                                 let tip = if account.is_some() {
                                     "Sign in with Git Credential Manager (the same sign-in git push uses)"
                                 } else {
-                                    "Enter the host domain first"
+                                    NO_HOST
                                 };
-                                if primary_button(ui, &label, enabled).on_hover_text(tip).clicked()
+                                // While busy, the spinner says why.
+                                let why = (!prefs.int_busy && account.is_none()).then_some(NO_HOST);
+                                if primary_button(ui, &label, enabled, why).on_hover_text(tip).clicked()
                                     && let Some(a) = &account
                                 {
                                     msgs.push(Msg::Forge(ForgeMsg::Connect { account: a.clone(), user: None, token: None }));
@@ -127,7 +132,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
         ui.add_space(LABEL_W + 18.0);
         let needs_user = matches!(provider, Provider::JiraCloud | Provider::Trello) && prefs.int_user.trim().is_empty();
         let valid = !prefs.int_token.trim().is_empty() && account.is_some() && !prefs.int_busy && !needs_user;
-        if primary_button(ui, "Connect", valid).clicked()
+        if primary_button(ui, "Connect", valid, None).clicked()
             && let Some(a) = &account
         {
             let user = Some(prefs.int_user.trim().to_owned()).filter(|u| !u.is_empty());

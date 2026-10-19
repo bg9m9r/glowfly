@@ -133,7 +133,10 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                         .desired_width(220.0),
                 );
                 let can = !signing.generating && !git.user_name.is_empty() && !git.user_email.is_empty();
-                if primary_button(ui, "Generate", can).clicked() {
+                // While generating, the spinner says why.
+                let unnamed = git.user_name.is_empty() || git.user_email.is_empty();
+                let why = (!signing.generating && unnamed).then_some("Set your name and email on the Git page first");
+                if primary_button(ui, "Generate", can, why).clicked() {
                     msgs.push(Msg::Prefs(PrefsMsg::GenerateGpgKey));
                 }
                 if signing.generating {

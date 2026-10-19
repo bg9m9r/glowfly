@@ -163,7 +163,7 @@ fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) 
         controls::checkbox(ui, &mut form.copy_accounts, COPY_ACCOUNTS);
         ui.add_space(4.0);
         ui.horizontal(|ui| {
-            if primary_button(ui, "Add", !blank).clicked() || (enter && !blank) {
+            if primary_button(ui, "Add", !blank, blank.then_some("Enter a name for the profile")).clicked() || (enter && !blank) {
                 msgs.push(Msg::Profile(ProfileMsg::Add {
                     name: form.name.clone(),
                     copy_current: form.copy_current,

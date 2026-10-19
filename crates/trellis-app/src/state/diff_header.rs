@@ -143,7 +143,8 @@ pub struct OpenAction {
 pub struct Actions {
     pub restore: Option<RestoreAction>,
     pub open: Option<OpenAction>,
-    /// The external diff tool, with why it is off (`Some(None)` when it can be used).
+    /// The external diff tool, always usable, with its setup note while no tool is set
+    /// (`Some(None)` once one is: running it then opens the tool, else Preferences).
     pub diff_tool: Option<Option<&'static str>>,
 }
 
@@ -274,7 +275,7 @@ fn view_group(st: &AppState, diff: &FileDiff, rows: bool) -> ViewGroup {
 }
 
 fn actions(st: &AppState, target: &DiffTarget) -> Actions {
-    let diff_tool = Some(super::tool_compare::diff_blocked(&st.settings.external_tools));
+    let diff_tool = Some(super::tool_compare::ToolSetup::of(&st.settings.external_tools).diff);
     let none = Actions { restore: None, open: None, diff_tool };
     match target {
         // Restore, Open and Show for a commit's file, when the open detail lists it.

@@ -121,14 +121,14 @@ fn history_entry(status: char) -> HistoryEntry {
 
 /// A small window drawing a history row's menu body for `e`, as the popup would.
 fn menu_harness(e: HistoryEntry, in_workdir: bool) -> Harness<'static, Vec<Msg>> {
-    Harness::builder().with_size(egui::vec2(260.0, 230.0)).build_ui_state(
+    Harness::builder().with_size(egui::vec2(440.0, 230.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());
             ui.ctx().set_theme(egui::Theme::Dark);
             egui::Frame::menu(ui.style()).show(ui, |ui| {
                 menu_style(ui.style_mut());
-                entry_menu(ui, msgs, &e, "src/app.txt", in_workdir, Some(crate::state::tool_compare::NO_DIFF_TOOL));
+                entry_menu(ui, msgs, &e, "src/app.txt", in_workdir, crate::state::tool_compare::ToolSetup::of(&Default::default()));
             });
         },
         Vec::new(),

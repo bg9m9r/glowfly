@@ -1,6 +1,6 @@
 //! The "Merge" section: whether the service would merge now, the merge methods the repository
 //! allows, the commit title and message, deleting the source branch afterwards, and the Merge
-//! button (with a confirmation). A merged pull request offers to delete its source branch.
+//! button (with a confirmation, and why it is disabled under it). A merged pull request offers to delete its source branch.
 
 use super::super::theme::color;
 use super::{heading, note, tone_color};
@@ -11,7 +11,7 @@ use crate::state::pull_request_actions::{
     method_label,
 };
 use crate::ui::theme::controls;
-use crate::ui::widgets::buttons;
+use crate::ui::widgets::{buttons, reason};
 use eframe::egui::{self, RichText, Ui};
 use trellis_core::forge::{MergeMethod, PrState};
 use trellis_core::repo::Snapshot;
@@ -89,12 +89,14 @@ fn open(ui: &mut Ui, v: &mut PrView, default_branch: Option<&str>, msgs: &mut Ve
     }
     ui.add_space(4.0);
     let blocked = merge_blocked(v);
-    let mut r = ui.add(buttons::secondary(format!("Merge {}", v.noun)).enabled(blocked.is_none()));
-    if let Some(why) = &blocked {
-        r = r.on_hover_text(why);
-    }
+    let r = ui.add(buttons::secondary(format!("Merge {}", v.noun)).enabled(blocked.is_none()).why(blocked.as_deref()));
     if r.clicked() {
         msgs.push(merge_confirm(v, default_branch));
+    }
+    // Unless the mergeability note above already says it.
+    let shown = mergeability(v).map(|(_, text)| text);
+    if let Some(why) = blocked.as_deref().filter(|why| shown.as_deref() != Some(*why)) {
+        reason::line(ui, Some(why), egui::Align::Min);
     }
     if let Some(e) = error_for(v, &PrAction::Merge) {
         note(ui, e.to_owned(), color::red());

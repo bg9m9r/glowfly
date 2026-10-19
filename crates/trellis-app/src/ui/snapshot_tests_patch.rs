@@ -244,7 +244,16 @@ fn commit_row_patch_item() {
         let f = FileEntry::new("src/app.txt", 'M');
         let mut h = egui_kittest::Harness::builder().with_size(eframe::egui::vec2(300.0, 260.0)).build_ui_state(
             move |ui, msgs: &mut Vec<Msg>| {
-                super::file_menu::commit_file_items(ui, msgs, super::file_menu::RowSource::Commit(oid), &f, true, &[], None, blocked);
+                super::file_menu::commit_file_items(
+                    ui,
+                    msgs,
+                    super::file_menu::RowSource::Commit(oid),
+                    &f,
+                    true,
+                    &[],
+                    Default::default(),
+                    blocked,
+                );
             },
             Vec::new(),
         );

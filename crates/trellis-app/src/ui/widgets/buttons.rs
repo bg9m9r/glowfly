@@ -9,8 +9,9 @@
 //! Hover shades the fill 10% toward white on dark palettes (black on light ones) and a press
 //! 18%. Disabled is the same for every style: a neutral `toolbar` fill, `weak` text and no edge,
 //! never an outline, and never egui's fade (the button senses hover only instead of going through
-//! `add_enabled`). A disabled button explains itself on hover with `why`. A focused button gets a
-//! 2 px `accent` ring outside its edge.
+//! `add_enabled`). A disabled button explains itself on hover with `why`; a disabled primary or
+//! danger in a dialog footer or a panel also shows that reason next to it (`reason`, through
+//! `blocked`). A focused button gets a 2 px `accent` ring outside its edge.
 //!
 //! Sizes: 28 px high by default, 24 px `small` (both at body-size text), taller with
 //! `min_height`, or an exact `height` inside a fixed-height row.
@@ -141,6 +142,11 @@ impl<'a> StyledButton<'a> {
 
     pub fn is_enabled(&self) -> bool {
         self.enabled
+    }
+
+    /// Why it is disabled, for showing next to it; None while it is enabled.
+    pub fn blocked(&self) -> Option<&'a str> {
+        if self.enabled { None } else { self.why }
     }
 
     /// The text laid out in `fg` (egui's `strong` would pick its own colour over it).

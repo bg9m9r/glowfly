@@ -1,6 +1,6 @@
 //! Window: the open tabs (with their Go to tab keys), stepping between them and closing others.
 
-use super::items::{clicked, item};
+use super::items::item;
 use crate::keymap::BindingId as I;
 use crate::msg::{Msg, TabsMsg};
 use crate::state::AppState;
@@ -16,7 +16,7 @@ pub(super) fn menu(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         for i in 0..n {
             let hint = tab_hint(keys, i, n).unwrap_or_default();
             let tab = Button::new(tab_name(st, i)).selected(i == st.active_tab).shortcut_text(hint);
-            if clicked(ui, tab, None) {
+            if ui.add(tab).clicked() {
                 msgs.push(Msg::Tabs(TabsMsg::SelectTab(i)));
                 ui.close_menu();
             }

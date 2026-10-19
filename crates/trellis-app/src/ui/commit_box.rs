@@ -1,5 +1,7 @@
 //! The commit box under the WIP file lists: summary and description, the Amend, "Push after
-//! committing" and "Skip hooks" options, the commit button, and the Ctrl+Enter shortcuts. The
+//! committing" and "Skip hooks" options, the commit button with why it is disabled centred under
+//! it (that line's height is always kept, so the box doesn't change height), and the Ctrl+Enter
+//! shortcuts. The
 //! summary takes the keyboard when `view.focus_message` is set (Ctrl+Shift+M).
 
 use super::UiCache;
@@ -13,12 +15,13 @@ use crate::state::AppState;
 use crate::state::commit::{commit_blocked, pushes_after};
 use crate::ui::theme::controls;
 use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::ui::widgets::{buttons, reason};
 use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText};
 use trellis_core::i18n::Lang;
 
-/// Height the commit box needs below the file lists (the lists share what is left).
-pub(super) const RESERVED_HEIGHT: f32 = 340.0;
+/// Height the commit box needs below the file lists (the lists share what is left), its reason
+/// line included.
+pub(super) const RESERVED_HEIGHT: f32 = 340.0 + reason::LINE_H;
 
 /// The commit button's tooltip: the keys that commit from the message fields.
 pub(super) fn shortcuts_tip(t: Lang, keys: &Keymap) -> String {
@@ -96,6 +99,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, ms
     if ui.add(button).clicked() {
         msgs.push(Msg::Commit(CommitMsg::Commit));
     }
+    reason::line(ui, blocked, Align::Center);
 
     if s.has_focus() || d.has_focus() {
         let (all, one) = ui.input_mut(|i| {
