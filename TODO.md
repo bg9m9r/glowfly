@@ -274,45 +274,83 @@ until this list says which option was chosen.
 - [ ] **Small fixes from testing**: the terminal tab bar's + is centred and drawn like the ×
       (the repository tab bar's too); the ⚠ badge by the branch picker says on hover what it
       warns about and opens it on click
-- [ ] **Branch-led colour** (colour direction B, chosen 2026-10-19): the status colours (added,
+- [ ] **Branch-led colour** (the base of colour direction C, Vivid, chosen 2026-10-19): the status colours (added,
       removed, modified, info, operation in progress) used the same way everywhere as soft
       tints; each branch keeps one colour wherever it shows (graph lane and label, a sidebar dot,
       the Branch picker, a line under the active tab, the details header), picked from its name
       so it stays the same between sessions, with main on the accent; a wide palette (16 or more
       hues, ordered so neighbouring lanes differ, even lightness per theme, a colour-blind-safe
       option); two lanes side by side never share a hue; right-click a branch for Colour… to pin
-      one; greys tinted towards the accent; a colour per person for avatars. Waiting on a design
-      choice (the branch palette board)
+      one; greys tinted towards the accent; a colour per person for avatars. Palette: 16 hues
+      (P1 chosen 2026-10-19, now being revised towards cooler, less pink hues: P3 on the branch
+      colours board); confirm the final 16 before building.
+- [ ] **Vivid colour** (colour direction C, after Branch-led colour): a colour you pick for each
+      repository, shown on its tab, as a thin line along the top of the window and in the
+      repository list (picked from its name until you choose one); a soft coloured backing behind
+      toolbar icons; a warm coral kept only for "needs you" moments such as a conflict. Repository
+      and branch colours must not clash: the repository colour stays on chrome, branch colours
+      stay in content.
 - [ ] **Design system**: one set of tokens (surface steps, borders, hover and pressed tints,
       radii, shadows, focus ring, accent and semantic colours, motion) for every theme, and the
       components built on them: the button family (primary, tonal, quiet, danger, icon-only,
       split), toolbar groups, text fields, tabs, menus, tooltips, chips, dialogs, toasts and one
       icon set; what has landed (dialog frame, button styles, file header, toggles, chips) moves
-      onto them unchanged in intent. Waiting on a design choice
+      onto them unchanged in intent. Chosen 2026-10-19: the foundations and components boards
+      as drawn, open to change once they're seen in the app.
 - [ ] **Window chrome and toolbar**: the title bar, menu, repository tabs (each with a shape,
       hover state, even widths and an ellipsis), the toolbar's grouped buttons, a new Branch
-      icon, and Repository › Branch pickers sized to their names. Waiting on a design choice
+      icon, and Repository › Branch pickers sized to their names. Chosen 2026-10-19 (option C):
+      Trellis draws one title bar with the tabs, a ☰ menu (Alt still opens File, Edit, View…)
+      and the window buttons, giving about 60 px back to content. On Windows 11 the title bar,
+      toolbar and sidebar sit on the Mica material while the graph and diff stay solid; Windows
+      10, Linux and "transparency effects off" use the solid colour. It must keep everything the
+      system frame gives: drag by empty title-bar space, double-click to maximise, resize from
+      every edge and corner, Snap Layouts on hovering maximise, and the system menu on
+      Alt+Space. macOS keeps its traffic lights inset in our bar; Linux keeps the system frame.
+      Check text contrast over light and busy wallpapers. Branch icon: A, trunk and branch.
 - [ ] **History table edges and commit details**: 12 px cell padding and a 16 px inset at the
       table's edges with the headers aligned; the commit details panel gets one clear type
       hierarchy, SHA and parent chips that copy, and file rows with status chips.
-      Waiting on a design choice
+      Chosen 2026-10-19: the board as drawn, with commit details option A (roomy, title
+      first): an 18 px title, one person row with a relative date (full date and email on
+      hover), quiet chips for the SHA, parent and committer, a readable body block, and files
+      with status chips and counts beside the name. The lane bands and selection still run edge
+      to edge.
 - [ ] **Dialogs and text fields**: 36 px fields, label-field-help groups, roomier dialog frames
       with a × and size classes, and a fresh look at colour, type size and layout (tinted fields,
       a header band or icon, a side explanation pane); every dialog moves onto them.
-      Waiting on a design choice
+      Chosen 2026-10-19 (option 3): dialogs for less familiar operations (submodules, worktrees,
+      sparse checkout, LFS, signing set-up and the like) get a tinted side pane that explains
+      the operation in a few plain steps, with the form beside it. Everyday dialogs such as
+      Create branch use option 1: roomy and neutral, one pane.
 - [ ] **Terminal panel**: an always-present header, tabs named from the shell and folder,
       + with a shell picker, quiet icon buttons (Clear, Kill, ⋯, Settings to Preferences ›
       Terminal, maximise, hide) and a readable 16-colour palette per theme.
-      Waiting on a design choice
+      Chosen 2026-10-19 (option A): one 40 px header on the panel surface; each tab is a pill
+      with a shell icon and an automatic name ("pwsh · folder" or the running command), × on
+      the active tab and on hover, an amber dot for a shell that has exited, double-click to
+      rename; + opens a terminal and its ▾ picks the shell. On the right, icon buttons with
+      tooltips: Clear, Kill terminal (asks only while a program runs), ⋯ (Kill all, Rename),
+      Settings, maximise and hide.
 - [ ] **SSH preferences**: key cards with Copy public key, key generation in a dialog, a key
-      picker for all repositories and this one, and an agent status pill. Waiting on a design
-      choice
+      picker for all repositories and this one, and an agent status pill. Chosen 2026-10-19
+      (option A): one column of three titled sections; each key is a card with its
+      fingerprint, label and Copy public key, the default key marked, Generate and Use existing
+      under the list; "Which key" is two rows with a dropdown each (the keys plus "Let ssh
+      decide").
 - [ ] **Activity panel design**: a list of runs (title, time, result) with their output folded
-      underneath and routine fetches kept quiet. Waiting on a design choice
+      underneath and routine fetches kept quiet. Chosen 2026-10-19 (option A): one row per
+      operation with a result icon, a plain title, a short summary, how long it took and when;
+      a failed run opens in place to show what went wrong, the fix as a button and the command
+      output in a quiet block; routine auto-fetches fold into one grey row.
 - [ ] **Disabled menu items explain on hover**: a greyed label with a small ⓘ and the reason in a
-      tooltip on hover or keyboard focus, in every menu. Waiting on a design choice
+      tooltip on hover or keyboard focus, in every menu. Chosen 2026-10-19: the menus board as
+      drawn.
 - [ ] **Welcome screen**: choice cards with an icon and a line of description, a clearer
-      stepper and the tour as a quiet link. Waiting on a design choice
+      stepper and the tour as a quiet link. Chosen 2026-10-19 (option B, to try): a wider
+      (760 px) welcome with a tinted header holding a lattice drawing in Trellis's own style,
+      a four-segment progress bar, the user's name from the first step, and the three ways to
+      start as large cards side by side; the drawing needs light and high-contrast versions.
 
 What [Milestone 1](ROADMAP.md#milestone-1-first-release-in-progress) needs that tests and CI can
 check. Its hands-on criteria (daily use, merging the release pull request) are in ROADMAP.md.
