@@ -67,6 +67,170 @@ done. Add a line at the top when ticking an item, and drop the oldest past 20.
 
 ## Milestone 1: first release
 
+The [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md) found these before a first
+release; each finding there names the snapshots and code it was seen in. Its minor findings
+are in Later > UI review polish.
+
+The look comes first: the open items below are in the order to build them, the visual
+foundation (spacing, fonts, palette, type) and the views built on it before the rest.
+
+- [x] **In-progress operations stay visible and safe**: a rebase, merge, cherry-pick, revert,
+      am or bisect in progress shows in a strip under the toolbar (or a status-bar chip) whatever
+      is selected and whether or not the details panel is shown; clicking it opens the WIP view
+  - Abort (rebase, merge, cherry-pick, revert, am), Skip and Reset bisect ask first, naming
+    what is lost ("The 2 files you resolved go back…"), with a danger-styled button set apart
+    from Continue; stash the resolved state first where that makes Undo work
+  - The merge banner gets a primary "Commit merge" (disabled with the reason until every
+    conflict is resolved); the summary is prefilled from `MERGE_MSG` and the commit button says
+    "Commit merge"
+  - The conflict view's header has one primary "Save and mark resolved" with progress ("1 of
+    2 conflicts resolved"); Save with markers, Open in merge tool and Reset picks… go in a ⋯
+    menu, Reset picks asks when picks exist, and the duplicate buttons in the binary view go
+- [x] **Dialogs keep what was typed**: a click on the backdrop never closes a form dialog;
+      Esc on an edited form asks "Discard your changes?" (or the draft is kept and restored
+      when the dialog reopens); only information and confirm dialogs close on a backdrop click
+      (`ui/modals.rs`)
+- [x] **No missing glyphs**: the sidebar's ahead/behind arrows (`2□`) are painted as shapes,
+      with a snapshot of a branch that is ahead and behind; a test walks the UI's string
+      literals and label templates and fails on a character the bundled fonts can't draw
+- [x] **Readable controls in every theme**: text fields get a 1 px border (at least 3:1) and a
+      focus ring; checkboxes and radios are always-visible boxes and circles with the mark
+      inside; the modal backdrop dims about the same in light and dark and dialogs get a
+      border; muted text, chips (the HEAD pill, tag pills, selected toggles) and selection
+      colours reach 4.5:1 for text in light, dark, sand and high contrast
+- [x] **Truncation with an ellipsis and the full text on hover**: one helper for every
+      single-line label that can be cut (the graph's message and body preview, resized columns,
+      dates, sidebar issue titles with their state chip reserved first, the search placeholder,
+      the update pill, repository names in repo sync); column headers keep a minimum width so
+      headers can't run together ("GRAPHCOMMIT MESSAGE"); actionable notices (fetch this remote,
+      trust for LFS) wrap instead of being cut; translated header buttons move into a ⋯ menu
+      instead of being cut to "Neu…"
+- [x] **Menus name their object once**: the tag, remote, remote-group and multi-commit menus
+      get the branch menu's header-and-short-verbs treatment; object menus are grouped by intent
+      (branch and tag, integrate, rewrite, copy, delete) with a Copy ▸ submenu; every item that
+      opens a dialog or confirmation ends in "…"; commits are named by summary, not a bare SHA;
+      the reset submenu says what each mode keeps ("Hard: reset files too; changes are stashed
+      and Undo restores them")
+- [ ] **Dialog frame and button styles**: one shared dialog frame (16–20 px padding, title,
+      body, footer with buttons in a fixed order, two standard widths with content-driven
+      limits, long-content dialogs resizable) and three button styles (primary filled with the
+      accent, secondary with a border, danger filled red; disabled is a neutral fill with weak
+      text, never an outline) used by every modal, panel and preference page
+  - Enter runs the primary action and Esc cancels in every dialog; the primary button (the
+    safe one for a danger confirm) has focus when the dialog opens
+  - `Msg::Confirm` gets a danger kind; Delete, Discard, Force delete, closing tabs with unsaved
+    work and the like use it
+  - Losing unpushed commits, stashes or changed files for good (remove a submodule, force
+    remove a worktree) needs an acknowledgement checkbox before the button enables
+  - Cancel and Close come from the translation tables, not literals
+- [ ] **Comfortable look**: the UI aims for comfortable and pleasing over dense. List rows
+      (graph, sidebar, file lists) about 36 px; 16–20 px padding in panels and dialogs on an 8 px
+      spacing grid; Noto Sans for the interface and JetBrains Mono for code, SHAs and paths
+      (bundled, OFL, with egui's fonts as fallback); a refreshed palette with one teal accent
+      for accent, primary and focus, lifted panels, and amber kept for "in progress"; the light
+      theme tuned on its own rather than inverted. An opt-in compact density in Preferences at
+      most, never the default
+- [ ] **Type scale and text styles**: a five-step scale with 14 px body text and an 11 px
+      floor (nothing that carries information smaller: the 0/72 counter, "Esc returns to one
+      commit", hunk buttons, welcome-screen links, LFS Untrack); section headers set by
+      weight; monospace only for SHAs, paths, code and fingerprints (not the compare header or
+      activity log prose);
+      sentence case for every label and button; one section-header style; one link colour
+- [ ] **Restyled toolbar and rich tooltips**: the toolbar keeps a label under each icon
+      (outline icons, even spacing, a rounded hover fill) and every button gets a rich tooltip:
+      a header with the action's title and a weak line under it (the shortcut as keycaps, or
+      the state: "main is 2 ahead, 0 behind", "4 files changed", "Last fetched 2 minutes ago"),
+      then an inset section with what it will touch: the commits a push sends or a pull brings
+      in, the stash Pop applies, the commit Undo reverts. Buttons with nothing to preview show
+      the header and one sentence on what they do
+  - One shared tooltip widget, used across the app, not only the toolbar: raised, rounded
+    corners, soft shadow, no pointer or caret
+  - Shows after 400 ms, then switches instantly while moving along the bar; 120 ms fade and a
+    4 px rise, none with reduced motion; stays on screen at the window edge; keyboard focus
+    shows it too
+  - Disabled buttons keep their tooltip and say why ("No stashes to pop")
+- [ ] **History table that carries more information**: 40 px rows with columns for branches
+      and tags, graph, message (the widest, with a weak first body line after the summary),
+      changes (`+N −M`), commit (author with the short SHA under it) and a right-aligned date
+  - Each branch keeps one colour through its lane, its label, a line joining label to node and
+    a faint band across the row, so a commit's branch reads without tracing lines
+  - Nodes show the committer's initials on a muted fill; merge commits are small solid dots;
+    the WIP node is a dashed ring
+  - One label per branch with small local and remote marks instead of separate local and
+    remote labels; tags get a tag mark; ref labels are soft tinted fills with no outline; a
+    "+N" chip when a commit has more labels than fit, and hovering lists them all
+  - Selection is a light accent tint with a 3 px accent bar at the left edge; hover is a
+    slightly lifted row
+- [ ] **A calm file header**: the bar above a diff becomes a real header, 48 px on the raised
+      surface with a 1 px edge below, and one row at every width (nothing wraps to a second row)
+  - Left: a file-type icon, the folder in a quiet colour then the file name in semibold (the
+    folder shortens from the left when space runs out, never the name), a status chip with
+    line counts (M +24 −9, or the sizes for a binary file), and a chip for the context: the
+    short commit with its summary on hover, "Unstaged" or "Staged"
+  - Right, always in this order with thin dividers: previous/next change with "2 / 5" (for a
+    file with no lines they step between files); a View ▾ button that names the current view
+    ("Inline · Hunks") and opens Layout (Inline | Split) and Show (Hunks | Whole file) as
+    segmented controls, Ignore whitespace and Wrap long lines as checkboxes, and Expand all /
+    Collapse all in Whole file; the file actions with icon and label (Restore…, Open, Show in
+    folder) plus the external diff tool as an icon; Stage file or Unstage file as the one
+    filled primary button; Close as a × with "Esc" in its tooltip. Groups that don't apply
+    drop out and the rest keep their places
+  - Every control 28 px tall, 6 px radius, transparent until hovered, 13 px text and 16 px
+    outline icons; every icon-only control has a tooltip in the shared style
+  - Working-tree files get Open as well as Stage file
+  - In a narrow panel the labelled file actions fold into a ⋯ menu
+  - A changed image shows before and after with dimensions and sizes instead of "Binary file
+    not shown"; other binary files show both sizes
+- [ ] **Line counts in red and green**: `+N −M` for each changed file (with a small bar sized to
+      the change), each commit row and the commit details header, and the WIP row (one line:
+      "Uncommitted changes", then M 3 · A 1 · D 1 chips with tinted fills and a right-aligned
+      `+48 −17`); added green, removed red, modified amber, matching the status letters;
+      computed off the UI thread and cached per commit
+- [ ] **Toggles look like toggles**: Diff/File/Blame, the dashboard tabs and the search mode
+      are segmented controls (the diff's own view switches move into the file header's View
+      menu); hunk buttons at body size with Discard set apart
+- [ ] **Full-row selection in file lists**: the commit panel's and file history's file lists
+      select the whole row with the same fill and accent bar as the graph and sidebar
+- [ ] **One style for empty, loading, error and banner states**: an `empty_state(icon, title,
+      hint, action)` widget for empty panes (the dashboard with Open, Clone and Connect; search
+      with no matches with Clear search and a syntax hint; a whitespace-only diff with "Show
+      whitespace changes"), loading and errors (warning icon, plain title, Try again and Copy
+      details, no "not found:" prefixes); a full-width `banner(kind)` with an icon and
+      normal-contrast buttons for operations and the git-too-old notice; error, warning and
+      info message styles for every form, with field errors under the field and none before
+      the user has typed
+- [ ] **Layout that gives tool views room**: the commit panel collapses to a narrow rail while
+      file history, folder history, blame, conflicts, issues or Git Flow are open, and comes
+      back on Close; a hidden sidebar or details panel leaves an edge rail or status-bar link
+      to bring it back, and the View menu shows them with check marks; toasts sit below the
+      toolbar and line up; the toolbar's buttons don't move with the branch name's length or
+      the PR button
+- [ ] **Disabled actions say why**: a disabled primary button has a one-line reason next to it
+      (the rebase panel's pattern) and a disabled menu item a short weak suffix; setup-gated
+      items ("Open in external diff tool" with no tool set) stay enabled and open the setting
+- [ ] **Sidebar create actions**: every section header shows a hover + (and a ⋯ for its menu)
+      like ISSUES; SUBMODULES and WORKTREES are always listed, with "Add submodule…" and "Add
+      worktree…" in their empty state; REMOTE counts remotes, not remote branches
+- [ ] **Preferences structure**: Editor is renamed Diff Viewer; one Terminal page for the
+      built-in and external terminal; Language and date locale together; General split into
+      titled sections; one save model (instant, with a short "Saved"; pages that write repo
+      config get a sticky Save / Revert bar and warn on leaving with unsaved edits); the
+      Integrations page shows each connected account once and hides the token form behind "Add
+      another account"; checkbox rows always have an inline label; rows stay inside the content
+      column
+- [ ] **Complete translations**: the graph column headers, sidebar sections, filter
+      placeholder, WIP row, dates, the commit, branch and tag menus, hunk buttons and every
+      dialog's Cancel come from the tables; "Discard all" and "Stage all" keep "all"; a test
+      renders each panel in German and fails on strings from an English allow-list
+- [ ] **Clearer prompts and safer controls**: the SSH host-key prompt shows host, key type and
+      fingerprint as fields with one sentence of explanation and "Trust and connect" / Cancel
+      (Cancel the default), with the raw text under Details; the sign-in dialog labels Username
+      and "Password or personal access token"; Skip hooks moves to a ⋯ menu by the commit
+      button with a warning tint while on; Kill in the terminal asks while a process runs; repo
+      sync gets Stop and per-row Retry and Open, with the full error on hover; the rebase
+      panel's Reset becomes "Restore original order"; graph search gets a clear × and a
+      fixed-width count
+
 What [Milestone 1](ROADMAP.md#milestone-1-first-release-in-progress) needs that tests and CI can
 check. Its hands-on criteria (daily use, merging the release pull request) are in ROADMAP.md.
 
@@ -91,167 +255,6 @@ check. Its hands-on criteria (daily use, merging the release pull request) are i
 - [ ] **Installer and update checks in CI**: install the MSI and DEB the release workflow built,
       start Trellis from them, uninstall cleanly, and update an older build to the new one
       against a local release feed with checksums
-
-The [UI review of 2026-10-18](docs/reviews/ui-2026-10-18.md) found these before a first
-release; each finding there names the snapshots and code it was seen in. Its minor findings
-are in Later > UI review polish.
-
-- [x] **In-progress operations stay visible and safe**: a rebase, merge, cherry-pick, revert,
-      am or bisect in progress shows in a strip under the toolbar (or a status-bar chip) whatever
-      is selected and whether or not the details panel is shown; clicking it opens the WIP view
-  - Abort (rebase, merge, cherry-pick, revert, am), Skip and Reset bisect ask first, naming
-    what is lost ("The 2 files you resolved go back…"), with a danger-styled button set apart
-    from Continue; stash the resolved state first where that makes Undo work
-  - The merge banner gets a primary "Commit merge" (disabled with the reason until every
-    conflict is resolved); the summary is prefilled from `MERGE_MSG` and the commit button says
-    "Commit merge"
-  - The conflict view's header has one primary "Save and mark resolved" with progress ("1 of
-    2 conflicts resolved"); Save with markers, Open in merge tool and Reset picks… go in a ⋯
-    menu, Reset picks asks when picks exist, and the duplicate buttons in the binary view go
-- [x] **Dialogs keep what was typed**: a click on the backdrop never closes a form dialog;
-      Esc on an edited form asks "Discard your changes?" (or the draft is kept and restored
-      when the dialog reopens); only information and confirm dialogs close on a backdrop click
-      (`ui/modals.rs`)
-- [x] **No missing glyphs**: the sidebar's ahead/behind arrows (`2□`) are painted as shapes,
-      with a snapshot of a branch that is ahead and behind; a test walks the UI's string
-      literals and label templates and fails on a character the bundled fonts can't draw
-- [ ] **Dialog frame and button styles**: one shared dialog frame (16–20 px padding, title,
-      body, footer with buttons in a fixed order, two standard widths with content-driven
-      limits, long-content dialogs resizable) and three button styles (primary filled with the
-      accent, secondary with a border, danger filled red; disabled is a neutral fill with weak
-      text, never an outline) used by every modal, panel and preference page
-  - Enter runs the primary action and Esc cancels in every dialog; the primary button (the
-    safe one for a danger confirm) has focus when the dialog opens
-  - `Msg::Confirm` gets a danger kind; Delete, Discard, Force delete, closing tabs with unsaved
-    work and the like use it
-  - Losing unpushed commits, stashes or changed files for good (remove a submodule, force
-    remove a worktree) needs an acknowledgement checkbox before the button enables
-  - Cancel and Close come from the translation tables, not literals
-- [x] **Readable controls in every theme**: text fields get a 1 px border (at least 3:1) and a
-      focus ring; checkboxes and radios are always-visible boxes and circles with the mark
-      inside; the modal backdrop dims about the same in light and dark and dialogs get a
-      border; muted text, chips (the HEAD pill, tag pills, selected toggles) and selection
-      colours reach 4.5:1 for text in light, dark, sand and high contrast
-- [x] **Truncation with an ellipsis and the full text on hover**: one helper for every
-      single-line label that can be cut (the graph's message and body preview, resized columns,
-      dates, sidebar issue titles with their state chip reserved first, the search placeholder,
-      the update pill, repository names in repo sync); column headers keep a minimum width so
-      headers can't run together ("GRAPHCOMMIT MESSAGE"); actionable notices (fetch this remote,
-      trust for LFS) wrap instead of being cut; translated header buttons move into a ⋯ menu
-      instead of being cut to "Neu…"
-- [x] **Menus name their object once**: the tag, remote, remote-group and multi-commit menus
-      get the branch menu's header-and-short-verbs treatment; object menus are grouped by intent
-      (branch and tag, integrate, rewrite, copy, delete) with a Copy ▸ submenu; every item that
-      opens a dialog or confirmation ends in "…"; commits are named by summary, not a bare SHA;
-      the reset submenu says what each mode keeps ("Hard: reset files too; changes are stashed
-      and Undo restores them")
-- [ ] **Disabled actions say why**: a disabled primary button has a one-line reason next to it
-      (the rebase panel's pattern) and a disabled menu item a short weak suffix; setup-gated
-      items ("Open in external diff tool" with no tool set) stay enabled and open the setting
-- [ ] **Comfortable look**: the UI aims for comfortable and pleasing over dense. List rows
-      (graph, sidebar, file lists) about 36 px; 16–20 px padding in panels and dialogs on an 8 px
-      spacing grid; Noto Sans for the interface and JetBrains Mono for code, SHAs and paths
-      (bundled, OFL, with egui's fonts as fallback); a refreshed palette with one teal accent
-      for accent, primary and focus, lifted panels, and amber kept for "in progress"; the light
-      theme tuned on its own rather than inverted. An opt-in compact density in Preferences at
-      most, never the default
-- [ ] **Restyled toolbar and rich tooltips**: the toolbar keeps a label under each icon
-      (outline icons, even spacing, a rounded hover fill) and every button gets a rich tooltip:
-      a header with the action's title and a weak line under it (the shortcut as keycaps, or
-      the state: "main is 2 ahead, 0 behind", "4 files changed", "Last fetched 2 minutes ago"),
-      then an inset section with what it will touch: the commits a push sends or a pull brings
-      in, the stash Pop applies, the commit Undo reverts. Buttons with nothing to preview show
-      the header and one sentence on what they do
-  - One shared tooltip widget, used across the app, not only the toolbar: raised, rounded
-    corners, soft shadow, no pointer or caret
-  - Shows after 400 ms, then switches instantly while moving along the bar; 120 ms fade and a
-    4 px rise, none with reduced motion; stays on screen at the window edge; keyboard focus
-    shows it too
-  - Disabled buttons keep their tooltip and say why ("No stashes to pop")
-- [ ] **Line counts in red and green**: `+N −M` for each changed file (with a small bar sized to
-      the change), each commit row and the commit details header, and the WIP row (one line:
-      "Uncommitted changes", then M 3 · A 1 · D 1 chips with tinted fills and a right-aligned
-      `+48 −17`); added green, removed red, modified amber, matching the status letters;
-      computed off the UI thread and cached per commit
-- [ ] **History table that carries more information**: 40 px rows with columns for branches
-      and tags, graph, message (the widest, with a weak first body line after the summary),
-      changes (`+N −M`), commit (author with the short SHA under it) and a right-aligned date
-  - Each branch keeps one colour through its lane, its label, a line joining label to node and
-    a faint band across the row, so a commit's branch reads without tracing lines
-  - Nodes show the committer's initials on a muted fill; merge commits are small solid dots;
-    the WIP node is a dashed ring
-  - One label per branch with small local and remote marks instead of separate local and
-    remote labels; tags get a tag mark; ref labels are soft tinted fills with no outline; a
-    "+N" chip when a commit has more labels than fit, and hovering lists them all
-  - Selection is a light accent tint with a 3 px accent bar at the left edge; hover is a
-    slightly lifted row
-- [ ] **Type scale and text styles**: a five-step scale with 14 px body text and an 11 px
-      floor (nothing that carries information smaller: the 0/72 counter, "Esc returns to one
-      commit", hunk buttons, welcome-screen links, LFS Untrack); section headers set by
-      weight; monospace only for SHAs, paths, code and fingerprints (not the compare header or
-      activity log prose);
-      sentence case for every label and button; one section-header style; one link colour
-- [ ] **Toggles look like toggles**: Diff/File/Blame, the dashboard tabs and the search mode
-      are segmented controls (the diff's own view switches move into the file header's View
-      menu); hunk buttons at body size with Discard set apart
-- [ ] **A calm file header**: the bar above a diff becomes a real header, 48 px on the raised
-      surface with a 1 px edge below, and one row at every width (nothing wraps to a second row)
-  - Left: a file-type icon, the folder in a quiet colour then the file name in semibold (the
-    folder shortens from the left when space runs out, never the name), a status chip with
-    line counts (M +24 −9, or the sizes for a binary file), and a chip for the context: the
-    short commit with its summary on hover, "Unstaged" or "Staged"
-  - Right, always in this order with thin dividers: previous/next change with "2 / 5" (for a
-    file with no lines they step between files); a View ▾ button that names the current view
-    ("Inline · Hunks") and opens Layout (Inline | Split) and Show (Hunks | Whole file) as
-    segmented controls, Ignore whitespace and Wrap long lines as checkboxes, and Expand all /
-    Collapse all in Whole file; the file actions with icon and label (Restore…, Open, Show in
-    folder) plus the external diff tool as an icon; Stage file or Unstage file as the one
-    filled primary button; Close as a × with "Esc" in its tooltip. Groups that don't apply
-    drop out and the rest keep their places
-  - Every control 28 px tall, 6 px radius, transparent until hovered, 13 px text and 16 px
-    outline icons; every icon-only control has a tooltip in the shared style
-  - Working-tree files get Open as well as Stage file
-  - In a narrow panel the labelled file actions fold into a ⋯ menu
-  - A changed image shows before and after with dimensions and sizes instead of "Binary file
-    not shown"; other binary files show both sizes
-- [ ] **Full-row selection in file lists**: the commit panel's and file history's file lists
-      select the whole row with the same fill and accent bar as the graph and sidebar
-- [ ] **One style for empty, loading, error and banner states**: an `empty_state(icon, title,
-      hint, action)` widget for empty panes (the dashboard with Open, Clone and Connect; search
-      with no matches with Clear search and a syntax hint; a whitespace-only diff with "Show
-      whitespace changes"), loading and errors (warning icon, plain title, Try again and Copy
-      details, no "not found:" prefixes); a full-width `banner(kind)` with an icon and
-      normal-contrast buttons for operations and the git-too-old notice; error, warning and
-      info message styles for every form, with field errors under the field and none before
-      the user has typed
-- [ ] **Layout that gives tool views room**: the commit panel collapses to a narrow rail while
-      file history, folder history, blame, conflicts, issues or Git Flow are open, and comes
-      back on Close; a hidden sidebar or details panel leaves an edge rail or status-bar link
-      to bring it back, and the View menu shows them with check marks; toasts sit below the
-      toolbar and line up; the toolbar's buttons don't move with the branch name's length or
-      the PR button
-- [ ] **Sidebar create actions**: every section header shows a hover + (and a ⋯ for its menu)
-      like ISSUES; SUBMODULES and WORKTREES are always listed, with "Add submodule…" and "Add
-      worktree…" in their empty state; REMOTE counts remotes, not remote branches
-- [ ] **Preferences structure**: Editor is renamed Diff Viewer; one Terminal page for the
-      built-in and external terminal; Language and date locale together; General split into
-      titled sections; one save model (instant, with a short "Saved"; pages that write repo
-      config get a sticky Save / Revert bar and warn on leaving with unsaved edits); the
-      Integrations page shows each connected account once and hides the token form behind "Add
-      another account"; checkbox rows always have an inline label; rows stay inside the content
-      column
-- [ ] **Complete translations**: the graph column headers, sidebar sections, filter
-      placeholder, WIP row, dates, the commit, branch and tag menus, hunk buttons and every
-      dialog's Cancel come from the tables; "Discard all" and "Stage all" keep "all"; a test
-      renders each panel in German and fails on strings from an English allow-list
-- [ ] **Clearer prompts and safer controls**: the SSH host-key prompt shows host, key type and
-      fingerprint as fields with one sentence of explanation and "Trust and connect" / Cancel
-      (Cancel the default), with the raw text under Details; the sign-in dialog labels Username
-      and "Password or personal access token"; Skip hooks moves to a ⋯ menu by the commit
-      button with a warning tint while on; Kill in the terminal asks while a process runs; repo
-      sync gets Stop and per-row Retry and Open, with the full error on hover; the rebase
-      panel's Reset becomes "Restore original order"; graph search gets a clear × and a
-      fixed-width count
 
 ---
 
